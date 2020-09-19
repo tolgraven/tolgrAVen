@@ -1,12 +1,15 @@
 (ns tolgraven.figwheel
-  (:require [figwheel-sidecar.repl-api :as ra]))
+  ; (:require [figwheel.main :as fw]))
+  (:require [figwheel-sidecar.repl-api :as fw]))
+  ; #_(:require #_[figwheel-sidecar.repl-api :as ra]))
 
 (defn start-fw []
-  (ra/start-figwheel!))
+  #_(fw/start)
+  (fw/start-figwheel!))
 
 (defn stop-fw []
-  (ra/stop-figwheel!))
+  (fw/stop-figwheel!))
 
 (defn cljs []
-  (ra/cljs-repl))
+  (fw/cljs-repl))
 

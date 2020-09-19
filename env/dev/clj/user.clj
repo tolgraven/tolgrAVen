@@ -17,7 +17,9 @@
   "Starts application.
   You'll usually want to run this on startup."
   []
-  (mount/start-without #'tolgraven.core/repl-server))
+  ; (mount/start-without #'tolgraven.core/repl-server)
+  (mount/start)
+  (start-fw))
 
 (defn stop
   "Stops application."

@@ -74,8 +74,8 @@
                   [:target-path [:cljsbuild :builds :app :compiler :output-dir]
                                 [:cljsbuild :builds :app :compiler :output-to]]
   :figwheel
-  ; {:http-server-root "public"
-  {:http-server-root "resources/public"
+  {:http-server-root "public"
+  ; {:http-server-root "resources/public"
    :server-port 4001
    :server-logfile "log/figwheel-logfile.log"
    ; :ring-handler tolglow-web.handler/app-routes ;Embed ring handler in figwheel http-kit server, for simple ring servers, if it doesn't work for you just run your own (see lein-ring)
