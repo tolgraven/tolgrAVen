@@ -131,109 +131,111 @@
 
 (defn video-bg "Ze reg attrs for shitty perf sinks yo"
   [src]
-  [:video {:class "media media-as-bg"
-           ; :playinline true :autoplay true :loop true :muted true ;, how these attrs set??
+  [:video {:class "media media-as-bg" ; :playinline true :autoplay true :loop true :muted true ;, how these attrs set??
            :src src}])
-   ; :playinline :autoplay :loop :muted
-  ; (->> {:class "media media-as-bg"
-  ;      ; :playinline true :autoplay true :loop true :muted true ;, how these attrs set??
-  ;      :src src}
-  ;     ; (into {:src src})
-  ;     (into [:video])))
 
 (defn bg-logo [path]
     [:div#logo-top.logo-bg.parallax-sm
       {:class "logo-tolgraven"
-       ; :style {:background "url('img/tolgrav.png')"}}]) ; cant remember why I did the weird path-in-css bs but anyways...
        :style {:background (str "url('" path "')")}}]) ; cant remember why I did the weird path-in-css bs but anyways...
 
-(defn inset [caption nr]
-  (let [pos (condp (mod nr 4)
-              1 "right"
-              2 "left"
-              3 "top right"
-              4 "top left")]
-    [:p.caption-inset {:class "right" #_pos}]))
-
+(defn ui-inset [caption nr]
+  (let [pos (case (mod nr 4)
+              0 "right"  1 "left"  2 "top right"   3 "top left")]
+    [:p.caption-inset {:class pos}]))
+(defn float-img "Needs to go within a float-wrapper..."
+  [id img-attr & [caption pos]]
+  [:figure.float-with-caption {:id id :class (or pos "left")}
+      [:img.media.image-inset img-attr]
+      (when caption [:figcaption caption])])
 
 ;; TODO curr 1px gap between outer lines and img. Fix whatever causing this by mistake (think lines are half-width)
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
-(defn section "Curr some sections are raw some wrapped in outer div - eww. Wrap all? Inject link anchor etc"
-  [id inner & outer]
-  (let [sectioned (into [:section {:id id}] ; TODO just give each section its own id nr and run stuff like inset pos on that yea
+(defn ui-section "Curr some sections are raw some wrapped in outer div - eww. Wrap all? Inject link anchor etc"
+  [id wrapper-attrs section-attrs inner & outer]
+  (let [sectioned (into [:section (merge {:id id}
+                                         section-attrs)] ; TODO just give each section its own id nr and run stuff like inset pos on that yea
                         inner)]
-    (-> [:div.section-wrapper]
+    (-> [:div.section-with-media-bg-wrapper wrapper-attrs] ;;assuming universal...
         (into outer)
         (into sectioned))))
 
-(defn header-logo [[text subtitle]]
+(defn ui-header-logo [[text subtitle]]
   [:div.header-logo
-   [:a {:href "#linktotop"} [:h1 text]]
+   [:a {:href "#linktotop"}
+    [:h1 text]]
    [:div.header-logo-text (for [line subtitle] [:p line])]])
-   ; [:div.header-logo-subtitle (map subtitle )]])
-;
-(defn header-nav [sections]
+
+(defn ui-header-nav [sections]
   [:menu
    [:nav
     [:input {:type "checkbox" :id "show-menu"}]
     [:label.menu-toggle {:for "show-menu"}]
-    ; [:input {:type :checkbox :id :show-menu}]
-    ; [:label.menu-toggle {:for :show-menu}]
-
     [:ul.nav-links
      (for [[title url] sections]
        [:li [:a {:href url :name title}
                 (string/upper-case title)]])]]
    #_[:label {:for "theme-toggle" :class "theme-label show-in-menu"}
-    "Theme"]])
+      "Theme"]])
 
-(defn header [text-logo sections]
+; (defn ui-header [& {:keys [text menu]}]
+(defn ui-header [{:keys [text menu]}]
   [:header
-   [:div.cover.cover-clip]
-   [header-logo text-logo]
-   [header-nav sections]
+   ; [:p text]
+    [:input {:class "burger-check" :id "burger-check" :type "checkbox"}]
+    [:div.cover.cover-clip] ;covers around lines and that...
+    (println menu)
+    [ui-header-logo text]
+    ; [ui-header-logo ["tola" ["wha" "ba"]]]
+    [ui-header-nav menu]   ; menu
+    [:label.burger {:for "burger-check"}]])
 
-   [:label.burger {:for "burger-check"}]])
-
-(defn button
-  [id text & {:keys [type bg-div-class]
-              :or   {type "button" bg-div-class "blur-bg"}}]
+(defn ui-button "Pass text and id, plus either link anchor or action..."
+  [text id & {:keys [type bg-div-class link action]
+              :or   {type "button" bg-div-class "blur-bg" link (str "#" id)}}]
   [:button {:id (str "btn-" id) :type type}
    (when bg-div-class [:div {:class bg-div-class}])
-   [:label {:for (str "btn-" id)} text]])
+   [:label {:for (str "btn-" id)}
+    (if action
+      true
+      [:a {:href link} text]) ]])
 
-(defn intro [title text buttons]
+(defn ui-fader "Hitherto just css but prog gen prob easier in some cases..."
+  [& {:keys [fade-to dir content]
+      :or {fade-to "fade-to-black" dir "light-from-below"}}]
+  [:div.fader [:div {:class (str fade-to " " dir)}]])
+
+
+(defn ui-intro [{:keys [title text buttons]}]
   [:section#intro
    [:h1.h1-responsive title]
-   (into [:p] (ln->br text))
-   ; (for [line (string/split-lines text)]
-   ;   [:p line])
+   (into [:p] (ln->br text)) ; or just fix :pre css lol
    [:br]
    [:div.buttons
     (for [[id text] buttons]
-      [button id text])]])
+      [ui-button id text])]])
 
-(defn interlude "Banner across with some image or video or w/e"
-  [title inset bg nr]
+(defn ui-interlude "Banner across with some image or video or w/e"
+  [{:keys [title caption bg nr]}]
   [:div {:id (str "interlude-" nr)
          :class "section-with-media-bg-wrapper"}
    bg ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
    [:section {:class "covering-faded widescreen-safe center-content"}
     [:h1.h1-responsive title]]
-   [:p.caption-inset {:class "right"}
-    inset]])
+   [ui-inset caption nr]])
 
-(defn blog [])
-(defn portfolio [])
+(defn ui-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
+  [])
+(defn ui-portfolio [])
 
-(defn services "Let's start by just straight porting some stuff"
-  [categories bg-img-attr caption]
+(defn ui-services "Let's start by just straight porting some stuff"
+  [{:keys [categories bg caption]}]
   (let []
     [:div#section-services
      {:class "link-anchor stick-up section-with-media-bg-wrapper"}
+     [ui-inset caption 4] ;auto-gen
      [:p.caption-inset caption]
-     ; [(first bg-img) (-> bg-img second (merge {:class "media-as-bg fade-3 parallax-bg"}))] ;wait how durp properly
-     [:img (merge bg-img-attr {:class "media-as-bg fade-3 parallax-bg"})] ;wait how durp properly
+     [:img (merge bg {:class "media-as-bg fade-3 parallax-bg"})] ;wait how durp properly
      [:section#services
       [:div#categories
        (for [[title icon-name lines] categories]
@@ -244,57 +246,84 @@
                 (for [line lines]
                   [:li line]))])]]]))
 
-
+;; TODO rethinking things a bit.
+;; it's more like, what common attributes do whatever things have
+;; and some stuff that should go together is in a div before or after
+;; so remember :<>
 (defn put "A section or smthing. Wrap some shit reg whatever"
-  []
-  )
-
+  [])
 ; tho should do hiccup pre-render server side then just inject news feed and whatnots
 (defn ui []
-  (let [{:keys [logo-header logo-bg intro-text services-text]} (<-db [:content])
-        top-banner-img {:src "img/foggy-shit-small.jpg" :alt "Purple enthusiast"}]
-    [:<>
-     ; [:body.fullwide {:class "container themable framing-shadow sticky-footer-container"}
-     ;      #_{:class (when (db/<- [:modal]) "modal-is-open")}
-      ; [header logo-header]
-      ; [header-nav [["Services"  "#link-services"]
-      [:p (first intro-text)]
-      ; [:p services-text]
-      [header logo-header  [["Services"  "#link-services"]
-                            ["Story"     "#about"]
-                            ["Tools"     "#tools"]
-                            ["Portfolio" "#portfolio"]]]
-
+  ; (let [{:keys [logo-header logo-bg intro-text services-text]} (<-db [:content])
+  ; (let [{:keys [header- intro- services- story- interlude-] :as content} (<-db [:content])
+  ; (let [{:keys [header- intro- services- story- interlude-] :as content} @(rf/subscribe [:content])
+  (let [{:keys [header intro services story interlude] :as content} @(rf/subscribe [:content])
+        interlude-counter (atom 0)]
+    [:<> ;      #_{:class (when (db/<- [:modal]) "modal-is-open")}
+      ; [ui-header header]
+      [ui-header @(rf/subscribe [:content :header])]
+      ; (println @(rf/subscribe [:content :header]))
       [:div.line.line-header] ; XXX oh yeah only actually outside header bc silly css tricks to get shit to play along. so, fuck that, and get it within
 
       [:main.main-content.perspective-top
        [:a {:name "linktotop"}]
+       [bg-logo (:logo-bg intro)]
+       [:img#top-banner.media.media-as-bg (:bg intro)] ; can we get this within intro plz?
 
-       [bg-logo logo-bg]
+       ; [intro intro-]
+       [ui-intro @(rf/subscribe [:content :intro])]
 
-       [:img#top-banner.media.media-as-bg top-banner-img]
+       ; [ui-interlude (merge (nth interlude 0)
+       ;                   {:nr 1})]
+       [ui-interlude (merge (nth interlude @interlude-counter)
+                         {:nr (swap! interlude-counter inc)})]
 
-       (-> [intro]
-           (into intro-text)
-           (into [["contact"  "Join me"]
-                  ["down"     "Fix these buttons"]]))
-       ; (into [intro] intro-text
-       ;   [["contact"  "Join me"]
-       ;    ["down"     "Fix these buttons"]])
+       [ui-services services]
 
-       [interlude "What does that mean?"
-        "Stage light blala"
-        [video-bg "media/fog-3d-small.mp4"]
-        1]
+       [ui-interlude (merge (nth interlude @interlude-counter)
+                         {:nr (swap! interlude-counter inc)})]
 
-       [services services-text
-        ; [:img {:src "media/vim-code-small.jpg" :alt "neovim editor" :class "media-as-bg fade-3 parallax-bg"}]
-        {:src "img/vim-code-small.jpg" :alt "neovim editor"}
-        "neovim"]
+      [:div.section-with-media-bg-wrapper {:class "covering stick-up"}
+       [:img.media-as-bg  {:src "img/crowd-lbp.JPG" :class "fade-5 parallax-sm origin-toptop"}]
+       [:section#intro-end.center-content
+        [:h1.h-responsive.parallax-bg] "YOU"]
+       [ui-inset "Happy people enjoying blabla" 1]
+      [ui-fader]]
 
-      [interlude "For who?"
-                 "Nihiloxica video shoot, Kampala"
-                 [video-bg "media/nihil-shoot2.mp4"]
-                 2]
+      [:div#about-intro.section-with-media-bg-wrapper {:class "covering stick-up fullwidth"}
+       [:div.fader
+        [:img.media.media-as-bg {:src "img/wide-spot-ctrl-small.jpg"}]
+        [:section.covering-faded
+          [:h1.h-responsive "Breaking things down"]]]]
+      [:div.fader>div.fade-to-black.between]
+
+      ;; FIXME something like this where floats dont need to be anywhere specific.
+      ;; break up text and insert appropriately...
+      [:section#about-story.anim-gradient-bg.noborder.float-wrapper
+       [:h1#about.link-anchor]
+       (let [story @(rf/subscribe [:content :story])
+             text-part (string/split-lines (:text story))
+             img-count (count (:images story))
+             line-count (count text-part)
+             chunk-size (/ line-count img-count)
+             content  (interleave (mapv (partial into [float-img])
+                                        (:images story))
+                                  (mapv (partial into [:p])
+                                        (partition chunk-size text-part)))]
+
+       [:<>
+        [:h3 (:title story)]
+        content])]
+
+      [ui-interlude (merge (nth interlude @interlude-counter)
+                         {:nr (swap! interlude-counter inc)})]
+
+      #_[ui-section "intro-end"
+       {:class "covering stick-up"}
+       {:class "covering-faded"}
+               [:<> [:h1.h1-responsive.parallax.bg "YOU"]]
+               [:img {:src "img/crowd-lbp.JPG"
+                      :class "media-as-bg fade-5 parallax-sm origin-toptop"}]
+               [inset "Happy people hospitality blabla." 3]]
       ]]))
 

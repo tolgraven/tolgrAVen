@@ -54,20 +54,58 @@
 (def data ; default db
  {; :filter {:method "regex"}
   ; :view {:page [0 0] :offset [0 0] :size 8}
- :content {:logo-header ["tolgrAVen" ["audio" "visual"]]
-           :logo-bg "img/tolgrav.png"
-           :intro-text ["Building experience"
-                   "Is what it all comes down to.
+ :content {:header {:text ["tolgrAVen" ["audio" "visual"]]
+                     :menu [["Services"  "#link-services"]
+                            ["Story"     "#about"]
+                            ["Tools"     "#tools"]
+                            ["Portfolio" "#portfolio"]]
+                    #_{:should :semi-auto-populate?}}
+           :intro {:title "Building experience"
+                   :text "Is what it all comes down to.
                     So many roads, yet I'm determined to track most of them halfway down.
-                    There's only one way to find out what's possible blabla copy."]
+                    There's only one way to find out what's possible blabla copy."
+                   :buttons  [["Join me"            "contact"]
+                              ["Fix these buttons"  "down"]]
+                   :bg {:src "img/foggy-shit-small.jpg" :alt "Purple enthusiast"}
+                   ; :logo-bg {:src "img/tolgrav.png"}}
+                   :logo-bg "img/tolgrav.png"}
 
-           :services-text  [["Audio" "bullhorn"   ["Sound engineering" "Broadcasting" "Recording" "Music production"]]
-                       ["Video" "film"       ["Editing" "Production" "Shoot inna pinch"]]
-                       ["Stage" "lightbulb"  ["Event production" "Concert" "Club" "Automation & Retrofitting"]]
-                       ["Design" "joint"     ["I mean not really" "But sorta dig the logo" "Not like I'm qualified" "For anything else either"]]
-                       ["Software" "code"    ["Open source (evtly)" "Bespoke projects" "Rapid prototyping" "From (cl)JS to C++" "Current focus"]]
-                       ["Web" "laptop"       ["This is my first website!" "I'll make more once" "my stack runs fulleth"]]]
-           :interlude []
+           :services  {:categories
+                       [["Audio"    "bullhorn"   ["Sound engineering" "Broadcasting" "Recording" "Music production"]]
+                        ["Video"    "film"       ["Editing" "Production" "Shoot inna pinch"]]
+                        ["Stage"    "lightbulb"  ["Event production" "Concert" "Club" "Automation & Retrofitting"]]
+                        ["Design"   "joint"      ["I mean not really" "But sorta dig the logo" "Not like I'm qualified" "For anything else either"]]
+                        ["Software" "code"       ["Open source (evtly)" "Bespoke projects" "Rapid prototyping" "From (cl)JS to C++" "Current focus"]]
+                        ["Web"      "laptop"     ["This is my first website!" "I'll make more once" "my stack runs fulleth"]]]
+                       :bg {:src "img/vim-code-small.jpg" :alt "neovim editor"}
+                       :caption "neovim"}
+
+           :story {:heading {:title "Breaking things down"
+                              :bg {:src "img/wide-spot-ctrl-small.jpg"}}
+                   :title "Butt your trust in my flaky hands"
+                   :text "1 I'm not actually very good at anything so...
+                          2 I'm not actually very good at anything so my services are cheap as or not available.
+                          3But as you can see above I know a lot of different stuff.  Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
+                          4Learned a ton, is what's truly important. But as you can see above I know a lot of different stuff.
+                          5Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
+                          6Learned a ton, is what's truly important.
+                          7But as you can see above I know a lot of different stuff.
+                          8Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well."
+                   :images [["headshot" {:src "img/Leg-tasteful-small.jpg" :alt "Joen"}
+                             "Yours truly. Smiling!"]
+                            ["multimeter" {:src "img/multimeter-driver-small.jpg" :alt "Broken driver"}
+                             "Something smells fishy here. Sorry I mean burnt"
+                             "right"]]}
+
+           :interlude [{:title "What does that mean?"
+                         :caption "Stage light blabla"
+                         :bg [:video.media.media-as-bg {:src "media/fog-3d-small.mp4"}]}
+                        {:title "For who?"
+                         :caption "Nihiloxica video shoot, Kampala"
+                         :bg [:video.media.media-as-bg {:src "media/nihil-shoot2.mp4"}]}
+                        {:title "Got no portfolio"
+                         :caption "Failed"
+                         :bg [:img.media.media-as-bg.fade-3 {:src "img/collage-strips-small.png"}]}]
            }
 
  :schema {:query
