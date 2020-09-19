@@ -7,12 +7,18 @@
     [goog.events :as events]
     [goog.history.EventType :as HistoryEventType]
     [markdown.core :refer [md->html]]
+    [cljs-time.core :as ct]
+    [cljs-time.format :refer [formatters formatter unparse]]
     [tolgraven.ajax :as ajax]
     [tolgraven.events]
+    [tolgraven.db :as db]
+    [tolgraven.subs :as sub]
+    [tolgraven.views :as view]
     [reitit.core :as reitit]
     [reitit.frontend.easy :as rfe]
     [clojure.string :as string])
   (:import goog.History))
+
 
 (defn nav-link [uri title page]
   [:a.navbar-item
@@ -20,7 +26,7 @@
     :class (when (= page @(rf/subscribe [:common/page])) :is-active)}
    title])
 
-(defn navbar [] 
+(defn navbar []
   (r/with-let [expanded? (r/atom false)]
               [:nav.navbar.is-info>div.container
                [:div.navbar-brand
@@ -40,16 +46,16 @@
   [:section.section>div.container>div.content
    [:img {:src "/img/warning_clojure.png"}]])
 
-(defn home-page []
-  [:section.section>div.container>div.content
-   (when-let [docs @(rf/subscribe [:docs])]
-     [:div {:dangerouslySetInnerHTML {:__html (md->html docs)}}])])
-
 (defn page []
   (if-let [page @(rf/subscribe [:common/page])]
     [:div
      [navbar]
      [page]]))
+
+
+(defn home-page []
+  [view/ui])
+
 
 (defn navigate! [match _]
   (rf/dispatch [:common/navigate match]))
@@ -72,9 +78,11 @@
 ;; Initialize app
 (defn mount-components []
   (rf/clear-subscription-cache!)
-  (rdom/render [#'page] (.getElementById js/document "app")))
+  ; (rdom/render [#'page] (.getElementById js/document "app")))
+  (rdom/render [#'home-page] (.getElementById js/document "app")))
 
 (defn init! []
   (start-router!)
+  (rf/dispatch-sync [:init-db])
   (ajax/load-interceptors!)
   (mount-components))
