@@ -1,0 +1,1059 @@
+@import "burger.css";
+@import "peripheral.css";
+@import "header.css";
+
+/* wanted to put in own file but wasnt compatible with live reload solution... */
+:root { /* general vars */
+  /* SIZES */
+  --space:             1.5rem;
+  --space-lg:          2rem;
+  --space-sides:       var(--space-lg); /* inner horizontal margin */
+  --space-edges:       var(--space-sides); /* size of outer edges  */
+  --space-top:         2rem; /* top margin above header */
+  --media-width-main:  calc(100% - 2 * var(--space-lg)); /* would it be context dependent or just use root 100% i guess uh */
+  --banner-height:     600px;
+  --logo-ratio:        0.4060; /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */ /* just use img... */ /* or make logo look like i want in first place - needs higher-res or vector bounce anyways */
+  --header-height:     calc(3 * var(--space));
+  --header-with-menu-height: 18rem; /* not truly dynamic bc of annoying sticky */
+  /* --link-offset:       calc(var(--space) + var(--header-with-menu-height)); */
+  --link-offset:       calc( var(--header-with-menu-height));
+  --menu-width-fraction: 0.75;
+
+  --line-width:        2px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --scale:             1.0; /* px line-width drifts when font scales so must compensate... better way? */
+  
+  --fiddle-multiplier: 3; /* works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
+  --left-marker: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
+                + var(--space) - (var(--fiddle-multiplier) * var(--line-width)));
+  --right-marker: calc(100% - var(--left-marker) + var(--line-width)); /* makes sense right side needs one more unit since it has the right border... */
+  --top-to-menu-height: calc(2 * var(--space-top) + 2em - (4 - var(--fiddle-multiplier)) * var(--line-width));
+  --header-expand-time:  0.5s;
+
+
+  --perspective:       100;
+  --parallax:          15;
+  --parallax-scale:    calc(1 + (1 / var(--perspective) * var(--parallax)));
+  --parallax-px:       calc(-1px * var(--parallax));
+  --parallax-sm:       calc(0.50 * var(--parallax));
+  --parallax-sm-scale: calc(1 + (1 / var(--perspective) * var(--parallax-sm)));
+  --parallax-sm-px:    calc(-1px * var(--parallax-sm));
+  --parallax-squeeze-scale: calc(1 + (1 / var(--perspective) * var(--perspective)));
+  --parallax-squeeze-px:    calc(-1px * var(--perspective));
+  --parallax-squeeze-tf:    -1570%; /* fuck knows why */
+
+
+  /* COLORS */
+  --hue-1:             180;
+  --hue-2:               8;
+  --hue-3:             192;
+  --lum-dark-1:         9%;
+  --lum-dark-2:        12%;
+  --lum-dark-3:        17%;
+  --lum-light-1:       calc(100% - var(--lum-dark-1));
+  --lum-light-2:       calc(100% - var(--lum-dark-2));
+  --lum-light-3:       calc(100% - var(--lum-dark-3));
+
+  --light-1:           hsl(var(--hue-2), 20%, var(--lum-light-2));
+  --light-text:        hsl(29, 35%, 86%);
+
+  --nav-accent: hsla(var(--hue-3), 40%, 20%, 0.35);
+  --neutral-accent: #9ae; /* link? */
+  --dark-1:     hsl(var(--hue-1),  7%,  var(--lum-dark-1));
+  --dark-2:     hsl(var(--hue-2),  7%,  var(--lum-dark-2));
+
+  --opacity-regular:  0.45;
+  --opacity-faint:    0.25;
+  --box-regular-color:    hsla(0, 0%, var(--lum-dark-1), var(--opacity-regular));
+  --box-faint-color:      hsla(0, 0%, var(--lum-dark-1), var(--opacity-faint));
+  --box-regular-color-flip: var(--box-regular-color); /* light mode always dark shadows */
+  --box-faint-color-flip:   var(--box-faint-color);
+
+  --gradient-bg-main: linear-gradient(-77deg, hsl(280, 12%, 12%), hsl(100, 12%, 12%));
+
+  --fg-1:       var(--dark-1);
+  --fg-2:       var(--dark-2);
+  --lum-fg-1:   var(--lum-dark-1);
+  --lum-fg-2:   var(--lum-dark-2);
+  --lum-fg-3:   var(--lum-dark-3);
+  --bg-1:       var(--light-1);
+  --bg-2:       var(--light-text);
+  --lum-bg-3:   var(--lum-light-3);
+  --lum-bg-1:   var(--lum-light-1);
+  --lum-bg-2:   var(--lum-light-2);
+
+}
+
+/* @media (prefers-color-scheme: dark) { */
+ /* { */
+  :root { /* OS has requested dark mode */
+    --fg-1:     var(--light-1);
+    --fg-2:     var(--light-text);
+    --lum-fg-1: var(--lum-light-1);
+    --lum-fg-2: var(--lum-light-2);
+    --lum-fg-3: var(--lum-light-3);
+    --bg-1:     var(--dark-1);
+    --bg-2:     var(--dark-2);
+    --lum-bg-1: var(--lum-dark-1);
+    --lum-bg-2: var(--lum-dark-2);
+    --lum-bg-3: var(--lum-dark-3);
+    --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
+    --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
+  }
+  #logo-top { /* invert then rotate hue to restore blue text */
+    filter: invert() hue-rotate(180deg);
+  }
+/* } */
+@media screen and (min-width: 800px) and (min-height: 800px) {
+  :root {
+    --space: 2.0rem;
+    --space-lg: 3.0rem;
+  }
+}
+@media screen and (min-width: 1100px) {
+  .line { /* i guess x overflow only important on ios, so we hype here */
+    width: 200%; /* extend out like damn */
+  }
+  :root {
+    --space-edges: 10vw;
+    /* --space-edges: calc(var(--space) + 10vw); */
+  }
+}
+@media screen and (max-width: 600px),
+       screen and (max-height: 600px) {
+  :root {
+    --space: 1.0rem;
+    --space-lg: 1.5rem;
+    --space-sides: var(--space); /* remember -sides based on the smaller num for mobile (since margins are more precious) */
+    --space-edges: 0.8rem; /* perfectly makes room for macos scrollbar */
+    --media-width-main: 90%; /* tho actually maybe, just calc from space-sides? */
+
+    --scale: 0.9;
+    font-size: 0.90rem;
+  }
+}
+@media not all and (min-resolution:.001dpcm), /* is safari */
+       (prefers-reduced-motion: reduce) {     /* wants no parallax */
+  :root {
+    --perspective: 1; /* just to be sure */
+    --parallax:    0;
+
+    --parallax-squeeze-tf: 100%; /* fuck knows why */
+  }
+}
+@media not all and (min-resolution:.001dpcm) { /* is safari */
+  :root {
+    --logo-ratio:        0.40; /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */ /* just use img... */ /* or make logo look like i want in first place - needs higher-res or vector bounce anyways */
+  }
+  .stick-up { /* safari is being way irresponsible drawing img sticky layers.. */
+    /* position: relative; */
+    /* top: initial; */
+  }
+}
+@supports (-webkit-overflow-scrolling: touch) { /* iOS devices */
+  body { /* prevent insane bumping of p font size in landscape and more */
+    text-size-adjust: 100%; -webkit-text-size-adjust: 100%;
+  }
+}
+@media only screen and (-webkit-device-pixel-ratio: 3) {
+  :root { /* *im thinking this is what it's about. 3 vs 2 pixels per pixel */
+    --fiddle-multiplier: 1; /* makes iphone x line up with current formulas/offsets */
+  }
+}
+@media only screen and (min-device-width : 375px) and (max-device-width : 812px) and (-webkit-device-pixel-ratio : 3) {
+  /* iphone x */
+} @media only screen and (min-device-width : 375px) and (max-device-width : 667px) {
+  /* iphone 6-8. i mean not really tho could be loads?? */
+} @media only screen and (min-device-width : 414px) and (max-device-width : 736px) {
+  /* 6-8 plus */
+}
+
+@media screen and (max-width: 400px) {
+  :root {
+    font-size: 0.80rem;
+    --space-sides: calc(0.5 * var(--space)); /* remember -sides based on the smaller num for mobile (since margins are more precious) */
+    --space-edges: calc(0.5 * var(--space));
+    /* --media-width-main: 100%; */
+    --media-width-main: calc(100vw - 2 * var(--space-edges) - 2 * var(--line-width)); /* would it be context dependent or just use root 100% i guess uh */
+  }
+  #top-banner { /* need a better solution for ensuring doesnt overflow... like a tallet image? */
+    padding-top: 0;
+  }
+  /* .caption-inset  { /1* ok whatever no captions on iphone then *1/ */
+  /*   visibility: hidden; */
+  /*   display: none; */
+  /*   opacity: 0; */
+  /* } */
+}
+
+li {
+  list-style: none;
+}
+
+
+.hidden { visibility: hidden; }
+
+/* #theme-toggle:checked ~ .themable { */
+/* #theme-toggle:checked ~ body { */
+/* #theme-toggle:checked ~ main { */
+/*   /1* ok so can select main but not body OUCH. *1/ */
+/* /1* .themable { *1/ */
+/*     --bg-1:     var(--dark-1); */
+/*     --bg-2:   var(--dark-2); */
+/*     --fg-1:     var(--light-1); */
+/*     --fg-2:   var(--light-text); */
+/*     --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular)); */
+/*     --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint)); */
+/*     color: red; */
+/* } */
+/* #theme-toggle:not(:checked) ~ main { */
+/*   --bg-1:      var(--light-1); */
+/*   --bg-2:    var(--light-text); */
+/*   --fg-1:      var(--dark-1); */
+/*   --fg-2:    var(--dark-2); */
+/*   --box-regular-color-flip: var(--box-regular-color); /1* light mode always dark shadows *1/ */
+/*   --box-faint-color-flip:   var(--box-faint-color); */
+/*     color: blue; */
+/* } */
+
+* {
+  box-sizing: border-box;
+  margin:  0;
+  padding: 0;
+}
+
+html {
+  height: 100%;
+  overflow-x: hidden; /* gotta be on both or doesnt work on iphone hmm */
+  scroll-behavior: smooth; /* makes in-page links scroll to target beautifully in chrome */
+  /* overscroll-behavior-y: none; /1* actually works in chrome, stops from overscroll. BUT makes scrolling and esp sticky jittery it seems? *1/ */
+}
+
+body {
+  font-family: 'Open Sans', sans-serif;
+  color: var(--fg-1);
+  background-color: var(--bg-1);
+  width: calc(100% - 2 * var(--space-edges));
+  max-width: 1000px; /*should be conn to var no*/
+  margin: auto;
+
+  /* no overflow hidden on body = iphone can scroll sideways. on body works but sticky header breaks */
+  /* -webkit-overflow-x: hidden; nope... no work */
+  /* overflow-x: hidden; /1* gotta be on both or doesnt work on iphone hmm *1/ */
+  /* -webkit-overflow-scrolling: touch; */
+}
+
+.fader {
+  position: relative;
+  z-index: 25;
+  width: 100%;
+}
+.fade-to-black {
+  position: absolute;
+  width: 100%;
+}
+.fade-to-black.top {
+  top: 0;
+  height: calc(4 * var(--space));
+  background: linear-gradient(180deg, var(--bg-1) 50%, hsl(0, 0%, 0%, 0.0) 100%);
+}
+.fade-to-black.between {
+  --height: 3.5;
+  height: calc(var(--height) * var(--space-lg));
+  top:    calc(-0.5 * var(--height) * var(--space-lg));
+  background: linear-gradient(0deg,
+      hsl(var(--hue-3), 2%, var(--lum-bg-1), 0.0)  0%,
+      hsl(var(--hue-3), 8%, var(--lum-bg-2)) 50%,
+      hsl(var(--hue-3), 28%, var(--lum-bg-2), 0.0)  100%);
+}
+.fade-to-black.between.red {
+  background: linear-gradient(0deg, transparent 0%,
+      hsl(var(--hue-2), 8%, var(--lum-bg-2)) 50%,
+      transparent 90%);
+}
+.fade-to-black.light-from-below {
+  background: linear-gradient(180deg, transparent 0%,
+      hsl(var(--hue-2), 8%, var(--lum-fg-2)) 120%);
+  --height: 30vh;
+  height: calc(var(--height));
+  bottom: 0;
+}
+
+@supports(scroll-margin-top: 0px) { /* compensate for our sticky header. */
+  .link-anchor { scroll-margin-top: var(--link-offset); } }
+@supports not (scroll-margin-top: 0px) {
+  .link-anchor::before { /* have to compensate due to our sticky header. */
+    display: block;      /* on about section not working was due to overflow: auto clearfix... */
+    content: " ";        /* also various safari vs chrome diff in behavior */
+    margin-top: calc(-1.0 * var(--link-offset));
+    height: calc(1.0 * var(--link-offset));
+    visibility: hidden;
+    pointer-events: none;
+    z-index: -1;
+  }
+}
+
+/* TODO: line border cross pattern for eg images, in same way as site main, connecting to main borders... */
+/* together with similar for topnav and feels "almost" proper design language ish */
+/* could also run along down connecting to next section... */
+.line { /* i guess x overflow only important on ios, so we hype -edges by media query */
+  width: calc(var(--space-edges) + 100%); /* extend out one margin */
+  background-color: var(--fg-1);
+  height: var(--line-width);
+}
+@media screen and (min-width: 1100px) {
+  .line { /* i guess x overflow only important on ios, so we hype here */
+    width: 200%; /* extend out like balls */
+  }
+}
+
+.line.line-header {
+  position: sticky; /* starts between header and main, turns into demarcation */
+  z-index: 20;
+  top: var(--header-height); /* aand i forget why this works now. guess i set a min-height larger than regular banner height... */
+  transition: top var(--header-expand-time) ease 0.0s;
+  margin-top: var(--space-top); /* space before sticky starts */
+  box-shadow: 2px 1px 17px 7px hsla(var(--hue-1), 35%, 40%, 0.09);
+}
+.line.line-footer {
+  position: absolute;
+  bottom: 0;
+  right: 0; /* extend on left instead of right width already good */
+  z-index: 100;
+  box-shadow: 0 0.5rem 1rem 0.2rem var(--box-regular-color);
+}
+.line-left  { border-left: var(--line-width) solid; }
+.line-right { border-right: var(--line-width) solid; }
+.lined-container {
+  position: relative; /* need to be able to attach lines around */
+  border: var(--line-width) solid;
+}
+
+
+a {
+  color: var(--fg-2);
+  text-decoration: none;
+}
+a:focus, a:hover {
+  transform: scale(1.12);
+  filter: brightness(125%) drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1));
+}
+
+.header-logo {
+  min-width: 0;
+  animation: header-logo-anim-out 0.25s;
+  transition: margin 0.7s, min-width 0.5s;
+}
+.header-logo h1 {
+  display: inline;
+  transition: all 0.5s ease;
+}
+.header-logo-text {
+  display: inline-block;
+  font-size: 0.90em;
+  line-height: 0.80em;
+}
+
+.main-content {
+  border: var(--line-width) solid ;
+  border-bottom: 0; /* covered by .line-bottom-h */
+  background: var(--gradient-bg-main);
+  margin-top: var(--space-lg);
+
+  display: flex;
+  flex-flow: row wrap;
+  justify-items: center;
+  position: relative;
+  box-shadow: inset 2px 1px 17px 7px var(--box-faint-color);
+  /* z-index: 1; /1* get above sticky footer... *1/ */
+}
+pre {
+  white-space: pre-wrap;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.column {
+  margin: var(--space);
+  text-align: left;
+}
+
+.logo-tolgraven {
+  /* background: url("../img/tolgrav.png"); */
+  background-size: 100%;
+  background-repeat: no-repeat;
+  opacity: 0.09;
+  border-radius: 38%;
+  border: 0.35em solid var(--bg-1); /* hmm gotta make a bit device-dependent */
+  box-shadow: 5px 5px 7px 2px var(--box-regular-color-flip);
+}
+@keyframes fade-in-logo {
+  0% {
+    opacity: 0.00;
+    background-size: 85%;
+    border-radius: 63%;
+  } 65% {
+    border: 0.35em solid transparent; /* hmm gotta make a bit device-dependent */
+  } 90%, 100% {
+    border: 0.35em solid var(--bg-1); /* hmm gotta make a bit device-dependent */
+    opacity: 0.09;
+    filter: invert() hue-rotate(180deg);
+  }
+}
+.logo-bg {
+  margin-left:  auto; /* better center it automatically instead of counting n shit... */
+  margin-right: auto;
+
+  z-index: -1; /* was -1 TODO need a clear order since layers are adding up... not just -1/100 lols */
+
+  width: var(--media-width-main);
+  height: 0; /* hacky way to size by bg-image height... */
+  padding-bottom: calc(var(--media-width-main) * var(--logo-ratio)); /* height ratio of logo */
+  box-shadow: inset 2px 2px 12px 7px var(--box-regular-color-flip);
+  /* overflow: hidden; */
+
+  animation-play-state: paused;
+  animation: zoom-logo 15s;
+}
+.logo-bg:hover {
+  animation-play-state: running;
+}
+@keyframes zoom-logo {
+  0% {
+  } 100% {
+    width: 100%;
+  }
+}
+
+#logo-top {
+  position: sticky;
+  top:  calc(var(--space) * 5); /* small header and a bit, position for when starts moving off sticky, which is also good fallback when parallax missing... */
+  margin-top: calc(1.5 * var(--space));
+  animation: fade-in-logo 3.5s;
+  transform: translateZ(-10px) scale(1.10); /* hardcoded, always want enabled */
+}
+#logo-bottom { /* same as top but (un)inverted and coming from below */
+  position: absolute;
+}
+.section-bordered { /* already got by default but if need to wrap something else */
+  border-top:    var(--line-width) solid; /* so, every other top+bottom? */
+  border-bottom: var(--line-width) solid; /* this covers/cancels bottom border */
+}
+.noborder {
+  border: 0;
+}
+
+
+section { /* one main section (img + header + piece of content) */
+  flex: 1 1 auto;
+  position: relative;
+  justify-content: center;
+  align-items: middle;
+  padding:   var(--space-lg) var(--space); /* for padding-less main: */
+  border-top: var(--line-width) solid;
+}
+section > h1, .jumbo > h1 {
+  text-align: center;
+  padding-bottom: var(--space);
+  padding-top:    var(--space);
+}
+.main-content > section:first-of-type { /* top section: no upper border */
+  border-top: 0;
+}
+.main-content > section:last-of-type { /* last section, no bottom border */
+  margin-bottom: 0;
+}
+
+.covering { /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
+  z-index: 10;
+  background: var(--gradient-bg-main);
+}
+.covering-faded { /* jk */ /* incidentally not easy to type on a proper vim setup */
+  --opacity: 0.80;
+  /* --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1), var(--opacity)); */
+  /* --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1), var(--opacity)); */
+  --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1));
+  --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1));
+  background: linear-gradient(-40deg, var(--color-1), var(--color-2));
+  opacity: var(--opacity);
+  transition: opacity 0.4s;
+  /* think prob compositing is bad enough, even worse with gradient or? */
+  /* definitely move to burn-in on video either way. then if want to transition to no fg do it by fading to orig version */
+  /* if html n shit server side can just have it gen appropriate vids/imgs etc once from settings */
+  /* background: var(--bg-1); */
+}
+.covering-faded:hover, .covering-faded:focus { /* jk */ /* incidentally not easy to type on a proper vim setup */
+  opacity: 0.60;
+}
+
+
+.sideways { /* scroll horizontally */
+  overscroll-behavior-x: contain; /* keeps the sideways swiping from resulting in accidental page-back etc. only on chrome ...*/
+  scroll-snap-type: x mandatory;
+
+  overflow-x: scroll;
+  overflow-y: hidden;
+  max-height: calc(90vh - var(--header-height));
+  display: flex;
+  flex-wrap: nowrap;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.sideways > div, .sideways > img {
+  scroll-snap-align: start;
+  position: sticky;
+  left: 0;
+  /* width: unset; */
+  object-fit: cover; /* gets weird with extreme viewports (like iphone either portrait or landscape) but not sure how else to deal with it... */
+  margin: 0;
+  border-left: var(--line-width) solid;
+  border-radius: 0;
+  box-shadow: -0.5rem 0 1rem 0.5rem var(--box-regular-color);
+}
+.sideways > *:first-of-type { /* left first be throwaway item */
+  border: 0;
+  animation: nudge 5s infinite;
+  animation-play-state: paused;
+  margin-right: calc(-2 * var(--space-lg));
+}
+@keyframes nudge { /* some weird safari bug where it doesnt revert properly and ends up animating for 100% not 20% of sequence... */
+  0%, 20% { margin-right: calc(-2 * var(--space-lg)); }
+  10% { margin-right: calc(-3 * var(--space-lg)); }
+}
+.sideways > *:first-of-type:hover,
+.sideways > *:first-of-type:focus {
+  animation-play-state: running;
+}
+.sideways > *:nth-of-type(2) { /* keep item visible on right as signal can scroll sideways */
+  left: 3%;
+  /* transform: translateZ(var(--parallax-sm-px)) scale(var(--parallax-sm-scale)); */
+  /* transform-origin: 50% -950%; */
+}
+.sideways > *:nth-of-type(3) { left: 6%; }
+.sideways > *:nth-of-type(4) { left: 9%; }
+.sideways > *:nth-of-type(5) { left: 12%; }
+
+.sideways > *:last-of-type {
+  /* border: 0; */
+  /* padding-right: var(--space-lg); */
+  /* margin-right: var(--space-lg); */
+}
+
+.anim-gradient-bg {
+  --opacity: 0.84;
+  --deg: -40deg;
+  --color-1: hsla(var(--hue-1),  30%,  var(--lum-bg-1), var(--opacity));
+  --color-2: hsla(var(--hue-2),  40%,  var(--lum-bg-1), var(--opacity));
+  /* background: linear-gradient(-30deg, var(--color-1), var(--bg-1)); */
+  background: linear-gradient(var(--deg), var(--color-1), var(--color-2));
+  /* background: linear-gradient(var(--deg), var(--color-1), var(--color-2)); */
+  background-size: 230%;
+  /* animation: gradient-bg 20s ease infinite; */
+  backdrop-filter: blur(4px) contrast(70%);
+  -webkit-backdrop-filter: blur(4px) contrast(70%);
+}
+@keyframes gradient-bg {
+	0%     { background-position:   0% 50%;
+	} 50%  { background-position: 100% 50%;
+	} 100% { background-position:   0% 50%;
+	}
+}
+
+section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
+.h0 { font-size: 2.5rem; }
+.h0-responsive { font-size: calc(2.5rem + 8vw); } /* size based on viewport, with sensible min */
+.h-responsive  { font-size: calc(1.5rem + 3vw); }
+@supports(font-size: min(0px)) { /* can additionally set a maximum... */
+  .h0-responsive { font-size: min(6rem,   calc(2.5rem + 8vw)); }
+  .h-responsive {  font-size: min(3.5rem, calc(1.5rem + 3vw)); }
+}
+
+.buttons {
+  display: flex;
+  justify-content: space-evenly;
+}
+button {
+  padding: calc(0.5 * var(--space)) calc(0.5 * var(--space-lg));
+  background: hsl(var(--hue-1), 7%, var(--lum-bg-2), 0.35);
+  color: var(--fg-2);
+  border: var(--line-width) solid;
+  border-radius: 0.15rem;
+  position: relative;
+}
+button label {
+  position: relative;
+  font-size: 1.2rem;
+  z-index: 2;
+}
+.blur-bg { /* backdrop-filter is finicky with transitions, so... */
+  position: absolute;
+  top: 0; left: 0;
+  /* pointer-events: none; */
+  width: 100%;
+  z-index: 0;
+  height: 100%;
+  opacity: 0.4;
+  backdrop-filter: blur(2rem) brightness(130%);
+  -webkit-backdrop-filter: blur(2rem) brightness(130%);
+  transition: opacity 0.5s;
+}
+button:hover .blur-bg, .blur-bg:hover {
+  opacity: 1.0;
+}
+
+.media-container {
+  position: relative;
+  display: flex;
+  flex-flow: column;
+  align-items: center; /* align-items instead of justify-content because flow by column */
+  justify-content: center;
+  text-align: center;
+}
+.media-container p { /* img/video caption... */
+  font-size: 0.85em; /* small captions */
+  margin-top: 0.3em;
+  width: var(--media-width-main);
+  text-align: left;
+}
+video {
+  height: auto;
+}
+.media {
+  width: 100%;
+  max-width: 700px;
+  /* padding: var(--space) calc(0.5 * var(--space-sides)) 0.2rem calc(0.5 * var(--space-sides)); */
+  margin: var(--space) calc(0.5 * var(--space)) 0.2rem calc(0.5 * var(--space));
+  box-shadow: 2px 2px 12px 7px var(--box-regular-color);
+  border-radius: 0.15rem;
+}
+.image-sm {
+  width: calc(0.5 * var(--media-width-main));
+  max-height: 300px;
+  object-fit: cover; /* since we're setting max-height we must also ensure zooms instead of stretching */
+}
+.image-flex {
+  flex: 1 0 auto;
+  /* width: 50%; */
+  /* height: auto; */
+  max-width: 200px; /* tho then should actually INCREASE on small screens when 1col... */
+  /* max-height: 300px; */
+}
+.image-inset {
+  /* width: 20%; */
+  margin-top: 0;
+  margin-left: 0;
+  /* float: left; */
+  /* max-height: 300px; */
+}
+.fullwide { /* expand div back to full width of main despite regular paddings/margins */
+  /* guess should work to only fuck w margin+width directly not left etc? */
+  /* i guess this should be for only when breaking out of margin bs */
+  /* not the other bg fullwide stuff... */
+  margin: 0;
+  padding: 0;
+  position: relative;
+  left: 0;
+  /* left:  calc(0% - 0.5 * var(--space-sides)); */
+  width: 100%;
+  width: min(100%, calc(var(--media-width-main)));
+}
+.fullwide > .media {
+  max-width: unset;
+  margin: 0;
+}
+.widescreen-safe { /* ensure bottom doesnt run out of 16:9 bg media on (ironically) _thin_ screens */
+  /* height: var(--header-with-menu-height); /1* just, some nice tall enough height - max-height will save us anyways *1/ */
+  height: calc(1.20 * var(--header-with-menu-height)); /* just, some nice tall enough height - max-height will save us anyways */
+  /* height: 40vh; /1* just, some nice tall enough height - max-height will save us anyways *1/ */
+  max-height: calc((100vw - 2 * var(--space-sides)) / (16/9));
+}
+.center-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.media-as-bg {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  max-width: unset;
+  object-fit: cover;
+  margin: 0;
+}
+.section-with-media-bg-wrapper { /* like section-bg-wrapper but NOT using background for img/video */
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  /* border-top: var(--line-width) solid; */
+}
+
+.fade-3 { opacity: 0.30; }
+.fade-5 { opacity: 0.62; }
+.darken-3 { filter: brightness(30%); }
+.darken-5 { filter: brightness(55%); }
+.blur-behind {
+  backdrop-filter: blur(1rem);
+  -webkit-backdrop-filter: blur(1rem);
+}
+
+
+.bg-static-section {
+  position: relative;
+  overflow-y: hidden;
+}
+
+.perspective-top { /* default perspective for main. */
+  perspective: calc(1px * var(--perspective));
+  perspective-origin: top; /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */
+}
+.parallax-sm, .parallax-bg, .parallax-fg {
+  transform-origin: top;
+  transform-style: preserve-3d;
+}
+.parallax-sm {
+  transform: translateZ(var(--parallax-sm-px)) scale(var(--parallax-sm-scale));
+}
+.parallax-bg {
+  transform: translateZ(var(--parallax-px)) scale(var(--parallax-scale));
+  z-index: -1;
+  /* transform-origin: 50% -150%; */ /* perf on chrome, mac safari, but fucks ios... */
+}
+.parallax-fg {
+  transform: translateZ(calc(-1px * var(--parallax-sm))) scale(calc(1 / var(--parallax-sm-scale))); /* not actually being translated... 1.1 is the 1:1 scale btw obv but 1.2 looks good in this case */
+  /* transform-style: preserve-3d; */
+}
+.parallax-squeeze {
+  transform-origin: 50% var(--parallax-squeeze-tf); /* obviously... not realistic */
+  transform: translateZ(var(--parallax-squeeze-px)) scale(var(--parallax-squeeze-scale)); /* not actually being translated... 1.1 is the 1:1 scale btw obv but 1.2 looks good in this case */
+  /* transform-style: preserve-3d; */
+}
+.origin-toptop {
+  /* transform-origin: 50% -100%; */
+  transform-origin: 50% -250%;
+}
+
+#top-banner {
+  opacity: 0.65;
+  /* z-index: -1; */
+  left: 0;
+  top: 0;
+  width: 100%;
+  object-fit: cover;
+
+  animation: top-backdrop 6s ease infinite;
+  animation-play-state: paused;
+}
+#top-banner:hover {
+  animation-play-state: running;
+}
+@keyframes top-backdrop { /* well this'd be nice but it's CRAZY on the cpu bleh */
+  0%, 50% { /* --anim-brightness: 0%; /1* no interpolation like this :/ *1/ */
+    backdrop-filter: brightness(100%);
+    -webkit-backdrop-filter: brightness(100%);
+  } 80% {
+    backdrop-filter: brightness(250%);
+    -webkit-backdrop-filter: brightness(250%);
+  } 100% {
+    backdrop-filter: brightness(100%); /* or like "none" */
+    -webkit-backdrop-filter: brightness(100%);
+  }
+}
+
+.stick-up { /* make sticky just below header */
+  position: sticky;
+  top: var(--header-height);
+}
+#section-services {
+  z-index: 6;
+}
+#services {
+  position: sticky;
+  z-index: 12;
+  top: 0;
+  top: -25%;
+  /* overflow: hidden; */
+  /* margin-top: var(--space); */
+  margin-bottom: 3rem; /* static size on purpose */
+  /* border: 0; */
+}
+
+#intro {
+  padding-top: 0; /* ensure spacing even and also that dont run out of photo... */
+}
+#intro h1 {
+  /* padding-top: 0; */
+}
+#intro p {
+  padding: 0 var(--space-lg);
+}
+
+#intro-end { /* lbp pic "YOU" */
+  height: 90vh;
+  max-height: 90vw; /* it's 1:1 ergo heit wit' makes sense */
+}
+#intro-end > .parallax-bg {
+  transform-origin: 100% -1000%;
+}
+#interlude-2 {
+  z-index: 7;
+}
+#interlude-3 { /* portfolio */
+  z-index: 29;
+}
+#portfolio { /* portfolio */
+  z-index: 30;
+}
+section:last-of-type {
+  z-index: 31;
+}
+
+#about-intro {
+  --height: calc(4 * --var(--space));
+  max-height: var(--height);
+  z-index: 13;
+  position: sticky;
+  top: var(--header-height);
+  transform-origin: 50% -1570%;
+}
+#about-story {
+  position: relative;
+  z-index: 24;
+  /* border-top: 0; */
+}
+#headshot {
+  width: 20%;
+  max-width: 150px;
+}
+#byline > img {
+  border-radius: 0.5em;
+  border: 1px solid;
+}
+#multimeter {
+  width: 30%;
+  min-width: 150px;
+  max-width: 300px;
+}
+
+#building-tools {
+  z-index: 29;
+}
+.caption-inset { /* caption overlaying media */
+  margin: 0.8em;
+  font-size: 0.65rem; /* weird ass size when iphone landscape, and webkit-text-size-adjust doesnt seem to help... */
+  opacity: 0.65;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+}
+.caption-inset.right {
+  right: 0;
+  text-align: right;
+}
+.caption-inset.top {
+  top: 0;
+}
+.float-with-caption {
+  margin-bottom: calc(0.5 * var(--space));
+}
+.float-with-caption > .media {
+  margin: 0;
+  width: 100%; /* and then set on parent div */
+}
+.float-with-caption.left {
+  float: left;
+  margin-right: calc(1.0 * var(--space));
+}
+.float-with-caption.right {
+  float: right;
+  margin-left: calc(1.0 * var(--space));
+}
+figcaption, .float-with-caption {
+  font-size: 0.8rem;
+}
+
+.float-wrapper { overflow: auto; } /* clearfix */
+/* .float-wrapper::after { */
+/*   content: ""; */
+/*   clear: both; */
+/*   display: table; */
+/* } */
+
+.inline { display: inline; }
+.box-regular { box-shadow: 2px 1px 17px 7px var(--box-regular-color); }
+.box-faint {   box-shadow: 2px 1px 17px 7px var(--box-faint-color); }
+
+footer {
+  position: relative;
+  /* padding-top: 0.5rem; */
+  padding-bottom: env(safe-area-inset-bottom); /* handle iphone x+, no harm for rest. TODO also adjust top-shortcut */
+  font-size: 0.8rem;
+
+  border-left: var(--line-width) solid; /* connect bottom to main on left side */
+
+  /* try (actual tru sticky) footer */
+  /* causes some silly ios behavior and might just deal with enough layers already... */
+  /* position: sticky; */
+  /* bottom: 0; */
+}
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  flex-flow: row wrap;
+
+  margin: 1rem 0.4rem;
+}
+.footer-column {
+  flex: 1 0 auto;
+  margin: 0.0rem 1.0rem 0.8rem;
+  /* display: flex; */
+}
+
+.footer-column h3 {
+  font-weight: 900;
+  padding-bottom: 0.4rem;
+}
+.footer-column:last-of-type h3 {
+  padding-bottom: 0.0rem;
+}
+.footer-column p {
+  font-weight: 100;
+}
+
+.footer-icons {
+  display: flex;
+  flex: 1 2 auto;
+  font-size: var(--space-lg);
+  /* width: 100%; */
+  /* flex-flow: column-wrap; */
+  /* flex-flow: row; */
+}
+.footer-icons > a {
+  padding: 0.5rem;
+  text-shadow: 0px 0px 0px var(--box-faint-color-flip);
+}
+.footer-icons > a > i {
+  transition: all 0.5s;
+}
+.footer-icons > a:focus, .footer-icons > a:hover {
+  filter: brightness(125%) saturate(75%);
+  background: var(--bg-1);
+  border-radius: 100%;
+  text-shadow: -1px 2px 4px var(--box-regular-color-flip);
+}
+.fa-soundcloud:hover { text-shadow: 2px 2px 1px #ff9533; }
+.fa-twitter:hover {    text-shadow: 2px 2px 1px #1DA1F2; }
+.fa-facebook:hover {   text-shadow: 2px 2px 1px #3b5998; }
+/* .fa-instagram { color: ; } */
+
+.md-icon {
+  width:  var(--space-lg);
+  height: var(--space-lg);
+}
+.sm-icon {
+  width:  var(--space);
+  height: var(--space);
+}
+h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
+  font-size: 120%;
+  filter: brightness(110%);
+}
+
+#footer-middle {
+}
+#footer-right {
+  flex: 1 4 auto;
+}
+
+.to-top {
+  position: fixed;
+  right:  calc(var(--space-edges) + 0.5 * var(--space));
+  bottom: calc(2 * var(--space-lg));
+  color: var(--fg-2);
+  font-size: 1.2rem;
+  z-index: -1;
+}
+#to-top {
+  z-index: 100;
+}
+#to-top-bg {
+  /* filter: brightness(150%); */
+  text-shadow: 1px 1px 1.0rem var(--fg-2);
+}
+
+#categories { /* List of services offered */
+  /* FAILURE: can't get flexbox working like i want with nice alignment and also word-wrap and blabla */
+  /* but this is maybe good enough? only works sorta ok with 1/2/3 cols because of specific content so  guess point is to use breakpoints and table or better yet grid */
+  display: flex;
+  justify-content: space-evenly;
+  align-content: bottom;
+  text-align: center;
+  flex-wrap: wrap;
+}
+
+#categories > ul {
+  /* flex: 1; */
+  flex: 0 1 auto; /* flex: 1 0 auto; */
+  margin:  calc(0.5 * var(--space));
+  padding: calc(0.5 * var(--space-lg));
+  border-radius: 0.15rem;
+  min-width: 30%;
+  text-align: left;
+  font-size: 1.1rem;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  background: hsl(var(--hue-1), 7%, var(--lum-fg-2), 0.06);
+  /* nah doesnt suit page/design. but effect is fine */
+}
+@media screen and (max-width: 400px) {
+  #categories > ul {
+    min-width: 45%; /* ensure no awkward two on one row, one on rest... not exactly universal solution tho :/ */
+    /* oh and doesnt work for like if font small enough that two fit nicely gah */ /* easy enough with js tho.. */
+    max-width: 100%;
+  }
+}
+@media screen and (min-width: 500px) {
+  #categories > ul { font-size: calc(1.0rem + 0.5vw); }
+}
+@media screen and (min-width: 800px) {
+  #categories > ul { font-size: calc(1.1rem + 0.3vw); }
+}
+#categories > ul > * {
+  margin: 0.2rem 0.2rem 0.4rem;
+}
+#categories > ul > li:first-of-type  {
+  white-space: nowrap;
+  margin-bottom: calc(0.5 * var(--space));
+}
+#categories > ul > li:first-of-type ~ li { /* suddenly started making the icons... weird inner shadow. so skip the header. */
+  text-shadow: 1px 1px 2px var(--bg-1);
+}
+#categories > ul i {
+  font-size: 1.4em;
+  background: linear-gradient(-30deg, hsla(20, 35%, 70%, 0.80), var(--fg-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+#categories > ul h3 {
+  display: inline;
+  position: relative;
+}
+#categories > ul h3::after { /* shitty underline didnt end up too hot hmm */
+  content: "";
+  height: 2.5px;
+  background: linear-gradient(to right, hsla(8, 30%, 78%, 0.7), var(--fg-2) 130%);
+  width: 100%;
+  transform: skew(-20deg);
+  position: absolute;
+  bottom: -1px;
+  left: -2px;
+  z-index: -1;
+}
+#categories > ul li {
+  /* margin-left: calc(2 * var(--space)); */
+  font-size: 0.80em;
+  text-align: left;
+  /* list-style-type: '_'; */
+  /* text-shadow: 1px 1px 2px var(--bg-1); */
+}

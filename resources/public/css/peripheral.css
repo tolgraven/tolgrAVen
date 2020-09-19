@@ -1,0 +1,59 @@
+/*
+ * Peripheral and pseudo styling
+ *
+ */
+
+ /* top and bottom subtle drop shadow */
+.framing-shadow::before, .framing-shadow::after {
+  content: "";
+  position: fixed;
+  width: calc(var(--space-lg) + 100%);
+  height: 10px;
+  z-index: 100;
+}
+.framing-shadow::before {
+  left: 0;
+  top: -13px;
+  box-shadow: 0px 0 17px var(--box-faint-color-flip);
+}
+.framing-shadow::after {
+  left: var(--space-lg);
+  bottom: -13px;
+  box-shadow: 0px 0 22px var(--box-faint-color-flip);
+}
+ /* body class, for persistent footer. sticky isnt even correct nomenclature why am i propagating it ugh */
+.sticky-footer-container { /* not sensible/needed for a one-page static as wont have that little content but otherwise v handy i guess? */
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.sticky-footer-container::after { /* TODO: understand exactly why this works, for the footer */
+  content: '\00a0'; /* &nbsp; */
+  display: block;
+  margin-top: var(--space);
+  height: 0px;
+  visibility: hidden;
+}
+
+::selection { /* text selection */
+  background-color: hsl(14, 81%, 81%, 0.7);
+  color: #222;
+}
+span::first-letter {
+  font-size: 1.4rem;
+  font-weight: bold;
+  filter: brightness(115%);
+}
+
+/* what these? */
+a[href$=".pdf"]:after { /* Identify PDF Bombs! */
+  content: " (PDF)";
+}
+a[href$=".pdf"][data-size]:after { /* If file size specified as data attribute, use that too */
+  content: " (PDF, " attr(data-size) ")";
+}
+/* ::-webkit-scrollbar { */
+/*   /1* all: unset; *1/ */
+/*   /1* width: 0px;  /2* well no but wanna something so it doesnt wreck the design :/ *2/ *1/ */
+/*   /1* height: 1px !important; *1/ */
+/* } */

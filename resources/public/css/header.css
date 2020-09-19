@@ -1,0 +1,256 @@
+
+
+header {
+  /* TODO: ios issue: zoom in and back out, main left border faintly visible left side of header */
+  position: sticky;
+  top: 0;
+  min-height: var(--header-height);
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-1);
+  /* background-image: linear-gradient(to top, var(--bg-1)); */
+  /* background-image: none; */
+  z-index: 11;
+  margin-top: var(--space-top);
+  /* margin-bottom: var(--space-top); */
+  padding: 0 calc(var(--space));
+  margin-right: var(--line-width); /* make main right border stay "outside" right edge of header, needed because of particular effect/design... */
+  transition: min-height var(--header-expand-time) ease 0.0s,
+              background 0.0s ease 0.0s;
+}
+
+menu {
+  /* flex: 1; */
+  /* overflow-x: scroll; */
+  position: relative;
+  display: flex;
+  min-width: calc(3 * var(--space-lg));
+  transition: min-width 0.5s ease;
+  animation: menu-anim-out 0.4s;
+}
+nav:hover {
+  filter: brightness(110%);
+}
+.nav-links > li:hover {
+  margin-left: 0.4rem;
+  transition: margin 0.3s;
+}
+menu::before, menu::after { /* in order to get them animatable */
+  content: "";
+  position: absolute;
+  transition: height 0.6s ease 0.35s;
+  height: 0px;
+  width: 0px;
+}
+menu::before {
+  height: calc(var(--height));
+  transform-origin: top;
+  transform: scaleY(0.0);
+  transition: transform 1.2s ease 0.25s;
+}
+nav {
+  /* position: relative; */
+  display: flex;
+  align-items: center;
+  flex: 1 0 auto;
+  min-height: 2em; /* h1 */ /* dont think right basing on space, just use rem */
+  /* overflow-x: scroll; /1* seems more reasonable than a burgher for a page with nowhere to navigate *1/ */
+  background: linear-gradient(-77deg, var(--bg-1) -10%, var(--nav-accent) 80%);
+  border-top:     var(--line-width) solid currentColor;
+  border-bottom:  var(--line-width) solid currentColor;
+  /* transition: min-height 0.9s ease-in-out; */
+}
+.nav-links > * {
+  margin: 0 0.5rem;
+}
+
+.header-logo { /* actual text */
+  min-width: 0;
+  animation: header-logo-anim-out 0.25s;
+  transition: margin 0.7s, min-width 0.5s;
+}
+.header-logo h1 {
+  display: inline;
+  transition: all 0.5s ease;
+}
+.header-logo-text {
+  display: inline-block;
+  font-size: 0.90em;
+  line-height: 0.80em;
+}
+
+
+
+/*
+ * Only intended to actually be shown when not enough space in header - but it's so pretty and will soon have some more menu stuff (theme toggle...) so keep "universal" for now. DOES need refactoring for sure
+ */
+  nav {
+     max-height: var(--space);
+   }
+  .nav-links li {
+    /* display: none; */
+    /* visibility: hidden; */
+    height: 100%;
+    transition: transform 0.4s, line-height 0.4s;
+    transform: scaleY(0.0) scaleX(0.3);
+    line-height: 20%;
+  }
+  .show-in-menu { display: none; }
+  #show-menu { display: none; }
+
+  #burger-check:checked ~ header menu .show-in-menu {
+    display: block;
+    font-size: 0.8rem;
+  }
+  #burger-check:checked ~ header menu nav .nav-links {
+    position: relative;
+    /* flex: 1 1 auto; */
+    /* flex-wrap: wrap; */
+    font-size: 1.3rem;
+    /* padding: calc(1 * var(--space)); /1* this is what fucked me! *1/ */
+    /* well poor design and stupid subpixel bullshit-shifting is what fucked me but yeah */
+    padding: 1rem var(--space);
+  }
+  #burger-check:checked ~ header menu nav .nav-links li {
+    visibility: visible;
+    min-width: 50%;
+    flex: 1 1 auto;
+    transition: transform 0.3s;
+    transform: scale(1.0);
+    line-height: initial;
+  }
+  #burger-check:checked ~ header menu nav .nav-links li:first-letter {
+    font-size: 1.2em;
+  }
+  #burger-check:checked ~ header menu nav {
+    position: relative;
+    top: 0;
+    max-height: var(--header-with-menu-height); /* for animation purposes i guess */
+    border: 0;
+  }
+  #burger-check:checked ~ header menu {
+    flex: 0 2 auto;
+    min-width: calc(100% * var(--menu-width-fraction));
+    margin: auto;
+    order: 4;
+    border:    var(--line-width) solid currentColor;
+    transition: min-width 0.5s ease-out 0.15s;
+    animation: menu-anim 0.4s;
+  }
+  /* STOP WASTING TIME TRYING AND JUST REDO IT IN GRID IF YOU SO DESPERATELY NEED THE EFFECT */ /* GAAAAH */
+  /* especially considering I need to learn grid. WHY AM I SO USELESS */
+  #burger-check:checked ~ header menu::before,
+  #burger-check:checked ~ header menu::after {
+    content: "";
+    position: absolute;
+    width: var(--line-width);
+    background-color: var(--fg-1);
+    /* its so close, but loses when base font-size is scaled... */ /* how get around? */
+    --height: calc(2rem - 1.5 * var(--line-width)); /* crank it a bit cause we're masking out any spillover... */
+  }
+  #burger-check:checked ~ header menu::before {
+    left:  calc(0px - var(--line-width));
+    bottom: calc(0px - (var(--height))); /* too short on wide desktop */
+    height: calc(var(--height));
+    transform: scaleY(1.0); /* for animation */
+  }
+  #burger-check:checked ~ header menu::after { /* from top right corner and up */
+    right: calc(0px - var(--line-width));
+    bottom: 0;
+    height: calc(var(--header-with-menu-height) - (var(--height)) - var(--space-top)); /* "vars" are so deceptive, everything was broken cause neither def nor usage was in paren... */
+  }
+
+  #burger-check:checked ~ .line-header {
+    top:  var(--header-with-menu-height);
+    margin-top: 0;
+    margin-bottom: var(--space-top); /* killing margin leds to shitty jumps, so we compensate */
+    /* transition: margin 0.4s ease 0.1s; */
+  }
+
+  #burger-check:checked ~ header {
+    /* margin-top: calc(2 * var(--space-top)); /1* compensate for removing margin from line-header, so nothing jumps... *1/ */
+    /* margin-top: 0; /1* gets easier to calc if kill top margin since --space keeps changing otherwise *1/ */
+    min-height:  var(--header-with-menu-height);
+    font-size: 1.5rem;
+    justify-content: space-between;
+    align-content: space-evenly;
+
+    /* cover out bottom. need to actively fiddle with color+image bc safari transition delay bug */
+    background-color: transparent;
+    background-image: linear-gradient(
+                5deg, var(--bg-1) 8%,
+                hsla(0, 0%, var(--lum-bg-2), 0.25) 40% 52%,
+                var(--bg-1) 95%);
+    backdrop-filter: blur(2rem);
+    -webkit-backdrop-filter: blur(2rem);
+    transition: min-height var(--header-expand-time) ease 0.0s,
+                background-color 1.2s ease var(--header-expand-time),
+                background-image 0s;
+
+    /* stop possible overflow out under top header... */
+    --path: polygon(0 0, 100% 0, 100% var(--header-with-menu-height), 0% var(--header-with-menu-height));
+    clip-path: var(--path); -webkit-clip-path: var(--path);
+  }
+
+  header .cover { /* silly attempt to cover up manually so can get some nice seethrough blur... */
+    position: absolute;
+    left: 0; top: 0;
+    background: var(--bg-1);
+    /* display: none; */
+    /* height: 0; */
+    /* transition: height var(--header-expand-time); */
+  }
+  #burger-check:checked ~ header .cover {
+    display: block;
+  }
+  #burger-check:checked ~ header .cover.cover-clip { /* cut the path to clip out, letting (blurred) below shine through */
+    width: 100%; height: 100%;
+    --path:  polygon(
+    0 0,   100% 0,   100% var(--space-top),
+    var(--right-marker)   var(--space-top),
+    var(--right-marker)   var(--top-to-menu-height),
+    var(--left-marker)    var(--top-to-menu-height),
+    var(--left-marker)    var(--header-with-menu-height),
+    0                     var(--header-with-menu-height));
+    clip-path: var(--path);   -webkit-clip-path: var(--path);
+  }
+
+  /* clip surely bit cleaner but keep these in case need for other browsers. */
+  #burger-check:checked ~ header .cover.cover-left {
+    width: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
+              + var(--space) - 3 * var(--line-width));
+    height: 100%;
+  }
+  #burger-check:checked ~ header .cover.cover-top {
+    width: 100%;
+    height: var(--space-top);
+  }
+  #burger-check:checked ~ header .cover.cover-middle {
+    left:   calc(-1 * var(--line-width));
+    width:  calc(100% + var(--line-width));
+    height: calc(2em + var(--space-top) + var(--line-width));
+    z-index: -1;
+  }
+
+  #burger-check:checked ~ header .header-logo {
+    position: relative;
+    margin: auto;
+    min-width: calc(100% * var(--menu-width-fraction) - 2 * var(--line-width)); /* match expanded nav menu, but let its lines pass around... */
+    text-align: center;
+    z-index: 35; /* need to get it above rest so line coming from right can flow behind */
+    animation: header-logo-anim 0.5s;
+    transition: margin 0.8s, min-width 0.5s;
+    will-change: transform;
+
+    background: var(--bg-1);
+  }
+  @keyframes header-logo-anim     { 30%, 60% { transform: scaleY(0.0); } }
+  @keyframes header-logo-anim-out { 30%, 70% { transform: scaleY(0.0); } }
+  @keyframes menu-anim     { 45%, 75% { transform: scaleX(0.0) scaleY(0.25); } }
+  @keyframes menu-anim-out { 25%, 75% { transform: scaleX(1.0) scaleY(0.00); } }
+
+  #burger-check:checked ~ main { /* other attempt compensate line-header margin-.. */
+    /* margin-top: calc(2 * var(--space-top)); */
+  }

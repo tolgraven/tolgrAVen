@@ -1,0 +1,105 @@
+.burger-check {
+  display: none;
+}
+
+.burger {
+  position: relative;
+  cursor: pointer;
+  border-bottom: calc(2 * var(--line-width)) solid; /* LOWER BUN */
+  --height: 1.5rem;
+  height: var(--height);
+  /* border-radius: 0.3rem; */
+  /* min-width: var(--space); */
+  min-width: var(--height);
+  /* max-width: 2rem; */
+  /* height: var(--space); */
+  /* --height: calc(0.75 * var(--space)); */
+  /* margin-left: var(--space); */
+  transition: border-bottom 1s ease-in-out;
+  -webkit-transition: border-bottom 1s ease-in-out;
+}
+.burger::-moz-focus-inner {
+  /* border: 0; */
+  /* padding: 0; */
+}
+.burger:before, .burger:after {
+  position: absolute;
+  content: "";
+  display: block;
+  width: 100%;
+  transition: -webkit-transform 0.5s ease-in-out;
+  transition: transform 0.5s ease-in-out;
+  transition: transform 0.5s ease-in-out, -webkit-transform 0.5s ease-in-out;
+  -webkit-transition: -webkit-transform 0.5s ease-in-out;
+}
+.burger:before { /* UPPER BUN */
+  /* border-radius: 0.5rem; */
+  /* border-top: calc(2 * var(--line-width)) solid; /1* UPPER BUN *1/ */
+  border-bottom: calc(2 * var(--line-width)) solid; /* UPPER BUN */
+}
+.burger:after {
+  /* border-radius: 1rem; */
+  border-top: calc(2 * var(--line-width)) solid; /* UPPER BUN */
+  margin-top: calc(0.5 * var(--height) - var(--line-width));
+}
+
+.burger-check:checked ~ header .burger {
+  position: absolute; /* position: relative; /1* if relative affects width of banner logo ugh *1/ */
+  right: var(--space); /* match the padding otherwise applying... */
+  top: var(--space-top); /* needs to be a static amount or lines break... */
+
+  /* right: calc(0rem - var(--space)); */
+  right: 0;
+  width: calc(100vw * var(--menu-width-fraction) - 2 * var(--space-edges));
+  /* new strat: just jam it behind header-logo... */
+  border: 0;
+  border-top: var(--line-width) solid currentColor;
+  /* bottom: calc(var(--space)); */
+  /* border-bottom: var(--space) solid; */
+  border-radius: 0;
+  transition: border-bottom 0.45s ease-in-out;
+  -webkit-transition: border-bottom 0.45s ease-in-out;
+  /* transform: rotate(15deg); /*translateY(1px) translateX(-3px); *1/ */
+}
+.burger-check:checked ~ header .burger:before,
+.burger-check:checked ~ header .burger:after {
+  position: absolute;
+  /* width: calc(0.5 * var(--space)); */
+  width: var(--height);
+  right: var(--space);
+  --translate: -1rem;
+  margin: 0;
+  transition: -webkit-transform 0.3s ease-in-out;
+  transition: transform 0.3s ease-in-out;
+  transition: transform 0.3s ease-in-out, -webkit-transform 0.3s ease-in-out;
+  -webkit-transition: -webkit-transform 0.3s ease-in-out;
+}
+.burger-check:checked ~ header .burger:before {
+  /* line connecting menu and side through top of burger */
+  /* border: var(--line-width) solid; */
+  /* border: 0; */
+  /* right: calc(0rem - var(--space)); */
+  /* width: calc(100vw * var(--menu-width-fraction) - 2 * var(--space-edges)); */
+  /* /1* new strat: just jam it behind header-logo... *1/ */
+  /* border-top: var(--line-width) solid currentColor; */
+  transform: rotate(225deg) translateY(-12px) translateX(-4px);
+  -webkit-transform: rotate(225deg) translateY(var(--translate)) translateX(var(--translate));
+}
+.burger-check:checked ~ header .burger:after {
+  /* border-radius: 2rem; */
+  /* border-top: var(--line-width) solid; */
+  /* border: var(--line-width) solid; */
+  /* border: 4px solid; */
+  /* border: 0; */
+  /* border-bottom: 1px solid; */
+  transform: rotate(315deg) translateY(8px) translateX(-10px);
+  -webkit-transform: rotate(315deg) translateY(calc(-1 * var(--translate))) translateX(var(--translate));
+}
+
+.burger-check:checked ~ header menu nav {
+  /* max-height: 500px; */
+  transition: max-height 0.3s ease-in-out;
+}
+
+
+

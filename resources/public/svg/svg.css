@@ -1,0 +1,8 @@
+.icon {
+  fill: #edc; /* but ugh need the vars n shit that's entire point'... */
+  /* fill: var(--fg); /1* but ugh need the vars n shit that's entire point'... *1/ */
+  /* fill: linear-gradient(-77deg, #edc, #a98); /1* but ugh need the vars n shit that's entire point'... *1/ */
+}
+.icon:hover {
+  filter: brightness(120%);
+}
