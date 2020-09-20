@@ -14,8 +14,16 @@
 (rf/reg-sub :nil (fn [_ _])) ; hah why ; from :text-color using it: "eh, worth? assuming this is a wrong-sub with no db input and we do have a lot of subs for this so"
 
 (rf/reg-sub :content
- (fn [db [_ field]]
-   ; (get-in db [:content (when field field)]))) ; cant work right?
-   ; (get-in db [:content (if field [:content field])])
+ (fn [db [_ item]]
    (cond-> (get db :content)
-     field field)))
+     item item)))
+
+(rf/reg-sub :state
+  (fn [db [_ item]]
+    (get-in db [:state item])))
+
+
+(rf/reg-sub :menu
+ (fn [db [_ item]]
+   (cond-> (get db :menu)
+     item item)))

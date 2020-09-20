@@ -181,15 +181,18 @@
 
 ; (defn ui-header [& {:keys [text menu]}]
 (defn ui-header [{:keys [text menu]}]
-  [:header
-   ; [:p text]
-    [:input {:class "burger-check" :id "burger-check" :type "checkbox"}]
+  [:<>
+   [:input {:class "burger-check" :id "burger-check" :type "checkbox"
+            :on-click #(rf/dispatch [:menu (not @(rf/subscribe [:menu]))])}] ;must be outside header or breaks...
+   [:header
     [:div.cover.cover-clip] ;covers around lines and that...
-    (println menu)
     [ui-header-logo text]
-    ; [ui-header-logo ["tola" ["wha" "ba"]]]
     [ui-header-nav menu]   ; menu
-    [:label.burger {:for "burger-check"}]])
+    ; [:div#search>i.fas.fa-search]
+    #_[ui/burger
+      (rf/subscribe [:menu])
+      #(rf/dispatch [:menu %])]
+    [:label.burger {:for "burger-check"}]]])
 
 (defn ui-button "Pass text and id, plus either link anchor or action..."
   [text id & {:keys [type bg-div-class link action]

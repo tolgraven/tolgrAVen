@@ -4,81 +4,110 @@
     [ajax.core :as ajax]
     [reitit.frontend.easy :as rfe]
     [cljs-time.core :as ct]
-    [reitit.frontend.controllers :as rfc]))
+    [reitit.frontend.controllers :as rfc]
+    [tolgraven.util :as util]))
 
 
 ;;dispatchers from luminus, see if any useful...
-
-(rf/reg-event-db
-  :common/navigate
+(rf/reg-event-db :common/navigate
   (fn [db [_ match]]
     (let [old-match (:common/route db)
           new-match (assoc match :controllers
                                  (rfc/apply-controllers (:controllers old-match) match))]
       (assoc db :common/route new-match))))
 
-(rf/reg-fx
-  :common/navigate-fx!
+(rf/reg-fx :common/navigate-fx!
   (fn [[k & [params query]]]
     (rfe/push-state k params query)))
 
-(rf/reg-event-fx
-  :common/navigate!
+(rf/reg-event-fx :common/navigate!
   (fn [_ [_ url-key params query]]
     {:common/navigate-fx! [url-key params query]}))
 
-(rf/reg-event-db
-  :set-docs
+(rf/reg-event-db :set-docs
   (fn [db [_ docs]]
     (assoc db :docs docs)))
 
-(rf/reg-event-fx
-  :fetch-docs
+(rf/reg-event-fx :fetch-docs
   (fn [_ _]
     {:http-xhrio {:method          :get
                   :uri             "/docs"
                   :response-format (ajax/raw-response-format)
                   :on-success       [:set-docs]}}))
 
-(rf/reg-event-db
-  :common/set-error
+(rf/reg-event-db :common/set-error
   (fn [db [_ error]]
     (assoc db :common/error error)))
 
-(rf/reg-event-fx
-  :page/init-home
+(rf/reg-event-fx :page/init-home
   (fn [_ _]
     {:dispatch [:fetch-docs]}))
 
 ;;subscriptions
-
-(rf/reg-sub
-  :common/route
+(rf/reg-sub :common/route
   (fn [db _]
     (-> db :common/route)))
-
-(rf/reg-sub
-  :common/page-id
+(rf/reg-sub :common/page-id
   :<- [:common/route]
   (fn [route _]
     (-> route :data :name)))
-
-(rf/reg-sub
-  :common/page
+(rf/reg-sub :common/page
   :<- [:common/route]
   (fn [route _]
     (-> route :data :view)))
-
-(rf/reg-sub
-  :docs
-  (fn [db _]
-    (:docs db)))
-
-(rf/reg-sub
-  :common/error
+(rf/reg-sub :common/error
   (fn [db _]
     (:common/error db)))
 
+(rf/reg-sub :docs
+  (fn [db _]
+    (:docs db)))
+
+
+
+
+(rf/reg-sub :get-css-var
+ (fn [db [_ var-name]]
+   (util/<-css-var var-name)))
+
+; (println @(rf/subscribe [:get-css-var "--header-with-menu-height"]))
+; (js/console.log @(rf/subscribe [:get-css-var "--header-with-menu-height"]))
+(rf/reg-event-fx :set-css-var!
+  (fn [{:as cofx :keys [db]} [_ var-name value]]
+    (util/->css-var var-name value)))
+
+(rf/reg-event-fx :menu ;; this why better sep. can then inject css var and not sub? i somehow remeber that being badd
+  (fn [{:as cofx :keys [db]} [_ state]]
+    (let [open-height @(rf/subscribe [:get-css-var "--header-with-menu-height"])
+          closed-height @(rf/subscribe [:get-css-var "--header-height"])
+          difference (->> (map js/parseFloat [open-height closed-height])
+                          (apply -)
+                          (* 0.5))]
+      {:db (assoc-in db [:menu] state)
+       :dispatch-n
+     [[:set-css-var! "--header-height-current"
+                     (if state open-height closed-height)]
+      ; [:scroll :by (if state (- difference) (* 0.97 difference))]]}))) ; tho should be auto calced properly...
+      [:scroll :by (if state (- difference) difference)]]}))) ; tho should be auto calced properly...
+;; XXX otherwise will have to uh, read var best we can and dispatch scroll event?
+
+(rf/reg-event-fx
+ :scroll
+ (fn [_ [_ kind value]] ; rem or elem
+   (case kind
+     :by (util/scroll-by value)
+     :to (util/scroll-to value))))
+; (rf/reg-event-fx :state ;; this why better sep. can then inject css var and not sub? i somehow remeber that being badd
+;   (fn [{:as cofx :keys [db]} [_ item state]]
+;     (case item
+;       :menu {:dispatch [:set-css-var! "--header-height-current"
+;                                       @(rf/subscribe [:get-css-var (if state
+;                                                                      "--header-with-menu-height"
+;                                                                      "--header-height")])]}))) ; tho should be auto calced properly...
+    ; (case item
+    ;   :menu (let [header-height (if state "18rem" "6rem")] ; best if only set pointer css var ref to curr
+    ;           ; if can actually get the css-offset tricky thing to work...
+    ;           {:dispatch-n [[:state :header-height header-height]]})))) ; tho should be auto calced properly...
 
 ;; SOME STUFF FROM CUE-DB
 (rf/reg-event-fx :init ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
@@ -151,7 +180,7 @@
 
 (rf/reg-cofx :now         #(assoc % :now (ct/now)))
 
-(defonce diag-id-counter (atom 0))
+(defonce diag-id-counter (atom 0)) ;why not just keep this in db as well tho?
 (rf/reg-cofx :diag/gen-id #(assoc % :id (swap! diag-id-counter inc)))
 
 (rf/reg-event-fx :diag/new  ;this needs a throttle lol
