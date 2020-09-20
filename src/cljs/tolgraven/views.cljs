@@ -10,6 +10,7 @@
    ; [reitit.core :as reitit]
    [markdown.core :refer [md->html]]
    [cljs-time.core :as ct]
+   [tolgraven.ui :as ui]
    [cljs-time.format :refer [formatters formatter unparse]]
    [tolgraven.db :as db :refer [<-db ->db]]))
 
@@ -297,23 +298,9 @@
           [:h1.h-responsive "Breaking things down"]]]]
       [:div.fader>div.fade-to-black.between]
 
-      ;; FIXME something like this where floats dont need to be anywhere specific.
-      ;; break up text and insert appropriately...
-      [:section#about-story.anim-gradient-bg.noborder.float-wrapper
+      [:section#about-story.anim-gradient-bg.noborder
        [:h1#about.link-anchor]
-       (let [story @(rf/subscribe [:content :story])
-             text-part (string/split-lines (:text story))
-             img-count (count (:images story))
-             line-count (count text-part)
-             chunk-size (/ line-count img-count)
-             content  (interleave (mapv (partial into [float-img])
-                                        (:images story))
-                                  (mapv (partial into [:p])
-                                        (partition chunk-size text-part)))]
-
-       [:<>
-        [:h3 (:title story)]
-        content])]
+       [ui/auto-layout-text-imgs @(rf/subscribe [:content :story])]]
 
       [ui-interlude (merge (nth interlude @interlude-counter)
                          {:nr (swap! interlude-counter inc)})]
