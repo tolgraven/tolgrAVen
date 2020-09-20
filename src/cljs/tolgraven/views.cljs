@@ -4,10 +4,6 @@
    [re-frame.core :as rf]
    [re-graph.core :as rg]
    [clojure.string :as string]
-   ; [goog.events :as events]
-   ; [mount.core :as mount :refer [defstate]]
-   ; [clojure.core.async :refer [pub sub chan go go-loop >! <! timeout close! unsub unsub-all sliding-buffer]]
-   ; [reitit.core :as reitit]
    [markdown.core :refer [md->html]]
    [cljs-time.core :as ct]
    [tolgraven.ui :as ui]
@@ -44,10 +40,8 @@
 
 (defn ln->br "Ugh. UGH! Why"
   [text]
-  (->> (for [line (string/split-lines text)]
-        [text [:br]])
-        ; (into [:p])
-        flatten))
+  (for [line (string/split-lines text)]
+        [:p line]))
 
 (defn video-bg "Ze reg attrs for shitty perf sinks yo"
   [src]
@@ -62,7 +56,8 @@
 (defn ui-inset [caption nr]
   (let [pos (case (mod nr 4)
               0 "right"  1 "left"  2 "top right"   3 "top left")]
-    [:p.caption-inset {:class pos}]))
+    [:p.caption-inset {:class pos}
+     caption]))
 
 
 ;; TODO curr 1px gap between outer lines and img. Fix whatever causing this by mistake (think lines are half-width)
@@ -129,7 +124,7 @@
 
 (defn ui-intro [{:keys [title text buttons]}]
   [:section#intro
-   [:h1.h1-responsive title]
+   [:h1.h-responsive title]
    (into [:p] (ln->br text)) ; or just fix :pre css lol
    [:br]
    [:div.buttons
@@ -142,12 +137,22 @@
          :class "section-with-media-bg-wrapper"}
    bg ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
    [:section {:class "covering-faded widescreen-safe center-content"}
-    [:h1.h1-responsive title]]
-   [ui-inset caption nr]])
+    [:h1.h-responsive title]]
+   [ui-inset caption nr]]) ; these arent showing up...
+
 
 (defn ui-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
-  [])
-(defn ui-portfolio [])
+  [md]
+  [:div {:dangerouslySetInnerHTML {:__html (md->html md)}}])
+
+(defn ui-blog "all the blogs"
+  [blogs]
+  [:section.blogs.fullwide
+   [:h1 "MY BLOGS"]
+   (for [blog blogs]
+    [ui-post (:md blog)])])
+
+(defn ui-portfolio "GOT NO PPORTFOLIE" [])
 
 (defn ui-services "Let's start by just straight porting some stuff"
   [{:keys [categories bg caption]}]
@@ -155,19 +160,65 @@
     [:div#section-services
      {:class "link-anchor stick-up section-with-media-bg-wrapper"}
      [ui-inset caption 4] ;auto-gen
-     [:p.caption-inset caption]
      [:img (merge bg {:class "media-as-bg fade-3 parallax-bg"})] ;wait how durp properly
+     [:div#link-services.link-anchor]
      [:section#services
       [:div#categories
-       (for [[title icon-name lines] categories]
-         ^{:key (str "service-" title)}
+       (for [[title icon-name lines] categories] ^{:key (str "service-" title)}
          [:ul
           (into [:li
                   [:i {:class (str "fas " "fa-" icon-name)}]
                   [:h3 title]]
-                (for [line lines]
-                  ^{:key (str "service-" title "-" line)}
+                (for [line lines] ^{:key (str "service-" title "-" line)}
                   [:li line]))])]]]))
+
+(defn ui-moneyshot "needs better name lol. what is hero img halfway down page?"
+  [{:keys [title caption bg]}]
+  [:div {:class "section-with-media-bg-wrapper covering stick-up"}
+       [:img.media-as-bg  (merge bg {:class "fade-5 parallax-sm origin-toptop"})]
+       [:section#intro-end.center-content
+        [:h1.h0-responsive.parallax-bg title]]
+       [ui-inset caption 3]
+      [ui-fading]])
+
+(defn ui-story "Big img header + story" [{:keys [heading] :as content}]
+  [:<>
+   [:div#about-intro {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
+    [:div.fader
+    [:img.media.media-as-bg (:bg heading)]
+    [:section.covering-faded
+      [:h1.h-responsive (:title heading)]]]]
+  [:div.fader>div.fade-to-black.between]
+
+  [:section#about-story.anim-gradient-bg.noborder
+    [:h1#about.link-anchor]
+    [ui/auto-layout-text-imgs content]]])
+
+(defn ui-gallery "Stupid css thing slides sidewayus x) Make it go out left side would be cool"
+  [img-attrs]
+  [:section#gallery.covering.fullwide
+   [:div.sideways
+    (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
+         [:img.media img])]])
+
+(defn ui-footer-persistent "Thinking just something tiny visible maybe not actually entire time but at whatever points, framing things in. Might be job for css tho dunno"
+  [content])
+
+(defn ui-footer "Might want to bail on left/middle/right just push whatever. do the current ids matter?"
+  ; [{:keys [left middle right]}]
+  [content]
+  [:footer>div.footer-content
+   (for [{:keys [title text id links] :as column} content
+         :let [id (str "footer-" id)]] ^{:key id}
+        [:div.footer-column {:id id}
+         [:h3 title]
+
+         (when text (for [line text] ;^{:key (str id "-" )}
+                          [:p line]))
+         (when links [:div.footer-icons
+                      (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
+                          [:a {:href href :name name}
+                            [:i.fab {:class (str "fa-" icon)}]])])])])
 
 ; tho should do hiccup pre-render server side then just inject news feed and whatnots
 ; TODO for good separation of frontpage / personal/bloggy, and leveraging "line all the way to right"
@@ -176,48 +227,41 @@
 ; logo text opposite side and changes to "tolgraven actual physical" or w/e,
 ; colors bit different,
 (defn ui []
-  (let [{:keys [header intro services story interlude] :as content} @(rf/subscribe [:content])
-        interlude-counter (atom 0)]
+  ; <<< dont forget did upgrade on proj + buncha profiles shit so roll back before get stuck debugging
+  (let [{:keys [intro interlude] :as content} @(rf/subscribe [:content])
+        interlude-counter (atom 0)
+        get-lewd #(merge (nth interlude @interlude-counter)
+                         {:nr (swap! interlude-counter inc)})]
     [:<> ;      #_{:class (when (db/<- [:modal]) "modal-is-open")}
-      ; [ui-header header]
       [ui-header @(rf/subscribe [:content :header])]
       [:div.line.line-header] ; XXX oh yeah only actually outside header bc silly css tricks to get shit to play along. so, fuck that, and get it within
 
       ; [:div.padder.fullwidth {:style {:min-height @(rf/subscribe [:get-css-var "--header-height-current"])}}]
 
       [:main.main-content.perspective-top
-       [:a {:name "linktotop"}]
-       [bg-logo (:logo-bg intro)]
-       [:img#top-banner.media.media-as-bg (:bg intro)] ; can we get this within intro plz?
+        [:a {:name "linktotop"}]
+        [bg-logo (:logo-bg intro)]
+        [:img#top-banner.media.media-as-bg (:bg intro)] ; can we get this within intro plz?
 
-       [ui-intro @(rf/subscribe [:content :intro])]
+        [ui-intro @(rf/subscribe [:content :intro])]
+        [ui-interlude (get-lewd)]
+        [ui-services @(rf/subscribe [:content :services])]
+        [ui-interlude (get-lewd)]
+        [ui-moneyshot @(rf/subscribe [:content :moneyshot])] ; need to watch div and show/hide para laxy as appropriate - both bc now fucking compositor and ugly clipping etc
+        [ui-story @(rf/subscribe [:content :story])]
+        [ui-interlude (get-lewd)]
+        [ui-blog @(rf/subscribe [:content :blog])]
+        [ui-gallery @(rf/subscribe [:content :gallery])]
 
-       [ui-interlude (merge (nth interlude @interlude-counter)
-                         {:nr (swap! interlude-counter inc)})]
+        [:div.line.line-footer] ;cant this be outside main ugh
+      ]
 
-       [ui-services services]
+      [ui-footer @(rf/subscribe [:content :footer])]
 
-       [ui-interlude (merge (nth interlude @interlude-counter)
-                         {:nr (swap! interlude-counter inc)})]
-
-      [:div.section-with-media-bg-wrapper {:class "covering stick-up"}
-       [:img.media-as-bg  {:src "img/crowd-lbp.JPG" :class "fade-5 parallax-sm origin-toptop"}]
-       [:section#intro-end.center-content
-        [:h1.h-responsive.parallax-bg] "YOU"]
-       [ui-inset "Happy people enjoying blabla" 1]
-      [ui-fading]]
-
-      [:div#about-intro.section-with-media-bg-wrapper {:class "covering stick-up fullwidth"}
-       [:div.fader
-        [:img.media.media-as-bg {:src "img/wide-spot-ctrl-small.jpg"}]
-        [:section.covering-faded
-          [:h1.h-responsive "Breaking things down"]]]]
-      [:div.fader>div.fade-to-black.between]
-
-      [:section#about-story.anim-gradient-bg.noborder
-       [:h1#about.link-anchor]
-       [ui/auto-layout-text-imgs @(rf/subscribe [:content :story])]]
-
-      [ui-interlude (merge (nth interlude @interlude-counter)
-                         {:nr (swap! interlude-counter inc)})] ]]))
+      [:a {:id "to-top" :class "to-top" :href "#linktotop" :name "Up"}
+        [:i {:class "fas fa-angle-double-up"}]]
+      [:div {:id "to-top-bg" :class "to-top"}
+        [:i {:class "fas fa-angle-double-up"}]]
+      [:a {:name "bottom"}]
+     ]))
 
