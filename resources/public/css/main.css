@@ -221,6 +221,20 @@ li {
   padding: 0;
 }
 
+:target {
+  /* pseudo-el representing a target (link, id/el)... */
+  /* scroll-margin-top: var(--header-height); /1* this will have to vary depending on whether menu open... *1/ */
+  /* scroll-padding-top: var(--header-height); /1* this will have to vary depending on whether menu open... *1/ */
+  scroll-padding-top: var(--header-with-menu-height); /* this will have to vary depending on whether menu open... */
+} /* header-height or header-with-menu-height... */
+/* doesnt seem to work though, try putting in html, body... */
+
+html, body {
+  /* scroll-padding-top: var(--header-height-current); */
+  /* scroll-margin-block-start: calc(1em + var(--header-height-current)); */
+  scroll-padding-top: var(--header-height-current);
+  /* scroll-padding-top: calc(1em + var(--header-with-menu-height)); */
+}
 html {
   height: 100%;
   overflow-x: hidden; /* gotta be on both or doesnt work on iphone hmm */

@@ -85,10 +85,9 @@
                           (* 0.5))]
       {:db (assoc-in db [:menu] state)
        :dispatch-n
-     [[:set-css-var! "--header-height-current"
-                     (if state open-height closed-height)]
-      ; [:scroll :by (if state (- difference) (* 0.97 difference))]]}))) ; tho should be auto calced properly...
-      [:scroll :by (if state (- difference) difference)]]}))) ; tho should be auto calced properly...
+        [[:set-css-var! "--header-height-current"
+                        (if state open-height closed-height)]]
+        :dispatch-later {:ms 250 :dispatch [:scroll :by (if state (- difference) difference)]}})))
 ;; XXX otherwise will have to uh, read var best we can and dispatch scroll event?
 
 (rf/reg-event-fx
