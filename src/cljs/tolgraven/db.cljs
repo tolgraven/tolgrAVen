@@ -64,8 +64,8 @@
                    :text "Is what it all comes down to.
                     So many roads, yet I'm determined to track most of them halfway down.
                     There's only one way to find out what's possible blabla copy."
-                   :buttons  [["Join me"            "contact"]
-                              ["Fix these buttons"  "down"]]
+                   :buttons  [["Join me"            "bottom"]
+                              ["Fix these buttons"  "linktotop"]]
                    :bg {:src "img/foggy-shit-small.jpg" :alt "Purple enthusiast"}
                    ; :logo-bg {:src "img/tolgrav.png"}}
                    :logo-bg "img/tolgrav.png"}

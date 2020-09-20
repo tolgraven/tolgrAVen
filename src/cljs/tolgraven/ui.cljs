@@ -24,12 +24,7 @@
   (let []
    [:label.toggle-switch
       attrs
-    #_(util/deep-merge
-     {:style {:margin "2px 2px"
-              :width  "1.5rem"
-              :height "1.3rem"
-              :z-index 2} }
-     attrs)
+    #_(util/deep-merge {:style {}} attrs)
     [:input {:type :checkbox :default-checked @model
              :on-click (fn [e] ; (.preventDefault e) ;broke it! :O what
                  (on-change (not @model)))}]

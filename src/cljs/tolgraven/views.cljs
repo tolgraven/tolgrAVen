@@ -12,7 +12,8 @@
    [cljs-time.core :as ct]
    [tolgraven.ui :as ui]
    [cljs-time.format :refer [formatters formatter unparse]]
-   [tolgraven.db :as db :refer [<-db ->db]]))
+   [tolgraven.db :as db :refer [<-db ->db]]
+   [tolgraven.util :as util]))
 
 ;; WHAT NEEDED?
 ;; website be like, front page bit like now but from here...
@@ -38,90 +39,8 @@
 ;; seems massively overdumbshit to use db for everything and whatnot on a page like this,
 ;; but, still, it should be used for maybe some dynamic content and obvs state (menu expanded etc)
 
-
-; (defn log "Show an expandable log thingy. Prob dumb here but good base for any sorta feed thingy I guess!" []
-;  (let [options (rf/subscribe [:get :options :display :log])
-;        diag    (rf/subscribe [:get :diagnostics])
-;        time-format (formatters :hour-minute-second)
-;        ; time-format (formatters "HH-mm-ss.SSS")
-;        table-ref (atom nil) ; scroll (r/atom nil)
-;        line (fn [{:keys [time level title message] :as msg}]
-;              [:tr.log-message
-;               [:td (unparse time-format time)]
-;               [:td {:class (str "message " (name level))} (name level)]
-;               [:td title]
-;               [:td.message #_{:style {:position :relative :left "1em"}} (str message)]])]
-;   (r/create-class
-;    {:display-name "Log"
-;     :component-did-update (fn [this] ; (r/dom-node this)
-;                            ; (println "Log updated!" (.-scrollHeight @table-ref))
-;                            ; (reset! scroll (.-scrollHeight @table-ref))
-;                            (set! (.-scrollTop @table-ref) (.-scrollHeight @table-ref))) ;resort to this since :scroll-top @ratom in the actual element doesnt work...
-;     :reagent-render
-;     (fn []
-;      [:div.log-container
-;       [ui/minimize [:options :display :log]] ;this also needs to send an event to scroll-top the fucker...
-;       [:div.log-inner {:ref (fn [el] (reset! table-ref el))
-;                        :style {:max-height (if (:minimized @options) "1.2rem" "20em")}
-;                        ; :scroll-top @scroll ;wonder why this doesnt work
-;                        #_:style #_{:max-height @scroll}}
-;        [:table>tbody.log
-;         (for [msg (map (:messages @diag)
-;                        (sort (keys (:messages @diag)))
-;                        #_(if (:minimized @options)
-;                                           [(count (:messages @diag))]
-;                                           (sort (keys (:messages @diag)))))]
-;          ^{:key (str (:id msg))}
-;          [line msg])]]])})))
-
-; (defn modal "Container for anything modal, taking care of common stuff. USE FOR COOKIE NOTICE LOL YES"
-;  [component & [on-outside-click]]
-;  (let []
-;   (db/set [:modal] true)
-;   [:div#modal-container
-;    [:div#modal-bg {:on-click on-outside-click
-;                    :style {:position :fixed
-;                            :width "100%" :height "100%" :top 0 :left 0
-;                            :background "rgb(30, 30, 30, 0.5)"}}]
-;    [:div#modal {:class (when (db/get [:modal]) "modal-is-open")}
-;     component]]))
-
-; (defn hud-modal "Show more info about a specific HUD message"
-;  [] ;doesnt really have to be modal but wanted to implement that, so...
-;  (if-let [msg @(rf/subscribe   [:hud :modal])]
-;   (let [to-close #(rf/dispatch [:hud :modal :remove])]
-;    [modal [:div.hud-modal-main
-;            {:class (str "hud-message " (name (:level msg)))}
-;            [:h3  (:title   msg)]
-;            [:p   (str (:message msg))]
-;            [:p   (str (:time    msg))]
-;            [ui/close to-close]]
-;     to-close])
-;   (db/set [:modal] false))) ;eww gross
-
-; (defn hud "Render a HUD sorta like figwheel's but at reagent/re-frame level" []
-;  (let [to-show @(rf/subscribe [:hud])
-;        one-msg (fn [{:keys [level title message time actions id]}]
-;                 (let [class (str "hud-message " (name level))]
-;                  [:div.hud-message
-;                   {:class class
-;                    :style {:position :relative}
-;                    :on-click #(rf/dispatch (or (:on-click actions)
-;                                                [:hud :modal id])) }
-;                   [:span title]
-;                   [ui/close (fn [e]
-;                              (.stopPropagation e) ;it's causing a click on hud-message as well...
-;                              (rf/dispatch [:diag/unhandled :remove id]))]]))]
-;   [:div.hud.hidden
-;    {:class (when (seq to-show) "visible")}
-;    [ui/flip-move
-;     {:class "hud-messages"
-;      :duration 200 :staggerDelayBy 20 :staggerDurationBy 30}
-;     (for [msg to-show]
-;      [one-msg msg])]]))
-
-
-; (defn divider []) ;need nice generic solution
+;; https://ma.ttias.be/adding-a-sticky-table-of-contents-in-hugo-to-posts/#offsetting-the-anchor-links-from-the-top
+;; might be nice for bloggy posty and when wide monitor...
 
 (defn ln->br "Ugh. UGH! Why"
   [text]
@@ -135,7 +54,7 @@
   [:video {:class "media media-as-bg" ; :playinline true :autoplay true :loop true :muted true ;, how these attrs set??
            :src src}])
 
-(defn bg-logo [path]
+(defn bg-logo "Try to remember why had to put img in css/style..." [path]
     [:div#logo-top.logo-bg.parallax-sm
       {:class "logo-tolgraven"
        :style {:background (str "url('" path "')")}}]) ; cant remember why I did the weird path-in-css bs but anyways...
@@ -144,11 +63,7 @@
   (let [pos (case (mod nr 4)
               0 "right"  1 "left"  2 "top right"   3 "top left")]
     [:p.caption-inset {:class pos}]))
-(defn float-img "Needs to go within a float-wrapper..."
-  [id img-attr & [caption pos]]
-  [:figure.float-with-caption {:id id :class (or pos "left")}
-      [:img.media.image-inset img-attr]
-      (when caption [:figcaption caption])])
+
 
 ;; TODO curr 1px gap between outer lines and img. Fix whatever causing this by mistake (think lines are half-width)
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
@@ -167,19 +82,21 @@
     [:h1 text]]
    [:div.header-logo-text (for [line subtitle] [:p line])]])
 
-(defn ui-header-nav [sections]
+(defn ui-header-nav "PLAN: / across with personal stuf on other side. Fade between logos depending on mouse hover..."
+  [sections]
   [:menu
    [:nav
-    [:input {:type "checkbox" :id "show-menu"}]
-    [:label.menu-toggle {:for "show-menu"}]
+    ; [:input {:type "checkbox" :id "show-menu"}] ;this doesnt actually do anything right? prob remnant
+    ; [:label.menu-toggle {:for "show-menu"}]
     [:ul.nav-links
      (for [[title url] sections]
+       ^{:key (str "menu-link-" title)}
        [:li [:a {:href url :name title}
                 (string/upper-case title)]])]]
    #_[:label {:for "theme-toggle" :class "theme-label show-in-menu"}
       "Theme"]])
 
-; (defn ui-header [& {:keys [text menu]}]
+; (defn ui-header [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
 (defn ui-header [{:keys [text menu]}]
   [:<>
    [:input {:class "burger-check" :id "burger-check" :type "checkbox"
@@ -204,7 +121,7 @@
       true
       [:a {:href link} text]) ]])
 
-(defn ui-fader "Hitherto just css but prog gen prob easier in some cases..."
+(defn ui-fading "Hitherto just css but prog gen prob easier in some cases..."
   [& {:keys [fade-to dir content]
       :or {fade-to "fade-to-black" dir "light-from-below"}}]
   [:div.fader [:div {:class (str fade-to " " dir)}]])
@@ -243,42 +160,38 @@
      [:section#services
       [:div#categories
        (for [[title icon-name lines] categories]
+         ^{:key (str "service-" title)}
          [:ul
           (into [:li
                   [:i {:class (str "fas " "fa-" icon-name)}]
                   [:h3 title]]
                 (for [line lines]
+                  ^{:key (str "service-" title "-" line)}
                   [:li line]))])]]]))
 
-;; TODO rethinking things a bit.
-;; it's more like, what common attributes do whatever things have
-;; and some stuff that should go together is in a div before or after
-;; so remember :<>
-(defn put "A section or smthing. Wrap some shit reg whatever"
-  [])
 ; tho should do hiccup pre-render server side then just inject news feed and whatnots
+; TODO for good separation of frontpage / personal/bloggy, and leveraging "line all the way to right"
+; make entire view scroll sideways and basically flip geometry
+; so literally parallel pages
+; logo text opposite side and changes to "tolgraven actual physical" or w/e,
+; colors bit different,
 (defn ui []
-  ; (let [{:keys [logo-header logo-bg intro-text services-text]} (<-db [:content])
-  ; (let [{:keys [header- intro- services- story- interlude-] :as content} (<-db [:content])
-  ; (let [{:keys [header- intro- services- story- interlude-] :as content} @(rf/subscribe [:content])
   (let [{:keys [header intro services story interlude] :as content} @(rf/subscribe [:content])
         interlude-counter (atom 0)]
     [:<> ;      #_{:class (when (db/<- [:modal]) "modal-is-open")}
       ; [ui-header header]
       [ui-header @(rf/subscribe [:content :header])]
-      ; (println @(rf/subscribe [:content :header]))
       [:div.line.line-header] ; XXX oh yeah only actually outside header bc silly css tricks to get shit to play along. so, fuck that, and get it within
+
+      ; [:div.padder.fullwidth {:style {:min-height @(rf/subscribe [:get-css-var "--header-height-current"])}}]
 
       [:main.main-content.perspective-top
        [:a {:name "linktotop"}]
        [bg-logo (:logo-bg intro)]
        [:img#top-banner.media.media-as-bg (:bg intro)] ; can we get this within intro plz?
 
-       ; [intro intro-]
        [ui-intro @(rf/subscribe [:content :intro])]
 
-       ; [ui-interlude (merge (nth interlude 0)
-       ;                   {:nr 1})]
        [ui-interlude (merge (nth interlude @interlude-counter)
                          {:nr (swap! interlude-counter inc)})]
 
@@ -292,7 +205,7 @@
        [:section#intro-end.center-content
         [:h1.h-responsive.parallax-bg] "YOU"]
        [ui-inset "Happy people enjoying blabla" 1]
-      [ui-fader]]
+      [ui-fading]]
 
       [:div#about-intro.section-with-media-bg-wrapper {:class "covering stick-up fullwidth"}
        [:div.fader
@@ -306,14 +219,5 @@
        [ui/auto-layout-text-imgs @(rf/subscribe [:content :story])]]
 
       [ui-interlude (merge (nth interlude @interlude-counter)
-                         {:nr (swap! interlude-counter inc)})]
-
-      #_[ui-section "intro-end"
-       {:class "covering stick-up"}
-       {:class "covering-faded"}
-               [:<> [:h1.h1-responsive.parallax.bg "YOU"]]
-               [:img {:src "img/crowd-lbp.JPG"
-                      :class "media-as-bg fade-5 parallax-sm origin-toptop"}]
-               [inset "Happy people hospitality blabla." 3]]
-      ]]))
+                         {:nr (swap! interlude-counter inc)})] ]]))
 

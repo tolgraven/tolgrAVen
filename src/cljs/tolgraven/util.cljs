@@ -5,9 +5,6 @@
 ;; grab shit from cue-db...
 ;; also extra js stuff.
 ;; later make lib w this crap.
-;;
-; (def var-name "--header-height")
-; (def value "6rem")
 (defn <-css-var "Get value of CSS variable. Have to apply to dummy div to force calc"
   [var-name & calc]
   (let [var-name (cond-> var-name
@@ -88,7 +85,6 @@
         [top bottom] [(.-top rect) (.-bottom rect)]]
     (and (< top js/window.innerHeight) (>= bottom 0))))
 
-; (def rem-val 4.5)
 (defn rem-to-px "Convert rem to pixels. Doesnt seem like gets quite perfect..."
   [rem-val]
   (-> (js/getComputedStyle js/document.documentElement)
@@ -105,7 +101,6 @@
                  Plus move page down correctly when open menu etc...
                  There is a CSS offset thing but cant get it working?"
   [id & offset] ; in case css nyah work...
-  ; (.scrollIntoView (js/document.getElementById id) (clj->js {:behavior :smooth, :block :nearest})))
   (.scrollIntoView (elem-by-id id)
                    (clj->js {:behavior :smooth, :block :start})))
 
