@@ -1,0 +1,59 @@
+* TOLGRAVEN FANCY
+
+*** FIXING
+  - *menu bottom as anchor/move page down with it..*
+  - [X] basic fulhack sending scroll event
+  - [X] read/write css vars and use scroll offset thing
+  - [ ] figure out why both above are inconsistent and shitty
+  - drop layers so perf stops being awful
+  -
+**** CROSS BROWSER STUFF, curr only good on chrome
+  - [ ] fix smoothscroll polyfill - figure out why node_modules breaks react
+        when that not the case for cue-db (tho I remember similar issue at some point)
+
+
+
+  - [ ]
+*** PLANS
+  - portfolio section for when actually got something to show..
+    Should be fully rendered mini-versions of like websites and stuff.
+    In a carousel
+    So a dummy cue-db for example.
+    Mixed with images and video of blinky lights or whatever.
+    Then can smoothly zoom up to fullscreen
+
+
+**** A TRICK IS SOMETHING GOB DOES FOR MONEY
+  - Do more funky stuff while scrolling down
+    For example sections that start out narrow and then grow while scroll
+    showing entire content then narrow back up when past
+    Just dont go overboard like everyone does with shit appearing out of
+    nowhere and not respecting *"THERE IS A FUCKING CURRENT POSITION ON PAGE*
+    *WHETHER FROM ABOVE OR BELOW"* symmetry
+**** BLOG
+  - some kinda blog/post thingy -> make a crappy CMS, log in/write md/spit out
+      nice syntax hl, the cljs live eval thing etc
+      while doing above might as well try make basic commenting functionality..
+**** FEEDS
+  - Good practice I reckon (using apis, not ugly prefab)
+    twitter, sc, github commits, whatever.
+
+
+*** WORKFLOW?
+  - not much from cue-db makes sense here, and what would isnt generalized enough
+    but some things can be used, prob best to massage/generalize them here
+    then backport there
+  - ideally make a lil lib with common utils and preferred part structure
+
+*** INFRASTRUCTURE
+  - Using DB for content for now - easy move to an actual database (once I
+    figure those out)
+  - Likely better try to move most all frontpage stuff (= static) to
+    serverside rendering sooner rather than later.
+    Otoh not likely to get too tangled up w/ Reagent anyways so.
+  - First do Ajax since never have, then maybe gql (latter makes much
+    more sense for cue-db than here)
+  -
+*** RANDOM CRAP
+    - https://ma.ttias.be/adding-a-sticky-table-of-contents-in-hugo-to-posts/#offsetting-the-anchor-links-from-the-top
+      might be nice for bloggy posty and when wide monitor...

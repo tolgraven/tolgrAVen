@@ -11,33 +11,6 @@
    [tolgraven.db :as db :refer [<-db ->db]]
    [tolgraven.util :as util]))
 
-;; WHAT NEEDED?
-;; website be like, front page bit like now but from here...
-;; FIXING:
-;; menu bottom as anchor/move page down with it..
-;; drop layers so perf stops being awful
-;;    also in general (tho guess can be done by css better anyways) adapt fanciness to hw...
-;;
-;;
-;; portfolio section for when actually got something to show..
-;;
-;; some kinda blog/post thingy -> make a crappy CMS, log in/write md/spit out
-;;   nice syntax hl, the cljs live eval thing etc
-;; while doing above might as well try make basic commenting functionality..
-;;
-;; WORKFLOW?
-;; not much from cue-db makes sense here, and what would isnt generalized enough
-;; but some things can be used, prob best to massage/generalize them here then backport there
-;; ideally make a lil lib with common utils and preferred part structure
-;;
-
-;; FIGURE OUT:
-;; seems massively overdumbshit to use db for everything and whatnot on a page like this,
-;; but, still, it should be used for maybe some dynamic content and obvs state (menu expanded etc)
-
-;; https://ma.ttias.be/adding-a-sticky-table-of-contents-in-hugo-to-posts/#offsetting-the-anchor-links-from-the-top
-;; might be nice for bloggy posty and when wide monitor...
-
 (defn ln->br "Ugh. UGH! Why"
   [text]
   (for [line (string/split-lines text)]
