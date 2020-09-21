@@ -52,13 +52,13 @@
                          (cljs.reader/read-string))))))  ;; EDN map -> map
 
 (def data ; default db
- {; :filter {:method "regex"}
-  ; :view {:page [0 0] :offset [0 0] :size 8}
- :content {:header {:text ["tolgrAVen" ["audio" "visual"]]
-                     :menu [["Services"  "#link-services"]
-                            ["Story"     "#about"]
-                            ["Tools"     "#tools"]
-                            ["Portfolio" "#portfolio"]]
+ {:content {:header {:text ["tolgrAVen" ["audio" "visual"]]
+                    :menu {:work  [["Services"  "#link-services"] ; should have two sections either by collapse
+                                   ["Story"     "#about"]         ; or just opp sides with the /
+                                   ["Tools"     "#tools"]
+                                   ["Portfolio" "#portfolio"]]
+                           :personal [["Blog"      "#/blog"]
+                                      ["Log"       "#/log"]]}
                     #_{:should :semi-auto-populate?}}
            :intro {:title "Building experience"
                    :text "Is what it all comes down to.
@@ -67,8 +67,7 @@
                    :buttons  [["Join me"            "bottom"]
                               ["Fix these buttons"  "linktotop"]]
                    :bg {:src "img/foggy-shit-small.jpg" :alt "Purple enthusiast"}
-                   ; :logo-bg {:src "img/tolgrav.png"}}
-                   :logo-bg "img/tolgrav.png"}
+                   :logo-bg "img/tolgrav.png"} ; no :src cause goes in :style background-image...
 
            :services  {:categories
                        [["Audio"    "bullhorn"   ["Sound engineering" "Broadcasting" "Recording" "Music production"]]
@@ -79,6 +78,10 @@
                         ["Web"      "laptop"     ["This is my first website!" "I'll make more once" "my stack runs fulleth"]]]
                        :bg {:src "img/vim-code-small.jpg" :alt "neovim editor"}
                        :caption "neovim"}
+
+           :moneyshot {:title "YOU"
+                       :caption "Hapy people enjoying haspitality blobli"
+                       :bg {:src "img/crowd-lbp.JPG"}}
 
            :story {:heading {:title "Breaking things down"
                               :bg {:src "img/wide-spot-ctrl-small.jpg"}}
@@ -105,7 +108,30 @@
                          :bg [:video.media.media-as-bg {:src "media/nihil-shoot2.mp4"}]}
                         {:title "Got no portfolio"
                          :caption "Failed"
-                         :bg [:img.media.media-as-bg.fade-3 {:src "img/collage-strips-small.png"}]}]
+                         :bg [:img.media.media-as-bg.fade-3 {:src "img/collage-strips.jpg"}]}]
+
+           :gallery [{:src "img/joen-mixer.jpg" :alt "My actual first web project"}
+                     {:src "img/live-session-small.jpg" :alt "Ableton Live"}
+                     {:src "img/ssiri-balcony-small.jpg" :alt "Some nice people"}
+                     {:src "img/video-editing-small.jpg" :alt "Television"}
+                     {:src "img/afterglow-new-web-old-small.jpg" :alt "My actual first web project"}]
+
+           :blog    [{:id 1 :title "And so it all begins" :md "[i forget] how does *markdown* work??"}
+                     {:id 2 :title "My journey into wankery" :md "jk i never _knew_"}]
+
+           :footer [{:id "left"
+                     :title "Made w/ hiccup n shit"
+                     :text ["joen.tolgraven@gmail.com"
+                            "© 2019-2020"]}
+                    {:id "middle"
+                     :title "Whatever"
+                     :text ["other stuff one could write"
+                            "if so fucking inclined"]}
+                    {:id "right"
+                     ; :title "More ways to get in touch"
+                     :links [{:name "Github" :href "https://github.com/tolgraven" :icon "github"}
+                             {:name "Soundcloud" :href "https://soundcloud.com/tolgraven" :icon "soundcloud"}]}]
+
            }
 
  :schema {:query
