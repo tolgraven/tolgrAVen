@@ -1,7 +1,21 @@
 (ns tolgraven.util
-  (:require [clojure.string :as string]
+  (:require [re-frame.core :as rf]
+            [clojure.string :as string]
             [clojure.walk]))
 
+(defn log "Log to both console and app" ;XXX should add an endpoint to timbre instead.
+ ([message] (log :debug message))
+ ([level message & messages]
+  (let [msg (string/join " " (into [message] messages))]
+   (println (string/capitalize (name level)) "\t" message)
+   (rf/dispatch [:diag/new level "Log" msg]))))
+
+(defn log-errors [errors]
+ (when (seq errors)
+  (log :debug errors))) ;debug instead of error, dont want to spam the hud
+
+; (log "kuken")
+; (log :error "goddamn")
 ;; grab shit from cue-db...
 ;; also extra js stuff.
 ;; later make lib w this crap.

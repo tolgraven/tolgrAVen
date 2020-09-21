@@ -36,3 +36,19 @@
  (fn [db [_ item]]
    (cond-> (get db :menu)
      item item)))
+
+(rf/reg-sub :hud ;so this should massage :diagnostics and only return relevant stuff
+ :<- [:get :diagnostics]
+ :<- [:get :options :hud]
+ :<- [:get :hud]
+ (fn [[{:keys [messages unhandled]}
+       {:keys [timeout level]}
+       hud]
+      [_ & [request-key]]] ;could be like :modal, :error...
+  (case request-key
+   :modal (when (:modal hud) (get messages (:modal hud))) ;fetch message by id...
+   (let [including (conj (take-while #(not= % level)
+                                    [:error :warning :info]) level)]
+   #_(filter #(ct/after? (ct/plus (:time %) (ct/seconds timeout)) (ct/now)) diag)
+   (filter #(some #{(:level %)} including)
+           (map messages unhandled))))))
