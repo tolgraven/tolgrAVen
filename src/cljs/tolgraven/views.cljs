@@ -79,20 +79,28 @@
 
 (defn ui-header-nav "PLAN: / across with personal stuf on other side. Fade between logos depending on mouse hover..."
   [sections]
-  [:menu
-   [:nav
-    ; [:input {:type "checkbox" :id "show-menu"}] ;this doesnt actually do anything right? prob remnant
-    ; [:label.menu-toggle {:for "show-menu"}]
-    [:ul.nav-links
-     (for [[title url] sections]
-       ^{:key (str "menu-link-" title)}
-       [:li [:a {:href url :name title}
-                (string/upper-case title)]])]]
-   #_[:label {:for "theme-toggle" :class "theme-label show-in-menu"}
-      "Theme"]])
+  (let [put-links (fn [links]
+                    (for [[title url] links] ^{:key (str "menu-link-" title)}
+                         [:li [:a {:href url :name title}
+                               (string/upper-case title)]]))]
+    [:menu
+     [:nav
+      [:div.nav-section
+       ; [:p "work"]
+       [:ul.nav-links
+         (put-links (:work sections))]]
 
-; (defn ui-header [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
-(defn ui-header [{:keys [text menu]}]
+      [:div.big-slash] ; a line that goes across
+
+      [:div.nav-section
+       ; [:p "personal"]
+       [:ul.nav-links
+          {:style {:position :absolute, :right 0}}
+          (put-links (:personal sections))]]]
+     #_[:label {:for "theme-toggle" :class "theme-label show-in-menu"}
+        "Theme"]]))
+
+(defn ui-header [{:keys [text menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   [:<>
    [:input {:class "burger-check" :id "burger-check" :type "checkbox"
             :on-click #(rf/dispatch [:menu (not @(rf/subscribe [:menu]))])}] ;must be outside header or breaks...
@@ -244,8 +252,6 @@
         get-lewd #(merge (nth interlude @interlude-counter)
                          {:nr (swap! interlude-counter inc)})]
     [:<> ;      #_{:class (when (db/<- [:modal]) "modal-is-open")}
-      [ui-header @(rf/subscribe [:content :header])]
-      [:div.line.line-header] ; XXX oh yeah only actually outside header bc silly css tricks to get shit to play along. so, fuck that, and get it within
 
       ; [:div.padder.fullwidth {:style {:min-height @(rf/subscribe [:get-css-var "--header-height-current"])}}]
 
@@ -261,7 +267,6 @@
         [ui-moneyshot @(rf/subscribe [:content :moneyshot])] ; need to watch div and show/hide para laxy as appropriate - both bc now fucking compositor and ugly clipping etc
         [ui-story @(rf/subscribe [:content :story])]
         [ui-interlude (get-lewd)]
-        [ui-blog @(rf/subscribe [:content :blog])]
         [ui-gallery @(rf/subscribe [:content :gallery])]
 
         ; [:div.line.line-footer] ;cant this be outside main ugh
