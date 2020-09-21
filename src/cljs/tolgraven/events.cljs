@@ -96,17 +96,17 @@
    (case kind
      :by (util/scroll-by value)
      :to (util/scroll-to value))))
-; (rf/reg-event-fx :state ;; this why better sep. can then inject css var and not sub? i somehow remeber that being badd
-;   (fn [{:as cofx :keys [db]} [_ item state]]
-;     (case item
-;       :menu {:dispatch [:set-css-var! "--header-height-current"
-;                                       @(rf/subscribe [:get-css-var (if state
-;                                                                      "--header-with-menu-height"
-;                                                                      "--header-height")])]}))) ; tho should be auto calced properly...
-    ; (case item
-    ;   :menu (let [header-height (if state "18rem" "6rem")] ; best if only set pointer css var ref to curr
-    ;           ; if can actually get the css-offset tricky thing to work...
-    ;           {:dispatch-n [[:state :header-height header-height]]})))) ; tho should be auto calced properly...
+
+
+(rf/reg-event-fx :blog-new ; needs to gen an id too
+ (fn [_ [_ {:keys [] :as input}]]
+   {:dispatch [:conj [:blog] input]}))
+
+(rf/reg-event-fx :blog-comment-new ; needs to gen an id too
+ (fn [_ [_ [id input]]]
+   {:dispatch [:conj [:blog id :comments] input]}))
+
+
 
 ;; SOME STUFF FROM CUE-DB
 (rf/reg-event-fx :init ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)

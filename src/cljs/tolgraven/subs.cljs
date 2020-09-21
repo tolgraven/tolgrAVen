@@ -22,6 +22,15 @@
   (fn [db [_ item]]
     (get-in db [:state item])))
 
+(rf/reg-sub :blog
+ (fn [db [_ [& path]]]
+   (get-in (:blog db) path)))
+
+(rf/reg-sub :blog-comment-input
+ :<- [:blog]
+ (fn [db [_ id]]
+   (or (:input item) "")))
+
 
 (rf/reg-sub :menu
  (fn [db [_ item]]
