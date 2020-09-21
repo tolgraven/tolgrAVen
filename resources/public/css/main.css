@@ -911,6 +911,13 @@ footer {
   /* position: sticky; */
   /* bottom: 0; */
 }
+.footer-sticky {
+  position: fixed;
+  left: var(--space-sides);
+  /* bottom: var(--space); */
+  bottom: 0;
+  background: var(--bg-2);
+}
 .footer-content {
   display: flex;
   justify-content: space-between;
@@ -920,7 +927,7 @@ footer {
 }
 .footer-column {
   flex: 1 0 auto;
-  margin: 0.0rem 1.0rem 0.8rem;
+  margin: 0.0rem 1.0rem 0.0rem;
   /* display: flex; */
 }
 
@@ -976,7 +983,7 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
 
 #footer-middle {
 }
-#footer-right {
+#footer-right { /* can change to just last then no worry bout ids */
   flex: 1 4 auto;
 }
 

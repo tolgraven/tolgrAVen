@@ -201,24 +201,35 @@
     (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
          [:img.media img])]])
 
-(defn ui-footer-persistent "Thinking just something tiny visible maybe not actually entire time but at whatever points, framing things in. Might be job for css tho dunno"
-  [content])
+(defn ui-footer-sticky "Thinking just something tiny visible maybe not actually entire time but at whatever points, framing things in. Might be job for css tho dunno"
+  [content]
+  [:<>
+    [:footer.footer-sticky>div.footer-content
+      ; {:style {:position :fixed}}
+      [:div.line.line-footer] ;cant this be outside main ugh
+        (for [{:keys [title text id links] :as column} content
+          :let [id (str "footer-stick-" id)]] ^{:key id}
+          [:div.footer-column {:id id}
+          [:h3 title]])]])
 
 (defn ui-footer "Might want to bail on left/middle/right just push whatever. do the current ids matter?"
   ; [{:keys [left middle right]}]
   [content]
-  [:footer>div.footer-content
-   (for [{:keys [title text id links] :as column} content
-         :let [id (str "footer-" id)]] ^{:key id}
-        [:div.footer-column {:id id}
-         [:h3 title]
+  ; [:footer>div.footer-content
+  [:footer.footer-sticky.fullwide
+      [:div.line.line-footer] ;cant this be outside main ugh
+   [:div.footer-content
+    (for [{:keys [title text id links] :as column} content
+          :let [id (str "footer-" id)]] ^{:key id}
+         [:div.footer-column {:id id}
+          [:h3 title]
 
-         (when text (for [line text] ;^{:key (str id "-" )}
-                          [:p line]))
-         (when links [:div.footer-icons
-                      (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
-                          [:a {:href href :name name}
-                            [:i.fab {:class (str "fa-" icon)}]])])])])
+          (when text (for [line text] ;^{:key (str id "-" )}
+                       [:p line]))
+          (when links [:div.footer-icons
+                       (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
+                            [:a {:href href :name name}
+                             [:i.fab {:class (str "fa-" icon)}]])])])]])
 
 ; tho should do hiccup pre-render server side then just inject news feed and whatnots
 ; TODO for good separation of frontpage / personal/bloggy, and leveraging "line all the way to right"
@@ -253,9 +264,10 @@
         [ui-blog @(rf/subscribe [:content :blog])]
         [ui-gallery @(rf/subscribe [:content :gallery])]
 
-        [:div.line.line-footer] ;cant this be outside main ugh
+        ; [:div.line.line-footer] ;cant this be outside main ugh
       ]
 
+        ; [ui-footer-sticky @(rf/subscribe [:content :footer])]
       [ui-footer @(rf/subscribe [:content :footer])]
 
       [:a {:id "to-top" :class "to-top" :href "#linktotop" :name "Up"}
