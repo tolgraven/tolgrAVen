@@ -28,7 +28,7 @@
 
 (defn ui-inset [caption nr]
   (let [pos (case (mod nr 4)
-              0 "right"  1 "left"  2 "top right"   3 "top left")]
+              0 "bottom right"  1 "bottom left"  2 "top right"   3 "top left")]
     [:p.caption-inset {:class pos}
      caption]))
 

@@ -857,19 +857,21 @@ section:last-of-type {
   font-size: 0.65rem; /* weird ass size when iphone landscape, and webkit-text-size-adjust doesnt seem to help... */
   opacity: 0.65;
   position: absolute;
-  bottom: 0;
-  left: 0;
   z-index: 40;
 }
 .caption-inset.right {
   right: 0;
   text-align: right;
 }
-.caption-inset.top {
-  top: 0;
-}
+.caption-inset.left   { left:   0; }
+.caption-inset.top    { top:    0; }
+.caption-inset.bottom { bottom: 0; }
+
 .float-with-caption {
-  margin-bottom: calc(0.5 * var(--space));
+  margin: var(--space) 0;
+}
+.float-with-caption:first-of-type {
+  margin-top: 0;
 }
 .float-with-caption > .media {
   margin: 0;
@@ -877,11 +879,11 @@ section:last-of-type {
 }
 .float-with-caption.left {
   float: left;
-  margin-right: calc(1.0 * var(--space));
+  margin-right: calc(1.0 * var(--space-lg)); /* using reg space becomes bit wrong when very slim... too tight. */
 }
 .float-with-caption.right {
   float: right;
-  margin-left: calc(1.0 * var(--space));
+  margin-left: calc(1.0 * var(--space-lg));
 }
 figcaption, .float-with-caption {
   font-size: 0.8rem;
