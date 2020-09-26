@@ -98,13 +98,34 @@
      :to (util/scroll-to value))))
 
 
+(defonce uuid-counter (atom 0)) ;why not just keep this in db as well tho?
+; (rf/reg-cofx :gen-uuid #(assoc % :gen-uuid (swap! uuid-counter inc)))
+(rf/reg-cofx :gen-uuid #(assoc (keyword %) :id (swap! uuid-counter inc)))
+; more bastant vs using db and could append meta on cat for lookup?
+; works either way rather than many individual cause always increased vs last of kind
+
+(rf/reg-event-fx
+ :post-new ;omg could we generic
+ [debug
+  (rf/inject-cofx :now)
+  (rf/inject-cofx :gen-uuid)]
+ (fn [{:keys [db now gen-uuid]} [_ post & parent-id]] ; only parent-id if comment
+   (update-in db (seq [:content :blog :posts parent-id]) ; well stupid but something like this. a comment is a child
+              (fnil conj [])
+              (assoc post :ts now :id gen-uuid)))) ; and if all maps just merge
+   ; (let [path ] (assoc-in db (seq [:content :blog parent-id])
+   ;                        (assoc post :ts now :id gen-id)))))
+
 (rf/reg-event-fx :blog-new ; needs to gen an id too
  (fn [_ [_ {:keys [] :as input}]]
    {:dispatch [:conj [:blog] input]}))
 
 (rf/reg-event-fx :blog-comment-new ; needs to gen an id too
- (fn [_ [_ [id input]]]
-   {:dispatch [:conj [:blog id :comments] input]}))
+  [debug
+   (rf/inject-cofx :now)
+   (rf/inject-cofx :gen-uuid)]
+ (fn [{:keys [db now comment-id]} [_ post]]
+   (assoc-in db [:content :blog :1] (assoc post :ts now :id comment-id))))
 
 
 
