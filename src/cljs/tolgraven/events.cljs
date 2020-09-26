@@ -24,16 +24,25 @@
   (fn [_ [_ url-key params query]]
     {:common/navigate-fx! [url-key params query]}))
 
-(rf/reg-event-db :set-docs
+(rf/reg-event-db :set-docs [debug]
   (fn [db [_ docs]]
-    (assoc db :docs docs)))
+    (assoc-in db [:content :docs :md] docs)))
 
-(rf/reg-event-fx :fetch-docs
-  (fn [_ _]
-    {:http-xhrio {:method          :get
-                  :uri             "/docs"
-                  :response-format (ajax/raw-response-format)
-                  :on-success       [:set-docs]}}))
+(rf/reg-event-db :update-content
+  (fn [db [_ path value]]
+    (assoc-in db (into [:content] path) value)))
+
+(rf/reg-event-fx :init-docs
+  (fn [db _]
+    (when-not (-> db :content :docs :md) ; no re-request for this...
+      {:dispatch
+       [::http-get {:uri             "/docs"
+                    :response-format (ajax/raw-response-format)}
+        [:set-docs]
+        ; [:update-content [:docs]]
+        [:common/set-error]]})))
+      ; [:diag/new :error]
+
 
 (rf/reg-event-db :common/set-error
   (fn [db [_ error]]
@@ -43,27 +52,14 @@
   (fn [_ _]
     {:dispatch [:fetch-docs]}))
 
-;;subscriptions
-(rf/reg-sub :common/route
-  (fn [db _]
-    (-> db :common/route)))
-(rf/reg-sub :common/page-id
-  :<- [:common/route]
-  (fn [route _]
-    (-> route :data :name)))
-(rf/reg-sub :common/page
-  :<- [:common/route]
-  (fn [route _]
-    (-> route :data :view)))
-(rf/reg-sub :common/error
-  (fn [db _]
-    (:common/error db)))
 
-(rf/reg-sub :docs
-  (fn [db _]
-    (:docs db)))
+(rf/reg-sub :common/route (fn [db _] (-> db :common/route)))
+(rf/reg-sub :common/error (fn [db _] (-> db :common/error)))
 
-
+(rf/reg-sub :common/page-id :<- [:common/route]
+  (fn [route _] (-> route :data :name)))
+(rf/reg-sub :common/page    :<- [:common/route]
+  (fn [route _] (-> route :data :view)))
 
 
 (rf/reg-sub :get-css-var
@@ -154,19 +150,22 @@
  (fn [db [_ path]]
   (update-in db path pop)))
 
-
 (rf/reg-event-fx ::http-get
-  (fn [{:keys [db]} [_ opts & [handler error]]]
-    {:db (assoc db :show-twirly true)   ;; set something to indicate request is underway
-     :http-xhrio
-     (merge
-      {:method          :get
-       :uri             "https://api.github.com/orgs/day8"
-       :timeout         2000                                           ;; optional see API docs
-       :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
-       :on-success      [(or handler :default-http-result) :success]
-       :on-failure      [(or error   :default-http-error)  :error]}
-      opts)}))
+                 [debug]
+  (fn [{:keys [db]} [_ opts & [handler on-error]]]
+    (let [cleanup [:set [:state :is-loading] false]]
+      {:dispatch [:set [:state :is-loading] true]   ;; set something to indicate request is underway
+       :http-xhrio
+       (merge
+        {:method          :get
+         :uri             "https://api.github.com/orgs/day8"
+         :timeout         2000                                           ;; optional see API docs
+         :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
+         :on-success      [::http-result-wrapper (or handler  [:default-http-result]) cleanup]
+         :on-failure      [::http-result-wrapper (or on-error [:default-http-error]) cleanup]}
+        ; :on-success      [(or handler :default-http-result) :success]
+        ; :on-failure      [(or error   :default-http-error)  :error]}
+        opts)})))
 
 (rf/reg-event-fx ::http-post
   (fn [{:keys [db]} [_ opts & [handler error]]]
@@ -180,21 +179,29 @@
        ; :params          {:x 1 :y 2}
        :params          "x 1 y 2"
        :timeout         timeout
-       ; :format          (ajax/json-request-format)
        :response-format (ajax/json-response-format {:keywords? true})
        :on-success      [:default-http-result]
        :on-failure      [:default-http-error]}
       :timeout [:yada-yada
                 :timeout timeout]})))
-
 ; To make multiple requests, supply a vector of options maps:
 ; {:http-xhrio [ {...}
 ;                {...}]}
-
 (rf/reg-event-fx :default-http-result
- (fn [db [_ res]] (println res)))
+ (fn [db [_ res]]
+   ; (println res)
+   (update-in db [:http :result] conj res)))
 (rf/reg-event-fx :default-http-error
- (fn [db [_ res]] (println res)))
+ (fn [db [_ {:as res :keys [uri status status-text failure]}]]
+   ; (println res)
+   ; (update-in db [:http :error] conj res)))
+   {:dispatch [:diag/new :error status status-text]}))
+
+(rf/reg-event-fx ::http-result-wrapper
+ (fn [db [_ handler cleanup res]]
+   ; (println res)
+   {:dispatch-n [(vec (flatten [handler res]))
+                 cleanup]}))
 
 (rf/reg-event-fx :run-highlighter!
  (fn [_ [_ ref]]
