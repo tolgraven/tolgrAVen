@@ -129,6 +129,20 @@
   (.scrollIntoView (elem-by-id id)
                    (clj->js {:behavior :smooth, :block :start})))
 
+(defn observe [div-ref on-view-change & continous?] ;what's with the weird scrolling bug?
+  (when (at div-ref) ; well with ratom at least thing will reload, bit extra smudge but most reasonable?
+    (let [in-view (atom 0.0)]
+      (doto  (js/IntersectionObserver. ;prob needs tearing down for reload or?
+              (fn [entries]
+                (let [pos (.-intersectionRatio (first entries))
+                      val-fn (if continous? identity pos?)] ; but eh still wanna filter repeats
+                  ; btw super wasteful should only spit when changes duh
+                  (when (not= (val-fn @in-view) (val-fn pos))
+                    (on-view-change (val-fn (reset! in-view pos)))))))
+        (.observe (at div-ref)))))) ; annoying thing about this one need to manually bind it right?
+; how ensure clean these up?
+
+
 (defn crap []
   (scroll-to "headshot")
   (rem-to-px 13.5) ;217
