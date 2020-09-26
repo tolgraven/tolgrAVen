@@ -12,7 +12,7 @@ header {
   background-color: var(--bg-1);
   /* background-image: linear-gradient(to top, var(--bg-1)); */
   /* background-image: none; */
-  z-index: 11;
+  z-index: 100;
   margin-top: var(--space-top);
   /* margin-bottom: var(--space-top); */
   padding: 0 calc(var(--space));
@@ -30,13 +30,6 @@ menu {
   transition: min-width 0.5s ease;
   animation: menu-anim-out 0.4s;
 }
-nav:hover {
-  filter: brightness(110%);
-}
-.nav-links > li:hover {
-  margin-left: 0.4rem;
-  transition: margin 0.3s;
-}
 menu::before, menu::after { /* in order to get them animatable */
   content: "";
   position: absolute;
@@ -50,6 +43,7 @@ menu::before {
   transform: scaleY(0.0);
   transition: transform 1.2s ease 0.25s;
 }
+
 nav {
   /* position: relative; */
   display: flex;
@@ -62,8 +56,27 @@ nav {
   border-bottom:  var(--line-width) solid currentColor;
   /* transition: min-height 0.9s ease-in-out; */
 }
+nav:hover {
+  filter: brightness(125%);
+}
+.nav-links > li:hover {
+  margin-left: 0.35rem;
+  margin-right: 0.35rem; /* doesnt do equiv on other side.. */
+  transition: margin 0.3s;
+}
+.nav-links.nav-link-active {
+  filter: brightness(125%);
+  font-weight: bold;
+}
 .nav-links > * {
   margin: 0 0.5rem;
+}
+menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm */
+  position: absolute;
+  right: 0;
+  top: 0;
+  text-align: right;
+  /* last in... */
 }
 
 .header-logo { /* actual text */
@@ -254,3 +267,9 @@ nav {
   #burger-check:checked ~ main { /* other attempt compensate line-header margin-.. */
     /* margin-top: calc(2 * var(--space-top)); */
   }
+
+.burger-check:checked ~ header menu nav {
+  /* max-height: 500px; */
+  transition: max-height 0.3s ease-in-out;
+}
+

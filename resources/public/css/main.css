@@ -5,26 +5,32 @@
 /* wanted to put in own file but wasnt compatible with live reload solution... */
 :root { /* general vars */
   /* SIZES */
-  --space:             1.5rem;
-  --space-lg:          2rem;
+  --space:             1.2rem;
+  --space-lg:          2.0rem;
   --space-sides:       var(--space-lg); /* inner horizontal margin */
   --space-edges:       var(--space-sides); /* size of outer edges  */
   --space-top:         2rem; /* top margin above header */
   --media-width-main:  calc(100% - 2 * var(--space-lg)); /* would it be context dependent or just use root 100% i guess uh */
   --banner-height:     600px;
   --logo-ratio:        0.4060; /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */ /* just use img... */ /* or make logo look like i want in first place - needs higher-res or vector bounce anyways */
-  --header-height:     calc(3 * var(--space));
+  /* --header-height:     calc(3 * var(--space)); */
+  --header-height:     4.5rem; /* beware can be 3 or 6 in practice.... temp bc reading arbitrary css vars with calc is fiddly */
   --header-with-menu-height: 18rem; /* not truly dynamic bc of annoying sticky */
+  --header-height-current: var(--header-height); /* will then be changed by js dep on whether menu open... */
   /* --link-offset:       calc(var(--space) + var(--header-with-menu-height)); */
   --link-offset:       calc( var(--header-with-menu-height));
   --menu-width-fraction: 0.75;
 
+  --line-scale-factor: 0.5;
   --line-width:        2px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-sm:     calc(1 / (1.5 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-md:     calc(((1 + var(--line-scale-factor)) / 2) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-lg:     calc(1 / (1 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --scale:             1.0; /* px line-width drifts when font scales so must compensate... better way? */
   
-  --fiddle-multiplier: 3; /* works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
+  --fiddle-multiplier: 0; /* was 3. works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
   --left-marker: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
-                + var(--space) - (var(--fiddle-multiplier) * var(--line-width)));
+                      + var(--space) - (var(--fiddle-multiplier) * var(--line-width)));
   --right-marker: calc(100% - var(--left-marker) + var(--line-width)); /* makes sense right side needs one more unit since it has the right border... */
   --top-to-menu-height: calc(2 * var(--space-top) + 2em - (4 - var(--fiddle-multiplier)) * var(--line-width));
   --header-expand-time:  0.5s;
@@ -43,23 +49,50 @@
 
 
   /* COLORS */
-  --hue-1:             180;
+  --hue-1:             180; 
   --hue-2:               8;
   --hue-3:             192;
   --lum-dark-1:         9%;
   --lum-dark-2:        12%;
-  --lum-dark-3:        17%;
+  --lum-dark-3:        19%;
   --lum-light-1:       calc(100% - var(--lum-dark-1));
   --lum-light-2:       calc(100% - var(--lum-dark-2));
   --lum-light-3:       calc(100% - var(--lum-dark-3));
 
   --light-1:           hsl(var(--hue-2), 20%, var(--lum-light-2));
+  --light-2:           hsl(var(--hue-2), 7%, var(--lum-light-1));
   --light-text:        hsl(29, 35%, 86%);
+  --light-3:           #ededed;
+
 
   --nav-accent: hsla(var(--hue-3), 40%, 20%, 0.35);
+  --selection-accent: hsl(14, 75%, 80%, 0.7);
   --neutral-accent: #9ae; /* link? */
+  /* fixc bruv/box */
+  --red       : #d18479;
+  --red-2     : #af7370;
+  --green     : #b4b88d;
+  --green-2   : #8b8c63;
+  --yellow    : #dabd7a;
+  --yellow-2  : #d0af80;
+  --blue      : #7692ab;
+  --blue-2    : #80a0b3;
+  --purple    : #bd979d;
+  --purple-2  : #af8589;
+  --aqua      : #91b8a4;
+  --aqua-2    : #9ab499;
+  --orange    : #cca687;
+  --orange-2  : #dba184;
+  /* --red-light     : #ea9a98; */
+  /* --green-light   : #ccdaa8; */
+  /* --yellow-light  : #d9c894; */
+  /* --blue-light    : #a6c0cd; */
+  /* --purple-light  : #d9b7b7; */
+  /* --aqua-light    : #B6D1B4; */
+  /* --orange-light  : #d9a58a; */
   --dark-1:     hsl(var(--hue-1),  7%,  var(--lum-dark-1));
-  --dark-2:     hsl(var(--hue-2),  7%,  var(--lum-dark-2));
+  --dark-2:     hsl(var(--hue-3),  7%,  var(--lum-dark-2));
+  --dark-3:     #232323;
 
   --opacity-regular:  0.45;
   --opacity-faint:    0.25;
@@ -68,7 +101,9 @@
   --box-regular-color-flip: var(--box-regular-color); /* light mode always dark shadows */
   --box-faint-color-flip:   var(--box-faint-color);
 
-  --gradient-bg-main: linear-gradient(-77deg, hsl(280, 12%, 12%), hsl(100, 12%, 12%));
+  --gradient-bg-main: linear-gradient(-77deg,
+                                      hsl(280, 13%, var(--lum-dark-1)),
+                                      hsl(100, 13%, var(--lum-dark-1)));
 
   --fg-1:       var(--dark-1);
   --fg-2:       var(--dark-2);
@@ -77,22 +112,24 @@
   --lum-fg-3:   var(--lum-dark-3);
   --bg-1:       var(--light-1);
   --bg-2:       var(--light-text);
+  --bg-3:       var(--light-3);
   --lum-bg-3:   var(--lum-light-3);
   --lum-bg-1:   var(--lum-light-1);
   --lum-bg-2:   var(--lum-light-2);
 
 }
 
-/* @media (prefers-color-scheme: dark) { */
- /* { */
+@media (prefers-color-scheme: dark) {
   :root { /* OS has requested dark mode */
     --fg-1:     var(--light-1);
-    --fg-2:     var(--light-text);
+    /* --fg-2:     var(--light-text); */
+    --fg-2:     var(--light-2);
     --lum-fg-1: var(--lum-light-1);
     --lum-fg-2: var(--lum-light-2);
     --lum-fg-3: var(--lum-light-3);
     --bg-1:     var(--dark-1);
     --bg-2:     var(--dark-2);
+    --bg-3:     var(--dark-3);;
     --lum-bg-1: var(--lum-dark-1);
     --lum-bg-2: var(--lum-dark-2);
     --lum-bg-3: var(--lum-dark-3);
@@ -102,7 +139,7 @@
   #logo-top { /* invert then rotate hue to restore blue text */
     filter: invert() hue-rotate(180deg);
   }
-/* } */
+}
 @media screen and (min-width: 800px) and (min-height: 800px) {
   :root {
     --space: 2.0rem;
@@ -314,6 +351,11 @@ body {
   background-color: var(--fg-1);
   height: var(--line-width);
 }
+.line-sm {
+  --line-width: var(--line-width-sm);
+  /* height: var(--line-width-sm); */
+  /* nice sass or w/e to have a bunch with var-as like? */
+}
 @media screen and (min-width: 1100px) {
   .line { /* i guess x overflow only important on ios, so we hype here */
     width: 200%; /* extend out like balls */
@@ -322,21 +364,25 @@ body {
 
 .line.line-header {
   position: sticky; /* starts between header and main, turns into demarcation */
-  z-index: 20;
+  z-index: 100;
   top: var(--header-height); /* aand i forget why this works now. guess i set a min-height larger than regular banner height... */
   transition: top var(--header-expand-time) ease 0.0s;
   margin-top: var(--space-top); /* space before sticky starts */
-  box-shadow: 2px 1px 17px 7px hsla(var(--hue-1), 35%, 40%, 0.09);
+  /* box-shadow: 2px 1px 17px 7px hsla(var(--hue-1), 35%, 40%, 0.06); */
 }
 .line.line-footer {
   position: absolute;
-  bottom: 0;
+  /* bottom: 0; */
+  top: 0; 
+  /* if attach at top of footer instead of bottom of main */
   right: 0; /* extend on left instead of right width already good */
   z-index: 100;
-  box-shadow: 0 0.5rem 1rem 0.2rem var(--box-regular-color);
+  /* box-shadow: 0 0.5rem 1rem 0.2rem var(--box-regular-color); */
 }
-.line-left  { border-left: var(--line-width) solid; }
+.line-left  { border-left:  var(--line-width) solid; }
 .line-right { border-right: var(--line-width) solid; }
+.line-left-sm  { border-left:  var(--line-width-sm) solid; }
+.line-right-sm { border-right: var(--line-width-sm) solid; }
 .lined-container {
   position: relative; /* need to be able to attach lines around */
   border: var(--line-width) solid;
@@ -385,6 +431,30 @@ pre {
   overflow: hidden;
   overflow-wrap: break-word;
   word-wrap: break-word;
+  background-color: var(--bg-2);
+  color: var(--fg-2);
+  padding: 1.25em;
+  margin: 1.00em 0.00em;
+  /* border: var(--line-width-sm) solid; */
+  /* different vibe: */
+  border-top: var(--line-width-sm) solid;
+  margin-top: 1.60em;
+  /* border-bottom: var(--line-width-sm) solid; */
+}
+
+code {
+  /* btw if skip h lines, text in such boxes could continue right (and slightly fade towards eol (br or scroll? hate latter but..)) and will fit with top line concept */ 
+  /* dsas */
+}
+
+p > code {
+  background-color: var(--bg-2);
+  color: var(--fg-3);
+  padding: 0.4em 0.3em;
+}
+.hljs {
+  background: linear-gradient(80deg, var(--bg-3) 10%, var(--bg-2)); /* too much currently but idea good */
+  padding: 1.25em;
 }
 
 .column {
@@ -482,8 +552,12 @@ section { /* one main section (img + header + piece of content) */
   position: relative;
   justify-content: center;
   align-items: middle;
-  padding:   var(--space-lg) var(--space); /* for padding-less main: */
+  padding:   var(--space-lg) var(--space-lg); /* for padding-less main: */
+  /* hmm weird how felt --space looked okish entire time then just, whoa not */
+  /* this seems alright enough... */
   border-top: var(--line-width) solid;
+  /* background: var(--bg-1); */
+  box-shadow: 20px inner black;
 }
 section > h1, .jumbo > h1 {
   text-align: center;
@@ -495,6 +569,13 @@ section > h1, .jumbo > h1 {
 }
 .main-content > section:last-of-type { /* last section, no bottom border */
   margin-bottom: 0;
+  z-index: 30;
+}
+.solid-bg {
+  background-color: var(--bg-1);
+}
+.hi-z {
+  z-index: 99;
 }
 
 .covering { /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
@@ -658,6 +739,7 @@ video {
   margin: var(--space) calc(0.5 * var(--space)) 0.2rem calc(0.5 * var(--space));
   box-shadow: 2px 2px 12px 7px var(--box-regular-color);
   border-radius: 0.15rem;
+  user-select: none;
 }
 .image-sm {
   width: calc(0.5 * var(--media-width-main));
@@ -763,7 +845,42 @@ video {
 }
 .origin-toptop {
   /* transform-origin: 50% -100%; */
-  transform-origin: 50% -250%;
+  /* transform-origin: 50% -250%; */ /* gap up top chrome #intro-end, middle ground? */
+  transform-origin: 50% -150%;
+}
+
+.hud {
+  position: fixed;
+  z-index: 100;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  font-size: 1.6rem;
+}
+.hud-message {
+  margin: 0.8rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid rgb(150, 150, 150, 0.3);
+  opacity: 0.8;
+  /* position: relative; */
+}
+.loading-spinner {
+  opacity: 0.8;
+  transition: all 0.5s;
+}
+
+.message.error   { color: var(--message-error); }
+.message.warning { color: var(--message-warning); }
+/* .message.info    { color: var(--message-info); color: #222; } */
+
+.hud-message.error   { background: #f55; }
+.hud-message.warning { background: #fa5; }
+.hud-message.info    { background: #dcd; color: #222; }
+
+.hud-modal-main {
+  padding: 0.5rem 2rem;
+}
+.hud-modal-main > * {
+  padding: 0.5rem;
 }
 
 #top-banner {
@@ -822,8 +939,12 @@ video {
 }
 
 #intro-end { /* lbp pic "YOU" */
-  height: 90vh;
-  max-height: 90vw; /* it's 1:1 ergo heit wit' makes sense */
+  /* height: 90vh; */
+  --parallax-factor: 15vw; /* figure out more better. got parallax like 15, sm 7.5, but units... */
+  /* height: calc(100vw - 2 * var(--space-sides) - var(--parallax-sm)); */
+  height: calc(100vw - 2 * var(--space-sides) - 1vw * var(--parallax-sm));
+  /* always leaving stupid gap urgh. how nicely calc img aspect vs parallax min needed by definition + parallax extra in practice? */
+  /* max-height: 90vw; /1* it's 1:1 ergo heit wit' makes sense *1/ */
 }
 #intro-end > .parallax-bg {
   transform-origin: 100% -1000%;
@@ -837,9 +958,6 @@ video {
 #portfolio { /* portfolio */
   z-index: 30;
 }
-section:last-of-type {
-  z-index: 31;
-}
 
 #about-intro {
   --height: calc(4 * --var(--space));
@@ -847,7 +965,7 @@ section:last-of-type {
   z-index: 13;
   position: sticky;
   top: var(--header-height);
-  transform-origin: 50% -1570%;
+  transform-origin: 50% -1570%; /* figure out genericable bs lol */
 }
 #about-story {
   position: relative;
@@ -934,10 +1052,12 @@ footer {
 }
 .footer-sticky {
   position: fixed;
-  left: var(--space-sides);
+  left: var(--space-edges);
+  width: calc(100% - 2 * var(--space-edges));
   /* bottom: var(--space); */
   bottom: 0;
-  background: var(--bg-2);
+  /* background: var(--bg-2); */
+  background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
 }
 .footer-content {
   display: flex;
@@ -1010,11 +1130,13 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
 
 .to-top {
   position: fixed;
-  right:  calc(var(--space-edges) + 0.5 * var(--space));
+  /* right:  calc(var(--space-edges) + 0.5 * var(--space)); */
+  right:  calc(var(--space-edges) * 0.35);
   bottom: calc(2 * var(--space-lg));
   color: var(--fg-2);
   font-size: 1.2rem;
-  z-index: -1;
+  /* z-index: -1; */
+  z-index: 10;
 }
 #to-top {
   z-index: 100;
@@ -1038,13 +1160,13 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
   /* flex: 1; */
   flex: 0 1 auto; /* flex: 1 0 auto; */
   margin:  calc(0.5 * var(--space));
-  padding: calc(0.5 * var(--space-lg));
+  padding: calc(1.0 * var(--space));
   border-radius: 0.15rem;
   min-width: 30%;
   text-align: left;
   font-size: 1.1rem;
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2.5px);
+  -webkit-backdrop-filter: blur(4.5px);
   background: hsl(var(--hue-1), 7%, var(--lum-fg-2), 0.06);
   /* nah doesnt suit page/design. but effect is fine */
 }
