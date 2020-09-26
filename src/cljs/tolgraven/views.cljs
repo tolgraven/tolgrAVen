@@ -3,6 +3,7 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    [re-graph.core :as rg]
+   [reitit.frontend.easy :as rfe]
    [clojure.string :as string]
    [markdown.core :refer [md->html]]
    [cljs-time.core :as ct]
@@ -33,16 +34,20 @@
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
 (defn ui-header-logo [[text subtitle]]
   [:div.header-logo
-   [:a {:href "#linktotop"}
+   [:a {:href "#"} ;works w/o reitit fiddle
     [:h1 text]]
-   [:div.header-logo-text (for [line subtitle] [:p line])]])
+   [:div.header-logo-text
+    (for [line subtitle] ^{:key (str "header-text-" line)}
+      [:p line])]])
 
 (defn ui-header-nav "PLAN: / across with personal stuf on other side. Fade between logos depending on mouse hover..."
   [sections]
   (let [put-links (fn [links]
-                    (for [[title url] links] ^{:key (str "menu-link-" title)}
-                         [:li [:a {:href url :name title}
-                               (string/upper-case title)]]))]
+                    (doall (for [[title url page] links] ^{:key (str "menu-link-" title)}
+                         [:li [:a {:href url :name title
+                                   :data-reitit-handle-click false
+                                   :class (when (= page @(rf/subscribe [:common/page])) :is-active)} ;some (rfe/href ::about auto thing too)
+                               (string/upper-case title)]])))]
     [:menu
      [:nav
       [:div.nav-section
@@ -53,7 +58,7 @@
 
       [:div.nav-section
        [:ul.nav-links
-          {:style {:position :absolute, :right 0}}
+          {:style {:position :absolute, :right 0, :top 0}}
           (put-links (:personal sections))]]]
      #_[:label {:for "theme-toggle" :class "theme-label show-in-menu"}
         "Theme"]]))
@@ -188,6 +193,12 @@
                             [:a {:href href :name name}
                              [:i.fab {:class (str "fa-" icon)}]])])])]])
 
+(defn ui-to-top "A silly arrow, and twice lol. why." [icon]
+ (let [icon (or icon "angle-double-up")
+       i [:i {:class (str "fas fa-" icon)}]]
+   [:a {:id "to-top" :class "to-top" :href "#linktotop" :name "Up"} i]
+   [:div {:id "to-top-bg" :class "to-top"} i]))   ; why not just double up within? )
+
 ; tho should do hiccup pre-render server side then just inject news feed and whatnots
 ; TODO for good separation of frontpage / personal/bloggy, and leveraging "line all the way to right"
 ; make entire view scroll sideways and basically flip geometry
@@ -199,33 +210,23 @@
         interlude-counter (atom 0)
         get-lewd #(merge (nth interlude @interlude-counter)
                          {:nr (swap! interlude-counter inc)})]
-    [:<> ;      #_{:class (when (db/<- [:modal]) "modal-is-open")}
-
-      ; [:div.padder.fullwidth {:style {:min-height @(rf/subscribe [:get-css-var "--header-height-current"])}}]
-
-      [:main.main-content.perspective-top
+    [:<>
+        ; [:div.padder.fullwidth {:style {:min-height @(rf/subscribe [:get-css-var "--header-height-current"])}}]
         [:a {:name "linktotop"}]
         [bg-logo (:logo-bg intro)]
 
+        [:img#top-banner.media.media-as-bg (:bg intro)] ; can we get this within intro plz?
         [ui-intro @(rf/subscribe [:content :intro])]
+
         [ui-interlude (get-lewd)]
         [ui-services @(rf/subscribe [:content :services])]
+
         [ui-interlude (get-lewd)]
-        [ui-moneyshot @(rf/subscribe [:content :moneyshot])] ; need to watch div and show/hide para laxy as appropriate - both bc now fucking compositor and ugly clipping etc
+        [ui-moneyshot @(rf/subscribe [:content :moneyshot])]
+        ; need to watch div and show/hide para laxy bee gees as appropriate - both bc now fucking compositor and ugly clipping etc
+        ; also sidesteps "omg each new div higher z" induced problem
         [ui-story @(rf/subscribe [:content :story])]
         [ui-interlude (get-lewd)]
         [ui-gallery @(rf/subscribe [:content :gallery])]
-
-        ; [:div.line.line-footer] ;cant this be outside main ugh
-      ]
-
-        ; [ui-footer-sticky @(rf/subscribe [:content :footer])]
-      [ui-footer @(rf/subscribe [:content :footer])]
-
-      [:a {:id "to-top" :class "to-top" :href "#linktotop" :name "Up"}
-        [:i {:class "fas fa-angle-double-up"}]]
-      [:div {:id "to-top-bg" :class "to-top"}
-        [:i {:class "fas fa-angle-double-up"}]]
-      [:a {:name "bottom"}]
-     ]))
+        [ui-interlude (get-lewd)]]))
 
