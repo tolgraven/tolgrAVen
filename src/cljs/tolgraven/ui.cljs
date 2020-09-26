@@ -229,6 +229,5 @@
    ;   [one-msg msg])]]))
 
 
-; (defn divider []) ;need nice generic solution
 
 

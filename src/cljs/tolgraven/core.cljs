@@ -22,30 +22,6 @@
   (:import goog.History))
 
 
-(defn nav-link [uri title page]
-  [:a.navbar-item
-   {:href   uri
-    :class (when (= page @(rf/subscribe [:common/page])) :is-active)}
-   title])
-
-(defn navbar []
-  (r/with-let [expanded? (r/atom false)]
-              [:nav.navbar.is-info>div.container
-               [:menu
-                [:a.navbar-item {:href "/" :style {:font-weight :bold}} "tolgraven"]
-                [:span.navbar-burger.burger
-                 {:data-target :nav-menu
-                  :on-click #(swap! expanded? not)
-                  :class (when @expanded? :is-active)}
-                 [:span][:span][:span]]]
-               [:div#nav-menu.navbar-menu
-                {:class (when @expanded? :is-active)}
-                [:div.navbar-start
-                 [nav-link "#/" "Home" :home]
-                 [nav-link "#/about" "About" :about]
-                 [nav-link "#/docs" "Docs" :docs]
-                 [nav-link "#/blog" "Blog" :blog]
-                 [nav-link "#/log" "Log" :blog]]]]))
 (defn page []
   [:div
     [navbar]
@@ -59,13 +35,6 @@
 (defn about-page []
   [:section.section>div.container>div.content
    [:img {:src "/img/warning_clojure.png"}]])
-
-(defn page []
-  (if-let [page @(rf/subscribe [:common/page])]
-    [:div
-     [navbar]
-     [page]]))
-
 
 (defn home-page []
   [view/ui])

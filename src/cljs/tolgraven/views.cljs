@@ -16,10 +16,6 @@
   (for [line (string/split-lines text)]
         [:p line]))
 
-(defn video-bg "Ze reg attrs for shitty perf sinks yo"
-  [src]
-  [:video {:class "media media-as-bg" ; :playinline true :autoplay true :loop true :muted true ;, how these attrs set??
-           :src src}])
 
 (defn bg-logo "Try to remember why had to put img in css/style..." [path]
     [:div#logo-top.logo-bg.parallax-sm
@@ -35,15 +31,6 @@
 
 ;; TODO curr 1px gap between outer lines and img. Fix whatever causing this by mistake (think lines are half-width)
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
-(defn ui-section "Curr some sections are raw some wrapped in outer div - eww. Wrap all? Inject link anchor etc"
-  [id wrapper-attrs section-attrs inner & outer]
-  (let [sectioned (into [:section (merge {:id id}
-                                         section-attrs)] ; TODO just give each section its own id nr and run stuff like inset pos on that yea
-                        inner)]
-    (-> [:div.section-with-media-bg-wrapper wrapper-attrs] ;;assuming universal...
-        (into outer)
-        (into sectioned))))
-
 (defn ui-header-logo [[text subtitle]]
   [:div.header-logo
    [:a {:href "#linktotop"}
@@ -59,14 +46,12 @@
     [:menu
      [:nav
       [:div.nav-section
-       ; [:p "work"]
        [:ul.nav-links
          (put-links (:work sections))]]
 
       [:div.big-slash] ; a line that goes across
 
       [:div.nav-section
-       ; [:p "personal"]
        [:ul.nav-links
           {:style {:position :absolute, :right 0}}
           (put-links (:personal sections))]]]
@@ -122,16 +107,7 @@
    [ui-inset caption nr]]) ; these arent showing up...
 
 
-(defn ui-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
-  [md]
-  [:div {:dangerouslySetInnerHTML {:__html (md->html md)}}])
 
-(defn ui-blog "all the blogs"
-  [blogs]
-  [:section.blogs.fullwide
-   [:h1 "MY BLOGS"]
-   (for [blog blogs]
-    [ui-post (:md blog)])])
 
 (defn ui-portfolio "GOT NO PPORTFOLIE" [])
 
@@ -219,7 +195,6 @@
 ; logo text opposite side and changes to "tolgraven actual physical" or w/e,
 ; colors bit different,
 (defn ui []
-  ; <<< dont forget did upgrade on proj + buncha profiles shit so roll back before get stuck debugging
   (let [{:keys [intro interlude] :as content} @(rf/subscribe [:content])
         interlude-counter (atom 0)
         get-lewd #(merge (nth interlude @interlude-counter)
@@ -231,7 +206,6 @@
       [:main.main-content.perspective-top
         [:a {:name "linktotop"}]
         [bg-logo (:logo-bg intro)]
-        [:img#top-banner.media.media-as-bg (:bg intro)] ; can we get this within intro plz?
 
         [ui-intro @(rf/subscribe [:content :intro])]
         [ui-interlude (get-lewd)]
