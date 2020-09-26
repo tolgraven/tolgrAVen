@@ -5,6 +5,8 @@
   - [X] basic fulhack sending scroll event
   - [X] read/write css vars and use scroll offset thing
   - [ ] figure out why both above are inconsistent and shitty
+  - [ ] fix solution to force-calc css vars so can keep keeping
+        track of height in css and not js
   - drop layers so perf stops being awful
   -
 **** CROSS BROWSER STUFF, curr only good on chrome
@@ -12,8 +14,13 @@
         when that not the case for cue-db (tho I remember similar issue at some point)
 
 
-
-  - [ ]
+**** SMALL/RANDOM
+  - [X] syntax highlighter for code whoo
+  - [ ] bruvbox yo
+  - [ ] curr footer bg-2, would look nice maybe if slightly lower contrast +
+        kept right side that color? then just gotta figure out how to fade that
+        in cause obviously doesnt work if from beginning...
+  - [ ] sticky footer keeps changing behavior / double stilt left wtf?
 *** PLANS
   - portfolio section for when actually got something to show..
     Should be fully rendered mini-versions of like websites and stuff.
