@@ -19,3 +19,4 @@ profiles.clj
 out/
 resources/public/js/compiled/
 resources/public/js/app.js
+.vscode/
