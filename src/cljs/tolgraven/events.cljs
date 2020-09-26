@@ -175,6 +175,9 @@
 (rf/reg-event-fx :default-http-error
  (fn [db [_ res]] (println res)))
 
+(rf/reg-event-fx :run-highlighter!
+ (fn [_ [_ ref]]
+   (util/run-highlighter! "pre" ref)))
 
 
 (rf/reg-cofx :now         #(assoc % :now (ct/now)))

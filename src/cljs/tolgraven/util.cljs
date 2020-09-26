@@ -1,5 +1,6 @@
 (ns tolgraven.util
   (:require [re-frame.core :as rf]
+            [cljsjs.highlight :as hljs]
             [clojure.string :as string]
             [clojure.walk]))
 
@@ -105,6 +106,11 @@
       .-fontSize
       js/parseFloat
       (* rem-val)))
+
+(defn run-highlighter! [el-type & [div-ref]]
+  (let [selected (-> (or div-ref js/document)
+                     (.querySelectorAll el-type))]
+    (doall (map js/hljs.highlightBlock selected))))
 
 
 (defn scroll-by "Manually scroll view by. But guess need custom for Safar-eye"

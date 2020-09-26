@@ -43,6 +43,10 @@
                  [day8.re-frame/undo "0.3.2"]
                  [reagent "0.10.0"]
                  [re-frame-utils "0.1.0"]
+                 
+                 [cljsjs/react-highlight "1.0.7-2"]
+                 [cljsjs/highlight "9.12.0-2"]
+
                  [ring-webjars "0.2.0"]
                  [ring/ring-core "1.8.1"]
                  [ring/ring-defaults "0.3.2"]

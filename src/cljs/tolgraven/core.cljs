@@ -9,6 +9,9 @@
     [markdown.core :refer [md->html]]
     [cljs-time.core :as ct]
     [cljs-time.format :refer [formatters formatter unparse]]
+    [react-highlight.js :as highlight]
+    [cljsjs.highlight :as hljs]
+
     [tolgraven.ajax :as ajax]
     [tolgraven.events]
     [tolgraven.db :as db]
@@ -40,9 +43,16 @@
   [view/ui])
 
 (defn doc-page []
-  [:section.section>div.container>div.content
-   (when-let [docs @(rf/subscribe [:docs])]
-     [:div {:dangerouslySetInnerHTML {:__html (md->html docs)}}])])
+  (let [docs @(rf/subscribe [:content :docs])]
+    [:<>
+     [:div {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
+      [view/fading-bg-heading docs]]
+     [:div.fader>div.fade-to-black.between]
+     [:br] [:br]
+     (when-let [md (:md docs)]
+       [:section.solid-bg.hi-z
+        {:ref #(when % (util/run-highlighter! "pre" %))} ; very nice way to get a did-mount
+        [ui/md->div md]])]))
 
 (defn blog-page []
   [blog/blog @(rf/subscribe [:content :blog])])
@@ -50,8 +60,6 @@
 (defn log-page []
   [ui/log])
 
-(defn navigate! [match _]
-  (rf/dispatch [:common/navigate match]))
 
 (def router
   (reitit/router

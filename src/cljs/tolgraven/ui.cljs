@@ -5,6 +5,9 @@
    [re-graph.core :as rg]
    [clojure.string :as string]
    [markdown.core :refer [md->html]]
+   [cljsjs.react-highlight :as highlight]
+   [highlight.js :as highlight.js] ; can auto-run on hook instead of tagging manually...
+   [cljsjs.highlight.langs.clojure] ; needs to be included somewhere
    [cljs-time.core :as ct]
    [cljs-time.format :refer [formatters formatter unparse]]))
 
