@@ -1,8 +1,11 @@
 # tolgraven
 
-generated using Luminus version "3.85"
+Attempt at making an actual website off html/css mockup did for school last year.
+Very early stage, ported existing stuff and added a bit, mostly made worse.
+Will incorporate more code from my other projects and then turn to backend rendering,
+some lil CMS, a real db, yada yada.
 
-FIXME
+Don't forget to update here and in .org ya dummy
 
 ## Prerequisites
 
@@ -18,4 +21,4 @@ To start a web server for the application, run:
 
 ## License
 
-Copyright © 2020 FIXME
+Copyright © 2020 Joen Tolgraven
