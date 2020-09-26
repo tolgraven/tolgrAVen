@@ -42,6 +42,7 @@
                 (some->> (.getItem js/localStorage user-key)
                          (cljs.reader/read-string))))))  ;; EDN map -> map
 
+
 (def data ; default db
   {:state {:menu false
            :is-loading true}

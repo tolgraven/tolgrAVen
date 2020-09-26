@@ -113,6 +113,7 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
   .show-in-menu { display: none; }
   #show-menu { display: none; }
 
+  /* would be nicer to use some more generic reference tho so could use with multiple things... */
   #burger-check:checked ~ header menu .show-in-menu {
     display: block;
     font-size: 0.8rem;

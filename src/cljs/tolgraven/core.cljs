@@ -10,6 +10,7 @@
     [markdown.core :refer [md->html]]
     [cljs-time.core :as ct]
     [cljs-time.format :refer [formatters formatter unparse]]
+    [cljsjs.smoothscroll-polyfill :as smooth]
     [react-highlight.js :as highlight]
     [cljsjs.highlight :as hljs]
 
@@ -64,7 +65,7 @@
         {:ref #(when % (util/run-highlighter! "pre" %))} ; very nice way to get a did-mount
         [ui/md->div md]])]))
 
-(defn blog-page []
+(defn blog-page [] ; how nicely set is-personal for this but also unset etc yada
   [blog/blog @(rf/subscribe [:content :blog])])
 
 (defn log-page []

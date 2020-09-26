@@ -260,6 +260,8 @@ li {
 
 :target {
   /* pseudo-el representing a target (link, id/el)... */
+  /* does not appear to do the trick tho. wait isnt it :: or hmm nope would be if was like *::target? */
+  /* html, body does seem to semi-work so whatever */
   /* scroll-margin-top: var(--header-height); /1* this will have to vary depending on whether menu open... *1/ */
   /* scroll-padding-top: var(--header-height); /1* this will have to vary depending on whether menu open... *1/ */
   scroll-padding-top: var(--header-with-menu-height); /* this will have to vary depending on whether menu open... */
@@ -298,7 +300,7 @@ body {
   z-index: 25;
   width: 100%;
 }
-.fade-to-black {
+.fade-to-black { /* well this is certainly a misnomer. .fade-to? */
   position: absolute;
   width: 100%;
 }
@@ -414,18 +416,28 @@ a:focus, a:hover {
 }
 
 .main-content {
-  border: var(--line-width) solid ;
+  /* border: var(--line-width) solid; /1* should make configurable. off looks p nice on main page *1/ */
   border-bottom: 0; /* covered by .line-bottom-h */
   background: var(--gradient-bg-main);
   margin-top: var(--space-lg);
+  padding-bottom: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
+  /* 3 max ^ */ 
 
   display: flex;
   flex-flow: row wrap;
   justify-items: center;
   position: relative;
-  box-shadow: inset 2px 1px 17px 7px var(--box-faint-color);
+  /* box-shadow: inset 2px 1px 17px 7px var(--box-faint-color); */
+  /* box-shadow: inset 2px 2px 0px 0px black; */
   /* z-index: 1; /1* get above sticky footer... *1/ */
 }
+
+/* .main-content::after { */
+/*   content: ""; */
+/*   background-color: var(--bg-1); */
+/*   z-index: 50; */
+/*   padding-bottom: calc(3.5 * var(--space-lg)); /1* XXX actually, footer height... *1/ */
+/* } */
 pre {
   white-space: pre-wrap;
   overflow: hidden;
@@ -463,7 +475,6 @@ p > code {
 }
 
 .logo-tolgraven {
-  /* background: url("../img/tolgrav.png"); */
   background-size: 100%;
   background-repeat: no-repeat;
   opacity: 0.09;
@@ -480,10 +491,15 @@ p > code {
     border: 0.35em solid transparent; /* hmm gotta make a bit device-dependent */
   } 90%, 100% {
     border: 0.35em solid var(--bg-1); /* hmm gotta make a bit device-dependent */
-    opacity: 0.09;
+    opacity: 0.10;
     filter: invert() hue-rotate(180deg);
   }
 }
+@keyframes zoom-logo {
+  0%   { }
+  100% { width: 100%; }
+}
+
 .logo-bg {
   margin-left:  auto; /* better center it automatically instead of counting n shit... */
   margin-right: auto;
@@ -502,13 +518,6 @@ p > code {
 .logo-bg:hover {
   animation-play-state: running;
 }
-@keyframes zoom-logo {
-  0% {
-  } 100% {
-    width: 100%;
-  }
-}
-
 #logo-top {
   position: sticky;
   top:  calc(var(--space) * 5); /* small header and a bit, position for when starts moving off sticky, which is also good fallback when parallax missing... */
@@ -600,7 +609,7 @@ section > h1, .jumbo > h1 {
   opacity: 0.60;
 }
 
-
+/* HORIZONTAL GALLERY SCROLL THING */
 .sideways { /* scroll horizontally */
   overscroll-behavior-x: contain; /* keeps the sideways swiping from resulting in accidental page-back etc. only on chrome ...*/
   scroll-snap-type: x mandatory;
@@ -832,6 +841,7 @@ video {
 .parallax-bg {
   transform: translateZ(var(--parallax-px)) scale(var(--parallax-scale));
   z-index: -1;
+  /* another issue being mindfuck of using this as fg (ie text) heh... */
   /* transform-origin: 50% -150%; */ /* perf on chrome, mac safari, but fucks ios... */
 }
 .parallax-fg {
@@ -1150,6 +1160,7 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
   /* FAILURE: can't get flexbox working like i want with nice alignment and also word-wrap and blabla */
   /* but this is maybe good enough? only works sorta ok with 1/2/3 cols because of specific content so  guess point is to use breakpoints and table or better yet grid */
   display: flex;
+  /* display: grid; /1* fuck with this *1/ */
   justify-content: space-evenly;
   align-content: bottom;
   text-align: center;

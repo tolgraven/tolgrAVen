@@ -15,19 +15,16 @@
  (when (seq errors)
   (log :debug errors))) ;debug instead of error, dont want to spam the hud
 
-; (log "kuken")
-; (log :error "goddamn")
-;; grab shit from cue-db...
-;; also extra js stuff.
-;; later make lib w this crap.
+
 (defn <-css-var "Get value of CSS variable. Have to apply to dummy div to force calc"
   [var-name & calc]
   (let [var-name (cond-> var-name
                    (not (string/index-of var-name "--")) (str "--" var-name))
         style (js/getComputedStyle js/document.documentElement)]
-    ; (js/console.log style) ;uh this revealed this gets fkn hammered like what.
     (if-not calc
-      (.getPropertyValue style var-name)
+      (try
+       (.getPropertyValue style var-name)
+       (catch js/Exception _ ""))
       ; else have some dummy div we literally apply stupid css to with the calced fucker...
       ; goddamn. fix some other time then.
       )))
