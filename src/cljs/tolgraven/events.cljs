@@ -7,6 +7,7 @@
     [reitit.frontend.controllers :as rfc]
     [tolgraven.util :as util]))
 
+(def debug (when ^boolean goog.DEBUG rf/debug))
 
 ;;dispatchers from luminus, see if any useful...
 (rf/reg-event-db :common/navigate
@@ -49,8 +50,7 @@
     (assoc db :common/error error)))
 
 (rf/reg-event-fx :page/init-home
-  (fn [_ _]
-    {:dispatch [:fetch-docs]}))
+  (fn [_ _] {:dispatch [:init-docs]}))
 
 
 (rf/reg-sub :common/route (fn [db _] (-> db :common/route)))
@@ -63,11 +63,10 @@
 
 
 (rf/reg-sub :get-css-var
- (fn [db [_ var-name]]
+ (fn [_ [_ var-name]]
    (util/<-css-var var-name)))
 
-; (println @(rf/subscribe [:get-css-var "--header-with-menu-height"]))
-; (js/console.log @(rf/subscribe [:get-css-var "--header-with-menu-height"]))
+
 (rf/reg-event-fx :set-css-var!
   (fn [{:as cofx :keys [db]} [_ var-name value]]
     (util/->css-var var-name value)))
@@ -83,11 +82,11 @@
        :dispatch-n
         [[:set-css-var! "--header-height-current"
                         (if state open-height closed-height)]]
-        :dispatch-later {:ms 250 :dispatch [:scroll :by (if state (- difference) difference)]}})))
+        :dispatch-later {:ms 250
+                         :dispatch [:scroll :by (cond-> difference state -)]}}))) ;;haha silly.
 ;; XXX otherwise will have to uh, read var best we can and dispatch scroll event?
 
-(rf/reg-event-fx
- :scroll
+(rf/reg-event-fx :scroll
  (fn [_ [_ kind value]] ; rem or elem
    (case kind
      :by (util/scroll-by value)
@@ -172,11 +171,7 @@
     (let [timeout 5000]
      {:http-xhrio
       {:method          :post
-       :uri             (str "http://localhost:3449/api"
-                             "/plus") #_"https://httpbin.org/post"
-       ; :uri             (str "http://localhost:16000/"
-       ;                       "ui-event/3/" "stopButton") #_"https://httpbin.org/post"
-       ; :params          {:x 1 :y 2}
+       :uri             (str "http://localhost:3449/api" "/plus")
        :params          "x 1 y 2"
        :timeout         timeout
        :response-format (ajax/json-response-format {:keywords? true})
@@ -214,7 +209,7 @@
 (rf/reg-cofx :diag/gen-id #(assoc % :id (swap! diag-id-counter inc)))
 
 (rf/reg-event-fx :diag/new  ;this needs a throttle lol
- [#_debug
+ [debug
   (rf/inject-cofx :now)
   (rf/inject-cofx :diag/gen-id)] ;or guess id things make more sense centrally ish
  (fn [{:keys [db now id]} [_ level title message actions]] ;error, warning, info
@@ -231,13 +226,8 @@
      :dispatch-later
      [{:dispatch  [:diag/unhandled :remove id]
        :ms (* 1000 (get-in db [:options :hud :timeout]))}]})))) ;tho can always get removed earlier by us...
-;;random maybe:
-;{:origin :server ;first thought just react but yeah nice
-; :strategies {:undo [[:an-undo-button]]
-;              :ignore [:silence]
-;              :open-ide [:get-line-last-error error]} }
 
-(rf/reg-event-db :diag/unhandled #_[debug]
+(rf/reg-event-db :diag/unhandled [debug]
  (fn [db [_ action id]]
   (case action
    :add    (update-in db [:diagnostics :unhandled] conj id)

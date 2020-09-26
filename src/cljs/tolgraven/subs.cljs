@@ -23,14 +23,22 @@
     (get-in db [:state item])))
 
 (rf/reg-sub :blog
- (fn [db [_ [& path]]]
-   (get-in (:blog db) path)))
+  :<- [:content]
+  (fn [content [_ [& path]]]
+    (get-in (:blog content) path)))
 
 (rf/reg-sub :blog-comment-input
- :<- [:blog]
- (fn [db [_ id]]
-   (or (:input item) "")))
+ :<- [:state]
+ (fn [state [_ id]]
+   (or (-> state :blog :input) "")))
 
+(rf/reg-sub :header-text
+ :<- [:state]
+ :<- [:content :header]
+ (fn [[state header] [_ _]]
+   (if (:is-personal state)
+     (:text-personal header)
+     (:text header))))
 
 (rf/reg-sub :menu
  (fn [db [_ item]]

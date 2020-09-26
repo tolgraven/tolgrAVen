@@ -50,6 +50,11 @@
 
 (defn cs [& names] (string/join " " (filter identity names)))
 
+(defn add-attrs "Put more attrs in something already defined..."
+  [component attrs]
+  (if (map? (second component))
+      (update component 1 merge attrs) ; oh yeah forgot about update-in going inside heh. also not even needed!
+      [(first component) attrs (rest component)])) ; eh uh but
 
 (defn deep-merge "Recursively merge maps. If vals are not maps, the last value wins."
  [& values]
@@ -68,10 +73,10 @@
 
 
 (defn at "Take symbol: if value, return it. If ratom, deref it, thereby avoiding nil derefing etc..."
- [val-or-atom]
+ [val-or-atom & fallback]
  (if (satisfies? IDeref val-or-atom) ;is satisfies equally slow on js? investigate...
   @val-or-atom
-  val-or-atom))
+  (or val-or-atom fallback)))
 
 (defn elem-by-id [id]
   (.getElementById js/document id))

@@ -3,7 +3,10 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    [re-graph.core :as rg]
+   [tolgraven.db :as db]
+   [tolgraven.util :as util :refer [at]]
    [clojure.string :as string]
+   [clojure.pprint :as pprint]
    [markdown.core :refer [md->html]]
    [cljsjs.react-highlight :as highlight]
    [highlight.js :as highlight.js] ; can auto-run on hook instead of tagging manually...
@@ -55,10 +58,13 @@
          img-count (count (:images content))
          line-count (count text-part)
          chunk-size (/ line-count img-count)
-         content  (interleave (mapv (partial into [float-img])
-                                    (:images content))
-                              (mapv (partial into [:p])
-                                    (partition chunk-size text-part)))]
+         content (->> (interleave (map #(into [float-img] %)
+                                        (:images content))
+                                  (map #(into [:p] %)
+                                        (partition chunk-size text-part)))
+                      (map-indexed (fn [i v]
+                                     (with-meta
+                                      v {:key (str "auto-layout-part-" i)}))))] ;would need a parent id thingy as well tho
      [:div.float-wrapper
       [:h3 (:title content)]
       content]))
@@ -234,3 +240,4 @@
 
 
 
+(def highlight (r/adapt-react-class js/Highlight))
