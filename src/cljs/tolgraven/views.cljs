@@ -21,7 +21,7 @@
 (defn bg-logo "Try to remember why had to put img in css/style..." [path]
     [:div#logo-top.logo-bg.parallax-sm
       {:class "logo-tolgraven"
-       :style {:background (str "url('" path "')")}}]) ; cant remember why I did the weird path-in-css bs but anyways...
+       :style {:background-image (str "url('" path "')")}}]) ; cant remember why I did the weird path-in-css bs but anyways...
 
 (defn ui-inset [caption nr]
   (let [pos (case (mod nr 4)
@@ -63,18 +63,21 @@
      #_[:label {:for "theme-toggle" :class "theme-label show-in-menu"}
         "Theme"]]))
 
-(defn ui-header [{:keys [text menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
+(defn ui-header [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   [:<>
-   [:input {:class "burger-check" :id "burger-check" :type "checkbox"
-            :on-click #(rf/dispatch [:menu (not @(rf/subscribe [:menu]))])}] ;must be outside header or breaks...
+   [:input {:class "burger-check" :id "burger-check" :type "checkbox" ;must be outside header or breaks...
+            :on-click (fn []
+                        (rf/dispatch [:menu (not @(rf/subscribe [:menu]))])
+                        ; #_(rfe/push-state yada)
+                        ) }] ; can push url state also for menu open etc
    [:header
-    [:div.cover.cover-clip] ;covers around lines and that...
-    [ui-header-logo text]
-    [ui-header-nav menu]   ; menu
-    ; [:div#search>i.fas.fa-search]
-    #_[ui/burger
-      (rf/subscribe [:menu])
-      #(rf/dispatch [:menu %])]
+    [:div.cover.cover-clip] ;covers around lines and that... XXX breaks when very wide tho.
+    [ui-header-logo @(rf/subscribe [:header-text])]
+    [ui-header-nav menu]
+
+    [:div.loading-spinner
+     (when @(rf/subscribe [:state :is-loading])
+       [:i {:class "fa fa-spinner fa-spin"}])]   ; menu
     [:label.burger {:for "burger-check"}]]])
 
 (defn ui-button "Pass text and id, plus either link anchor or action..."
@@ -96,21 +99,30 @@
 (defn ui-intro [{:keys [title text buttons]}]
   [:section#intro
    [:h1.h-responsive title]
-   (into [:p] (ln->br text)) ; or just fix :pre css lol
+   (into [:<>] (ln->br text)) ; or just fix :pre css lol
    [:br]
    [:div.buttons
-    (for [[id text] buttons]
+    (for [[id text] buttons] ^{:key (str "intro-button-" id)}
       [ui-button id text])]])
 
-(defn ui-interlude "Banner across with some image or video or w/e"
+(defn ui-interlude "Banner across with some image or video or w/e
+                    TODO if video, autoplay once when (re-)seen, or cont if clicked
+                    using ref and stuff"
   [{:keys [title caption bg nr]}]
-  [:div {:id (str "interlude-" nr)
-         :class "section-with-media-bg-wrapper"}
-   bg ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
-   [:section {:class "covering-faded widescreen-safe center-content"}
-    [:h1.h-responsive title]]
-   [ui-inset caption nr]]) ; these arent showing up...
-
+  (let [!bg (atom nil)]
+    (fn [{:keys [title caption bg nr]}]
+      [:div {:id (str "interlude-" nr)
+             :class "section-with-media-bg-wrapper"
+             :on-hover (when-let [video @!bg]
+                         (try
+                           (if (.-paused video)
+                             (.play video)
+                             (.pause video))
+                           (catch js/Exception e)))}
+       (util/add-attrs bg {:ref #(reset! !bg %)}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
+       [:section {:class "covering-faded widescreen-safe center-content"}
+        [:h1.h-responsive title]]
+       [ui-inset caption nr]]))) ; these arent showing up...
 
 
 
@@ -118,42 +130,66 @@
 
 (defn ui-services "Let's start by just straight porting some stuff"
   [{:keys [categories bg caption]}]
-  (let []
-    [:div#section-services
+  [:div#section-services
      {:class "link-anchor stick-up section-with-media-bg-wrapper"}
      [ui-inset caption 4] ;auto-gen
      [:img (merge bg {:class "media-as-bg fade-3 parallax-bg"})] ;wait how durp properly
-     [:div#link-services.link-anchor]
      [:section#services
       [:div#categories
-       (for [[title icon-name lines] categories] ^{:key (str "service-" title)}
-         [:ul
-          (into [:li
-                  [:i {:class (str "fas " "fa-" icon-name)}]
-                  [:h3 title]]
+       (for [[title icon-name lines] categories]
+         (into ^{:key (str "service-" title)}
+               [:ul ; XXX mistakenly wrapped everything in additional :li. Made stuff smaller, in some ways looked better (but also broken spacing). Tweak css!
+                [:li
+                 [:i {:class (str "fas " "fa-" icon-name)}]
+                 [:h3 title]]]
                 (for [line lines] ^{:key (str "service-" title "-" line)}
-                  [:li line]))])]]]))
+                  [:li line])))]]])
 
 (defn ui-moneyshot "needs better name lol. what is hero img halfway down page?"
-  [{:keys [title caption bg]}]
-  [:div {:class "section-with-media-bg-wrapper covering stick-up"}
-       [:img.media-as-bg  (merge bg {:class "fade-5 parallax-sm origin-toptop"})]
-       [:section#intro-end.center-content
-        [:h1.h0-responsive.parallax-bg title]]
-       [ui-inset caption 3]
-      [ui-fading]])
+  [{:keys [title caption bg visible]}]
+  (let [div-ref (r/atom nil) ; gotta ratom so can give empty first? cause wont be mounted when building etc?
+  ; (let [div-ref (atom nil) ; yes is true
+        observer (util/observe div-ref #(rf/dispatch [:set [:moneyshot :visible] %]))] ;reason to actually keep this would be disposal. so r/with-let...
+    (fn [{:keys [title caption bg]}]
+      ; (let [observer (util/observe div-ref #(rf/dispatch [:set [:moneyshot :visible] %]))]
+      (let []
+        [:div {:class "section-with-media-bg-wrapper covering stick-up"}
+               ; :ref #(reset! div-ref %)
+         ; or only works in create-class biggum? well any case we need on-mount so heh
+         [:img.media-as-bg (merge bg {:class "fade-5 parallax-sm origin-toptop"
+                                      :style (when-not visible {:visibility "hidden"})}
+                                  ; or only works in create-class biggum? well any case we need on-mount so heh
+                                  )]
+         [:section#intro-end.center-content
+          [:h1.h0-responsive.parallax-bg
+           {:ref #(reset! div-ref %)} ;why no go
+           title]] ;ideally want this also growing (and moving quicker upwards)]
+         [ui-inset caption 3]
+         [ui-fading]]))))
+
+;; TODO basically figure out neatest way of getting gotten rid of in-the-way bg layers...
+;; parallax makes things tricky apparently - cue-db viz it works both from above and below...
+;; but here only get 0 above, stuck on 1 below.
+;; guess full gamut of did-mount for better observer, plus loadsa self-modding killing parallax?
+;; just look at how people normally do it in react i guess.
+;;
+;; but clearly "out there fkn content" + mostly clipping div then tracking that leaky container div
+;; must be right course of action.
+(defn fading-bg-heading [{:keys [title bg] :as content}]
+  [:div.fader
+   [:img.media.media-as-bg bg]
+   [:section.covering-faded
+    [:h1.h-responsive title]]])
+
 
 (defn ui-story "Big img header + story" [{:keys [heading] :as content}]
   [:<>
    [:div#about-intro {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
-    [:div.fader
-    [:img.media.media-as-bg (:bg heading)]
-    [:section.covering-faded
-      [:h1.h-responsive (:title heading)]]]]
-  [:div.fader>div.fade-to-black.between]
+    [fading-bg-heading heading]]
+   [:div.fader>div.fade-to-black.between]
 
-  [:section#about-story.anim-gradient-bg.noborder
-    [:h1#about.link-anchor]
+   [:section#about-story.anim-gradient-bg.noborder
+    [:h1#about.link-anchor (:title content)]
     [ui/auto-layout-text-imgs content]]])
 
 (defn ui-gallery "Stupid css thing slides sidewayus x) Make it go out left side would be cool"
@@ -179,15 +215,16 @@
   [content]
   ; [:footer>div.footer-content
   [:footer.footer-sticky.fullwide
-      [:div.line.line-footer] ;cant this be outside main ugh
-   [:div.footer-content
+   [:div.line.line-footer] ;cant this be outside main ugh
+   ; [logmsgs, cookie nurtice and bunch of deminimizable stuff]
+   [:div.footer-content ;; XXX should adapt to available height, also disappear...
     (for [{:keys [title text id links] :as column} content
           :let [id (str "footer-" id)]] ^{:key id}
          [:div.footer-column {:id id}
           [:h3 title]
 
-          (when text (for [line text] ;^{:key (str id "-" )}
-                       [:p line]))
+          (when text (for [line text] ^{:key (str id "-" line)}
+                          [:p line]))
           (when links [:div.footer-icons
                        (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
                             [:a {:href href :name name}
