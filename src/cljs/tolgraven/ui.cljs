@@ -14,6 +14,8 @@
    [cljs-time.core :as ct]
    [cljs-time.format :refer [formatters formatter unparse]]))
 
+(defn md->div [md]
+  [:div {:dangerouslySetInnerHTML {:__html (md->html md)}}])
 
 (defn toggle-for-path "Like below but supports attrs + path. I mean could just check if first arg is map anyways but yeah"
   ([model-path])
