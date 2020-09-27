@@ -1,12 +1,10 @@
 (ns tolgraven.subs
   (:require [re-frame.core :as rf]
             [tolgraven.db :as db]
+            [tolgraven.util :as util]
             [clojure.edn :as edn]
-            [cljs-time.core :as ct]
-            ))
-; [tolglow.util :as util :refer [css-str css-arg cmod make-key cs <sub]]
+            [cljs-time.core :as ct]))
 
-; (rf/reg-sub :<-- ;should this be discontinued? or only used transiently like migrate everything away once got a comp working?
 (rf/reg-sub :get ;should this be discontinued? or only used transiently like migrate everything away once got a comp working?
  (fn [db [_ & path]]
   (get-in db (if (seqable? path) path [path])))) ;either way prob skip the destructuring and shit, runs too often...
@@ -15,8 +13,7 @@
 
 (rf/reg-sub :content
  (fn [db [_ item]]
-   (cond-> (get db :content)
-     item item)))
+   (cond-> (get db :content) item item)))
 
 (rf/reg-sub :state
   (fn [db [_ item]]
@@ -40,9 +37,21 @@
      (:text-personal header)
      (:text header))))
 
+(rf/reg-sub :common/route
+  (fn [db _] (-> db :common/route)))
+(rf/reg-sub :common/page-id :<- [:common/route]
+  (fn [route _] (-> route :data :name)))
+(rf/reg-sub :common/page    :<- [:common/route]
+  (fn [route _] (-> route :data :view)))
+
+
+(rf/reg-sub :get-css-var
+ (fn [_ [_ var-name]]
+   (util/<-css-var var-name)))
+
 (rf/reg-sub :menu
  (fn [db [_ item]]
-   (cond-> (get db :menu)
+   (cond-> (get-in db [:state :menu])
      item item)))
 
 (rf/reg-sub :hud ;so this should massage :diagnostics and only return relevant stuff

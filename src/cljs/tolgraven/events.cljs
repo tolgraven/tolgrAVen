@@ -25,10 +25,6 @@
   (fn [_ [_ url-key params query]]
     {:common/navigate-fx! [url-key params query]}))
 
-(rf/reg-event-db :set-docs [debug]
-  (fn [db [_ docs]]
-    (assoc-in db [:content :docs :md] docs)))
-
 (rf/reg-event-db :update-content
   (fn [db [_ path value]]
     (assoc-in db (into [:content] path) value)))
@@ -39,32 +35,10 @@
       {:dispatch
        [::http-get {:uri             "/docs"
                     :response-format (ajax/raw-response-format)}
-        [:set-docs]
-        ; [:update-content [:docs]]
-        [:common/set-error]]})))
-      ; [:diag/new :error]
-
-
-(rf/reg-event-db :common/set-error
-  (fn [db [_ error]]
-    (assoc db :common/error error)))
+        [:update-content [:docs :md]]]})))
 
 (rf/reg-event-fx :page/init-home
   (fn [_ _] {:dispatch [:init-docs]}))
-
-
-(rf/reg-sub :common/route (fn [db _] (-> db :common/route)))
-(rf/reg-sub :common/error (fn [db _] (-> db :common/error)))
-
-(rf/reg-sub :common/page-id :<- [:common/route]
-  (fn [route _] (-> route :data :name)))
-(rf/reg-sub :common/page    :<- [:common/route]
-  (fn [route _] (-> route :data :view)))
-
-
-(rf/reg-sub :get-css-var
- (fn [_ [_ var-name]]
-   (util/<-css-var var-name)))
 
 
 (rf/reg-event-fx :set-css-var!
@@ -78,7 +52,7 @@
           difference (->> (map js/parseFloat [open-height closed-height])
                           (apply -)
                           (* 0.5))]
-      {:db (assoc-in db [:menu] state)
+      {:db (assoc-in db [:state :menu] state)
        :dispatch-n
         [[:set-css-var! "--header-height-current"
                         (if state open-height closed-height)]]
@@ -152,8 +126,8 @@
 (rf/reg-event-fx ::http-get
                  [debug]
   (fn [{:keys [db]} [_ opts & [handler on-error]]]
-    (let [cleanup [:set [:state :is-loading] false]]
-      {:dispatch [:set [:state :is-loading] true]   ;; set something to indicate request is underway
+    (let [cleanup [:set [:state :is-loading] false]] ; set something to indicate request is underway
+      {:dispatch [:set [:state :is-loading] true]   ;; tho usually want this locally so figure out. by passing path frag maybe...
        :http-xhrio
        (merge
         {:method          :get
@@ -162,8 +136,6 @@
          :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
          :on-success      [::http-result-wrapper (or handler  [:default-http-result]) cleanup]
          :on-failure      [::http-result-wrapper (or on-error [:default-http-error]) cleanup]}
-        ; :on-success      [(or handler :default-http-result) :success]
-        ; :on-failure      [(or error   :default-http-error)  :error]}
         opts)})))
 
 (rf/reg-event-fx ::http-post
@@ -184,19 +156,16 @@
 ;                {...}]}
 (rf/reg-event-fx :default-http-result
  (fn [db [_ res]]
-   ; (println res)
    (update-in db [:http :result] conj res)))
 (rf/reg-event-fx :default-http-error
  (fn [db [_ {:as res :keys [uri status status-text failure]}]]
-   ; (println res)
-   ; (update-in db [:http :error] conj res)))
    {:dispatch [:diag/new :error status status-text]}))
 
 (rf/reg-event-fx ::http-result-wrapper
  (fn [db [_ handler cleanup res]]
-   ; (println res)
-   {:dispatch-n [(vec (flatten [handler res]))
+   {:dispatch-n [(into handler [res])
                  cleanup]}))
+
 
 (rf/reg-event-fx :run-highlighter!
  (fn [_ [_ ref]]
