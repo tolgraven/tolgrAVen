@@ -1,0 +1,111 @@
+
+footer {
+  position: relative;
+  /* padding-top: 0.5rem; */
+  padding-bottom: env(safe-area-inset-bottom); /* handle iphone x+, no harm for rest. TODO also adjust top-shortcut */
+  font-size: 0.8rem;
+
+  border-left: var(--line-width-vert) solid; /* connect bottom to main on left side */
+
+  /* try (actual tru sticky) footer */
+  /* causes some silly ios behavior and might just deal with enough layers already... */
+  /* position: sticky; */
+  /* bottom: 0; */
+}
+.footer-sticky {
+  position: fixed;
+  left: var(--space-edges);
+  width: calc(100% - 2 * var(--space-edges));
+  /* bottom: var(--space); */
+  bottom: 0;
+  /* background: var(--bg-2); */
+  background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
+}
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  flex-flow: row wrap;
+
+  margin: 1rem 0.4rem;
+}
+.footer-column {
+  flex: 1 0 auto;
+  margin: 0.0rem 1.0rem 0.0rem;
+  /* display: flex; */
+}
+
+.footer-column h3 {
+  font-weight: 900;
+  padding-bottom: 0.4rem;
+}
+.footer-column:last-of-type h3 {
+  padding-bottom: 0.0rem;
+}
+.footer-column p {
+  font-weight: 100;
+}
+
+.footer-icons {
+  display: flex;
+  flex: 1 2 auto;
+  font-size: var(--space-lg);
+  /* width: 100%; */
+  /* flex-flow: column-wrap; */
+  /* flex-flow: row; */
+}
+.footer-icons > a {
+  padding: 0.5rem;
+  text-shadow: 0px 0px 0px var(--box-faint-color-flip);
+}
+.footer-icons > a > i {
+  transition: all 0.5s;
+}
+.footer-icons > a:focus, .footer-icons > a:hover {
+  filter: brightness(125%) saturate(75%);
+  background: var(--bg-1);
+  border-radius: 100%;
+  text-shadow: -1px 2px 4px var(--box-regular-color-flip);
+}
+.fa-soundcloud:hover { text-shadow: 2px 2px 1px #ff9533; }
+.fa-twitter:hover {    text-shadow: 2px 2px 1px #1DA1F2; }
+.fa-facebook:hover {   text-shadow: 2px 2px 1px #3b5998; }
+/* .fa-instagram { color: ; } */
+
+.md-icon {
+  width:  var(--space-lg);
+  height: var(--space-lg);
+}
+.sm-icon {
+  width:  var(--space);
+  height: var(--space);
+}
+h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
+  font-size: 120%;
+  filter: brightness(110%);
+}
+
+#footer-middle {
+}
+#footer-right { /* can change to just last then no worry bout ids */
+  flex: 1 4 auto;
+}
+
+
+.to-top {
+  position: fixed;
+  /* right:  calc(var(--space-edges) + 0.5 * var(--space)); */
+  right:  calc(var(--space-edges) * 0.35);
+  bottom: calc(2 * var(--space-lg));
+  color: var(--fg-2);
+  font-size: 1.2rem;
+  /* z-index: -1; */
+  z-index: 10;
+}
+#to-top {
+  z-index: 100;
+}
+#to-top-bg {
+  /* filter: brightness(150%); */
+  text-shadow: 1px 1px 1.0rem var(--fg-2);
+}
+

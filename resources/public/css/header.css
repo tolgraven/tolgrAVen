@@ -52,8 +52,8 @@ nav {
   min-height: 2em; /* h1 */ /* dont think right basing on space, just use rem */
   /* overflow-x: scroll; /1* seems more reasonable than a burgher for a page with nowhere to navigate *1/ */
   background: linear-gradient(-77deg, var(--bg-1) -10%, var(--nav-accent) 80%);
-  border-top:     var(--line-width) solid currentColor;
-  border-bottom:  var(--line-width) solid currentColor;
+  border-top:     var(--line-width-vert) solid currentColor;
+  border-bottom:  var(--line-width-vert) solid currentColor;
   /* transition: min-height 0.9s ease-in-out; */
 }
 nav:hover {
@@ -114,11 +114,11 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
   #show-menu { display: none; }
 
   /* would be nicer to use some more generic reference tho so could use with multiple things... */
-  #burger-check:checked ~ header menu .show-in-menu {
+  #nav-menu-open:checked ~ header menu .show-in-menu {
     display: block;
     font-size: 0.8rem;
   }
-  #burger-check:checked ~ header menu nav .nav-links {
+  #nav-menu-open:checked ~ header menu nav .nav-links {
     position: relative;
     /* flex: 1 1 auto; */
     /* flex-wrap: wrap; */
@@ -127,7 +127,7 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
     /* well poor design and stupid subpixel bullshit-shifting is what fucked me but yeah */
     padding: 1rem var(--space);
   }
-  #burger-check:checked ~ header menu nav .nav-links li {
+  #nav-menu-open:checked ~ header menu nav .nav-links li {
     visibility: visible;
     min-width: 50%;
     flex: 1 1 auto;
@@ -135,55 +135,57 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
     transform: scale(1.0);
     line-height: initial;
   }
-  #burger-check:checked ~ header menu nav .nav-links li:first-letter {
+  #nav-menu-open:checked ~ header menu nav .nav-links li:first-letter {
     font-size: 1.2em;
   }
-  #burger-check:checked ~ header menu nav {
+  #nav-menu-open:checked ~ header menu nav {
     position: relative;
     top: 0;
     max-height: var(--header-with-menu-height); /* for animation purposes i guess */
     border: 0;
   }
-  #burger-check:checked ~ header menu {
+  #nav-menu-open:checked ~ header menu {
     flex: 0 2 auto;
     min-width: calc(100% * var(--menu-width-fraction));
     margin: auto;
     order: 4;
     border:    var(--line-width) solid currentColor;
+    border-left:  var(--line-width-vert) solid currentColor;
+    border-right: var(--line-width-vert) solid currentColor;
     transition: min-width 0.5s ease-out 0.15s;
     animation: menu-anim 0.4s;
   }
   /* STOP WASTING TIME TRYING AND JUST REDO IT IN GRID IF YOU SO DESPERATELY NEED THE EFFECT */ /* GAAAAH */
   /* especially considering I need to learn grid. WHY AM I SO USELESS */
-  #burger-check:checked ~ header menu::before,
-  #burger-check:checked ~ header menu::after {
+  #nav-menu-open:checked ~ header menu::before,
+  #nav-menu-open:checked ~ header menu::after {
     content: "";
     position: absolute;
-    width: var(--line-width);
+    width: var(--line-width-vert);
     background-color: var(--fg-1);
     /* its so close, but loses when base font-size is scaled... */ /* how get around? */
     --height: calc(2rem - 1.5 * var(--line-width)); /* crank it a bit cause we're masking out any spillover... */
   }
-  #burger-check:checked ~ header menu::before {
+  #nav-menu-open:checked ~ header menu::before {
     left:  calc(0px - var(--line-width));
     bottom: calc(0px - (var(--height))); /* too short on wide desktop */
     height: calc(var(--height));
     transform: scaleY(1.0); /* for animation */
   }
-  #burger-check:checked ~ header menu::after { /* from top right corner and up */
+  #nav-menu-open:checked ~ header menu::after { /* from top right corner and up */
     right: calc(0px - var(--line-width));
     bottom: 0;
     height: calc(var(--header-with-menu-height) - (var(--height)) - var(--space-top)); /* "vars" are so deceptive, everything was broken cause neither def nor usage was in paren... */
   }
 
-  #burger-check:checked ~ .line-header {
+  #nav-menu-open:checked ~ .line-header {
     top:  var(--header-with-menu-height);
     margin-top: 0;
     margin-bottom: var(--space-top); /* killing margin leds to shitty jumps, so we compensate */
     /* transition: margin 0.4s ease 0.1s; */
   }
 
-  #burger-check:checked ~ header {
+  #nav-menu-open:checked ~ header {
     /* margin-top: calc(2 * var(--space-top)); /1* compensate for removing margin from line-header, so nothing jumps... *1/ */
     /* margin-top: 0; /1* gets easier to calc if kill top margin since --space keeps changing otherwise *1/ */
     min-height:  var(--header-with-menu-height);
@@ -216,10 +218,10 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
     /* height: 0; */
     /* transition: height var(--header-expand-time); */
   }
-  #burger-check:checked ~ header .cover {
+  #nav-menu-open:checked ~ header .cover {
     display: block;
   }
-  #burger-check:checked ~ header .cover.cover-clip { /* cut the path to clip out, letting (blurred) below shine through */
+  #nav-menu-open:checked ~ header .cover.cover-clip { /* cut the path to clip out, letting (blurred) below shine through */
     width: 100%; height: 100%;
     --path:  polygon(
     0 0,   100% 0,   100% var(--space-top),
@@ -232,23 +234,23 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
   }
 
   /* clip surely bit cleaner but keep these in case need for other browsers. */
-  #burger-check:checked ~ header .cover.cover-left {
+  #nav-menu-open:checked ~ header .cover.cover-left {
     width: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
               + var(--space) - 3 * var(--line-width));
     height: 100%;
   }
-  #burger-check:checked ~ header .cover.cover-top {
+  #nav-menu-open:checked ~ header .cover.cover-top {
     width: 100%;
     height: var(--space-top);
   }
-  #burger-check:checked ~ header .cover.cover-middle {
+  #nav-menu-open:checked ~ header .cover.cover-middle {
     left:   calc(-1 * var(--line-width));
     width:  calc(100% + var(--line-width));
     height: calc(2em + var(--space-top) + var(--line-width));
     z-index: -1;
   }
 
-  #burger-check:checked ~ header .header-logo {
+  #nav-menu-open:checked ~ header .header-logo {
     position: relative;
     margin: auto;
     min-width: calc(100% * var(--menu-width-fraction) - 2 * var(--line-width)); /* match expanded nav menu, but let its lines pass around... */
@@ -265,7 +267,7 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
   @keyframes menu-anim     { 45%, 75% { transform: scaleX(0.0) scaleY(0.25); } }
   @keyframes menu-anim-out { 25%, 75% { transform: scaleX(1.0) scaleY(0.00); } }
 
-  #burger-check:checked ~ main { /* other attempt compensate line-header margin-.. */
+  #nav-menu-open:checked ~ main { /* other attempt compensate line-header margin-.. */
     /* margin-top: calc(2 * var(--space-top)); */
   }
 

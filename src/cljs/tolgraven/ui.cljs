@@ -40,11 +40,12 @@
     ])))
 
 (defn burger "Toggle main menu. Entire point vs css is shove everything below down by extra height..."
- ([model on-change]
-  [:label.burger
-    {:for "burger-check"}
-    [:input#burger-check.burger-check
-     {:type :checkbox :default-checked @model
+  ([id model on-change]
+   [:label.burger
+    {:for id}
+    [:input.burger-check
+     {:id id :type :checkbox
+      :default-checked @model
       :on-click (fn [e] ; (.preventDefault e) ;broke it! :O what
                  (on-change (not @model)))}] ]))
 

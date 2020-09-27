@@ -65,7 +65,7 @@
 
 (defn ui-header [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   [:<>
-   [:input {:class "burger-check" :id "burger-check" :type "checkbox" ;must be outside header or breaks...
+   [:input {:class "burger-check" :id "nav-menu-open" :type "checkbox" ;must be outside header or breaks...
             :on-click (fn []
                         (rf/dispatch [:menu (not @(rf/subscribe [:menu]))])
                         ; #_(rfe/push-state yada)
@@ -78,7 +78,7 @@
     [:div.loading-spinner
      (when @(rf/subscribe [:state :is-loading])
        [:i {:class "fa fa-spinner fa-spin"}])]   ; menu
-    [:label.burger {:for "burger-check"}]]])
+    [:label.burger {:for "nav-menu-open"}]]])
 
 (defn ui-button "Pass text and id, plus either link anchor or action..."
   [text id & {:keys [type bg-div-class link action]
