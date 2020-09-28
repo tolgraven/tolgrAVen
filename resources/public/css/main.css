@@ -26,7 +26,7 @@
   --menu-width-fraction: 0.75;
 
   --line-scale-factor: 0.5;
-  --line-width:        2px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width:        1px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --line-width-sm:     calc(1 / (1.5 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --line-width-md:     calc(((1 + var(--line-scale-factor)) / 2) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --line-width-lg:     calc(1 / (1 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
@@ -38,7 +38,9 @@
                       + var(--space) - (var(--fiddle-multiplier) * var(--line-width)));
   --right-marker: calc(100% - var(--left-marker) + var(--line-width)); /* makes sense right side needs one more unit since it has the right border... */
   --top-to-menu-height: calc(2 * var(--space-top) + 2em - (4 - var(--fiddle-multiplier)) * var(--line-width));
+  
   --header-expand-time:  0.5s;
+  --navigation-transition-time: 0.15s;
 
 
   --perspective:       100;
@@ -72,29 +74,30 @@
 
   --nav-accent: hsla(var(--hue-3), 40%, 20%, 0.35);
   --selection-accent: hsl(14, 75%, 80%, 0.7);
-  --neutral-accent: #9ae; /* link? */
+  --neutral-accent: #99aaee; /* link? */
   /* fixc bruv/box */
   --red       : #d18479;
   --red-2     : #af7370;
+  --red-3     : #ea9a98;
   --green     : #b4b88d;
   --green-2   : #8b8c63;
+  --green-3   : #ccdaa8;
   --yellow    : #dabd7a;
   --yellow-2  : #d0af80;
+  --yellow-3  : #d9c894;
   --blue      : #7692ab;
   --blue-2    : #80a0b3;
+  --blue-3    : #a6c0cd;
   --purple    : #bd979d;
   --purple-2  : #af8589;
+  --purple-3  : #d9b7b7;
   --aqua      : #91b8a4;
   --aqua-2    : #9ab499;
+  --aqua-3    : #B6D1B4;
   --orange    : #cca687;
   --orange-2  : #dba184;
-  /* --red-light     : #ea9a98; */
-  /* --green-light   : #ccdaa8; */
-  /* --yellow-light  : #d9c894; */
-  /* --blue-light    : #a6c0cd; */
-  /* --purple-light  : #d9b7b7; */
-  /* --aqua-light    : #B6D1B4; */
-  /* --orange-light  : #d9a58a; */
+  --orange-3  : #d9a58a;
+  
   --dark-1:     hsl(var(--hue-1),  7%,  var(--lum-dark-1));
   --dark-2:     hsl(var(--hue-3),  7%,  var(--lum-dark-2));
   --dark-3:     #232323;
@@ -270,8 +273,7 @@ li {
   /* does not appear to do the trick tho. wait isnt it :: or hmm nope would be if was like *::target? */
   /* html, body does seem to semi-work so whatever */
   /* scroll-margin-top: var(--header-height); /1* this will have to vary depending on whether menu open... *1/ */
-  /* scroll-padding-top: var(--header-height); /1* this will have to vary depending on whether menu open... *1/ */
-  scroll-padding-top: var(--header-with-menu-height); /* this will have to vary depending on whether menu open... */
+  scroll-padding-top: var(--header-height-current);
 } /* header-height or header-with-menu-height... */
 /* doesnt seem to work though, try putting in html, body... */
 
@@ -304,13 +306,13 @@ body {
 
 
 @supports(scroll-margin-top: 0px) { /* compensate for our sticky header. */
-  .link-anchor { scroll-margin-top: var(--link-offset); } }
+  .link-anchor { scroll-margin-top: var(--header-height-current); } }
 @supports not (scroll-margin-top: 0px) {
   .link-anchor::before { /* have to compensate due to our sticky header. */
     display: block;      /* on about section not working was due to overflow: auto clearfix... */
     content: " ";        /* also various safari vs chrome diff in behavior */
-    margin-top: calc(-1.0 * var(--link-offset));
-    height: calc(1.0 * var(--link-offset));
+    margin-top: calc(-1.0 * var(--header-height-current));
+    height: calc(1.0 * var(--header-height-current));
     visibility: hidden;
     pointer-events: none;
     z-index: -1;
@@ -365,6 +367,7 @@ a {
 a:focus, a:hover {
   transform: scale(1.12);
   filter: brightness(125%) drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1));
+  font-weight: bold;
 }
 
 
