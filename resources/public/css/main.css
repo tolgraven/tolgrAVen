@@ -472,6 +472,36 @@ p > code {
   border: 0;
 }
 
+/* Show/hide and slide in from left. */
+.slide-in-left-hidden {
+    position: relative;
+    z-index: 0;
+    left: -100%; /* slide out animation */
+    transition: 0.3s;
+    /* transition: opacity 0.4s; */
+    transition-delay: opacity 0.1s;
+}
+.slide-in-left-visible {
+    transition: 0.3s;
+    /* transition: opacity 0.4s; */
+    transition-delay: opacity 0.1s;
+    left: 5px;
+}
+
+.hidden {
+  visibility: hidden !important;
+  opacity: 0;
+  transition: visibility 0s 0.15s, opacity 0.15s ease-in;
+}
+.visible {
+  visibility: visible !important;
+  opacity: 1;
+  transition: opacity 0.15s ease-out;
+}
+.removed  { display: none; }
+.restored { display: inherit; }
+
+
 .blog {
 }
 .blog-post {

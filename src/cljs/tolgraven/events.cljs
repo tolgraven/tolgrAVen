@@ -9,13 +9,22 @@
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
+(rf/reg-event-fx
+ :common/start-navigation
+ (fn [{:as cofx :keys [db]} [_ match]]
+   (let [old-match (:common/route db)]
+     {:dispatch [:transition :out old-match]
+      :dispatch-later {:ms (or (-> db :options :transition-time) 250)
+                       :dispatch [:common/navigate match]}})))
+
 ;;dispatchers from luminus, see if any useful...
-(rf/reg-event-db :common/navigate
-  (fn [db [_ match]]
+(rf/reg-event-fx :common/navigate
+  (fn [{:as cofx :keys [db]} [_ match]]
     (let [old-match (:common/route db)
           new-match (assoc match :controllers
                                  (rfc/apply-controllers (:controllers old-match) match))]
-      (assoc db :common/route new-match))))
+      {:db (assoc db :common/route new-match)
+       :dispatch [:transition :in new-match]})))
 
 (rf/reg-fx :common/navigate-fx!
   (fn [[k & [params query]]]
@@ -44,6 +53,10 @@
 (rf/reg-event-fx :set-css-var!
   (fn [{:as cofx :keys [db]} [_ var-name value]]
     (util/->css-var var-name value)))
+
+(rf/reg-event-db :transition ; if all transitions same (fade or w/e) dont really need pass match... and, if specific order or similar matters, need pass both.
+  (fn [db [_ direction match]]  ; would just set something in state that then sets css class.
+    (assoc-in db [:state :transition] (case direction :in true :out false)))) ; now just generic
 
 (rf/reg-event-fx :menu ;; this why better sep. can then inject css var and not sub? i somehow remeber that being badd
   (fn [{:as cofx :keys [db]} [_ state]]

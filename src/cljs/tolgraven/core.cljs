@@ -37,6 +37,9 @@
 
    (if-let [page @(rf/subscribe [:common/page])]
      [:main.main-content.perspective-top
+      {:class (if @(rf/subscribe [:state :transition])
+                "visible" ; "slide-in-left-visible"
+                "hidden")} ; "slide-in-left-hidden"
       [page] ; XXX should limit the lines-all-around stuff to certain subpages.
        ; apart from when edges very tiny it looks v cool with just horiz lines and vert straight cutoff. adds to understated glossy maximinimalist vibe going for... and sorta less "sony presents"
        [:div.footer-spacer]]) ; could post-main spacer-for-footer go in footer part somehow? but makes sense in main afa DOM, just irks
