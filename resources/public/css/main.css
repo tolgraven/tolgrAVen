@@ -4,6 +4,7 @@
 @import "footer.css";
 @import "hero.css";
 @import "gallery.css";
+@import "mods.css";
 
 /* wanted to put in own file but wasnt compatible with live reload solution... */
 :root { /* general vars */
