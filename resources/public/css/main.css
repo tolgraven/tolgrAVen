@@ -448,6 +448,7 @@ code {
   /* dsas */
 }
 
+/* DOCS SECTION */
 p > code {
   background-color: var(--bg-2);
   color: var(--fg-3);
@@ -456,6 +457,25 @@ p > code {
 .hljs {
   background: linear-gradient(80deg, var(--bg-3) 10%, var(--bg-2)); /* too much currently but idea good */
   padding: 1.25em;
+}
+section.docs a {
+  color: var(--blue-2);
+  font-style: italic;
+}
+section.docs p.title {
+  border-top: var(--line-width-sm) solid currentColor;
+  margin: 1.7em 0.5em 1em;
+  font-size: 1.4em;
+  font-weight: bolder;
+}
+section.docs .bs-callout {
+  margin-top: 2rem;
+  padding: var(--space);
+  background-color: var(--bg-2);
+}
+section.docs .bs-callout h4 {
+  font-size: 1.1em;
+  margin-bottom: 0.75em;
 }
 
 .column {
