@@ -5,6 +5,7 @@
 @import "hero.css";
 @import "gallery.css";
 @import "mods.css";
+@import "hljs.css";
 
 /* wanted to put in own file but wasnt compatible with live reload solution... */
 :root { /* general vars */
@@ -458,10 +459,8 @@ p > code {
   color: var(--fg-3);
   padding: 0.4em 0.3em;
 }
-.hljs {
-  background: linear-gradient(80deg, var(--bg-3) 10%, var(--bg-2)); /* too much currently but idea good */
-  padding: 1.25em;
-}
+
+
 section.docs a {
   color: var(--blue-2);
   font-style: italic;
