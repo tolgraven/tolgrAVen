@@ -349,8 +349,8 @@ body {
 }
 .line-left  { border-left:  var(--line-width-vert) solid; }
 .line-right { border-right: var(--line-width-vert) solid; }
-.line-left-sm  { border-left:  var(--line-width-vert) solid; }-sm) solid; }
-.line-right-sm { border-right: var(--line-width-vert) solid; }-sm) solid; }
+.line-left-sm  { border-left:  var(--line-width-vert) solid; }
+.line-right-sm { border-right: var(--line-width-vert) solid; }
 .lined-container {
   position: relative; /* need to be able to attach lines around */
   border: var(--line-width) solid;
