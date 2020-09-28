@@ -304,6 +304,41 @@ body {
   /* -webkit-overflow-scrolling: touch; */
 }
 
+.fader {
+  position: relative;
+  z-index: 25;
+  width: 100%;
+}
+.fade-to-black { /* well this is certainly a misnomer. .fade-to? */
+  position: absolute;
+  width: 100%;
+}
+.fade-to-black.top {
+  top: 0;
+  height: calc(4 * var(--space));
+  background: linear-gradient(180deg, var(--bg-1) 50%, hsl(0, 0%, 0%, 0.0) 100%);
+}
+.fade-to-black.between {
+  --height: 3.5;
+  height: calc(var(--height) * var(--space-lg));
+  top:    calc(-0.5 * var(--height) * var(--space-lg));
+  background: linear-gradient(0deg,
+      hsl(var(--hue-3), 2%, var(--lum-bg-1), 0.0)  0%,
+      hsl(var(--hue-3), 8%, var(--lum-bg-2)) 50%,
+      hsl(var(--hue-3), 28%, var(--lum-bg-2), 0.0)  100%);
+}
+.fade-to-black.between.red {
+  background: linear-gradient(0deg, transparent 0%,
+      hsl(var(--hue-2), 8%, var(--lum-bg-2)) 50%,
+      transparent 90%);
+}
+.fade-to-black.light-from-below {
+  background: linear-gradient(180deg, transparent 0%,
+      hsl(var(--hue-2), 8%, var(--lum-fg-2)) 120%);
+  --height: 30vh;
+  height: calc(var(--height));
+  bottom: 0;
+}
 
 @supports(scroll-margin-top: 0px) { /* compensate for our sticky header. */
   .link-anchor { scroll-margin-top: var(--header-height-current); } }
@@ -457,6 +492,39 @@ section.docs .bs-callout h4 {
   border-top:    var(--line-width) solid; /* so, every other top+bottom? */
   border-bottom: var(--line-width) solid; /* this covers/cancels bottom border */
 }
+.noborder {
+  border: 0;
+}
+
+/* Show/hide and slide in from left. */
+.slide-in-left-hidden {
+    position: relative;
+    z-index: 0;
+    left: -100%; /* slide out animation */
+    transition: 0.3s;
+    /* transition: opacity 0.4s; */
+    transition-delay: opacity 0.1s;
+}
+.slide-in-left-visible {
+    transition: 0.3s;
+    /* transition: opacity 0.4s; */
+    transition-delay: opacity 0.1s;
+    left: 5px;
+}
+
+.hidden {
+  visibility: hidden !important;
+  opacity: 0;
+  transition: visibility 0s 0.15s, opacity 0.15s ease-in;
+}
+.visible {
+  visibility: visible !important;
+  opacity: 1;
+  transition: opacity 0.15s ease-out;
+}
+.removed  { display: none; }
+.restored { display: inherit; }
+
 
 .blog {
 }
@@ -502,6 +570,54 @@ section > h1, .jumbo > h1 {
   margin-bottom: 0;
   z-index: 30;
 }
+.solid-bg {
+  background-color: var(--bg-1);
+}
+.hi-z {
+  z-index: 99;
+}
+
+.covering { /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
+  z-index: 10;
+  background: var(--gradient-bg-main);
+}
+.covering-faded { /* jk */ /* incidentally not easy to type on a proper vim setup */
+  --opacity: 0.80;
+  /* --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1), var(--opacity)); */
+  /* --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1), var(--opacity)); */
+  --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1));
+  --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1));
+  background: linear-gradient(-40deg, var(--color-1), var(--color-2));
+  opacity: var(--opacity);
+  transition: opacity 0.4s;
+  /* think prob compositing is bad enough, even worse with gradient or? */
+  /* definitely move to burn-in on video either way. then if want to transition to no fg do it by fading to orig version */
+  /* if html n shit server side can just have it gen appropriate vids/imgs etc once from settings */
+  /* background: var(--bg-1); */
+}
+.covering-faded:hover, .covering-faded:focus { /* jk */ /* incidentally not easy to type on a proper vim setup */
+  opacity: 0.60;
+}
+
+.anim-gradient-bg {
+  --opacity: 0.84;
+  --deg: -40deg;
+  --color-1: hsla(var(--hue-1),  30%,  var(--lum-bg-1), var(--opacity));
+  --color-2: hsla(var(--hue-2),  40%,  var(--lum-bg-1), var(--opacity));
+  /* background: linear-gradient(-30deg, var(--color-1), var(--bg-1)); */
+  background: linear-gradient(var(--deg), var(--color-1), var(--color-2));
+  /* background: linear-gradient(var(--deg), var(--color-1), var(--color-2)); */
+  background-size: 230%;
+  /* animation: gradient-bg 20s ease infinite; */
+  backdrop-filter: blur(4px) contrast(70%);
+  -webkit-backdrop-filter: blur(4px) contrast(70%);
+}
+@keyframes gradient-bg {
+	0%     { background-position:   0% 50%;
+	} 50%  { background-position: 100% 50%;
+	} 100% { background-position:   0% 50%;
+	}
+}
 
 section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
 .h0 { font-size: 2.5rem; }
@@ -528,6 +644,18 @@ button label {
   position: relative;
   font-size: 1.2rem;
   z-index: 2;
+}
+.blur-bg { /* backdrop-filter is finicky with transitions, so... */
+  position: absolute;
+  top: 0; left: 0;
+  /* pointer-events: none; */
+  width: 100%;
+  z-index: 0;
+  height: 100%;
+  opacity: 0.4;
+  backdrop-filter: blur(2rem) brightness(130%);
+  -webkit-backdrop-filter: blur(2rem) brightness(130%);
+  transition: opacity 0.5s;
 }
 button:hover .blur-bg, .blur-bg:hover {
   opacity: 1.0;
@@ -578,10 +706,34 @@ video {
   /* float: left; */
   /* max-height: 300px; */
 }
+.fullwide { /* expand div back to full width of main despite regular paddings/margins */
+  /* guess should work to only fuck w margin+width directly not left etc? */
+  /* i guess this should be for only when breaking out of margin bs */
+  /* not the other bg fullwide stuff... */
+  margin: 0;
+  padding: 0;
+  position: relative;
+  left: 0;
+  /* left:  calc(0% - 0.5 * var(--space-sides)); */
+  width: 100%;
+  width: min(100%, calc(var(--media-width-main)));
+}
 .fullwide > .media {
   max-width: unset;
   margin: 0;
 }
+.widescreen-safe { /* ensure bottom doesnt run out of 16:9 bg media on (ironically) _thin_ screens */
+  /* height: var(--header-with-menu-height); /1* just, some nice tall enough height - max-height will save us anyways *1/ */
+  height: calc(1.20 * var(--header-with-menu-height)); /* just, some nice tall enough height - max-height will save us anyways */
+  /* height: 40vh; /1* just, some nice tall enough height - max-height will save us anyways *1/ */
+  max-height: calc((100vw - 2 * var(--space-sides)) / (16/9));
+}
+.center-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .media-as-bg {
   position: absolute;
   left: 0;
@@ -597,11 +749,52 @@ video {
   /* border-top: var(--line-width) solid; */
 }
 
+.fade-3 { opacity: 0.30; }
+.fade-5 { opacity: 0.62; }
+.darken-3 { filter: brightness(30%); }
+.darken-5 { filter: brightness(55%); }
+.blur-behind {
+  backdrop-filter: blur(1rem);
+  -webkit-backdrop-filter: blur(1rem);
+}
+
+
 .bg-static-section {
   position: relative;
   overflow-y: hidden;
 }
 
+.perspective-top { /* default perspective for main. */
+  perspective: calc(1px * var(--perspective));
+  perspective-origin: top; /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */
+}
+.parallax-sm, .parallax-bg, .parallax-fg {
+  transform-origin: top;
+  transform-style: preserve-3d;
+}
+.parallax-sm {
+  transform: translateZ(var(--parallax-sm-px)) scale(var(--parallax-sm-scale));
+}
+.parallax-bg {
+  transform: translateZ(var(--parallax-px)) scale(var(--parallax-scale));
+  z-index: -1;
+  /* another issue being mindfuck of using this as fg (ie text) heh... */
+  /* transform-origin: 50% -150%; */ /* perf on chrome, mac safari, but fucks ios... */
+}
+.parallax-fg {
+  transform: translateZ(calc(-1px * var(--parallax-sm))) scale(calc(1 / var(--parallax-sm-scale))); /* not actually being translated... 1.1 is the 1:1 scale btw obv but 1.2 looks good in this case */
+  /* transform-style: preserve-3d; */
+}
+.parallax-squeeze {
+  transform-origin: 50% var(--parallax-squeeze-tf); /* obviously... not realistic */
+  transform: translateZ(var(--parallax-squeeze-px)) scale(var(--parallax-squeeze-scale)); /* not actually being translated... 1.1 is the 1:1 scale btw obv but 1.2 looks good in this case */
+  /* transform-style: preserve-3d; */
+}
+.origin-toptop {
+  /* transform-origin: 50% -100%; */
+  /* transform-origin: 50% -250%; */ /* gap up top chrome #intro-end, middle ground? */
+  transform-origin: 50% -150%;
+}
 
 .hud {
   position: fixed;
@@ -637,6 +830,10 @@ video {
   padding: 0.5rem;
 }
 
+.stick-up { /* make sticky just below header */
+  position: sticky;
+  top: var(--header-height);
+}
 #section-services {
   z-index: 6;
 }
@@ -755,6 +952,10 @@ figcaption, .float-with-caption {
 /*   clear: both; */
 /*   display: table; */
 /* } */
+
+.inline { display: inline; }
+.box-regular { box-shadow: 2px 1px 17px 7px var(--box-regular-color); }
+.box-faint {   box-shadow: 2px 1px 17px 7px var(--box-faint-color); }
 
 
 .md-icon {
