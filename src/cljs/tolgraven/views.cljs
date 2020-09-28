@@ -65,7 +65,8 @@
 
 (defn ui-header [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   [:<>
-   [:input {:class "burger-check" :id "nav-menu-open" :type "checkbox" ;must be outside header or breaks...
+   [:input {:id "nav-menu-open" :class "burger-check" ;must be outside header or breaks...
+            :type "checkbox"    :default-checked @(rf/subscribe [:menu])
             :on-click (fn []
                         (rf/dispatch [:menu (not @(rf/subscribe [:menu]))])
                         ; #_(rfe/push-state yada)
