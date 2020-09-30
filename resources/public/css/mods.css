@@ -1,0 +1,195 @@
+/* MODIFICATIONS / BULK GENERIC STYLE CLASSES (ish, damn hard to decide on some stuff) */
+/* mostly trying to clean up main.css a bit... */
+
+.fader {
+  position: relative;
+  z-index: 25;
+  width: 100%;
+}
+.fade-to-black { /* well this is certainly a misnomer. .fade-to? */
+  position: absolute;
+  width: 100%;
+}
+.fade-to-black.top {
+  top: 0;
+  height: calc(4 * var(--space));
+  background: linear-gradient(180deg, var(--bg-1) 50%, transparent 100%);
+}
+.fade-to-black.bottom {
+  bottom: 0;
+  height: calc(4 * var(--space));
+  background: linear-gradient(0deg, var(--bg-1) 20%, transparent 102%);
+}
+.fade-to-black.between {
+  --height: 3.5;
+  height: calc(var(--height) * var(--space-lg));
+  top:    calc(-0.5 * var(--height) * var(--space-lg));
+  background: linear-gradient(0deg,
+      hsl(var(--hue-3), 2%, var(--lum-bg-1), 0.0)  0%,
+      hsl(var(--hue-3), 8%, var(--lum-bg-2)) 50%,
+      hsl(var(--hue-3), 28%, var(--lum-bg-2), 0.0)  100%);
+}
+.fade-to-black.between.red {
+  background: linear-gradient(0deg, transparent 0%,
+      hsl(var(--hue-2), 8%, var(--lum-bg-2)) 50%,
+      transparent 90%);
+}
+.fade-to-black.light-from-below {
+  background: linear-gradient(180deg, transparent 0%,
+      hsl(var(--hue-2), 8%, var(--lum-fg-2)) 120%);
+  --height: 30vh;
+  height: calc(var(--height));
+  bottom: 0;
+}
+
+
+/* Show/hide and slide in from left. */
+.slide-in-left-hidden {
+    position: relative;
+    z-index: 0;
+    left: -100%; /* slide out animation */
+    transition: 0.3s;
+    /* transition: opacity 0.4s; */
+    transition-delay: opacity 0.1s;
+}
+.slide-in-left-visible {
+    transition: 0.3s;
+    /* transition: opacity 0.4s; */
+    transition-delay: opacity 0.1s;
+    left: 5px;
+}
+
+.hidden {
+  visibility: hidden !important;
+  opacity: 0;
+  transition: visibility 0s 0.15s, opacity 0.15s ease-in;
+}
+.visible {
+  visibility: visible !important;
+  opacity: 1;
+  transition: opacity 0.15s ease-out;
+}
+.removed  { display: none; }
+.restored { display: inherit; }
+
+
+
+.solid-bg {
+  background-color: var(--bg-1);
+}
+.hi-z {
+  z-index: 99;
+}
+
+
+.covering { /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
+  z-index: 10;
+  background: var(--gradient-bg-main);
+}
+.covering-faded { /* jk */ /* incidentally not easy to type on a proper vim setup */
+  --opacity: 0.80;
+  /* --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1), var(--opacity)); */
+  /* --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1), var(--opacity)); */
+  --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1));
+  --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1));
+  background: linear-gradient(-40deg, var(--color-1), var(--color-2));
+  opacity: var(--opacity);
+  transition: opacity 0.4s;
+  /* think prob compositing is bad enough, even worse with gradient or? */
+  /* definitely move to burn-in on video either way. then if want to transition to no fg do it by fading to orig version */
+  /* if html n shit server side can just have it gen appropriate vids/imgs etc once from settings */
+  /* background: var(--bg-1); */
+}
+.covering-faded:hover, .covering-faded:focus { /* jk */ /* incidentally not easy to type on a proper vim setup */
+  opacity: 0.60;
+}
+
+.anim-gradient-bg {
+  --opacity: 0.84;
+  --deg: -40deg;
+  --color-1: hsla(var(--hue-1),  30%,  var(--lum-bg-1), var(--opacity));
+  --color-2: hsla(var(--hue-2),  40%,  var(--lum-bg-1), var(--opacity));
+  /* background: linear-gradient(-30deg, var(--color-1), var(--bg-1)); */
+  background: linear-gradient(var(--deg), var(--color-1), var(--color-2));
+  /* background: linear-gradient(var(--deg), var(--color-1), var(--color-2)); */
+  background-size: 230%;
+  /* animation: gradient-bg 20s ease infinite; */
+  backdrop-filter: blur(4px) contrast(70%);
+  -webkit-backdrop-filter: blur(4px) contrast(70%);
+}
+@keyframes gradient-bg {
+	0%     { background-position:   0% 50%;
+	} 50%  { background-position: 100% 50%;
+	} 100% { background-position:   0% 50%;
+	}
+}
+
+
+.blur-bg { /* backdrop-filter is finicky with transitions, so... */
+  position: absolute;
+  top: 0; left: 0;
+  /* pointer-events: none; */
+  width: 100%;
+  z-index: 0;
+  height: 100%;
+  opacity: 0.4;
+  backdrop-filter: blur(2rem) brightness(130%);
+  -webkit-backdrop-filter: blur(2rem) brightness(130%);
+  transition: opacity 0.5s;
+}
+.blur-behind {
+  backdrop-filter: blur(1rem);
+  -webkit-backdrop-filter: blur(1rem);
+}
+
+
+.center-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.fade-3 { opacity: 0.30; }
+.fade-5 { opacity: 0.62; }
+.darken-3 { filter: brightness(30%); }
+.darken-5 { filter: brightness(55%); }
+
+
+/* PARALLAX */
+.perspective-top { /* default perspective for main. */
+  perspective: calc(1px * var(--perspective));
+  perspective-origin: top; /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */
+}
+.parallax-sm, .parallax-bg, .parallax-fg {
+  transform-origin: top;
+  transform-style: preserve-3d;
+}
+.parallax-sm {
+  transform: translateZ(var(--parallax-sm-px)) scale(var(--parallax-sm-scale));
+}
+.parallax-bg {
+  transform: translateZ(var(--parallax-px)) scale(var(--parallax-scale));
+  z-index: -1;
+  /* another issue being mindfuck of using this as fg (ie text) heh... */
+  /* transform-origin: 50% -150%; */ /* perf on chrome, mac safari, but fucks ios... */
+}
+.parallax-fg {
+  transform: translateZ(calc(-1px * var(--parallax-sm))) scale(calc(1 / var(--parallax-sm-scale))); /* not actually being translated... 1.1 is the 1:1 scale btw obv but 1.2 looks good in this case */
+  /* transform-style: preserve-3d; */
+}
+.parallax-squeeze {
+  transform-origin: 50% var(--parallax-squeeze-tf); /* obviously... not realistic */
+  transform: translateZ(var(--parallax-squeeze-px)) scale(var(--parallax-squeeze-scale)); /* not actually being translated... 1.1 is the 1:1 scale btw obv but 1.2 looks good in this case */
+  /* transform-style: preserve-3d; */
+}
+.origin-toptop {
+  /* transform-origin: 50% -100%; */
+  /* transform-origin: 50% -250%; */ /* gap up top chrome #intro-end, middle ground? */
+  transform-origin: 50% -150%;
+}
+
+
+.inline { display: inline; }
+.box-regular { box-shadow: 2px 1px 17px 7px var(--box-regular-color); }
+.box-faint {   box-shadow: 2px 1px 17px 7px var(--box-faint-color); }
+
