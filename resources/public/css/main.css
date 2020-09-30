@@ -317,7 +317,12 @@ body {
 .fade-to-black.top {
   top: 0;
   height: calc(4 * var(--space));
-  background: linear-gradient(180deg, var(--bg-1) 50%, hsl(0, 0%, 0%, 0.0) 100%);
+  background: linear-gradient(180deg, var(--bg-1) 50%, transparent 100%);
+}
+.fade-to-black.bottom {
+  bottom: 0;
+  height: calc(4 * var(--space));
+  background: linear-gradient(0deg, var(--bg-1) 20%, transparent 102%);
 }
 .fade-to-black.between {
   --height: 3.5;
