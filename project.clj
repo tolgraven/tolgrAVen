@@ -207,9 +207,12 @@
                            {:output-dir "resources/public/js/compiled"
                             :output-to "resources/public/js/compiled/app.js"
                             :source-map "resources/public/js/compiled/app.js.map"
+                            :asset-path "js/compiled/out"
                             :optimizations :advanced
                             :pretty-print false
                             :infer-externs true
+                            :parallel-build true
+                            :main "tolgraven.app"
                             :closure-warnings
                             {:externs-validation :off :non-standard-jsdoc :off}
                             :externs ["react/externs/react.js"]}}}}
