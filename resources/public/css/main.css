@@ -372,15 +372,20 @@ a:focus, a:hover {
   font-weight: bold;
 }
 
+main { /* dunno purpose of why I choose .main-content... */
+  width: 100%;
+  /* max-width: 1000px; /*should be conn to var no */
+}
 
 .main-content {
   border-top: var(--line-width) solid; /* should make configurable. off looks p nice on main page */
-  border-bottom: 0; /* covered by .line-bottom-h */
+  /* border-bottom: 0; /1* covered by .line-bottom-h *1/ */
+  border-bottom: var(--line-width) solid; /* should make configurable. off looks p nice on main page */
   border-left:  var(--line-width-vert) solid; /* should make configurable. off looks p nice on main page */
   border-right: var(--line-width-vert) solid; /* should make configurable. off looks p nice on main page */
   background: var(--gradient-bg-main);
   margin-top: var(--space-lg);
-  padding-bottom: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
+  /* padding-bottom: calc(3.5 * var(--space-lg)); /1* XXX actually, footer height... *1/ */
   /* 3 max ^ */ 
 
   display: flex;
@@ -391,13 +396,13 @@ a:focus, a:hover {
   /* box-shadow: inset 2px 2px 0px 0px black; */
   /* z-index: 1; /1* get above sticky footer... *1/ */
 }
-
-/* .main-content::after { */
-/*   content: ""; */
-/*   background-color: var(--bg-1); */
-/*   z-index: 50; */
-/*   padding-bottom: calc(3.5 * var(--space-lg)); /1* XXX actually, footer height... *1/ */
-/* } */
+.main-content::after {
+  content: "";
+  background-color: var(--bg-1);
+  z-index: 50;
+  width: 100%;
+  height: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
+}
 pre {
   white-space: pre-wrap;
   overflow: hidden;
@@ -452,7 +457,6 @@ section.docs .bs-callout h4 {
   text-align: left;
 }
 
-
 .section-bordered { /* already got by default but if need to wrap something else */
   border-top:    var(--line-width) solid; /* so, every other top+bottom? */
   border-bottom: var(--line-width) solid; /* this covers/cancels bottom border */
@@ -483,13 +487,14 @@ section.docs .bs-callout h4 {
 }
 
 section { /* one main section (img + header + piece of content) */
+  max-width: 100%;
   flex: 1 1 auto;
   position: relative;
   justify-content: center;
   align-items: middle;
   padding:   var(--space-lg) var(--space-lg); /* for padding-less main: */
-  /* hmm weird how felt --space looked okish entire time then just, whoa not */
-  /* this seems alright enough... */
+  /* background-color: var(--bg-1); /1* then can unset where not needed or want transp... *1/ */
+  /* nope because of my silly bg-img trickery... */
   border-top: var(--line-width) solid;
   /* background: var(--bg-1); */
   box-shadow: 20px inner black;
@@ -507,6 +512,7 @@ section > h1, .jumbo > h1 {
   z-index: 30;
 }
 
+h1, h2, h3, h4, h5, h6 { font-weight: normal; }
 
 section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
 .h0 { font-size: 2.5rem; }
