@@ -633,6 +633,20 @@ video {
 }
 
 
+.component-failed { /* DEV: react error boundary triggered */
+  /* padding: 50%; */
+  padding: var(--space);
+  color: var(--red-1);
+  background-color: var(--bg-2);
+  display: flex;
+  align-items: center;
+  width: 100%;
+  /* position: relative; */
+}
+
+.component-failed > * { /* DEV: react error boundary triggered */
+  margin: var(--space);
+}
 .hud {
   position: fixed;
   z-index: 100;

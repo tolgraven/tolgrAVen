@@ -28,6 +28,34 @@
     [clojure.string :as string])
   (:import goog.History))
 
+(defn safe "Error boundary for components. Also prints/logs error" [component]
+ (let [exception (r/atom nil)] ;or reg not ratom or would cause etra re-render?
+  (r/create-class
+  {:display-name "Error boundary"
+   :component-did-catch (fn [this error info] ;this should log instantly tho
+                          (reset! exception {:error error :info info})) ; error and info are empty.
+    ; :get-derived-state-from-error ;"defined as instance method and will be ignored. define as static"
+   ; (fn [error] ;this should update state to serve like, an error page (for render) "if using getDerivedState methods, the state has to be plain JS object as React implementation uses Object.assign to merge partial state into the current state."
+   ;  (clj->js ;cant get it working. but is supposed to used this, console warns...
+   ;   [:div.component-failed
+   ;    [:p "Component exception:"]
+   ;    [:pre (str "Error: " (:error exception)
+   ;               "\nInfo: " (:info exception))]
+   ;    [:div "Click to attempt reload"
+   ;     [:button {:on-click #(reset! exception nil)}]]]))
+   :reagent-render
+   (fn [args]
+    (if-not @exception   ;state change downstream? then it gets easier to debug "in-page",
+     args
+     (let [[component state] args]
+       (println ((js->clj component) state)) ;replace with better logging eh...
+        [:div.component-failed
+          [:p "Component exception:"] ;[:br]
+          [:pre (str "Error: " (:error exception))]
+          [:pre (str "Info: " (:error exception))]
+          [:di
+           [:button {:on-click #(reset! exception nil)}
+            "Attempt reload"]]])))})))
 
 (defn page []
   [:<>
@@ -37,13 +65,12 @@
 
    (if-let [page @(rf/subscribe [:common/page])]
      [:main.main-content.perspective-top
-      {:class (if @(rf/subscribe [:state :transition])
-                "visible" ; "slide-in-left-visible"
-                "hidden")} ; "slide-in-left-hidden"
-      [page] ; XXX should limit the lines-all-around stuff to certain subpages.
-       ; apart from when edges very tiny it looks v cool with just horiz lines and vert straight cutoff. adds to understated glossy maximinimalist vibe going for... and sorta less "sony presents"
-       [:div.footer-spacer]]) ; could post-main spacer-for-footer go in footer part somehow? but makes sense in main afa DOM, just irks
-   [view/ui-footer @(rf/subscribe [:content :footer])]
+      {:class (if @(rf/subscribe [:state [:transition]])
+                "hidden"; "slide-in slide-out-left" ; hidden
+                "visible")}; "slide-in ")} ; visible
+      [safe [page]]])
+   
+   [view/ui-footer @(rf/subscribe [:content [:footer]])]
    [ui/hud]
    [view/ui-to-top]
    [:a {:name "bottom"}]])
