@@ -274,13 +274,11 @@ li {
   /* pseudo-el representing a target (link, id/el)... */
   /* does not appear to do the trick tho. wait isnt it :: or hmm nope would be if was like *::target? */
   /* html, body does seem to semi-work so whatever */
-  /* scroll-margin-top: var(--header-height); /1* this will have to vary depending on whether menu open... *1/ */
   scroll-padding-top: var(--header-height-current);
 } /* header-height or header-with-menu-height... */
 /* doesnt seem to work though, try putting in html, body... */
 
 html, body {
-  /* scroll-padding-top: var(--header-height-current); */
   /* scroll-margin-block-start: calc(1em + var(--header-height-current)); */
   scroll-padding-top: var(--header-height-current);
   /* scroll-padding-top: calc(1em + var(--header-with-menu-height)); */
@@ -338,7 +336,7 @@ body {
 .line.line-header {
   position: sticky; /* starts between header and main, turns into demarcation */
   z-index: 100;
-  top: var(--header-height); /* aand i forget why this works now. guess i set a min-height larger than regular banner height... */
+  top: var(--header-height); /* not -current since being overridden in header.css then */
   transition: top var(--header-expand-time) ease 0.0s;
   margin-top: var(--space-top); /* space before sticky starts */
   /* box-shadow: 2px 1px 17px 7px hsla(var(--hue-1), 35%, 40%, 0.06); */
@@ -671,7 +669,7 @@ video {
 
 .stick-up { /* make sticky just below header */
   position: sticky;
-  top: var(--header-height);
+  top: var(--header-height-current);
 }
 #section-services {
   z-index: 6;
@@ -723,7 +721,7 @@ video {
   max-height: var(--height);
   z-index: 13;
   position: sticky;
-  top: var(--header-height);
+  top: var(--header-height-current);
   transform-origin: 50% -1570%; /* figure out genericable bs lol */
 }
 #about-story {
