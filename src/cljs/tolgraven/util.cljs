@@ -15,6 +15,26 @@
  (when (seq errors)
   (log :debug errors))) ;debug instead of error, dont want to spam the hud
 
+(defn pluralize "Swap 0/no and grammar"
+  [amount thing]
+  (str amount ;(if (zero? amount) "No" amount)
+       " " thing
+       (when-not (= 1 amount) "s")))
+
+
+(defn timestamp "Use 0-59 mins ago, 1-24 hrs ago, datestamp..."
+  [ts]
+  (if ts
+    (let [mins (ct/mins-ago ts)]
+      (if (< mins 60)
+        (str (pluralize mins "minute") " ago")
+        (let [day-ago (ct/minus (ct/now) (ct/hours 24))
+              display (if (ct/after? ts day-ago)
+                        (int (/ mins 60))
+                        (str "on " (unparse (formatters :date) ts)
+                             "at " (unparse (formatters :hour-minute) ts)))])))
+    ""))
+
 
 (defn- format-css-var [var-name]
   (or (and (some? (string/index-of var-name "--"))

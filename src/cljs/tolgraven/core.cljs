@@ -95,8 +95,15 @@
         {:ref #(when % (util/run-highlighter! "pre" %))} ; very nice way to get a did-mount
         [ui/md->div md]])]))
 
+
 (defn blog-page [] ; how nicely set is-personal for this but also unset etc yada
-  [blog/blog @(rf/subscribe [:content :blog])])
+  [:<>
+   (let [heading @(rf/subscribe [:content [:blog :heading]])
+         posts @(rf/subscribe [:blog/posts])]
+     [:<>
+      [view/fading-bg-heading heading] [:br]
+      [blog/blog posts]])])
+
 
 (defn log-page []
   [ui/log])

@@ -459,12 +459,15 @@ section.docs .bs-callout h4 {
   border-top:    var(--line-width) solid; /* so, every other top+bottom? */
   border-bottom: var(--line-width) solid; /* this covers/cancels bottom border */
 }
-.noborder {
+.noborder, .topborder, .bottomborder {
   border: 0;
 }
+.topborder { border-top: var(--line-width-sm) solid; }
+.bottomborder { border-bottom: var(--line-width-sm) solid; }
 
 
 .blog {
+  background-color: var(--bg-1);
 }
 .blog-post {
 }
@@ -473,16 +476,49 @@ section.docs .bs-callout h4 {
 }
 .blog-comments {
   background-color: var(--bg-2);
-  border: var(--line-width-sm) solid;
+  /* border: var(--line-width-sm) solid; */
 }
 .blog-comment {
+  position: relative;
   /* background-color: var(--bg-2); */
 }
-.blog-add-comment {
+.blog-add-comment-btn {
+  font-size: 0.8em;
+  display: inline;
+}
+.blog-reply-comment-btn {
+  position: absolute;
+  right: var(--space);
+  top: var(--space);
+  opacity: 0;
+  transition: 0.15s;
+}
+.blog-comment:hover .blog-reply-comment-btn,
+.blog-comment:active .blog-reply-comment-btn {
+  opacity: 1;
+  /* transition: 0.15s; */
+}
+.blog-reply-comment-btn:hover {
+  font-weight: bold;
+}
+
+.blog-addding-comment {
+  margin: 1em;
   padding: 0.5em 0.0em;
   /* text-align: right; */
   /* background-color: var(--bg-2); */
 }
+.blog-addding-comment-textbox {
+  background-color: var(--bg-1);
+  color: var(--fg-2);
+}
+
+.blog-comment-preview {
+  background-color: var(--bg-3);
+  margin: var(--space-sm);
+  padding: 0.75em;
+}
+
 
 section { /* one main section (img + header + piece of content) */
   max-width: 100%;
