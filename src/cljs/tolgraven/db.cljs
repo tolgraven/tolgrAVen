@@ -4,7 +4,6 @@
             [cljs.reader]))
 
 
-; maybe call <- and -> etc, symbols would be nice, plus minus get/set warnings hehe
 ; issue anyways is often start with this then need to change to doing it properly...
 (defn <-db "Quick subscription getter. Bad habit I guess..."
  [& path] ;default is better handled ext since this goes through :get -> we already know there is a valid sub
@@ -16,6 +15,7 @@
  [path value]
  (rf/dispatch [:set path value])
  value)
+
 
 (defn setter "Quick db setter fn getter"
  [path]
@@ -45,12 +45,20 @@
 
 (def data ; default db
   {:state {:menu false
-           :is-loading true}
+           :is-loading true
+           :theme-force-dark true
+           :is-personal false
+           :debug {:layers false}
+           ; :transition :out ;later when proper boot sequence, trigger in on load complete
+           }
    :routes {:home "/"
             :about "/about"
             :docs "docs"
             :blog "/blog"
             :log "log"}
+   :users [{:id 0 :name "tolgraven" :password "js roles v secure" :roles [:admin :blogger]}
+           {:id 1 :name "seqable" :password "fixme" :roles [:blogger]}
+           {:id 2 :name "erty" :password "burkimaten"}]
    :content {:header {:text ["tolgrAVen" ["audio" "visual"]]
                       :text-personal ["tolgraven" ["" "joen"]]
                       :menu {:work  [["Services"  "#link-services" :services] ; should have two sections either by collapse
@@ -60,7 +68,7 @@
                              :personal [["Blog"      "#/blog"     :blog]
                                         ["Docs"      "#/docs"     :docs]
                                         ["Log"       "#/log"      :log]]}
-                    ; #_{:should :semi-auto-populate?}
+                      ; #_{:should :semi-auto-populate?}
                       }
              :intro {:title "Building experience"
                      :text "Is what it all comes down to.
@@ -68,7 +76,9 @@
                             There's only one way to find out what's possible blabla copy."
                      :buttons  [["Join me"            "bottom"]
                                 ["Fix these buttons"  "linktotop"]]
-                     :bg {:src "img/foggy-shit-small.jpg" :alt "Purple enthusiast"}
+                     :bg [{:src "img/foggy-shit-small.jpg" :alt "Purple enthusiast"}
+                          {:src "img/live-session-small.jpg" :alt "Ableton Live"}
+                          {:src "img/afterglow-new-web-old-small.jpg" :alt "My actual first web project"}]
                      :logo-bg "img/tolgrav.png"} ; no :src cause goes in :style background-image...
 
              :services  {:categories
@@ -131,8 +141,15 @@
                           :bg [:img.media.media-as-bg.fade-3 {:src "img/collage-strips.jpg"}]}
                          {:title "Placeholder"
                           :caption "Fix this shite"
-                        ; :bg [:div.media-as-bg.anim-gradient-bg]}
+                          ; :bg [:div.media-as-bg.anim-gradient-bg]}
                           :bg [:img.media.media-as-bg.anim-gradient-bg {:src "img/wide-spot-ctrl-small.jpg"}]}]
+
+             :article-links [{:title "A link thingy"    ;fix autograbber!
+                              :text "maybe line or two" ;fix autograbber!
+                              :url "/about"}
+                             {:title "Second time's the charm"    ;fix autograbber!
+                              :text "Well what then now" ;fix autograbber!
+                              :url "/blog"}]
 
              :gallery [{:src "img/joen-mixer.jpg" :alt "My actual first web project"}
                        {:src "img/live-session-small.jpg" :alt "Ableton Live"}
@@ -140,23 +157,29 @@
                        {:src "img/video-editing-small.jpg" :alt "Television"}
                        {:src "img/afterglow-new-web-old-small.jpg" :alt "My actual first web project"}]
 
-             :blog    [{:id 1 :title "And so it all begins"     :md "[i forget] how does *markdown* work??"}
-                       {:id 2 :title "My journey into wankery"  :md "jk i never _knew_"
-                        :comments [{:id 1 :user "Majson" :title "Wow va fint" :md "Snud snud"}
-                                   {:id 2 :user "Adson" :title "oj va fint" :md "Snud snud"}]}
-                       {:id 3 :title "A new beginning: to blog" :md "Will I manage to make more than 2-3 posts this time?
-                                                                  Sometimes I surprise myself, but mostly not. Verdict, _njäe_."}
-                       {:id 4 :title "And something also goes here - maybe a really long one that will have to break lines and bread and love and life"
-                        :md "But then text is short."}]
-             :docs    {:title "Documentation"
-                       :bg {:src "img/wide-spot-ctrl-small.jpg"}}
+             :blog    {:heading {:title "joe tol thought"
+                                 :bg {:src "img/wide-spot-ctrl-small.jpg"}}
+                       :posts [{:id 1 :title "And so it all begins"     :text "[i forget] how does *markdown* work??"
+                                :comments []}
+                               {:id 2 :title "My journey into wankery"  :text "jk i never _knew_"
+                                :comments [{:id 1 :user "Majson" :title "Wow va fint" :text "Snud snud"}
+                                           {:id 2 :user "Adson" :title "oj va fint" :text "Snud snud"}]}
+                               {:id 3 :title "A new beginning: to blog" :text "Will I manage to make more than 2-3 posts this time?
+                                                                             Sometimes I surprise myself, but mostly not. Verdict, _njäe_."
+                                :comments []}
+                               {:id 4 :title "And something also goes here - maybe a really long one that will have to break lines and bread and love and life"
+                                :text "But then text is short."
+                                :comments []}]}
+             :docs    {:heading {:title "Documentation"
+                                 :bg {:src "img/wide-spot-ctrl-small.jpg"}}}
 
              :footer [{:id "left"
-                       :title "Made w/ hiccup n shit"
-                       :text ["joen.tolgraven@gmail.com"]}
+                       :title "joen.tolgraven@gmail.com"
+                       :text ["© 2019-2020"]
+                       :img {:src "img/cljs.png" :alt "cljs logo"}}
                       {:id "middle"
-                       :title "Whatever"
-                       :text ["© 2019-2020"]}
+                       :title ""
+                       :text [""]}
                       {:id "right"
                      ; :title "More ways to get in touch"
                        :links [{:name "Github" :href "https://github.com/tolgraven" :icon "github"}
@@ -167,6 +190,7 @@
                                ]}]}
 
    :options {:auto-save-vars true
+             :transition {:time 200 :style :slide} ; etc
              :hud {:timeout 30 :level :info}}})
 ; DONT FORGET STUPID #_ fucks you for some reason??
 
