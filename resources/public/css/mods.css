@@ -44,20 +44,16 @@
 
 
 /* Show/hide and slide in from left. */
-.slide-in-left-hidden {
+.slide-in {
     position: relative;
     z-index: 0;
-    left: -100%; /* slide out animation */
-    transition: 0.3s;
-    /* transition: opacity 0.4s; */
-    transition-delay: opacity 0.1s;
+    left: 0;
+    right: 0;
+    transition: 0.4s;
+    /* transition-delay: opacity 0.1s; */
 }
-.slide-in-left-visible {
-    transition: 0.3s;
-    /* transition: opacity 0.4s; */
-    transition-delay: opacity 0.1s;
-    left: 5px;
-}
+.slide-out-left { left: -100%; }
+.slide-out-right { right: -100%; }
 
 .hidden {
   visibility: hidden !important;
