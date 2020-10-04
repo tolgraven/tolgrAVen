@@ -92,6 +92,7 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
   display: inline-block;
   font-size: 0.90em;
   line-height: 0.80em;
+  transition: 0.5s;
 }
 
 

@@ -76,13 +76,12 @@
             [lein-auto "0.1.2"]
             [lein-kibit "0.1.2"]]
   :sassc
-  [{:src "resources/scss/main.css"
+  [{:src "resources/scss/main.scss"
     :output-to "resources/public/css/main2.css"
     :style "nested"
     :import-path "resources/scss"}]
-
-  #_:auto
-  #_{"sassc" {:file-pattern #"\.(scss|sass)$" :paths ["resources/scss"]}}
+  :auto
+  {"sassc" {:file-pattern #"\.(scss|sass)$" :paths ["resources/scss"]}}
 
   ; :hooks [leiningen.sassc]
   :clean-targets ^{:protect false}

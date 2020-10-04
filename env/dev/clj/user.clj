@@ -13,22 +13,16 @@
 
 (add-tap (bound-fn* clojure.pprint/pprint))
 
-(defn start
-  "Starts application.
-  You'll usually want to run this on startup."
-  []
+(defn start "Starts application.  You'll usually want to run this on startup." []
   (mount/start-without #'tolgraven.core/repl-server)
   (start-fw))
 
-(defn stop
-  "Stops application."
-  []
+(defn stop "Stops application." []
   (mount/stop-except #'tolgraven.core/repl-server))
 
-(defn restart
-  "Restarts application."
-  []
+(defn restart "Restarts application." []
   (stop)
   (start))
 
-
+(def sub (comp deref rf/subscribe))
+(def disp rf/dispatch)

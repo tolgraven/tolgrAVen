@@ -1,0 +1,92 @@
+
+
+/* Transformed input checkbox -> toggle */
+.toggle-switch { /* The switch - the box around the slider */
+  position: relative;
+  display: inline-block;
+  border-radius: 5px;
+  border: 1px solid rgb(90, 30, 20, 0.5);
+}
+.toggle-switch input { /* Hide default HTML checkbox */
+  opacity: 0; width: 0; height: 0;
+}
+
+.toggle-slider { /* The "slider" */
+  position: absolute;
+  cursor: pointer;
+  background-color: rgb(60, 40, 40, 0.6);
+  top: 0; left: 0; right: 0; bottom: 0;
+  transition: .3s; -webkit-transition: .3s;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 100%; width: 50%;
+  left: 0%;
+  border-radius: 4px;
+  background-color: rgb(32, 30, 34 , 0.9);
+  border: 1px solid rgb(160, 170, 190, 0.3);
+  transition: .3s; -webkit-transition: .3s;
+}
+
+input:checked + .toggle-slider {
+  /* border-radius: 7px; */
+  /* background-color: #2196F3; */
+  background-color: rgb(132, 60, 54 , 0.9);
+}
+input:focus + .toggle-slider {
+  /* box-shadow: 0 0 2px #2196F3; */
+  box-shadow: 0 0 2px rgb(192, 90, 84 , 0.8);
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(100%); -ms-transform: translateX(100%); -webkit-transform: translateX(100%);
+  /* transform: translateX(50%); -ms-transform: translateX(50%); -webkit-transform: translateX(50%); */
+}
+
+.toggle-slider.round { /* Rounded sliders */
+  border-radius: 4px;
+}
+.toggle-slider.round:before {
+  /* border-radius: 50%; */
+}
+
+/* .toggle-hidden { */
+/*     position: relative; */
+/*     z-index: 0; */
+/*     width: 0px; */
+/*     left: -100%; /1* slide out animation *1/ */
+/*     transition: 0.3s; */
+/*     transition-delay: opacity 0.1s; */
+/* } */
+/* .toggle-visible { */
+/*     transition: 0.3s; */
+/*     /1* transition: opacity 0.4s; *1/ */
+/*     transition-delay: opacity 0.1s; */
+/*     left: 5px; */
+/* } */
+/* */
+
+/* Transformed range (slider) input. Using my own as well, decide eventually what to do... */
+input[type=range] {
+    -webkit-appearance: none;
+    /* background-color: rgb(80, 60, 70, 0.5); */
+    background-image: linear-gradient(rgba(30, 30, 30, 0.6), rgba(50, 20, 20, 0.5));
+    /* opacity: 0.8; */
+    /* height: 1.5rem; */
+    /* width: 200px; */
+    margin: 2px 0px;
+}
+input[type=range]::-webkit-slider-thumb {
+  opacity: 0.7;
+    /* -webkit-appearance: none; */
+    background-color: rgb(30, 30, 30, 0.7);
+    /* width: 0.6rem; */
+    /* height: 1.5rem; */
+    /* height: auto; */
+}
+input[type=range]:focus {
+  outline: 0px;
+  /* box-shadow: inset 0px 0px 1px 2px rgb(30, 30, 30, 0.8); */
+}
