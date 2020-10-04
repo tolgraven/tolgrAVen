@@ -64,7 +64,7 @@
 
 (rf/reg-sub :header-text
  :<- [:state]
- :<- [:content :header]
+ :<- [:content [:header]]
  (fn [[state header] [_ _]]
    (if (:is-personal state)
      (:text-personal header)

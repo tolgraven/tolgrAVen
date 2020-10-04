@@ -106,6 +106,27 @@
 (defn log-page []
   [ui/log])
 
+; (defn login "Should be modal and trigger whenever needed, then popped and state same..."
+;   []
+;   [])
+
+; ideally would be "component requiring login sesh" wrapper
+; then all these make check (vs server, nyah spoof!) and trigger...
+; actually makes most sense to do nav to where should (if full nav)
+; then login on top _after_
+; point is dont want to boiler every single thing yeah
+;
+(defn user-page "Should lead either to user page, or login-modal.
+                 (or full-page, can work anyways w rfe/push-state or?)" []
+  (let [login @(rf/subscribe [:state :login-session])]
+    (if (:logged-in login)
+      [user/user]
+      [])))
+
+(defn reg-page "Should lead either to user page, or login-modal" []
+  (let [login @(rf/subscribe [:state :login-session])]
+    [user/register]))
+
 
 (def router ; XXX weird thing doesnt automatically scroll to top when change page...
   (reitit/router
@@ -131,7 +152,12 @@
                :view #'home-page
                }]
      ["/log" {:name :log
-              :view #'log-page}]]))
+              :view #'log-page}]
+     ["/user" {:name :user
+               :view #'user-page}]
+     ["/register" {:name :register
+                   :view #'reg-page}]]
+    ))
 
 (defn start-router! []
   (rfe/start!

@@ -245,7 +245,7 @@
   [content]
   [:<>
     [:footer.footer-sticky>div.footer-content
-      ; {:style {:position :fixed}}
+      {:style {:position :fixed}}
       [:div.line.line-footer] ;cant this be outside main ugh
         (for [{:keys [title text id links] :as column} content
           :let [id (str "footer-stick-" id)]] ^{:key id}
@@ -253,20 +253,19 @@
           [:h3 title]])]])
 
 (defn ui-footer "Might want to bail on left/middle/right just push whatever. do the current ids matter?"
-  ; [{:keys [left middle right]}]
   [content]
-  ; [:footer>div.footer-content
-  [:footer.footer-sticky.fullwide
+  [:footer.footer-sticky ; [:footer>div.footer-content
    [:div.line.line-footer] ;cant this be outside main ugh
    ; [logmsgs, cookie nurtice and bunch of deminimizable stuff]
    [:div.footer-content ;; XXX should adapt to available height, also disappear...
-    (for [{:keys [title text id links] :as column} content
+    (for [{:keys [title text id links img] :as column} content
           :let [id (str "footer-" id)]] ^{:key id}
          [:div.footer-column {:id id}
-          [:h3 title]
 
+          [:h4 title]
+          ; (when img [util/merge-attr img])
           (when text (for [line text] ^{:key (str id "-" line)}
-                          [:p line]))
+                          [:h5 line]))
           (when links [:div.footer-icons
                        (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
                             [:a {:href href :name name}
@@ -290,22 +289,17 @@
         get-lewd #(merge (nth interlude @interlude-counter)
                          {:nr (swap! interlude-counter inc)})]
     [:<>
-        ; [:div.padder.fullwidth {:style {:min-height @(rf/subscribe [:get-css-var "--header-height-current"])}}]
-        [:a {:name "linktotop"}]
-        [bg-logo (:logo-bg intro)]
+     [ui-intro @(rf/subscribe [:content [:intro]])]
 
-        [:img#top-banner.media.media-as-bg (:bg intro)] ; can we get this within intro plz?
-        [ui-intro @(rf/subscribe [:content :intro])]
+     [ui-interlude (get-lewd)]
+     [ui-services @(rf/subscribe [:content [:services]])]
 
-        [ui-interlude (get-lewd)]
-        [ui-services @(rf/subscribe [:content :services])]
-
-        [ui-interlude (get-lewd)]
-        [ui-moneyshot @(rf/subscribe [:content :moneyshot])]
-        ; need to watch div and show/hide para laxy bee gees as appropriate - both bc now fucking compositor and ugly clipping etc
-        ; also sidesteps "omg each new div higher z" induced problem
-        [ui-story @(rf/subscribe [:content :story])]
-        [ui-interlude (get-lewd)]
-        [ui-gallery @(rf/subscribe [:content :gallery])]
-        [ui-interlude (get-lewd)]]))
+     [ui-interlude (get-lewd)]
+     [ui-moneyshot @(rf/subscribe [:content [:moneyshot]])]
+     ; need to watch div and show/hide para laxy bee gees as appropriate - both bc now fucking compositor and ugly clipping etc
+     ; also sidesteps "omg each new div higher z" induced problem
+     [ui-story @(rf/subscribe [:content [:story]])]
+     [ui-interlude (get-lewd)]
+     [ui-gallery @(rf/subscribe [:content [:gallery]])]
+     [ui-interlude (get-lewd)]]))
 
