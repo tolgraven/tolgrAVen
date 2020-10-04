@@ -1,0 +1,58 @@
+/* BLOG STUFF */
+
+.blog {
+  z-index: 30;
+  background: var(--gradient-bg-main);
+  /* background-color: var(--bg-1); */
+}
+.blog-post {
+}
+.blog-section {
+
+}
+.blog-comments {
+  background-color: var(--bg-1);
+  /* border: var(--line-width-sm) solid; */
+}
+.blog-comment {
+  position: relative;
+  /* background-color: var(--bg-2); */
+}
+.blog-add-comment-btn {
+  font-size: 0.8em;
+  display: inline;
+}
+.blog-reply-comment-btn {
+  position: absolute;
+  right: var(--space);
+  top: var(--space);
+  opacity: 0;
+  transition: 0.15s;
+}
+.blog-comment:hover .blog-reply-comment-btn,
+.blog-comment:active .blog-reply-comment-btn {
+  opacity: 1;
+  /* transition: 0.15s; */
+}
+.blog-reply-comment-btn:hover {
+  /* font-weight: bold; */
+  font-size: 1.2em;
+}
+
+.blog-addding-comment {
+  margin: 1em;
+  padding: 0.5em 0.0em;
+  /* text-align: right; */
+  /* background-color: var(--bg-2); */
+}
+.blog-addding-comment-textbox {
+  background-color: var(--bg-1);
+  color: var(--fg-2);
+}
+
+.blog-comment-preview {
+  background-color: var(--bg-3);
+  margin: var(--space-sm);
+  padding: 0.75em;
+}
+
