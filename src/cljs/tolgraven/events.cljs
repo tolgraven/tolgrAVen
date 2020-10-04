@@ -152,13 +152,13 @@
 (rf/reg-event-fx :blog/comment-new [debug
                                     (rf/inject-cofx :now)
                                     (rf/inject-cofx :gen-uuid)]
- (fn [{:keys [db now id]} [_ parent-id comment]]
-   (println now id parent-id comment) ;empty...
-   (let [path [:content :blog :posts (dec parent-id) :comments]]
-     (when (get-in db path)
+ (fn [{:keys [db now id]} [_ [blog-id parent-id] comment]]
+   (let [path (cond-> [:content :blog :posts (dec blog-id) :comments]
+                parent-id (into [(dec parent-id) :comments]))]
        {:db (update-in db path
                        conj
-                       (merge comment {:ts now :id id}))}))))
+                       (merge comment {:ts now :id id}))})))
+
 
 ;; SOME STUFF FROM CUE-DB
 (rf/reg-event-fx :init ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
