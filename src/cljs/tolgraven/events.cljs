@@ -152,9 +152,14 @@
 (rf/reg-event-fx :blog/comment-new [debug
                                     (rf/inject-cofx :now)
                                     (rf/inject-cofx :gen-uuid)]
- (fn [{:keys [db now id]} [_ [blog-id parent-id] comment]]
+ (fn [{:keys [db now id]} [_ [blog-id & parent-path] comment]]
    (let [path (cond-> [:content :blog :posts (dec blog-id) :comments]
-                parent-id (into [(dec parent-id) :comments]))]
+                ; parent-path (into [(dec parent-id) :comments]))]
+                parent-path #(reduce (fn [p id]
+                                      (into p [(dec id) :comments]))
+                                    %1
+                                    parent-path))]
+     (println path)
        {:db (update-in db path
                        conj
                        (merge comment {:ts now :id id}))})))

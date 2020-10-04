@@ -31,16 +31,21 @@
     [:h6 (str id " - " by) user (str " - " ts)]))
 
 (defn comment-post "A comment"
-  [root-id parent-id {:keys [id ts user title text comments] :as post}]
+  [parent-path {:keys [id ts user title text comments] :as post}]
   [:section.blog-comment
    [:h4 title]
    [posted-by id user ts] [:br]
    [ui/md->div text] [:br]
    (when comments ;replies
        [:<> ;best if could recurse back to comments-section...
-        (doall (for [post comments] ^{:key (str "blog-post-" (:id post) "-comment-" parent-id "-reply-" (:id post))}
-                 [comment-post root-id id post]))])
-   [add-comment root-id id :comment]])
+        (doall (for [post comments
+                     :let [rk (reduce (fn [s i] (str s "-" i))
+                                    "blog-comment"
+                                    parent-path)]]
+               ; ^{:key (str "blog-post-" (first path) "-comment-" parent-id "-reply-" (:id post))}
+               ^{:key rk}
+                 [comment-post (conj parent-path (:id post)) post]))])
+   [add-comment parent-path :comment]])
 
 (defn comments-section "Comments section!"
   [{:keys [id comments] :as blog-post}]
@@ -51,14 +56,14 @@
      (when comments
        (doall (for [comment comments] ^{:key (str "blog-post-" (:id blog-post) "-comment-" (:id comment))}
                 [comment-post id id comment])))
-     [add-comment id nil :blog]]))
+     [add-comment [id] :blog]]))
 
 (defn add-comment "Post http or do a gql mutation, yada yada"
-  [blog-id parent-id parent-type] ; TODO id as id-path (or, unique for all but presented by index...)
+  [parent-path parent-type] ; TODO id as id-path (or, unique for all but presented by index...)
   ; id could also be a map... {:uuid adfskl :id 1 :kind :comment :path [:1 :3 :7]} ;where 1 blog, 3 and 7 comments
-  (let [adding-comment (rf/subscribe [:state [:blog :adding-comment [blog-id parent-id]]]) ;test... would need id of post
+  (let [adding-comment (rf/subscribe [:state [:blog :adding-comment parent-path]]) ;test... would need id of post
         model (r/atom {:user "anon" :title "" :text ""})
-        submit #(rf/dispatch [:blog/comment-new [blog-id parent-id] @model])
+        submit #(rf/dispatch [:blog/comment-new parent-path @model])
         input-valid? (fn [input]
                        (pos? (count (:text input))))
                        ; (every? (fn [[_ v]] (pos? (count v)))
@@ -80,21 +85,18 @@
                 ; :id (str "blog-add-comment-input-" id)
                 :on-change (on-change k)}]) ; tho stashing half-written in localstorage is p awesome when done. so db evt
         toggle-ui-btn (fn [kind]
-                        (let [on-click #(rf/dispatch [:toggle [:state :blog :adding-comment [blog-id parent-id]]])]
+                        (let [attrs {:on-click
+                                     #(rf/dispatch
+                                       [:toggle [:state :blog :adding-comment parent-path]])}]
                           (case kind
                           :blog [:<>
                                  [:button.blog-add-comment-btn.topborder
-                                  {:style {:text-align "right"}
-                                   :on-click on-click}
-                                  "Add comment"]
+                                  attrs "Add comment"]
                                  [:br]]
                           :comment [:button.blog-reply-comment-btn.topborder
-                                    {:on-click on-click}
-                                    "Reply"]
-                          [:button.blog-add-comment-btn.bottomborder
-                                  {:style {:text-align "right"}
-                                   :on-click on-click}
-                                  "Cancel"])))
+                                    attrs "Reply"]
+                          :cancel [:button.blog-add-comment-btn.bottomborder
+                                  attrs "Cancel"])))
         submit-btn (fn []
                      [:button.noborder
                       {:class (when (input-valid? @model) "topborder")
@@ -102,17 +104,20 @@
                        :on-click (fn [_]
                                    (if (and logged-in?
                                             (input-valid? @model))
-                                     (do (rf/dispatch [:state [:blog :adding-comment [blog-id parent-id]] false])
+                                     (do (rf/dispatch [:state [:blog :adding-comment parent-path] false])
                                          (submit))
                                      (rf/dispatch [:state [:login-view-open] true])))}
-                      "Submit"])] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
+                      "Submit"])
+        valid-bg {:background-color "#182018"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
      (if-not @adding-comment
        [toggle-ui-btn parent-type]
        [:section.blog-adding-comment {:style {:padding "1em"}}
-        [box :title :input {:background-color "#182418"} "Title (optional)"]
-        [box :text :textarea {:width "100%" :height "6em"} "comment"] [:br]
-        [submit-btn]
-        [toggle-ui-btn]
+        [box :title :input valid-bg "Title (optional)"]
+        [box :text :textarea {:width "100%" :height "6em"}
+        ; [box :text :textarea (merge {:width "100%" :height "6em"}
+        ;                             (when (input-valid? @model) valid-bg))
+         "comment"] [:br]
+        [submit-btn] [toggle-ui-btn :cancel]
         [preview-comment model]
         ])))
 
