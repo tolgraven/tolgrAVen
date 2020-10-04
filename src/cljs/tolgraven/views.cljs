@@ -123,6 +123,44 @@
       :or {fade-to "fade-to-black" dir "light-from-below"}}]
   [:div.fader [:div {:class (str fade-to " " dir)}]])
 
+(defn ui-carousel-bg "Intro (bg img only) jumbotron slider
+                      Should be a generic system also working for page transitions etc"
+  [img-attrs]
+  [:div#top-banner.carousel ;{:class ""}
+   ; (map-indexed )
+    (for [img img-attrs] ^{:key (str "carousel-bg-" (:src img))}
+         [:img.media.media-as-bg img])])
+         ; [:div.carousel-item
+         ;  [:img.media.media-as-bg img]])])
+
+(defn ui-carousel-bg-2 "Intro (bg img only) jumbotron slider"
+  [img-attrs]
+  [:div#top-banner.carousel.media-as-bg ;{:class ""}
+   [:ol.carousel__viewport
+    (map-indexed
+     (fn [i img]
+       (with-meta
+         [:li.carousel__slide
+           {:id (str "carousel__slide" (inc i))
+            :tabindex 0}
+           [:div.carousel__snapper
+           [:a.carousel__prev {:href "#slide-fuckit-events are better4"}]
+           [:a.carousel__next {:href "#carousel__slide2"} "Go to next"]] ;for nav
+           [:img.media.media-as-bg img]]
+         {:key (str "carousel-bg-" (inc i))}))
+     img-attrs)]
+   [:aside.carousel-nav>ol
+    (for [i (->> img-attrs count inc (range 1))]
+      [:li.carousel-nav-item
+       [:a {:href (str "carousel__slide" i)}]])] ])
+
+
+(defn ui-intro [{:keys [title text buttons logo-bg bg]}]
+  [:<>
+   [bg-logo logo-bg]
+   ; [ui-carousel-bg bg]
+   ; [ui-carousel-bg-2 bg]
+   [:img#top-banner.media.media-as-bg (first bg)]
 
 (defn ui-intro [{:keys [title text buttons]}]
   [:section#intro
