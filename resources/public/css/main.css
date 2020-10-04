@@ -468,16 +468,6 @@ section.docs .bs-callout h4 {
   text-align: left;
 }
 
-.section-bordered { /* already got by default but if need to wrap something else */
-  border-top:    var(--line-width) solid; /* so, every other top+bottom? */
-  border-bottom: var(--line-width) solid; /* this covers/cancels bottom border */
-}
-.noborder, .topborder, .bottomborder {
-  border: 0;
-}
-.topborder { border-top: var(--line-width-sm) solid; }
-.bottomborder { border-bottom: var(--line-width-sm) solid; }
-
 
 .blog {
   background-color: var(--bg-1);

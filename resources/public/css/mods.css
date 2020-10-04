@@ -151,6 +151,20 @@
 .darken-3 { filter: brightness(30%); }
 .darken-5 { filter: brightness(55%); }
 
+.noborder, .horizborders, .vertborders, .topborder, .bottomborder {
+  border: 0;
+}
+.horizborders { /* already got by default but if need to wrap something else */
+  border-top:    var(--line-width) solid; /* so, every other top+bottom? */
+  border-bottom: var(--line-width) solid; /* this covers/cancels bottom border */
+}
+.vertborders { /* already got by default but if need to wrap something else */
+  border-left:  var(--line-width-vert) solid; /* so, every other top+bottom? */
+  border-right: var(--line-width-vert) solid; /* this covers/cancels bottom border */
+}
+.topborder { border-top: var(--line-width-sm) solid; }
+.bottomborder { border-bottom: var(--line-width-sm) solid; }
+
 
 /* PARALLAX */
 /* needs to be torn down and redone properly. messy as balls now */
