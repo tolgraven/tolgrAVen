@@ -146,28 +146,45 @@
 
 
 (defn scroll-by "Manually scroll view by. But guess need custom for Safar-eye"
-  [rem] ; can use css calc stuff for rem -> px?
-  (js/window.scrollBy 0 (rem-to-px rem)))
+  [rem & [id]] ; want to scroll within container as well?
+  (doto (or (when id elem-by-id) js/window)
+    (.scrollBy 0 (rem-to-px rem))))
 
 (defn scroll-to "Manual so Safari gets same fn as chrome
                  Plus move page down correctly when open menu etc...
                  There is a CSS offset thing but cant get it working?"
-  [id & offset] ; in case css nyah work...
-  (.scrollIntoView (elem-by-id id)
-                   (clj->js {:behavior :smooth, :block :start})))
+  [id & [offset]] ; should have bangs, also take parent id like -by, if necessary?
+  (when-let [id (elem-by-id id)]
+     (.scrollIntoView id (clj->js
+                          {:behavior :smooth, :block :start}))
+     (when offset
+       (scroll-by offset))))
 
-(defn observe [div-ref on-view-change & continous?] ;what's with the weird scrolling bug?
-  (when (at div-ref) ; well with ratom at least thing will reload, bit extra smudge but most reasonable?
-    (let [in-view (atom 0.0)]
-      (doto  (js/IntersectionObserver. ;prob needs tearing down for reload or?
-              (fn [entries]
-                (let [pos (.-intersectionRatio (first entries))
-                      val-fn (if continous? identity pos?)] ; but eh still wanna filter repeats
-                  ; btw super wasteful should only spit when changes duh
-                  (when (not= (val-fn @in-view) (val-fn pos))
-                    (on-view-change (val-fn (reset! in-view pos)))))))
-        (.observe (at div-ref)))))) ; annoying thing about this one need to manually bind it right?
-; how ensure clean these up?
+(defn observe [on-view-change] ;what's with the weird scrolling bug?
+  (let [in-view (atom false)
+        observer (js/IntersectionObserver.
+                  (fn [[entry & _]]
+                    (when-not (= @in-view (.-isIntersecting entry))
+                        (println (.-isIntersecting entry))
+                        (on-view-change (reset! in-view (.-isIntersecting entry))))))]
+    (fn [div-ref]
+      (if (at div-ref)
+        (.observe observer (at div-ref))
+        (.disconnect observer))))) ;prob needs tearing down for reload or?
+
+(defn frac-in-view [on-view-change] ;what's with the weird scrolling bug?
+  (let [in-view (atom 0.0)
+        observer (js/IntersectionObserver.
+                  (fn [[entry & _]]
+                    (when-not (= @in-view (.-intersectionRatio entry))
+                        ; (println @in-view (val-fn frac) frac)
+                        ; (println @in-view (val-fn frac) frac)
+                        (on-view-change (reset! in-view (.-intersectionRatio entry))))))]
+    (fn [div-ref]
+      (.disconnect observer)
+      (if (at div-ref)
+        (.observe observer (at div-ref))
+        (.disconnect observer))))) ;prob needs tearing down for reload or?
 
 
 (defn crap []

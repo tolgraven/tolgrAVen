@@ -29,7 +29,31 @@
     [:p.caption-inset {:class pos}
      caption]))
 
+(defn link-img-title "Link eith an image and a title, for posts for example"
+  [{:as content :keys [title text url side]
+    :or [side :left]}]
+  (let []
+    [:div.float-wrapper
+     [:div.caption-inset {:class (str side)}
+      [:p text]]
+     [:h2 title]]))
 
+(defn input-toggle "Don't forget to put ze label - only was sep in first place due to css bs?"
+  [id checked-path & {:keys [class label]}]
+  [:input ;.toggle
+   {:id id :class class ;must be outside header or breaks...
+    :type "checkbox"    :default-checked @(rf/subscribe checked-path)
+    :on-click (fn []
+                ; (rf/dispatch (into (or on-click-path checked-path)
+                (rf/dispatch (into checked-path
+                                   [(not @(rf/subscribe checked-path))])))}])
+
+(defn loading-spinner [model]
+  [:div.loading-spinner
+     (when @model ;should it be outside so not put anything when not loading? or better know element goes here
+       [:i {:class "fa fa-spinner fa-spin"}])])
+
+; (into [:menu] [false])
 ;; TODO curr 1px gap between outer lines and img. Fix whatever causing this by mistake (think lines are half-width)
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
 (defn ui-header-logo [[text subtitle]]
@@ -43,42 +67,45 @@
 (defn ui-header-nav "PLAN: / across with personal stuf on other side. Fade between logos depending on mouse hover..."
   [sections]
   (let [put-links (fn [links]
-                    (doall (for [[title url page] links] ^{:key (str "menu-link-" title)}
-                         [:li [:a {:href url :name title
-                                   :data-reitit-handle-click false
-                                   :class (when (= page @(rf/subscribe [:common/page])) :is-active)} ;some (rfe/href ::about auto thing too)
-                               (string/upper-case title)]])))]
-    [:menu
+                    (doall
+                     (for [[title url page] links] ^{:key (str "menu-link-" title)}
+                          [:li [:a {:href url :name title
+                                    :data-reitit-handle-click false
+                                    :class (when (= page
+                                                    @(rf/subscribe [:common/page]))
+                                             :is-active)} ;some (rfe/href ::about auto thing too)
+                                (string/upper-case title)]])))]
+    [:menu ; XXX put bg stuff in mwnu not nav...
      [:nav
       [:div.nav-section
        [:ul.nav-links
-         (put-links (:work sections))]]
+        (put-links (:work sections))]]
 
-      [:div.big-slash] ; a line that goes across
+      ; [:div.big-slash] ; a line that goes across
 
       [:div.nav-section
        [:ul.nav-links
-          {:style {:position :absolute, :right 0, :top 0}}
-          (put-links (:personal sections))]]]
-     #_[:label {:for "theme-toggle" :class "theme-label show-in-menu"}
-        "Theme"]]))
+        {:style {:position :absolute, :right 0, :top 0}}
+        (put-links (:personal sections))]]]
+
+     [:div.menu-toggles
+      {:style {:position "absolute" :right 0 :bottom 0} }
+      [input-toggle "theme-force-dark" [:state [:theme-force-dark]]]
+      [:label.show-in-menu {:for "theme-force-dark" :class "theme-label"} "Theme"]
+      ; [ui/toggle [:state [:debug-layers]]]
+      [input-toggle "debug-layers" [:debug [:layers]]]
+      [:label.show-in-menu {:for "debug-layers"} "Debug"] ] ]))
+
 
 (defn ui-header [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   [:<>
-   [:input {:id "nav-menu-open" :class "burger-check" ;must be outside header or breaks...
-            :type "checkbox"    :default-checked @(rf/subscribe [:menu])
-            :on-click (fn []
-                        (rf/dispatch [:menu (not @(rf/subscribe [:menu]))])
-                        ; #_(rfe/push-state yada)
-                        ) }] ; can push url state also for menu open etc
+   [input-toggle "nav-menu-open" [:menu] :class "burger-check"]
    [:header
     [:div.cover.cover-clip] ;covers around lines and that... XXX breaks when very wide tho.
     [ui-header-logo @(rf/subscribe [:header-text])]
     [ui-header-nav menu]
 
-    [:div.loading-spinner
-     (when @(rf/subscribe [:state :is-loading])
-       [:i {:class "fa fa-spinner fa-spin"}])]   ; menu
+    [loading-spinner (rf/subscribe [:state [:is-loading]])]   ; menu
     [:label.burger {:for "nav-menu-open"}]]])
 
 (defn ui-button "Pass text and id, plus either link anchor or action..."
@@ -147,25 +174,32 @@
                   [:li line])))]]])
 
 (defn ui-moneyshot "needs better name lol. what is hero img halfway down page?"
-  [{:keys [title caption bg visible]}]
-  (let [div-ref (r/atom nil) ; gotta ratom so can give empty first? cause wont be mounted when building etc?
-  ; (let [div-ref (atom nil) ; yes is true
-        observer (util/observe div-ref #(rf/dispatch [:set [:moneyshot :visible] %]))] ;reason to actually keep this would be disposal. so r/with-let...
+  [{:keys [title caption bg]}]
+  (let [div-ref (r/atom nil) ;] ; gotta ratom so can give empty first? cause wont be mounted when building etc? ;div-ref (atom nil) ; yes is true
+        observer (util/frac-in-view #(rf/dispatch [:state [:moneyshot :visible] %]))] ;reason to actually keep this would be disposal. so r/with-let...
     (fn [{:keys [title caption bg]}]
-      ; (let [observer (util/observe div-ref #(rf/dispatch [:set [:moneyshot :visible] %]))]
-      (let []
-        [:div {:class "section-with-media-bg-wrapper covering stick-up"}
-               ; :ref #(reset! div-ref %)
-         ; or only works in create-class biggum? well any case we need on-mount so heh
-         [:img.media-as-bg (merge bg {:class "fade-5 parallax-sm origin-toptop"
-                                      :style (when-not visible {:visibility "hidden"})}
-                                  ; or only works in create-class biggum? well any case we need on-mount so heh
-                                  )]
+      (let [frac @(rf/subscribe [:state [:moneyshot :visible]])]
+        (observer div-ref)
+        [:div {:class "section-with-media-bg-wrapper covering stick-up"
+               :ref #(reset! div-ref %) }
+         [:img.media-as-bg
+          (merge bg {:class "fade-5 parallax-sm" ; origin-toptop
+                     :style (merge (when-not (pos? frac)
+                                     {:visibility "hidden"})
+                                   {:transition "0.5s"}
+                                   ; {:transform (str (util/css-str "translateZ" "-10")
+                                   ;                  (util/css-str "scale" (* frac @(rf/subscribe [:get-css-var "parallax-scale"]))))}
+                                   )})]
          [:section#intro-end.center-content
           [:h1.h0-responsive.parallax-bg
-           {:ref #(reset! div-ref %)} ;why no go
+           {:style {:transition "2.5s ease"
+                    :transform (str ;"translateY(-15%)"
+                                    "translateZ(" (* 33 frac) "px)")
+                    ; :font-size (str (* (/ 5 frac) 2.5) "rem")
+                    }}
            title]] ;ideally want this also growing (and moving quicker upwards)]
          [ui-inset caption 3]
+         [ui-inset (str "Fraction visible:" frac) 2]
          [ui-fading]]))))
 
 ;; TODO basically figure out neatest way of getting gotten rid of in-the-way bg layers...
@@ -177,10 +211,17 @@
 ;; but clearly "out there fkn content" + mostly clipping div then tracking that leaky container div
 ;; must be right course of action.
 (defn fading-bg-heading [{:keys [title bg] :as content}]
-  [:div.fader
-   [:img.media.media-as-bg bg]
-   [:section.covering-faded
-    [:h1.h-responsive title]]])
+  [:<>
+   [:div {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
+    [:div.fader
+     ; [:img.media.media-as-bg.parallax-sm bg]
+     [:img.media.media-as-bg bg]
+     [:section.covering-faded
+      [:h1.h-responsive
+       ; {:style {:top "33%"}}
+       {:style {:transform "translateY(-25%)"}}
+       title]]]]
+   [:div.fader>div.fade-to-black.bottom]])
 
 
 (defn ui-story "Big img header + story" [{:keys [heading] :as content}]

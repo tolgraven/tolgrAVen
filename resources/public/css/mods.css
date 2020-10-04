@@ -156,16 +156,28 @@
 
 
 /* PARALLAX */
+/* needs to be torn down and redone properly. messy as balls now */
+
+/* .parallax-wrapper {} */
+/* .parallax-group {} */
+/* .parallax-layer {} */
+
 .perspective-top { /* default perspective for main. */
   perspective: calc(1px * var(--perspective));
-  perspective-origin: top; /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */
+  /* perspective-origin: top; /1* starts where i want but then want it going other dir... or maybe going up-away better, more understated... *1/ */
 }
 .parallax-sm, .parallax-bg, .parallax-fg {
-  transform-origin: top;
+  /* transform-origin: top; */
   transform-style: preserve-3d;
+  overflow-y: auto;
 }
 .parallax-sm {
-  transform: translateZ(var(--parallax-sm-px)) scale(var(--parallax-sm-scale));
+  /* transform: translateZ(var(--parallax-sm-px)) scale(var(--parallax-sm-scale)); */
+  transform: translateZ(var(--parallax-sm-px))
+             translateY(-10%)
+             /* translateY(-50%) */
+             /* translateY(var(--parallax-sm-px)) */
+             scale(var(--parallax-sm-scale));
 }
 .parallax-bg {
   transform: translateZ(var(--parallax-px)) scale(var(--parallax-scale));
@@ -185,9 +197,28 @@
 .origin-toptop {
   /* transform-origin: 50% -100%; */
   /* transform-origin: 50% -250%; */ /* gap up top chrome #intro-end, middle ground? */
-  transform-origin: 50% -150%;
+  /* transform-origin: 50% -150%; */
+  transform-origin: 50% -100%;
 }
 
+
+.debug-layers * {
+  /* -webkit-transform: translate3d(150px, 0, -150px) rotateY(30deg); */
+  /* transform: translate3d(10px, -25px, -10px) rotateY(1deg); */
+  transform: translate3d(10px, -25px, -10px)
+             rotateY(1deg)
+             rotateX(-5deg);
+  /* opacity: 0.85; */
+  transition: transform 0.3s;
+}
+* { /*for animation both ways */
+  transform: none;
+  transition: transform 0.3s;
+}
+.debug-layers {         box-shadow: 0 0 0 1px #6d8; }
+.debug-layers div {     box-shadow: 0 0 0 1px #3bf; }
+.debug-layers section { box-shadow: 0 0 0 1px #fb5; }
+.debug-layers .media {  box-shadow: 0 0 0 2px #f62; }
 
 .inline { display: inline; }
 .box-regular { box-shadow: 2px 1px 17px 7px var(--box-regular-color); }

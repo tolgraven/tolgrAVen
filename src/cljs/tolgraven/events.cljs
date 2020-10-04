@@ -3,18 +3,21 @@
     [re-frame.core :as rf]
     [ajax.core :as ajax]
     [reitit.frontend.easy :as rfe]
-    [cljs-time.core :as ct]
     [reitit.frontend.controllers :as rfc]
-    [tolgraven.util :as util]))
+    [tolgraven.util :as util]
+    [cljs-time.core :as ct]
+    [cljs-time.format :refer [formatters formatter unparse]]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
+
+; (rf/reg-fx :dispatch-staggered) ; ya kno. stagger -later, maybe optionally awaiting comfirmation of :done for dispatching dispatches. but the asdync flow thing prob already does most of that?
 
 (rf/reg-event-fx
  :common/start-navigation
  (fn [{:as cofx :keys [db]} [_ match]]
    (let [old-match (:common/route db)]
-     {:dispatch [:transition :out old-match]
-      :dispatch-later {:ms (or (-> db :options :transition-time) 250)
+     {:dispatch [:transition/out old-match]
+      :dispatch-later {:ms (or (-> db :options :transition-time) 160)
                        :dispatch [:common/navigate match]}})))
 
 ;;dispatchers from luminus, see if any useful...
@@ -24,61 +27,100 @@
           new-match (assoc match :controllers
                                  (rfc/apply-controllers (:controllers old-match) match))]
       {:db (assoc db :common/route new-match)
-       :dispatch [:transition :in new-match]})))
+       :dispatch-n [[:transition/in new-match]
+                    [:scroll/to "linktotop"]]})))
 
 (rf/reg-fx :common/navigate-fx!
   (fn [[k & [params query]]]
     (rfe/push-state k params query)))
 
-(rf/reg-event-fx :common/navigate!
+(rf/reg-event-fx :common/navigate! ; never actually called, check template...
   (fn [_ [_ url-key params query]]
     {:common/navigate-fx! [url-key params query]}))
 
-(rf/reg-event-db :update-content
+
+(rf/reg-event-db :content [debug]
   (fn [db [_ path value]]
     (assoc-in db (into [:content] path) value)))
 
-(rf/reg-event-fx :init-docs
-  (fn [db _]
-    (when-not (-> db :content :docs :md) ; no re-request for this...
-      {:dispatch
-       [::http-get {:uri             "/docs"
-                    :response-format (ajax/raw-response-format)}
-        [:update-content [:docs :md]]]})))
+(rf/reg-event-db :state [debug]
+  (fn [db [_ path value]]
+    (assoc-in db (into [:state] path) value)))
 
-(rf/reg-event-fx :page/init-home
-  (fn [_ _] {:dispatch [:init-docs]}))
+(rf/reg-event-db :option [debug]
+  (fn [db [_ path value]]
+    (assoc-in db (into [:options] path) value)))
+
+(rf/reg-event-fx :debug [debug]
+  (fn [{:keys [db]} [_ path value]]
+    (case path
+      [:layers] (-> (js/document.querySelector "main")
+                    .-classList
+                    ; (.set "debug-layers" false)))
+                    (.toggle "debug-layers")))
+    {:db (assoc-in db (into [:state :debug] path) value)}))
+
+; (rf/reg-event-fx :debug/layers [debug]
+;   (fn [{:keys [db]} [_ value]]
+;     (case path
+;       ; [:layers] (.toggle js/document.body.classList "debug-layers"))
+;       [:layers] (-> (js/document.querySelector "main")
+;                     .-classList
+;                     (.set "debug-layers")))
+;     {:db (assoc-in db (into [:state :debug] path) value)}))
 
 
-(rf/reg-event-fx :set-css-var!
-  (fn [{:as cofx :keys [db]} [_ var-name value]]
+; PROBLEM: would obviously want to trigger fetch on start-navigation,
+; not navigate...
+(rf/reg-event-fx :page/init-docs [debug]
+  (fn [{:keys [db]} _]
+    {:dispatch-n
+      [(when-not (-> db :content :docs :md) ; no re-request for this...
+         [::http-get {:uri             "/docs"
+                      :response-format (ajax/raw-response-format)}
+           [:content [:docs :md]]])
+       [:->css-var! "line-width-vert" @(rf/subscribe [:get-css-var "line-width"])]]})) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
+
+(rf/reg-event-fx :page/init-home [debug]
+ (fn [_ _]
+   {:dispatch-n [[:->css-var! "line-width-vert" "0px"]
+                 [:state [:is-personal] false]]}))
+
+
+(rf/reg-event-fx :->css-var!
+  (fn [_ [_ var-name value]]
     (util/->css-var var-name value)))
 
-(rf/reg-event-db :transition ; if all transitions same (fade or w/e) dont really need pass match... and, if specific order or similar matters, need pass both.
+(rf/reg-event-db :transition/out ; if all transitions same (fade or w/e) dont really need pass match... and, if specific order or similar matters, need pass both.
+  (fn [db [_ activity direction]]  ; would just set something in state that then sets css class.
+    (assoc-in db [:state :transition] true))) ; now just generic
+
+(rf/reg-event-db :transition/in ; if all transitions same (fade or w/e) dont really need pass match... and, if specific order or similar matters, need pass both.
   (fn [db [_ direction match]]  ; would just set something in state that then sets css class.
-    (assoc-in db [:state :transition] (case direction :in true :out false)))) ; now just generic
+    (assoc-in db [:state :transition] false))) ; now just generic
 
 (rf/reg-event-fx :menu ;; this why better sep. can then inject css var and not sub? i somehow remeber that being badd
   (fn [{:as cofx :keys [db]} [_ state]]
-    (let [open-height @(rf/subscribe [:get-css-var "--header-with-menu-height"])
-          closed-height @(rf/subscribe [:get-css-var "--header-height"])
+    (let [open-height   @(rf/subscribe [:get-css-var "header-with-menu-height"])
+          closed-height @(rf/subscribe [:get-css-var "header-height"])
           difference (->> (map js/parseFloat [open-height closed-height])
                           (apply -)
                           (* 0.5))]
-      {:db (assoc-in db [:state :menu] state)
-       :dispatch-n
-        [[:set-css-var! "--header-height-current"
-                        (if state open-height closed-height)]]
+      {:dispatch-n
+        [[:state [:menu] state]
+         [:->css-var! "header-height-current"
+                      (if state open-height closed-height)]]
         :dispatch-later {:ms 250
-                         :dispatch [:scroll :by (cond-> difference state -)]}}))) ;;haha silly.
+                         :dispatch [:scroll/by (cond-> difference state -)]}}))) ;;haha silly.
 ;; XXX otherwise will have to uh, read var best we can and dispatch scroll event?
 
-(rf/reg-event-fx :scroll
- (fn [_ [_ kind value]] ; rem or elem
-   (case kind
-     :by (util/scroll-by value)
-     :to (util/scroll-to value))))
+(rf/reg-event-fx :scroll/by
+ (fn [_ [_ value & [id]]] ; rem (should handle % too tho?), id of container..
+   (util/scroll-by value id)))
 
+(rf/reg-event-fx :scroll/to
+ (fn [_ [_ id & [offset]]]
+   (util/scroll-to id offset)))
 
 (defonce uuid-counter (atom 0)) ;js has its own id gen thing so use that maybe. but no sequential then?
 (rf/reg-cofx :gen-uuid #(assoc % :id (swap! uuid-counter inc)))

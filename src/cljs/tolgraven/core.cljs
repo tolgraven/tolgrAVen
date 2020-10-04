@@ -57,19 +57,19 @@
            [:button {:on-click #(reset! exception nil)}
             "Attempt reload"]]])))})))
 
-(defn page []
+(defn page "Render active page inbetween header, footer and general stuff." []
   [:<>
-   [view/ui-header @(rf/subscribe [:content :header])]
-
+   [view/ui-header @(rf/subscribe [:content [:header]])]
    [:div.line.line-header] ; XXX oh yeah only actually outside header bc silly css tricks to get shit to play along. so, fuck that, and get it within
+   [:a {:name "linktotop" :id "linktotop"}]
 
    (if-let [page @(rf/subscribe [:common/page])]
-     [:main.main-content.perspective-top
+     [:main.main-content ;.perspective-top
       {:class (if @(rf/subscribe [:state [:transition]])
                 "hidden"; "slide-in slide-out-left" ; hidden
                 "visible")}; "slide-in ")} ; visible
       [safe [page]]])
-   
+
    [view/ui-footer @(rf/subscribe [:content [:footer]])]
    [ui/hud]
    [view/ui-to-top]
@@ -84,14 +84,12 @@
   [view/ui])
 
 (defn doc-page []
-  (let [docs @(rf/subscribe [:content :docs])]
+  (let [docs @(rf/subscribe [:content [:docs]])]
     [:<>
-     [:div {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
-      [view/fading-bg-heading docs]]
-     [:div.fader>div.fade-to-black.between]
-     [:br] [:br]
+      [view/fading-bg-heading (:heading docs)] [:br]
+
      (when-let [md (:md docs)]
-       [:section.solid-bg.hi-z
+       [:section.docs.solid-bg.hi-z
         {:ref #(when % (util/run-highlighter! "pre" %))} ; very nice way to get a did-mount
         [ui/md->div md]])]))
 
