@@ -16,23 +16,33 @@
   (log :debug errors))) ;debug instead of error, dont want to spam the hud
 
 
+(defn- format-css-var [var-name]
+  (or (and (some? (string/index-of var-name "--"))
+           var-name)
+      (str "--" var-name)))
+
 (defn <-css-var "Get value of CSS variable. Have to apply to dummy div to force calc"
   [var-name & calc]
-  (let [var-name (cond-> var-name
-                   (not (string/index-of var-name "--")) (str "--" var-name))
-        style (js/getComputedStyle js/document.documentElement)]
-    (if-not calc
-      (try
-       (.getPropertyValue style var-name)
-       (catch js/Exception _ ""))
-      ; else have some dummy div we literally apply stupid css to with the calced fucker...
-      ; goddamn. fix some other time then.
-      )))
+  ; (println "Get css var") ;println making it run loads (doesnt do it contantly otherwise)
+  (if-not calc
+    (try
+     (when-let [v (-> js/document.documentElement
+                      js/getComputedStyle
+                      ; here where'd need to force calc?
+                      (.getPropertyValue (format-css-var var-name)))]
+          (cond-> v
+            (string? v) string/trim
+            (object? v) js->clj))
+     (catch js/Exception e "")))); else have some dummy div we literally apply stupid css to with the calced fucker...  goddamn. fix some other time then.
 
-(defn ->css-var "Set value of CSS variable"
+(defn ->css-var "Set value of CSS variable.
+                 Causing issues 'no prot method IMap.-dissoc defined for
+                 [object CSSStyleDeclaration]' - in interceptor, is re-frisk related or?"
   [var-name value]
-  (doto js/document.documentElement.style
-        (.setProperty var-name value)))
+  (when (and var-name (some? value))
+    (try (doto js/document.documentElement.style
+        (.setProperty (format-css-var var-name) value))
+         (catch js/Exception e))))
 
 (defn css-str "string builder"
  [f & args] (str f "(" (string/join ", " args) ")"))
