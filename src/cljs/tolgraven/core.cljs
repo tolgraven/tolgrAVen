@@ -22,6 +22,7 @@
     [tolgraven.util :as util]
     [tolgraven.views :as view]
     [tolgraven.blog :as blog]
+    [tolgraven.ui.user :as user]
     [reitit.core :as reitit]
     [reitit.frontend.history :as rfh]
     [reitit.frontend.easy :as rfe]
@@ -134,15 +135,16 @@
     [["/"
       {:name        :home
        :view        #'home-page
-       :controllers [{:start (fn [_] (rf/dispatch [:page/init-home])
-                                    (rf/dispatch [:set [:state :is-personal] false]))
+       :controllers [{:start (fn [_] (rf/dispatch [:page/init-home]))
                       :stop (fn [_]
-                              (rf/dispatch [:set [:state :is-personal] true]))}]}]
+                              (println "exit home")
+                              (rf/dispatch [:state [:is-personal] true]))}]}]
      ["/about" {:name :about
                 :view #'about-page}]
      ["/docs" {:name :docs
                :view #'doc-page
-               :controllers [{:start (fn [_] (rf/dispatch [:init-docs]))}]}] ; really overkill this triggers each time. gotta be built-in solution somewhere? else work around
+               :controllers [{:start (fn [_] (doall (map rf/dispatch [[:page/init-docs]
+                                                                      [:state [:is-personal] true]])))}]}] ; really overkill this triggers each time. gotta be built-in solution somewhere? else work around
      ["/blog" {:name :blog
                :view #'blog-page
                }]
@@ -163,11 +165,8 @@
 (defn start-router! []
   (rfe/start!
     router
-    (fn navigate! [match _]
-      (rf/dispatch [:common/navigate match]))
-    ; {:ignore-anchor-click? rfh/ignore-anchor-click?}))
-    {:ignore-anchor-click? (fn [router e el uri]
-                           ;; Add additional check on top of the default checks
+    (fn [match _] (rf/dispatch [:common/start-navigation match]))
+    {:ignore-anchor-click? (fn [router e el uri] ;; Add additional check on top of the default checks
                            (and (rfh/ignore-anchor-click? router e el uri)
                                 (not= "false" (gobj/get (.-dataset el) "reititHandleClick"))))}))
                                 ; (not= "false" (HistoryEventType/get (.-dataset el) "reititHandleClick"))))}))

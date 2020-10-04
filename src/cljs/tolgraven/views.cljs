@@ -6,17 +6,15 @@
    [reitit.frontend.easy :as rfe]
    [clojure.string :as string]
    [markdown.core :refer [md->html]]
-   [cljs-time.core :as ct]
    [tolgraven.ui :as ui]
-   [cljs-time.format :refer [formatters formatter unparse]]
    [tolgraven.db :as db :refer [<-db ->db]]
    [tolgraven.util :as util]))
+
 
 (defn ln->br "Ugh. UGH! Why"
   [text]
   (for [line (string/split-lines text)]
         [:p line]))
-
 
 (defn bg-logo "Try to remember why had to put img in css/style..." [path]
     [:div#logo-top.logo-bg.parallax-sm
@@ -162,14 +160,13 @@
    ; [ui-carousel-bg-2 bg]
    [:img#top-banner.media.media-as-bg (first bg)]
 
-(defn ui-intro [{:keys [title text buttons]}]
-  [:section#intro
+   [:section#intro
    [:h1.h-responsive title]
    (into [:<>] (ln->br text)) ; or just fix :pre css lol
    [:br]
    [:div.buttons
     (for [[id text] buttons] ^{:key (str "intro-button-" id)}
-      [ui-button id text])]])
+      [ui-button id text])]]])
 
 (defn ui-interlude "Banner across with some image or video or w/e
                     TODO if video, autoplay once when (re-)seen, or cont if clicked
@@ -179,7 +176,7 @@
     (fn [{:keys [title caption bg nr]}]
       [:div {:id (str "interlude-" nr)
              :class "section-with-media-bg-wrapper"
-             :on-hover (when-let [video @!bg]
+             :on-click (when-let [video @!bg]
                          (try
                            (if (.-paused video)
                              (.play video)
@@ -322,7 +319,7 @@
 ; logo text opposite side and changes to "tolgraven actual physical" or w/e,
 ; colors bit different,
 (defn ui []
-  (let [{:keys [intro interlude] :as content} @(rf/subscribe [:content])
+  (let [interlude @(rf/subscribe [:content [:interlude]])
         interlude-counter (atom 0)
         get-lewd #(merge (nth interlude @interlude-counter)
                          {:nr (swap! interlude-counter inc)})]

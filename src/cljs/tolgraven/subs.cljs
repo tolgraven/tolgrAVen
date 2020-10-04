@@ -29,7 +29,6 @@
     (get-in debug option)))
 
 
-; (rf/subscribe [:state])
 (rf/reg-sub :users
  :<- [:get [:users]]
  (fn [users [_ path]]
@@ -45,6 +44,7 @@
  (fn [session [_ _]]
    (-> session :status)))
 
+; (rf/reg-sub :uuid/typeof)
 
 (rf/reg-sub :blog/content ;terrible name, basically everything not posts. posts should have own category altogether anyways...
  :<- [:content [:blog]]

@@ -47,7 +47,7 @@
      {:id id :type :checkbox
       :default-checked @model
       :on-click (fn [e] ; (.preventDefault e) ;broke it! :O what
-                 (on-change (not @model)))}] ]))
+                  (on-change (not @model)))}]]))
 
 (defn float-img "Needs to go within a float-wrapper..."
   [id img-attr & [caption pos]]

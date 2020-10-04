@@ -60,15 +60,6 @@
                     (.toggle "debug-layers")))
     {:db (assoc-in db (into [:state :debug] path) value)}))
 
-; (rf/reg-event-fx :debug/layers [debug]
-;   (fn [{:keys [db]} [_ value]]
-;     (case path
-;       ; [:layers] (.toggle js/document.body.classList "debug-layers"))
-;       [:layers] (-> (js/document.querySelector "main")
-;                     .-classList
-;                     (.set "debug-layers")))
-;     {:db (assoc-in db (into [:state :debug] path) value)}))
-
 
 ; PROBLEM: would obviously want to trigger fetch on start-navigation,
 ; not navigate...
@@ -194,11 +185,10 @@
  (fn [db [_ path]]
   (update-in db path pop)))
 
-(rf/reg-event-fx ::http-get
-                 [debug]
+(rf/reg-event-fx ::http-get [debug]
   (fn [{:keys [db]} [_ opts & [handler on-error]]]
-    (let [cleanup [:set [:state :is-loading] false]] ; set something to indicate request is underway
-      {:dispatch [:set [:state :is-loading] true]   ;; tho usually want this locally so figure out. by passing path frag maybe...
+    (let [cleanup [:state [:is-loading] false]] ; set something to indicate request is underway
+      {:dispatch [:state  [:is-loading] true]   ;; tho usually want this locally so figure out. by passing path frag maybe...
        :http-xhrio
        (merge
         {:method          :get
@@ -209,7 +199,7 @@
          :on-failure      [::http-result-wrapper (or on-error [:default-http-error]) cleanup]}
         opts)})))
 
-(rf/reg-event-fx ::http-post
+(rf/reg-event-fx ::http-post [debug]
   (fn [{:keys [db]} [_ opts & [handler error]]]
     (let [timeout 5000]
      {:http-xhrio

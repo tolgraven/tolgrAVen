@@ -1,8 +1,17 @@
 (ns tolgraven.util
   (:require [re-frame.core :as rf]
             [cljsjs.highlight :as hljs]
+            [cljs-time.core :as ct]
+            [cljs-time.format :as ctf :refer [formatters formatter unparse]]
             [clojure.string :as string]
             [clojure.walk]))
+
+(defmacro ors "(or), but treats empty string as nil. not working"
+  ([] nil)
+  ([x] x)
+  ([x & next]
+   `(let [or# ~x]
+          (if or# or# (ors ~@next)))))
 
 (defn log "Log to both console and app" ;XXX should add an endpoint to timbre instead.
  ([message] (log :debug message))
