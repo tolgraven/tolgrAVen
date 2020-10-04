@@ -83,7 +83,7 @@
   background: var(--gradient-bg-main);
 }
 .covering-faded { /* jk */ /* incidentally not easy to type on a proper vim setup */
-  --opacity: 0.80;
+  --opacity: 0.65;
   /* --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1), var(--opacity)); */
   /* --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1), var(--opacity)); */
   --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1));
@@ -97,19 +97,20 @@
   /* background: var(--bg-1); */
 }
 .covering-faded:hover, .covering-faded:focus { /* jk */ /* incidentally not easy to type on a proper vim setup */
-  opacity: 0.60;
+  opacity: 0.50;
 }
 
 .anim-gradient-bg {
-  --opacity: 0.84;
+  --opacity: 0.90;
+  /* --opacity: 1.00; */
   --deg: -40deg;
   --color-1: hsla(var(--hue-1),  30%,  var(--lum-bg-1), var(--opacity));
-  --color-2: hsla(var(--hue-2),  40%,  var(--lum-bg-1), var(--opacity));
+  --color-2: hsla(var(--hue-2),  30%,  var(--lum-bg-1), var(--opacity));
   /* background: linear-gradient(-30deg, var(--color-1), var(--bg-1)); */
   background: linear-gradient(var(--deg), var(--color-1), var(--color-2));
   /* background: linear-gradient(var(--deg), var(--color-1), var(--color-2)); */
   background-size: 230%;
-  /* animation: gradient-bg 20s ease infinite; */
+  animation: gradient-bg 10s ease infinite;
   backdrop-filter: blur(4px) contrast(70%);
   -webkit-backdrop-filter: blur(4px) contrast(70%);
 }

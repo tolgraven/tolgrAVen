@@ -42,7 +42,7 @@
   --top-to-menu-height: calc(2 * var(--space-top) + 2em - (4 - var(--fiddle-multiplier)) * var(--line-width));
   
   --header-expand-time:  0.5s;
-  --navigation-transition-time: 0.15s;
+  --navigation-transition-time: 0.20s;
 
 
   --perspective:       100;
@@ -68,7 +68,7 @@
   --lum-light-2:       calc(100% - var(--lum-dark-2));
   --lum-light-3:       calc(100% - var(--lum-dark-3));
 
-  --light-1:           hsl(var(--hue-2), 20%, var(--lum-light-2));
+  --light-1:           hsl(var(--hue-2), 23%, var(--lum-light-2));
   --light-2:           hsl(var(--hue-2), 7%, var(--lum-light-1));
   --light-text:        hsl(29, 35%, 86%);
   --light-3:           #ededed;
@@ -185,7 +185,6 @@
   :root {
     --perspective: 1; /* just to be sure */
     --parallax:    0;
-
     --parallax-squeeze-tf: 100%; /* fuck knows why */
   }
 }
@@ -238,8 +237,6 @@ li {
   list-style: none;
 }
 
-
-.hidden { visibility: hidden; }
 
 /* #theme-toggle:checked ~ .themable { */
 /* #theme-toggle:checked ~ body { */
@@ -343,9 +340,7 @@ body {
 }
 .line.line-footer {
   position: absolute;
-  /* bottom: 0; */
-  top: 0; 
-  /* if attach at top of footer instead of bottom of main */
+  top: 0; /* if attach at top of footer instead of bottom of main */
   right: 0; /* extend on left instead of right width already good */
   z-index: 100;
   /* box-shadow: 0 0.5rem 1rem 0.2rem var(--box-regular-color); */
@@ -364,10 +359,10 @@ a {
   color: var(--fg-2);
   text-decoration: none;
 }
-a:focus, a:hover {
+a:focus, a:hover, a:active {
   transform: scale(1.12);
   filter: brightness(125%) drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1));
-  font-weight: bold;
+  font-weight: 600;
 }
 
 main { /* dunno purpose of why I choose .main-content... */
@@ -402,10 +397,12 @@ main { /* dunno purpose of why I choose .main-content... */
   height: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
 }
 pre {
-  white-space: pre-wrap;
-  overflow: hidden;
-  overflow-wrap: break-word;
-  word-wrap: break-word;
+  overflow: scroll;
+  /* max-height: 6em; */
+  /* white-space: pre-wrap; */
+  /* overflow: hidden; */
+  /* overflow-wrap: break-word; */
+  /* word-wrap: break-word; */
   background-color: var(--bg-2);
   color: var(--fg-2);
   padding: 1.25em;
@@ -413,7 +410,7 @@ pre {
   /* border: var(--line-width-sm) solid; */
   /* different vibe: */
   border-top: var(--line-width-sm) solid;
-  margin-top: 1.60em;
+  margin-top: 1.50em;
   /* border-bottom: var(--line-width-sm) solid; */
 }
 
@@ -422,24 +419,38 @@ code {
   /* dsas */
 }
 
-/* DOCS SECTION */
-p > code {
+
+p > code { /* single-word vars etc */
   background-color: var(--bg-2);
   color: var(--fg-3);
   padding: 0.4em 0.3em;
 }
-
-
+/* DOCS SECTION */
 section.docs a {
   color: var(--blue-2);
   font-style: italic;
 }
 section.docs p.title {
   border-top: var(--line-width-sm) solid currentColor;
+  /* background-color: var(--bg-2); */
+  background: linear-gradient(to right, var(--bg-2) 85%, var(--bg-1));
   margin: 1.7em 0.5em 1em;
   font-size: 1.4em;
-  font-weight: bolder;
+  font-weight: 600;
+  width: 50%;
 }
+/* section.docs p.title::before { /1* just want text overlined... but dont need the other fancyness (evcept bit fade?) *1/ */
+/*   position: relative; */
+/*   content: ""; */
+/*   height: var(--line-width); */
+/*   background: white; */
+/*   /1* background: linear-gradient(to right, hsla(8, 30%, 78%, 0.7), var(--fg-2) 130%); *1/ */
+/*   width: 100%; */
+/*   /1* position: absolute; *1/ */
+/*   top: -1px; */
+/*   left: -2px; */
+/*   /1* z-index: -1; *1/ */
+/* } */
 section.docs .bs-callout {
   margin-top: 2rem;
   padding: var(--space);
@@ -449,6 +460,7 @@ section.docs .bs-callout h4 {
   font-size: 1.1em;
   margin-bottom: 0.75em;
 }
+
 
 .column {
   margin: var(--space);
@@ -563,6 +575,7 @@ section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
 }
 button {
   padding: calc(0.5 * var(--space)) calc(0.5 * var(--space-lg));
+  margin: calc(0.5 * var(--space)) calc(0.5 * var(--space-lg));
   background: hsl(var(--hue-1), 7%, var(--lum-bg-2), 0.35);
   color: var(--fg-2);
   border: var(--line-width) solid;
@@ -574,7 +587,8 @@ button label {
   font-size: 1.2rem;
   z-index: 2;
 }
-button:hover .blur-bg, .blur-bg:hover {
+button:hover .blur-bg, button:active .blur-bg,
+.blur-bg:hover, .blur-bg:active {
   opacity: 1.0;
 }
 
@@ -662,7 +676,6 @@ video {
 }
 
 
-
 .bg-static-section {
   position: relative;
   overflow-y: hidden;
@@ -670,19 +683,16 @@ video {
 
 
 .component-failed { /* DEV: react error boundary triggered */
-  /* padding: 50%; */
   padding: var(--space);
   color: var(--red-1);
   background-color: var(--bg-2);
   display: flex;
-  align-items: center;
   width: 100%;
-  /* position: relative; */
 }
-
 .component-failed > * { /* DEV: react error boundary triggered */
   margin: var(--space);
 }
+
 .hud {
   position: fixed;
   z-index: 100;
@@ -728,10 +738,9 @@ video {
   position: sticky;
   z-index: 12;
   top: 0;
-  top: -25%;
   /* overflow: hidden; */
   /* margin-top: var(--space); */
-  margin-bottom: 3rem; /* static size on purpose */
+  margin-bottom: 2rem; /* static size on purpose */
   /* border: 0; */
 }
 
@@ -746,15 +755,13 @@ video {
 }
 
 #intro-end { /* lbp pic "YOU" */
-  /* height: 90vh; */
   --parallax-factor: 15vw; /* figure out more better. got parallax like 15, sm 7.5, but units... */
-  /* height: calc(100vw - 2 * var(--space-sides) - var(--parallax-sm)); */
-  height: calc(100vw - 2 * var(--space-sides) - 1vw * var(--parallax-sm));
+  height: calc(100vw - 2 * var(--space-edges) - 1vw * var(--parallax-sm));
   /* always leaving stupid gap urgh. how nicely calc img aspect vs parallax min needed by definition + parallax extra in practice? */
   /* max-height: 90vw; /1* it's 1:1 ergo heit wit' makes sense *1/ */
 }
 #intro-end > .parallax-bg {
-  transform-origin: 100% -1000%;
+  /* transform-origin: 100% -1000%; */
 }
 #interlude-2 {
   z-index: 7;
@@ -776,7 +783,7 @@ video {
 }
 #about-story {
   position: relative;
-  z-index: 24;
+  z-index: 14;
   /* border-top: 0; */
 }
 #headshot {
@@ -796,6 +803,8 @@ video {
 #building-tools {
   z-index: 29;
 }
+
+/* FLOAT STUFF */
 .caption-inset { /* caption overlaying media */
   margin: 0.8em;
   font-size: 0.65rem; /* weird ass size when iphone landscape, and webkit-text-size-adjust doesnt seem to help... */
@@ -814,7 +823,7 @@ video {
 .float-with-caption {
   margin: var(--space) 0;
 }
-.float-with-caption:first-of-type {
+.float-with-caption:first-of-type { /* keep top of first inset level with top of text. */
   margin-top: 0;
 }
 .float-with-caption > .media {

@@ -3,9 +3,13 @@
 .hljs {
 	display: block;
 	overflow-x: auto;
-  padding: 1.25em;
-  background: linear-gradient(80deg, var(--bg-3) 10%, var(--bg-2)); /* too much currently but idea good */
-	color: #e6e1dc
+  padding: 1.00em;
+  background: linear-gradient(100deg, var(--bg-3) 10%, var(--bg-2) 90%, var(--bg-1) 102%);
+  border-bottom-left-radius: 0.7em;
+  /* border-bottom-left-radius: 5%; /1* fantastic w the clipping for especially two-line boxes but nyah good for big onez *1/ */
+  border-bottom-right-radius: 0.5em;
+	color: var(--fg-2);
+  /* font-weight: bolder; */
 }
 
 .hljs-comment,
