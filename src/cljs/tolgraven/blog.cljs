@@ -34,11 +34,10 @@
   [root-id parent-id {:keys [id ts user title text comments] :as post}]
   [:section.blog-comment
    [:h4 title]
-   [posted-by id user ts]
-   [:br]
-   [ui/md->div text]
+   [posted-by id user ts] [:br]
+   [ui/md->div text] [:br]
    (when comments ;replies
-       [:section.blog-comments ;best if could recurse back to comments-section...
+       [:<> ;best if could recurse back to comments-section...
         (doall (for [post comments] ^{:key (str "blog-post-" (:id post) "-comment-" parent-id "-reply-" (:id post))}
                  [comment-post root-id id post]))])
    [add-comment root-id id :comment]])
@@ -92,13 +91,14 @@
                           :comment [:button.blog-reply-comment-btn.topborder
                                     {:on-click on-click}
                                     "Reply"]
-                          [:button.blog-add-comment-btn.noborder
+                          [:button.blog-add-comment-btn.bottomborder
                                   {:style {:text-align "right"}
                                    :on-click on-click}
                                   "Cancel"])))
         submit-btn (fn []
                      [:button.noborder
                       {:class (when (input-valid? @model) "topborder")
+                       :disabled (when-not (input-valid? @model) :true)
                        :on-click (fn [_]
                                    (if (and logged-in?
                                             (input-valid? @model))
