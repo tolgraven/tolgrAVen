@@ -115,6 +115,17 @@
 
 (defonce uuid-counter (atom 0)) ;js has its own id gen thing so use that maybe. but no sequential then?
 (rf/reg-cofx :gen-uuid #(assoc % :id (swap! uuid-counter inc)))
+(defonce id-counter (atom 0)) ;js has its own id gen thing so use that maybe. but no sequential then?
+
+(defonce id-counters (atom {:blog 0})) ;js has its own id gen thing so use that maybe. but no sequential then?
+(rf/reg-cofx
+ :gen-id
+ (fn [cofx parent-id]
+   (assoc cofx :id {:id (swap! id-counter inc) ;here rather, uh sub parent by id, check index, inc
+                    :parent-id parent-id
+                    :uuid (random-uuid)})))
+
+
 ; more bastant vs using db and could append meta on cat for lookup?
 ; works either way rather than many individual cause always increased vs last of kind
 ; AFA remember from pf it's more like, gen a temp id here in case of failures etc,
