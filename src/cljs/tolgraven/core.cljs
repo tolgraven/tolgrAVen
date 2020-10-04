@@ -25,7 +25,8 @@
     [reitit.core :as reitit]
     [reitit.frontend.history :as rfh]
     [reitit.frontend.easy :as rfe]
-    [clojure.string :as string])
+    [clojure.string :as string]
+    [clojure.pprint :refer [pprint]])
   (:import goog.History))
 
 (defn safe "Error boundary for components. Also prints/logs error" [component]
@@ -48,12 +49,12 @@
     (if-not @exception   ;state change downstream? then it gets easier to debug "in-page",
      args
      (let [[component state] args]
-       (println ((js->clj component) state)) ;replace with better logging eh...
+       (println (pprint ((js->clj component) state))) ;replace with better logging eh...
         [:div.component-failed
           [:p "Component exception:"] ;[:br]
           [:pre (str "Error: " (:error exception))]
           [:pre (str "Info: " (:error exception))]
-          [:di
+          [:div
            [:button {:on-click #(reset! exception nil)}
             "Attempt reload"]]])))})))
 
