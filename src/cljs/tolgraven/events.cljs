@@ -74,8 +74,8 @@
 
 (rf/reg-event-fx :page/init-home [debug]
  (fn [_ _]
-   {:dispatch-n [[:->css-var! "line-width-vert" "0px"]
-                 [:state [:is-personal] false]]}))
+   {:dispatch-n [[:state [:is-personal] false]
+                 [:->css-var! "line-width-vert" "0px"]]})) ; be careful w dispatch-n, entire chain stops if one throws (like here w css-var...)
 
 
 (rf/reg-event-fx :->css-var!
