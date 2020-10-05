@@ -72,4 +72,9 @@
 
 
 (defn find-user [db id]
-  (d/touch (find-one-by db :user/id id)))
+  (if-let [user  (find-one-by db :user/id id)]
+    (d/touch user)
+    "NONE"))
+
+(defn get-user [id]
+  (find-user (d/db conn) id))

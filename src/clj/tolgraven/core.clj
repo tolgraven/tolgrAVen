@@ -2,6 +2,8 @@
   (:require
     [tolgraven.handler :as handler]
     [tolgraven.nrepl :as nrepl]
+    [tolgraven.log :as tlog]
+    [tolgraven.db.core :as db]
     [luminus.http-server :as http]
     [tolgraven.config :refer [env]]
     [clojure.tools.cli :refer [parse-opts]]
