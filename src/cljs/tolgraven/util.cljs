@@ -174,9 +174,9 @@
         observer (js/IntersectionObserver.
                   (fn [[entry & _]]
                     (when-not (= @in-view (.-isIntersecting entry))
-                        (println (.-isIntersecting entry))
                         (on-view-change (reset! in-view (.-isIntersecting entry))))))]
     (fn [div-ref]
+      (.disconnect observer)
       (if (at div-ref)
         (.observe observer (at div-ref))
         (.disconnect observer))))) ;prob needs tearing down for reload or?
@@ -185,10 +185,11 @@
   (let [in-view (atom 0.0)
         observer (js/IntersectionObserver.
                   (fn [[entry & _]]
-                    (when-not (= @in-view (.-intersectionRatio entry))
-                        ; (println @in-view (val-fn frac) frac)
-                        ; (println @in-view (val-fn frac) frac)
-                        (on-view-change (reset! in-view (.-intersectionRatio entry))))))]
+                    (let [frac (-> (.-intersectionRatio entry)
+                                    (* 100) int
+                                    float (/ 100))]
+                      (when-not (= @in-view frac)
+                        (on-view-change (reset! in-view frac))))))]
     (fn [div-ref]
       (.disconnect observer)
       (if (at div-ref)
