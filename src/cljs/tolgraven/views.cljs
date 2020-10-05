@@ -154,19 +154,19 @@
 
 
 (defn ui-intro [{:keys [title text buttons logo-bg bg]}]
-  [:<>
+  [:section#intro
    [bg-logo logo-bg]
    ; [ui-carousel-bg bg]
    ; [ui-carousel-bg-2 bg]
    [:img#top-banner.media.media-as-bg (first bg)]
 
-   [:section#intro
-   [:h1.h-responsive title]
-   (into [:<>] (ln->br text)) ; or just fix :pre css lol
-   [:br]
-   [:div.buttons
-    (for [[id text] buttons] ^{:key (str "intro-button-" id)}
-      [ui-button id text])]]])
+   [:<>
+    [:h1.h-responsive title]
+    (into [:<>] (ln->br text)) ; or just fix :pre css lol
+    [:br]
+    [:div.buttons
+     (for [[id text] buttons] ^{:key (str "intro-button-" id)}
+       [ui-button id text])]]])
 
 (defn ui-interlude "Banner across with some image or video or w/e
                     TODO if video, autoplay once when (re-)seen, or cont if clicked
@@ -199,10 +199,11 @@
      [:img (merge bg {:class "media-as-bg fade-3 parallax-bg"})] ;wait how durp properly
      [:section#services
       [:div#categories
-       (for [[title icon-name lines] categories]
+       (for [[title icon-name lines] categories
+           :let [on-click #(rf/dispatch [:toggle [:state :modal title]])]]
          (into ^{:key (str "service-" title)}
-               [:ul ; XXX mistakenly wrapped everything in additional :li. Made stuff smaller, in some ways looked better (but also broken spacing). Tweak css!
-                [:li
+               [:ul
+                [:li {:on-click on-click}
                  [:i {:class (str "fas " "fa-" icon-name)}]
                  [:h3 title]]]
                 (for [line lines] ^{:key (str "service-" title "-" line)}
