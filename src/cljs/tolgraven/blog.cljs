@@ -55,13 +55,13 @@
      [:h6 (util/pluralize amount "comment")]
      (when comments
        (doall (for [comment comments] ^{:key (str "blog-post-" (:id blog-post) "-comment-" (:id comment))}
-                [comment-post id id comment])))
+                [comment-post [(:id blog-post) (:id comment)] comment])))
      [add-comment [id] :blog]]))
 
 (defn add-comment "Post http or do a gql mutation, yada yada"
   [parent-path parent-type] ; TODO id as id-path (or, unique for all but presented by index...)
   ; id could also be a map... {:uuid adfskl :id 1 :kind :comment :path [:1 :3 :7]} ;where 1 blog, 3 and 7 comments
-  (let [adding-comment (rf/subscribe [:state [:blog :adding-comment parent-path]]) ;test... would need id of post
+  (let [adding-comment? @(rf/subscribe [:state [:blog :adding-comment parent-path]]) ;test... would need id of post
         model (r/atom {:user "anon" :title "" :text ""})
         submit #(rf/dispatch [:blog/comment-new parent-path @model])
         input-valid? (fn [input]
@@ -109,7 +109,7 @@
                                      (rf/dispatch [:state [:login-view-open] true])))}
                       "Submit"])
         valid-bg {:background-color "#182018"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
-     (if-not @adding-comment
+     (if-not adding-comment?
        [toggle-ui-btn parent-type]
        [:section.blog-adding-comment {:style {:padding "1em"}}
         [box :title :input valid-bg "Title (optional)"]

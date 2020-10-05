@@ -164,12 +164,14 @@
                                     (rf/inject-cofx :now)
                                     (rf/inject-cofx :gen-uuid)]
  (fn [{:keys [db now id]} [_ [blog-id & parent-path] comment]]
-   (let [path (cond-> [:content :blog :posts (dec blog-id) :comments]
-                ; parent-path (into [(dec parent-id) :comments]))]
-                parent-path #(reduce (fn [p id]
-                                      (into p [(dec id) :comments]))
-                                    %1
-                                    parent-path))]
+   (let [appender (fn [path]
+                    (reduce (fn [p id]
+                              (into p [(dec id) :comments]))
+                            path
+                            parent-path))
+         path (cond-> [:content :blog :posts (dec blog-id) :comments]
+                (seq parent-path) appender)]
+     (println parent-path)
      (println path)
        {:db (update-in db path
                        conj
