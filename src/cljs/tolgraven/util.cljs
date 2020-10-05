@@ -62,7 +62,7 @@
           (cond-> v
             (string? v) string/trim
             (object? v) js->clj))
-     (catch js/Exception e "")))); else have some dummy div we literally apply stupid css to with the calced fucker...  goddamn. fix some other time then.
+     (catch js/Error e "")))); else have some dummy div we literally apply stupid css to with the calced fucker...  goddamn. fix some other time then.
 
 (defn ->css-var "Set value of CSS variable.
                  Causing issues 'no prot method IMap.-dissoc defined for
@@ -71,7 +71,7 @@
   (when (and var-name (some? value))
     (try (doto js/document.documentElement.style
         (.setProperty (format-css-var var-name) value))
-         (catch js/Exception e))))
+         (catch js/Error e))))
 
 (defn css-str "string builder"
  [f & args] (str f "(" (string/join ", " args) ")"))

@@ -181,7 +181,7 @@
                            (if (.-paused video)
                              (.play video)
                              (.pause video))
-                           (catch js/Exception e)))}
+                           (catch js/Error e)))}
        (util/add-attrs bg {:ref #(reset! !bg %)}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:section {:class "covering-faded widescreen-safe center-content"}
         [:h1.h-responsive title]]
