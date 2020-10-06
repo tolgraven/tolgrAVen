@@ -144,7 +144,7 @@
                                (rf/dispatch [:state [:is-personal] true])
                                (rf/dispatch [:page/init-home]))
                       :stop (fn [_]
-                              (println "exit home")
+                              (util/log "exit home")
                               (rf/dispatch [:state [:is-personal] true]))}]}]
      ["/docs" {:name :docs
                :view #'doc-page
@@ -187,4 +187,5 @@
   (start-router!)
   (rf/dispatch-sync [:init-db])
   (ajax/load-interceptors!)
+  (util/log "Init complete, mounting root component")
   (mount-components))

@@ -177,7 +177,7 @@
     (fn []
      (let [messages (:messages @content)]
        [:div.log-container
-      [minimize [:options :display :log]] ;this also needs to send an event to scroll-top the fucker...
+      [minimize [:state [:display :log]]] ;this also needs to send an event to scroll-top the fucker...
       [:div.log-inner {:ref (fn [el] (reset! table-ref el))
                        :style {:max-height (if (:minimized @options) "1.2em" "20em")}
                        ; :scroll-top @scroll ;wonder why this doesnt work
@@ -216,8 +216,9 @@
     to-close])
   (rf/dispatch [:modal false]))) ;eww gross
 
-(defn hud "Render a HUD sorta like figwheel's but at reagent/re-frame level" []
- (let [to-show @(rf/subscribe [:hud])
+(defn hud "Render a HUD sorta like figwheel's but at reagent/re-frame level"
+  [to-show]
+ (let [;to-show @(rf/subscribe [:hud])
        msg-fn (fn [{:keys [level title message time actions id]}]
                 (let [class (str "hud-message " (name level))]
                  [:div.hud-message
@@ -226,12 +227,13 @@
                    :on-click #(rf/dispatch (or (:on-click actions)
                                                [:hud :modal id])) }
                   [:span title]
+                  [:p message]
                   [close (fn [e]
                              (.stopPropagation e) ;it's causing a click on hud-message as well...
                              (rf/dispatch [:diag/unhandled :remove id]))]]))]
   [:div.hud.hidden
-   {:class (when (seq to-show) "visible")}
-   (for [msg to-show]
+   {:class (when (seq @to-show) "visible")}
+   (for [msg @to-show]
      [msg-fn msg])]))
 
 

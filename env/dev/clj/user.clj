@@ -4,6 +4,7 @@
    [tolgraven.config :refer [env]]
     [clojure.pprint]
     [clojure.spec.alpha :as s]
+    [clojure.tools.logging :as log]
     [expound.alpha :as expound]
     [mount.core :as mount]
     [tolgraven.figwheel :refer [start-fw stop-fw cljs]]
@@ -14,11 +15,15 @@
 (add-tap (bound-fn* clojure.pprint/pprint))
 
 (defn start "Starts application.  You'll usually want to run this on startup." []
-  (mount/start-without #'tolgraven.core/repl-server)
+  (doseq [component (-> (mount/start-without #'tolgraven.core/repl-server)
+                        :started)]
+    (log/info component "started"))
   (start-fw))
 
 (defn stop "Stops application." []
-  (mount/stop-except #'tolgraven.core/repl-server))
+  (doseq [component (-> (mount/stop-except #'tolgraven.core/repl-server)
+                        :stopped)]
+    (log/info component "stopped")))
 
 (defn restart "Restarts application." []
   (stop)
