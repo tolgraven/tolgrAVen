@@ -3,12 +3,10 @@
 .blog {
   z-index: 30;
   background: var(--gradient-bg-main);
-  /* background-color: var(--bg-1); */
 }
 .blog-post {
 }
 .blog-section {
-
 }
 .blog-comments {
   background-color: var(--bg-1);
@@ -18,9 +16,12 @@
   position: relative;
   /* background-color: var(--bg-2); */
 }
-.blog-add-comment-btn {
+.blog-btn {
+  background-color: var(--bg-2);
   font-size: 0.8em;
-  display: inline;
+  border-radius: 0;
+}
+.blog-add-comment-btn {
 }
 .blog-reply-comment-btn {
   position: absolute;
@@ -39,19 +40,25 @@
   font-size: 1.2em;
 }
 
-.blog-addding-comment {
-  margin: 1em;
-  padding: 0.5em 0.0em;
-  /* text-align: right; */
-  /* background-color: var(--bg-2); */
+.blog-adding-comment {
+  margin: 0;
+  padding: 1em 0em;
+  background-color: var(--bg-1);
+  color: var(--fg-2);
 }
-.blog-addding-comment-textbox {
+textarea.blog-adding-comment-textbox {
+  width: 100%;
+  max-width: 100%;
+  height: 6em;
+}
+
+.blog-adding-comment-textbox {
   background-color: var(--bg-1);
   color: var(--fg-2);
 }
 
 .blog-comment-preview {
-  background-color: var(--bg-3);
+  background-color: var(--bg-2);
   margin: var(--space-sm);
   padding: 0.75em;
 }

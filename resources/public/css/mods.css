@@ -169,36 +169,56 @@
 /* PARALLAX */
 /* needs to be torn down and redone properly. messy as balls now */
 
-/* .parallax-wrapper {} */
-/* .parallax-group {} */
-/* .parallax-layer {} */
+.parallax-wrapper {
+  /* guess two ways to force parallax: */
+  /* 1. sticky i know and hate */
+  /* 2. set specific container height + overflow (btw not "non-dynamic" now that we're jsing) */
+  position: relative;
+  height: 100%; /* default, can override in attrs */
+  width: 100%;
+  perspective: calc(1px * var(--perspective));
+  overflow-y: auto;
+}
+.parallax-group {
+  position: relative;
+  transform-style: preserve-3d;
+}
+.parallax-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
 
 .perspective-top { /* default perspective for main. */
   perspective: calc(1px * var(--perspective));
-  /* perspective-origin: top; /1* starts where i want but then want it going other dir... or maybe going up-away better, more understated... *1/ */
+  perspective-origin: center; /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */
 }
 .parallax-sm, .parallax-bg, .parallax-fg {
-  /* transform-origin: top; */
+  transform-origin: bottom;
   transform-style: preserve-3d;
   overflow-y: auto;
 }
 .parallax-sm {
   /* transform: translateZ(var(--parallax-sm-px)) scale(var(--parallax-sm-scale)); */
   transform: translateZ(var(--parallax-sm-px))
-             translateY(-10%)
-             /* translateY(-50%) */
-             /* translateY(var(--parallax-sm-px)) */
+             translateY(-8%) /* still dont get why the offset when origin center... */
              scale(var(--parallax-sm-scale));
+             /* scale(calc(1.1 * var(--parallax-sm-scale))); */
 }
 .parallax-bg {
-  transform: translateZ(var(--parallax-px)) scale(var(--parallax-scale));
+  transform: translateZ(var(--parallax-px))
+             translateY(-60%)
+             scale(var(--parallax-scale));
+
   z-index: -1;
   /* another issue being mindfuck of using this as fg (ie text) heh... */
-  /* transform-origin: 50% -150%; */ /* perf on chrome, mac safari, but fucks ios... */
+  /* transform-origin: 50% -150%; *1/ /1* perf on chrome, mac safari, but fucks ios... */
 }
 .parallax-fg {
   transform: translateZ(calc(-1px * var(--parallax-sm))) scale(calc(1 / var(--parallax-sm-scale))); /* not actually being translated... 1.1 is the 1:1 scale btw obv but 1.2 looks good in this case */
-  /* transform-style: preserve-3d; */
 }
 .parallax-squeeze {
   transform-origin: 50% var(--parallax-squeeze-tf); /* obviously... not realistic */
@@ -215,10 +235,11 @@
 
 .debug-layers * {
   /* -webkit-transform: translate3d(150px, 0, -150px) rotateY(30deg); */
-  /* transform: translate3d(10px, -25px, -10px) rotateY(1deg); */
+  /* transform: translate3d(10px, -25px, -10px) rotateY(30deg); */
+  /* transform:  rotateZ(30deg); */
   transform: translate3d(10px, -25px, -10px)
              rotateY(1deg)
-             rotateX(-5deg);
+             rotateX(-1deg);
   /* opacity: 0.85; */
   transition: transform 0.3s;
 }

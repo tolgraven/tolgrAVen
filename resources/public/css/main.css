@@ -18,7 +18,7 @@
   --space-sides:       var(--space-lg); /* inner horizontal margin */
   --space-edges:       var(--space-sides); /* size of outer edges  */
   --space-top:         2rem; /* top margin above header */
-  --media-width-main:  calc(100% - 2 * var(--space-lg)); /* would it be context dependent or just use root 100% i guess uh */
+    --media-width-main: calc(100vw - 2 * var(--space-edges) - 2 * var(--line-width)); /* would it be context dependent or just use root 100% i guess uh */
   --banner-height:     600px;
   --logo-ratio:        0.4060; /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */ /* just use img... */ /* or make logo look like i want in first place - needs higher-res or vector bounce anyways */
   /* --header-height:     calc(3 * var(--space)); */
@@ -30,7 +30,7 @@
   --menu-width-fraction: 0.75;
 
   --line-scale-factor: 0.5;
-  --line-width:        1px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width:        2.0px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --line-width-sm:     calc(1 / (1.5 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --line-width-md:     calc(((1 + var(--line-scale-factor)) / 2) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --line-width-lg:     calc(1 / (1 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
@@ -48,11 +48,12 @@
 
 
   --perspective:       100;
-  --parallax:          15;
-  --parallax-scale:    calc(1 + (1 / var(--perspective) * var(--parallax)));
+  --parallax:          50;
+  --parallax-scale:    calc(1 + (var(--parallax) / var(--perspective)));
   --parallax-px:       calc(-1px * var(--parallax));
+  
   --parallax-sm:       calc(0.50 * var(--parallax));
-  --parallax-sm-scale: calc(1 + (1 / var(--perspective) * var(--parallax-sm)));
+  --parallax-sm-scale: calc(1 + (var(--parallax-sm) / var(--perspective)));
   --parallax-sm-px:    calc(-1px * var(--parallax-sm));
   --parallax-squeeze-scale: calc(1 + (1 / var(--perspective) * var(--perspective)));
   --parallax-squeeze-px:    calc(-1px * var(--perspective));
@@ -65,12 +66,12 @@
   --hue-3:             192;
   --lum-dark-1:         9%;
   --lum-dark-2:        12%;
-  --lum-dark-3:        19%;
+  --lum-dark-3:        18%;
   --lum-light-1:       calc(100% - var(--lum-dark-1));
   --lum-light-2:       calc(100% - var(--lum-dark-2));
   --lum-light-3:       calc(100% - var(--lum-dark-3));
 
-  --light-1:           hsl(var(--hue-2), 23%, var(--lum-light-2));
+  --light-1:           hsl(var(--hue-2), 20%, var(--lum-light-2));
   --light-2:           hsl(var(--hue-2), 7%, var(--lum-light-1));
   --light-text:        hsl(29, 35%, 86%);
   --light-3:           #ededed;
@@ -114,8 +115,8 @@
   --box-faint-color-flip:   var(--box-faint-color);
 
   --gradient-bg-main: linear-gradient(-77deg,
-                                      hsl(280, 13%, var(--lum-dark-1)),
-                                      hsl(100, 13%, var(--lum-dark-1)));
+                                      hsl(280, 20%, var(--lum-dark-1)),
+                                      hsl(100, 11%, var(--lum-dark-1)));
 
   --fg-1:       var(--dark-1);
   --fg-2:       var(--dark-2);
@@ -176,7 +177,6 @@
     --space-lg: 1.5rem;
     --space-sides: var(--space); /* remember -sides based on the smaller num for mobile (since margins are more precious) */
     --space-edges: 0.8rem; /* perfectly makes room for macos scrollbar */
-    --media-width-main: 90%; /* tho actually maybe, just calc from space-sides? */
 
     --scale: 0.9;
     font-size: 0.90rem;
@@ -222,8 +222,6 @@
     font-size: 0.80rem;
     --space-sides: calc(0.5 * var(--space)); /* remember -sides based on the smaller num for mobile (since margins are more precious) */
     --space-edges: calc(0.5 * var(--space));
-    /* --media-width-main: 100%; */
-    --media-width-main: calc(100vw - 2 * var(--space-edges) - 2 * var(--line-width)); /* would it be context dependent or just use root 100% i guess uh */
   }
   #top-banner { /* need a better solution for ensuring doesnt overflow... like a tallet image? */
     padding-top: 0;
@@ -338,14 +336,12 @@ body {
   top: var(--header-height); /* not -current since being overridden in header.css then */
   transition: top var(--header-expand-time) ease 0.0s;
   margin-top: var(--space-top); /* space before sticky starts */
-  /* box-shadow: 2px 1px 17px 7px hsla(var(--hue-1), 35%, 40%, 0.06); */
 }
 .line.line-footer {
   position: absolute;
   top: 0; /* if attach at top of footer instead of bottom of main */
   right: 0; /* extend on left instead of right width already good */
   z-index: 100;
-  /* box-shadow: 0 0.5rem 1rem 0.2rem var(--box-regular-color); */
 }
 .line-left  { border-left:  var(--line-width-vert) solid; }
 .line-right { border-right: var(--line-width-vert) solid; }
@@ -374,51 +370,23 @@ main { /* dunno purpose of why I choose .main-content... */
 
 .main-content {
   border-top: var(--line-width) solid; /* should make configurable. off looks p nice on main page */
-  /* border-bottom: 0; /1* covered by .line-bottom-h *1/ */
   border-bottom: var(--line-width) solid; /* should make configurable. off looks p nice on main page */
   border-left:  var(--line-width-vert) solid; /* should make configurable. off looks p nice on main page */
   border-right: var(--line-width-vert) solid; /* should make configurable. off looks p nice on main page */
   background: var(--gradient-bg-main);
   margin-top: var(--space-lg);
-  /* padding-bottom: calc(3.5 * var(--space-lg)); /1* XXX actually, footer height... *1/ */
-  /* 3 max ^ */ 
-
-  display: flex;
-  flex-flow: row wrap;
-  justify-items: center;
+  padding-bottom: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
   position: relative;
-  /* box-shadow: inset 2px 1px 17px 7px var(--box-faint-color); */
-  /* box-shadow: inset 2px 2px 0px 0px black; */
-  /* z-index: 1; /1* get above sticky footer... *1/ */
-}
-.main-content::after {
-  content: "";
-  background-color: var(--bg-1);
-  z-index: 50;
-  width: 100%;
-  height: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
 }
 pre {
   overflow: scroll;
   /* max-height: 6em; */
   /* white-space: pre-wrap; */
-  /* overflow: hidden; */
-  /* overflow-wrap: break-word; */
-  /* word-wrap: break-word; */
   background-color: var(--bg-2);
   color: var(--fg-2);
   padding: 1.25em;
-  margin: 1.00em 0.00em;
-  /* border: var(--line-width-sm) solid; */
-  /* different vibe: */
+  margin: 1.00em calc(-0.5 * var(--space));
   border-top: var(--line-width-sm) solid;
-  margin-top: 1.50em;
-  /* border-bottom: var(--line-width-sm) solid; */
-}
-
-code {
-  /* btw if skip h lines, text in such boxes could continue right (and slightly fade towards eol (br or scroll? hate latter but..)) and will fit with top line concept */ 
-  /* dsas */
 }
 
 
@@ -441,18 +409,6 @@ section.docs p.title {
   font-weight: 600;
   width: 50%;
 }
-/* section.docs p.title::before { /1* just want text overlined... but dont need the other fancyness (evcept bit fade?) *1/ */
-/*   position: relative; */
-/*   content: ""; */
-/*   height: var(--line-width); */
-/*   background: white; */
-/*   /1* background: linear-gradient(to right, hsla(8, 30%, 78%, 0.7), var(--fg-2) 130%); *1/ */
-/*   width: 100%; */
-/*   /1* position: absolute; *1/ */
-/*   top: -1px; */
-/*   left: -2px; */
-/*   /1* z-index: -1; *1/ */
-/* } */
 section.docs .bs-callout {
   margin-top: 2rem;
   padding: var(--space);
@@ -478,11 +434,7 @@ section { /* one main section (img + header + piece of content) */
   justify-content: center;
   align-items: middle;
   padding:   var(--space-lg) var(--space-lg); /* for padding-less main: */
-  /* background-color: var(--bg-1); /1* then can unset where not needed or want transp... *1/ */
-  /* nope because of my silly bg-img trickery... */
   border-top: var(--line-width) solid;
-  /* background: var(--bg-1); */
-  box-shadow: 20px inner black;
 }
 section > h1, .jumbo > h1 {
   text-align: center;
@@ -531,6 +483,10 @@ button:hover .blur-bg, button:active .blur-bg,
   opacity: 1.0;
 }
 
+input {
+  margin: 0 0.25em; /* just for checkboxes... */
+}
+
 .media-container {
   position: relative;
   display: flex;
@@ -551,10 +507,7 @@ video {
 .media {
   width: 100%;
   max-width: 700px;
-  /* padding: var(--space) calc(0.5 * var(--space-sides)) 0.2rem calc(0.5 * var(--space-sides)); */
   margin: var(--space) calc(0.5 * var(--space)) 0.2rem calc(0.5 * var(--space));
-  box-shadow: 2px 2px 12px 7px var(--box-regular-color);
-  border-radius: 0.15rem;
   user-select: none;
 }
 .image-sm {
@@ -564,17 +517,12 @@ video {
 }
 .image-flex {
   flex: 1 0 auto;
-  /* width: 50%; */
-  /* height: auto; */
   max-width: 200px; /* tho then should actually INCREASE on small screens when 1col... */
-  /* max-height: 300px; */
 }
 .image-inset {
-  /* width: 20%; */
   margin-top: 0;
   margin-left: 0;
-  /* float: left; */
-  /* max-height: 300px; */
+  border-radius: 0.15rem;
 }
 .fullwide { /* expand div back to full width of main despite regular paddings/margins */
   /* guess should work to only fuck w margin+width directly not left etc? */
@@ -585,7 +533,6 @@ video {
   position: relative;
   left: 0;
   /* left:  calc(0% - 0.5 * var(--space-sides)); */
-  width: 100%;
   width: min(100%, calc(var(--media-width-main)));
 }
 .fullwide > .media {
@@ -593,10 +540,8 @@ video {
   margin: 0;
 }
 .widescreen-safe { /* ensure bottom doesnt run out of 16:9 bg media on (ironically) _thin_ screens */
-  /* height: var(--header-with-menu-height); /1* just, some nice tall enough height - max-height will save us anyways *1/ */
   height: calc(1.20 * var(--header-with-menu-height)); /* just, some nice tall enough height - max-height will save us anyways */
-  /* height: 40vh; /1* just, some nice tall enough height - max-height will save us anyways *1/ */
-  max-height: calc((100vw - 2 * var(--space-sides)) / (16/9));
+  max-height: calc((100vw - 2 * var(--space-edges)) / (16/9));
 }
 
 .media-as-bg {
@@ -624,31 +569,28 @@ video {
 .component-failed { /* DEV: react error boundary triggered */
   padding: var(--space);
   color: var(--red-1);
-  background-color: var(--bg-2);
-  display: flex;
   width: 100%;
 }
 .component-failed > * { /* DEV: react error boundary triggered */
   margin: var(--space);
 }
+.loading-spinner {
+  opacity: 0.8;
+  transition: all 0.5s;
+  position: relative;
+}
 
 .hud {
   position: fixed;
   z-index: 100;
-  bottom: 1.5rem;
+  bottom: calc(2 * var(--space-lg)); /* ;actually, footer, if sticky... */
   right: 1.5rem;
-  font-size: 1.6rem;
 }
 .hud-message {
-  margin: 0.8rem;
+  margin: var(--space);
   padding: 0.3rem 0.7rem;
   border: 1px solid rgb(150, 150, 150, 0.3);
   opacity: 0.8;
-  /* position: relative; */
-}
-.loading-spinner {
-  opacity: 0.8;
-  transition: all 0.5s;
 }
 
 .message.error   { color: var(--message-error); }
@@ -660,16 +602,17 @@ video {
 .hud-message.info    { background: #dcd; color: #222; }
 
 .hud-modal-main {
-  padding: 0.5rem 2rem;
+  padding: 0.75rem 2rem;
 }
 .hud-modal-main > * {
-  padding: 0.5rem;
+  padding: 0.75rem;
 }
 
 .stick-up { /* make sticky just below header */
   position: sticky;
   top: var(--header-height-current);
 }
+
 #section-services {
   z-index: 6;
 }
@@ -677,10 +620,7 @@ video {
   position: sticky;
   z-index: 12;
   top: 0;
-  /* overflow: hidden; */
-  /* margin-top: var(--space); */
-  margin-bottom: 2rem; /* static size on purpose */
-  /* border: 0; */
+  margin-bottom: var(--space-lg);
 }
 
 #intro {
@@ -709,14 +649,12 @@ video {
   --height: calc(6 * var(--space-lg));
   max-height: var(--height);
   z-index: 13;
-  position: sticky;
   top: var(--header-height-current);
   /* transform-origin: 50% -1570%; /1* figure out genericable bs lol *1/ */
 }
 #about-story {
   position: relative;
   z-index: 14;
-  /* border-top: 0; */
 }
 #headshot {
   width: 20%;

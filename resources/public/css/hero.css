@@ -60,7 +60,7 @@
 
   z-index: -1; /* was -1 TODO need a clear order since layers are adding up... not just -1/100 lols */
 
-  width: var(--media-width-main);
+  /* width: var(--media-width-main); */
   height: 0; /* hacky way to size by bg-image height... */
   padding-bottom: calc(var(--media-width-main) * var(--logo-ratio)); /* height ratio of logo */
   box-shadow: inset 2px 2px 12px 7px var(--box-regular-color-flip);
@@ -73,11 +73,14 @@
   animation-play-state: running;
 }
 #logo-top {
-  position: sticky;
-  top:  calc(var(--space) * 5); /* small header and a bit, position for when starts moving off sticky, which is also good fallback when parallax missing... */
-  margin-top: calc(1.5 * var(--space));
+  /* position: absolute; */
+  /* position: sticky; */
+  /* top: var(--header-height-current); */
+  /* top:  calc(var(--space) * 5); /1* small header and a bit, position for when starts moving off sticky, which is also good fallback when parallax missing... *1/ */
+  /* top:  calc(var(--header-height) + var(--space)); /1* small header and a bit, position for when starts moving off sticky, which is also good fallback when parallax missing... *1/ */
+  /* top:  calc(var(--header-height)); */
+  margin-top: calc(1.5 * var(--space-lg));
   animation: fade-in-logo 3.5s;
-  transform: translateZ(-10px) scale(1.10); /* hardcoded, always want enabled */
 }
 #logo-bottom { /* same as top but (un)inverted and coming from below */
   position: absolute;
