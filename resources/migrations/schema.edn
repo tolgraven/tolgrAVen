@@ -25,11 +25,91 @@
     :db/cardinality        :db.cardinality/one
     :db/id                 #db/id [:db.part/db]
     :db.install/_attribute :db.part/db}
+   {:db/doc                "User role"
+    :db/ident              :user/role
+    :db/valueType          :db.type/ref
+    :db/cardinality        :db.cardinality/one
+    :db/id                 #db/id [:db.part/db]
+    :db.install/_attribute :db.part/db}
+
+   {:db/doc                "Blog post ID"
+    :db/ident              :blog-post/id
+    :db/valueType          :db.type/string ;well number
+    :db/cardinality        :db.cardinality/one
+    :db/id                 #db/id [:db.part/db]
+    :db.install/_attribute :db.part/db}
+   {:db/doc                "Blog post title"
+    :db/ident              :blog-post/title
+    :db/valueType          :db.type/string
+    :db/cardinality        :db.cardinality/one
+    :db/id                 #db/id [:db.part/db]
+    :db.install/_attribute :db.part/db}
+   {:db/doc                "Blog post text"
+    :db/ident              :blog-post/text
+    :db/valueType          :db.type/string
+    :db/cardinality        :db.cardinality/one
+    :db/id                 #db/id [:db.part/db]
+    :db.install/_attribute :db.part/db}
+   {:db/doc                "Blog post user"
+    :db/ident              :blog-post/user
+    ; :db/valueType          :db.type/ref
+    :db/valueType          :db.type/string
+    :db/cardinality        :db.cardinality/one
+    :db/id                 #db/id [:db.part/db]
+    :db.install/_attribute :db.part/db}
+
+   {:db/doc                "Blog comment Sequential ID" ; well can be inferred but prob easier saving
+    :db/ident              :blog-comment/seq-id
+    :db/valueType          :db.type/string ;well number
+    :db/cardinality        :db.cardinality/one
+    :db/id                 #db/id [:db.part/db]
+    :db.install/_attribute :db.part/db}
+   {:db/doc                "Blog comment ID"
+    :db/ident              :blog-comment/id
+    :db/valueType          :db.type/string ;well number
+    :db/cardinality        :db.cardinality/one
+    :db/id                 #db/id [:db.part/db]
+    :db.install/_attribute :db.part/db}
+   {:db/doc                "Blog comment parent ID"
+    :db/ident              :blog-comment/parent-id
+    :db/valueType          :db.type/string ;well number
+    :db/cardinality        :db.cardinality/one
+    :db/id                 #db/id [:db.part/db]
+    :db.install/_attribute :db.part/db}
+   {:db/doc                "Blog comment children IDs"
+    :db/ident              :blog-comment/children-ids
+    :db/valueType          :db.type/string ;well list?
+    :db/cardinality        :db.cardinality/one ;many?
+    :db/id                 #db/id [:db.part/db]
+    :db.install/_attribute :db.part/db}
+   {:db/doc                "Blog comment title"
+    :db/ident              :blog-comment/title
+    :db/valueType          :db.type/string
+    :db/cardinality        :db.cardinality/one
+    :db/id                 #db/id [:db.part/db]
+    :db.install/_attribute :db.part/db}
+   {:db/doc                "Blog comment text"
+    :db/ident              :blog-comment/text
+    :db/valueType          :db.type/string
+    :db/cardinality        :db.cardinality/one
+    :db/id                 #db/id [:db.part/db]
+    :db.install/_attribute :db.part/db}
+   {:db/doc                "Blog comment user"
+    :db/ident              :blog-comment/user
+    ; :db/valueType          :db.type/ref
+    :db/valueType          :db.type/string
+    :db/cardinality        :db.cardinality/one
+    :db/id                 #db/id [:db.part/db]
+    :db.install/_attribute :db.part/db}
    ;; example of enumeration in Datomic
    [:db/add #db/id [:db.part/user] :db/ident :user.status/pending]
    [:db/add #db/id [:db.part/user] :db/ident :user.status/active]
    [:db/add #db/id [:db.part/user] :db/ident :user.status/inactive]
-   [:db/add #db/id [:db.part/user] :db/ident :user.status/cancelled]]]}
+   [:db/add #db/id [:db.part/user] :db/ident :user.status/cancelled]
+   [:db/add #db/id [:db.part/user] :db/ident :user.role/admin]
+   [:db/add #db/id [:db.part/user] :db/ident :user.role/blogger]
+   [:db/add #db/id [:db.part/user] :db/ident :user.role/regular]
+   ]]}
 
  ;; norm2 installs certain user init data into Datomic for testing purpose
  :project-name/norm2 {:txes [[

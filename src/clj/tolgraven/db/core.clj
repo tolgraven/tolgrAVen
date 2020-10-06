@@ -3,10 +3,13 @@
     [datomic.api :as d]
     [io.rkn.conformity :as c]
     [mount.core :refer [defstate]]
+    [taoensso.timbre :as timbre]
+    [clojure.pprint :refer [pprint]]
     [tolgraven.config :refer [env]]))
 
-(defstate conn
-  :start (do (-> env :database-url d/create-database) (-> env :database-url d/connect))
+(defstate ^{:on-reload :noop} conn
+  :start (do (-> env :database-url d/create-database)
+             (-> env :database-url d/connect))
   :stop (-> conn .release))
 
 (defn install-schema
@@ -17,6 +20,9 @@
   [conn]
   (let [norms-map (c/read-resource "migrations/schema.edn")]
     (c/ensure-conforms conn norms-map (keys norms-map))))
+
+(defstate ^{:on-reload :noop} schema
+  :start (install-schema conn))
 
 (defn show-schema
   "Show currently installed schema"
@@ -33,30 +39,27 @@
            [((comp not contains?) ?system-ns ?ns)]]
          (d/db conn) system-ns)))
 
-(defn show-transaction
-  "Show all the transaction data
-   e.g.
-    (-> conn show-transaction count)
-    => the number of transaction"
+
+(defn show-transaction "(-> conn show-transaction count) => the number of transaction"
   [conn]
   (seq (d/tx-range (d/log conn) nil nil)))
 
 (defn add-user
-  "e.g.
-    (add-user conn {:id \"aaa\"
-                    :screen-name \"AAA\"
-                    :status :user.status/active
-                    :email \"aaa@example.com\" })"
-  [conn {:keys [id screen-name status email]}]
+  "(add-user conn {:id \"aaa\"
+                   :screen-name \"AAA\"
+                   :status :user.status/active
+                   :email \"aaa@example.com\"
+                   :role :user.role/admin})"
+  [conn {:keys [id screen-name status email role]}]
   @(d/transact conn [{:user/id         id
                       :user/name       screen-name
                       :user/status     status
-                      :user/email      email}]))
+                      :user/email      email
+                      :user/role       role}]))
 
 (defn find-one-by
   "Given db value and an (attr/val), return the user as EntityMap (datomic.query.EntityMap)
    If there is no result, return nil.
-
    e.g.
     (d/touch (find-one-by (d/db conn) :user/email \"user@example.com\"))
     => show all fields
@@ -72,9 +75,47 @@
 
 
 (defn find-user [db id]
-  (if-let [user  (find-one-by db :user/id id)]
-    (d/touch user)
-    "NONE"))
+  (if-let [user (find-one-by db :user/id id)]
+    (d/touch user)))
 
 (defn get-user [id]
   (find-user (d/db conn) id))
+
+(defn get-by-field [field v]
+  (let [db (d/db conn)
+        hit (find-one-by db field v)]
+    (when hit
+      (d/touch hit))))
+
+
+(defn add-blog "(add-blog {:id 1 :user \"tolgraven\"
+                           :title \"fuk em\" :text \"all the text hey\""
+  [{:keys [id user title text]}]
+  @(d/transact conn [{:blog-post/id       id
+                      :blog-post/user     user
+                      :blog-post/title    title
+                      :blog-post/text     text}]))
+
+(defn add "just pass the fucking input"
+  [m]
+  @(d/transact conn m))
+
+(defn get-blog "Get all the blog posts"
+  [id]
+  (get-by-field :blog-post/id id))
+
+
+(defstate ^{:on-reload :noop} install-dummy-data
+  :start (do (add [{:blog-post/id "1" :blog-post/user "tolgraven" :blog-post/title "First blog" :blog-post/text "very short"}])
+             (add [{:blog-post/id "2" :blog-post/user "tolgraven" :blog-post/title "Second blog: the seconding: ascetic buggaboo" :blog-post/text "slighrtly longer"}])
+             (add-user conn {:id "tolgraven" :screen-name "tolgraven"
+                :status :user.status/active
+                :role :user.role/admin
+                :email "joen.tolgraven@gmail.com"})))
+
+; (install-schema conn)
+; (show-schema conn)
+; (get-user "tolgraven")
+; (find-user (d/db conn) "tolgraven")
+; (get-blogs)
+; (timbre/info (-> (show-transaction conn) first ))
