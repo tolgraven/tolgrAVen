@@ -15,8 +15,6 @@
   (let [{:keys [user title text]} @model]
     [:div.blog-comment-preview
      [:h4 title]
-     [:h6 (str "Posted by " user)] ; (format ts stuff)
-     [:br]
      [ui/md->div text]]))
 
 (declare add-comment)
@@ -70,56 +68,47 @@
                        ;         (-> input dissoc :title)))
         logged-in? (or @(rf/subscribe [:state [:login :session :status]])
                        true) ;temp
-        on-change (fn [k]
-                    (fn [e]
-                      (let [new-val (-> e .-target .-value)]
-                        (swap! model assoc k new-val))))
-        box (fn [k kind & [style ui-name]]
+        box (fn [k kind & {:keys [style ui-name]}]
               [kind
-               {:class "blog-adding-comment-textbox"
+               {:class (str "blog-adding-comment-textbox")
                 :type :textbox
                 :name (or ui-name (name k))
                 :placeholder (string/capitalize (or ui-name (name k)))
-                :style (merge {:background-color "var(--bg-1)" :color "var(--fg-2)"}
-                              style)
-                ; :id (str "blog-add-comment-input-" id)
-                :on-change (on-change k)}]) ; tho stashing half-written in localstorage is p awesome when done. so db evt
+                :style style
+                :on-change (fn [e]
+                             (let [new-val (-> e .-target .-value)]
+                               (swap! model assoc k new-val)))}]) ; tho stashing half-written in localstorage is p awesome when done. so db evt
         toggle-ui-btn (fn [kind]
                         (let [attrs {:on-click
                                      #(rf/dispatch
                                        [:toggle [:state :blog :adding-comment parent-path]])}]
                           (case kind
-                          :blog [:<>
-                                 [:button.blog-add-comment-btn.topborder
-                                  attrs "Add comment"]
-                                 [:br]]
-                          :comment [:button.blog-reply-comment-btn.topborder
-                                    attrs "Reply"]
-                          :cancel [:button.blog-add-comment-btn.bottomborder
-                                  attrs "Cancel"])))
+                            :blog [:button.blog-btn.topborder
+                                   attrs "Add comment"]
+                            :comment [:button.blog-btn.blog-reply-comment-btn.topborder
+                                      attrs "Reply"]
+                            :cancel [:button.blog-btn.bottomborder
+                                     attrs "Cancel"])))
         submit-btn (fn []
-                     [:button.noborder
+                     [:button.blog-btn.noborder
                       {:class (when (input-valid? @model) "topborder")
                        :disabled (when-not (input-valid? @model) :true)
                        :on-click (fn [_]
                                    (if (and logged-in?
                                             (input-valid? @model))
-                                     (do (rf/dispatch [:state [:blog :adding-comment parent-path] false])
+                                     ; (do (rf/dispatch [:state [:blog :adding-comment parent-path] false])
+                                     (do (rf/dispatch [:unset [:state :blog :adding-comment parent-path]])
                                          (submit))
                                      (rf/dispatch [:state [:login-view-open] true])))}
                       "Submit"])
         valid-bg {:background-color "#182018"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
      (if-not adding-comment?
        [toggle-ui-btn parent-type]
-       [:section.blog-adding-comment {:style {:padding "1em"}}
-        [box :title :input valid-bg "Title (optional)"]
-        [box :text :textarea {:width "100%" :height "6em"}
-        ; [box :text :textarea (merge {:width "100%" :height "6em"}
-        ;                             (when (input-valid? @model) valid-bg))
-         "comment"] [:br]
+       [:section.blog-adding-comment.paad ;{:style {:padding "1em"}}
+        [box :title :input :style valid-bg :ui-name "Title (optional)"]
+        [box :text :textarea :ui-name "comment"] ;[:br]
         [submit-btn] [toggle-ui-btn :cancel]
-        [preview-comment model]
-        ])))
+        [preview-comment model]])))
 
      ; :on-key-up (fn [e] (when (= "Alt-Enter-however-written" (.-key e)) (submit)))
 ; not here but whatever: thing from MYH site where heading slots into header

@@ -2,7 +2,7 @@
   (:require
     [re-frame.core :as rf]))
 
-(def debug (when ^boolean goog.DEBUG rf/debug))
+(def debug (when ^boolean goog.DEBUG rf/debug)) ; doesnt shut off in prod tho so, wtf
 
 ; (rf/reg-event-db :blog/set-content [debug]
 ;  (fn [db [_ [response]]]
