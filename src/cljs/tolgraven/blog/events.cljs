@@ -1,4 +1,8 @@
-(ns tolgraven.blog.events)
+(ns tolgraven.blog.events
+  (:require
+    [re-frame.core :as rf]))
+
+(def debug (when ^boolean goog.DEBUG rf/debug))
 
 ; (rf/reg-event-db :blog/set-content [debug]
 ;  (fn [db [_ [response]]]
