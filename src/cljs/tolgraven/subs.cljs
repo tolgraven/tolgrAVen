@@ -44,28 +44,6 @@
  (fn [session [_ _]]
    (-> session :status)))
 
-(rf/reg-sub :blog/path-from-uuid
- :<- [:content [:blog]]
- (fn [blog [_ uuid]])
-  ) ; deep search for uuid, get path like [:2 :4 :1] - inefficient tho...
-; (rf/reg-sub :uuid/typeof)
-
-(rf/reg-sub :blog/content ;terrible name, basically everything not posts. posts should have own category altogether anyways...
- :<- [:content [:blog]]
- (fn [content [_ path]]
-   (get-in content path)))
-
-(rf/reg-sub :blog/posts
- :<- [:content [:blog]]
- (fn [blog [_ id]]
-   (cond-> (:posts blog) id id)) )
-
-(rf/reg-sub :blog-comment-input
- :<- [:state]
- (fn [state [_ id]]
-   (or (->> state :blog (nth id) :comments :input) "")))
-
-
 (rf/reg-sub :header-text
  :<- [:state]
  :<- [:content [:header]]

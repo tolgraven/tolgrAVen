@@ -138,45 +138,6 @@
  (fn [{:keys [db]} [_ info]]
    {:dispatch [::http-post ]}))
 
-(rf/reg-event-db :blog/post-ui-open
- (fn [db [_ open?]]
-   (assoc-in db [:state :blog :make-post-view] open?)))
-
-(rf/reg-event-fx :blog/submit-new ; needs to gen an id too
- (fn [_ [_ {:keys [] :as input}]]
-   {:dispatch-n [[:blog/post-new input]  ; [:conj [:blog :posts] input]
-                 [:blog/post-ui-open false] ]})) ;or whatever. also applies (even more!) to comment-ui
-
-(rf/reg-event-fx :blog/post-new [debug
-                                 (rf/inject-cofx :now)
-                                 (rf/inject-cofx :gen-uuid)]
- (fn [{:keys [db now comment-id]} [_ post]]
-   (assoc-in db [:content :blog :1]
-             (assoc post :ts now :id comment-id))))
-
-
-(rf/reg-event-db :blog/comment-ui-open
- (fn [db [_ open? parent-id-path]]
-   (assoc-in db [:state :blog :make-comment-view] [open? parent-id-path]))) ; i guess post-id either a blog post id, or vec of blog -> parent comment(s)
-
-
-(rf/reg-event-fx :blog/comment-new [debug
-                                    (rf/inject-cofx :now)
-                                    (rf/inject-cofx :gen-uuid)]
- (fn [{:keys [db now id]} [_ [blog-id & parent-path] comment]]
-   (let [appender (fn [path]
-                    (reduce (fn [p id]
-                              (into p [(dec id) :comments]))
-                            path
-                            parent-path))
-         path (cond-> [:content :blog :posts (dec blog-id) :comments]
-                (seq parent-path) appender)]
-     (println parent-path)
-     (println path)
-       {:db (update-in db path
-                       conj
-                       (merge comment {:ts now :id id}))})))
-
 
 ;; SOME STUFF FROM CUE-DB
 (rf/reg-event-fx :init ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
