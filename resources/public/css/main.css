@@ -626,7 +626,6 @@ video {
 #intro {
   position: relative;
   max-height: var(--media-width-main);
-  padding-top: 0; /* ensure spacing even and also that dont run out of photo... */
 }
 #intro p {
   padding: 0 var(--space-lg);
