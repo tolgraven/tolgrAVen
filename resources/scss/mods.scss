@@ -25,9 +25,9 @@
   height: calc(var(--height) * var(--space-lg));
   top:    calc(-0.5 * var(--height) * var(--space-lg));
   background: linear-gradient(0deg,
-      hsl(var(--hue-3), 2%, var(--lum-bg-1), 0.0)  0%,
+      hsla(var(--hue-3), 2%, var(--lum-bg-1), 0.0)  0%,
       hsl(var(--hue-3), 8%, var(--lum-bg-2)) 50%,
-      hsl(var(--hue-3), 28%, var(--lum-bg-2), 0.0)  100%);
+      hsla(var(--hue-3), 28%, var(--lum-bg-2), 0.0)  100%);
 }
 .fade-to-black.between.red {
   background: linear-gradient(0deg, transparent 0%,

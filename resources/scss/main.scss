@@ -1,14 +1,14 @@
 @import url('https://fonts.googleapis.com/css?family=Open+Sans:500,600,700');
-@import "burger.css";
-@import "peripheral.css";
-@import "header.css";
-@import "footer.css";
-@import "hero.css";
-@import "gallery.css";
-@import "mods.css";
-@import "hljs.css";
-@import "native-inputs.css";
-@import "blog.css";
+@import "burger.scss";
+@import "peripheral.scss";
+@import "header.scss";
+@import "footer.scss";
+@import "hero.scss";
+@import "gallery.scss";
+@import "mods.scss";
+@import "hljs.scss";
+@import "native-inputs.scss";
+@import "blog.scss";
 
 /* wanted to put in own file but wasnt compatible with live reload solution... */
 :root { /* general vars */
