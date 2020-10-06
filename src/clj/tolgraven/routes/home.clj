@@ -12,6 +12,10 @@
 (defn home-page [request]
   (layout/render request "home.html"))
 
+(defn plain-text-header
+  [resp]
+  (response/header resp "Content-Type" "text/plain; charset=utf-8"))
+
 (defn home-routes []
   [""
    {:middleware [middleware/wrap-csrf
