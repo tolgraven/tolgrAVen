@@ -21,6 +21,7 @@
     [tolgraven.ui :as ui]
     [tolgraven.util :as util]
     [tolgraven.views :as view]
+    [tolgraven.views-common :as common]
     [tolgraven.blog.views :as blog]
     [tolgraven.ui.user :as user]
     [reitit.core :as reitit]
