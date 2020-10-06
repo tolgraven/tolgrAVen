@@ -24,6 +24,7 @@
     [tolgraven.views-common :as common]
     [tolgraven.blog.views :as blog]
     [tolgraven.ui.user :as user]
+    [tolgraven.experiments :as experiment]
     [reitit.core :as reitit]
     [reitit.frontend.history :as rfh]
     [reitit.frontend.easy :as rfe]
@@ -52,36 +53,34 @@
      args
      (let [[component state] args]
        (println (pprint ((js->clj component) state))) ;replace with better logging eh...
-        [:div.component-failed
-          [:p "Component exception:"] ;[:br]
-          [:pre (str "Error: " (:error exception))]
-          [:pre (str "Info: " (:error exception))]
+        [:section.component-failed
+          [:p "Component exception"]
+          [:pre (str "Error " (:error exception))]
+          [:pre (str "Info " (:error exception))]
           [:div
            [:button {:on-click #(reset! exception nil)}
             "Attempt reload"]]])))})))
 
 (defn page "Render active page inbetween header, footer and general stuff." []
   [:<>
-   [view/ui-header @(rf/subscribe [:content [:header]])]
-   [:div.line.line-header] ; XXX oh yeah only actually outside header bc silly css tricks to get shit to play along. so, fuck that, and get it within
+   [common/header @(rf/subscribe [:content [:header]])]
    [:a {:name "linktotop" :id "linktotop"}]
 
    (if-let [page @(rf/subscribe [:common/page])]
-     [:main.main-content ;.perspective-top
+     [:main.main-content.perspective-top
       {:class (if @(rf/subscribe [:state [:transition]])
                 "hidden"; "slide-in slide-out-left" ; hidden
                 "visible")}; "slide-in ")} ; visible
       [safe [page]]])
 
-   [view/ui-footer @(rf/subscribe [:content [:footer]])]
-   [ui/hud]
-   [view/ui-to-top]
+   [common/footer @(rf/subscribe [:content [:footer]])]
+   [ui/hud (rf/subscribe [:hud])]
+   [common/to-top]
    [:a {:name "bottom"}]])
 
 
-(defn about-page []
-  [:section.section>div.container>div.content
-   [:img {:src "/img/warning_clojure.png"}]])
+(defn test-page []
+  [experiment/parallax])
 
 (defn home-page []
   [view/ui])
@@ -107,7 +106,8 @@
 
 
 (defn log-page []
-  [ui/log])
+  [ui/log (rf/subscribe [:option [:log]])
+          (rf/subscribe [:get :diagnostics])])
 
 ; (defn login "Should be modal and trigger whenever needed, then popped and state same..."
 ;   []
@@ -136,12 +136,12 @@
     [["/"
       {:name        :home
        :view        #'home-page
-       :controllers [{:start (fn [_] (rf/dispatch [:page/init-home]))
+       :controllers [{:start (fn [_]
+                               (rf/dispatch [:state [:is-personal] true])
+                               (rf/dispatch [:page/init-home]))
                       :stop (fn [_]
                               (println "exit home")
                               (rf/dispatch [:state [:is-personal] true]))}]}]
-     ["/about" {:name :about
-                :view #'about-page}]
      ["/docs" {:name :docs
                :view #'doc-page
                :controllers [{:start (fn [_] (doall (map rf/dispatch [[:page/init-docs]
@@ -157,6 +157,8 @@
                }]
      ["/log" {:name :log
               :view #'log-page}]
+     ["/test" {:name :test
+              :view #'test-page}]
      ["/user" {:name :user
                :view #'user-page}]
      ["/register" {:name :register
