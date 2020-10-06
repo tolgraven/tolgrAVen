@@ -3,12 +3,13 @@
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
 
-  :dependencies [[ch.qos.logback/logback-classic "1.2.3"]
-                 [cheshire "5.10.0"]
+  :dependencies [[cheshire "5.10.0"]
                  [cljs-ajax "0.8.1"]
                  [clojure.java-time "0.3.2"]
+                 [com.andrewmcveigh/cljs-time "0.5.2"]
                  [com.cognitect/transit-clj "1.0.324"]
                  [com.datomic/datomic-free "0.9.5697" :exclusions [org.slf4j/log4j-over-slf4j org.slf4j/slf4j-nop com.google.guava/guava]]
+                 [honeysql "1.0.444"]
                  [com.fasterxml.jackson.core/jackson-core "2.11.2"]
                  [com.fasterxml.jackson.core/jackson-databind "2.11.2"]
                  [com.google.guava/guava "25.1-jre"]
@@ -23,7 +24,6 @@
                  [luminus/ring-ttl-session "0.3.3"]
 
                  [markdown-clj "1.10.5"]
-                 [com.andrewmcveigh/cljs-time "0.5.2"]
 
                  [metosin/jsonista "0.2.7"]
                  [metosin/muuntaja "0.6.7"]
@@ -36,7 +36,15 @@
                  [org.clojure/clojurescript "1.10.773" :scope "provided"]
                  [org.clojure/data.json "1.0.0"]
                  [org.clojure/tools.cli "1.0.194"]
+
+                 ; LOGGING
+                 [ch.qos.logback/logback-classic "1.2.3"]
                  [org.clojure/tools.logging "1.1.0"]
+                 [com.taoensso/timbre "4.10.0"]
+                 [com.fzakaria/slf4j-timbre "0.3.14"] ;route java logging through timbre. but dunno. hard to manage
+                 [clj-logging-config "1.9.12"]
+                 [radicalzephyr/ring.middleware.logger "0.6.0"]
+                 [io.aviso/pretty "0.1.37"] ;pretty exceptions, pretty logging...
 
                  [org.webjars.npm/bulma "0.9.0"]
                  [org.webjars.npm/material-icons "0.3.1"]
