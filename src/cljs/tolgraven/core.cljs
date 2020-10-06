@@ -63,7 +63,7 @@
 
 (defn page "Render active page inbetween header, footer and general stuff." []
   [:<>
-   [common/header @(rf/subscribe [:content [:header]])]
+   [common/header @(rf/subscribe [:content [:header]])] ;TODO smooth transition to personal
    [:a {:name "linktotop" :id "linktotop"}]
 
    (if-let [page @(rf/subscribe [:common/page])]
@@ -71,7 +71,8 @@
       {:class (if @(rf/subscribe [:state [:transition]])
                 "hidden"; "slide-in slide-out-left" ; hidden
                 "visible")}; "slide-in ")} ; visible
-      [safe [page]]])
+      [safe [page]]]
+     [:div "no page"])
 
    [common/footer @(rf/subscribe [:content [:footer]])]
    [ui/hud (rf/subscribe [:hud])]
@@ -88,7 +89,7 @@
 (defn doc-page []
   (let [docs @(rf/subscribe [:content [:docs]])]
     [:<>
-      [view/fading-bg-heading (:heading docs)] [:br]
+      [view/fading-bg-heading (:heading docs)]
 
      (when-let [md (:md docs)]
        [:section.docs.solid-bg.hi-z
@@ -101,13 +102,16 @@
    (let [heading @(rf/subscribe [:content [:blog :heading]])
          posts @(rf/subscribe [:blog/posts])]
      [:<>
-      [view/fading-bg-heading heading] [:br]
+      [view/fading-bg-heading heading]
       [blog/blog posts]])])
 
 
 (defn log-page []
-  [ui/log (rf/subscribe [:option [:log]])
-          (rf/subscribe [:get :diagnostics])])
+  (let [bg @(rf/subscribe [:content [:common :banner-heading]])]
+    [:<>
+     [view/fading-bg-heading (merge bg {:title "Log" :tint "blue"})]
+     [ui/log (rf/subscribe [:option [:log]])
+      (rf/subscribe [:get :diagnostics])]]))
 
 ; (defn login "Should be modal and trigger whenever needed, then popped and state same..."
 ;   []
