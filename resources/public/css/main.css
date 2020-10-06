@@ -152,7 +152,7 @@
     --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
   }
   #logo-top { /* invert then rotate hue to restore blue text */
-    filter: invert() hue-rotate(180deg);
+    /* filter: invert() hue-rotate(180deg); */
   }
 }
 @media screen and (min-width: 800px) and (min-height: 800px) {
@@ -456,8 +456,8 @@ section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
 .h0-responsive { font-size: calc(2.5rem + 8vw); } /* size based on viewport, with sensible min */
 .h-responsive  { font-size: calc(1.5rem + 3vw); }
 @supports(font-size: min(0px)) { /* can additionally set a maximum... */
-  .h0-responsive { font-size: min(6rem,   calc(2.5rem + 8vw)); }
-  .h-responsive {  font-size: min(3.5rem, calc(1.5rem + 3vw)); }
+  .h0-responsive { font-size: #{'min(6rem,   2.5rem + 8vw)'}; }
+  .h-responsive {  font-size: #{'min(3.5rem, 1.5rem + 3vw)'}; }
 }
 
 .buttons {
@@ -467,7 +467,7 @@ section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
 button {
   padding: calc(0.5 * var(--space)) calc(0.5 * var(--space-lg));
   margin: calc(0.5 * var(--space)) calc(0.5 * var(--space-lg));
-  background: hsl(var(--hue-1), 7%, var(--lum-bg-2), 0.35);
+  background: hsla(var(--hue-1), 7%, var(--lum-bg-2), 0.35);
   color: var(--fg-2);
   border: var(--line-width) solid;
   border-radius: 0.15rem;
@@ -533,7 +533,7 @@ video {
   position: relative;
   left: 0;
   /* left:  calc(0% - 0.5 * var(--space-sides)); */
-  width: min(100%, calc(var(--media-width-main)));
+  width: #{'min(100%, var(--media-width-main))'};
 }
 .fullwide > .media {
   max-width: unset;
@@ -589,7 +589,7 @@ video {
 .hud-message {
   margin: var(--space);
   padding: 0.3rem 0.7rem;
-  border: 1px solid rgb(150, 150, 150, 0.3);
+  border: 1px solid rgba(150, 150, 150, 0.3);
   opacity: 0.8;
 }
 
@@ -762,7 +762,7 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
   font-size: 1.1rem;
   backdrop-filter: blur(2.5px);
   -webkit-backdrop-filter: blur(2.5px);
-  background: hsl(var(--hue-3), 70%, var(--lum-fg-2), 0.06);
+  background: hsla(var(--hue-3), 70%, var(--lum-fg-2), 0.06);
   transition: 0.3s;
   /* nah doesnt suit page/design. but effect is fine */
 }
