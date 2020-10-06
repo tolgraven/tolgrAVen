@@ -16,10 +16,19 @@
   (for [line (string/split-lines text)]
         [:p line]))
 
-(defn bg-logo "Try to remember why had to put img in css/style..." [path]
-    [:div#logo-top.logo-bg.parallax-sm
-      {:class "logo-tolgraven"
-       :style {:background-image (str "url('" path "')")}}]) ; cant remember why I did the weird path-in-css bs but anyways...
+(defn bg-logo "Try to remember why had to put img in css/style..."
+  [path]
+  (let [div-ref (r/atom nil) ;wait should actually go in intro, pass us in-view
+        in-view (r/atom 0.0)
+        observer (util/frac-in-view #(reset! in-view %))]
+    (fn [path]
+      (observer div-ref)
+      [:div#logo-top.logo-bg.stick-up ;.parallax-sm
+       {:class "logo-tolgraven"
+        :style {:background-image (str "url('" path "')")
+                :opacity (str "0.09 + " (/ (- 1 @in-view) 5))}
+        :ref #(reset! div-ref %)}
+       [:p @in-view]]))) ; cant remember why I did the weird path-in-css bs but anyways...
 
 (defn ui-inset [caption nr]
   (let [pos (case (mod nr 4)
@@ -125,8 +134,12 @@
                     TODO if video, autoplay once when (re-)seen, or cont if clicked
                     using ref and stuff"
   [{:keys [title caption bg nr]}]
-  (let [!bg (atom nil)]
+  (let [!bg (r/atom nil) ; docs says reg atom better but only updates w ratom, bc 2nd fn or? also .play no works
+        div-ref (r/atom nil) ; XXX let this speew to db (or just a bool) so can hide earlier stickies
+        in-view (r/atom 0.0)
+        observer (util/frac-in-view #(reset! in-view %))]
     (fn [{:keys [title caption bg nr]}]
+      (observer div-ref)
       [:div {:id (str "interlude-" nr)
              :class "section-with-media-bg-wrapper"
              :on-click (when-let [video @!bg]
@@ -136,7 +149,11 @@
                              (.pause video))
                            (catch js/Error e)))}
        (util/add-attrs bg {:ref #(reset! !bg %)}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
-       [:section {:class "covering-faded widescreen-safe center-content"}
+       [:section
+        {:class "covering-faded widescreen-safe center-content"
+         :ref #(reset! div-ref %)
+         :style {:transition "opacity 2.5s"
+                 :opacity (str "calc(0.95 - 0.20 *" @in-view ")")}} ;well dumb but
         [:h1.h-responsive title]]
        [ui-inset caption nr]]))) ; these arent showing up...
 
@@ -165,31 +182,29 @@
 (defn ui-moneyshot "needs better name lol. what is hero img halfway down page?"
   [{:keys [title caption bg]}]
   (let [div-ref (r/atom nil) ;] ; gotta ratom so can give empty first? cause wont be mounted when building etc? ;div-ref (atom nil) ; yes is true
-        observer (util/frac-in-view #(rf/dispatch [:state [:moneyshot :visible] %]))] ;reason to actually keep this would be disposal. so r/with-let...
+        frac (r/atom 0.0)
+        observer (util/frac-in-view #(reset! frac %))]
     (fn [{:keys [title caption bg]}]
-      (let [frac @(rf/subscribe [:state [:moneyshot :visible]])]
         (observer div-ref)
         [:div {:class "section-with-media-bg-wrapper covering stick-up"
-               :ref #(reset! div-ref %) }
+               :ref #(reset! div-ref %)}
          [:img.media-as-bg
           (merge bg {:class "fade-5 parallax-sm" ; origin-toptop
-                     :style (merge (when-not (pos? frac)
+                     :style (merge (when-not (pos? @frac)
                                      {:visibility "hidden"})
-                                   {:transition "0.5s"}
-                                   ; {:transform (str (util/css-str "translateZ" "-10")
-                                   ;                  (util/css-str "scale" (* frac @(rf/subscribe [:get-css-var "parallax-scale"]))))}
-                                   )})]
+                                   {:transition "transform 2.5s ease"
+                                    :transform (str "translateZ(calc(5px * " @frac "))")})})]
+                                    ; but proper way would be, do nothing, attach class,
+                                    ; it then has some anim whatever, right? seems it's
+                                    ; throttled while scrolling or maybe just events?
          [:section#intro-end.center-content
           [:h1.h0-responsive.parallax-bg
-           {:style {:transition "2.5s ease"
-                    :transform (str ;"translateY(-15%)"
-                                    "translateZ(" (* 33 frac) "px)")
-                    ; :font-size (str (* (/ 5 frac) 2.5) "rem")
-                    }}
+           {:style {:transition "transform 2.5s ease"
+                    :transform (str "translateZ(" (* 33 @frac) "px)")}}
            title]] ;ideally want this also growing (and moving quicker upwards)]
          [ui-inset caption 3]
          [ui-inset (str "Fraction visible:" frac) 2]
-         [ui-fading]]))))
+         [ui-fading]])))
 
 ;; TODO basically figure out neatest way of getting gotten rid of in-the-way bg layers...
 ;; parallax makes things tricky apparently - cue-db viz it works both from above and below...
@@ -199,16 +214,17 @@
 ;;
 ;; but clearly "out there fkn content" + mostly clipping div then tracking that leaky container div
 ;; must be right course of action.
-(defn fading-bg-heading [{:keys [title bg] :as content}]
+(defn fading-bg-heading [{:keys [title bg tint] :as content}]
   [:<>
    [:div {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
     [:div.fader
      ; [:img.media.media-as-bg.parallax-sm bg]
      [:img.media.media-as-bg bg]
-     [:section.covering-faded
+     [:section.covering-faded.noborder
+      {:style (when tint {:background (str "var(--" tint ")")
+                          :filter "saturate(1.9) brightness(0.9)"})}
       [:h1.h-responsive
-       ; {:style {:top "33%"}}
-       {:style {:transform "translateY(-25%)"}}
+       {:style {:transform "translateY(-15%)"}}
        title]]]]
    [:div.fader>div.fade-to-black.bottom]])
 
