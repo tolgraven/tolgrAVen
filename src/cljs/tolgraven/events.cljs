@@ -67,7 +67,7 @@
   (fn [{:keys [db]} _]
     {:dispatch-n
       [(when-not (-> db :content :docs :md) ; no re-request for this...
-         [::http-get {:uri             "/docs"
+         [:http-get {:uri             "/docs"
                       :response-format (ajax/raw-response-format)}
            [:content [:docs :md]]])
        [:->css-var! "line-width-vert" @(rf/subscribe [:get-css-var "line-width"])]]})) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
@@ -75,7 +75,8 @@
 (rf/reg-event-fx :page/init-home [debug]
  (fn [_ _]
    {:dispatch-n [[:state [:is-personal] false]
-                 [:->css-var! "line-width-vert" "0px"]]})) ; be careful w dispatch-n, entire chain stops if one throws (like here w css-var...)
+                 ; [:->css-var! "line-width-vert" "0px"]
+                 ]})) ; be careful w dispatch-n, entire chain stops if one throws (like here w css-var...)
 
 
 (rf/reg-event-fx :->css-var!
