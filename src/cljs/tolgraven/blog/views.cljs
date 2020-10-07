@@ -51,8 +51,14 @@
         amount (count comments)]
     [:section.blog-comments
      [:h6 (util/pluralize amount "comment")]
+     (when (>= amount 3)
+       [:button.blog-btn.topborder
+        {:on-click #(swap! expanded? not)}
+        "Show all"])
      (when comments
-       (doall (for [comment comments] ^{:key (str "blog-post-" (:id blog-post) "-comment-" (:id comment))}
+       (doall (for [comment (if expanded?
+                              comments
+                              (take 3 comments))] ^{:key (str "blog-post-" (:id blog-post) "-comment-" (:id comment))}
                 [comment-post [(:id blog-post) (:id comment)] comment])))
      [add-comment [id] :blog]]))
 
@@ -92,7 +98,7 @@
         submit-btn (fn []
                      [:button.blog-btn.noborder
                       {:class (when (input-valid? @model) "topborder")
-                       :disabled (when-not (input-valid? @model) :true)
+                       :disabled (when-not (input-valid? @model) true)
                        :on-click (fn [_]
                                    (if (and logged-in?
                                             (input-valid? @model))
