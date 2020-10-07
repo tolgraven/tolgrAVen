@@ -119,7 +119,7 @@
 ; blogs should be in a numbered map tho easiest
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text comments] :as blog-post}]
-  [:section.blog-post.bottomborder ;.line-left
+  [:section.blog-post
    [:h2 title]
    [posted-by id (or user "tolgraven") ts]
    [:br]
@@ -128,8 +128,29 @@
    [comments-section blog-post]])
 
 (defn blog "all the blogs"
-  [blogs]
-  [:section.blog.fullwide.noborder
-   (doall (for [post (reverse blogs)] ^{:key (str "blog-post-" (:id post))}
-    [blog-post post]))])
+  []
+  (let [per-page 2
+        total @(rf/subscribe [:blog/count])
+        idx @(rf/subscribe [:state [:blog :page]])
+        posts @(rf/subscribe [:blog/posts-for-page idx per-page])
+        nav-btn (fn [nav label & [attrs]]
+                  [:button.blog-btn.blog-nav-btn.topborder
+                   (merge {:on-click (fn [_] (rf/dispatch [:blog/nav-page nav]))}
+                          attrs)
+                   label])]
+    [:section.blog.fullwide.noborder ;then chuck flip-move on eeet. or just same slide nav thing
+     (doall (for [post posts] ^{:key (str "blog-post-" (:id post))}
+                 [blog-post post]))
+     [:div.center-content
+      (when-not (= 0 idx)
+        [nav-btn :prev "<<"])
+      (doall (for [i (range (/ total per-page))]
+               [nav-btn i (inc i) (when (= i idx)
+                                    {:style {:font-weight :bolder
+                                             :border 0
+                                             :border-bottom "var(--line-width-sm) solid"}})]))
+      (when-not (<= total (* per-page (inc idx)))
+        [nav-btn :next ">>"])]
+     [:br]
+     [:div idx]]))
 

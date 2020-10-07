@@ -99,11 +99,10 @@
 
 (defn blog-page [] ; how nicely set is-personal for this but also unset etc yada
   [:<>
-   (let [heading @(rf/subscribe [:content [:blog :heading]])
-         posts @(rf/subscribe [:blog/posts])]
+   (let [heading @(rf/subscribe [:content [:blog :heading]]) ]
      [:<>
       [view/fading-bg-heading heading]
-      [blog/blog posts]])])
+      [blog/blog]])])
 
 
 (defn log-page []

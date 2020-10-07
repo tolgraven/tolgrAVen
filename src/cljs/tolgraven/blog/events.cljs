@@ -1,9 +1,21 @@
 (ns tolgraven.blog.events
   (:require
-    [re-frame.core :as rf]))
+    [re-frame.core :as rf]
+    [ajax.core :as ajax]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug)) ; doesnt shut off in prod tho so, wtf
 
+(rf/reg-event-fx :page/init-blog [debug]
+  (fn [{:keys [db]} _]
+    {:dispatch-n
+      [(when-not (-> db :content :blog :postsz_test) ; no re-request for this...
+         [:http-get {:uri             "/blog/1"
+                      :response-format (ajax/raw-response-format)}
+           [:blog/set-content]])
+       (when-not (-> db :state :blog :page)
+         [:state [:blog :page] 1]) ; should only done once tho
+       ; [:->css-var! "line-width-vert" "0px"]
+       ]})) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
 ; (rf/reg-event-db :blog/set-content [debug]
 ;  (fn [db [_ [response]]]
 ;    ; (let [{:keys [blog-post/user blog-post/title blog-post/text blog-post/id]}
@@ -13,6 +25,16 @@
 ;      (assoc-in db [:content :blog :posts]
 ;              [response]))))
 ; ; welll this wunt wurk but anyways
+(rf/reg-event-db :blog/nav-page
+ (fn [db [_ nav]]
+   (let [path [:state :blog :page]]
+     (if (number? nav)
+       (assoc-in db path nav)
+       (update-in db path (case nav
+                            :prev dec
+                            :next inc))))))
+
+; (rf/reg-event-db :blog/nav-has? ; :next :prev. for disabling btns etc
 
 (rf/reg-event-db :blog/post-ui-open
  (fn [db [_ open?]]

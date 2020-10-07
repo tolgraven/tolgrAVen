@@ -164,7 +164,7 @@
  (fn [db [_ path]]
   (update-in db path pop)))
 
-(rf/reg-event-fx ::http-get [debug]
+(rf/reg-event-fx :http-get [debug]
   (fn [{:keys [db]} [_ opts & [handler on-error]]]
     (let [cleanup [:state [:is-loading] false]] ; set something to indicate request is underway
       {:dispatch [:state  [:is-loading] true]   ;; tho usually want this locally so figure out. by passing path frag maybe...
@@ -174,11 +174,11 @@
          :uri             "https://api.github.com/orgs/day8"
          :timeout         2000                                           ;; optional see API docs
          :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
-         :on-success      [::http-result-wrapper (or handler  [:default-http-result]) cleanup]
-         :on-failure      [::http-result-wrapper (or on-error [:default-http-error]) cleanup]}
+         :on-success      [:http-result-wrapper (or handler  [:default-http-result]) cleanup]
+         :on-failure      [:http-result-wrapper (or on-error [:default-http-error]) cleanup]}
         opts)})))
 
-(rf/reg-event-fx ::http-post [debug]
+(rf/reg-event-fx :http-post [debug]
   (fn [{:keys [db]} [_ opts & [handler error]]]
     (let [timeout 5000]
      {:http-xhrio
@@ -201,7 +201,7 @@
  (fn [db [_ {:as res :keys [uri status status-text failure]}]]
    {:dispatch [:diag/new :error status status-text]}))
 
-(rf/reg-event-fx ::http-result-wrapper
+(rf/reg-event-fx :http-result-wrapper
  (fn [db [_ handler cleanup res]]
    {:dispatch-n [(into handler [res])
                  cleanup]}))

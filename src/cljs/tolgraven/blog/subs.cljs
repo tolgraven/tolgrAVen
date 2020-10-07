@@ -19,6 +19,20 @@
  (fn [blog [_ path]]
    (get-in (:posts blog) path)) )
 
+(rf/reg-sub :blog/count
+ :<- [:content [:blog]]
+ (fn [blog [_ path]]
+   (count (:posts blog))))
+
+(rf/reg-sub :blog/posts-for-page
+ :<- [:content [:blog :posts]]
+ (fn [posts [_ idx page-size]]
+   (nth (->> posts
+             reverse
+             (partition page-size))
+        idx)))
+
+
 (rf/reg-sub :blog-comment-input
  :<- [:state]
  (fn [state [_ id]]
