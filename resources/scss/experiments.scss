@@ -1,0 +1,74 @@
+
+/* adapted from keithclark demo */
+.parallax { /* wrapper */
+  height: 100vh;
+  overflow-y: auto;
+  /* might be best have main content as scroller anyways? */
+  /* just put auto on larger "section of sections" then */
+  /* because scrolling auto continues once down so */
+  /* important thing is fixed height and overflow. */
+  perspective: 300px; /* perspective wot dun it. hence put such on main */
+  font-size: 200%;
+}
+
+.parallax__group {
+  position: relative;
+  min-height: 30vh;
+  transform-style: preserve-3d;
+}
+
+.parallax__layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: var(--line-width) solid;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+}
+
+.parallax__layer--fore {
+  transform: translateZ(75px) scale(.75);
+  z-index: 1;
+  background: hsl(284,30%,40%);
+}
+.parallax__layer--base {
+  z-index: 4;
+  background: hsl(102,30%,40%);
+}
+.parallax__layer--back {
+  transform: translateZ(-150px) scale(1.5);
+  z-index: 3;
+  background: hsl(23,30%,40%);
+}
+.parallax__layer--deep {
+  transform: translateZ(-300px) scale(2);
+  z-index: 2;
+  background: hsl(184,30%,40%);
+}
+
+
+/* Debugger styles - used to show the effect
+--------------------------------------------- */
+.debug-on .parallax__group {
+  transform: translate3d(200px, 0, -400px) rotateY(30deg);
+}
+.debug-on .parallax__layer {
+  opacity: 0.8;
+}
+.parallax__group {
+  transition: transform 0.5s;
+}
+
+/* style the groups
+--------------------------------------------- */
+#group1 { z-index: 5; /* slide over group 2 */ }
+#group2 { z-index: 3; /* slide under groups 1 and 3 */ }
+#group3 { z-index: 4; /* slide over group 2 and 4 */ }
+#group4 { z-index: 2; /* slide under group 3 and 5 */ }
+#group5 { z-index: 3; /* slide over group 4 and 6 */ }
+#group6 { z-index: 2; /* slide under group 5 and 7 */ }
+#group7 { z-index: 3; /* slide over group 6 */ }
+
