@@ -8,7 +8,7 @@
    [markdown.core :refer [md->html]]
    [tolgraven.ui :as ui]
    [tolgraven.db :as db :refer [<-db ->db]]
-   [tolgraven.util :as util]))
+   [tolgraven.util :as util :refer [at]]))
 
 
 (defn ln->br "Ugh. UGH! Why"
@@ -57,7 +57,7 @@
 
 (defn loading-spinner [model]
   [:div.loading-spinner
-     (when @model ;should it be outside so not put anything when not loading? or better know element goes here
+     (when (at model) ;should it be outside so not put anything when not loading? or better know element goes here
        [:i {:class "fa fa-spinner fa-spin"}])])
 
 (defn user-menu [model]

@@ -72,7 +72,7 @@
                 "hidden"; "slide-in slide-out-left" ; hidden
                 "visible")}; "slide-in ")} ; visible
       [safe [page]]]
-     [:div "no page"])
+     [view/loading-spinner true])
 
    [common/footer @(rf/subscribe [:content [:footer]])]
    [ui/hud (rf/subscribe [:hud])]
