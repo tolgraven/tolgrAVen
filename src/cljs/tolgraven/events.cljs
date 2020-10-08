@@ -2,9 +2,13 @@
   (:require
     [re-frame.core :as rf]
     [ajax.core :as ajax]
+    [day8.re-frame.http-fx]
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
     [tolgraven.util :as util]
+    [tolgraven.blog.events]
+    [clojure.edn :as edn]
+    ; [muuntaja.core :as m]
     [cljs-time.core :as ct]
     [cljs-time.format :refer [formatters formatter unparse]]))
 
@@ -165,42 +169,40 @@
  (fn [db [_ path]]
   (update-in db path pop)))
 
-(rf/reg-event-fx :http-get [debug]
-  (fn [{:keys [db]} [_ opts & [handler on-error]]]
+(defn get-http-fn "Return fn used for http-get/post"
+  [kind & [extra-defaults]]
+  (fn http-fn [{:keys [db]} [_ opts & [on-success on-error]]]
     (let [cleanup [:state [:is-loading] false]] ; set something to indicate request is underway
       {:dispatch [:state  [:is-loading] true]   ;; tho usually want this locally so figure out. by passing path frag maybe...
        :http-xhrio
        (merge
-        {:method          :get
-         :uri             "https://api.github.com/orgs/day8"
-         :timeout         2000                                           ;; optional see API docs
-         :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
-         :on-success      [:http-result-wrapper (or handler  [:default-http-result]) cleanup]
-         :on-failure      [:http-result-wrapper (or on-error [:default-http-error]) cleanup]}
+        {:method          kind
+         :timeout         5000                                           ;; optional see API docs
+         :response-format (ajax/transit-response-format)  ;; IMPORTANT!: You must provide this.
+         ; :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
+         :on-success      [:http-result-wrapper
+                           (or on-success [:default-http-result]) cleanup]
+         :on-failure      [:http-result-wrapper
+                           (or on-error   [:default-http-error]) cleanup]}
+        extra-defaults
         opts)})))
 
+(rf/reg-event-fx :http-get [debug]
+  (get-http-fn :get))
+
 (rf/reg-event-fx :http-post [debug]
-  (fn [{:keys [db]} [_ opts & [handler error]]]
-    (let [timeout 5000]
-     {:http-xhrio
-      {:method          :post
-       :uri             (str "http://localhost:3449/api" "/plus")
-       :params          "x 1 y 2"
-       :timeout         timeout
-       :response-format (ajax/json-response-format {:keywords? true})
-       :on-success      [:default-http-result]
-       :on-failure      [:default-http-error]}
-      :timeout [:yada-yada
-                :timeout timeout]})))
-; To make multiple requests, supply a vector of options maps:
-; {:http-xhrio [ {...}
-;                {...}]}
+  (get-http-fn :post
+               {:format (ajax/transit-request-format)}))
+
+
+
 (rf/reg-event-fx :default-http-result
  (fn [db [_ res]]
-   (update-in db [:http :result] conj res)))
+   {:dispatch [:diag/new :debug "HTTP" (str res)]}
+   ))
 (rf/reg-event-fx :default-http-error
  (fn [db [_ {:as res :keys [uri status status-text failure]}]]
-   {:dispatch [:diag/new :error status status-text]}))
+   {:dispatch [:diag/new :error "HTTP" (str status " " status-text ": " uri)]}))
 
 (rf/reg-event-fx :http-result-wrapper
  (fn [db [_ handler cleanup res]]
