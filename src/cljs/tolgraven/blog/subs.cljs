@@ -15,9 +15,14 @@
    (get-in content path)))
 
 (rf/reg-sub :blog/posts
- :<- [:content [:blog]]
- (fn [blog [_ path]]
-   (get-in (:posts blog) path)) )
+ :<- [:blog/content [:posts]]
+ (fn [posts [_ path]]
+   (get-in posts path)) )
+
+(rf/reg-sub :blog/state
+ :<- [:state [:blog]]
+ (fn [state [_ path]]
+   (get-in state path)) )
 
 (rf/reg-sub :blog/count
  :<- [:content [:blog]]
@@ -25,12 +30,12 @@
    (count (:posts blog))))
 
 (rf/reg-sub :blog/posts-for-page
- :<- [:content [:blog :posts]]
+ :<- [:blog/posts] ; obvs will be, figure out idx range and ask server (then cache all already delivered in db)
  (fn [posts [_ idx page-size]]
    (nth (->> posts
              reverse
              (partition page-size))
-        idx)))
+        (or idx 0)))) ;usually throws on first load saying idx not a number...
 
 
 (rf/reg-sub :blog-comment-input

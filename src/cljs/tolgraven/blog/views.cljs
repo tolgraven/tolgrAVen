@@ -14,25 +14,30 @@
   [model]
   (let [{:keys [user title text]} @model]
     [:div.blog-comment-preview
-     [:h4 title]
+     [:h4.blog-comment-title title]
+     [:br]
      [ui/md->div text]]))
 
 (declare add-comment)
 
 (defn posted-by "Get details of blog/comment..."
-  [id user ts]
+  [id user ts score]
   (let [id (str "#" id) ; @(rf/subscribe [:uuid-to-presentation-id uuid])
-        user [:em {:style {:font-weight "bold"}}
+        user [:em.blog-comment-user 
               (if (count user) user "anon")]
         by (str "posted by ")
         ts (util/timestamp ts)]
-    [:h6 (str id " - " by) user (str " - " ts)]))
+    [:h6.blog-comment-info
+     (str id " - " by)
+     user
+     (str " - " ts
+          " +/- " score)])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
 
 (defn comment-post "A comment"
-  [parent-path {:keys [id ts user title text comments] :as post}]
+  [parent-path {:keys [id ts user title text score comments] :as post}]
   [:section.blog-comment
-   [:h4 title]
-   [posted-by id user ts] [:br]
+   [:h4.blog-comment-title title]
+   [posted-by id user ts score] ;[:br]
    [ui/md->div text] [:br]
    (when comments ;replies
        [:<> ;best if could recurse back to comments-section...
@@ -47,25 +52,35 @@
 
 (defn comments-section "Comments section!"
   [{:keys [id comments] :as blog-post}]
-  (let [expanded? (r/atom false)
-        amount (count comments)]
-    [:section.blog-comments
-     [:h6 (util/pluralize amount "comment")]
-     (when (>= amount 3)
-       [:button.blog-btn.topborder
-        {:on-click #(swap! expanded? not)}
-        "Show all"])
-     (when comments
-       (doall (for [comment (if expanded?
-                              comments
-                              (take 3 comments))] ^{:key (str "blog-post-" (:id blog-post) "-comment-" (:id comment))}
-                [comment-post [(:id blog-post) (:id comment)] comment])))
-     [add-comment [id] :blog]]))
+  (let [expanded? (r/atom false) ;will have to be sub so add comment can auto expand
+        amount-show-collapsed 3] ; then should dyn load more as scroll down hehu
+    (fn [{:keys [id comments] :as blog-post}]
+      (let [amount (count comments)
+            amount-str (util/pluralize amount "comment")]
+        [:section.blog-comments
+         
+         (if (<= amount amount-show-collapsed)
+           [:h6 amount-str]
+           [:button.blog-btn.blog-btn-collapse.nomargin
+            {:class (if @expanded? "noborder" "topborder")
+             :on-click #(r/rswap! expanded? not)} ;rswap bc dont want to return false for react (not a problem here tho - why?) https://github.com/day8/re-frame/wiki/Beware-Returning-False
+            (if-not @expanded? (str "Show all " amount-str) "Collapse")])
+         
+         (when comments
+           [:div.blog-comments-inner
+            {:class (when-not @expanded? "collapsed")}
+            (doall (for [comment (if @expanded?
+                                   comments
+                                   (take amount-show-collapsed comments))] ^{:key (str "blog-post-" (:id blog-post) "-comment-" (:id comment))}
+                        [comment-post [(:id blog-post) (:id comment)] comment]))])
+         
+         [add-comment [id] :blog]]))))
+
 
 (defn add-comment "Post http or do a gql mutation, yada yada"
   [parent-path parent-type] ; TODO id as id-path (or, unique for all but presented by index...)
   ; id could also be a map... {:uuid adfskl :id 1 :kind :comment :path [:1 :3 :7]} ;where 1 blog, 3 and 7 comments
-  (let [adding-comment? @(rf/subscribe [:state [:blog :adding-comment parent-path]]) ;test... would need id of post
+  (let [adding-comment? @(rf/subscribe [:blog/state [:adding-comment parent-path]]) ;test... would need id of post
         model (r/atom {:user "anon" :title "" :text ""})
         submit #(rf/dispatch [:blog/comment-new parent-path @model])
         input-valid? (fn [input]
@@ -87,7 +102,7 @@
         toggle-ui-btn (fn [kind]
                         (let [attrs {:on-click
                                      #(rf/dispatch
-                                       [:toggle [:state :blog :adding-comment parent-path]])}]
+                                       [:blog/state [:adding-comment parent-path] (not adding-comment?)])}]
                           (case kind
                             :blog [:button.blog-btn.topborder
                                    attrs "Add comment"]
@@ -102,8 +117,7 @@
                        :on-click (fn [_]
                                    (if (and logged-in?
                                             (input-valid? @model))
-                                     ; (do (rf/dispatch [:state [:blog :adding-comment parent-path] false])
-                                     (do (rf/dispatch [:unset [:state :blog :adding-comment parent-path]])
+                                     (do (rf/dispatch [:blog/state [:adding-comment parent-path] false])
                                          (submit))
                                      (rf/dispatch [:state [:login-view-open] true])))}
                       "Submit"])
@@ -137,7 +151,7 @@
   []
   (let [per-page 2
         total @(rf/subscribe [:blog/count])
-        idx @(rf/subscribe [:state [:blog :page]])
+        idx @(rf/subscribe [:blog/state [:page]])
         posts @(rf/subscribe [:blog/posts-for-page idx per-page])
         nav-btn (fn [nav label & [attrs]]
                   [:button.blog-btn.blog-nav-btn.topborder
@@ -150,11 +164,9 @@
      [:div.center-content
       (when-not (= 0 idx)
         [nav-btn :prev "<<"])
-      (doall (for [i (range (/ total per-page))]
+      (doall (for [i (range (/ total per-page))] ^{:key (str "blog-nav-btn-" i)}
                [nav-btn i (inc i) (when (= i idx)
-                                    {:style {:font-weight :bolder
-                                             :border 0
-                                             :border-bottom "var(--line-width-sm) solid"}})]))
+                                    {:class "current"})]))
       (when-not (<= total (* per-page (inc idx)))
         [nav-btn :next ">>"])]
      [:br]

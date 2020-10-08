@@ -1,7 +1,10 @@
 (ns tolgraven.blog.events
   (:require
     [re-frame.core :as rf]
-    [ajax.core :as ajax]))
+    [re-frame.std-interceptors :refer [path]]
+    [clojure.edn :as edn]
+    [ajax.core :as ajax]
+    [tolgraven.util :as util]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug)) ; doesnt shut off in prod tho so, wtf
 
@@ -10,29 +13,34 @@
     {:dispatch-n
       [(when-not (-> db :content :blog :postsz_test) ; no re-request for this...
          [:http-get {:uri             "/blog/1"
-                      :response-format (ajax/raw-response-format)}
+                     :response-format (ajax/detect-response-format)}
            [:blog/set-content]])
        (when-not (-> db :state :blog :page)
-         [:state [:blog :page] 1]) ; should only done once tho
+         [:state [:blog :page] 0]) ; would be nice to defer (further in?) mount til certain of these run, now loads before happens... so set in initial db
        ; [:->css-var! "line-width-vert" "0px"]
        ]})) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
-; (rf/reg-event-db :blog/set-content [debug]
-;  (fn [db [_ [response]]]
-;    ; (let [{:keys [blog-post/user blog-post/title blog-post/text blog-post/id]}
-;    (println response)
-;    (let [response (edn/read-string response)]
-;      (println response)
-;      (assoc-in db [:content :blog :posts]
-;              [response]))))
-; ; welll this wunt wurk but anyways
+
+(rf/reg-event-db :blog/set-content [debug]
+ (fn [db [_ [response]]]
+   ; (let [{:keys [blog-post/user blog-post/title blog-post/text blog-post/id]}
+   (println response)
+   #_(let [response (edn/read-string response)]
+     (println response)
+     #_(assoc-in db [:content :blog :posts]
+             [response]))))
+
+(rf/reg-event-db :blog/state [debug
+                              (path [:state :blog])]
+ (fn [blog [_ path v]]
+   (assoc-in blog path v)))
+
 (rf/reg-event-db :blog/nav-page
- (fn [db [_ nav]]
-   (let [path [:state :blog :page]]
-     (if (number? nav)
-       (assoc-in db path nav)
-       (update-in db path (case nav
-                            :prev dec
-                            :next inc))))))
+  [(path [:state :blog :page])]
+ (fn [idx [_ nav]]
+   (if (number? nav)
+     nav
+     (case nav :prev (dec idx)
+               :next (inc idx)))))
 
 ; (rf/reg-event-db :blog/nav-has? ; :next :prev. for disabling btns etc
 
@@ -67,11 +75,17 @@
                             % parent-path) ; append any nested pathings
          path (cond-> [:content :blog :posts (dec blog-id) :comments]
                 (seq parent-path) appender)
-         sibling-count (count (get-in db path))]
-     (println parent-path)
-     (println path)
+         sibling-count (count (get-in db path))
+         comment (merge comment
+                        {:ts now
+                         :id (inc sibling-count)
+                         :seq-id id
+                         :score 0})]
        {:db (update-in db path
-                       conj
-                       (merge comment
-                              {:ts now :id (inc sibling-count) :seq-id id}))})))
+                       (comp vec conj) ; need to vec else first nil conj creates a list which cant be update-in'd
+                       comment)
+        :dispatch [:http-post {:uri "/add-comment"
+                               :params comment
+                               }]})))
+
 
