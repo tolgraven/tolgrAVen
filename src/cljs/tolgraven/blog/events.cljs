@@ -65,16 +65,18 @@
  (fn [db [_ open? parent-id-path]]
    (assoc-in db [:state :blog :make-comment-view] [open? parent-id-path]))) ; i guess post-id either a blog post id, or vec of blog -> parent comment(s)
 
+(defn- assemble-path "Get db path from path pieces"
+  [path]
+  (let [base-path [:content :blog :posts]]
+    (reduce (fn [p id]
+              (into p [(dec id) :comments]))
+            base-path path)))
 
 (rf/reg-event-fx :blog/comment-new [debug
                                     (rf/inject-cofx :now)
                                     (rf/inject-cofx :gen-uuid)]
- (fn [{:keys [db now id]} [_ [blog-id & parent-path] comment]]
-   (let [appender #(reduce (fn [p id]
-                              (into p [(dec id) :comments]))
-                            % parent-path) ; append any nested pathings
-         path (cond-> [:content :blog :posts (dec blog-id) :comments]
-                (seq parent-path) appender)
+ (fn [{:keys [db now id]} [_ path comment]]
+   (let [path (assemble-path path)
          sibling-count (count (get-in db path))
          comment (merge comment
                         {:ts now
