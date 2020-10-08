@@ -9,19 +9,25 @@
 
   <body class="container themable framing-shadow sticky-footer-container">
     <div id="app">
-      <p>Cooking the books...  <i class="fa fa-spinner fa-spin"></i></p>
+      <h1 style="padding: 5rem;">
+        Stand by for tolgrAVen... <i class="fa fa-spinner fa-spin"></i>
+      </h1>
     </div>
 
     <!-- scripts and styles -->
-    <link href="css/main.css" rel="stylesheet">
+    <link href="css/main.min.css" rel="stylesheet">
     <link href="css/fontawesome.css" rel="stylesheet">
     <link href="css/material-design-iconic-font.min.css" rel="stylesheet">
     <link href="css/brands.min.css" rel="stylesheet">
-    <link href="css/solid.css" rel="stylesheet">
+    <link href="css/solid.css" rel="stylesheet"> <!-- somehow has to do with fontawesome, dont really get it -->
+    <!-- <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"> -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:500,600,700">
+    
 
     <script type="text/javascript">
         var csrfToken = "{{csrf-token}}";
-    </script>
+    </script>  <!-- injected by selmer. pretty much all it's used for? hah -->
+      
     <script src="js/compiled/app.js" type="text/javascript"></script>
 
   </body>
