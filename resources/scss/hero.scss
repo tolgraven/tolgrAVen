@@ -2,7 +2,7 @@
 
 #top-banner {
   opacity: 0.65;
-  /* z-index: -1; */
+  z-index: -1; // needed or text goes behind.
   left: 0;
   top: 0;
   width: 100%;
