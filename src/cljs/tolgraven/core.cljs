@@ -1,6 +1,5 @@
 (ns tolgraven.core
   (:require
-    [day8.re-frame.http-fx]
     [reagent.dom :as rdom]
     [reagent.core :as r]
     [re-frame.core :as rf]
@@ -71,6 +70,10 @@
       {:class (if @(rf/subscribe [:state [:transition]])
                 "hidden"; "slide-in slide-out-left" ; hidden
                 "visible")}; "slide-in ")} ; visible
+      ; should be: outgoing page put at like :common/last-page, plus a flag
+      ; render both, wrapped in div each. outgoing starts middle goes left/right,
+      ; incoming starts left/right animates to middle (simultaneously)
+      ; finish -> flag unset -> kill/novisible last page div.
       [safe [page]]]
      [view/loading-spinner true])
 
@@ -151,13 +154,11 @@
                                                                       [:state [:is-personal] true]])))}]}] ; really overkill this triggers each time. gotta be built-in solution somewhere? else work around
      ["/blog" {:name :blog
                :view #'blog-page
-               }]
+               :controllers [{:start (fn [_] (rf/dispatch [:page/init-blog]))}]}]
      ["#about" {:name :story
-               :view #'home-page
-               }]
+               :view #'home-page}]
      ["#link-services" {:name :services
-               :view #'home-page
-               }]
+               :view #'home-page}]
      ["/log" {:name :log
               :view #'log-page}]
      ["/test" {:name :test
