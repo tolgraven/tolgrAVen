@@ -580,6 +580,16 @@ video {
   position: relative;
 }
 
+.close-btn {
+  position: absolute;
+  right: -5px; top: -5px;
+  background: rgba(30, 30, 30, 0.7);
+  color: #edc;
+  border-radius: 50%;
+  padding: 0.1em;
+  font-size: 1.0rem;
+}
+
 .hud {
   position: fixed;
   z-index: 100;

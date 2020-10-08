@@ -89,18 +89,8 @@
   ["maximize" "minimize" "window"]])
 
 (defn close [on-click]
- [:i.zmdi.zmdi-close
-  {:style {:position :absolute
-           ;:right "0.4rem" :top "0.2rem"
-           :right -5 :top -5
-           :background "rgb(30, 30, 30, 0.7)"
-           :color "#edc"
-           :border-radius "50%"
-           :padding "0.1em"
-           :font-size "1.0rem"
-           ; :line-height "1em"
-           }
-   :on-click on-click}])
+ [:i.zmdi.zmdi-close.close-btn
+  {:on-click on-click}])
 
 (defn formatted-data [title path-or-data]
  (let [data (if (vector? path-or-data)
