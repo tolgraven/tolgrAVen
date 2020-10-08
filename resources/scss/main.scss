@@ -34,7 +34,7 @@
   --line-width-sm:     calc(1 / (1.5 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --line-width-md:     calc(((1 + var(--line-scale-factor)) / 2) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --line-width-lg:     calc(1 / (1 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
-  --line-width-vert:   1px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-vert:   2px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --scale:             1.0; /* px line-width drifts when font scales so must compensate... better way? */
   
   --fiddle-multiplier: 0; /* was 3. works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
@@ -233,10 +233,6 @@
   /* } */
 }
 
-li {
-  list-style: none;
-}
-
 
 /* #theme-toggle:checked ~ .themable { */
 /* #theme-toggle:checked ~ body { */
@@ -262,7 +258,7 @@ li {
 /* } */
 
 * {
-  box-sizing: border-box;
+  // box-sizing: border-box;
   margin:  0;
   padding: 0;
 }
@@ -322,12 +318,11 @@ body {
 .line { /* i guess x overflow only important on ios, so we hype -edges by media query */
   width: calc(var(--space-edges) + 100%); /* extend out one margin */
   background-color: var(--fg-1);
-  height: var(--line-width);
+  --height: var(--line-width);
+  height: var(--height);
 }
 .line-sm {
-  --line-width: var(--line-width-sm);
-  /* height: var(--line-width-sm); */
-  /* nice sass or w/e to have a bunch with var-as like? */
+  --height: var(--line-width-sm);
 }
 
 .line.line-header {
@@ -348,10 +343,16 @@ body {
 .line-left-sm  { border-left:  var(--line-width-vert) solid; }
 .line-right-sm { border-right: var(--line-width-vert) solid; }
 .lined-container {
-  position: relative; /* need to be able to attach lines around */
+  // position: relative; /* need to be able to attach lines around */
   border: var(--line-width) solid;
 }
+.lined-container-sm {
+  border: var(--line-width-sm) solid;
+}
 
+li {
+  list-style: none;
+}
 
 a {
   color: var(--fg-2);
@@ -360,7 +361,7 @@ a {
 a:focus, a:hover, a:active {
   transform: scale(1.12);
   filter: brightness(125%) drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1));
-  font-weight: 600;
+  // font-weight: 600;
 }
 
 main { /* dunno purpose of why I choose .main-content... */
@@ -465,8 +466,9 @@ section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
   justify-content: space-evenly;
 }
 button {
-  padding: calc(0.5 * var(--space)) calc(0.5 * var(--space-lg));
-  margin: calc(0.5 * var(--space)) calc(0.5 * var(--space-lg));
+  --around: calc(0.5 * var(--space)) calc(0.5 * var(--space-lg));
+  padding: var(--around);
+  margin: var(--around);
   background: hsla(var(--hue-1), 7%, var(--lum-bg-2), 0.35);
   color: var(--fg-2);
   border: var(--line-width) solid;
