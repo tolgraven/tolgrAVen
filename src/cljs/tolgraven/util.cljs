@@ -6,6 +6,10 @@
             [clojure.string :as string]
             [clojure.walk]))
 
+(defmacro handler-fn "Use in event-handlers instead of (fn [e/_]), returns nil so react doesnt get a false and ignore us"
+  ([& body]
+    `(fn [~'event] ~@body nil)))  ;; force return nil
+
 (defmacro ors "(or), but treats empty string as nil. not working"
   ([] nil)
   ([x] x)
