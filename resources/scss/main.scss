@@ -259,7 +259,7 @@
 /* } */
 
 * {
-  // box-sizing: border-box;
+  box-sizing: border-box; // include border in elem sizing
   margin:  0;
   padding: 0;
 }
@@ -544,7 +544,7 @@ video {
 }
 .widescreen-safe { /* ensure bottom doesnt run out of 16:9 bg media on (ironically) _thin_ screens */
   height: calc(1.20 * var(--header-with-menu-height)); /* just, some nice tall enough height - max-height will save us anyways */
-  max-height: calc((100vw - 2 * var(--space-edges)) / (16/9));
+  max-height: calc((100vw - (2 * var(--space-edges))) / 2);
 }
 
 .media-as-bg {
