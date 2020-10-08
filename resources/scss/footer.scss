@@ -5,7 +5,7 @@ footer {
   padding-bottom: env(safe-area-inset-bottom); /* handle iphone x+, no harm for rest. TODO also adjust top-shortcut */
   font-size: 0.8rem;
 
-  border-left: var(--line-width-vert) solid; /* connect bottom to main on left side */
+  border-left: var(--line-width) solid; /* connect bottom to main on left side */
 
   /* try (actual tru sticky) footer */
   /* causes some silly ios behavior and might just deal with enough layers already... */
