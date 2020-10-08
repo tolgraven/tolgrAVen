@@ -68,7 +68,8 @@
 .removed  { display: none; }
 .restored { display: inherit; }
 
-
+.nomargin { margin: 0 }
+.nopadding { padding: 0 }
 
 .solid-bg {
   background-color: var(--bg-1);
