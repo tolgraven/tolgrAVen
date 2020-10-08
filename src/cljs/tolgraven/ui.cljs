@@ -162,34 +162,31 @@
  (let [time-format (formatters :hour-minute-second)
        table-ref (atom nil) ; scroll (r/atom nil)
        log-line (fn [{:keys [time level title message] :as msg}]
-                  [:tr.log-message
-                   [:td (unparse time-format time)]
-                   [:td {:class (str "message " (name level))} (name level)]
-                   [:td title]
-                   [:td.message #_{:style {:position :relative :left "1em"}} (str message)]])]
+                  [:tr.log-messages
+                   [:td.log-time (unparse time-format time)]
+                   [:td.log-level {:class (name level)} (name level)]
+                   [:td.log-title title]
+                   [:td.log-message #_{:style {:position :relative :left "1em"}} (str message)]])]
   (r/create-class
    {:display-name "Log"
-    :component-did-update (fn [this] ; (r/dom-node this)
-                           ; (println "Log updated!" (.-scrollHeight @table-ref))
-                           ; (reset! scroll (.-scrollHeight @table-ref))
-                           (set! (.-scrollTop @table-ref) (.-scrollHeight @table-ref))) ;resort to this since :scroll-top @ratom in the actual element doesnt work...
+    :component-did-update (fn [this]
+                           (set! (.-scrollTop @table-ref)
+                                 (.-scrollHeight @table-ref))) ;resort to this since :scroll-top @ratom in the actual element doesnt work...
     :reagent-render
     (fn []
-     (let [messages (:messages @content)]
-       [:div.log-container
-      [minimize [:state [:display :log]]] ;this also needs to send an event to scroll-top the fucker...
-      [:div.log-inner {:ref (fn [el] (reset! table-ref el))
-                       :style {:max-height (if (:minimized @options) "1.2em" "20em")}
-                       ; :scroll-top @scroll ;wonder why this doesnt work
-                       ; :style {:max-height @scroll}
-                       }
-       [:table>tbody.log
-        (for [msg (map messages (sort (keys messages))
-                       #_(if (:minimized @options) ;upside-down?
-                           [(count messages)]
-                           (sort (keys messages))))]
-         ^{:key (str (:id msg))}
-         [log-line msg])]]]))})))
+      (let [messages (:messages @content)]
+        [:section.log-container
+         [minimize [:state [:display :log]]] ;this also needs to send an event to scroll-top the fucker...
+         [:table.lined-container-sm
+            {:ref (fn [el] (reset! table-ref el))
+             :style {:max-height (if (:minimized @options) "1.2em" "20em")}}
+          [:tbody.log
+           (for [msg (map messages (sort (keys messages))
+                          #_(if (:minimized @options) ;upside-down?
+                              [(count messages)]
+                              (sort (keys messages))))]
+             ^{:key (str (:id msg))}
+             [log-line msg])]]]))})))
 
 (defn modal "Container for anything modal, taking care of common stuff. USE FOR COOKIE NOTICE LOL YES"
  [component & [on-outside-click]]

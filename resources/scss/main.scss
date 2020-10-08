@@ -590,15 +590,11 @@ video {
   margin: var(--space);
   padding: 0.3rem 0.7rem;
   border: 1px solid rgba(150, 150, 150, 0.3);
-  opacity: 0.8;
+  color: var(--fg-1);
+  // opacity: 0.8;
 }
-
-.message.error   { color: var(--message-error); }
-.message.warning { color: var(--message-warning); }
-/* .message.info    { color: var(--message-info); color: #222; } */
-
-.hud-message.error   { background: #f55; }
-.hud-message.warning { background: #fa5; }
+.hud-message.error   { background: #{'hsla(var(--red), 0.8)'}; }
+.hud-message.warning { background: var(--orange); }
 .hud-message.info    { background: #dcd; color: #222; }
 
 .hud-modal-main {
@@ -607,6 +603,25 @@ video {
 .hud-modal-main > * {
   padding: 0.75rem;
 }
+
+// neded for full width for some reason. dont remember that from cue-db ghmm
+.log-container table, .log-container thead,
+.log-container tbody, .log-container tr {
+  width: 100%;
+}
+.log {
+  background: var(--bg-3);
+}
+.log .log-messages > td {
+  padding: 0.25em 0.5em;
+  font-size: 80%;
+}
+.log-time { text-align: right }
+.log-level, .log-title { text-align: center }
+.log-level.error   { color: var(--red); }
+.log-level.warning { color: var(--orange); }
+.log-level.debug   { color: var(--green); }
+
 
 .stick-up { /* make sticky just below header */
   position: sticky;
