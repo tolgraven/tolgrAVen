@@ -82,11 +82,8 @@
   ; id could also be a map... {:uuid adfskl :id 1 :kind :comment :path [:1 :3 :7]} ;where 1 blog, 3 and 7 comments
   (let [adding-comment? @(rf/subscribe [:blog/state [:adding-comment parent-path]]) ;test... would need id of post
         model (r/atom {:user "anon" :title "" :text ""})
-        submit #(rf/dispatch [:blog/comment-new parent-path @model])
         input-valid? (fn [input]
                        (pos? (count (:text input))))
-                       ; (every? (fn [[_ v]] (pos? (count v)))
-                       ;         (-> input dissoc :title)))
         logged-in? (or @(rf/subscribe [:state [:login :session :status]])
                        true) ;temp
         box (fn [k kind & {:keys [style ui-name]}]
@@ -118,13 +115,13 @@
                                    (if (and logged-in?
                                             (input-valid? @model))
                                      (do (rf/dispatch [:blog/state [:adding-comment parent-path] false])
-                                         (submit))
+                                         (rf/dispatch [:blog/comment-new parent-path @model]))
                                      (rf/dispatch [:state [:login-view-open] true])))}
                       "Submit"])
         valid-bg {:background-color "#182018"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
      (if-not adding-comment?
        [toggle-ui-btn parent-type]
-       [:section.blog-adding-comment.paad ;{:style {:padding "1em"}}
+       [:section.blog-adding-comment
         [box :title :input :style valid-bg :ui-name "Title (optional)"]
         [box :text :textarea :ui-name "comment"] ;[:br]
         [submit-btn] [toggle-ui-btn :cancel]
