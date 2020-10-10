@@ -52,7 +52,7 @@
 
 (defn comments-section "Comments section!"
   [{:keys [id comments] :as blog-post}]
-  (let [expanded? (r/atom false) ;will have to be sub so add comment can auto expand
+  (let [expanded? (rf/subscribe [:blog/state [:comments-expanded id]]) ;will have to be sub so add comment can auto expand
         amount-show-collapsed 3] ; then should dyn load more as scroll down hehu
     (fn [{:keys [id comments] :as blog-post}]
       (let [amount (count comments)
@@ -63,7 +63,7 @@
            [:h6 amount-str]
            [:button.blog-btn.blog-btn-collapse.nomargin
             {:class (if @expanded? "noborder" "topborder")
-             :on-click #(r/rswap! expanded? not)} ;rswap bc dont want to return false for react (not a problem here tho - why?) https://github.com/day8/re-frame/wiki/Beware-Returning-False
+             :on-click #(rf/dispatch [:blog/state [:comments-expanded id] (not @expanded?)])} ;rswap bc dont want to return false for react (not a problem here tho - why?) https://github.com/day8/re-frame/wiki/Beware-Returning-False
             (if-not @expanded? (str "Show all " amount-str) "Collapse")])
          
          (when comments
@@ -71,8 +71,9 @@
             {:class (when-not @expanded? "collapsed")}
             (doall (for [comment (if @expanded?
                                    comments
-                                   (take amount-show-collapsed comments))] ^{:key (str "blog-post-" (:id blog-post) "-comment-" (:id comment))}
-                        [comment-post [(:id blog-post) (:id comment)] comment]))])
+                                   (take amount-show-collapsed comments))]
+                     ^{:key (str "blog-post-" (:id blog-post) "-comment-" (:id comment))}
+                     [comment-post [(:id blog-post) (:id comment)] comment]))])
          
          [add-comment [id] :blog]]))))
 
