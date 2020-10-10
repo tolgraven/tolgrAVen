@@ -54,6 +54,7 @@ section.blog-post {
   transition: opacity 200ms;
 }
 .blog-comment-info {
+  font-size: 0.7em;
   padding-bottom: 1.00em;
 }
 .blog-comment-user {
@@ -74,6 +75,16 @@ section.blog-post {
   border: 0;
   border-bottom: var(--line-width-sm) solid;
 }
+.blog-comment-vote {
+  opacity: 0;
+  transition: 0.15s;
+  margin-left: 0.75em;
+}
+.blog-comment-vote-btn {
+  font-weight: bold;
+  margin: 0;
+  padding: 0.4em 1.0em;
+}
 .blog-add-comment-btn {
 }
 .blog-reply-comment-btn {
@@ -84,9 +95,10 @@ section.blog-post {
   transition: 0.15s;
 }
 .blog-comment:hover .blog-reply-comment-btn,
-.blog-comment:active .blog-reply-comment-btn {
+.blog-comment:active .blog-reply-comment-btn,
+.blog-comment:hover .blog-comment-vote,
+.blog-comment:active .blog-comment-vote {
   opacity: 1;
-  /* transition: 0.15s; */
 }
 .blog-reply-comment-btn:hover {
   font-size: 1.0em;

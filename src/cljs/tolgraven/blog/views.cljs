@@ -27,27 +27,38 @@
               (if (count user) user "anon")]
         by (str "posted by ")
         ts (util/timestamp ts)]
-    [:h6.blog-comment-info
+    [:span.blog-comment-info
      (str id " - " by)
      user
      (str " - " ts
-          " +/- " score)])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
+          " " (cond (pos? score) "+" (neg? score) "-") score)])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
 
 (defn comment-post "A comment"
   [parent-path {:keys [id ts user title text score comments] :as post}]
   [:section.blog-comment
    [:h4.blog-comment-title title]
-   [posted-by id user ts score] ;[:br]
-   [ui/md->div text] [:br]
+   [posted-by id user ts score]
+   (let [vote-btn (fn [vote]
+                    [:button.blog-btn.blog-comment-vote-btn
+                     {:class (case vote :up "topborder" :down "bottomborder")
+                      :on-click #(rf/dispatch [:blog/comment-vote parent-path vote])}
+                     (case vote :up "+" :down "-")])]
+     [:span.blog-comment-vote
+      [vote-btn :up]
+      [vote-btn :down]])
+   [:div.blog-comment-text
+    {:style (when (neg? score)
+              {:filter (str "brightness(1 +"
+                            (min 0.6 (* 0.1 score)) ")")})}
+    [ui/md->div text]] [:br]
    (when comments ;replies
        [:<> ;best if could recurse back to comments-section...
         (doall (for [post comments
                      :let [rk (reduce (fn [s i] (str s "-" i))
                                     "blog-comment"
                                     parent-path)]]
-               ; ^{:key (str "blog-post-" (first path) "-comment-" parent-id "-reply-" (:id post))}
                ^{:key rk}
-                 [comment-post (conj parent-path (:id post)) post]))])
+                 [comment-post (conj parent-path id) post]))])
    [add-comment parent-path :comment]])
 
 (defn comments-section "Comments section!"

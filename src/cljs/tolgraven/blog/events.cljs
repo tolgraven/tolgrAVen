@@ -66,11 +66,15 @@
    (assoc-in db [:state :blog :make-comment-view] [open? parent-id-path]))) ; i guess post-id either a blog post id, or vec of blog -> parent comment(s)
 
 (defn- assemble-path "Get db path from path pieces"
-  [path]
-  (let [base-path [:content :blog :posts]]
-    (reduce (fn [p id]
-              (into p [(dec id) :comments]))
-            base-path path)))
+  [path & further]
+  (let [base-path [:content :blog :posts]
+        path (vec (reduce (fn [p id]
+                            (into p [(dec id) :comments]))
+                          ; base-path path)))
+                          base-path path))]
+    (if further ; dont want last :comments, instead something else
+      (into (vec (butlast path)) further)
+      path)))
 
 (rf/reg-event-fx :blog/comment-new [debug
                                     (rf/inject-cofx :now)
@@ -90,4 +94,9 @@
                                :params comment
                                }]})))
 
+(rf/reg-event-db :blog/comment-vote [debug]
+ (fn [db [_ path vote]]
+   (let [diff (case vote :up 1 :down -1)]
+     (update-in db (assemble-path path :score)
+                + diff))))
 
