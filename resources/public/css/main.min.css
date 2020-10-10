@@ -1,0 +1,2642 @@
+.burger-check {
+  display: none; }
+
+.burger {
+  position: relative;
+  cursor: pointer;
+  border-bottom: calc(2 * var(--line-width)) solid;
+  /* LOWER BUN */
+  --height: 1.5rem;
+  height: var(--height);
+  /* border-radius: 0.3rem; */
+  /* min-width: var(--space); */
+  min-width: var(--height);
+  /* max-width: 2rem; */
+  /* height: var(--space); */
+  /* --height: calc(0.75 * var(--space)); */
+  /* margin-left: var(--space); */
+  transition: border-bottom 1s ease-in-out;
+  -webkit-transition: border-bottom 1s ease-in-out; }
+
+.burger::-moz-focus-inner {
+  /* border: 0; */
+  /* padding: 0; */ }
+
+.burger:before, .burger:after {
+  position: absolute;
+  content: "";
+  display: block;
+  width: 100%;
+  transition: transform 0.5s ease-in-out;
+  -webkit-transition: -webkit-transform 0.5s ease-in-out; }
+
+.burger:before {
+  /* UPPER BUN */
+  /* border-radius: 0.5rem; */
+  /* border-top: calc(2 * var(--line-width)) solid; /1* UPPER BUN *1/ */
+  border-bottom: calc(2 * var(--line-width)) solid;
+  /* UPPER BUN */ }
+
+.burger:after {
+  /* border-radius: 1rem; */
+  border-top: calc(2 * var(--line-width)) solid;
+  /* UPPER BUN */
+  margin-top: calc(0.5 * var(--height) - var(--line-width)); }
+
+.burger-check:checked ~ header .burger {
+  position: absolute;
+  /* position: relative; /1* if relative affects width of banner logo ugh *1/ */
+  right: var(--space);
+  /* match the padding otherwise applying... */
+  top: var(--space-top);
+  /* needs to be a static amount or lines break... */
+  /* right: calc(0rem - var(--space)); */
+  right: 0;
+  width: calc(100vw * var(--menu-width-fraction) - 2 * var(--space-edges));
+  /* new strat: just jam it behind header-logo... */
+  border: 0;
+  border-top: var(--line-width) solid currentColor;
+  /* bottom: calc(var(--space)); */
+  /* border-bottom: var(--space) solid; */
+  border-radius: 0;
+  transition: border-bottom 0.45s ease-in-out;
+  -webkit-transition: border-bottom 0.45s ease-in-out;
+  /* transform: rotate(15deg); /*translateY(1px) translateX(-3px); *1/ */ }
+
+.burger-check:checked ~ header .burger:before,
+.burger-check:checked ~ header .burger:after {
+  position: absolute;
+  /* width: calc(0.5 * var(--space)); */
+  width: var(--height);
+  right: var(--space);
+  --translate: -1rem;
+  margin: 0;
+  transition: transform 0.3s ease-in-out;
+  -webkit-transition: -webkit-transform 0.3s ease-in-out; }
+
+.burger-check:checked ~ header .burger:before {
+  /* line connecting menu and side through top of burger */
+  /* border: var(--line-width) solid; */
+  /* border: 0; */
+  /* right: calc(0rem - var(--space)); */
+  /* width: calc(100vw * var(--menu-width-fraction) - 2 * var(--space-edges)); */
+  /* /1* new strat: just jam it behind header-logo... *1/ */
+  /* border-top: var(--line-width) solid currentColor; */
+  transform: rotate(225deg) translateY(-12px) translateX(-4px);
+  -webkit-transform: rotate(225deg) translateY(var(--translate)) translateX(var(--translate)); }
+
+.burger-check:checked ~ header .burger:after {
+  /* border-radius: 2rem; */
+  /* border-top: var(--line-width) solid; */
+  /* border: var(--line-width) solid; */
+  /* border: 4px solid; */
+  /* border: 0; */
+  /* border-bottom: 1px solid; */
+  transform: rotate(315deg) translateY(8px) translateX(-10px);
+  -webkit-transform: rotate(315deg) translateY(calc(-1 * var(--translate))) translateX(var(--translate)); }
+
+/*
+ * Peripheral and pseudo styling
+ *
+ */
+/* top and bottom subtle drop shadow */
+.framing-shadow::before, .framing-shadow::after {
+  content: "";
+  position: fixed;
+  width: calc(var(--space-lg) + 100%);
+  height: 10px;
+  z-index: 200; }
+
+.framing-shadow::before {
+  left: 0;
+  top: -13px;
+  box-shadow: 0px 0 17px var(--box-faint-color-flip); }
+
+.framing-shadow::after {
+  left: var(--space-lg);
+  bottom: -13px;
+  box-shadow: 0px 0 22px var(--box-faint-color-flip); }
+
+/* body class, for persistent footer. sticky isnt even correct nomenclature why am i propagating it ugh */
+.sticky-footer-container {
+  /* not sensible/needed for a one-page static as wont have that little content but otherwise v handy i guess? */
+  display: flex;
+  flex-direction: column;
+  min-height: 100%; }
+
+.sticky-footer-container::after {
+  /* TODO: understand exactly why this works, for the footer */
+  content: '\00a0';
+  /* &nbsp; */
+  display: block;
+  margin-top: var(--space);
+  height: 0px;
+  visibility: hidden; }
+
+::-moz-selection {
+  /* text selection */
+  background-color: var(--selection-accent);
+  color: var(--dark-3); }
+
+::selection {
+  /* text selection */
+  background-color: var(--selection-accent);
+  color: var(--dark-3); }
+
+span::first-letter {
+  font-size: 1.4rem;
+  font-weight: bold;
+  filter: brightness(115%); }
+
+/* what these? */
+a[href$=".pdf"]:after {
+  /* Identify PDF Bombs! */
+  content: " (PDF)"; }
+
+a[href$=".pdf"][data-size]:after {
+  /* If file size specified as data attribute, use that too */
+  content: " (PDF, " attr(data-size) ")"; }
+
+/* ::-webkit-scrollbar { */
+/*   /1* all: unset; *1/ */
+/*   /1* width: 0px;  /2* well no but wanna something so it doesnt wreck the design :/ *2/ *1/ */
+/*   /1* height: 1px !important; *1/ */
+/* } */
+header {
+  /* TODO: ios issue: zoom in and back out, main left border faintly visible left side of header */
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  min-height: var(--header-height);
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-1);
+  /* background-image: linear-gradient(to top, var(--bg-1)); */
+  /* background-image: none; */
+  z-index: 100;
+  margin-top: var(--space-top);
+  /* margin-bottom: var(--space-top); */
+  padding: 0 calc(var(--space));
+  margin-right: var(--line-width);
+  /* make main right border stay "outside" right edge of header, needed because of particular effect/design... */
+  transition: min-height var(--header-expand-time) ease 0s, background 0s ease 0s; }
+
+menu {
+  /* flex: 1; */
+  /* overflow-x: scroll; */
+  position: relative;
+  display: flex;
+  min-width: calc(3 * var(--space-lg));
+  transition: min-width 0.5s ease;
+  -webkit-animation: menu-anim-out 0.4s;
+          animation: menu-anim-out 0.4s; }
+
+menu::before, menu::after {
+  /* in order to get them animatable */
+  content: "";
+  position: absolute;
+  transition: height 0.6s ease 0.35s;
+  height: 0px;
+  width: 0px; }
+
+menu::before {
+  height: calc(var(--height));
+  transform-origin: top;
+  transform: scaleY(0);
+  transition: transform 1.2s ease 0.25s; }
+
+nav {
+  /* position: relative; */
+  display: flex;
+  align-items: center;
+  flex: 1 0 auto;
+  min-height: 2.2em;
+  /* h1 */
+  /* dont think right basing on space, just use rem */
+  min-width: 12.5em;
+  background: linear-gradient(-77deg, var(--bg-1) -10%, var(--nav-accent) 80%);
+  /* transition: min-height 0.9s ease-in-out; */
+  transition: filter 0.3s; }
+
+nav:hover {
+  filter: brightness(125%); }
+
+.nav-links > li > a {
+  transition: margin 0.2s; }
+
+.nav-links > li > a:hover,
+.nav-links > li > a:active,
+.nav-links > li > a:focus {
+  margin-left: 0.35rem;
+  margin-right: 0.35rem;
+  /* doesnt do equiv on other side.. */
+  font-weight: bold;
+  text-shadow: rgba(204, 204, 204, 0.25) 0 0 10px; }
+
+.nav-links.nav-link-active {
+  filter: brightness(125%);
+  font-weight: bold; }
+
+.nav-links > * {
+  margin: 0 0.5rem; }
+
+menu > nav > .nav-section:last-of-type > .nav-links {
+  /* not doing the trick hmm */
+  position: absolute;
+  right: 0;
+  top: 0;
+  text-align: right;
+  /* last in... */ }
+
+.header-logo {
+  /* actual text */
+  min-width: 0;
+  -webkit-animation: header-logo-anim-out 0.25s;
+          animation: header-logo-anim-out 0.25s;
+  transition: margin 0.7s, min-width 0.5s; }
+
+.header-logo h1 {
+  display: inline;
+  transition: all 0.5s ease; }
+
+.header-logo-text {
+  display: inline-block;
+  font-size: 0.90em;
+  line-height: 0.80em;
+  transition: 0.5s; }
+
+/*
+ * Only intended to actually be shown when not enough space in header - but it's so pretty and will soon have some more menu stuff (theme toggle...) so keep "universal" for now. DOES need refactoring for sure
+ */
+nav {
+  max-height: var(--space); }
+
+.nav-links li {
+  height: 100%;
+  transition: all 0.4s;
+  transform: scaleY(0) scaleX(0.3);
+  line-height: 20%; }
+
+.show-in-menu {
+  display: none; }
+
+#show-menu {
+  display: none; }
+
+/* would be nicer to use some more generic reference tho so could use with multiple things... */
+#nav-menu-open:checked ~ header menu .show-in-menu {
+  display: block;
+  font-size: 0.8rem; }
+
+#nav-menu-open:checked ~ header menu nav .nav-links {
+  position: relative;
+  font-size: 1.3rem;
+  /* well poor design and stupid subpixel bullshit-shifting is what fucked me but yeah */
+  padding: 1rem var(--space); }
+
+#nav-menu-open:checked ~ header menu nav .nav-links li {
+  visibility: visible;
+  min-width: 50%;
+  flex: 1 1 auto;
+  transition: transform 0.3s;
+  transform: scale(1);
+  line-height: initial; }
+
+#nav-menu-open:checked ~ header menu nav .nav-links li:first-letter {
+  font-size: 1.2em; }
+
+#nav-menu-open:checked ~ header menu nav {
+  position: relative;
+  top: 0;
+  max-height: var(--header-with-menu-height);
+  /* for animation purposes i guess */
+  border: 0; }
+
+#nav-menu-open:checked ~ header menu {
+  flex: 0 2 auto;
+  min-width: calc(100% * var(--menu-width-fraction));
+  margin: auto;
+  order: 4;
+  border: var(--line-width) solid currentColor;
+  transition: min-width 0.5s ease-out 0.15s;
+  -webkit-animation: menu-anim 0.4s;
+          animation: menu-anim 0.4s; }
+
+/* STOP WASTING TIME TRYING AND JUST REDO IT IN GRID IF YOU SO DESPERATELY NEED THE EFFECT */
+/* GAAAAH */
+/* especially considering I need to learn grid. WHY AM I SO USELESS */
+#nav-menu-open:checked ~ header menu::before,
+#nav-menu-open:checked ~ header menu::after {
+  content: "";
+  position: absolute;
+  width: var(--line-width);
+  background-color: var(--fg-1);
+  /* its so close, but loses when base font-size is scaled... */
+  /* how get around? */
+  --height: calc(2rem - 1.5 * var(--line-width));
+  /* crank it a bit cause we're masking out any spillover... */ }
+
+#nav-menu-open:checked ~ header menu::before {
+  left: calc(0px - var(--line-width));
+  bottom: calc(0px - (var(--height)));
+  /* too short on wide desktop */
+  height: calc(var(--height));
+  transform: scaleY(1);
+  /* for animation */ }
+
+#nav-menu-open:checked ~ header menu::after {
+  /* from top right corner and up */
+  right: calc(0px - var(--line-width));
+  bottom: 0;
+  height: calc(var(--header-with-menu-height) - (var(--height)) - var(--space-top));
+  /* "vars" are so deceptive, everything was broken cause neither def nor usage was in paren... */ }
+
+#nav-menu-open:checked ~ .line-header {
+  top: var(--header-with-menu-height);
+  margin-top: 0;
+  margin-bottom: var(--space-top);
+  /* killing margin leds to shitty jumps, so we compensate */
+  /* transition: margin 0.4s ease 0.1s; */ }
+
+#nav-menu-open:checked ~ header {
+  /* margin-top: calc(2 * var(--space-top)); /1* compensate for removing margin from line-header, so nothing jumps... *1/ */
+  /* margin-top: 0; /1* gets easier to calc if kill top margin since --space keeps changing otherwise *1/ */
+  min-height: var(--header-with-menu-height);
+  font-size: 1.5rem;
+  justify-content: space-between;
+  align-content: space-evenly;
+  /* cover out bottom. need to actively fiddle with color+image bc safari transition delay bug */
+  background-color: transparent;
+  background-image: linear-gradient(5deg, var(--bg-1) 8%, hsla(0, 0%, var(--lum-bg-2), 0.25) 40% 52%, var(--bg-1) 95%);
+  backdrop-filter: blur(2rem);
+  -webkit-backdrop-filter: blur(2rem);
+  transition: min-height var(--header-expand-time) ease 0s, background-color 5s ease var(--header-expand-time), background-image 0s;
+  /* stop possible overflow out under top header... */
+  --path: polygon(0 0, 100% 0, 100% var(--header-with-menu-height), 0% var(--header-with-menu-height));
+  clip-path: var(--path);
+  -webkit-clip-path: var(--path); }
+
+header .cover {
+  /* silly attempt to cover up manually so can get some nice seethrough blur... */
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: var(--bg-1);
+  /* display: none; */
+  /* height: 0; */
+  /* transition: height var(--header-expand-time); */ }
+
+#nav-menu-open:checked ~ header .cover {
+  display: block; }
+
+#nav-menu-open:checked ~ header .cover.cover-clip {
+  /* cut the path to clip out, letting (blurred) below shine through */
+  width: 100%;
+  height: 100%;
+  --path:  polygon(
+    0 0,   100% 0,   100% var(--space-top),
+    var(--right-marker)   var(--space-top),
+    var(--right-marker)   var(--top-to-menu-height),
+    var(--left-marker)    var(--top-to-menu-height),
+    var(--left-marker)    var(--header-with-menu-height),
+    0                     var(--header-with-menu-height));
+  clip-path: var(--path);
+  -webkit-clip-path: var(--path); }
+
+/* clip surely bit cleaner but keep these in case need for other browsers. */
+#nav-menu-open:checked ~ header .cover.cover-left {
+  width: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2) + var(--space) - 3 * var(--line-width));
+  height: 100%; }
+
+#nav-menu-open:checked ~ header .cover.cover-top {
+  width: 100%;
+  height: var(--space-top); }
+
+#nav-menu-open:checked ~ header .cover.cover-middle {
+  left: calc(-1 * var(--line-width));
+  width: calc(100% + var(--line-width));
+  height: calc(2em + var(--space-top) + var(--line-width));
+  z-index: -1; }
+
+#nav-menu-open:checked ~ header .header-logo {
+  position: relative;
+  margin: auto;
+  min-width: calc(100% * var(--menu-width-fraction) - 2 * var(--line-width));
+  /* match expanded nav menu, but let its lines pass around... */
+  text-align: center;
+  z-index: 35;
+  /* need to get it above rest so line coming from right can flow behind */
+  -webkit-animation: header-logo-anim 0.5s;
+          animation: header-logo-anim 0.5s;
+  transition: margin 0.8s, min-width 0.5s;
+  will-change: transform;
+  background: var(--bg-1); }
+
+@-webkit-keyframes header-logo-anim {
+  30%, 60% {
+    transform: scaleY(0); } }
+
+@keyframes header-logo-anim {
+  30%, 60% {
+    transform: scaleY(0); } }
+
+@-webkit-keyframes header-logo-anim-out {
+  30%, 70% {
+    transform: scaleY(0); } }
+
+@keyframes header-logo-anim-out {
+  30%, 70% {
+    transform: scaleY(0); } }
+
+@-webkit-keyframes menu-anim {
+  45%, 75% {
+    transform: scaleX(0) scaleY(0.25); } }
+
+@keyframes menu-anim {
+  45%, 75% {
+    transform: scaleX(0) scaleY(0.25); } }
+
+@-webkit-keyframes menu-anim-out {
+  25%, 75% {
+    transform: scaleX(1) scaleY(0); } }
+
+@keyframes menu-anim-out {
+  25%, 75% {
+    transform: scaleX(1) scaleY(0); } }
+
+#nav-menu-open:checked ~ main {
+  /* other attempt compensate line-header margin-.. */
+  /* margin-top: calc(2 * var(--space-top)); */ }
+
+.burger-check:checked ~ header menu nav {
+  /* max-height: 500px; */
+  transition: max-height 0.3s ease-in-out filter 0.1s; }
+
+footer {
+  position: relative;
+  /* padding-top: 0.5rem; */
+  padding-bottom: env(safe-area-inset-bottom);
+  /* handle iphone x+, no harm for rest. TODO also adjust top-shortcut */
+  font-size: 0.8rem;
+  border-left: var(--line-width) solid;
+  /* connect bottom to main on left side */
+  /* try (actual tru sticky) footer */
+  /* causes some silly ios behavior and might just deal with enough layers already... */
+  /* position: sticky; */
+  /* bottom: 0; */ }
+
+.footer-sticky {
+  position: fixed;
+  z-index: 101;
+  left: var(--space-edges);
+  bottom: 0;
+  width: calc(100% - 2 * var(--space-edges));
+  background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1)); }
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  flex-flow: row wrap;
+  /* margin: 1rem 0.4rem; */
+  margin: calc(0.5 * var(--space)) var(--space-sides); }
+
+.footer-column {
+  flex: 1 0 auto;
+  margin: 0.0rem 1.0em;
+  /* flex-flow: column-wrap; */
+  /* flex-flow: row; */ }
+
+.footer-icons {
+  text-align: end; }
+
+.footer-icons > a {
+  padding: 0.5rem;
+  text-shadow: 0px 0px 0px var(--box-faint-color-flip);
+  font-size: 1.5em; }
+
+.footer-icons > a > i {
+  transition: all 0.5s; }
+
+.footer-icons > a:focus, .footer-icons > a:hover {
+  filter: brightness(125%) saturate(75%);
+  background: var(--bg-1);
+  border-radius: 100%;
+  text-shadow: -1px 2px 4px var(--box-regular-color-flip); }
+
+.fa-soundcloud:hover {
+  text-shadow: 2px 2px 1px #ff9533; }
+
+.fa-twitter:hover {
+  text-shadow: 2px 2px 1px #1DA1F2; }
+
+.fa-facebook:hover {
+  text-shadow: 2px 2px 1px #3b5998; }
+
+/* .fa-instagram { color: ; } */
+.md-icon {
+  width: var(--space-lg);
+  height: var(--space-lg); }
+
+.sm-icon {
+  width: var(--space);
+  height: var(--space); }
+
+h3::first-letter {
+  /* nice looking fancy. why isnt applying within category?? */
+  font-size: 120%;
+  filter: brightness(110%); }
+
+#footer-right {
+  /* can change to just last then no worry bout ids */
+  flex: 1 4 auto; }
+
+.to-top {
+  position: fixed;
+  /* right:  calc(var(--space-edges) + 0.5 * var(--space)); */
+  right: calc(var(--space-edges) * 0.35);
+  bottom: calc(2 * var(--space-lg));
+  color: var(--fg-2);
+  font-size: 1.2rem;
+  /* z-index: -1; */
+  z-index: 10; }
+
+#to-top {
+  z-index: 100; }
+
+#to-top-bg {
+  /* filter: brightness(150%); */
+  text-shadow: 1px 1px 1rem var(--fg-2); }
+
+/* intro image and background logo... */
+#top-banner {
+  opacity: 0.65;
+  z-index: -1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  -o-object-fit: cover;
+     object-fit: cover;
+  -webkit-animation: top-backdrop 6s ease infinite;
+          animation: top-backdrop 6s ease infinite;
+  -webkit-animation-play-state: paused;
+          animation-play-state: paused; }
+
+#top-banner:hover {
+  -webkit-animation-play-state: running;
+          animation-play-state: running; }
+
+@-webkit-keyframes top-backdrop {
+  /* well this'd be nice but it's CRAZY on the cpu bleh */
+  0%, 50% {
+    /* --anim-brightness: 0%; /1* no interpolation like this :/ *1/ */
+    backdrop-filter: brightness(100%);
+    -webkit-backdrop-filter: brightness(100%); }
+  80% {
+    backdrop-filter: brightness(250%);
+    -webkit-backdrop-filter: brightness(250%); }
+  100% {
+    backdrop-filter: brightness(100%);
+    /* or like "none" */
+    -webkit-backdrop-filter: brightness(100%); } }
+
+@keyframes top-backdrop {
+  /* well this'd be nice but it's CRAZY on the cpu bleh */
+  0%, 50% {
+    /* --anim-brightness: 0%; /1* no interpolation like this :/ *1/ */
+    backdrop-filter: brightness(100%);
+    -webkit-backdrop-filter: brightness(100%); }
+  80% {
+    backdrop-filter: brightness(250%);
+    -webkit-backdrop-filter: brightness(250%); }
+  100% {
+    backdrop-filter: brightness(100%);
+    /* or like "none" */
+    -webkit-backdrop-filter: brightness(100%); } }
+
+.logo-tolgraven {
+  background-size: 100%;
+  background-repeat: no-repeat;
+  opacity: 0.09;
+  border-radius: 38%;
+  border: 0.35em solid var(--bg-1);
+  /* hmm gotta make a bit device-dependent */
+  box-shadow: 5px 5px 7px 2px var(--box-regular-color-flip); }
+
+@-webkit-keyframes fade-in-logo {
+  0% {
+    opacity: 0.00;
+    background-size: 85%;
+    border-radius: 63%; }
+  65% {
+    border: 0.35em solid transparent;
+    /* hmm gotta make a bit device-dependent */ }
+  90%, 100% {
+    border: 0.35em solid var(--bg-1);
+    /* hmm gotta make a bit device-dependent */
+    opacity: 0.10; } }
+
+@keyframes fade-in-logo {
+  0% {
+    opacity: 0.00;
+    background-size: 85%;
+    border-radius: 63%; }
+  65% {
+    border: 0.35em solid transparent;
+    /* hmm gotta make a bit device-dependent */ }
+  90%, 100% {
+    border: 0.35em solid var(--bg-1);
+    /* hmm gotta make a bit device-dependent */
+    opacity: 0.10; } }
+
+@-webkit-keyframes zoom-logo {
+  0% { }
+  100% {
+    width: 100%; } }
+
+@keyframes zoom-logo {
+  0% { }
+  100% {
+    width: 100%; } }
+
+.logo-bg {
+  margin-left: auto;
+  /* better center it automatically instead of counting n shit... */
+  margin-right: auto;
+  z-index: -1;
+  /* was -1 TODO need a clear order since layers are adding up... not just -1/100 lols */
+  /* width: var(--media-width-main); */
+  height: 0;
+  /* hacky way to size by bg-image height... */
+  padding-bottom: calc(var(--media-width-main) * var(--logo-ratio));
+  /* height ratio of logo */
+  box-shadow: inset 2px 2px 12px 7px var(--box-regular-color-flip);
+  /* overflow: hidden; */
+  -webkit-animation-play-state: paused;
+          animation-play-state: paused;
+  -webkit-animation: zoom-logo 15s;
+          animation: zoom-logo 15s; }
+
+.logo-bg:hover {
+  -webkit-animation-play-state: running;
+          animation-play-state: running; }
+
+#logo-top {
+  /* position: absolute; */
+  /* position: sticky; */
+  /* top: var(--header-height-current); */
+  /* top:  calc(var(--space) * 5); /1* small header and a bit, position for when starts moving off sticky, which is also good fallback when parallax missing... *1/ */
+  /* top:  calc(var(--header-height) + var(--space)); /1* small header and a bit, position for when starts moving off sticky, which is also good fallback when parallax missing... *1/ */
+  /* top:  calc(var(--header-height)); */
+  margin-top: calc(1.5 * var(--space-lg));
+  -webkit-animation: fade-in-logo 3.5s;
+          animation: fade-in-logo 3.5s; }
+
+#logo-bottom {
+  /* same as top but (un)inverted and coming from below */
+  position: absolute; }
+
+/* TODO add more ways */
+.carousel {
+  /* sliding background images */ }
+
+.carousel-item {
+  /* individual item wrapper (or just apply straight to img/item?) for carousel */ }
+
+.carousel-nav {
+  /* container for navigation buttons */
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  text-align: center; }
+
+.carousel-nav-item {
+  /* indicator */
+  display: inline-block;
+  border-radius: 100%;
+  border: 1px solid var(--fg-1);
+  width: 1em;
+  height: 1em;
+  margin: 0.25em; }
+
+.carousel-nav-item.checked {
+  background-color: var(--fg-1); }
+
+/* FROM CSS-TRICKS https://css-tricks.com/css-only-carousel/ */
+/* try adapt/merge semi merge w .sideways (which should be named like .gallery-manual...) */
+@-webkit-keyframes tonext {
+  65% {
+    left: 0; }
+  95% {
+    left: 100%; }
+  98% {
+    left: 100%; }
+  99% {
+    left: 0; } }
+@keyframes tonext {
+  65% {
+    left: 0; }
+  95% {
+    left: 100%; }
+  98% {
+    left: 100%; }
+  99% {
+    left: 0; } }
+
+@-webkit-keyframes tostart {
+  65% {
+    left: 0; }
+  95% {
+    left: -300%; }
+  /* would have to be set by vars for flexible num of slides? */
+  98% {
+    left: -300%; }
+  99% {
+    left: 0; } }
+
+@keyframes tostart {
+  65% {
+    left: 0; }
+  95% {
+    left: -300%; }
+  /* would have to be set by vars for flexible num of slides? */
+  98% {
+    left: -300%; }
+  99% {
+    left: 0; } }
+
+@-webkit-keyframes snap {
+  96% {
+    scroll-snap-align: center; }
+  97% {
+    scroll-snap-align: none; }
+  99% {
+    scroll-snap-align: none; }
+  100% {
+    scroll-snap-align: center; } }
+
+@keyframes snap {
+  96% {
+    scroll-snap-align: center; }
+  97% {
+    scroll-snap-align: none; }
+  99% {
+    scroll-snap-align: none; }
+  100% {
+    scroll-snap-align: center; } }
+
+* {
+  scrollbar-color: transparent transparent;
+  /* thumb and track color */
+  scrollbar-width: 0px; }
+
+* {
+  -ms-overflow-style: none; }
+
+*::-webkit-scrollbar {
+  width: 0; }
+
+*::-webkit-scrollbar-track {
+  background: transparent; }
+
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: none; }
+
+.carousel > li {
+  list-style: none;
+  margin: 0;
+  padding: 0; }
+
+.carousel {
+  position: relative;
+  padding-top: 75%;
+  /* padding-top: 100%; /1* need to understand what this compensates for lol *1/ */
+  /* perspective: 100px; */ }
+
+.carousel__viewport {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  overflow-x: scroll;
+  counter-reset: item;
+  scroll-behavior: smooth;
+  -ms-scroll-snap-type: x mandatory;
+      scroll-snap-type: x mandatory; }
+
+.carousel__slide {
+  position: relative;
+  flex: 0 0 100%;
+  width: 100%;
+  counter-increment: item; }
+
+.carousel__slide:before {
+  content: counter(item);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate3d(-50%, -40%, 70px);
+  /* color: #fff; */
+  font-size: 2em; }
+
+.carousel__snapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  scroll-snap-align: center; }
+
+@media (hover: hover) {
+  .carousel__snapper {
+    -webkit-animation-name: tonext, snap;
+            animation-name: tonext, snap;
+    -webkit-animation-timing-function: ease;
+            animation-timing-function: ease;
+    -webkit-animation-duration: 12s;
+            animation-duration: 12s;
+    -webkit-animation-iteration-count: infinite;
+            animation-iteration-count: infinite; }
+  .carousel__slide:last-child .carousel__snapper {
+    -webkit-animation-name: tostart, snap;
+            animation-name: tostart, snap; } }
+
+@media (prefers-reduced-motion: reduce) {
+  /* kills doesnt transition if reduced-motion - should rather fade in place no */
+  .carousel__snapper {
+    -webkit-animation-name: none;
+            animation-name: none; } }
+
+.carousel:hover .carousel__snapper,
+.carousel:focus-within .carousel__snapper {
+  /* kill carousel once focus */
+  -webkit-animation-name: none;
+          animation-name: none; }
+
+.carousel__navigation {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  text-align: center; }
+
+.carousel__navigation-list,
+.carousel__navigation-item {
+  display: inline-block; }
+
+.carousel__navigation-button {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: #333;
+  background-clip: content-box;
+  border: 0.25rem solid transparent;
+  border-radius: 50%;
+  font-size: 0;
+  transition: transform 0.1s; }
+
+.carousel::before,
+.carousel::after,
+.carousel__prev,
+.carousel__next {
+  position: absolute;
+  top: 0;
+  margin-top: 37.5%;
+  width: 2rem;
+  height: 2rem;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  font-size: 0;
+  /* outline: 0; */ }
+
+.carousel::before,
+.carousel__prev {
+  left: -1rem; }
+
+.carousel::after,
+.carousel__next {
+  right: -1rem; }
+
+.carousel::before,
+.carousel::after {
+  content: '';
+  z-index: 1;
+  background-color: #333;
+  background-size: 1.5rem 1.5rem;
+  background-repeat: no-repeat;
+  background-position: center center;
+  color: #fff;
+  font-size: 1.2rem;
+  line-height: 1.5rem;
+  text-align: center;
+  pointer-events: none; }
+
+.carousel::before {
+  /* uh why not put this in place I guess then it's no longer bg but like so?? */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='0,50 80,100 80,0' fill='%23fff'/%3E%3C/svg%3E"); }
+
+.carousel::after {
+  background-image: url("data:image/svg+xml,%3csvg viewbox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3e%3cpolygon points='100,50 20,100 20,0' fill='%23fff'/%3e%3c/svg%3e"); }
+
+/* HORIZONTAL GALLERY SCROLL THING */
+.sideways {
+  /* scroll horizontally */
+  overscroll-behavior-x: contain;
+  /* keeps the sideways swiping from resulting in accidental page-back etc. only on chrome ...*/
+  -ms-scroll-snap-type: x mandatory;
+      scroll-snap-type: x mandatory;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  max-height: calc(90vh - var(--header-height));
+  display: flex;
+  flex-wrap: nowrap;
+  padding-top: 0;
+  padding-bottom: 0; }
+
+.sideways > div, .sideways > img {
+  scroll-snap-align: start;
+  position: -webkit-sticky;
+  position: sticky;
+  left: 0;
+  /* width: unset; */
+  -o-object-fit: cover;
+     object-fit: cover;
+  /* gets weird with extreme viewports (like iphone either portrait or landscape) but not sure how else to deal with it... */
+  margin: 0;
+  border-left: var(--line-width-vert) solid;
+  border-radius: 0;
+  box-shadow: -0.5rem 0 1rem 0.5rem var(--box-regular-color); }
+
+.sideways > *:first-of-type {
+  /* left first be throwaway item */
+  border: 0;
+  -webkit-animation: nudge 5s infinite;
+          animation: nudge 5s infinite;
+  -webkit-animation-play-state: paused;
+          animation-play-state: paused;
+  margin-right: calc(-2 * var(--space-lg)); }
+
+@-webkit-keyframes nudge {
+  /* some weird safari bug where it doesnt revert properly and ends up animating for 100% not 20% of sequence... */
+  0%, 20% {
+    margin-right: calc(-2 * var(--space-lg)); }
+  10% {
+    margin-right: calc(-3 * var(--space-lg)); } }
+
+@keyframes nudge {
+  /* some weird safari bug where it doesnt revert properly and ends up animating for 100% not 20% of sequence... */
+  0%, 20% {
+    margin-right: calc(-2 * var(--space-lg)); }
+  10% {
+    margin-right: calc(-3 * var(--space-lg)); } }
+
+.sideways > *:first-of-type:hover,
+.sideways > *:first-of-type:focus {
+  -webkit-animation-play-state: running;
+          animation-play-state: running; }
+
+.sideways > *:nth-of-type(2) {
+  /* keep item visible on right as signal can scroll sideways */
+  left: 3%;
+  /* transform: translateZ(var(--parallax-sm-px)) scale(var(--parallax-sm-scale)); */
+  /* transform-origin: 50% -950%; */ }
+
+.sideways > *:nth-of-type(3) {
+  left: 6%; }
+
+.sideways > *:nth-of-type(4) {
+  left: 9%; }
+
+.sideways > *:nth-of-type(5) {
+  left: 12%; }
+
+.sideways > *:last-of-type {
+  /* border: 0; */
+  /* padding-right: var(--space-lg); */
+  /* margin-right: var(--space-lg); */ }
+
+/* MODIFICATIONS / BULK GENERIC STYLE CLASSES (ish, damn hard to decide on some stuff) */
+/* mostly trying to clean up main.css a bit... */
+.fader {
+  position: relative;
+  z-index: 25;
+  width: 100%; }
+
+.fade-to-black {
+  /* well this is certainly a misnomer. .fade-to? */
+  position: absolute;
+  width: 100%; }
+
+.fade-to-black.top {
+  top: 0;
+  height: calc(4 * var(--space));
+  background: linear-gradient(180deg, var(--bg-1) 50%, transparent 100%); }
+
+.fade-to-black.bottom {
+  bottom: 0;
+  height: calc(4 * var(--space));
+  background: linear-gradient(0deg, var(--bg-1) 20%, transparent 102%); }
+
+.fade-to-black.between {
+  --height: 3.5;
+  height: calc(var(--height) * var(--space-lg));
+  top: calc(-0.5 * var(--height) * var(--space-lg));
+  background: linear-gradient(0deg, hsla(var(--hue-3), 2%, var(--lum-bg-1), 0) 0%, hsl(var(--hue-3), 8%, var(--lum-bg-2)) 50%, hsla(var(--hue-3), 28%, var(--lum-bg-2), 0) 100%); }
+
+.fade-to-black.between.red {
+  background: linear-gradient(0deg, transparent 0%, hsl(var(--hue-2), 8%, var(--lum-bg-2)) 50%, transparent 90%); }
+
+.fade-to-black.light-from-below {
+  background: linear-gradient(180deg, transparent 0%, hsl(var(--hue-2), 8%, var(--lum-fg-2)) 120%);
+  --height: 30vh;
+  height: calc(var(--height));
+  bottom: 0; }
+
+/* Show/hide and slide in from left. */
+.slide-in {
+  position: relative;
+  z-index: 0;
+  left: 0;
+  right: 0;
+  transition: 0.4s;
+  /* transition-delay: opacity 0.1s; */ }
+
+.slide-out-left {
+  left: -100%; }
+
+.slide-out-right {
+  right: -100%; }
+
+.hidden {
+  visibility: hidden !important;
+  opacity: 0;
+  transition: visibility 0s 0.15s, opacity 0.15s ease-in; }
+
+.visible {
+  visibility: visible !important;
+  opacity: 1;
+  transition: opacity 0.15s ease-out; }
+
+.removed {
+  display: none; }
+
+.restored {
+  display: inherit; }
+
+.nomargin {
+  margin: 0; }
+
+.nopadding {
+  padding: 0; }
+
+.solid-bg {
+  background-color: var(--bg-1); }
+
+.hi-z {
+  z-index: 99; }
+
+.covering {
+  /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
+  z-index: 10;
+  background: var(--gradient-bg-main); }
+
+.covering-faded {
+  /* jk */
+  /* incidentally not easy to type on a proper vim setup */
+  --opacity: 0.65;
+  /* --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1), var(--opacity)); */
+  /* --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1), var(--opacity)); */
+  --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1));
+  --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1));
+  background: linear-gradient(-40deg, var(--color-1), var(--color-2));
+  opacity: var(--opacity);
+  transition: opacity 0.4s;
+  /* think prob compositing is bad enough, even worse with gradient or? */
+  /* definitely move to burn-in on video either way. then if want to transition to no fg do it by fading to orig version */
+  /* if html n shit server side can just have it gen appropriate vids/imgs etc once from settings */
+  /* background: var(--bg-1); */ }
+
+.covering-faded:hover, .covering-faded:focus {
+  /* jk */
+  /* incidentally not easy to type on a proper vim setup */
+  opacity: 0.50; }
+
+.anim-gradient-bg {
+  --opacity: 0.90;
+  /* --opacity: 1.00; */
+  --deg: -40deg;
+  --color-1: hsla(var(--hue-1),  30%,  var(--lum-bg-1), var(--opacity));
+  --color-2: hsla(var(--hue-2),  30%,  var(--lum-bg-1), var(--opacity));
+  /* background: linear-gradient(-30deg, var(--color-1), var(--bg-1)); */
+  background: linear-gradient(var(--deg), var(--color-1), var(--color-2));
+  /* background: linear-gradient(var(--deg), var(--color-1), var(--color-2)); */
+  background-size: 230%;
+  -webkit-animation: gradient-bg 10s ease infinite;
+          animation: gradient-bg 10s ease infinite;
+  backdrop-filter: blur(4px) contrast(70%);
+  -webkit-backdrop-filter: blur(4px) contrast(70%); }
+
+@-webkit-keyframes gradient-bg {
+  0% {
+    background-position: 0% 50%; }
+  50% {
+    background-position: 100% 50%; }
+  100% {
+    background-position: 0% 50%; } }
+
+@keyframes gradient-bg {
+  0% {
+    background-position: 0% 50%; }
+  50% {
+    background-position: 100% 50%; }
+  100% {
+    background-position: 0% 50%; } }
+
+.blur-bg {
+  /* backdrop-filter is finicky with transitions, so... */
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* pointer-events: none; */
+  width: 100%;
+  z-index: 0;
+  height: 100%;
+  opacity: 0.4;
+  backdrop-filter: blur(2rem) brightness(130%);
+  -webkit-backdrop-filter: blur(2rem) brightness(130%);
+  transition: opacity 0.5s; }
+
+.blur-behind {
+  backdrop-filter: blur(1rem);
+  -webkit-backdrop-filter: blur(1rem); }
+
+.center-content {
+  display: flex;
+  justify-content: center;
+  align-items: center; }
+
+.fade-3 {
+  opacity: 0.30; }
+
+.fade-5 {
+  opacity: 0.62; }
+
+.darken-3 {
+  filter: brightness(30%); }
+
+.darken-5 {
+  filter: brightness(55%); }
+
+.noborder, .horizborders, .vertborders, .topborder, .bottomborder {
+  border: 0; }
+
+.horizborders {
+  /* already got by default but if need to wrap something else */
+  border-top: var(--line-width) solid;
+  /* so, every other top+bottom? */
+  border-bottom: var(--line-width) solid;
+  /* this covers/cancels bottom border */ }
+
+.vertborders {
+  /* already got by default but if need to wrap something else */
+  border-left: var(--line-width-vert) solid;
+  /* so, every other top+bottom? */
+  border-right: var(--line-width-vert) solid;
+  /* this covers/cancels bottom border */ }
+
+.topborder {
+  border-top: var(--line-width-sm) solid; }
+
+.bottomborder {
+  border-bottom: var(--line-width-sm) solid; }
+
+/* PARALLAX */
+/* needs to be torn down and redone properly. messy as balls now */
+.parallax-wrapper {
+  /* guess two ways to force parallax: */
+  /* 1. sticky i know and hate */
+  /* 2. set specific container height + overflow (btw not "non-dynamic" now that we're jsing) */
+  position: relative;
+  height: 100%;
+  /* default, can override in attrs */
+  width: 100%;
+  perspective: calc(1px * var(--perspective));
+  overflow-y: auto; }
+
+.parallax-group {
+  position: relative;
+  transform-style: preserve-3d; }
+
+.parallax-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0; }
+
+.perspective-top {
+  /* default perspective for main. */
+  perspective: calc(1px * var(--perspective));
+  perspective-origin: center;
+  /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */ }
+
+.parallax-sm, .parallax-bg, .parallax-fg {
+  transform-origin: bottom;
+  transform-style: preserve-3d;
+  overflow-y: auto; }
+
+.parallax-sm {
+  /* transform: translateZ(var(--parallax-sm-px)) scale(var(--parallax-sm-scale)); */
+  transform: translateZ(var(--parallax-sm-px)) translateY(-8%) scale(var(--parallax-sm-scale));
+  /* scale(calc(1.1 * var(--parallax-sm-scale))); */ }
+
+.parallax-bg {
+  transform: translateZ(var(--parallax-px)) translateY(-60%) scale(var(--parallax-scale));
+  z-index: -1;
+  /* another issue being mindfuck of using this as fg (ie text) heh... */
+  /* transform-origin: 50% -150%; *1/ /1* perf on chrome, mac safari, but fucks ios... */ }
+
+.parallax-fg {
+  transform: translateZ(calc(-1px * var(--parallax-sm))) scale(calc(1 / var(--parallax-sm-scale)));
+  /* not actually being translated... 1.1 is the 1:1 scale btw obv but 1.2 looks good in this case */ }
+
+.parallax-squeeze {
+  transform-origin: 50% var(--parallax-squeeze-tf);
+  /* obviously... not realistic */
+  transform: translateZ(var(--parallax-squeeze-px)) scale(var(--parallax-squeeze-scale));
+  /* not actually being translated... 1.1 is the 1:1 scale btw obv but 1.2 looks good in this case */
+  /* transform-style: preserve-3d; */ }
+
+.origin-toptop {
+  /* transform-origin: 50% -100%; */
+  /* transform-origin: 50% -250%; */
+  /* gap up top chrome #intro-end, middle ground? */
+  /* transform-origin: 50% -150%; */
+  transform-origin: 50% -100%; }
+
+.debug-layers * {
+  /* -webkit-transform: translate3d(150px, 0, -150px) rotateY(30deg); */
+  /* transform: translate3d(10px, -25px, -10px) rotateY(30deg); */
+  /* transform:  rotateZ(30deg); */
+  transform: translate3d(10px, -25px, -10px) rotateY(1deg) rotateX(-1deg);
+  /* opacity: 0.85; */
+  transition: transform 0.3s; }
+
+* {
+  /*for animation both ways */
+  transform: none;
+  transition: transform 0.3s; }
+
+.debug-layers {
+  box-shadow: 0 0 0 1px #6d8; }
+
+.debug-layers div {
+  box-shadow: 0 0 0 1px #3bf; }
+
+.debug-layers section {
+  box-shadow: 0 0 0 1px #fb5; }
+
+.debug-layers .media {
+  box-shadow: 0 0 0 2px #f62; }
+
+.inline {
+  display: inline; }
+
+.box-regular {
+  box-shadow: 2px 1px 17px 7px var(--box-regular-color); }
+
+.box-faint {
+  box-shadow: 2px 1px 17px 7px var(--box-faint-color); }
+
+/* HIGHLIGHT.JS - TODO change color scheme to box */
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1.00em;
+  background: linear-gradient(100deg, var(--bg-3) 10%, var(--bg-2) 90%, var(--bg-1) 102%);
+  border-bottom-left-radius: 0.7em;
+  /* border-bottom-left-radius: 5%; /1* fantastic w the clipping for especially two-line boxes but nyah good for big onez *1/ */
+  border-bottom-right-radius: 0.5em;
+  color: var(--fg-2);
+  /* font-weight: bolder; */ }
+
+.hljs-comment,
+.hljs-quote {
+  color: #504949;
+  font-style: italic; }
+
+.hljs-name {
+  color: var(--fg-1); }
+
+.hljs-keyword,
+.hljs-selector-tag {
+  color: var(--yellow-1); }
+
+.hljs-literal,
+.hljs-regexp,
+.hljs-template-variable,
+.hljs-variable {
+  color: var(--red); }
+
+.hljs-subst {
+  color: var(--aqua-3); }
+
+.hljs-number,
+.hljs-tag {
+  color: var(--purple); }
+
+.hljs-type {
+  color: var(--orange); }
+
+.hljs-attr,
+.hljs-bullet,
+.hljs-link,
+.hljs-symbol {
+  color: var(--blue); }
+
+.hljs-params {
+  color: #d0d0ff; }
+
+.hljs-built_in,
+.hljs-builtin-name {
+  color: var(--orange-3); }
+
+.hljs-attribute {
+  color: #cda869; }
+
+.hljs-meta {
+  color: var(--aqua); }
+
+.hljs-string,
+.hljs-section,
+.hljs-title {
+  color: var(--green); }
+
+.hljs-addition {
+  background-color: var(--green-2);
+  /* color: #e6e1dc; */
+  display: inline-block;
+  width: 100%; }
+
+.hljs-deletion {
+  background-color: var(--red-2);
+  /* color: #e6e1dc; */
+  display: inline-block;
+  width: 100%; }
+
+.hljs-selector-class {
+  color: var(--orange); }
+
+.hljs-selector-id {
+  color: var(--blue-3); }
+
+.hljs-emphasis {
+  font-style: italic; }
+
+.hljs-strong {
+  font-weight: 700; }
+
+.hljs-link {
+  text-decoration: underline; }
+
+/* Transformed input checkbox -> toggle */
+.toggle-switch {
+  /* The switch - the box around the slider */
+  position: relative;
+  display: inline-block;
+  border-radius: 5px;
+  border: 1px solid rgba(90, 30, 20, 0.5); }
+
+.toggle-switch input {
+  /* Hide default HTML checkbox */
+  opacity: 0;
+  width: 0;
+  height: 0; }
+
+.toggle-slider {
+  /* The "slider" */
+  position: absolute;
+  cursor: pointer;
+  background-color: rgba(60, 40, 40, 0.6);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: .3s;
+  -webkit-transition: .3s; }
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 100%;
+  width: 50%;
+  left: 0%;
+  border-radius: 4px;
+  background-color: rgba(32, 30, 34, 0.9);
+  border: 1px solid rgba(160, 170, 190, 0.3);
+  transition: .3s;
+  -webkit-transition: .3s; }
+
+input:checked + .toggle-slider {
+  /* border-radius: 7px; */
+  /* background-color: #2196F3; */
+  background-color: rgba(132, 60, 54, 0.9); }
+
+input:focus + .toggle-slider {
+  /* box-shadow: 0 0 2px #2196F3; */
+  box-shadow: 0 0 2px rgba(192, 90, 84, 0.8); }
+
+input:checked + .toggle-slider:before {
+  transform: translateX(100%);
+  -ms-transform: translateX(100%);
+  -webkit-transform: translateX(100%);
+  /* transform: translateX(50%); -ms-transform: translateX(50%); -webkit-transform: translateX(50%); */ }
+
+.toggle-slider.round {
+  /* Rounded sliders */
+  border-radius: 4px; }
+
+.toggle-slider.round:before {
+  /* border-radius: 50%; */ }
+
+/* .toggle-hidden { */
+/*     position: relative; */
+/*     z-index: 0; */
+/*     width: 0px; */
+/*     left: -100%; /1* slide out animation *1/ */
+/*     transition: 0.3s; */
+/*     transition-delay: opacity 0.1s; */
+/* } */
+/* .toggle-visible { */
+/*     transition: 0.3s; */
+/*     /1* transition: opacity 0.4s; *1/ */
+/*     transition-delay: opacity 0.1s; */
+/*     left: 5px; */
+/* } */
+/* */
+/* Transformed range (slider) input. Using my own as well, decide eventually what to do... */
+input[type=range] {
+  -webkit-appearance: none;
+  /* background-color: rgb(80, 60, 70, 0.5); */
+  background-image: linear-gradient(rgba(30, 30, 30, 0.6), rgba(50, 20, 20, 0.5));
+  /* opacity: 0.8; */
+  /* height: 1.5rem; */
+  /* width: 200px; */
+  margin: 2px 0px; }
+
+input[type=range]::-webkit-slider-thumb {
+  opacity: 0.7;
+  /* -webkit-appearance: none; */
+  background-color: rgba(30, 30, 30, 0.7);
+  /* width: 0.6rem; */
+  /* height: 1.5rem; */
+  /* height: auto; */ }
+
+input[type=range]:focus {
+  outline: 0px;
+  /* box-shadow: inset 0px 0px 1px 2px rgb(30, 30, 30, 0.8); */ }
+
+/* BLOG STUFF */
+.blog {
+  z-index: 30;
+  background: var(--gradient-bg-main); }
+
+section.blog-post {
+  border: 0;
+  border-bottom: var(--line-width) solid; }
+
+.blog > section:last-of-type {
+  border: 0; }
+
+.blog-comments {
+  background-color: var(--bg-1);
+  border: 0;
+  border-top: var(--line-width-md) solid; }
+
+.blog-comments-inner {
+  transition: max-height 0.25s;
+  max-height: 100vh;
+  overflow-y: scroll; }
+
+.blog-comments-inner.collapsed {
+  max-height: 30em;
+  transition: max-height 0.10s; }
+
+.blog-comments-inner > section {
+  padding: var(--space) 0.25em; }
+
+.blog-comment {
+  position: relative;
+  padding-bottom: 0.5rem;
+  border-top: var(--line-width-sm) solid; }
+
+.comment-enter {
+  opacity: 0; }
+
+.comment-enter-active {
+  opacity: 1;
+  transition: opacity 200ms; }
+
+.comment-exit {
+  opacity: 1; }
+
+.comment-exit-active {
+  opacity: 0;
+  transition: opacity 200ms; }
+
+.comment-appear {
+  opacity: 0.01; }
+
+.comment-appear.comment-appear-active {
+  opacity: 1;
+  transition: opacity .5s ease-in; }
+
+.blog-comment-info {
+  padding-bottom: 1.00em; }
+
+.blog-comment-user {
+  font-style: italic;
+  font-weight: bold; }
+
+.blog-btn {
+  background-color: var(--bg-2);
+  font-size: 0.8em;
+  border-radius: 0; }
+
+.blog-btn-collapse {
+  font-size: 70%;
+  display: inline; }
+
+.blog-nav-btn.current {
+  font-weight: bolder;
+  border: 0;
+  border-bottom: var(--line-width-sm) solid; }
+
+.blog-reply-comment-btn {
+  position: absolute;
+  right: var(--space);
+  top: var(--space);
+  opacity: 0;
+  transition: 0.15s; }
+
+.blog-comment:hover .blog-reply-comment-btn,
+.blog-comment:active .blog-reply-comment-btn {
+  opacity: 1;
+  /* transition: 0.15s; */ }
+
+.blog-reply-comment-btn:hover {
+  font-size: 1.0em; }
+
+.blog-adding-comment {
+  margin: 0;
+  padding: 1em 0em;
+  background-color: var(--bg-1);
+  color: var(--fg-2); }
+
+textarea.blog-adding-comment-textbox {
+  width: 100%;
+  max-width: 100%;
+  height: 6em; }
+
+.blog-adding-comment-textbox {
+  background-color: var(--bg-1);
+  color: var(--fg-2); }
+
+.blog-comment-preview {
+  background-color: var(--bg-2);
+  margin: var(--space-sm);
+  padding: 0.75em; }
+
+.blog-comment-title {
+  font-size: 105%;
+  font-weight: bold; }
+
+/* adapted from keithclark demo */
+.parallax {
+  /* wrapper */
+  height: 100vh;
+  overflow-y: auto;
+  /* might be best have main content as scroller anyways? */
+  /* just put auto on larger "section of sections" then */
+  /* because scrolling auto continues once down so */
+  /* important thing is fixed height and overflow. */
+  perspective: 300px;
+  /* perspective wot dun it. hence put such on main */
+  font-size: 200%; }
+
+.parallax__group {
+  position: relative;
+  min-height: 30vh;
+  transform-style: preserve-3d; }
+
+.parallax__layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: var(--line-width) solid;
+  opacity: 0.7;
+  display: flex;
+  align-items: center; }
+
+.parallax__layer--fore {
+  transform: translateZ(75px) scale(0.75);
+  z-index: 1;
+  background: #744785; }
+
+.parallax__layer--base {
+  z-index: 4;
+  background: #5a8547; }
+
+.parallax__layer--back {
+  transform: translateZ(-150px) scale(1.5);
+  z-index: 3;
+  background: #855f47; }
+
+.parallax__layer--deep {
+  transform: translateZ(-300px) scale(2);
+  z-index: 2;
+  background: #478185; }
+
+/* Debugger styles - used to show the effect
+--------------------------------------------- */
+.debug-on .parallax__group {
+  transform: translate3d(200px, 0, -400px) rotateY(30deg); }
+
+.debug-on .parallax__layer {
+  opacity: 0.8; }
+
+.parallax__group {
+  transition: transform 0.5s; }
+
+/* style the groups
+--------------------------------------------- */
+#group1 {
+  z-index: 5;
+  /* slide over group 2 */ }
+
+#group2 {
+  z-index: 3;
+  /* slide under groups 1 and 3 */ }
+
+#group3 {
+  z-index: 4;
+  /* slide over group 2 and 4 */ }
+
+#group4 {
+  z-index: 2;
+  /* slide under group 3 and 5 */ }
+
+#group5 {
+  z-index: 3;
+  /* slide over group 4 and 6 */ }
+
+#group6 {
+  z-index: 2;
+  /* slide under group 5 and 7 */ }
+
+#group7 {
+  z-index: 3;
+  /* slide over group 6 */ }
+
+.elem-enter {
+  opacity: 0; }
+
+.elem-enter-active {
+  opacity: 1;
+  transition: opacity 800ms; }
+
+.elem-exit {
+  opacity: 1; }
+
+.elem-exit-active {
+  opacity: 0;
+  transition: opacity 800ms; }
+
+.elem-appear {
+  opacity: 0.01; }
+
+.elem-appear.elem-appear-active {
+  opacity: 1;
+  transition: opacity .5s ease-in; }
+
+/* wanted to put in own file but wasnt compatible with live reload solution... */
+:root {
+  /* general vars */
+  /* SIZES */
+  --space:             1.2rem;
+  --space-lg:          2.0rem;
+  --space-sides:       var(--space-lg);
+  /* inner horizontal margin */
+  --space-edges:       var(--space-sides);
+  /* size of outer edges  */
+  --space-top:         2rem;
+  /* top margin above header */
+  --media-width-main: calc(100vw - 2 * var(--space-edges) - 2 * var(--line-width));
+  /* would it be context dependent or just use root 100% i guess uh */
+  --banner-height:     600px;
+  --logo-ratio:        0.4060;
+  /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */
+  /* just use img... */
+  /* or make logo look like i want in first place - needs higher-res or vector bounce anyways */
+  /* --header-height:     calc(3 * var(--space)); */
+  --header-height:     4.5rem;
+  /* beware can be 3 or 6 in practice.... temp bc reading arbitrary css vars with calc is fiddly */
+  --header-with-menu-height: 18rem;
+  /* not truly dynamic bc of annoying sticky */
+  --header-height-current: var(--header-height);
+  /* will then be changed by js dep on whether menu open... */
+  /* --link-offset:       calc(var(--space) + var(--header-with-menu-height)); */
+  --link-offset:       calc( var(--header-with-menu-height));
+  --menu-width-fraction: 0.75;
+  --line-scale-factor: 0.5;
+  --line-width:        2.0px;
+  /* main design line/border width */
+  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-sm:     calc(1 / (1.5 + var(--line-scale-factor)) * var(--line-width));
+  /* main design line/border width */
+  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-md:     calc(((1 + var(--line-scale-factor)) / 2) * var(--line-width));
+  /* main design line/border width */
+  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-lg:     calc(1 / (1 + var(--line-scale-factor)) * var(--line-width));
+  /* main design line/border width */
+  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-vert:   2px;
+  /* main design line/border width */
+  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --scale:             1.0;
+  /* px line-width drifts when font scales so must compensate... better way? */
+  --fiddle-multiplier: 0;
+  /* was 3. works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
+  --left-marker: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
+                      + var(--space) - (var(--fiddle-multiplier) * var(--line-width)));
+  --right-marker: calc(100% - var(--left-marker) + var(--line-width));
+  /* makes sense right side needs one more unit since it has the right border... */
+  --top-to-menu-height: calc(2 * var(--space-top) + 2em - (4 - var(--fiddle-multiplier)) * var(--line-width));
+  --header-expand-time:  0.5s;
+  --navigation-transition-time: 0.20s;
+  --perspective:       100;
+  --parallax:          50;
+  --parallax-scale:    calc(1 + (var(--parallax) / var(--perspective)));
+  --parallax-px:       calc(-1px * var(--parallax));
+  --parallax-sm:       calc(0.50 * var(--parallax));
+  --parallax-sm-scale: calc(1 + (var(--parallax-sm) / var(--perspective)));
+  --parallax-sm-px:    calc(-1px * var(--parallax-sm));
+  --parallax-squeeze-scale: calc(1 + (1 / var(--perspective) * var(--perspective)));
+  --parallax-squeeze-px:    calc(-1px * var(--perspective));
+  --parallax-squeeze-tf:    -1570%;
+  /* fuck knows why */
+  /* COLORS */
+  --hue-1:             180;
+  --hue-2:               8;
+  --hue-3:             192;
+  --lum-dark-1:         9%;
+  --lum-dark-2:        12%;
+  --lum-dark-3:        18%;
+  --lum-light-1:       calc(100% - var(--lum-dark-1));
+  --lum-light-2:       calc(100% - var(--lum-dark-2));
+  --lum-light-3:       calc(100% - var(--lum-dark-3));
+  --light-1:           hsl(var(--hue-2), 20%, var(--lum-light-2));
+  --light-2:           hsl(var(--hue-2), 7%, var(--lum-light-1));
+  --light-text:        hsl(29, 35%, 86%);
+  --light-3:           #ededed;
+  --nav-accent: hsla(var(--hue-3), 40%, 20%, 0.35);
+  --selection-accent: hsl(14, 75%, 80%, 0.7);
+  --neutral-accent: #99aaee;
+  /* link? */
+  /* fixc bruv/box */
+  --red: #d18479;
+  --red-2: #af7370;
+  --red-3: #ea9a98;
+  --green: #b4b88d;
+  --green-2: #8b8c63;
+  --green-3: #ccdaa8;
+  --yellow: #dabd7a;
+  --yellow-2: #d0af80;
+  --yellow-3: #d9c894;
+  --blue: #7692ab;
+  --blue-2: #80a0b3;
+  --blue-3: #a6c0cd;
+  --purple: #bd979d;
+  --purple-2: #af8589;
+  --purple-3: #d9b7b7;
+  --aqua: #91b8a4;
+  --aqua-2: #9ab499;
+  --aqua-3: #B6D1B4;
+  --orange: #cca687;
+  --orange-2: #dba184;
+  --orange-3: #d9a58a;
+  --dark-1:     hsl(var(--hue-1),  7%,  var(--lum-dark-1));
+  --dark-2:     hsl(var(--hue-3),  7%,  var(--lum-dark-2));
+  --dark-3:     #232323;
+  --opacity-regular:  0.45;
+  --opacity-faint:    0.25;
+  --box-regular-color:    hsla(0, 0%, var(--lum-dark-1), var(--opacity-regular));
+  --box-faint-color:      hsla(0, 0%, var(--lum-dark-1), var(--opacity-faint));
+  --box-regular-color-flip: var(--box-regular-color);
+  /* light mode always dark shadows */
+  --box-faint-color-flip:   var(--box-faint-color);
+  --gradient-bg-main: linear-gradient(-77deg,
+                                      hsl(280, 20%, var(--lum-dark-1)),
+                                      hsl(100, 11%, var(--lum-dark-1)));
+  --fg-1:       var(--dark-1);
+  --fg-2:       var(--dark-2);
+  --fg-3:       var(--dark-3);
+  --lum-fg-1:   var(--lum-dark-1);
+  --lum-fg-2:   var(--lum-dark-2);
+  --lum-fg-3:   var(--lum-dark-3);
+  --bg-1:       var(--light-1);
+  --bg-2:       var(--light-text);
+  --bg-3:       var(--light-3);
+  --lum-bg-3:   var(--lum-light-3);
+  --lum-bg-1:   var(--lum-light-1);
+  --lum-bg-2:   var(--lum-light-2); }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* OS has requested dark mode */
+    --fg-1:     var(--light-1);
+    /* --fg-2:     var(--light-text); */
+    --fg-2:     var(--light-2);
+    --fg-3:     var(--light-3);
+    --lum-fg-1: var(--lum-light-1);
+    --lum-fg-2: var(--lum-light-2);
+    --lum-fg-3: var(--lum-light-3);
+    --bg-1:     var(--dark-1);
+    --bg-2:     var(--dark-2);
+    --bg-3:     var(--dark-3);
+    --lum-bg-1: var(--lum-dark-1);
+    --lum-bg-2: var(--lum-dark-2);
+    --lum-bg-3: var(--lum-dark-3);
+    --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
+    --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint)); }
+  #logo-top {
+    /* invert then rotate hue to restore blue text */
+    /* filter: invert() hue-rotate(180deg); */ } }
+
+@media screen and (min-width: 800px) and (min-height: 800px) {
+  :root {
+    --space: 2.0rem;
+    --space-lg: 3.0rem; } }
+
+@media screen and (min-width: 1100px) {
+  .line {
+    /* i guess x overflow only important on ios, so we hype here */
+    width: 200%;
+    /* extend out like damn */ }
+  :root {
+    --space-edges: 10vw;
+    /* --space-edges: calc(var(--space) + 10vw); */ } }
+
+@media screen and (max-width: 600px), screen and (max-height: 600px) {
+  :root {
+    --space: 1.0rem;
+    --space-lg: 1.5rem;
+    --space-sides: var(--space);
+    /* remember -sides based on the smaller num for mobile (since margins are more precious) */
+    --space-edges: 0.8rem;
+    /* perfectly makes room for macos scrollbar */
+    --scale: 0.9;
+    font-size: 0.90rem; } }
+
+@media not all and (min-resolution: 0.001dpcm), (prefers-reduced-motion: reduce) {
+  /* wants no parallax */
+  :root {
+    --perspective: 1;
+    /* just to be sure */
+    --parallax:    0;
+    --parallax-squeeze-tf: 100%;
+    /* fuck knows why */ } }
+
+@media not all and (min-resolution: 0.001dpcm) {
+  /* is safari */
+  :root {
+    --logo-ratio:        0.40;
+    /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */
+    /* just use img... */
+    /* or make logo look like i want in first place - needs higher-res or vector bounce anyways */ }
+  .stick-up {
+    /* safari is being way irresponsible drawing img sticky layers.. */
+    /* position: relative; */
+    /* top: initial; */ } }
+
+@supports (-webkit-overflow-scrolling: touch) {
+  /* iOS devices */
+  body {
+    /* prevent insane bumping of p font size in landscape and more */
+    -moz-text-size-adjust: 100%;
+         text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%; } }
+
+@media only screen and (-webkit-device-pixel-ratio: 3) {
+  :root {
+    /* *im thinking this is what it's about. 3 vs 2 pixels per pixel */
+    --fiddle-multiplier: 1;
+    /* makes iphone x line up with current formulas/offsets */ } }
+
+@media only screen and (min-device-width: 375px) and (max-device-width: 812px) and (-webkit-device-pixel-ratio: 3) {
+  /* iphone x */ }
+
+@media only screen and (min-device-width: 375px) and (max-device-width: 667px) {
+  /* iphone 6-8. i mean not really tho could be loads?? */ }
+
+@media only screen and (min-device-width: 414px) and (max-device-width: 736px) {
+  /* 6-8 plus */ }
+
+@media screen and (max-width: 400px) {
+  :root {
+    font-size: 0.80rem;
+    --space-sides: calc(0.5 * var(--space));
+    /* remember -sides based on the smaller num for mobile (since margins are more precious) */
+    --space-edges: calc(0.5 * var(--space)); }
+  #top-banner {
+    /* need a better solution for ensuring doesnt overflow... like a tallet image? */
+    padding-top: 0; }
+  /* .caption-inset  { /1* ok whatever no captions on iphone then *1/ */
+  /*   visibility: hidden; */
+  /*   display: none; */
+  /*   opacity: 0; */
+  /* } */ }
+
+/* #theme-toggle:checked ~ .themable { */
+/* #theme-toggle:checked ~ body { */
+/* #theme-toggle:checked ~ main { */
+/*   /1* ok so can select main but not body OUCH. *1/ */
+/* /1* .themable { *1/ */
+/*     --bg-1:     var(--dark-1); */
+/*     --bg-2:   var(--dark-2); */
+/*     --fg-1:     var(--light-1); */
+/*     --fg-2:   var(--light-text); */
+/*     --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular)); */
+/*     --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint)); */
+/*     color: red; */
+/* } */
+/* #theme-toggle:not(:checked) ~ main { */
+/*   --bg-1:      var(--light-1); */
+/*   --bg-2:    var(--light-text); */
+/*   --fg-1:      var(--dark-1); */
+/*   --fg-2:    var(--dark-2); */
+/*   --box-regular-color-flip: var(--box-regular-color); /1* light mode always dark shadows *1/ */
+/*   --box-faint-color-flip:   var(--box-faint-color); */
+/*     color: blue; */
+/* } */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0; }
+
+:target {
+  /* pseudo-el representing a target (link, id/el)... */
+  /* does not appear to do the trick tho. wait isnt it :: or hmm nope would be if was like *::target? */
+  /* html, body does seem to semi-work so whatever */
+  scroll-padding-top: var(--header-height-current); }
+
+/* header-height or header-with-menu-height... */
+/* doesnt seem to work though, try putting in html, body... */
+html, body {
+  /* scroll-margin-block-start: calc(1em + var(--header-height-current)); */
+  scroll-padding-top: var(--header-height-current);
+  /* scroll-padding-top: calc(1em + var(--header-with-menu-height)); */ }
+
+html {
+  height: 100%;
+  overflow-x: hidden;
+  /* gotta be on both or doesnt work on iphone hmm */
+  scroll-behavior: smooth;
+  /* makes in-page links scroll to target beautifully in chrome */
+  /* overscroll-behavior-y: none; /1* actually works in chrome, stops from overscroll. BUT makes scrolling and esp sticky jittery it seems? *1/ */ }
+
+body {
+  font-family: 'Open Sans', sans-serif;
+  color: var(--fg-1);
+  background-color: var(--bg-1);
+  width: calc(100% - 2 * var(--space-edges));
+  max-width: 1000px;
+  /*should be conn to var no*/
+  margin: auto;
+  /* no overflow hidden on body = iphone can scroll sideways. on body works but sticky header breaks */
+  /* -webkit-overflow-x: hidden; nope... no work */
+  /* overflow-x: hidden; /1* gotta be on both or doesnt work on iphone hmm *1/ */
+  /* -webkit-overflow-scrolling: touch; */ }
+
+@supports (scroll-margin-top: 0px) {
+  /* compensate for our sticky header. */
+  .link-anchor {
+    scroll-margin-top: var(--header-height-current); } }
+
+@supports not (scroll-margin-top: 0px) {
+  .link-anchor::before {
+    /* have to compensate due to our sticky header. */
+    display: block;
+    /* on about section not working was due to overflow: auto clearfix... */
+    content: " ";
+    /* also various safari vs chrome diff in behavior */
+    margin-top: calc(-1.0 * var(--header-height-current));
+    height: calc(1.0 * var(--header-height-current));
+    visibility: hidden;
+    pointer-events: none;
+    z-index: -1; } }
+
+/* TODO: line border cross pattern for eg images, in same way as site main, connecting to main borders... */
+/* together with similar for topnav and feels "almost" proper design language ish */
+/* could also run along down connecting to next section... */
+.line {
+  /* i guess x overflow only important on ios, so we hype -edges by media query */
+  width: calc(var(--space-edges) + 100%);
+  /* extend out one margin */
+  background-color: var(--fg-1);
+  --height: var(--line-width);
+  height: var(--height); }
+
+.line-sm {
+  --height: var(--line-width-sm); }
+
+.line.line-header {
+  position: -webkit-sticky;
+  position: sticky;
+  /* starts between header and main, turns into demarcation */
+  z-index: 100;
+  top: var(--header-height);
+  /* not -current since being overridden in header.css then */
+  transition: top var(--header-expand-time) ease 0s;
+  margin-top: var(--space-top);
+  /* space before sticky starts */ }
+
+.line.line-footer {
+  position: absolute;
+  top: 0;
+  /* if attach at top of footer instead of bottom of main */
+  right: 0;
+  /* extend on left instead of right width already good */
+  z-index: 100; }
+
+.line-left {
+  border-left: var(--line-width-vert) solid; }
+
+.line-right {
+  border-right: var(--line-width-vert) solid; }
+
+.line-left-sm {
+  border-left: var(--line-width-vert) solid; }
+
+.line-right-sm {
+  border-right: var(--line-width-vert) solid; }
+
+.lined-container {
+  border: var(--line-width) solid; }
+
+.lined-container-sm {
+  border: var(--line-width-sm) solid; }
+
+li {
+  list-style: none; }
+
+a {
+  color: var(--fg-2);
+  text-decoration: none; }
+
+a:focus, a:hover, a:active {
+  transform: scale(1.12);
+  filter: brightness(125%) drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1)); }
+
+main {
+  /* dunno purpose of why I choose .main-content... */
+  width: 100%;
+  /* max-width: 1000px; /*should be conn to var no */ }
+
+.main-content {
+  border-top: var(--line-width) solid;
+  /* should make configurable. off looks p nice on main page */
+  border-bottom: var(--line-width) solid;
+  /* should make configurable. off looks p nice on main page */
+  border-left: var(--line-width-vert) solid;
+  /* should make configurable. off looks p nice on main page */
+  border-right: var(--line-width-vert) solid;
+  /* should make configurable. off looks p nice on main page */
+  background: var(--gradient-bg-main);
+  margin-top: var(--space-lg);
+  padding-bottom: calc(3.5 * var(--space-lg));
+  /* XXX actually, footer height... */
+  position: relative; }
+
+pre {
+  overflow: scroll;
+  /* max-height: 6em; */
+  /* white-space: pre-wrap; */
+  background-color: var(--bg-2);
+  color: var(--fg-2);
+  padding: 1.25em;
+  margin: 1em calc(-0.5 * var(--space));
+  border-top: var(--line-width-sm) solid; }
+
+p > code {
+  /* single-word vars etc */
+  background-color: var(--bg-2);
+  color: var(--fg-3);
+  padding: 0.4em 0.3em; }
+
+/* DOCS SECTION */
+section.docs a {
+  color: var(--blue-2);
+  font-style: italic; }
+
+section.docs p.title {
+  border-top: var(--line-width-sm) solid currentColor;
+  /* background-color: var(--bg-2); */
+  background: linear-gradient(to right, var(--bg-2) 85%, var(--bg-1));
+  margin: 1.7em 0.5em 1em;
+  font-size: 1.4em;
+  font-weight: 600;
+  width: 50%; }
+
+section.docs .bs-callout {
+  margin-top: 2rem;
+  padding: var(--space);
+  background-color: var(--bg-2); }
+
+section.docs .bs-callout h4 {
+  font-size: 1.1em;
+  margin-bottom: 0.75em; }
+
+.column {
+  margin: var(--space);
+  text-align: left; }
+
+section {
+  /* one main section (img + header + piece of content) */
+  max-width: 100%;
+  flex: 1 1 auto;
+  position: relative;
+  justify-content: center;
+  align-items: middle;
+  padding: var(--space-lg) var(--space-lg);
+  /* for padding-less main: */
+  border-top: var(--line-width) solid; }
+
+section > h1, .jumbo > h1 {
+  text-align: center;
+  padding-bottom: var(--space);
+  padding-top: var(--space); }
+
+.main-content > section:first-of-type {
+  /* top section: no upper border */
+  border-top: 0; }
+
+.main-content > section:last-of-type {
+  /* last section, no bottom border */
+  margin-bottom: 0;
+  z-index: 30; }
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: normal; }
+
+section h1, article h1 {
+  font-size: 2rem; }
+
+/* restore proper h1 from 1.5 bs */
+.h0 {
+  font-size: 2.5rem; }
+
+.h0-responsive {
+  font-size: calc(2.5rem + 8vw); }
+
+/* size based on viewport, with sensible min */
+.h-responsive {
+  font-size: calc(1.5rem + 3vw); }
+
+@supports (font-size: 0px) {
+  /* can additionally set a maximum... */
+  .h0-responsive {
+    font-size: min(6rem,   2.5rem + 8vw); }
+  .h-responsive {
+    font-size: min(3.5rem, 1.5rem + 3vw); } }
+
+.buttons {
+  display: flex;
+  justify-content: space-evenly; }
+
+button {
+  --around: calc(0.5 * var(--space)) calc(0.5 * var(--space-lg));
+  padding: var(--around);
+  margin: var(--around);
+  background: hsla(var(--hue-1), 7%, var(--lum-bg-2), 0.35);
+  color: var(--fg-2);
+  border: var(--line-width) solid;
+  border-radius: 0.15rem;
+  position: relative; }
+
+button label {
+  position: relative;
+  font-size: 1.2rem;
+  z-index: 2; }
+
+button:hover .blur-bg, button:active .blur-bg,
+.blur-bg:hover, .blur-bg:active {
+  opacity: 1.0; }
+
+input {
+  margin: 0 0.25em;
+  /* just for checkboxes... */ }
+
+.media-container {
+  position: relative;
+  display: flex;
+  flex-flow: column;
+  align-items: center;
+  /* align-items instead of justify-content because flow by column */
+  justify-content: center;
+  text-align: center; }
+
+.media-container p {
+  /* img/video caption... */
+  font-size: 0.85em;
+  /* small captions */
+  margin-top: 0.3em;
+  width: var(--media-width-main);
+  text-align: left; }
+
+video {
+  height: auto; }
+
+.media {
+  width: 100%;
+  max-width: 700px;
+  margin: var(--space) calc(0.5 * var(--space)) 0.2rem calc(0.5 * var(--space));
+  -webkit-user-select: none;
+     -moz-user-select: none;
+      -ms-user-select: none;
+          user-select: none; }
+
+.image-sm {
+  width: calc(0.5 * var(--media-width-main));
+  max-height: 300px;
+  -o-object-fit: cover;
+     object-fit: cover;
+  /* since we're setting max-height we must also ensure zooms instead of stretching */ }
+
+.image-flex {
+  flex: 1 0 auto;
+  max-width: 200px;
+  /* tho then should actually INCREASE on small screens when 1col... */ }
+
+.image-inset {
+  margin-top: 0;
+  margin-left: 0;
+  border-radius: 0.15rem; }
+
+.fullwide {
+  /* expand div back to full width of main despite regular paddings/margins */
+  /* guess should work to only fuck w margin+width directly not left etc? */
+  /* i guess this should be for only when breaking out of margin bs */
+  /* not the other bg fullwide stuff... */
+  margin: 0;
+  padding: 0;
+  position: relative;
+  left: 0;
+  /* left:  calc(0% - 0.5 * var(--space-sides)); */
+  width: min(100%, var(--media-width-main)); }
+
+.fullwide > .media {
+  max-width: unset;
+  margin: 0; }
+
+.widescreen-safe {
+  /* ensure bottom doesnt run out of 16:9 bg media on (ironically) _thin_ screens */
+  height: calc(1.20 * var(--header-with-menu-height));
+  /* just, some nice tall enough height - max-height will save us anyways */
+  max-height: calc((100vw - (2 * var(--space-edges))) / 2); }
+
+.media-as-bg {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  max-width: unset;
+  -o-object-fit: cover;
+     object-fit: cover;
+  margin: 0; }
+
+.section-with-media-bg-wrapper {
+  /* like section-bg-wrapper but NOT using background for img/video */
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  /* border-top: var(--line-width) solid; */ }
+
+.bg-static-section {
+  position: relative;
+  overflow-y: hidden; }
+
+.component-failed {
+  /* DEV: react error boundary triggered */
+  padding: var(--space);
+  color: var(--red-1);
+  width: 100%; }
+
+.component-failed > * {
+  /* DEV: react error boundary triggered */
+  margin: var(--space); }
+
+.loading-spinner {
+  opacity: 0.8;
+  transition: all 0.5s;
+  position: relative; }
+
+.close-btn {
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  background: rgba(30, 30, 30, 0.7);
+  color: #edc;
+  border-radius: 50%;
+  padding: 0.1em;
+  font-size: 1.0rem; }
+
+.hud {
+  position: fixed;
+  z-index: 100;
+  bottom: calc(2 * var(--space-lg));
+  /* ;actually, footer, if sticky... */
+  right: 1.5rem; }
+
+.hud-message {
+  margin: var(--space);
+  padding: 0.3rem 0.7rem;
+  border: 1px solid rgba(150, 150, 150, 0.3);
+  color: var(--fg-1); }
+
+.hud-message.error {
+  background: hsla(var(--red), 0.8); }
+
+.hud-message.warning {
+  background: var(--orange); }
+
+.hud-message.info {
+  background: #dcd;
+  color: #222; }
+
+.hud-modal-main {
+  padding: 0.75rem 2rem; }
+
+.hud-modal-main > * {
+  padding: 0.75rem; }
+
+.log-container table, .log-container thead,
+.log-container tbody, .log-container tr {
+  width: 100%; }
+
+.log {
+  background: var(--bg-3); }
+
+.log .log-messages > td {
+  padding: 0.25em 0.5em;
+  font-size: 80%; }
+
+.log-time {
+  text-align: right; }
+
+.log-level, .log-title {
+  text-align: center; }
+
+.log-level.error {
+  color: var(--red); }
+
+.log-level.warning {
+  color: var(--orange); }
+
+.log-level.debug {
+  color: var(--green); }
+
+.stick-up {
+  /* make sticky just below header */
+  position: -webkit-sticky;
+  position: sticky;
+  top: var(--header-height-current); }
+
+#section-services {
+  z-index: 6; }
+
+#services {
+  position: -webkit-sticky;
+  position: sticky;
+  z-index: 12;
+  top: 0;
+  margin-bottom: var(--space-lg); }
+
+#intro {
+  position: relative;
+  max-height: var(--media-width-main); }
+
+#intro p {
+  padding: 0 var(--space-lg); }
+
+#intro-end {
+  /* lbp pic "YOU" */
+  height: calc(100vw - 2 * var(--space-edges)); }
+
+#interlude-2 {
+  z-index: 7; }
+
+#interlude-3 {
+  /* portfolio */
+  z-index: 29; }
+
+#portfolio {
+  /* portfolio */
+  z-index: 30; }
+
+#about-intro {
+  --height: calc(6 * var(--space-lg));
+  max-height: var(--height);
+  z-index: 13;
+  top: var(--header-height-current);
+  /* transform-origin: 50% -1570%; /1* figure out genericable bs lol *1/ */ }
+
+#about-story {
+  position: relative;
+  z-index: 14; }
+
+#headshot {
+  width: 20%;
+  max-width: 150px; }
+
+#byline > img {
+  border-radius: 0.5em;
+  border: 1px solid; }
+
+#multimeter {
+  width: 30%;
+  min-width: 150px;
+  max-width: 300px; }
+
+#building-tools {
+  z-index: 29; }
+
+/* FLOAT STUFF */
+.caption-inset {
+  /* caption overlaying media */
+  margin: 0.8em;
+  font-size: 0.65rem;
+  /* weird ass size when iphone landscape, and webkit-text-size-adjust doesnt seem to help... */
+  opacity: 0.65;
+  position: absolute;
+  z-index: 40; }
+
+.caption-inset.right {
+  right: 0;
+  text-align: right; }
+
+.caption-inset.left {
+  left: 0; }
+
+.caption-inset.top {
+  top: 0; }
+
+.caption-inset.bottom {
+  bottom: 0; }
+
+.float-with-caption {
+  margin: var(--space) 0; }
+
+.float-with-caption:first-of-type {
+  /* keep top of first inset level with top of text. */
+  margin-top: 0; }
+
+.float-with-caption > .media {
+  margin: 0;
+  width: 100%;
+  /* and then set on parent div */ }
+
+.float-with-caption.left {
+  float: left;
+  margin-right: calc(1.0 * var(--space-lg));
+  /* using reg space becomes bit wrong when very slim... too tight. */ }
+
+.float-with-caption.right {
+  float: right;
+  margin-left: calc(1.0 * var(--space-lg)); }
+
+figcaption, .float-with-caption {
+  font-size: 0.8rem; }
+
+.float-wrapper {
+  overflow: auto; }
+
+/* clearfix */
+/* .float-wrapper::after { */
+/*   content: ""; */
+/*   clear: both; */
+/*   display: table; */
+/* } */
+.md-icon {
+  width: var(--space-lg);
+  height: var(--space-lg); }
+
+.sm-icon {
+  width: var(--space);
+  height: var(--space); }
+
+h3::first-letter {
+  /* nice looking fancy. why isnt applying within category?? */
+  font-size: 120%;
+  filter: brightness(110%); }
+
+#categories {
+  /* List of services offered */
+  /* FAILURE: can't get flexbox working like i want with nice alignment and also word-wrap and blabla */
+  /* but this is maybe good enough? only works sorta ok with 1/2/3 cols because of specific content so  guess point is to use breakpoints and table or better yet grid */
+  display: flex;
+  /* display: grid; /1* fuck with this *1/ */
+  justify-content: space-evenly;
+  align-content: bottom;
+  text-align: center;
+  flex-wrap: wrap; }
+
+#categories > ul {
+  flex: 0 1 auto;
+  margin: calc(0.5 * var(--space));
+  padding: calc(1.0 * var(--space));
+  border-radius: 0.20rem;
+  /* border: var(--line-width-sm) solid var(--yellow-2); */
+  /* border: var(--line-width-sm) solid var(--green-2); */
+  border: var(--line-width-sm) solid var(--bg-1);
+  min-width: 35%;
+  /* ensure only two per line */
+  /* min-width: 45%; /1* ensure no awkward two on one row, one on rest... not exactly universal solution tho :/ *1/ */
+  /* /1* oh and doesnt work for like if font small enough that two fit nicely gah *1/ /1* easy enough with js tho.. *1/ */
+  /* /1* max-width: 100%; *1/ */
+  /* max-width: 55%; */
+  text-align: left;
+  font-size: 1.1rem;
+  backdrop-filter: blur(2.5px);
+  -webkit-backdrop-filter: blur(2.5px);
+  background: hsla(var(--hue-3), 70%, var(--lum-fg-2), 0.06);
+  transition: 0.3s;
+  /* nah doesnt suit page/design. but effect is fine */ }
+
+#categories ul:hover {
+  border-radius: 0.80rem;
+  /* transform: skew(-2deg); */
+  /* width: 110%; */
+  transform: translateZ(20deg); }
+
+@media screen and (max-width: 400px) {
+  #categories > ul {
+    /* min-width: 45%; /1* ensure no awkward two on one row, one on rest... not exactly universal solution tho :/ *1/ */
+    /* /1* oh and doesnt work for like if font small enough that two fit nicely gah *1/ /1* easy enough with js tho.. *1/ */
+    /* /1* max-width: 100%; *1/ */
+    /* max-width: 55%; */ } }
+
+@media screen and (min-width: 500px) {
+  #categories > ul {
+    font-size: calc(1.0rem + 0.5vw); } }
+
+@media screen and (min-width: 800px) {
+  #categories > ul {
+    font-size: calc(1.1rem + 0.3vw); } }
+
+#categories > ul > * {
+  margin: 0.1em 0.1em 0.1em; }
+
+#categories > ul > li:first-of-type {
+  white-space: nowrap;
+  margin-bottom: calc(0.5 * var(--space)); }
+
+#categories > ul > li:first-of-type ~ li {
+  /* suddenly started making the icons... weird inner shadow. so skip the header. */
+  text-shadow: 1px 1px 2px var(--bg-1); }
+
+#categories > ul i {
+  font-size: 1.4em;
+  background: linear-gradient(-30deg, rgba(205, 170, 152, 0.8), var(--fg-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent; }
+
+#categories > ul h3 {
+  display: inline;
+  position: relative; }
+
+#categories > ul h3::after {
+  /* shitty underline didnt end up too hot hmm */
+  content: "";
+  height: 2.5px;
+  background: linear-gradient(to right, rgba(216, 187, 182, 0.7), var(--fg-2) 130%);
+  width: 100%;
+  transform: skew(-20deg);
+  position: absolute;
+  bottom: -1px;
+  left: -2px;
+  z-index: -1; }
+
+#categories > ul li {
+  /* margin-left: calc(2 * var(--space)); */
+  font-size: 0.80em;
+  text-align: left;
+  /* list-style-type: '_'; */
+  /* text-shadow: 1px 1px 2px var(--bg-1); */ }
