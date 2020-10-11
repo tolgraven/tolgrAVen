@@ -165,7 +165,7 @@
     :reagent-render
     (fn []
       (let [messages (:messages @content)]
-        [:section.log-container
+        [:section.log-container.solid-bg
          [minimize [:state [:display :log]]] ;this also needs to send an event to scroll-top the fucker...
          [:table.lined-container-sm
             {:ref (fn [el] (reset! table-ref el))

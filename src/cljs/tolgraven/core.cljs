@@ -84,7 +84,11 @@
 
 
 (defn test-page []
-  [experiment/parallax])
+  [:<>
+   [view/fading-bg-heading (merge @(rf/subscribe [:content [:common :banner-heading]])
+                                  {:title "Experiments" :tint "green"})]
+   [:section.experiments.solid-bg.fullwide.noborder
+    [experiment/parallax]]])
 
 (defn home-page []
   [view/ui])
