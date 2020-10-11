@@ -68,11 +68,16 @@
 .removed  { display: none; }
 .restored { display: inherit; }
 
+.inline { display: inline; }
+
 .nomargin { margin: 0 }
 .nopadding { padding: 0 }
 
 .solid-bg {
   background-color: var(--bg-1);
+}
+.grad-bg {
+  background: var(--anim-gradient);
 }
 .hi-z {
   z-index: 99;
