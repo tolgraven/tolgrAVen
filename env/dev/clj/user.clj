@@ -29,5 +29,3 @@
   (stop)
   (start))
 
-(def sub (comp deref rf/subscribe))
-(def disp rf/dispatch)
