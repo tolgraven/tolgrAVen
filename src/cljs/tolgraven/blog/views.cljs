@@ -33,21 +33,16 @@
      (str " - " ts
           " " (cond (pos? score) "+" (neg? score) "-") score)])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
 
+
 (defn comment-post "A comment, and any children."
   [path {:keys [id ts user title text score comments] :as post}]
   (let [vote-btn (fn [vote]
                    (let [voted @(rf/subscribe [:blog/state [:voted path]])]
                      [:button.blog-btn.blog-comment-vote-btn
                       {:class (if (= vote voted)
-                                "noborder"
+                                "bottomborder"
                                 (case vote :up "topborder" :down "bottomborder"))
-                       :disabled (when (= vote voted) true)
-                       :on-click (fn [_]
-                                   (let [opposite (case vote :up :down :down :up)]
-                                     (when (= opposite voted)
-                                     (rf/dispatch [:blog/comment-vote path vote]))) ;undo first vote
-                                   (rf/dispatch [:blog/comment-vote path vote])
-                                   (rf/dispatch [:blog/state [:voted path] vote]))}
+                       :on-click (fn [_] (rf/dispatch [:blog/comment-vote path vote]))}
                       (case vote :up "+" :down "-")]))]
     [:section.blog-comment
      [:h4.blog-comment-title title]
@@ -59,7 +54,7 @@
                               (min 0.6 (* 0.1 score)) ")")})}
       [ui/md->div text]] [:br]
      (when comments ;replies
-       [:<> ;best if could recurse back to comments-section...
+       [:<>
         (doall (for [post comments
                      :let [rk (reduce (fn [s i] (str s "-" i))
                                       "blog-comment"
@@ -67,6 +62,7 @@
                  ^{:key rk}
                  [comment-post (conj path id) post]))])
      [add-comment path :comment]])) ;reply button
+
 
 (defn comments-section "Comments section!"
   [{:keys [id comments] :as blog-post}]

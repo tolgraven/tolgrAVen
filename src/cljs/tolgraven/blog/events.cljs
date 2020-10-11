@@ -96,7 +96,16 @@
 
 (rf/reg-event-db :blog/comment-vote [debug]
  (fn [db [_ path vote]]
-   (let [diff (case vote :up 1 :down -1)]
-     (update-in db (assemble-path path :score)
-                + diff))))
+   (let [diff (case vote :up 1 :down -1)
+         state-path [:state :blog :voted path]
+         opposite (case vote :up :down :down :up)
+         voted (get-in db state-path)
+         diff (condp = voted
+               vote     (- diff)
+               opposite (* 2 diff)
+               diff)]
+     (-> db
+         (assoc-in state-path (if-not (= vote voted) vote false))
+         (update-in (assemble-path path :score)
+                    + diff)))))
 
