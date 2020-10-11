@@ -159,28 +159,32 @@
    [:br] [:br]
    [comments-section blog-post]])
 
+(defn blog-nav "Blog navigation buttons"
+  [total-posts current-idx posts-per-page]
+  (let [nav-btn (fn [nav label & [attrs]]
+                  [:button.blog-btn.blog-nav-btn.topborder
+                   (merge {:on-click (fn [_] (rf/dispatch [:blog/nav-page nav]))}
+                          attrs)
+                   label])
+        nav-idxs (doall (for [i (range (/ total-posts posts-per-page))] ^{:key (str "blog-nav-btn-" i)}
+                          [nav-btn i (inc i) (when (= i current-idx)
+                                               {:class "current"})]))
+        back-btn (when-not (= 0 current-idx)
+                   [nav-btn :prev "<<"])
+        fwd-btn (when-not (<= total-posts (* posts-per-page (inc current-idx)))
+                  [nav-btn :next ">>"])]
+    [:div.blog-nav.center-content
+      back-btn nav-idxs fwd-btn]))
+
 (defn blog "all the blogs"
   []
   (let [per-page 2
         total @(rf/subscribe [:blog/count])
         idx @(rf/subscribe [:blog/state [:page]])
-        posts @(rf/subscribe [:blog/posts-for-page idx per-page])
-        nav-btn (fn [nav label & [attrs]]
-                  [:button.blog-btn.blog-nav-btn.topborder
-                   (merge {:on-click (fn [_] (rf/dispatch [:blog/nav-page nav]))}
-                          attrs)
-                   label])]
+        posts @(rf/subscribe [:blog/posts-for-page idx per-page]) ]
     [:section.blog.fullwide.noborder ;then chuck flip-move on eeet. or just same slide nav thing
      (doall (for [post posts] ^{:key (str "blog-post-" (:id post))}
-                 [blog-post post]))
-     [:div.center-content
-      (when-not (= 0 idx)
-        [nav-btn :prev "<<"])
-      (doall (for [i (range (/ total per-page))] ^{:key (str "blog-nav-btn-" i)}
-               [nav-btn i (inc i) (when (= i idx)
-                                    {:class "current"})]))
-      (when-not (<= total (* per-page (inc idx)))
-        [nav-btn :next ">>"])]
-     [:br]
-     [:div idx]]))
+              [blog-post post]))
+     [blog-nav total idx per-page]
+     [:br] ]))
 
