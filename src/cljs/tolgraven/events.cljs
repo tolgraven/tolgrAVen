@@ -7,6 +7,7 @@
     [reitit.frontend.controllers :as rfc]
     [tolgraven.util :as util]
     [tolgraven.blog.events]
+    [tolgraven.user.events]
     [clojure.edn :as edn]
     ; [muuntaja.core :as m]
     [cljs-time.core :as ct]
@@ -135,14 +136,6 @@
 ; works either way rather than many individual cause always increased vs last of kind
 ; AFA remember from pf it's more like, gen a temp id here in case of failures etc,
 ; then once is in db that becomes truth (and likely differs)
-(rf/reg-event-db :user/login-ui-open
- (fn [db [_ open?]]
-   (assoc-in db [:state :user :log-in-view] open?)))
-
-(rf/reg-event-fx :user/request-login
- (fn [{:keys [db]} [_ info]]
-   {:dispatch [::http-post ]}))
-
 
 ;; SOME STUFF FROM CUE-DB
 (rf/reg-event-fx :init ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
