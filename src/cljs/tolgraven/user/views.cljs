@@ -2,37 +2,30 @@
   (:require
    [reagent.core :as r]
    [re-frame.core :as rf]
-   ; [re-graph.core :as rg]
-   ; [markdown.core :refer [md->html]]
    [clojure.string :as string]
    [tolgraven.util :as util :refer [at]]
    [tolgraven.ui :as ui]))
 
-(defn input "Wrap input-text"
-  [kind path on-change]
-  [ui/input-text
-   :class "input-dark" :placeholder (name kind)
-      ; :model     (rf/subscribe [:register/field :email])
-   :path path :on-change on-change ])
-      ; :on-enter #(rf/dispatch [:state :filter :save %]) ;well no
 
 (defn sign-in "Sign in component"
   []
-  [:section
+  [:section>form
    [:input {:class "input-dark" :placeholder "Username"
-            :on-change #(rf/dispatch [:state [:register :name] (-> % .-target .-value)])}]
-   
+            :value @(rf/subscribe [:state [:login-field :user]])
+            :on-change #(rf/dispatch [:state [:login-field :user] (-> % .-target .-value)])}]
+   [:span "error"]
    [:br]
+   
    [:input {:type :password 
             :class "input-dark" :placeholder "Password"
-            :on-change #(rf/dispatch [:state [:register :password] (-> % .-target .-value)])}] ])
+            :value @(rf/subscribe [:state [:login-field :password]])
+            :on-change #(rf/dispatch [:state [:login-field :password] (-> % .-target .-value)])}] ])
 
-(declare register)
 
 (defn sign-in-or "Sign in or go to reg page"
   []
-  [:section.user-sign-in.solid-bg
-   [ui/close #(rf/dispatch [:state [:modal] false])]
+  [:section.user-forms.noborder
+   [ui/close #(rf/dispatch [:state [:user-section] false])]
    [:h2 "You must be logged in"]
    [sign-in]
    [:button
@@ -40,24 +33,36 @@
     "Sign in"]
    [:span "or "]
    [:button
-    {:on-click #(rf/dispatch [:state [:modal] :register])}
-    "Register"]]
-   )
-
-(defn user-profile "User profile page" []
-  [:div])
-
-(defn user-admin "User admin page" [])
+    {:on-click #(rf/dispatch [:state [:user-section] :register])}
+    "Register"]])
 
 (defn register "Registration component" []
-  [:section.user-register.solid.bg
+  [:section.user-forms.user-register
+   [:button {:on-click #(rf/dispatch [:state [:user-section] :login])
+             :style {:position :absolute :left 0 :top 0}} "<"]
    [:h2 "Register"]
    [:br]
-   [input :email [:register/field :email]
-    #(rf/dispatch [:state [:register :email] %])]
-   
-   ])
-; [ui/input-text :class "input-dark" :placeholder "filter..."
-;    :path [:get :filter :value] ;ahh wait this way no deref here = wont rerender further down... never gets called and given chance to prove it will diff
-;    :on-change (db/setter [:filter :value]) :change-on-blur? false
-;    :on-enter #(rf/dispatch [:filter :save %])]
+   [sign-in] ;well need different validation here (not exists etc)
+   [:input
+    {:class "input-dark" :placeholder "Email"
+     :value @(rf/subscribe [:state [:register-field :email]])
+     :on-change #(rf/dispatch [:state [:register-field :email] (-> % .-target .-value)])}]
+   [:br]
+   [:button
+    {:on-click #(rf/dispatch [:user/request-register])}
+    "Sign up"] ])
+;    
+(defn profile "User profile page" []
+  [:div "USER PROFILE"])
+
+(defn admin "User admin page" []
+  (let [user @(rf/subscribe [:user/active-user-details])]
+    [:section
+     [:div "USER ADMIN"]
+     [:h3 (:name user)]
+     [:span "Email " [:em (:email user)]] [:br]
+     [:button "Change password"]
+     [:button "View comments"]
+     [:button {:on-click #(rf/dispatch [:user/logout])} "Log out"]
+     ]))
+

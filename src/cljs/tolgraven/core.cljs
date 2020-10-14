@@ -64,6 +64,13 @@
   [:<>
    [common/header @(rf/subscribe [:content [:header]])] ;TODO smooth transition to personal
    [:a {:name "linktotop" :id "linktotop"}]
+   
+   (when-let [user-section @(rf/subscribe [:state [:user-section]])]
+     [:div.user-section.stick-up.hi-z
+      (case user-section
+        :login  [user/sign-in-or]
+        :register [user/register]
+        :admin [user/admin])]) ;except get which from path
 
    (if-let [page @(rf/subscribe [:common/page])]
      [:main.main-content.perspective-top
