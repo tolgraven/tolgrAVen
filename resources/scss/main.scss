@@ -642,6 +642,10 @@ video {
   top: var(--header-height-current);
 }
 
+#loading-full-page {
+  padding: 5rem;
+}
+
 #section-services {
   z-index: 6;
 }
