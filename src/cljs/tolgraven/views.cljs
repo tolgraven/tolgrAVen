@@ -68,16 +68,6 @@
                 :top "40%"}}]])
 
 
-(defn ui-button "Pass text and id, plus either link anchor or action..."
-  [text id & {:keys [type bg-div-class link action]
-              :or   {type "button" bg-div-class "blur-bg" link (str "#" id)}}]
-  [:button {:id (str "btn-" id) :type type :on-click action}
-   (when bg-div-class [:div {:class bg-div-class}])
-   [:label {:for (str "btn-" id)}
-    (if link
-      [:a {:href link} text]
-      text)]])
-
 (defn ui-fading "Hitherto just css but prog gen prob easier in some cases..."
   [& {:keys [fade-to dir content]
       :or {fade-to "fade-to-black" dir "light-from-below"}}]
@@ -128,7 +118,7 @@
     [:br]
     [:div.buttons
      (for [[id text] buttons] ^{:key (str "intro-button-" id)}
-       [ui-button id text])]]])
+       [ui/button id text])]]])
 
 (defn ui-interlude "Banner across with some image or video or w/e
                     TODO if video, autoplay once when (re-)seen, or cont if clicked

@@ -17,6 +17,17 @@
 (defn md->div [md]
   [:div {:dangerouslySetInnerHTML {:__html (md->html md)}}])
 
+(defn button "Pass text and id, plus either link anchor or action..."
+  [text id & {:keys [type bg-div-class link action]
+              :or   {type "button" bg-div-class "blur-bg" link (str "#" id)}}]
+  [:button {:id (str "btn-" id) :type type :on-click action}
+   (when bg-div-class [:div {:class bg-div-class}])
+   [:label {:for (str "btn-" id)}
+    (if link
+      [:a {:href link} text]
+      text)]])
+
+
 (defn toggle-for-path "Like below but supports attrs + path. I mean could just check if first arg is map anyways but yeah"
   ([model-path])
   ([attrs model-path]))
