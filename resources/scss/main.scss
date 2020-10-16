@@ -468,12 +468,12 @@ section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
   justify-content: space-evenly;
 }
 button {
-  --around: calc(0.5 * var(--space)) calc(0.5 * var(--space-lg));
+  --around: calc(0.4 * var(--space)) calc(0.4 * var(--space-lg));
   padding: var(--around);
   margin: var(--around);
   background: hsla(var(--hue-1), 7%, var(--lum-bg-2), 0.35);
   color: var(--fg-2);
-  border: var(--line-width) solid;
+  border: var(--line-width-md) solid;
   border-radius: 0.15rem;
   position: relative;
 }
