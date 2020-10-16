@@ -24,8 +24,7 @@
 
 (defn sign-in-or "Sign in or go to reg page"
   []
-  [:section.user-forms.noborder
-   [ui/close #(rf/dispatch [:state [:user-section] false])]
+  [:div.user-forms.noborder
    [:h2 "You must be logged in"]
    [sign-in]
    [:button
@@ -37,11 +36,10 @@
     "Register"]])
 
 (defn register "Registration component" []
-  [:section.user-forms.user-register
+  [:div.user-forms.user-register
    [:button {:on-click #(rf/dispatch [:state [:user-section] :login])
              :style {:position :absolute :left 0 :top 0}} "<"]
    [:h2 "Register"]
-   [:br]
    [sign-in] ;well need different validation here (not exists etc)
    [:input
     {:class "input-dark" :placeholder "Email"
@@ -57,12 +55,17 @@
 
 (defn admin "User admin page" []
   (let [user @(rf/subscribe [:user/active-user-details])]
-    [:section
+    [:div
      [:div "USER ADMIN"]
      [:h3 (:name user)]
-     [:span "Email " [:em (:email user)]] [:br]
+     [:span [:em (:email user)]] [:br]
      [:button "Change password"]
      [:button "View comments"]
      [:button {:on-click #(rf/dispatch [:user/logout])} "Log out"]
      ]))
 
+(defn user-box "Wrapper for user views"
+  [component]
+  [:section.noborder
+    [ui/close #(rf/dispatch [:state [:user-section] false])]
+    [component]])
