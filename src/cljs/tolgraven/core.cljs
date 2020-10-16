@@ -22,7 +22,7 @@
     [tolgraven.views :as view]
     [tolgraven.views-common :as common]
     [tolgraven.blog.views :as blog]
-    [tolgraven.ui.user :as user]
+    [tolgraven.user.views :as user]
     [tolgraven.experiments :as experiment]
     [reitit.core :as reitit]
     [reitit.frontend.history :as rfh]
