@@ -28,19 +28,18 @@
         by (str "posted by ")
         ts (util/timestamp ts)]
     [:span.blog-comment-info
-     (str id " - " by)
-     user
+     by user
      (str " - " ts
           " " (cond (pos? score) "+" (neg? score) "-") score)])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
 
 
 (defn comment-post "A comment, and any children."
-  [path {:keys [id ts user title text score comments] :as post}]
+  [path {:keys [id seq-id ts user title text score comments] :as post}]
   (let [vote-btn (fn [vote]
                    (let [voted @(rf/subscribe [:blog/state [:voted path]])]
                      [:button.blog-btn.blog-comment-vote-btn
                       {:class (if (= vote voted)
-                                "bottomborder"
+                                "noborder"
                                 (case vote :up "topborder" :down "bottomborder"))
                        :on-click (fn [_] (rf/dispatch [:blog/comment-vote path vote]))}
                       (case vote :up "+" :down "-")]))]
@@ -73,7 +72,7 @@
             amount-str (util/pluralize amount "comment")]
         [:section.blog-comments
          
-         (if (<= amount amount-show-collapsed)
+         (if (<= amount amount-show-collapsed) ;only show a few comments unless expanded
            [:h6 amount-str]
            [:button.blog-btn.blog-btn-collapse.nomargin
             {:class (if @expanded? "noborder" "topborder")
@@ -89,7 +88,7 @@
                      ^{:key (str "blog-post-" (:id blog-post) "-comment-" (:id comment))}
                      [comment-post [(:id blog-post) (:id comment)] comment]))])
          
-         [add-comment [id] :blog]]))))
+         [add-comment [id] :blog]])))) ;new comment button
 
 
 (defn add-comment "Post http or do a gql mutation, yada yada"
@@ -145,8 +144,32 @@
      ; :on-key-up (fn [e] (when (= "Alt-Enter-however-written" (.-key e)) (submit)))
 ; not here but whatever: thing from MYH site where heading slots into header
 
+(defn preview-blog "Render new post preview"
+  [model]
+  (let [{:keys [title text]} @model]
+    [:div.blog-post-preview
+     [:h4.blog-post-title title]
+     [:br]
+     [ui/md->div text]]))
+
 (defn blog-new-post-ui "Render post-making ui" []
-  )
+  (let [model (r/atom :title "" :text "")
+        on-change (fn [k]
+                    (fn [e]
+                      (let [new-val (-> e .-target .-value)]
+                        (swap! model assoc k new-val))))]
+    [:section.blog-new-post
+     [:input.blog-new-post-title
+      {:type :textbox
+       :name "Title"
+       :placeholder "Title"
+       :on-change (on-change :title)}]
+     [:textarea.blog-new-post-text
+      {:name "Text"
+       :placeholder "Text (markdown)"
+       :on-change (on-change :text)}]
+     
+     [preview-blog model]]))
 
 ; blogs should be in a numbered map tho easiest
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"

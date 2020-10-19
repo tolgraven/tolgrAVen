@@ -2,8 +2,7 @@
   (:require
     [re-frame.core :as rf]))
 
-(rf/reg-sub
- :blog/path-from-uuid
+(rf/reg-sub :blog/path-from-uuid
  :<- [:content [:blog]]
  (fn [blog [_ uuid]])
   ) ; deep search for uuid, get path like [:2 :4 :1] - inefficient tho...

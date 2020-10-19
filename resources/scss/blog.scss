@@ -31,7 +31,6 @@ section.blog-post {
 .blog-comments-inner > section {
   // line up top-level comments with line above
   padding: var(--space) 0.25em;
-
  }
 
 .blog-comment {
@@ -39,20 +38,33 @@ section.blog-post {
   padding-bottom: 0.5rem;
   border-top: var(--line-width-sm) solid;
 }
-.blog-comment-enter {
+
+// react transition group test...
+.comment-enter {
   opacity: 0;
 }
-.blog-comment-enter-active {
+.comment-enter-active {
   opacity: 1;
   transition: opacity 200ms;
 }
-.blog-comment-exit {
+.comment-exit {
   opacity: 1;
 }
-.blog-comment-exit-active {
+.comment-exit-active {
   opacity: 0;
   transition: opacity 200ms;
 }
+// initial mount of parent component children get this
+// when prop transitionAppear true
+.comment-appear {
+  opacity: 0.01;
+}
+.comment-appear.comment-appear-active {
+  opacity: 1;
+  transition: opacity .5s ease-in;
+}
+
+
 .blog-comment-info {
   font-size: 0.7em;
   padding-bottom: 1.00em;
@@ -101,7 +113,7 @@ section.blog-post {
   opacity: 1;
 }
 .blog-reply-comment-btn:hover {
-  font-size: 1.0em;
+  font-size: 0.9em;
 }
 
 .blog-adding-comment {

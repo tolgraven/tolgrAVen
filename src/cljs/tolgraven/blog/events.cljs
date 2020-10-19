@@ -24,10 +24,11 @@
  (fn [db [_ [response]]]
    ; (let [{:keys [blog-post/user blog-post/title blog-post/text blog-post/id]}
    (println response)
-   #_(let [response (edn/read-string response)]
+   (let [response (edn/read-string response)]
      (println response)
-     #_(assoc-in db [:content :blog :posts]
-             [response]))))
+     ; (assoc-in db [:content :blog :posts] [response]))))
+     (update-in db [:content :blog :posts] conj response))))
+
 
 (rf/reg-event-db :blog/state [debug
                               (path [:state :blog])]
@@ -62,16 +63,16 @@
 
 
 (rf/reg-event-db :blog/comment-ui-open
- (fn [db [_ open? parent-id-path]]
-   (assoc-in db [:state :blog :make-comment-view] [open? parent-id-path]))) ; i guess post-id either a blog post id, or vec of blog -> parent comment(s)
+                 [(path [:state :blog :adding-comment])]
+ (fn [open [_ open? parent-id-path]]
+   (assoc open parent-id-path open?))) ; i guess post-id either a blog post id, or vec of blog -> parent comment(s)
 
 (defn- assemble-path "Get db path from path pieces"
   [path & further]
   (let [base-path [:content :blog :posts]
-        path (vec (reduce (fn [p id]
-                            (into p [(dec id) :comments]))
-                          ; base-path path)))
-                          base-path path))]
+        path (reduce (fn [p id]
+                       (into p [(dec id) :comments]))
+                     base-path path)]
     (if further ; dont want last :comments, instead something else
       (into (vec (butlast path)) further)
       path)))
@@ -109,3 +110,7 @@
          (update-in (assemble-path path :score)
                     + diff)))))
 
+; for comment scroll lazy load:
+; pull comments one by one, chunked so maybe like first five
+; put intersectionobserver on maybe second to last one
+; that triggers another equal pull etc
