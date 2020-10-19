@@ -31,12 +31,14 @@
     [clojure.pprint :refer [pprint]])
   (:import goog.History))
 
-(defn safe "Error boundary for components. Also prints/logs error" [component]
- (let [exception (r/atom nil)] ;or reg not ratom or would cause etra re-render?
+(defn safe "Error boundary for components. Also prints/logs error"
+  [category component]
+ (let [exception (rf/subscribe [:state [:exception category]])] ;or reg not ratom or would cause etra re-render?
   (r/create-class
-  {:display-name "Error boundary"
+  {:display-name (str "Boundary: " (name category))
    :component-did-catch (fn [this error info] ;this should log instantly tho
-                          (reset! exception {:error error :info info})) ; error and info are empty.
+                          ; (reset! exception {:error error :info info}) ; error and info are empty.
+                          (rf/dispatch [:state [:exception category] {:error error :info info}])) ; error and info are empty.
     ; :get-derived-state-from-error ;"defined as instance method and will be ignored. define as static"
    ; (fn [error] ;this should update state to serve like, an error page (for render) "if using getDerivedState methods, the state has to be plain JS object as React implementation uses Object.assign to merge partial state into the current state."
    ;  (clj->js ;cant get it working. but is supposed to used this, console warns...
@@ -47,25 +49,30 @@
    ;    [:div "Click to attempt reload"
    ;     [:button {:on-click #(reset! exception nil)}]]]))
    :reagent-render
-   (fn [args]
+   (fn [category component]
     (if-not @exception   ;state change downstream? then it gets easier to debug "in-page",
-     args
-     (let [[component state] args]
-       (println (pprint ((js->clj component) state))) ;replace with better logging eh...
+     component
+     (let [[component state] component] ;cant remember why this is
+       ; (println "Error")
+       ; (util/log :error "Component" (string/join " " ((js->clj component) state))) ;replace with better logging eh...
         [:section.component-failed
           [:p "Component exception"]
-          [:pre (str "Error " (:error exception))]
-          [:pre (str "Info " (:error exception))]
+          (when (string? (:error @exception))
+            [:pre (:error @exception)])
+          (when (object? (:info @exception))
+            [:pre (-> @exception :info js->clj :componentStack)])
+
           [:div
-           [:button {:on-click #(reset! exception nil)}
+           [:button {:on-click #(rf/dispatch [:state [:exception category] nil])}
             "Attempt reload"]]])))})))
+
 
 (defn page "Render active page inbetween header, footer and general stuff." []
   [:<>
-   [common/header @(rf/subscribe [:content [:header]])] ;TODO smooth transition to personal
+   [safe :header [common/header @(rf/subscribe [:content [:header]])]] ;TODO smooth transition to personal
    [:a {:name "linktotop" :id "linktotop"}]
    
-   [safe [user/user-section @(rf/subscribe [:user/active-section])]]
+   [safe :user [user/user-section @(rf/subscribe [:user/active-section])]]
 
    (if-let [page @(rf/subscribe [:common/page])]
      [:main.main-content.perspective-top
@@ -76,11 +83,13 @@
       ; render both, wrapped in div each. outgoing starts middle goes left/right,
       ; incoming starts left/right animates to middle (simultaneously)
       ; finish -> flag unset -> kill/novisible last page div.
-      [safe [page]]]
-     [view/loading-spinner true])
+      [safe :page [page]]] ; this doesnt reload when switch page. need to do manually...
+     ; so will need to track in db not ratom, then reset on nav.
+     ; also get-css-var still ticks every 500ms whenever safe triggers/any unhandled errors(?)... wtf?
+     [common/loading-spinner true])
 
    [common/footer @(rf/subscribe [:content [:footer]])]
-   [ui/hud (rf/subscribe [:hud])]
+   [safe :hud [ui/hud (rf/subscribe [:hud])]]
    [common/to-top]
    [:a {:name "bottom"}]])
 

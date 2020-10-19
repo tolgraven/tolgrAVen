@@ -31,7 +31,10 @@
     (let [old-match (:common/route db)
           new-match (assoc match :controllers
                                  (rfc/apply-controllers (:controllers old-match) match))]
-      {:db (assoc db :common/route new-match)
+      {:db (-> db
+               (assoc :common/route new-match)
+               (assoc :common/route-last old-match)
+               (assoc-in [:state :exception :page] nil))
        :dispatch-n [[:transition/in new-match]
                     [:scroll/to "linktotop"]]})))
 
