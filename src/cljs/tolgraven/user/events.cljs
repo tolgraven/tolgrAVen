@@ -10,14 +10,15 @@
   (first (filter #(= (:name %) user) users)))
 
 (rf/reg-event-fx
- :user/request-login
+ :user/request-login ; will evt just http-post, on-success will handle rest incl login
  (fn [{:keys [db]} [_ info]]
    (let [login (-> db :state :login-field)
          user (get-user (:user login) (-> db :users))]
-     (when (= (:password login)
-              (:password user))
+     (if (and (pos? (count (:user login)))
+              (= (:password login) (:password user)))
        {:dispatch-n [[:user/login (:user login)]
-                     [:state [:user-section] :admin]]}))))
+                     [:user/active-section :admin :force]]}
+       {:dispatch [:diag/new :error "Sign in" "failed validation"]}))))
    ; {:dispatch [:http-post ]}))
 
 (rf/reg-event-db :user/login 
@@ -28,7 +29,7 @@
 (fn [db [_ user]]
   (-> db
       (update-in [:state] dissoc :user)
-      (assoc-in [:state :user-section] false))))
+      (assoc-in [:state :user-section] [:closed]))))
 
 
 (rf/reg-event-fx
@@ -38,7 +39,7 @@
          {:keys [email]} (:register-field db)]
    {:dispatch-n [[:user/register user password email]
                  [:user/login user password]
-                 [:state [:user-section] :admin]]})))
+                 [:user/active-section :admin :force]]})))
 
 (rf/reg-event-db :user/register
  (fn [db [_ user password email]]
@@ -51,6 +52,25 @@
  (fn [{:keys [db]} [_ info]]
    (let [user (get-in db [:state :user])]
      {:dispatch (if user
-                  [:state [:user-section] :admin]
-                  [:state [:user-section] :login])})))
+                  [:user/active-section :admin :force]
+                  [:user/active-section :login :force])})))
 
+
+(rf/reg-event-db
+ :user/active-section
+ (fn [db [_ v force?]]
+   (if (or force? (= v :closed))
+       (assoc-in db [:state :user-section] [v])
+       (update-in db [:state :user-section] (comp vec conj) v)))) ;tho might wanna push closed as well then check alsewhere when reopen whether pos then pop/disj :closed...
+
+(rf/reg-event-db
+ :user/to-last-section
+ (fn [db [_ _]]
+   (update-in db [:state :user-section] pop)))
+
+(rf/reg-event-fx ;needs to defer changing :user-section to false
+ :user/close-ui
+ (fn [{:keys [db]} [_ v]]
+   {:dispatch [:user/active-section :closing]
+    :dispatch-later {:ms 400,
+                     :dispatch [:user/active-section :closed]}}))

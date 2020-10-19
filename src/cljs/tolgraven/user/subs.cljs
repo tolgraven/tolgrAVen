@@ -10,7 +10,7 @@
 (rf/reg-sub :user/user ;find user
  :<- [:get :users]
  (fn [users [_ user]]
-   (filter #(= (:name %) user) users)))
+   (first (filter #(= (:name %) user) users))))
 
 (rf/reg-sub :user/active-user-name
  :<- [:state [:user]]
@@ -26,12 +26,27 @@
  (fn [user [_ _]]
    (-> user :session)))
 
+(rf/reg-sub :user/active-section
+ :<- [:state [:user-section]]
+ (fn [section [_ _]]
+   section))
 ; (rf/reg-sub :user/status
 ;  :<- [:user/session]
 ;  (fn [session [_ _]]
 ;    (-> session :status)))
 
-(rf/reg-sub :register/field
- :<- [:state [:register]]
- (fn [register [_ field]]
-  (field register)))
+(rf/reg-sub :login/field
+ :<- [:state [:login-field]]
+ :<- [:state [:register-field]]
+ (fn [[login register] [_ field]]
+  (or (field login)
+      (field register))))
+
+(rf/reg-sub
+ :login/valid-input?
+ :<- [:state [:login-field]]
+ (fn [login-field [_ field]]
+   (every? #(pos? (count %)) (vals login-field))
+   ; (every? #(pos? (count (get login-field %)))
+   ;         [:user :password])
+   #_(pos? (count (:user login-field))))) ; do validation.

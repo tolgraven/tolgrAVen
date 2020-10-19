@@ -65,13 +65,7 @@
    [common/header @(rf/subscribe [:content [:header]])] ;TODO smooth transition to personal
    [:a {:name "linktotop" :id "linktotop"}]
    
-   (when-let [user-section @(rf/subscribe [:state [:user-section]])]
-     [:div.user-section.stick-up.hi-z
-      [user/user-box
-       (case user-section
-        :login  user/sign-in-or
-        :register user/register
-        :admin user/admin)]]) ;except get which from path
+   [safe [user/user-section @(rf/subscribe [:user/active-section])]]
 
    (if-let [page @(rf/subscribe [:common/page])]
      [:main.main-content.perspective-top
@@ -127,27 +121,6 @@
      [ui/log (rf/subscribe [:option [:log]])
       (rf/subscribe [:get :diagnostics])]]))
 
-; (defn login "Should be modal and trigger whenever needed, then popped and state same..."
-;   []
-;   [])
-
-; ideally would be "component requiring login sesh" wrapper
-; then all these make check (vs server, nyah spoof!) and trigger...
-; actually makes most sense to do nav to where should (if full nav)
-; then login on top _after_
-; point is dont want to boiler every single thing yeah
-;
-(defn user-page "Should lead either to user page, or login-modal.
-                 (or full-page, can work anyways w rfe/push-state or?)" []
-  (let [login @(rf/subscribe [:state :login-session])]
-    (if (:logged-in login)
-      [user/user]
-      [])))
-
-(defn reg-page "Should lead either to user page, or login-modal" []
-  (let [login @(rf/subscribe [:state :login-session])]
-    [user/register]))
-
 
 (def router ; XXX weird thing doesnt automatically scroll to top when change page...
   (reitit/router
@@ -174,12 +147,7 @@
      ["/log" {:name :log
               :view #'log-page}]
      ["/test" {:name :test
-              :view #'test-page}]
-     ["/user" {:name :user
-               :view #'user-page}]
-     ["/register" {:name :register
-                   :view #'reg-page}]]
-    ))
+              :view #'test-page}] ]))
 
 (defn start-router! []
   (rfe/start!

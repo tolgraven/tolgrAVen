@@ -9,8 +9,22 @@
    [tolgraven.ui :as ui]
    [tolgraven.views :as view]
    [tolgraven.db :as db :refer [<-db ->db]]
-   [tolgraven.util :as util]))
+   [tolgraven.util :as util :refer [at]]))
 
+(defn user-btn [model]
+  (let [user @(rf/subscribe [:state [:user]])]
+    [:div.user-menu
+     [:i {:class "fa fa-user"
+          :style {:position :absolute
+                  :left "88%"
+                  :top "40%"}
+          :on-click #(rf/dispatch [:user/request-page])}]
+     #_(when user [:span user])]))
+
+(defn loading-spinner [model]
+  [:div.loading-spinner
+     (when (at model) ;should it be outside so not put anything when not loading? or better know element goes here
+       [:i {:class "fa fa-spinner fa-spin"}])])
 
 ;; TODO curr 1px gap between outer lines and img. Fix whatever causing this by mistake (think lines are half-width)
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
@@ -62,8 +76,8 @@
     [header-logo @(rf/subscribe [:header-text])]
     [header-nav menu]
 
-    [view/loading-spinner (rf/subscribe [:state [:is-loading]])]   ; menu
-    [view/user-menu]
+    [loading-spinner (rf/subscribe [:state [:is-loading]])]   ; menu
+    [user-btn]
     [:label.burger {:for "nav-menu-open"}]]
    [:div.line.line-header]])
 

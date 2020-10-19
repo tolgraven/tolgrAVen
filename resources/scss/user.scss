@@ -1,10 +1,19 @@
-.user-forms {
-  padding: var(--space-lg) calc(2 * var(--space-lg));
+.user-inner {
+  padding: var(--space) calc(2 * var(--space));
   // background: var(--bg-2);
 }
 
+.user-section-wrapper {
+  max-height: 0;
+  overflow-y: hidden;
+  transition: max-height 0.4s;
+}
+.user-section-wrapper.active {
+  max-height: 30vh;
+  box-shadow: 1px 1px 10px 10px rgba(30, 30, 45, 0.5);
+}
 .user-section {
-  margin: var(--space-lg) 0;
+  // margin: var(--space-lg) 0;
   border: var(--line-width) solid;
   box-shadow: 1px 1px 10px 10px rgba(30, 30, 45, 0.5);
   // background: var(--bg-2);

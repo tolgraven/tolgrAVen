@@ -55,17 +55,6 @@
                 (rf/dispatch (into checked-path
                                    [(not @(rf/subscribe checked-path))])))}])
 
-(defn loading-spinner [model]
-  [:div.loading-spinner
-     (when (at model) ;should it be outside so not put anything when not loading? or better know element goes here
-       [:i {:class "fa fa-spinner fa-spin"}])])
-
-(defn user-menu [model]
-  [:div.user-menu
-   [:i {:class "fa fa-user"
-        :style {:position :absolute
-                :left "88%"
-                :top "40%"}}]])
 
 
 (defn ui-fading "Hitherto just css but prog gen prob easier in some cases..."

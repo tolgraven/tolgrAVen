@@ -18,9 +18,10 @@
   [:div {:dangerouslySetInnerHTML {:__html (md->html md)}}])
 
 (defn button "Pass text and id, plus either link anchor or action..."
-  [text id & {:keys [type bg-div-class link action]
-              :or   {type "button" bg-div-class "blur-bg" link (str "#" id)}}]
-  [:button {:id (str "btn-" id) :type type :on-click action}
+  [text id & {:keys [type bg-div-class link action disabled?]
+              :or   {type "button" bg-div-class "blur-bg"
+                     #_link #_(str "#" id)}}]
+  [:button {:id (str "btn-" id) :type type :on-click action :disabled disabled?}
    (when bg-div-class [:div {:class bg-div-class}])
    [:label {:for (str "btn-" id)}
     (if link
@@ -100,8 +101,10 @@
   ["maximize" "minimize" "window"]])
 
 (defn close [on-click]
- [:i.zmdi.zmdi-close.close-btn
-  {:on-click on-click}])
+ [:div.close-btn
+  [:i.zmdi.zmdi-close
+  {:style {:font-size "1.5rem"}
+   :on-click on-click}]])
 
 (defn formatted-data [title path-or-data]
  (let [data (if (vector? path-or-data)
@@ -116,20 +119,24 @@
  [& {:as args :keys [value path on-enter]}]
  (let [external-model (r/atom (or (rf/subscribe path) (at value))) ;ok so why does (sub in ratom...) work, straight subscribe not...
        internal-model (r/atom (if (nil? @external-model) "" @external-model))] ;; Create a new atom from the model to be used internally (avoid nil)
-  (fn [& {:as args :keys [value path on-enter on-change placeholder width height change-on-blur? disabled? class style attr]}] ;to pass through from outer
+   (fn [& {:keys [value path on-enter on-change placeholder width height
+                  change-on-blur? disabled? class style attr input-type type]
+           :or {input-type :input.form-control
+               width "15em"}}] ;to pass through from outer
    (let [latest-ext-model (or @(rf/subscribe path) (at value)) ;how repl this if not passing model but sub?
          disabled?        (at disabled?)
          change-on-blur?  (at change-on-blur?)]
     (when (not= @external-model latest-ext-model) ;; Has model changed externally?
      (reset! external-model latest-ext-model)
      (reset! internal-model latest-ext-model))
-    [:input.form-control
-     (merge {:class class, :type "search" ;for clear button ;"text"
+    [input-type
+     (merge {:class class, :type type ;for clear button ;"text"
              :style (merge {:display "inline-flex" :flex "1 1 auto"
-                            :width (or width 100) ; how do like "min-width 'chars in str model + 10' up til 200 pixels yada?"
+                            :width width ; how do like "min-width 'chars in str model + 10' up til 200 pixels yada?"
                             :height height}       ; user best wrap in div or pass class for more fine grained control either way
                            style)
              :placeholder placeholder
+             :autoComplete (string/lower-case placeholder)
              :value       @internal-model
              :disabled    disabled?
              :on-change (fn [e]
