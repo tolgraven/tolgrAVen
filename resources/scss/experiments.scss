@@ -1,8 +1,23 @@
+.experiments {
+  // padding-bottom: 0 !important;
+}
+
+.parallax-ui {
+  // position: fixed;
+  position: sticky;
+  top: var(--header-height-current);
+  background: rgba(30, 30, 45, 0.8);
+  z-index: 10;
+  width: 100%;
+  padding: 0.5rem;
+}
 
 /* adapted from keithclark demo */
 .parallax { /* wrapper */
-  height: 100vh;
+  // height: 100vh;
+  height: calc(100vh - var(--header-height-current) - var(--footer-height));
   overflow-y: auto;
+  overflow-x: hidden;
   /* might be best have main content as scroller anyways? */
   /* just put auto on larger "section of sections" then */
   /* because scrolling auto continues once down so */
@@ -23,7 +38,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  border: var(--line-width) solid;
+  // border: var(--line-width) solid;
   opacity: 0.7;
   display: flex;
   align-items: center;
@@ -32,21 +47,25 @@
 .parallax__layer--fore {
   transform: translateZ(75px) scale(.75);
   z-index: 1;
-  background: hsl(284,30%,40%);
+  background-color: hsl(284,30%,40%);
+  background-image: url('../img/tolgrav.png');
 }
 .parallax__layer--base {
   z-index: 4;
-  background: hsl(102,30%,40%);
+  background: hsla(102,30%,40%, 0.5);
+  // background-image: url('../img/live-session-small.jpg');
 }
 .parallax__layer--back {
   transform: translateZ(-150px) scale(1.5);
   z-index: 3;
   background: hsl(23,30%,40%);
+  background-image: url('../img/vim-code-small.jpg');
 }
 .parallax__layer--deep {
   transform: translateZ(-300px) scale(2);
   z-index: 2;
   background: hsl(184,30%,40%);
+  background-image: url('../img/crowd-lbp.jpg');
 }
 
 
@@ -56,7 +75,8 @@
   transform: translate3d(200px, 0, -400px) rotateY(30deg);
 }
 .debug-on .parallax__layer {
-  opacity: 0.8;
+  border: var(--line-width) solid;
+  // opacity: 0.8;
 }
 .parallax__group {
   transition: transform 0.5s;
@@ -72,3 +92,29 @@
 #group6 { z-index: 2; /* slide under group 5 and 7 */ }
 #group7 { z-index: 3; /* slide over group 6 */ }
 
+
+
+// react transition group test...
+.elem-enter {
+  opacity: 0;
+}
+.elem-enter-active {
+  opacity: 1;
+  transition: opacity 800ms;
+}
+.elem-exit {
+  opacity: 1;
+}
+.elem-exit-active {
+  opacity: 0;
+  transition: opacity 800ms;
+}
+// initial mount of parent component children get this
+// when prop transitionAppear true
+.elem-appear {
+  opacity: 0.01;
+}
+.elem-appear.elem-appear-active {
+  opacity: 1;
+  transition: opacity .5s ease-in;
+}
