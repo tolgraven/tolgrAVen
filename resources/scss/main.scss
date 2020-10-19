@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css?family=Open+Sans:500,600,700');
+// @import url('https://fonts.googleapis.com/css?family=Open+Sans:500,600,700');
 @import "burger.scss";
 @import "peripheral.scss";
 @import "header.scss";
@@ -20,13 +20,14 @@
   --space-sides:       var(--space-lg); /* inner horizontal margin */
   --space-edges:       var(--space-sides); /* size of outer edges  */
   --space-top:         2rem; /* top margin above header */
-    --media-width-main: calc(100vw - 2 * var(--space-edges) - 2 * var(--line-width)); /* would it be context dependent or just use root 100% i guess uh */
+  --media-width-main: calc(100vw - 2 * var(--space-edges) - 2 * var(--line-width)); /* would it be context dependent or just use root 100% i guess uh */
   --banner-height:     600px;
-  --logo-ratio:        0.4060; /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */ /* just use img... */ /* or make logo look like i want in first place - needs higher-res or vector bounce anyways */
+  --logo-ratio:        0.3710; /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */ /* just use img... */ /* or make logo look like i want in first place - needs higher-res or vector bounce anyways. then suddenly had to change to 3710... */
   /* --header-height:     calc(3 * var(--space)); */
   --header-height:     4.5rem; /* beware can be 3 or 6 in practice.... temp bc reading arbitrary css vars with calc is fiddly */
   --header-with-menu-height: 18rem; /* not truly dynamic bc of annoying sticky */
   --header-height-current: var(--header-height); /* will then be changed by js dep on whether menu open... */
+  --footer-height:     3.73rem; // measured...
   /* --link-offset:       calc(var(--space) + var(--header-with-menu-height)); */
   --link-offset:       calc( var(--header-with-menu-height));
   --menu-width-fraction: 0.75;
@@ -138,7 +139,6 @@
 @media (prefers-color-scheme: dark) {
   :root { /* OS has requested dark mode */
     --fg-1:     var(--light-1);
-    /* --fg-2:     var(--light-text); */
     --fg-2:     var(--light-2);
     --fg-3:     var(--light-3);
     --lum-fg-1: var(--lum-light-1);
@@ -154,7 +154,7 @@
     --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
   }
   #logo-top { /* invert then rotate hue to restore blue text */
-    /* filter: invert() hue-rotate(180deg); */
+    filter: #{'invert() hue-rotate(180deg)'};
   }
 }
 @media screen and (min-width: 800px) and (min-height: 800px) {
@@ -378,7 +378,8 @@ main { /* dunno purpose of why I choose .main-content... */
   border-right: var(--line-width-vert) solid; /* should make configurable. off looks p nice on main page */
   background: var(--gradient-bg-main);
   margin-top: var(--space-lg);
-  padding-bottom: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
+  // padding-bottom: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
+  padding-bottom: calc(3.1 * var(--space)); /* XXX actually, footer height... */
   position: relative;
 }
 pre {
@@ -449,6 +450,8 @@ section > h1, .jumbo > h1 {
 }
 .main-content > section:last-of-type { /* last section, no bottom border */
   margin-bottom: 0;
+  // padding-bottom: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
+  // fucks up gallery when that's last...
   z-index: 30;
 }
 
@@ -476,11 +479,16 @@ button {
   border: var(--line-width-md) solid;
   border-radius: 0.15rem;
   position: relative;
+
+  label {
+    position: relative;
+    font-size: 1.2rem;
+    z-index: 2;
+  }
 }
-button label {
-  position: relative;
-  font-size: 1.2rem;
-  z-index: 2;
+button:hover, button:active {
+  transform: scale(1.05);
+  border-radius: 0;
 }
 button:hover .blur-bg, button:active .blur-bg,
 .blur-bg:hover, .blur-bg:active {
@@ -498,12 +506,13 @@ input {
   align-items: center; /* align-items instead of justify-content because flow by column */
   justify-content: center;
   text-align: center;
-}
-.media-container p { /* img/video caption... */
-  font-size: 0.85em; /* small captions */
-  margin-top: 0.3em;
-  width: var(--media-width-main);
-  text-align: left;
+
+  p { /* img/video caption... */
+    font-size: 0.85em; /* small captions */
+    margin-top: 0.3em;
+    width: var(--media-width-main);
+    text-align: left;
+  }
 }
 video {
   height: auto;
@@ -544,7 +553,7 @@ video {
   margin: 0;
 }
 .widescreen-safe { /* ensure bottom doesnt run out of 16:9 bg media on (ironically) _thin_ screens */
-  height: calc(1.20 * var(--header-with-menu-height)); /* just, some nice tall enough height - max-height will save us anyways */
+  height: calc(1.0 * var(--header-with-menu-height)); /* just, some nice tall enough height - max-height will save us anyways */
   max-height: calc((100vw - (2 * var(--space-edges))) / 2);
 }
 
@@ -584,15 +593,43 @@ video {
   position: relative;
 }
 
+.form-control {
+  background: var(--bg-1);
+  color: var(--fg-1);
+}
+
 .close-btn {
   position: absolute;
-  right: -5px; top: -5px;
-  background: rgba(30, 30, 30, 0.7);
-  color: #edc;
-  border-radius: 50%;
-  padding: 0.1em;
+  right: 0;
+  top: 0;
+  color: var(--red);
+  padding: 0.5em;
   font-size: 1.0rem;
 }
+
+#modal-container {
+  opacity: 0.0;
+  transition: opacity 0.3s;
+}
+#modal-container.modal-is-open {
+  opacity: 1.0;
+  transition: opacity 0.3s;
+}
+#modal-bg {
+  position: fixed;
+  width: 100%; height: 100%;
+  top: 0; left: 0;
+  background: rgba(30, 30, 45, 0.6);
+  z-index: 200;
+  transition: all 0.5s;
+}
+#modal {
+  position: fixed;
+  top: 25%;
+  left: 25%;
+  z-index: 201;
+}
+
 
 .hud {
   position: fixed;
@@ -607,7 +644,7 @@ video {
   color: var(--fg-1);
   // opacity: 0.8;
 }
-.hud-message.error   { background: #{'hsla(var(--red), 0.8)'}; }
+.hud-message.error   { background: var(--red-3); }
 .hud-message.warning { background: var(--orange); }
 .hud-message.info    { background: #dcd; color: #222; }
 
@@ -650,6 +687,7 @@ video {
   z-index: 6;
 }
 #services {
+  color: var(--light-1); // dark bg so white text always
   position: sticky;
   z-index: 12;
   top: 0;
@@ -659,11 +697,10 @@ video {
 #intro {
   position: relative;
   max-height: var(--media-width-main);
+  p {
+    padding: 0 var(--space-lg);
+  }
 }
-#intro p {
-  padding: 0 var(--space-lg);
-}
-
 #intro-end { /* lbp pic "YOU" */
   height: calc(100vw - 2 * var(--space-edges));
 }
@@ -745,11 +782,6 @@ figcaption, .float-with-caption {
 }
 
 .float-wrapper { overflow: auto; } /* clearfix */
-/* .float-wrapper::after { */
-/*   content: ""; */
-/*   clear: both; */
-/*   display: table; */
-/* } */
 
 
 .md-icon {
@@ -797,6 +829,7 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
   -webkit-backdrop-filter: blur(2.5px);
   background: hsla(var(--hue-3), 70%, var(--lum-fg-2), 0.06);
   transition: 0.3s;
+  box-shadow: -1px -1px 7px 4px hsla(8, 20%, 18%, 0.25);
   /* nah doesnt suit page/design. but effect is fine */
 }
 #categories ul:hover {

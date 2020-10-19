@@ -183,6 +183,7 @@
   height: 100%; /* default, can override in attrs */
   width: 100%;
   perspective: calc(1px * var(--perspective));
+  perspective-origin: center; /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */
   overflow-y: auto;
 }
 .parallax-group {
@@ -190,11 +191,6 @@
   transform-style: preserve-3d;
 }
 .parallax-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
 }
 
 

@@ -17,13 +17,10 @@
 @keyframes top-backdrop { /* well this'd be nice but it's CRAZY on the cpu bleh */
   0%, 50% { /* --anim-brightness: 0%; /1* no interpolation like this :/ *1/ */
     backdrop-filter: brightness(100%);
-    -webkit-backdrop-filter: brightness(100%);
   } 80% {
     backdrop-filter: brightness(250%);
-    -webkit-backdrop-filter: brightness(250%);
   } 100% {
     backdrop-filter: brightness(100%); /* or like "none" */
-    -webkit-backdrop-filter: brightness(100%);
   }
 }
 
@@ -46,7 +43,7 @@
   } 90%, 100% {
     border: 0.35em solid var(--bg-1); /* hmm gotta make a bit device-dependent */
     opacity: 0.10;
-    // filter: invert() hue-rotate(180deg);
+    filter: #{'invert() hue-rotate(180deg)'};
   }
 }
 @keyframes zoom-logo {
