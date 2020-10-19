@@ -34,13 +34,13 @@
   ([attrs model-path]))
 
 (defn toggle "A nice little (but not native checkbox little) toggle"
- ([model-path]
+ ([model-path label]
   (let [on-change #(rf/dispatch [:set model-path %])
         model (rf/subscribe (into [:get] model-path))]
-  [toggle {} model on-change]))
- ([model on-change]
-  (toggle {} model on-change))
- ([attrs model on-change]
+  [toggle {} model on-change label]))
+ ([model on-change label]
+  (toggle {} model on-change label))
+ ([attrs model on-change label]
   (let []
    [:label.toggle-switch
       attrs
@@ -48,7 +48,8 @@
     [:input {:type :checkbox :default-checked @model
              :on-click (fn [e] ; (.preventDefault e) ;broke it! :O what
                  (on-change (not @model)))}]
-    ; [:span.toggle-slider.round]
+    [:span.toggle-slider]
+    [:div.toggle-label label]
     ])))
 
 (defn burger "Toggle main menu. Entire point vs css is shove everything below down by extra height..."

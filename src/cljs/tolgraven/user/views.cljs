@@ -30,9 +30,7 @@
    [:br]
    
    [password-input]
-   [:label [:input {:type "checkbox"
-                    :on-click #(rf/dispatch [:toggle [:state :login-show-password]])}]
-    "show"] ])
+   [ui/toggle [:state :login-show-password] "show"]])
 
 
 (defn sign-in-or "Sign in or go to reg page"
@@ -75,20 +73,13 @@
 (defn change-password "Change user password" []
   [:div.user-inner
     [:h2 "Change password"]
-   [:section
-    (let [show-pw @(rf/subscribe [:state [:login-show-password]])]
-      [:<>
-       [password-input "Current password"]
-       [password-input "New password"] 
-       [:label [:input {:type "checkbox"
-                        :on-click #(rf/dispatch [:toggle [:state :login-show-password]])}]
-        "show"]
-       #_[:button {:on-click #(rf/dispatch [:toggle [:state :login-show-password]])} ;this somehow reloads current page wtf?
-        (if @(rf/subscribe [:state [:login-show-password]])
-          "hide" "show") ]])
-   [:button
-    {:on-click #(rf/dispatch [:user/request-change-password])}
-    "Change password"] ]])
+    [:section
+     [password-input "Current password"]
+     [password-input "New password"] 
+     [ui/toggle [:state :login-show-password] "show"]
+     [:button
+      {:on-click #(rf/dispatch [:user/request-change-password])}
+      "Change password"] ]])
 
 (defn admin "User admin page" []
   (let [user @(rf/subscribe [:user/active-user-details])]
