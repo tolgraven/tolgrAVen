@@ -16,6 +16,14 @@ header {
   padding: 0 calc(var(--space));
   transition: min-height var(--header-expand-time) ease 0.0s,
               background 0.0s ease 0.0s;
+              
+  .cover {
+    /* attempt to cover up manually so can get some nice seethrough blur... */
+    position: absolute;
+    left: 0; top: 0;
+    background: var(--bg-1);
+    z-index: 1;
+  }
 }
 
 menu {
@@ -23,21 +31,22 @@ menu {
   display: flex;
   min-width: calc(3 * var(--space-lg));
   z-index: 2;
-  transition: min-width 0.5s ease;
-  animation: menu-anim-out 0.4s;
-}
-menu::before, menu::after { /* in order to get them animatable */
-  content: "";
-  position: absolute;
-  transition: height 0.6s ease 0.35s;
-  height: 0px;
-  width: 0px;
-}
-menu::before {
-  height: calc(var(--height));
-  transform-origin: top;
-  transform: scaleY(0.0);
-  transition: transform 1.2s ease 0.25s;
+  transition: min-width 0.8s ease;
+  animation: menu-anim-out 0.5s;
+
+  &:before, &:after { /* in order to get them animatable */
+    content: "";
+    position: absolute;
+    transition: height 0.6s ease 0.35s;
+    height: 0px;
+    width: 0px;
+  }
+  &:before {
+    height: calc(var(--height));
+    transform-origin: top;
+    transform: scaleY(0.0);
+    transition: transform 1.2s ease 0.25s;
+  }
 }
 
 nav {
@@ -45,48 +54,62 @@ nav {
   align-items: center;
   flex: 1 0 auto;
   min-height: 2.2em; /* h1 */ /* dont think right basing on space, just use rem */
+  max-height: var(--space);
   min-width: 7.0em;
   background: linear-gradient(-77deg, var(--bg-1) -10%, var(--nav-accent) 80%);
   border-top:     var(--line-width-sm) solid currentColor;
-  transition: filter 0.3s;
+  transition: filter 0.5s ease-out;
+
+  &:hover {
+    filter: brightness(140%);
+  }
 }
-nav:hover {
-  filter: brightness(125%);
-}
-.nav-links > li > a {
-  transition: margin 0.2s;
-}
-.nav-links > li > a:hover,
-.nav-links > li > a:active,
-.nav-links > li > a:focus {
-  margin-left: 0.35rem;
-  margin-right: 0.35rem; /* doesnt do equiv on other side.. */
-  font-weight: bold;
-  text-shadow: hsla(0, 0, 80%, 0.25) 0 0 10px;
-}
-.nav-links.nav-link-active {
-  filter: brightness(125%);
-  font-weight: bold;
-}
-.nav-links > * {
+  
+.nav-links { // list of actual links
+  li {
+    height: 100%;
+    transition: transform 0.4s, line-height 0.4s;
+    transform: scaleY(0.0) scaleX(0.3);
+    line-height: 20%;
+  }
+  > li {
+    > a {
+      transition: margin 0.2s;
+
+      &:hover, &:active, &:focus {
+        margin-left: 0.35rem;
+        margin-right: 0.35rem; /* doesnt do equiv on other side.. */
+        font-weight: bold;
+        text-shadow: hsla(0, 0, 80%, 0.25) 0 0 10px;
+      }
+    }
+  }
+  > * {
   margin: 0 0.5rem;
+  }
+  &.nav-link-active {
+    filter: brightness(125%);
+    font-weight: bold;
+  }
 }
-menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm */
+
+menu > nav > .nav-section:last-of-type > .nav-links {
   position: absolute;
   right: 0;
   top: 0;
   text-align: right;
-  /* last in... */
+  /* right hand side... */
 }
 
 .header-logo { /* actual text */
   min-width: 0;
   animation: header-logo-anim-out 0.25s;
   transition: margin 0.7s, min-width 0.5s;
-}
-.header-logo h1 {
-  display: inline;
-  transition: all 0.5s ease;
+
+  h1 {
+    display: inline;
+    transition: all 0.5s ease;
+  }
 }
 .header-logo-text {
   display: inline-block;
@@ -100,147 +123,73 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
 /*
  * Only intended to actually be shown when not enough space in header - but it's so pretty and will soon have some more menu stuff (theme toggle...) so keep "universal" for now. DOES need refactoring for sure
  */
-  nav {
-     max-height: var(--space);
-   }
-  .nav-links li {
-    height: 100%;
-    transition: transform 0.4s, line-height 0.4s;
-    transform: scaleY(0.0) scaleX(0.3);
-    line-height: 20%;
-  }
-  .show-in-menu { display: none; }
-  #show-menu { display: none; }
+.show-in-menu { display: none; }
+#show-menu { display: none; }
 
-  /* would be nicer to use some more generic reference tho so could use with multiple things... */
-  #nav-menu-open:checked ~ header menu .show-in-menu {
+/* would be nicer to use some more generic reference tho so could use with multiple things... */
+
+#nav-menu-open:checked ~ .line-header {
+  top:  var(--header-with-menu-height);
+  margin-top: 0;
+  margin-bottom: var(--space-top); /* killing margin leds to shitty jumps, so we compensate */
+  /* transition: margin 0.4s ease 0.1s; */
+}
+
+
+#nav-menu-open:checked ~ header {
+  min-height:  var(--header-with-menu-height);
+  font-size: 1.5rem;
+  justify-content: space-between;
+  align-content: space-evenly;
+
+  /* cover out bottom. need to actively fiddle with color+image bc safari transition delay bug */
+  background-color: transparent;
+  background-image: linear-gradient(
+              5deg, var(--bg-1) 8%,
+              hsla(0, 0%, var(--lum-bg-2), 0.25) 40% 52%,
+              var(--bg-1) 95%);
+  backdrop-filter: blur(2rem);
+  // blur isnt source of lag. prob having 4 animations and million transitions is lol
+  transition: min-height var(--header-expand-time) ease 0.0s,
+              background-color 5.0s ease var(--header-expand-time),
+              background-image 0s;
+
+  /* stop possible overflow out under top header... */
+  --path: polygon(0 0, 100% 0, 100% var(--header-with-menu-height), 0% var(--header-with-menu-height));
+  clip-path: var(--path);
+  
+  .cover {
     display: block;
-    font-size: 0.8rem;
+    &.cover-clip {
+      /* cut the path to clip out, letting (blurred) below shine through */
+      width: 100%; height: 100%;
+      --path:  polygon(
+      0 0,   100% 0,   100% var(--space-top),
+      var(--right-marker)   var(--space-top),
+      var(--right-marker)   var(--top-to-menu-height),
+      var(--left-marker)    var(--top-to-menu-height),
+      var(--left-marker)    var(--header-with-menu-height),
+      0                     var(--header-with-menu-height));
+      clip-path: var(--path);   -webkit-clip-path: var(--path);
+    }
+    &.cover-left {
+      width: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
+                + var(--space) - 3 * var(--line-width));
+      height: 100%;
+    }
+    &.cover-top {
+      width: 100%;
+      height: var(--space-top);
+    }
+    &.cover-middle {
+      left:   calc(-1 * var(--line-width));
+      width:  calc(100% + var(--line-width));
+      height: calc(2em + var(--space-top) + var(--line-width));
+      z-index: -1;
+    }
   }
-  #nav-menu-open:checked ~ header menu nav .nav-links {
-    position: relative;
-    font-size: 1.3rem;
-    /* well poor design and stupid subpixel bullshit-shifting is what fucked me but yeah */
-    padding: 1rem var(--space);
-  }
-  #nav-menu-open:checked ~ header menu nav .nav-links li {
-    visibility: visible;
-    min-width: 50%;
-    flex: 1 1 auto;
-    transition: transform 0.3s;
-    transform: scale(1.0);
-    line-height: initial;
-  }
-  #nav-menu-open:checked ~ header menu nav .nav-links li:first-letter {
-    font-size: 1.2em;
-  }
-  #nav-menu-open:checked ~ header menu nav {
-    position: relative;
-    top: 0;
-    max-height: var(--header-with-menu-height); /* for animation purposes i guess */
-    border: 0;
-  }
-  #nav-menu-open:checked ~ header menu {
-    flex: 0 2 auto;
-    min-width: calc(100% * var(--menu-width-fraction));
-    margin: auto;
-    order: 4;
-    border:    var(--line-width) solid currentColor;
-    transition: min-width 0.5s ease-out 0.15s;
-    animation: menu-anim 0.4s;
-  }
-  /* STOP WASTING TIME TRYING AND JUST REDO IT IN GRID IF YOU SO DESPERATELY NEED THE EFFECT */ /* GAAAAH */
-  /* especially considering I need to learn grid. WHY AM I SO USELESS */
-  #nav-menu-open:checked ~ header menu::before,
-  #nav-menu-open:checked ~ header menu::after {
-    content: "";
-    position: absolute;
-    width: var(--line-width);
-    background-color: var(--fg-1);
-    /* its so close, but loses when base font-size is scaled... */ /* how get around? */
-    --height: calc(2rem - 1.5 * var(--line-width)); /* crank it a bit cause we're masking out any spillover... */
-  }
-  #nav-menu-open:checked ~ header menu::before {
-    left:  calc(0px - var(--line-width));
-    bottom: calc(0px - (var(--height))); /* too short on wide desktop */
-    height: calc(var(--height));
-    transform: scaleY(1.0); /* for animation */
-  }
-  #nav-menu-open:checked ~ header menu::after { /* from top right corner and up */
-    right: calc(0px - var(--line-width));
-    bottom: 0;
-    height: calc(var(--header-with-menu-height) - (var(--height)) - 0.75 * var(--space-top)); /* "vars" are so deceptive, everything was broken cause neither def nor usage was in paren... */
-  }
-
-  #nav-menu-open:checked ~ .line-header {
-    top:  var(--header-with-menu-height);
-    margin-top: 0;
-    margin-bottom: var(--space-top); /* killing margin leds to shitty jumps, so we compensate */
-    /* transition: margin 0.4s ease 0.1s; */
-  }
-
-  #nav-menu-open:checked ~ header {
-    min-height:  var(--header-with-menu-height);
-    font-size: 1.5rem;
-    justify-content: space-between;
-    align-content: space-evenly;
-
-    /* cover out bottom. need to actively fiddle with color+image bc safari transition delay bug */
-    background-color: transparent;
-    background-image: linear-gradient(
-                5deg, var(--bg-1) 8%,
-                hsla(0, 0%, var(--lum-bg-2), 0.25) 40% 52%,
-                var(--bg-1) 95%);
-    backdrop-filter: blur(2rem);
-    // blur isnt source of lag. prob having 4 animations and million transitions is lol
-    transition: min-height var(--header-expand-time) ease 0.0s,
-                background-color 5.0s ease var(--header-expand-time),
-                background-image 0s;
-
-    /* stop possible overflow out under top header... */
-    --path: polygon(0 0, 100% 0, 100% var(--header-with-menu-height), 0% var(--header-with-menu-height));
-    clip-path: var(--path);
-  }
-
-  header .cover { /* silly attempt to cover up manually so can get some nice seethrough blur... */
-    position: absolute;
-    left: 0; top: 0;
-    background: var(--bg-1);
-    z-index: 1;
-  }
-  #nav-menu-open:checked ~ header .cover {
-    display: block;
-  }
-  #nav-menu-open:checked ~ header .cover.cover-clip { /* cut the path to clip out, letting (blurred) below shine through */
-    width: 100%; height: 100%;
-    --path:  polygon(
-    0 0,   100% 0,   100% var(--space-top),
-    var(--right-marker)   var(--space-top),
-    var(--right-marker)   var(--top-to-menu-height),
-    var(--left-marker)    var(--top-to-menu-height),
-    var(--left-marker)    var(--header-with-menu-height),
-    0                     var(--header-with-menu-height));
-    clip-path: var(--path);   -webkit-clip-path: var(--path);
-  }
-
-  /* clip surely bit cleaner but keep these in case need for other browsers. */
-  #nav-menu-open:checked ~ header .cover.cover-left {
-    width: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
-              + var(--space) - 3 * var(--line-width));
-    height: 100%;
-  }
-  #nav-menu-open:checked ~ header .cover.cover-top {
-    width: 100%;
-    height: var(--space-top);
-  }
-  #nav-menu-open:checked ~ header .cover.cover-middle {
-    left:   calc(-1 * var(--line-width));
-    width:  calc(100% + var(--line-width));
-    height: calc(2em + var(--space-top) + var(--line-width));
-    z-index: -1;
-  }
-
-  #nav-menu-open:checked ~ header .header-logo {
+  
+  .header-logo {
     position: relative;
     margin: auto;
     min-width: calc(100% * var(--menu-width-fraction) - 2 * var(--line-width)); /* match expanded nav menu, but let its lines pass around... */
@@ -252,14 +201,74 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
 
     background: var(--bg-1);
   }
-  @keyframes header-logo-anim     { 30%, 60% { transform: scaleY(0.0); } }
-  @keyframes header-logo-anim-out { 30%, 70% { transform: scaleY(0.0); } }
-  @keyframes menu-anim     { 45%, 75% { transform: scaleX(0.0) scaleY(0.25); } }
-  @keyframes menu-anim-out { 25%, 75% { transform: scaleX(1.0) scaleY(0.00); } }
 
+  menu {
+    flex: 0 2 auto;
+    min-width: calc(100% * var(--menu-width-fraction));
+    margin: auto;
+    order: 4;
+    border:    var(--line-width) solid currentColor;
+    transition: min-width 0.5s ease-out 0.15s;
+    animation: menu-anim 0.4s;
 
-.burger-check:checked ~ header menu nav {
-  transition: max-height 0.3s ease-in-out
-              filter 0.1s;
+    &:before, &:after {
+      content: "";
+      position: absolute;
+      width: var(--line-width);
+      background-color: var(--fg-1);
+      --height: calc(2rem - 1.5 * var(--line-width)); /* crank it a bit cause we're masking out any spillover... */
+    }
+    &:before {
+      left:  calc(0px - var(--line-width));
+      bottom: calc(0px - (var(--height))); /* too short on wide desktop */
+      height: calc(var(--height));
+      transform: scaleY(1.0); /* for animation */
+    }
+    &:after { /* from top right corner and up */
+      right: calc(0px - var(--line-width));
+      bottom: 0;
+      height: calc(var(--header-with-menu-height) - (var(--height)) - 0.75 * var(--space-top)); /* "vars" are so deceptive, everything was broken cause neither def nor usage was in paren... */
+    }
+    
+    .show-in-menu {
+      display: block;
+      font-size: 0.8rem;
+    }
+
+    nav {
+      transition: max-height 0.3s ease-in-out
+                  filter 0.1s;
+      position: relative;
+      top: 0;
+      max-height: var(--header-with-menu-height); /* for animation purposes i guess */
+      border: 0;
+      
+      .nav-links {
+        position: relative;
+        font-size: 1.3rem;
+        /* well poor design and stupid subpixel bullshit-shifting is what fucked me but yeah */
+        padding: 1rem var(--space);
+        
+        li {
+          visibility: visible;
+          min-width: 50%;
+          flex: 1 1 auto;
+          transition: transform 0.3s;
+          transform: scale(1.0);
+          line-height: initial;
+
+          &:first-letter {
+            font-size: 1.2em;
+          }
+        }
+      }
+    }
+  }
 }
+
+@keyframes header-logo-anim     { 30%, 60% { transform: scaleY(0.0); } }
+@keyframes header-logo-anim-out { 30%, 70% { transform: scaleY(0.0); } }
+@keyframes menu-anim     { 45%, 75% { transform: scaleX(0.0) scaleY(0.25); } }
+@keyframes menu-anim-out { 25%, 75% { transform: scaleX(1.0) scaleY(0.00); } }
+
 
