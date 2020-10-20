@@ -48,8 +48,7 @@
   right: var(--space); /* match the padding otherwise applying... */
   top: var(--space-top); /* needs to be a static amount or lines break... */
 
-  /* right: calc(0rem - var(--space)); */
-  right: 0;
+  right: calc(0% - 0.5 * var(--space-edges));
   width: calc(100vw * var(--menu-width-fraction) - 2 * var(--space-edges));
   /* new strat: just jam it behind header-logo... */
   border: 0;

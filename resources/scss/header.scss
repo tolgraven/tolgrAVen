@@ -179,7 +179,8 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
   #nav-menu-open:checked ~ header menu::after { /* from top right corner and up */
     right: calc(0px - var(--line-width));
     bottom: 0;
-    height: calc(var(--header-with-menu-height) - (var(--height)) - var(--space-top)); /* "vars" are so deceptive, everything was broken cause neither def nor usage was in paren... */
+    height: calc(var(--header-with-menu-height) - (var(--height)) - 0.75 *  var(--space-top)); /* "vars" are so deceptive, everything was broken cause neither def nor usage was in paren... */
+    // ugly hack but works?
   }
 
   #nav-menu-open:checked ~ .line-header {
@@ -240,7 +241,7 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
 
   /* clip surely bit cleaner but keep these in case need for other browsers. */
   #nav-menu-open:checked ~ header .cover.cover-left {
-    width: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
+    width: calc(100vw * ((1.0 - var(--menu-width-fraction)) / 2)
               + var(--space) - 3 * var(--line-width));
     height: 100%;
   }
@@ -258,7 +259,8 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
   #nav-menu-open:checked ~ header .header-logo {
     position: relative;
     margin: auto;
-    min-width: calc(100% * var(--menu-width-fraction) - 2 * var(--line-width)); /* match expanded nav menu, but let its lines pass around... */
+    min-width: calc(100vw * var(--menu-width-fraction) - 1.37 * var(--space-edges) - 2 * var(--line-width)); /* match expanded nav menu, but let its lines pass around... */
+    // ugly hack (doesnt make sense) but works...
     text-align: center;
     z-index: 35; /* need to get it above rest so line coming from right can flow behind */
     animation: header-logo-anim 0.5s;
