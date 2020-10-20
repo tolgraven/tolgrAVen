@@ -33,7 +33,7 @@
    [ui/toggle [:state :login-show-password] "show"]])
 
 
-(defn sign-in-or "Sign in or go to reg page"
+(defn sign-in "Sign in or go to reg page"
   []
   [:div.user-inner.noborder
    [:h2 "Please log in"]
@@ -95,11 +95,11 @@
      [:section
      [:h3 (:name user)]
      [:span [:em (:email user)]] [:br] [:br]
-     [ui/button "Change password" :password
+     [ui/button "Change password"  :password
       :action #(rf/dispatch [:user/active-section :change-password])]
-     [ui/button "View comments" :comments
+     [ui/button "View comments"    :comments
       :action #(rf/dispatch [:user/active-section :comments])]
-     [ui/button "Log out" :logout
+     [ui/button "Log out"          :logout
       :action #(rf/dispatch [:user/logout])]
      ]]))
 
@@ -107,23 +107,24 @@
   [component]
   [:section.noborder
    [back-btn]
-    [ui/close #(rf/dispatch [:user/active-section :closed])]
-    [component]])
+   [ui/close #(rf/dispatch [:user/close-ui])]
+   [component]])
 
 (defn user-section
   [active-section]
   [:div.user-section-wrapper.stick-up.hi-z
-   {:class (when (not= active-section :closing) "active")}
-   (println active-section)
-   (when (and (seq active-section) (not= (last active-section) :closed))
+   {:class (when (not= (last active-section) :closing) "active")}
+   (when (and (seq active-section) (not (some #{:closed} active-section)))
      [:div.user-section.stick-up.hi-z ;.noborder
+      (let [active-section (case (last active-section)
+                             :closing (or (last (butlast active-section))
+                                          :login) ;patch through underlying
+                             (last active-section))]
       [user-box
-       ; (case active-section ;guess should hook up to proper router though.
-       (case (last active-section) ;get last in list. guess should hook up to proper router though.
-         :login  sign-in-or
-         :register register
-         :admin admin
-         :comments comments
-         :change-password change-password
-         :closing admin)]
+       (case active-section ;get last in list. guess should hook up to proper router though.
+         :login        sign-in
+         :register     register
+         :admin        admin
+         :comments     comments
+         :change-password change-password)])
       ]) ])
