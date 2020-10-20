@@ -76,7 +76,7 @@
              :intro {:title "Building experience"
                      :text "Is what it all comes down to.
                             So many roads, yet I'm determined to track most of them halfway down.
-                            There's only one way to find out what's possible blabla copy."
+                            There's only one way to find out."
                      :buttons  [["Join me"            "bottom"]
                                 ["Fix these buttons"  "linktotop"]]
                      :bg [{:src "img/foggy-shit-small.jpg" :alt "Purple enthusiast"}
@@ -87,64 +87,49 @@
              :services  {:categories
                          [["Audio"    "bullhorn"   ["Sound engineering" "Broadcasting" "Recording" "Music production"]]
                           ["Video"    "film"       ["Editing" "Production" "Shoot inna pinch"]]
-                          ["Stage"    "lightbulb"  ["Event production" "Concert" "Club" "Automation & Retrofitting"]]
-                          ["Design"   "joint"      ["I mean not really" "But sorta dig the logo" "Not like I'm qualified" "For anything else either"]]
+                          ["Stage"    "lightbulb"  ["Event production" "Concert" "Club" "Automation" "Retrofitting"]]
+                          ["Design"   "joint"      ["I mean not really" "But sorta dig the logo" "Not like I'm qualified" "For any of this"]]
                           ["Software" "code"       ["Open source (evtly)" "Bespoke projects" "Rapid prototyping" "From (cl)JS to C++" "Current focus"]]
                           ["Web"      "laptop"     ["This is my first website!" "I'll make more once" "my stack runs fulleth"]]]
                          :bg {:src "img/vim-code-small.jpg" :alt "neovim editor"}
                          :caption "neovim"}
 
              :moneyshot {:title "YOU"
-                         :caption "Hapy people enjoying haspitality blobli"
+                         :caption "Happy people enjoying my hospitality once upon a time. You'll have to pay tho, I'm broke now"
                          :bg {:src "img/crowd-lbp.JPG"}}
 
              :story {:heading {:title "Breaking things down"
                                :bg {:src "img/wide-spot-ctrl-small.jpg"}}
-                     :title "Put your trust in my flaky hands"
-                     :text "1 I'm not actually very good at anything so...
-                          2 I'm not actually very good at anything so my services are cheap as or not available.
-                          3But as you can see above I know a lot of different stuff.  Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          4Learned a ton, is what's truly important. But as you can see above I know a lot of different stuff.
-                          5Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          6Learned a ton, is what's truly important.
-                          7But as you can see above I know a lot of different stuff.
-                          8Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          9Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          10Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          11Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          12Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          13 I'm not actually very good at anything so my services are cheap as or not available.
-                          14But as you can see above I know a lot of different stuff.  Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          15Learned a ton, is what's truly important. But as you can see above I know a lot of different stuff.
-                          16Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          17Learned a ton, is what's truly important.
-                          18 I'm not actually very good at anything so my services are cheap as or not available.
-                          19But as you can see above I know a lot of different stuff.  Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          20Learned a ton, is what's truly important. But as you can see above I know a lot of different stuff.
-                          21Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          22Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          23 I'm not actually very good at anything so my services are cheap as or not available.
-                          24But as you can see above I know a lot of different stuff.  Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well.
-                          25Learned a ton, is what's truly important. But as you can see above I know a lot of different stuff.
-                          26Not sure what happened with this assignment (apart from my laptop dying... weeks ago) and assume there's no salvaging being this late. Oh well."
+                     :title "Not a real company... yet"
+                     :text "After spending my working life in sports television, and lacking the passion of my colleagues - despite interesting and varied work (everything from PA, graphics, video editing, 'When IT says it can't be done' tech wizard) I started a transition towards programming a number of years ago.
+                            Currently studying computer science, and having picked up some web design chops last year, I'm building this website from scratch as a learning environment.  The hope of course being it'll one day reflect something real.
+                           My plan is to build a simple CMS, plus blog/comments system with user accounts. I think the Clojure and ClojureScript ecosystem seems good in this regard. It's daunting, but the lack of rails, as it were, might force a deeper understanding of each aspect. And it's close enough to the JS ecosystem everyone is in that skills will surely translate.
+                            Also, Hiccup is awesome.
+
+                            Well let's see what else. I make music, have dabbled in being a rave promoter, soundboy, am a big enough ally to have hosted gay parties in Uganda, and all-around upstanding chap. I reckon.
+                            Before I run my own web design/custom music tech/yada yada real company I still try to do those things, on a hobbyist basis.
+                            Currently most of the front-end is finished (well, alpha finished) while the back-end is, shall we say... not. Everything will be hooked up in due time though. And optimized - this website hardly currently plays nice with more limited hardware. But have a look around, you can make a user account and post away at the blog. safe in the knowledge it won't leave your browser.  "
+
                      :images [["headshot" {:src "img/Leg-tasteful-small.jpg" :alt "Joen"}
                                "Yours truly. Smiling!"]
                               ["multimeter" {:src "img/multimeter-driver-small.jpg" :alt "Broken driver"}
                                "Something smells fishy here. Sorry I mean burnt"
-                               "right"]]}
+                               "right"]
+                              ["cljs" {:src "img/cljs.png" :alt "cljs"}
+                               "clojurescript in the house"]
+                              ]}
 
              :interlude [{:title "What does that mean?"
                           :caption "Stage light blabla"
-                          :bg [:video.media.media-as-bg {:src "media/fog-3d-small.mp4"}]}
+                          :bg [:video.media.media-as-bg {:src "media/fog-3d-small.mp4"  :playsInline true :autoPlay true }]}
                          {:title "For who?"
                           :caption "Nihiloxica video shoot, Kampala"
-                          :bg [:video.media.media-as-bg {:src "media/nihil-shoot2.mp4"}]}
+                          :bg [:video.media.media-as-bg {:src "media/nihil-shoot2.mp4"  :playsInline true :autoPlay true :loop true}]}
                          {:title "Got no portfolio"
                           :caption "Failed"
                           :bg [:img.media.media-as-bg.fade-3 {:src "img/collage-strips.jpg"}]}
                          {:title "Placeholder"
                           :caption "Fix this shite"
-                          ; :bg [:div.media-as-bg.anim-gradient-bg]}
                           :bg [:img.media.media-as-bg.anim-gradient-bg {:src "img/wide-spot-ctrl-small.jpg"}]}]
 
              :article-links [{:title "A link thingy"    ;fix autograbber!
@@ -161,20 +146,25 @@
                        {:src "img/afterglow-new-web-old-small.jpg" :alt "My actual first web project"}]
 
              :blog    {:heading {:title "joe tol thought"
-                                 :bg {:src "img/wide-spot-ctrl-small.jpg"}}
-                       :posts [{:id 1 :title "And so it all begins"     :text "[i forget] how does *markdown* work??"
-                                :comments []}
+                                 :bg {:src "img/wide-spot-ctrl-small.jpg"}
+                                 :tint "red-2"}
+                       :posts [{:id 1 :title "And so it all begins"     :text "[i forget] how does *markdown* work??" }
                                {:id 2 :title "My journey into wankery"  :text "jk i never _knew_"
-                                :comments [{:id 1 :user "Majson" :title "Wow va fint" :text "Snud snud"}
-                                           {:id 2 :user "Adson" :title "oj va fint" :text "Snud snud"}]}
+                                :comments [{:id 1 :user "Majson" :title "Wow va fint" :text "Snud snud" :score 2}
+                                           {:id 2 :user "Majson" :title "Wow va fint" :text "Snud snud" :score -1}
+                                           {:id 3 :user "Majson" :title "Wow va fint" :text "Snud snud"}
+                                           {:id 4 :user "Adson" :title "oj va fint" :text "Snud snud"}]}
                                {:id 3 :title "A new beginning: to blog" :text "Will I manage to make more than 2-3 posts this time?
                                                                              Sometimes I surprise myself, but mostly not. Verdict, _njäe_."
-                                :comments []}
+                                :comments [{:id 1 :user "Joen" :title "Wow va fint" :text "Snud snud"}
+                                           {:id 2 :user "Majson" :title "Wow va fint" :text "Snud snud"}
+                                           {:id 3 :user "Adson" :title "oj va fint" :text "Snud snud"}]}
                                {:id 4 :title "And something also goes here - maybe a really long one that will have to break lines and bread and love and life"
                                 :text "But then text is short."
-                                :comments []}]}
+                                }]}
              :docs    {:heading {:title "Documentation"
                                  :bg {:src "img/wide-spot-ctrl-small.jpg"}}}
+             :common  {:banner-heading {:bg {:src "img/wide-spot-ctrl-small.jpg"}}}
 
              :footer [{:id "left"
                        :title "joen.tolgraven@gmail.com"
