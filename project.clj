@@ -4,9 +4,7 @@
   :url "http://example.com/FIXME"
 
   :dependencies [[cheshire "5.10.0"]
-                 [cljs-ajax "0.8.1"]
                  [clojure.java-time "0.3.2"]
-                 [com.andrewmcveigh/cljs-time "0.5.2"]
                  [com.cognitect/transit-clj "1.0.324"]
                  [com.datomic/datomic-free "0.9.5697" :exclusions [org.slf4j/log4j-over-slf4j org.slf4j/slf4j-nop com.google.guava/guava]]
                  [honeysql "1.0.444"]
@@ -50,7 +48,15 @@
                  [org.webjars.npm/material-icons "0.3.1"]
                  [org.webjars/webjars-locator "0.40"]
                  [org.webjars/webjars-locator-jboss-vfs "0.1.0"]
+                 [ring-webjars "0.2.0"]
+                 [ring/ring-core "1.8.1"]
+                 [ring/ring-defaults "0.3.2"]
 
+                 [selmer "1.12.28"]
+
+                 ; CLJS
+                 [cljs-ajax "0.8.1"]
+                 [com.andrewmcveigh/cljs-time "0.5.2"]
                  [cljsjs/smoothscroll-polyfill "0.4.0-0"]
 
                  [appliedscience/js-interop "0.1.10"]
@@ -58,18 +64,17 @@
                  [re-frame "1.1.1"]
                  [re-graph "0.1.14"]
                  [day8.re-frame/http-fx "0.2.1"]
-                 [day8.re-frame/undo "0.3.3"]
+                 [akiroz.re-frame/storage "0.1.4"] ;localstorage.
+                 [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
+                 
+                 ; [day8.re-frame/undo "0.3.3"]
                  [reagent "0.10.0"]
                  [re-frame-utils "0.1.0"]
 
                  [cljsjs/react-highlight "1.0.7-2"]
                  [cljsjs/highlight "9.12.0-2"]
+                 [cljsjs/react-transition-group "4.3.0-0"]]
 
-                 [ring-webjars "0.2.0"]
-                 [ring/ring-core "1.8.1"]
-                 [ring/ring-defaults "0.3.2"]
-
-                 [selmer "1.12.28"]]
 
   :min-lein-version "2.0.0"
 
