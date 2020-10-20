@@ -116,24 +116,26 @@
   (let [!bg (r/atom nil) ; docs says reg atom better but only updates w ratom, bc 2nd fn or? also .play no works
         div-ref (r/atom nil) ; XXX let this speew to db (or just a bool) so can hide earlier stickies
         in-view (r/atom 0.0)
-        observer (util/frac-in-view #(reset! in-view %))]
+        observer (util/frac-in-view (fn [frac]
+                                      (reset! in-view frac)
+                                      (when-let [video @!bg]
+                                        (when (<= frac 0.1)
+                                          (.pause video))
+                                      )))]
     (fn [{:keys [title caption bg nr]}]
       (observer div-ref)
       [:div {:id (str "interlude-" nr)
-             :class "section-with-media-bg-wrapper"
-             :on-click (when-let [video @!bg]
-                         (try
-                           (if (.-paused video)
-                             (.play video)
-                             (.pause video))
-                           (catch js/Error e)))}
-       (util/add-attrs bg {:ref #(reset! !bg %)}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
+             :class "section-with-media-bg-wrapper parallax-wrapper"
+             :on-mouse-enter #(when-let [video @!bg] (.play video))
+             :on-mouse-leave #(when-let [video @!bg] (.pause video))}
+       (util/add-attrs bg {;:class "parallax-fg"
+                           :ref (fn [el] (reset! !bg el))}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:section
-        {:class "covering-faded widescreen-safe center-content"
+        {:class "covering-faded widescreen-safe center-content parallax-group"
          :ref #(reset! div-ref %)
-         :style {:transition "opacity 2.5s"
+         :style {:transition "opacity 4.5s"
                  :opacity (str "calc(0.95 - 0.20 *" @in-view ")")}} ;well dumb but
-        [:h1.h-responsive title]]
+        [:h1.h-responsive  title]]
        [ui-inset caption nr]]))) ; these arent showing up...
 
 
