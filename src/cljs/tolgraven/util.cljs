@@ -4,6 +4,7 @@
             [cljs-time.core :as ct]
             [cljs-time.format :as ctf :refer [formatters formatter unparse]]
             [clojure.string :as string]
+            [clojure.pprint :as pprint]
             [clojure.walk]))
 
 (defmacro handler-fn "Use in event-handlers instead of (fn [e/_]), returns nil so react doesnt get a false and ignore us"
@@ -63,6 +64,13 @@
                         (str "on " (unparse (formatters :date) ts)
                              "at " (unparse (formatters :hour-minute) ts)))])))
     ""))
+
+(defn format-number [n]
+  (case n
+    (nil, 0) "0"
+    (-> (pprint/cl-format nil "~,2f" n)
+        (string/replace #"\." ","))))
+
 
 
 (defn- format-css-var [var-name]
