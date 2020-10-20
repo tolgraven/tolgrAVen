@@ -46,4 +46,5 @@
  :login/valid-input?
  :<- [:state [:login-field]]
  (fn [login-field [_ field]]
-   (every? #(pos? (count %)) (map login-field [:user :password])))) ; do proper validation tho talk to server and greenlight when correc.
+   (and (pos? (count (:user login-field)))
+        (pos? (count (:user login-field)))))) ; do proper validation tho talk to server and greenlight when correc.
