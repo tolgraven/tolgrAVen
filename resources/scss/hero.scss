@@ -76,7 +76,8 @@
   /* top:  calc(var(--space) * 5); /1* small header and a bit, position for when starts moving off sticky, which is also good fallback when parallax missing... *1/ */
   /* top:  calc(var(--header-height) + var(--space)); /1* small header and a bit, position for when starts moving off sticky, which is also good fallback when parallax missing... *1/ */
   /* top:  calc(var(--header-height)); */
-  margin-top: calc(1.5 * var(--space-lg));
+  // margin-top: calc(0.5 * var(--space));
+  margin-top: 0;
   animation: fade-in-logo 3.5s;
 }
 #logo-bottom { /* same as top but (un)inverted and coming from below */

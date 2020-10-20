@@ -596,6 +596,9 @@ video {
 .form-control {
   background: var(--bg-1);
   color: var(--fg-1);
+  font-size: 1.2em;
+  padding: 0.3em 0.5em;
+  margin-bottom: 0.4em;
 }
 
 .close-btn {
@@ -641,7 +644,7 @@ video {
   margin: var(--space);
   padding: 0.3rem 0.7rem;
   border: 1px solid rgba(150, 150, 150, 0.3);
-  color: var(--fg-1);
+  color: var(--bg-1);
   // opacity: 0.8;
 }
 .hud-message.error   { background: var(--red-3); }
@@ -666,6 +669,8 @@ video {
 .log .log-messages > td {
   padding: 0.25em 0.5em;
   font-size: 80%;
+    max-width: 60vw;
+  overflow-wrap: break-word;
 }
 .log-time { text-align: right }
 .log-level, .log-title { text-align: center }

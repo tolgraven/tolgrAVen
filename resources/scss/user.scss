@@ -9,7 +9,7 @@
   transition: max-height 0.4s;
 }
 .user-section-wrapper.active {
-  max-height: 30vh;
+  max-height: 40vh;
   box-shadow: 1px 1px 10px 10px rgba(30, 30, 45, 0.5);
 }
 .user-section {
@@ -27,7 +27,7 @@
 
 .user-sign-in-reg-container {
   max-height: 0;
-  transition: max-height 0.3s;
+  transition: max-height 0.5s;
 }
 .user-sign-in-reg-container.active {
   max-height: 100rem;

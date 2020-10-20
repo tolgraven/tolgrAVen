@@ -215,7 +215,7 @@ nav {
   min-height: 2.2em;
   /* h1 */
   /* dont think right basing on space, just use rem */
-  min-width: 12.5em;
+  min-width: 7.0em;
   background: linear-gradient(-77deg, var(--bg-1) -10%, var(--nav-accent) 80%);
   /* transition: min-height 0.9s ease-in-out; */
   transition: filter 0.3s; }
@@ -556,18 +556,15 @@ h3::first-letter {
   position: fixed;
   /* right:  calc(var(--space-edges) + 0.5 * var(--space)); */
   right: calc(var(--space-edges) * 0.35);
-  bottom: calc(2 * var(--space-lg));
+  bottom: calc(1 * var(--space));
   color: var(--fg-2);
   font-size: 1.2rem;
   /* z-index: -1; */
-  z-index: 10; }
-
-#to-top {
-  z-index: 100; }
+  z-index: 200;
+  text-shadow: 1px 1px 1rem var(--fg-2); }
 
 #to-top-bg {
-  /* filter: brightness(150%); */
-  text-shadow: 1px 1px 1rem var(--fg-2); }
+  /* filter: brightness(150%); */ }
 
 /* intro image and background logo... */
 #top-banner {
@@ -691,7 +688,7 @@ h3::first-letter {
   /* top:  calc(var(--space) * 5); /1* small header and a bit, position for when starts moving off sticky, which is also good fallback when parallax missing... *1/ */
   /* top:  calc(var(--header-height) + var(--space)); /1* small header and a bit, position for when starts moving off sticky, which is also good fallback when parallax missing... *1/ */
   /* top:  calc(var(--header-height)); */
-  margin-top: calc(1.5 * var(--space-lg));
+  margin-top: 0;
   -webkit-animation: fade-in-logo 3.5s;
           animation: fade-in-logo 3.5s; }
 
@@ -1412,8 +1409,9 @@ h3::first-letter {
   /* The switch - the box around the slider */
   position: relative;
   display: inline-block;
-  border-radius: 5px;
-  border: 1px solid rgba(90, 30, 20, 0.5); }
+  width: 1.2em;
+  border: var(--line-width-lg) solid var(--fg-2);
+  margin-left: 0.5em; }
 
 .toggle-switch input {
   /* Hide default HTML checkbox */
@@ -1425,47 +1423,39 @@ h3::first-letter {
   /* The "slider" */
   position: absolute;
   cursor: pointer;
-  background-color: rgba(60, 40, 40, 0.6);
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   transition: .3s;
-  -webkit-transition: .3s; }
+  -webkit-transition: .3s;
+  border: 3px solid var(--bg-2); }
 
 .toggle-slider:before {
   position: absolute;
   content: "";
-  height: 100%;
-  width: 50%;
+  height: 50%;
+  width: 30%;
   left: 0%;
-  border-radius: 4px;
-  background-color: rgba(32, 30, 34, 0.9);
-  border: 1px solid rgba(160, 170, 190, 0.3);
   transition: .3s;
   -webkit-transition: .3s; }
 
 input:checked + .toggle-slider {
-  /* border-radius: 7px; */
-  /* background-color: #2196F3; */
-  background-color: rgba(132, 60, 54, 0.9); }
-
-input:focus + .toggle-slider {
-  /* box-shadow: 0 0 2px #2196F3; */
-  box-shadow: 0 0 2px rgba(192, 90, 84, 0.8); }
+  background-color: var(--fg-1); }
 
 input:checked + .toggle-slider:before {
   transform: translateX(100%);
   -ms-transform: translateX(100%);
-  -webkit-transform: translateX(100%);
-  /* transform: translateX(50%); -ms-transform: translateX(50%); -webkit-transform: translateX(50%); */ }
+  -webkit-transform: translateX(100%); }
+
+.toggle-label {
+  position: absolute;
+  left: 1.5em;
+  top: 0; }
 
 .toggle-slider.round {
   /* Rounded sliders */
   border-radius: 4px; }
-
-.toggle-slider.round:before {
-  /* border-radius: 50%; */ }
 
 /* .toggle-hidden { */
 /*     position: relative; */
@@ -1640,7 +1630,7 @@ textarea.blog-adding-comment-textbox {
   transition: max-height 0.4s; }
 
 .user-section-wrapper.active {
-  max-height: 30vh;
+  max-height: 40vh;
   box-shadow: 1px 1px 10px 10px rgba(30, 30, 45, 0.5); }
 
 .user-section {
@@ -1650,7 +1640,7 @@ textarea.blog-adding-comment-textbox {
 
 .user-sign-in-reg-container {
   max-height: 0;
-  transition: max-height 0.3s; }
+  transition: max-height 0.5s; }
 
 .user-sign-in-reg-container.active {
   max-height: 100rem; }
@@ -2403,7 +2393,10 @@ video {
 
 .form-control {
   background: var(--bg-1);
-  color: var(--fg-1); }
+  color: var(--fg-1);
+  font-size: 1.2em;
+  padding: 0.3em 0.5em;
+  margin-bottom: 0.4em; }
 
 .close-btn {
   position: absolute;
@@ -2448,7 +2441,7 @@ video {
   margin: var(--space);
   padding: 0.3rem 0.7rem;
   border: 1px solid rgba(150, 150, 150, 0.3);
-  color: var(--fg-1); }
+  color: var(--bg-1); }
 
 .hud-message.error {
   background: var(--red-3); }
@@ -2475,7 +2468,9 @@ video {
 
 .log .log-messages > td {
   padding: 0.25em 0.5em;
-  font-size: 80%; }
+  font-size: 80%;
+  max-width: 60vw;
+  overflow-wrap: break-word; }
 
 .log-time {
   text-align: right; }
