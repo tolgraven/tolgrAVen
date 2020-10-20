@@ -72,5 +72,12 @@
  :user/close-ui
  (fn [{:keys [db]} [_ v]]
    {:dispatch [:user/active-section :closing]
-    :dispatch-later {:ms 400,
+    :dispatch-later {:ms 500,
                      :dispatch [:user/active-section :closed]}}))
+
+(rf/reg-event-fx ;needs to defer changing :user-section to false
+ :user/open-ui
+ (fn [{:keys [db]} [_ v]]
+   {:dispatch [:user/active-section :closing]
+    :dispatch-later {:ms 50,
+                     :dispatch [:user/request-page]}}))
