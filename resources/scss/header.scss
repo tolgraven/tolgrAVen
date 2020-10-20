@@ -10,20 +10,15 @@ header {
   align-items: center;
   justify-content: space-between;
   background-color: var(--bg-1);
-  /* background-image: linear-gradient(to top, var(--bg-1)); */
-  /* background-image: none; */
   z-index: 100;
   margin-top: var(--space-top);
-  /* margin-bottom: var(--space-top); */
-  padding: 0 calc(var(--space));
   margin-right: var(--line-width); /* make main right border stay "outside" right edge of header, needed because of particular effect/design... */
+  padding: 0 calc(var(--space));
   transition: min-height var(--header-expand-time) ease 0.0s,
               background 0.0s ease 0.0s;
 }
 
 menu {
-  /* flex: 1; */
-  /* overflow-x: scroll; */
   position: relative;
   display: flex;
   min-width: calc(3 * var(--space-lg));
@@ -46,16 +41,13 @@ menu::before {
 }
 
 nav {
-  /* position: relative; */
   display: flex;
   align-items: center;
   flex: 1 0 auto;
   min-height: 2.2em; /* h1 */ /* dont think right basing on space, just use rem */
   min-width: 7.0em;
   background: linear-gradient(-77deg, var(--bg-1) -10%, var(--nav-accent) 80%);
-  // border-top:     var(--line-width) solid currentColor;
-  // border-bottom:  var(--line-width) solid currentColor;
-  /* transition: min-height 0.9s ease-in-out; */
+  border-top:     var(--line-width-sm) solid currentColor;
   transition: filter 0.3s;
 }
 nav:hover {
@@ -113,8 +105,7 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
    }
   .nav-links li {
     height: 100%;
-    // transition: transform 0.4s, line-height 0.4s;
-    transition: all 0.4s;
+    transition: transform 0.4s, line-height 0.4s;
     transform: scaleY(0.0) scaleX(0.3);
     line-height: 20%;
   }
@@ -155,8 +146,6 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
     margin: auto;
     order: 4;
     border:    var(--line-width) solid currentColor;
-    // border-left:  var(--line-width-vert) solid currentColor;
-    // border-right: var(--line-width-vert) solid currentColor;
     transition: min-width 0.5s ease-out 0.15s;
     animation: menu-anim 0.4s;
   }
@@ -191,8 +180,6 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
   }
 
   #nav-menu-open:checked ~ header {
-    /* margin-top: calc(2 * var(--space-top)); /1* compensate for removing margin from line-header, so nothing jumps... *1/ */
-    /* margin-top: 0; /1* gets easier to calc if kill top margin since --space keeps changing otherwise *1/ */
     min-height:  var(--header-with-menu-height);
     font-size: 1.5rem;
     justify-content: space-between;
@@ -205,7 +192,6 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
                 hsla(0, 0%, var(--lum-bg-2), 0.25) 40% 52%,
                 var(--bg-1) 95%);
     backdrop-filter: blur(2rem);
-    -webkit-backdrop-filter: blur(2rem);
     // blur isnt source of lag. prob having 4 animations and million transitions is lol
     transition: min-height var(--header-expand-time) ease 0.0s,
                 background-color 5.0s ease var(--header-expand-time),
@@ -213,7 +199,7 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
 
     /* stop possible overflow out under top header... */
     --path: polygon(0 0, 100% 0, 100% var(--header-with-menu-height), 0% var(--header-with-menu-height));
-    clip-path: var(--path); -webkit-clip-path: var(--path);
+    clip-path: var(--path);
   }
 
   header .cover { /* silly attempt to cover up manually so can get some nice seethrough blur... */
@@ -221,9 +207,6 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
     left: 0; top: 0;
     background: var(--bg-1);
     z-index: 1;
-    /* display: none; */
-    /* height: 0; */
-    /* transition: height var(--header-expand-time); */
   }
   #nav-menu-open:checked ~ header .cover {
     display: block;
@@ -274,14 +257,9 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
   @keyframes menu-anim     { 45%, 75% { transform: scaleX(0.0) scaleY(0.25); } }
   @keyframes menu-anim-out { 25%, 75% { transform: scaleX(1.0) scaleY(0.00); } }
 
-  #nav-menu-open:checked ~ main { /* other attempt compensate line-header margin-.. */
-    /* margin-top: calc(2 * var(--space-top)); */
-  }
 
 .burger-check:checked ~ header menu nav {
-  /* max-height: 500px; */
   transition: max-height 0.3s ease-in-out
               filter 0.1s;
-  // transition: all 0.2s ease-in-out;
 }
 
