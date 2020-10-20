@@ -17,6 +17,15 @@
    `(let [or# ~x]
           (if or# or# (ors ~@next)))))
 
+(defn interleave-all "interleaves including remainder of longer seqs." ;from SO, @SomeRando
+  [& seqs]
+  (when (not-empty (first seqs))
+    (let [remaining (filter not-empty
+                            (concat (rest seqs)
+                                    [(rest (first seqs))]))]
+      (cons (first (first seqs))
+            (lazy-seq (apply interleave-all remaining))))))
+
 (defn log "Log to both console and app" ;XXX should add an endpoint to timbre instead.
  ([message] (log :debug message))
  ([level message & messages]

@@ -70,20 +70,20 @@
 
 (defn auto-layout-text-imgs "Take text and images and space out floats appropriately. Pretty dumb but eh"
   [content]
-  (let [text-part (string/split-lines (:text content))
-         img-count (count (:images content))
-         line-count (count text-part)
-         chunk-size (/ line-count img-count)
-         content (->> (interleave (map #(into [float-img] %)
-                                        (:images content))
-                                  (map #(into [:p] %)
-                                        (partition chunk-size text-part)))
+  (let [text-part (for [line (string/split-lines (:text content))]
+                    [:<> [:span line] [:br]])
+         chunk-size (int (/ (count text-part)
+                            (count (:images content))))
+         result (->> (util/interleave-all (map #(into [float-img] %)
+                                               (:images content))
+                                          (map #(into [:p] %)
+                                               (partition chunk-size chunk-size
+                                                          (repeat "") text-part)))
                       (map-indexed (fn [i v]
                                      (with-meta
                                       v {:key (str "auto-layout-part-" i)}))))] ;would need a parent id thingy as well tho
      [:div.float-wrapper
-      [:h3 (:title content)]
-      content]))
+      result]))
 
 
 (defn material-toggle
