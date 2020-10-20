@@ -47,7 +47,14 @@
    [:span "or "]
    [:button
     {:on-click #(rf/dispatch [:user/active-section :register])}
-    "Register"]])
+    "Register"]
+   (when-let [error (->> @(rf/subscribe [:diag/unhandled])
+                         (filter #(= (:title %) "Sign in"))
+                         last
+                         :message)]
+     [:<>
+      [:span {:style {:padding-top "1em" :color "var(--red)"}} "Error"]
+     [:span ": " error]])])
 
 (defn register "Registration component" []
   [:div.user-inner.user-register
