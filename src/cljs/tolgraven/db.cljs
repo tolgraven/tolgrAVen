@@ -48,7 +48,8 @@
            :is-loading true
            :theme-force-dark true
            :is-personal false
-           :debug {:layers false}
+           :debug {:layers false
+                   :divs false}
            ; :transition :out ;later when proper boot sequence, trigger in on load complete
            }
    :routes {:home "/"
@@ -67,6 +68,7 @@
                                      ["Portfolio" "#portfolio"    :portfolio]]
                              :personal [["Blog"      "#/blog"     :blog]
                                         ["Docs"      "#/docs"     :docs]
+                                        ["Test"      "#/test"     :docs]
                                         ["Log"       "#/log"      :log]]}
                       ; #_{:should :semi-auto-populate?}
                       }
