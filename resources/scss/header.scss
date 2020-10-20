@@ -259,8 +259,7 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
   #nav-menu-open:checked ~ header .header-logo {
     position: relative;
     margin: auto;
-    min-width: calc(100vw * var(--menu-width-fraction) - 1.37 * var(--space-edges) - 2 * var(--line-width)); /* match expanded nav menu, but let its lines pass around... */
-    // ugly hack (doesnt make sense) but works...
+    min-width: calc(100% * var(--menu-width-fraction) - 2 * var(--line-width)); /* match expanded nav menu, but let its lines pass around... */
     text-align: center;
     z-index: 35; /* need to get it above rest so line coming from right can flow behind */
     animation: header-logo-anim 0.5s;
