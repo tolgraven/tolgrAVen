@@ -39,7 +39,8 @@
    [:h2 "Please log in"]
    [sign-in-input]
    [:button
-    (let [disabled? (not @(rf/subscribe [:login/valid-input?]))]
+    (let [disabled? false ;(not @(rf/subscribe [:login/valid-input?]))
+          ]
       {:on-click #(rf/dispatch [:user/request-login])
        :disabled disabled?
        :class (when disabled? "noborder")})
