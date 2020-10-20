@@ -27,15 +27,22 @@
             (lazy-seq (apply interleave-all remaining))))))
 
 (defn log "Log to both console and app" ;XXX should add an endpoint to timbre instead.
- ([message] (log :debug message))
- ([level message & messages]
-  (let [msg (string/join " " (into [message] messages))]
-   (println (string/capitalize (name level)) "\t" message)
-   (rf/dispatch [:diag/new level "Log" msg]))))
+ ([message] (log :debug "" message))
+ ([level title message & messages]
+  (let [msg (string/join " " (into [message] messages))
+        js-fn (case level
+                :debug js/console.debug
+                :error js/console.error
+                :warning js/console.warn
+                :info js/console.log)]
+   ; (println (string/capitalize (name level)) "\t" message)
+   (js-fn message)
+   (rf/dispatch [:diag/new level title msg]))))
 
 (defn log-errors [errors]
  (when (seq errors)
-  (log :debug errors))) ;debug instead of error, dont want to spam the hud
+  (log :debug "Error" errors))) ;debug instead of error, dont want to spam the hud
+
 
 (defn pluralize "Swap 0/no and grammar"
   [amount thing]
