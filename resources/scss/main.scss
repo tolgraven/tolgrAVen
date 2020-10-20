@@ -40,11 +40,11 @@
   --line-width-vert:   2px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --scale:             1.0; /* px line-width drifts when font scales so must compensate... better way? */
   
-  --fiddle-multiplier: 0; /* was 3. works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
+  --fiddle-multiplier: 1; /* was 3. works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
   --left-marker: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
-                      + var(--space) - (var(--fiddle-multiplier) * var(--line-width)));
-  --right-marker: calc(100% - var(--left-marker) + var(--line-width)); /* makes sense right side needs one more unit since it has the right border... */
-  --top-to-menu-height: calc(2 * var(--space-top) + 2em - (4 - var(--fiddle-multiplier)) * var(--line-width));
+                      + 0.75 * var(--space) - 1 * (var(--fiddle-multiplier) * var(--line-width)));
+  --right-marker: calc(100% - 1 * var(--left-marker) - 2 * var(--line-width)); /* makes sense right side needs one more unit since it has the right border... */
+  --top-to-menu-height: calc(2 * var(--space-top) + 2em - 5 * var(--line-width));
   
   --header-expand-time:  0.5s;
   --navigation-transition-time: 0.20s;

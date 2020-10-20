@@ -27,6 +27,7 @@ menu {
   position: relative;
   display: flex;
   min-width: calc(3 * var(--space-lg));
+  z-index: 2;
   transition: min-width 0.5s ease;
   animation: menu-anim-out 0.4s;
 }
@@ -179,7 +180,7 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
   #nav-menu-open:checked ~ header menu::after { /* from top right corner and up */
     right: calc(0px - var(--line-width));
     bottom: 0;
-    height: calc(var(--header-with-menu-height) - (var(--height)) - var(--space-top)); /* "vars" are so deceptive, everything was broken cause neither def nor usage was in paren... */
+    height: calc(var(--header-with-menu-height) - (var(--height)) - 0.75 * var(--space-top)); /* "vars" are so deceptive, everything was broken cause neither def nor usage was in paren... */
   }
 
   #nav-menu-open:checked ~ .line-header {
@@ -219,6 +220,7 @@ menu > nav > .nav-section:last-of-type > .nav-links { /* not doing the trick hmm
     position: absolute;
     left: 0; top: 0;
     background: var(--bg-1);
+    z-index: 1;
     /* display: none; */
     /* height: 0; */
     /* transition: height var(--header-expand-time); */

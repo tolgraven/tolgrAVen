@@ -50,7 +50,8 @@
 
   /* right: calc(0rem - var(--space)); */
   right: 0;
-  width: calc(100vw * var(--menu-width-fraction) - 2 * var(--space-edges));
+  width: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
+              + 0.75 * var(--space));
   /* new strat: just jam it behind header-logo... */
   border: 0;
   border-top: var(--line-width) solid currentColor;
