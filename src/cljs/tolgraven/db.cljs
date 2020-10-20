@@ -57,9 +57,10 @@
             :docs "docs"
             :blog "/blog"
             :log "log"}
-   :users [{:id 0 :name "tolgraven" :password "js roles v secure" :roles [:admin :blogger]}
-           {:id 1 :name "seqable" :password "fixme" :roles [:blogger]}
-           {:id 2 :name "erty" :password "burkimaten"}]
+   :users [{:name "tolgraven" :password "testing" :email "joen.tolgraven@gmail.com"
+            :roles [:admin :blogger]}
+           {:name "seqable" :password "fixme" :roles [:blogger]}
+           {:name "erty" :password "burkimaten"}]
    :content {:header {:text ["tolgrAVen" ["audio" "visual"]]
                       :text-personal ["tolgraven" ["" "joen"]]
                       :menu {:work  [["Services"  "#link-services" :services] ; should have two sections either by collapse
