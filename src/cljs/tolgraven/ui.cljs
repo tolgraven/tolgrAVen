@@ -226,17 +226,17 @@
   [to-show]
  (let [;to-show @(rf/subscribe [:hud])
        msg-fn (fn [{:keys [level title message time actions id]}]
-                (let [class (str "hud-message " (name level))]
-                 [:div.hud-message
-                  {:class class
+                ^{:key (str "hud-message-" id)}
+                [:div.hud-message
+                  {:class (name level)
                    :style {:position :relative}
-                   :on-click #(rf/dispatch (or (:on-click actions)
+                   :on-click #(rf/dispatch (or (:on-click actions) ; or actions navigate to log...
                                                [:hud :modal id])) }
-                  [:span title]
+                  [:h4 {:style {:font-weight :bold}} title]
                   [:p message]
                   [close (fn [e]
                              (.stopPropagation e) ;it's causing a click on hud-message as well...
-                             (rf/dispatch [:diag/unhandled :remove id]))]]))]
+                             (rf/dispatch [:diag/unhandled :remove id]))]])]
   [:div.hud.hidden
    {:class (when (seq @to-show) "visible")}
    (for [msg @to-show]
