@@ -113,9 +113,11 @@
 (defn user-section
   [active-section]
   [:div.user-section-wrapper.stick-up.hi-z
-   {:class (when (not= (last active-section) :closing) "active")}
+   {:class (when (and (some? active-section)
+                      (not (some #{:closing :closed} active-section)))
+             "active")}
    (when (and (seq active-section) (not (some #{:closed} active-section)))
-     [:div.user-section.stick-up.hi-z ;.noborder
+     [:div.user-section
       (let [active-section (case (last active-section)
                              :closing (or (last (butlast active-section))
                                           :login) ;patch through underlying
