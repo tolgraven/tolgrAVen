@@ -201,13 +201,16 @@
 
 (defn blog "all the blogs"
   []
-  (let [per-page 2
-        total @(rf/subscribe [:blog/count])
+  (let [total @(rf/subscribe [:blog/count])
+        per-page (min total @(rf/subscribe [:blog/posts-per-page]))
         idx @(rf/subscribe [:blog/state [:page]])
         posts @(rf/subscribe [:blog/posts-for-page idx per-page]) ]
     [:section.blog.fullwide.noborder ;then chuck flip-move on eeet. or just same slide nav thing
-     (doall (for [post posts] ^{:key (str "blog-post-" (:id post))}
-              [blog-post post]))
-     [blog-nav total idx per-page]
+     (if (pos? total)
+       [:<>
+        (doall (for [post posts] ^{:key (str "blog-post-" (:id post))}
+                    [blog-post post]))
+        [blog-nav total idx per-page]]
+       [:h1.center-content "No posts yet."])
      [:br] ]))
 

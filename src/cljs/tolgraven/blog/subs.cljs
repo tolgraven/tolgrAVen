@@ -31,15 +31,11 @@
 (rf/reg-sub :blog/posts-for-page
  :<- [:blog/posts] ; obvs will be, figure out idx range and ask server (then cache all already delivered in db)
  (fn [posts [_ idx page-size]]
-   (nth (->> posts
-             reverse
-             (partition page-size))
-        (or idx 0)))) ;usually throws on first load saying idx not a number...
+     (when posts
+       (nth (->> posts
+               reverse
+               (partition (min (count posts) page-size))) ;watch out with partition returning empty for small seqs...
+          (or idx 0))))) ;usually throws on first load saying idx not a number...
 
-
-(rf/reg-sub :blog-comment-input
- :<- [:state]
- (fn [state [_ id]]
-   (or (->> state :blog (nth id) :comments :input) "")))
 
 
