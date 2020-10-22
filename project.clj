@@ -7,6 +7,9 @@
                  [clojure.java-time "0.3.2"]
                  [com.cognitect/transit-clj "1.0.324"]
                  [com.datomic/datomic-free "0.9.5697" :exclusions [org.slf4j/log4j-over-slf4j org.slf4j/slf4j-nop com.google.guava/guava]]
+                 
+                 [org.clojure/java.jdbc "0.7.11"]
+                 [org.postgresql/postgresql "42.2.18"]
                  [honeysql "1.0.444"]
                  [com.fasterxml.jackson.core/jackson-core "2.11.2"]
                  [com.fasterxml.jackson.core/jackson-databind "2.11.2"]
@@ -66,11 +69,11 @@
                  [day8.re-frame/http-fx "0.2.1"]
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
                  [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
-                 
+                 [com.degel/re-frame-firebase "0.8.0"]
                  ; [day8.re-frame/undo "0.3.3"]
                  [reagent "0.10.0"]
                  [re-frame-utils "0.1.0"]
-
+                 
                  [cljsjs/react-highlight "1.0.7-2"]
                  [cljsjs/highlight "9.12.0-2"]
                  [cljsjs/react-transition-group "4.3.0-0"]]
@@ -86,16 +89,25 @@
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-sassc "0.10.4"]
+            [lein-autoprefixer "0.1.1"]
             [lein-auto "0.1.2"]
+            ; [lein-npm "0.6.2"]
             [lein-kibit "0.1.2"]]
   :sassc
   [{:src "resources/scss/main.scss"
     :output-to "resources/public/css/main.css"
     :style "nested"
     :import-path "resources/scss"}]
+  :autoprefixer {:src "resources/public/css"
+                 :browsers "> 1%, Last 2 versions"} ;; optional
   :auto
-  {"sassc" {:file-pattern #"\.(scss|sass)$" :paths ["resources/scss"]}}
-
+  {"sassc" {:file-pattern #"\.(scss|sass)$" :paths ["resources/scss"]}
+   "autoprefixer" {:file-pattern #"\.(css)$" :paths ["resources/public/css"]}}
+  
+  :aliases {"cssbuild" ["do" ["sass" "once"] "autoprefixer"]}
+  ; :npm {:dependencies
+  ;       [[]]}
+  
   ; :hooks [leiningen.sassc]
   :clean-targets ^{:protect false}
   [:target-path [:cljsbuild :builds :app :compiler :output-dir]
@@ -141,6 +153,7 @@
                                  [pjstadig/humane-test-output "0.10.0"]
                                  [prone "2020-01-17"]
                                  [re-frisk "1.3.4"]
+                                 [day8.re-frame/re-frame-10x "0.4.2"]
                                  [ring/ring-devel "1.8.1"]
                                  [ring/ring-mock "0.4.0"]]
                   :plugins      [[com.jakemccrary/lein-test-refresh "0.24.1"]
@@ -159,7 +172,7 @@
                       :closure-defines {"re_frame.trace.trace_enabled_QMARK_" true}
                       :optimizations :none
                       :parallel-build true
-                      :preloads [re-frisk.preload devtools.preload]
+                      :preloads [re-frisk.preload devtools.preload day8.re-frame-10x.preload]
                       :external-config
                       {:devtools/config
                        {:features-to-install [:formatters :hints] ;add exception hints
