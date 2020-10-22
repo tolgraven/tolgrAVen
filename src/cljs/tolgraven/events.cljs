@@ -124,21 +124,14 @@
 
 (defonce uuid-counter (atom 0)) ;js has its own id gen thing so use that maybe. but no sequential then?
 (rf/reg-cofx :gen-uuid #(assoc % :id (swap! uuid-counter inc)))
-(defonce id-counter (atom 0)) ;js has its own id gen thing so use that maybe. but no sequential then?
 
-(defonce id-counters (atom {:blog 0})) ;js has its own id gen thing so use that maybe. but no sequential then?
-(rf/reg-cofx
- :gen-id
- (fn [cofx parent-id]
-   (assoc cofx :id {:id (swap! id-counter inc) ;here rather, uh sub parent by id, check index, inc
+(defonce id-counters (atom {})) ;js has its own id gen thing so use that maybe. but no sequential then?
+(rf/reg-cofx :gen-id
+ (fn [cofx [k & [parent-id]]]
+   (assoc cofx :id {:id (swap! id-counters update k (fnil inc -1)) ;here rather, uh sub parent by id, check index, inc
                     :parent-id parent-id
                     :uuid (random-uuid)})))
 
-
-; more bastant vs using db and could append meta on cat for lookup?
-; works either way rather than many individual cause always increased vs last of kind
-; AFA remember from pf it's more like, gen a temp id here in case of failures etc,
-; then once is in db that becomes truth (and likely differs)
 
 ;; SOME STUFF FROM CUE-DB
 (rf/reg-event-fx :init ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
