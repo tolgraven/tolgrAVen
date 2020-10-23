@@ -11,7 +11,7 @@
     [clojure.edn :as edn]
     ; [muuntaja.core :as m]
     [cljs-time.core :as ct]
-    [cljs-time.format :refer [formatters formatter unparse]]))
+    [cljs-time.coerce :as ctc]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
@@ -204,7 +204,7 @@
    (util/run-highlighter! "pre" ref)))
 
 
-(rf/reg-cofx :now         #(assoc % :now (ct/now)))
+(rf/reg-cofx :now         #(assoc % :now (ctc/to-long (ct/now))))
 
 (defonce diag-id-counter (atom 0)) ;why not just keep this in db as well tho?
 (rf/reg-cofx :diag/gen-id #(assoc % :id (swap! diag-id-counter inc)))

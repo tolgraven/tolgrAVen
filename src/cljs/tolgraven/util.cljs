@@ -2,7 +2,8 @@
   (:require [re-frame.core :as rf]
             [cljsjs.highlight :as hljs]
             [cljs-time.core :as ct]
-            [cljs-time.format :as ctf :refer [formatters formatter unparse]]
+            [cljs-time.format :as ctf]
+            [cljs-time.coerce :as ctc]
             [clojure.string :as string]
             [clojure.pprint :as pprint]
             [clojure.walk]))
@@ -54,15 +55,16 @@
 
 (defn timestamp "Use 0-59 mins ago, 1-24 hrs ago, datestamp..."
   [ts]
-  (if ts
+  (if-let [ts (cond-> ts
+                (integer? ts) ctc/from-long)]
     (let [mins (ct/mins-ago ts)]
       (if (< mins 60)
         (str (pluralize mins "minute") " ago")
         (let [day-ago (ct/minus (ct/now) (ct/hours 24))
               display (if (ct/after? ts day-ago)
                         (int (/ mins 60))
-                        (str "on " (unparse (formatters :date) ts)
-                             "at " (unparse (formatters :hour-minute) ts)))])))
+                        (str "on " (ctf/unparse (ctf/formatters :date) ts)
+                             "at " (ctf/unparse (ctf/formatters :hour-minute) ts)))])))
     ""))
 
 (defn format-number [n]
