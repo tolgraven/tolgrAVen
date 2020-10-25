@@ -22,21 +22,19 @@
       [(home-routes)
        (service-routes)])
     (ring/routes
-      (swagger-ui/create-swagger-ui-handler
+      (swagger-ui/create-swagger-ui-handler ; nuke this until/if need?
         {:path   "/swagger-ui"
          :url    "/api/swagger.json"
          :config {:validator-url nil}})
-      (ring/create-resource-handler
+      (ring/create-resource-handler         ; serve resources/public at /
         {:path "/"})
-      (wrap-content-type
-        (wrap-webjars (constantly nil)))
-      (ring/create-default-handler
-        {:not-found
-         (constantly (error-page {:status 404, :title "404 - Page not found"}))
-         :method-not-allowed
-         (constantly (error-page {:status 405, :title "405 - Not allowed"}))
-         :not-acceptable
-         (constantly (error-page {:status 406, :title "406 - Not acceptable"}))}))))
+      (ring/create-default-handler          ; error/default routes
+        (let [get-error (fn [code message]
+                          (constantly (error-page {:status code
+                                                   :title (str code " - " message)})))]
+          {:not-found           (get-error 404 "Page not found")
+           :method-not-allowed  (get-error 405 "Not allowed")
+           :not-acceptable      (get-error 406 "Not acceptable") })))))
 
 (defn app []
   (middleware/wrap-base #'app-routes))
