@@ -168,7 +168,7 @@
  (fn [{:keys [db]} [_ path vote]]
    (let [diff (case vote :up 1 :down -1)
          state-path [:state :blog :voted path]
-         db-path (assemble-path [:blog :posts] path :score)
+         db-path (assemble-path [:blog :posts (first path)] (rest path) :score)
          opposite (case vote :up :down :down :up)
          voted (get-in db state-path)
          diff (condp = voted
