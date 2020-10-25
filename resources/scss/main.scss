@@ -158,9 +158,24 @@
   --lum-bg-5:   var(--lum-light-5);
   --lum-bg-6:   var(--lum-light-6);
 
+  // will need drastic tweaking for light theme
+  --gradient-bg-main: linear-gradient(-77deg,
+                                      hsl(280, 20%, var(--lum-bg-1)),
+                                      var(--bg-1))
+                                      ;
+  // --gradient-bg-main: linear-gradient(-77deg,
+  //                                     hsl(280, 20%, var(--lum-bg-1)),
+  //                                     hsl(100, 11%, var(--lum-bg-1)));
+  --user-box-bg:      linear-gradient(hsla(240deg 20% var(--lum-bg-3) / 80%) 0%,
+                                      hsla(240deg 38% var(--lum-bg-3) / 95%) 100%);
+
+  --user-box-shadow:     hsla(240deg 33% var(--lum-bg-4) / 30%);
+  --user-avatar-shadow:  hsla(240deg 100% var(--lum-fg-1) / 30%);
+
 }
 
-@media (prefers-color-scheme: dark) {
+// use dark by default
+// @media (prefers-color-scheme: dark) {
   :root { /* OS has requested dark mode */
     --fg-1:     var(--light-1);
     --fg-2:     var(--light-2);
@@ -192,7 +207,11 @@
   #logo-top { /* invert then rotate hue to restore blue text */
     filter: #{'invert() hue-rotate(180deg)'};
   }
+// }
+.always-dark { // content with dark non --bg-n background, so use light text
+
 }
+
 @media screen and (min-width: 800px) and (min-height: 800px) {
   :root {
     --space: 2.0rem;

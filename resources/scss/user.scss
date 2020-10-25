@@ -12,13 +12,11 @@
   opacity: 1.0;
   margin-top: var(--space-lg);
   transition: max-height 0.7s ease, margin 0.6s ease, opacity 0.9s ease;
-  box-shadow: 1px 1px 10px 10px rgba(30, 30, 60, 0.4);
+  box-shadow: 1px 1px 8px 10px var(--user-box-shadow);
 }
 .user-section {
   border: var(--line-width) solid;
-  // background: rgba(30, 30, 45, 0.90);
-  background: linear-gradient(180deg, rgba(30, 30, 45, 0.80) 0%,
-                                      rgba(20, 20, 45, 0.95) 100%);
+  background: var(--user-box-bg);
 
   button {
     font-size: 0.8em;
@@ -44,7 +42,7 @@
 .user-avatar {
   border-radius: 50%;
   border: var(--line-width-sm) solid;
-  box-shadow: 0px 0px 10px 1px rgba(230, 230, 255, 0.5);
+  box-shadow: 0px 0px 10px 1px var(--user-avatar-shadow);
   margin-right: var(--space-lg);
   width: calc(6.5 * var(--space));
   height: calc(6.5 * var(--space));
