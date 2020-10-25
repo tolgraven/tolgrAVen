@@ -43,22 +43,15 @@
              {:url "/api/swagger.json"
               :config {:validator-url nil}})}]]
 
-   ["/fart" {:get (fn [_]
-                    (-> "buttrez"
-                        response/ok
-                        plain-text-header))}]
    ["/blog" {:summary "Get specific blog-post"
              :parameters {:query {:id int?}}
              :get (fn [{{{:keys [id]} :query} :parameters}]
-                    (-> "not" ;(db/get-blog id)
-                        ; (str "faaart")
+                    (-> "not"
                         response/ok
                         plain-text-header))}]
    ["/blog/:id" {:get (fn [{{:keys [id]} :path-params}]
                           (timbre/debug "Blog: " id (string? id))
-                    ; (-> (db/get-blog id)
-                    (-> "nor" ;(db/get-blog "1")
-                        ; str
+                    (-> "nor"
                         response/ok
                         #_plain-text-header))}]
    ["/user/:id" {:get (fn [{{:keys [id]} :path-params}]
