@@ -146,43 +146,6 @@
                 [:option [:firebase]]]}))
 
 
-(rf/reg-event-fx :fb/finish-sign-in [(rf/inject-cofx :user/gen-color)]
- (fn [{:keys [db bg-color]} [_ user]]
-   {:db (update-in db [:fb/users (:uid user)] #(merge %2 %1)
-                   {:name (:display-name user)
-                    :email (:email user)
-                    :avatar (:photo-url user)
-                    :bg-color bg-color
-                    :id (:uid user)})
-    :dispatch [:user/active-section :admin :force]}))
-
-(rf/reg-event-fx :fb/set-user [debug]
-  (fn [{:keys [db]} [_ user]]
-    (when (some? user)
-     {:dispatch-n [[:state [:firebase :user] user]
-                   [:fb/finish-sign-in user]
-                   [:user/login (:uid user)]]})))
-
-(rf/reg-event-fx :fb/error [debug]
-  (fn [{:keys [db]} [_ error]]
-    {:dispatch [:diag/new :error "Firebase" error]}))
-
-(rf/reg-event-fx :fb/create-user
- (fn [_ [_ email password]]
-  {:firebase/email-create-user {:email email :password password}}))
-
-(rf/reg-event-fx :fb/sign-in ;; Simple sign-in event. Just trampoline down to the re-frame-firebase fx handler.
- (fn [_ [_ method & [email password]]]
-   (case method
-     :google {:firebase/google-sign-in {:sign-in-method :popup}} ;TODO use redir instead but save entire state to localstore inbetween.
-     :email  {:firebase/email-sign-in {:email email :password password}})))
-
-(rf/reg-event-fx :fb/sign-out ;;; Ditto for sign-out
- (fn [_ _]
-   {:firebase/sign-out nil
-    :dispatch [:user/logout]}))
-
-
 
 
 ; PROBLEM: would obviously want to trigger fetch on start-navigation,
