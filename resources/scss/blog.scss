@@ -21,6 +21,18 @@
     &:last-of-type {
       border: 0;
     }
+
+    .blog-post-tags {
+      margin-top: 0.4em;
+      > span {
+        // should be linked too
+        margin-right: var(--space);
+        padding: 0.15em 0.4em;
+        background-color: var(--bg-4);
+        // display: inline;
+      }
+    }
+
   }
 }
 .blog-post-preview {

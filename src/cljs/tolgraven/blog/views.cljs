@@ -86,7 +86,8 @@
     [:<>
      [:section.blog-comment
       [:div.flex
-       [:img.user-avatar {:src (:avatar user)}]
+       [:img.user-avatar
+        {:src (get user :avatar @(rf/subscribe [:user/default-avatar]))}]
        
        [:div.blog-comment-main
         [:h4.blog-comment-title title]
@@ -246,10 +247,14 @@
      ; {:ref #(when % (util/run-highlighter! "pre" %))}
      {:ref #(rf/dispatch [:run-highlighter! %])}
      [:div.flex
-      [:img.user-avatar.blog-user-avatar {:src (:avatar user)}]
+      [:img.user-avatar.blog-user-avatar
+       {:src (get user :avatar @(rf/subscribe [:user/default-avatar]))}]
       [:div
        [:h1 title]
-       [posted-by id (:name user) ts]]]
+       [posted-by id (:name user) ts]
+       [:div.blog-post-tags
+        (doall (for [tag (or (:tags blog-post) ["some-category" "other" "random thoughts"])]
+                 [:span tag]))]]]
      [:br]
      [ui/md->div text]
      [:br] [:br]

@@ -17,6 +17,11 @@
         ; (first (filter #(= (:id %) user-id) users))
         )))
 
+(rf/reg-sub :user/default-avatar
+ :<- [:get :content :common :user-avatar-fallback]
+ (fn [fallback [_ user-level]]
+   fallback))
+
 
 (rf/reg-sub :user/active-user
  :<- [:get]

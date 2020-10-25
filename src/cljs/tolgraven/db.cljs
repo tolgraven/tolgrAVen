@@ -144,7 +144,8 @@
                                  :tint "bg-5"}}
              :docs    {:heading {:title "Documentation"
                                  :bg {:src "img/wide-spot-ctrl-small.jpg"}}}
-             :common  {:banner-heading {:bg {:src "img/wide-spot-ctrl-small.jpg"}}}
+             :common  {:banner-heading {:bg {:src "img/wide-spot-ctrl-small.jpg"}}
+                       :user-avatar-fallback "img/tolgrav-square.png"}
 
              :footer [{:id "left"
                        :title "joen.tolgraven@gmail.com"
