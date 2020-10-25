@@ -1,28 +1,39 @@
 
 .user-section-wrapper {
-  max-height: 0;
+  max-height: 0; // prob use scale-y + move instead remember gpu-accel
   // overflow-y: hidden;
   overflow-y: scroll;
-  opacity: 0.5;
-  transition: max-height 0.9s ease, margin 0.6s ease, opacity 0.2s ;
+  opacity: 0.6;
+  backdrop-filter: blur(0.3rem);
+  transition: max-height 0.7s ease, margin 0.7s ease, opacity 0.8s ;
 }
 .user-section-wrapper.active {
   max-height: 35vh; // so how best control how much space needed from js side? obviously breaks on eg landscape...
   // max-height: 100%;
   opacity: 1.0;
   margin-top: var(--space-lg);
-  transition: max-height 0.7s ease, margin 0.6s ease, opacity 0.9s ease;
+  transition: max-height 0.6s ease, margin 0.6s ease, opacity 0.8s ease;
   box-shadow: 1px 1px 8px 10px var(--user-box-shadow);
 }
 .user-section {
   border: var(--line-width) solid;
   background: var(--user-box-bg);
 
-  button {
-    font-size: 0.8em;
+  button label {
+    font-size: 92%;
   }
   .user-inner {
-    padding: var(--space) calc(2 * var(--space));
+    padding: calc(0.5 * var(--space)) calc(2.00 * var(--space))
+             0;
+
+    > section {
+      border-top: var(--line-width-md) solid var(--fg-4);
+      padding: var(--space);
+
+      > form {
+        padding-top: 0.6em;
+      }
+    }
   }
 }
 

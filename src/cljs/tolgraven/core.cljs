@@ -109,8 +109,8 @@
             [:li [:button {:class (if (= tab tab-key)
                                     "noborder"
                                     "topborder")
-                           :on-click #(rf/dispatch [:state [:experiments] tab-key])
-                           } tab-key]])])]])
+                           :on-click #(rf/dispatch [:state [:experiments] tab-key])}
+                  tab-key]])])]])
 
 (defn home-page []
   [view/ui])

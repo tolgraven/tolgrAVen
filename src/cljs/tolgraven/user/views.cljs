@@ -23,45 +23,43 @@
     ; :on-change #(rf/dispatch [:form-field [:login :password] %])])
     :on-change #(rf/dispatch (into path [%]))])
 
-(defn sign-in-input "Sign in component"
-  []
+(defn sign-in-input "Sign in component" []
   [:section>form
-   
    [ui/input-text
-    :placeholder "Username"
-    :path [:form-field [:login :user]]
-    :on-change #(rf/dispatch [:form-field [:login :user] %])]
+    :placeholder "Email"
+    :attr {:autoComplete "email"}
+    :path [:form-field [:login :email]]
+    :on-change #(rf/dispatch [:form-field [:login :email] %])]
    [:br]
    
    [password-input]
    [ui/toggle [:state :login-show-password] "show"]])
 
 
-(defn sign-in "Sign in or go to reg page"
-  []
-  [:div.user-inner.noborder
-   [:h2 "Please log in"]
-   [sign-in-input]
-   (when-let [error (->> @(rf/subscribe [:diag/unhandled])
-                         (filter #(= (:title %) "Sign in"))
-                         last
-                         :message)] ;should be a sub
-     [:<>
-      [:span {:style {:padding-top "0em" :color "var(--red)"}} "Error"]
-     [:span ": " error] [:br]])
-   ; [:br]
-   [:button
-    (let [disabled? (not @(rf/subscribe [:login/valid-input?]))]
+(defn sign-in "Sign in or go to reg page" []
+  (let [disabled? (not @(rf/subscribe [:login/valid-input?]))]
+    [:div.user-inner.noborder
+     [:h2 "Please log in"]
+     [sign-in-input]
+     
+     (when-let [error @(rf/subscribe [:user/error])] ;should be a sub
+       [:<>
+        [:span {:style {:padding-top "0em" :color "var(--red)"}} "Error"]
+        [:span ": " error] [:br]])
+     
+     [:button
       {:on-click #(rf/dispatch [:user/request-login])
        :disabled disabled?
-       :class (when disabled? "noborder")})
-    "Sign in"]    [:span "or "]
-   [:button {:on-click #(rf/dispatch [:user/active-section :register])}
-    "Register"]   [:span "or "]
-   [:button {:on-click #(rf/dispatch [:fb/sign-in :google])}
-    "Sign in with Google"]
-   
-   ])
+       :class (when disabled? "noborder")}
+      "Sign in"]    [:span "or "]
+     
+     [:button {:on-click #(rf/dispatch [:user/request-register])
+               :disabled disabled?
+               :class (when disabled? "noborder")}
+      "Register"]   [:span "or "]
+     
+     [:button {:on-click #(rf/dispatch [:fb/sign-in :google])}
+      "Sign in with Google"] ]))
 
 (defn register "Registration component" []
   [:div.user-inner.user-register
@@ -93,12 +91,12 @@
      [password-input :placeholder "New password"
                      :path [:form-field [:change-password :new]]] 
      [ui/toggle [:state :login-show-password] "show"]
+     [:br]
      [:button
       {:on-click #(rf/dispatch [:user/request-change-password])}
       "Change password"] ]])
 
-(defn change-username "Change username" []
-  )
+(defn change-username "Change username" [])
 
 (defn admin "User admin page" []
   (let [user @(rf/subscribe [:user/active-user])
@@ -114,14 +112,15 @@
         [:span [:em (:email user)]]
         [:br] [:br]
         [:span (str "n" " comments")]
-        [section-btn "View all" :comments :comments]]]]
+        [section-btn "View all" :comments :comments]
+        (when true ;(some #{:blogger :admin} (:roles user))
+          [ui/button "Post blog"      :post-blog :link "#/post-blog" ])
+        ]]]
      
-      [section-btn "Change username"  :username :change-username]
-      [section-btn "Change password"  :password :change-password]
+      [:span "Change: "]
+      [section-btn "username"  :username :change-username]
+      [section-btn "password"  :password :change-password]
       
-      (when true ;(some #{:blogger} (:roles user))
-        [ui/button "Post blog"      :post-blog :link "#/post-blog" ])
-
       [ui/button "Log out" :logout  :action #(rf/dispatch [:fb/sign-out])] ]))
 
 

@@ -45,7 +45,7 @@
 
 (def data ; default db
   {:state {:menu false
-           :is-loading true
+           :is-loading false
            :theme-force-dark true
            :is-personal false
            :experiments :parallax
