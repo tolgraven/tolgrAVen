@@ -129,10 +129,26 @@
   --box-regular-color-flip: var(--box-regular-color); /* light mode always dark shadows */
   --box-faint-color-flip:   var(--box-faint-color);
 
+  // will need drastic tweaking for light theme
   --gradient-bg-main: linear-gradient(-77deg,
-                                      hsl(280, 20%, var(--lum-dark-1)),
-                                      hsl(100, 11%, var(--lum-dark-1)));
+                                      hsl(280, 20%, var(--lum-bg-1)),
+                                      var(--bg-1))
+                                      ;
+  // --gradient-bg-main: linear-gradient(-77deg,
+  //                                     hsl(280, 20%, var(--lum-bg-1)),
+  //                                     hsl(100, 11%, var(--lum-bg-1)));
+  --user-box-bg:      linear-gradient(hsla(240deg 20% var(--lum-bg-3) / 75%) 0%,
+                                      hsla(240deg 38% var(--lum-bg-3) / 90%) 100%);
 
+  --user-box-shadow:     hsla(240deg 33% var(--lum-bg-4) / 30%);
+  --user-avatar-shadow:  hsla(240deg 100% var(--lum-fg-1) / 30%);
+
+}
+
+// use dark by default
+// @media (prefers-color-scheme: dark) {
+:root[color-mode="light"] {
+  // should use some sass trick for this tho...
   --fg-1:       var(--dark-1);
   --fg-2:       var(--dark-2);
   --fg-3:       var(--dark-3);
@@ -157,26 +173,9 @@
   --lum-bg-4:   var(--lum-light-4);
   --lum-bg-5:   var(--lum-light-5);
   --lum-bg-6:   var(--lum-light-6);
-
-  // will need drastic tweaking for light theme
-  --gradient-bg-main: linear-gradient(-77deg,
-                                      hsl(280, 20%, var(--lum-bg-1)),
-                                      var(--bg-1))
-                                      ;
-  // --gradient-bg-main: linear-gradient(-77deg,
-  //                                     hsl(280, 20%, var(--lum-bg-1)),
-  //                                     hsl(100, 11%, var(--lum-bg-1)));
-  --user-box-bg:      linear-gradient(hsla(240deg 20% var(--lum-bg-3) / 80%) 0%,
-                                      hsla(240deg 38% var(--lum-bg-3) / 95%) 100%);
-
-  --user-box-shadow:     hsla(240deg 33% var(--lum-bg-4) / 30%);
-  --user-avatar-shadow:  hsla(240deg 100% var(--lum-fg-1) / 30%);
-
 }
 
-// use dark by default
-// @media (prefers-color-scheme: dark) {
-  :root { /* OS has requested dark mode */
+:root { /* we run dark by default */
     --fg-1:     var(--light-1);
     --fg-2:     var(--light-2);
     --fg-3:     var(--light-3);
@@ -207,7 +206,7 @@
   #logo-top { /* invert then rotate hue to restore blue text */
     filter: #{'invert() hue-rotate(180deg)'};
   }
-// }
+  
 .always-dark { // content with dark non --bg-n background, so use light text
 
 }
