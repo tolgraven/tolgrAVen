@@ -54,6 +54,7 @@
                  [appliedscience/js-interop "0.2.5"]
 
                  [re-frame "1.1.1"]
+                 [kee-frame "0.4.0"]
                  [day8.re-frame/http-fx "0.2.1"]
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
