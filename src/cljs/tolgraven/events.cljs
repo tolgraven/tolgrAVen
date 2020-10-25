@@ -146,13 +146,6 @@
                 [:option [:firebase]]]}))
 
 
-(rf/reg-cofx :user/gen-color
-             #(assoc % :bg-color (util/css-str "hsla"
-                                               (rand 360)
-                                               (+ 0.1 (rand 0.2))
-                                               (+ 0.2 (rand 0.1))
-                                               0.5)))
-
 (rf/reg-event-fx :fb/finish-sign-in [(rf/inject-cofx :user/gen-color)]
  (fn [{:keys [db bg-color]} [_ user]]
    {:db (update-in db [:fb/users (:uid user)] #(merge %2 %1)
@@ -259,23 +252,6 @@
  (fn [id & [offset]]
    (util/scroll-to id offset)))
 
-(defonce uuid-counter (atom 0)) ;js has its own id gen thing so use that maybe. but no sequential then?
-(rf/reg-cofx :gen-uuid #(assoc % :id (swap! uuid-counter inc)))
-
-(defonce id-counters (atom {})) ;js has its own id gen thing so use that maybe. but no sequential then?
-(rf/reg-cofx :gen-id
- (fn [cofx [k & [parent-id]]] ;however would manage to pass hahah
-   (let [k (or k :id)]
-     (-> cofx
-         (assoc :id {:id (swap! id-counters update k (fnil inc -1)) ;here rather, uh sub parent by id, check index, inc
-                     :parent-id parent-id
-                     :uuid (random-uuid)})
-         (assoc-in [:db :state :id-counters] @id-counters))))) ;seems harmless enough. then persist.
-
-
-(rf/reg-fx :id-counters/set!
- (fn [state]
-   (reset! id-counters state)))
 
 (rf/reg-event-fx :id-counters/handle
   (fn [{:keys [db]} [_ state]]
@@ -377,11 +353,6 @@
  (fn [elem]
    (util/run-highlighter! "pre" elem)))
 
-
-(rf/reg-cofx :now         #(assoc % :now (ctc/to-long (ct/now))))
-
-(defonce diag-id-counter (atom 0)) ;why not just keep this in db as well tho?
-(rf/reg-cofx :diag/gen-id #(assoc % :id (swap! diag-id-counter inc)))
 
 (rf/reg-event-fx :diag/new  ;this needs a throttle lol
  [debug
