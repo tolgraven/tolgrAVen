@@ -657,7 +657,7 @@ video {
     width: 500%;
     margin-left: -250%;
     animation: sweep 1.8s linear infinite;
-    background: linear-gradient(to right, rgba($ph-bg, 0) 46%, rgba($ph-bg, .35) 50%, rgba($ph-bg, 0) 54%) 50% 50%;
+    // background: linear-gradient(to right, rgba($ph-bg, 0) 46%, rgba($ph-bg, .35) 50%, rgba($ph-bg, 0) 54%) 50% 50%;
   }
 }
 @keyframes sweep {
@@ -672,19 +672,19 @@ video {
   } 100% { background-color: rgba(165, 165, 165, 0.12);
   }
 }
-@mixin nth-children($points...) {
-  @each $point in $points {
-    &:nth-child(#{$point}) {
-      @content;
-    }
-  }
-}
-// width seems way more reasonable just doing in js tho
-// or would we repeat same ten like
-@include nth-children(1, 2, 7, 9) { width: 90%; }
-@include nth-children(5, 6, 10) { width: 70%; }
-@include nth-children(3, 7) { width: 50%; }
-@include nth-children(4, 10) { width: 60%; }
+// @mixin nth-children($points...) {
+//   @each $point in $points {
+//     &:nth-child(#{$point}) {
+//       @content;
+//     }
+//   }
+// }
+// // width seems way more reasonable just doing in js tho
+// // or would we repeat same ten like
+// @include nth-children(1, 2, 7, 9) { width: 90%; }
+// @include nth-children(5, 6, 10) { width: 70%; }
+// @include nth-children(3, 7) { width: 50%; }
+// @include nth-children(4, 10) { width: 60%; }
 
 
 textarea, input, button {

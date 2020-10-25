@@ -2267,7 +2267,8 @@ button {
   button label {
     position: relative;
     font-size: 1.2rem;
-    z-index: 2; }
+    z-index: 2;
+    cursor: pointer; }
 
 button:hover, button:active {
   border-radius: 0; }
@@ -2381,6 +2382,62 @@ video {
   opacity: 0.8;
   transition: all 0.5s;
   position: relative; }
+
+.loading-text-line {
+  position: relative;
+  overflow: hidden;
+  height: 1em;
+  margin: 0.5em;
+  -webkit-animation: pulse 1s infinite ease-in-out;
+          animation: pulse 1s infinite ease-in-out; }
+  .loading-text-line:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 50%;
+    z-index: 1;
+    width: 500%;
+    margin-left: -250%;
+    -webkit-animation: sweep 1.8s linear infinite;
+            animation: sweep 1.8s linear infinite; }
+
+@-webkit-keyframes sweep {
+  0% {
+    transform: translate3d(-30%, 0, 0); }
+  100% {
+    transform: translate3d(30%, 0, 0); } }
+
+@keyframes sweep {
+  0% {
+    transform: translate3d(-30%, 0, 0); }
+  100% {
+    transform: translate3d(30%, 0, 0); } }
+
+@-webkit-keyframes pulse {
+  0% {
+    background-color: rgba(165, 165, 165, 0.12); }
+  37% {
+    background-color: rgba(165, 165, 165, 0.3); }
+  45% {
+    background-color: rgba(165, 165, 165, 0.35); }
+  50% {
+    background-color: rgba(165, 165, 165, 0.25); }
+  100% {
+    background-color: rgba(165, 165, 165, 0.12); } }
+
+@keyframes pulse {
+  0% {
+    background-color: rgba(165, 165, 165, 0.12); }
+  37% {
+    background-color: rgba(165, 165, 165, 0.3); }
+  45% {
+    background-color: rgba(165, 165, 165, 0.35); }
+  50% {
+    background-color: rgba(165, 165, 165, 0.25); }
+  100% {
+    background-color: rgba(165, 165, 165, 0.12); } }
 
 textarea:focus, input:focus, button:focus {
   outline: 0;
