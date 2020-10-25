@@ -51,22 +51,42 @@
    (util/<-css-var var-name)))
 
 (rf/reg-sub :menu
- (fn [db [_ item]]
-   (cond-> (get-in db [:state :menu])
-     item item)))
+ (fn [db [_ _]]
+   (get-in db [:state :menu])))
+
+
+(rf/reg-sub :diag/messages
+ (fn [db [_ _]]
+   (get-in db [:diagnostics :messages])))
+
+(rf/reg-sub :diag/message
+ :<- [:diag/messages]
+ (fn [messages [_ id]]
+   (get messages id)))
+
+(rf/reg-sub :diag/unhandled
+ :<- [:get :diagnostics :unhandled]
+ :<- [:diag/messages]
+ (fn [[unhandled-ids messages] [_ _]]
+   (map messages unhandled-ids)))
+
 
 (rf/reg-sub :hud ;so this should massage :diagnostics and only return relevant stuff
  :<- [:get :diagnostics]
- :<- [:get :options :hud]
+ :<- [:option [:hud]]
  :<- [:get :hud]
- (fn [[{:keys [messages unhandled]}
-       {:keys [timeout level]}
+ (fn [[{:keys [messages unhandled]} ;unhandled just contains ids
+       {:keys [timeout level]} ;minimum level
        hud]
       [_ & [request-key]]] ;could be like :modal, :error...
   (case request-key
    :modal (when (:modal hud) (get messages (:modal hud))) ;fetch message by id...
    (let [including (conj (take-while #(not= % level)
-                                    [:error :warning :info]) level)]
-   #_(filter #(ct/after? (ct/plus (:time %) (ct/seconds timeout)) (ct/now)) diag)
-   (filter #(some #{(:level %)} including)
-           (map messages unhandled))))))
+                                     [:error :warning :info])
+                         level)]
+     (filter #(some #{(:level %)} including)
+             (map messages unhandled))))))
+
+(rf/reg-sub :modal
+ (fn [db [_ _]]
+   (get-in db [:state :modal])))

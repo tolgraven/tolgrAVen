@@ -166,16 +166,25 @@
             attr)])))) ;after not before, want to be able to override stuff duh
 
 
+(defn format-log-message
+  [message]
+  (with-out-str (pprint/pprint message)) ;XXX temp.
+  (pprint/write message :stream nil) ;XXX temp.
+  ; (cond
+  ;   (string? message) message
+  ;   (object? message) (-> message js->clj :message str))
+  )
+
 (defn log "Show an expandable log thingy. Prob dumb here but good base for any sorta feed thingy I guess!"
   [options content]
- (let [time-format (formatters :hour-minute-second)
-       table-ref (atom nil) ; scroll (r/atom nil)
+ (let [table-ref (atom nil)
        log-line (fn [{:keys [time level title message] :as msg}]
                   [:tr.log-messages
-                   [:td.log-time (unparse time-format time)]
+                    [:td.log-time (ctf/unparse (ctf/formatters :hour-minute-second)
+                                               (ctc/from-long time))]
                    [:td.log-level {:class (name level)} (name level)]
                    [:td.log-title title]
-                   [:td.log-message #_{:style {:position :relative :left "1em"}} (str message)]])]
+                   [:td.log-message [:pre (format-log-message message)]]])]
   (r/create-class
    {:display-name "Log"
     :component-did-update (fn [this]
@@ -184,29 +193,31 @@
     :reagent-render
     (fn []
       (let [messages (:messages @content)]
-        [:section.log-container.solid-bg
+        [:section#log-container.log-container.solid-bg
+         {:ref #(when % (rf/dispatch [:run-highlighter! %]))}
+         ; {:ref #(when % (util/run-highlighter! "pre" %))}
          [minimize [:state [:display :log]]] ;this also needs to send an event to scroll-top the fucker...
-         [:table.lined-container-sm
-            {:ref (fn [el] (reset! table-ref el))
+         [:table ;.lined-container-sm
+            {:ref (fn [el]
+                    (reset! table-ref el))
              :style {:max-height (if (:minimized @options) "1.2em" "20em")}}
           [:tbody.log
            (for [msg (map messages (sort (keys messages))
-                          #_(if (:minimized @options) ;upside-down?
-                              [(count messages)]
-                              (sort (keys messages))))]
+                          ; (if (:minimized @options) ;upside-down?
+                          ;     [(count messages)]
+                          ;     (sort (keys messages)))
+                            )]
              ^{:key (str (:id msg))}
              [log-line msg])]]]))})))
 
 (defn modal "Container for anything modal, taking care of common stuff. USE FOR COOKIE NOTICE LOL YES"
- [component & [on-outside-click]]
+ [component & [on-outside-click]] ; and path for when to show...
  (let []
-  (rf/dispatch [:modal true])
   [:div#modal-container
-   [:div#modal-bg {:on-click on-outside-click
-                   :style {:position :fixed
-                           :width "100%" :height "100%" :top 0 :left 0
-                           :background "rgb(30, 30, 30, 0.5)"}}]
-   [:div#modal {:class (when @(rf/subscribe [:modal]) "modal-is-open")}
+   {:class (when @(rf/subscribe [:state [:modal]]) "modal-is-open")}
+   [:div#modal-bg {:on-click (or on-outside-click
+                                 #(rf/dispatch [:state [:modal] false]))}]
+   [:div#modal ;{:class (when @(rf/subscribe [:state [:modal]]) "modal-is-open")}
     component]]))
 
 (defn hud-modal "Show more info about a specific HUD message"
@@ -230,10 +241,15 @@
                 [:div.hud-message
                   {:class (name level)
                    :style {:position :relative}
-                   :on-click #(rf/dispatch (or (:on-click actions) ; or actions navigate to log...
-                                               [:hud :modal id])) }
-                  [:h4 {:style {:font-weight :bold}} title]
-                  [:p message]
+                   ; :ref #(when % (rf/dispatch [:run-highlighter! %]))
+                   :ref #(when % (util/run-highlighter! "pre" %)) ;this works but dispatch not??
+                   :on-click #(doall (for [action (or (:on-click actions)
+                                                       [[:diag/unhandled :remove id]
+                                                        [:common/navigate! :log]])] ;TODO should then find elem by log id and scroll to it
+                                       (rf/dispatch action)))}
+                  [:h4.hud-message-title title]
+                  (when message
+                    [:pre (format-log-message message)])
                   [close (fn [e]
                              (.stopPropagation e) ;it's causing a click on hud-message as well...
                              (rf/dispatch [:diag/unhandled :remove id]))]])]
