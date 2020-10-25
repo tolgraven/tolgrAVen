@@ -13,26 +13,29 @@
 .blog {
   background: var(--gradient-bg-main);
 
-  > section.blog-post {
+  > .blog-post {
     border: 0;
     border-bottom: var(--line-width-sm) solid;
     // box-shadow: 0 0 4px 1px var(--fg-4); // looks nice on sep line but no go here
 
+    .blog-post-header {
+      
+      .blog-post-tags {
+        margin-top: 0.4em;
+        > span { // should be linked too
+          margin-right: var(--space);
+          padding: 0.15em 0.4em;
+          background-color: var(--bg-4);
+        }
+      }
+    }
     &:last-of-type {
       border: 0;
     }
-
-    .blog-post-tags {
-      margin-top: 0.4em;
-      > span {
-        // should be linked too
-        margin-right: var(--space);
-        padding: 0.15em 0.4em;
-        background-color: var(--bg-4);
-        // display: inline;
-      }
+    .blog-post-text {
+      padding-left: 1em;
+      padding-top: 1em;
     }
-
   }
 }
 .blog-post-preview {
@@ -40,6 +43,7 @@
   margin-bottom: calc(2 * var(--space-lg));
   @include rounded-bottom;
 }
+
 .blog-comments {
   background-color: var(--bg-1);
   border: 0;
@@ -76,7 +80,7 @@
 .blog-comment {
   position: relative;
   margin-bottom: 1.0em;
-  padding: var(--space) 0.25em;
+  padding: calc(0.5 * var(--space)) 0.25em;
   padding-right: 0.0rem;
   background-color: var(--bg-2);
   // border-top: var(--line-width-sm) solid;
@@ -212,10 +216,10 @@ textarea.blog-adding-comment-textbox { // only text
 }
 
 .blog-comment-preview {
-  // background-color: var(--bg-2);
-  margin: var(--space-sm);
+  // margin: var(--space-sm);
   padding: 0.75em;
   padding-bottom: var(--space-lg);
+  border-left: 0.5em solid var(--fg-6);
 }
 
 .user-avatar.blog-user-avatar {

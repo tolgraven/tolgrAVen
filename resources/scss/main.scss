@@ -70,7 +70,7 @@
   --lum-dark-1:         9%;
   --lum-dark-2:        11%;
   --lum-dark-3:        15%;
-  --lum-dark-4:        20%;
+  --lum-dark-4:        18%;
   --lum-dark-5:        27%;
   --lum-dark-6:        36%;
   --lum-light-1:       calc(100% - var(--lum-dark-1));
@@ -213,8 +213,8 @@
 
 @media screen and (min-width: 800px) and (min-height: 800px) {
   :root {
-    --space: 2.0rem;
-    --space-lg: 3.0rem;
+    --space: 1.8rem;
+    --space-lg: 2.5rem;
   }
 }
 @media screen and (min-width: 1100px) {
@@ -542,12 +542,15 @@ button {
   --around: calc(0.4 * var(--space)) calc(0.4 * var(--space-lg));
   padding: var(--around);
   margin: var(--around);
-  background: hsla(var(--hue-1), 7%, var(--lum-bg-2), 0.35);
+  // background: hsla(var(--hue-1), 7%, var(--lum-bg-2), 0.35);
+  background: transparent;
   color: var(--fg-2);
   border: var(--line-width-md) solid;
   border-radius: 0.15rem;
   position: relative;
   cursor: pointer;
+  outline: 1px transparent;
+  transition: outline-color 0.25s;
 
   label {
     position: relative;
@@ -559,10 +562,12 @@ button {
 button:hover, button:active {
   // transform: scale(1.05);
   border-radius: 0;
+  outline: 1.0px solid;
+  transition: outline-color 0.2s;
 }
 button:hover .blur-bg, button:active .blur-bg,
 .blur-bg:hover, .blur-bg:active {
-  opacity: 1.0;
+  opacity: 0.8;
 }
 
 input {
@@ -870,7 +875,7 @@ textarea, .form-control {
   z-index: 6;
 }
 #services {
-  color: var(--light-1); // dark bg so white text always
+  // color: var(--light-1); // dark bg so white text always
   position: sticky;
   z-index: 12;
   top: 0;

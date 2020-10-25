@@ -135,9 +135,8 @@
   width: 100%;
   z-index: 0;
   height: 100%;
-  opacity: 0.4;
-  backdrop-filter: blur(2rem) brightness(130%);
-  -webkit-backdrop-filter: blur(2rem) brightness(130%);
+  opacity: 0.6;
+  backdrop-filter: blur(2rem) brightness(110%);
   transition: opacity 0.5s;
 }
 .blur-behind {

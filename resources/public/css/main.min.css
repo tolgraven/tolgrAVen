@@ -221,8 +221,7 @@ menu > nav > .nav-section:last-of-type > .nav-links {
   line-height: 0.80em; }
 
 .user-btn {
-  cursor: pointer;
-  margin-left: calc(4 * var(--space-lg)); }
+  cursor: pointer; }
 
 .user-name {
   position: absolute;
@@ -265,7 +264,6 @@ menu > nav > .nav-section:last-of-type > .nav-links {
     position: absolute;
     top: 16%;
     right: 11%;
-    margin-right: calc(4 * --var(--space-lg));
     z-index: 5; }
   #nav-menu-open:checked ~ header .cover {
     display: block; }
@@ -1087,9 +1085,9 @@ h3::first-letter {
   width: 100%;
   z-index: 0;
   height: 100%;
-  opacity: 0.4;
-  backdrop-filter: blur(2rem) brightness(130%);
-  -webkit-backdrop-filter: blur(2rem) brightness(130%);
+  opacity: 0.6;
+  -webkit-backdrop-filter: blur(2rem) brightness(110%);
+          backdrop-filter: blur(2rem) brightness(110%);
   transition: opacity 0.5s; }
 
 .blur-behind {
@@ -1416,11 +1414,20 @@ input[type=range]:focus {
 /* BLOG STUFF */
 .blog {
   background: var(--gradient-bg-main); }
-  .blog > section.blog-post {
+  .blog > .blog-post {
     border: 0;
     border-bottom: var(--line-width-sm) solid; }
-    .blog > section.blog-post:last-of-type {
+    .blog > .blog-post .blog-post-header .blog-post-tags {
+      margin-top: 0.4em; }
+      .blog > .blog-post .blog-post-header .blog-post-tags > span {
+        margin-right: var(--space);
+        padding: 0.15em 0.4em;
+        background-color: var(--bg-4); }
+    .blog > .blog-post:last-of-type {
       border: 0; }
+    .blog > .blog-post .blog-post-text {
+      padding-left: 1em;
+      padding-top: 1em; }
 
 .blog-post-preview {
   margin-top: calc(1 * var(--space-lg));
@@ -1447,7 +1454,7 @@ input[type=range]:focus {
 .blog-comment {
   position: relative;
   margin-bottom: 1.0em;
-  padding: var(--space) 0.25em;
+  padding: calc(0.5 * var(--space)) 0.25em;
   padding-right: 0.0rem;
   background-color: var(--bg-2);
   border-top: 0;
@@ -1547,9 +1554,9 @@ textarea.blog-adding-comment-textbox {
   color: var(--fg-2); }
 
 .blog-comment-preview {
-  margin: var(--space-sm);
   padding: 0.75em;
-  padding-bottom: var(--space-lg); }
+  padding-bottom: var(--space-lg);
+  border-left: 0.5em solid var(--fg-6); }
 
 .user-avatar.blog-user-avatar {
   background: var(--bg-1);
@@ -1561,23 +1568,30 @@ textarea.blog-adding-comment-textbox {
 .user-section-wrapper {
   max-height: 0;
   overflow-y: scroll;
-  opacity: 0.5;
-  transition: max-height 0.9s ease, margin 0.6s ease, opacity 0.2s; }
+  opacity: 0.6;
+  -webkit-backdrop-filter: blur(0.3rem);
+          backdrop-filter: blur(0.3rem);
+  transition: max-height 0.7s ease, margin 0.7s ease, opacity 0.8s; }
 
 .user-section-wrapper.active {
   max-height: 35vh;
   opacity: 1.0;
   margin-top: var(--space-lg);
-  transition: max-height 0.7s ease, margin 0.6s ease, opacity 0.9s ease;
-  box-shadow: 1px 1px 10px 10px rgba(30, 30, 60, 0.4); }
+  transition: max-height 0.6s ease, margin 0.6s ease, opacity 0.8s ease;
+  box-shadow: 1px 1px 8px 10px var(--user-box-shadow); }
 
 .user-section {
   border: var(--line-width) solid;
-  background: linear-gradient(180deg, rgba(30, 30, 45, 0.8) 0%, rgba(20, 20, 45, 0.95) 100%); }
-  .user-section button {
-    font-size: 0.8em; }
+  background: var(--user-box-bg); }
+  .user-section button label {
+    font-size: 92%; }
   .user-section .user-inner {
-    padding: var(--space) calc(2 * var(--space)); }
+    padding: calc(0.5 * var(--space)) calc(2.00 * var(--space)) 0; }
+    .user-section .user-inner > section {
+      border-top: var(--line-width-md) solid var(--fg-4);
+      padding: var(--space); }
+      .user-section .user-inner > section > form {
+        padding-top: 0.6em; }
 
 .user-back-btn {
   opacity: 0;
@@ -1590,7 +1604,7 @@ textarea.blog-adding-comment-textbox {
 .user-avatar {
   border-radius: 50%;
   border: var(--line-width-sm) solid;
-  box-shadow: 0px 0px 10px 1px rgba(230, 230, 255, 0.5);
+  box-shadow: 0px 0px 10px 1px var(--user-avatar-shadow);
   margin-right: var(--space-lg);
   width: calc(6.5 * var(--space));
   height: calc(6.5 * var(--space)); }
@@ -1798,7 +1812,7 @@ textarea.blog-adding-comment-textbox {
   --lum-dark-1:         9%;
   --lum-dark-2:        11%;
   --lum-dark-3:        15%;
-  --lum-dark-4:        20%;
+  --lum-dark-4:        18%;
   --lum-dark-5:        27%;
   --lum-dark-6:        36%;
   --lum-light-1:       calc(100% - var(--lum-dark-1));
@@ -1854,8 +1868,15 @@ textarea.blog-adding-comment-textbox {
   /* light mode always dark shadows */
   --box-faint-color-flip:   var(--box-faint-color);
   --gradient-bg-main: linear-gradient(-77deg,
-                                      hsl(280, 20%, var(--lum-dark-1)),
-                                      hsl(100, 11%, var(--lum-dark-1)));
+                                      hsl(280, 20%, var(--lum-bg-1)),
+                                      var(--bg-1))
+                                      ;
+  --user-box-bg:      linear-gradient(hsla(240deg 20% var(--lum-bg-3) / 75%) 0%,
+                                      hsla(240deg 38% var(--lum-bg-3) / 90%) 100%);
+  --user-box-shadow:     hsla(240deg 33% var(--lum-bg-4) / 30%);
+  --user-avatar-shadow:  hsla(240deg 100% var(--lum-fg-1) / 30%); }
+
+[color-mode="light"]:root {
   --fg-1:       var(--dark-1);
   --fg-2:       var(--dark-2);
   --fg-3:       var(--dark-3);
@@ -1881,43 +1902,43 @@ textarea.blog-adding-comment-textbox {
   --lum-bg-5:   var(--lum-light-5);
   --lum-bg-6:   var(--lum-light-6); }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* OS has requested dark mode */
-    --fg-1:     var(--light-1);
-    --fg-2:     var(--light-2);
-    --fg-3:     var(--light-3);
-    --fg-4:     var(--light-4);
-    --fg-5:     var(--light-5);
-    --fg-6:     var(--light-6);
-    --lum-fg-1: var(--lum-light-1);
-    --lum-fg-2: var(--lum-light-2);
-    --lum-fg-3: var(--lum-light-3);
-    --lum-fg-4: var(--lum-light-4);
-    --lum-fg-5: var(--lum-light-5);
-    --lum-fg-6: var(--lum-light-6);
-    --bg-1:     var(--dark-1);
-    --bg-2:     var(--dark-2);
-    --bg-3:     var(--dark-3);
-    --bg-4:     var(--dark-4);
-    --bg-5:     var(--dark-5);
-    --bg-6:     var(--dark-6);
-    --lum-bg-1: var(--lum-dark-1);
-    --lum-bg-2: var(--lum-dark-2);
-    --lum-bg-3: var(--lum-dark-3);
-    --lum-bg-4: var(--lum-dark-4);
-    --lum-bg-5: var(--lum-dark-5);
-    --lum-bg-6: var(--lum-dark-6);
-    --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
-    --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint)); }
-  #logo-top {
-    /* invert then rotate hue to restore blue text */
-    filter: invert() hue-rotate(180deg); } }
+:root {
+  /* we run dark by default */
+  --fg-1:     var(--light-1);
+  --fg-2:     var(--light-2);
+  --fg-3:     var(--light-3);
+  --fg-4:     var(--light-4);
+  --fg-5:     var(--light-5);
+  --fg-6:     var(--light-6);
+  --lum-fg-1: var(--lum-light-1);
+  --lum-fg-2: var(--lum-light-2);
+  --lum-fg-3: var(--lum-light-3);
+  --lum-fg-4: var(--lum-light-4);
+  --lum-fg-5: var(--lum-light-5);
+  --lum-fg-6: var(--lum-light-6);
+  --bg-1:     var(--dark-1);
+  --bg-2:     var(--dark-2);
+  --bg-3:     var(--dark-3);
+  --bg-4:     var(--dark-4);
+  --bg-5:     var(--dark-5);
+  --bg-6:     var(--dark-6);
+  --lum-bg-1: var(--lum-dark-1);
+  --lum-bg-2: var(--lum-dark-2);
+  --lum-bg-3: var(--lum-dark-3);
+  --lum-bg-4: var(--lum-dark-4);
+  --lum-bg-5: var(--lum-dark-5);
+  --lum-bg-6: var(--lum-dark-6);
+  --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
+  --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint)); }
+
+#logo-top {
+  /* invert then rotate hue to restore blue text */
+  filter: invert() hue-rotate(180deg); }
 
 @media screen and (min-width: 800px) and (min-height: 800px) {
   :root {
-    --space: 2.0rem;
-    --space-lg: 3.0rem; } }
+    --space: 1.8rem;
+    --space-lg: 2.5rem; } }
 
 @media screen and (min-width: 1100px) {
   .line {
@@ -1983,9 +2004,15 @@ textarea.blog-adding-comment-textbox {
 @media only screen and (min-device-width: 414px) and (max-device-width: 736px) {
   /* 6-8 plus */ }
 
-@media screen and (max-width: 400px) {
+@media screen and (max-width: 500px) {
   :root {
     font-size: 0.80rem;
+    --space: 0.6rem;
+    --space-lg: 0.9rem; } }
+
+@media screen and (max-width: 400px) {
+  :root {
+    font-size: 0.72rem;
     --space-sides: calc(0.5 * var(--space));
     /* remember -sides based on the smaller num for mobile (since margins are more precious) */
     --space-edges: calc(0.5 * var(--space)); }
@@ -2258,12 +2285,14 @@ button {
   --around: calc(0.4 * var(--space)) calc(0.4 * var(--space-lg));
   padding: var(--around);
   margin: var(--around);
-  background: hsla(var(--hue-1), 7%, var(--lum-bg-2), 0.35);
+  background: transparent;
   color: var(--fg-2);
   border: var(--line-width-md) solid;
   border-radius: 0.15rem;
   position: relative;
-  cursor: pointer; }
+  cursor: pointer;
+  outline: 1px transparent;
+  transition: outline-color 0.25s; }
   button label {
     position: relative;
     font-size: 1.2rem;
@@ -2271,11 +2300,13 @@ button {
     cursor: pointer; }
 
 button:hover, button:active {
-  border-radius: 0; }
+  border-radius: 0;
+  outline: 1.0px solid;
+  transition: outline-color 0.2s; }
 
 button:hover .blur-bg, button:active .blur-bg,
 .blur-bg:hover, .blur-bg:active {
-  opacity: 1.0; }
+  opacity: 0.8; }
 
 input {
   margin: 0 0.25em;
@@ -2501,7 +2532,8 @@ textarea, .form-control {
   box-shadow: 0px 12px 15px 3px inset rgba(150, 150, 250, 0.15);
   border-bottom-left-radius: 0.75rem;
   border-bottom-right-radius: 0.325rem;
-  color: var(--bg-3); }
+  color: var(--bg-3);
+  opacity: 0.90; }
   .hud-message.error {
     background: linear-gradient(0deg, var(--red), var(--red-2)); }
   .hud-message.warning {
@@ -2571,7 +2603,6 @@ textarea, .form-control {
   z-index: 6; }
 
 #services {
-  color: var(--light-1);
   position: -webkit-sticky;
   position: sticky;
   z-index: 12;
