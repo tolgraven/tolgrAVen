@@ -177,8 +177,17 @@
                diff)]
      {:db (-> db
               (assoc-in state-path (if-not (= vote voted) vote false))
-              (update-in db-path + diff))})))
-; (assemble-path [:blog :posts 0] [0 2] :score)
+              (update-in db-path + diff))
+      :firestore/set
+      {:path [:blog-posts (str (first path))]
+         :data (assoc-in {} (assemble-path [] (rest path) :score)
+                         (update-in db db-path + diff)) ;  or just a real back-end. cant trust user to provide tot score so
+         :set-options {:merge true
+                       :merge-fields [:comments]}
+         :on-success [:diag/new :info "Vote" "You are a champion of democracy"] ;or, some event navigating to post
+         :on-failure [:diag/new :error "Vote" "Failed"]}})))
+; (assemble-path [:blog-posts 0] [0] :score)
+; (assemble-path [] [0] :score)
 ; for comment scroll lazy load:
 ; pull comments one by one, chunked so maybe like first five
 ; put intersectionobserver on maybe second to last one
