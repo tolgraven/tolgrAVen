@@ -273,9 +273,16 @@
   /* 6-8 plus */
 }
 
-@media screen and (max-width: 400px) {
+@media screen and (max-width: 500px) {
   :root {
     font-size: 0.80rem;
+    --space: 0.6rem;
+    --space-lg: 0.9rem;
+  }
+}
+@media screen and (max-width: 400px) {
+  :root {
+    font-size: 0.72rem;
     --space-sides: calc(0.5 * var(--space)); /* remember -sides based on the smaller num for mobile (since margins are more precious) */
     --space-edges: calc(0.5 * var(--space));
   }

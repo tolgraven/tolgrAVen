@@ -62,8 +62,7 @@
         (let [day-ago (ct/minus (ct/now) (ct/hours 24))]
           (if (ct/after? ts day-ago)
             (str (pluralize (int (/ mins 60)) "hour") " ago")
-            (str "on " (ctf/unparse (ctf/formatters :date) ts)
-                 " at " (ctf/unparse (ctf/formatters :hour-minute) ts))))))
+            (str "on " (ctf/unparse (ctf/formatters :date) ts))))))
     ""))
 
 

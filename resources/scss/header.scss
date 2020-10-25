@@ -119,10 +119,6 @@ menu > nav > .nav-section:last-of-type > .nav-links {
 
 .user-btn {
   cursor: pointer;
-  margin-left: calc(4 * var(--space-lg));
-  // position: absolute;
-  // left: 88%;
-  // top: 40%;
 }
 
 .user-name {
@@ -172,11 +168,8 @@ menu > nav > .nav-section:last-of-type > .nav-links {
   
   .user-btn {
     position: absolute;
-    // top: 2%;
-    // right: 2rem;
     top: 16%;
     right: 11%;
-    margin-right: calc(4 * --var(--space-lg));
     z-index: 5;
   }
   .cover {
