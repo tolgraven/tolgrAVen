@@ -100,8 +100,13 @@
   
   ; :hooks [leiningen.sassc]
   :clean-targets ^{:protect false}
-  [:target-path [:cljsbuild :builds :app :compiler :output-dir]
-   [:cljsbuild :builds :app :compiler :output-to]]
+  [:target-path
+   :compile-path
+   [:cljsbuild :builds :app :compiler :output-dir]
+   [:cljsbuild :builds :app :compiler :output-to]
+   "resources/public/js/compiled/out"
+   "resources/public/js/compiled/app.js"
+   ]
   :figwheel
   {:http-server-root "public"
   ; {:http-server-root "resources/public"
