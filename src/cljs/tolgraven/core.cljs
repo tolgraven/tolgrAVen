@@ -94,41 +94,53 @@
    [:a {:name "bottom"}]])
 
 
+(defn with-heading
+  [heading-path component & [override]]
+  [:<>
+   [view/fading-bg-heading (merge @(rf/subscribe [:content heading-path])
+                                  override)]
+   component])
+
 (defn test-page []
   [:<>
    [view/fading-bg-heading (merge @(rf/subscribe [:content [:common :banner-heading]])
                                   {:title "Experiments" :tint "green"})]
    [:section.experiments.solid-bg.fullwide.noborder
-    [experiment/parallax]]])
+    (let [routes {:parallax #'experiment/parallax :codemirror #'experiment/code-mirror}
+          tab @(rf/subscribe [:state [:experiments]])]
+    [:ul.tabs-container.flex
+     (for [tab-key [:parallax :codemirror :broken]] ^{:key tab-key}
+            [:li [:button {:class (if (= tab tab-key)
+                                    "noborder"
+                                    "topborder")
+                           :on-click #(rf/dispatch [:state [:experiments] tab-key])
+                           } tab-key]])])]])
 
 (defn home-page []
   [view/ui])
 
 (defn doc-page []
   (let [docs @(rf/subscribe [:content [:docs]])]
-    [:<>
-      [view/fading-bg-heading (:heading docs)]
-
-     (when-let [md (:md docs)]
-       [:section.docs.solid-bg.hi-z
-        {:ref #(when % (util/run-highlighter! "pre" %))} ; very nice way to get a did-mount
-        [ui/md->div md]])]))
+    [with-heading [:docs :heading]
+     [:section.docs.solid-bg.hi-z
+      {:ref #(when % (util/run-highlighter! "pre" %))} ; very nice way to get a did-mount
+      [ui/md->div (:md docs)]]]))
 
 
-(defn blog-page [] ; how nicely set is-personal for this but also unset etc yada
-  [:<>
-   (let [heading @(rf/subscribe [:content [:blog :heading]]) ]
-     [:<>
-      [view/fading-bg-heading heading]
-      [blog/blog]])])
+(defn blog-page []
+  [with-heading [:blog :heading]
+   [blog/blog]])
+
+(defn post-blog-page [] ; how nicely set is-personal for this but also unset etc yada
+  [with-heading [:blog :heading] 
+   [blog/post-blog]])
 
 
 (defn log-page []
-  (let [bg @(rf/subscribe [:content [:common :banner-heading]])]
-    [:<>
-     [view/fading-bg-heading (merge bg {:title "Log" :tint "blue"})]
-     [ui/log (rf/subscribe [:option [:log]])
-      (rf/subscribe [:get :diagnostics])]]))
+  [with-heading [:common :banner-heading]
+   [ui/log (rf/subscribe [:option [:log]])
+    (rf/subscribe [:get :diagnostics])]
+   {:title "Log" :tint "blue"}])
 
 
 (def router ; XXX weird thing doesnt automatically scroll to top when change page...
