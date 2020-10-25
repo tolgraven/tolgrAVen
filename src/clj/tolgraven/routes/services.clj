@@ -10,30 +10,25 @@
     [tolgraven.routes.services.graphql :as graphql]
     [tolgraven.middleware.formats :as formats]
     [tolgraven.middleware.exception :as exception]
-    [ring.util.http-response :refer :all]
+    [tolgraven.db.core :as db]
     [clojure.java.io :as io]))
+
+(defn plain-text-header [resp]
+  (response/header resp "Content-Type" "text/plain; charset=utf-8"))
 
 (defn service-routes []
   ["/api"
    {:coercion spec-coercion/coercion
     :muuntaja formats/instance
     :swagger {:id ::api}
-    :middleware [;; query-params & form-params
-                 parameters/parameters-middleware
-                 ;; content-negotiation
-                 muuntaja/format-negotiate-middleware
-                 ;; encoding response body
-                 muuntaja/format-response-middleware
-                 ;; exception handling
-                 exception/exception-middleware
-                 ;; decoding request body
-                 muuntaja/format-request-middleware
-                 ;; coercing response bodys
-                 coercion/coerce-response-middleware
-                 ;; coercing request parameters
-                 coercion/coerce-request-middleware
-                 ;; multipart
-                 multipart/multipart-middleware]}
+    :middleware [parameters/parameters-middleware       ;; query-params & form-params
+                 muuntaja/format-negotiate-middleware   ;; content-negotiation
+                 muuntaja/format-response-middleware    ;; encoding response body
+                 exception/exception-middleware         ;; exception handling
+                 muuntaja/format-request-middleware     ;; decoding request body
+                 coercion/coerce-response-middleware    ;; coercing response bodys
+                 coercion/coerce-request-middleware     ;; coercing request parameters
+                 multipart/multipart-middleware]}       ;; multipart
 
    ;; swagger documentation
    ["" {:no-doc true
@@ -48,12 +43,35 @@
              {:url "/api/swagger.json"
               :config {:validator-url nil}})}]]
 
-   ["/ping"
-    {:get (constantly (ok {:message "pong"}))}]
-   
-   ["/graphql" {:no-doc true
-                :post (fn [req] (ok (graphql/execute-request (-> req :body slurp))))}]
+   ["/fart" {:get (fn [_]
+                    (-> "buttrez"
+                        response/ok
+                        plain-text-header))}]
+   ["/blog" {:summary "Get specific blog-post"
+             :parameters {:query {:id int?}}
+             :get (fn [{{{:keys [id]} :query} :parameters}]
+                    (-> "not" ;(db/get-blog id)
+                        ; (str "faaart")
+                        response/ok
+                        plain-text-header))}]
+   ["/blog/:id" {:get (fn [{{:keys [id]} :path-params}]
+                          (timbre/debug "Blog: " id (string? id))
+                    ; (-> (db/get-blog id)
+                    (-> "nor" ;(db/get-blog "1")
+                        ; str
+                        response/ok
+                        #_plain-text-header))}]
+   ["/user/:id" {:get (fn [{{:keys [id]} :path-params}]
+                        (let [user "never" #_(db/get-user id)]
+                          (timbre/debug user)
+                          (-> (or user {})
+                              ; pr-str
+                              response/ok
+                              #_plain-text-header)))}]
 
+   ["/ping"
+    {:get (constantly (response/ok {:message "pong"}))}]
+   
    ["/math"
     {:swagger {:tags ["math"]}}
 

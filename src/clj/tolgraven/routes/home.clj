@@ -2,6 +2,7 @@
   (:require
    [tolgraven.layout :as layout]
    [tolgraven.db.core :as db]
+   [tolgraven.db.sql :as sql]
    [tolgraven.middleware :as middleware]
    [clojure.java.io :as io]
    [clojure.pprint :refer [pprint]]
@@ -30,18 +31,21 @@
                     (-> "butt"
                         response/ok
                         plain-text-header))}]
+   ["/blog" {:get (fn [{{:keys [id]} :path-params}]
+                    (-> (sql/get-blog (Integer/parseInt id)) 
+                        response/ok))}]
    ["/blog/:id" {:get (fn [{{:keys [id]} :path-params}]
-                    (-> (db/get-blog id)
+                    (-> (sql/get-blog (Integer/parseInt id))
                         str
                         response/ok
                         plain-text-header))}]
-   ; ["/blog-new" {:post (fn [{{:keys [id]} :path-params}]
-   ;                       (-> (db/add-blog id)
-   ;                           str
-   ;                           response/ok
-   ;                           plain-text-header))}]
+   ["/add-comment" {:post (fn [{{:keys [id]} :path-params}]
+                            (-> "not" ;(db/add-blog id)
+                                str
+                                response/ok
+                                plain-text-header))}]
    ["/user/:id" {:get (fn [{{:keys [id]} :path-params}]
-                        (let [user (db/get-user id)]
+                        (let [user "none" #_(db/get-user id)]
                           (timbre/debug user)
                           (-> (or user {})
                               str
