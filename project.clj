@@ -145,7 +145,7 @@
                                  [prone "2020-01-17"]
                                  ; [re-frisk-remote "1.3.4"  :exclusions [org.clojure/core.async org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize org.clojure/core.cache]]
                                  ; [day8.re-frame/re-frame-10x "0.7.0"]
-                                 [day8.re-frame/tracing "0.6.0"]
+                                 ; [day8.re-frame/tracing "0.6.0"]
                                  [ring/ring-devel "1.8.2"]
                                  [ring/ring-mock "0.4.0"]]
                   :plugins      [[com.jakemccrary/lein-test-refresh "0.24.1"]
@@ -160,10 +160,11 @@
                      {:output-dir "resources/public/js/compiled/out"
                       :output-to "resources/public/js/compiled/app.js"
                       :asset-path "js/compiled/out"
-                      :closure-defines {"re_frame.trace.trace_enabled_QMARK_" true}
+                      ; :closure-defines {"re_frame.trace.trace_enabled_QMARK_" true}
                       :optimizations :none
                       :parallel-build true
-                      :preloads [re-frisk.preload devtools.preload day8.re-frame-10x.preload]
+                      ; :preloads [re-frisk-remote.preload devtools.preload day8.re-frame-10x.preload]
+                      ; :preloads [devtools.preload day8.re-frame-10x.preload] ;can remove devtools preload cause have in app.cljs?
                       :external-config
                       {:devtools/config
                        {:features-to-install [:formatters :hints] ;add exception hints
@@ -175,19 +176,7 @@
                         :string-style    "color: #b4b88d;"
                         :symbol-style    "color: #edc;"
                         :bool-style      "color: #d18479;"
-                        :print-config-overrides false}
-                       #_(merge {:features-to-install [:formatters :hints] ;add exception hints
-                                 :print-config-overrides false}
-                                (let [colors {:nil "d18479" :keyword "76a2ab" :integer "bd979d" :float "bd979d"
-                                              :string "b4b88d" :symbol "edc" :bool "d18479"}]
-                                  (into {:cljs-land-style "background-color: rgb(30, 30, 30, 0.5); color: #edc; border-radius: 7px;"}
-                                        (for [[k color] colors]
-                                          [(keyword (str (name key) "-style"))
-                                           (str "color: #" color ";")]))))
-
-                          ; :nil-style "color: #d18479;" :keyword-style "color: #76a2ab;" :integer-style "color: #bd979d;"
-                          ; :float-style "color: #bd979d;" :string-style "color: #b4b88d;" :symbol-style "color: #edc;" :bool-style "color: #d18479;"
-                       }
+                        :print-config-overrides false} }
                       :source-map true
                       :main "tolgraven.app" ;what is this why .app? ;; bc env/dev/app.cljs thingy. calls init
                       :pretty-print true}}}} ;} ;}
