@@ -70,6 +70,26 @@
     {:common/navigate-fx! [url-key params query]}))
 
 
+(rf/reg-event-fx :run-in! ; trying to figure out why'd be bad idea.
+; certainly would be if over-used (js cb hell) but for like, what would otherwise be:
+; define evt, define second evt, dispatch-later to second.
+; just dispatch to a generic evt that takes a fn. basically the :get of events I suppose, bad in long run
+; but can do some things easy quick - dont have to define stuff for every little document/window etc callout.
+; and passing an id we can still see what is what so..  plus get to close over stuff etc yada.
+  (fn [_ [_ id-key ms f & args]]
+    {:dispatch-later
+     {:ms ms
+      :dispatch [:run-fn! (into [id-key f] args)]}}))
+
+(rf/reg-event-fx :run-fn!
+  (fn [_ [_ id-key f & args]]
+    {:run-fn-fx! (into [id-key f] args)}))
+
+(rf/reg-fx :run-fn-fx!
+  (fn [[id-key f & args]]
+    (apply f args)))
+
+
 (rf/reg-event-fx :focus-element
   (fn [_ [_ elem-id]]
     ; (r/after-render #(some-> (util/elem-by-id elem-id) .focus))
