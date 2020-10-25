@@ -7,12 +7,14 @@
     [clojure.tools.logging :as log]
     [expound.alpha :as expound]
     [mount.core :as mount]
+    [alembic.still :refer [load-project]]
     [tolgraven.figwheel :refer [start-fw stop-fw cljs]]
+    [tolgraven.handler :as handler]
     [tolgraven.core :refer [start-app]]))
 
 (alter-var-root #'s/*explain-out* (constantly expound/printer))
 
-(add-tap (bound-fn* clojure.pprint/pprint))
+(add-tap (bound-fn* clojure.pprint/pprint)) ; (tap> ) goes to repl, anything else?
 
 (defn start "Starts application.  You'll usually want to run this on startup." []
   (doseq [component (-> (mount/start-without #'tolgraven.core/repl-server)
@@ -29,3 +31,10 @@
   (stop)
   (start))
 
+(defn reload-deps []
+  (alembic.still/load-project))
+
+(defn restart-handler []
+  (mount/stop #'handler/app-routes)
+  (mount/start #'handler/app-routes))
+; (restart-handler)

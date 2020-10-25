@@ -3,11 +3,12 @@
     [tolgraven.handler :as handler]
     [tolgraven.nrepl :as nrepl]
     [tolgraven.log :as tlog]
-    [tolgraven.db.core :as db]
+    ; [tolgraven.db.core :as db]
     [luminus.http-server :as http]
     [tolgraven.config :refer [env]]
     [clojure.tools.cli :refer [parse-opts]]
     [clojure.tools.logging :as log]
+    [taoensso.timbre :as timbre]
     [mount.core :as mount])
   (:gen-class))
 
@@ -15,7 +16,7 @@
 (Thread/setDefaultUncaughtExceptionHandler
   (reify Thread$UncaughtExceptionHandler
     (uncaughtException [_ thread ex]
-      (log/error {:what :uncaught-exception
+      (timbre/error {:what :uncaught-exception
                   :exception ex
                   :where (str "Uncaught exception on" (.getName thread))}))))
 
@@ -45,7 +46,7 @@
 
 (defn stop-app []
   (doseq [component (:stopped (mount/stop))]
-    (log/info component "stopped"))
+    (timbre/info component "stopped"))
   (shutdown-agents))
 
 (defn start-app [args]
@@ -53,7 +54,7 @@
                         (parse-opts cli-options)
                         mount/start-with-args
                         :started)]
-    (log/info component "started"))
+    (timbre/info component "started"))
   (.addShutdownHook (Runtime/getRuntime) (Thread. stop-app)))
 
 (defn -main [& args]

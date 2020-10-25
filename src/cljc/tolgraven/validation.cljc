@@ -1,2 +1,2 @@
 (ns tolgraven.validation
-  (:require [struct.core :as st]))
+  (:require [clojure.spec.alpha :as s]))

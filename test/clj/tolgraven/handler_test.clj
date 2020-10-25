@@ -25,6 +25,18 @@
   (testing "not-found route"
     (let [response ((app) (request :get "/invalid"))]
       (is (= 404 (:status response)))))
+  
+  (testing "get fart"
+      (let [response ((app) (-> (request :get "/fart")))]
+        (is (= 200 (:status response)))
+        (is (= "wutt" (:body response)))))
+  
+  ; (testing "get blog"
+  ;     (let [response ((app) (-> (request :get "/api/blog/1")
+  ;                               (header "accept" "application/transit+json")))]
+  ;       (is (= 200 (:status response)))
+  ;       (is (map? (m/decode-response-body response)))))
+  
   (testing "services"
 
     (testing "success"

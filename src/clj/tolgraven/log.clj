@@ -1,5 +1,6 @@
 (ns tolgraven.log
   (:require [clojure.java.io :as io]
+            [clojure.pprint :as pprint]
             [taoensso.timbre :as timbre]
             [taoensso.encore :as enc]
             [taoensso.timbre.appenders.3rd-party.rotor :as rotor]
@@ -15,6 +16,7 @@
   (reify Thread$UncaughtExceptionHandler
     (uncaughtException [_ thread ex]
       (timbre/error ex))))
+
 
 
 (defn log-by-ns-pattern
@@ -33,6 +35,12 @@
     (when (and (timbre/may-log? loglevel namesp)
                (timbre/level>= level loglevel))
       opts)))
+
+(defn log-with-pprint [data] 
+  (update data :vargs
+          (partial mapv #(if (string? %) 
+                           % 
+                           (with-out-str (pprint/pprint %))))))
 
 (defn error-be-red "Make errors red middleware" [])
 
@@ -57,7 +65,8 @@
                                 :max-size 10000000 ;was set to just 100kb... thats like 10 stacktraces lol
                                 :backlog 5})
                               {:rate-limit [[1 250] [2 1000] [4 10000]]})}
-    :middleware [(partial log-by-ns-pattern ns-levels)]})))
+    :middleware [(partial log-by-ns-pattern ns-levels)
+                 log-with-pprint]})))
 
 (defn init-logging "Hijack others, make exceptions nice, init timbre"
   []
