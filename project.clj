@@ -6,7 +6,6 @@
   :dependencies [[cheshire "5.10.0"]
                  [clojure.java-time "0.3.2"]
                  [com.cognitect/transit-clj "1.0.324"]
-                 [com.datomic/datomic-free "0.9.5697" :exclusions [org.slf4j/log4j-over-slf4j org.slf4j/slf4j-nop com.google.guava/guava]]
                  
                  [org.clojure/java.jdbc "0.7.11"]
                  [org.postgresql/postgresql "42.2.18"]

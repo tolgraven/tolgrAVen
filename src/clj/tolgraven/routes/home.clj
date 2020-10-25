@@ -1,7 +1,6 @@
 (ns tolgraven.routes.home
   (:require
    [tolgraven.layout :as layout]
-   [tolgraven.db.core :as db]
    [tolgraven.db.sql :as sql]
    [tolgraven.middleware :as middleware]
    [clojure.java.io :as io]

@@ -10,7 +10,6 @@
     [tolgraven.routes.services.graphql :as graphql]
     [tolgraven.middleware.formats :as formats]
     [tolgraven.middleware.exception :as exception]
-    [tolgraven.db.core :as db]
     [clojure.java.io :as io]))
 
 (defn plain-text-header [resp]
