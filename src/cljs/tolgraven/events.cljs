@@ -57,7 +57,9 @@
                (assoc-in [:exception :page] nil)) ; reset exception state since using same error boundary for all pages
        :dispatch-n [[:transition/in new-match]
                     [:scroll/to "linktotop"]]
-       :document/set-title :however-get-from-new-match})))
+       :document/set-title (->> new-match :data :name
+                                name string/capitalize
+                                (str (get-in db [:content :title] "tolgrAVen") " - "))})))
 
 (rf/reg-fx :common/navigate-fx!
   (fn [[k & [params query]]]
