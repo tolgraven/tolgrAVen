@@ -2,28 +2,27 @@
   (:require
    [reagent.core :as r]
    [re-frame.core :as rf]
-   [re-graph.core :as rg]
    [tolgraven.db :as db]
    [tolgraven.util :as util :refer [at]]
    [clojure.string :as string]
    [clojure.pprint :as pprint]
    [markdown.core :refer [md->html]]
-   [cljsjs.react-highlight :as highlight]
    [highlight.js :as highlight.js] ; can auto-run on hook instead of tagging manually...
    [cljsjs.highlight.langs.clojure] ; needs to be included somewhere
+   [react-transition-group :as rtg]
    [cljs-time.core :as ct]
-   [cljs-time.format :refer [formatters formatter unparse]]))
+   [cljs-time.coerce :as ctc]
+   [cljs-time.format :as ctf]))
 
 (defn md->div [md]
   [:div {:dangerouslySetInnerHTML {:__html (md->html md)}}])
 
 (defn button "Pass text and id, plus either link anchor or action..."
   [text id & {:keys [type bg-div-class link action disabled?]
-              :or   {type "button" bg-div-class "blur-bg"
-                     #_link #_(str "#" id)}}]
-  [:button {:id (str "btn-" id) :type type :on-click action :disabled disabled?}
+              :or   {type "button" bg-div-class "blur-bg"}}]
+  [:button {:id (str "btn-" (name id)) :type type :on-click action :disabled disabled?}
    (when bg-div-class [:div {:class bg-div-class}])
-   [:label {:for (str "btn-" id)}
+   [:label {:for (str "btn-" (name id))}
     (if link
       [:a {:href link} text]
       text)]])
@@ -44,7 +43,6 @@
   (let []
    [:label.toggle-switch
       attrs
-    #_(util/deep-merge {:style {}} attrs)
     [:input {:type :checkbox :default-checked @model
              :on-click (fn [e] ; (.preventDefault e) ;broke it! :O what
                  (on-change (not @model)))}]
@@ -102,10 +100,10 @@
   ["maximize" "minimize" "window"]])
 
 (defn close [on-click]
- [:div.close-btn
+ [:button.close-btn.noborder
   [:i.zmdi.zmdi-close
-  {:style {:font-size "1.5rem"}
-   :on-click on-click}]])
+   {:style {:font-size "1.5rem"}
+    :on-click on-click}]])
 
 (defn formatted-data [title path-or-data]
  (let [data (if (vector? path-or-data)
@@ -119,14 +117,17 @@
 (defn input-text "Returns markup for a basic text input label"
  [& {:as args :keys [value path on-enter]}]
  (let [external-model (r/atom (or (rf/subscribe path) (at value))) ;ok so why does (sub in ratom...) work, straight subscribe not...
-       internal-model (r/atom (if (nil? @external-model) "" @external-model))] ;; Create a new atom from the model to be used internally (avoid nil)
-   (fn [& {:keys [value path on-enter on-change placeholder width height
+       internal-model (r/atom (if (nil? @external-model) "" @external-model)) ;; Create a new atom from the model to be used internally (avoid nil)
+       div-ref        (r/atom nil)
+       base-scroll-height (atom 0)]
+   (fn [& {:keys [value path on-enter on-change placeholder width height min-rows
                   change-on-blur? disabled? class style attr input-type type]
            :or {input-type :input.form-control
                width "15em"}}] ;to pass through from outer
    (let [latest-ext-model (or @(rf/subscribe path) (at value)) ;how repl this if not passing model but sub?
          disabled?        (at disabled?)
-         change-on-blur?  (at change-on-blur?)]
+         change-on-blur?  (at change-on-blur?)
+         ]
     (when (not= @external-model latest-ext-model) ;; Has model changed externally?
      (reset! external-model latest-ext-model)
      (reset! internal-model latest-ext-model))
@@ -140,6 +141,9 @@
              :autoComplete (string/lower-case placeholder)
              :value       @internal-model
              :disabled    disabled?
+             :ref         (fn [el]
+                            (when el (reset! base-scroll-height (.-scrollHeight el)))
+                            (reset! div-ref el))
              :on-change (fn [e]
                          (let [new-val (-> e .-target .-value)]
                           (when (and on-change (not disabled?))
@@ -152,6 +156,12 @@
                                     (not= @internal-model @external-model))
                           (reset! external-model @internal-model) ;nor here...
                           (on-change @internal-model)))
+             :on-input  (when (and min-rows (= input-type :textarea) @div-ref) ;try make autoexpand...
+                          (fn [e]
+                            (let [row-diff (int (/ (- @base-scroll-height
+                                                      (.-scrollHeight @div-ref))
+                                                   16))] (set! (.-rows @div-ref)
+                                  (+ min-rows row-diff)))))
              :on-key-up (fn [e]
                          (if disabled? (.preventDefault e)
                           (case (.-key e)
@@ -235,8 +245,7 @@
 
 (defn hud "Render a HUD sorta like figwheel's but at reagent/re-frame level"
   [to-show]
- (let [;to-show @(rf/subscribe [:hud])
-       msg-fn (fn [{:keys [level title message time actions id]}]
+ (let [msg-fn (fn [{:keys [level title message time actions id]}]
                 ^{:key (str "hud-message-" id)}
                 [:div.hud-message
                   {:class (name level)
@@ -260,4 +269,5 @@
 
 
 
-(def highlight (r/adapt-react-class js/Highlight))
+(def trans-group (r/adapt-react-class rtg/TransitionGroup))
+(def css-trans (r/adapt-react-class rtg/CSSTransition))

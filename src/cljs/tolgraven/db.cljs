@@ -57,10 +57,6 @@
             :docs "docs"
             :blog "/blog"
             :log "log"}
-   :users [{:name "tolgraven" :password "testing" :email "joen.tolgraven@gmail.com"
-            :roles [:admin :blogger]}
-           {:name "seqable" :password "fixme" :roles [:blogger]}
-           {:name "erty" :password "burkimaten"}]
    :content {:header {:text ["tolgrAVen" ["audio" "visual"]]
                       :text-personal ["tolgraven" ["" "joen"]]
                       :menu {:work  [["Services"  "#link-services" :services] ; should have two sections either by collapse
@@ -70,15 +66,13 @@
                              :personal [["Blog"      "#/blog"     :blog]
                                         ["Docs"      "#/docs"     :docs]
                                         ["Test"      "#/test"     :docs]
-                                        ["Log"       "#/log"      :log]]}
-                      ; #_{:should :semi-auto-populate?}
-                      }
+                                        ["Log"       "#/log"      :log]]} }
              :intro {:title "Building experience"
                      :text "Is what it all comes down to.
                             So many roads, yet I'm determined to track most of them halfway down.
                             There's only one way to find out."
-                     :buttons  [["Join me"            "bottom"]
-                                ["Fix these buttons"  "linktotop"]]
+                     :buttons  [["Join me"            "#should-open-user-panel"]
+                                ["Read my thoughts"   "#/blog"]]
                      :bg [{:src "img/foggy-shit-small.jpg" :alt "Purple enthusiast"}
                           {:src "img/live-session-small.jpg" :alt "Ableton Live"}
                           {:src "img/afterglow-new-web-old-small.jpg" :alt "My actual first web project"}]
@@ -108,7 +102,7 @@
 
                             Well let's see what else. I make music, have dabbled in being a rave promoter, soundboy, am a big enough ally to have hosted gay parties in Uganda, and all-around upstanding chap. I reckon.
                             Before I run my own web design/custom music tech/yada yada real company I still try to do those things, on a hobbyist basis.
-                            Currently most of the front-end is finished (well, alpha finished) while the back-end is, shall we say... not. Everything will be hooked up in due time though. And optimized - this website hardly currently plays nice with more limited hardware. But have a look around, you can make a user account and post away at the blog. safe in the knowledge it won't leave your browser.  "
+                            Currently most of the front-end is finished (well, pre-alpha finished) while the back-end is, shall we say... not. Everything will be hooked up in due time though. And optimized - this website hardly currently plays nice with more limited hardware. But have a look around, you can make a user account and post away at the blog. safe in the knowledge it won't leave your browser.  "
 
                      :images [["headshot" {:src "img/Leg-tasteful-small.jpg" :alt "Joen"}
                                "Yours truly. Smiling!"]
@@ -116,8 +110,7 @@
                                "Something smells fishy here. Sorry I mean burnt"
                                "right"]
                               ["cljs" {:src "img/cljs.png" :alt "cljs"}
-                               "clojurescript in the house"]
-                              ]}
+                               "clojurescript in the house"] ]}
 
              :interlude [{:title "What does that mean?"
                           :caption "Stage light blabla"
@@ -147,21 +140,7 @@
 
              :blog    {:heading {:title "joe tol thought"
                                  :bg {:src "img/wide-spot-ctrl-small.jpg"}
-                                 :tint "red-2"}
-                       :posts [{:id 1 :title "And so it all begins"     :text "[i forget] how does *markdown* work??" }
-                               {:id 2 :title "My journey into wankery"  :text "jk i never _knew_"
-                                :comments [{:id 1 :user "Majson" :title "Wow va fint" :text "Snud snud" :score 2}
-                                           {:id 2 :user "Majson" :title "Wow va fint" :text "Snud snud" :score -1}
-                                           {:id 3 :user "Majson" :title "Wow va fint" :text "Snud snud"}
-                                           {:id 4 :user "Adson" :title "oj va fint" :text "Snud snud"}]}
-                               {:id 3 :title "A new beginning: to blog" :text "Will I manage to make more than 2-3 posts this time?
-                                                                             Sometimes I surprise myself, but mostly not. Verdict, _njäe_."
-                                :comments [{:id 1 :user "Joen" :title "Wow va fint" :text "Snud snud"}
-                                           {:id 2 :user "Majson" :title "Wow va fint" :text "Snud snud"}
-                                           {:id 3 :user "Adson" :title "oj va fint" :text "Snud snud"}]}
-                               {:id 4 :title "And something also goes here - maybe a really long one that will have to break lines and bread and love and life"
-                                :text "But then text is short."
-                                }]}
+                                 :tint "bg-5"}}
              :docs    {:heading {:title "Documentation"
                                  :bg {:src "img/wide-spot-ctrl-small.jpg"}}}
              :common  {:banner-heading {:bg {:src "img/wide-spot-ctrl-small.jpg"}}}

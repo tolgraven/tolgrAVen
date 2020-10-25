@@ -2,14 +2,11 @@
   (:require
    [reagent.core :as r]
    [re-frame.core :as rf]
-   [re-graph.core :as rg]
-   [reitit.frontend.easy :as rfe]
    [clojure.string :as string]
    [markdown.core :refer [md->html]]
    [tolgraven.ui :as ui]
    [tolgraven.db :as db :refer [<-db ->db]]
    [tolgraven.util :as util :refer [at]]))
-
 
 (defn ln->br "Ugh. UGH! Why"
   [text]
@@ -26,7 +23,7 @@
       [:div#logo-top.logo-bg.stick-up ;.parallax-sm
        {:class "logo-tolgraven"
         :style {:background-image (str "url('" path "')")
-                :opacity (str "0.09 + " (/ (- 1 @in-view) 5))}
+                :opacity (str "0.29 + " (/ (- 1 @in-view) 5))}
         :ref #(reset! div-ref %)}
        [:p @in-view]]))) ; cant remember why I did the weird path-in-css bs but anyways...
 
@@ -106,8 +103,8 @@
     (into [:<>] (ln->br text)) ; or just fix :pre css lol
     [:br]
     [:div.buttons
-     (for [[id text] buttons] ^{:key (str "intro-button-" id)}
-       [ui/button id text])]]])
+     (for [[text id] buttons] ^{:key (str "intro-button-" id)}
+       [ui/button text id :link id])]]])
 
 (defn ui-interlude "Banner across with some image or video or w/e
                     TODO if video, autoplay once when (re-)seen, or cont if clicked
@@ -132,7 +129,8 @@
                            :ref (fn [el] (reset! !bg el))}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:section
         {:class "covering-faded widescreen-safe center-content parallax-group"
-         :ref #(reset! div-ref %)
+         :ref #(when (= :video (first bg))
+                 (reset! div-ref %))
          :style {:transition "opacity 4.5s"
                  :opacity (str "calc(0.95 - 0.20 *" @in-view ")")}} ;well dumb but
         [:h1.h-responsive  title]]

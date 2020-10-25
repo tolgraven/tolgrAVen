@@ -55,17 +55,17 @@
 
 (defn timestamp "Use 0-59 mins ago, 1-24 hrs ago, datestamp..."
   [ts]
-  (if-let [ts (cond-> ts
-                (integer? ts) ctc/from-long)]
+  (if-let [ts (ctc/from-long ts)]
     (let [mins (ct/mins-ago ts)]
       (if (< mins 60)
         (str (pluralize mins "minute") " ago")
-        (let [day-ago (ct/minus (ct/now) (ct/hours 24))
-              display (if (ct/after? ts day-ago)
-                        (int (/ mins 60))
-                        (str "on " (ctf/unparse (ctf/formatters :date) ts)
-                             "at " (ctf/unparse (ctf/formatters :hour-minute) ts)))])))
+        (let [day-ago (ct/minus (ct/now) (ct/hours 24))]
+          (if (ct/after? ts day-ago)
+            (str (pluralize (int (/ mins 60)) "hour") " ago")
+            (str "on " (ctf/unparse (ctf/formatters :date) ts)
+                 " at " (ctf/unparse (ctf/formatters :hour-minute) ts))))))
     ""))
+
 
 (defn format-number [n]
   (case n
@@ -82,7 +82,6 @@
 
 (defn <-css-var "Get value of CSS variable. Have to apply to dummy div to force calc"
   [var-name & calc]
-  ; (println "Get css var") ;println making it run loads (doesnt do it contantly otherwise)
   (if-not calc
     (try
      (when-let [v (-> js/document.documentElement
@@ -179,7 +178,7 @@
       (* rem-val)))
 
 (defn run-highlighter! [el-type & [div-ref]]
-  (let [selected (-> (or div-ref js/document)
+  (let [selected (-> (or div-ref js/document) ;cant querySelectorAll on document?
                      (.querySelectorAll el-type))]
     (doall (map js/hljs.highlightBlock selected))))
 

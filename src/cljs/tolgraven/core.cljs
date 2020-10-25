@@ -3,6 +3,7 @@
     [reagent.dom :as rdom]
     [reagent.core :as r]
     [re-frame.core :as rf]
+    [com.degel.re-frame-firebase :as firebase]
     [goog.events :as gevents]
     [goog.object :as gobj]
     [goog.history.EventType :as HistoryEventType]
@@ -10,8 +11,8 @@
     [cljs-time.core :as ct]
     [cljs-time.format :refer [formatters formatter unparse]]
     [cljsjs.smoothscroll-polyfill :as smooth]
-    [react-highlight.js :as highlight]
     [cljsjs.highlight :as hljs]
+    [react-transition-group :as react-transition-group]
 
     [tolgraven.ajax :as ajax]
     [tolgraven.events]
@@ -149,10 +150,8 @@
       {:name        :home
        :view        #'home-page
        :controllers [{:start (fn [_]
-                               (rf/dispatch [:state [:is-personal] true])
                                (rf/dispatch [:page/init-home]))
                       :stop (fn [_]
-                              (util/log "exit home")
                               (rf/dispatch [:state [:is-personal] true]))}]}]
      ["/docs" {:name :docs
                :view #'doc-page
@@ -160,8 +159,12 @@
                                                                       [:state [:is-personal] true]])))}]}] ; really overkill this triggers each time. gotta be built-in solution somewhere? else work around
      ["/blog" {:name :blog
                :view #'blog-page
-               :controllers [{:start (fn [_] (rf/dispatch [:page/init-blog]))}]}]
-     ["#about" {:name :story
+               :controllers [{:start (fn [_] (rf/dispatch [:page/init-blog]))}]
+              }]
+     ["/post-blog" {:name :post-blog
+               :view #'post-blog-page
+               :controllers [{:start (fn [_] (rf/dispatch [:page/init-post-blog]))}]}]
+     ["about" {:name :story
                :view #'home-page}]
      ["#link-services" {:name :services
                :view #'home-page}]
@@ -173,10 +176,13 @@
 (defn start-router! []
   (rfe/start!
     router
-    (fn [match _] (rf/dispatch [:common/start-navigation match]))
-    {:ignore-anchor-click? (fn [router e el uri] ;; Add additional check on top of the default checks
-                           (and (rfh/ignore-anchor-click? router e el uri)
-                                (not= "false" (gobj/get (.-dataset el) "reititHandleClick"))))}))
+    (fn [match _]
+      (rf/dispatch [:common/start-navigation match]))
+    {:use-fragment true ;doesnt do nuffin without (tho still takes over) so dunno point?
+    :ignore-anchor-click? (fn [router e el uri] ;; Add additional check on top of the default checks
+                           (rfh/ignore-anchor-click? router e el uri))}))
+                           ; (and (rfh/ignore-anchor-click? router e el uri)
+                           ;      (not= "false" (gobj/get (.-dataset el) "reititHandleClick"))))}))
                                 ; (not= "false" (HistoryEventType/get (.-dataset el) "reititHandleClick"))))}))
 
 (def firebase-app-info
@@ -189,6 +195,8 @@
 ;; Initialize app
 (defn mount-components "Called each update when developing" []
   (rf/clear-subscription-cache!)
+  (rf/dispatch-sync [:exception nil])
+  (rf/dispatch [:reloaded])
   (rdom/render [#'page] (.getElementById js/document "app")))
 
 (defn init! "Called only on page load" []
@@ -205,4 +213,11 @@
   ; dispatch firebase general fetches, test case is silly id counter persistence
   ; which then needs to be fetched into app-db once ready
   (util/log "Init complete, mounting root component")
+  ; (util/log :warning  "Cookie notice" "Could appear like this")
+  (rf/dispatch [:diag/new :info "Cookie notice"
+                {:what "Better way?"
+                 :than :like-this
+                 3 {:just "add buttons"}
+                 :been-meaning-to-add {:action "click" :anyways [:so :makes 100 :sense]}}
+                {:sticky? true}])
   (mount-components))
