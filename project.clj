@@ -3,21 +3,16 @@
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
 
-  :dependencies [[cheshire "5.10.0"]
-                 [clojure.java-time "0.3.2"]
+  :dependencies [[clojure.java-time "0.3.2"]
                  [com.cognitect/transit-clj "1.0.324"]
                  
                  [org.clojure/java.jdbc "0.7.11"]
                  [org.postgresql/postgresql "42.2.18"]
                  [honeysql "1.0.444"]
-                 [com.fasterxml.jackson.core/jackson-core "2.11.2"]
-                 [com.fasterxml.jackson.core/jackson-databind "2.11.2"]
-                 [com.google.guava/guava "25.1-jre"]
-                 [com.walmartlabs/lacinia "0.37.0"]
-                 [cprop "0.1.17"]
-                 [expound "0.8.5"]
-                 [funcool/struct "1.4.0"]
-                 [io.rkn/conformity "0.5.4"]
+                 [com.google.guava/guava "25.1-jre"] ;what is
+                 [cprop "0.1.17"] ;env loading
+                 [expound "0.8.6"] ;spec failure explainers
+                 [funcool/struct "1.4.0"] ;is what?
 
                  [luminus-transit "0.1.2"]
                  [luminus-undertow "0.1.7"]
@@ -25,58 +20,53 @@
 
                  [markdown-clj "1.10.5"]
 
-                 [metosin/jsonista "0.2.7"]
+                 [metosin/jsonista "0.2.7"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
                  [metosin/muuntaja "0.6.7"]
-                 [metosin/reitit "0.5.5"]
+                 [metosin/reitit "0.5.10" :exclusions [org.clojure/spec.alpha]]
                  [metosin/ring-http-response "0.9.1"]
 
                  [mount "0.1.16"]
                  [nrepl "0.8.2"]
                  [org.clojure/clojure "1.10.1"]
-                 [org.clojure/clojurescript "1.10.773" :scope "provided"]
-                 [org.clojure/data.json "1.0.0"]
+                 [org.clojure/clojurescript "1.10.773" :scope "provided" :exclusions [com.google.errorprone/error_prone_annotations]]
                  [org.clojure/tools.cli "1.0.194"]
+                 [org.clojure/core.async "1.3.610"]
 
                  ; LOGGING
-                 [ch.qos.logback/logback-classic "1.2.3"]
                  [org.clojure/tools.logging "1.1.0"]
-                 [com.taoensso/timbre "4.10.0"]
-                 [com.fzakaria/slf4j-timbre "0.3.14"] ;route java logging through timbre. but dunno. hard to manage
+                 [com.taoensso/timbre "5.1.0" :exclusions [org.clojure/tools.reader]]
+                 [com.fzakaria/slf4j-timbre "0.3.20" :exclusions [org.slf4j/slf4j-api]] ;route java logging through timbre. but dunno. hard to manage
                  [clj-logging-config "1.9.12"]
                  [radicalzephyr/ring.middleware.logger "0.6.0"]
                  [io.aviso/pretty "0.1.37"] ;pretty exceptions, pretty logging...
 
-                 [org.webjars.npm/bulma "0.9.0"]
-                 [org.webjars.npm/material-icons "0.3.1"]
-                 [org.webjars/webjars-locator "0.40"]
-                 [org.webjars/webjars-locator-jboss-vfs "0.1.0"]
-                 [ring-webjars "0.2.0"]
-                 [ring/ring-core "1.8.1"]
+                 [ring/ring-core "1.8.2"]
                  [ring/ring-defaults "0.3.2"]
+                 [bk/ring-gzip "0.3.0" :exclusions [clojure-complete]]
 
-                 [selmer "1.12.28"]
+                 [selmer "1.12.31"]
 
                  ; CLJS
-                 [cljs-ajax "0.8.1"]
+                 [cljs-ajax "0.8.1"  :exclusions [com.cognitect/transit-cljs com.cognitect/transit-cljs]]
                  [com.andrewmcveigh/cljs-time "0.5.2"]
                  [cljsjs/smoothscroll-polyfill "0.4.0-0"]
 
-                 [appliedscience/js-interop "0.1.10"]
+                 [appliedscience/js-interop "0.2.5"]
 
                  [re-frame "1.1.1"]
-                 [re-graph "0.1.14"]
                  [day8.re-frame/http-fx "0.2.1"]
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
-                 [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
-                 [com.degel/re-frame-firebase "0.8.0"]
+                 ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
+                 [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j]]
                  ; [day8.re-frame/undo "0.3.3"]
                  [reagent "0.10.0"]
-                 [re-frame-utils "0.1.0"]
+                 ; [re-frame-utils "0.1.0"]
                  
-                 [cljsjs/react-highlight "1.0.7-2"]
                  [cljsjs/highlight "9.12.0-2"]
+                 [cljsjs/codemirror "5.44.0-1"]
                  [cljsjs/react-transition-group "4.3.0-0"]]
 
+  ; :managed-dependencies [] ; can pin specific versions...
 
   :min-lein-version "2.0.0"
 
@@ -91,7 +81,8 @@
             [lein-autoprefixer "0.1.1"]
             [lein-auto "0.1.2"]
             ; [lein-npm "0.6.2"]
-            [lein-kibit "0.1.2"]]
+            ; [lein-kibit "0.1.2"]
+            ]
   :sassc
   [{:src "resources/scss/main.scss"
     :output-to "resources/public/css/main.css"
@@ -146,17 +137,18 @@
                   :dependencies [[binaryage/devtools "1.0.2"]
                                  [cider/piggieback "0.5.1"]
                                  [doo "0.1.11"]
-                                 [figwheel-sidecar "0.5.20"]
+                                 [figwheel-sidecar "0.5.20" :exclusions [args4j]]
                                  ; [com.bhauman/figwheel-main "0.2.11"]
                                  ; [com.bhauman/rebel-readline-cljs "0.1.4"] ;; optional but recommended
+                                 [alembic "0.3.2"]
                                  [pjstadig/humane-test-output "0.10.0"]
                                  [prone "2020-01-17"]
-                                 [re-frisk "1.3.4"]
-                                 [day8.re-frame/re-frame-10x "0.4.2"]
-                                 [ring/ring-devel "1.8.1"]
+                                 ; [re-frisk-remote "1.3.4"  :exclusions [org.clojure/core.async org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize org.clojure/core.cache]]
+                                 ; [day8.re-frame/re-frame-10x "0.7.0"]
+                                 [day8.re-frame/tracing "0.6.0"]
+                                 [ring/ring-devel "1.8.2"]
                                  [ring/ring-mock "0.4.0"]]
                   :plugins      [[com.jakemccrary/lein-test-refresh "0.24.1"]
-                                 [jonase/eastwood "0.3.5"]
                                  [lein-doo "0.1.11"]
                                  [lein-figwheel "0.5.20"]]
                   :cljsbuild
