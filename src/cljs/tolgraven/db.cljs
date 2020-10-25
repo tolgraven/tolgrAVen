@@ -48,6 +48,7 @@
            :is-loading true
            :theme-force-dark true
            :is-personal false
+           :experiments :parallax
            :debug {:layers false
                    :divs false}
            ; :transition :out ;later when proper boot sequence, trigger in on load complete

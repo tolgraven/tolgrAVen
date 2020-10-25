@@ -2,6 +2,8 @@
   (:require [re-frame.core :as rf]
             [tolgraven.db :as db]
             [tolgraven.util :as util]
+            [tolgraven.blog.subs]
+            [tolgraven.user.subs]
             [clojure.edn :as edn]
             [cljs-time.core :as ct]))
 

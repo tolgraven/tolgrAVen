@@ -35,13 +35,17 @@
 
 (rf/reg-event-fx
  :common/start-navigation ; XXX obviously navigation has to happen straight away. but two components (old, new) always rendered, one slid away...
+ ; TODO prevent from starting nav when same page (once figure out anchors)
  (fn [{:as cofx :keys [db]} [_ match]]
    (let [old-match (:common/route db)]
      {:dispatch [:transition/out old-match]
       :dispatch-later {:ms (or (-> db :options :transition-time) 160)
                        :dispatch [:common/navigate match]}})))
 
-;;dispatchers from luminus, see if any useful...
+(rf/reg-fx :document/set-title
+  (fn [title]
+    (set! js/document.title title)))
+
 (rf/reg-event-fx :common/navigate
   (fn [{:as cofx :keys [db]} [_ match]]
     (let [old-match (:common/route db)
@@ -52,7 +56,8 @@
                (assoc :common/route-last old-match)
                (assoc-in [:exception :page] nil)) ; reset exception state since using same error boundary for all pages
        :dispatch-n [[:transition/in new-match]
-                    [:scroll/to "linktotop"]]})))
+                    [:scroll/to "linktotop"]]
+       :document/set-title :however-get-from-new-match})))
 
 (rf/reg-fx :common/navigate-fx!
   (fn [[k & [params query]]]

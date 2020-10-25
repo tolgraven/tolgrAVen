@@ -33,13 +33,15 @@
   (:import goog.History))
 
 (defn safe "Error boundary for components. Also prints/logs error"
-  [category component]
- (let [exception (rf/subscribe [:state [:exception category]])] ;or reg not ratom or would cause etra re-render?
+  [category & children]
+ (let [exception (rf/subscribe [:exception [category]])] ;or reg not ratom or would cause etra re-render?
   (r/create-class
   {:display-name (str "Boundary: " (name category))
-   :component-did-catch (fn [this error info] ;this should log instantly tho
+   ; :component-did-catch (fn [this error info] ;this should log instantly tho
+   :component-did-catch (fn [error info] ;apparently no :this oi!
                           ; (reset! exception {:error error :info info}) ; error and info are empty.
-                          (rf/dispatch [:state [:exception category] {:error error :info info}])) ; error and info are empty.
+                             (rf/dispatch [:exception [category]
+                                           {:error error :info info}])) ; error and info are empty.
     ; :get-derived-state-from-error ;"defined as instance method and will be ignored. define as static"
    ; (fn [error] ;this should update state to serve like, an error page (for render) "if using getDerivedState methods, the state has to be plain JS object as React implementation uses Object.assign to merge partial state into the current state."
    ;  (clj->js ;cant get it working. but is supposed to used this, console warns...
@@ -50,18 +52,19 @@
    ;    [:div "Click to attempt reload"
    ;     [:button {:on-click #(reset! exception nil)}]]]))
    :reagent-render
-   (fn [category component]
+   (fn [category & children]
     (if-not @exception   ;state change downstream? then it gets easier to debug "in-page",
-     component
-     (let [[component state] component] ;cant remember why this is
+     (into [:<>] children)
+     (let [[children state] children] ;cant remember why this is
        ; (println "Error")
        ; (util/log :error "Component" (string/join " " ((js->clj component) state))) ;replace with better logging eh...
         [:section.component-failed
           [:p "Component exception"]
           (when (string? (:error @exception))
             [:pre (:error @exception)])
-          (when (object? (:info @exception))
-            [:pre (-> @exception :info js->clj :componentStack)])
+          [:pre (-> @exception :info pr-str)]
+          ; (when (object? (:info @exception))
+          ;   [:pre (-> @exception :info js->clj :componentStack)])
 
           [:div
            [:button {:on-click #(rf/dispatch [:state [:exception category] nil])}

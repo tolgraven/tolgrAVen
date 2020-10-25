@@ -2,7 +2,6 @@
   (:require
    [reagent.core :as r]
    [re-frame.core :as rf]
-   [re-graph.core :as rg]
    [reitit.frontend.easy :as rfe]
    [clojure.string :as string]
    [markdown.core :refer [md->html]]
@@ -12,19 +11,28 @@
    [tolgraven.util :as util :refer [at]]))
 
 (defn user-btn [model]
-  (let [user @(rf/subscribe [:state [:user]])]
-    [:div.user-menu
-     [:i {:class "fa fa-user"
-          :style {:position :absolute
-                  :left "88%"
-                  :top "40%"}
-          :on-click #(rf/dispatch [:user/request-page])}]
-     #_(when user [:span user])]))
+  (let [user @(rf/subscribe [:user/active-user])
+        section @(rf/subscribe [:user/active-section])
+        is-open? (and (not (some #{:closed} section))
+                      (not (nil? section)))]
+    [:<>
+     [:i.user-btn
+     {:class "fa fa-user"
+      :on-click #(rf/dispatch (if is-open?
+                                [:user/close-ui]
+                                [:user/open-ui]))}]
+     (when @(rf/subscribe [:menu])
+      [:div.user-name (:name user)])]))
 
 (defn loading-spinner [model]
   [:div.loading-spinner
      (when (at model) ;should it be outside so not put anything when not loading? or better know element goes here
        [:i {:class "fa fa-spinner fa-spin"}])])
+
+(defn flashing-ersatz-text-like-everyone-uses
+  "Better than wee loading spinner no? Eg Docs, we know big page is coming
+   so while loading should be expanded to that size already yo"
+  [row-count])
 
 ;; TODO curr 1px gap between outer lines and img. Fix whatever causing this by mistake (think lines are half-width)
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
@@ -33,6 +41,7 @@
    [:a {:href "#"} ;works w/o reitit fiddle
     [:h1 text]]
    [:div.header-logo-text
+    (println text)
     (for [line subtitle] ^{:key (str "header-text-" line)}
       [:p line])]])
 
@@ -40,8 +49,9 @@
   [sections]
   (let [put-links (fn [links]
                     (doall
-                     (for [[title url page] links] ^{:key (str "menu-link-" title)}
-                          [:li [:a {:href url :name title
+                     (for [[title url page] links
+                           :let [id (str "menu-link-" (string/lower-case title))]]  ^{:key id}
+                          [:li [:a {:href url :name title :id id
                                     :data-reitit-handle-click false
                                     :class (when (= page
                                                     @(rf/subscribe [:common/page]))
@@ -97,7 +107,6 @@
   [content]
   [:footer.footer-sticky ; [:footer>div.footer-content
    [:div.line.line-footer] ;cant this be outside main ugh
-   ; [logmsgs, cookie nurtice and bunch of deminimizable stuff]
    [:div.footer-content ;; XXX should adapt to available height, also disappear...
     (for [{:keys [title text id links img] :as column} content
           :let [id (str "footer-" id)]] ^{:key id}
@@ -115,6 +124,6 @@
 (defn to-top "A silly arrow, and twice lol. why." [icon]
  (let [icon (or icon "angle-double-up")
        i [:i {:class (str "fas fa-" icon)}]]
-   [:a {:id "to-top" :class "to-top" :href "#linktotop" :name "Up"} i]
-   [:div {:id "to-top-bg" :class "to-top"} i]))   ; why not just double up within? )
+   [:<>
+    [:a {:id "to-top" :class "to-top" :href "#" :name "Up"} i]]))
 
