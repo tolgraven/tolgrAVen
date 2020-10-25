@@ -8,16 +8,20 @@
 
 (defn back-btn [] ;tho ideally we push states and pop them... so becomes, yeah
   (when (< 1 (count @(rf/subscribe [:user/active-section])))
-    [:button {:on-click #(rf/dispatch [:user/to-last-section])
-              :style {:position :absolute :left 0 :top 0}} "<"]))
+    [:button.user-back-btn.showing
+     {:on-click #(rf/dispatch [:user/to-last-section])
+      :style {:position :absolute :left 0 :top 0}} "<"]))
 
-(defn password-input [& [placeholder-name]]
+(defn password-input [& {:keys [placeholder path]
+                         :or {placeholder "Password"
+                              path [:form-field [:login :password]]}}]
   [ui/input-text
     :type (when-not @(rf/subscribe [:state [:login-show-password]]) :password)
-    :placeholder (or placeholder-name "Password")
+    :placeholder placeholder
     :attr {:autoComplete "password"}
-    :path [:state [:login-field :password]]
-    :on-change #(rf/dispatch [:state [:login-field :password] %])])
+    :path path
+    ; :on-change #(rf/dispatch [:form-field [:login :password] %])])
+    :on-change #(rf/dispatch (into path [%]))])
 
 (defn sign-in-input "Sign in component"
   []
@@ -25,8 +29,8 @@
    
    [ui/input-text
     :placeholder "Username"
-    :path [:state [:login-field :user]]
-    :on-change #(rf/dispatch [:state [:login-field :user] %])]
+    :path [:form-field [:login :user]]
+    :on-change #(rf/dispatch [:form-field [:login :user] %])]
    [:br]
    
    [password-input]
@@ -38,34 +42,37 @@
   [:div.user-inner.noborder
    [:h2 "Please log in"]
    [sign-in-input]
+   (when-let [error (->> @(rf/subscribe [:diag/unhandled])
+                         (filter #(= (:title %) "Sign in"))
+                         last
+                         :message)] ;should be a sub
+     [:<>
+      [:span {:style {:padding-top "0em" :color "var(--red)"}} "Error"]
+     [:span ": " error] [:br]])
+   ; [:br]
    [:button
     (let [disabled? (not @(rf/subscribe [:login/valid-input?]))]
       {:on-click #(rf/dispatch [:user/request-login])
        :disabled disabled?
        :class (when disabled? "noborder")})
-    "Sign in"]
-   [:span "or "]
-   [:button
-    {:on-click #(rf/dispatch [:user/active-section :register])}
-    "Register"]
-   (when-let [error (->> @(rf/subscribe [:diag/unhandled])
-                         (filter #(= (:title %) "Sign in"))
-                         last
-                         :message)]
-     [:<>
-      [:span {:style {:padding-top "1em" :color "var(--red)"}} "Error"]
-     [:span ": " error]])])
+    "Sign in"]    [:span "or "]
+   [:button {:on-click #(rf/dispatch [:user/active-section :register])}
+    "Register"]   [:span "or "]
+   [:button {:on-click #(rf/dispatch [:fb/sign-in :google])}
+    "Sign in with Google"]
+   
+   ])
 
 (defn register "Registration component" []
   [:div.user-inner.user-register
    [:h2 "Register"]
    [sign-in-input] ;well need different validation here (not exists etc)
    [ui/input-text
-    :path [:state [:register-field :email]]
+    :path [:form-field [:register :email]]
     :placeholder "Email"
-    :on-change #(rf/dispatch [:state [:register-field :email] %])]
+    :on-change #(rf/dispatch [:form-field [:register :email] %])]
    
-   [:br]
+   ; [:br]
    [:button
     {:on-click #(rf/dispatch [:user/request-register])}
     "Sign up"] ])
@@ -81,27 +88,42 @@
   [:div.user-inner
     [:h2 "Change password"]
     [:section
-     [password-input "Current password"]
-     [password-input "New password"] 
+     [password-input :placeholder "Current password"
+                     :path [:form-field [:change-password :current]]]
+     [password-input :placeholder "New password"
+                     :path [:form-field [:change-password :new]]] 
      [ui/toggle [:state :login-show-password] "show"]
      [:button
       {:on-click #(rf/dispatch [:user/request-change-password])}
       "Change password"] ]])
 
+(defn change-username "Change username" []
+  )
+
 (defn admin "User admin page" []
-  (let [user @(rf/subscribe [:user/active-user-details])]
+  (let [user @(rf/subscribe [:user/active-user])
+        section-btn (fn [text k section]
+                      [ui/button text k
+                                 :action #(rf/dispatch [:user/active-section section])])]
     [:div.user-inner
-     [:h2 "User admin"]
      [:section
-     [:h3 (:name user)]
-     [:span [:em (:email user)]] [:br] [:br]
-     [ui/button "Change password"  :password
-      :action #(rf/dispatch [:user/active-section :change-password])]
-     [ui/button "View comments"    :comments
-      :action #(rf/dispatch [:user/active-section :comments])]
-     [ui/button "Log out"          :logout
-      :action #(rf/dispatch [:user/logout])]
-     ]]))
+      [:div.flex
+       [:img.user-avatar {:src (:avatar user)}]
+       [:div
+        [:h3 (:name user)]
+        [:span [:em (:email user)]]
+        [:br] [:br]
+        [:span (str "n" " comments")]
+        [section-btn "View all" :comments :comments]]]]
+     
+      [section-btn "Change username"  :username :change-username]
+      [section-btn "Change password"  :password :change-password]
+      
+      (when true ;(some #{:blogger} (:roles user))
+        [ui/button "Post blog"      :post-blog :link "#/post-blog" ])
+
+      [ui/button "Log out" :logout  :action #(rf/dispatch [:fb/sign-out])] ]))
+
 
 (defn user-box "Wrapper for user views"
   [component]
@@ -128,5 +150,6 @@
          :register     register
          :admin        admin
          :comments     comments
-         :change-password change-password)])
+         :change-password change-password
+         :change-username change-username)])
       ]) ])

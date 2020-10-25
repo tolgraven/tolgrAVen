@@ -2,10 +2,13 @@
   (:require
    [reagent.core :as r]
    [re-frame.core :as rf]
-   [re-graph.core :as rg]
+   ; [cljsjs.codemirror :as codemirror]
+   ; [cljsjs.codemirror.keymap.vim]
+   ; [cljsjs.codemirror.mode.markdown]
    [markdown.core :refer [md->html]]
    [clojure.string :as string]
    [tolgraven.util :as util :refer [at ors]]
+   [tolgraven.views-common :as common]
    [tolgraven.ui :as ui]))
 ;; should be a rather large overlapping functionality post blog/post comment
 ;; will need logged in user and all dis jazz. But still important differences so urgh
@@ -14,7 +17,10 @@
   [model]
   (let [{:keys [user title text]} @model]
     [:div.blog-comment-preview
-     [:h4.blog-comment-title title]
+     ; {:min-height "needs to match up with (auto expanding) comment box somehow..."}
+     {:style {:min-height "8rem"}}
+     (when title
+       [:h4.blog-comment-title title])
      [:br]
      [ui/md->div text]]))
 
@@ -22,165 +28,248 @@
 
 (defn posted-by "Get details of blog/comment..."
   [id user ts score]
-  (let [id (str "#" id) ; @(rf/subscribe [:uuid-to-presentation-id uuid])
-        user [:em.blog-comment-user 
+  (let [user [:em.blog-user 
               (if (count user) user "anon")]
         by (str "posted by ")
         ts (util/timestamp ts)]
-    [:span.blog-comment-info
-     by user
-     (str " - " ts
-          " " (cond (pos? score) "+" (neg? score) "-") score)])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
+    [:span.blog-info
+     (str "#" id " ") by user
+     [:span ts]
+     [:span (cond (pos? score) "+" (neg? score) "-")
+      (when-not (= 0 score) score)]])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
+
+(defn add-comment-btn "Seemed like a good idea to swap button for input field when pressed but yeah, no..."
+  [parent-path kind]
+  (let [adding-comment? @(rf/subscribe [:blog/state [:adding-comment parent-path]])
+        attrs {:on-click
+               #(rf/dispatch
+                 [:blog/state [:adding-comment parent-path] (not adding-comment?)])}]
+    (case kind
+      :comment (when-not adding-comment?
+                 [:button.blog-btn.topborder
+                  attrs "Add comment"])
+      :reply   (when-not adding-comment?
+                 [:button.blog-btn.blog-comment-reply-btn.topborder
+                  attrs [:i.fa.fa-reply]])
+      :cancel  (when adding-comment?
+                 [:button.blog-btn.bottomborder
+                  attrs "Cancel"]))))
+
+(defn edit-comment
+  [path]
+  [:button.blog-btn.blog-comment-edit-btn.topborder
+   [:i.fa.fa-edit]]) ;put by reply yo
+(defn delete-comment ;well that's when seq-id breaks down anyways lol
+  [path]
+  [:div "whua"])
+
+(defn- get-id-str [path]
+  (reduce (fn [s i]
+            (str s "-" i))
+          (str "blog-post-" (first path) "-comment")
+          (rest path)))
 
 
 (defn comment-post "A comment, and any children."
   [path {:keys [id seq-id ts user title text score comments] :as post}]
-  (let [vote-btn (fn [vote]
-                   (let [voted @(rf/subscribe [:blog/state [:voted path]])]
-                     [:button.blog-btn.blog-comment-vote-btn
-                      {:class (if (= vote voted)
-                                "noborder"
-                                (case vote :up "topborder" :down "bottomborder"))
-                       :on-click (fn [_] (rf/dispatch [:blog/comment-vote path vote]))}
-                      (case vote :up "+" :down "-")]))]
-    [:section.blog-comment
-     [:h4.blog-comment-title title]
-     [posted-by id user ts score]
-     [:span.blog-comment-vote [vote-btn :up] [vote-btn :down]]
-     [:div.blog-comment-text
-      {:style (when (neg? score)
-                {:filter (str "brightness(1 +"
-                              (min 0.6 (* 0.1 score)) ")")})}
-      [ui/md->div text]] [:br]
+  (let [active-user @(rf/subscribe [:user/active-user])
+        user @(rf/subscribe [:user/user user])
+        vote-btn (fn [vote]
+                   (when active-user
+                     (let [voted @(rf/subscribe [:blog/state [:voted path]])]
+                       [:button.blog-btn.blog-comment-vote-btn
+                        {:class (if (= vote voted)
+                                  "noborder"
+                                  (case vote :up "topborder" :down "bottomborder"))
+                         :on-click (fn [_] (rf/dispatch [:blog/comment-vote path vote]))}
+                        (case vote :up "+" :down "-")])))]
+    [:<>
+     [:section.blog-comment
+      [:div.flex
+       [:img.user-avatar {:src (:avatar user)}]
+       
+       [:div.blog-comment-main
+        [:h4.blog-comment-title title]
+        [posted-by id (:name user) ts score]
+        (when true ;(not= active-user user)
+          [:span.blog-comment-vote [vote-btn :up] [vote-btn :down]])
+        [:div.blog-comment-text
+         {:style {:filter (when (neg? score)
+                            (str "brightness(calc(1 + "
+                                 (max -0.6 (* 0.1 score)) "))"))}}
+         [ui/md->div text]]]
+       
+       [:div.blog-comment-actions
+        (when (= active-user user)
+          [edit-comment (conj path id)])
+        (when active-user
+          [add-comment-btn path :reply])]]] 
+     [add-comment path]
      (when comments ;replies
-       [:<>
-        (doall (for [post comments
-                     :let [rk (reduce (fn [s i] (str s "-" i))
-                                      "blog-comment"
-                                      path)]]
-                 ^{:key rk}
-                 [comment-post (conj path id) post]))])
-     [add-comment path :comment]])) ;reply button
+       [:div.blog-comment-reply
+        (doall (for [[k post] (into (sorted-map) comments)]
+                 ^{:key (get-id-str (conj path (:id post)))}
+                 [comment-post (conj path (:id post)) post]))])]))
 
 
 (defn comments-section "Comments section!"
-  [{:keys [id comments] :as blog-post}]
-  (let [expanded? (rf/subscribe [:blog/state [:comments-expanded id]]) ;will have to be sub so add comment can auto expand
-        amount-show-collapsed 3] ; then should dyn load more as scroll down hehu
-    (fn [{:keys [id comments] :as blog-post}]
-      (let [amount (count comments)
-            amount-str (util/pluralize amount "comment")]
-        [:section.blog-comments
-         
-         (if (<= amount amount-show-collapsed) ;only show a few comments unless expanded
-           [:h6 amount-str]
-           [:button.blog-btn.blog-btn-collapse.nomargin
-            {:class (if @expanded? "noborder" "topborder")
-             :on-click #(rf/dispatch [:blog/state [:comments-expanded id] (not @expanded?)])} ;rswap bc dont want to return false for react (not a problem here tho - why?) https://github.com/day8/re-frame/wiki/Beware-Returning-False
-            (if-not @expanded? (str "Show all " amount-str) "Collapse")])
-         
-         (when comments
+  [{:keys [id comments] :as blog-post}] ;actually apart from id -> path could prob call this again for replies. w right css
+  (let []
+    (let [expanded? (rf/subscribe [:blog/state [:comments-expanded id]]) ;will have to be sub so add comment can auto expand
+          amount-show-collapsed 3
+          amount-str (util/pluralize (count comments) "comment")] ; then should dyn load more as scroll down hehu
+      [:section.blog-comments
+       (if (<= (count comments) amount-show-collapsed) ;only show a few comments unless expanded
+         [:h6.bottomborder amount-str]
+         [:button.blog-btn.blog-collapse-btn.nomargin.bottomborder
+          {;:class (if @expanded? "bottomborder" "topborder")
+           :on-click #(rf/dispatch [:blog/state [:comments-expanded id] (not @expanded?)])} ;rswap bc dont want to return false for react (not a problem here tho - why?) https://github.com/day8/re-frame/wiki/Beware-Returning-False
+          (if-not @expanded? (str "Show all " amount-str) "Collapse")])
+
+       (when (seq comments)
+         (let [comments' (vals (into (sorted-map) comments))]
            [:div.blog-comments-inner
             {:class (when-not @expanded? "collapsed")}
             (doall (for [comment (if @expanded?
-                                   comments
-                                   (take amount-show-collapsed comments))]
-                     ^{:key (str "blog-post-" (:id blog-post) "-comment-" (:id comment))}
-                     [comment-post [(:id blog-post) (:id comment)] comment]))])
-         
-         [add-comment [id] :blog]])))) ;new comment button
+                                   comments'
+                                   (take amount-show-collapsed comments'))
+                         :let [path [(:id blog-post) (:id comment)]]]
+                     ^{:key (get-id-str path)}
+                     [comment-post path comment]))]))
+
+       (when @(rf/subscribe [:user/active-user])
+         [add-comment-btn [id] :comment]) ;new comment button
+       [add-comment [id]]]))) ;usually nil
+
 
 
 (defn add-comment "Post http or do a gql mutation, yada yada"
-  [parent-path parent-type] ; TODO id as id-path (or, unique for all but presented by index...)
-  ; id could also be a map... {:uuid adfskl :id 1 :kind :comment :path [:1 :3 :7]} ;where 1 blog, 3 and 7 comments
-  (let [adding-comment? @(rf/subscribe [:blog/state [:adding-comment parent-path]]) ;test... would need id of post
-        model (r/atom {:user "anon" :title "" :text ""})
+  [parent-path]
+  (let [adding-comment? (rf/subscribe [:blog/state [:adding-comment parent-path]])
+        model (r/atom {:title "" :text ""}) ;should use db tho, no good accidental nav and lose shit
         input-valid? (fn [input]
                        (pos? (count (:text input))))
-        logged-in? (or @(rf/subscribe [:state [:login :session :status]])
-                       true) ;temp
+        preview? (r/atom false)
         box (fn [k kind & {:keys [style ui-name]}]
-              [kind
+              [kind ; diverging too much, sep...
                {:class (str "blog-adding-comment-textbox")
                 :type :textbox
+                :value (get @model k)
                 :name (or ui-name (name k))
                 :placeholder (string/capitalize (or ui-name (name k)))
-                :style style
+                :style (merge (when (= kind :textarea)
+                                {:min-height (-> @model :text ;sadly linebreak doesnt count so only expands once text on newline.
+                                                 string/split-lines
+                                                 count (+ 2)
+                                                 util/rem-to-px)})
+                              style)
                 :on-change (fn [e]
                              (let [new-val (-> e .-target .-value)]
                                (swap! model assoc k new-val)))}]) ; tho stashing half-written in localstorage is p awesome when done. so db evt
-        toggle-ui-btn (fn [kind]
-                        (let [attrs {:on-click
-                                     #(rf/dispatch
-                                       [:blog/state [:adding-comment parent-path] (not adding-comment?)])}]
-                          (case kind
-                            :blog [:button.blog-btn.topborder
-                                   attrs "Add comment"]
-                            :comment [:button.blog-btn.blog-reply-comment-btn.topborder
-                                      attrs "Reply"]
-                            :cancel [:button.blog-btn.bottomborder
-                                     attrs "Cancel"])))
         submit-btn (fn []
                      [:button.blog-btn.noborder
-                      {:class (when (input-valid? @model) "topborder")
+                      {:class    (when (input-valid? @model) "topborder")
                        :disabled (when-not (input-valid? @model) true)
                        :on-click (fn [_]
-                                   (if (and logged-in?
-                                            (input-valid? @model))
-                                     (do (rf/dispatch [:blog/state [:adding-comment parent-path] false])
-                                         (rf/dispatch [:blog/comment-new parent-path @model]))
-                                     (rf/dispatch [:state [:login-view-open] true])))}
+                                   (when (input-valid? @model)
+                                     (rf/dispatch [:blog/state [:adding-comment parent-path] false])
+                                     (rf/dispatch [:blog/comment-new parent-path @model])
+                                     (reset! model nil)))}
                       "Submit"])
         valid-bg {:background-color "#182018"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
-     (if-not adding-comment?
-       [toggle-ui-btn parent-type]
-       [:section.blog-adding-comment
-        [box :title :input :style valid-bg :ui-name "Title (optional)"]
-        [box :text :textarea :ui-name "comment"] ;[:br]
-        [submit-btn] [toggle-ui-btn :cancel]
-        [preview-comment model]])))
+     (fn [parent-path] ; needed or recreates to empty when swapped out
+       (when @adding-comment?
+         [:div.blog-adding-comment
+          [:button.blog-btn
+           {:on-mouse-over #(reset! preview? true)
+            :on-mouse-leave #(reset! preview? false)}
+           "Preview"] [:br]
+          (if @preview?
+            [preview-comment model]
+            [:<>
+             [box :title :input :style valid-bg :ui-name "Title (optional)"]
+             [box :text :textarea :ui-name "Comment"]]) ;[:br]
+          [submit-btn] [add-comment-btn parent-path :cancel]
+          
+          ]))))
 
      ; :on-key-up (fn [e] (when (= "Alt-Enter-however-written" (.-key e)) (submit)))
 ; not here but whatever: thing from MYH site where heading slots into header
 
 (defn preview-blog "Render new post preview"
-  [model]
-  (let [{:keys [title text]} @model]
-    [:div.blog-post-preview
-     [:h4.blog-post-title title]
+  [{:keys [title text]}]
+  [:div
+   ; {:ref #(rf/dispatch [:run-highlighter!])} ;screws up live preview :( jumpy
+    [:h2 title]
+    [:br]
+    [ui/md->div text]])
+
+(defn post-blog "Render post-making ui" [] ; XXX move this and similar to own file...
+  (let [input @(rf/subscribe [:form-field [:post-blog]])
+        user @(rf/subscribe [:user/active-user])]
+    [:section.blog.blog-new-post
+     [:h2 "Write new blog post"]
      [:br]
-     [ui/md->div text]]))
 
-(defn blog-new-post-ui "Render post-making ui" []
-  (let [model (r/atom :title "" :text "")
-        on-change (fn [k]
-                    (fn [e]
-                      (let [new-val (-> e .-target .-value)]
-                        (swap! model assoc k new-val))))]
-    [:section.blog-new-post
-     [:input.blog-new-post-title
-      {:type :textbox
-       :name "Title"
-       :placeholder "Title"
-       :on-change (on-change :title)}]
-     [:textarea.blog-new-post-text
-      {:name "Text"
-       :placeholder "Text (markdown)"
-       :on-change (on-change :text)}]
+     [ui/input-text
+      :placeholder "Title"
+      :path [:form-field [:post-blog :title]]
+      :on-change #(rf/dispatch [:form-field [:post-blog :title] %])]
      
-     [preview-blog model]]))
+     [ui/input-text :input-type :textarea
+      :placeholder "Text (markdown)"
+      :height "40vh"
+                :min-rows 6
+      :width "100%"
+      :path [:form-field [:post-blog :text]]
+      :on-change #(rf/dispatch [:form-field [:post-blog :text] %])]
+     
+     [:br]
+     [ui/button "Save draft" :save-blog-draft] ;should save to firebase etc.
+     [ui/button "Highlight code" :highlight-blog-code
+      :action #(rf/dispatch [:run-highlighter!])]
+     [:br]
+     [:section.blog-post-preview
+      [preview-blog input]]
+     
+     [:section
+      [ui/button "Post" :post-new-blog
+       :action #(do (rf/dispatch [:blog/submit-new (merge {:user user} input)])
+                    (rf/dispatch [:common/navigate! :blog]))]]]))
 
-; blogs should be in a numbered map tho easiest
+
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text comments] :as blog-post}]
-  [:section.blog-post
-   [:h2 title]
-   [posted-by id (or user "tolgraven") ts]
-   [:br]
-   [ui/md->div text]
-   [:br] [:br]
-   [comments-section blog-post]])
+  (let [user @(rf/subscribe [:user/user user])] ; arbitrary target but yea
+  ; (when text ; arbitrary target but yea
+    [:section.blog-post
+     ; {:ref #(when % (util/run-highlighter! "pre" %))}
+     {:ref #(rf/dispatch [:run-highlighter! %])}
+     [:div.flex
+      [:img.user-avatar.blog-user-avatar {:src (:avatar user)}]
+      [:div
+       [:h1 title]
+       [posted-by id (:name user) ts]]]
+     [:br]
+     [ui/md->div text]
+     [:br] [:br]
+     [comments-section blog-post]]))
+
+(defn blog-archive-view "List of all posts with headlines etc. Maybe for a sidebar."
+  ; will need:
+  ; dispatch fetch headlines? - or like who am i kidding dont need to be super scaly best practices right away...
+  ; prob enough not attempt render -> not loading images?
+  []
+  (let [posts @(rf/subscribe [:blog/posts])]
+    [:section.blog-archive
+     (for [{:keys [id ts user title text comments] :as post} posts] ^{:key (str "blog-archive-" (:id post))}
+       [:div
+        [:h3 title]
+        [:p (->> text string/split-lines (take 3))]])]))
+
+
+(defn blog-intros-view "Headline and a paragraph, many on each page."
+  [])
 
 (defn blog-nav "Blog navigation buttons"
   [total-posts current-idx posts-per-page]
@@ -211,6 +300,7 @@
         (doall (for [post posts] ^{:key (str "blog-post-" (:id post))}
                     [blog-post post]))
         [blog-nav total idx per-page]]
-       [:h1.center-content "No posts yet."])
+       ; [:h1.center-content "No posts yet."])
+       [:h1.center-content [common/loading-spinner true]])
      [:br] ]))
 

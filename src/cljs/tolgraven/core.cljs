@@ -166,6 +166,13 @@
                            (and (rfh/ignore-anchor-click? router e el uri)
                                 (not= "false" (gobj/get (.-dataset el) "reititHandleClick"))))}))
                                 ; (not= "false" (HistoryEventType/get (.-dataset el) "reititHandleClick"))))}))
+
+(def firebase-app-info
+  {:apiKey "AIzaSyBsqgWFXZfLq4W8FPRfSVd3AzSt183w9HQ"
+   :projectId "tolgraven-8fd35"
+   :authDomain "tolgraven-8fd35.firebaseapp.com"
+   :databaseURL "https://tolgraven-8fd35.firebaseio.com"
+   :storageBucket "tolgraven-8fd35.appspot.com"})
 ;; -------------------------
 ;; Initialize app
 (defn mount-components "Called each update when developing" []
@@ -176,5 +183,14 @@
   (start-router!)
   (rf/dispatch-sync [:init-db])
   (ajax/load-interceptors!)
+
+  (firebase/init :firebase-app-info      firebase-app-info ;@(rf/subscribe [:option [:firebase]])
+                 :firestore-settings     {:timestampsInSnapshots true} ; See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
+                 :get-user-sub           [:fb/get-user]
+                 :set-user-event         [:fb/set-user]
+                 :default-error-handler  [:fb/error])
+  (rf/dispatch [:id-counters/fetch])
+  ; dispatch firebase general fetches, test case is silly id counter persistence
+  ; which then needs to be fetched into app-db once ready
   (util/log "Init complete, mounting root component")
   (mount-components))

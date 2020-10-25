@@ -4,36 +4,34 @@
 
 (rf/reg-sub :user/users
  :<- [:get :users]
- (fn [users [_ path]]
-   (get-in users path)))
+ :<- [:get :fb/users]
+ (fn [[users fb-users] [_ path]]
+   (get-in users path
+           (get-in fb-users path))))
 
 (rf/reg-sub :user/user ;find user
  :<- [:get :users]
- (fn [users [_ user]]
-   (first (filter #(= (:name %) user) users))))
+ :<- [:get :fb/users]
+ (fn [[users fb-users] [_ user-id]]
+   (get fb-users user-id
+        ; (first (filter #(= (:id %) user-id) users))
+        )))
 
-(rf/reg-sub :user/active-user-name
- :<- [:state [:user]]
- (fn [user [_ _]]
-   user))
-(rf/reg-sub :user/active-user-details
- :<- [:state [:user]]
- (fn [user [_ _]]
-   @(rf/subscribe [:user/user user])))
 
-(rf/reg-sub :user/session
+(rf/reg-sub :user/active-user
+ :<- [:get]
  :<- [:state [:user]]
- (fn [user [_ _]]
-   (-> user :session)))
+ (fn [[db user-id] [_ _]]
+   (get-in db [:fb/users user-id])))
 
 (rf/reg-sub :user/active-section
  :<- [:state [:user-section]]
  (fn [section [_ _]]
    section))
+
 ; (rf/reg-sub :user/status
-;  :<- [:user/session]
-;  (fn [session [_ _]]
-;    (-> session :status)))
+;  (fn [db [_ user-id]]
+;    (-> @(rf/subscribe [:user/user used-id]) :status)))
 
 (rf/reg-sub :login/field
  :<- [:state [:login-field]]
@@ -44,7 +42,7 @@
 
 (rf/reg-sub
  :login/valid-input?
- :<- [:state [:login-field]]
+ :<- [:form-field [:login]]
  (fn [login-field [_ field]]
-   (and (pos? (count (:user login-field)))
-        (pos? (count (:user login-field)))))) ; do proper validation tho talk to server and greenlight when correc.
+   (and (pos? (count (:user     login-field)))
+        (pos? (count (:password login-field)))))) ; do proper validation tho talk to server and greenlight when correc.

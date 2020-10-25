@@ -2,8 +2,15 @@
   (:require
    [re-frame.core :as rf]
    [re-frame.std-interceptors :refer [path]]
+   ; [day8.re-frame.tracing :refer-macros [fn-traced]]
    [tolgraven.util :as util]))
 
+(def debug (when ^boolean goog.DEBUG rf/debug))
+
+(rf/reg-event-fx
+ :user/fetch-users ; fetch all reasonable enough up to a few k regged I guess? scaling obvs = pass ids from posts, comments
+ (fn [{:keys [db]} [_ uids]]
+   {:firestore/get {}}))
 
 (defn- get-user
   [user users]
@@ -18,10 +25,11 @@
               (= (:password login) (:password user)))
        {:dispatch-n [[:user/login (:user login)]
                      [:user/active-section :admin :force]]}
-       {:dispatch [:diag/new :error "Sign in" "failed validation"]}))))
+       {:dispatch [:diag/new :error "Sign in" "Wrong username or password"]}))))
    ; {:dispatch [:http-post ]}))
 
-(rf/reg-event-db :user/login 
+
+(rf/reg-event-db :user/login [debug]
 (fn [db [_ user]]
   (assoc-in db [:state :user] user)))
 
@@ -79,5 +87,5 @@
  :user/open-ui
  (fn [{:keys [db]} [_ v]]
    {:dispatch [:user/active-section :closing]
-    :dispatch-later {:ms 50,
+    :dispatch-later {:ms 100,
                      :dispatch [:user/request-page]}}))

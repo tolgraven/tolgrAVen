@@ -28,6 +28,13 @@
   (fn [debug [_ option]]
     (get-in debug option)))
 
+(rf/reg-sub :exception
+  (fn [db [_ path]]
+    (get-in db (into [:state :exception] path))))
+
+(rf/reg-sub :form-field
+  (fn [db [_ path]]
+    (get-in db (into [:state :form-field] path))))
 
 
 (rf/reg-sub :header-text

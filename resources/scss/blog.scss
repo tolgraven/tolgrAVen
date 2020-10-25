@@ -1,86 +1,156 @@
 /* BLOG STUFF */
+// should be somewhere globally accessible
+@mixin rounded-bottom($left: 2em, $ratio: 2.5) {
+  border-bottom-left-radius: $left;
+  border-bottom-right-radius: $left / $ratio;
+}
+@mixin lined-soft($width: 1px) {
+  border: var(--line-width-md) solid;
+  box-shadow: 0 0 4px 1px var(--fg-4); // looks nice on sep line but no go here
+}
+  
 
 .blog {
-  z-index: 30;
   background: var(--gradient-bg-main);
+
+  > section.blog-post {
+    border: 0;
+    border-bottom: var(--line-width-sm) solid;
+    // box-shadow: 0 0 4px 1px var(--fg-4); // looks nice on sep line but no go here
+
+    &:last-of-type {
+      border: 0;
+    }
+  }
 }
-section.blog-post {
-  border: 0;
-  border-bottom: var(--line-width) solid;
-}
-.blog > section:last-of-type {
-  border: 0;
-}
-.blog-section {
+.blog-post-preview {
+  margin-top: calc(1 * var(--space-lg));
+  margin-bottom: calc(2 * var(--space-lg));
+  @include rounded-bottom;
 }
 .blog-comments {
   background-color: var(--bg-1);
   border: 0;
   border-top: var(--line-width-md) solid;
+  box-shadow: 2px 5px 11px 3px rgba(200, 200, 255, 0.05) inset;
+  @include rounded-bottom;
+  
+  .blog-collapse-btn {
+    font-size: 80%;
+  }
+  
+  .blog-comments-inner {
+    // transition: max-height 0.25s; // doesnt seem to work anymore.
+    // max-height: 200vh;
+    // overflow-y: scroll;
+    &.collapsed {
+      // max-height: 40em; // bleh tho, want whoosh w/o capping... js calc actual height i guess and inject.
+      // transition: max-height 0.20s;
+    }
+    .blog-comment { // line up top-level comments with line above
+    }
+    .blog-comment-reply {
+      border: 0;
+      margin-left: calc(2 * var(--space));
+    }
+    .blog-comment-actions {
+      text-align: end;
+    }
+  }
 }
-.blog-comments-inner {
-  transition: max-height 0.25s;
-  max-height: 100vh;
-  overflow-y: scroll;
-}
-.blog-comments-inner.collapsed {
-  max-height: 30em; // bleh tho, want whoosh w/o capping... js calc actual height i guess and inject.
-  transition: max-height 0.10s;
-  // transition: max-height 0.5s;
-}
-.blog-comments-inner > section {
-  // line up top-level comments with line above
-  padding: var(--space) 0.25em;
- }
+
+@use "sass:color";
 
 .blog-comment {
   position: relative;
-  padding-bottom: 0.5rem;
-  border-top: var(--line-width-sm) solid;
+  margin-bottom: 1.0em;
+  padding: var(--space) 0.25em;
+  padding-right: 0.0rem;
+  background-color: var(--bg-2);
+  // border-top: var(--line-width-sm) solid;
+  border-top: 0;
+  border-left: 0.5em solid var(--fg-6);
+  border-right: var(--line-width-sm) solid var(--bg-3);
+  border-bottom: var(--line-width-sm) solid var(--bg-3);
+  
+  &:hover, &:active {
+    .blog-comment-vote, 
+    .blog-comment-actions > * {
+      opacity: 1;
+    }
+  }
+  &:nth-child(odd) { // no go when interspliced w reply divs. looks good anywaysh
+    // $color: #333;
+    // $mad: color.scale($color, $lightness: -10%);
+    // background-color: color.scale(#{'var(--bg-2)'}, $lightness: -10%);
+    // background-color: color.scale(#333, $lightness: -10%); // color. is apparently broken :S
+  }
+
+  .user-avatar {
+    filter: brightness(0.9);
+    --blog-comment-avatar: 4.5rem;
+    margin-top: 0.2rem;
+    margin-left: 0.8rem;
+    height: var(--blog-comment-avatar);
+    width: var(--blog-comment-avatar);
+  }
+  
+  .blog-comment-main {
+    width: -webkit-fill-available; //generic alternative tho?
+
+    
+    .blog-comment-title {
+      font-size: 110%;
+      font-weight: bold;
+    }
+    .blog-comment-text {
+      margin-top: 0.2em;
+    }
+    .blog-info { // both blog-post and blog-comment use same component for displaying info
+      font-size: 0.7em;
+    }
+  }
 }
 
 // react transition group test...
-.comment-enter {
-  opacity: 0;
-}
+.comment-enter { opacity: 0; }
 .comment-enter-active {
   opacity: 1;
   transition: opacity 200ms;
 }
-.comment-exit {
-  opacity: 1;
-}
+.comment-exit { opacity: 1; }
 .comment-exit-active {
   opacity: 0;
   transition: opacity 200ms;
 }
-// initial mount of parent component children get this
-// when prop transitionAppear true
-.comment-appear {
-  opacity: 0.01;
-}
+.comment-appear { opacity: 0.01; } // initial mount of parent component children get this when prop transitionAppear true
 .comment-appear.comment-appear-active {
   opacity: 1;
   transition: opacity .5s ease-in;
 }
 
-
-.blog-comment-info {
-  font-size: 0.7em;
+.blog-info { // both blog-post and blog-comment use same component for displaying info
+  font-size: 0.8em;
   padding-bottom: 1.00em;
+
+  span {
+    margin-left: 1.00em;
+  }
+  .blog-user {
+    font-style: italic;
+    font-weight: bold;
+  }
 }
-.blog-comment-user {
-  font-style: italic;
-  font-weight: bold;
-}
+
+
 .blog-btn {
   background-color: var(--bg-2);
   font-size: 0.8em;
   border-radius: 0;
-}
-.blog-btn-collapse {
-  font-size: 70%;
-  display: inline;
+  transition: 0.15s;
+  &:hover {
+    background-color: var(--bg-4);
+  }
 }
 .blog-nav-btn.current {
   font-weight: bolder;
@@ -89,7 +159,6 @@ section.blog-post {
 }
 .blog-comment-vote {
   opacity: 0;
-  transition: 0.15s;
   margin-left: 0.75em;
 }
 .blog-comment-vote-btn {
@@ -99,47 +168,48 @@ section.blog-post {
 }
 .blog-add-comment-btn {
 }
-.blog-reply-comment-btn {
-  position: absolute;
-  right: var(--space);
-  top: var(--space);
-  opacity: 0;
-  transition: 0.15s;
-}
-.blog-comment:hover .blog-reply-comment-btn,
-.blog-comment:active .blog-reply-comment-btn,
-.blog-comment:hover .blog-comment-vote,
-.blog-comment:active .blog-comment-vote {
-  opacity: 1;
-}
-.blog-reply-comment-btn:hover {
-  font-size: 0.9em;
+.blog-comment-actions {
+  > * {
+    opacity: 0;
+
+    // &:hover, &:active {
+    //   opacity: 1;
+    // }
+  }
+
+    // &:hover {
+    //   // font-size: 0.9em; // TODO figure out something better
+    // }
 }
 
 .blog-adding-comment {
+  width: 100%;
   margin: 0;
-  padding: 1em 0em;
+  padding: 0em 0em 1em;
   background-color: var(--bg-1);
   color: var(--fg-2);
 }
-textarea.blog-adding-comment-textbox {
+textarea.blog-adding-comment-textbox { // only text
   width: 100%;
   max-width: 100%;
   height: 6em;
 }
-
-.blog-adding-comment-textbox {
+.blog-adding-comment-textbox { // both title and text
   background-color: var(--bg-1);
   color: var(--fg-2);
 }
 
 .blog-comment-preview {
-  background-color: var(--bg-2);
+  // background-color: var(--bg-2);
   margin: var(--space-sm);
   padding: 0.75em;
+  padding-bottom: var(--space-lg);
 }
 
-.blog-comment-title {
-  font-size: 105%;
-  font-weight: bold;
+.user-avatar.blog-user-avatar {
+  background: var(--bg-1);
+  margin-left: calc(0.5 * var(--space));
+  --blog-comment-avatar: 5.5rem;
+  height: var(--blog-comment-avatar);
+  width: var(--blog-comment-avatar);
 }
