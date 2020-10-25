@@ -8,92 +8,49 @@
   /* LOWER BUN */
   --height: 1.5rem;
   height: var(--height);
-  /* border-radius: 0.3rem; */
-  /* min-width: var(--space); */
   min-width: var(--height);
-  /* max-width: 2rem; */
-  /* height: var(--space); */
-  /* --height: calc(0.75 * var(--space)); */
-  /* margin-left: var(--space); */
   transition: border-bottom 1s ease-in-out;
   -webkit-transition: border-bottom 1s ease-in-out; }
-
-.burger::-moz-focus-inner {
-  /* border: 0; */
-  /* padding: 0; */ }
-
-.burger:before, .burger:after {
-  position: absolute;
-  content: "";
-  display: block;
-  width: 100%;
-  transition: transform 0.5s ease-in-out;
-  -webkit-transition: -webkit-transform 0.5s ease-in-out; }
-
-.burger:before {
-  /* UPPER BUN */
-  /* border-radius: 0.5rem; */
-  /* border-top: calc(2 * var(--line-width)) solid; /1* UPPER BUN *1/ */
-  border-bottom: calc(2 * var(--line-width)) solid;
-  /* UPPER BUN */ }
-
-.burger:after {
-  /* border-radius: 1rem; */
-  border-top: calc(2 * var(--line-width)) solid;
-  /* UPPER BUN */
-  margin-top: calc(0.5 * var(--height) - var(--line-width)); }
+  .burger:before, .burger:after {
+    position: absolute;
+    content: "";
+    display: block;
+    width: 100%;
+    transition: transform 0.5s ease-in-out; }
+  .burger:before {
+    /* UPPER BUN */
+    border-bottom: calc(2 * var(--line-width)) solid;
+    /* UPPER BUN */ }
+  .burger:after {
+    border-top: calc(2 * var(--line-width)) solid;
+    /* UPPER BUN */
+    margin-top: calc(0.5 * var(--height) - var(--line-width)); }
 
 .burger-check:checked ~ header .burger {
   position: absolute;
   /* position: relative; /1* if relative affects width of banner logo ugh *1/ */
-  right: var(--space);
-  /* match the padding otherwise applying... */
   top: var(--space-top);
   /* needs to be a static amount or lines break... */
-  /* right: calc(0rem - var(--space)); */
   right: 0;
-  width: calc(100vw * var(--menu-width-fraction) - 2 * var(--space-edges));
-  /* new strat: just jam it behind header-logo... */
+  width: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2) + 0.75 * var(--space));
   border: 0;
   border-top: var(--line-width) solid currentColor;
-  /* bottom: calc(var(--space)); */
-  /* border-bottom: var(--space) solid; */
   border-radius: 0;
-  transition: border-bottom 0.45s ease-in-out;
-  -webkit-transition: border-bottom 0.45s ease-in-out;
-  /* transform: rotate(15deg); /*translateY(1px) translateX(-3px); *1/ */ }
-
-.burger-check:checked ~ header .burger:before,
-.burger-check:checked ~ header .burger:after {
-  position: absolute;
-  /* width: calc(0.5 * var(--space)); */
-  width: var(--height);
-  right: var(--space);
-  --translate: -1rem;
-  margin: 0;
-  transition: transform 0.3s ease-in-out;
-  -webkit-transition: -webkit-transform 0.3s ease-in-out; }
-
-.burger-check:checked ~ header .burger:before {
-  /* line connecting menu and side through top of burger */
-  /* border: var(--line-width) solid; */
-  /* border: 0; */
-  /* right: calc(0rem - var(--space)); */
-  /* width: calc(100vw * var(--menu-width-fraction) - 2 * var(--space-edges)); */
-  /* /1* new strat: just jam it behind header-logo... *1/ */
-  /* border-top: var(--line-width) solid currentColor; */
-  transform: rotate(225deg) translateY(-12px) translateX(-4px);
-  -webkit-transform: rotate(225deg) translateY(var(--translate)) translateX(var(--translate)); }
-
-.burger-check:checked ~ header .burger:after {
-  /* border-radius: 2rem; */
-  /* border-top: var(--line-width) solid; */
-  /* border: var(--line-width) solid; */
-  /* border: 4px solid; */
-  /* border: 0; */
-  /* border-bottom: 1px solid; */
-  transform: rotate(315deg) translateY(8px) translateX(-10px);
-  -webkit-transform: rotate(315deg) translateY(calc(-1 * var(--translate))) translateX(var(--translate)); }
+  transition: border-bottom 0.45s ease-in-out; }
+  .burger-check:checked ~ header .burger:before, .burger-check:checked ~ header .burger:after {
+    position: absolute;
+    width: var(--height);
+    right: var(--space);
+    --translate: -1rem;
+    margin: 0;
+    transition: transform 0.3s ease-in-out; }
+  .burger-check:checked ~ header .burger:before {
+    /* line connecting menu and side through top of burger */
+    transform: rotate(225deg) translateY(-12px) translateX(-4px);
+    -webkit-transform: rotate(225deg) translateY(var(--translate)) translateX(var(--translate)); }
+  .burger-check:checked ~ header .burger:after {
+    transform: rotate(315deg) translateY(8px) translateX(-10px);
+    -webkit-transform: rotate(315deg) translateY(calc(-1 * var(--translate))) translateX(var(--translate)); }
 
 /*
  * Peripheral and pseudo styling
@@ -144,8 +101,7 @@
   color: var(--dark-3); }
 
 span::first-letter {
-  font-size: 1.4rem;
-  font-weight: bold;
+  font-size: 1.2em;
   filter: brightness(115%); }
 
 /* what these? */
@@ -173,112 +129,109 @@ header {
   align-items: center;
   justify-content: space-between;
   background-color: var(--bg-1);
-  /* background-image: linear-gradient(to top, var(--bg-1)); */
-  /* background-image: none; */
   z-index: 100;
   margin-top: var(--space-top);
-  /* margin-bottom: var(--space-top); */
-  padding: 0 calc(var(--space));
   margin-right: var(--line-width);
   /* make main right border stay "outside" right edge of header, needed because of particular effect/design... */
-  transition: min-height var(--header-expand-time) ease 0s, background 0s ease 0s; }
+  padding: 0 calc(var(--space));
+  transition: min-height var(--header-expand-time) ease, background 0s ease; }
+  header .cover {
+    /* attempt to cover up manually so can get some nice seethrough blur... */
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: var(--bg-1);
+    z-index: 1; }
 
 menu {
-  /* flex: 1; */
-  /* overflow-x: scroll; */
   position: relative;
   display: flex;
   min-width: calc(3 * var(--space-lg));
-  transition: min-width 0.5s ease;
-  -webkit-animation: menu-anim-out 0.4s;
-          animation: menu-anim-out 0.4s; }
-
-menu::before, menu::after {
-  /* in order to get them animatable */
-  content: "";
-  position: absolute;
-  transition: height 0.6s ease 0.35s;
-  height: 0px;
-  width: 0px; }
-
-menu::before {
-  height: calc(var(--height));
-  transform-origin: top;
-  transform: scaleY(0);
-  transition: transform 1.2s ease 0.25s; }
+  z-index: 2;
+  transition: min-width 0.8s ease;
+  -webkit-animation: menu-anim-out 0.3s;
+          animation: menu-anim-out 0.3s; }
+  menu:before, menu:after {
+    /* in order to get them animatable */
+    content: "";
+    position: absolute;
+    height: 0px;
+    width: 0px; }
+  menu:before {
+    height: calc(var(--height));
+    transform-origin: top;
+    transform: scaleY(0);
+    transition: transform 0.5s ease 0.25s; }
 
 nav {
-  /* position: relative; */
   display: flex;
   align-items: center;
   flex: 1 0 auto;
   min-height: 2.2em;
   /* h1 */
   /* dont think right basing on space, just use rem */
+  max-height: var(--space);
   min-width: 7.0em;
   background: linear-gradient(-77deg, var(--bg-1) -10%, var(--nav-accent) 80%);
-  /* transition: min-height 0.9s ease-in-out; */
-  transition: filter 0.3s; }
+  border-top: var(--line-width-sm) solid currentColor;
+  transition: filter 0.5s ease-out; }
+  nav:hover {
+    filter: brightness(140%); }
 
-nav:hover {
-  filter: brightness(125%); }
+.nav-links li {
+  height: 100%;
+  transform: scaleY(0) scaleX(0.3);
+  line-height: 20%; }
 
 .nav-links > li > a {
   transition: margin 0.2s; }
+  .nav-links > li > a:hover, .nav-links > li > a:active, .nav-links > li > a:focus {
+    margin-left: 0.35rem;
+    margin-right: 0.35rem;
+    /* doesnt do equiv on other side.. */
+    font-weight: bold;
+    text-shadow: rgba(204, 204, 204, 0.25) 0 0 10px; }
 
-.nav-links > li > a:hover,
-.nav-links > li > a:active,
-.nav-links > li > a:focus {
-  margin-left: 0.35rem;
-  margin-right: 0.35rem;
-  /* doesnt do equiv on other side.. */
-  font-weight: bold;
-  text-shadow: rgba(204, 204, 204, 0.25) 0 0 10px; }
+.nav-links > * {
+  margin: 0 0.5rem; }
 
 .nav-links.nav-link-active {
   filter: brightness(125%);
   font-weight: bold; }
 
-.nav-links > * {
-  margin: 0 0.5rem; }
-
 menu > nav > .nav-section:last-of-type > .nav-links {
-  /* not doing the trick hmm */
   position: absolute;
   right: 0;
   top: 0;
   text-align: right;
-  /* last in... */ }
+  /* right hand side... */ }
 
 .header-logo {
   /* actual text */
   min-width: 0;
-  -webkit-animation: header-logo-anim-out 0.25s;
-          animation: header-logo-anim-out 0.25s;
+  -webkit-animation: header-logo-anim-out 0.50s;
+          animation: header-logo-anim-out 0.50s;
   transition: margin 0.7s, min-width 0.5s; }
-
-.header-logo h1 {
-  display: inline;
-  transition: all 0.5s ease; }
+  .header-logo h1 {
+    display: inline; }
 
 .header-logo-text {
   display: inline-block;
   font-size: 0.90em;
-  line-height: 0.80em;
-  transition: 0.5s; }
+  line-height: 0.80em; }
+
+.user-btn {
+  cursor: pointer;
+  margin-left: calc(4 * var(--space-lg)); }
+
+.user-name {
+  position: absolute;
+  top: 27%;
+  right: 3%; }
 
 /*
  * Only intended to actually be shown when not enough space in header - but it's so pretty and will soon have some more menu stuff (theme toggle...) so keep "universal" for now. DOES need refactoring for sure
  */
-nav {
-  max-height: var(--space); }
-
-.nav-links li {
-  height: 100%;
-  transition: all 0.4s;
-  transform: scaleY(0) scaleX(0.3);
-  line-height: 20%; }
-
 .show-in-menu {
   display: none; }
 
@@ -286,73 +239,6 @@ nav {
   display: none; }
 
 /* would be nicer to use some more generic reference tho so could use with multiple things... */
-#nav-menu-open:checked ~ header menu .show-in-menu {
-  display: block;
-  font-size: 0.8rem; }
-
-#nav-menu-open:checked ~ header menu nav .nav-links {
-  position: relative;
-  font-size: 1.3rem;
-  /* well poor design and stupid subpixel bullshit-shifting is what fucked me but yeah */
-  padding: 1rem var(--space); }
-
-#nav-menu-open:checked ~ header menu nav .nav-links li {
-  visibility: visible;
-  min-width: 50%;
-  flex: 1 1 auto;
-  transition: transform 0.3s;
-  transform: scale(1);
-  line-height: initial; }
-
-#nav-menu-open:checked ~ header menu nav .nav-links li:first-letter {
-  font-size: 1.2em; }
-
-#nav-menu-open:checked ~ header menu nav {
-  position: relative;
-  top: 0;
-  max-height: var(--header-with-menu-height);
-  /* for animation purposes i guess */
-  border: 0; }
-
-#nav-menu-open:checked ~ header menu {
-  flex: 0 2 auto;
-  min-width: calc(100% * var(--menu-width-fraction));
-  margin: auto;
-  order: 4;
-  border: var(--line-width) solid currentColor;
-  transition: min-width 0.5s ease-out 0.15s;
-  -webkit-animation: menu-anim 0.4s;
-          animation: menu-anim 0.4s; }
-
-/* STOP WASTING TIME TRYING AND JUST REDO IT IN GRID IF YOU SO DESPERATELY NEED THE EFFECT */
-/* GAAAAH */
-/* especially considering I need to learn grid. WHY AM I SO USELESS */
-#nav-menu-open:checked ~ header menu::before,
-#nav-menu-open:checked ~ header menu::after {
-  content: "";
-  position: absolute;
-  width: var(--line-width);
-  background-color: var(--fg-1);
-  /* its so close, but loses when base font-size is scaled... */
-  /* how get around? */
-  --height: calc(2rem - 1.5 * var(--line-width));
-  /* crank it a bit cause we're masking out any spillover... */ }
-
-#nav-menu-open:checked ~ header menu::before {
-  left: calc(0px - var(--line-width));
-  bottom: calc(0px - (var(--height)));
-  /* too short on wide desktop */
-  height: calc(var(--height));
-  transform: scaleY(1);
-  /* for animation */ }
-
-#nav-menu-open:checked ~ header menu::after {
-  /* from top right corner and up */
-  right: calc(0px - var(--line-width));
-  bottom: 0;
-  height: calc(var(--header-with-menu-height) - (var(--height)) - var(--space-top));
-  /* "vars" are so deceptive, everything was broken cause neither def nor usage was in paren... */ }
-
 #nav-menu-open:checked ~ .line-header {
   top: var(--header-with-menu-height);
   margin-top: 0;
@@ -361,8 +247,6 @@ nav {
   /* transition: margin 0.4s ease 0.1s; */ }
 
 #nav-menu-open:checked ~ header {
-  /* margin-top: calc(2 * var(--space-top)); /1* compensate for removing margin from line-header, so nothing jumps... *1/ */
-  /* margin-top: 0; /1* gets easier to calc if kill top margin since --space keeps changing otherwise *1/ */
   min-height: var(--header-with-menu-height);
   font-size: 1.5rem;
   justify-content: space-between;
@@ -370,84 +254,124 @@ nav {
   /* cover out bottom. need to actively fiddle with color+image bc safari transition delay bug */
   background-color: transparent;
   background-image: linear-gradient(5deg, var(--bg-1) 8%, hsla(0, 0%, var(--lum-bg-2), 0.25) 40% 52%, var(--bg-1) 95%);
-  backdrop-filter: blur(2rem);
   -webkit-backdrop-filter: blur(2rem);
-  transition: min-height var(--header-expand-time) ease 0s, background-color 5s ease var(--header-expand-time), background-image 0s;
+          backdrop-filter: blur(2rem);
+  transition: min-height var(--header-expand-time) ease 0s, background-color 5s ease var(--header-expand-time), background-image 2s;
   /* stop possible overflow out under top header... */
   --path: polygon(0 0, 100% 0, 100% var(--header-with-menu-height), 0% var(--header-with-menu-height));
-  clip-path: var(--path);
-  -webkit-clip-path: var(--path); }
-
-header .cover {
-  /* silly attempt to cover up manually so can get some nice seethrough blur... */
-  position: absolute;
-  left: 0;
-  top: 0;
-  background: var(--bg-1);
-  /* display: none; */
-  /* height: 0; */
-  /* transition: height var(--header-expand-time); */ }
-
-#nav-menu-open:checked ~ header .cover {
-  display: block; }
-
-#nav-menu-open:checked ~ header .cover.cover-clip {
-  /* cut the path to clip out, letting (blurred) below shine through */
-  width: 100%;
-  height: 100%;
-  --path:  polygon(
-    0 0,   100% 0,   100% var(--space-top),
-    var(--right-marker)   var(--space-top),
-    var(--right-marker)   var(--top-to-menu-height),
-    var(--left-marker)    var(--top-to-menu-height),
-    var(--left-marker)    var(--header-with-menu-height),
-    0                     var(--header-with-menu-height));
-  clip-path: var(--path);
-  -webkit-clip-path: var(--path); }
-
-/* clip surely bit cleaner but keep these in case need for other browsers. */
-#nav-menu-open:checked ~ header .cover.cover-left {
-  width: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2) + var(--space) - 3 * var(--line-width));
-  height: 100%; }
-
-#nav-menu-open:checked ~ header .cover.cover-top {
-  width: 100%;
-  height: var(--space-top); }
-
-#nav-menu-open:checked ~ header .cover.cover-middle {
-  left: calc(-1 * var(--line-width));
-  width: calc(100% + var(--line-width));
-  height: calc(2em + var(--space-top) + var(--line-width));
-  z-index: -1; }
-
-#nav-menu-open:checked ~ header .header-logo {
-  position: relative;
-  margin: auto;
-  min-width: calc(100% * var(--menu-width-fraction) - 2 * var(--line-width));
-  /* match expanded nav menu, but let its lines pass around... */
-  text-align: center;
-  z-index: 35;
-  /* need to get it above rest so line coming from right can flow behind */
-  -webkit-animation: header-logo-anim 0.5s;
-          animation: header-logo-anim 0.5s;
-  transition: margin 0.8s, min-width 0.5s;
-  will-change: transform;
-  background: var(--bg-1); }
+  -webkit-clip-path: var(--path);
+          clip-path: var(--path); }
+  #nav-menu-open:checked ~ header .user-btn {
+    position: absolute;
+    top: 16%;
+    right: 11%;
+    margin-right: calc(4 * --var(--space-lg));
+    z-index: 5; }
+  #nav-menu-open:checked ~ header .cover {
+    display: block; }
+    #nav-menu-open:checked ~ header .cover.cover-clip {
+      /* cut the path to clip out, letting (blurred) below shine through */
+      width: 100%;
+      height: 100%;
+      --path:  polygon(
+      0 0,   100% 0,   100% var(--space-top),
+      var(--right-marker)   var(--space-top),
+      var(--right-marker)   var(--top-to-menu-height),
+      var(--left-marker)    var(--top-to-menu-height),
+      var(--left-marker)    var(--header-with-menu-height),
+      0                     var(--header-with-menu-height));
+      clip-path: var(--path);
+      -webkit-clip-path: var(--path); }
+    #nav-menu-open:checked ~ header .cover.cover-left {
+      width: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2) + var(--space) - 3 * var(--line-width));
+      height: 100%; }
+    #nav-menu-open:checked ~ header .cover.cover-top {
+      width: 100%;
+      height: var(--space-top); }
+    #nav-menu-open:checked ~ header .cover.cover-middle {
+      left: calc(-1 * var(--line-width));
+      width: calc(100% + var(--line-width));
+      height: calc(2em + var(--space-top) + var(--line-width));
+      z-index: -1; }
+  #nav-menu-open:checked ~ header .header-logo {
+    position: relative;
+    margin: auto;
+    min-width: calc(100% * var(--menu-width-fraction) - 2 * var(--line-width));
+    /* match expanded nav menu, but let its lines pass around... */
+    text-align: center;
+    z-index: 35;
+    /* need to get it above rest so line coming from right can flow behind */
+    -webkit-animation: header-logo-anim 0.6s;
+            animation: header-logo-anim 0.6s;
+    transition: margin 0.8s, min-width 0.5s;
+    will-change: transform;
+    background: var(--bg-1); }
+  #nav-menu-open:checked ~ header menu {
+    flex: 0 2 auto;
+    min-width: calc(100% * var(--menu-width-fraction));
+    margin: auto;
+    order: 4;
+    border: var(--line-width) solid currentColor;
+    -webkit-animation: menu-anim 0.3s;
+            animation: menu-anim 0.3s; }
+    #nav-menu-open:checked ~ header menu:before, #nav-menu-open:checked ~ header menu:after {
+      content: "";
+      position: absolute;
+      width: var(--line-width);
+      background-color: var(--fg-1);
+      --height: calc(2rem - 1.5 * var(--line-width));
+      /* crank it a bit cause we're masking out any spillover... */ }
+    #nav-menu-open:checked ~ header menu:before {
+      left: calc(0px - var(--line-width));
+      bottom: calc(0px - (var(--height)));
+      /* too short on wide desktop */
+      height: calc(var(--height));
+      transform: scaleY(1);
+      /* for animation */ }
+    #nav-menu-open:checked ~ header menu:after {
+      /* from top right corner and up */
+      right: calc(0px - var(--line-width));
+      bottom: 0;
+      height: calc(var(--header-with-menu-height) - (var(--height)) - 0.75 * var(--space-top));
+      /* "vars" are so deceptive, everything was broken cause neither def nor usage was in paren... */ }
+    #nav-menu-open:checked ~ header menu .show-in-menu {
+      display: block;
+      font-size: 0.8rem; }
+    #nav-menu-open:checked ~ header menu nav {
+      position: relative;
+      top: 0;
+      max-height: var(--header-with-menu-height);
+      /* for animation purposes i guess */
+      border: 0; }
+      #nav-menu-open:checked ~ header menu nav .nav-links {
+        position: relative;
+        font-size: 1.3rem;
+        /* well poor design and stupid subpixel bullshit-shifting is what fucked me but yeah */
+        padding: 1rem var(--space); }
+        #nav-menu-open:checked ~ header menu nav .nav-links li {
+          visibility: visible;
+          min-width: 50%;
+          flex: 1 1 auto;
+          transition: transform 0.3s;
+          transform: scale(1);
+          line-height: initial; }
+          #nav-menu-open:checked ~ header menu nav .nav-links li:first-letter {
+            font-size: 1.2em; }
 
 @-webkit-keyframes header-logo-anim {
-  30%, 60% {
+  25%, 75% {
     transform: scaleY(0); } }
 
 @keyframes header-logo-anim {
-  30%, 60% {
+  25%, 75% {
     transform: scaleY(0); } }
 
 @-webkit-keyframes header-logo-anim-out {
-  30%, 70% {
+  25%, 75% {
     transform: scaleY(0); } }
 
 @keyframes header-logo-anim-out {
-  30%, 70% {
+  25%, 75% {
     transform: scaleY(0); } }
 
 @-webkit-keyframes menu-anim {
@@ -465,14 +389,6 @@ header .cover {
 @keyframes menu-anim-out {
   25%, 75% {
     transform: scaleX(1) scaleY(0); } }
-
-#nav-menu-open:checked ~ main {
-  /* other attempt compensate line-header margin-.. */
-  /* margin-top: calc(2 * var(--space-top)); */ }
-
-.burger-check:checked ~ header menu nav {
-  /* max-height: 500px; */
-  transition: max-height 0.3s ease-in-out filter 0.1s; }
 
 footer {
   position: relative;
@@ -1307,6 +1223,9 @@ h3::first-letter {
 .inline {
   display: inline; }
 
+.flex {
+  display: flex; }
+
 .box-regular {
   box-shadow: 2px 1px 17px 7px var(--box-regular-color); }
 
@@ -1496,37 +1415,65 @@ input[type=range]:focus {
 
 /* BLOG STUFF */
 .blog {
-  z-index: 30;
   background: var(--gradient-bg-main); }
+  .blog > section.blog-post {
+    border: 0;
+    border-bottom: var(--line-width-sm) solid; }
+    .blog > section.blog-post:last-of-type {
+      border: 0; }
 
-section.blog-post {
-  border: 0;
-  border-bottom: var(--line-width) solid; }
-
-.blog > section:last-of-type {
-  border: 0; }
+.blog-post-preview {
+  margin-top: calc(1 * var(--space-lg));
+  margin-bottom: calc(2 * var(--space-lg));
+  border-bottom-left-radius: 2em;
+  border-bottom-right-radius: 0.8em; }
 
 .blog-comments {
   background-color: var(--bg-1);
   border: 0;
-  border-top: var(--line-width-md) solid; }
+  border-top: var(--line-width-md) solid;
+  box-shadow: 2px 5px 11px 3px rgba(200, 200, 255, 0.05) inset;
+  border-bottom-left-radius: 2em;
+  border-bottom-right-radius: 0.8em; }
+  .blog-comments .blog-collapse-btn {
+    font-size: 80%; }
+  .blog-comments .blog-comments-inner .blog-comment-reply {
+    border: 0;
+    margin-left: calc(2 * var(--space)); }
+  .blog-comments .blog-comments-inner .blog-comment-actions {
+    text-align: end; }
 
-.blog-comments-inner {
-  transition: max-height 0.25s;
-  max-height: 100vh;
-  overflow-y: scroll; }
-
-.blog-comments-inner.collapsed {
-  max-height: 30em;
-  transition: max-height 0.10s; }
-
-.blog-comments-inner > section {
-  padding: var(--space) 0.25em; }
-
+@use "sass:color";
 .blog-comment {
   position: relative;
-  padding-bottom: 0.5rem;
-  border-top: var(--line-width-sm) solid; }
+  margin-bottom: 1.0em;
+  padding: var(--space) 0.25em;
+  padding-right: 0.0rem;
+  background-color: var(--bg-2);
+  border-top: 0;
+  border-left: 0.5em solid var(--fg-6);
+  border-right: var(--line-width-sm) solid var(--bg-3);
+  border-bottom: var(--line-width-sm) solid var(--bg-3); }
+  .blog-comment:hover .blog-comment-vote,
+  .blog-comment:hover .blog-comment-actions > *, .blog-comment:active .blog-comment-vote,
+  .blog-comment:active .blog-comment-actions > * {
+    opacity: 1; }
+  .blog-comment .user-avatar {
+    filter: brightness(0.9);
+    --blog-comment-avatar: 4.5rem;
+    margin-top: 0.2rem;
+    margin-left: 0.8rem;
+    height: var(--blog-comment-avatar);
+    width: var(--blog-comment-avatar); }
+  .blog-comment .blog-comment-main {
+    width: -webkit-fill-available; }
+    .blog-comment .blog-comment-main .blog-comment-title {
+      font-size: 110%;
+      font-weight: bold; }
+    .blog-comment .blog-comment-main .blog-comment-text {
+      margin-top: 0.2em; }
+    .blog-comment .blog-comment-main .blog-info {
+      font-size: 0.7em; }
 
 .comment-enter {
   opacity: 0; }
@@ -1549,22 +1496,22 @@ section.blog-post {
   opacity: 1;
   transition: opacity .5s ease-in; }
 
-.blog-comment-info {
-  font-size: 0.7em;
+.blog-info {
+  font-size: 0.8em;
   padding-bottom: 1.00em; }
-
-.blog-comment-user {
-  font-style: italic;
-  font-weight: bold; }
+  .blog-info span {
+    margin-left: 1.00em; }
+  .blog-info .blog-user {
+    font-style: italic;
+    font-weight: bold; }
 
 .blog-btn {
   background-color: var(--bg-2);
   font-size: 0.8em;
-  border-radius: 0; }
-
-.blog-btn-collapse {
-  font-size: 70%;
-  display: inline; }
+  border-radius: 0;
+  transition: 0.15s; }
+  .blog-btn:hover {
+    background-color: var(--bg-4); }
 
 .blog-nav-btn.current {
   font-weight: bolder;
@@ -1573,7 +1520,6 @@ section.blog-post {
 
 .blog-comment-vote {
   opacity: 0;
-  transition: 0.15s;
   margin-left: 0.75em; }
 
 .blog-comment-vote-btn {
@@ -1581,25 +1527,13 @@ section.blog-post {
   margin: 0;
   padding: 0.4em 1.0em; }
 
-.blog-reply-comment-btn {
-  position: absolute;
-  right: var(--space);
-  top: var(--space);
-  opacity: 0;
-  transition: 0.15s; }
-
-.blog-comment:hover .blog-reply-comment-btn,
-.blog-comment:active .blog-reply-comment-btn,
-.blog-comment:hover .blog-comment-vote,
-.blog-comment:active .blog-comment-vote {
-  opacity: 1; }
-
-.blog-reply-comment-btn:hover {
-  font-size: 0.9em; }
+.blog-comment-actions > * {
+  opacity: 0; }
 
 .blog-adding-comment {
+  width: 100%;
   margin: 0;
-  padding: 1em 0em;
+  padding: 0em 0em 1em;
   background-color: var(--bg-1);
   color: var(--fg-2); }
 
@@ -1613,37 +1547,59 @@ textarea.blog-adding-comment-textbox {
   color: var(--fg-2); }
 
 .blog-comment-preview {
-  background-color: var(--bg-2);
   margin: var(--space-sm);
-  padding: 0.75em; }
+  padding: 0.75em;
+  padding-bottom: var(--space-lg); }
 
-.blog-comment-title {
-  font-size: 105%;
-  font-weight: bold; }
-
-.user-inner {
-  padding: var(--space) calc(2 * var(--space)); }
+.user-avatar.blog-user-avatar {
+  background: var(--bg-1);
+  margin-left: calc(0.5 * var(--space));
+  --blog-comment-avatar: 5.5rem;
+  height: var(--blog-comment-avatar);
+  width: var(--blog-comment-avatar); }
 
 .user-section-wrapper {
   max-height: 0;
-  overflow-y: hidden;
-  transition: max-height 0.4s; }
+  overflow-y: scroll;
+  opacity: 0.5;
+  transition: max-height 0.9s ease, margin 0.6s ease, opacity 0.2s; }
 
 .user-section-wrapper.active {
-  max-height: 40vh;
-  box-shadow: 1px 1px 10px 10px rgba(30, 30, 45, 0.5); }
+  max-height: 35vh;
+  opacity: 1.0;
+  margin-top: var(--space-lg);
+  transition: max-height 0.7s ease, margin 0.6s ease, opacity 0.9s ease;
+  box-shadow: 1px 1px 10px 10px rgba(30, 30, 60, 0.4); }
 
 .user-section {
   border: var(--line-width) solid;
-  box-shadow: 1px 1px 10px 10px rgba(30, 30, 45, 0.5);
-  background: rgba(30, 30, 45, 0.85); }
+  background: linear-gradient(180deg, rgba(30, 30, 45, 0.8) 0%, rgba(20, 20, 45, 0.95) 100%); }
+  .user-section button {
+    font-size: 0.8em; }
+  .user-section .user-inner {
+    padding: var(--space) calc(2 * var(--space)); }
 
-.user-sign-in-reg-container {
-  max-height: 0;
-  transition: max-height 0.5s; }
+.user-back-btn {
+  opacity: 0;
+  transition: opacity 0.5s; }
 
-.user-sign-in-reg-container.active {
-  max-height: 100rem; }
+.user-back-btn.showing {
+  opacity: 1.0;
+  transition: opacity 0.5s; }
+
+.user-avatar {
+  border-radius: 50%;
+  border: var(--line-width-sm) solid;
+  box-shadow: 0px 0px 10px 1px rgba(230, 230, 255, 0.5);
+  margin-right: var(--space-lg);
+  width: calc(6.5 * var(--space));
+  height: calc(6.5 * var(--space)); }
+
+.user-admin-content {
+  display: flex; }
+
+.user-name {
+  font-size: 0.6em; }
 
 .parallax-ui {
   position: -webkit-sticky;
@@ -1796,7 +1752,7 @@ textarea.blog-adding-comment-textbox {
   --footer-height:     3.73rem;
   /* --link-offset:       calc(var(--space) + var(--header-with-menu-height)); */
   --link-offset:       calc( var(--header-with-menu-height));
-  --menu-width-fraction: 0.75;
+  --menu-width-fraction: 0.70;
   --line-scale-factor: 0.5;
   --line-width:        2.0px;
   /* main design line/border width */
@@ -1815,14 +1771,14 @@ textarea.blog-adding-comment-textbox {
   /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --scale:             1.0;
   /* px line-width drifts when font scales so must compensate... better way? */
-  --fiddle-multiplier: 0;
+  --fiddle-multiplier: 1;
   /* was 3. works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
   --left-marker: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
-                      + var(--space) - (var(--fiddle-multiplier) * var(--line-width)));
-  --right-marker: calc(100% - var(--left-marker) + var(--line-width));
+                      + 0.75 * var(--space) - 1 * (var(--fiddle-multiplier) * var(--line-width)));
+  --right-marker: calc(100% - 1 * var(--left-marker) - 2 * var(--line-width));
   /* makes sense right side needs one more unit since it has the right border... */
-  --top-to-menu-height: calc(2 * var(--space-top) + 2em - (4 - var(--fiddle-multiplier)) * var(--line-width));
-  --header-expand-time:  0.5s;
+  --top-to-menu-height: calc(2 * var(--space-top) + 2em - 5 * var(--line-width));
+  --header-expand-time:  0.2s;
   --navigation-transition-time: 0.20s;
   --perspective:       100;
   --parallax:          50;
@@ -1840,15 +1796,24 @@ textarea.blog-adding-comment-textbox {
   --hue-2:               8;
   --hue-3:             192;
   --lum-dark-1:         9%;
-  --lum-dark-2:        12%;
-  --lum-dark-3:        18%;
+  --lum-dark-2:        11%;
+  --lum-dark-3:        15%;
+  --lum-dark-4:        20%;
+  --lum-dark-5:        27%;
+  --lum-dark-6:        36%;
   --lum-light-1:       calc(100% - var(--lum-dark-1));
   --lum-light-2:       calc(100% - var(--lum-dark-2));
   --lum-light-3:       calc(100% - var(--lum-dark-3));
+  --lum-light-4:       calc(100% - var(--lum-dark-4));
+  --lum-light-5:       calc(100% - var(--lum-dark-5));
+  --lum-light-6:       calc(100% - var(--lum-dark-6));
   --light-1:           hsl(var(--hue-2), 20%, var(--lum-light-2));
   --light-2:           hsl(var(--hue-2), 7%, var(--lum-light-1));
   --light-text:        hsl(29, 35%, 86%);
   --light-3:           #ededed;
+  --light-4:           hsl(var(--hue-2), 7%, var(--lum-light-4));
+  --light-5:           hsl(var(--hue-2), 7%, var(--lum-light-5));
+  --light-6:           hsl(var(--hue-2), 7%, var(--lum-light-6));
   --nav-accent: hsla(var(--hue-3), 40%, 20%, 0.35);
   --selection-accent: hsl(14, 75%, 80%, 0.7);
   --neutral-accent: #99aaee;
@@ -1878,6 +1843,9 @@ textarea.blog-adding-comment-textbox {
   --dark-1:     hsl(var(--hue-1),  7%,  var(--lum-dark-1));
   --dark-2:     hsl(var(--hue-3),  7%,  var(--lum-dark-2));
   --dark-3:     #232323;
+  --dark-4:     hsl(var(--hue-2),  7%,  var(--lum-dark-4));
+  --dark-5:     hsl(var(--hue-2),  7%,  var(--lum-dark-5));
+  --dark-6:     hsl(var(--hue-3),  7%,  var(--lum-dark-6));
   --opacity-regular:  0.45;
   --opacity-faint:    0.25;
   --box-regular-color:    hsla(0, 0%, var(--lum-dark-1), var(--opacity-regular));
@@ -1891,15 +1859,27 @@ textarea.blog-adding-comment-textbox {
   --fg-1:       var(--dark-1);
   --fg-2:       var(--dark-2);
   --fg-3:       var(--dark-3);
+  --fg-4:       var(--dark-4);
+  --fg-5:       var(--dark-5);
+  --fg-6:       var(--dark-6);
   --lum-fg-1:   var(--lum-dark-1);
   --lum-fg-2:   var(--lum-dark-2);
   --lum-fg-3:   var(--lum-dark-3);
+  --lum-fg-4:   var(--lum-dark-4);
+  --lum-fg-5:   var(--lum-dark-5);
+  --lum-fg-6:   var(--lum-dark-6);
   --bg-1:       var(--light-1);
   --bg-2:       var(--light-text);
   --bg-3:       var(--light-3);
-  --lum-bg-3:   var(--lum-light-3);
+  --bg-4:       var(--light-4);
+  --bg-5:       var(--light-5);
+  --bg-6:       var(--light-6);
   --lum-bg-1:   var(--lum-light-1);
-  --lum-bg-2:   var(--lum-light-2); }
+  --lum-bg-2:   var(--lum-light-2);
+  --lum-bg-3:   var(--lum-light-3);
+  --lum-bg-4:   var(--lum-light-4);
+  --lum-bg-5:   var(--lum-light-5);
+  --lum-bg-6:   var(--lum-light-6); }
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -1907,15 +1887,27 @@ textarea.blog-adding-comment-textbox {
     --fg-1:     var(--light-1);
     --fg-2:     var(--light-2);
     --fg-3:     var(--light-3);
+    --fg-4:     var(--light-4);
+    --fg-5:     var(--light-5);
+    --fg-6:     var(--light-6);
     --lum-fg-1: var(--lum-light-1);
     --lum-fg-2: var(--lum-light-2);
     --lum-fg-3: var(--lum-light-3);
+    --lum-fg-4: var(--lum-light-4);
+    --lum-fg-5: var(--lum-light-5);
+    --lum-fg-6: var(--lum-light-6);
     --bg-1:     var(--dark-1);
     --bg-2:     var(--dark-2);
     --bg-3:     var(--dark-3);
+    --bg-4:     var(--dark-4);
+    --bg-5:     var(--dark-5);
+    --bg-6:     var(--dark-6);
     --lum-bg-1: var(--lum-dark-1);
     --lum-bg-2: var(--lum-dark-2);
     --lum-bg-3: var(--lum-dark-3);
+    --lum-bg-4: var(--lum-dark-4);
+    --lum-bg-5: var(--lum-dark-5);
+    --lum-bg-6: var(--lum-dark-6);
     --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
     --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint)); }
   #logo-top {
@@ -2168,10 +2160,9 @@ main {
   position: relative; }
 
 pre {
-  overflow: scroll;
   /* max-height: 6em; */
-  /* white-space: pre-wrap; */
-  background-color: var(--bg-2);
+  white-space: pre-wrap;
+  background-color: var(--bg-1);
   color: var(--fg-2);
   padding: 1.25em;
   margin: 1em calc(-0.5 * var(--space));
@@ -2271,14 +2262,14 @@ button {
   color: var(--fg-2);
   border: var(--line-width-md) solid;
   border-radius: 0.15rem;
-  position: relative; }
+  position: relative;
+  cursor: pointer; }
   button label {
     position: relative;
     font-size: 1.2rem;
     z-index: 2; }
 
 button:hover, button:active {
-  transform: scale(1.05);
   border-radius: 0; }
 
 button:hover .blur-bg, button:active .blur-bg,
@@ -2391,19 +2382,24 @@ video {
   transition: all 0.5s;
   position: relative; }
 
-.form-control {
+textarea:focus, input:focus, button:focus {
+  outline: 0;
+  border: 1px solid var(--fg-6); }
+
+textarea, .form-control {
   background: var(--bg-1);
   color: var(--fg-1);
   font-size: 1.2em;
   padding: 0.3em 0.5em;
-  margin-bottom: 0.4em; }
+  margin-bottom: 0.4em;
+  border: 1px solid var(--bg-5); }
 
 .close-btn {
   position: absolute;
-  right: 0;
-  top: 0;
-  color: var(--red);
-  padding: 0.5em;
+  right: 0.1rem;
+  top: -0.2rem;
+  padding: 0.3em;
+  margin: 0.2em;
   font-size: 1.0rem; }
 
 #modal-container {
@@ -2435,42 +2431,60 @@ video {
   z-index: 100;
   bottom: calc(2 * var(--space-lg));
   /* ;actually, footer, if sticky... */
-  right: 1.5rem; }
+  right: 1.5rem;
+  max-width: 70%;
+  max-height: 50%;
+  overflow-y: scroll;
+  -webkit-mask: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, black 15%); }
 
 .hud-message {
   margin: var(--space);
   padding: 0.3rem 0.7rem;
-  border: 1px solid rgba(150, 150, 150, 0.3);
-  color: var(--bg-1); }
-
-.hud-message.error {
-  background: var(--red-3); }
-
-.hud-message.warning {
-  background: var(--orange); }
-
-.hud-message.info {
-  background: #dcd;
-  color: #222; }
+  border: 1px solid rgba(170, 170, 250, 0.6);
+  box-shadow: 0px 12px 15px 3px inset rgba(150, 150, 250, 0.15);
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.325rem;
+  color: var(--bg-3); }
+  .hud-message.error {
+    background: linear-gradient(0deg, var(--red), var(--red-2)); }
+  .hud-message.warning {
+    background: var(--orange); }
+  .hud-message.info {
+    background: var(--bg-3);
+    color: var(--fg-1); }
+  .hud-message pre {
+    padding: 0.5em 0.5em;
+    margin: 0 -0.5em 0 -0.5em; }
+  .hud-message .hud-message-title {
+    font-weight: bold;
+    padding-right: var(--space-lg);
+    padding-bottom: calc(0.33 * var(--space)); }
 
 .hud-modal-main {
   padding: 0.75rem 2rem; }
+  .hud-modal-main > * {
+    padding: 0.75rem; }
 
-.hud-modal-main > * {
-  padding: 0.75rem; }
-
-.log-container table, .log-container thead,
-.log-container tbody, .log-container tr {
-  width: 100%; }
+.log-container {
+  padding: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0; }
+  .log-container table, .log-container thead, .log-container tbody, .log-container tr {
+    width: 100%; }
 
 .log {
   background: var(--bg-3); }
-
-.log .log-messages > td {
-  padding: 0.25em 0.5em;
-  font-size: 80%;
-  max-width: 60vw;
-  overflow-wrap: break-word; }
+  .log .log-messages > td {
+    padding: 0.25em 0.5em;
+    font-size: 80%;
+    max-width: 55vw;
+    overflow-wrap: break-word; }
+    .log .log-messages > td > pre {
+      border: none;
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-x: auto; }
 
 .log-time {
   text-align: right; }

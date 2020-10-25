@@ -30,7 +30,7 @@
   --footer-height:     3.73rem; // measured...
   /* --link-offset:       calc(var(--space) + var(--header-with-menu-height)); */
   --link-offset:       calc( var(--header-with-menu-height));
-  --menu-width-fraction: 0.75;
+  --menu-width-fraction: 0.70;
 
   --line-scale-factor: 0.5;
   --line-width:        2.0px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
@@ -46,7 +46,7 @@
   --right-marker: calc(100% - 1 * var(--left-marker) - 2 * var(--line-width)); /* makes sense right side needs one more unit since it has the right border... */
   --top-to-menu-height: calc(2 * var(--space-top) + 2em - 5 * var(--line-width));
   
-  --header-expand-time:  0.5s;
+  --header-expand-time:  0.2s;
   --navigation-transition-time: 0.20s;
 
 
@@ -68,16 +68,25 @@
   --hue-2:               8;
   --hue-3:             192;
   --lum-dark-1:         9%;
-  --lum-dark-2:        12%;
-  --lum-dark-3:        18%;
+  --lum-dark-2:        11%;
+  --lum-dark-3:        15%;
+  --lum-dark-4:        20%;
+  --lum-dark-5:        27%;
+  --lum-dark-6:        36%;
   --lum-light-1:       calc(100% - var(--lum-dark-1));
   --lum-light-2:       calc(100% - var(--lum-dark-2));
   --lum-light-3:       calc(100% - var(--lum-dark-3));
+  --lum-light-4:       calc(100% - var(--lum-dark-4));
+  --lum-light-5:       calc(100% - var(--lum-dark-5));
+  --lum-light-6:       calc(100% - var(--lum-dark-6));
 
   --light-1:           hsl(var(--hue-2), 20%, var(--lum-light-2));
   --light-2:           hsl(var(--hue-2), 7%, var(--lum-light-1));
   --light-text:        hsl(29, 35%, 86%);
   --light-3:           #ededed;
+  --light-4:           hsl(var(--hue-2), 7%, var(--lum-light-4));
+  --light-5:           hsl(var(--hue-2), 7%, var(--lum-light-5));
+  --light-6:           hsl(var(--hue-2), 7%, var(--lum-light-6));
 
 
   --nav-accent: hsla(var(--hue-3), 40%, 20%, 0.35);
@@ -109,6 +118,9 @@
   --dark-1:     hsl(var(--hue-1),  7%,  var(--lum-dark-1));
   --dark-2:     hsl(var(--hue-3),  7%,  var(--lum-dark-2));
   --dark-3:     #232323;
+  --dark-4:     hsl(var(--hue-2),  7%,  var(--lum-dark-4));
+  --dark-5:     hsl(var(--hue-2),  7%,  var(--lum-dark-5));
+  --dark-6:     hsl(var(--hue-3),  7%,  var(--lum-dark-6));
 
   --opacity-regular:  0.45;
   --opacity-faint:    0.25;
@@ -124,15 +136,27 @@
   --fg-1:       var(--dark-1);
   --fg-2:       var(--dark-2);
   --fg-3:       var(--dark-3);
+  --fg-4:       var(--dark-4);
+  --fg-5:       var(--dark-5);
+  --fg-6:       var(--dark-6);
   --lum-fg-1:   var(--lum-dark-1);
   --lum-fg-2:   var(--lum-dark-2);
   --lum-fg-3:   var(--lum-dark-3);
+  --lum-fg-4:   var(--lum-dark-4);
+  --lum-fg-5:   var(--lum-dark-5);
+  --lum-fg-6:   var(--lum-dark-6);
   --bg-1:       var(--light-1);
   --bg-2:       var(--light-text);
   --bg-3:       var(--light-3);
-  --lum-bg-3:   var(--lum-light-3);
+  --bg-4:       var(--light-4);
+  --bg-5:       var(--light-5);
+  --bg-6:       var(--light-6);
   --lum-bg-1:   var(--lum-light-1);
   --lum-bg-2:   var(--lum-light-2);
+  --lum-bg-3:   var(--lum-light-3);
+  --lum-bg-4:   var(--lum-light-4);
+  --lum-bg-5:   var(--lum-light-5);
+  --lum-bg-6:   var(--lum-light-6);
 
 }
 
@@ -141,15 +165,27 @@
     --fg-1:     var(--light-1);
     --fg-2:     var(--light-2);
     --fg-3:     var(--light-3);
+    --fg-4:     var(--light-4);
+    --fg-5:     var(--light-5);
+    --fg-6:     var(--light-6);
     --lum-fg-1: var(--lum-light-1);
     --lum-fg-2: var(--lum-light-2);
     --lum-fg-3: var(--lum-light-3);
+    --lum-fg-4: var(--lum-light-4);
+    --lum-fg-5: var(--lum-light-5);
+    --lum-fg-6: var(--lum-light-6);
     --bg-1:     var(--dark-1);
     --bg-2:     var(--dark-2);
     --bg-3:     var(--dark-3);;
+    --bg-4:     var(--dark-4);
+    --bg-5:     var(--dark-5);
+    --bg-6:     var(--dark-6);;
     --lum-bg-1: var(--lum-dark-1);
     --lum-bg-2: var(--lum-dark-2);
     --lum-bg-3: var(--lum-dark-3);
+    --lum-bg-4: var(--lum-dark-4);
+    --lum-bg-5: var(--lum-dark-5);
+    --lum-bg-6: var(--lum-dark-6);
     --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
     --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
   }
@@ -383,10 +419,10 @@ main { /* dunno purpose of why I choose .main-content... */
   position: relative;
 }
 pre {
-  overflow: scroll;
+  // overflow: scroll;
   /* max-height: 6em; */
-  /* white-space: pre-wrap; */
-  background-color: var(--bg-2);
+  white-space: pre-wrap;
+  background-color: var(--bg-1);
   color: var(--fg-2);
   padding: 1.25em;
   margin: 1.00em calc(-0.5 * var(--space));
@@ -466,6 +502,13 @@ section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
   .h-responsive {  font-size: #{'min(3.5rem, 1.5rem + 3vw)'}; }
 }
 
+// make more specific and original hardcore v for whatever links
+// span::first-letter {
+//   font-size: 1.3em;
+//   font-weight: bold;
+//   filter: brightness(115%);
+// }
+
 .buttons {
   display: flex;
   justify-content: space-evenly;
@@ -479,15 +522,17 @@ button {
   border: var(--line-width-md) solid;
   border-radius: 0.15rem;
   position: relative;
+  cursor: pointer;
 
   label {
     position: relative;
     font-size: 1.2rem;
     z-index: 2;
+    cursor: pointer;
   }
 }
 button:hover, button:active {
-  transform: scale(1.05);
+  // transform: scale(1.05);
   border-radius: 0;
 }
 button:hover .blur-bg, button:active .blur-bg,
@@ -587,26 +632,84 @@ video {
 .component-failed > * { /* DEV: react error boundary triggered */
   margin: var(--space);
 }
+
 .loading-spinner {
   opacity: 0.8;
   transition: all 0.5s;
   position: relative;
 }
 
-.form-control {
+.loading-text-line {
+  position: relative;
+  overflow: hidden;
+  height: 1em;
+  margin: 0.5em;
+  animation: pulse 1s infinite ease-in-out;
+  
+  &:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 50%;
+    z-index: 1;
+    width: 500%;
+    margin-left: -250%;
+    animation: sweep 1.8s linear infinite;
+    background: linear-gradient(to right, rgba($ph-bg, 0) 46%, rgba($ph-bg, .35) 50%, rgba($ph-bg, 0) 54%) 50% 50%;
+  }
+}
+@keyframes sweep {
+     0% { transform: translate3d(-30%, 0, 0);
+  } 100% { transform: translate3d(30%, 0, 0); }
+}
+@keyframes pulse {
+     0% { background-color: rgba(165, 165, 165, 0.12);
+  } 37% { background-color: rgba(165, 165, 165, 0.3);
+  } 45% { background-color: rgba(165, 165, 165, 0.35);
+  } 50% { background-color: rgba(165, 165, 165, 0.25);
+  } 100% { background-color: rgba(165, 165, 165, 0.12);
+  }
+}
+@mixin nth-children($points...) {
+  @each $point in $points {
+    &:nth-child(#{$point}) {
+      @content;
+    }
+  }
+}
+// width seems way more reasonable just doing in js tho
+// or would we repeat same ten like
+@include nth-children(1, 2, 7, 9) { width: 90%; }
+@include nth-children(5, 6, 10) { width: 70%; }
+@include nth-children(3, 7) { width: 50%; }
+@include nth-children(4, 10) { width: 60%; }
+
+
+textarea, input, button {
+  &:focus {
+    outline: 0;
+    border: 1px solid var(--fg-6);
+  }
+}
+// textarea, input, .form-control {
+textarea, .form-control {
   background: var(--bg-1);
   color: var(--fg-1);
   font-size: 1.2em;
   padding: 0.3em 0.5em;
   margin-bottom: 0.4em;
+  border: 1px solid var(--bg-5);
 }
 
 .close-btn {
   position: absolute;
-  right: 0;
-  top: 0;
-  color: var(--red);
-  padding: 0.5em;
+  right: 0.1rem;
+  top: -0.2rem;
+  // color: var(--red);
+  padding: 0.3em;
+  margin: 0.2em;
   font-size: 1.0rem;
 }
 
@@ -639,38 +742,88 @@ video {
   z-index: 100;
   bottom: calc(2 * var(--space-lg)); /* ;actually, footer, if sticky... */
   right: 1.5rem;
+  max-width: 70%;
+  max-height: 50%;
+  // overflow-x: break-word;
+  overflow-y: scroll;
+  -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0.0) 0%, rgba(0,0,0,1) 15%);
 }
 .hud-message {
   margin: var(--space);
   padding: 0.3rem 0.7rem;
-  border: 1px solid rgba(150, 150, 150, 0.3);
-  color: var(--bg-1);
-  // opacity: 0.8;
+  border: 1px solid rgba(170, 170, 250, 0.6);
+  // box-shadow: 0px 12px 15px 3px inset rgba(150, 150, 250, 0.5);
+  box-shadow: 0px 12px 15px 3px inset rgba(150, 150, 250, 0.15);
+  // box-shadow: 0px 2px 10px 2px rgba(230, 220, 250, 0.3);
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.325rem;
+  color: var(--bg-3);
+  // opacity: 0.85; 
+
+  // &.error   { background: var(--red-3); }
+  &.error   {
+    background: linear-gradient(0deg, var(--red), var(--red-2));
+  }
+  // &.error   { background: linear-gradient(0deg, var(--red-1), var(--red-2)); }
+  &.warning {
+    background: var(--orange);
+  }
+  &.info    {
+    background: var(--bg-3);
+    color: var(--fg-1);
+  }
+
+  pre {
+    padding: 0.5em 0.5em;
+    margin: 0 -0.5em 0 -0.5em;
+  }
+  .hud-message-title {
+    font-weight: bold;
+    padding-right: var(--space-lg);
+    padding-bottom: calc(0.33 * var(--space));
+    // max-width: calc(100% - var(--space-lg));
+  }
 }
-.hud-message.error   { background: var(--red-3); }
-.hud-message.warning { background: var(--orange); }
-.hud-message.info    { background: #dcd; color: #222; }
 
 .hud-modal-main {
   padding: 0.75rem 2rem;
-}
-.hud-modal-main > * {
-  padding: 0.75rem;
+  > * {
+    padding: 0.75rem;
+  }
 }
 
 // neded for full width for some reason. dont remember that from cue-db ghmm
-.log-container table, .log-container thead,
-.log-container tbody, .log-container tr {
-  width: 100%;
+.log-container {
+  padding: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  
+  table, thead, tbody, tr {
+    width: 100%;
+  }
 }
 .log {
   background: var(--bg-3);
-}
-.log .log-messages > td {
-  padding: 0.25em 0.5em;
-  font-size: 80%;
-    max-width: 60vw;
-  overflow-wrap: break-word;
+  
+  .log-messages {
+    > td {
+      padding: 0.25em 0.5em;
+      font-size: 80%;
+      max-width: 55vw;
+      overflow-wrap: break-word;
+      
+      > pre {
+        border: none;
+        // padding: 0;
+        margin: 0;
+        white-space: pre-wrap;
+        overflow-x: auto;
+        // overflow-x: break-word;
+        // overflow-wrap: break-word;
+      }
+    }
+  }
 }
 .log-time { text-align: right }
 .log-level, .log-title { text-align: center }
