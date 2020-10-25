@@ -181,7 +181,8 @@
       :firestore/set
       {:path [:blog-posts (str (first path))]
          :data (assoc-in {} (assemble-path [] (rest path) :score)
-                         (update-in db db-path + diff)) ;  or just a real back-end. cant trust user to provide tot score so
+                         (+ (get-in db db-path)
+                            diff)) ;  or just a real back-end. cant trust user to provide tot score so
          :set-options {:merge true
                        :merge-fields [:comments]}
          :on-success [:diag/new :info "Vote" "You are a champion of democracy"] ;or, some event navigating to post
