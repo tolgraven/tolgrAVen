@@ -11,7 +11,8 @@
     [tolgraven.util :as util]
     [tolgraven.blog.events]
     [tolgraven.user.events]
-    [clojure.edn :as edn]
+    [tolgraven.cofx :as cofx]
+    [clojure.string :as string]
     ; [muuntaja.core :as m]
     [cljs-time.core :as ct]
     [cljs-time.coerce :as ctc]))
@@ -318,8 +319,7 @@
 
 
 (rf/reg-event-fx :diag/new  ;this needs a throttle lol
- [debug
-  (rf/inject-cofx :now)
+ [(rf/inject-cofx :now)
   (rf/inject-cofx :gen-id [:diag])]
  (fn [{:keys [db now id]} [_ level title message {:keys [sticky? actions]}]] ;error, warning, info
   (let [id (-> id :id :diag)]

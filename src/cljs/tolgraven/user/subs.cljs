@@ -49,5 +49,13 @@
  :login/valid-input?
  :<- [:form-field [:login]]
  (fn [login-field [_ field]]
-   (and (pos? (count (:user     login-field)))
-        (pos? (count (:password login-field)))))) ; do proper validation tho talk to server and greenlight when correc.
+   (and (pos? (count (:email   login-field)))
+        (<= 6 (count (:password login-field)))))) ; do proper validation tho talk to server and greenlight when correc.
+
+(rf/reg-sub :user/error
+ :<- [:diag/unhandled]
+  (fn [unhandled [_ _]]
+    (->> unhandled
+         (filter #(= (:title %) "Sign in"))
+         last
+         :message)))

@@ -10,13 +10,17 @@
 
 (rf/reg-event-fx :fb/finish-sign-in [(rf/inject-cofx :user/gen-color)]
  (fn [{:keys [db bg-color]} [_ user]]
-   {:db (update-in db [:fb/users (:uid user)] #(merge %2 %1)
-                   {:name (:display-name user)
-                    :email (:email user)
-                    :avatar (:photo-url user)
-                    :bg-color bg-color
-                    :id (:uid user)})
-    :dispatch [:user/active-section :admin :force]}))
+   (let [user-map {:name (:display-name user)
+                   :email (:email user)
+                   :avatar (:photo-url user)
+                   :bg-color bg-color
+                   :id (:uid user)}]
+     {:db (update-in db [:fb/users (:uid user)]
+                     #(merge %2 %1)
+                     user-map)
+      :dispatch [:user/active-section :admin :force]
+      :firestore/set {:path [:users (:uid user)]
+                      :data user-map}})))
 
 (rf/reg-event-fx :fb/set-user [debug]
   (fn [{:keys [db]} [_ user]]
@@ -25,11 +29,11 @@
                    [:fb/finish-sign-in user]
                    [:user/login (:uid user)]]})))
 
-(rf/reg-event-fx :fb/error [debug]
+(rf/reg-event-fx :fb/error
   (fn [{:keys [db]} [_ error]]
     {:dispatch [:diag/new :error "Firebase" error]}))
 
-(rf/reg-event-fx :fb/create-user
+(rf/reg-event-fx :fb/create-user [debug]
  (fn [_ [_ email password]]
   {:firebase/email-create-user {:email email :password password}}))
 
@@ -48,7 +52,7 @@
 (rf/reg-event-fx
  :user/fetch-users ; fetch all reasonable enough up to a few k regged I guess? scaling obvs = pass ids from posts, comments
  (fn [{:keys [db]} [_ uids]]
-   {:firestore/get {}}))
+   {:firestore/get {:path [:users]}}))
 
 (defn- get-user
   [user users]
@@ -59,39 +63,28 @@
  (fn [{:keys [db]} [_ info]]
    (let [login (-> db :state :login-field)
          user (get-user (:user login) (-> db :users))]
-     (if (and (pos? (count (:user login)))
-              (= (:password login) (:password user)))
-       {:dispatch-n [[:user/login (:user login)]
-                     [:user/active-section :admin :force]]}
+     (if true ;(= (:password login) (:password user))
+       {:dispatch [:fb/sign-in :email (:email login) (:password login)]}
        {:dispatch [:diag/new :error "Sign in" "Wrong username or password"]}))))
-   ; {:dispatch [:http-post ]}))
 
 
-(rf/reg-event-db :user/login [debug]
-(fn [db [_ user]]
-  (assoc-in db [:state :user] user)))
+(rf/reg-event-fx :user/login [debug]
+(fn [{:keys [db]} [_ user]]
+  {:db (assoc-in db [:state :user] user)
+   :dispatch [:user/active-section :admin]}))
 
-(rf/reg-event-db :user/logout 
-(fn [db [_ user]]
-  (-> db
-      (update-in [:state] dissoc :user)
-      (assoc-in [:state :user-section] [:closed]))))
+(rf/reg-event-fx :user/logout 
+(fn [{:keys [db]} [_ user]]
+  {:db (update-in db [:state] dissoc :user)
+   :dispatch [:user/close-ui]}))
 
-
+(rf/subscribe [:state])
 (rf/reg-event-fx
  :user/request-register [(path [:state])]
  (fn [{:keys [db]} [_ info]]
-   (let [{:keys [user password]} (:login-field db)
-         {:keys [email]} (:register-field db)]
-   {:dispatch-n [[:user/register user password email]
-                 [:user/login user password]
+   (let [{:keys [email password]} (-> db :form-field :login) ]
+   {:dispatch-n [[:fb/create-user email password]
                  [:user/active-section :admin :force]]})))
-
-(rf/reg-event-db :user/register
- (fn [db [_ user password email]]
-   (update-in db [:users] conj {:name user
-                                :password password
-                                :email email})))
 
 (rf/reg-event-fx
  :user/request-page
@@ -116,14 +109,16 @@
 
 (rf/reg-event-fx ;needs to defer changing :user-section to false
  :user/close-ui
- (fn [{:keys [db]} [_ v]]
+ (fn [{:keys [db]} [_ ]]
    {:dispatch [:user/active-section :closing]
-    :dispatch-later {:ms 500,
+    :dispatch-later {:ms 1000,
                      :dispatch [:user/active-section :closed]}}))
 
 (rf/reg-event-fx ;needs to defer changing :user-section to false
  :user/open-ui
- (fn [{:keys [db]} [_ v]]
+ (fn [{:keys [db]} [_ page]]
    {:dispatch [:user/active-section :closing]
     :dispatch-later {:ms 100,
-                     :dispatch [:user/request-page]}}))
+                     :dispatch (if page
+                                 [:user/active-section page]
+                                 [:user/request-page])}}))
