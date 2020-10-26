@@ -110,27 +110,26 @@
                     TODO if video, autoplay once when (re-)seen, or cont if clicked
                     using ref and stuff"
   [{:keys [title caption bg nr]}]
-  (let [!bg (r/atom nil) ; docs says reg atom better but only updates w ratom, bc 2nd fn or? also .play no works
+  (let [vid-ref (r/atom nil) ; docs says reg atom better but only updates w ratom, bc 2nd fn or? also .play no works
         div-ref (r/atom nil) ; XXX let this speew to db (or just a bool) so can hide earlier stickies
         in-view (r/atom 0.0)
         observer (util/frac-in-view (fn [frac]
                                       (reset! in-view frac)
-                                      (when-let [video @!bg]
+                                      (when-let [video @vid-ref]
                                         (when (<= frac 0.1)
-                                          (.pause video))
-                                      )))]
+                                          (try (.pause video) (catch js/Error _))))))]
     (fn [{:keys [title caption bg nr]}]
       (observer div-ref)
       [:div {:id (str "interlude-" nr)
              :class "section-with-media-bg-wrapper parallax-wrapper"
-             :on-mouse-enter #(when-let [video @!bg] (.play video))
-             :on-mouse-leave #(when-let [video @!bg] (.pause video))}
-       (util/add-attrs bg {;:class "parallax-fg"
-                           :ref (fn [el] (reset! !bg el))}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
+             :on-mouse-enter #(when-let [video @vid-ref]
+                                (try (.play video) (catch js/Error _)))
+             :on-mouse-leave #(when-let [video @vid-ref]
+                                (try (.pause video) (catch js/Error _)))}
+       (util/add-attrs bg {:ref (fn [el] (reset! vid-ref el))}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:section
         {:class "covering-faded widescreen-safe center-content parallax-group"
-         :ref #(when (= :video (first bg))
-                 (reset! div-ref %))
+         :ref #(reset! div-ref %) ;oh yeah check first el for :video cant work it's rendered at that point lol
          :style {:transition "opacity 4.5s"
                  :opacity (str "calc(0.95 - 0.20 *" @in-view ")")}} ;well dumb but
         [:h1.h-responsive  title]]
