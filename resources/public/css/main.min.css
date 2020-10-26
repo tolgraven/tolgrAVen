@@ -1518,7 +1518,8 @@ input[type=range]:focus {
   border-radius: 0;
   transition: 0.15s; }
   .blog-btn:hover {
-    background-color: var(--bg-4); }
+    background-color: var(--bg-4);
+    outline: 0; }
 
 .blog-nav-btn.current {
   font-weight: bolder;
@@ -1571,7 +1572,7 @@ textarea.blog-adding-comment-textbox {
   opacity: 0.6;
   -webkit-backdrop-filter: blur(0.3rem);
           backdrop-filter: blur(0.3rem);
-  transition: max-height 0.7s ease, margin 0.7s ease, opacity 0.8s; }
+  transition: height 0.7s ease, max-height 0.7s ease, margin 0.7s ease, opacity 0.8s; }
 
 .user-section-wrapper.active {
   max-height: 35vh;
@@ -1592,10 +1593,21 @@ textarea.blog-adding-comment-textbox {
       padding: var(--space); }
       .user-section .user-inner > section > form {
         padding-top: 0.6em; }
+      .user-section .user-inner > section .user-avatar-wrapper {
+        position: relative; }
+        .user-section .user-inner > section .user-avatar-wrapper i {
+          position: absolute;
+          left: 0;
+          top: 0;
+          opacity: 0; }
+        .user-section .user-inner > section .user-avatar-wrapper:hover i, .user-section .user-inner > section .user-avatar-wrapper:active i {
+          opacity: 1; }
 
 .user-back-btn {
   opacity: 0;
   transition: opacity 0.5s; }
+  .user-back-btn.showing {
+    opacity: 1.0; }
 
 .user-back-btn.showing {
   opacity: 1.0;
@@ -1874,7 +1886,7 @@ textarea.blog-adding-comment-textbox {
   --user-box-bg:      linear-gradient(hsla(240deg 20% var(--lum-bg-3) / 75%) 0%,
                                       hsla(240deg 38% var(--lum-bg-3) / 90%) 100%);
   --user-box-shadow:     hsla(240deg 33% var(--lum-bg-4) / 30%);
-  --user-avatar-shadow:  hsla(240deg 100% var(--lum-fg-1) / 30%); }
+  --user-avatar-shadow:  hsla(240deg 100% var(--lum-fg-1) / 50%); }
 
 [color-mode="light"]:root {
   --fg-1:       var(--dark-1);

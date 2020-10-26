@@ -166,6 +166,7 @@
   transition: 0.15s;
   &:hover {
     background-color: var(--bg-4);
+    outline: 0; // override
   }
 }
 .blog-nav-btn.current {
@@ -187,15 +188,7 @@
 .blog-comment-actions {
   > * {
     opacity: 0;
-
-    // &:hover, &:active {
-    //   opacity: 1;
-    // }
   }
-
-    // &:hover {
-    //   // font-size: 0.9em; // TODO figure out something better
-    // }
 }
 
 .blog-adding-comment {

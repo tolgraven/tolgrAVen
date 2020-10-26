@@ -5,7 +5,7 @@
   overflow-y: scroll;
   opacity: 0.6;
   backdrop-filter: blur(0.3rem);
-  transition: max-height 0.7s ease, margin 0.7s ease, opacity 0.8s ;
+  transition: height 0.7s ease, max-height 0.7s ease, margin 0.7s ease, opacity 0.8s ;
 }
 .user-section-wrapper.active {
   max-height: 35vh; // so how best control how much space needed from js side? obviously breaks on eg landscape...
@@ -33,6 +33,22 @@
       > form {
         padding-top: 0.6em;
       }
+
+      .user-avatar-wrapper {
+        position: relative;
+        i { // wrap yer i:s in buttuns tho
+          position: absolute;
+          left: 0;
+          top: 0;
+          opacity: 0;
+        }
+        
+        &:hover, &:active {
+          i {
+            opacity: 1;
+          }
+        }
+      }
     }
   }
 }
@@ -41,16 +57,16 @@
 .user-back-btn {
   opacity: 0;
   transition: opacity 0.5s;
-  // & .showing {
-  //   opacity: 1.0;
-  // }
+  &.showing {
+    opacity: 1.0;
+  }
 }
 .user-back-btn.showing {
   opacity: 1.0;
   transition: opacity 0.5s;
 }
 
-.user-avatar {
+.user-avatar { // outside because also used by blog
   border-radius: 50%;
   border: var(--line-width-sm) solid;
   box-shadow: 0px 0px 10px 1px var(--user-avatar-shadow);
