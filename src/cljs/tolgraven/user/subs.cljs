@@ -12,7 +12,7 @@
 
 (rf/reg-sub :user/user ;find user
  :<- [:get :fb/users]
- (fn [[fb-users] [_ user-id]]
+ (fn [fb-users [_ user-id]]
    (when user-id
      (get fb-users user-id
           (-> @(rf/subscribe [:firestore/on-snapshot
