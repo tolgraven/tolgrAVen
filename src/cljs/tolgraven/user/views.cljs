@@ -103,6 +103,24 @@
 
 (defn change-username "Change username" [])
 
+(defn change-avatar "Change avatar" []
+  [section
+   "Upload profile picture" 
+   [:input {:type "file" :id "file" :name "file" 
+            :on-change 
+            #(rf/dispatch [:user/upload-avatar
+                           (-> % .-target .-files (aget 0))])}]])
+
+(defn avatar "Display user avatar and option to change it"
+  [user-map]
+  [:div.user-avatar-wrapper
+   [:div.user-avatar-change
+    [:i.fa.fa-edit {:on-click #(rf/dispatch [:user/active-section :change-avatar])}]]
+   [:img.user-avatar
+    {:src (or (:avatar user-map)
+              @(rf/subscribe [:user/default-avatar]))
+     :alt "User profile picture"}]])
+
 (defn admin "User admin page" []
   (let [user @(rf/subscribe [:user/active-user])
         section-btn (fn [text k section]
@@ -111,7 +129,7 @@
     [:div.user-inner
      [:section
       [:div.flex
-       [:img.user-avatar {:src (:avatar user)}]
+       [avatar user]
        [:div
         [:h3 (:name user)]
         [:span [:em (:email user)]]
@@ -123,9 +141,11 @@
           [ui/button "Post blog" :post-blog :link "#/post-blog" ])
         ]]]
      
+     [:div.user-change-options
       [:span "Change: "]
-      [section-btn "username"  :username :change-username]
-      [section-btn "password"  :password :change-password]
+      [section-btn "Username"  :username :change-username]
+      [section-btn "Password"  :password :change-password] ; firebase has its own so should just put a link for reset-password email
+      [section-btn "Picture"   :avatar   :change-avatar]]
       
       [ui/button "Log out" :logout  :action #(rf/dispatch [:fb/sign-out])] ]))
 
@@ -155,6 +175,7 @@
          :register     register
          :admin        admin
          :comments     comments
+         :change-avatar change-avatar
          :change-password change-password
          :change-username change-username)])
       ]) ])
