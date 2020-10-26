@@ -118,8 +118,9 @@
         [:br] [:br]
         [:span (str "n" " comments")]
         [section-btn "View all" :comments :comments]
-        (when true ;(some #{:blogger :admin} (:roles user))
-          [ui/button "Post blog"      :post-blog :link "#/post-blog" ])
+        (when (some #{(:id user)}
+                    (:bloggers @(rf/subscribe [:<-store :auth :roles])))
+          [ui/button "Post blog" :post-blog :link "#/post-blog" ])
         ]]]
      
       [:span "Change: "]
