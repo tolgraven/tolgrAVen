@@ -7,7 +7,7 @@
    ; [cljsjs.codemirror.mode.markdown]
    [markdown.core :refer [md->html]]
    [clojure.string :as string]
-   [tolgraven.util :as util :refer [at <-fire]]
+   [tolgraven.util :as util :refer [at]]
    [tolgraven.views-common :as common]
    [tolgraven.ui :as ui]))
 ;; should be a rather large overlapping functionality post blog/post comment

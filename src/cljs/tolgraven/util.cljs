@@ -6,7 +6,13 @@
             [cljs-time.coerce :as ctc]
             [clojure.string :as string]
             [clojure.pprint :as pprint]
-            [clojure.walk]))
+            [clojure.walk :as walk]))
+
+(defn <-store [& coll-docs]
+  (-> @(rf/subscribe [:firestore/on-snapshot {:path-document coll-docs}])
+      :data
+      (walk/keywordize-keys)))
+
 
 (defmacro handler-fn "Use in event-handlers instead of (fn [e/_]), returns nil so react doesnt get a false and ignore us"
   ([& body]
