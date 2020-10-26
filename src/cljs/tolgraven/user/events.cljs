@@ -12,7 +12,7 @@
 (rf/reg-event-fx :fb/finish-sign-in [(rf/inject-cofx :user/gen-color)
                                      (rf/inject-cofx :gen-id [:user])]
  (fn [{:keys [db bg-color id]} [_ user]]
-   (let [user-map {:name (:display-name user)
+   (let [user-map {:name (or (:display-name user) (:email user))
                    :email (:email user)
                    :avatar (:photo-url user)
                    :bg-color bg-color
