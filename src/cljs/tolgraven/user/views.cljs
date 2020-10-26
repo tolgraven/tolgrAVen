@@ -74,7 +74,13 @@
    [:button
     {:on-click #(rf/dispatch [:user/request-register])}
     "Sign up"] ])
-;    
+
+(defn section "Wrap thing in user-inner etc"
+  [heading & components]
+  [:div.user-inner
+   (when heading [:h2 heading])
+   (into [:section] components)])
+
 (defn profile "User profile page" []
   [:div "USER PROFILE"])
 (defn comments "User comments page" []
@@ -83,18 +89,17 @@
    [:section "all of them"]]) ;impl ugly hack or defer til db?
 
 (defn change-password "Change user password" []
-  [:div.user-inner
-    [:h2 "Change password"]
-    [:section
-     [password-input :placeholder "Current password"
-                     :path [:form-field [:change-password :current]]]
-     [password-input :placeholder "New password"
-                     :path [:form-field [:change-password :new]]] 
-     [ui/toggle [:state :login-show-password] "show"]
-     [:br]
-     [:button
-      {:on-click #(rf/dispatch [:user/request-change-password])}
-      "Change password"] ]])
+  [section "Change password"
+   [:form
+    [password-input :placeholder "Current password"
+     :path [:form-field [:change-password :current]]]
+    [password-input :placeholder "New password"
+     :path [:form-field [:change-password :new]]] 
+    [ui/toggle [:state :login-show-password] "show"]]
+   [:br]
+   [:button
+    {:on-click #(rf/dispatch [:user/request-change-password])}
+    "Change password"] ])
 
 (defn change-username "Change username" [])
 
