@@ -21,7 +21,6 @@
     :placeholder placeholder
     :attr {:autoComplete "password"}
     :path path
-    ; :on-change #(rf/dispatch [:form-field [:login :password] %])])
     :on-change #(rf/dispatch (into path [%]))])
 
 (defn sign-in-input "Sign in component" []
@@ -32,7 +31,6 @@
     :path [:form-field [:login :email]]
     :on-change #(rf/dispatch [:form-field [:login :email] %])]
    [:br]
-   
    [password-input]
    [ui/toggle [:state :login-show-password] "show"]])
 
@@ -62,7 +60,7 @@
      [:button {:on-click #(rf/dispatch [:fb/sign-in :google])}
       "Sign in with Google"] ]))
 
-(defn register "Registration component" []
+(defn register "Registration component" [user]
   [:div.user-inner.user-register
    [:h2 "Register"]
    [sign-in-input] ;well need different validation here (not exists etc)
@@ -76,20 +74,22 @@
     {:on-click #(rf/dispatch [:user/request-register])}
     "Sign up"] ])
 
+(defn profile "User profile page" [user-id]
+  [:div "USER PROFILE"])
+
 (defn section "Wrap thing in user-inner etc"
   [heading & components]
   [:div.user-inner
    (when heading [:h2 heading])
    (into [:section] components)])
 
-(defn profile "User profile page" []
-  [:div "USER PROFILE"])
-(defn comments "User comments page" []
-  [:div.user-inner
-    [:h2 "User comments"]
-   [:section "all of them"]]) ;impl ugly hack or defer til db?
+(defn comments "User comments page" [user]
+  [section "User comments" ;will need to save comment id's to user when make new ones.
+   (let []
+     [:div])
+   ])
 
-(defn change-password "Change user password" []
+(defn change-password "Change user password" [user]
   [section "Change password"
    [:form
     [password-input :placeholder "Current password"
@@ -102,11 +102,22 @@
     {:on-click #(rf/dispatch [:user/request-change-password])}
     "Change password"] ])
 
-(defn change-username "Change username" [])
-
-(defn change-avatar "Change avatar" []
+(defn change-username "Change username" [user]
+  [section "Change username"
+   [:p "Current username: " (:name user)]
+   [ui/input-text
+    :path [:form-field [:change :username]]
+    :placeholder "New username"
+    :on-change #(rf/dispatch [:form-field [:change :username] %])]
+   [ui/button "Change" :change-username
+              :action #(rf/dispatch [:user/set-field
+                                     (:id user) :name
+                                     @(rf/subscribe [:form-field [:change :username]])])]])
+(declare avatar)
+(defn change-avatar "Change avatar" [user]
   [section
    "Upload profile picture" 
+   [avatar user]
    [:input {:type "file" :id "file" :name "file" 
             :on-change 
             #(rf/dispatch [:user/upload-avatar
@@ -122,9 +133,8 @@
               @(rf/subscribe [:user/default-avatar]))
      :alt "User profile picture"}]])
 
-(defn admin "User admin page" []
-  (let [user @(rf/subscribe [:user/active-user])
-        section-btn (fn [text k section]
+(defn admin "User admin page" [user]
+  (let [section-btn (fn [text k section]
                       [ui/button text k
                                  :action #(rf/dispatch [:user/active-section section])])]
     [:div.user-inner
@@ -152,31 +162,33 @@
 
 
 (defn user-box "Wrapper for user views"
-  [component]
+  [user component]
   [:section.noborder
    [back-btn]
    [ui/close #(rf/dispatch [:user/close-ui])]
-   [component]])
+   [component user]])
 
 (defn user-section
   [active-section]
-  [:div.user-section-wrapper.stick-up.hi-z
-   {:class (when (and (some? active-section)
-                      (not (some #{:closing :closed} active-section)))
-             "active")}
-   (when (and (seq active-section) (not (some #{:closed} active-section)))
-     [:div.user-section
-      (let [active-section (case (last active-section)
-                             :closing (or (last (butlast active-section))
-                                          :login) ;patch through underlying
-                             (last active-section))]
-      [user-box
-       (case active-section ;get last in list. guess should hook up to proper router though.
-         :login        sign-in
-         :register     register
-         :admin        admin
-         :comments     comments
-         :change-avatar change-avatar
-         :change-password change-password
-         :change-username change-username)])
-      ]) ])
+  (let [user @(rf/subscribe [:user/active-user])]
+    [:div.user-section-wrapper.stick-up.hi-z
+     {:class (when (and (some? active-section)
+                        (not (some #{:closing :closed} active-section)))
+               "active")}
+     (when (and (seq active-section)
+                (not (some #{:closed} active-section)))
+       [:div.user-section
+        (let [active-section (case (last active-section)
+                               :closing (or (last (butlast active-section))
+                                            :login) ;patch through underlying
+                               (last active-section))]
+          [user-box user
+           (case active-section ;get last in list. guess should hook up to proper router though.
+             :login        sign-in
+             :register     register
+             :admin        admin
+             :comments     comments
+             :change-avatar change-avatar
+             :change-password change-password
+             :change-username change-username)])
+        ]) ]))
