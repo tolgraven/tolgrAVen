@@ -8,9 +8,10 @@
 
 (defn back-btn [] ;tho ideally we push states and pop them... so becomes, yeah
   (when (< 1 (count @(rf/subscribe [:user/active-section])))
-    [:button.user-back-btn.showing
+    [:button.user-back-btn.noborder.showing
      {:on-click #(rf/dispatch [:user/to-last-section])
-      :style {:position :absolute :left 0 :top 0}} "<"]))
+      :style {:position :absolute :left 0 :top 0}}
+     [:i.fa.fa-chevron-left]]))
 
 (defn password-input [& {:keys [placeholder path]
                          :or {placeholder "Password"
