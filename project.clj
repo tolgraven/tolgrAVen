@@ -106,35 +106,16 @@
    [:cljsbuild :builds :app :compiler :output-dir]
    [:cljsbuild :builds :app :compiler :output-to]
    "resources/public/js/compiled/out"
-   "resources/public/js/compiled/app.js"
-   ]
+   "resources/public/js/compiled/app.js"]
   :figwheel
   {:http-server-root "public"
-  ; {:http-server-root "resources/public"
    :server-port 4001
    :ring-handler tolgraven.handler/app-routes ;Embed ring handler in figwheel http-kit server, for simple ring servers, if it doesn't work for you just run your own (see lein-ring)
    :server-logfile "log/figwheel-logfile.log"
-   ; :ring-handler tolglow-web.handler/app-routes ;Embed ring handler in figwheel http-kit server, for simple ring servers, if it doesn't work for you just run your own (see lein-ring)
    :nrepl-port 7002
    :css-dirs ["resources/public/css"]
    :nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
 
-  ; :cljsbuild
-  ; {:builds
-  ;   {:app
-  ;   {:source-paths ["src/cljs" "src/cljc" "env/dev/cljs"]
-  ;     :figwheel {:on-jsload "tolgraven.core/mount-components"} ; only this bc dev/app calls init! (and more!) which also gets round multi-remount conundrum i solved uglily in cue-db... very reasonable to keep dev things away from general codebase so auto disabled
-  ;     :compiler {:output-dir "resources/public/js/compiled/out"
-  ;                :output-to "resources/public/js/compiled/app.js"
-  ;                :asset-path "js/compiled/out"
-  ;                ; :npm-deps {:three "0.108.0"
-  ;                ;            :smoothscroll-polyfill "0.4.4"}
-  ;                ; :install-deps true
-  ;                :optimizations :advanced
-  ;                :main "tolgraven.app" ;what is this why .app? ;; bc env/dev/app.cljs thingy. calls init
-  ;     }}}}
-  ; "Set up Figwheel as normal, but make sure :cljsbuild and :figwheel settings are in the root of your Leiningen project definition."
-  ; ^ could this be issue?
   :profiles
   {:dev           [:project/dev :profiles/dev]
    :test          [:project/dev :project/test :profiles/test]
@@ -149,6 +130,7 @@
                                  [alembic "0.3.2"]
                                  [pjstadig/humane-test-output "0.10.0"]
                                  [prone "2020-01-17"]
+                                 [re-frisk "1.3.4"  :exclusions [org.clojure/core.async org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize org.clojure/core.cache]]
                                  ; [re-frisk-remote "1.3.4"  :exclusions [org.clojure/core.async org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize org.clojure/core.cache]]
                                  ; [day8.re-frame/re-frame-10x "0.7.0"]
                                  ; [day8.re-frame/tracing "0.6.0"]
@@ -166,11 +148,12 @@
                      {:output-dir "resources/public/js/compiled/out"
                       :output-to "resources/public/js/compiled/app.js"
                       :asset-path "js/compiled/out"
-                      ; :closure-defines {"re_frame.trace.trace_enabled_QMARK_" true}
                       :optimizations :none
                       :parallel-build true
                       ; :preloads [re-frisk-remote.preload devtools.preload day8.re-frame-10x.preload]
+                      :preloads [re-frisk.preload]
                       ; :preloads [devtools.preload day8.re-frame-10x.preload] ;can remove devtools preload cause have in app.cljs?
+                      ; :closure-defines {"re_frame.trace.trace_enabled_QMARK_" true}
                       :external-config
                       {:devtools/config
                        {:features-to-install [:formatters :hints] ;add exception hints
