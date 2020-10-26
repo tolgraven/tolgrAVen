@@ -8,18 +8,22 @@
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
 
-(rf/reg-event-fx :fb/finish-sign-in [(rf/inject-cofx :user/gen-color)]
- (fn [{:keys [db bg-color]} [_ user]]
+(rf/reg-event-fx :fb/finish-sign-in [(rf/inject-cofx :user/gen-color)
+                                     (rf/inject-cofx :gen-id [:user])]
+ (fn [{:keys [db bg-color id]} [_ user]]
    (let [user-map {:name (:display-name user)
                    :email (:email user)
                    :avatar (:photo-url user)
                    :bg-color bg-color
-                   :id (:uid user)}]
+                   :id (:uid user)
+                   :seq-id (-> id :id :user)}]
      {:db (update-in db [:fb/users (:uid user)]
                      #(merge %2 %1)
                      user-map)
       :dispatch [:user/active-section :admin :force]
       :firestore/set {:path [:users (:uid user)]
+                      :data user-map}
+      :firebase/set {:path [:users (:uid user)]
                       :data user-map}})))
 
 (rf/reg-event-fx :fb/set-user [debug]
@@ -28,6 +32,18 @@
      {:dispatch-n [[:state [:firebase :user] user]
                    [:fb/finish-sign-in user]
                    [:user/login (:uid user)]]})))
+
+
+(rf/reg-event-fx :fb/fetch-users
+  (fn [{:keys [db]} [_ user]]
+    {:firestore/get {:path-document [:users user] ; simply wont work. says it fails bc is nil but makes even less sense.
+                     :on-success [:fb/store-users]}
+    :firestore/read-once {:path [:users] ; simply wont work. says it fails bc is nil but makes even less sense.
+                           :on-success [:fb/store-users]}}))
+(rf/reg-event-db :fb/store-users
+  (fn [db [_ users]]
+    (assoc-in db :fb/users users)))
+
 
 (rf/reg-event-fx :fb/error
   (fn [{:keys [db]} [_ error]]
@@ -71,14 +87,14 @@
 (rf/reg-event-fx :user/login [debug]
 (fn [{:keys [db]} [_ user]]
   {:db (assoc-in db [:state :user] user)
-   :dispatch [:user/active-section :admin]}))
+   :dispatch [:user/active-section :admin :force]}))
 
 (rf/reg-event-fx :user/logout 
 (fn [{:keys [db]} [_ user]]
   {:db (update-in db [:state] dissoc :user)
    :dispatch [:user/close-ui]}))
 
-(rf/subscribe [:state])
+
 (rf/reg-event-fx
  :user/request-register [(path [:state])]
  (fn [{:keys [db]} [_ info]]

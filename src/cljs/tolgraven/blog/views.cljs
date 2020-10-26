@@ -7,7 +7,7 @@
    ; [cljsjs.codemirror.mode.markdown]
    [markdown.core :refer [md->html]]
    [clojure.string :as string]
-   [tolgraven.util :as util :refer [at ors]]
+   [tolgraven.util :as util :refer [at <-fire]]
    [tolgraven.views-common :as common]
    [tolgraven.ui :as ui]))
 ;; should be a rather large overlapping functionality post blog/post comment
@@ -241,12 +241,10 @@
 
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text comments] :as blog-post}]
-  (let [user @(rf/subscribe [:user/user user])] ; arbitrary target but yea
-  ; (when text ; arbitrary target but yea
+  (let [user @(rf/subscribe [:user/user user])]
     [:section.blog-post
-     ; {:ref #(when % (util/run-highlighter! "pre" %))}
      {:ref #(rf/dispatch [:run-highlighter! %])}
-     [:div.flex
+     [:div.flex.blog-post-header
       [:img.user-avatar.blog-user-avatar
        {:src (get user :avatar @(rf/subscribe [:user/default-avatar]))}]
       [:div
@@ -254,9 +252,11 @@
        [posted-by id (:name user) ts]
        [:div.blog-post-tags
         (doall (for [tag (or (:tags blog-post) ["some-category" "other" "random thoughts"])]
+                 ^{:key (str "blog-post-" id "-category-" tag)}
                  [:span tag]))]]]
      [:br]
-     [ui/md->div text]
+     ; [a custom sticky mini "how far youve scrolled bar" on right?]
+     [:div.blog-post-text [ui/md->div text]]
      [:br] [:br]
      [comments-section blog-post]]))
 

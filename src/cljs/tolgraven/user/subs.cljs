@@ -1,6 +1,7 @@
 (ns tolgraven.user.subs
   (:require
-   [re-frame.core :as rf]))
+   [re-frame.core :as rf]
+   [clojure.walk :as walk]))
 
 (rf/reg-sub :user/users
  :<- [:get :users]
@@ -10,12 +11,14 @@
            (get-in fb-users path))))
 
 (rf/reg-sub :user/user ;find user
- :<- [:get :users]
  :<- [:get :fb/users]
- (fn [[users fb-users] [_ user-id]]
-   (get fb-users user-id
-        ; (first (filter #(= (:id %) user-id) users))
-        )))
+ (fn [[fb-users] [_ user-id]]
+   (when user-id
+     (get fb-users user-id
+          (-> @(rf/subscribe [:firestore/on-snapshot
+                              {:path-document [:users user-id]}])
+              :data
+              walk/keywordize-keys)))))
 
 (rf/reg-sub :user/default-avatar
  :<- [:get :content :common :user-avatar-fallback]
@@ -24,10 +27,9 @@
 
 
 (rf/reg-sub :user/active-user
- :<- [:get]
  :<- [:state [:user]]
- (fn [[db user-id] [_ _]]
-   (get-in db [:fb/users user-id])))
+ (fn [user-id [_ _]]
+   @(rf/subscribe [:user/user user-id])))
 
 (rf/reg-sub :user/active-section
  :<- [:state [:user-section]]
