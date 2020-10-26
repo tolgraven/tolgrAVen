@@ -81,26 +81,12 @@
                                     :merge-fields [:comments]}
                       :on-success [:diag/new :info "Blog" "Post reached server"]
                       :on-failure [:diag/new :error "Blog" "Failure"]}})))
-; (rf/subscribe [:firebase/connection-state])
-; (rf/subscribe [:blog/posts])
-; {:firestore/write-batch
-;  {:operations
-;   [[:firestore/set {:path [:cities "SF"] :data {:name "San Francisco" :state "CA"}}]
-;    [:firestore/set {:path [:cities "LA"] :data {:name "Los Angeles" :state "CA"}}]
-;    [:firestore/set {:path [:cities "DC"] :data {:name "Washington, D.C." :state nil}}]]
-;   :on-success #(prn "Cities added to database.")
-;   :on-failure #(prn "Couldn't add cities to database. Error:" %)}}
 
-; {:firestore/add {:path [:my-collection]
-;                  :data my-data
-;                  :on-success #(prn "Added document ID:" (last %))}}
 
-; {:firestore/get {:path-collection [:blog-comments]
-;                  :where [[:user :>= "user-id"]
-;                          #_[:population :< 1000000]]
+; {:firestore/get {:path-collection [:blog-comments] ;not working, fails spec?
+;                  :where [[:user := "user-id"] ]
 ;                  :limit 100
-;                  :order-by [[:id :desc]
-;                             #_[:population :desc]]
+;                  :order-by [[:id :desc]]
 ;                  :start-at ["CA" 1000]
 ;                  :doc-changes false
 ;                  :on-success #(prn "Number of comments" (:size %))}}
@@ -110,7 +96,7 @@
 (defn- assemble-path "Get db path from path pieces"
   [base path & further]
   (let [path (reduce (fn [p id]
-                       (into p [:comments (keyword (str id))])) ;example of why update/associng is dangerous, miss index and have a "new" broken post popping up...
+                       (into p [:comments (keyword (str id))])) ;needs to be keyword tho blog uses num keys because of keywordize...
                      base path)]
     (if further ; dont want last :comments, instead something else
       (concat path further)
@@ -123,7 +109,7 @@
  (fn [{:keys [db now id]} [_ path comment]]
    (let [id (-> id :id :comment)
          full-path (assemble-path [:blog :posts (first path)]
-                                  (conj (rest path) id))
+                                  (concat (rest path) [id]))
          sibling-count (count (get-in db full-path))
          comment (merge comment
                         {:ts now
@@ -136,12 +122,9 @@
         :firestore/set
         {:path [:blog-posts (str (first path))] ;for now, switch to firestore...
          :data (assoc-in {} (assemble-path []
-                                           (conj (rest path) id))
+                                           (concat (rest path) [id]))
                          comment)
-         :set-options {:merge true
-                       :merge-fields [:comments]}
-         :on-success [:diag/new :info "Comment"] ;or, some event navigating to post
-         :on-failure [:diag/new :error "Comment" "Failed"]}
+         :set-options {:merge true :merge-fields [:comments]}}})))
         ; :firestore/write-batch
         ; {:operations
         ;  [[:firestore/set
@@ -149,23 +132,15 @@
         ;     :data (assoc-in {} (assemble-path []
         ;                                       (concat (rest path) [id]))
         ;            comment)
-        ;     ; :set-options {:merge true
-        ;     ;               :merge-fields [:comments]}
-        ;     :on-success [:diag/new :info "Comment"] ;or, some event navigating to post
-        ;     :on-failure [:diag/new :error "Comment" "Failed"]}]
+        ;     :set-options {:merge true :merge-fields [:comments]} }]
         ;   [:firestore/set
         ;    {:path [:blog-comments (str (first path))] ;for now, switch to firestore...
-        ;     :data [id]
-        ;     ; :set-options {:merge true
-        ;     ;               :merge-fields [:comments]}
-        ;     :on-success [:diag/new :info "Comment"] ;or, some event navigating to post
-        ;     :on-failure [:diag/new :error "Comment" "Failed"]}]]}
-        })))
+        ;     :data [id] }]]} })))
 
-; (rf/subscribe [:firebase/connection-state])
 
-(rf/reg-event-fx :blog/comment-vote [debug]
- (fn [{:keys [db]} [_ path vote]]
+
+(rf/reg-event-fx :blog/comment-vote ;TODO def sub firestore on-snapshot just because (plus for general comments as well)
+ (fn [{:keys [db]} [_ path vote]]   ; other cool stuff could be typing indicator yeah?
    (let [diff (case vote :up 1 :down -1)
          state-path [:state :blog :voted path]
          db-path (assemble-path [:blog :posts (first path)] (rest path) :score)
@@ -180,15 +155,12 @@
               (update-in db-path + diff))
       :firestore/set
       {:path [:blog-posts (str (first path))]
-         :data (assoc-in {} (assemble-path [] (rest path) :score)
-                         (+ (get-in db db-path)
-                            diff)) ;  or just a real back-end. cant trust user to provide tot score so
-         :set-options {:merge true
-                       :merge-fields [:comments]}
-         :on-success [:diag/new :info "Vote" "You are a champion of democracy"] ;or, some event navigating to post
-         :on-failure [:diag/new :error "Vote" "Failed"]}})))
-; (assemble-path [:blog-posts 0] [0] :score)
-; (assemble-path [] [0] :score)
+       :data (assoc-in {} (assemble-path [] (rest path) :score)
+                       (+ (get-in db db-path)
+                          diff)) ;  or just a real back-end. cant trust user to provide tot score so
+       :set-options {:merge true :merge-fields [:comments]}
+       :on-failure [:diag/new :error "Vote" "Failed. You, are a failure."]}})))
+
 ; for comment scroll lazy load:
 ; pull comments one by one, chunked so maybe like first five
 ; put intersectionobserver on maybe second to last one
