@@ -71,6 +71,17 @@
     {:common/navigate-fx! [url-key params query]}))
 
 
+; (rf/reg-event-fx :run-in 
+;   (fn [_ [_ id-key ms f & args]]
+;     {:dispatch-later
+;      {:ms ms
+;       :dispatch [:run-fn (into [id-key f] args)]}}))
+
+; (rf/reg-event-fx :run-fn
+;   (fn [_ [_ id-key f & args]]
+;     (apply f args)
+;     nil))
+
 (rf/reg-event-fx :run-in! ; trying to figure out why'd be bad idea.
 ; certainly would be if over-used (js cb hell) but for like, what would otherwise be:
 ; define evt, define second evt, dispatch-later to second.
@@ -127,13 +138,11 @@
 
 
 (rf/reg-event-db :exception
-  (assoc-in-factory [:exception]))
+  (assoc-in-factory [:state :exception]))
 
 (rf/reg-event-db :form-field ;gets spammy lol. maybe internal til on blur hey...
-  ; (assoc-in-factory [:state :form-field]))
-  (fn [db [_ path value]]
-    (assoc-in db (into [:state :form-field] path) value)))
-(rf/dispatch [:form-field [:post-blog] {}])
+  (assoc-in-factory [:state :form-field]))
+
 
 (rf/reg-event-fx :reloaded
  (fn [db [_ _]]
@@ -161,7 +170,7 @@
 
 (rf/reg-event-fx :fb/fetch-settings [debug]
   (fn [{:keys [db]} _]
-    {:dispatch [:http-get {:uri "/api/firebase-settings"}
+    {:dispatch [:http/get {:uri "/api/firebase-settings"}
                 [:option [:firebase]]]}))
 
 
@@ -173,7 +182,7 @@
   (fn [{:keys [db]} _]
     {:dispatch-n
       [(when-not (-> db :content :docs :md) ; no re-request for this...
-         [:http-get {:uri             "/docs"
+         [:http/get {:uri             "/docs"
                       :response-format (ajax/raw-response-format)}
            [:content [:docs :md]]])
        ; [:->css-var! "line-width-vert" @(rf/subscribe [:get-css-var "line-width"])]
@@ -203,7 +212,7 @@
 (rf/reg-event-fx :menu ;; this why better sep. can then inject css var and not sub? i somehow remeber that being badd
   (fn [{:as cofx :keys [db]} [_ state]]
     (let [open-height   @(rf/subscribe [:get-css-var "header-with-menu-height"])
-          closed-height @(rf/subscribe [:get-css-var "header-height"])
+          closed-height @(rf/subscribe [:get-css-var "header-height"]) ;TODO should rather be set from here with data-attr? ideally depends on content
           difference (->> (map js/parseFloat [open-height closed-height])
                           (apply -)
                           (* 0.5))]
@@ -304,13 +313,17 @@
         extra-defaults
         opts)})))
 
-(rf/reg-event-fx :http-get [debug]
+(rf/reg-event-fx :http/get [debug]
   (get-http-fn :get))
 
-(rf/reg-event-fx :http-post [debug]
+(rf/reg-event-fx :http/post [debug]
   (get-http-fn :post
-               {:format (ajax/transit-request-format)}))
+                              ))
+               ; {:format (ajax/transit-request-format)}))
 
+(rf/reg-event-fx :http/put [debug]
+  (get-http-fn :put
+               {:multipart-params :something})) ;file upload..
 
 
 (rf/reg-event-fx :default-http-result
@@ -355,8 +368,6 @@
         [(when-not sticky?
            {:dispatch  [:diag/unhandled :remove id]
             :ms (* 1000 (get-in db [:options :hud :timeout]))})]}))))) ;tho can always get removed earlier by us...
-; (rf/subscribe [:get :diagnostics])
-; (util/log :warning "what" "now")
 
 (rf/reg-event-db :diag/unhandled
  (fn [db [_ action id]]

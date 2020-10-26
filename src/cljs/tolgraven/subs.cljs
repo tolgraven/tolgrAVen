@@ -5,6 +5,7 @@
             [tolgraven.blog.subs]
             [tolgraven.user.subs]
             [clojure.edn :as edn]
+            [clojure.walk :as walk]
             [cljs-time.core :as ct]))
 
 (rf/reg-sub :get ;should this be discontinued? or only used transiently like migrate everything away once got a comp working?

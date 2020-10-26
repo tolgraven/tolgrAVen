@@ -54,8 +54,7 @@
   (or (field login)
       (field register))))
 
-(rf/reg-sub
- :login/valid-input?
+(rf/reg-sub :login/valid-input?
  :<- [:form-field [:login]]
  (fn [login-field [_ field]]
    (and (pos? (count (:email   login-field)))

@@ -14,7 +14,7 @@
   (fn [{:keys [db]} _]
     (if-not (-> db :state :booted :blog)
      {:dispatch-n [[:blog/state [:page] 0]
-                   ; [:booted :blog]
+                   [:booted :blog]
                    ] ; would be nice to defer (further in?) mount til certain of these run, now loads before happens... so set in initial db
       :firestore/get {:path-collection [:blog-posts]
                       :on-success [:blog/set-content]
@@ -75,12 +75,12 @@
    (let [id (-> id :id :blog)
          post (assoc post :ts now :id id :user (-> post :user :id))]
      {:db (assoc-in db [:blog :posts id] post)
-      :firestore/set {:path [:blog-posts (str id)]
-                      :data post
-                      :set-options {:merge true
-                                    :merge-fields [:comments]}
-                      :on-success [:diag/new :info "Blog" "Post reached server"]
-                      :on-failure [:diag/new :error "Blog" "Failure"]}})))
+      :dispatch-n [[:store-> [:blog-posts (str id)] post]
+                   ; should also store id of blog under under user somehow?
+                   [:store-> [:users (-> post :user :id)]
+                             {:blog-posts id}
+                             [:blog-posts]]
+                   ]})))
 
 
 ; {:firestore/get {:path-collection [:blog-comments] ;not working, fails spec?

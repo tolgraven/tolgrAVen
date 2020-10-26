@@ -3,7 +3,8 @@
    [re-frame.core :as rf]
    [re-frame.std-interceptors :refer [path]]
    ; [day8.re-frame.tracing :refer-macros [fn-traced]]
-   [tolgraven.util :as util]))
+   [tolgraven.util :as util]
+   [ajax.core :as ajax]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
@@ -36,10 +37,8 @@
 
 (rf/reg-event-fx :fb/fetch-users
   (fn [{:keys [db]} [_ user]]
-    {:firestore/get {:path-document [:users user] ; simply wont work. says it fails bc is nil but makes even less sense.
-                     :on-success [:fb/store-users]}
-    :firestore/read-once {:path [:users] ; simply wont work. says it fails bc is nil but makes even less sense.
-                           :on-success [:fb/store-users]}}))
+    {:firestore/get {:path-collection :users ; [users] simply wont work. says it fails bc is nil but makes even less sense.
+                     :on-success [:fb/store-users]}}))
 (rf/reg-event-db :fb/store-users
   (fn [db [_ users]]
     (assoc-in db :fb/users users)))
@@ -77,11 +76,9 @@
 (rf/reg-event-fx
  :user/request-login ; will evt just http-post, on-success will handle rest incl login
  (fn [{:keys [db]} [_ info]]
-   (let [login (-> db :state :login-field)
+   (let [login (-> db :state :form-field :login)
          user (get-user (:user login) (-> db :users))]
-     (if true ;(= (:password login) (:password user))
-       {:dispatch [:fb/sign-in :email (:email login) (:password login)]}
-       {:dispatch [:diag/new :error "Sign in" "Wrong username or password"]}))))
+     {:dispatch [:fb/sign-in :email (:email login) (:password login)]})))
 
 
 (rf/reg-event-fx :user/login [debug]
