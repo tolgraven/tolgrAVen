@@ -141,6 +141,24 @@
    {:db nil}))
 
 
+; renamed store-> not fire->, should work to hide fire behind stuff
+; so can swap out easier
+(rf/reg-event-fx :store->
+  (fn [_ [_ path data merge-fields]]
+    {:firestore/set {:path path :data data
+                     :set-options
+                     (when merge-fields
+                       {:merge true :merge-fields merge-fields})}}))
+; other thing could do is combo app-db/fire setter/getter
+; so <-$ subs topic and tries grab from local, then far
+; while dispatch will store value in both db and send to fire.
+; in one op.
+; that would be for eg if thousands of objects so makes much more sense to
+; also batch-fetch early in page boot.
+; but then in component still always have latest value.
+; if that actually (easily) possible hmm
+; 
+
 (rf/reg-event-fx :fb/fetch-settings [debug]
   (fn [{:keys [db]} _]
     {:dispatch [:http-get {:uri "/api/firebase-settings"}

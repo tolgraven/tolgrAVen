@@ -119,23 +119,13 @@
                          :score 0})]
        {:db (-> db
                 (assoc-in full-path comment)) ; need to vec else first nil conj creates a list which cant be update-in'd
-        :firestore/set
-        {:path [:blog-posts (str (first path))] ;for now, switch to firestore...
-         :data (assoc-in {} (assemble-path []
-                                           (concat (rest path) [id]))
-                         comment)
-         :set-options {:merge true :merge-fields [:comments]}}})))
-        ; :firestore/write-batch
-        ; {:operations
-        ;  [[:firestore/set
-        ;    {:path [:blog-posts (str (first path))] ;for now, switch to firestore...
-        ;     :data (assoc-in {} (assemble-path []
-        ;                                       (concat (rest path) [id]))
-        ;            comment)
-        ;     :set-options {:merge true :merge-fields [:comments]} }]
-        ;   [:firestore/set
-        ;    {:path [:blog-comments (str (first path))] ;for now, switch to firestore...
-        ;     :data [id] }]]} })))
+        :dispatch
+        [:store->
+         [:blog-posts (str (first path))]
+         (assoc-in {} (assemble-path []
+                                     (concat (rest path) [id]))
+                   comment)
+         [:comments]]})))
 
 
 
@@ -153,13 +143,13 @@
      {:db (-> db
               (assoc-in state-path (if-not (= vote voted) vote false))
               (update-in db-path + diff))
-      :firestore/set
-      {:path [:blog-posts (str (first path))]
-       :data (assoc-in {} (assemble-path [] (rest path) :score)
+      :dispatch
+      [:store->
+       [:blog-posts (str (first path))]
+       (assoc-in {} (assemble-path [] (rest path) :score)
                        (+ (get-in db db-path)
-                          diff)) ;  or just a real back-end. cant trust user to provide tot score so
-       :set-options {:merge true :merge-fields [:comments]}
-       :on-failure [:diag/new :error "Vote" "Failed. You, are a failure."]}})))
+                          diff))
+       [:comments]]})))
 
 ; for comment scroll lazy load:
 ; pull comments one by one, chunked so maybe like first five
