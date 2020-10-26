@@ -34,6 +34,13 @@
  (fn [section [_ _]]
    section))
 
+(rf/reg-sub :user/ui-open?
+ :<- [:user/active-section]
+ (fn [section [_ _]]
+   (and (some? section)
+        (not (some #{:closed} section)))))
+
+
 ; (rf/reg-sub :user/status
 ;  (fn [db [_ user-id]]
 ;    (-> @(rf/subscribe [:user/user used-id]) :status)))

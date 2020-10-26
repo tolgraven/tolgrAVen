@@ -11,18 +11,11 @@
    [tolgraven.util :as util :refer [at]]))
 
 (defn user-btn [model]
-  (let [user @(rf/subscribe [:user/active-user])
-        section @(rf/subscribe [:user/active-section])
-        is-open? (and (not (some #{:closed} section))
-                      (not (nil? section)))]
-    [:<>
-     [:i.user-btn
-     {:class "fa fa-user"
-      :on-click #(rf/dispatch (if is-open?
-                                [:user/close-ui]
-                                [:user/open-ui]))}]
-     (when @(rf/subscribe [:menu])
-      [:div.user-name (:name user)])]))
+  [:<>
+   [:i.user-btn
+    {:class "fa fa-user"
+     :on-click #(rf/dispatch (if @(rf/subscribe [:user/ui-open?])
+                                                [:user/close-ui] [:user/open-ui]))}]])
 
 (defn loading-spinner [model]
   [:div.loading-spinner
