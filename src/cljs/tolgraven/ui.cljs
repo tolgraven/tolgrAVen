@@ -19,7 +19,7 @@
 
 (defn button "Pass text and id, plus either link anchor or action..."
   [text id & {:keys [type bg-div-class link action disabled?]
-              :or   {type "button" bg-div-class "blur-bg"}}]
+              :or   {type "button" }}]
   [:button {:id (str "btn-" (name id)) :type type :on-click action :disabled disabled?}
    (when bg-div-class [:div {:class bg-div-class}])
    [:label {:for (str "btn-" (name id))}

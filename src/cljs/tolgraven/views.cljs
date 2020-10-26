@@ -104,7 +104,7 @@
     [:br]
     [:div.buttons
      (for [[text id] buttons] ^{:key (str "intro-button-" id)}
-       [ui/button text id :link id])]]])
+       [ui/button text id :link id :bg-div-class "blur-bg"])]]])
 
 (defn ui-interlude "Banner across with some image or video or w/e
                     TODO if video, autoplay once when (re-)seen, or cont if clicked
