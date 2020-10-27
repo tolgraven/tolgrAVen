@@ -23,7 +23,7 @@
   [text]
   [:h1#loading-full-page
     text
-    [:i.fa.fa-spinner.fa-spin]])
+    [:i.loading-spinner.fa.fa-spinner.fa-spin]])
 
 (defn- basic-skeleton "Skeleton for main page layout. Would be nice if faded in yo. Css animation?"
   [header-text subtext]
@@ -39,7 +39,9 @@
     [:label.burger]]
    [:div.line.line-header]
 
-   [:main.main-content]
+   [:main.main-content
+    [:div.loading-container
+     [:i.loading-spinner.loading-spinner-massive.fa.fa-spinner.fa-spin]]]
 
    [:footer.footer-sticky ; [:footer>div.footer-content
     [:div.line.line-footer] ;cant this be outside main ugh

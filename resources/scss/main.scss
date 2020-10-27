@@ -442,6 +442,8 @@ main { /* dunno purpose of why I choose .main-content... */
   // padding-bottom: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
   padding-bottom: calc(3.1 * var(--space)); /* XXX actually, footer height... */
   position: relative;
+
+  animation: fade-in 3.0s;
 }
 pre {
   // overflow: scroll;
@@ -663,10 +665,25 @@ video {
   margin: var(--space);
 }
 
-.loading-spinner {
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.loading-spinner, .loading-spinner-massive {
   opacity: 0.8;
   transition: all 0.5s;
   position: relative;
+  font-size: 150%;
+}
+.loading-spinner-massive { // full page size
+  padding: 20rem;
+  font-size: 900%;
+  animation: fade-in 2.5s;
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .loading-text-line {
