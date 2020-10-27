@@ -1,6 +1,7 @@
-<h1 class="title">Congratulations, your <a class="alert-link" href="http://luminusweb.net">Luminus</a> site is ready!</h1>
+<h1 class="title">TODO: write something pretty with code like below</h1>
 
-This page will help guide you through the first steps of building your site.
+So I can replace this dummy stuff haha. Document the process!
+Tell my `story`!
 
 <p class="title is-5">Why are you seeing this page?</p>
 

@@ -20,7 +20,7 @@
                          (cljs.reader/read-string))))))  ;; EDN map -> map
 
 
-(def data ; default db
+(def data ; default db. Needs to be cleaned out of content already haha.
   {:state {:menu false
            :is-loading false
            :theme-force-dark true
@@ -73,14 +73,18 @@
              :story {:heading {:title "Breaking things down"
                                :bg {:src "img/wide-spot-ctrl-small.jpg"}}
                      :title "Not a real company... yet"
-                     :text "After spending my working life in sports television, and lacking the passion of my colleagues - despite interesting and varied work (everything from PA, graphics, video editing, 'When IT says it can't be done' tech wizard) I started a transition towards programming a number of years ago.
+                     :text "After spending my working life in sports television, and lacking the passion of my colleagues within that subject - despite interesting and varied work (everything from PA, graphics, video editing, 'When IT says it can't be done' tech wizard) I started a transition towards programming a number of years ago.
                             Currently studying computer science, and having picked up some web design chops last year, I'm building this website from scratch as a learning environment.  The hope of course being it'll one day reflect something real.
                            My plan is to build a simple CMS, plus blog/comments system with user accounts. I think the Clojure and ClojureScript ecosystem seems good in this regard. It's daunting, but the lack of rails, as it were, might force a deeper understanding of each aspect. And it's close enough to the JS ecosystem everyone is in that skills will surely translate.
                             Also, Hiccup is awesome.
 
                             Well let's see what else. I make music, have dabbled in being a rave promoter, soundboy, am a big enough ally to have hosted gay parties in Uganda, and all-around upstanding chap. I reckon.
-                            Before I run my own web design/custom music tech/yada yada real company I still try to do those things, on a hobbyist basis.
-                            Currently most of the front-end is finished (well, pre-alpha finished) while the back-end is, shall we say... not. Everything will be hooked up in due time though. And optimized - this website hardly currently plays nice with more limited hardware. But have a look around, you can make a user account and post away at the blog. safe in the knowledge it won't leave your browser.  "
+                            Before I run my own web design/custom music tech/yada yada real company I still try to do those things, on a hobbyist basis. Or working for the man?
+                            Currently most of the front-end is finished (well, alpha finished) while the back-end is, shall we say... not.
+                            Persistance of blog posts, comments, votes and users has been achieved by way of Firebase. Still need such back-end rarities as content not defined in app-db, and more.
+                            Of course I actually intend to write stuff - about the process, life in general, I'm not sure yet. All in due time.
+                            
+                            Leave a comment! Give me a job!"
 
                      :images [["headshot" {:src "img/Leg-tasteful-small.jpg" :alt "Joen"}
                                "Yours truly. Smiling!"]
