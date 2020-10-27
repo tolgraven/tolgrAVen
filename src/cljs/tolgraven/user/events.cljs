@@ -21,8 +21,7 @@
      {:db (update-in db [:fb/users (:uid user)]
                      #(merge %2 %1) ;backwards, no overwrites...
                      user-map)
-      :dispatch-n [[:user/active-section :admin :force]
-                   [:store-> [:users (:uid user)] user-map]] }))) ; problem: overwrites any changed values on login. so def need fetch all users on boot...
+      :dispatch-n [[:store-> [:users (:uid user)] user-map]] }))) ; problem: overwrites any changed values on login. so def need fetch all users on boot...
 
 (rf/reg-event-fx :fb/set-user [debug]
   (fn [{:keys [db]} [_ user]]
