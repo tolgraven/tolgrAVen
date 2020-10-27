@@ -141,44 +141,51 @@
 
 (def router ; XXX weird thing doesnt automatically scroll to top when change page...
   (reitit/router
-    [["/"
+    ["/"
+     [""
       {:name        :home
        :view        #'home-page
        :controllers [{:start (fn [_]
                                (rf/dispatch [:page/init-home]))
                       :stop (fn [_]
                               (rf/dispatch [:state [:is-personal] true]))}]}]
-     ["/docs" {:name :docs
+     ["docs" {:name :docs
                :view #'doc-page
                :controllers [{:start (fn [_] (doall (map rf/dispatch [[:page/init-docs]
                                                                       [:state [:is-personal] true]])))}]}] ; really overkill this triggers each time. gotta be built-in solution somewhere? else work around
-     ["/blog" {:name :blog
+     ["blog" {:controllers [{:start (fn [_] (rf/dispatch [:page/init-blog]))}] }
+      [""     {:name :blog
                :view #'blog-page
-               :controllers [{:start (fn [_] (rf/dispatch [:page/init-blog]))}]
-              }]
-     ["/post-blog" {:name :post-blog
-               :view #'post-blog-page
-               :controllers [{:start (fn [_] (rf/dispatch [:page/init-post-blog]))}]}]
-     ["about" {:name :story
-               :view #'home-page}]
-     ["#link-services" {:name :services
-               :view #'home-page}]
-     ["/log" {:name :log
+               :controllers [{:start (fn [_] (rf/dispatch [:blog/set-posts-per-page 2]))}]}]
+      ["/post/:id"
+       {:name :blog-post
+        :view #'blog-page
+        :controllers
+        [{:parameters {:path [:id]}
+          :start (fn [{:keys [path]}]
+                   (rf/dispatch [:blog/set-posts-per-page 1])
+                   (rf/dispatch [:blog/nav-page (dec (:id path))]))
+          :stop (fn [{:keys [path]}]
+                  (js/console.log "stop" "item controller" (:id path)))}]}] ]
+     ["blog-post" {:name :post-blog
+                   :view #'post-blog-page
+                   :controllers [{:start (fn [_] (rf/dispatch [:page/init-post-blog]))}]}]        
+     ["log" {:name :log
               :view #'log-page}]
-     ["/test" {:name :test
-              :view #'test-page}] ]))
+     ["test" {:name :test
+              :view #'test-page}]
+     {:data {:controllers [{:start (util/log :debug "start" "root-controller")
+                            :stop  (util/log :debug "stop" "root controller")}]}}]))
+
+
 
 (defn start-router! []
   (rfe/start!
     router
     (fn [match _]
-      (rf/dispatch [:common/start-navigation match]))
+      (when match (rf/dispatch [:common/start-navigation match])))
     {:use-fragment true ;doesnt do nuffin without (tho still takes over) so dunno point?
-    :ignore-anchor-click? (fn [router e el uri] ;; Add additional check on top of the default checks
-                           (rfh/ignore-anchor-click? router e el uri))}))
-                           ; (and (rfh/ignore-anchor-click? router e el uri)
-                           ;      (not= "false" (gobj/get (.-dataset el) "reititHandleClick"))))}))
-                                ; (not= "false" (HistoryEventType/get (.-dataset el) "reititHandleClick"))))}))
+     :ignore-anchor-click? (constantly true)})) ; rfh/ignore-anchor-click?}))
 
 (def firebase-app-info
   {:apiKey "AIzaSyBsqgWFXZfLq4W8FPRfSVd3AzSt183w9HQ"
