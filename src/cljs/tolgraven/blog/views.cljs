@@ -33,7 +33,8 @@
         by (str "posted by ")
         ts (util/timestamp ts)]
     [:span.blog-info
-     (str "#" id " ") by user
+     ; (str "#" id " ") by
+     user
      [:span ts]
      [:span (cond (pos? score) "+" (neg? score) "-")
       (when-not (= 0 score) score)]])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
@@ -87,12 +88,13 @@
      [:section.blog-comment
       [:div.flex
        [:img.user-avatar
-        {:src (get user :avatar @(rf/subscribe [:user/default-avatar]))}]
+        {:src (or (:avatar user) ; NOTE (get ... default) apparently not safe?? or works for same op.
+                  @(rf/subscribe [:user/default-avatar]))}]
        
        [:div.blog-comment-main
         [:h4.blog-comment-title title]
         [posted-by id (:name user) ts score]
-        (when true ;(not= active-user user)
+        (when (not= active-user user)
           [:span.blog-comment-vote [vote-btn :up] [vote-btn :down]])
         [:div.blog-comment-text
          {:style {:filter (when (neg? score)
@@ -247,7 +249,7 @@
      [:div.flex.blog-post-header
       [:img.user-avatar.blog-user-avatar
        {:src (get user :avatar @(rf/subscribe [:user/default-avatar]))}]
-      [:div
+      [:div.blog-post-header-main
        [:h1 title]
        [posted-by id (:name user) ts]
        [:div.blog-post-tags

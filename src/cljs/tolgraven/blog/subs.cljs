@@ -45,28 +45,36 @@
 (rf/reg-sub :blog/posts-for-page
  :<- [:blog/posts] ; obvs will be, figure out idx range and ask server (then cache all already delivered in db)
  (fn [posts [_ idx page-size]]
-  ; (some->> (keys posts)
-  ;          sort
-  ;          reverse
-  ;          (map posts)
-  ;          (partition-all page-size)
-  ;          #(nth % idx))
-  ; (some->> (keys posts)
-  ;          sort
-  ;          reverse
-  ;          (map posts)
-  ;          (partition-all page-size)
-  ;          #(nth % idx))
      (when (seq posts)
        (try
         (nth (partition-all page-size posts)
              idx)
         (catch js/Error _))))) ;usually throws on first load saying idx not a number...
 
-(rf/reg-sub :comments/for-user ; honestly just dumb compared to going directly to db impl
- :<- [:blog/posts]
- (fn [posts [_ user]]
-   ))
+(rf/reg-sub :comments/all
+ :<- [:blog [:comments]]
+ (fn [comments [_ _]]
+   comments))
+
+(rf/reg-sub :comments/for-user ; tho w firestore can at least query so do that hah
+ (fn [[_ user-id]]
+   [(rf/subscribe [:comments/all])
+    (rf/subscribe [:user/user user-id])])
+ (fn [[comments user] [_ user-id]]
+   (vals (select-keys comments
+                      (:comments user)))))
 
 (rf/reg-sub :comments/for-post
- (fn [db [_ blog-id]]))
+ (fn [[_ blog-id]]
+   [(rf/subscribe [:comments/all])
+    (rf/subscribe [:blog/post blog-id])])
+ (fn [[comments post] [_ _]]
+   ; somehow recursively, urr.
+   ; the blog has :comments contains ids as set?
+   ; but no, cause children.
+   ; so map from ids to nil or more map if children.
+   ; or just fuck this and use a real database?
+   (vals (select-keys comments (get post :comments)))))
+
+(rf/reg-sub :comments/for-id
+ (fn [db [_ comment-id]]))

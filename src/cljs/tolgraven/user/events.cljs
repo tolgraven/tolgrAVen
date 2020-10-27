@@ -4,32 +4,45 @@
    [re-frame.std-interceptors :refer [path]]
    ; [day8.re-frame.tracing :refer-macros [fn-traced]]
    [tolgraven.util :as util]
+   [clojure.walk :as walk]
    [ajax.core :as ajax]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
 
-(rf/reg-event-fx :fb/finish-sign-in [(rf/inject-cofx :user/gen-color)
+(rf/reg-event-fx :fb/finish-sign-in [debug
+                                     (rf/inject-cofx :user/gen-color)
                                      (rf/inject-cofx :gen-id [:user])]
  (fn [{:keys [db bg-color id]} [_ user]]
-   (let [user-map {:name (or (:display-name user) (:email user))
+   (let [defaults {:name (or (:display-name user) (:email user))
                    :email (:email user)
                    :avatar (:photo-url user)
                    :bg-color bg-color
                    :id (:uid user)
-                   :seq-id (-> id :id :user)}]
-     {:db (update-in db [:fb/users (:uid user)]
-                     #(merge %2 %1) ;backwards, no overwrites...
-                     user-map)
-      :dispatch-n [[:store-> [:users (:uid user)] user-map]] }))) ; problem: overwrites any changed values on login. so def need fetch all users on boot...
+                   :comment-count 0
+                   :karma 0
+                   :seq-id (-> id :id :user)}
+         merged (merge defaults (get-in db [:fb/users (:uid user)]))]
+     {:db (assoc-in db [:fb/users (:uid user)] merged)
+      :dispatch [:store-> [:users (:uid user)] merged]}))) ; problem: overwrites any changed values on login. so def need fetch all users on boot...
 
 (rf/reg-event-fx :fb/set-user [debug]
   (fn [{:keys [db]} [_ user]]
-    (when (some? user)
+    (when (some? (:uid user)) ; sometimes called with empty map...
      {:dispatch-n [[:state [:firebase :user] user]
-                   [:fb/finish-sign-in user]
-                   [:user/login (:uid user)]]})))
-
+                   [:user/login (:uid user)]]
+      :dispatch-later
+      {:ms 3000 ;ugly, but login event is dispatched so early in boot no time to receive updated user data from firestore...
+                ; ok-ish since defering only the storing part and not sign-in itself.. and may receive subs in meantime for user data
+                ; guess only really affects first time signer inner?
+                ; or with the boot fx lib could queue it up have it run after store-users
+                ; of course simply updating the user in firebase makes more sense ;)
+                ; prob extend re-frame-firebase for bunch of such extra things.
+                ; can call manually in meantime.
+       :dispatch [:fb/finish-sign-in user]}})))
+                   
+; (seq {:wha nil})
+; (seq {})
 
 (rf/reg-event-fx :fb/fetch-users ; try find and fix bug in re-frame-firebase that causes this
   (fn [{:keys [db]} [_ user]]
@@ -149,3 +162,11 @@
     ;                     {:avatar path}
     ;                     [:avatar]]
     }))
+
+(rf/reg-event-fx
+ :user/set-field
+ (fn [{:keys [db]} [_ user field value]]
+   {:db (assoc-in db [:fb/users user field] value)
+    :dispatch [:store-> [:users user]
+                        {field value}
+                        [field]]}))

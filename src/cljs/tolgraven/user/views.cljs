@@ -4,6 +4,7 @@
    [re-frame.core :as rf]
    [clojure.string :as string]
    [tolgraven.util :as util :refer [at]]
+   [tolgraven.blog.views :as blog-views]
    [tolgraven.ui :as ui]))
 
 (defn back-btn [] ;tho ideally we push states and pop them... so becomes, yeah
@@ -85,9 +86,14 @@
 
 (defn comments "User comments page" [user]
   [section "User comments" ;will need to save comment id's to user when make new ones.
-   (let []
-     [:div])
-   ])
+   (let [comments @(rf/subscribe [:comments/for-user (:id user)])]
+     (doall (for [{:keys [id title text ts score] :as comment} comments] ^{:key (str "user-" (:id user) "-comment-" id)}
+              [:div.blog-comment>div.blog-comment-main
+               [:h4.blog-comment-title title]
+               [blog-views/posted-by id (:name user) ts score]
+               [:div.blog-comment-text
+                [ui/md->div text]]]))) ])
+
 
 (defn change-password "Change user password" [user]
   [section "Change password"
@@ -115,9 +121,7 @@
                                      @(rf/subscribe [:form-field [:change :username]])])]])
 (declare avatar)
 (defn change-avatar "Change avatar" [user]
-  [section
-   "Upload profile picture" 
-   [:br]
+  [section nil
    [avatar user false]
    [:br]
    [:span "Upload file "]
@@ -155,11 +159,11 @@
      [:section
       [:div.flex
        [avatar user true]
-       [:div
+       [:div.user-info
         [:h3 (:name user)]
         [:span [:em (:email user)]]
         [:br] [:br]
-        [:span (str "n" " comments")]
+        [:span (str (or (:comment-count user) 0) " comments")]
         [section-btn "View all" :comments :comments]
         (when (some #{(:id user)} (:bloggers roles))
           [ui/button "Post blog" :post-blog :link "#/post-blog" ])
