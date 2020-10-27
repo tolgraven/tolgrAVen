@@ -167,7 +167,7 @@
                    (rf/dispatch [:blog/nav-page (dec (:id path))]))
           :stop (fn [{:keys [path]}]
                   (js/console.log "stop" "item controller" (:id path)))}]}] ]
-     ["blog-post" {:name :post-blog
+     ["post-blog" {:name :post-blog
                    :view #'post-blog-page
                    :controllers [{:start (fn [_] (rf/dispatch [:page/init-post-blog]))}]}]        
      ["log" {:name :log
