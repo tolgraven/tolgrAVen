@@ -15,10 +15,9 @@
     (if-not (-> db :state :booted :blog)
      {:dispatch-n [[:blog/state [:page] 0]
                    [:booted :blog]
+                   [:<-store [:blog-posts] [:blog/set-content]]
+                   [:<-store [:blog-comments] [:blog/set-comments]]
                    ] ; would be nice to defer (further in?) mount til certain of these run, now loads before happens... so set in initial db
-      :firestore/get {:path-collection [:blog-posts]
-                      :on-success [:blog/set-content]
-                      :on-failure [:diag/new :error "Blog" "can't content"]} ; and then kill for main etc... but better if tag pages according to how they should modify css
       }))) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
 
 (rf/reg-event-fx :page/init-post-blog [debug]
@@ -29,6 +28,11 @@
 (rf/reg-event-fx :blog/set-content [debug]
  (fn [{:keys [db]} [_ response]]
    {:db (assoc-in db [:blog :posts]
+                  (util/normalize-firestore response))}))
+
+(rf/reg-event-fx :blog/set-comments [debug]
+ (fn [{:keys [db]} [_ response]]
+   {:db (assoc-in db [:blog :comments]
                   (util/normalize-firestore response))}))
 
 (rf/reg-event-db :blog/state [;debug

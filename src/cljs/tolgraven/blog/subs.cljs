@@ -3,20 +3,9 @@
     [re-frame.core :as rf]))
 
 
-; (rf/reg-sub :blog/path-from-uuid
-;  :<- [:get :blog]
-;  (fn [blog [_ uuid]])
-;   ) ; deep search for uuid, get path like [:2 :4 :1] - inefficient tho...
-; (rf/reg-sub :uuid/typeof)
-
-; (rf/reg-sub :blog/content ;terrible name, basically everything not posts. posts should have own category altogether anyways...
-;  :<- [:get [:blog]]
-;  (fn [content [_ path]]
-;    (get-in content path)))
-(rf/reg-sub :blog
- :<- [:get :blog]
- (fn [blog [_ path] ]
-   (get-in blog path)))
+(rf/reg-sub :blog ; should prob go straight to posts and comments same
+ (fn [db [_ path] ]
+   (get-in db (into [:blog] path))))
 
 (rf/reg-sub :blog/posts
  :<- [:blog [:posts]]
@@ -25,6 +14,11 @@
            sort
            reverse
            (map posts))))
+
+(rf/reg-sub :blog/post
+ :<- [:blog [:posts]]
+ (fn [posts [_ id]]
+  (id posts)))
 
 (rf/reg-sub :blog/state
  :<- [:state [:blog]]
