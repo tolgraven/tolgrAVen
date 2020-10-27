@@ -5,7 +5,7 @@
    [clojure.string :as string]
    [markdown.core :refer [md->html]]
    [tolgraven.ui :as ui]
-   [tolgraven.db :as db :refer [<-db ->db]]
+   [tolgraven.db :as db]
    [tolgraven.util :as util :refer [at]]))
 
 (defn ln->br "Ugh. UGH! Why"
@@ -143,6 +143,7 @@
   [{:keys [categories bg caption]}]
   [:div#section-services
      {:class "link-anchor stick-up section-with-media-bg-wrapper"}
+    [:a {:name "link-services"}]
      [ui-inset caption 4] ;auto-gen
      [:img (merge bg {:class "media-as-bg fade-3 parallax-bg"})] ;wait how durp properly
      [:section#services
@@ -181,7 +182,7 @@
                     :transform (str "translateZ(" (* 33 @frac) "px)")}}
            title]] ;ideally want this also growing (and moving quicker upwards)]
          [ui-inset caption 3]
-         [ui-inset (str "Fraction visible:" frac) 2]
+         [ui-inset (str "Fraction visible:" @frac) 2]
          [ui-fading]])))
 
 ;; TODO basically figure out neatest way of getting gotten rid of in-the-way bg layers...
@@ -196,13 +197,12 @@
   [:<>
    [:div {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
     [:div.fader
-     ; [:img.media.media-as-bg.parallax-sm bg]
      [:img.media.media-as-bg bg]
      [:section.covering-faded.noborder
       {:style (when tint {:background (str "var(--" tint ")")
                           :filter "saturate(1.9) brightness(0.9)"})}
       [:h1.h-responsive
-       {:style {:transform "translateY(-15%)"}}
+       {:style {:transform "translateY(-10%)"}}
        title]]]]
    [:div.fader>div.fade-to-black.bottom]])
 
@@ -213,9 +213,12 @@
     [fading-bg-heading heading]]
    [:div.fader>div.fade-to-black.between]
 
+   [:a {:name "about"}]
    [:section#about-story.anim-gradient-bg.noborder
-    [:h1#about.link-anchor (:title content)]
-    [ui/auto-layout-text-imgs content]]])
+    [:h1 {:style {:padding-top 0}} (:title content)]
+    [:br]
+    [ui/auto-layout-text-imgs content]
+    [:br] [:br]]])
 
 (defn ui-gallery "Stupid css thing slides sidewayus x) Make it go out left side would be cool"
   [img-attrs]

@@ -7,7 +7,7 @@
    [markdown.core :refer [md->html]]
    [tolgraven.ui :as ui]
    [tolgraven.views :as view]
-   [tolgraven.db :as db :refer [<-db ->db]]
+   [tolgraven.db :as db]
    [tolgraven.util :as util :refer [at]]))
 
 (defn user-btn [model]
@@ -18,9 +18,14 @@
                                                 [:user/close-ui] [:user/open-ui]))}]])
 
 (defn loading-spinner [model]
-  [:div.loading-spinner
+  [:div.loading-container
      (when (at model) ;should it be outside so not put anything when not loading? or better know element goes here
-       [:i {:class "fa fa-spinner fa-spin"}])])
+       [:i.loading-spinner {:class "fa fa-spinner fa-spin"}])])
+
+(defn loading-spinner-massive [model]
+  [:div.loading-container
+     (when (at model) ;should it be outside so not put anything when not loading? or better know element goes here
+       [:i.loading-spinner-massive {:class "fa fa-spinner fa-spin"}])])
 
 (defn flashing-ersatz-text-like-everyone-uses
   "Better than wee loading spinner no? Eg Docs, we know big page is coming
@@ -33,8 +38,7 @@
   [:div.header-logo
    [:a {:href "#"} ;works w/o reitit fiddle
     [:h1 text]]
-   [:div.header-logo-text
-    (println text)
+   [:div.header-logo-text ; if I want this to do its flip when changes text, do I need to make a whole componentDidChange dance with it? :I
     (for [line subtitle] ^{:key (str "header-text-" line)}
       [:p line])]])
 
@@ -45,10 +49,9 @@
                      (for [[title url page] links
                            :let [id (str "menu-link-" (string/lower-case title))]]  ^{:key id}
                           [:li [:a {:href url :name title :id id
-                                    :data-reitit-handle-click false
                                     :class (when (= page
-                                                    @(rf/subscribe [:common/page]))
-                                             :is-active)} ;some (rfe/href ::about auto thing too)
+                                                    @(rf/subscribe [:common/page-id]))
+                                             "is-active")} ;some (rfe/href ::about auto thing too)
                                 (string/upper-case title)]])))]
     [:menu ; XXX put bg stuff in mwnu not nav...
      [:nav

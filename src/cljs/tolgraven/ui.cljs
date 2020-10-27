@@ -92,7 +92,7 @@
                 (when prefix (str prefix "-"))
                 (if @model on-state off-state))
     :style {:margin "0.1em 0.2em"}
-    :on-click #(db/toggle model-path)}]))
+    :on-click #(rf/dispatch [:toggle model-path])}]))
 
 (defn minimize [model-path]
  [material-toggle

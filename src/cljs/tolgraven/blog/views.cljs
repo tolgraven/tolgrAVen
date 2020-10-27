@@ -50,7 +50,7 @@
                  [:button.blog-btn.topborder
                   attrs "Add comment"])
       :reply   (when-not adding-comment?
-                 [:button.blog-btn.blog-comment-reply-btn.topborder
+                 [:button.blog-btn.blog-comment-reply-btn.noborder
                   attrs [:i.fa.fa-reply]])
       :cancel  (when adding-comment?
                  [:button.blog-btn.bottomborder
@@ -58,8 +58,9 @@
 
 (defn edit-comment
   [path]
-  [:button.blog-btn.blog-comment-edit-btn.topborder
+  [:button.blog-btn.blog-comment-edit-btn.noborder
    [:i.fa.fa-edit]]) ;put by reply yo
+
 (defn delete-comment ;well that's when seq-id breaks down anyways lol
   [path]
   [:div "whua"])
@@ -274,6 +275,8 @@
         [:h3 title]
         [:p (->> text string/split-lines (take 3))]])]))
 
+(defn blog-tags-cloud "Tin"
+  [])
 
 (defn blog-intros-view "Headline and a paragraph, many on each page."
   [])
