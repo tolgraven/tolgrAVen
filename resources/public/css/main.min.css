@@ -424,31 +424,36 @@ footer {
 
 .footer-icons {
   text-align: end; }
+  .footer-icons > a {
+    padding: 0 0.45rem;
+    font-size: 2.0em; }
+    .footer-icons > a:focus, .footer-icons > a:hover {
+      filter: brightness(130%) saturate(95%);
+      background: var(--bg-1);
+      text-shadow: -1px 2px 4px var(--box-regular-color-flip); }
+    .footer-icons > a i {
+      transition: all 0.3s; }
+      .footer-icons > a i:hover {
+        transform: scale(1.4) rotate(-7deg); }
 
-.footer-icons > a {
-  padding: 0.5rem;
-  text-shadow: 0px 0px 0px var(--box-faint-color-flip);
-  font-size: 1.5em; }
-
-.footer-icons > a > i {
-  transition: all 0.5s; }
-
-.footer-icons > a:focus, .footer-icons > a:hover {
-  filter: brightness(125%) saturate(75%);
-  background: var(--bg-1);
-  border-radius: 100%;
-  text-shadow: -1px 2px 4px var(--box-regular-color-flip); }
-
-.fa-soundcloud:hover {
+.fa-soundcloud {
   text-shadow: 2px 2px 1px #ff9533; }
 
-.fa-twitter:hover {
+.fa-twitter {
   text-shadow: 2px 2px 1px #1DA1F2; }
 
-.fa-facebook:hover {
-  text-shadow: 2px 2px 1px #3b5998; }
+.fa-facebook {
+  text-shadow: 2px 2px 2px #3b5998; }
 
-/* .fa-instagram { color: ; } */
+.fa-instagram {
+  text-shadow: 2px 2px 3px #8134af; }
+
+.fa-linkedin {
+  text-shadow: 2px 2px 1px #0077b5; }
+
+.fa-github {
+  text-shadow: 1px 1px 3px var(--fg-2); }
+
 .md-icon {
   width: var(--space-lg);
   height: var(--space-lg); }
@@ -947,16 +952,16 @@ h3::first-letter {
 
 .fade-to-black.top {
   top: 0;
-  height: calc(4 * var(--space));
+  height: calc(6 * var(--space));
   background: linear-gradient(180deg, var(--bg-1) 50%, transparent 100%); }
 
 .fade-to-black.bottom {
   bottom: 0;
-  height: calc(4 * var(--space));
-  background: linear-gradient(0deg, var(--bg-1) 20%, transparent 102%); }
+  height: calc(6 * var(--space));
+  background: linear-gradient(0deg, var(--bg-1) 0%, transparent 100%); }
 
 .fade-to-black.between {
-  --height: 3.5;
+  --height: 4.5;
   height: calc(var(--height) * var(--space-lg));
   top: calc(-0.5 * var(--height) * var(--space-lg));
   background: linear-gradient(0deg, hsla(var(--hue-3), 2%, var(--lum-bg-1), 0) 0%, hsl(var(--hue-3), 8%, var(--lum-bg-2)) 50%, hsla(var(--hue-3), 28%, var(--lum-bg-2), 0) 100%); }
@@ -1439,7 +1444,7 @@ input[type=range]:focus {
   background-color: var(--bg-1);
   border: 0;
   border-top: var(--line-width-md) solid;
-  box-shadow: 2px 5px 11px 3px rgba(200, 200, 255, 0.05) inset;
+  box-shadow: 2px 5px 11px 3px rgba(200, 200, 255, 0.1) inset;
   border-bottom-left-radius: 2em;
   border-bottom-right-radius: 0.8em; }
   .blog-comments .blog-collapse-btn {
@@ -1572,7 +1577,7 @@ textarea.blog-adding-comment-textbox {
   opacity: 0.6;
   -webkit-backdrop-filter: blur(0.3rem);
           backdrop-filter: blur(0.3rem);
-  transition: height 0.7s ease, max-height 0.7s ease, margin 0.7s ease, opacity 0.8s; }
+  transition: max-height 0.7s ease, margin 0.7s ease, opacity 0.8s; }
 
 .user-section-wrapper.active {
   max-height: 35vh;
@@ -1599,8 +1604,11 @@ textarea.blog-adding-comment-textbox {
           position: absolute;
           left: 0;
           top: 0;
-          opacity: 0; }
+          opacity: 0.3;
+          font-size: 115%;
+          cursor: pointer; }
         .user-section .user-inner > section .user-avatar-wrapper:hover i, .user-section .user-inner > section .user-avatar-wrapper:active i {
+          transform: scale(1.3);
           opacity: 1; }
 
 .user-back-btn {
@@ -1821,12 +1829,12 @@ textarea.blog-adding-comment-textbox {
   --hue-1:             180;
   --hue-2:               8;
   --hue-3:             192;
-  --lum-dark-1:         9%;
-  --lum-dark-2:        11%;
+  --lum-dark-1:         7%;
+  --lum-dark-2:        12%;
   --lum-dark-3:        15%;
   --lum-dark-4:        18%;
-  --lum-dark-5:        27%;
-  --lum-dark-6:        36%;
+  --lum-dark-5:        26%;
+  --lum-dark-6:        34%;
   --lum-light-1:       calc(100% - var(--lum-dark-1));
   --lum-light-2:       calc(100% - var(--lum-dark-2));
   --lum-light-3:       calc(100% - var(--lum-dark-3));
