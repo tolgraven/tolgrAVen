@@ -150,8 +150,11 @@
    {:db nil}))
 
 
-; renamed store-> not fire->, should work to hide fire behind stuff
-; so can swap out easier
+(rf/reg-event-fx :to-db
+  (fn [db [_ path value]]
+    (assoc-in db path value)))
+
+; renamed store-> not fire->, should work to hide fire behind stuff so can swap out easier
 (rf/reg-event-fx :store->
   (fn [_ [_ path data merge-fields]]
     {:firestore/set {:path path :data data
@@ -166,7 +169,16 @@
 ; also batch-fetch early in page boot.
 ; but then in component still always have latest value.
 ; if that actually (easily) possible hmm
-; 
+
+(rf/reg-event-fx :<-store ; event version of <-store takes an on-success cb event
+  (fn [_ [_ path on-success]]
+    (let [kind (if (even? (count path))
+                 :path-document
+                 :path-collection)]
+      {:firestore/get {kind path
+                       :expose-objects true
+                       :on-success on-success}})))
+
 
 (rf/reg-event-fx :fb/fetch-settings [debug]
   (fn [{:keys [db]} _]
