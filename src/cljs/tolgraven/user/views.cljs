@@ -147,7 +147,8 @@
      :alt "User profile picture"}]])
 
 (defn admin "User admin page" [user]
-  (let [section-btn (fn [text k section]
+  (let [roles @(rf/subscribe [:<-store :auth :roles])
+        section-btn (fn [text k section]
                       [ui/button text k
                                  :action #(rf/dispatch [:user/active-section section])])]
     [:div.user-inner
@@ -160,10 +161,10 @@
         [:br] [:br]
         [:span (str "n" " comments")]
         [section-btn "View all" :comments :comments]
-        (when (some #{(:id user)}
-                    (:bloggers @(rf/subscribe [:<-store :auth :roles])))
+        (when (some #{(:id user)} (:bloggers roles))
           [ui/button "Post blog" :post-blog :link "#/post-blog" ])
-        ]]]
+        (when (some #{(:id user)} (:admins roles))
+          [ui/button "Site admin" :post-blog :link "#/site-admin"]) ]]]
      
      [:div.user-change-options
       [:span "Change: "]
