@@ -185,7 +185,7 @@ nav {
 
 .nav-links > li > a {
   transition: margin 0.2s; }
-  .nav-links > li > a:hover, .nav-links > li > a:active, .nav-links > li > a:focus {
+  .nav-links > li > a:hover, .nav-links > li > a:active, .nav-links > li > a:focus, .nav-links > li > a.is-active {
     margin-left: 0.35rem;
     margin-right: 0.35rem;
     /* doesnt do equiv on other side.. */
@@ -304,6 +304,9 @@ menu > nav > .nav-section:last-of-type > .nav-links {
     transition: margin 0.8s, min-width 0.5s;
     will-change: transform;
     background: var(--bg-1); }
+    #nav-menu-open:checked ~ header .header-logo .header-logo-do-flip {
+      -webkit-animation: header-logo-anim 0.6s;
+              animation: header-logo-anim 0.6s; }
   #nav-menu-open:checked ~ header menu {
     flex: 0 2 auto;
     min-width: calc(100% * var(--menu-width-fraction));
@@ -1422,6 +1425,8 @@ input[type=range]:focus {
   .blog > .blog-post {
     border: 0;
     border-bottom: var(--line-width-sm) solid; }
+    .blog > .blog-post .blog-post-header .blog-post-header-main {
+      margin-left: var(--space-lg); }
     .blog > .blog-post .blog-post-header .blog-post-tags {
       margin-top: 0.4em; }
       .blog > .blog-post .blog-post-header .blog-post-tags > span {
@@ -1449,11 +1454,28 @@ input[type=range]:focus {
   border-bottom-right-radius: 0.8em; }
   .blog-comments .blog-collapse-btn {
     font-size: 80%; }
-  .blog-comments .blog-comments-inner .blog-comment-reply {
-    border: 0;
-    margin-left: calc(2 * var(--space)); }
-  .blog-comments .blog-comments-inner .blog-comment-actions {
-    text-align: end; }
+  .blog-comments .blog-comments-inner {
+    position: relative; }
+    .blog-comments .blog-comments-inner .blog-comment {
+      z-index: 2; }
+      .blog-comments .blog-comments-inner .blog-comment:hover .blog-comment-actions {
+        right: -0%; }
+    .blog-comments .blog-comments-inner .blog-comment-reply {
+      border: 0;
+      margin-left: calc(2 * var(--space)); }
+    .blog-comments .blog-comments-inner .blog-comment-actions {
+      z-index: 0;
+      text-align: end;
+      position: absolute;
+      display: grid;
+      right: 5%;
+      transition: right 0.3s ease;
+      opacity: 0.8; }
+      .blog-comments .blog-comments-inner .blog-comment-actions > button {
+        background: rgba(30, 30, 30, 0.5); }
+        .blog-comments .blog-comments-inner .blog-comment-actions > button:hover {
+          opacity: 1.0;
+          background: black; }
 
 @use "sass:color";
 .blog-comment {
@@ -1478,7 +1500,8 @@ input[type=range]:focus {
     height: var(--blog-comment-avatar);
     width: var(--blog-comment-avatar); }
   .blog-comment .blog-comment-main {
-    width: -webkit-fill-available; }
+    width: -webkit-fill-available;
+    margin-left: var(--space); }
     .blog-comment .blog-comment-main .blog-comment-title {
       font-size: 110%;
       font-weight: bold; }
@@ -1602,14 +1625,16 @@ textarea.blog-adding-comment-textbox {
         position: relative; }
         .user-section .user-inner > section .user-avatar-wrapper i {
           position: absolute;
-          left: 0;
-          top: 0;
+          right: 0;
+          bottom: 0;
           opacity: 0.3;
           font-size: 115%;
           cursor: pointer; }
         .user-section .user-inner > section .user-avatar-wrapper:hover i, .user-section .user-inner > section .user-avatar-wrapper:active i {
           transform: scale(1.3);
           opacity: 1; }
+      .user-section .user-inner > section .user-info {
+        margin-left: var(--space-lg); }
 
 .user-back-btn {
   opacity: 0;
@@ -1625,7 +1650,6 @@ textarea.blog-adding-comment-textbox {
   border-radius: 50%;
   border: var(--line-width-sm) solid;
   box-shadow: 0px 0px 10px 1px var(--user-avatar-shadow);
-  margin-right: var(--space-lg);
   width: calc(6.5 * var(--space));
   height: calc(6.5 * var(--space)); }
 
@@ -2204,7 +2228,9 @@ main {
   margin-top: var(--space-lg);
   padding-bottom: calc(3.1 * var(--space));
   /* XXX actually, footer height... */
-  position: relative; }
+  position: relative;
+  -webkit-animation: fade-in 2.5s ease-in;
+          animation: fade-in 2.5s ease-in; }
 
 pre {
   /* max-height: 6em; */
@@ -2429,10 +2455,53 @@ video {
   /* DEV: react error boundary triggered */
   margin: var(--space); }
 
-.loading-spinner {
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-animation: 0.9s ease 1.0s infinite both alternate running wiggle;
+          animation: 0.9s ease 1.0s infinite both alternate running wiggle; }
+
+.loading-spinner, .loading-spinner-massive {
   opacity: 0.8;
   transition: all 0.5s;
-  position: relative; }
+  position: relative;
+  font-size: 150%;
+  text-shadow: .04em .04em .2em white; }
+
+.loading-spinner-massive {
+  padding: 20rem;
+  font-size: 900%;
+  -webkit-animation: fade-in 3.5s ease 0.7s;
+          animation: fade-in 3.5s ease 0.7s;
+  /* @keyframes duration | timing-function | delay | iteration-count | direction | fill-mode | play-state | name */ }
+
+@-webkit-keyframes fade-in {
+  from {
+    opacity: 0; }
+  to {
+    opacity: 1; } }
+
+@keyframes fade-in {
+  from {
+    opacity: 0; }
+  to {
+    opacity: 1; } }
+
+@-webkit-keyframes wiggle {
+  from {
+    transform: translateX(-0.7em); }
+  to {
+    transform: translateX(0.7em); } }
+
+@keyframes wiggle {
+  from {
+    transform: translateX(-0.7em); }
+  to {
+    transform: translateX(0.7em); } }
+
+.main-loading {
+  border: 0; }
 
 .loading-text-line {
   position: relative;
