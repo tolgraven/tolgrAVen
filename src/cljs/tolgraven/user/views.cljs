@@ -117,17 +117,30 @@
 (defn change-avatar "Change avatar" [user]
   [section
    "Upload profile picture" 
-   [avatar user]
+   [:br]
+   [avatar user false]
+   [:br]
+   [:span "Upload file "]
    [:input {:type "file" :id "file" :name "file" 
             :on-change 
             #(rf/dispatch [:user/upload-avatar
-                           (-> % .-target .-files (aget 0))])}]])
+                           (-> % .-target .-files (aget 0))])}]
+   [:br]
+   [:span "Or from url "]
+   [ui/input-text
+    :path [:form-field [:change :avatar-url]]
+    :placeholder "URL"
+    :on-change (fn [e] (rf/dispatch [:form-field [:change :avatar-url] e]))]
+   [ui/button "Change" :change-avatar-url
+    :action #(rf/dispatch [:user/set-field (:id user) :avatar
+                                          @(rf/subscribe [:form-field [:change :avatar-url]])])]])
 
 (defn avatar "Display user avatar and option to change it"
-  [user-map]
+  [user-map allow-edit?]
   [:div.user-avatar-wrapper
-   [:div.user-avatar-change
-    [:i.fa.fa-edit {:on-click #(rf/dispatch [:user/active-section :change-avatar])}]]
+   (when allow-edit?
+     [:div.user-avatar-change
+      [:i.fa.fa-edit {:on-click #(rf/dispatch [:user/active-section :change-avatar])}]])
    [:img.user-avatar
     {:src (or (:avatar user-map)
               @(rf/subscribe [:user/default-avatar]))
@@ -140,7 +153,7 @@
     [:div.user-inner
      [:section
       [:div.flex
-       [avatar user]
+       [avatar user true]
        [:div
         [:h3 (:name user)]
         [:span [:em (:email user)]]
