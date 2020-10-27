@@ -1626,7 +1626,7 @@ textarea.blog-adding-comment-textbox {
         .user-section .user-inner > section .user-avatar-wrapper i {
           position: absolute;
           right: 0;
-          bottom: 0;
+          top: 0;
           opacity: 0.3;
           font-size: 115%;
           cursor: pointer; }
