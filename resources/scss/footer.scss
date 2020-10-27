@@ -36,25 +36,29 @@ footer {
 }
 .footer-icons {
   text-align: end;
+  > a {
+    padding: 0 0.45rem;
+    font-size: 2.0em;
+
+    &:focus, &:hover {
+      filter: brightness(130%) saturate(95%);
+      background: var(--bg-1);
+      text-shadow: -1px 2px 4px var(--box-regular-color-flip);
+
+    i {
+      transition: all 0.3s;
+      &:hover {
+        transform: scale(1.4) rotate(-7deg); // why no work??
+      }
+    }
+  }
 }
-.footer-icons > a {
-  padding: 0.5rem;
-  text-shadow: 0px 0px 0px var(--box-faint-color-flip);
-  font-size: 1.5em;
-}
-.footer-icons > a > i {
-  transition: all 0.5s;
-}
-.footer-icons > a:focus, .footer-icons > a:hover {
-  filter: brightness(125%) saturate(75%);
-  background: var(--bg-1);
-  border-radius: 100%;
-  text-shadow: -1px 2px 4px var(--box-regular-color-flip);
-}
-.fa-soundcloud:hover { text-shadow: 2px 2px 1px #ff9533; }
-.fa-twitter:hover {    text-shadow: 2px 2px 1px #1DA1F2; }
-.fa-facebook:hover {   text-shadow: 2px 2px 1px #3b5998; }
-/* .fa-instagram { color: ; } */
+.fa-soundcloud { text-shadow: 2px 2px 1px #ff9533; }
+.fa-twitter {    text-shadow: 2px 2px 1px #1DA1F2; }
+.fa-facebook {   text-shadow: 2px 2px 2px #3b5998; }
+.fa-instagram {  text-shadow: 2px 2px 3px #8134af; }
+.fa-linkedin {   text-shadow: 2px 2px 1px #0077b5; }
+.fa-github {     text-shadow: 1px 1px 3px var(--fg-2); }
 
 .md-icon {
   width:  var(--space-lg);

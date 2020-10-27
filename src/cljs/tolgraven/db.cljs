@@ -157,6 +157,8 @@
                       {:id "right"
                      ; :title "More ways to get in touch"
                        :links [{:name "Github" :href "https://github.com/tolgraven" :icon "github"}
+                               {:name "LinkedIn" :href "https://www.linkedin.com/in/joen-tolgraven-5205701b9" :icon "linkedin"}
+                               {:name "Instagram" :href "https://www.instagram.com/tolgraven" :icon "instagram"}
                                {:name "Twitter" :href "https://twitter.com/joen.tolgraven" :icon "twitter"}
                                {:name "Facebook" :href "https://facebook.com/tolgraven" :icon "facebook"}
                                {:name "Soundcloud" :href "https://soundcloud.com/tolgraven" :icon "soundcloud"}
