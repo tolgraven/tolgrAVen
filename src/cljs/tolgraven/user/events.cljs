@@ -137,7 +137,7 @@
  :user/open-ui
  (fn [{:keys [db]} [_ page]]
    {:dispatch [:user/active-section :closing]
-    :dispatch-later {:ms 100,
+    :dispatch-later {:ms 5,
                      :dispatch (if page
                                  [:user/active-section page]
                                  [:user/request-page])}}))

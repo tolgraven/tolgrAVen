@@ -3,29 +3,6 @@
             [re-frame.core :as rf]
             [cljs.reader]))
 
-
-; issue anyways is often start with this then need to change to doing it properly...
-(defn <-db "Quick subscription getter. Bad habit I guess..."
- [& path] ;default is better handled ext since this goes through :get -> we already know there is a valid sub
- (let [path (if (seqable? (first path)) (first path) path) ;handle both individual args and vector
-       sub (rf/subscribe (into [:get] path))]
-  @sub))
-
-(defn ->db "Quick db setter. Returns passed value."
- [path value]
- (rf/dispatch [:set path value])
- value)
-
-
-(defn setter "Quick db setter fn getter"
- [path]
- (fn [value & _] (->db path value)))
-
-(defn toggle "Toggle bool at path in db"
- [path]
- (rf/dispatch [:toggle path]))
-
-
 ; localstorage i took from somewhere, maybe use for partly written comments
 (def user-key "tolglow-web-dev-storage")  ;; localstore key
 
@@ -168,8 +145,8 @@
    :options {:auto-save-vars true
              :transition {:time 200 :style :slide} ; etc
              :hud {:timeout 30 :level :info}}})
-; DONT FORGET STUPID #_ fucks you for some reason??
 
-(rf/reg-event-db :init-db [rf/debug]
+
+(rf/reg-event-db :init-db
   (fn [db _]
     data))
