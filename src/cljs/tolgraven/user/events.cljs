@@ -19,13 +19,10 @@
                    :id (:uid user)
                    :seq-id (-> id :id :user)}]
      {:db (update-in db [:fb/users (:uid user)]
-                     #(merge %2 %1)
+                     #(merge %2 %1) ;backwards, no overwrites...
                      user-map)
-      :dispatch [:user/active-section :admin :force]
-      :firestore/set {:path [:users (:uid user)]
-                      :data user-map}
-      :firebase/set {:path [:users (:uid user)]
-                      :data user-map}})))
+      :dispatch-n [[:user/active-section :admin :force]
+                   [:store-> [:users (:uid user)] user-map]] }))) ; problem: overwrites any changed values on login. so def need fetch all users on boot...
 
 (rf/reg-event-fx :fb/set-user [debug]
   (fn [{:keys [db]} [_ user]]
@@ -35,13 +32,15 @@
                    [:user/login (:uid user)]]})))
 
 
-(rf/reg-event-fx :fb/fetch-users
+(rf/reg-event-fx :fb/fetch-users ; try find and fix bug in re-frame-firebase that causes this
   (fn [{:keys [db]} [_ user]]
-    {:firestore/get {:path-collection :users ; [users] simply wont work. says it fails bc is nil but makes even less sense.
+    {:firestore/get {:path-collection [:users]
                      :on-success [:fb/store-users]}}))
-(rf/reg-event-db :fb/store-users
-  (fn [db [_ users]]
-    (assoc-in db :fb/users users)))
+
+(rf/reg-event-db :fb/store-users [debug]
+  (fn [db [_ response]]
+    (assoc-in db [:fb/users]
+              (util/normalize-firestore response))))
 
 
 (rf/reg-event-fx :fb/error
@@ -63,11 +62,6 @@
    {:firebase/sign-out nil
     :dispatch [:user/logout]}))
 
-
-(rf/reg-event-fx
- :user/fetch-users ; fetch all reasonable enough up to a few k regged I guess? scaling obvs = pass ids from posts, comments
- (fn [{:keys [db]} [_ uids]]
-   {:firestore/get {:path [:users]}}))
 
 (defn- get-user
   [user users]

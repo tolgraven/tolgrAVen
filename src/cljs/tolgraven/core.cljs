@@ -205,6 +205,7 @@
                  :set-user-event         [:fb/set-user]
                  :default-error-handler  [:fb/error])
   (rf/dispatch [:id-counters/fetch])
+  (rf/dispatch [:fb/fetch-users]) ; or more like, dont wait til blog init but can also defer a bit...
   ; dispatch firebase general fetches, test case is silly id counter persistence
   ; which then needs to be fetched into app-db once ready
   (util/log "Init complete, mounting root component")

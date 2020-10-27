@@ -13,6 +13,15 @@
       :data
       (walk/keywordize-keys)))
 
+(defn normalize-firestore "Reformat data for our app-db storage"
+  [response]
+  (let [ks (reduce (fn [ks v]
+                     (conj ks (get-in v [:data "id"])))
+                   []
+                   (:docs response))]
+    (zipmap ks
+            (walk/keywordize-keys  
+             (map :data (:docs response))))))
 
 (defmacro handler-fn "Use in event-handlers instead of (fn [e/_]), returns nil so react doesnt get a false and ignore us"
   ([& body]

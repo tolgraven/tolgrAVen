@@ -28,14 +28,8 @@
 
 (rf/reg-event-fx :blog/set-content [debug]
  (fn [{:keys [db]} [_ response]]
-   (let [idxs (reduce (fn [idxs v]
-                        (conj idxs (get-in v [:data "id"])))
-                      []
-                      (:docs response))
-         posts (zipmap idxs
-                       (walk/keywordize-keys  
-                        (map :data (:docs response))))]
-     {:db (assoc-in db [:blog :posts] posts)})))
+   {:db (assoc-in db [:blog :posts]
+                  (util/normalize-firestore response))}))
 
 (rf/reg-event-db :blog/state [;debug
                               (path [:state :blog])]
