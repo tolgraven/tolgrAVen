@@ -75,7 +75,7 @@ nav {
   > li {
     > a {
       transition: margin 0.2s; // for moving on hover
-      &:hover, &:active, &:focus {
+      &:hover, &:active, &:focus, &.is-active {
         margin-left: 0.35rem;
         margin-right: 0.35rem; /* doesnt do equiv on other side.. */
         font-weight: bold;
@@ -214,6 +214,10 @@ menu > nav > .nav-section:last-of-type > .nav-links {
     will-change: transform;
 
     background: var(--bg-1);
+
+    .header-logo-do-flip {
+      animation: header-logo-anim 0.6s;
+    }
   }
 
   menu {

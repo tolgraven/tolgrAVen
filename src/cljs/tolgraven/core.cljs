@@ -82,7 +82,7 @@
       [safe :page [page]]] ; this doesnt reload when switch page. need to do manually...
      ; so will need to track in db not ratom, then reset on nav.
      ; also get-css-var still ticks every 500ms whenever safe triggers/any unhandled errors(?)... wtf?
-     [common/loading-spinner true])
+     [common/loading-spinner-massive true])
 
    [common/footer @(rf/subscribe [:content [:footer]])]
    [safe :hud [ui/hud (rf/subscribe [:hud])]]
@@ -220,7 +220,6 @@
   (rf/dispatch [:diag/new :info "Cookie notice"
                 {:what "Better way?"
                  :than :like-this
-                 3 {:just "add buttons"}
-                 :been-meaning-to-add {:action "click" :anyways [:so :makes 100 :sense]}}
+                 3 {:just "add buttons"}}
                 {:sticky? true}])
   (mount-components))

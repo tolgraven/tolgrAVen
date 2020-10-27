@@ -19,6 +19,9 @@
     // box-shadow: 0 0 4px 1px var(--fg-4); // looks nice on sep line but no go here
 
     .blog-post-header {
+      .blog-post-header-main {
+        margin-left: var(--space-lg);
+      }
       
       .blog-post-tags {
         margin-top: 0.4em;
@@ -56,6 +59,7 @@
   }
   
   .blog-comments-inner {
+    position: relative;
     // transition: max-height 0.25s; // doesnt seem to work anymore.
     // max-height: 200vh;
     // overflow-y: scroll;
@@ -64,13 +68,32 @@
       // transition: max-height 0.20s;
     }
     .blog-comment { // line up top-level comments with line above
+      z-index: 2;
+      &:hover {
+        .blog-comment-actions { 
+          right: -0%;
+        }
+      }
     }
     .blog-comment-reply {
       border: 0;
       margin-left: calc(2 * var(--space));
     }
     .blog-comment-actions {
+      z-index: 0;
       text-align: end;
+      position: absolute;
+      display: grid;
+      right: 5%;
+      transition: right 0.3s ease;
+      opacity: 0.8;
+      > button {
+        &:hover {
+          opacity: 1.0;
+          background: black;
+        }
+        background: rgba(30, 30, 30, 0.5);
+      }
     }
   }
 }
@@ -113,6 +136,7 @@
   
   .blog-comment-main {
     width: -webkit-fill-available; //generic alternative tho?
+    margin-left: var(--space);
 
     
     .blog-comment-title {
