@@ -82,7 +82,7 @@
       [safe :page [page]]] ; this doesnt reload when switch page. need to do manually...
      ; so will need to track in db not ratom, then reset on nav.
      ; also get-css-var still ticks every 500ms whenever safe triggers/any unhandled errors(?)... wtf?
-     [common/loading-spinner-massive true])
+     [common/loading-spinner true :massive])
 
    [common/footer @(rf/subscribe [:content [:footer]])]
    [safe :hud [ui/hud (rf/subscribe [:hud])]]

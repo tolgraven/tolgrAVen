@@ -669,7 +669,13 @@ video {
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: 0.9s ease 1.0s infinite both alternate running wiggle;
+  animation: 0.9s linear 0.2s infinite both alternate running wiggle;
+}
+.loading-wiggle-z {
+  animation: 1.3s ease-in 0.0s infinite both alternate running wiggle-z;
+}
+.loading-wiggle-y {
+  animation: 0.7s ease 0.0s infinite both alternate running wiggle-y;
 }
 .loading-spinner, .loading-spinner-massive {
   opacity: 0.8;
@@ -693,8 +699,20 @@ video {
   to   { opacity: 1; }
 }
 @keyframes wiggle {
-  from { transform: translateX(-0.7em); }
-  to   { transform: translateX(0.7em); }
+  from {
+    transform: translateX(-0.7em);
+  }
+  to   {
+    transform: translateX(0.7em);
+  }
+}
+@keyframes wiggle-z {
+  from { transform:  translateZ(1.0em); }
+  to   { transform:  translateZ(-0.4em); }
+}
+@keyframes wiggle-y {
+  from { transform:  translateY(0.7em); }
+  to   { transform:  translateY(-0.4em); }
 }
 .main-loading {
   border: 0;

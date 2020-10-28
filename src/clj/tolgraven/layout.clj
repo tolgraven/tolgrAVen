@@ -39,9 +39,9 @@
     [:label.burger]]
    [:div.line.line-header]
 
-   [:main.main-content
-    [:div.loading-container
-     [:i.loading-spinner.loading-spinner-massive.fa.fa-spinner.fa-spin]]]
+   [:main.main-content.main-loading
+    [:div.loading-container>loading-wiggle-y>loading-wiggle-z
+     [:i.loading-spinner.loading-spinner-massive.fa.fa-spinner.fa-spin] ]]
 
    [:footer.footer-sticky ; [:footer>div.footer-content
     [:div.line.line-footer] ;cant this be outside main ugh

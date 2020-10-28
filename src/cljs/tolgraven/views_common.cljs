@@ -17,15 +17,12 @@
      :on-click #(rf/dispatch (if @(rf/subscribe [:user/ui-open?])
                                                 [:user/close-ui] [:user/open-ui]))}]])
 
-(defn loading-spinner [model]
-  [:div.loading-container
-     (when (at model) ;should it be outside so not put anything when not loading? or better know element goes here
-       [:i.loading-spinner {:class "fa fa-spinner fa-spin"}])])
-
-(defn loading-spinner-massive [model]
-  [:div.loading-container
-     (when (at model) ;should it be outside so not put anything when not loading? or better know element goes here
-       [:i.loading-spinner-massive {:class "fa fa-spinner fa-spin"}])])
+(defn loading-spinner [model kind]
+  (when (at model) ;should it be outside so not put anything when not loading? or better know element goes here
+    [:div.loading-container>div.loading-wiggle-z>div.loading-wiggle-y
+     [:i.loading-spinner
+      {:class (str "fa fa-spinner fa-spin" (when (= kind :massive)
+                                             "loading-spinner-massive"))}]]))
 
 (defn flashing-ersatz-text-like-everyone-uses
   "Better than wee loading spinner no? Eg Docs, we know big page is coming
