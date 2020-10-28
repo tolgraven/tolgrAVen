@@ -21,3 +21,5 @@ resources/public/js/compiled/
 resources/public/js/app.js
 .vscode/
 resources/public/css/main.css
+pg/
+.google-oath
