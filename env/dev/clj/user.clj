@@ -7,7 +7,6 @@
     [clojure.tools.logging :as log]
     [expound.alpha :as expound]
     [mount.core :as mount]
-    [alembic.still :refer [load-project]]
     [tolgraven.figwheel :refer [start-fw stop-fw cljs]]
     [tolgraven.handler :as handler]
     [tolgraven.core :refer [start-app]]))
@@ -32,7 +31,9 @@
   (start))
 
 (defn reload-deps []
-  (alembic.still/load-project))
+  (log/warn "Disabled")
+  #_(require 'alembic.still)
+  #_(alembic.still/load-project))
 
 (defn restart-handler []
   (mount/stop #'handler/app-routes)

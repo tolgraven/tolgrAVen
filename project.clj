@@ -127,7 +127,7 @@
                                  [figwheel-sidecar "0.5.20" :exclusions [args4j]]
                                  ; [com.bhauman/figwheel-main "0.2.11"]
                                  ; [com.bhauman/rebel-readline-cljs "0.1.4"] ;; optional but recommended
-                                 [alembic "0.3.2"]
+                                 ; [alembic "0.3.2"]
                                  [pjstadig/humane-test-output "0.10.0"]
                                  [prone "2020-01-17"]
                                  [re-frisk "1.3.4"  :exclusions [org.clojure/core.async org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize org.clojure/core.cache]]
