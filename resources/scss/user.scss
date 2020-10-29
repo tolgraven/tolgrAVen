@@ -23,12 +23,12 @@
     font-size: 92%;
   }
   .user-inner {
-    padding: calc(0.5 * var(--space)) calc(2.00 * var(--space))
-             0;
+    padding: calc(0.25 * var(--space)) calc(0.75 * var(--space)) 0;
 
     > section {
       border-top: var(--line-width-md) solid var(--fg-4);
-      padding: var(--space);
+      padding: calc(0.5 * var(--space));
+      padding-bottom: 0;
 
       > form {
         padding-top: 0.6em;
