@@ -289,11 +289,13 @@
   #top-banner { /* need a better solution for ensuring doesnt overflow... like a tallet image? */
     padding-top: 0;
   }
-  /* .caption-inset  { /1* ok whatever no captions on iphone then *1/ */
-  /*   visibility: hidden; */
-  /*   display: none; */
-  /*   opacity: 0; */
-  /* } */
+}
+@media screen and (max-width: 319px) {
+  :root { // these settings work down til about 260 then footer doubles up. Also get issues with heading image bleeding out on right hmm.
+    font-size: 0.67rem;
+    --space-edges: calc(0.1 * var(--space));
+    --line-width-vert: 0;
+  }
 }
 
 

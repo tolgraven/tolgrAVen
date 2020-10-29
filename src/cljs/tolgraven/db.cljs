@@ -132,9 +132,6 @@
                        :title "joen.tolgraven@gmail.com"
                        :text ["© 2019-2020"]
                        :img {:src "img/cljs.png" :alt "cljs logo"}}
-                      {:id "middle"
-                       :title ""
-                       :text [""]}
                       {:id "right"
                      ; :title "More ways to get in touch"
                        :links [{:name "Github" :href "https://github.com/tolgraven" :icon "github"}
