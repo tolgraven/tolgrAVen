@@ -37,29 +37,34 @@
 
 
 (defn sign-in "Sign in or go to reg page" []
-  (let [disabled? (not @(rf/subscribe [:login/valid-input?]))]
+  (let [disabled? (not @(rf/subscribe [:login/valid-input?]))
+        with (fn [provider]
+               [:button {:on-click #(rf/dispatch [:fb/sign-in provider])}
+                [:i.fab {:class (str "fa-" (name provider))}]])]
     [:div.user-inner.noborder
      [:h2 "Please log in"]
      [sign-in-input]
-     
+
      (when-let [error @(rf/subscribe [:user/error])] ;should be a sub
        [:<>
         [:span {:style {:padding-top "0em" :color "var(--red)"}} "Error"]
         [:span ": " error] [:br]])
-     
-     [:button
-      {:on-click #(rf/dispatch [:user/request-login])
-       :disabled disabled?
-       :class (when disabled? "noborder")}
-      "Sign in"]    [:span "or "]
-     
-     [:button {:on-click #(rf/dispatch [:user/request-register])
-               :disabled disabled?
-               :class (when disabled? "noborder")}
-      "Register"]   [:span "or "]
-     
-     [:button {:on-click #(rf/dispatch [:fb/sign-in :google])}
-      "Sign in with Google"] ]))
+
+     [:div.user-sign-in-btns
+      [:div
+       [:button
+        {:on-click #(rf/dispatch [:user/request-login])
+         :disabled disabled?
+         :class (when disabled? "noborder")}
+        "Sign in"]
+       [:span "or "]
+
+       [:button {:on-click #(rf/dispatch [:user/request-register])
+                 :disabled disabled?
+                 :class (when disabled? "noborder")}
+        "Register"]]
+      [:div "or sign in without registration" [:br]
+       [with :google] [with :github] [with :facebook]]]]))
 
 (defn register "Registration component" [user]
   [:div.user-inner.user-register

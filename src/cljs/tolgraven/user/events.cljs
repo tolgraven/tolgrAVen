@@ -66,7 +66,9 @@
 (rf/reg-event-fx :fb/sign-in ;; Simple sign-in event. Just trampoline down to the re-frame-firebase fx handler.
  (fn [_ [_ method & [email password]]]
    (case method
-     :google {:firebase/google-sign-in {:sign-in-method :popup}} ;TODO use redir instead but save entire state to localstore inbetween.
+     :google    {:firebase/google-sign-in   {:sign-in-method :popup}} ;TODO use redir instead but save entire state to localstore inbetween.
+     :facebook  {:firebase/facebook-sign-in {:sign-in-method :popup}} ;TODO use redir instead but save entire state to localstore inbetween.
+     :github    {:firebase/github-sign-in   {:sign-in-method :popup}} ;TODO use redir instead but save entire state to localstore inbetween.
      :email  {:firebase/email-sign-in {:email email :password password}})))
 
 (rf/reg-event-fx :fb/sign-out ;;; Ditto for sign-out
