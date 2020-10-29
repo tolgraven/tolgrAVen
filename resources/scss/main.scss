@@ -27,7 +27,7 @@
   --header-height:     4.5rem; /* beware can be 3 or 6 in practice.... temp bc reading arbitrary css vars with calc is fiddly */
   --header-with-menu-height: 18rem; /* not truly dynamic bc of annoying sticky */
   --header-height-current: var(--header-height); /* will then be changed by js dep on whether menu open... */
-  --footer-height:     3.73rem; // measured...
+  --footer-height:     3.00rem; // measured...
   /* --link-offset:       calc(var(--space) + var(--header-with-menu-height)); */
   --link-offset:       calc( var(--header-with-menu-height));
   --menu-width-fraction: 0.70;
@@ -821,8 +821,8 @@ textarea, .form-control {
 .hud {
   position: fixed;
   z-index: 100;
-  bottom: calc(2 * var(--space-lg)); /* ;actually, footer, if sticky... */
-  right: 1.5rem;
+  bottom: calc(var(--footer-height) + 0.25rem); /* ;actually, footer, if sticky... */
+  right: calc(var(--space-edges) + 0.05rem);
   max-width: 70%;
   max-height: 50%;
   // overflow-x: break-word;
