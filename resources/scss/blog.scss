@@ -106,11 +106,11 @@
   padding: calc(0.5 * var(--space)) 0.25em;
   padding-right: 0.0rem;
   background-color: var(--bg-2);
-  // border-top: var(--line-width-sm) solid;
   border-top: 0;
   border-left: 0.5em solid var(--fg-6);
   border-right: var(--line-width-sm) solid var(--bg-3);
   border-bottom: var(--line-width-sm) solid var(--bg-3);
+  box-shadow: 1px 2px 7px 2px rgba(0, 0, 0, 0.2);
   
   &:hover, &:active {
     .blog-comment-vote, 
