@@ -122,12 +122,12 @@
   --dark-5:     hsl(var(--hue-2),  7%,  var(--lum-dark-5));
   --dark-6:     hsl(var(--hue-3),  7%,  var(--lum-dark-6));
 
-  --opacity-regular:  0.45;
-  --opacity-faint:    0.25;
+  --opacity-regular:  0.35;
+  --opacity-faint:    0.15;
   --box-regular-color:    hsla(0, 0%, var(--lum-dark-1), var(--opacity-regular));
   --box-faint-color:      hsla(0, 0%, var(--lum-dark-1), var(--opacity-faint));
-  --box-regular-color-flip: var(--box-regular-color); /* light mode always dark shadows */
-  --box-faint-color-flip:   var(--box-faint-color);
+  --box-regular-color-flip:    hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
+  --box-faint-color-flip:      hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
 
   // will need drastic tweaking for light theme
   --gradient-bg-main: linear-gradient(-77deg,
