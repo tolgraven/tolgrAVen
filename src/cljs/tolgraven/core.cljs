@@ -138,6 +138,10 @@
     (rf/subscribe [:get :diagnostics])]
    {:title "Log" :tint "blue"}])
 
+(defn broken-link []
+  [with-heading [:common :banner-heading]
+   [:p "Nothing to see here, move along."]
+   {:title "404" :tint "red"}])
 
 (def router ; XXX weird thing doesnt automatically scroll to top when change page...
   (reitit/router
@@ -174,7 +178,10 @@
               :view #'log-page}]
      ["test" {:name :test
               :view #'test-page}]
-     {:data {:controllers [{:start (util/log :debug "start" "root-controller")
+     ; ["{*path}" {:name :404
+     ;               :view #'broken-link}]
+     {;:conflicts nil
+      :data {:controllers [{:start (util/log :debug "start" "root-controller")
                             :stop  (util/log :debug "stop" "root controller")}]}}]))
 
 
