@@ -156,7 +156,7 @@
                       ; :closure-defines {"re_frame.trace.trace_enabled_QMARK_" true}
                       :external-config
                       {:devtools/config
-                       {:features-to-install [:formatters :hints] ;add exception hints
+                       {;:features-to-install [:formatters :hints] ;add exception hints
                         :cljs-land-style "background-color: rgb(30, 30, 30, 0.5); color: #edc; border-radius: 7px;"
                         :nil-style       "color: #d18479;"
                         :keyword-style   "color: #76a2ab;"
