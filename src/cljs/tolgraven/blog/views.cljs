@@ -211,9 +211,10 @@
 
 (defn post-blog "Render post-making ui" [] ; XXX move this and similar to own file...
   (let [input @(rf/subscribe [:form-field [:post-blog]])
-        user @(rf/subscribe [:user/active-user])]
+        user @(rf/subscribe [:user/active-user])
+        editing @(rf/subscribe [:blog/state [:editing]])]
     [:section.blog.blog-new-post
-     [:h2 "Write new blog post"]
+     [:h2 "Write blog post"]
      [:br]
 
      [ui/input-text
@@ -239,7 +240,9 @@
      
      [:section
       [ui/button "Post" :post-new-blog
-       :action #(do (rf/dispatch [:blog/submit-new (merge {:user user} input)])
+       :action #(do (rf/dispatch [:blog/submit
+                                  (merge {:user user} input)
+                                  editing])
                     (rf/dispatch [:common/navigate! :blog]))]]]))
 
 

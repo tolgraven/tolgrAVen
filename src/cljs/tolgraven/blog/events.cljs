@@ -23,6 +23,11 @@
   (fn [{:keys [db]} _]
     {:dispatch-n [ [:user/close-ui]]})) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
 
+(rf/reg-event-fx :blog/edit-post [debug]
+  (fn [{:keys [db]} [_ post]] ; seems gross somehow, passing full data from view. but that's where we have easy access to it so... any case would just be pass id, ask to fetch rest of contents somewhere, whe
+    {:dispatch-n [[:form-field [:post-blog] post] ;well only text tags id but who's counting
+                  [:blog/state [:editing] post]
+                  [:common/navigate! :post-blog]]}))
 
 (rf/reg-event-fx :blog/set-content [debug]
  (fn [{:keys [db]} [_ category response]]
@@ -59,10 +64,22 @@
 (rf/reg-event-fx :blog/fetch-posts
   (fn [{:keys [db]} [_ indexes]]))
 
-(rf/reg-event-fx :blog/submit-new ; needs to gen an id too, could grab nr of latest on init for seq-id
- (fn [_ [_ input]]
-   {:dispatch-n [[:blog/post-new input]  ; [:conj [:blog :posts] input]
+(rf/reg-event-fx :blog/submit
+ (fn [_ [_ input editing]]
+   {:dispatch-n [(if editing
+                   [:blog/post (merge editing input)] ;input comes after cause will have changed
+                   [:blog/post-new input])
+                 [:blog/state [:editing] nil]
+                 [:blog/nav-page 0]
                  [:form-field [:post-blog] nil]]})) ;or whatever. also applies (even more!) to comment-ui
+
+(rf/reg-event-fx :blog/post [debug]
+ (fn [{:keys [db]} [_ post]]
+   {:db (assoc-in db [:blog :posts (:id post)] post)
+      :dispatch-n [[:store-> [:blog-posts (str (:id post))] post]
+                   [:store-> [:users (-> post :user :id)]
+                             {:blog-posts (:id post)}
+                             [:blog-posts]] ]}))
 
 (rf/reg-event-fx :blog/post-new [inter/persist-id-counters
                                  (rf/inject-cofx :now)
@@ -70,14 +87,7 @@
  (fn [{:keys [db now id]} [_ post]]
    (let [id (-> id :id :blog)
          post (assoc post :ts now :id id :user (-> post :user :id))]
-     {:db (assoc-in db [:blog :posts id] post)
-      :dispatch-n [[:store-> [:blog-posts (str id)] post]
-                   ; should also store id of blog under under user somehow?
-                   [:store-> [:users (-> post :user :id)]
-                             {:blog-posts id}
-                             [:blog-posts]]
-                   ]})))
-
+     {:dispatch [:blog/post post]})))
 
 ; {:firestore/get {:path-collection [:blog-comments] ;not working, fails spec?
 ;                  :where [[:user := "user-id"] ]
