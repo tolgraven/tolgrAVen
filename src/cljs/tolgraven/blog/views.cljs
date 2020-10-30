@@ -293,9 +293,9 @@
                           [nav-btn i (inc i) (when (= i current-idx)
                                                {:class "current"})]))
         back-btn (when-not (= 0 current-idx)
-                   [nav-btn :prev "<<"])
+                   [nav-btn :prev [:i.fa.fa-chevron-left]])
         fwd-btn (when-not (<= total-posts (* posts-per-page (inc current-idx)))
-                  [nav-btn :next ">>"])]
+                  [nav-btn :next [:i.fa.fa-chevron-right]])]
     [:div.blog-nav.center-content
       back-btn nav-idxs fwd-btn]))
 
