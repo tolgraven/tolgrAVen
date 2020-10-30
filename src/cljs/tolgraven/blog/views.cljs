@@ -151,7 +151,8 @@
 (defn add-comment "Post http or do a gql mutation, yada yada"
   [parent-path]
   (let [adding-comment? (rf/subscribe [:blog/state [:adding-comment parent-path]])
-        model (r/atom {:title "" :text ""}) ;should use db tho, no good accidental nav and lose shit
+        editing (rf/subscribe [:blog/state [:editing-comment parent-path]]) ;XXX would break when multiple replies to same parent
+        model (rf/subscribe [:form-field [:write-comment parent-path]]) ;should use db tho, no good accidental nav and lose shit
         input-valid? (fn [input]
                        (pos? (count (:text input))))
         preview? (r/atom false)
@@ -170,7 +171,7 @@
                               style)
                 :on-change (fn [e]
                              (let [new-val (-> e .-target .-value)]
-                               (swap! model assoc k new-val)))}]) ; tho stashing half-written in localstorage is p awesome when done. so db evt
+                               (rf/dispatch-sync [:form-field [:write-comment parent-path k] new-val])))}]) ; tho stashing half-written in localstorage is p awesome when done. so db evt
         submit-btn (fn []
                      [:button.blog-btn.noborder
                       {:class    (when (input-valid? @model) "topborder")
@@ -178,8 +179,8 @@
                        :on-click (fn [_]
                                    (when (input-valid? @model)
                                      (rf/dispatch [:blog/state [:adding-comment parent-path] false])
-                                     (rf/dispatch [:blog/comment-new parent-path @model])
-                                     (reset! model nil)))}
+                                     (rf/dispatch [:blog/comment-submit parent-path @model @editing])
+                                     (rf/dispatch [:form-field [:write-comment parent-path] nil])))}
                       "Submit"])
         valid-bg {:background-color "#182018"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
      (fn [parent-path] ; needed or recreates to empty when swapped out

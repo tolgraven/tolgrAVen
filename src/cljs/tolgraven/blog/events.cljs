@@ -127,6 +127,42 @@
 ; vs
 ; update-in db [:blog-posts] merge {1 thing}
 
+(rf/reg-event-fx :blog/comment-submit [debug]
+ (fn [{:keys [db]} [_ path input editing]]
+   {:dispatch-n [(if editing
+                   [:blog/comment path (merge editing input)]
+                   [:blog/comment-new path input])
+                 [:form-field [:write-comment path] nil]
+                 [:blog/state [:editing-comment path] nil]]}))
+
+(rf/reg-event-fx :blog/comment [debug]
+ (fn [{:keys [db]} [_ path comment]]
+   (let [id (:id comment)
+         user-id (-> comment :user)
+         full-path (assemble-path [:blog :posts (first path)]
+                                  (concat (rest path) [id]))
+         user-comments (concat (get-in db [:fb/users user-id :comments])
+                               [id])]
+       {:db (-> db
+                (assoc-in full-path comment) ;XXX should only store id
+                (assoc-in [:blog :comments id] comment) ;main comments store
+                (update-in [:fb/users user-id] merge
+                           {:comments user-comments
+                            :comment-count (count user-comments)})) ; or just, inc it..
+        :dispatch-n ; i mean (better) alternative is just update db and do a dispatch to sync. need perfect path parity tho
+        [[:store->  ; store comment within blog-post
+          [:blog-posts (str (first path))]
+          (assoc-in {} (assemble-path []
+                                      (concat (rest path) [id]))
+                    comment) ;XXX should only store id
+          [:comments]]
+         [:store-> [:blog-comments (str id)] comment] ; store comment flat
+         [:store->  ; update user with comment-id
+          [:users user-id]
+          {:comments user-comments
+           :comment-count (count user-comments)}
+          [:comments]]]})))
+
 (rf/reg-event-fx :blog/comment-new [debug
                                     inter/persist-id-counters
                                     (rf/inject-cofx :now)
@@ -142,30 +178,9 @@
                          :id id
                          :seq-id (inc sibling-count)
                          :user user-id ;todo how auth this?
-                         :score 0})
-         user-comments (concat (get-in db [:fb/users user-id :comments])
-                               [id])]
-       {:db (-> db
-                (assoc-in full-path comment) ;XXX should only store id
-                (assoc-in [:blog :comments id] comment) ;main comments store
-                (update-in [:fb/users user-id] merge
-                           {:comments user-comments
-                            :comment-count (count user-comments)})) ; or just, inc it..
-        :dispatch-n ; i mean (better) alternative is just update db and do a dispatch to sync. need perfect path parity tho
-        [[:store->
-          [:blog-posts (str (first path))]
-          (assoc-in {} (assemble-path []
-                                      (concat (rest path) [id]))
-                    comment) ;XXX should only store id
-          [:comments]]
-         [:store-> [:blog-comments (str id)] comment]
-         [:store->
-          [:users user-id]
-          {:comments user-comments
-           :comment-count (count user-comments)}
-          [:comments]]]})))
+                         :score 0})]
+       {:dispatch [:blog/comment path comment]})))
 
-; (concat nil 0)
 
 (rf/reg-event-fx :blog/comment-vote ;TODO def sub firestore on-snapshot just because (plus for general comments as well)
  (fn [{:keys [db]} [_ path vote]]   ; other cool stuff could be typing indicator yeah?
