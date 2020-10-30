@@ -43,10 +43,6 @@
       :dispatch-later {:ms (or (-> db :options :transition-time) 160)
                        :dispatch [:common/navigate match]}})))
 
-(rf/reg-fx :document/set-title
-  (fn [title]
-    (set! js/document.title title)))
-
 (rf/reg-event-fx :common/navigate
   (fn [{:as cofx :keys [db]} [_ match]]
     (let [old-match (:common/route db)
@@ -69,46 +65,6 @@
 (rf/reg-event-fx :common/navigate!
   (fn [_ [_ url-key params query]]
     {:common/navigate-fx! [url-key params query]}))
-
-
-; (rf/reg-event-fx :run-in 
-;   (fn [_ [_ id-key ms f & args]]
-;     {:dispatch-later
-;      {:ms ms
-;       :dispatch [:run-fn (into [id-key f] args)]}}))
-
-; (rf/reg-event-fx :run-fn
-;   (fn [_ [_ id-key f & args]]
-;     (apply f args)
-;     nil))
-
-(rf/reg-event-fx :run-in! ; trying to figure out why'd be bad idea.
-; certainly would be if over-used (js cb hell) but for like, what would otherwise be:
-; define evt, define second evt, dispatch-later to second.
-; just dispatch to a generic evt that takes a fn. basically the :get of events I suppose, bad in long run
-; but can do some things easy quick - dont have to define stuff for every little document/window etc callout.
-; and passing an id we can still see what is what so..  plus get to close over stuff etc yada.
-  (fn [_ [_ id-key ms f & args]]
-    {:dispatch-later
-     {:ms ms
-      :dispatch [:run-fn! (into [id-key f] args)]}}))
-
-(rf/reg-event-fx :run-fn!
-  (fn [_ [_ id-key f & args]]
-    {:run-fn-fx! (into [id-key f] args)}))
-
-(rf/reg-fx :run-fn-fx!
-  (fn [[id-key f & args]]
-    (apply f args)))
-
-
-(rf/reg-event-fx :focus-element
-  (fn [_ [_ elem-id]]
-    ; (r/after-render #(some-> (util/elem-by-id elem-id) .focus))
-    {:focus-to-element elem-id}))
-(rf/reg-fx :focus-to-element
-  (fn [elem-id] 
-    (r/after-render #(some-> (util/elem-by-id elem-id) .focus))))
 
 (defn assoc-in-factory [base-path]
   (fn [db [_ path value]]
@@ -208,11 +164,6 @@
                  ]})) ; be careful w dispatch-n, entire chain stops if one throws (like here w css-var...)
 
 
-(rf/reg-event-fx :->css-var!
-  (fn [_ [_ var-name value]]
-    (util/->css-var var-name value)
-    nil)) ;avoid it trying to parse heh
-
 (rf/reg-event-db :transition/out ; if all transitions same (fade or w/e) dont really need pass match... and, if specific order or similar matters, need pass both.
   (fn [db [_ activity direction]]  ; would just set something in state that then sets css class.
     (assoc-in db [:state :transition] true))) ; now just generic
@@ -235,25 +186,6 @@
         :dispatch-later {:ms 250
                          :dispatch [:scroll/by (cond-> difference state -)]}}))) ;;haha silly.
 ;; XXX otherwise will have to uh, read var best we can and dispatch scroll event?
-
-; these should technically be reg-fx but fx seem flaky as fuck wtf?
-; common/navigate! stopped working, focus-element works as fx but these dont.
-; double up for now lol.
-(rf/reg-event-fx :scroll/by
- (fn [_ [_ value & [in-elem-id]]] ; rem (should handle % too tho?), id of container..
-   (util/scroll-by value in-elem-id) ;XXX remove once figure out what's wrong with reg-fx
-   {:scroll/by [value in-elem-id]}))
-(rf/reg-fx :scroll/by
- (fn [value & [in-elem-id]]
-   (util/scroll-by value in-elem-id)))
-
-(rf/reg-event-fx :scroll/to
- (fn [_ [_ id & [offset]]]
-   (util/scroll-to id offset) ;XXX remove once figure out what's wrong with reg-fx
-   {:scroll/to [id offset]}))
-(rf/reg-fx :scroll/to
- (fn [id & [offset]]
-   (util/scroll-to id offset)))
 
 
 (rf/reg-event-fx :id-counters/handle
@@ -349,16 +281,6 @@
  (fn [db [_ handler cleanup res]]
    {:dispatch-n [(into handler [res])
                  cleanup]}))
-
-
-(rf/reg-event-fx :run-highlighter!
- (fn [_ [_ elem]]
-   (when elem
-     {:run-highlighter-fx! elem})))
-
-(rf/reg-fx :run-highlighter-fx!
- (fn [elem]
-   (util/run-highlighter! "pre" elem)))
 
 
 (rf/reg-event-fx :diag/new  ;this needs a throttle lol
