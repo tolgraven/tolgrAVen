@@ -145,6 +145,7 @@
 
    :options {:auto-save-vars true
              :transition {:time 200 :style :slide} ; etc
+             :blog {:posts-per-page 2}
              :hud {:timeout 30 :level :info}}})
 
 

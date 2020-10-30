@@ -34,6 +34,10 @@
  (fn [blog [_ path v]]
    (assoc-in blog path v)))
 
+(rf/reg-event-db :blog/set-posts-per-page
+  [(path [:options :blog])]
+ (fn [blog [_ n]]
+   (assoc blog :posts-per-page n)))
 
 (rf/reg-event-db :blog/nav-page ; TODO should also (deferred) fetch content for next/prev/last and any by id directly clickable pages
   [(path [:state :blog :page])]

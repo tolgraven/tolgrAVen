@@ -33,7 +33,7 @@
 (rf/reg-sub :blog/posts-per-page
  :<- [:option [:blog]]
  (fn [options [_ ]]
-   (get options :posts-per-page 2)))
+   (get options :posts-per-page 1)))
 
 
 (rf/reg-sub :blog/posts-for-page
