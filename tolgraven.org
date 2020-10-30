@@ -1,4 +1,95 @@
 * TOLGRAVEN FANCY
+  
+; TODO nice concepts in kee-frame (if dont adapt lib wholesale, still bit iffy..):
+; but fsm looks cleankool and controllers receiving all url state
+; should help my "i want login popup state in url" conundrum
+; 
+; :route-changed event hook
+; :global-interceptors provided on init (injecting logger)
+; db-spec
+; breaking-point lib
+; auto-scroll to correct spot on fwd/back(!!)
+*** CHECKING/ADAPTING/LIFTING FROM OTHER PROJS
+**** VENTAS
+***** Image processing.
+      Was thinking about that anyways for backend earlier... speed up few
+      things by one-time rendering eg fade into an img or (especially) video.
+      Then might still want additional filter on hover etc but at least
+      that's limited to one obj a time.  But, to be fancy would want to
+      declare ops in data and call from main server task, not just use ext
+      imagemagick straight scripting like some heathen.
+    -  Obvs also good for their purposes... resize and that.
+    -  Cause guess instead of prepping million vers for each image, drop new
+      one in and server will do it for us.
+***** Loads of general architectural stuff
+      - Duh. But damn people go overboard still, 200 files for 13k loc, why
+***** Repl/mount management
+      - They've got manual fns for reloads as well so maybe auto reload on
+        recompile really isnt universal? But wtf controls whether does??
+
+      
+
+*** NEAT THINGS
+  - When load blog page, immdeiately fetches beginning comments
+    Then once got them, rest.
+    Then, each page reachable by prev//next///first//last and eg [13 14 15 .. 16 17 18] part
+    (aka "navigatable")
+    Puts them in store and indexes in index
+
+*** BUGS
+  - So reason everything so uneven and seems all ghost in the machine
+    must definitely relate to fx order not being guaranteed.
+    Right now something in blog is putting a lazyseq as effects at some point
+    This of course overwrites whatever else is there, throws error, yada.
+    Because order of effects isn't guaranteed (apart from db first) this kinda
+    thing will sometimes act up massively, sometimes not at all.
+  - Swallowed error messages sometimes maybe not swallowed but eg firebase
+    simply not run?
+  - :common/navigate -> :common/navigate-fx! stopped working (from post-blog
+    to blog), realized when swapped :scroll to reg-fx.
+      - :scroll doesnt work as fx anyways for some reason even now that
+        navigate and focus-element does - wtf (no errors just nuffin - profile/debug it)
+  - subs keep running every 500ms forever - why??
+    - often what should be one error spits out 1000 identical ones -
+      incidentally every 500ms... eg exception in deref - off sub - runs again and again.
+  - Not a bug but remember _DB RUNS FIRST BUT EVERYTHING IS DISCARDED IF
+    SOMETHING ELSE THROWS EVEN IF DB UPDATE CLEAN_
+  
+*** TOOLING BUGS
+  - Was acting up crazier than ever did another .m2 nuke and after got
+    (quickly) warning about rewrite-cljs some var not public.
+    Lines around seem to be _exactly_ the ones causing figwheel to die sometimes
+    (re-pattern nil stuff, tho that's a java stacktrace now that think of it...)
+    Is rewrite-clj/s being used by both clj side and cljs for cljs compilation or something?
+    Investigate.
+  - 10x trace shows all my components rendering in well below 1ms. Same w
+    subs. A few events up around 15-30ms.
+  - Turn off 10x and profile more the sluggish crap...
+  - Now mount suddenly started working again. Prob all the dep fixes?
+    NOPE WTF Mount doesnt do nothing unless/until there's an http request somehow.
+    Second go from 4001 to 4000 it flushes in repl
+    4001/figwheel evidently not using ring handler btw (despite configured to) so makes sense
+    (I mean it doesnt at all wtf, shouldnt Mount be decidedly another layer than yada uh)
+  - Main issue is when figwheel pretends (hud) to reload on write but
+    doesn't, even on page refresh. (restart) fixes. Happens on "stream closed" exception.
+  - REPL gets stuck, fireplace starts acting like iced (freezes npi) then errors
+    on non unicode chars.
+  - Sometimes socket closed -> eg (restart) in repl does nothing (prints
+    nothing)
+  - weird-ass state entered where subscriptions start returning nil without error
+    re-frisk shows keys etc in db as usual. but subs return nil or ones counting stuff in db, 0
+
+  
+*** IMPORTANT
+  - Tell git to ignore whitespace then disable that for occassional bigass
+    indentation commits. Untenable this shit.
+  - Now switched to Sass, also running autoprefixer through postcss
+    But until figure out npm react conflict issues, using cli tools for it
+    so needs running:
+    `lein auto sassc once`
+    `auto-autoprefixer` (fish function, postcss resources/public/css/$name.css -o resources/public/css/$name.min.css -u autoprefixer --no-map --watch --parser postcss-scss)
+  - npm i -g postcss-cli autoprefixer postcss-scss   # latter due to // comments in scss
+  - But figure out and then use local (dev) deps, and config files... all checked in
 
 *** FIXING
   - *menu bottom as anchor/move page down with it..*
@@ -8,10 +99,15 @@
   - [ ] fix solution to force-calc css vars so can keep keeping
         track of height in css and not js
   - drop layers so perf stops being awful
-  -
+  - now also JS perf issues on top haha
+  - EVERYTHING UNPURE (let alone pot returning garbage) AS FX FFS (once not
+    broken)
+  - use github issues for this shit goddamnit
+    
 **** CROSS BROWSER STUFF, curr only good on chrome
   - [ ] fix smoothscroll polyfill - figure out why node_modules breaks react
         when that not the case for cue-db (tho I remember similar issue at some point)
+  - [ ] run postcss(?) thingy auto adding cross-browser-specific bs stuff
 
 
 **** SMALL/RANDOM
