@@ -173,13 +173,12 @@
         (when (some #{(:id user)} (:bloggers roles))
           [ui/button "Post blog" :post-blog :link "#/post-blog" ])
         (when (some #{(:id user)} (:admins roles))
-          [ui/button "Site admin" :post-blog :link "#/site-admin"]) ]]]
+          [ui/button "Site admin" :site-admin :link "#/site-admin"]) ]]]
      
      [:div.user-change-options
       [:span "Change: "]
       [section-btn "Username"  :username :change-username]
-      [section-btn "Password"  :password :change-password] ; firebase has its own so should just put a link for reset-password email
-      [section-btn "Picture"   :avatar   :change-avatar]]
+      [section-btn "Password"  :password :change-password]] ; firebase has its own so should just put a link for reset-password email
       
       [ui/button "Log out" :logout  :action #(rf/dispatch [:fb/sign-out])] ]))
 

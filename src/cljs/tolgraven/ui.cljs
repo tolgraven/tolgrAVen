@@ -101,9 +101,8 @@
 
 (defn close [on-click]
  [:button.close-btn.noborder
-  [:i.zmdi.zmdi-close
-   {:style {:font-size "1.5rem"}
-    :on-click on-click}]])
+  [:i.fa.fa-times
+   {:on-click on-click}]])
 
 (defn formatted-data [title path-or-data]
  (let [data (if (vector? path-or-data)
