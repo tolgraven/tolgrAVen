@@ -70,11 +70,11 @@
    {:dispatch-n [(if editing
                    [:blog/post (merge editing input)] ;input comes after cause will have changed
                    [:blog/post-new input])
+                 [:form-field [:post-blog] nil]
                  [:blog/state [:editing] nil]
-                 [:blog/nav-page 0]
-                 [:form-field [:post-blog] nil]]})) ;or whatever. also applies (even more!) to comment-ui
+                 [:blog/nav-page 0]]})) ;or whatever. also applies (even more!) to comment-ui
 
-(rf/reg-event-fx :blog/post [debug]
+(rf/reg-event-fx :blog/post
  (fn [{:keys [db]} [_ post]]
    {:db (assoc-in db [:blog :posts (:id post)] post)
       :dispatch-n [[:store-> [:blog-posts (str (:id post))] post]
@@ -90,15 +90,26 @@
          post (assoc post :ts now :id id :user (-> post :user :id))]
      {:dispatch [:blog/post post]})))
 
-; {:firestore/get {:path-collection [:blog-comments] ;not working, fails spec?
-;                  :where [[:user := "user-id"] ]
-;                  :limit 100
-;                  :order-by [[:id :desc]]
-;                  :start-at ["CA" 1000]
-;                  :doc-changes false
-;                  :on-success #(prn "Number of comments" (:size %))}}
+(rf/reg-event-fx :test-fetch [debug]
+ (fn [{:keys [db]} [_ user-id]]
+   {:firestore/get {:path-collection [:blog-comments]
+                 :where [[:user :== user-id] ]
+                 :limit 100
+                 :order-by [[:id :desc]]
+                 ; :start-at ["CA" 1000]
+                 :doc-changes false
+                 :on-success [:test-store]}}))
+
+(rf/reg-event-fx :test-store [debug]
+ (fn [{:keys [db]} [_ result]]
+   (println result)
+   {:db (assoc db :fire-result result)}))
+
+; (rf/dispatch [:test-fetch (:id @(rf/subscribe [:user/active-user]))])
 
 
+(defn paths-for "Would want a path builder that for given input returns both app-db and firestore paths. If they must differ ugh"
+  [inputs])
 
 (defn- assemble-path "Get db path from path pieces"
   [base path & further]
@@ -108,6 +119,13 @@
     (if further ; dont want last :comments, instead something else
       (concat path further)
       path)))
+
+; for perfect parity need
+; like thing is firestore must have doc, but on app-db side that's
+; no diff anyways.
+; assoc-in db [:blog-posts 1] thing
+; vs
+; update-in db [:blog-posts] merge {1 thing}
 
 (rf/reg-event-fx :blog/comment-new [debug
                                     inter/persist-id-counters

@@ -21,7 +21,7 @@
                    :id (:uid user)
                    :comment-count 0
                    :karma 0
-                   :seq-id (-> id :id :user)}
+                   :seq-id (-> id :id :user)} ;well not proper it runs each time...
          merged (merge defaults (get-in db [:fb/users (:uid user)]))]
      {:db (assoc-in db [:fb/users (:uid user)] merged)
       :dispatch [:store-> [:users (:uid user)] merged]}))) ; problem: overwrites any changed values on login. so def need fetch all users on boot...
@@ -41,9 +41,6 @@
                 ; can call manually in meantime.
        :dispatch [:fb/finish-sign-in user]}})))
                    
-; (seq {:wha nil})
-; (seq {})
-
 (rf/reg-event-fx :fb/fetch-users ; try find and fix bug in re-frame-firebase that causes this
   (fn [{:keys [db]} [_ user]]
     {:firestore/get {:path-collection [:users]
@@ -158,8 +155,9 @@
 (rf/reg-event-fx
  :user/save-avatar [debug] ;[(rf/inject-cofx :inject/inject [:user/active-user])]
  (fn [{:keys [db inject]} [_ path]]
-   {:db (assoc-in db [:fb-users (:id inject) :avatar] path)
-    :dispatch [:diag/new :warning "File upload" "Your avatar reached the server!\n ...but was not saved since that's not implemented."]
+   {;:db (assoc-in db [:fb/users (:id inject) :avatar] path)
+    :dispatch-n [;[:user/set-field (:id inject) :avatar path] 
+                 [:diag/new :warning "File upload" "Your avatar reached the server!\n ...but was not saved since that's not implemented."]]
     ; [:store-> [:users (:id inject)]
     ;                     {:avatar path}
     ;                     [:avatar]]
