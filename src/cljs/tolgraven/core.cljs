@@ -194,12 +194,26 @@
     {:use-fragment true ;doesnt do nuffin without (tho still takes over) so dunno point?
      :ignore-anchor-click? rfh/ignore-anchor-click?}))
 
+(def cookie-notice [:diag/new :info "Cookie notice"
+                     {:what "Better way?"
+                      :than :like-this
+                      3 {:just "add buttons"}}
+                     {:sticky? true}])
+
 (def firebase-app-info
-  {:apiKey "AIzaSyBsqgWFXZfLq4W8FPRfSVd3AzSt183w9HQ"
-   :projectId "tolgraven-8fd35"
-   :authDomain "tolgraven-8fd35.firebaseapp.com"
-   :databaseURL "https://tolgraven-8fd35.firebaseio.com"
+  {:apiKey        "AIzaSyBsqgWFXZfLq4W8FPRfSVd3AzSt183w9HQ"
+   :projectId     "tolgraven-8fd35"
+   :authDomain    "tolgraven-8fd35.firebaseapp.com"
+   :databaseURL   "https://tolgraven-8fd35.firebaseio.com"
    :storageBucket "tolgraven-8fd35.appspot.com"})
+(defn init-firebase []
+  (firebase/init :firebase-app-info      firebase-app-info ;@(rf/subscribe [:option [:firebase]])
+                 :firestore-settings     {:timestampsInSnapshots true} ; Shouldn't be used on later versions. See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
+                 :get-user-sub           [:fb/get-user]
+                 :set-user-event         [:fb/set-user]
+                 :default-error-handler  [:fb/error])
+  (rf/dispatch [:fb/fetch-users])) ; or more like, dont wait til blog init but can also defer a bit...
+
 ;; -------------------------
 ;; Initialize app
 (defn mount-components "Called each update when developing" []
@@ -213,20 +227,9 @@
   (rf/dispatch-sync [:init-db])
   (ajax/load-interceptors!)
 
-  (firebase/init :firebase-app-info      firebase-app-info ;@(rf/subscribe [:option [:firebase]])
-                 :firestore-settings     {:timestampsInSnapshots true} ; See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
-                 :get-user-sub           [:fb/get-user]
-                 :set-user-event         [:fb/set-user]
-                 :default-error-handler  [:fb/error])
-  (rf/dispatch [:id-counters/fetch])
-  (rf/dispatch [:fb/fetch-users]) ; or more like, dont wait til blog init but can also defer a bit...
-  ; dispatch firebase general fetches, test case is silly id counter persistence
-  ; which then needs to be fetched into app-db once ready
+  (init-firebase)
+  (rf/dispatch [:id-counters/fetch]) ; dispatch firebase general fetches, test case is silly id counter persistence. which then needs to be fetched into app-db once ready
+  (rf/dispatch cookie-notice)
   (util/log "Init complete, mounting root component")
-  ; (util/log :warning  "Cookie notice" "Could appear like this")
-  (rf/dispatch [:diag/new :info "Cookie notice"
-                {:what "Better way?"
-                 :than :like-this
-                 3 {:just "add buttons"}}
-                {:sticky? true}])
   (mount-components))
+
