@@ -44,13 +44,14 @@
  (fn [blog [_ n]]
    (assoc blog :posts-per-page n)))
 
-(rf/reg-event-db :blog/nav-page ; TODO should also (deferred) fetch content for next/prev/last and any by id directly clickable pages
+(rf/reg-event-fx :blog/nav-page ; TODO should also (deferred) fetch content for next/prev/last and any by id directly clickable pages
   [(path [:state :blog :page])]
- (fn [idx [_ nav]]
-   (if (number? nav)
-     nav
-     (case nav :prev (dec idx)
-               :next (inc idx)))))
+ (fn [{:keys [db]} [_ nav]]
+   {:db (if (number? nav)
+          nav
+          (case nav :prev (dec db)
+            :next (inc db)))
+    :dispatch [:scroll/to "linktotop"]}))
 
 (rf/reg-event-fx :blog/fetch-navigatable-pages
                  [(path [:state :blog :navigatable-pages])]
