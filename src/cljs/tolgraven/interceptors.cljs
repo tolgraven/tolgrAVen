@@ -20,10 +20,11 @@
   (rf/->interceptor
    :id    :persist-id-counters
    :after (fn [ctx]
-            (update-in ctx [:effects :dispatch-n] conj
-                       [:store->
-                        [:id-counters]
-                        (-> ctx :effects :db :state :id-counters)]))))
+            (assoc-in ctx [:effects :firebase/write]
+                      {:path [:id-counters]
+                       :value (-> ctx :effects :db :state :id-counters)
+                       :on-failure [:diag/new :warning "ID counters"
+                                    "Couldn't be backed up. Run for your life."]}))))
 ; then an interceptor tacked-onto those being injected and
 ; adding a firebase/write event?
 ; but for now just extra evt
