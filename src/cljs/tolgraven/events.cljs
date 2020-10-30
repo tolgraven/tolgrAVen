@@ -11,6 +11,7 @@
     [tolgraven.util :as util]
     [tolgraven.blog.events]
     [tolgraven.user.events]
+    [tolgraven.doc-fx]
     [tolgraven.cofx :as cofx]
     [clojure.string :as string]
     ; [muuntaja.core :as m]
