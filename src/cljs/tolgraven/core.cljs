@@ -192,7 +192,7 @@
     (fn [match _]
       (when match (rf/dispatch [:common/start-navigation match])))
     {:use-fragment true ;doesnt do nuffin without (tho still takes over) so dunno point?
-     :ignore-anchor-click? (constantly true)})) ; rfh/ignore-anchor-click?}))
+     :ignore-anchor-click? rfh/ignore-anchor-click?}))
 
 (def firebase-app-info
   {:apiKey "AIzaSyBsqgWFXZfLq4W8FPRfSVd3AzSt183w9HQ"
