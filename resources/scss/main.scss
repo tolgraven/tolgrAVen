@@ -213,17 +213,19 @@
 
 @media screen and (min-width: 800px) and (min-height: 800px) {
   :root {
-    --space: 1.8rem;
-    --space-lg: 2.5rem;
+    --space: 1.5rem;
+    --space-lg: 2.25rem;
   }
 }
-@media screen and (min-width: 1100px) {
+@media screen and (min-width: 1000px) {
   .line { /* i guess x overflow only important on ios, so we hype here */
     width: 200%; /* extend out like damn */
   }
   :root {
+    // --space-edges: 10vw;
     --space-edges: 10vw;
-    /* --space-edges: calc(var(--space) + 10vw); */
+    --space-sides: 10vw;
+    font-size: 1.10rem;
   }
 }
 @media screen and (max-width: 600px),
@@ -353,7 +355,6 @@ body {
   color: var(--fg-1);
   background-color: var(--bg-1);
   width: calc(100% - 2 * var(--space-edges));
-  max-width: 1000px; /*should be conn to var no*/
   margin: auto;
 
   /* no overflow hidden on body = iphone can scroll sideways. on body works but sticky header breaks */
