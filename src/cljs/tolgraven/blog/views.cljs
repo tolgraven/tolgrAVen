@@ -221,15 +221,20 @@
      [ui/input-text
       :placeholder "Title"
       :path [:form-field [:post-blog :title]]
-      :on-change #(rf/dispatch [:form-field [:post-blog :title] %])]
+      :on-change #(rf/dispatch-sync [:form-field [:post-blog :title] %])]
+     
+     [ui/input-text
+      :placeholder "Tags"
+      :path [:form-field [:post-blog :tags]]
+      :on-change #(rf/dispatch-sync [:form-field [:post-blog :tags] %])]
      
      [ui/input-text :input-type :textarea
       :placeholder "Text (markdown)"
       :height "40vh"
-                :min-rows 6
+      :min-rows 6
       :width "100%"
       :path [:form-field [:post-blog :text]]
-      :on-change #(rf/dispatch [:form-field [:post-blog :text] %])]
+      :on-change #(rf/dispatch-sync [:form-field [:post-blog :text] %])]
      
      [:br]
      [ui/button "Save draft" :save-blog-draft] ;should save to firebase etc.
@@ -258,8 +263,11 @@
       [:div.blog-post-header-main
        [:h1 title]
        [posted-by id user ts]
+       (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
+         [ui/button "Edit" :edit-blog-post
+          :action #(rf/dispatch [:blog/edit-post blog-post])])
        [:div.blog-post-tags
-        (doall (for [tag (or (:tags blog-post) ["some-category" "other" "random thoughts"])]
+        (doall (for [tag (or (:tags blog-post) ["unfiled"])]
                  ^{:key (str "blog-post-" id "-category-" tag)}
                  [:span tag]))]]]
      [:br]
