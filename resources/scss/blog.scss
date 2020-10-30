@@ -16,7 +16,8 @@
   > .blog-post {
     border: 0;
     border-bottom: var(--line-width-sm) solid;
-    // box-shadow: 0 0 4px 1px var(--fg-4); // looks nice on sep line but no go here
+    display: flex;
+    flex-direction: column;
 
     .blog-post-header {
       .blog-post-header-main {
@@ -38,6 +39,8 @@
     .blog-post-text {
       padding-left: 1em;
       padding-top: 1em;
+      max-width: 820px;
+      // align-self: center;
     }
   }
 }
