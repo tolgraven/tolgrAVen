@@ -16,7 +16,7 @@
 
 ; was thimking before give server-side render a go can at least replicate basic
 ; structure of it. but first just make general hiccup
-(defn- js [src] [:script {:src src :type "text/javascript"}])
+(defn- js [js] [:script (merge js {:type "text/javascript"})])
 (defn- css [href] [:link {:href href :rel "stylesheet" :type "text/css"}])
 
 (defn- loading-spinner
@@ -49,8 +49,8 @@
     [:div.line.line-footer] ;cant this be outside main ugh
     [:div.footer-content ;; XXX should adapt to available height, also disappear...
      [:div
-      [:h4 "-"]
-      [:h5 "-"]]]]])
+      [:h4 "joen.tolgraven@gmail.com"]
+      [:h5 "c 2020"]]]]])
 
 (defn- home
   [& {:keys [loading-content title description css-paths js-paths anti-forgery]
@@ -85,7 +85,10 @@
     "css/fontawesome.css"
     "css/brands.min.css"
     "css/solid.css"
-    "https://fonts.googleapis.com/css?family=Open+Sans:500,600,700"])
+    "https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"])
+
+(def js-paths
+  [{:src "js/compiled/app.js"}])
 
 (defn render-hiccup
   [request]
@@ -95,8 +98,8 @@
                          :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"])
                          :title "tolgrAVen"
                          :css-paths css-paths
-                         :anti-forgery *anti-forgery-token*
-                         )))
+                         :js-paths js-paths
+                         :anti-forgery *anti-forgery-token*)))
       ok
       (content-type "text/html; charset=utf-8")))
 
