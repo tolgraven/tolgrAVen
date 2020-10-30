@@ -83,7 +83,6 @@
 (def css-paths ; should come from config?
    ["css/main.min.css"
     "css/fontawesome.css"
-    "css/material-design-iconic-font.min.css"
     "css/brands.min.css"
     "css/solid.css"
     "https://fonts.googleapis.com/css?family=Open+Sans:500,600,700"])

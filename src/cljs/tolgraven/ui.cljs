@@ -87,8 +87,8 @@
 (defn material-toggle
  [model-path [on-state off-state & [prefix]]]
  (let [model (rf/subscribe (into [:get] model-path))]
-  [:i.zmdi
-   {:class (str "zmdi-"
+  [:i.fa
+   {:class (str "fa-"
                 (when prefix (str prefix "-"))
                 (if @model on-state off-state))
     :style {:margin "0.1em 0.2em"}
