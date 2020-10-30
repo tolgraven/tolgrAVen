@@ -206,6 +206,13 @@
    :authDomain    "tolgraven-8fd35.firebaseapp.com"
    :databaseURL   "https://tolgraven-8fd35.firebaseio.com"
    :storageBucket "tolgraven-8fd35.appspot.com"})
+(def firebase-app-info-test
+  {:apiKey        "AIzaSyAvjzBy68cWrdbLGOs8Yx4hD2JkfoHhjAg"
+   :projectId     "tolgraven-test"
+   :authDomain    "tolgraven-test.firebaseapp.com"
+   :databaseURL   "https://tolgraven-test.firebaseio.com"
+   :storageBucket "tolgraven-test.appspot.com"})
+
 (defn init-firebase []
   (firebase/init :firebase-app-info      firebase-app-info ;@(rf/subscribe [:option [:firebase]])
                  :firestore-settings     {:timestampsInSnapshots true} ; Shouldn't be used on later versions. See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
