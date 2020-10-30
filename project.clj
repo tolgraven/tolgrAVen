@@ -154,6 +154,7 @@
                       :preloads [re-frisk.preload]
                       ; :preloads [devtools.preload day8.re-frame-10x.preload] ;can remove devtools preload cause have in app.cljs?
                       ; :closure-defines {"re_frame.trace.trace_enabled_QMARK_" true}
+                      :closure-defines {goog.DEBUG true}
                       :external-config
                       {:devtools/config
                        {;:features-to-install [:formatters :hints] ;add exception hints
@@ -202,6 +203,7 @@
                             :output-to "resources/public/js/compiled/app.js"
                             :source-map "resources/public/js/compiled/app.js.map"
                             :asset-path "js/compiled/out"
+                            :closure-defines {goog.DEBUG false}
                             :optimizations :advanced
                             :pretty-print false
                             :infer-externs true

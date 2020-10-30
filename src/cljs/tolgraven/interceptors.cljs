@@ -4,7 +4,7 @@
    [re-frame.std-interceptors :as rf-std]
    [tolgraven.util :as util]))
 
-(def debug (when ^boolean goog.DEBUG rf/debug)) ; doesnt shut off in prod tho so, wtf
+(def debug (when ^boolean js/goog.DEBUG rf/debug)) ; doesnt shut off in prod tho so, wtf
 
 ; TODO make clean way to persist whatever by putting
 ; an effect in event w just db path, which gets mirrored on server side
