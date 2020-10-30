@@ -29,12 +29,13 @@
 (defn posted-by "Get details of blog/comment..."
   [id user ts score]
   (let [user [:em.blog-user 
-              (if (count user) user "anon")]
+              (if (count (:name user)) (:name user) "anon")]
         by (str "posted by ")
         ts (util/timestamp ts)]
     [:span.blog-info
-     ; (str "#" id " ") by
      user
+    (when (some #{(:id user)} (:admins @(rf/subscribe [:<-store :auth :roles])))
+      [:span "(admin)"])
      [:span ts]
      [:span (cond (pos? score) "+" (neg? score) "-")
       (when-not (= 0 score) score)]])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
@@ -94,7 +95,7 @@
        
        [:div.blog-comment-main
         [:h4.blog-comment-title title]
-        [posted-by id (:name user) ts score]
+        [posted-by id user ts score]
         (when (not= active-user user)
           [:span.blog-comment-vote [vote-btn :up] [vote-btn :down]])
         [:div.blog-comment-text
@@ -252,7 +253,7 @@
        {:src (get user :avatar @(rf/subscribe [:user/default-avatar]))}]
       [:div.blog-post-header-main
        [:h1 title]
-       [posted-by id (:name user) ts]
+       [posted-by id user ts]
        [:div.blog-post-tags
         (doall (for [tag (or (:tags blog-post) ["some-category" "other" "random thoughts"])]
                  ^{:key (str "blog-post-" id "-category-" tag)}
