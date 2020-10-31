@@ -15,7 +15,8 @@
    [cljs-time.format :as ctf]))
 
 (defn md->div [md]
-  [:div {:dangerouslySetInnerHTML {:__html (md->html md)}}])
+  [:div.md-rendered
+   {:dangerouslySetInnerHTML {:__html (md->html md)}}])
 
 (defn button "Pass text and id, plus either link anchor or action..."
   [text id & {:keys [type bg-div-class link action disabled?]

@@ -485,6 +485,12 @@ section.docs .bs-callout h4 {
   margin-bottom: 0.75em;
 }
 
+.md-rendered {
+  img {
+    padding: 0.75em 0;
+    max-width: -webkit-fill-available;
+  }
+}
 
 .column {
   margin: var(--space);
