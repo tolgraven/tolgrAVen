@@ -1150,3 +1150,17 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
     transform: initial; // safari doesnt want the y -60% adjustment, initial since cant use parallax anyways
   }
 }
+@media all and (orientation: landscape) { // hide away header and footer on mobile landscape (...many additional fixes needed)
+  header {
+    position: relative !important;
+  }
+  .line-header {
+    position: relative !important;
+    top: 0 !important;
+  }
+  .footer-sticky {
+    position: relative !important;
+    left: 0 !important;
+    width: 100% !important;
+  }
+}
