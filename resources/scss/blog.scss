@@ -43,6 +43,9 @@
       // align-self: center;
     }
   }
+  .blog-archive-post {
+    padding-bottom: calc(3 * var(--space));
+  }
 }
 .blog-post-preview {
   margin-top: calc(1 * var(--space-lg));

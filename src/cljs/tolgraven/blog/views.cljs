@@ -250,7 +250,12 @@
                                   (merge {:user user} input)
                                   editing])
                     (rf/dispatch [:common/navigate! :blog]))]]]))
-
+(defn tags-list [{:keys [id tags] :as post}]
+  (when (pos? (count tags))
+    [:div.blog-post-tags
+     (doall (for [tag (string/split tags " ")]
+              ^{:key (str "blog-post-" id "-category-" tag)}
+              [:span tag]))]))
 
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text comments] :as blog-post}]
@@ -264,29 +269,28 @@
        [:h1 title]
        [posted-by id user ts]
        (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
-         [ui/button "Edit" :edit-blog-post
-          :action #(rf/dispatch [:blog/edit-post blog-post])])
-       [:div.blog-post-tags
-        (doall (for [tag (or (:tags blog-post) ["unfiled"])]
-                 ^{:key (str "blog-post-" id "-category-" tag)}
-                 [:span tag]))]]]
+         [:button.noborder
+          {:on-click #(rf/dispatch [:blog/edit-post blog-post])}
+          [:i.fa.fa-edit] ])
+       [tags-list blog-post]]]
      [:br]
      ; [a custom sticky mini "how far youve scrolled bar" on right?]
      [:div.blog-post-text [ui/md->div text]]
      [:br] [:br]
      [comments-section blog-post]]))
 
-(defn blog-archive-view "List of all posts with headlines etc. Maybe for a sidebar."
-  ; will need:
-  ; dispatch fetch headlines? - or like who am i kidding dont need to be super scaly best practices right away...
-  ; prob enough not attempt render -> not loading images?
+(defn blog-archive "List of all posts with headlines etc. Maybe for a sidebar."
   []
   (let [posts @(rf/subscribe [:blog/posts])]
-    [:section.blog-archive
-     (for [{:keys [id ts user title text comments] :as post} posts] ^{:key (str "blog-archive-" (:id post))}
-       [:div
-        [:h3 title]
-        [:p (->> text string/split-lines (take 3))]])]))
+    [:section.blog.noborder.blog-archive
+     (for [{:keys [id ts user title text] :as post} posts] ^{:key (str "blog-archive-" (:id post))}
+       [:div.blog-archive-post
+        [:h2 {:style {:color "var(--blue)"}} title] ;should be link
+        [posted-by id @(rf/subscribe [:user/user user]) ts]
+        [tags-list blog-post]
+        [:p (->> text string/split-lines (take 2) (string/join " ") ui/md->div)]
+        ; [:p (->> (string/split text ".") (take 3) (string/join ". ") ui/md->div)]
+        ])]))
 
 (defn blog-tags-cloud "Tin"
   [])
@@ -314,6 +318,7 @@
 (defn blog "all the blogs"
   []
   (let [total @(rf/subscribe [:blog/count])
+        user @(rf/subscribe [:user/active-user])
         per-page (min total @(rf/subscribe [:blog/posts-per-page]))
         idx @(rf/subscribe [:blog/state [:page]])
         posts @(rf/subscribe [:blog/posts-for-page idx per-page]) ]
@@ -322,8 +327,14 @@
        [:<>
         (doall (for [post posts] ^{:key (str "blog-post-" (:id post))}
                     [blog-post post]))
+
+        [:div.flex.center-content
+         (when (some #{(:id user)} (:bloggers @(rf/subscribe [:<-store :auth :roles])))
+           [ui/button "Post" :post-blog :link "#/post-blog" ])
+         [:button.blog-btn.noborder {:on-click #(rf/dispatch [:common/navigate! :blog-archive])}
+          "Archive"]]
         [blog-nav total idx per-page]]
-       ; [:h1.center-content "No posts yet."])
-       [:h1.center-content [common/loading-spinner true]])
+
+       [:h1.center-content [common/loading-spinner true]]) ;annoying thing in general - sep "not found (yet) because loading" from not found...
      [:br] ]))
 

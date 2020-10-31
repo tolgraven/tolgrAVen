@@ -131,6 +131,10 @@
   [with-heading [:blog :heading] 
    [blog/post-blog]])
 
+(defn blog-archive-page []
+  [with-heading [:blog :heading]
+   [blog/blog-archive]])
+
 
 (defn log-page []
   [with-heading [:common :banner-heading]
@@ -170,7 +174,9 @@
                    (rf/dispatch [:blog/set-posts-per-page 1])
                    (rf/dispatch [:blog/nav-page (dec (:id path))]))
           :stop (fn [{:keys [path]}]
-                  (js/console.log "stop" "item controller" (:id path)))}]}] ]
+                  (js/console.log "stop" "item controller" (:id path)))}]}]
+      ["/archive" {:name :blog-archive
+                   :view #'blog-archive-page}]]
      ["post-blog" {:name :post-blog
                    :view #'post-blog-page
                    :controllers [{:start (fn [_] (rf/dispatch [:page/init-post-blog]))}]}]        
