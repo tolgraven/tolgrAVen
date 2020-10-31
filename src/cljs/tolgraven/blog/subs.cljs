@@ -7,7 +7,7 @@
  (fn [db [_ path] ]
    (get-in db (into [:blog] path))))
 
-(rf/reg-sub :blog/posts
+(rf/reg-sub :blog/post-feed
  :<- [:blog [:posts]]
  (fn [posts [_ path]]
   (some->> (keys posts) ;XXX temp, fetch more sanely (for learning not bc needed)
@@ -18,7 +18,7 @@
 (rf/reg-sub :blog/post
  :<- [:blog [:posts]]
  (fn [posts [_ id]]
-  (id posts)))
+  (get posts id)))
 
 (rf/reg-sub :blog/state
  :<- [:state [:blog]]
@@ -26,8 +26,8 @@
    (get-in state path)))
 
 (rf/reg-sub :blog/count
- :<- [:blog/posts]
- (fn [posts [_ path]]
+ :<- [:blog [:posts]]
+ (fn [posts [_ _]]
    (count posts)))
 
 (rf/reg-sub :blog/posts-per-page
@@ -35,9 +35,17 @@
  (fn [options [_ ]]
    (get options :posts-per-page 1)))
 
+(rf/reg-sub :blog/adjacent-post ; when move to not fetching all posts at boot, sub like this (get whole post not just id) will help auto prefetch wohoo
+ :<- [:blog/post-feed]
+ (fn [posts [_ direction current-id]]
+   (let [[before current-and-after] (split-with #(> (:id %) current-id) posts)]
+     (case direction
+       :prev (last before)
+       :next (second current-and-after)))))
+
 
 (rf/reg-sub :blog/posts-for-page
- :<- [:blog/posts] ; obvs will be, figure out idx range and ask server (then cache all already delivered in db)
+ :<- [:blog/post-feed] ; obvs will be, figure out idx range and ask server (then cache all already delivered in db)
  (fn [posts [_ idx page-size]]
      (when (seq posts)
        (try

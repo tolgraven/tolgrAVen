@@ -50,6 +50,11 @@
   .blog-archive-post {
     padding-bottom: calc(3 * var(--space));
   }
+  .blog-prev-next-links {
+    margin: calc(2 * var(--space));
+    display: flex;
+    justify-content: space-evenly;
+  }
 }
 .blog-post-preview {
   margin-top: calc(1 * var(--space-lg));

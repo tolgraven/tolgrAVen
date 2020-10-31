@@ -257,8 +257,11 @@
               ^{:key (str "blog-post-" id "-category-" tag)}
               [:span tag]))]))
 
+(defn make-link [path]
+  (str "/#/blog/post/" path))
+
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
-  [{:keys [id ts user title text comments] :as blog-post}]
+  [{:keys [id ts user title text permalink comments] :as blog-post}]
   (let [user @(rf/subscribe [:user/user user])]
     [:section.blog-post
      {:ref #(rf/dispatch [:run-highlighter! %])}
@@ -266,10 +269,11 @@
       [:img.user-avatar.blog-user-avatar
        {:src (get user :avatar @(rf/subscribe [:user/default-avatar]))}]
       [:div.blog-post-header-main
-       [:h1.blog-post-title title]
-       [posted-by id user ts]
+       [:a {:href (make-link (or permalink id))}
+         [:h1.blog-post-title title]]
+       [ui/appear :posted-by [posted-by id user ts]]
        (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
-         [:button.noborder
+         [:button.noborder.nomargin
           {:on-click #(rf/dispatch [:blog/edit-post blog-post])}
           [:i.fa.fa-edit] ])
        [tags-list blog-post]]]
@@ -279,18 +283,32 @@
      [:br] [:br]
      [comments-section blog-post]]))
 
-(defn blog-archive "List of all posts with headlines etc. Maybe for a sidebar."
-  []
-  (let [posts @(rf/subscribe [:blog/posts])]
+(defn blog-single-post []
+  (let [post (or @(rf/subscribe [:blog/post
+                                  @(rf/subscribe [:blog/state [:current-post-id]])])
+                  {:title "Not found" :text "This page doesn't exist. Authorities have been notified*"
+                   :comments {:0 {:title "jk" :text "*Not yet implemented"}}})]
+    [:div.blog
+     [blog-post post]
+     (when (:id post)
+       [:div.blog-prev-next-links
+        (when-let [post @(rf/subscribe [:blog/adjacent-post :prev (:id post)])]
+          [:a {:href (make-link (or (:permalink post) (:id post)))}
+           [:span [:i.fa.fa-chevron-left] " " (:title post)]])
+        (when-let [post @(rf/subscribe [:blog/adjacent-post :next (:id post)])]
+          [:a {:href (make-link (or (:permalink post) (:id post)))}
+           [:span (:title post) " " [:i.fa.fa-chevron-right]]])]) ]))
+
+(defn blog-archive "List of all posts with headlines etc. Maybe for a sidebar." []
+  (let [posts @(rf/subscribe [:blog/post-feed])]
     [:section.blog.noborder.blog-archive
-     (for [{:keys [id ts user title text] :as post} posts] ^{:key (str "blog-archive-" (:id post))}
+     (for [{:keys [id ts user title text permalink] :as post} posts] ^{:key (str "blog-archive-" (:id post))}
        [:div.blog-archive-post
-        [:h2 {:style {:color "var(--blue)"}} title] ;should be link
+        [:a {:href (make-link (or permalink id))}
+            [:h2 {:style {:color "var(--blue)"}} title]] ;should be link
         [posted-by id @(rf/subscribe [:user/user user]) ts]
         [tags-list blog-post]
-        [:p (->> text string/split-lines (take 2) (string/join " ") ui/md->div)]
-        ; [:p (->> (string/split text ".") (take 3) (string/join ". ") ui/md->div)]
-        ])]))
+        [:p (->> text string/split-lines (take 2) (string/join " ") ui/md->div)] ])]))
 
 (defn blog-tags-cloud "Tin"
   [])

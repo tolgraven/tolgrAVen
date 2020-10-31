@@ -165,16 +165,26 @@
       [""     {:name :blog
                :view #'blog-page
                :controllers [{:start (fn [_] (rf/dispatch [:blog/set-posts-per-page 2]))}]}]
-      ["/post/:id"
-       {:name :blog-post
+      ["/page/:nr"
+       {:name :blog-page
         :view #'blog-page
         :controllers
-        [{:parameters {:path [:id]}
+        [{:parameters {:path [:nr]}
           :start (fn [{:keys [path]}]
                    (rf/dispatch [:blog/set-posts-per-page 1])
-                   (rf/dispatch [:blog/nav-page (dec (:id path))]))
+                   (rf/dispatch [:blog/nav-page (dec (:nr path))]))
           :stop (fn [{:keys [path]}]
-                  (js/console.log "stop" "item controller" (:id path)))}]}]
+                  (js/console.log "stop" "blog-page controller" (:nr path)))}]}]
+      ["/post/:permalink"
+       {:name :blog-post
+        :view #'blog-post-page
+        :controllers
+        [{:parameters {:path [:permalink]}
+          :start (fn [{:keys [path]}]
+                   (let [id (-> path :permalink (string/split "-") last js/parseInt)]
+                     (rf/dispatch [:blog/state [:current-post-id] id])))
+          :stop (fn [{:keys [path]}]
+                  (js/console.log "stop" "blog-post controller" (:permalink path)))}]}]
       ["/archive" {:name :blog-archive
                    :view #'blog-archive-page}]]
      ["post-blog" {:name :post-blog
