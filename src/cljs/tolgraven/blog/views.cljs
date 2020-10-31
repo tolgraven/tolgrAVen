@@ -206,7 +206,7 @@
   [{:keys [title text]}]
   [:div
    ; {:ref #(rf/dispatch [:run-highlighter!])} ;screws up live preview :( jumpy
-    [:h2 title]
+    [:h2.blog-post-title title]
     [:br]
     [ui/md->div text]])
 
@@ -266,7 +266,7 @@
       [:img.user-avatar.blog-user-avatar
        {:src (get user :avatar @(rf/subscribe [:user/default-avatar]))}]
       [:div.blog-post-header-main
-       [:h1 title]
+       [:h1.blog-post-title title]
        [posted-by id user ts]
        (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
          [:button.noborder

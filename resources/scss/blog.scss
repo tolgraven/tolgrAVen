@@ -22,6 +22,11 @@
     .blog-post-header {
       .blog-post-header-main {
         margin-left: var(--space-lg);
+
+        .blog-post-title {
+          color: var(--blue);
+          font-width: bolder;
+        }
       }
       
       .blog-post-tags {
