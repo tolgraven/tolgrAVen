@@ -80,6 +80,9 @@
     [header-nav menu]
 
     [loading-spinner (rf/subscribe [:state [:is-loading]])]   ; menu
+    [:button.noborder
+     {:on-click #(rf/dispatch [:common/navigate! :blog])}
+     [:i.fa.fa-pen-fancy]]
     [user-btn]
     [:label.burger {:for "nav-menu-open"}]]
    [:div.line.line-header]])
