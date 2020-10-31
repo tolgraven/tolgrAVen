@@ -191,7 +191,7 @@
 
 (rf/reg-event-fx :id-counters/handle
   (fn [{:keys [db]} [_ state]]
-    {:dispatch [:diag/new :info "ID-counters" (str "Restored to " state)]
+    {:dispatch [:diag/new :debug "ID-counters" (str "Restored to " state)]
      :id-counters/set! state}))
 
 (rf/reg-event-fx :id-counters/fetch
