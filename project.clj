@@ -81,23 +81,24 @@
             [lein-sassc "0.10.4"]
             [lein-autoprefixer "0.1.1"]
             [lein-auto "0.1.2"]
-            ; [lein-npm "0.6.2"]
+            [lein-npm "0.6.2"]
             ; [lein-kibit "0.1.2"]
             ]
   :sassc
   [{:src "resources/scss/main.scss"
-    :output-to "resources/public/css/main.css"
+    :output-to "resources/public/css/tolgraven/main.css"
     :style "nested"
     :import-path "resources/scss"}]
-  :autoprefixer {:src "resources/public/css"
-                 :browsers "> 1%, Last 2 versions"} ;; optional
+  :autoprefixer {:src "resources/public/css/tolgraven"
+                 :browsers "> 5%, Last 2 versions"} ;; optional
   :auto
   {"sassc" {:file-pattern #"\.(scss|sass)$" :paths ["resources/scss"]}
-   "autoprefixer" {:file-pattern #"\.(css)$" :paths ["resources/public/css"]}}
+   "autoprefixer" {:file-pattern #"\.(css)$" :paths ["resources/public/css/tolgraven"]}}
   
-  :aliases {"cssbuild" ["do" ["sass" "once"] "autoprefixer"]}
-  ; :npm {:dependencies
-  ;       [[]]}
+  :aliases {"cssbuild" ["do" ["sassc" "once"] "autoprefixer"]}
+  :npm {:dependencies
+        [[autoprefixer "10.0.1"]
+         [postcss-cli "8.2.0"]]}
   
   ; :hooks [leiningen.sassc]
   :clean-targets ^{:protect false}
@@ -194,7 +195,10 @@
                       :pretty-print true}}}}}
 
    :uberjar {:omit-source true
-             :prep-tasks ["compile" ["cljsbuild" "once" "min"]]
+             :prep-tasks ["compile"
+                          ["cljsbuild" "once" "min"]
+                          ["sassc" "once"]
+                          "autoprefixer"]
              :cljsbuild {:builds
                          {:min
                           {:source-paths ["src/cljc" "src/cljs" "env/prod/cljs"]
