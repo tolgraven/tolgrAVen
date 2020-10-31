@@ -146,6 +146,8 @@
    :options {:auto-save-vars true
              :transition {:time 200 :style :slide} ; etc
              :blog {:posts-per-page 2}
+             :firebase {:project :main
+                        :settings {}} ; {:timestampsInSnapshots true} ; for old version
              :hud {:timeout 30 :level :info}}})
 
 

@@ -220,8 +220,10 @@
    :storageBucket "tolgraven-test.appspot.com"})
 
 (defn init-firebase []
-  (firebase/init :firebase-app-info      firebase-app-info ;@(rf/subscribe [:option [:firebase]])
-                 :firestore-settings     {:timestampsInSnapshots true} ; Shouldn't be used on later versions. See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
+  (firebase/init :firebase-app-info      (case @(rf/subscribe [:option [:firebase :project]])
+                                           :main firebase-app-info
+                                           :test firebase-app-info-test)
+                 :firestore-settings     @(rf/subscribe [:option [:firebase :settings]]) ; Shouldn't be used on later versions. See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
                  :get-user-sub           [:fb/get-user]
                  :set-user-event         [:fb/set-user]
                  :default-error-handler  [:fb/error])
