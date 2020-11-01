@@ -288,7 +288,8 @@
                                   @(rf/subscribe [:blog/state [:current-post-id]])])
                   {:title "Not found" :text "This page doesn't exist. Authorities have been notified*"
                    :comments {:0 {:title "jk" :text "*Not yet implemented"}}})]
-    [:div.blog
+    [blog-container
+     [:<>
      [blog-post post]
      (when (:id post)
        [:div.blog-prev-next-links
@@ -297,20 +298,29 @@
            [:span [:i.fa.fa-chevron-left] " " (:title post)]])
         (when-let [post @(rf/subscribe [:blog/adjacent-post :next (:id post)])]
           [:a {:href (make-link (or (:permalink post) (:id post)))}
-           [:span (:title post) " " [:i.fa.fa-chevron-right]]])]) ]))
+           [:span (:title post) " " [:i.fa.fa-chevron-right]]])]) ]]))
 
 (defn blog-archive "List of all posts with headlines etc. Maybe for a sidebar." []
   (let [posts @(rf/subscribe [:blog/post-feed])]
-    [:section.blog.noborder.blog-archive
+    [blog-container
+     [:div.blog-archive
+      [:h2 {:style {:text-align :center}} "All posts"] [:br] [:br]
+      ; make bit of month(?) at least year, indicators.
+      ; which means we need to pre-sort+split
      (for [{:keys [id ts user title text permalink] :as post} posts] ^{:key (str "blog-archive-" (:id post))}
        [:div.blog-archive-post
         [:a {:href (make-link (or permalink id))}
-            [:h2 {:style {:color "var(--blue)"}} title]] ;should be link
+            [:h2 title]] ;should be link
         [posted-by id @(rf/subscribe [:user/user user]) ts]
+        (when (pos? (count (:comments post)))
+          [:span {:style {:font-size "0.7em"}} [util/pluralize (count (:comments post)) "comment"]])
         [tags-list blog-post]
-        [:p (->> text string/split-lines (take 2) (string/join " ") ui/md->div)] ])]))
+        [:div (->> text string/split-lines (take 2) (string/join " ") ui/md->div)] ])]]))
 
-(defn blog-tags-cloud "Tin"
+(defn blog-tag-cloud "Tin"
+  [])
+
+(defn blog-tag-view "View posts filed with tag"
   [])
 
 (defn blog-intros-view "Headline and a paragraph, many on each page."
@@ -333,26 +343,36 @@
     [:div.blog-nav.center-content
       back-btn nav-idxs fwd-btn]))
 
-(defn blog "all the blogs"
-  []
+(defn blog-feed "all the blogs. Should be called" []
   (let [total @(rf/subscribe [:blog/count])
         user @(rf/subscribe [:user/active-user])
         per-page (min total @(rf/subscribe [:blog/posts-per-page]))
         idx @(rf/subscribe [:blog/state [:page]])
         posts @(rf/subscribe [:blog/posts-for-page idx per-page]) ]
-    [:section.blog.fullwide.noborder ;then chuck flip-move on eeet. or just same slide nav thing
-     (if (pos? total)
-       [:<>
-        (doall (for [post posts] ^{:key (str "blog-post-" (:id post))}
-                    [blog-post post]))
+    (when (pos? total)
+      [:<>
+       (doall (for [post posts] ^{:key (str "blog-post-" (:id post))}
+                   [blog-post post]))
 
-        [:div.flex.center-content
-         (when (some #{(:id user)} (:bloggers @(rf/subscribe [:<-store :auth :roles])))
-           [ui/button "Post" :post-blog :link "#/post-blog" ])
-         [:button.blog-btn.noborder {:on-click #(rf/dispatch [:common/navigate! :blog-archive])}
-          "Archive"]]
-        [blog-nav total idx per-page]]
+       [blog-nav total idx per-page]])))
 
-       [:h1.center-content [common/loading-spinner true]]) ;annoying thing in general - sep "not found (yet) because loading" from not found...
-     [:br] ]))
+(defn blog-container
+  [section]
+  [:section.blog.fullwide.noborder ;then chuck flip-move on eeet. or just same slide nav thing
+   (if section
+     section
+     [:h1.center-content [common/loading-spinner true]])
+   [:div.flex.center-content
+    (when (some #{(:id @(rf/subscribe [:user/active-user]))}
+                (:bloggers @(rf/subscribe [:<-store :auth :roles])))
+      [:button.noborder [:a {:href "#/post-blog"} [:i.fa.fa-feather-alt]] ])
+    [:button.blog-btn.noborder {:on-click #(rf/dispatch [:common/navigate! :blog])}
+     "Home"]
+    [:button.blog-btn.noborder {:on-click #(rf/dispatch [:common/navigate! :blog-archive])}
+     "Archive"]]
+   [:div.blog-powered-by.center-content
+    [:p "Proudly powered by "
+    [:a {:href "https://github.com/tolgraven/tolgraven"} "tolgrAVen"]
+    [:i.fab.fa-github]] ]])
+
 

@@ -125,7 +125,7 @@
 
 (defn blog-page []
   [with-heading [:blog :heading]
-   [blog/blog]])
+   [blog/blog-container [blog/blog-feed]]])
 
 (defn post-blog-page [] ; how nicely set is-personal for this but also unset etc yada
   [with-heading [:blog :heading] 
