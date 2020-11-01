@@ -11,9 +11,17 @@
   
 
 .blog {
-  background: var(--gradient-bg-main);
+  background: var(--gradient-bg-main); // needed to cover heading
 
-  > .blog-post {
+  a {
+    color: var(--blue-2);
+
+    i {
+      color: var(--fg-1);
+    }
+  }
+
+  .blog-post {
     border: 0;
     border-bottom: var(--line-width-sm) solid;
     display: flex;
@@ -21,7 +29,7 @@
 
     .blog-post-header {
       .blog-post-header-main {
-        margin-left: var(--space-lg);
+        margin-left: var(--space);
 
         .blog-post-title {
           color: var(--blue);
