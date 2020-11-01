@@ -51,11 +51,6 @@
     (assoc-in db [:fb/users]
               (util/normalize-firestore response))))
 
-
-(rf/reg-event-fx :fb/error
-  (fn [{:keys [db]} [_ error]]
-    {:dispatch [:diag/new :error "Firebase" error]}))
-
 (rf/reg-event-fx :fb/create-user [debug]
  (fn [_ [_ email password]]
   {:firebase/email-create-user {:email email :password password}}))

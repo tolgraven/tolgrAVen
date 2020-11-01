@@ -141,6 +141,10 @@
     {:dispatch [:http/get {:uri "/api/firebase-settings"}
                 [:option [:firebase]]]}))
 
+(rf/reg-event-fx :fb/error
+  (fn [{:keys [db]} [_ error]]
+    {:dispatch [:diag/new :error "Server error" error]}))
+
 
 
 
