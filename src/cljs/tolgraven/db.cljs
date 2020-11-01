@@ -121,6 +121,7 @@
                        {:src "img/afterglow-new-web-old-small.jpg" :alt "My actual first web project"}]
 
              :blog    {:heading {:title "joe tol thought"
+                                 :target :blog
                                  :bg {:src "img/wide-spot-ctrl-small.jpg"}
                                  :tint "bg-5"}}
              :docs    {:heading {:title "Documentation"
