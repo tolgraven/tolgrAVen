@@ -22,7 +22,7 @@
 
                  [metosin/jsonista "0.2.7"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
                  [metosin/muuntaja "0.6.7"]
-                 [metosin/reitit "0.5.10" :exclusions [org.clojure/spec.alpha]]
+                 [metosin/reitit "0.5.10" :exclusions [org.clojure/spec.alpha com.fasterxml.jackson.core/jackson-core com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.core/jackson-annotations]]
                  [metosin/ring-http-response "0.9.1"]
 
                  [mount "0.1.16"]
@@ -54,14 +54,15 @@
                  [appliedscience/js-interop "0.2.5"]
 
                  [re-frame "1.1.1"]
-                 [kee-frame "0.4.0"]
+                 [kee-frame "0.4.0" :exclusions [args4j]]
                  [day8.re-frame/http-fx "0.2.1"]
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
                  [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j]]
                  ; [day8.re-frame/undo "0.3.3"]
                  [reagent "0.10.0"]
-                 ; [re-frame-utils "0.1.0"]
+                 [re-frame-utils "0.1.0"]
+                 [com.smxemail/re-frame-cookie-fx "0.0.2"  :exclusions [args4j]]
                  
                  [cljsjs/highlight "9.12.0-2"]
                  [cljsjs/codemirror "5.44.0-1"]
