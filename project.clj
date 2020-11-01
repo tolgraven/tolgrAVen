@@ -198,8 +198,9 @@
    :uberjar {:omit-source true
              :prep-tasks ["compile"
                           ["cljsbuild" "once" "min"]
-                          ["sassc" "once"]
-                          "autoprefixer"]
+                          ; ["sassc" "once"]
+                          ; "autoprefixer"
+                          ]
              :cljsbuild {:builds
                          {:min
                           {:source-paths ["src/cljc" "src/cljs" "env/prod/cljs"]
