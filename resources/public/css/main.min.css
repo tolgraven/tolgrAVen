@@ -1244,12 +1244,10 @@ h3::first-letter {
   display: block;
   overflow-x: auto;
   padding: 1.00em;
-  background: linear-gradient(100deg, var(--bg-3) 10%, var(--bg-2) 90%, var(--bg-1) 102%);
+  background: linear-gradient(100deg, var(--bg-2) 10%, var(--bg-3) 40%, var(--bg-2) 80%, var(--bg-1) 102%);
   border-bottom-left-radius: 0.7em;
-  /* border-bottom-left-radius: 5%; /1* fantastic w the clipping for especially two-line boxes but nyah good for big onez *1/ */
   border-bottom-right-radius: 0.5em;
-  color: var(--fg-2);
-  /* font-weight: bolder; */ }
+  color: var(--fg-2); }
 
 .hljs-comment,
 .hljs-quote {
@@ -1423,29 +1421,37 @@ input[type=range]:focus {
 /* BLOG STUFF */
 .blog {
   background: var(--gradient-bg-main); }
-  .blog > .blog-post {
+  .blog a {
+    color: var(--blue-2); }
+    .blog a i {
+      color: var(--fg-1); }
+  .blog .blog-post {
     border: 0;
     border-bottom: var(--line-width-sm) solid;
     display: flex;
     flex-direction: column; }
-    .blog > .blog-post .blog-post-header .blog-post-header-main {
-      margin-left: var(--space-lg); }
-      .blog > .blog-post .blog-post-header .blog-post-header-main .blog-post-title {
+    .blog .blog-post .blog-post-header .blog-post-header-main {
+      margin-left: var(--space); }
+      .blog .blog-post .blog-post-header .blog-post-header-main .blog-post-title {
         color: var(--blue);
         font-width: bolder; }
-    .blog > .blog-post .blog-post-header .blog-post-tags {
+    .blog .blog-post .blog-post-header .blog-post-tags {
       margin-top: 0.4em; }
-      .blog > .blog-post .blog-post-header .blog-post-tags > span {
+      .blog .blog-post .blog-post-header .blog-post-tags > span {
         margin-right: var(--space);
         padding: 0.15em 0.4em;
         background-color: var(--bg-4); }
-    .blog > .blog-post:last-of-type {
+    .blog .blog-post:last-of-type {
       border: 0; }
-    .blog > .blog-post .blog-post-text {
+    .blog .blog-post .blog-post-text {
       padding-top: 1em;
       max-width: 820px; }
   .blog .blog-archive-post {
     padding-bottom: calc(3 * var(--space)); }
+  .blog .blog-prev-next-links {
+    margin: calc(2 * var(--space));
+    display: flex;
+    justify-content: space-evenly; }
 
 .blog-post-preview {
   margin-top: calc(1 * var(--space-lg));
@@ -1626,7 +1632,7 @@ textarea.blog-adding-comment-textbox {
   .user-section .user-inner {
     padding: calc(0.25 * var(--space)) calc(0.75 * var(--space)) 0; }
     .user-section .user-inner > section {
-      border-top: var(--line-width-md) solid var(--fg-4);
+      border-top: 0px solid var(--fg-4);
       padding: calc(0.5 * var(--space));
       padding-bottom: 0; }
       .user-section .user-inner > section > form {
@@ -1866,7 +1872,7 @@ textarea.blog-adding-comment-textbox {
   --hue-1:             180;
   --hue-2:               8;
   --hue-3:             192;
-  --lum-dark-1:         7%;
+  --lum-dark-1:         8%;
   --lum-dark-2:        12%;
   --lum-dark-3:        15%;
   --lum-dark-4:        18%;
@@ -1924,7 +1930,7 @@ textarea.blog-adding-comment-textbox {
   --box-regular-color-flip:    hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
   --box-faint-color-flip:      hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
   --gradient-bg-main: linear-gradient(-77deg,
-                                      hsl(280, 20%, var(--lum-bg-1)),
+                                      hsl(280, 15%, 8%),
                                       var(--bg-1))
                                       ;
   --user-box-bg:      linear-gradient(hsla(240deg 20% var(--lum-bg-3) / 75%) 0%,
@@ -2208,17 +2214,13 @@ li {
 a {
   color: var(--fg-2);
   text-decoration: none; }
-
-a:focus, a:hover, a:active {
-  transform: scale(1.12);
-  filter: brightness(125%) drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1)); }
+  a:focus, a:hover, a:active {
+    transform: scale(1.1);
+    filter: brightness(125%) drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1)); }
 
 main {
   /* dunno purpose of why I choose .main-content... */
   width: 100%;
-  /* max-width: 1000px; /*should be conn to var no */ }
-
-.main-content {
   border-top: var(--line-width) solid;
   /* should make configurable. off looks p nice on main page */
   border-bottom: var(--line-width) solid;
@@ -2227,13 +2229,15 @@ main {
   /* should make configurable. off looks p nice on main page */
   border-right: var(--line-width-vert) solid;
   /* should make configurable. off looks p nice on main page */
-  background: var(--gradient-bg-main);
   margin-top: var(--space-lg);
   padding-bottom: calc(3.1 * var(--space));
   /* XXX actually, footer height... */
-  position: relative;
   -webkit-animation: fade-in 2.5s ease-in;
           animation: fade-in 2.5s ease-in; }
+
+.main-content {
+  position: relative;
+  background: var(--gradient-bg-main); }
 
 pre {
   /* max-height: 6em; */
@@ -2465,6 +2469,8 @@ video {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  top: 1.0em;
   -webkit-animation: 0.9s linear 0.2s infinite both alternate running wiggle;
           animation: 0.9s linear 0.2s infinite both alternate running wiggle; }
 
@@ -2596,6 +2602,13 @@ video {
     background-color: rgba(165, 165, 165, 0.25); }
   100% {
     background-color: rgba(165, 165, 165, 0.12); } }
+
+.appear-wrapper {
+  display: inline;
+  opacity: 0;
+  transition: opacity 2.0s; }
+  .appear-wrapper.appeared {
+    opacity: 1; }
 
 textarea:focus, input:focus, button:focus {
   outline: 0;
@@ -2952,3 +2965,14 @@ h3::first-letter {
     top: initial; }
   .parallax-bg {
     transform: initial; } }
+
+@media all and (orientation: landscape) {
+  header {
+    position: relative !important; }
+  .line-header {
+    position: relative !important;
+    top: 0 !important; }
+  .footer-sticky {
+    position: relative !important;
+    left: 0 !important;
+    width: 100% !important; } }
