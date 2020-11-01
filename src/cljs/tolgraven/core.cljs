@@ -26,6 +26,7 @@
     [tolgraven.user.views :as user]
     [tolgraven.experiments :as experiment]
     [reitit.core :as reitit]
+    [reitit.exception :as exception]
     [reitit.frontend.history :as rfh]
     [reitit.frontend.easy :as rfe]
     [clojure.string :as string]
@@ -198,20 +199,26 @@
      ["test" {:name :test
               :view #'test-page}]
      ; ["{*path}" {:name :404
-     ;               :view #'broken-link}]
-     {;:conflicts nil
+     ; ["*" {:name :four-oh-four
+     ;       :conflicting true
+     ;       :view #'broken-link}]
+     ; {:conflicts nil
+     {;:conflicts (fn [conflicts]
+                   ; (println (exception/format-exception :path-conflicts nil conflicts)))
       :data {:controllers [{:start (util/log :debug "start" "root-controller")
                             :stop  (util/log :debug "stop" "root controller")}]}}]))
 
+(defn on-nav [match _]
+  (util/log :debug "Match:" match)
+  (when match
+    (rf/dispatch [:common/start-navigation match])))
 
+(def router-settings
+  {:use-fragment true ;doesnt do nuffin without (tho still takes over) so dunno point?
+   :ignore-anchor-click? rfh/ignore-anchor-click?})
 
 (defn start-router! []
-  (rfe/start!
-    router
-    (fn [match _]
-      (when match (rf/dispatch [:common/start-navigation match])))
-    {:use-fragment true ;doesnt do nuffin without (tho still takes over) so dunno point?
-     :ignore-anchor-click? rfh/ignore-anchor-click?}))
+  (rfe/start! router on-nav router-settings))
 
 (def cookie-notice [:diag/new :info "Cookie notice"
                      {:what "Better way?"
