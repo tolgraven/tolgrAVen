@@ -22,6 +22,8 @@
   }
 
   .blog-post {
+    background: var(--gradient-bg-main); // apparently covering .blog not enough. or, it is locally but not on heroku :S
+    z-index: 40;
     border: 0;
     border-bottom: var(--line-width-sm) solid;
     display: flex;
