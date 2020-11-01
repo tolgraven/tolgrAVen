@@ -81,7 +81,7 @@
       (js path))]])
 
 (def css-paths ; should come from config?
-   ["css/tolgraven/main.css"
+   ["css/tolgraven/main.min.css"
     "css/fontawesome.css"
     "css/brands.min.css"
     "css/solid.css"
