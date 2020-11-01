@@ -1,8 +1,0 @@
-{
-  "name": "tolgrAVen",
-  "description": "website for tolgrAVen Audiovisual",
-  "version": "0.1.0",
-  "engines": {
-    "node": "15.x"
-  }
-}
