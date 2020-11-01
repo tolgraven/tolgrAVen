@@ -5,6 +5,7 @@
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
     [clojure.edn :as edn]
     [clojure.walk :as walk]
+    [clojure.string :as string]
     [ajax.core :as ajax]
     [tolgraven.interceptors :as inter :refer [debug]]
     [tolgraven.util :as util]))
