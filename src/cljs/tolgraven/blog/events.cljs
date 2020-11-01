@@ -45,13 +45,18 @@
  (fn [blog [_ n]]
    (assoc blog :posts-per-page n)))
 
-(rf/reg-event-fx :blog/nav-page ; TODO should also (deferred) fetch content for next/prev/last and any by id directly clickable pages
+(rf/reg-event-fx :blog/nav-action
   [(path [:state :blog :page])]
  (fn [{:keys [db]} [_ nav]]
-   {:db (if (number? nav)
-          nav
-          (case nav :prev (dec db)
-            :next (inc db)))
+   (let [nr (case nav
+              :prev (dec (inc db)) :next (inc (inc db)) ;just to clarify we're matching the offset version..
+              nav)]
+     {:dispatch [:common/navigate! :blog-page {:nr nr}]}))) ;not very clean but would get messy otherwise..
+
+(rf/reg-event-fx :blog/nav-page ; TODO should also (deferred) fetch content for next/prev/last and any by id directly clickable pages
+  [(path [:state :blog :page])]
+ (fn [{:keys [db]} [_ nr]]
+   {:db (dec (js/parseInt nr))
     :dispatch [:scroll/to "linktotop"]}))
 
 (rf/reg-event-fx :blog/fetch-navigatable-pages

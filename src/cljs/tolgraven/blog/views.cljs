@@ -332,12 +332,12 @@
   [total-posts current-idx posts-per-page]
   (let [nav-btn (fn [nav label & [attrs]]
                   [:button.blog-btn.blog-nav-btn.topborder
-                   (merge {:on-click (fn [_] (rf/dispatch [:blog/nav-page nav]))}
+                   (merge {:on-click (fn [_] (rf/dispatch [:blog/nav-action nav]))}
                           attrs)
                    label])
-        nav-idxs (doall (for [i (range (/ total-posts posts-per-page))] ^{:key (str "blog-nav-btn-" i)}
-                          [nav-btn i (inc i) (when (= i current-idx)
-                                               {:class "current"})]))
+        nav-idxs (doall (for [i (range 1 (inc (/ total-posts posts-per-page)))] ^{:key (str "blog-nav-btn-" i)}
+                          [nav-btn i i (when (= i (inc current-idx))
+                                         {:class "current"})]))
         back-btn (when-not (= 0 current-idx)
                    [nav-btn :prev [:i.fa.fa-chevron-left]])
         fwd-btn (when-not (<= total-posts (* posts-per-page (inc current-idx)))

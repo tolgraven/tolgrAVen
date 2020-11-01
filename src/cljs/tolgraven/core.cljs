@@ -160,15 +160,14 @@
      ["blog" {:controllers [{:start (fn [_] (rf/dispatch [:page/init-blog]))}] }
       [""     {:name :blog
                :view #'blog-page
-               :controllers [{:start (fn [_] (rf/dispatch [:blog/set-posts-per-page 2]))}]}]
+               :controllers [{:start (fn [_] (rf/dispatch [:blog/set-posts-per-page 3]))}]}] ; should also allow 0 = infinite scroll
       ["/page/:nr"
        {:name :blog-page
         :view #'blog-page
         :controllers
         [{:parameters {:path [:nr]}
           :start (fn [{:keys [path]}]
-                   (rf/dispatch [:blog/set-posts-per-page 1])
-                   (rf/dispatch [:blog/nav-page (dec (:nr path))]))
+                   (rf/dispatch [:blog/nav-page (:nr path)]))
           :stop (fn [{:keys [path]}]
                   (js/console.log "stop" "blog-page controller" (:nr path)))}]}]
       ["/post/:permalink"
