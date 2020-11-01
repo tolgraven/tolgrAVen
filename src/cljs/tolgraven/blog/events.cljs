@@ -87,7 +87,13 @@
                                  (rf/inject-cofx :gen-id [:blog])]
  (fn [{:keys [db now id]} [_ post]]
    (let [id (-> id :id :blog)
-         post (assoc post :ts now :id id :user (-> post :user :id))]
+         post (assoc post
+                     :ts now
+                     :id id
+                     :user (-> post :user :id)
+                     :permalink (-> (:title post)
+                                    (str "-" id)
+                                    (string/replace " " "-")))]
      {:dispatch [:blog/post post]})))
 
 (rf/reg-event-fx :test-fetch [debug]
