@@ -185,34 +185,11 @@
          [ui-inset (str "Fraction visible:" @frac) 2]
          [ui-fading]])))
 
-;; TODO basically figure out neatest way of getting gotten rid of in-the-way bg layers...
-;; parallax makes things tricky apparently - cue-db viz it works both from above and below...
-;; but here only get 0 above, stuck on 1 below.
-;; guess full gamut of did-mount for better observer, plus loadsa self-modding killing parallax?
-;; just look at how people normally do it in react i guess.
-;;
-;; but clearly "out there fkn content" + mostly clipping div then tracking that leaky container div
-;; must be right course of action.
-(defn fading-bg-heading [{:keys [title target bg tint] :as content}]
-  [:<>
-   [:div
-    {:class "section-with-media-bg-wrapper covering stick-up fullwidth"
-     :on-click (when target #(rf/dispatch [:common/navigate! target]))}
-    [:div.fader
-     [:img.media.media-as-bg bg]
-     [:section.covering-faded.noborder
-      {:style (when tint {:background (str "var(--" tint ")")
-                          :filter "saturate(1.7) brightness(0.9)"})}
-      [:h1.h-responsive
-       {:style {:transform "translateY(-10%)"}}
-       title]]]]
-   [:div.fader>div.fade-to-black.bottom]])
-
 
 (defn ui-story "Big img header + story" [{:keys [heading] :as content}]
   [:<>
    [:div#about-intro {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
-    [fading-bg-heading heading]]
+    [ui/fading-bg-heading heading]]
    [:div.fader>div.fade-to-black.between]
 
    [:a {:name "about"}]

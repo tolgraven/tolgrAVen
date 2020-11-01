@@ -26,6 +26,21 @@
     :ref #(rf/dispatch [:state [:appear id] %])}
    (into [:<>] components)])
 
+(defn fading-bg-heading [{:keys [title target bg tint] :as content}]
+  [:<>
+   [:div
+    {:class "section-with-media-bg-wrapper covering stick-up fullwidth"
+     :on-click (when target #(rf/dispatch [:common/navigate! target]))}
+    [:div.fader
+     [:img.media.media-as-bg bg]
+     [:section.covering-faded.noborder
+      {:style (when tint {:background (str "var(--" tint ")")
+                          :filter "saturate(1.7) brightness(0.9)"})}
+      [:h1.h-responsive
+       {:style {:transform "translateY(-10%)"}}
+       title]]]]
+   [:div.fader>div.fade-to-black.bottom]])
+
 
 (defn button "Pass text and id, plus either link anchor or action..."
   [text id & {:keys [type bg-div-class link action disabled?]

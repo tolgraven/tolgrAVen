@@ -93,13 +93,13 @@
 (defn with-heading
   [heading-path component & [override]]
   [:<>
-   [view/fading-bg-heading (merge @(rf/subscribe [:content heading-path])
+   [ui/fading-bg-heading (merge @(rf/subscribe [:content heading-path])
                                   override)]
    component])
 
 (defn test-page []
   [:<>
-   [view/fading-bg-heading (merge @(rf/subscribe [:content [:common :banner-heading]])
+   [ui/fading-bg-heading (merge @(rf/subscribe [:content [:common :banner-heading]])
                                   {:title "Experiments" :tint "green"})]
    [:section.experiments.solid-bg.fullwide.noborder
     (let [routes {:parallax #'experiment/parallax :codemirror #'experiment/code-mirror}
