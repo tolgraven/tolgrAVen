@@ -18,7 +18,6 @@
     [tolgraven.user.views :as user]
     [tolgraven.experiments :as experiment]
     [reitit.core :as reitit]
-    [reitit.exception :as exception]
     [reitit.frontend.history :as rfh]
     [reitit.frontend.easy :as rfe]
     [clojure.string :as string]
@@ -62,20 +61,16 @@
    [:a {:name "linktotop" :id "linktotop"}]
    
    [safe :user [user/user-section @(rf/subscribe [:user/active-section])]]
-
-   (if-let [page @(rf/subscribe [:common/page])]
-     [:main.main-content.perspective-top
-      {:class (if @(rf/subscribe [:state [:transition]])
-                "hidden"; "slide-in slide-out-left" ; hidden
-                "visible")}; "slide-in ")} ; visible
-      ; should be: outgoing page put at like :common/last-page, plus a flag
-      ; render both, wrapped in div each. outgoing starts middle goes left/right,
-      ; incoming starts left/right animates to middle (simultaneously)
-      ; finish -> flag unset -> kill/novisible last page div.
-      [safe :page [page]]] ; this doesnt reload when switch page. need to do manually...
-     ; so will need to track in db not ratom, then reset on nav.
-     ; also get-css-var still ticks every 500ms whenever safe triggers/any unhandled errors(?)... wtf?
-     [common/loading-spinner true :massive])
+   
+   (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; TODO any time do nav or like trigger :is-loading, start timer, if not flag done set within timeout, also error
+     [error-page]
+     (if-let [page @(rf/subscribe [:common/page])]
+       [:main.main-content.perspective-top
+        {:class (if @(rf/subscribe [:state [:transition]])
+                  "hidden"; "slide-in slide-out-left" ; should be: outgoing page put at like :common/last-page, plus a flag render both, wrapped in div each.
+                  "visible")}; "slide-in ")}          ; outgoing starts middle goes left/right, incoming starts left/right animates to middle (simultaneously) finish -> flag unset -> kill/novisible last page div.
+        [safe :page [page]]]
+       [common/loading-spinner true :massive]))
 
    [common/footer @(rf/subscribe [:content [:footer]])]
    [safe :hud [ui/hud (rf/subscribe [:hud])]]
@@ -138,10 +133,11 @@
     (rf/subscribe [:get :diagnostics])]
    {:title "Log" :tint "blue"}])
 
-(defn broken-link []
+(defn not-found-page []
   [with-heading [:common :banner-heading]
-   [:p "Nothing to see here, move along."]
-   {:title "404" :tint "red"}])
+   [:div.center-content
+    [:br] [:p "Four, oh four. Nothing to see here, move along."]]
+   {:title "Not found" :tint "red"}])
 
 (def router ; XXX weird thing doesnt automatically scroll to top when change page...
   (reitit/router
@@ -189,20 +185,16 @@
               :view #'log-page}]
      ["test" {:name :test
               :view #'test-page}]
-     ; ["{*path}" {:name :404
-     ; ["*" {:name :four-oh-four
-     ;       :conflicting true
-     ;       :view #'broken-link}]
-     ; {:conflicts nil
-     {;:conflicts (fn [conflicts]
-                   ; (println (exception/format-exception :path-conflicts nil conflicts)))
-      :data {:controllers [{:start (util/log :debug "start" "root-controller")
+     ["not-found" {:name :not-found
+                   :view #'not-found-page}]
+     {:data {:controllers [{:start (util/log :debug "start" "root-controller")
                             :stop  (util/log :debug "stop" "root controller")}]}}]))
 
 (defn on-nav [match _]
   (util/log :debug "Match:" match)
-  (when match
-    (rf/dispatch [:common/start-navigation match])))
+  (if match ; cant do fallback route in router apparently, but we get nil matches so can use that
+    (rf/dispatch [:common/start-navigation match])
+    (rf/dispatch [:state [:error-page] not-found-page])))
 
 (def router-settings
   {:use-fragment true ;doesnt do nuffin without (tho still takes over) so dunno point?
