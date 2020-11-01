@@ -39,7 +39,7 @@
     [:label.burger]]
    [:div.line.line-header]
 
-   [:main.main-content.main-loading
+   [:main.main-loading
     [:div.loading-container
      [:div.loading-wiggle-y
       [:div.loading-wiggle-z

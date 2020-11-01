@@ -67,7 +67,7 @@
   --hue-1:             180; 
   --hue-2:               8;
   --hue-3:             192;
-  --lum-dark-1:         7%;
+  --lum-dark-1:         8%;
   --lum-dark-2:        12%;
   --lum-dark-3:        15%;
   --lum-dark-4:        18%;
@@ -131,7 +131,7 @@
 
   // will need drastic tweaking for light theme
   --gradient-bg-main: linear-gradient(-77deg,
-                                      hsl(280, 20%, var(--lum-bg-1)),
+                                      hsl(280, 15%, 8%),
                                       var(--bg-1))
                                       ;
   // --gradient-bg-main: linear-gradient(-77deg,
@@ -419,30 +419,30 @@ li {
 a {
   color: var(--fg-2);
   text-decoration: none;
-}
-a:focus, a:hover, a:active {
-  transform: scale(1.12);
-  filter: brightness(125%) drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1));
-  // font-weight: 600;
+  
+  &:focus, &:hover, &:active {
+    transform: scale(1.10);
+    filter: brightness(125%) drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1));
+  }
 }
 
 main { /* dunno purpose of why I choose .main-content... */
   width: 100%;
-  /* max-width: 1000px; /*should be conn to var no */
-}
-
-.main-content {
+  
   border-top: var(--line-width) solid; /* should make configurable. off looks p nice on main page */
   border-bottom: var(--line-width) solid; /* should make configurable. off looks p nice on main page */
   border-left:  var(--line-width-vert) solid; /* should make configurable. off looks p nice on main page */
   border-right: var(--line-width-vert) solid; /* should make configurable. off looks p nice on main page */
-  background: var(--gradient-bg-main);
   margin-top: var(--space-lg);
   // padding-bottom: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
   padding-bottom: calc(3.1 * var(--space)); /* XXX actually, footer height... */
-  position: relative;
 
   animation: fade-in 2.5s ease-in;
+}
+
+.main-content {
+  position: relative;
+  background: var(--gradient-bg-main);
 }
 pre {
   // overflow: scroll;
@@ -675,6 +675,8 @@ video {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  top: 1.0em; // wiggles so move down
   animation: 0.9s linear 0.2s infinite both alternate running wiggle;
 }
 .loading-wiggle-z {
