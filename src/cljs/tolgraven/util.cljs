@@ -77,7 +77,7 @@
         (let [day-ago (ct/minus (ct/now) (ct/hours 24))]
           (if (ct/after? ts day-ago)
             (str (pluralize (int (/ mins 60)) "hour") " ago")
-            (str "on " (ctf/unparse (ctf/formatters :date) ts))))))
+            (ctf/unparse (ctf/formatters :date) ts)))))
     ""))
 
 
@@ -194,7 +194,8 @@
 (defn run-highlighter! [el-type & [div-ref]]
   (let [selected (-> (or div-ref js/document) ;cant querySelectorAll on document?
                      (.querySelectorAll el-type))]
-    (doall (map js/hljs.highlightBlock selected))))
+    (doseq [el selected]
+      (js/hljs.highlightBlock el)))) ;uh doseq more appropriate no
 
 
 (defn scroll-by "Manually scroll view by. But guess need custom for Safar-eye"

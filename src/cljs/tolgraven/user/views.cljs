@@ -169,11 +169,11 @@
         [:span [:em (:email user)]]
         [:br] [:br]
         [:span (str (or (:comment-count user) 0) " comments")]
-        [section-btn "View all" :comments :comments]
-        (when (some #{(:id user)} (:bloggers roles))
-          [ui/button "Post blog" :post-blog :link "#/post-blog" ])
-        (when (some #{(:id user)} (:admins roles))
-          [ui/button "Site admin" :site-admin :link "#/site-admin"]) ]]]
+        [section-btn "View" :comments :comments]
+        (when (some #{(:id user)} (:admins roles)) ; some way to sep / hl this...
+          [:<>
+           [:span " - "]
+           [ui/button "Admin" :site-admin :link "#/site-admin"]]) ]]]
      
      [:div.user-change-options
       [:span "Change: "]
@@ -214,3 +214,5 @@
              :change-password change-password
              :change-username change-username)])
         ]) ]))
+; for fallback img:
+; [:img {:src src :onerror "this.src='img/black.png'"}]

@@ -24,10 +24,9 @@
   [event-id handler]
   (rf/reg-event-fx
     event-id
-    [(persist-db-keys :app [:state :options :users :content])]
+    [(persist-db-keys :app [:state :options])]
     (fn [{:keys [db]} event-vec]
       {:db (handler db event-vec)})))
-; (rf/reg-fx :dispatch-staggered) ; ya kno. stagger -later, maybe optionally awaiting comfirmation of :done for dispatching dispatches. but the asdync flow thing prob already does most of that?
 
 ; re-frisk occasionally throws 10MB long "trace while storing" errors so def dont try to display that shit.
 ; (rf/set-loggers!  {:warn  (fn [& args]

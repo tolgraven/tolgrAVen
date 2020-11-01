@@ -22,7 +22,7 @@
     [:div.loading-container>div.loading-wiggle-z>div.loading-wiggle-y
      [:i.loading-spinner
       {:class (str "fa fa-spinner fa-spin" (when (= kind :massive)
-                                             "loading-spinner-massive"))}]]))
+                                             " loading-spinner-massive"))}]]))
 
 (defn flashing-ersatz-text-like-everyone-uses
   "Better than wee loading spinner no? Eg Docs, we know big page is coming
@@ -121,5 +121,5 @@
  (let [icon (or icon "angle-double-up")
        i [:i {:class (str "fas fa-" icon)}]]
    [:<>
-    [:a {:id "to-top" :class "to-top" :href "#" :name "Up"} i]]))
+    [:a {:id "to-top" :class "to-top" :href "#linktotop" :name "Up"} i]]))
 

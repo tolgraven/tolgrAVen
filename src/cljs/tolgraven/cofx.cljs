@@ -30,3 +30,5 @@
  (fn [state]
    (reset! id-counters state)))
 
+; use re-frame-utils ::inject to inject subs!
+; caveat also needs deref in a view

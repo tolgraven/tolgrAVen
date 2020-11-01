@@ -25,6 +25,7 @@
      [ui/md->div text]]))
 
 (declare add-comment)
+(declare blog-container)
 
 (defn posted-by "Get details of blog/comment..."
   [id user ts score]
@@ -84,7 +85,8 @@
                         {:class (if (= vote voted)
                                   "noborder"
                                   (case vote :up "topborder" :down "bottomborder"))
-                         :on-click (fn [_] (rf/dispatch [:blog/comment-vote path vote]))}
+                         :on-click (fn [_] (rf/dispatch [:blog/comment-vote 
+                                                         user active-user path vote]))}
                         (case vote :up "+" :down "-")])))]
     [:<>
      [:section.blog-comment
@@ -101,7 +103,7 @@
         [:div.blog-comment-text
          {:style {:filter (when (neg? score)
                             (str "brightness(calc(1 + "
-                                 (max -0.6 (* 0.1 score)) "))"))}}
+                                 (max -0.7 (* 0.1 score)) "))"))}}
          [ui/md->div text]]]
        
        [:div.blog-comment-actions
@@ -245,7 +247,7 @@
       [preview-blog input]]
      
      [:section
-      [ui/button "Post" :post-new-blog
+      [ui/button "Submit" :post-new-blog
        :action #(do (rf/dispatch [:blog/submit
                                   (merge {:user user} input)
                                   editing])
