@@ -188,27 +188,36 @@
        {:dispatch [:blog/comment path comment]})))
 
 
-(rf/reg-event-fx :blog/comment-vote ;TODO def sub firestore on-snapshot just because (plus for general comments as well)
- (fn [{:keys [db]} [_ path vote]]   ; other cool stuff could be typing indicator yeah?
+(rf/reg-event-fx :blog/comment-vote [debug] ;TODO def sub firestore on-snapshot just because (plus for general comments as well)
+ (fn [{:keys [db]} [_ user active-user path vote]]   ; other cool stuff could be typing indicator yeah?
    (let [diff (case vote :up 1 :down -1)
          state-path [:state :blog :voted path]
          db-path (assemble-path [:blog :posts (first path)] (rest path) :score)
+         post (get-in db [:blog :posts (first path)])
          opposite (case vote :up :down :down :up)
          voted (get-in db state-path)
+         vote (if-not (= vote voted) vote false)
          diff (condp = voted
                vote     (- diff)
                opposite (* 2 diff)
                diff)]
      {:db (-> db
-              (assoc-in state-path (if-not (= vote voted) vote false))
+              (assoc-in state-path vote)
               (update-in db-path + diff))
-      :dispatch
-      [:store->
-       [:blog-posts (str (first path))]
-       (assoc-in {} (assemble-path [] (rest path) :score)
-                       (+ (get-in db db-path)
-                          diff))
-       [:comments]]})))
+      :dispatch-n
+      [[:store-> ; store score in comment
+        [:blog-posts (str (first path))]
+        (assoc-in {} (assemble-path [] (rest path) :score)
+                  (+ (get-in db db-path) diff))
+        [:comments]]
+       [:store->  ; active-user voted
+        [:users (:id active-user)]
+        (assoc-in {} [:voted path] vote)
+        [:voted]]
+       [:store-> ; store score in user - but not our user, theirs...
+        [:users (:id user)]
+        {:karma (+ (:karma user) diff)}
+        [:karma]]]})))
 
 ; for comment scroll lazy load:
 ; pull comments one by one, chunked so maybe like first five
