@@ -131,7 +131,7 @@
         {:class "covering-faded widescreen-safe center-content parallax-group"
          :ref #(reset! div-ref %) ;oh yeah check first el for :video cant work it's rendered at that point lol
          :style {:transition "opacity 4.5s"
-                 :opacity (str "calc(0.95 - 0.20 *" @in-view ")")}} ;well dumb but
+                 :opacity (str "calc(0.95 - 0.45 *" @in-view ")")}} ;well dumb but
         [:h1.h-responsive  title]]
        [ui-inset caption nr]]))) ; these arent showing up...
 
