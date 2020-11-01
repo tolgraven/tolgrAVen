@@ -95,16 +95,16 @@
                                "clojurescript in the house"] ]}
 
              :interlude [{:title "What does that mean?"
-                          :caption "Stage light blabla"
-                          :bg [:video.media.media-as-bg {:src "media/fog-3d-small.mp4"  :playsInline true :autoPlay true }]}
+                          :caption "Stage light visualizer for the browser with custom shaders"
+                          :bg [:video.media.media-as-bg {:src "media/fog-3d-small.mp4"  :playsInline true :autoPlay true}]}
                          {:title "For who?"
                           :caption "Nihiloxica video shoot, Kampala"
-                          :bg [:video.media.media-as-bg {:src "media/nihil-shoot2.mp4"  :playsInline true :autoPlay true :loop true}]}
+                          :bg [:video.media.media-as-bg {:src "media/nihil-shoot2.mp4"  :playsInline true :autoPlay true}]}
                          {:title "Got no portfolio"
-                          :caption "Failed"
-                          :bg [:img.media.media-as-bg.fade-3 {:src "img/collage-strips.jpg"}]}
+                          :caption "But one will appear here somewhere, soon enough."
+                          :bg [:img.media.media-as-bg {:src "img/collage-strips.jpg"}]}
                          {:title "Placeholder"
-                          :caption "Fix this shite"
+                          :caption "Maybe put like a small resume or similar?"
                           :bg [:img.media.media-as-bg.anim-gradient-bg {:src "img/wide-spot-ctrl-small.jpg"}]}]
 
              :article-links [{:title "A link thingy"    ;fix autograbber!
