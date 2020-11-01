@@ -1448,12 +1448,18 @@ input[type=range]:focus {
     .blog .blog-post .blog-post-text {
       padding-top: 1em;
       max-width: 820px; }
-  .blog .blog-archive-post {
-    padding-bottom: calc(3 * var(--space)); }
+  .blog .blog-archive {
+    padding: var(--space-lg); }
+    .blog .blog-archive .blog-archive-post {
+      padding-bottom: calc(2 * var(--space)); }
   .blog .blog-prev-next-links {
     margin: calc(2 * var(--space));
     display: flex;
     justify-content: space-evenly; }
+  .blog .blog-powered-by {
+    font-size: 0.7em;
+    padding-bottom: calc(2.5 * var(--space));
+    padding-top: calc(0.5 * var(--space)); }
 
 .blog-post-preview {
   margin-top: calc(1 * var(--space-lg));

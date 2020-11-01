@@ -57,13 +57,22 @@
       // align-self: center;
     }
   }
-  .blog-archive-post {
-    padding-bottom: calc(3 * var(--space));
+  .blog-archive {
+    padding: var(--space-lg);
+    
+    .blog-archive-post {
+      padding-bottom: calc(2 * var(--space));
+    }
   }
   .blog-prev-next-links {
     margin: calc(2 * var(--space));
     display: flex;
     justify-content: space-evenly;
+  }
+  .blog-powered-by {
+    font-size: 0.7em;
+    padding-bottom: calc(2.5 * var(--space));
+    padding-top: calc(0.5 * var(--space));
   }
 }
 .blog-post-preview {
