@@ -135,6 +135,9 @@
   [with-heading [:blog :heading]
    [blog/blog-archive]])
 
+(defn blog-post-page []
+  [with-heading [:blog :heading]
+   [blog/blog-single-post]])
 
 (defn log-page []
   [with-heading [:common :banner-heading]
