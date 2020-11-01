@@ -98,7 +98,8 @@
                                     "noborder"
                                     "topborder")
                            :on-click #(rf/dispatch [:state [:experiments] tab-key])}
-                  tab-key]])])]])
+                  tab-key]])
+     [(tab routes)]])]])
 
 (defn home-page []
   [view/ui])

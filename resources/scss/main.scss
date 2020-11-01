@@ -774,12 +774,30 @@ video {
 // @include nth-children(4, 10) { width: 60%; }
 
 .appear-wrapper {
-  display: inline;
-  opacity: 0;
-  transition: opacity 2.0s;
+  display: inline-block; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post
+  // width: 100%; // same as above, fixes but maybe also screws? yes it does
+  transition: all 0.3s;
 
+  &.opacity {
+    opacity: 0;
+    transition: opacity 0.7s;
+  }
+  
+  &.zoom-y {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+
+  &.zoom-x {
+    opacity: 0;
+    transform: scaleX(0);
+    transition: transform 0.15s;
+  }
+  
   &.appeared {
     opacity: 1;
+    transform: none;
+    translate: none
   }
 }
 

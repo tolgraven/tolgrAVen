@@ -265,7 +265,8 @@
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text permalink comments] :as blog-post}]
   (let [user @(rf/subscribe [:user/user user])]
-    [:section.blog-post
+    [ui/appear (str "blog-post-" id) "zoom-x"
+     [:section.blog-post
      {:ref #(rf/dispatch [:run-highlighter! %])}
      [:div.flex.blog-post-header
       [:img.user-avatar.blog-user-avatar
@@ -273,7 +274,7 @@
       [:div.blog-post-header-main
        [:a {:href (make-link (or permalink id))}
          [:h1.blog-post-title title]]
-       [ui/appear :posted-by [posted-by id user ts]]
+       [ui/appear :posted-by "opacity" [posted-by id user ts]]
        (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
          [:button.noborder.nomargin
           {:on-click #(rf/dispatch [:blog/edit-post blog-post])}
@@ -283,7 +284,7 @@
      ; [a custom sticky mini "how far youve scrolled bar" on right?]
      [:div.blog-post-text [ui/md->div text]]
      [:br] [:br]
-     [comments-section blog-post]]))
+     [ui/appear (str "blog-post-" id "-comments") "zoom-y" [comments-section blog-post]]]]))
 
 (defn blog-single-post []
   (let [post (or @(rf/subscribe [:blog/post

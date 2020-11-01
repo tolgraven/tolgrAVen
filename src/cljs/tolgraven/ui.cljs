@@ -19,11 +19,12 @@
    {:dangerouslySetInnerHTML {:__html (md->html md)}}])
 
 (defn appear "Animate mount"
-  [id & components]
+  [id kind & components]
   [:div.appear-wrapper
    {:id id
-    :class (when @(rf/subscribe [:state [:appear id]]) "appeared")
-    :ref #(rf/dispatch [:state [:appear id] %])}
+    :class (str kind " "
+                (when @(rf/subscribe [:state [:appear id]]) "appeared"))
+    :ref #(rf/dispatch [:appear id (boolean %)])}
    (into [:<>] components)])
 
 (defn fading-bg-heading [{:keys [title target bg tint] :as content}]
