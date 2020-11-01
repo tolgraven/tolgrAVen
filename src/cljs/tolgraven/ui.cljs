@@ -18,6 +18,15 @@
   [:div.md-rendered
    {:dangerouslySetInnerHTML {:__html (md->html md)}}])
 
+(defn appear "Animate mount"
+  [id & components]
+  [:div.appear-wrapper
+   {:id id
+    :class (when @(rf/subscribe [:state [:appear id]]) "appeared")
+    :ref #(rf/dispatch [:state [:appear id] %])}
+   (into [:<>] components)])
+
+
 (defn button "Pass text and id, plus either link anchor or action..."
   [text id & {:keys [type bg-div-class link action disabled?]
               :or   {type "button" }}]

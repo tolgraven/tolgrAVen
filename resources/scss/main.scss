@@ -771,6 +771,16 @@ video {
 // @include nth-children(3, 7) { width: 50%; }
 // @include nth-children(4, 10) { width: 60%; }
 
+.appear-wrapper {
+  display: inline;
+  opacity: 0;
+  transition: opacity 2.0s;
+
+  &.appeared {
+    opacity: 1;
+  }
+}
+
 
 textarea, input, button {
   &:focus {
