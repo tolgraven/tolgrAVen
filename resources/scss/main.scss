@@ -776,11 +776,11 @@ video {
 .appear-wrapper {
   display: inline-block; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post
   // width: 100%; // same as above, fixes but maybe also screws? yes it does
-  transition: all 0.3s;
+  transition: all 0.8s;
   
   &.opacity {
     opacity: 0;
-    transition: opacity 0.7s;
+    transition: opacity 1.0s;
   }
   
   &.zoom-y {
@@ -791,7 +791,7 @@ video {
   &.zoom-x {
     opacity: 0;
     transform: scaleX(0);
-    transition: transform 0.15s;
+    transition: transform 0.55s;
   }
   
   &.appeared {
@@ -799,8 +799,8 @@ video {
     transform: none;
     translate: none
   }
-  &.slow {       transition: all 0.9s; }
-  &.extra-slow { transition: all 2.7s; }
+  &.slow {       transition: all 1.5s; }
+  &.extra-slow { transition: all 3.0s; }
 }
 
 

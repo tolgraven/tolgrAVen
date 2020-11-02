@@ -167,6 +167,11 @@
                  ; [:->css-var! "line-width-vert" "0px"]
                  ]})) ; be careful w dispatch-n, entire chain stops if one throws (like here w css-var...)
 
+(rf/reg-event-fx :appear
+  (fn [{:keys [db]} [_ id value]]  ; would just set something in state that then sets css class.
+    {:db (if value
+           (assoc-in db [:state :appear id] value)
+           (update-in db [:state :appear] dissoc id))})) ; now just generic
 
 (rf/reg-event-db :transition/out ; if all transitions same (fade or w/e) dont really need pass match... and, if specific order or similar matters, need pass both.
   (fn [db [_ activity direction]]  ; would just set something in state that then sets css class.
