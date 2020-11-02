@@ -213,7 +213,7 @@
      (when offset
        (scroll-by offset))))
 
-(defn observe [on-view-change] ;what's with the weird scrolling bug?
+(defn observe [on-view-change & [frac?]] ;what's with the weird scrolling bug?
   (let [in-view (atom false)
         observer (js/IntersectionObserver.
                   (fn [[entry & _]]
@@ -221,9 +221,8 @@
                         (on-view-change (reset! in-view (.-isIntersecting entry))))))]
     (fn [div-ref]
       (.disconnect observer)
-      (if (at div-ref)
-        (.observe observer (at div-ref))
-        (.disconnect observer))))) ;prob needs tearing down for reload or?
+      (when div-ref
+        (.observe observer div-ref))))) ;prob needs tearing down for reload or?
 
 (defn frac-in-view [on-view-change] ;what's with the weird scrolling bug?
   (let [in-view (atom 0.0)
@@ -236,9 +235,8 @@
                         (on-view-change (reset! in-view frac))))))]
     (fn [div-ref]
       (.disconnect observer)
-      (if (at div-ref)
-        (.observe observer (at div-ref))
-        (.disconnect observer))))) ;prob needs tearing down for reload or?
+      (when div-ref
+        (.observe observer div-ref))))) ;prob needs tearing down for reload or?
 
 
 (defn crap []

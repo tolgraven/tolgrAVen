@@ -15,16 +15,14 @@
 
 (defn bg-logo "Try to remember why had to put img in css/style..."
   [path]
-  (let [div-ref (r/atom nil) ;wait should actually go in intro, pass us in-view
-        in-view (r/atom 0.0)
+  (let [in-view (r/atom 0.0)
         observer (util/frac-in-view #(reset! in-view %))]
     (fn [path]
-      (observer div-ref)
       [:div#logo-top.logo-bg.stick-up ;.parallax-sm
        {:class "logo-tolgraven"
         :style {:background-image (str "url('" path "')")
                 :opacity (str "0.29 + " (/ (- 1 @in-view) 5))}
-        :ref #(reset! div-ref %)}
+        :ref #(observer %)}
        [:p @in-view]]))) ; cant remember why I did the weird path-in-css bs but anyways...
 
 (defn ui-inset [caption nr]
@@ -119,7 +117,6 @@
                                         (when (<= frac 0.1)
                                           (try (.pause video) (catch js/Error _))))))]
     (fn [{:keys [title caption bg nr]}]
-      (observer div-ref)
       [:div {:id (str "interlude-" nr)
              :class "section-with-media-bg-wrapper parallax-wrapper"
              :on-mouse-enter #(when-let [video @vid-ref]
@@ -129,7 +126,7 @@
        (util/add-attrs bg {:ref (fn [el] (reset! vid-ref el))}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:section
         {:class "covering-faded widescreen-safe center-content parallax-group"
-         :ref #(reset! div-ref %) ;oh yeah check first el for :video cant work it's rendered at that point lol
+         :ref #(observer (reset! div-ref %)) ;oh yeah check first el for :video cant work it's rendered at that point lol
          :style {:transition "opacity 4.5s"
                  :opacity (str "calc(0.95 - 0.45 *" @in-view ")")}} ;well dumb but
         [:h1.h-responsive  title]]
@@ -149,14 +146,17 @@
      [:section#services
       [:div#categories
        (for [[title icon-name lines] categories
-           :let [on-click #(rf/dispatch [:toggle [:state :modal title]])]]
-         (into ^{:key (str "service-" title)}
-               [:ul
-                [:li {:on-click on-click}
-                 [:i {:class (str "fas " "fa-" icon-name)}]
-                 [:h3 title]]]
+             :let [on-click #(rf/dispatch [:toggle [:state :modal title]])]] ^{:key (str "service-" title)}
+         [ui/seen
+          (str "service-" title)
+          "opacity extra-slow"
+          (into ;^{:key (str "service-" title)}
+                [:ul
+                 [:li {:on-click on-click}
+                  [:i {:class (str "fas " "fa-" icon-name)}]
+                  [:h3 title]]]
                 (for [line lines] ^{:key (str "service-" title "-" line)}
-                  [:li line])))]]])
+                  [:li line]))])]]])
 
 (defn ui-moneyshot "needs better name lol. what is hero img halfway down page?"
   [{:keys [title caption bg]}]
@@ -164,9 +164,8 @@
         frac (r/atom 0.0)
         observer (util/frac-in-view #(reset! frac %))]
     (fn [{:keys [title caption bg]}]
-        (observer div-ref)
         [:div {:class "section-with-media-bg-wrapper covering stick-up"
-               :ref #(reset! div-ref %)}
+               :ref #(observer (reset! div-ref %))}
          [:img.media-as-bg
           (merge bg {:class "fade-5 parallax-sm" ; origin-toptop
                      :style (merge (when-not (pos? @frac)
