@@ -27,6 +27,26 @@
     :ref #(rf/dispatch [:appear id (boolean %)])}
    (into [:<>] components)])
 
+(defn seen "Animate on coming into view"
+  [id kind & components]
+  (let [div-ref (r/atom nil) ;cpu - I take it it resets causing recalc causing reset (why tho?) spiral?
+        observer (util/frac-in-view
+                  (fn [frac]
+                    (let [state @(rf/subscribe [:state [:seen id]])] (cond
+                     (and (>= frac 0.99) (not state))
+                     (rf/dispatch [:state [:seen id] true])
+                     (and (< frac 0.99) state)
+                     (rf/dispatch [:state [:seen id] false])))))]
+    (fn [id kind & components]
+      [:div.appear-wrapper
+       {:id id
+        :class (str kind " "
+                    (when @(rf/subscribe [:state [:seen id]])
+                      "appeared"))
+        :ref #(observer (reset! div-ref %))}
+       (into [:<>] components)])))
+
+
 (defn fading-bg-heading [{:keys [title target bg tint] :as content}]
   [:<>
    [:div

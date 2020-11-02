@@ -777,7 +777,7 @@ video {
   display: inline-block; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post
   // width: 100%; // same as above, fixes but maybe also screws? yes it does
   transition: all 0.3s;
-
+  
   &.opacity {
     opacity: 0;
     transition: opacity 0.7s;
@@ -799,6 +799,8 @@ video {
     transform: none;
     translate: none
   }
+  &.slow {       transition: all 0.9s; }
+  &.extra-slow { transition: all 2.7s; }
 }
 
 
