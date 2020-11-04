@@ -647,12 +647,18 @@ video {
   max-width: unset;
   object-fit: cover;
   margin: 0;
+
+  transition: transform 1.5s;
 }
 .section-with-media-bg-wrapper { /* like section-bg-wrapper but NOT using background for img/video */
   position: relative;
   width: 100%;
   overflow: hidden;
   /* border-top: var(--line-width) solid; */
+  
+  &:hover .media-as-bg {
+    transform: scale(1.05);
+  }
 }
 
 
