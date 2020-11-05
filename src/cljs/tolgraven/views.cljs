@@ -15,15 +15,10 @@
 
 (defn bg-logo "Try to remember why had to put img in css/style..."
   [path]
-  (let [in-view (r/atom 0.0)
-        observer (util/frac-in-view #(reset! in-view %))]
-    (fn [path]
-      [:div#logo-top.logo-bg.stick-up ;.parallax-sm
-       {:class "logo-tolgraven"
-        :style {:background-image (str "url('" path "')")
-                :opacity (str "0.29 + " (/ (- 1 @in-view) 5))}
-        :ref #(observer %)}
-       [:p @in-view]]))) ; cant remember why I did the weird path-in-css bs but anyways...
+  (fn [path]
+    [:div#logo-top.logo-bg.stick-up ;.parallax-sm
+     {:class "logo-tolgraven"
+      :style {:background-image (str "url('" path "')")}} ])) ; cant remember why I did the weird path-in-css bs but anyways...
 
 (defn ui-inset [caption nr]
   (let [pos (case (mod nr 4)
@@ -104,34 +99,35 @@
      (for [[text id] buttons] ^{:key (str "intro-button-" id)}
        [ui/button text id :link id :bg-div-class "blur-bg"])]]])
 
+
 (defn ui-interlude "Banner across with some image or video or w/e
                     TODO if video, autoplay once when (re-)seen, or cont if clicked
                     using ref and stuff"
   [{:keys [title caption bg nr]}]
-  (let [vid-ref (r/atom nil) ; docs says reg atom better but only updates w ratom, bc 2nd fn or? also .play no works
-        div-ref (r/atom nil) ; XXX let this speew to db (or just a bool) so can hide earlier stickies
+  (let [vid-ref (atom nil) ; docs says reg atom better but only updates w ratom, bc 2nd fn or? also .play no works
+        controls (atom nil)
         in-view (r/atom 0.0)
-        observer (util/frac-in-view (fn [frac]
-                                      (reset! in-view frac)
-                                      (when-let [video @vid-ref]
-                                        (when (<= frac 0.1)
-                                          (try (.pause video) (catch js/Error _))))))]
+        on-change (fn [frac]
+                    (reset! in-view frac)
+                    (when (and (<= frac 0.2) @controls)
+                      (@controls :pause)))
+        observer (util/observer on-change (str "interlude-" nr))]
     (fn [{:keys [title caption bg nr]}]
       [:div {:id (str "interlude-" nr)
              :class "section-with-media-bg-wrapper parallax-wrapper"
-             :on-mouse-enter #(when-let [video @vid-ref]
-                                (try (.play video) (catch js/Error _)))
-             :on-mouse-leave #(when-let [video @vid-ref]
-                                (try (.pause video) (catch js/Error _)))}
-       (util/add-attrs bg {:ref (fn [el] (reset! vid-ref el))}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
+             :on-mouse-enter #(when-let [video @vid-ref] (@controls :play))
+             :on-mouse-leave #(when-let [video @vid-ref] (@controls :pause))}
+       (util/add-attrs bg {:id (str "interlude-bg-" nr)
+                           :ref (fn [el]
+                                  (reset! vid-ref el)
+                                  (reset! controls (util/play-pauser el)))}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:section
         {:class "covering-faded widescreen-safe center-content parallax-group"
-         :ref #(observer (reset! div-ref %)) ;oh yeah check first el for :video cant work it's rendered at that point lol
+         :ref #(observer %) ;oh yeah check first el for :video cant work it's rendered at that point lol
          :style {:transition "opacity 4.5s"
-                 :opacity (str "calc(0.95 - 0.45 *" @in-view ")")}} ;well dumb but
+                 :opacity (str "calc(0.95 - 0.55 *" @in-view ")")}} ;well dumb but
         [:h1.h-responsive  title]]
        [ui-inset caption nr]]))) ; these arent showing up...
-
 
 
 (defn ui-portfolio "GOT NO PPORTFOLIE" [])
@@ -142,43 +138,39 @@
      {:class "link-anchor stick-up section-with-media-bg-wrapper"}
     [:a {:name "link-services"}]
      [ui-inset caption 4] ;auto-gen
-     [:img (merge bg {:class "media-as-bg fade-3 parallax-bg"})] ;wait how durp properly
+     [:img (merge bg {:class "media-as-bg darken-5 parallax-bg"})] ;wait how durp properly
      [:section#services
       [:div#categories
-       (for [[title icon-name lines] categories
+       (doall (for [[title icon-name lines] categories
              :let [on-click #(rf/dispatch [:toggle [:state :modal title]])]] ^{:key (str "service-" title)}
          [ui/seen
           (str "service-" title)
           "opacity extra-slow"
-          (into ;^{:key (str "service-" title)}
-                [:ul
+          (into [:ul
                  [:li {:on-click on-click}
                   [:i {:class (str "fas " "fa-" icon-name)}]
                   [:h3 title]]]
                 (for [line lines] ^{:key (str "service-" title "-" line)}
-                  [:li line]))])]]])
+                  [:li line]))]))]]])
 
 (defn ui-moneyshot "needs better name lol. what is hero img halfway down page?"
   [{:keys [title caption bg]}]
-  (let [div-ref (r/atom nil) ;] ; gotta ratom so can give empty first? cause wont be mounted when building etc? ;div-ref (atom nil) ; yes is true
-        frac (r/atom 0.0)
-        observer (util/frac-in-view #(reset! frac %))]
+  (let [frac (r/atom 0.0)
+        observer (util/observer #(reset! frac %) :moneyshot)]
     (fn [{:keys [title caption bg]}]
-        [:div {:class "section-with-media-bg-wrapper covering stick-up"
-               :ref #(observer (reset! div-ref %))}
+        [:div#moneyshot {:class "section-with-media-bg-wrapper covering stick-up"
+          :ref #(observer %)}
          [:img.media-as-bg
-          (merge bg {:class "fade-5 parallax-sm" ; origin-toptop
+          (merge bg {:class "darken-8 parallax-sm origin-toptop"
                      :style (merge (when-not (pos? @frac)
-                                     {:visibility "hidden"})
-                                   {:transition "transform 2.5s ease"
+                                     {:opacity 0})
+                                   {:transition "transform 8.5s ease, opacity 3s"
                                     :transform (str "translateZ(calc(5px * " @frac "))")})})]
-                                    ; but proper way would be, do nothing, attach class,
-                                    ; it then has some anim whatever, right? seems it's
-                                    ; throttled while scrolling or maybe just events?
          [:section#intro-end.center-content
           [:h1.h0-responsive.parallax-bg
-           {:style {:transition "transform 2.5s ease"
-                    :transform (str "translateZ(" (* 33 @frac) "px)")}}
+           {:style {:z-index 1
+                    :transition "transform 8.5s ease"
+                    :transform (str "translateZ(" (* 50 @frac) "px)")}}
            title]] ;ideally want this also growing (and moving quicker upwards)]
          [ui-inset caption 3]
          [ui-inset (str "Fraction visible:" @frac) 2]
