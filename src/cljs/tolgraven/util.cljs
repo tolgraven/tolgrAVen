@@ -157,6 +157,42 @@
   @val-or-atom
   (or val-or-atom fallback)))
 
+
+(defn playing? "Check if video is stopped"
+  [video]
+  (when video
+    (and (pos? (.-currentTime video))
+         (not (.-paused video))
+         (not (.-ended video))
+         (< 2 (.-readyState video)))))
+
+(defn play-pauser "Play/pause video smoothly by changing playback rate progressively (calls itself in intervals)"
+  [video & {:keys [rate-step time-per-step]
+            :or {rate-step 0.34 time-per-step 330}}]
+  (let [state (atom (if (playing? video) :playing :paused)) ; :playing, :to-play, :paused, :to-pause
+        speed (atom (case @state :paused 0 :playing 1)) ]
+    (fn updater [action]
+      (reset! state (case action ; only needs doing first time but easier this way
+                      :play :to-play
+                      :pause :to-pause))
+      (reset! speed (case @state
+                      :to-pause (max 0 (- @speed rate-step))
+                      :to-play  (min 1 (+ @speed rate-step))
+                      @speed))
+      (when (some #{:to-pause :to-play} [@state])
+        (reset! state (cond
+                       (>= 0.0 @speed) :paused
+                       (<= 1.0 @speed) :playing
+                       :else @state)))
+      (set! (.-playbackRate video) @speed)
+      (if (some #{:playing :to-play :to-pause} [@state])
+        (try (.play video) (catch js/Error _)) ;also only really needs doing once but
+        (try (.pause video) (catch js/Error _)))
+      (when-not (some #{:playing :paused} [@state])
+        (rf/dispatch [:run-in! :play-pauser time-per-step
+                      #(updater action)])))))
+
+
 (defn elem-by-id [id]
   (.getElementById js/document id))
 (defn on-window [event f]
