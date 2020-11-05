@@ -50,9 +50,10 @@
                                  (rfc/apply-controllers (:controllers old-match) match))]
       {:db (-> db
                (assoc :common/route new-match)
-               (assoc :common/route-last old-match)
-               (assoc-in [:exception :page] nil)) ; reset exception state since using same error boundary for all pages
-       :dispatch-n [[:transition/in new-match]
+               (assoc :common/route-last old-match))
+       :dispatch-n [[:exception [:page] nil] ; reset exception state since using same error boundary for all pages
+                    [:state [:error-page] nil]
+                    [:transition/in new-match]
                     [:scroll/to "linktotop"]]
        :document/set-title (->> new-match :data :name
                                 name string/capitalize
