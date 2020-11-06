@@ -47,6 +47,43 @@
   bottom: 0;
 }
 
+.swapper {
+  position: relative;
+}
+.swapped {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transform: none;
+  opacity: 1;
+
+  transition: all 0.0s;
+  z-index: 10000;
+
+  display: inherit;
+}
+.swapped.gone {
+  display: none;
+}
+.swap-out {
+  // transition: all 0.0s;
+}
+.swap-out.opacity {
+  opacity: 0;
+  transition: opacity 0.6s;
+}
+.swap-out.left {
+  transform: translateY(-250%);
+  transition: all 0.7s;
+  // animation: hider 0.1s;
+}
+@keyframes hider {
+  0% { opacity: 1;
+  } 100% { opacity: 0; }
+}
+
 
 /* Show/hide and slide in from left. */
 .slide-in {

@@ -35,12 +35,22 @@
    
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; TODO any time do nav or like trigger :is-loading, start timer, if not flag done set within timeout, also error
      [error-page]
-     (if-let [page @(rf/subscribe [:common/page])]
-       [:main.main-content.perspective-top
-        {:class (if @(rf/subscribe [:state [:transition]])
-                  "hidden"; "slide-in slide-out-left" ; should be: outgoing page put at like :common/last-page, plus a flag render both, wrapped in div each.
-                  "visible")}; "slide-in ")}          ; outgoing starts middle goes left/right, incoming starts left/right animates to middle (simultaneously) finish -> flag unset -> kill/novisible last page div.
-        [ui/safe :page [page]]]
+     (if-let [page @(rf/subscribe [:common/page]) ]
+       (let [last-page @(rf/subscribe [:common/page :last])]
+         [:main.main-content.perspective-top
+          {:class (if @(rf/subscribe [:state [:transition]])
+                    "hidden"; "slide-in slide-out-left" ; should be: outgoing page put at like :common/last-page, plus a flag render both, wrapped in div each.
+                    "visible")}; "slide-in ")}          ; outgoing starts middle goes left/right, incoming starts left/right animates to middle (simultaneously) finish -> flag unset -> kill/novisible last page div.
+          [:div.swapper
+           [ui/safe :page [page]] ;will have to be behind for z then revealed by curr page moving out the way.
+           (when last-page
+             [:div.swapped
+              {:class (str (when @(rf/subscribe [:state [:swap :last]])
+                             "swap-out opacity ")
+                           (when @(rf/subscribe [:state [:swap :hide]])
+                             "gone"))
+              :ref #(rf/dispatch [:swap-main-page %])} ;fucker just spaaams this??
+            [ui/safe :page-last [last-page]]])]])
        [common/loading-spinner true :massive]))
 
    [common/footer @(rf/subscribe [:content [:footer]])]
