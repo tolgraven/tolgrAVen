@@ -2,6 +2,7 @@
   (:require [reagent.core :as r]
             [reagent.dom :as rdom]
             [re-frame.core :as rf]
+            [tolgraven.ui :as ui]
             [cljsjs.codemirror :as codemirror]
             [cljsjs.codemirror.keymap.vim]
             [cljsjs.codemirror.mode.markdown]
@@ -17,12 +18,11 @@
 
 (defn parallax []
   [:<>
-   (let [elems (r/atom [1 2 3])]
-   ; (let [elems (or @(rf/subscribe [:state :elems]) [1 2 3])]
+   (let [elems (or (rf/subscribe [:state [:elems]]) [1 2 3])]
      [:div.parallax-ui ;.fullwide
       [:div "Pure CSS parallax scroll demo #3 by Keith Clark -> tolgraven"]
       [:> rtg/TransitionGroup
-       [:div.elem
+       [:div.elem-group.flex
         (doall
          (for [el @elems] ^{:key el}
            [:> rtg/CSSTransition
@@ -30,13 +30,15 @@
              :classNames "elem"
              :appear true
              :appeartimeout 500}
-            [:span.elem (str " - " el " ")]]))]]
-      [:div.elem
+            [:div.elem el]]))]]
+      [:br]
+      
+      [:div.elem-group
         (doall (for [el @elems] ^{:key el}
-          [:span (str " - " el " ")]))]
-      [:button {:on-click #(r/rswap! elems conj (inc (last @elems)))}
-      ; [:button {:on-click #(reset! elems [0])}
-      ; [:button {:on-click #(rf/dispatch [:conj [:state :elems] (inc (last @elems))])}
+          [ui/appear (keyword (str "el-" el)) "opacity" [:div el]]))]
+
+      [:button {:on-click #(rf/dispatch [:conj [:state :elems]
+                                               (inc (first @elems))])}
        "more"]
 
       [:label [:input {:type "checkbox"

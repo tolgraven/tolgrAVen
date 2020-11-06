@@ -90,7 +90,7 @@
    [ui/fading-bg-heading (merge @(rf/subscribe [:content [:common :banner-heading]])
                                   {:title "Experiments" :tint "green"})]
    [:section.experiments.solid-bg.fullwide.noborder
-    (let [routes {:parallax #'experiment/parallax :codemirror #'experiment/code-mirror}
+    (let [routes {:parallax experiment/parallax :codemirror experiment/code-mirror}
           tab @(rf/subscribe [:state [:experiments]])]
     [:ul.tabs-container.flex
      (for [tab-key [:parallax :codemirror :broken]] ^{:key tab-key}
@@ -98,8 +98,8 @@
                                     "noborder"
                                     "topborder")
                            :on-click #(rf/dispatch [:state [:experiments] tab-key])}
-                  tab-key]])
-     [(tab routes)]])]])
+                  tab-key]])]
+     [(tab routes)])]])
 
 (defn home-page []
   [view/ui])
