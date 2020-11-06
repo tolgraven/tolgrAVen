@@ -1,0 +1,181 @@
+
+  /****************************************************/
+ /*    Mainly #id selectors for front page stuff     */
+/****************************************************/
+
+#logo-top { /* invert then rotate hue to restore blue text */
+  filter: #{'invert() hue-rotate(180deg)'};
+}
+
+.service-fullscreen {
+  height: 100%;
+  width: 100%;
+}
+#section-services {
+  z-index: 6;
+
+  .media-as-bg {
+    transition: transform 9.5s ease;
+  }
+}
+#services {
+  // color: var(--light-1); // dark bg so white text always
+  position: sticky;
+  z-index: 12;
+  top: 0;
+  margin-bottom: var(--space-lg);
+}
+
+#intro {
+  position: relative;
+  max-height: var(--media-width-main);
+  p {
+    padding: 0 var(--space-lg);
+  }
+}
+#moneyshot {
+  border-top: var(--line-width) solid;
+}
+#intro-end { /* lbp pic "YOU" */
+  height: #{'min(70vh, 100vw - 2 * var(--space-edges))'};
+  border-top: 0;
+}
+#interlude-2 {
+  z-index: 7;
+}
+#interlude-3 { /* portfolio */
+  z-index: 29;
+}
+#portfolio { /* portfolio */
+  z-index: 30;
+}
+
+#about-intro {
+  // --height: calc(6 * var(--space-lg));
+  // max-height: var(--height);
+  z-index: 13;
+  top: var(--header-height-current);
+  /* transform-origin: 50% -1570%; /1* figure out genericable bs lol *1/ */
+}
+#about-story {
+  position: relative;
+  z-index: 14;
+
+  h1 {
+    margin-top: -0.80em;
+  }
+}
+#headshot {
+  width: 20%;
+  max-width: 150px;
+}
+#byline > img {
+  border-radius: 0.5em;
+  border: 1px solid;
+}
+#multimeter {
+  width: 30%;
+  min-width: 150px;
+  max-width: 300px;
+}
+
+#building-tools {
+  z-index: 29;
+}
+
+
+#categories { /* List of services offered */
+  display: grid; /* fuck with this */
+  grid-template-columns: repeat(2, 37%);
+  justify-content: space-evenly;
+  align-content: bottom;
+  text-align: center;
+  flex-wrap: wrap;
+  
+  h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
+    font-size: 120%;
+    filter: brightness(110%);
+  }
+}
+
+#categories ul {
+  flex: 0 1 auto;
+  margin:  calc(0.5 * var(--space));
+  padding: calc(1.0 * var(--space));
+  
+  text-align: left;
+  font-size: 1.1rem;
+  backdrop-filter: blur(3.0px);
+  background: hsla(var(--hue-3), 70%, var(--lum-fg-6), 0.10);
+  transition: backdrop-filter 0.1s, background 0.5s, border-radius 0.5s, transform 0.3s;
+  box-shadow: 1px -0px 17px 5px hsla(var(--hue-1), 20%, var(--lum-fg-6), 0.15);
+  
+  border-radius: 1.50rem;
+  backdrop-filter: blur(1.0rem);
+  &:hover {
+    border-radius: 0.75rem;
+    backdrop-filter: blur(0.6rem);
+    background: hsla(var(--hue-3), 60%, var(--lum-fg-5), 0.25);
+    filter: brightness(1.1);
+    // transform: scale(1.15);
+    // transform: translateZ(20deg);
+  }
+    
+  > * {
+    margin: 0.1em 0.1em 0.1em;
+  }
+  li {
+    font-size: 0.80em;
+    text-align: left;
+    
+    &:first-of-type  {
+      white-space: nowrap;
+      margin-bottom: calc(0.5 * var(--space));
+
+      ~ li { /* suddenly started making the icons... weird inner shadow. so skip the header. */
+        text-shadow: 1px 1px 2px var(--bg-1);
+      }
+    }
+  }
+  i {
+    font-size: 1.4em;
+    background: linear-gradient(-30deg, hsla(20, 35%, 70%, 0.80), var(--fg-2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  h3 {
+    display: inline;
+    position: relative;
+    margin-left: 0.4em;
+    
+    &:after { /* shitty underline didnt end up too hot hmm */
+      content: "";
+      height: 2.5px;
+      background: linear-gradient(to right, hsla(8, 30%, 78%, 0.7), var(--fg-2) 130%);
+      width: 98%;
+      transform: skew(-30deg);
+      position: absolute;
+      bottom: -1px;
+      left: -2px;
+      z-index: -1;
+    }
+  }
+}
+@media screen and (max-width: 400px) {
+  #categories ul {
+    /* min-width: 45%; /1* ensure no awkward two on one row, one on rest... not exactly universal solution tho :/ *1/ */
+    /* /1* oh and doesnt work for like if font small enough that two fit nicely gah *1/ /1* easy enough with js tho.. *1/ */
+    /* /1* max-width: 100%; *1/ */
+    /* max-width: 55%; */
+  }
+}
+@media screen and (min-width: 500px) {
+  #categories ul {
+    font-size: calc(1.0rem + 0.5vw);
+  }
+}
+@media screen and (min-width: 800px) {
+  #categories ul {
+    font-size: calc(1.1rem + 0.3vw);
+  }
+}

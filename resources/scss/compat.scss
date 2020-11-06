@@ -1,0 +1,115 @@
+/* BUNCH OF MEDIA QUERIES PROB DUMB LUMPING ALL IN SAME SPOT, ANYWAYS */
+
+@media screen and (min-width: 800px) and (min-height: 800px) {
+  :root {
+    --space: 1.5rem;
+    --space-lg: 2.25rem;
+  }
+}
+@media screen and (min-width: 1000px) {
+  .line { /* i guess x overflow only important on ios, so we hype here */
+    width: 200%; /* extend out like damn */
+  }
+  :root {
+    --space-edges: 10vw;
+    --space-sides: 10vw;
+    font-size: 1.10rem;
+  }
+}
+@media screen and (max-width: 600px),
+       screen and (max-height: 600px) {
+  :root {
+    --space: 1.0rem;
+    --space-lg: 1.5rem;
+    --space-sides: var(--space); /* remember -sides based on the smaller num for mobile (since margins are more precious) */
+    --space-edges: 0.8rem; /* perfectly makes room for macos scrollbar */
+
+    --scale: 0.9;
+    font-size: 0.90rem;
+  }
+}
+@media not all and (min-resolution:.001dpcm), /* is safari */
+       (prefers-reduced-motion: reduce) {     /* wants no parallax */
+  :root {
+    --perspective: 1; /* just to be sure */
+    --parallax:    0;
+    --parallax-squeeze-tf: 100%; /* fuck knows why */
+  }
+}
+@media not all and (min-resolution:.001dpcm) { /* is safari */
+  :root {
+    // --logo-ratio:        0.40; /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */ /* just use img... */ /* or make logo look like i want in first place - needs higher-res or vector bounce anyways */
+  }
+}
+@supports (-webkit-overflow-scrolling: touch) { /* iOS devices */
+  body { /* prevent insane bumping of p font size in landscape and more */
+    text-size-adjust: 100%; -webkit-text-size-adjust: 100%;
+  }
+}
+@media only screen and (-webkit-device-pixel-ratio: 3) {
+  :root { /* *im thinking this is what it's about. 3 vs 2 pixels per pixel */
+    --fiddle-multiplier: 1; /* makes iphone x line up with current formulas/offsets */
+  }
+}
+@media only screen and (min-device-width : 375px) and (max-device-width : 812px) and (-webkit-device-pixel-ratio : 3) {
+  /* iphone x */
+} @media only screen and (min-device-width : 375px) and (max-device-width : 667px) {
+  /* iphone 6-8. i mean not really tho could be loads?? */
+} @media only screen and (min-device-width : 414px) and (max-device-width : 736px) {
+  /* 6-8 plus */
+}
+
+@media screen and (max-width: 500px) {
+  :root {
+    font-size: 0.80rem;
+    --space: 0.6rem;
+    --space-lg: 0.9rem;
+  }
+}
+@media screen and (max-width: 400px) {
+  :root {
+    font-size: 0.72rem;
+    --space-sides: calc(0.5 * var(--space)); /* remember -sides based on the smaller num for mobile (since margins are more precious) */
+    --space-edges: calc(0.5 * var(--space));
+  }
+  #top-banner { /* need a better solution for ensuring doesnt overflow... like a tallet image? */
+    padding-top: 0;
+  }
+}
+@media screen and (max-width: 319px) {
+  :root { // these settings work down til about 260 then footer doubles up. Also get issues with heading image bleeding out on right hmm.
+    font-size: 0.67rem;
+    --space-edges: calc(0.1 * var(--space));
+    --line-width-vert: 0;
+  }
+}
+
+
+
+
+/************************************************************/
+/* MEDIA corrections which need to go after everything else */
+/************************************************************/
+@media not all and (min-resolution:.001dpcm) { /* is safari */
+  .stick-up { /* safari is being way irresponsible drawing img sticky layers.. and general compositing/z-index */
+    position: relative !important;
+    top: initial;
+  }
+  .parallax-bg {
+    transform: initial; // safari doesnt want the y -60% adjustment, initial since cant use parallax anyways
+  }
+}
+@media all and (orientation: landscape) { // hide away header and footer on mobile landscape (...many additional fixes needed)
+  header {
+    position: relative !important;
+  }
+  .line-header {
+    position: relative !important;
+    top: 0 !important;
+  }
+  .footer-sticky {
+    position: relative !important;
+    left: 0 !important;
+    width: 100% !important;
+  }
+}

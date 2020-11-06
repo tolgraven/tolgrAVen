@@ -1,0 +1,191 @@
+
+/* wanted to put in own file but wasnt compatible with live reload solution... */
+:root { /* general vars */
+  /* SIZES */
+  --space-static:      1.2rem;
+  --space-lg-static:   2.0rem;
+  --space:             1.2rem;
+  --space-lg:          2.0rem;
+  --space-sides:       var(--space-lg); /* inner horizontal margin */
+  --space-edges:       var(--space-sides); /* size of outer edges  */
+  --space-top:         2rem; /* top margin above header */
+  --media-width-main: calc(100vw - 2 * var(--space-edges) - 2 * var(--line-width)); /* would it be context dependent or just use root 100% i guess uh */
+  --banner-height:     600px;
+  --logo-ratio:        0.3710; /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */ /* just use img... */ /* or make logo look like i want in first place - needs higher-res or vector bounce anyways. then suddenly had to change to 3710... */
+  --header-height:           4.5rem; /* beware can be 3 or 6 in practice.... temp bc reading arbitrary css vars with calc is fiddly */
+  --header-with-menu-height: 18rem; /* not truly dynamic bc of annoying sticky */
+  --header-height-current:   var(--header-height); /* will then be changed by js dep on whether menu open... */
+  --footer-height:           3.00rem; // measured...
+  --link-offset:         calc( var(--header-height-current));
+  --menu-width-fraction: 0.70;
+
+  --line-scale-factor: 0.5;
+  --line-width:        2.0px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-sm:     calc(1 / (1.5 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-md:     calc(((1 + var(--line-scale-factor)) / 2) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-lg:     calc(1 / (1 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-vert:   2px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --scale:             1.0; /* px line-width drifts when font scales so must compensate... better way? */
+  
+  --fiddle-multiplier: 1; /* was 3. works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
+  --left-marker:       calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
+                            + 0.75 * var(--space) - 1 * (var(--fiddle-multiplier) * var(--line-width)));
+  --right-marker:       calc(100% - 1 * var(--left-marker) - 2 * var(--line-width)); /* makes sense right side needs one more unit since it has the right border... */
+  --top-to-menu-height: calc(2 * var(--space-top) + 2em - 5 * var(--line-width));
+  
+  --header-expand-time:         0.2s;
+  --navigation-transition-time: 0.20s;
+
+  --perspective:       100;
+  --parallax:          50;
+  --parallax-scale:    calc(1 + (var(--parallax) / var(--perspective)));
+  --parallax-px:       calc(-1px * var(--parallax));
+  
+  --parallax-sm:       calc(0.50 * var(--parallax));
+  --parallax-sm-scale: calc(1 + (var(--parallax-sm) / var(--perspective)));
+  --parallax-sm-px:    calc(-1px * var(--parallax-sm));
+  --parallax-squeeze-scale: calc(1 + (1 / var(--perspective) * var(--perspective)));
+  --parallax-squeeze-px:    calc(-1px * var(--perspective));
+  --parallax-squeeze-tf:    -1570%; /* fuck knows why */
+
+
+  /* COLORS */
+  --hue-1:             180; 
+  --hue-2:               8;
+  --hue-3:             192;
+  --lum-dark-1:         8%;
+  --lum-dark-2:        12%;
+  --lum-dark-3:        15%;
+  --lum-dark-4:        18%;
+  --lum-dark-5:        26%;
+  --lum-dark-6:        34%;
+  --lum-light-1:       calc(100% - var(--lum-dark-1));
+  --lum-light-2:       calc(100% - var(--lum-dark-2));
+  --lum-light-3:       calc(100% - var(--lum-dark-3));
+  --lum-light-4:       calc(100% - var(--lum-dark-4));
+  --lum-light-5:       calc(100% - var(--lum-dark-5));
+  --lum-light-6:       calc(100% - var(--lum-dark-6));
+
+  --light-1:           hsl(var(--hue-2), 20%, var(--lum-light-2));
+  --light-2:           hsl(var(--hue-2), 7%, var(--lum-light-1));
+  --light-text:        hsl(29, 35%, 86%);
+  --light-3:           #ededed;
+  --light-4:           hsl(var(--hue-2), 7%, var(--lum-light-4));
+  --light-5:           hsl(var(--hue-2), 7%, var(--lum-light-5));
+  --light-6:           hsl(var(--hue-2), 7%, var(--lum-light-6));
+
+
+  --nav-accent: hsla(var(--hue-3), 40%, 20%, 0.35);
+  --selection-accent: hsl(14, 75%, 80%, 0.7);
+  --neutral-accent: #99aaee; /* link? */
+  /* fixc bruv/box */
+  --red       : #d18479;
+  --red-2     : #af7370;
+  --red-3     : #ea9a98;
+  --green     : #b4b88d;
+  --green-2   : #8b8c63;
+  --green-3   : #ccdaa8;
+  --yellow    : #dabd7a;
+  --yellow-2  : #d0af80;
+  --yellow-3  : #d9c894;
+  --blue      : #7692ab;
+  --blue-2    : #80a0b3;
+  --blue-3    : #a6c0cd;
+  --purple    : #bd979d;
+  --purple-2  : #af8589;
+  --purple-3  : #d9b7b7;
+  --aqua      : #91b8a4;
+  --aqua-2    : #9ab499;
+  --aqua-3    : #B6D1B4;
+  --orange    : #cca687;
+  --orange-2  : #dba184;
+  --orange-3  : #d9a58a;
+  
+  --dark-1:     hsl(var(--hue-1),  7%,  var(--lum-dark-1));
+  --dark-2:     hsl(var(--hue-3),  7%,  var(--lum-dark-2));
+  --dark-3:     #232323;
+  --dark-4:     hsl(var(--hue-2),  7%,  var(--lum-dark-4));
+  --dark-5:     hsl(var(--hue-2),  7%,  var(--lum-dark-5));
+  --dark-6:     hsl(var(--hue-3),  7%,  var(--lum-dark-6));
+
+  --opacity-regular:  0.35;
+  --opacity-faint:    0.15;
+  --box-regular-color:    hsla(0, 0%, var(--lum-dark-1), var(--opacity-regular));
+  --box-faint-color:      hsla(0, 0%, var(--lum-dark-1), var(--opacity-faint));
+  --box-regular-color-flip:    hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
+  --box-faint-color-flip:      hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
+
+  // will need drastic tweaking for light theme
+  --gradient-bg-main: linear-gradient(-77deg,
+                                      hsl(280, 15%, 8%),
+                                      var(--bg-1))
+                                      ;
+  // --gradient-bg-main: linear-gradient(-77deg,
+  //                                     hsl(280, 20%, var(--lum-bg-1)),
+  //                                     hsl(100, 11%, var(--lum-bg-1)));
+  --user-box-bg:      linear-gradient(hsla(240deg 20% var(--lum-bg-3) / 75%) 0%,
+                                      hsla(240deg 38% var(--lum-bg-3) / 90%) 100%);
+
+  --user-box-shadow:     hsla(240deg 33% var(--lum-bg-4) / 30%);
+  --user-avatar-shadow:  hsla(240deg 100% var(--lum-fg-1) / 50%);
+
+}
+
+// use dark by default
+// @media (prefers-color-scheme: dark) {
+:root[color-mode="light"] {
+  // should use some sass trick for this tho...
+  --fg-1:       var(--dark-1);
+  --fg-2:       var(--dark-2);
+  --fg-3:       var(--dark-3);
+  --fg-4:       var(--dark-4);
+  --fg-5:       var(--dark-5);
+  --fg-6:       var(--dark-6);
+  --lum-fg-1:   var(--lum-dark-1);
+  --lum-fg-2:   var(--lum-dark-2);
+  --lum-fg-3:   var(--lum-dark-3);
+  --lum-fg-4:   var(--lum-dark-4);
+  --lum-fg-5:   var(--lum-dark-5);
+  --lum-fg-6:   var(--lum-dark-6);
+  --bg-1:       var(--light-1);
+  --bg-2:       var(--light-text);
+  --bg-3:       var(--light-3);
+  --bg-4:       var(--light-4);
+  --bg-5:       var(--light-5);
+  --bg-6:       var(--light-6);
+  --lum-bg-1:   var(--lum-light-1);
+  --lum-bg-2:   var(--lum-light-2);
+  --lum-bg-3:   var(--lum-light-3);
+  --lum-bg-4:   var(--lum-light-4);
+  --lum-bg-5:   var(--lum-light-5);
+  --lum-bg-6:   var(--lum-light-6);
+}
+
+:root { /* we run dark by default */
+    --fg-1:     var(--light-1);
+    --fg-2:     var(--light-2);
+    --fg-3:     var(--light-3);
+    --fg-4:     var(--light-4);
+    --fg-5:     var(--light-5);
+    --fg-6:     var(--light-6);
+    --lum-fg-1: var(--lum-light-1);
+    --lum-fg-2: var(--lum-light-2);
+    --lum-fg-3: var(--lum-light-3);
+    --lum-fg-4: var(--lum-light-4);
+    --lum-fg-5: var(--lum-light-5);
+    --lum-fg-6: var(--lum-light-6);
+    --bg-1:     var(--dark-1);
+    --bg-2:     var(--dark-2);
+    --bg-3:     var(--dark-3);;
+    --bg-4:     var(--dark-4);
+    --bg-5:     var(--dark-5);
+    --bg-6:     var(--dark-6);;
+    --lum-bg-1: var(--lum-dark-1);
+    --lum-bg-2: var(--lum-dark-2);
+    --lum-bg-3: var(--lum-dark-3);
+    --lum-bg-4: var(--lum-dark-4);
+    --lum-bg-5: var(--lum-dark-5);
+    --lum-bg-6: var(--lum-dark-6);
+    --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
+    --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
+  }
