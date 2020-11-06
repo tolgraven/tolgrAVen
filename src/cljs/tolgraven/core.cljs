@@ -67,20 +67,18 @@
    component])
 
 (defn test-page []
-  [:<>
-   [ui/fading-bg-heading (merge @(rf/subscribe [:content [:common :banner-heading]])
-                                  {:title "Experiments" :tint "green"})]
-   [:section.experiments.solid-bg.fullwide.noborder
-    (let [routes {:parallax experiment/parallax :codemirror experiment/code-mirror}
+  [with-heading [:common :banner-heading]
+   (let [routes {:parallax experiment/parallax :codemirror experiment/code-mirror :broken [:div]}
           tab @(rf/subscribe [:state [:experiments]])]
-    [:ul.tabs-container.flex
-     (for [tab-key [:parallax :codemirror :broken]] ^{:key tab-key}
-            [:li [:button {:class (if (= tab tab-key)
-                                    "noborder"
-                                    "topborder")
-                           :on-click #(rf/dispatch [:state [:experiments] tab-key])}
-                  tab-key]])]
-     [(tab routes)])]])
+     [:section.experiments.solid-bg.fullwide.noborder
+      [:ul.tabs-container.flex
+       (for [tab-key [:parallax :codemirror :broken]] ^{:key tab-key}
+         [:li [:button {:class (if (= tab tab-key) "bottomborder" "topborder")
+                        ; :on-click #(rf/dispatch [:state [:experiments] tab-key])}
+                        :on-click #(rf/dispatch [:common/navigate! :test-tab {:tab tab-key}])}
+               tab-key]])]
+      [ui/safe :experiments [(tab routes)]]])
+    {:title "Experiments" :tint "green"}])
 
 (defn home-page []
   [view/ui])
@@ -165,8 +163,16 @@
                    :controllers [{:start (fn [_] (rf/dispatch [:page/init-post-blog]))}]}]        
      ["log" {:name :log
               :view #'log-page}]
-     ["test" {:name :test
-              :view #'test-page}]
+     ["test" 
+      ["" {:name :test
+           :view #'test-page}]
+      ["/:tab"
+       {:name :test-tab
+        :view #'test-page
+       :controllers [{:parameters {:path [:tab]}
+                      :start (fn [{:keys [path]}]
+                               (rf/dispatch [:state [:experiments] (keyword (:tab path))])
+                               (rf/dispatch [:exception [:experiments] nil]))}]}]]
      ["not-found" {:name :not-found
                    :view #'not-found-page}]
      {:data {:controllers [{:start (util/log :debug "start" "root-controller")
