@@ -24,43 +24,14 @@
     [clojure.pprint :refer [pprint]])
   (:import goog.History))
 
-(defn safe "Error boundary for components. Also prints/logs error"
-  [category & children]
- (let [exception (rf/subscribe [:exception [category]])] ;or reg not ratom or would cause etra re-render?
-  (r/create-class
-  {:display-name (str "Boundary: " (name category))
-   :component-did-catch (fn [error info] ;apparently no :this oi!
-                          (util/log :error "Component" (pr-str info))
-                          (rf/dispatch [:exception [category]
-                                        {:error error :info info}])) ; error and info are empty.
-    ; :get-derived-state-from-error ;"defined as instance method and will be ignored. define as static"
-   ; (fn [error] ;this should update state to serve like, an error page (for render) "if using getDerivedState methods, the state has to be plain JS object as React implementation uses Object.assign to merge partial state into the current state."
-   ;  (clj->js ;cant get it working. but is supposed to used this, console warns...
-   ;   [:div.component-failed
-   ;    [:p "Component exception:"]
-   ;    [:pre (str "Error: " (:error exception)
-   ;               "\nInfo: " (:info exception))]
-   ;    [:div "Click to attempt reload"
-   ;     [:button {:on-click #(reset! exception nil)}]]]))
-   :reagent-render
-   (fn [category component]
-    (if-not @exception   ;state change downstream? then it gets easier to debug "in-page",
-     component
-     (let [[component state] component] ;cant remember why this is
-        [:section.component-failed
-          [:p "Component exception"]
-          [:pre (-> @exception :info pr-str pprint)]
-          [:div
-           [:button {:on-click #(rf/dispatch [:state [:exception category] nil])}
-            "Attempt reload"]]])))})))
 
 
 (defn page "Render active page inbetween header, footer and general stuff." []
   [:<>
-   [safe :header [common/header @(rf/subscribe [:content [:header]])]] ;TODO smooth transition to personal
+   [ui/safe :header [common/header @(rf/subscribe [:content [:header]])]] ;TODO smooth transition to personal
    [:a {:name "linktotop" :id "linktotop"}]
    
-   [safe :user [user/user-section @(rf/subscribe [:user/active-section])]]
+   [ui/safe :user [user/user-section @(rf/subscribe [:user/active-section])]]
    
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; TODO any time do nav or like trigger :is-loading, start timer, if not flag done set within timeout, also error
      [error-page]
@@ -69,11 +40,11 @@
         {:class (if @(rf/subscribe [:state [:transition]])
                   "hidden"; "slide-in slide-out-left" ; should be: outgoing page put at like :common/last-page, plus a flag render both, wrapped in div each.
                   "visible")}; "slide-in ")}          ; outgoing starts middle goes left/right, incoming starts left/right animates to middle (simultaneously) finish -> flag unset -> kill/novisible last page div.
-        [safe :page [page]]]
+        [ui/safe :page [page]]]
        [common/loading-spinner true :massive]))
 
    [common/footer @(rf/subscribe [:content [:footer]])]
-   [safe :hud [ui/hud (rf/subscribe [:hud])]]
+   [ui/safe :hud [ui/hud (rf/subscribe [:hud])]]
    [common/to-top]
    [:a {:name "bottom"}]])
 

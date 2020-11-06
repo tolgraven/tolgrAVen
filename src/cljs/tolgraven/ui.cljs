@@ -14,6 +14,38 @@
    [cljs-time.coerce :as ctc]
    [cljs-time.format :as ctf]))
 
+
+(defn safe "Error boundary for components. Also prints/logs error"
+  [category & children]
+ (let [exception (rf/subscribe [:exception [category]])] ;or reg not ratom or would cause etra re-render?
+  (r/create-class
+  {:display-name (str "Boundary: " (name category))
+   :component-did-catch (fn [error info] ;apparently no :this oi!
+                          (util/log :error "Component" (pr-str info))
+                          (rf/dispatch [:exception [category]
+                                        {:error error :info info}])) ; error and info are empty.
+    ; :get-derived-state-from-error ;"defined as instance method and will be ignored. define as static"
+   ; (fn [error] ;this should update state to serve like, an error page (for render) "if using getDerivedState methods, the state has to be plain JS object as React implementation uses Object.assign to merge partial state into the current state."
+    ; (clj->js ;cant get it working. but is supposed to used this, console warns...
+    ;  [:div.component-failed
+    ;   [:p "Component exception:"]
+    ;   [:pre (str "Error: " (:error exception)
+    ;              "\nInfo: " (:info exception))]
+    ;   [:div "Click to attempt reload"
+    ;    [:button {:on-click #(reset! exception nil)}]]]))
+   :reagent-render
+   (fn [category component]
+    (if-not @exception   ;state change downstream? then it gets easier to debug "in-page",
+     component
+     (let [[component state] component] ;cant remember why this is
+        [:section.component-failed
+          [:p "Component exception"]
+          [:pre (-> @exception :info pr-str pprint/pprint)]
+          [:div
+           [:button {:on-click #(rf/dispatch [:state [:exception category] nil])}
+            "Attempt reload"]]])))})))
+
+
 (defn md->div [md]
   [:div.md-rendered
    {:dangerouslySetInnerHTML {:__html (md->html md)}}])
