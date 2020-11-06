@@ -656,10 +656,8 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
 
 
 #categories { /* List of services offered */
-  /* FAILURE: can't get flexbox working like i want with nice alignment and also word-wrap and blabla */
-  /* but this is maybe good enough? only works sorta ok with 1/2/3 cols because of specific content so  guess point is to use breakpoints and table or better yet grid */
-  display: flex;
-  /* display: grid; /1* fuck with this *1/ */
+  display: grid; /* fuck with this */
+  grid-template-columns: repeat(2, 37%);
   justify-content: space-evenly;
   align-content: bottom;
   text-align: center;
@@ -670,26 +668,23 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
   flex: 0 1 auto;
   margin:  calc(0.5 * var(--space));
   padding: calc(1.0 * var(--space));
-  border-radius: 0.20rem;
-  border: var(--line-width-sm) solid var(--bg-1);
   
-  min-width: 35%; /* ensure only two per line */
-    /* min-width: 45%; /1* ensure no awkward two on one row, one on rest... not exactly universal solution tho :/ *1/ */
-    /* /1* oh and doesnt work for like if font small enough that two fit nicely gah *1/ /1* easy enough with js tho.. *1/ */
-    /* /1* max-width: 100%; *1/ */
-  /* max-width: 55%; */
   text-align: left;
   font-size: 1.1rem;
-  backdrop-filter: blur(2.5px);
-  -webkit-backdrop-filter: blur(2.5px);
-  background: hsla(var(--hue-3), 70%, var(--lum-fg-2), 0.06);
-  transition: 0.3s;
-  box-shadow: -1px -1px 7px 4px hsla(8, 20%, 18%, 0.25);
-  /* nah doesnt suit page/design. but effect is fine */
+  backdrop-filter: blur(3.0px);
+  background: hsla(var(--hue-3), 70%, var(--lum-fg-6), 0.10);
+  transition: backdrop-filter 0.1s, background 0.5s, border-radius 0.5s, transform 0.3s;
+  box-shadow: 1px -0px 17px 5px hsla(var(--hue-1), 20%, var(--lum-fg-6), 0.15);
   
+  border-radius: 1.50rem;
+  backdrop-filter: blur(1.0rem);
   &:hover {
-    border-radius: 0.80rem;
-    transform: translateZ(20deg);
+    border-radius: 0.75rem;
+    backdrop-filter: blur(0.6rem);
+    background: hsla(var(--hue-3), 60%, var(--lum-fg-5), 0.25);
+    filter: brightness(1.1);
+    // transform: scale(1.15);
+    // transform: translateZ(20deg);
   }
     
   > * {
@@ -717,13 +712,14 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
   h3 {
     display: inline;
     position: relative;
+    margin-left: 0.4em;
     
     &:after { /* shitty underline didnt end up too hot hmm */
       content: "";
       height: 2.5px;
       background: linear-gradient(to right, hsla(8, 30%, 78%, 0.7), var(--fg-2) 130%);
-      width: 100%;
-      transform: skew(-20deg);
+      width: 98%;
+      transform: skew(-30deg);
       position: absolute;
       bottom: -1px;
       left: -2px;
