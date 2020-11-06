@@ -41,9 +41,13 @@
 }
 #moneyshot {
   border-top: var(--line-width) solid;
+
+  h1 {
+    text-shadow: 3px 3px 9px white;
+  }
 }
 #intro-end { /* lbp pic "YOU" */
-  height: #{'min(70vh, 100vw - 2 * var(--space-edges))'};
+  height: #{'min(60vh, 100vw - 2 * var(--space-edges))'};
   border-top: 0;
 }
 #interlude-2 {
@@ -68,7 +72,8 @@
   z-index: 14;
 
   h1 {
-    margin-top: -0.80em;
+    z-index: 26;
+    padding-top: 0;
   }
 }
 #headshot {

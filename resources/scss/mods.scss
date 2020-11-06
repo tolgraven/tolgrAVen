@@ -10,16 +10,20 @@
 .fade-to-black { /* well this is certainly a misnomer. .fade-to? */
   position: absolute;
   width: 100%;
+  --fade-to-color: var(--bg-1);
+}
+.fade-to-black.white { /* well this is certainly a misnomer. .fade-to? */
+  --fade-to-color: var(--fg-1);
 }
 .fade-to-black.top {
   top: 0;
   height: calc(6 * var(--space));
-  background: linear-gradient(180deg, var(--bg-1) 50%, transparent 100%);
+  background: linear-gradient(180deg, var(--fade-to-color) 50%, transparent 100%);
 }
 .fade-to-black.bottom {
   bottom: 0;
   height: calc(6 * var(--space));
-  background: linear-gradient(0deg, var(--bg-1) 0%, transparent 100%);
+  background: linear-gradient(0deg, var(--fade-to-color) 0%, transparent 100%);
 }
 .fade-to-black.between {
   --height: 4.5;
@@ -38,7 +42,7 @@
 .fade-to-black.light-from-below {
   background: linear-gradient(180deg, transparent 0%,
       hsl(var(--hue-2), 8%, var(--lum-fg-2)) 120%);
-  --height: 30vh;
+  --height: 25vh; // problem attic but cant just put percentage then get nothing
   height: calc(var(--height));
   bottom: 0;
 }

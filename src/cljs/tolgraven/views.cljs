@@ -185,7 +185,7 @@
 
    [:a {:name "about"}]
    [:section#about-story.anim-gradient-bg.noborder
-    [:h1 {:style {:padding-top 0}} (:title content)]
+    [:h1 (:title content)]
     [:br]
     [ui/auto-layout-text-imgs content]
     [:br] [:br]]])
