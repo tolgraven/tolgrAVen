@@ -648,7 +648,7 @@ video {
   object-fit: cover;
   margin: 0;
 
-  transition: transform 1.5s;
+  transition: transform 2.0s ease;
 }
 .section-with-media-bg-wrapper { /* like section-bg-wrapper but NOT using background for img/video */
   position: relative;
@@ -657,7 +657,7 @@ video {
   /* border-top: var(--line-width) solid; */
   
   &:hover .media-as-bg {
-    transform: scale(1.05);
+    transform: scale(1.10);
   }
 }
 
@@ -991,8 +991,12 @@ textarea, .form-control {
     padding: 0 var(--space-lg);
   }
 }
+#moneyshot {
+  border-top: var(--line-width) solid;
+}
 #intro-end { /* lbp pic "YOU" */
-  height: calc(100vw - 2 * var(--space-edges));
+  height: #{'min(70vh, 100vw - 2 * var(--space-edges))'};
+  border-top: 0;
 }
 #interlude-2 {
   z-index: 7;

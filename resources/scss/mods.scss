@@ -5,6 +5,7 @@
   position: relative;
   z-index: 25;
   width: 100%;
+  pointer-events: none;
 }
 .fade-to-black { /* well this is certainly a misnomer. .fade-to? */
   position: absolute;
@@ -107,18 +108,17 @@
 }
 
 .anim-gradient-bg {
-  --opacity: 0.90;
-  /* --opacity: 1.00; */
+  --opacity: 1.00;
   --deg: -40deg;
   --color-1: hsla(var(--hue-1),  30%,  var(--lum-bg-1), var(--opacity));
   --color-2: hsla(var(--hue-2),  30%,  var(--lum-bg-1), var(--opacity));
   /* background: linear-gradient(-30deg, var(--color-1), var(--bg-1)); */
   background: linear-gradient(var(--deg), var(--color-1), var(--color-2));
   /* background: linear-gradient(var(--deg), var(--color-1), var(--color-2)); */
-  background-size: 230%;
-  animation: gradient-bg 10s ease infinite;
-  backdrop-filter: blur(4px) contrast(70%);
-  -webkit-backdrop-filter: blur(4px) contrast(70%);
+  // background-size: 230%;
+  // animation: gradient-bg 10s ease infinite;
+  // backdrop-filter: blur(4px) contrast(70%);
+  // -webkit-backdrop-filter: blur(4px) contrast(70%);
 }
 @keyframes gradient-bg {
 	0%     { background-position:   0% 50%;
@@ -151,10 +151,12 @@
   align-items: center;
 }
 
-.fade-3 { opacity: 0.30; }
-.fade-5 { opacity: 0.62; }
-.darken-3 { filter: brightness(30%); }
-.darken-5 { filter: brightness(55%); }
+.opacity-3 { opacity: 0.38; }
+.opacity-5 { opacity: 0.58; }
+.opacity-8 { opacity: 0.85; }
+.darken-3 { filter: brightness(35%); }
+.darken-5 { filter: brightness(50%); }
+.darken-8 { filter: brightness(80%); }
 
 .noborder, .horizborders, .vertborders, .topborder, .bottomborder {
   border: 0;
