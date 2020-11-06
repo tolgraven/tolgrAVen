@@ -39,8 +39,9 @@
  ; TODO prevent from starting nav when same page (once figure out anchors)
  (fn [{:as cofx :keys [db]} [_ match]]
    (let [old-match (:common/route db)]
-     {:dispatch [:transition/out old-match]
-      :dispatch-later {:ms (or (-> db :options :transition-time) 160)
+     {:dispatch-n [;[:transition/out old-match]
+                   ]
+      :dispatch-later {:ms (or (-> db :options :transition-time) 10) ;160)
                        :dispatch [:common/navigate match]}})))
 
 (rf/reg-event-fx :common/navigate
@@ -50,10 +51,11 @@
                                  (rfc/apply-controllers (:controllers old-match) match))]
       {:db (-> db
                (assoc :common/route new-match)
-               (assoc :common/route-last old-match))
+               (assoc :common/route-last old-match)
+               (assoc-in [:state :swap] nil))
        :dispatch-n [[:exception [:page] nil] ; reset exception state since using same error boundary for all pages
                     [:state [:error-page] nil]
-                    [:transition/in new-match]
+                    ; [:transition/in new-match]
                     [:scroll/to "linktotop"]]
        :document/set-title (->> new-match :data :name
                                 name string/capitalize
@@ -66,6 +68,13 @@
 (rf/reg-event-fx :common/navigate!
   (fn [_ [_ url-key params query]]
     {:common/navigate-fx! [url-key params query]}))
+
+
+(rf/reg-event-fx :swap-main-page
+  (fn [{:keys [db]} [_ item]]
+    {:dispatch [:state [:swap :last] item]
+     :dispatch-later {:ms 2000
+                      :dispatch [:state [:swap :hide] item]}}))
 
 (defn assoc-in-factory [base-path]
   (fn [db [_ path value]]
