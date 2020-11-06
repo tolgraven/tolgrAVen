@@ -132,26 +132,36 @@
 
 (defn ui-portfolio "GOT NO PPORTFOLIE" [])
 
-(defn ui-services "Let's start by just straight porting some stuff"
+(defn service-category-full
+  "Fullscreen version of a services category. Should eventually be like a mini-site/portfolio
+   listing any projects done in each..."
+  [])
+
+(defn ui-services "List services on (fake) offer. Clicking one should bring it up to fill section..."
   [{:keys [categories bg caption]}]
-  [:div#section-services
+  [:section#section-services
      {:class "link-anchor stick-up section-with-media-bg-wrapper"}
     [:a {:name "link-services"}]
      [ui-inset caption 4] ;auto-gen
      [:img (merge bg {:class "media-as-bg darken-5 parallax-bg"})] ;wait how durp properly
-     [:section#services
+     (let [full-screened @(rf/subscribe [:state [:services]]) ]
+    [:div#services
       [:div#categories
-       (doall (for [[title icon-name lines] categories
-             :let [on-click #(rf/dispatch [:toggle [:state :modal title]])]] ^{:key (str "service-" title)}
+       (doall (for [[title icon-name lines] (if-not full-screened
+                                              categories
+                                              (filter #(= (first %) full-screened) categories)) ;XXX change to keys!!
+             :let [on-click #(rf/dispatch [:state [:services]
+                                           (if full-screened nil title)])]] ^{:key (str "service-" title)}
          [ui/seen
           (str "service-" title)
-          "opacity extra-slow"
-          (into [:ul
-                 [:li {:on-click on-click}
+          "basic"
+          (into [:ul {:class (when (= full-screened title) "service-fullscreen")
+                      :on-click on-click}
+                 [:li 
                   [:i {:class (str "fas " "fa-" icon-name)}]
                   [:h3 title]]]
                 (for [line lines] ^{:key (str "service-" title "-" line)}
-                  [:li line]))]))]]])
+                  [:li line]))]))]])])
 
 (defn ui-moneyshot "needs better name lol. what is hero img halfway down page?"
   [{:keys [title caption bg]}]
