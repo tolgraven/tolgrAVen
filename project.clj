@@ -82,7 +82,7 @@
             [lein-sassc "0.10.4"]
             [lein-autoprefixer "0.1.1"]
             [lein-auto "0.1.2"]
-            [lein-npm "0.6.2"]
+            ; [lein-npm "0.6.2"]; "no more lein-npm, even few packages gives hundreds of deps total and slows down figwheel reloads something fierce"
             ; [lein-kibit "0.1.2"]
             ]
   :sassc
@@ -97,9 +97,10 @@
    "autoprefixer" {:file-pattern #"\.(css)$" :paths ["resources/public/css/tolgraven"]}}
   
   :aliases {"cssbuild" ["do" ["sassc" "once"] "autoprefixer"]}
-  :npm {:dependencies
-        [[autoprefixer "10.0.1"]
-         [postcss-cli "8.2.0"]]}
+  ; :npm {:dependencies
+  ;       [[autoprefixer "10.0.1"]
+  ;        [postcss-cli "8.2.0"]
+  ;        [sass "1.28.0"]]}
   
   ; :hooks [leiningen.sassc]
   :clean-targets ^{:protect false}
@@ -151,7 +152,8 @@
                       :output-to "resources/public/js/compiled/app.js"
                       :asset-path "js/compiled/out"
                       :optimizations :none
-                      :parallel-build true
+                      :parallel-build true ;or java only uses 100% cpu, gross
+                      :recompile-dependents false
                       ; :preloads [re-frisk-remote.preload devtools.preload day8.re-frame-10x.preload]
                       :preloads [re-frisk.preload]
                       ; :preloads [devtools.preload day8.re-frame-10x.preload] ;can remove devtools preload cause have in app.cljs?
