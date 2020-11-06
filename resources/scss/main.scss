@@ -139,16 +139,11 @@ section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
   .h-responsive {  font-size: #{'min(3.5rem, 1.5rem + 3vw)'}; }
 }
 
-h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
-  font-size: 1.15em;
-  filter: brightness(115%);
-}
-// make more specific and original hardcore v for whatever links
+h3::first-letter, // make more specific and original hardcore v for whatever links
 span::first-letter,
 p::first-letter {
-  font-size: 1.15em;
-  // font-weight: 600;
-  filter: brightness(115%);
+  font-size: 1.10em;
+  filter: brightness(110%);
 }
 
 
