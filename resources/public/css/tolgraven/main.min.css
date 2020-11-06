@@ -1027,6 +1027,56 @@ h3::first-letter {
 .hi-z {
   z-index: 99; }
 
+.fullwide {
+  /* expand div back to full width of main despite regular paddings/margins */
+  /* guess should work to only fuck w margin+width directly not left etc? */
+  /* i guess this should be for only when breaking out of margin bs */
+  /* not the other bg fullwide stuff... */
+  margin: 0;
+  padding: 0;
+  position: relative;
+  left: 0;
+  /* left:  calc(0% - 0.5 * var(--space-sides)); */
+  width: min(100%, var(--media-width-main)); }
+
+.fullwide > .media {
+  max-width: unset;
+  margin: 0; }
+
+.widescreen-safe {
+  /* ensure bottom doesnt run out of 16:9 bg media on (ironically) _thin_ screens */
+  height: calc(1.0 * var(--header-with-menu-height));
+  /* just, some nice tall enough height - max-height will save us anyways */
+  max-height: calc((100vw - (2 * var(--space-edges))) / 2); }
+
+.stick-up {
+  /* make sticky just below header */
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: var(--header-height-current); }
+
+.appear-wrapper {
+  display: inline-block;
+  transition: all 0.8s; }
+  .appear-wrapper.opacity {
+    opacity: 0;
+    transition: opacity 1.0s; }
+  .appear-wrapper.zoom-y {
+    opacity: 0;
+    transform: scaleY(0); }
+  .appear-wrapper.zoom-x {
+    opacity: 0;
+    transform: scaleX(0);
+    transition: transform 0.55s; }
+  .appear-wrapper.appeared {
+    opacity: 1;
+    transform: none;
+    translate: none; }
+  .appear-wrapper.slow {
+    transition: all 1.5s; }
+  .appear-wrapper.extra-slow {
+    transition: all 3.0s; }
+
 .covering {
   /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
   z-index: 10;
@@ -1036,10 +1086,10 @@ h3::first-letter {
   /* jk */
   /* incidentally not easy to type on a proper vim setup */
   --opacity: 0.65;
-  /* --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1), var(--opacity)); */
-  /* --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1), var(--opacity)); */
-  --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1));
-  --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1));
+  /* --color-1: hsl(var(--hue-1),  38%,  var(--lum-bg-1), var(--opacity)); */
+  /* --color-2: hsl(var(--hue-2),  36%,  var(--lum-bg-1), var(--opacity)); */
+  --color-1: hsl(var(--hue-1),  38%,  var(--lum-bg-1));
+  --color-2: hsl(var(--hue-2),  36%,  var(--lum-bg-1));
   background: linear-gradient(-40deg, var(--color-1), var(--color-2));
   opacity: var(--opacity);
   transition: opacity 0.4s;
@@ -1059,8 +1109,7 @@ h3::first-letter {
   --color-1: hsla(var(--hue-1),  30%,  var(--lum-bg-1), var(--opacity));
   --color-2: hsla(var(--hue-2),  30%,  var(--lum-bg-1), var(--opacity));
   /* background: linear-gradient(-30deg, var(--color-1), var(--bg-1)); */
-  background: linear-gradient(var(--deg), var(--color-1), var(--color-2));
-  /* background: linear-gradient(var(--deg), var(--color-1), var(--color-2)); */ }
+  background: linear-gradient(var(--deg), var(--color-1), var(--color-2)); }
 
 @-webkit-keyframes gradient-bg {
   0% {
@@ -1195,10 +1244,6 @@ h3::first-letter {
   /* transform-style: preserve-3d; */ }
 
 .origin-toptop {
-  /* transform-origin: 50% -100%; */
-  /* transform-origin: 50% -250%; */
-  /* gap up top chrome #intro-end, middle ground? */
-  /* transform-origin: 50% -150%; */
   transform-origin: 50% -100%; }
 
 .debug-layers * {
@@ -1805,363 +1850,30 @@ textarea.blog-adding-comment-textbox {
   opacity: 1;
   transition: opacity .5s ease-in; }
 
-/* wanted to put in own file but wasnt compatible with live reload solution... */
-:root {
-  /* general vars */
-  /* SIZES */
-  --space:             1.2rem;
-  --space-lg:          2.0rem;
-  --space-sides:       var(--space-lg);
-  /* inner horizontal margin */
-  --space-edges:       var(--space-sides);
-  /* size of outer edges  */
-  --space-top:         2rem;
-  /* top margin above header */
-  --media-width-main: calc(100vw - 2 * var(--space-edges) - 2 * var(--line-width));
-  /* would it be context dependent or just use root 100% i guess uh */
-  --banner-height:     600px;
-  --logo-ratio:        0.3710;
-  /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */
-  /* just use img... */
-  /* or make logo look like i want in first place - needs higher-res or vector bounce anyways. then suddenly had to change to 3710... */
-  /* --header-height:     calc(3 * var(--space)); */
-  --header-height:     4.5rem;
-  /* beware can be 3 or 6 in practice.... temp bc reading arbitrary css vars with calc is fiddly */
-  --header-with-menu-height: 18rem;
-  /* not truly dynamic bc of annoying sticky */
-  --header-height-current: var(--header-height);
-  /* will then be changed by js dep on whether menu open... */
-  --footer-height:     3.00rem;
-  /* --link-offset:       calc(var(--space) + var(--header-with-menu-height)); */
-  --link-offset:       calc( var(--header-with-menu-height));
-  --menu-width-fraction: 0.70;
-  --line-scale-factor: 0.5;
-  --line-width:        2.0px;
-  /* main design line/border width */
-  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
-  --line-width-sm:     calc(1 / (1.5 + var(--line-scale-factor)) * var(--line-width));
-  /* main design line/border width */
-  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
-  --line-width-md:     calc(((1 + var(--line-scale-factor)) / 2) * var(--line-width));
-  /* main design line/border width */
-  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
-  --line-width-lg:     calc(1 / (1 + var(--line-scale-factor)) * var(--line-width));
-  /* main design line/border width */
-  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
-  --line-width-vert:   2px;
-  /* main design line/border width */
-  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
-  --scale:             1.0;
-  /* px line-width drifts when font scales so must compensate... better way? */
-  --fiddle-multiplier: 1;
-  /* was 3. works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
-  --left-marker: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
-                      + 0.75 * var(--space) - 1 * (var(--fiddle-multiplier) * var(--line-width)));
-  --right-marker: calc(100% - 1 * var(--left-marker) - 2 * var(--line-width));
-  /* makes sense right side needs one more unit since it has the right border... */
-  --top-to-menu-height: calc(2 * var(--space-top) + 2em - 5 * var(--line-width));
-  --header-expand-time:  0.2s;
-  --navigation-transition-time: 0.20s;
-  --perspective:       100;
-  --parallax:          50;
-  --parallax-scale:    calc(1 + (var(--parallax) / var(--perspective)));
-  --parallax-px:       calc(-1px * var(--parallax));
-  --parallax-sm:       calc(0.50 * var(--parallax));
-  --parallax-sm-scale: calc(1 + (var(--parallax-sm) / var(--perspective)));
-  --parallax-sm-px:    calc(-1px * var(--parallax-sm));
-  --parallax-squeeze-scale: calc(1 + (1 / var(--perspective) * var(--perspective)));
-  --parallax-squeeze-px:    calc(-1px * var(--perspective));
-  --parallax-squeeze-tf:    -1570%;
-  /* fuck knows why */
-  /* COLORS */
-  --hue-1:             180;
-  --hue-2:               8;
-  --hue-3:             192;
-  --lum-dark-1:         8%;
-  --lum-dark-2:        12%;
-  --lum-dark-3:        15%;
-  --lum-dark-4:        18%;
-  --lum-dark-5:        26%;
-  --lum-dark-6:        34%;
-  --lum-light-1:       calc(100% - var(--lum-dark-1));
-  --lum-light-2:       calc(100% - var(--lum-dark-2));
-  --lum-light-3:       calc(100% - var(--lum-dark-3));
-  --lum-light-4:       calc(100% - var(--lum-dark-4));
-  --lum-light-5:       calc(100% - var(--lum-dark-5));
-  --lum-light-6:       calc(100% - var(--lum-dark-6));
-  --light-1:           hsl(var(--hue-2), 20%, var(--lum-light-2));
-  --light-2:           hsl(var(--hue-2), 7%, var(--lum-light-1));
-  --light-text:        hsl(29, 35%, 86%);
-  --light-3:           #ededed;
-  --light-4:           hsl(var(--hue-2), 7%, var(--lum-light-4));
-  --light-5:           hsl(var(--hue-2), 7%, var(--lum-light-5));
-  --light-6:           hsl(var(--hue-2), 7%, var(--lum-light-6));
-  --nav-accent: hsla(var(--hue-3), 40%, 20%, 0.35);
-  --selection-accent: hsl(14, 75%, 80%, 0.7);
-  --neutral-accent: #99aaee;
-  /* link? */
-  /* fixc bruv/box */
-  --red: #d18479;
-  --red-2: #af7370;
-  --red-3: #ea9a98;
-  --green: #b4b88d;
-  --green-2: #8b8c63;
-  --green-3: #ccdaa8;
-  --yellow: #dabd7a;
-  --yellow-2: #d0af80;
-  --yellow-3: #d9c894;
-  --blue: #7692ab;
-  --blue-2: #80a0b3;
-  --blue-3: #a6c0cd;
-  --purple: #bd979d;
-  --purple-2: #af8589;
-  --purple-3: #d9b7b7;
-  --aqua: #91b8a4;
-  --aqua-2: #9ab499;
-  --aqua-3: #B6D1B4;
-  --orange: #cca687;
-  --orange-2: #dba184;
-  --orange-3: #d9a58a;
-  --dark-1:     hsl(var(--hue-1),  7%,  var(--lum-dark-1));
-  --dark-2:     hsl(var(--hue-3),  7%,  var(--lum-dark-2));
-  --dark-3:     #232323;
-  --dark-4:     hsl(var(--hue-2),  7%,  var(--lum-dark-4));
-  --dark-5:     hsl(var(--hue-2),  7%,  var(--lum-dark-5));
-  --dark-6:     hsl(var(--hue-3),  7%,  var(--lum-dark-6));
-  --opacity-regular:  0.35;
-  --opacity-faint:    0.15;
-  --box-regular-color:    hsla(0, 0%, var(--lum-dark-1), var(--opacity-regular));
-  --box-faint-color:      hsla(0, 0%, var(--lum-dark-1), var(--opacity-faint));
-  --box-regular-color-flip:    hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
-  --box-faint-color-flip:      hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
-  --gradient-bg-main: linear-gradient(-77deg,
-                                      hsl(280, 15%, 8%),
-                                      var(--bg-1))
-                                      ;
-  --user-box-bg:      linear-gradient(hsla(240deg 20% var(--lum-bg-3) / 75%) 0%,
-                                      hsla(240deg 38% var(--lum-bg-3) / 90%) 100%);
-  --user-box-shadow:     hsla(240deg 33% var(--lum-bg-4) / 30%);
-  --user-avatar-shadow:  hsla(240deg 100% var(--lum-fg-1) / 50%); }
+/* DOCS SECTION */
+section.docs a {
+  color: var(--blue-2);
+  font-style: italic; }
 
-[color-mode="light"]:root {
-  --fg-1:       var(--dark-1);
-  --fg-2:       var(--dark-2);
-  --fg-3:       var(--dark-3);
-  --fg-4:       var(--dark-4);
-  --fg-5:       var(--dark-5);
-  --fg-6:       var(--dark-6);
-  --lum-fg-1:   var(--lum-dark-1);
-  --lum-fg-2:   var(--lum-dark-2);
-  --lum-fg-3:   var(--lum-dark-3);
-  --lum-fg-4:   var(--lum-dark-4);
-  --lum-fg-5:   var(--lum-dark-5);
-  --lum-fg-6:   var(--lum-dark-6);
-  --bg-1:       var(--light-1);
-  --bg-2:       var(--light-text);
-  --bg-3:       var(--light-3);
-  --bg-4:       var(--light-4);
-  --bg-5:       var(--light-5);
-  --bg-6:       var(--light-6);
-  --lum-bg-1:   var(--lum-light-1);
-  --lum-bg-2:   var(--lum-light-2);
-  --lum-bg-3:   var(--lum-light-3);
-  --lum-bg-4:   var(--lum-light-4);
-  --lum-bg-5:   var(--lum-light-5);
-  --lum-bg-6:   var(--lum-light-6); }
+section.docs p.title {
+  border-top: var(--line-width-sm) solid currentColor;
+  background: linear-gradient(to right, var(--bg-2) 85%, var(--bg-1));
+  margin: 1.7em 0.5em 1em;
+  font-size: 1.4em;
+  font-weight: 600;
+  width: 50%; }
 
-:root {
-  /* we run dark by default */
-  --fg-1:     var(--light-1);
-  --fg-2:     var(--light-2);
-  --fg-3:     var(--light-3);
-  --fg-4:     var(--light-4);
-  --fg-5:     var(--light-5);
-  --fg-6:     var(--light-6);
-  --lum-fg-1: var(--lum-light-1);
-  --lum-fg-2: var(--lum-light-2);
-  --lum-fg-3: var(--lum-light-3);
-  --lum-fg-4: var(--lum-light-4);
-  --lum-fg-5: var(--lum-light-5);
-  --lum-fg-6: var(--lum-light-6);
-  --bg-1:     var(--dark-1);
-  --bg-2:     var(--dark-2);
-  --bg-3:     var(--dark-3);
-  --bg-4:     var(--dark-4);
-  --bg-5:     var(--dark-5);
-  --bg-6:     var(--dark-6);
-  --lum-bg-1: var(--lum-dark-1);
-  --lum-bg-2: var(--lum-dark-2);
-  --lum-bg-3: var(--lum-dark-3);
-  --lum-bg-4: var(--lum-dark-4);
-  --lum-bg-5: var(--lum-dark-5);
-  --lum-bg-6: var(--lum-dark-6);
-  --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
-  --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint)); }
+section.docs .bs-callout {
+  margin-top: 2rem;
+  padding: var(--space);
+  background-color: var(--bg-2); }
+  section.docs .bs-callout h4 {
+    font-size: 1.1em;
+    margin-bottom: 0.75em; }
 
-#logo-top {
-  /* invert then rotate hue to restore blue text */
-  filter: invert() hue-rotate(180deg); }
-
-@media screen and (min-width: 800px) and (min-height: 800px) {
-  :root {
-    --space: 1.5rem;
-    --space-lg: 2.25rem; } }
-
-@media screen and (min-width: 1000px) {
-  .line {
-    /* i guess x overflow only important on ios, so we hype here */
-    width: 200%;
-    /* extend out like damn */ }
-  :root {
-    --space-edges: 10vw;
-    --space-sides: 10vw;
-    font-size: 1.10rem; } }
-
-@media screen and (max-width: 600px), screen and (max-height: 600px) {
-  :root {
-    --space: 1.0rem;
-    --space-lg: 1.5rem;
-    --space-sides: var(--space);
-    /* remember -sides based on the smaller num for mobile (since margins are more precious) */
-    --space-edges: 0.8rem;
-    /* perfectly makes room for macos scrollbar */
-    --scale: 0.9;
-    font-size: 0.90rem; } }
-
-@media not all and (min-resolution: 0.001dpcm), (prefers-reduced-motion: reduce) {
-  /* wants no parallax */
-  :root {
-    --perspective: 1;
-    /* just to be sure */
-    --parallax:    0;
-    --parallax-squeeze-tf: 100%;
-    /* fuck knows why */ } }
-
-@media not all and (min-resolution: 0.001dpcm) {
-  /* is safari */ }
-
-@supports (-webkit-overflow-scrolling: touch) {
-  /* iOS devices */
-  body {
-    /* prevent insane bumping of p font size in landscape and more */
-    -moz-text-size-adjust: 100%;
-         text-size-adjust: 100%;
-    -webkit-text-size-adjust: 100%; } }
-
-@media only screen and (-webkit-device-pixel-ratio: 3) {
-  :root {
-    /* *im thinking this is what it's about. 3 vs 2 pixels per pixel */
-    --fiddle-multiplier: 1;
-    /* makes iphone x line up with current formulas/offsets */ } }
-
-@media only screen and (min-device-width: 375px) and (max-device-width: 812px) and (-webkit-device-pixel-ratio: 3) {
-  /* iphone x */ }
-
-@media only screen and (min-device-width: 375px) and (max-device-width: 667px) {
-  /* iphone 6-8. i mean not really tho could be loads?? */ }
-
-@media only screen and (min-device-width: 414px) and (max-device-width: 736px) {
-  /* 6-8 plus */ }
-
-@media screen and (max-width: 500px) {
-  :root {
-    font-size: 0.80rem;
-    --space: 0.6rem;
-    --space-lg: 0.9rem; } }
-
-@media screen and (max-width: 400px) {
-  :root {
-    font-size: 0.72rem;
-    --space-sides: calc(0.5 * var(--space));
-    /* remember -sides based on the smaller num for mobile (since margins are more precious) */
-    --space-edges: calc(0.5 * var(--space)); }
-  #top-banner {
-    /* need a better solution for ensuring doesnt overflow... like a tallet image? */
-    padding-top: 0; } }
-
-@media screen and (max-width: 319px) {
-  :root {
-    font-size: 0.67rem;
-    --space-edges: calc(0.1 * var(--space));
-    --line-width-vert: 0; } }
-
-/* #theme-toggle:checked ~ .themable { */
-/* #theme-toggle:checked ~ body { */
-/* #theme-toggle:checked ~ main { */
-/*   /1* ok so can select main but not body OUCH. *1/ */
-/* /1* .themable { *1/ */
-/*     --bg-1:     var(--dark-1); */
-/*     --bg-2:   var(--dark-2); */
-/*     --fg-1:     var(--light-1); */
-/*     --fg-2:   var(--light-text); */
-/*     --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular)); */
-/*     --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint)); */
-/*     color: red; */
-/* } */
-/* #theme-toggle:not(:checked) ~ main { */
-/*   --bg-1:      var(--light-1); */
-/*   --bg-2:    var(--light-text); */
-/*   --fg-1:      var(--dark-1); */
-/*   --fg-2:    var(--dark-2); */
-/*   --box-regular-color-flip: var(--box-regular-color); /1* light mode always dark shadows *1/ */
-/*   --box-faint-color-flip:   var(--box-faint-color); */
-/*     color: blue; */
-/* } */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0; }
-
-:target {
-  /* pseudo-el representing a target (link, id/el)... */
-  /* does not appear to do the trick tho. wait isnt it :: or hmm nope would be if was like *::target? */
-  /* html, body does seem to semi-work so whatever */
-  scroll-padding-top: var(--header-height-current); }
-
-/* header-height or header-with-menu-height... */
-/* doesnt seem to work though, try putting in html, body... */
-html, body {
-  /* scroll-margin-block-start: calc(1em + var(--header-height-current)); */
-  scroll-padding-top: var(--header-height-current);
-  /* scroll-padding-top: calc(1em + var(--header-with-menu-height)); */ }
-
-html {
-  height: 100%;
-  overflow-x: hidden;
-  /* gotta be on both or doesnt work on iphone hmm */
-  scroll-behavior: smooth;
-  /* makes in-page links scroll to target beautifully in chrome */
-  /* overscroll-behavior-y: none; /1* actually works in chrome, stops from overscroll. BUT makes scrolling and esp sticky jittery it seems? *1/ */ }
-
-body {
-  font-family: 'Open Sans', sans-serif;
-  color: var(--fg-1);
-  background-color: var(--bg-1);
-  width: calc(100% - 2 * var(--space-edges));
-  margin: auto;
-  /* no overflow hidden on body = iphone can scroll sideways. on body works but sticky header breaks */
-  /* -webkit-overflow-x: hidden; nope... no work */
-  /* overflow-x: hidden; /1* gotta be on both or doesnt work on iphone hmm *1/ */
-  /* -webkit-overflow-scrolling: touch; */ }
-
-@supports (scroll-margin-top: 0px) {
-  /* compensate for our sticky header. */
-  .link-anchor {
-    scroll-margin-top: var(--header-height-current); } }
-
-@supports not (scroll-margin-top: 0px) {
-  .link-anchor::before {
-    /* have to compensate due to our sticky header. */
-    display: block;
-    /* on about section not working was due to overflow: auto clearfix... */
-    content: " ";
-    /* also various safari vs chrome diff in behavior */
-    margin-top: calc(-1.0 * var(--header-height-current));
-    height: calc(1.0 * var(--header-height-current));
-    visibility: hidden;
-    pointer-events: none;
-    z-index: -1; } }
-
+/*************************/
+/* GENERAL UI COMPONENTS */
+/*************************/
 /* TODO: line border cross pattern for eg images, in same way as site main, connecting to main borders... */
 /* together with similar for topnav and feels "almost" proper design language ish */
 /* could also run along down connecting to next section... */
@@ -2213,184 +1925,13 @@ body {
 .lined-container-sm {
   border: var(--line-width-sm) solid; }
 
-li {
-  list-style: none; }
-
-a {
-  color: var(--fg-2);
-  text-decoration: none; }
-  a:focus, a:hover, a:active {
-    transform: scale(1.1);
-    filter: brightness(125%) drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1)); }
-
-main {
-  /* dunno purpose of why I choose .main-content... */
-  width: 100%;
-  border-top: var(--line-width) solid;
-  /* should make configurable. off looks p nice on main page */
-  border-bottom: var(--line-width) solid;
-  /* should make configurable. off looks p nice on main page */
-  border-left: var(--line-width-vert) solid;
-  /* should make configurable. off looks p nice on main page */
-  border-right: var(--line-width-vert) solid;
-  /* should make configurable. off looks p nice on main page */
-  margin-top: var(--space-lg);
-  padding-bottom: calc(3.1 * var(--space));
-  /* XXX actually, footer height... */
-  -webkit-animation: fade-in 2.5s ease-in;
-          animation: fade-in 2.5s ease-in; }
-
-.main-content {
-  position: relative;
-  background: var(--gradient-bg-main); }
-
-pre {
-  /* max-height: 6em; */
-  white-space: pre-wrap;
-  background-color: var(--bg-1);
-  color: var(--fg-2);
-  padding: 1.25em;
-  margin: 1em calc(-0.5 * var(--space));
-  border-top: var(--line-width-sm) solid; }
-
-p > code {
-  /* single-word vars etc */
-  background-color: var(--bg-2);
-  color: var(--fg-3);
-  padding: 0.4em 0.3em; }
-
-/* DOCS SECTION */
-section.docs a {
-  color: var(--blue-2);
-  font-style: italic; }
-
-section.docs p.title {
-  border-top: var(--line-width-sm) solid currentColor;
-  /* background-color: var(--bg-2); */
-  background: linear-gradient(to right, var(--bg-2) 85%, var(--bg-1));
-  margin: 1.7em 0.5em 1em;
-  font-size: 1.4em;
-  font-weight: 600;
-  width: 50%; }
-
-section.docs .bs-callout {
-  margin-top: 2rem;
-  padding: var(--space);
-  background-color: var(--bg-2); }
-
-section.docs .bs-callout h4 {
-  font-size: 1.1em;
-  margin-bottom: 0.75em; }
-
-.md-rendered img {
-  padding: 0.75em 0;
-  width: 100%; }
-
-.column {
-  margin: var(--space);
-  text-align: left; }
-
-section {
-  /* one main section (img + header + piece of content) */
-  max-width: 100%;
-  flex: 1 1 auto;
-  position: relative;
-  justify-content: center;
-  align-items: middle;
-  padding: var(--space-lg) var(--space-lg);
-  /* for padding-less main: */
-  border-top: var(--line-width) solid; }
-
-section > h1, .jumbo > h1 {
-  text-align: center;
-  padding-bottom: var(--space);
-  padding-top: var(--space); }
-
-.main-content > section:first-of-type {
-  /* top section: no upper border */
-  border-top: 0; }
-
-.main-content > section:last-of-type {
-  /* last section, no bottom border */
-  margin-bottom: 0;
-  z-index: 30; }
-
-h1, h2, h3, h4, h5, h6 {
-  font-weight: normal; }
-
-section h1, article h1 {
-  font-size: 2rem; }
-
-/* restore proper h1 from 1.5 bs */
-.h0 {
-  font-size: 2.5rem; }
-
-.h0-responsive {
-  font-size: calc(2.5rem + 8vw); }
-
-/* size based on viewport, with sensible min */
-.h-responsive {
-  font-size: calc(1.5rem + 3vw); }
-
-@supports (font-size: 0px) {
-  /* can additionally set a maximum... */
-  .h0-responsive {
-    font-size: min(6rem,   2.5rem + 8vw); }
-  .h-responsive {
-    font-size: min(3.5rem, 1.5rem + 3vw); } }
-
-.buttons {
-  display: flex;
-  justify-content: space-evenly; }
-
-button {
-  --around: calc(0.4 * var(--space)) calc(0.4 * var(--space-lg));
-  padding: var(--around);
-  margin: var(--around);
-  background: transparent;
-  color: var(--fg-2);
-  border: var(--line-width-md) solid;
-  border-radius: 0.15rem;
-  position: relative;
-  cursor: pointer;
-  outline: 1px transparent;
-  transition: outline-color 0.25s, transform 0.25s, text-shadow 0.25s; }
-  button:hover, button:active {
-    border-radius: 0;
-    transition: outline-color 0.2s;
-    text-shadow: 1px 0px 3px var(--fg-1); }
-  button label {
-    position: relative;
-    font-size: 1.2rem;
-    z-index: 2;
-    cursor: pointer; }
-
-button:hover .blur-bg, button:active .blur-bg,
-.blur-bg:hover, .blur-bg:active {
-  opacity: 0.8; }
-
-input {
-  margin: 0 0.25em;
-  /* just for checkboxes... */ }
-
-.media-container {
-  position: relative;
-  display: flex;
-  flex-flow: column;
-  align-items: center;
-  /* align-items instead of justify-content because flow by column */
-  justify-content: center;
-  text-align: center; }
-  .media-container p {
-    /* img/video caption... */
-    font-size: 0.85em;
-    /* small captions */
-    margin-top: 0.3em;
-    width: var(--media-width-main);
-    text-align: left; }
-
-video {
-  height: auto; }
+.close-btn {
+  position: absolute;
+  right: -0.7em;
+  top: -0.2em; }
+  .close-btn:hover {
+    outline: 0;
+    transform: scale(1.1); }
 
 .media {
   width: 100%;
@@ -2418,28 +1959,6 @@ video {
   margin-left: 0;
   border-radius: 0.15rem; }
 
-.fullwide {
-  /* expand div back to full width of main despite regular paddings/margins */
-  /* guess should work to only fuck w margin+width directly not left etc? */
-  /* i guess this should be for only when breaking out of margin bs */
-  /* not the other bg fullwide stuff... */
-  margin: 0;
-  padding: 0;
-  position: relative;
-  left: 0;
-  /* left:  calc(0% - 0.5 * var(--space-sides)); */
-  width: min(100%, var(--media-width-main)); }
-
-.fullwide > .media {
-  max-width: unset;
-  margin: 0; }
-
-.widescreen-safe {
-  /* ensure bottom doesnt run out of 16:9 bg media on (ironically) _thin_ screens */
-  height: calc(1.0 * var(--header-with-menu-height));
-  /* just, some nice tall enough height - max-height will save us anyways */
-  max-height: calc((100vw - (2 * var(--space-edges))) / 2); }
-
 .media-as-bg {
   position: absolute;
   left: 0;
@@ -2459,9 +1978,51 @@ video {
   .section-with-media-bg-wrapper:hover .media-as-bg {
     transform: scale(1.1); }
 
+.media-container {
+  position: relative;
+  display: flex;
+  flex-flow: column;
+  align-items: center;
+  /* align-items instead of justify-content because flow by column */
+  justify-content: center;
+  text-align: center; }
+  .media-container p {
+    /* img/video caption... */
+    font-size: 0.85em;
+    /* small captions */
+    margin-top: 0.3em;
+    width: var(--media-width-main);
+    text-align: left; }
+
 .bg-static-section {
   position: relative;
   overflow-y: hidden; }
+
+.md-rendered img {
+  padding: 0.75em 0;
+  width: 100%; }
+
+.column {
+  margin: var(--space);
+  text-align: left; }
+
+@supports (scroll-margin-top: 0px) {
+  /* compensate for our sticky header. */
+  .link-anchor {
+    scroll-margin-top: var(--header-height-current); } }
+
+@supports not (scroll-margin-top: 0px) {
+  .link-anchor::before {
+    /* have to compensate due to our sticky header. */
+    display: block;
+    /* on about section not working was due to overflow: auto clearfix... */
+    content: " ";
+    /* also various safari vs chrome diff in behavior */
+    margin-top: calc(-1.0 * var(--header-height-current));
+    height: calc(1.0 * var(--header-height-current));
+    visibility: hidden;
+    pointer-events: none;
+    z-index: -1; } }
 
 .component-failed {
   /* DEV: react error boundary triggered */
@@ -2472,6 +2033,65 @@ video {
 .component-failed > * {
   /* DEV: react error boundary triggered */
   margin: var(--space); }
+
+/* FLOAT STUFF */
+.caption-inset {
+  /* caption overlaying media */
+  margin: 0.8em;
+  font-size: 0.65rem;
+  /* weird ass size when iphone landscape, and webkit-text-size-adjust doesnt seem to help... */
+  opacity: 0.65;
+  position: absolute;
+  z-index: 40; }
+
+.caption-inset.right {
+  right: 0;
+  text-align: right; }
+
+.caption-inset.left {
+  left: 0; }
+
+.caption-inset.top {
+  top: 0; }
+
+.caption-inset.bottom {
+  bottom: 0; }
+
+.float-with-caption {
+  margin: var(--space) 0; }
+
+.float-with-caption:first-of-type {
+  /* keep top of first inset level with top of text. */
+  margin-top: 0; }
+
+.float-with-caption > .media {
+  margin: 0;
+  width: 100%;
+  /* and then set on parent div */ }
+
+.float-with-caption.left {
+  float: left;
+  margin-right: calc(1.0 * var(--space-lg));
+  /* using reg space becomes bit wrong when very slim... too tight. */ }
+
+.float-with-caption.right {
+  float: right;
+  margin-left: calc(1.0 * var(--space-lg)); }
+
+figcaption, .float-with-caption {
+  font-size: 0.8rem; }
+
+.float-wrapper {
+  overflow: auto; }
+
+/* clearfix */
+.md-icon {
+  width: var(--space-lg);
+  height: var(--space-lg); }
+
+.sm-icon {
+  width: var(--space);
+  height: var(--space); }
 
 .loading-container {
   display: flex;
@@ -2611,48 +2231,6 @@ video {
   100% {
     background-color: rgba(165, 165, 165, 0.12); } }
 
-.appear-wrapper {
-  display: inline-block;
-  transition: all 0.8s; }
-  .appear-wrapper.opacity {
-    opacity: 0;
-    transition: opacity 1.0s; }
-  .appear-wrapper.zoom-y {
-    opacity: 0;
-    transform: scaleY(0); }
-  .appear-wrapper.zoom-x {
-    opacity: 0;
-    transform: scaleX(0);
-    transition: transform 0.55s; }
-  .appear-wrapper.appeared {
-    opacity: 1;
-    transform: none;
-    translate: none; }
-  .appear-wrapper.slow {
-    transition: all 1.5s; }
-  .appear-wrapper.extra-slow {
-    transition: all 3.0s; }
-
-textarea:focus, input:focus, button:focus {
-  outline: 0;
-  border: 1px solid var(--fg-6); }
-
-textarea, .form-control {
-  background: var(--bg-1);
-  color: var(--fg-1);
-  font-size: 1.2em;
-  padding: 0.3em 0.5em;
-  margin-bottom: 0.4em;
-  border: 1px solid var(--bg-5); }
-
-.close-btn {
-  position: absolute;
-  right: -0.7em;
-  top: -0.2em; }
-  .close-btn:hover {
-    outline: 0;
-    transform: scale(1.1); }
-
 #modal-container {
   opacity: 0.0;
   transition: opacity 0.3s; }
@@ -2756,14 +2334,19 @@ textarea, .form-control {
 .log-level.debug {
   color: var(--green); }
 
-.stick-up {
-  /* make sticky just below header */
-  position: -webkit-sticky;
-  position: sticky;
-  top: var(--header-height-current); }
+/****************************************************/
+/*    Mainly #id selectors for front page stuff     */
+/****************************************************/
+#logo-top {
+  /* invert then rotate hue to restore blue text */
+  filter: invert() hue-rotate(180deg); }
 
 #loading-full-page {
   padding: 5rem; }
+
+.service-fullscreen {
+  height: 100%;
+  width: 100%; }
 
 #section-services {
   z-index: 6; }
@@ -2803,8 +2386,6 @@ textarea, .form-control {
   z-index: 30; }
 
 #about-intro {
-  --height: calc(6 * var(--space-lg));
-  max-height: var(--height);
   z-index: 13;
   top: var(--header-height-current);
   /* transform-origin: 50% -1570%; /1* figure out genericable bs lol *1/ */ }
@@ -2812,6 +2393,8 @@ textarea, .form-control {
 #about-story {
   position: relative;
   z-index: 14; }
+  #about-story h1 {
+    margin-top: -0.80em; }
 
 #headshot {
   width: 20%;
@@ -2829,104 +2412,42 @@ textarea, .form-control {
 #building-tools {
   z-index: 29; }
 
-/* FLOAT STUFF */
-.caption-inset {
-  /* caption overlaying media */
-  margin: 0.8em;
-  font-size: 0.65rem;
-  /* weird ass size when iphone landscape, and webkit-text-size-adjust doesnt seem to help... */
-  opacity: 0.65;
-  position: absolute;
-  z-index: 40; }
-
-.caption-inset.right {
-  right: 0;
-  text-align: right; }
-
-.caption-inset.left {
-  left: 0; }
-
-.caption-inset.top {
-  top: 0; }
-
-.caption-inset.bottom {
-  bottom: 0; }
-
-.float-with-caption {
-  margin: var(--space) 0; }
-
-.float-with-caption:first-of-type {
-  /* keep top of first inset level with top of text. */
-  margin-top: 0; }
-
-.float-with-caption > .media {
-  margin: 0;
-  width: 100%;
-  /* and then set on parent div */ }
-
-.float-with-caption.left {
-  float: left;
-  margin-right: calc(1.0 * var(--space-lg));
-  /* using reg space becomes bit wrong when very slim... too tight. */ }
-
-.float-with-caption.right {
-  float: right;
-  margin-left: calc(1.0 * var(--space-lg)); }
-
-figcaption, .float-with-caption {
-  font-size: 0.8rem; }
-
-.float-wrapper {
-  overflow: auto; }
-
-/* clearfix */
-.md-icon {
-  width: var(--space-lg);
-  height: var(--space-lg); }
-
-.sm-icon {
-  width: var(--space);
-  height: var(--space); }
-
-h3::first-letter {
-  /* nice looking fancy. why isnt applying within category?? */
-  font-size: 120%;
-  filter: brightness(110%); }
-
 #categories {
   /* List of services offered */
-  /* FAILURE: can't get flexbox working like i want with nice alignment and also word-wrap and blabla */
-  /* but this is maybe good enough? only works sorta ok with 1/2/3 cols because of specific content so  guess point is to use breakpoints and table or better yet grid */
-  display: flex;
-  /* display: grid; /1* fuck with this *1/ */
+  display: grid;
+  /* fuck with this */
+  grid-template-columns: repeat(2, 37%);
   justify-content: space-evenly;
   align-content: bottom;
   text-align: center;
   flex-wrap: wrap; }
+  #categories h3::first-letter {
+    /* nice looking fancy. why isnt applying within category?? */
+    font-size: 120%;
+    filter: brightness(110%); }
 
 #categories ul {
   flex: 0 1 auto;
   margin: calc(0.5 * var(--space));
   padding: calc(1.0 * var(--space));
-  border-radius: 0.20rem;
-  border: var(--line-width-sm) solid var(--bg-1);
-  min-width: 35%;
-  /* ensure only two per line */
-  /* min-width: 45%; /1* ensure no awkward two on one row, one on rest... not exactly universal solution tho :/ *1/ */
-  /* /1* oh and doesnt work for like if font small enough that two fit nicely gah *1/ /1* easy enough with js tho.. *1/ */
-  /* /1* max-width: 100%; *1/ */
-  /* max-width: 55%; */
   text-align: left;
   font-size: 1.1rem;
-  backdrop-filter: blur(2.5px);
-  -webkit-backdrop-filter: blur(2.5px);
-  background: hsla(var(--hue-3), 70%, var(--lum-fg-2), 0.06);
-  transition: 0.3s;
-  box-shadow: -1px -1px 7px 4px rgba(55, 39, 37, 0.25);
-  /* nah doesnt suit page/design. but effect is fine */ }
+  -webkit-backdrop-filter: blur(3px);
+          backdrop-filter: blur(3px);
+  background: hsla(var(--hue-3), 70%, var(--lum-fg-6), 0.1);
+  transition: background 0.5s, border-radius 0.5s, transform 0.3s, -webkit-backdrop-filter 0.1s;
+  transition: backdrop-filter 0.1s, background 0.5s, border-radius 0.5s, transform 0.3s;
+  transition: backdrop-filter 0.1s, background 0.5s, border-radius 0.5s, transform 0.3s, -webkit-backdrop-filter 0.1s;
+  box-shadow: 1px 0px 17px 5px hsla(var(--hue-1), 20%, var(--lum-fg-6), 0.15);
+  border-radius: 1.50rem;
+  -webkit-backdrop-filter: blur(1rem);
+          backdrop-filter: blur(1rem); }
   #categories ul:hover {
-    border-radius: 0.80rem;
-    transform: translateZ(20deg); }
+    border-radius: 0.75rem;
+    -webkit-backdrop-filter: blur(0.6rem);
+            backdrop-filter: blur(0.6rem);
+    background: hsla(var(--hue-3), 60%, var(--lum-fg-5), 0.25);
+    filter: brightness(1.1); }
   #categories ul > * {
     margin: 0.1em 0.1em 0.1em; }
   #categories ul li {
@@ -2945,14 +2466,15 @@ h3::first-letter {
     -webkit-text-fill-color: transparent; }
   #categories ul h3 {
     display: inline;
-    position: relative; }
+    position: relative;
+    margin-left: 0.4em; }
     #categories ul h3:after {
       /* shitty underline didnt end up too hot hmm */
       content: "";
       height: 2.5px;
       background: linear-gradient(to right, rgba(216, 187, 182, 0.7), var(--fg-2) 130%);
-      width: 100%;
-      transform: skew(-20deg);
+      width: 98%;
+      transform: skew(-30deg);
       position: absolute;
       bottom: -1px;
       left: -2px;
@@ -2973,12 +2495,291 @@ h3::first-letter {
   #categories ul {
     font-size: calc(1.1rem + 0.3vw); } }
 
-/* corrections which need to go after everything else */
+/* wanted to put in own file but wasnt compatible with live reload solution... */
+:root {
+  /* general vars */
+  /* SIZES */
+  --space-static:      1.2rem;
+  --space-lg-static:   2.0rem;
+  --space:             1.2rem;
+  --space-lg:          2.0rem;
+  --space-sides:       var(--space-lg);
+  /* inner horizontal margin */
+  --space-edges:       var(--space-sides);
+  /* size of outer edges  */
+  --space-top:         2rem;
+  /* top margin above header */
+  --media-width-main: calc(100vw - 2 * var(--space-edges) - 2 * var(--line-width));
+  /* would it be context dependent or just use root 100% i guess uh */
+  --banner-height:     600px;
+  --logo-ratio:        0.3710;
+  /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */
+  /* just use img... */
+  /* or make logo look like i want in first place - needs higher-res or vector bounce anyways. then suddenly had to change to 3710... */
+  --header-height:           4.5rem;
+  /* beware can be 3 or 6 in practice.... temp bc reading arbitrary css vars with calc is fiddly */
+  --header-with-menu-height: 18rem;
+  /* not truly dynamic bc of annoying sticky */
+  --header-height-current:   var(--header-height);
+  /* will then be changed by js dep on whether menu open... */
+  --footer-height:           3.00rem;
+  --link-offset:         calc( var(--header-height-current));
+  --menu-width-fraction: 0.70;
+  --line-scale-factor: 0.5;
+  --line-width:        2.0px;
+  /* main design line/border width */
+  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-sm:     calc(1 / (1.5 + var(--line-scale-factor)) * var(--line-width));
+  /* main design line/border width */
+  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-md:     calc(((1 + var(--line-scale-factor)) / 2) * var(--line-width));
+  /* main design line/border width */
+  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-lg:     calc(1 / (1 + var(--line-scale-factor)) * var(--line-width));
+  /* main design line/border width */
+  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-vert:   2px;
+  /* main design line/border width */
+  /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --scale:             1.0;
+  /* px line-width drifts when font scales so must compensate... better way? */
+  --fiddle-multiplier: 1;
+  /* was 3. works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
+  --left-marker:       calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
+                            + 0.75 * var(--space) - 1 * (var(--fiddle-multiplier) * var(--line-width)));
+  --right-marker:       calc(100% - 1 * var(--left-marker) - 2 * var(--line-width));
+  /* makes sense right side needs one more unit since it has the right border... */
+  --top-to-menu-height: calc(2 * var(--space-top) + 2em - 5 * var(--line-width));
+  --header-expand-time:         0.2s;
+  --navigation-transition-time: 0.20s;
+  --perspective:       100;
+  --parallax:          50;
+  --parallax-scale:    calc(1 + (var(--parallax) / var(--perspective)));
+  --parallax-px:       calc(-1px * var(--parallax));
+  --parallax-sm:       calc(0.50 * var(--parallax));
+  --parallax-sm-scale: calc(1 + (var(--parallax-sm) / var(--perspective)));
+  --parallax-sm-px:    calc(-1px * var(--parallax-sm));
+  --parallax-squeeze-scale: calc(1 + (1 / var(--perspective) * var(--perspective)));
+  --parallax-squeeze-px:    calc(-1px * var(--perspective));
+  --parallax-squeeze-tf:    -1570%;
+  /* fuck knows why */
+  /* COLORS */
+  --hue-1:             180;
+  --hue-2:               8;
+  --hue-3:             192;
+  --lum-dark-1:         8%;
+  --lum-dark-2:        12%;
+  --lum-dark-3:        15%;
+  --lum-dark-4:        18%;
+  --lum-dark-5:        26%;
+  --lum-dark-6:        34%;
+  --lum-light-1:       calc(100% - var(--lum-dark-1));
+  --lum-light-2:       calc(100% - var(--lum-dark-2));
+  --lum-light-3:       calc(100% - var(--lum-dark-3));
+  --lum-light-4:       calc(100% - var(--lum-dark-4));
+  --lum-light-5:       calc(100% - var(--lum-dark-5));
+  --lum-light-6:       calc(100% - var(--lum-dark-6));
+  --light-1:           hsl(var(--hue-2), 20%, var(--lum-light-2));
+  --light-2:           hsl(var(--hue-2), 7%, var(--lum-light-1));
+  --light-text:        hsl(29, 35%, 86%);
+  --light-3:           #ededed;
+  --light-4:           hsl(var(--hue-2), 7%, var(--lum-light-4));
+  --light-5:           hsl(var(--hue-2), 7%, var(--lum-light-5));
+  --light-6:           hsl(var(--hue-2), 7%, var(--lum-light-6));
+  --nav-accent: hsla(var(--hue-3), 40%, 20%, 0.35);
+  --selection-accent: hsl(14, 75%, 80%, 0.7);
+  --neutral-accent: #99aaee;
+  /* link? */
+  /* fixc bruv/box */
+  --red: #d18479;
+  --red-2: #af7370;
+  --red-3: #ea9a98;
+  --green: #b4b88d;
+  --green-2: #8b8c63;
+  --green-3: #ccdaa8;
+  --yellow: #dabd7a;
+  --yellow-2: #d0af80;
+  --yellow-3: #d9c894;
+  --blue: #7692ab;
+  --blue-2: #80a0b3;
+  --blue-3: #a6c0cd;
+  --purple: #bd979d;
+  --purple-2: #af8589;
+  --purple-3: #d9b7b7;
+  --aqua: #91b8a4;
+  --aqua-2: #9ab499;
+  --aqua-3: #B6D1B4;
+  --orange: #cca687;
+  --orange-2: #dba184;
+  --orange-3: #d9a58a;
+  --dark-1:     hsl(var(--hue-1),  7%,  var(--lum-dark-1));
+  --dark-2:     hsl(var(--hue-3),  7%,  var(--lum-dark-2));
+  --dark-3:     #232323;
+  --dark-4:     hsl(var(--hue-2),  7%,  var(--lum-dark-4));
+  --dark-5:     hsl(var(--hue-2),  7%,  var(--lum-dark-5));
+  --dark-6:     hsl(var(--hue-3),  7%,  var(--lum-dark-6));
+  --opacity-regular:  0.35;
+  --opacity-faint:    0.15;
+  --box-regular-color:    hsla(0, 0%, var(--lum-dark-1), var(--opacity-regular));
+  --box-faint-color:      hsla(0, 0%, var(--lum-dark-1), var(--opacity-faint));
+  --box-regular-color-flip:    hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
+  --box-faint-color-flip:      hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
+  --gradient-bg-main: linear-gradient(-77deg,
+                                      hsl(280, 15%, 8%),
+                                      var(--bg-1))
+                                      ;
+  --user-box-bg:      linear-gradient(hsla(240deg 20% var(--lum-bg-3) / 75%) 0%,
+                                      hsla(240deg 38% var(--lum-bg-3) / 90%) 100%);
+  --user-box-shadow:     hsla(240deg 33% var(--lum-bg-4) / 30%);
+  --user-avatar-shadow:  hsla(240deg 100% var(--lum-fg-1) / 50%); }
+
+[color-mode="light"]:root {
+  --fg-1:       var(--dark-1);
+  --fg-2:       var(--dark-2);
+  --fg-3:       var(--dark-3);
+  --fg-4:       var(--dark-4);
+  --fg-5:       var(--dark-5);
+  --fg-6:       var(--dark-6);
+  --lum-fg-1:   var(--lum-dark-1);
+  --lum-fg-2:   var(--lum-dark-2);
+  --lum-fg-3:   var(--lum-dark-3);
+  --lum-fg-4:   var(--lum-dark-4);
+  --lum-fg-5:   var(--lum-dark-5);
+  --lum-fg-6:   var(--lum-dark-6);
+  --bg-1:       var(--light-1);
+  --bg-2:       var(--light-text);
+  --bg-3:       var(--light-3);
+  --bg-4:       var(--light-4);
+  --bg-5:       var(--light-5);
+  --bg-6:       var(--light-6);
+  --lum-bg-1:   var(--lum-light-1);
+  --lum-bg-2:   var(--lum-light-2);
+  --lum-bg-3:   var(--lum-light-3);
+  --lum-bg-4:   var(--lum-light-4);
+  --lum-bg-5:   var(--lum-light-5);
+  --lum-bg-6:   var(--lum-light-6); }
+
+:root {
+  /* we run dark by default */
+  --fg-1:     var(--light-1);
+  --fg-2:     var(--light-2);
+  --fg-3:     var(--light-3);
+  --fg-4:     var(--light-4);
+  --fg-5:     var(--light-5);
+  --fg-6:     var(--light-6);
+  --lum-fg-1: var(--lum-light-1);
+  --lum-fg-2: var(--lum-light-2);
+  --lum-fg-3: var(--lum-light-3);
+  --lum-fg-4: var(--lum-light-4);
+  --lum-fg-5: var(--lum-light-5);
+  --lum-fg-6: var(--lum-light-6);
+  --bg-1:     var(--dark-1);
+  --bg-2:     var(--dark-2);
+  --bg-3:     var(--dark-3);
+  --bg-4:     var(--dark-4);
+  --bg-5:     var(--dark-5);
+  --bg-6:     var(--dark-6);
+  --lum-bg-1: var(--lum-dark-1);
+  --lum-bg-2: var(--lum-dark-2);
+  --lum-bg-3: var(--lum-dark-3);
+  --lum-bg-4: var(--lum-dark-4);
+  --lum-bg-5: var(--lum-dark-5);
+  --lum-bg-6: var(--lum-dark-6);
+  --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
+  --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint)); }
+
+/* BUNCH OF MEDIA QUERIES PROB DUMB LUMPING ALL IN SAME SPOT, ANYWAYS */
+@media screen and (min-width: 800px) and (min-height: 800px) {
+  :root {
+    --space: 1.5rem;
+    --space-lg: 2.25rem; } }
+
+@media screen and (min-width: 1000px) {
+  .line {
+    /* i guess x overflow only important on ios, so we hype here */
+    width: 200%;
+    /* extend out like damn */ }
+  :root {
+    --space-edges: 10vw;
+    --space-sides: 10vw;
+    font-size: 1.10rem; } }
+
+@media screen and (max-width: 600px), screen and (max-height: 600px) {
+  :root {
+    --space: 1.0rem;
+    --space-lg: 1.5rem;
+    --space-sides: var(--space);
+    /* remember -sides based on the smaller num for mobile (since margins are more precious) */
+    --space-edges: 0.8rem;
+    /* perfectly makes room for macos scrollbar */
+    --scale: 0.9;
+    font-size: 0.90rem; } }
+
+@media not all and (min-resolution: 0.001dpcm), (prefers-reduced-motion: reduce) {
+  /* wants no parallax */
+  :root {
+    --perspective: 1;
+    /* just to be sure */
+    --parallax:    0;
+    --parallax-squeeze-tf: 100%;
+    /* fuck knows why */ } }
+
+@media not all and (min-resolution: 0.001dpcm) {
+  /* is safari */ }
+
+@supports (-webkit-overflow-scrolling: touch) {
+  /* iOS devices */
+  body {
+    /* prevent insane bumping of p font size in landscape and more */
+    -moz-text-size-adjust: 100%;
+         text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%; } }
+
+@media only screen and (-webkit-device-pixel-ratio: 3) {
+  :root {
+    /* *im thinking this is what it's about. 3 vs 2 pixels per pixel */
+    --fiddle-multiplier: 1;
+    /* makes iphone x line up with current formulas/offsets */ } }
+
+@media only screen and (min-device-width: 375px) and (max-device-width: 812px) and (-webkit-device-pixel-ratio: 3) {
+  /* iphone x */ }
+
+@media only screen and (min-device-width: 375px) and (max-device-width: 667px) {
+  /* iphone 6-8. i mean not really tho could be loads?? */ }
+
+@media only screen and (min-device-width: 414px) and (max-device-width: 736px) {
+  /* 6-8 plus */ }
+
+@media screen and (max-width: 500px) {
+  :root {
+    font-size: 0.80rem;
+    --space: 0.6rem;
+    --space-lg: 0.9rem; } }
+
+@media screen and (max-width: 400px) {
+  :root {
+    font-size: 0.72rem;
+    --space-sides: calc(0.5 * var(--space));
+    /* remember -sides based on the smaller num for mobile (since margins are more precious) */
+    --space-edges: calc(0.5 * var(--space)); }
+  #top-banner {
+    /* need a better solution for ensuring doesnt overflow... like a tallet image? */
+    padding-top: 0; } }
+
+@media screen and (max-width: 319px) {
+  :root {
+    font-size: 0.67rem;
+    --space-edges: calc(0.1 * var(--space));
+    --line-width-vert: 0; } }
+
+/************************************************************/
+/* MEDIA corrections which need to go after everything else */
+/************************************************************/
 @media not all and (min-resolution: 0.001dpcm) {
   /* is safari */
   .stick-up {
     /* safari is being way irresponsible drawing img sticky layers.. and general compositing/z-index */
-    position: relative;
+    position: relative !important;
     top: initial; }
   .parallax-bg {
     transform: initial; } }
@@ -2993,3 +2794,186 @@ h3::first-letter {
     position: relative !important;
     left: 0 !important;
     width: 100% !important; } }
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0; }
+
+:target {
+  /* pseudo-el representing a target (link, id/el)... */
+  /* does not appear to do the trick tho. wait isnt it :: or hmm nope would be if was like *::target? */
+  /* html, body does seem to semi-work so whatever */
+  scroll-padding-top: var(--header-height-current); }
+
+html, body {
+  scroll-padding-top: var(--header-height-current); }
+
+html {
+  height: 100%;
+  overflow-x: hidden;
+  /* gotta be on both or doesnt work on iphone hmm */
+  scroll-behavior: smooth;
+  /* makes in-page links scroll to target beautifully in chrome */
+  /* overscroll-behavior-y: none; /1* actually works in chrome, stops from overscroll. BUT makes scrolling and esp sticky jittery it seems? *1/ */ }
+
+body {
+  font-family: 'Fira Sans', sans-serif;
+  color: var(--fg-1);
+  background-color: var(--bg-1);
+  width: calc(100% - 2 * var(--space-edges));
+  margin: auto;
+  /* no overflow hidden on body = iphone can scroll sideways. on body works but sticky header breaks */
+  /* -webkit-overflow-x: hidden; nope... no work */
+  /* overflow-x: hidden; /1* gotta be on both or doesnt work on iphone hmm *1/ */
+  /* -webkit-overflow-scrolling: touch; */ }
+
+li {
+  list-style: none; }
+
+a {
+  color: var(--fg-2);
+  text-decoration: none; }
+  a:focus, a:hover, a:active {
+    transform: scale(1.1);
+    filter: brightness(125%) drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1)); }
+
+main {
+  /* dunno purpose of why I choose .main-content... */
+  width: 100%;
+  border-top: var(--line-width) solid;
+  /* should make configurable. off looks p nice on main page */
+  border-bottom: var(--line-width) solid;
+  /* should make configurable. off looks p nice on main page */
+  border-left: var(--line-width-vert) solid;
+  /* should make configurable. off looks p nice on main page */
+  border-right: var(--line-width-vert) solid;
+  /* should make configurable. off looks p nice on main page */
+  margin-top: var(--space-lg);
+  padding-bottom: var(--footer-height);
+  /* XXX actually, footer height... */
+  -webkit-animation: fade-in 2.5s ease-in;
+          animation: fade-in 2.5s ease-in; }
+
+.main-content {
+  position: relative;
+  background: var(--gradient-bg-main); }
+  .main-content > section:first-of-type {
+    /* top section: no upper border */
+    border-top: 0; }
+  .main-content > section:last-of-type {
+    /* last section, no bottom border */
+    margin-bottom: 0;
+    z-index: 30; }
+
+pre {
+  white-space: pre-wrap;
+  background-color: var(--bg-1);
+  color: var(--fg-2);
+  padding: 1.25em;
+  margin: 1em calc(-0.5 * var(--space));
+  border-top: var(--line-width-sm) solid; }
+
+p > code {
+  /* single-word vars etc */
+  background-color: var(--bg-2);
+  color: var(--fg-3);
+  padding: 0.4em 0.3em; }
+
+section {
+  /* one main section (img + header + piece of content) */
+  max-width: 100%;
+  flex: 1 1 auto;
+  position: relative;
+  justify-content: center;
+  align-items: middle;
+  padding: var(--space-lg) var(--space-lg);
+  /* for padding-less main: */
+  border-top: var(--line-width) solid; }
+  section h1 {
+    text-align: center;
+    padding-bottom: var(--space);
+    padding-top: var(--space); }
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600; }
+
+section h1, article h1 {
+  font-size: 2rem; }
+
+/* restore proper h1 from 1.5 bs */
+.h0 {
+  font-size: 2.5rem; }
+
+.h0-responsive {
+  font-size: calc(2.5rem + 8vw); }
+
+/* size based on viewport, with sensible min */
+.h-responsive {
+  font-size: calc(1.5rem + 3vw); }
+
+@supports (font-size: 0px) {
+  /* can additionally set a maximum... */
+  .h0-responsive {
+    font-size: min(6rem,   2.5rem + 8vw); }
+  .h-responsive {
+    font-size: min(3.5rem, 1.5rem + 3vw); } }
+
+h3::first-letter {
+  /* nice looking fancy. why isnt applying within category?? */
+  font-size: 1.15em;
+  filter: brightness(115%); }
+
+span::first-letter,
+p::first-letter {
+  font-size: 1.15em;
+  filter: brightness(115%); }
+
+.buttons {
+  display: flex;
+  justify-content: space-evenly; }
+
+button {
+  --around: calc(0.4 * var(--space)) calc(0.4 * var(--space-lg));
+  padding: var(--around);
+  margin: var(--around);
+  background: transparent;
+  color: var(--fg-2);
+  border: var(--line-width-md) solid;
+  border-radius: 0.15rem;
+  position: relative;
+  cursor: pointer;
+  outline: 1px transparent;
+  transition: outline-color 0.25s, transform 0.25s, text-shadow 0.25s; }
+  button:hover, button:active {
+    border-radius: 0;
+    transition: outline-color 0.2s;
+    text-shadow: 1px 0px 3px var(--fg-1); }
+  button label {
+    position: relative;
+    font-size: 1.2rem;
+    z-index: 2;
+    cursor: pointer; }
+
+button:hover .blur-bg, button:active .blur-bg,
+.blur-bg:hover, .blur-bg:active {
+  opacity: 0.8; }
+
+input {
+  margin: 0 0.25em;
+  /* just for checkboxes... */ }
+
+video {
+  height: auto; }
+
+textarea:focus, input:focus, button:focus {
+  outline: 0;
+  border: 2px solid var(--fg-3); }
+
+textarea, input, .form-control {
+  background: var(--bg-1);
+  color: var(--fg-1);
+  font-size: 1.2em;
+  padding: 0.3em 0.5em;
+  margin-bottom: 0.4em;
+  border: 1px solid var(--bg-5); }
