@@ -80,8 +80,6 @@
       [ui/safe :experiments [(tab routes)]]])
     {:title "Experiments" :tint "green"}])
 
-(defn home-page []
-  [view/ui])
 
 (defn doc-page []
   (let [docs @(rf/subscribe [:content [:docs]])]
@@ -92,20 +90,13 @@
 
 
 (defn blog-page []
-  [with-heading [:blog :heading]
-   [blog/blog-container [blog/blog-feed]]])
-
+  [with-heading [:blog :heading] [blog/blog-container [blog/blog-feed]]])
 (defn post-blog-page [] ; how nicely set is-personal for this but also unset etc yada
-  [with-heading [:blog :heading] 
-   [blog/post-blog]])
-
+  [with-heading [:blog :heading] [blog/post-blog]])
 (defn blog-archive-page []
-  [with-heading [:blog :heading]
-   [blog/blog-archive]])
-
+  [with-heading [:blog :heading] [blog/blog-archive]])
 (defn blog-post-page []
-  [with-heading [:blog :heading]
-   [blog/blog-single-post]])
+  [with-heading [:blog :heading] [blog/blog-single-post]])
 
 (defn log-page []
   [with-heading [:common :banner-heading]
@@ -124,7 +115,7 @@
     ["/"
      [""
       {:name        :home
-       :view        #'home-page
+       :view        #'view/ui
        :controllers [{:start (fn [_]
                                (rf/dispatch [:page/init-home]))
                       :stop (fn [_]
