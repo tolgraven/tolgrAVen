@@ -7,6 +7,12 @@
   filter: #{'invert() hue-rotate(180deg)'};
 }
 
+#loading-full-page {
+  padding: 5rem;
+}
+.always-dark { // content with dark non --bg-n background, so use light text
+}
+
 .service-fullscreen {
   height: 100%;
   width: 100%;

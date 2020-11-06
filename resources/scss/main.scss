@@ -17,30 +17,20 @@
 @import "compat.scss";
 
  
-
-.always-dark { // content with dark non --bg-n background, so use light text
-  }
-  
-
-
 * {
   box-sizing: border-box; // include border in elem sizing
   margin:  0;
   padding: 0;
 }
 
-:target {
-  /* pseudo-el representing a target (link, id/el)... */
+:target { /* pseudo-el representing a target (link, id/el)... */
   /* does not appear to do the trick tho. wait isnt it :: or hmm nope would be if was like *::target? */
   /* html, body does seem to semi-work so whatever */
   scroll-padding-top: var(--header-height-current);
-} /* header-height or header-with-menu-height... */
-/* doesnt seem to work though, try putting in html, body... */
+}
 
 html, body {
-  /* scroll-margin-block-start: calc(1em + var(--header-height-current)); */
   scroll-padding-top: var(--header-height-current);
-  /* scroll-padding-top: calc(1em + var(--header-with-menu-height)); */
 }
 html {
   height: 100%;
@@ -50,7 +40,9 @@ html {
 }
 
 body {
-  font-family: 'Open Sans', sans-serif;
+  // font-family: 'Open Sans', sans-serif;
+  font-family: 'Fira Sans', sans-serif;
+  // font-family: 'Helvetica', sans-serif;
   color: var(--fg-1);
   background-color: var(--bg-1);
   width: calc(100% - 2 * var(--space-edges));
@@ -85,19 +77,24 @@ main { /* dunno purpose of why I choose .main-content... */
   border-left:  var(--line-width-vert) solid; /* should make configurable. off looks p nice on main page */
   border-right: var(--line-width-vert) solid; /* should make configurable. off looks p nice on main page */
   margin-top: var(--space-lg);
-  // padding-bottom: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
-  padding-bottom: calc(3.1 * var(--space)); /* XXX actually, footer height... */
+  padding-bottom: var(--footer-height); /* XXX actually, footer height... */
 
   animation: fade-in 2.5s ease-in;
 }
-
 .main-content {
   position: relative;
   background: var(--gradient-bg-main);
+  > section:first-of-type { /* top section: no upper border */
+    border-top: 0;
+  }
+  > section:last-of-type { /* last section, no bottom border */
+    margin-bottom: 0;
+    z-index: 30;
+  }
 }
+
 pre {
   // overflow: scroll;
-  /* max-height: 6em; */
   white-space: pre-wrap;
   background-color: var(--bg-1);
   color: var(--fg-2);
@@ -106,34 +103,10 @@ pre {
   border-top: var(--line-width-sm) solid;
 }
 
-
 p > code { /* single-word vars etc */
   background-color: var(--bg-2);
   color: var(--fg-3);
   padding: 0.4em 0.3em;
-}
-/* DOCS SECTION */
-section.docs a {
-  color: var(--blue-2);
-  font-style: italic;
-}
-section.docs p.title {
-  border-top: var(--line-width-sm) solid currentColor;
-  /* background-color: var(--bg-2); */
-  background: linear-gradient(to right, var(--bg-2) 85%, var(--bg-1));
-  margin: 1.7em 0.5em 1em;
-  font-size: 1.4em;
-  font-weight: 600;
-  width: 50%;
-}
-section.docs .bs-callout {
-  margin-top: 2rem;
-  padding: var(--space);
-  background-color: var(--bg-2);
-}
-section.docs .bs-callout h4 {
-  font-size: 1.1em;
-  margin-bottom: 0.75em;
 }
 
 
@@ -146,23 +119,16 @@ section { /* one main section (img + header + piece of content) */
   align-items: middle;
   padding:   var(--space-lg) var(--space-lg); /* for padding-less main: */
   border-top: var(--line-width) solid;
-}
-section > h1, .jumbo > h1 {
-  text-align: center;
-  padding-bottom: var(--space);
-  padding-top:    var(--space);
-}
-.main-content > section:first-of-type { /* top section: no upper border */
-  border-top: 0;
-}
-.main-content > section:last-of-type { /* last section, no bottom border */
-  margin-bottom: 0;
-  // padding-bottom: calc(3.5 * var(--space-lg)); /* XXX actually, footer height... */
-  // fucks up gallery when that's last...
-  z-index: 30;
+  
+  h1 {
+    text-align: center;
+    padding-bottom: var(--space);
+    padding-top:    var(--space);
+  }
 }
 
-h1, h2, h3, h4, h5, h6 { font-weight: normal; }
+
+h1, h2, h3, h4, h5, h6 { font-weight: 600; } // slightly less than bold
 
 section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
 .h0 { font-size: 2.5rem; }
@@ -173,12 +139,18 @@ section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
   .h-responsive {  font-size: #{'min(3.5rem, 1.5rem + 3vw)'}; }
 }
 
+h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
+  font-size: 1.15em;
+  filter: brightness(115%);
+}
 // make more specific and original hardcore v for whatever links
-// span::first-letter {
-//   font-size: 1.3em;
-//   font-weight: bold;
-//   filter: brightness(115%);
-// }
+span::first-letter,
+p::first-letter {
+  font-size: 1.15em;
+  // font-weight: 600;
+  filter: brightness(115%);
+}
+
 
 .buttons {
   display: flex;
@@ -225,15 +197,14 @@ video {
   height: auto;
 }
 
-
 textarea, input, button {
   &:focus {
     outline: 0;
-    border: 1px solid var(--fg-6);
+    border: 2px solid var(--fg-3);
   }
 }
-// textarea, input, .form-control {
-textarea, .form-control {
+textarea, input, .form-control {
+// textarea, .form-control {
   background: var(--bg-1);
   color: var(--fg-1);
   font-size: 1.2em;
@@ -242,11 +213,6 @@ textarea, .form-control {
   border: 1px solid var(--bg-5);
 }
 
-
-
-#loading-full-page {
-  padding: 5rem;
-}
 
 
 

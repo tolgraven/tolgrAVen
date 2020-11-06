@@ -146,10 +146,10 @@
 }
 .covering-faded { /* jk */ /* incidentally not easy to type on a proper vim setup */
   --opacity: 0.65;
-  /* --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1), var(--opacity)); */
-  /* --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1), var(--opacity)); */
-  --color-1: hsla(var(--hue-1),  38%,  var(--lum-bg-1));
-  --color-2: hsla(var(--hue-2),  36%,  var(--lum-bg-1));
+  /* --color-1: hsl(var(--hue-1),  38%,  var(--lum-bg-1), var(--opacity)); */
+  /* --color-2: hsl(var(--hue-2),  36%,  var(--lum-bg-1), var(--opacity)); */
+  --color-1: hsl(var(--hue-1),  38%,  var(--lum-bg-1));
+  --color-2: hsl(var(--hue-2),  36%,  var(--lum-bg-1));
   background: linear-gradient(-40deg, var(--color-1), var(--color-2));
   opacity: var(--opacity);
   transition: opacity 0.4s;
@@ -169,11 +169,9 @@
   --color-2: hsla(var(--hue-2),  30%,  var(--lum-bg-1), var(--opacity));
   /* background: linear-gradient(-30deg, var(--color-1), var(--bg-1)); */
   background: linear-gradient(var(--deg), var(--color-1), var(--color-2));
-  /* background: linear-gradient(var(--deg), var(--color-1), var(--color-2)); */
   // background-size: 230%;
   // animation: gradient-bg 10s ease infinite;
   // backdrop-filter: blur(4px) contrast(70%);
-  // -webkit-backdrop-filter: blur(4px) contrast(70%);
 }
 @keyframes gradient-bg {
 	0%     { background-position:   0% 50%;
@@ -284,9 +282,6 @@
   /* transform-style: preserve-3d; */
 }
 .origin-toptop {
-  /* transform-origin: 50% -100%; */
-  /* transform-origin: 50% -250%; */ /* gap up top chrome #intro-end, middle ground? */
-  /* transform-origin: 50% -150%; */
   transform-origin: 50% -100%;
 }
 
