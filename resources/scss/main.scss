@@ -121,8 +121,11 @@ section { /* one main section (img + header + piece of content) */
   
   h1 {
     text-align: center;
-    padding-bottom: var(--space);
-    padding-top:    var(--space);
+
+    &.h-responsive, &.h0-responsive {
+      padding-bottom: var(--space);
+      padding-top:    var(--space);
+    }
   }
 }
 
