@@ -84,6 +84,61 @@
   z-index: 99;
 }
 
+.fullwide { /* expand div back to full width of main despite regular paddings/margins */
+  /* guess should work to only fuck w margin+width directly not left etc? */
+  /* i guess this should be for only when breaking out of margin bs */
+  /* not the other bg fullwide stuff... */
+  margin: 0;
+  padding: 0;
+  position: relative;
+  left: 0;
+  /* left:  calc(0% - 0.5 * var(--space-sides)); */
+  width: #{'min(100%, var(--media-width-main))'};
+}
+.fullwide > .media {
+  max-width: unset;
+  margin: 0;
+}
+.widescreen-safe { /* ensure bottom doesnt run out of 16:9 bg media on (ironically) _thin_ screens */
+  height: calc(1.0 * var(--header-with-menu-height)); /* just, some nice tall enough height - max-height will save us anyways */
+  max-height: calc((100vw - (2 * var(--space-edges))) / 2);
+}
+
+
+.stick-up { /* make sticky just below header */
+  position: sticky !important;
+  top: var(--header-height-current);
+}
+
+.appear-wrapper {
+  display: inline-block; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post
+  // width: 100%; // same as above, fixes but maybe also screws? yes it does
+  transition: all 0.8s;
+  
+  &.opacity {
+    opacity: 0;
+    transition: opacity 1.0s;
+  }
+  
+  &.zoom-y {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+
+  &.zoom-x {
+    opacity: 0;
+    transform: scaleX(0);
+    transition: transform 0.55s;
+  }
+  
+  &.appeared {
+    opacity: 1;
+    transform: none;
+    translate: none
+  }
+  &.slow {       transition: all 1.5s; }
+  &.extra-slow { transition: all 3.0s; }
+}
 
 .covering { /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
   z-index: 10;
@@ -259,5 +314,4 @@
 .flex { display: flex; }
 .box-regular { box-shadow: 2px 1px 17px 7px var(--box-regular-color); }
 .box-faint {   box-shadow: 2px 1px 17px 7px var(--box-faint-color); }
-
 
