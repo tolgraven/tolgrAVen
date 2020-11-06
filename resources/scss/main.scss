@@ -11,6 +11,7 @@
 @import "blog.scss";
 @import "user.scss";
 @import "experiments.scss";
+@import "components.scss";
 
 /* wanted to put in own file but wasnt compatible with live reload solution... */
 :root { /* general vars */
@@ -297,28 +298,6 @@
 }
 
 
-/* #theme-toggle:checked ~ .themable { */
-/* #theme-toggle:checked ~ body { */
-/* #theme-toggle:checked ~ main { */
-/*   /1* ok so can select main but not body OUCH. *1/ */
-/* /1* .themable { *1/ */
-/*     --bg-1:     var(--dark-1); */
-/*     --bg-2:   var(--dark-2); */
-/*     --fg-1:     var(--light-1); */
-/*     --fg-2:   var(--light-text); */
-/*     --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular)); */
-/*     --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint)); */
-/*     color: red; */
-/* } */
-/* #theme-toggle:not(:checked) ~ main { */
-/*   --bg-1:      var(--light-1); */
-/*   --bg-2:    var(--light-text); */
-/*   --fg-1:      var(--dark-1); */
-/*   --fg-2:    var(--dark-2); */
-/*   --box-regular-color-flip: var(--box-regular-color); /1* light mode always dark shadows *1/ */
-/*   --box-faint-color-flip:   var(--box-faint-color); */
-/*     color: blue; */
-/* } */
 
 * {
   box-sizing: border-box; // include border in elem sizing
@@ -360,57 +339,7 @@ body {
 }
 
 
-@supports(scroll-margin-top: 0px) { /* compensate for our sticky header. */
-  .link-anchor { scroll-margin-top: var(--header-height-current); } }
-@supports not (scroll-margin-top: 0px) {
-  .link-anchor::before { /* have to compensate due to our sticky header. */
-    display: block;      /* on about section not working was due to overflow: auto clearfix... */
-    content: " ";        /* also various safari vs chrome diff in behavior */
-    margin-top: calc(-1.0 * var(--header-height-current));
-    height: calc(1.0 * var(--header-height-current));
-    visibility: hidden;
-    pointer-events: none;
-    z-index: -1;
-  }
-}
 
-/* TODO: line border cross pattern for eg images, in same way as site main, connecting to main borders... */
-/* together with similar for topnav and feels "almost" proper design language ish */
-/* could also run along down connecting to next section... */
-.line { /* i guess x overflow only important on ios, so we hype -edges by media query */
-  width: calc(var(--space-edges) + 100%); /* extend out one margin */
-  background-color: var(--fg-1);
-  --height: var(--line-width);
-  height: var(--height);
-}
-.line-sm {
-  --height: var(--line-width-sm);
-}
-
-.line.line-header {
-  position: sticky; /* starts between header and main, turns into demarcation */
-  z-index: 100;
-  top: var(--header-height); /* not -current since being overridden in header.css then */
-  transition: top var(--header-expand-time) ease 0.0s;
-  margin-top: var(--space-top); /* space before sticky starts */
-}
-.line.line-footer {
-  position: absolute;
-  top: 0; /* if attach at top of footer instead of bottom of main */
-  right: 0; /* extend on left instead of right width already good */
-  z-index: 100;
-}
-.line-left  { border-left:  var(--line-width-vert) solid; }
-.line-right { border-right: var(--line-width-vert) solid; }
-.line-left-sm  { border-left:  var(--line-width-vert) solid; }
-.line-right-sm { border-right: var(--line-width-vert) solid; }
-.lined-container {
-  // position: relative; /* need to be able to attach lines around */
-  border: var(--line-width) solid;
-}
-.lined-container-sm {
-  border: var(--line-width-sm) solid;
-}
 
 li {
   list-style: none;
@@ -483,18 +412,6 @@ section.docs .bs-callout {
 section.docs .bs-callout h4 {
   font-size: 1.1em;
   margin-bottom: 0.75em;
-}
-
-.md-rendered {
-  img {
-    padding: 0.75em 0;
-    width: 100%;
-  }
-}
-
-.column {
-  margin: var(--space);
-  text-align: left;
 }
 
 
@@ -582,43 +499,8 @@ input {
   margin: 0 0.25em; /* just for checkboxes... */
 }
 
-.media-container {
-  position: relative;
-  display: flex;
-  flex-flow: column;
-  align-items: center; /* align-items instead of justify-content because flow by column */
-  justify-content: center;
-  text-align: center;
-
-  p { /* img/video caption... */
-    font-size: 0.85em; /* small captions */
-    margin-top: 0.3em;
-    width: var(--media-width-main);
-    text-align: left;
-  }
-}
 video {
   height: auto;
-}
-.media {
-  width: 100%;
-  max-width: 700px;
-  margin: var(--space) calc(0.5 * var(--space)) 0.2rem calc(0.5 * var(--space));
-  user-select: none;
-}
-.image-sm {
-  width: calc(0.5 * var(--media-width-main));
-  max-height: 300px;
-  object-fit: cover; /* since we're setting max-height we must also ensure zooms instead of stretching */
-}
-.image-flex {
-  flex: 1 0 auto;
-  max-width: 200px; /* tho then should actually INCREASE on small screens when 1col... */
-}
-.image-inset {
-  margin-top: 0;
-  margin-left: 0;
-  border-radius: 0.15rem;
 }
 .fullwide { /* expand div back to full width of main despite regular paddings/margins */
   /* guess should work to only fuck w margin+width directly not left etc? */
@@ -640,144 +522,6 @@ video {
   max-height: calc((100vw - (2 * var(--space-edges))) / 2);
 }
 
-.media-as-bg {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  max-width: unset;
-  object-fit: cover;
-  margin: 0;
-
-  transition: transform 2.0s ease;
-}
-.section-with-media-bg-wrapper { /* like section-bg-wrapper but NOT using background for img/video */
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-  /* border-top: var(--line-width) solid; */
-  
-  &:hover .media-as-bg {
-    transform: scale(1.10);
-  }
-}
-
-
-.bg-static-section {
-  position: relative;
-  overflow-y: hidden;
-}
-
-
-.component-failed { /* DEV: react error boundary triggered */
-  padding: var(--space);
-  color: var(--red-1);
-  width: 100%;
-}
-.component-failed > * { /* DEV: react error boundary triggered */
-  margin: var(--space);
-}
-
-.loading-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  top: 1.0em; // wiggles so move down
-  animation: 0.9s linear 0.2s infinite both alternate running wiggle;
-}
-.loading-wiggle-z {
-  animation: 1.3s ease-in 0.0s infinite both alternate running wiggle-z;
-}
-.loading-wiggle-y {
-  animation: 0.7s ease 0.0s infinite both alternate running wiggle-y;
-}
-.loading-spinner, .loading-spinner-massive {
-  opacity: 0.8;
-  transition: all 0.5s;
-  position: relative;
-  font-size: 150%;
-  // text-shadow: 1px 1px 4px white;
-  text-shadow: .04em .04em .2em white;
-}
-.loading-spinner-massive { // full page size
-  // position: absolute;
-  padding: 20rem;
-  font-size: 900%;
-  animation: fade-in 3.5s ease 0.7s;
-  // animation: 1.0s ease 1.0s infinite both alternate running wiggle;
-  // animation: wiggle 1.0s ease;
-  /* @keyframes duration | timing-function | delay | iteration-count | direction | fill-mode | play-state | name */
-}
-@keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes wiggle {
-  from {
-    transform: translateX(-0.7em);
-  }
-  to   {
-    transform: translateX(0.7em);
-  }
-}
-@keyframes wiggle-z {
-  from { transform:  translateZ(1.0em); }
-  to   { transform:  translateZ(-0.4em); }
-}
-@keyframes wiggle-y {
-  from { transform:  translateY(0.7em); }
-  to   { transform:  translateY(-0.4em); }
-}
-.main-loading {
-  border: 0;
-}
-
-.loading-text-line {
-  position: relative;
-  overflow: hidden;
-  height: 1em;
-  margin: 0.5em;
-  animation: pulse 1s infinite ease-in-out;
-  
-  &:before {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 50%;
-    z-index: 1;
-    width: 500%;
-    margin-left: -250%;
-    animation: sweep 1.8s linear infinite;
-    // background: linear-gradient(to right, rgba($ph-bg, 0) 46%, rgba($ph-bg, .35) 50%, rgba($ph-bg, 0) 54%) 50% 50%;
-  }
-}
-@keyframes sweep {
-     0% { transform: translate3d(-30%, 0, 0);
-  } 100% { transform: translate3d(30%, 0, 0); }
-}
-@keyframes pulse {
-     0% { background-color: rgba(165, 165, 165, 0.12);
-  } 37% { background-color: rgba(165, 165, 165, 0.3);
-  } 45% { background-color: rgba(165, 165, 165, 0.35);
-  } 50% { background-color: rgba(165, 165, 165, 0.25);
-  } 100% { background-color: rgba(165, 165, 165, 0.12);
-  }
-}
-// @mixin nth-children($points...) {
-//   @each $point in $points {
-//     &:nth-child(#{$point}) {
-//       @content;
-//     }
-//   }
-// }
-// // width seems way more reasonable just doing in js tho
-// // or would we repeat same ten like
-// @include nth-children(1, 2, 7, 9) { width: 90%; }
-// @include nth-children(5, 6, 10) { width: 70%; }
-// @include nth-children(3, 7) { width: 50%; }
-// @include nth-children(4, 10) { width: 60%; }
 
 .appear-wrapper {
   display: inline-block; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post
@@ -826,138 +570,6 @@ textarea, .form-control {
   border: 1px solid var(--bg-5);
 }
 
-.close-btn {
-  position: absolute;
-  right: -0.7em;
-  top: -0.2em;
-  &:hover {
-    outline: 0;
-    transform: scale(1.1);
-  }
-}
-
-#modal-container {
-  opacity: 0.0;
-  transition: opacity 0.3s;
-}
-#modal-container.modal-is-open {
-  opacity: 1.0;
-  transition: opacity 0.3s;
-}
-#modal-bg {
-  position: fixed;
-  width: 100%; height: 100%;
-  top: 0; left: 0;
-  background: rgba(30, 30, 45, 0.6);
-  z-index: 200;
-  transition: all 0.5s;
-}
-#modal {
-  position: fixed;
-  top: 25%;
-  left: 25%;
-  z-index: 201;
-}
-
-
-.hud {
-  position: fixed;
-  z-index: 100;
-  bottom: calc(var(--footer-height) + 0.25rem); /* ;actually, footer, if sticky... */
-  right: calc(var(--space-edges) + 0.05rem);
-  max-width: 70%;
-  max-height: 50%;
-  // overflow-x: break-word;
-  overflow-y: scroll;
-  -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0.0) 0%, rgba(0,0,0,1) 15%);
-}
-.hud-message {
-  margin: var(--space);
-  padding: 0.3rem 0.7rem;
-  border: 1px solid rgba(170, 170, 250, 0.6);
-  // box-shadow: 0px 12px 15px 3px inset rgba(150, 150, 250, 0.5);
-  box-shadow: 0px 12px 15px 3px inset rgba(150, 150, 250, 0.15);
-  // box-shadow: 0px 2px 10px 2px rgba(230, 220, 250, 0.3);
-  border-bottom-left-radius: 0.75rem;
-  border-bottom-right-radius: 0.325rem;
-  color: var(--bg-3);
-  opacity: 0.90; 
-
-  // &.error   { background: var(--red-3); }
-  &.error   {
-    background: linear-gradient(0deg, var(--red), var(--red-2));
-  }
-  // &.error   { background: linear-gradient(0deg, var(--red-1), var(--red-2)); }
-  &.warning {
-    background: var(--orange);
-  }
-  &.info    {
-    background: var(--bg-3);
-    color: var(--fg-1);
-  }
-
-  pre {
-    padding: 0.5em 0.5em;
-    margin: 0 -0.5em 0 -0.5em;
-  }
-  .hud-message-title {
-    font-weight: bold;
-    padding-right: var(--space-lg);
-    padding-bottom: calc(0.33 * var(--space));
-    // max-width: calc(100% - var(--space-lg));
-  }
-
-  .close-btn {
-    top: -0.6em;
-    right: -1.2em;
-  }
-}
-
-.hud-modal-main {
-  padding: 0.75rem 2rem;
-  > * {
-    padding: 0.75rem;
-  }
-}
-
-// neded for full width for some reason. dont remember that from cue-db ghmm
-.log-container {
-  padding: 0;
-  border-left: 0;
-  border-right: 0;
-  border-bottom: 0;
-  
-  table, thead, tbody, tr {
-    width: 100%;
-  }
-}
-.log {
-  background: var(--bg-3);
-  
-  .log-messages {
-    > td {
-      padding: 0.25em 0.5em;
-      font-size: 80%;
-      max-width: 55vw;
-      overflow-wrap: break-word;
-      
-      > pre {
-        border: none;
-        // padding: 0;
-        margin: 0;
-        white-space: pre-wrap;
-        overflow-x: auto;
-        // overflow-x: break-word;
-        // overflow-wrap: break-word;
-      }
-    }
-  }
-}
-.log-time { text-align: right }
-.log-level, .log-title { text-align: center }
-.log-level.error   { color: var(--red); }
-.log-level.warning { color: var(--orange); }
-.log-level.debug   { color: var(--green); }
 
 
 .stick-up { /* make sticky just below header */
@@ -1037,55 +649,6 @@ textarea, .form-control {
   z-index: 29;
 }
 
-/* FLOAT STUFF */
-.caption-inset { /* caption overlaying media */
-  margin: 0.8em;
-  font-size: 0.65rem; /* weird ass size when iphone landscape, and webkit-text-size-adjust doesnt seem to help... */
-  opacity: 0.65;
-  position: absolute;
-  z-index: 40;
-}
-.caption-inset.right {
-  right: 0;
-  text-align: right;
-}
-.caption-inset.left   { left:   0; }
-.caption-inset.top    { top:    0; }
-.caption-inset.bottom { bottom: 0; }
-
-.float-with-caption {
-  margin: var(--space) 0;
-}
-.float-with-caption:first-of-type { /* keep top of first inset level with top of text. */
-  margin-top: 0;
-}
-.float-with-caption > .media {
-  margin: 0;
-  width: 100%; /* and then set on parent div */
-}
-.float-with-caption.left {
-  float: left;
-  margin-right: calc(1.0 * var(--space-lg)); /* using reg space becomes bit wrong when very slim... too tight. */
-}
-.float-with-caption.right {
-  float: right;
-  margin-left: calc(1.0 * var(--space-lg));
-}
-figcaption, .float-with-caption {
-  font-size: 0.8rem;
-}
-
-.float-wrapper { overflow: auto; } /* clearfix */
-
-
-.md-icon {
-  width:  var(--space-lg);
-  height: var(--space-lg);
-}
-.sm-icon {
-  width:  var(--space);
-  height: var(--space);
-}
 h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
   font-size: 120%;
   filter: brightness(110%);
