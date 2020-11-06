@@ -250,7 +250,7 @@
        (scroll-by offset))))
 
 
-(defn observe [on-view-change & [id]] ;what's with the weird scrolling bug?
+(defn observer [on-view-change & [id]] ;what's with the weird scrolling bug?
   (let [in-view (atom 0.0)
         on-change (fn [[entry & _]]
                     (let [frac (-> (.-intersectionRatio entry)
