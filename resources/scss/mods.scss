@@ -233,9 +233,12 @@
   backdrop-filter: blur(2rem) brightness(110%);
   transition: opacity 0.5s;
 }
+button:hover .blur-bg, button:active .blur-bg,
+.blur-bg:hover, .blur-bg:active {
+  opacity: 0.8;
+}
 .blur-behind {
   backdrop-filter: blur(1rem);
-  -webkit-backdrop-filter: blur(1rem);
 }
 
 

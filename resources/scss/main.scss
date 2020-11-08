@@ -181,10 +181,6 @@ button {
     cursor: pointer;
   }
 }
-button:hover .blur-bg, button:active .blur-bg,
-.blur-bg:hover, .blur-bg:active {
-  opacity: 0.8;
-}
 
 input {
   margin: 0 0.25em; /* just for checkboxes... */
@@ -209,7 +205,4 @@ textarea, input, .form-control {
   margin-bottom: 0.4em;
   border: 1px solid var(--bg-5);
 }
-
-
-
 
