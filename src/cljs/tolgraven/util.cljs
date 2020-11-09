@@ -249,6 +249,9 @@
      (when offset
        (scroll-by offset))))
 
+(defn scroll-to-px "Pixels, simply"
+  [scroll-y-px] ; should have bangs, also take parent id like -by, if necessary?
+  (.scrollTo js/window 0 scroll-y-px))
 
 (defn observer [on-view-change & [id]] ;what's with the weird scrolling bug?
   (let [in-view (atom 0.0)

@@ -55,24 +55,26 @@
     nil)) ;avoid it trying to parse heh
 
 
-; these should technically be reg-fx but fx seem flaky as fuck wtf?
-; common/navigate! stopped working, focus-element works as fx but these dont.
-; double up for now lol.
 (rf/reg-event-fx :scroll/by
  (fn [_ [_ value & [in-elem-id]]] ; rem (should handle % too tho?), id of container..
-   (util/scroll-by value in-elem-id) ;XXX remove once figure out what's wrong with reg-fx
    {:scroll/by [value in-elem-id]}))
 (rf/reg-fx :scroll/by
- (fn [value & [in-elem-id]]
+ (fn [[value & [in-elem-id]]]
    (util/scroll-by value in-elem-id)))
 
 (rf/reg-event-fx :scroll/to
  (fn [_ [_ id & [offset]]]
-   (util/scroll-to id offset) ;XXX remove once figure out what's wrong with reg-fx
    {:scroll/to [id offset]}))
 (rf/reg-fx :scroll/to
- (fn [id & [offset]]
+ (fn [[id offset]]
    (util/scroll-to id offset)))
+
+(rf/reg-event-fx :scroll/px
+ (fn [_ [_ px]]
+   {:scroll/px px}))
+(rf/reg-fx :scroll/px
+ (fn [px]
+   (util/scroll-to-px px)))
 
 
 (rf/reg-event-fx :run-highlighter!
