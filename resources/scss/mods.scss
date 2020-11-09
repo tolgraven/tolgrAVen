@@ -47,6 +47,9 @@
   bottom: 0;
 }
 
+/* * * * * * * * * * * * * * *
+ * MODS FOR PAGE TRANSITIONS *
+ * * * * * * * * * * * * * * */
 .swapper {
   position: relative;
 }
@@ -60,25 +63,49 @@
   opacity: 1;
 
   transition: all 0.0s;
-  z-index: 10000;
+  z-index: 1000;
 
   display: inherit;
+  
+  &.opacity {
+    opacity: 0;
+  }
+  &.left {
+    z-index: -1;
+    transform: translateX(-150%);
+  }
+
+  &.swapped-out {
+    pointer-events: none;
+    transition: 0.5s ease;
+  }
 }
-.swapped.gone {
-  display: none;
+
+.swap-in {
+  transition: all 0.0s;
+  // transform-style: preserve-3d;
+  // perspective: 1000px;
+
+  &.right {
+    transform: translateX(150%);
+    transition: all 0s;
+    z-index: -1;
+  }
+  &.rotate {
+    transform: rotateY(180deg) translateZ(-500px);
+    perspective-origin: bottom;
+    // backface-visibility: hidden;
+  }
+  &.opacity {
+    opacity: 0;
+  }
+  &.swapped-in {
+    transition: all 0.5s;
+    opacity: 1;
+    transform: none;
+  }
 }
-.swap-out {
-  // transition: all 0.0s;
-}
-.swap-out.opacity {
-  opacity: 0;
-  transition: opacity 0.6s;
-}
-.swap-out.left {
-  transform: translateY(-250%);
-  transition: all 0.7s;
-  // animation: hider 0.1s;
-}
+
 @keyframes hider {
   0% { opacity: 1;
   } 100% { opacity: 0; }

@@ -34,15 +34,6 @@
 ;                    :error   (fn [& args]
 ;                               (util/log :error "Error" (apply str args))) })
 
-(rf/reg-event-fx
- :common/start-navigation ; XXX obviously navigation has to happen straight away. but two components (old, new) always rendered, one slid away...
- ; TODO prevent from starting nav when same page (once figure out anchors)
- (fn [{:as cofx :keys [db]} [_ match]]
-   (let [old-match (:common/route db)]
-     {:dispatch-n [;[:transition/out old-match]
-                   ]
-      :dispatch-later {:ms (or (-> db :options :transition-time) 10) ;160)
-                       :dispatch [:common/navigate match]}})))
 
 (rf/reg-event-fx :common/navigate   [(rf/inject-cofx :scroll-position)]
   (fn [{:as cofx :keys [db scroll-position]} [_ match]]
@@ -75,11 +66,12 @@
     {:common/navigate-fx! [url-key params query]}))
 
 
-(rf/reg-event-fx :swap-main-page
+(rf/reg-event-fx :swap-trigger
   (fn [{:keys [db]} [_ item]]
-    {:dispatch [:state [:swap :last] item]
-     :dispatch-later {:ms 2000
-                      :dispatch [:state [:swap :hide] item]}}))
+    {:dispatch [:state [:swap :running] item]
+     :dispatch-later {:ms 2000 ; got transition taking 1s yet this (?) sometimes triggers abruptly before it ends hmm (+ hardly optimal so long...)
+                      :dispatch [:state [:swap :finished] item]}}))
+
 
 (defn assoc-in-factory [base-path]
   (fn [db [_ path value]]
@@ -188,13 +180,6 @@
            (assoc-in db [:state :appear id] value)
            (update-in db [:state :appear] dissoc id))})) ; now just generic
 
-(rf/reg-event-db :transition/out ; if all transitions same (fade or w/e) dont really need pass match... and, if specific order or similar matters, need pass both.
-  (fn [db [_ activity direction]]  ; would just set something in state that then sets css class.
-    (assoc-in db [:state :transition] true))) ; now just generic
-
-(rf/reg-event-db :transition/in ; if all transitions same (fade or w/e) dont really need pass match... and, if specific order or similar matters, need pass both.
-  (fn [db [_ direction match]]  ; would just set something in state that then sets css class.
-    (assoc-in db [:state :transition] false))) ; now just generic
 
 (rf/reg-event-fx :menu ;; this why better sep. can then inject css var and not sub? i somehow remeber that being badd
   (fn [{:as cofx :keys [db]} [_ state]]
