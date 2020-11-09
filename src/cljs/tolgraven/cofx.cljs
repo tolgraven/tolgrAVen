@@ -32,3 +32,11 @@
 
 ; use re-frame-utils ::inject to inject subs!
 ; caveat also needs deref in a view
+ 
+(rf/reg-cofx :scroll-position
+ (fn [cofx] ; 
+   (assoc cofx :scroll-position (.-scrollY js/window)))) ;seems harmless enough. then persist.
+   ; let [;el (or el (js/document.querySelector "main"))
+   ;       ; prob want to support per-element scroll restoration later...
+   ;       ; that'd be a whole other thing to support in generic navigate fn tho
+   ;       ]
