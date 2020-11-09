@@ -198,11 +198,20 @@
     transform: scaleX(0);
     transition: transform 0.55s;
   }
+  &.slide-in {
+    opacity: 0;
+    transform: translateY(30%);
+    transition: opacity 0.1s, transform 0.2s ease;
+  }
+  &.basic {
+    visibility: hidden;
+  }
   
   &.appeared {
     opacity: 1;
     transform: none;
-    translate: none
+    translate: none;
+    visibility: visible;
   }
   &.slow {       transition: all 1.5s; }
   &.extra-slow { transition: all 3.0s; }
