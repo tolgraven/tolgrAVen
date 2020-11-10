@@ -25,15 +25,17 @@
   (fn [_ [_ id-key ms f & args]]
     {:dispatch-later
      {:ms ms
-      :dispatch [:run-fn! (into [id-key f] args)]}}))
+      :dispatch [:run-fn! id-key f args]}}))
 
 (rf/reg-event-fx :run-fn!
   (fn [_ [_ id-key f & args]]
-    {:run-fn-fx! (into [id-key f] args)}))
+    {:run-fn-fx! [id-key f args]}))
 
 (rf/reg-fx :run-fn-fx!
   (fn [[id-key f & args]]
-    (apply f args)))
+    (if args
+      (apply f args)
+      (f))))
 
 
 (rf/reg-fx :document/set-title

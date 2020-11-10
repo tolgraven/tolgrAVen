@@ -166,7 +166,7 @@
          (not (.-ended video))
          (< 2 (.-readyState video)))))
 
-(defn play-pauser "Play/pause video smoothly by changing playback rate progressively (calls itself in intervals)"
+(defn play-pauser "Returns fn to :play or :pause video smoothly by changing playback rate progressively (calls itself in intervals)"
   [video & {:keys [rate-step time-per-step]
             :or {rate-step 0.34 time-per-step 330}}]
   (let [state (atom (if (playing? video) :playing :paused)) ; :playing, :to-play, :paused, :to-pause

@@ -64,9 +64,9 @@
   (let [on-change (fn [frac]
                     (let [state @(rf/subscribe [:state [:seen id]])]
                       (cond
-                       (and (>= frac 0.99) (not state))
+                       (and (>= frac 0.50) (not state))
                        (rf/dispatch [:state [:seen id] true])
-                       (and (< frac 0.99) state)
+                       (and (< frac 0.50) state)
                        (rf/dispatch [:state [:seen id] false]))))
         observer (util/observer on-change (str "seen-" id))]
     (fn [id kind & components]
@@ -81,7 +81,7 @@
 
 (defn fading-bg-heading [{:keys [title target bg tint] :as content}]
   [:<>
-   [:div
+   [:div.fading-bg-heading
     {:class "section-with-media-bg-wrapper covering stick-up fullwidth"
      :on-click (when target #(rf/dispatch [:common/navigate! target]))}
     [:div.fader

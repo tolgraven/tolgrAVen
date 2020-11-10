@@ -50,10 +50,10 @@
 
 
 (rf/reg-sub :header-text
- :<- [:state]
+ :<- [:state [:is-personal]]
  :<- [:content [:header]]
- (fn [[state header] [_ _]]
-   (if (:is-personal state)
+ (fn [[is-personal header] [_ _]]
+   (if is-personal
      (:text-personal header)
      (:text header))))
 

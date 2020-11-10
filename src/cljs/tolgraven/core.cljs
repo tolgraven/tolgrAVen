@@ -3,7 +3,7 @@
     [reagent.dom :as rdom]
     [reagent.core :as r]
     [re-frame.core :as rf]
-    [kee-frame.core :as k]
+    ; [kee-frame.core :as k]
     [com.degel.re-frame-firebase :as firebase]
 
     [tolgraven.ajax :as ajax]

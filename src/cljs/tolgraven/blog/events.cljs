@@ -14,7 +14,7 @@
 (rf/reg-event-fx :page/init-blog [debug]
   (fn [{:keys [db]} _]
     (if-not (-> db :state :booted :blog)
-     {:dispatch-n [[:blog/state [:page] 0]
+     {:dispatch-n [[:blog/nav-page 1]
                    [:booted :blog]
                    [:<-store [:blog-posts]    [:blog/set-content :posts]]
                    [:<-store [:blog-comments] [:blog/set-content :comments]] ] ; would be nice to defer (further in?) mount til certain of these run, now loads before happens... so set in initial db
@@ -78,7 +78,7 @@
                    [:blog/post-new input])
                  [:form-field [:post-blog] nil]
                  [:blog/state [:editing] nil]
-                 [:blog/nav-page 0]]})) ;or whatever. also applies (even more!) to comment-ui
+                 [:blog/nav-page 1]]})) ;or whatever. also applies (even more!) to comment-ui
 
 (rf/reg-event-fx :blog/post
  (fn [{:keys [db]} [_ post]]

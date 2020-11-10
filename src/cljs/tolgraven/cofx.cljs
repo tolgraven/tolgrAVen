@@ -17,6 +17,8 @@
                                                0.5)))
 
 (defonce id-counters (atom {})) ;js has its own id gen thing so use that maybe. but no sequential then?
+; silly using defonce and atom instead of (or rather parallel with) db right?
+; already pulling an ugly one here messing with db so if doing that why not just bypass atom
 (rf/reg-cofx :gen-id
  (fn [cofx [k & [parent-id]]] ;however would manage to pass hahah
    (let [k (or k :id)]

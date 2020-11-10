@@ -200,14 +200,14 @@
     {:firebase/read-once {:path [:id-counters]
                           :on-success [:id-counters/handle]}}))
 
-(rf/reg-event-db :loading/on ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
+(rf/reg-event-db :loading/on ;; TODO should queue up a (cancelable) timeout event that will trigger unless category confirmed loading finished
  (fn [db [_ category]]
    (assoc-in db [:state :is-loading category] true)))
-(rf/reg-event-db :loading/off ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
+(rf/reg-event-db :loading/off
  (fn [db [_ category]]
    (assoc-in db [:state :is-loading category] false)))
 
-(rf/reg-event-db :booted ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
+(rf/reg-event-db :booted
  (fn [db [_ page]]
    (assoc-in db [:state :booted page] true)))
 

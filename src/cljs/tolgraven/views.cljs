@@ -41,7 +41,6 @@
    {:id id :class class ;must be outside header or breaks...
     :type "checkbox"    :default-checked @(rf/subscribe checked-path)
     :on-click (fn []
-                ; (rf/dispatch (into (or on-click-path checked-path)
                 (rf/dispatch (into checked-path
                                    [(not @(rf/subscribe checked-path))])))}])
 
@@ -87,8 +86,6 @@
 (defn ui-intro [{:keys [title text buttons logo-bg bg]}]
   [:section#intro
    [bg-logo logo-bg]
-   ; [ui-carousel-bg bg]
-   ; [ui-carousel-bg-2 bg]
    [:img#top-banner.media.media-as-bg (first bg)]
 
    [:<>
@@ -101,8 +98,7 @@
 
 
 (defn ui-interlude "Banner across with some image or video or w/e
-                    TODO if video, autoplay once when (re-)seen, or cont if clicked
-                    using ref and stuff"
+                    TODO should stick top-border on outer (which should be section anyways ugh)"
   [{:keys [title caption bg nr]}]
   (let [vid-ref (atom nil) ; docs says reg atom better but only updates w ratom, bc 2nd fn or? also .play no works
         controls (atom nil)
@@ -113,7 +109,7 @@
                       (@controls :pause)))
         observer (util/observer on-change (str "interlude-" nr))]
     (fn [{:keys [title caption bg nr]}]
-      [:div {:id (str "interlude-" nr)
+      [:section.nopadding {:id (str "interlude-" nr)
              :class "section-with-media-bg-wrapper parallax-wrapper"
              :on-mouse-enter #(when-let [video @vid-ref] (@controls :play))
              :on-mouse-leave #(when-let [video @vid-ref] (@controls :pause))}
@@ -121,7 +117,7 @@
                            :ref (fn [el]
                                   (reset! vid-ref el)
                                   (reset! controls (util/play-pauser el)))}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
-       [:section
+       [:div
         {:class "covering-faded widescreen-safe center-content parallax-group"
          :ref #(observer %) ;oh yeah check first el for :video cant work it's rendered at that point lol
          :style {:transition "opacity 4.5s"
@@ -175,12 +171,13 @@
                      :style (merge (when-not (pos? @frac)
                                      {:opacity 0})
                                    {:transition "transform 8.5s ease, opacity 3s"
-                                    :transform (str "translateZ(calc(5px * " @frac "))")})})]
+                                    :transform (str "translateZ(calc(3px * " @frac "))"
+                                                    "translateY(calc(-3px * " @frac "))")})})]
          [:section#intro-end.center-content
           [:h1.h0-responsive.parallax-bg
            {:style {:z-index 1
                     :transition "transform 8.5s ease"
-                    :transform (str "translateZ(" (* 50 @frac) "px)")}}
+                    :transform (str "translateZ(" (* 35 @frac) "px)")}}
            title]] ;ideally want this also growing (and moving quicker upwards)]
          [ui-inset caption 3]
          [ui-inset (str "Fraction visible:" @frac) 2]
@@ -202,17 +199,17 @@
 
 (defn ui-gallery "Stupid css thing slides sidewayus x) Make it go out left side would be cool"
   [img-attrs]
-  [:section#gallery.covering.fullwide
-   [:div.sideways
+  [:section#gallery.covering.fullwide {:style {:z-index 11}}
+   [:div.sideways {:style {:z-index 11}}
     (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
          [:img.media img])]])
 
-; tho should do hiccup pre-render server side then just inject news feed and whatnots
-; TODO for good separation of frontpage / personal/bloggy, and leveraging "line all the way to right"
-; make entire view scroll sideways and basically flip geometry
-; so literally parallel pages
-; logo text opposite side and changes to "tolgraven actual physical" or w/e,
-; colors bit different,
+(defn cv "Write dat cv. Put it on the site. Probably not last? Dunno."
+  []
+  [:section.cv
+   [:h1 "Resume"]
+   [:p "Here goes the CV. Make it nice and funky with graphix n stuff."]])
+
 (defn ui []
   (let [interlude @(rf/subscribe [:content [:interlude]])
         interlude-counter (atom 0)
@@ -226,10 +223,8 @@
 
      [ui-interlude (get-lewd)]
      [ui-moneyshot @(rf/subscribe [:content [:moneyshot]])]
-     ; need to watch div and show/hide para laxy bee gees as appropriate - both bc now fucking compositor and ugly clipping etc
-     ; also sidesteps "omg each new div higher z" induced problem
      [ui-story @(rf/subscribe [:content [:story]])]
      [ui-interlude (get-lewd)]
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
-     [ui-interlude (get-lewd)]]))
+     [cv]]))
 
