@@ -83,12 +83,12 @@ main { /* dunno purpose of why I choose .main-content... */
 .main-content {
   position: relative;
   background: var(--gradient-bg-main);
-  > section:first-of-type { /* top section: no upper border */
+  section:first-of-type { /* top section: no upper border */
     border-top: 0;
   }
-  > section:last-of-type { /* last section, no bottom border */
+  section:last-of-type { /* last section, no bottom border */
     margin-bottom: 0;
-    z-index: 30;
+    z-index: 40;
   }
 }
 

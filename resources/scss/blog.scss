@@ -12,6 +12,7 @@
 
 .blog {
   background: var(--gradient-bg-main); // needed to cover heading
+  z-index: 11;
 
   a {
     color: var(--blue-2);
