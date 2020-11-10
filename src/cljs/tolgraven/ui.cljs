@@ -408,8 +408,10 @@
                              (rf/dispatch [:diag/unhandled :remove id]))]])]
   [:div.hud.hidden
    {:class (when (seq @to-show) "visible")}
-   (for [msg @to-show]
-     [msg-fn msg])]))
+   (for [msg @to-show
+         :let [id (str "hud-id-" (:id msg))]] ^{:key id}
+     [appear id "zoom-x slow"
+      [msg-fn msg]])]))
 
 
 
