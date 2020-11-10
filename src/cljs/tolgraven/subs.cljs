@@ -57,12 +57,18 @@
      (:text-personal header)
      (:text header))))
 
+
 (rf/reg-sub :common/route
-  (fn [db _] (-> db :common/route)))
-(rf/reg-sub :common/page-id :<- [:common/route]
+  (fn [db [_ last?]]
+    (get-in db (if last? [:common/route-last] [:common/route]))))
+
+(rf/reg-sub :common/page-id
+  (fn [[_ last?]] (rf/subscribe [:common/route last?]))
   (fn [route _] (-> route :data :name)))
-(rf/reg-sub :common/page    :<- [:common/route]
-  (fn [route _] (-> route :data :view)))
+
+(rf/reg-sub :common/page
+  (fn [[_ last?]]  (rf/subscribe [:common/route last?]))
+  (fn [route [_ _]] (-> route :data :view)))
 
 
 (rf/reg-sub :get-css-var
