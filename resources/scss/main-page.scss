@@ -137,11 +137,11 @@
 
   &.service-fullscreen {
     font-size: 300%;
-    width: 200%;
-    height: 100%;
-    z-index:100;
-    margin-bottom: 18rem;
-    // transform: scale(3.0);
+    width: 200%; // seems to be in relation to regular size
+    height: 100%; // seems to be in relation to section?
+    z-index: 100;
+    margin-bottom: 18rem; // pad container. just a value to approximate regular section height.
+    cursor: initial;
   }
     
   > * {
@@ -173,7 +173,7 @@
     
     &:after { /* shitty underline didnt end up too hot hmm */
       content: "";
-      height: 2.5px;
+      height: 0.125em;
       background: linear-gradient(to right, hsla(8, 30%, 78%, 0.7), var(--fg-2) 130%);
       width: 98%;
       transform: skew(-30deg);
