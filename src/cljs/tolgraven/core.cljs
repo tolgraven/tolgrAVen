@@ -236,7 +236,7 @@
   (ajax/load-interceptors!)
 
   (init-firebase)
-  (rf/dispatch [:id-counters/fetch]) ; dispatch firebase general fetches, test case is silly id counter persistence. which then needs to be fetched into app-db once ready
+  (rf/dispatch [:init]) ; dispatch firebase general fetches, test case is silly id counter persistence. which then needs to be fetched into app-db once ready
   (rf/dispatch cookie-notice)
   (util/log "Init complete, mounting root component")
   (mount-components))

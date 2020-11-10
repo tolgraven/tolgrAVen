@@ -5,7 +5,7 @@
     [ajax.core :as ajax]
     [day8.re-frame.http-fx]
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
-    [akiroz.re-frame.storage :refer [reg-co-fx! persist-db-keys]]
+    [akiroz.re-frame.storage :as localstore]
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
     [tolgraven.util :as util]
@@ -20,13 +20,6 @@
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
-(defn reg-event-db ; wrapper
-  [event-id handler]
-  (rf/reg-event-fx
-    event-id
-    [(persist-db-keys :app [:state :options])]
-    (fn [{:keys [db]} event-vec]
-      {:db (handler db event-vec)})))
 
 ; re-frisk occasionally throws 10MB long "trace while storing" errors so def dont try to display that shit.
 ; (rf/set-loggers!  {:warn  (fn [& args]
@@ -219,13 +212,59 @@
    (assoc-in db [:state :booted page] true)))
 
 
+(localstore/reg-co-fx! :state       ;; local storage key
+                       {:fx   :ls   ;; re-frame fx ID.     Both :fx and :cofx keys are optional,
+                        :cofx :ls}) ;; re-frame cofx ID.   They will not be registered if unspecified.
+
+(rf/reg-event-fx :ls/store-path   [(rf/inject-cofx :ls)]
+ (fn [{:keys [db ls]} [_ ls-path db-path]] ;map of keys to paths I guess?
+   {:ls (assoc-in ls ls-path (get-in db db-path))}))
+
+(rf/reg-event-fx :ls/store-val    [(rf/inject-cofx :ls)]
+ (fn [{:keys [ls]} [_ ls-path v]]
+   {:ls (assoc-in ls ls-path v)}))
+
+(rf/reg-event-fx :ls/get-path   [debug
+                                 (rf/inject-cofx :ls)]
+ (fn [{:keys [db ls]} [_ ls-path db-path]] ;map of keys to paths I guess?
+   {:db (assoc-in db db-path (get-in ls ls-path)) }))
+
+
+(rf/reg-event-fx :listener/add! 
+ (fn [{:keys [db]} [_ el event f]]
+   {:listener/add-fx [el event f]}))
+
+(rf/reg-fx :listener/add-fx 
+ (fn [[el event f]]
+   (let [el (case el
+              "document" js/document
+              "window" js/window
+              el)]
+     (.addEventListener el event f))))
+
+ 
+(rf/reg-event-fx :listener/before-unload-save-scroll ; 
+ (fn [{:keys [db]} [_ ]]
+  (let [scroll-to-ls (fn []
+                       (rf/dispatch-sync [:state [:scroll-position (-> db :common/route :data :name)]
+                                          (.-scrollY js/window)])
+                       (rf/dispatch-sync [:ls/store-path [:scroll-position]
+                                                         [:state :scroll-position]]))] ; im sure we'll want more tho?
+    {:dispatch-n [[:listener/add! "window" "beforeunload" scroll-to-ls]]})))
+
+
+(rf/reg-event-fx :init/scroll-storage  [debug
+                                        (rf/inject-cofx :ls)] ;fetch any existing values, setup listener to persist...
+  (fn [{:keys [db ls]} _]
+    {:db (assoc-in db [:state :scroll-position] (:scroll-position ls))
+     :dispatch [:listener/before-unload-save-scroll]}))
+
+
+
 (rf/reg-event-fx :init ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
- (fn [{:as cofx :keys [db]} [_ dispatch-once dispatch-each]]
-  (let [dispatches (concat dispatch-each ;try each first?
-                           (when-not (get-in db [:done-init])
-                            (conj dispatch-once
-                                  [:set [:done-init] true])))]
-   {:dispatch-n dispatches})))
+ (fn [{:keys [db]} [_ _]]
+  {:dispatch-n [[:init/scroll-storage]
+                [:id-counters/fetch]]}))
 
 ; generic helpers for rapid prototyping.
 ; NOT FOR LONG-TERM USE if straight to data path not viable
