@@ -21,5 +21,6 @@ resources/public/js/compiled/
 resources/public/js/app.js
 .vscode/
 resources/public/css/main.css
+resources/public/css/tolgraven/main.css
 pg/
 .google-oath
