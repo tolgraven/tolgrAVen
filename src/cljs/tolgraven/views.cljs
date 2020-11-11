@@ -171,8 +171,8 @@
                      :style (merge (when-not (pos? @frac)
                                      {:opacity 0})
                                    {:transition "transform 8.5s ease, opacity 3s"
-                                    :transform (str "translateZ(calc(3px * " @frac "))"
-                                                    "translateY(calc(-3px * " @frac "))")})})]
+                                    :transform (str "translateZ(" @frac "px)"
+                                                    "translateY(" @frac "px)")})})]
          [:section#intro-end.center-content
           [:h1.h0-responsive.parallax-bg
            {:style {:z-index 1
