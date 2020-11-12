@@ -13,24 +13,6 @@
 .always-dark { // content with dark non --bg-n background, so use light text
 }
 
-.service-fullscreen {
-  height: 100%;
-  width: 100%;
-}
-#section-services {
-  z-index: 6;
-
-  .media-as-bg {
-    transition: transform 9.5s ease;
-  }
-}
-#services {
-  // color: var(--light-1); // dark bg so white text always
-  position: sticky;
-  z-index: 12;
-  top: 0;
-  margin-bottom: var(--space-lg);
-}
 
 #intro {
   position: relative;
@@ -94,6 +76,20 @@
   z-index: 29;
 }
 
+#section-services {
+  z-index: 6;
+
+  .media-as-bg {
+    transition: transform 15s ease;
+  }
+}
+#services {
+  // color: var(--light-1); // dark bg so white text always
+  position: sticky;
+  z-index: 12;
+  top: 0;
+  margin-bottom: var(--space-lg);
+}
 
 #categories { /* List of services offered */
   display: grid; /* fuck with this */
@@ -138,7 +134,7 @@
   &.service-fullscreen {
     font-size: 300%;
     width: 200%; // seems to be in relation to regular size
-    height: 100%; // seems to be in relation to section?
+    height: 100%; // seems to be in relation to section? & doesnt actually tell outer to expand unless put margin..
     z-index: 100;
     margin-bottom: 18rem; // pad container. just a value to approximate regular section height.
     cursor: initial;

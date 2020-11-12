@@ -143,11 +143,13 @@
      (let [full-screened @(rf/subscribe [:state [:services]]) ]
     [:div#services
       [:div#categories
+       {:on-click #(rf/dispatch [:state [:services] nil])}
        (doall (for [[title icon-name lines] (if-not full-screened
                                               categories
                                               (filter #(= (first %) full-screened) categories)) ;XXX change to keys!!
-             :let [on-click #(rf/dispatch [:state [:services]
-                                           (if full-screened nil title)])]] ^{:key (str "service-" title)}
+                    :let [on-click (fn [e] (.stopPropagation e)
+                                     (rf/dispatch [:state [:services]
+                                                   (if full-screened nil title)]))]] ^{:key (str "service-" title)}
          [ui/seen
           (str "service-" title)
           "basic"
