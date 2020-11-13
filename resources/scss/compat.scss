@@ -28,10 +28,10 @@
     font-size: 0.90rem;
   }
 }
-@media not all and (min-resolution:.001dpcm), /* is safari */
+@media not all and (min-resolution:.001dpcm), /* is safari AND     */
        (prefers-reduced-motion: reduce) {     /* wants no parallax */
   :root {
-    --perspective: 1; /* just to be sure */
+    --perspective: 1; /* just to be sure. but kills translatez etc... */
     --parallax:    0;
     --parallax-squeeze-tf: 100%; /* fuck knows why */
   }
@@ -39,6 +39,14 @@
 @media not all and (min-resolution:.001dpcm) { /* is safari */
   :root {
     // --logo-ratio:        0.40; /* lol, 41.25 actual ratio, 40.6 works on chrome desktop, 40.0 on safari ios... */ /* just use img... */ /* or make logo look like i want in first place - needs higher-res or vector bounce anyways */
+  }
+  
+  .stick-up { /* safari is being way irresponsible drawing img sticky layers.. and general compositing/z-index */
+    position: relative !important;
+    top: initial;
+  }
+  .parallax-bg {
+    transform: initial; // safari doesnt want the y -60% adjustment, initial since cant use parallax anyways
   }
 }
 @supports (-webkit-overflow-scrolling: touch) { /* iOS devices */
@@ -85,20 +93,9 @@
 }
 
 
-
-
-/************************************************************/
-/* MEDIA corrections which need to go after everything else */
-/************************************************************/
-@media not all and (min-resolution:.001dpcm) { /* is safari */
-  .stick-up { /* safari is being way irresponsible drawing img sticky layers.. and general compositing/z-index */
-    position: relative !important;
-    top: initial;
-  }
-  .parallax-bg {
-    transform: initial; // safari doesnt want the y -60% adjustment, initial since cant use parallax anyways
-  }
-}
+/******************************************************************************************/
+/* MEDIA corrections which need to go after everything else (or use !important lol)       */
+/******************************************************************************************/
 @media all and (orientation: landscape) { // hide away header and footer on mobile landscape (...many additional fixes needed)
   header {
     position: relative !important;
