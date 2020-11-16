@@ -55,13 +55,11 @@
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; TODO any time do nav or like trigger :is-loading, start timer, if not flag done set within timeout, also error
      [error-page]
      (if-let [page @(rf/subscribe [:common/page]) ]
-       (let [page-prev @(rf/subscribe [:common/page :last]) ; prob rather ought to alternate bc transfering everything before transition seems dumb...
-             swap @(rf/subscribe [:state [:swap]])]
-         [:main.main-content.perspective-top
-          [swapper "opacity"
-                   [ui/safe :page [page]]
-                   (when page-prev
-                     [ui/safe :page-prev [page-prev]])]])
+       [:main.main-content.perspective-top
+        [swapper "opacity"
+         [ui/safe :page [page]]
+         (when-let [page-prev @(rf/subscribe [:common/page :last])]
+           [ui/safe :page-prev [page-prev]])]]
        [common/loading-spinner true :massive]))
 
    [common/footer @(rf/subscribe [:content [:footer]])]
