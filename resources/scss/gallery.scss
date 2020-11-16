@@ -49,17 +49,6 @@
   100% { scroll-snap-align: center; }
 }
 
-* {
-  scrollbar-color: transparent transparent; /* thumb and track color */
-  scrollbar-width: 0px;
-}
-* { -ms-overflow-style: none; }
-*::-webkit-scrollbar { width: 0; }
-*::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb {
-  background: transparent;
-  border: none;
-}
 
 
 .carousel > li {

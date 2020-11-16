@@ -206,3 +206,15 @@ textarea, input, .form-control {
   border: 1px solid var(--bg-5);
 }
 
+
+* { //kill scrollbar. should rather mod it tho...
+  scrollbar-color: transparent transparent; /* thumb and track color */
+  scrollbar-width: 2px;
+}
+* { -ms-overflow-style: none; }
+*::-webkit-scrollbar { width: 0; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: none;
+}
