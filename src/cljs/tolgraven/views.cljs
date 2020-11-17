@@ -128,6 +128,53 @@
 
 (defn ui-portfolio "GOT NO PPORTFOLIE" [])
 
+(defn carousel "Three-showing carousel with zoom up of center item, and animating changes.
+                The generic enough stuff could go in a more general carousel-builder
+                or we just make two."
+  [options content]
+  (let [num-items-shown 3
+        index (r/atom 1)
+        first-idx (max 0 (- @index
+                            (/ (dec num-items-shown) 2)))
+        content-shown (subvec content
+                              first-idx
+                              (+ first-idx (dec num-items-shown)))
+        dec-fn (fn [] (swap! index #(if (neg? (dec %))
+                                          (dec (count content))
+                                          (dec %))))
+        inc-fn (fn [] (swap! index #(if (< (inc %) (count content))
+                                          (inc %)
+                                          0)))]
+    (fn [options content]
+      [:div.carousel.carousel-three
+       [:button.carousel-btn
+        {:on-click dec-fn}
+        "<"]
+       [:ul.carousel-items
+        [:li.carousel-item-left
+         {:on-click dec-fn}
+         (if (pos? @index) ; well should rather show last item wraparound
+           (get content (dec @index))
+           (last content))]
+        [:li.carousel-item-middle
+         (get content @index)]
+        [:li.carousel-item-right
+         {:on-click inc-fn}
+         (if (< @index (dec (count content)))
+           (get content (inc @index))
+           (first content))]]
+       [:button.carousel-btn
+        {:on-click inc-fn}
+        ">"]
+
+       [:div.carousel-idxs
+        (doall (for [idx (range (count content))]
+                 [:button.carousel-btn.carousel-idx
+                  {:class (when (= @index idx) "topborder")
+                   :on-click #(reset! index idx)}
+                  idx #_"*"]))]
+       [:div @index]])))
+
 (defn service-category-full
   "Fullscreen version of a services category. Should eventually be like a mini-site/portfolio
    listing any projects done in each..."

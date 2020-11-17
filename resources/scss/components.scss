@@ -132,6 +132,57 @@
 }
 
 
+.carousel {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.carousel-btn {
+  border: none;
+  // position: absolute;
+}
+
+.carousel-idxs {
+  position: absolute;
+  // bottom: var(--space);
+  bottom: 0;
+  display: flex;
+  
+  &.carousel-idx { // idea use large index bobbles same bg blur as category bg, looks nice
+    border: var(--line-width) solid;
+    border-radius: 100%;
+
+    margin-right: 0.5rem;
+  }
+}
+.carousel-three {
+  margin: 4rem;
+  padding: 4rem;
+  background: rgba(30, 30, 45, 0.8);
+}
+.carousel-items {
+  display: flex; // no point flex if controlling items individually anyways, or?
+  flex-direction: row;
+  padding: var(--space-lg);
+
+  li {
+    padding: var(--space);
+    border: var(--line-width) solid;
+
+  }
+
+  .carousel-item-left, .carousel-item-right {
+    transform: scale(0.5);
+  }
+  .carousel-item-left {
+  }
+  .carousel-item-middle {
+  }
+  .carousel-item-right {
+  }
+}
+
 @supports(scroll-margin-top: 0px) { /* compensate for our sticky header. */
   .link-anchor { scroll-margin-top: var(--header-height-current); } }
 @supports not (scroll-margin-top: 0px) {
