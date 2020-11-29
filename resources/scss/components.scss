@@ -223,22 +223,34 @@
 .caption-inset.bottom { bottom: 0; }
 
 .float-with-caption {
+  width: 20%; // just a default, for animation
   margin: var(--space) 0;
-}
-.float-with-caption:first-of-type { /* keep top of first inset level with top of text. */
-  margin-top: 0;
-}
-.float-with-caption > .media {
-  margin: 0;
-  width: 100%; /* and then set on parent div */
-}
-.float-with-caption.left {
-  float: left;
-  margin-right: calc(1.0 * var(--space-lg)); /* using reg space becomes bit wrong when very slim... too tight. */
-}
-.float-with-caption.right {
-  float: right;
-  margin-left: calc(1.0 * var(--space-lg));
+
+  transition: 0.3s;
+  cursor: pointer; 
+
+  &.zoomed {
+    width: 80%;
+    margin: var(--space-lg) 10%;
+  }
+
+  &:first-of-type  { /* keep top of first inset level with top of text. */
+    margin-top: 0;
+  }
+  
+  > .media {
+    margin: 0;
+    width: 100%; /* and then set on parent div */
+  }
+  
+  &.left {
+    float: left;
+    margin-right: calc(1.0 * var(--space-lg)); /* using reg space becomes bit wrong when very slim... too tight. */
+  }
+  &.right {
+    float: right;
+    margin-left: calc(1.0 * var(--space-lg));
+  }
 }
 figcaption, .float-with-caption {
   font-size: 0.8rem;

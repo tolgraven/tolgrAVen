@@ -137,9 +137,16 @@
 
 (defn float-img "Needs to go within a float-wrapper..."
   [id img-attr & [caption pos]]
-  [:figure.float-with-caption {:id id :class (or pos "left")}
-      [:img.media.image-inset img-attr]
-      (when caption [:figcaption caption])])
+  (let [zoomed? (r/atom false)]
+    (fn [id img-attr & [caption pos]]
+      [:figure.float-with-caption
+       {:id id :class (or pos "left")
+        :style (when @zoomed?
+                 {:width "80%" ; TODO nvm not hardcoding and not going crazy large when vw high, should be based on img size so don't blow up too much anyways
+                  :margin "var(--space-lg) 10%"})
+        :on-click #(r/rswap! zoomed? not)}
+       [:img.media.image-inset img-attr]
+       (when caption [:figcaption caption])])))
 
 (defn auto-layout-text-imgs "Take text and images and space out floats appropriately. Pretty dumb but eh"
   [content]
