@@ -157,29 +157,69 @@
   }
 }
 .carousel-three {
-  margin: 4rem;
-  padding: 4rem;
-  background: rgba(30, 30, 45, 0.8);
+  background-color: rgba(30, 30, 45, 0.8);
 }
 .carousel-items {
   display: flex; // no point flex if controlling items individually anyways, or?
   flex-direction: row;
-  padding: var(--space-lg);
+  justify-content: center;
+  align-items: center;
+  // transform-style: preserve-3d;
 
   li {
-    padding: var(--space);
-    border: var(--line-width) solid;
+    transition: all 0.5s;
 
+    height: 100%;
+    // width: 20vw;
   }
 
+  .carousel-item-middle {
+    // transition: all 0.5s;
+    transform: none;
+    
+    &.from-left, &.from-right { transition: transform 0.0s; }
+    &.from-left  { transform: scale(0.70) translateX(100%); }
+    &.from-right { transform: scale(0.70) translateX(-100%); }
+  }
+  
   .carousel-item-left, .carousel-item-right {
-    transform: scale(0.5);
+    transition: 0.5s;
+    transform: scale(0.7);
+
+    &.from-left, &.from-right { transition: all 0.0s; }
   }
   .carousel-item-left {
-  }
-  .carousel-item-middle {
+    // transform: rotateY(-30deg) scale(0.7);
+    &.from-left  { transform: translateX(100%) scale(1.0); }
+    &.from-right { transform: translateX(100%) scale(0.0); }
   }
   .carousel-item-right {
+    // transform: rotateY(30deg) scale(0.7);
+    &.from-left  { transform: translateX(100%) scale(0.0); }
+    &.from-right { transform: translateX(-100%) scale(1.0); }
+  }
+  
+  .carousel-item-left-pseudo, .carousel-item-right-pseudo {
+    position: absolute; // PROBLEM: this causes its sizing to be entirely oio
+    top: 0;
+    z-index: -1;
+    transition: 0.5s;
+    // transform: scale(0.0);
+    &.from-left, &.from-right { transition: 0.0s; }
+  }
+  .carousel-item-left-pseudo {
+    left: 0;
+    transform: translateX(-100%) scale(0.0);
+    &.from-left {
+      transform: translateX(0%) scale(0.4);
+    }
+  }
+  .carousel-item-right-pseudo {
+    right: 0;
+    transform: translateX(100%) scale(0.0);
+    &.from-right {
+      transform: translateX(-0%) scale(0.4);
+    }
   }
 }
 

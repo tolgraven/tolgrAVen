@@ -131,41 +131,64 @@
 (defn carousel "Three-showing carousel with zoom up of center item, and animating changes.
                 The generic enough stuff could go in a more general carousel-builder
                 or we just make two."
-  [options content]
+  [id options content]
   (let [num-items-shown 3
-        index (r/atom 1)
+        index (r/atom 1) ; (rf/subscribe [:state [:carousel id :index]])
         first-idx (max 0 (- @index
-                            (/ (dec num-items-shown) 2)))
+                            (/ (dec num-items-shown) 2))) ;get middle
         content-shown (subvec content
                               first-idx
                               (+ first-idx (dec num-items-shown)))
-        dec-fn (fn [] (swap! index #(if (neg? (dec %))
-                                          (dec (count content))
-                                          (dec %))))
-        inc-fn (fn [] (swap! index #(if (< (inc %) (count content))
-                                          (inc %)
-                                          0)))]
-    (fn [options content]
+        dec-fn (fn []
+                 (swap! index #(if (neg? (dec %))
+                                 (dec (count content))
+                                 (dec %)))
+                 (rf/dispatch [:carousel/rotate id @index :dec]))
+        inc-fn (fn []
+                 (swap! index #(if (< (inc %) (count content))
+                                 (inc %)
+                                 0))
+                 (rf/dispatch [:carousel/rotate id @index :inc]))
+        moving (rf/subscribe [:state [:carousel id :direction]])
+        left-content #(if (pos? %)
+                       (get content (dec %))
+                       (last content))
+        right-content #(if (< % (dec (count content)))
+                         (get content (inc %))
+                         (first content))]
+    (fn [id options content]
       [:div.carousel.carousel-three
-       [:button.carousel-btn
-        {:on-click dec-fn}
-        "<"]
+       (merge options
+              {:id (name id)})
+       
+       [:button.carousel-btn {:on-click dec-fn} "<"]
+       
        [:ul.carousel-items
-        [:li.carousel-item-left
-         {:on-click dec-fn}
-         (if (pos? @index) ; well should rather show last item wraparound
-           (get content (dec @index))
+        [:li.carousel-item-left-pseudo
+         {:class @moving}
+         (if (pos? (dec @index))
+           (get content (dec (dec @index)))
            (last content))]
+        [:li.carousel-item-left
+         {:class @moving
+          :on-click dec-fn}
+         (left-content @index)]
+        
         [:li.carousel-item-middle
+         {:class @moving}
          (get content @index)]
+        
         [:li.carousel-item-right
-         {:on-click inc-fn}
-         (if (< @index (dec (count content)))
-           (get content (inc @index))
+         {:class @moving
+          :on-click inc-fn}
+         (right-content @index)]
+        [:li.carousel-item-right-pseudo
+         {:class @moving}
+         (if (< (inc @index) (dec (count content)))
+           (get content (inc (inc @index)))
            (first content))]]
-       [:button.carousel-btn
-        {:on-click inc-fn}
-        ">"]
+       
+       [:button.carousel-btn {:on-click inc-fn} ">"]
 
        [:div.carousel-idxs
         (doall (for [idx (range (count content))]
@@ -253,6 +276,15 @@
     (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
          [:img.media img])]])
 
+(defn ui-gallery-2 "Gallery carousel"
+  [img-attrs]
+  [:section#gallery-2.covering.fullwide {:style {:z-index 12}}
+   [:div "test carousel"]
+   [carousel :gallery-2 {:style {:z-index 11 :height "30vh"} }
+    (into []
+          (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
+         [:img.media img]))]])
+
 (defn cv "Write dat cv. Put it on the site. Probably not last? Dunno."
   []
   [:section.cv
@@ -275,5 +307,6 @@
      [ui-story @(rf/subscribe [:content [:story]])]
      [ui-interlude (get-lewd)]
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
+     [ui-gallery-2 @(rf/subscribe [:content [:gallery]])]
      [cv]]))
 
