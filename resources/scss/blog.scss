@@ -109,7 +109,11 @@
     }
     .blog-comment-reply {
       border: 0;
-      margin-left: calc(2 * var(--space));
+      margin-left: calc(1.5 * var(--space));
+
+      .blog-comment {
+        margin-top: -0.75em;
+      }
     }
     .blog-comment-actions {
       z-index: 0;
