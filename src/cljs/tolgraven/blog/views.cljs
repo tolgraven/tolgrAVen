@@ -91,9 +91,7 @@
     [:<>
      [:section.blog-comment
       [:div.flex
-       [:img.user-avatar
-        {:src (or (:avatar user) ; NOTE (get ... default) apparently not safe?? or works for same op.
-                  @(rf/subscribe [:user/default-avatar]))}]
+       [ui/user-avatar user]
        
        [:div.blog-comment-main
         [:h4.blog-comment-title title]
@@ -269,8 +267,7 @@
      [:section.blog-post
      {:ref #(rf/dispatch [:run-highlighter! %])}
      [:div.flex.blog-post-header
-      [:img.user-avatar.blog-user-avatar
-       {:src (get user :avatar @(rf/subscribe [:user/default-avatar]))}]
+      [ui/user-avatar user "blog-user-avatar"]
       [:div.blog-post-header-main
        [:a {:href (make-link (or permalink id))}
          [:h1.blog-post-title title]]

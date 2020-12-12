@@ -76,6 +76,17 @@
        (into [:<>] components)])))
 
 
+(defn user-avatar "Display a user avatar, with common fallbacks"
+  [user-map & [extra-class]]
+  (let [fallback @(rf/subscribe [:user/default-avatar])]
+    [:div.user-avatar-container ; wrapping in div causes stretch bs not to occur, somehow makes img respect its given w/h
+     [:img.user-avatar
+      {:class extra-class
+       :src (or (:avatar user-map) fallback)
+       :onerror (str "this.src='" fallback "'")
+       :alt (str (:name user-map) " profile picture")} ]]))
+
+
 (defn fading-bg-heading [{:keys [title target bg tint] :as content}]
   [:<>
    [:div.fading-bg-heading

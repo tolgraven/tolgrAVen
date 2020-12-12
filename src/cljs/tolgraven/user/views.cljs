@@ -150,10 +150,7 @@
    (when allow-edit?
      [:div.user-avatar-change
       [:i.fa.fa-edit {:on-click #(rf/dispatch [:user/active-section :change-avatar])}]])
-   [:img.user-avatar
-    {:src (or (:avatar user-map)
-              @(rf/subscribe [:user/default-avatar]))
-     :alt "User profile picture"}]])
+   [ui/user-avatar user-map] ])
 
 (defn admin "User admin page" [user]
   (let [roles @(rf/subscribe [:<-store :auth :roles])
