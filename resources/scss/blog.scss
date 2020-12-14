@@ -26,6 +26,7 @@
     border-bottom: var(--line-width-sm) solid;
     display: flex;
     flex-direction: column;
+    margin-bottom: calc(1.0 * var(--space-lg));
 
     .blog-post-header {
       .blog-post-header-main {
