@@ -54,12 +54,18 @@
    
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; TODO any time do nav or like trigger :is-loading, start timer, if not flag done set within timeout, also error
      [error-page]
-     (if-let [page @(rf/subscribe [:common/page]) ]
-       [:main.main-content.perspective-top
-        [swapper "opacity"
-         [ui/safe :page [page]]
-         (when-let [page-prev @(rf/subscribe [:common/page :last])]
-           [ui/safe :page-prev [page-prev]])]]
+     (if-let [page @(rf/subscribe [:common/page])]
+       (let [page-prev @(rf/subscribe [:common/page :last])
+             anim-class (cond
+                         (= (get-in @(rf/subscribe [:common/route]) [:data :name])
+                            (get-in @(rf/subscribe [:common/route true]) [:data :name])) "" ; or :last not true?
+                         (= js/window.performance.navigation.type 2) ""
+                         :else "opacity")] ; should be dep on, nav same as last no anim, nav by history no anim...
+         [:main.main-content.perspective-top
+          [swapper anim-class
+           [ui/safe :page [page]]
+           (when page-prev
+             [ui/safe :page-prev [page-prev]])]])
        [common/loading-spinner true :massive]))
 
    [common/footer @(rf/subscribe [:content [:footer]])]
