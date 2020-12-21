@@ -243,8 +243,7 @@
                      :style (merge (when-not (pos? @frac)
                                      {:opacity 0})
                                    {:transition "transform 8.5s ease, opacity 3s"
-                                    :transform (str "translateZ(" @frac "px)"
-                                                    "translateY(" @frac "px)")})})]
+                                    :transform (str "scale(1.05) translateZ(" (* @frac -5) "px)")})})] ; need to be above 1.1 or goes jumpy weirdshit clip UGH why
          [:section#intro-end.center-content
           [:h1.h0-responsive.parallax-bg
            {:style {:z-index 1
