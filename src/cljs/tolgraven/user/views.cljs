@@ -209,7 +209,5 @@
              :comments     comments
              :change-avatar change-avatar
              :change-password change-password
-             :change-username change-username)])
-        ]) ]))
-; for fallback img:
-; [:img {:src src :onerror "this.src='img/black.png'"}]
+             :change-username change-username)]) ]) ]))
+
