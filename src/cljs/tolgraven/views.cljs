@@ -271,8 +271,8 @@
 
 (defn ui-gallery "Stupid css thing slides sidewayus x) Make it go out left side would be cool"
   [img-attrs]
-  [:section#gallery.covering.fullwide {:style {:z-index 11}}
-   [:div.sideways {:style {:z-index 11}}
+  [:section#gallery.covering.fullwide
+   [:div.sideways
     (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
          [:img.media img])]])
 
@@ -280,7 +280,7 @@
   [img-attrs]
   [:section#gallery-2.covering.fullwide {:style {:z-index 12}}
    [:div "test carousel"]
-   [carousel :gallery-2 {:style {:z-index 11 :height "30vh"} }
+   [carousel :gallery-2 {:style {:height "30vh"} }
     (into []
           (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
          [:img.media img]))]])

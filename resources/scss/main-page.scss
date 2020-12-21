@@ -198,3 +198,7 @@
     font-size: calc(1.1rem + 0.3vw);
   }
 }
+
+#gallery {
+  z-index: 100; // safari fix
+}
