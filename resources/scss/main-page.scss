@@ -47,7 +47,7 @@
   // max-height: var(--height);
   z-index: 13;
   top: var(--header-height-current);
-  /* transform-origin: 50% -1570%; /1* figure out genericable bs lol *1/ */
+  border-top: var(--line-width) solid;
 }
 #about-story {
   position: relative;
