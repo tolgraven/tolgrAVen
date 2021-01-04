@@ -57,7 +57,7 @@ nav {
   max-height: var(--space);
   min-width: 7.0em;
   background: linear-gradient(-77deg, var(--bg-1) -10%, var(--nav-accent) 80%);
-  border-top:     var(--line-width-sm) solid currentColor;
+  border-top:     var(--line-width-sm) solid  var(--line-color);
   
   transition: filter 0.5s ease-out;
   &:hover {
@@ -225,7 +225,7 @@ menu > nav > .nav-section:last-of-type > .nav-links {
     min-width: calc(100% * var(--menu-width-fraction));
     margin: auto;
     order: 4;
-    border:    var(--line-width) solid currentColor;
+    border:    var(--line-width) solid  var(--line-color);
     // transition: min-width 0.5s ease-out 0.15s;
     animation: menu-anim 0.3s;
 
@@ -233,7 +233,7 @@ menu > nav > .nav-section:last-of-type > .nav-links {
       content: "";
       position: absolute;
       width: var(--line-width);
-      background-color: var(--fg-1);
+      background-color: var(--line-color);
       --height: calc(2rem - 1.5 * var(--line-width)); /* crank it a bit cause we're masking out any spillover... */
     }
     &:before {

@@ -15,7 +15,7 @@
   box-shadow: 1px 1px 8px 10px var(--user-box-shadow);
 }
 .user-section {
-  border: var(--line-width) solid;
+  border: var(--line-width) solid var(--line-color);
   background: var(--user-box-bg);
 
   button label {
@@ -78,7 +78,7 @@
 
 .user-avatar { // outside because also used by blog
   border-radius: 50%;
-  border: var(--line-width-sm) solid;
+  border: var(--line-width-sm) solid var(--line-color);
   box-shadow: 0px 0px 10px 1px var(--user-avatar-shadow);
   // margin-right: var(--space-lg);
   width: calc(6.5 * var(--space));

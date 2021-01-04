@@ -295,15 +295,15 @@ button:hover .blur-bg, button:active .blur-bg,
   border: 0;
 }
 .horizborders { /* already got by default but if need to wrap something else */
-  border-top:    var(--line-width) solid; /* so, every other top+bottom? */
-  border-bottom: var(--line-width) solid; /* this covers/cancels bottom border */
+  border-top:    var(--line-width) solid var(--line-color); /* so, every other top+bottom? */
+  border-bottom: var(--line-width) solid var(--line-color); /* this covers/cancels bottom border */
 }
 .vertborders { /* already got by default but if need to wrap something else */
-  border-left:  var(--line-width-vert) solid; /* so, every other top+bottom? */
-  border-right: var(--line-width-vert) solid; /* this covers/cancels bottom border */
+  border-left:  var(--line-width-vert) solid var(--line-color); /* so, every other top+bottom? */
+  border-right: var(--line-width-vert) solid var(--line-color); /* this covers/cancels bottom border */
 }
-.topborder { border-top: var(--line-width-sm) solid; }
-.bottomborder { border-bottom: var(--line-width-sm) solid; }
+.topborder { border-top: var(--line-width-sm) solid var(--line-color); }
+.bottomborder { border-bottom: var(--line-width-sm) solid var(--line-color); }
 
 
 /* PARALLAX */

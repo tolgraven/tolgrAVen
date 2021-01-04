@@ -71,10 +71,10 @@ a {
 main { /* dunno purpose of why I choose .main-content... */
   width: 100%;
   
-  border-top: var(--line-width) solid; /* should make configurable. off looks p nice on main page */
-  border-bottom: var(--line-width) solid; /* should make configurable. off looks p nice on main page */
-  border-left:  var(--line-width-vert) solid; /* should make configurable. off looks p nice on main page */
-  border-right: var(--line-width-vert) solid; /* should make configurable. off looks p nice on main page */
+  border-top: var(--line-width) solid var(--line-color); /* should make configurable. off looks p nice on main page */
+  border-bottom: var(--line-width) solid var(--line-color); /* should make configurable. off looks p nice on main page */
+  border-left:  var(--line-width-vert) solid var(--line-color); /* should make configurable. off looks p nice on main page */
+  border-right: var(--line-width-vert) solid var(--line-color); /* should make configurable. off looks p nice on main page */
   margin-top: var(--space-lg);
   padding-bottom: var(--footer-height); /* XXX actually, footer height... */
 
@@ -99,7 +99,7 @@ pre {
   color: var(--fg-2);
   padding: 1.25em;
   margin: 1.00em calc(-0.5 * var(--space));
-  border-top: var(--line-width-sm) solid;
+  border-top: var(--line-width-sm) solid var(--line-color);
 }
 
 p > code { /* single-word vars etc */
@@ -117,7 +117,7 @@ section { /* one main section (img + header + piece of content) */
   justify-content: center;
   align-items: middle;
   padding:   var(--space-lg) var(--space-lg); /* for padding-less main: */
-  border-top: var(--line-width) solid;
+  border-top: var(--line-width) solid var(--line-color);
   
   h1 {
     text-align: center;
@@ -160,7 +160,7 @@ button {
   // background: hsla(var(--hue-1), 7%, var(--lum-bg-2), 0.35);
   background: transparent;
   color: var(--fg-2);
-  border: var(--line-width-md) solid;
+  border: var(--line-width-md) solid var(--line-color);
   border-radius: 0.15rem;
   position: relative;
   cursor: pointer;

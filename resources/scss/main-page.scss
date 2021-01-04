@@ -22,7 +22,7 @@
   }
 }
 #moneyshot {
-  border-top: var(--line-width) solid;
+  border-top: var(--line-width) solid var(--line-color);
 
   h1 {
     text-shadow: 3px 3px 9px white;
@@ -47,7 +47,7 @@
   // max-height: var(--height);
   z-index: 13;
   top: var(--header-height-current);
-  border-top: var(--line-width) solid;
+  border-top: var(--line-width) solid var(--line-color);
 }
 #about-story {
   position: relative;

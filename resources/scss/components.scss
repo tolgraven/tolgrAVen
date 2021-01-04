@@ -7,7 +7,7 @@
 /* could also run along down connecting to next section... */
 .line { /* i guess x overflow only important on ios, so we hype -edges by media query */
   width: calc(var(--space-edges) + 100%); /* extend out one margin */
-  background-color: var(--fg-1);
+  background-color: var(--line-color);
   --height: var(--line-width);
   height: var(--height);
 }
@@ -28,16 +28,16 @@
   right: 0; /* extend on left instead of right width already good */
   z-index: 100;
 }
-.line-left  { border-left:  var(--line-width-vert) solid; }
-.line-right { border-right: var(--line-width-vert) solid; }
-.line-left-sm  { border-left:  var(--line-width-vert) solid; }
-.line-right-sm { border-right: var(--line-width-vert) solid; }
+.line-left  { border-left:  var(--line-width-vert) solid var(--line-color); }
+.line-right { border-right: var(--line-width-vert) solid var(--line-color); }
+.line-left-sm  { border-left:  var(--line-width-vert) solid var(--line-color); }
+.line-right-sm { border-right: var(--line-width-vert) solid var(--line-color); }
 .lined-container {
   // position: relative; /* need to be able to attach lines around */
-  border: var(--line-width) solid;
+  border: var(--line-width) solid var(--line-color);
 }
 .lined-container-sm {
-  border: var(--line-width-sm) solid;
+  border: var(--line-width-sm) solid var(--line-color);
 }
 
 
