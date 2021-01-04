@@ -31,7 +31,6 @@
 (rf/reg-event-fx :common/navigate   [(rf/inject-cofx :scroll-position)]
   (fn [{:as cofx :keys [db scroll-position]} [_ match]]
     (let [old-match (:common/route db)
-          old-name (-> old-match :data :name)
           new-match (assoc match :controllers
                                  (rfc/apply-controllers (:controllers old-match) match))
           new-name (-> new-match :data :name)]
@@ -40,10 +39,10 @@
                (assoc :common/route-last old-match)
                (assoc-in [:state :error-page] nil) ; reset 404 page in case was triggered
                (assoc-in [:state :swap] nil)  ; reset for new swap (:db not event cause want it instant)
-               (assoc-in [:state :scroll-position old-name] scroll-position)) ; yields a silly nilly slask men vafan no biggie
+               (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position)) ; yields a silly nilly slask men vafan no biggie
        :dispatch-n [[:exception [:page] nil]] ; reset exception state since using same error boundary for all pages
        :dispatch-later {:ms 100 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
-                        :dispatch (if-let [saved-pos (get-in db [:state :scroll-position new-name])]
+                        :dispatch (if-let [saved-pos (get-in db [:state :scroll-position (-> new-match :path)])]
                                     [:scroll/px saved-pos]
                                     [:scroll/to "linktotop"])} ; TODO use localstorage so restores on return visit halfway if someone follows link from blog etc..
        :document/set-title (->> new-name
