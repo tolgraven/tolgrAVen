@@ -100,6 +100,10 @@
 /* MEDIA corrections which need to go after everything else (or use !important lol)       */
 /******************************************************************************************/
 @media all and (orientation: landscape) { // hide away header and footer on mobile landscape (...many additional fixes needed)
+  :root {
+    --header-height-current: 0rem !important;
+    --header-height: 0rem !important;
+  }
   header {
     position: relative !important;
   }
