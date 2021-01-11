@@ -173,7 +173,7 @@ nav {
   max-height: var(--space);
   min-width: 7.0em;
   background: linear-gradient(-77deg, var(--bg-1) -10%, var(--nav-accent) 80%);
-  border-top: var(--line-width-sm) solid currentColor;
+  border-top: var(--line-width-sm) solid var(--line-color);
   transition: filter 0.5s ease-out; }
   nav:hover {
     filter: brightness(140%); }
@@ -310,14 +310,14 @@ menu > nav > .nav-section:last-of-type > .nav-links {
     min-width: calc(100% * var(--menu-width-fraction));
     margin: auto;
     order: 4;
-    border: var(--line-width) solid currentColor;
+    border: var(--line-width) solid var(--line-color);
     -webkit-animation: menu-anim 0.3s;
             animation: menu-anim 0.3s; }
     #nav-menu-open:checked ~ header menu:before, #nav-menu-open:checked ~ header menu:after {
       content: "";
       position: absolute;
       width: var(--line-width);
-      background-color: var(--fg-1);
+      background-color: var(--line-color);
       --height: calc(2rem - 1.5 * var(--line-width));
       /* crank it a bit cause we're masking out any spillover... */ }
     #nav-menu-open:checked ~ header menu:before {
@@ -395,7 +395,7 @@ footer {
   padding-bottom: env(safe-area-inset-bottom);
   /* handle iphone x+, no harm for rest. TODO also adjust top-shortcut */
   font-size: 0.8rem;
-  border-left: var(--line-width) solid;
+  border-left: var(--line-width) solid var(--line-color);
   /* connect bottom to main on left side */
   /* try (actual tru sticky) footer */
   /* causes some silly ios behavior and might just deal with enough layers already... */
@@ -644,225 +644,6 @@ h3::first-letter {
 .carousel-nav-item.checked {
   background-color: var(--fg-1); }
 
-/* FROM CSS-TRICKS https://css-tricks.com/css-only-carousel/ */
-/* try adapt/merge semi merge w .sideways (which should be named like .gallery-manual...) */
-@-webkit-keyframes tonext {
-  65% {
-    left: 0; }
-  95% {
-    left: 100%; }
-  98% {
-    left: 100%; }
-  99% {
-    left: 0; } }
-@keyframes tonext {
-  65% {
-    left: 0; }
-  95% {
-    left: 100%; }
-  98% {
-    left: 100%; }
-  99% {
-    left: 0; } }
-
-@-webkit-keyframes tostart {
-  65% {
-    left: 0; }
-  95% {
-    left: -300%; }
-  /* would have to be set by vars for flexible num of slides? */
-  98% {
-    left: -300%; }
-  99% {
-    left: 0; } }
-
-@keyframes tostart {
-  65% {
-    left: 0; }
-  95% {
-    left: -300%; }
-  /* would have to be set by vars for flexible num of slides? */
-  98% {
-    left: -300%; }
-  99% {
-    left: 0; } }
-
-@-webkit-keyframes snap {
-  96% {
-    scroll-snap-align: center; }
-  97% {
-    scroll-snap-align: none; }
-  99% {
-    scroll-snap-align: none; }
-  100% {
-    scroll-snap-align: center; } }
-
-@keyframes snap {
-  96% {
-    scroll-snap-align: center; }
-  97% {
-    scroll-snap-align: none; }
-  99% {
-    scroll-snap-align: none; }
-  100% {
-    scroll-snap-align: center; } }
-
-* {
-  scrollbar-color: transparent transparent;
-  /* thumb and track color */
-  scrollbar-width: 0px; }
-
-* {
-  -ms-overflow-style: none; }
-
-*::-webkit-scrollbar {
-  width: 0; }
-
-*::-webkit-scrollbar-track {
-  background: transparent; }
-
-*::-webkit-scrollbar-thumb {
-  background: transparent;
-  border: none; }
-
-.carousel > li {
-  list-style: none;
-  margin: 0;
-  padding: 0; }
-
-.carousel {
-  position: relative;
-  padding-top: 75%;
-  /* padding-top: 100%; /1* need to understand what this compensates for lol *1/ */
-  /* perspective: 100px; */ }
-
-.carousel__viewport {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  display: flex;
-  overflow-x: scroll;
-  counter-reset: item;
-  scroll-behavior: smooth;
-  -ms-scroll-snap-type: x mandatory;
-      scroll-snap-type: x mandatory; }
-
-.carousel__slide {
-  position: relative;
-  flex: 0 0 100%;
-  width: 100%;
-  counter-increment: item; }
-
-.carousel__slide:before {
-  content: counter(item);
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate3d(-50%, -40%, 70px);
-  /* color: #fff; */
-  font-size: 2em; }
-
-.carousel__snapper {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  scroll-snap-align: center; }
-
-@media (hover: hover) {
-  .carousel__snapper {
-    -webkit-animation-name: tonext, snap;
-            animation-name: tonext, snap;
-    -webkit-animation-timing-function: ease;
-            animation-timing-function: ease;
-    -webkit-animation-duration: 12s;
-            animation-duration: 12s;
-    -webkit-animation-iteration-count: infinite;
-            animation-iteration-count: infinite; }
-  .carousel__slide:last-child .carousel__snapper {
-    -webkit-animation-name: tostart, snap;
-            animation-name: tostart, snap; } }
-
-@media (prefers-reduced-motion: reduce) {
-  /* kills doesnt transition if reduced-motion - should rather fade in place no */
-  .carousel__snapper {
-    -webkit-animation-name: none;
-            animation-name: none; } }
-
-.carousel:hover .carousel__snapper,
-.carousel:focus-within .carousel__snapper {
-  /* kill carousel once focus */
-  -webkit-animation-name: none;
-          animation-name: none; }
-
-.carousel__navigation {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  text-align: center; }
-
-.carousel__navigation-list,
-.carousel__navigation-item {
-  display: inline-block; }
-
-.carousel__navigation-button {
-  display: inline-block;
-  width: 1.5rem;
-  height: 1.5rem;
-  background-color: #333;
-  background-clip: content-box;
-  border: 0.25rem solid transparent;
-  border-radius: 50%;
-  font-size: 0;
-  transition: transform 0.1s; }
-
-.carousel::before,
-.carousel::after,
-.carousel__prev,
-.carousel__next {
-  position: absolute;
-  top: 0;
-  margin-top: 37.5%;
-  width: 2rem;
-  height: 2rem;
-  transform: translateY(-50%);
-  border-radius: 50%;
-  font-size: 0;
-  /* outline: 0; */ }
-
-.carousel::before,
-.carousel__prev {
-  left: -1rem; }
-
-.carousel::after,
-.carousel__next {
-  right: -1rem; }
-
-.carousel::before,
-.carousel::after {
-  content: '';
-  z-index: 1;
-  background-color: #333;
-  background-size: 1.5rem 1.5rem;
-  background-repeat: no-repeat;
-  background-position: center center;
-  color: #fff;
-  font-size: 1.2rem;
-  line-height: 1.5rem;
-  text-align: center;
-  pointer-events: none; }
-
-.carousel::before {
-  /* uh why not put this in place I guess then it's no longer bg but like so?? */
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='0,50 80,100 80,0' fill='%23fff'/%3E%3C/svg%3E"); }
-
-.carousel::after {
-  background-image: url("data:image/svg+xml,%3csvg viewbox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3e%3cpolygon points='100,50 20,100 20,0' fill='%23fff'/%3e%3c/svg%3e"); }
-
 /* HORIZONTAL GALLERY SCROLL THING */
 .sideways {
   /* scroll horizontally */
@@ -1025,18 +806,6 @@ h3::first-letter {
     opacity: 1;
     transform: none; }
 
-@-webkit-keyframes hider {
-  0% {
-    opacity: 1; }
-  100% {
-    opacity: 0; } }
-
-@keyframes hider {
-  0% {
-    opacity: 1; }
-  100% {
-    opacity: 0; } }
-
 /* Show/hide and slide in from left. */
 .slide-in {
   position: relative;
@@ -1133,6 +902,8 @@ h3::first-letter {
     transition: opacity 0.1s, transform 0.2s ease; }
   .appear-wrapper.basic {
     visibility: hidden; }
+  .appear-wrapper.background * {
+    background-color: transparent; }
   .appear-wrapper.appeared {
     opacity: 1;
     transform: none;
@@ -1243,23 +1014,23 @@ button:hover .blur-bg, button:active .blur-bg,
 
 .horizborders {
   /* already got by default but if need to wrap something else */
-  border-top: var(--line-width) solid;
+  border-top: var(--line-width) solid var(--line-color);
   /* so, every other top+bottom? */
-  border-bottom: var(--line-width) solid;
+  border-bottom: var(--line-width) solid var(--line-color);
   /* this covers/cancels bottom border */ }
 
 .vertborders {
   /* already got by default but if need to wrap something else */
-  border-left: var(--line-width-vert) solid;
+  border-left: var(--line-width-vert) solid var(--line-color);
   /* so, every other top+bottom? */
-  border-right: var(--line-width-vert) solid;
+  border-right: var(--line-width-vert) solid var(--line-color);
   /* this covers/cancels bottom border */ }
 
 .topborder {
-  border-top: var(--line-width-sm) solid; }
+  border-top: var(--line-width-sm) solid var(--line-color); }
 
 .bottomborder {
-  border-bottom: var(--line-width-sm) solid; }
+  border-bottom: var(--line-width-sm) solid var(--line-color); }
 
 /* PARALLAX */
 /* needs to be torn down and redone properly. messy as balls now */
@@ -1271,7 +1042,6 @@ button:hover .blur-bg, button:active .blur-bg,
   height: 100%;
   /* default, can override in attrs */
   width: 100%;
-  perspective: calc(1px * var(--perspective));
   perspective-origin: center;
   /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */
   overflow-y: auto; }
@@ -1287,12 +1057,11 @@ button:hover .blur-bg, button:active .blur-bg,
   /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */ }
 
 .parallax-sm, .parallax-bg, .parallax-fg {
-  transform-origin: bottom;
+  transform-origin: center;
   transform-style: preserve-3d;
   overflow-y: auto; }
 
 .parallax-sm {
-  /* transform: translateZ(var(--parallax-sm-px)) scale(var(--parallax-sm-scale)); */
   transform: translateZ(var(--parallax-sm-px)) translateY(-8%) scale(var(--parallax-sm-scale));
   /* scale(calc(1.1 * var(--parallax-sm-scale))); */ }
 
@@ -1544,7 +1313,8 @@ input[type=range]:focus {
     border: 0;
     border-bottom: var(--line-width-sm) solid;
     display: flex;
-    flex-direction: column; }
+    flex-direction: column;
+    margin-bottom: calc(1.0 * var(--space-lg)); }
     .blog .blog-post .blog-post-header .blog-post-header-main {
       margin-left: var(--space); }
       .blog .blog-post .blog-post-header .blog-post-header-main .blog-post-title {
@@ -1597,7 +1367,9 @@ input[type=range]:focus {
         right: -0%; }
     .blog-comments .blog-comments-inner .blog-comment-reply {
       border: 0;
-      margin-left: calc(2 * var(--space)); }
+      margin-left: calc(1.5 * var(--space)); }
+      .blog-comments .blog-comments-inner .blog-comment-reply .blog-comment {
+        margin-top: -0.75em; }
     .blog-comments .blog-comments-inner .blog-comment-actions {
       z-index: 0;
       text-align: end;
@@ -1617,7 +1389,7 @@ input[type=range]:focus {
 .blog-comment {
   position: relative;
   margin-bottom: 1.0em;
-  padding: 0.8em 0.5em;
+  padding: 1.0em 1.5em 1.0em 0.5em;
   background-color: var(--bg-2);
   border-top: 0;
   border-left: 0.5em solid var(--fg-6);
@@ -1634,7 +1406,9 @@ input[type=range]:focus {
     margin-top: 0.2rem;
     margin-left: 0.8rem;
     height: var(--blog-comment-avatar);
-    width: var(--blog-comment-avatar); }
+    width: var(--blog-comment-avatar);
+    -o-object-fit: cover;
+       object-fit: cover; }
   .blog-comment .blog-comment-main {
     width: -webkit-fill-available;
     margin-left: var(--space); }
@@ -1743,10 +1517,10 @@ textarea.blog-adding-comment-textbox {
   opacity: 1.0;
   margin-top: var(--space-lg);
   transition: max-height 0.6s ease, margin 0.6s ease, opacity 0.8s ease;
-  box-shadow: 1px 1px 8px 10px var(--user-box-shadow); }
+  box-shadow: 3px 3px 15px 10px var(--user-box-shadow) inset; }
 
 .user-section {
-  border: var(--line-width) solid;
+  border: var(--line-width) solid var(--line-color);
   background: var(--user-box-bg); }
   .user-section button label {
     font-size: 92%; }
@@ -1788,7 +1562,7 @@ textarea.blog-adding-comment-textbox {
 
 .user-avatar {
   border-radius: 50%;
-  border: var(--line-width-sm) solid;
+  border: var(--line-width-sm) solid var(--line-color);
   box-shadow: 0px 0px 10px 1px var(--user-avatar-shadow);
   width: calc(6.5 * var(--space));
   height: calc(6.5 * var(--space)); }
@@ -1952,7 +1726,7 @@ section.docs .bs-callout {
   /* i guess x overflow only important on ios, so we hype -edges by media query */
   width: calc(var(--space-edges) + 100%);
   /* extend out one margin */
-  background-color: var(--fg-1);
+  background-color: var(--line-color);
   --height: var(--line-width);
   height: var(--height); }
 
@@ -1979,22 +1753,22 @@ section.docs .bs-callout {
   z-index: 100; }
 
 .line-left {
-  border-left: var(--line-width-vert) solid; }
+  border-left: var(--line-width-vert) solid var(--line-color); }
 
 .line-right {
-  border-right: var(--line-width-vert) solid; }
+  border-right: var(--line-width-vert) solid var(--line-color); }
 
 .line-left-sm {
-  border-left: var(--line-width-vert) solid; }
+  border-left: var(--line-width-vert) solid var(--line-color); }
 
 .line-right-sm {
-  border-right: var(--line-width-vert) solid; }
+  border-right: var(--line-width-vert) solid var(--line-color); }
 
 .lined-container {
-  border: var(--line-width) solid; }
+  border: var(--line-width) solid var(--line-color); }
 
 .lined-container-sm {
-  border: var(--line-width-sm) solid; }
+  border: var(--line-width-sm) solid var(--line-color); }
 
 .close-btn {
   position: absolute;
@@ -2080,6 +1854,87 @@ section.docs .bs-callout {
   margin: var(--space);
   text-align: left; }
 
+.carousel {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center; }
+
+.carousel-btn {
+  border: none; }
+
+.carousel-prev-btn, .carousel-next-btn {
+  position: absolute;
+  top: 50%; }
+
+.carousel-prev-btn {
+  left: 0; }
+
+.carousel-next-btn {
+  right: 0; }
+
+.carousel-idxs {
+  position: absolute;
+  bottom: 0;
+  display: flex; }
+  .carousel-idxs.carousel-idx {
+    border: var(--line-width) solid var(--line-color);
+    border-radius: 100%;
+    margin-right: 0.5rem; }
+
+.carousel-three {
+  background-color: rgba(30, 30, 45, 0.8); }
+
+.carousel-items {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  transform-style: preserve-3d;
+  transform-origin: center; }
+  .carousel-items li {
+    transition: all 0.5s;
+    height: 100%; }
+  .carousel-items .carousel-item-middle {
+    transform: scale(1.2);
+    z-index: 10; }
+    .carousel-items .carousel-item-middle.from-left, .carousel-items .carousel-item-middle.from-right {
+      transition: transform 0.0s; }
+    .carousel-items .carousel-item-middle.from-left {
+      transform: scale(0.9) translateX(100%); }
+    .carousel-items .carousel-item-middle.from-right {
+      transform: scale(0.9) translateX(-100%); }
+  .carousel-items .carousel-item-left, .carousel-items .carousel-item-right {
+    transition: 0.5s;
+    transform: scale(0.9); }
+    .carousel-items .carousel-item-left.from-left, .carousel-items .carousel-item-left.from-right, .carousel-items .carousel-item-right.from-left, .carousel-items .carousel-item-right.from-right {
+      transition: all 0.0s; }
+  .carousel-items .carousel-item-left.from-left {
+    transform: translateX(100%) scale(1); }
+  .carousel-items .carousel-item-left.from-right {
+    transform: translateX(100%) scale(0); }
+  .carousel-items .carousel-item-right.from-left {
+    transform: translateX(100%) scale(0); }
+  .carousel-items .carousel-item-right.from-right {
+    transform: translateX(-100%) scale(1); }
+  .carousel-items .carousel-item-left-pseudo, .carousel-items .carousel-item-right-pseudo {
+    position: absolute;
+    top: 0;
+    z-index: -1;
+    transition: 0.5s; }
+    .carousel-items .carousel-item-left-pseudo.from-left, .carousel-items .carousel-item-left-pseudo.from-right, .carousel-items .carousel-item-right-pseudo.from-left, .carousel-items .carousel-item-right-pseudo.from-right {
+      transition: 0.0s; }
+  .carousel-items .carousel-item-left-pseudo {
+    left: 0;
+    transform: translateX(-100%) scale(0); }
+    .carousel-items .carousel-item-left-pseudo.from-left {
+      transform: translateX(0%) scale(0.4); }
+  .carousel-items .carousel-item-right-pseudo {
+    right: 0;
+    transform: translateX(100%) scale(0); }
+    .carousel-items .carousel-item-right-pseudo.from-right {
+      transform: translateX(0%) scale(0.4); }
+
 @supports (scroll-margin-top: 0px) {
   /* compensate for our sticky header. */
   .link-anchor {
@@ -2132,25 +1987,27 @@ section.docs .bs-callout {
   bottom: 0; }
 
 .float-with-caption {
-  margin: var(--space) 0; }
-
-.float-with-caption:first-of-type {
-  /* keep top of first inset level with top of text. */
-  margin-top: 0; }
-
-.float-with-caption > .media {
-  margin: 0;
-  width: 100%;
-  /* and then set on parent div */ }
-
-.float-with-caption.left {
-  float: left;
-  margin-right: calc(1.0 * var(--space-lg));
-  /* using reg space becomes bit wrong when very slim... too tight. */ }
-
-.float-with-caption.right {
-  float: right;
-  margin-left: calc(1.0 * var(--space-lg)); }
+  width: 20%;
+  margin: var(--space) 0;
+  transition: 0.3s;
+  cursor: pointer; }
+  .float-with-caption.zoomed {
+    width: 80%;
+    margin: var(--space-lg) 10%; }
+  .float-with-caption:first-of-type {
+    /* keep top of first inset level with top of text. */
+    margin-top: 0; }
+  .float-with-caption > .media {
+    margin: 0;
+    width: 100%;
+    /* and then set on parent div */ }
+  .float-with-caption.left {
+    float: left;
+    margin-right: calc(1.0 * var(--space-lg));
+    /* using reg space becomes bit wrong when very slim... too tight. */ }
+  .float-with-caption.right {
+    float: right;
+    margin-left: calc(1.0 * var(--space-lg)); }
 
 figcaption, .float-with-caption {
   font-size: 0.8rem; }
@@ -2418,30 +2275,15 @@ figcaption, .float-with-caption {
 #loading-full-page {
   padding: 5rem; }
 
-.service-fullscreen {
-  height: 100%;
-  width: 100%; }
-
-#section-services {
-  z-index: 6; }
-  #section-services .media-as-bg {
-    transition: transform 9.5s ease; }
-
-#services {
-  position: -webkit-sticky;
-  position: sticky;
-  z-index: 12;
-  top: 0;
-  margin-bottom: var(--space-lg); }
-
 #intro {
   position: relative;
-  max-height: var(--media-width-main); }
+  max-height: var(--media-width-main);
+  border-top: 0; }
   #intro p {
     padding: 0 var(--space-lg); }
 
 #moneyshot {
-  border-top: var(--line-width) solid; }
+  border-top: var(--line-width) solid var(--line-color); }
   #moneyshot h1 {
     text-shadow: 3px 3px 9px white; }
 
@@ -2464,7 +2306,7 @@ figcaption, .float-with-caption {
 #about-intro {
   z-index: 13;
   top: var(--header-height-current);
-  /* transform-origin: 50% -1570%; /1* figure out genericable bs lol *1/ */ }
+  border-top: var(--line-width) solid var(--line-color); }
 
 #about-story {
   position: relative;
@@ -2474,8 +2316,7 @@ figcaption, .float-with-caption {
     padding-top: 0; }
 
 #headshot {
-  width: 20%;
-  max-width: 150px; }
+  width: 20%; }
 
 #byline > img {
   border-radius: 0.5em;
@@ -2483,13 +2324,24 @@ figcaption, .float-with-caption {
 
 #multimeter {
   width: 30%;
-  min-width: 150px;
-  max-width: 300px; }
+  min-width: 150px; }
 
 #building-tools {
   z-index: 29; }
 
-#categories {
+#section-services {
+  z-index: 6; }
+  #section-services .media-as-bg {
+    transition: transform 15s ease; }
+
+#services {
+  position: -webkit-sticky;
+  position: sticky;
+  z-index: 12;
+  top: 0;
+  margin-bottom: var(--space-lg); }
+
+.categories {
   /* List of services offered */
   display: grid;
   /* fuck with this */
@@ -2498,62 +2350,75 @@ figcaption, .float-with-caption {
   align-content: bottom;
   text-align: center;
   flex-wrap: wrap; }
-  #categories h3::first-letter {
-    /* nice looking fancy. why isnt applying within category?? */
+  .categories.categories-fullscreened {
+    display: initial; }
+  .categories li::first-letter {
     font-size: 120%;
     filter: brightness(110%); }
+  .categories h3::first-letter {
+    /* nice looking fancy. why isnt applying to h3 within category?? */
+    font-size: 120%; }
 
-#categories ul {
+.categories ul {
   flex: 0 1 auto;
   margin: calc(0.5 * var(--space));
   padding: calc(1.0 * var(--space));
+  width: 100%;
+  height: 88%;
   text-align: left;
   font-size: 1.1rem;
   -webkit-backdrop-filter: blur(3px);
           backdrop-filter: blur(3px);
   background: hsla(var(--hue-3), 70%, var(--lum-fg-6), 0.1);
-  transition: background 0.5s, border-radius 0.5s, transform 0.3s, -webkit-backdrop-filter 0.1s;
-  transition: backdrop-filter 0.1s, background 0.5s, border-radius 0.5s, transform 0.3s;
-  transition: backdrop-filter 0.1s, background 0.5s, border-radius 0.5s, transform 0.3s, -webkit-backdrop-filter 0.1s;
+  transition: background 0.5s, border-radius 0.5s, transform 0.3s, width 0.2s, height 0.2s, margin 0.2s, padding 0.2s, -webkit-backdrop-filter 0.5s;
+  transition: backdrop-filter 0.5s, background 0.5s, border-radius 0.5s, transform 0.3s, width 0.2s, height 0.2s, margin 0.2s, padding 0.2s;
+  transition: backdrop-filter 0.5s, background 0.5s, border-radius 0.5s, transform 0.3s, width 0.2s, height 0.2s, margin 0.2s, padding 0.2s, -webkit-backdrop-filter 0.5s;
   box-shadow: 1px 0px 17px 5px hsla(var(--hue-1), 20%, var(--lum-fg-6), 0.15);
   cursor: pointer;
   border-radius: 1.50rem;
   -webkit-backdrop-filter: blur(1rem);
           backdrop-filter: blur(1rem); }
-  #categories ul:hover {
+  .categories ul:hover {
     border-radius: 0.75rem;
     -webkit-backdrop-filter: blur(0.6rem);
             backdrop-filter: blur(0.6rem);
     background: hsla(var(--hue-3), 60%, var(--lum-fg-5), 0.25);
     filter: brightness(1.1); }
-  #categories ul.service-fullscreen {
+  .categories ul.service-fullscreen {
     font-size: 300%;
-    width: 200%;
+    width: 120%;
     height: 100%;
     z-index: 100;
     margin-bottom: 18rem;
     cursor: initial; }
-  #categories ul > * {
+  .categories ul.service-minimized {
+    width: 0%;
+    height: 0%;
+    overflow: hidden;
+    position: absolute;
+    margin: 0;
+    padding: 0; }
+  .categories ul > * {
     margin: 0.1em 0.1em 0.1em; }
-  #categories ul li {
+  .categories ul li {
     font-size: 0.80em;
     text-align: left; }
-    #categories ul li:first-of-type {
+    .categories ul li:first-of-type {
       white-space: nowrap;
       margin-bottom: calc(0.5 * var(--space)); }
-      #categories ul li:first-of-type ~ li {
+      .categories ul li:first-of-type ~ li {
         /* suddenly started making the icons... weird inner shadow. so skip the header. */
         text-shadow: 1px 1px 2px var(--bg-1); }
-  #categories ul i {
+  .categories ul i {
     font-size: 1.4em;
     background: linear-gradient(-30deg, rgba(205, 170, 152, 0.8), var(--fg-2));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent; }
-  #categories ul h3 {
+  .categories ul h3 {
     display: inline;
     position: relative;
     margin-left: 0.4em; }
-    #categories ul h3:after {
+    .categories ul h3:after {
       /* shitty underline didnt end up too hot hmm */
       content: "";
       height: 0.125em;
@@ -2566,19 +2431,22 @@ figcaption, .float-with-caption {
       z-index: -1; }
 
 @media screen and (max-width: 400px) {
-  #categories ul {
+  .categories ul {
     /* min-width: 45%; /1* ensure no awkward two on one row, one on rest... not exactly universal solution tho :/ *1/ */
     /* /1* oh and doesnt work for like if font small enough that two fit nicely gah *1/ /1* easy enough with js tho.. *1/ */
     /* /1* max-width: 100%; *1/ */
     /* max-width: 55%; */ } }
 
 @media screen and (min-width: 500px) {
-  #categories ul {
+  .categories ul {
     font-size: calc(1.0rem + 0.5vw); } }
 
 @media screen and (min-width: 800px) {
-  #categories ul {
+  .categories ul {
     font-size: calc(1.1rem + 0.3vw); } }
+
+#gallery {
+  z-index: 100; }
 
 /* wanted to put in own file but wasnt compatible with live reload solution... */
 :root {
@@ -2709,13 +2577,14 @@ figcaption, .float-with-caption {
   --box-faint-color:      hsla(0, 0%, var(--lum-dark-1), var(--opacity-faint));
   --box-regular-color-flip:    hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
   --box-faint-color-flip:      hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
+  --line-color:           hsla(0, 0%, 67%, 1.0);
   --gradient-bg-main: linear-gradient(-77deg,
                                       hsl(280, 15%, 8%),
                                       var(--bg-1))
                                       ;
   --user-box-bg:      linear-gradient(hsla(240deg 20% var(--lum-bg-3) / 75%) 0%,
                                       hsla(240deg 38% var(--lum-bg-3) / 90%) 100%);
-  --user-box-shadow:     hsla(240deg 33% var(--lum-bg-4) / 30%);
+  --user-box-shadow:     hsla(240deg 53% var(--lum-bg-6) / 90%);
   --user-avatar-shadow:  hsla(240deg 100% var(--lum-fg-1) / 50%); }
 
 [color-mode="light"]:root {
@@ -2804,13 +2673,19 @@ figcaption, .float-with-caption {
   /* wants no parallax */
   :root {
     --perspective: 1;
-    /* just to be sure */
+    /* just to be sure. but kills translatez etc... */
     --parallax:    0;
     --parallax-squeeze-tf: 100%;
     /* fuck knows why */ } }
 
 @media not all and (min-resolution: 0.001dpcm) {
-  /* is safari */ }
+  /* is safari */
+  .stick-up {
+    /* safari is being way irresponsible drawing img sticky layers.. and general compositing/z-index */ }
+  section {
+    transform: translate3d(0, 0, 0); }
+  .parallax-bg {
+    transform: initial; } }
 
 @supports (-webkit-overflow-scrolling: touch) {
   /* iOS devices */
@@ -2857,19 +2732,13 @@ figcaption, .float-with-caption {
     --space-edges: calc(0.1 * var(--space));
     --line-width-vert: 0; } }
 
-/************************************************************/
-/* MEDIA corrections which need to go after everything else */
-/************************************************************/
-@media not all and (min-resolution: 0.001dpcm) {
-  /* is safari */
-  .stick-up {
-    /* safari is being way irresponsible drawing img sticky layers.. and general compositing/z-index */
-    position: relative !important;
-    top: initial; }
-  .parallax-bg {
-    transform: initial; } }
-
+/******************************************************************************************/
+/* MEDIA corrections which need to go after everything else (or use !important lol)       */
+/******************************************************************************************/
 @media all and (orientation: landscape) {
+  :root {
+    --header-height-current: 0rem !important;
+    --header-height: 0rem !important; }
   header {
     position: relative !important; }
   .line-header {
@@ -2926,13 +2795,13 @@ a {
 main {
   /* dunno purpose of why I choose .main-content... */
   width: 100%;
-  border-top: var(--line-width) solid;
+  border-top: var(--line-width) solid var(--line-color);
   /* should make configurable. off looks p nice on main page */
-  border-bottom: var(--line-width) solid;
+  border-bottom: var(--line-width) solid var(--line-color);
   /* should make configurable. off looks p nice on main page */
-  border-left: var(--line-width-vert) solid;
+  border-left: var(--line-width-vert) solid var(--line-color);
   /* should make configurable. off looks p nice on main page */
-  border-right: var(--line-width-vert) solid;
+  border-right: var(--line-width-vert) solid var(--line-color);
   /* should make configurable. off looks p nice on main page */
   margin-top: var(--space-lg);
   padding-bottom: var(--footer-height);
@@ -2943,10 +2812,10 @@ main {
 .main-content {
   position: relative;
   background: var(--gradient-bg-main); }
-  .main-content section:first-of-type {
+  .main-content > section:first-of-type {
     /* top section: no upper border */
     border-top: 0; }
-  .main-content section:last-of-type {
+  .main-content > section:last-of-type {
     /* last section, no bottom border */
     margin-bottom: 0;
     z-index: 40; }
@@ -2957,7 +2826,7 @@ pre {
   color: var(--fg-2);
   padding: 1.25em;
   margin: 1em calc(-0.5 * var(--space));
-  border-top: var(--line-width-sm) solid; }
+  border-top: var(--line-width-sm) solid var(--line-color); }
 
 p > code {
   /* single-word vars etc */
@@ -2974,7 +2843,7 @@ section {
   align-items: middle;
   padding: var(--space-lg) var(--space-lg);
   /* for padding-less main: */
-  border-top: var(--line-width) solid; }
+  border-top: var(--line-width) solid var(--line-color); }
   section h1 {
     text-align: center; }
     section h1.h-responsive, section h1.h0-responsive {
@@ -3021,7 +2890,7 @@ button {
   margin: var(--around);
   background: transparent;
   color: var(--fg-2);
-  border: var(--line-width-md) solid;
+  border: var(--line-width-md) solid var(--line-color);
   border-radius: 0.15rem;
   position: relative;
   cursor: pointer;
@@ -3055,3 +2924,21 @@ textarea, input, .form-control {
   padding: 0.3em 0.5em;
   margin-bottom: 0.4em;
   border: 1px solid var(--bg-5); }
+
+* {
+  scrollbar-color: transparent transparent;
+  /* thumb and track color */
+  scrollbar-width: 2px; }
+
+* {
+  -ms-overflow-style: none; }
+
+*::-webkit-scrollbar {
+  width: 0; }
+
+*::-webkit-scrollbar-track {
+  background: transparent; }
+
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: none; }
