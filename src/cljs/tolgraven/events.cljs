@@ -64,6 +64,31 @@
      :dispatch-later {:ms 2000 ; got transition taking 1s yet this (?) sometimes triggers abruptly before it ends hmm (+ hardly optimal so long...)
                       :dispatch [:state [:swap :finished] item]}}))
 
+(rf/reg-event-fx :carousel/rotate
+  (fn [{:keys [db]} [_ id curr-idx direction]]
+    {:dispatch-n [[:carousel/set-direction id (case direction
+                                                :dec "from-right"
+                                                :inc "from-left")]
+                  #_[:carousel/request-index id (case direction
+                                                :dec (if (neg? (dec curr-idx))
+                                                       (dec (count content))
+                                                       (dec %)))]] ; XXX should defer send later tho
+     :dispatch-later {:ms 25
+                      :dispatch [:carousel/set-direction id nil]}}))
+
+(rf/reg-event-db :carousel/set-direction
+  (fn [db [_ id direction-class]]
+    (assoc-in db [:state :carousel id :direction] direction-class)))
+
+(rf/reg-event-db :carousel/set-index
+  (fn [db [_ id idx]]
+    (assoc-in db [:state :carousel id :index] idx)))
+
+(rf/reg-event-fx :carousel/request-index
+  (fn [{:keys [db]} [_ id direction]]
+    {:dispatch-later {:ms 500
+                      :dispatch [:carousel/set-index id direction]}}))
+
 
 (defn assoc-in-factory [base-path]
   (fn [db [_ path value]]
