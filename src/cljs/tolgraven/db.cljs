@@ -96,11 +96,15 @@
 
              :interlude [{:title "What does that mean?"
                           :caption "Stage light visualizer for the browser with custom shaders"
-                          :bg [:video.media.media-as-bg {:src "media/fog-3d-small.mp4"  :playsInline true :autoPlay true}]}
+                          :bg [:video.media.media-as-bg
+                               {:poster "media/fog-3d-small.png" :playsInline true :muted true }
+                               [:source {:src "media/fog-3d-small.mp4" :type "video/mp4"}]]}
                          {:title "For who?"
                           :caption "Nihiloxica video shoot, Kampala"
-                          :bg [:video.media.media-as-bg {:src "media/nihil-shoot2.mp4"  :playsInline true :autoPlay true}]}
-                         {:title "Got no portfolio"
+                          :bg [:video.media.media-as-bg
+                               {:poster "media/nihil-shoot2.png" :playsInline true :muted true }
+                               [:source {:src "media/nihil-shoot2.mp4" :type "video/mp4"}]]}
+                         {:title "No portfloio , have some random photos"
                           :caption "But one will appear here somewhere, soon enough."
                           :bg [:img.media.media-as-bg {:src "img/collage-strips.jpg"}]}
                          {:title "Placeholder"
