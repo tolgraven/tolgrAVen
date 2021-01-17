@@ -202,33 +202,51 @@
    listing any projects done in each..."
   [])
 
+(defn services-fullscreenable "yo"
+  [categories]
+  (let [full-screened @(rf/subscribe [:state [:services]]) ]
+    [:div#services>div.categories
+     {:class (when full-screened "categories-fullscreened")
+      :on-click #(rf/dispatch [:state [:services] nil])}
+     ; [carousel :services-carousel {} ["one" "two" "three" "four" "five"]]
+     ; [:div] ;grid
+
+     (for [[title icon-name lines] categories ;(if-not full-screened categories (filter #(= (first %) full-screened) categories)) ;XXX change to keys!!
+           :let [on-click (fn [e] (.stopPropagation e)
+                            (rf/dispatch [:state [:services]
+                                          (when-not full-screened title)]))
+                 id (str "service-" title)]] ^{:key id}
+       [ui/seen id "zoom-x"
+        (into [:ul {:class (cond (= full-screened title) "service-fullscreen"
+                                 full-screened "service-minimized")
+                    :on-click on-click}
+               [:li 
+                [:i {:class (str "fas " "fa-" icon-name)}]
+                [:h3 title]]]
+              (for [line lines] ^{:key (str "service-" title "-" line)}
+                [:li line]))])]))
+
+(defn services-carousel "yo"
+  [categories]
+  (let [full-screened @(rf/subscribe [:state [:services]]) ]
+    [:div#services>div.categories
+     (for [[title icon-name lines] categories ;(if-not full-screened categories (filter #(= (first %) full-screened) categories)) ;XXX change to keys!!
+           :let [id (str "service-" title)]] ^{:key id}
+       (into [:ul 
+               [:li 
+                [:i {:class (str "fas " "fa-" icon-name)}]
+                [:h3 title]]]
+              (for [line lines] ^{:key (str "service-" title "-" line)}
+                [:li line])))]))
+
 (defn ui-services "List services on (fake) offer. Clicking one should bring it up to fill section..."
   [{:keys [categories bg caption]}]
   [:section#section-services
-     {:class "link-anchor stick-up section-with-media-bg-wrapper"}
+    {:class "link-anchor stick-up section-with-media-bg-wrapper"}
     [:a {:name "link-services"}]
      [ui-inset caption 4] ;auto-gen
-     [:img (merge bg {:class "media-as-bg darken-5 parallax-bg"})] ;wait how durp properly
-     (let [full-screened @(rf/subscribe [:state [:services]]) ]
-    [:div#services
-      [:div#categories
-       {:on-click #(rf/dispatch [:state [:services] nil])}
-       (doall (for [[title icon-name lines] (if-not full-screened
-                                              categories
-                                              (filter #(= (first %) full-screened) categories)) ;XXX change to keys!!
-                    :let [on-click (fn [e] (.stopPropagation e)
-                                     (rf/dispatch [:state [:services]
-                                                   (if full-screened nil title)]))]] ^{:key (str "service-" title)}
-         [ui/seen
-          (str "service-" title)
-          "basic"
-          (into [:ul {:class (when (= full-screened title) "service-fullscreen")
-                      :on-click on-click}
-                 [:li 
-                  [:i {:class (str "fas " "fa-" icon-name)}]
-                  [:h3 title]]]
-                (for [line lines] ^{:key (str "service-" title "-" line)}
-                  [:li line]))]))]])])
+     [:img (merge bg {:class "media-as-bg darken-5 parallax-bg"})]
+     [services-fullscreenable categories]])
 
 (defn ui-moneyshot "needs better name lol. what is hero img halfway down page?"
   [{:keys [title caption bg]}]
