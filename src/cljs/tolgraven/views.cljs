@@ -161,7 +161,7 @@
        (merge options
               {:id (name id)})
        
-       [:button.carousel-btn {:on-click dec-fn} "<"]
+       [:button.carousel-btn.carousel-prev-btn {:on-click dec-fn} "<"]
        
        [:ul.carousel-items
         [:li.carousel-item-left-pseudo
@@ -188,15 +188,14 @@
            (get content (inc (inc @index)))
            (first content))]]
        
-       [:button.carousel-btn {:on-click inc-fn} ">"]
+       [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} ">"]
 
        [:div.carousel-idxs
         (doall (for [idx (range (count content))]
                  [:button.carousel-btn.carousel-idx
                   {:class (when (= @index idx) "topborder")
                    :on-click #(reset! index idx)}
-                  idx #_"*"]))]
-       [:div @index]])))
+                  "*"]))] ])))
 
 (defn service-category-full
   "Fullscreen version of a services category. Should eventually be like a mini-site/portfolio
