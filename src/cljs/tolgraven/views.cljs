@@ -253,17 +253,20 @@
   (let [frac (r/atom 0.0)
         observer (util/observer #(reset! frac %) :moneyshot)]
     (fn [{:keys [title caption bg]}]
-        [:div#moneyshot {:class "section-with-media-bg-wrapper covering stick-up"
+        [:div#moneyshot {:class "section-with-media-bg-wrapper parallax-wrapper covering stick-up"
           :ref #(observer %)}
-         [:img.media-as-bg
-          (merge bg {:class "darken-8 parallax-sm origin-toptop"
-                     :style (merge (when-not (pos? @frac)
-                                     {:opacity 0})
+         [:img.media-as-bg ; TODO try it as background-image instead of separate div, see if calms down...
+          (merge bg {:class "darken-8 parallax-sm" ;origin-toptop
+                   :style (merge (when-not (pos? @frac)
+                                   {:opacity 0})
                                    {:transition "transform 8.5s ease, opacity 3s"
-                                    :transform (str "scale(1.05) translateZ(" (* @frac -5) "px)")})})] ; need to be above 1.1 or goes jumpy weirdshit clip UGH why
+                                    :transform (str "scale(1.125) translateZ(" (* @frac -5) "px)")})})] ; need to be above 1.1 or goes jumpy weirdshit clip UGH why
          [:section#intro-end.center-content
+          ; {:class "darken-8 parallax-sm origin-toptop"
+          ;  :style {:background-image (str "url(" (:src bg) ")")
+          ;          :background-size "cover"}}
           [:h1.h0-responsive.parallax-bg
-           {:style {:z-index 1
+           {:style {:z-index 10
                     :transition "transform 8.5s ease"
                     :transform (str "translateZ(" (* 35 @frac) "px)")}}
            title]] ;ideally want this also growing (and moving quicker upwards)]
