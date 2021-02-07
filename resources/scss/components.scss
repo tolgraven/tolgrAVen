@@ -142,6 +142,16 @@
   border: none;
   // position: absolute;
 }
+.carousel-prev-btn, .carousel-next-btn {
+  position: absolute;
+  top: 50%;
+}
+.carousel-prev-btn {
+  left: 0;
+}
+.carousel-next-btn {
+  right: 0;
+}
 
 .carousel-idxs {
   position: absolute;
@@ -150,7 +160,7 @@
   display: flex;
   
   &.carousel-idx { // idea use large index bobbles same bg blur as category bg, looks nice
-    border: var(--line-width) solid;
+    border: var(--line-width) solid var(--line-color);
     border-radius: 100%;
 
     margin-right: 0.5rem;
@@ -164,7 +174,8 @@
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  // transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  transform-origin: center;
 
   li {
     transition: all 0.5s;
@@ -175,16 +186,18 @@
 
   .carousel-item-middle {
     // transition: all 0.5s;
-    transform: none;
+    // transform: scale(1.2);
+    z-index: 10;
+    // transform: translateZ(10px);
     
     &.from-left, &.from-right { transition: transform 0.0s; }
-    &.from-left  { transform: scale(0.70) translateX(100%); }
-    &.from-right { transform: scale(0.70) translateX(-100%); }
+    &.from-left  { transform: scale(0.90) translateX(100%); }
+    &.from-right { transform: scale(0.90) translateX(-100%); }
   }
   
   .carousel-item-left, .carousel-item-right {
     transition: 0.5s;
-    transform: scale(0.7);
+    // transform: scale(0.8);
 
     &.from-left, &.from-right { transition: all 0.0s; }
   }
@@ -201,24 +214,24 @@
   
   .carousel-item-left-pseudo, .carousel-item-right-pseudo {
     position: absolute; // PROBLEM: this causes its sizing to be entirely oio
-    top: 0;
+    top: -10%;
     z-index: -1;
-    transition: 0.5s;
+    transition: 1.0s;
     // transform: scale(0.0);
     &.from-left, &.from-right { transition: 0.0s; }
   }
   .carousel-item-left-pseudo {
     left: 0;
-    transform: translateX(-100%) scale(0.0);
+    transform: translateX(-75%) scale(0.0);
     &.from-left {
-      transform: translateX(0%) scale(0.4);
+      transform: translateX(-0%) scale(0.5);
     }
   }
   .carousel-item-right-pseudo {
     right: 0;
-    transform: translateX(100%) scale(0.0);
+    transform: translateX(75%) scale(0.0);
     &.from-right {
-      transform: translateX(-0%) scale(0.4);
+      transform: translateX(0%) scale(0.5);
     }
   }
 }
