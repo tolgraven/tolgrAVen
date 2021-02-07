@@ -16,9 +16,12 @@ footer {
   position: fixed;
   z-index: 101;
   left: var(--space-edges);
-  bottom: 0;
+  bottom: calc(0rem - var(--footer-bottom));
   width: calc(100% - 2 * var(--space-edges));
+  // height: var(--footer-height-current);
   background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
+
+  transition: 0.5s;
 }
 .footer-content {
   display: flex;

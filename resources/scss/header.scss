@@ -4,7 +4,8 @@ header {
   /* TODO: ios issue: zoom in and back out, main left border faintly visible left side of header */
   position: sticky;
   top: 0;
-  min-height: var(--header-height);
+  height: var(--header-height-current);
+  overflow-y: hidden;
   display: flex;
   flex-flow: row wrap;
   align-items: center;
@@ -14,7 +15,7 @@ header {
   margin-top: var(--space-top);
   margin-right: var(--line-width); /* make main right border stay "outside" right edge of header, needed because of particular effect/design... */
   padding: 0 calc(var(--space));
-  transition: min-height var(--header-expand-time) ease,
+  transition: height var(--header-expand-time) ease,
               background 0.0s ease;
               
   .cover {
