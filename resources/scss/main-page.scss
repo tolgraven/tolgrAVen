@@ -91,7 +91,7 @@
   margin-bottom: var(--space-lg);
 }
 
-#categories { /* List of services offered */
+.categories { /* List of services offered */
   display: grid; /* fuck with this */
   grid-template-columns: repeat(2, 37%);
   justify-content: space-evenly;
@@ -99,29 +99,40 @@
   text-align: center;
   flex-wrap: wrap;
   
-  h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
+  &.categories-fullscreened {
+    display: initial;
+  }
+  
+  li::first-letter {
     font-size: 120%;
     filter: brightness(110%);
   }
+  h3::first-letter { /* nice looking fancy. why isnt applying to h3 within category?? */
+    font-size: 120%;
+  }
 }
 
-#categories ul {
+.categories ul {
   flex: 0 1 auto;
   margin:  calc(0.5 * var(--space));
   padding: calc(1.0 * var(--space));
+  width: 100%;
+  height: 88%;
   
   text-align: left;
   font-size: 1.1rem;
   backdrop-filter: blur(3.0px);
   background: hsla(var(--hue-3), 70%, var(--lum-fg-6), 0.10);
-  transition: backdrop-filter 0.1s, background 0.5s,
-              border-radius 0.5s, transform 0.3s;
+  transition: backdrop-filter 0.5s, background 0.5s,
+              border-radius 0.5s, transform 0.3s, width 0.2s, height 0.2s, margin 0.2s, padding 0.2s;
+  // transition: 0.3s;
   box-shadow: 1px -0px 17px 5px hsla(var(--hue-1), 20%, var(--lum-fg-6), 0.15);
 
   cursor:  pointer;
   
   border-radius: 1.50rem;
   backdrop-filter: blur(1.0rem);
+  
   &:hover {
     border-radius: 0.75rem;
     backdrop-filter: blur(0.6rem);
@@ -130,14 +141,23 @@
     // transform: scale(1.15);
     // transform: translateZ(20deg);
   }
-
+  
   &.service-fullscreen {
     font-size: 300%;
-    width: 200%; // seems to be in relation to regular size
+    // width: 160%; // correct for whatever reason
+    width: 120%; // meh
     height: 100%; // seems to be in relation to section? & doesnt actually tell outer to expand unless put margin..
     z-index: 100;
     margin-bottom: 18rem; // pad container. just a value to approximate regular section height.
     cursor: initial;
+  }
+  &.service-minimized {
+    width: 0%; // seems to be in relation to regular size
+    height: 0%; // seems to be in relation to section? & doesnt actually tell outer to expand unless put margin..
+    overflow: hidden;
+    position: absolute;
+    margin: 0;
+    padding: 0;
   }
     
   > * {
@@ -181,7 +201,7 @@
   }
 }
 @media screen and (max-width: 400px) {
-  #categories ul {
+  .categories ul {
     /* min-width: 45%; /1* ensure no awkward two on one row, one on rest... not exactly universal solution tho :/ *1/ */
     /* /1* oh and doesnt work for like if font small enough that two fit nicely gah *1/ /1* easy enough with js tho.. *1/ */
     /* /1* max-width: 100%; *1/ */
@@ -189,12 +209,12 @@
   }
 }
 @media screen and (min-width: 500px) {
-  #categories ul {
+  .categories ul {
     font-size: calc(1.0rem + 0.5vw);
   }
 }
 @media screen and (min-width: 800px) {
-  #categories ul {
+  .categories ul {
     font-size: calc(1.1rem + 0.3vw);
   }
 }
