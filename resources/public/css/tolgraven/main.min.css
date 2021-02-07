@@ -123,7 +123,8 @@ header {
   position: -webkit-sticky;
   position: sticky;
   top: 0;
-  min-height: var(--header-height);
+  height: var(--header-height-current);
+  overflow-y: hidden;
   display: flex;
   flex-flow: row wrap;
   align-items: center;
@@ -134,7 +135,7 @@ header {
   margin-right: var(--line-width);
   /* make main right border stay "outside" right edge of header, needed because of particular effect/design... */
   padding: 0 calc(var(--space));
-  transition: min-height var(--header-expand-time) ease, background 0s ease; }
+  transition: height var(--header-expand-time) ease, background 0s ease; }
   header .cover {
     /* attempt to cover up manually so can get some nice seethrough blur... */
     position: absolute;
@@ -406,9 +407,10 @@ footer {
   position: fixed;
   z-index: 101;
   left: var(--space-edges);
-  bottom: 0;
+  bottom: calc(0rem - var(--footer-bottom));
   width: calc(100% - 2 * var(--space-edges));
-  background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1)); }
+  background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
+  transition: 0.5s; }
 
 .footer-content {
   display: flex;
@@ -1738,7 +1740,7 @@ section.docs .bs-callout {
   position: sticky;
   /* starts between header and main, turns into demarcation */
   z-index: 100;
-  top: var(--header-height);
+  top: var(--header-height-current);
   /* not -current since being overridden in header.css then */
   transition: top var(--header-expand-time) ease 0s;
   margin-top: var(--space-top);
@@ -1896,7 +1898,6 @@ section.docs .bs-callout {
     transition: all 0.5s;
     height: 100%; }
   .carousel-items .carousel-item-middle {
-    transform: scale(1.2);
     z-index: 10; }
     .carousel-items .carousel-item-middle.from-left, .carousel-items .carousel-item-middle.from-right {
       transition: transform 0.0s; }
@@ -1905,8 +1906,7 @@ section.docs .bs-callout {
     .carousel-items .carousel-item-middle.from-right {
       transform: scale(0.9) translateX(-100%); }
   .carousel-items .carousel-item-left, .carousel-items .carousel-item-right {
-    transition: 0.5s;
-    transform: scale(0.9); }
+    transition: 0.5s; }
     .carousel-items .carousel-item-left.from-left, .carousel-items .carousel-item-left.from-right, .carousel-items .carousel-item-right.from-left, .carousel-items .carousel-item-right.from-right {
       transition: all 0.0s; }
   .carousel-items .carousel-item-left.from-left {
@@ -1919,21 +1919,21 @@ section.docs .bs-callout {
     transform: translateX(-100%) scale(1); }
   .carousel-items .carousel-item-left-pseudo, .carousel-items .carousel-item-right-pseudo {
     position: absolute;
-    top: 0;
+    top: -10%;
     z-index: -1;
-    transition: 0.5s; }
+    transition: 1.0s; }
     .carousel-items .carousel-item-left-pseudo.from-left, .carousel-items .carousel-item-left-pseudo.from-right, .carousel-items .carousel-item-right-pseudo.from-left, .carousel-items .carousel-item-right-pseudo.from-right {
       transition: 0.0s; }
   .carousel-items .carousel-item-left-pseudo {
     left: 0;
-    transform: translateX(-100%) scale(0); }
+    transform: translateX(-75%) scale(0); }
     .carousel-items .carousel-item-left-pseudo.from-left {
-      transform: translateX(0%) scale(0.4); }
+      transform: translateX(0%) scale(0.5); }
   .carousel-items .carousel-item-right-pseudo {
     right: 0;
-    transform: translateX(100%) scale(0); }
+    transform: translateX(75%) scale(0); }
     .carousel-items .carousel-item-right-pseudo.from-right {
-      transform: translateX(0%) scale(0.4); }
+      transform: translateX(0%) scale(0.5); }
 
 @supports (scroll-margin-top: 0px) {
   /* compensate for our sticky header. */
@@ -2189,7 +2189,7 @@ figcaption, .float-with-caption {
 .hud {
   position: fixed;
   z-index: 100;
-  bottom: calc(var(--footer-height) + 0.25rem);
+  bottom: calc(var(--footer-height-current) + 0.25rem);
   /* ;actually, footer, if sticky... */
   right: calc(var(--space-edges) + 0.05rem);
   max-width: 70%;
@@ -2475,7 +2475,9 @@ figcaption, .float-with-caption {
   /* not truly dynamic bc of annoying sticky */
   --header-height-current:   var(--header-height);
   /* will then be changed by js dep on whether menu open... */
-  --footer-height:           3.00rem;
+  --footer-height:           3.25rem;
+  --footer-height-current:   var(--footer-height);
+  --footer-bottom:           0rem;
   --link-offset:         calc( var(--header-height-current));
   --menu-width-fraction: 0.70;
   --line-scale-factor: 0.5;
@@ -2577,7 +2579,7 @@ figcaption, .float-with-caption {
   --box-faint-color:      hsla(0, 0%, var(--lum-dark-1), var(--opacity-faint));
   --box-regular-color-flip:    hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
   --box-faint-color-flip:      hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
-  --line-color:           hsla(0, 0%, 67%, 1.0);
+  --line-color:           hsla(0, 0%, 47%, 1.0);
   --gradient-bg-main: linear-gradient(-77deg,
                                       hsl(280, 15%, 8%),
                                       var(--bg-1))
@@ -2804,8 +2806,7 @@ main {
   border-right: var(--line-width-vert) solid var(--line-color);
   /* should make configurable. off looks p nice on main page */
   margin-top: var(--space-lg);
-  padding-bottom: var(--footer-height);
-  /* XXX actually, footer height... */
+  padding-bottom: var(--footer-height-current);
   -webkit-animation: fade-in 2.5s ease-in;
           animation: fade-in 2.5s ease-in; }
 
