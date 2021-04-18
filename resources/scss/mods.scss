@@ -244,18 +244,19 @@
 .anim-gradient-bg {
   --opacity: 1.00;
   --deg: -40deg;
-  --color-1: hsla(var(--hue-1),  30%,  var(--lum-bg-1), var(--opacity));
-  --color-2: hsla(var(--hue-2),  30%,  var(--lum-bg-1), var(--opacity));
+  --color-1: hsla(var(--hue-1),  50%,  var(--lum-bg-3), var(--opacity));
+  --color-2: hsla(var(--hue-2),  50%,  var(--lum-bg-3), var(--opacity));
   /* background: linear-gradient(-30deg, var(--color-1), var(--bg-1)); */
   background: linear-gradient(var(--deg), var(--color-1), var(--color-2));
-  // background-size: 230%;
-  // animation: gradient-bg 10s ease infinite;
+  background-size: 230%;
+  animation: gradient-bg 10s ease infinite;
   // backdrop-filter: blur(4px) contrast(70%);
 }
 @keyframes gradient-bg {
 	0%     { background-position:   0% 50%;
 	} 50%  { background-position: 100% 50%;
-	} 100% { background-position:   0% 50%;
+	} 90%  { background-position: 50% 0%;
+	} 100% { background-position:   0% 100%;
 	}
 }
 
