@@ -159,13 +159,17 @@
                  {:width "80%" ; TODO nvm not hardcoding and not going crazy large when vw high, should be based on img size so don't blow up too much anyways
                   :margin "var(--space-lg) 10%"})
         :on-click #(r/rswap! zoomed? not)}
-       [:img.media.image-inset img-attr]
+       [seen (str "auto-layout-" id) "slide-in"
+        [:img.media.image-inset img-attr]]
        (when caption [:figcaption caption])])))
 
 (defn auto-layout-text-imgs "Take text and images and space out floats appropriately. Pretty dumb but eh"
   [content]
   (let [text-part (for [line (string/split-lines (:text content))]
-                    [:<> [:span line] [:br]])
+                    [:<>
+                     [seen (str "auto-layout-text-" line) "slide-in"
+                      [:span line]]
+                     [:br]])
          chunk-size (int (/ (count text-part)
                             (count (:images content))))
          result (->> (util/interleave-all (map #(into [float-img] %)
