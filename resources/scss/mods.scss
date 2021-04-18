@@ -179,7 +179,9 @@
 }
 
 .appear-wrapper {
-  display: inline-block; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post
+  display: initial; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post
+  // display: inline-block; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post
+  // ^^ above also screws up appearing text with [seen]. let's find what breaks without it?
   // width: 100%; // same as above, fixes but maybe also screws? yes it does
   transition: all 0.8s;
   
