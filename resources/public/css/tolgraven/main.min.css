@@ -886,11 +886,14 @@ h3::first-letter {
   top: var(--header-height-current); }
 
 .appear-wrapper {
-  display: inline-block;
+  display: initial;
   transition: all 0.8s; }
   .appear-wrapper.opacity {
     opacity: 0;
     transition: opacity 1.0s; }
+  .appear-wrapper.zoom {
+    opacity: 0;
+    transform: scale(0); }
   .appear-wrapper.zoom-y {
     opacity: 0;
     transform: scaleY(0); }
@@ -901,7 +904,7 @@ h3::first-letter {
   .appear-wrapper.slide-in {
     opacity: 0;
     transform: translateY(30%);
-    transition: opacity 0.1s, transform 0.2s ease; }
+    transition: opacity 0.39s, transform 0.98s ease; }
   .appear-wrapper.basic {
     visibility: hidden; }
   .appear-wrapper.background * {
@@ -945,26 +948,33 @@ h3::first-letter {
 .anim-gradient-bg {
   --opacity: 1.00;
   --deg: -40deg;
-  --color-1: hsla(var(--hue-1),  30%,  var(--lum-bg-1), var(--opacity));
-  --color-2: hsla(var(--hue-2),  30%,  var(--lum-bg-1), var(--opacity));
+  --color-1: hsla(var(--hue-1),  50%,  var(--lum-bg-3), var(--opacity));
+  --color-2: hsla(var(--hue-2),  50%,  var(--lum-bg-3), var(--opacity));
   /* background: linear-gradient(-30deg, var(--color-1), var(--bg-1)); */
-  background: linear-gradient(var(--deg), var(--color-1), var(--color-2)); }
+  background: linear-gradient(var(--deg), var(--color-1), var(--color-2));
+  background-size: 230%;
+  -webkit-animation: gradient-bg 10s ease infinite;
+          animation: gradient-bg 10s ease infinite; }
 
 @-webkit-keyframes gradient-bg {
   0% {
     background-position: 0% 50%; }
   50% {
     background-position: 100% 50%; }
+  90% {
+    background-position: 50% 0%; }
   100% {
-    background-position: 0% 50%; } }
+    background-position: 0% 100%; } }
 
 @keyframes gradient-bg {
   0% {
     background-position: 0% 50%; }
   50% {
     background-position: 100% 50%; }
+  90% {
+    background-position: 50% 0%; }
   100% {
-    background-position: 0% 50%; } }
+    background-position: 0% 100%; } }
 
 .blur-bg {
   /* backdrop-filter is finicky with transitions, so... */
@@ -1575,6 +1585,14 @@ textarea.blog-adding-comment-textbox {
 .user-name {
   font-size: 0.6em; }
 
+.experiments {
+  z-index: 30; }
+
+.tabs-container {
+  background: var(--bg-3); }
+  .tabs-container > li {
+    background: var(--bg-1); }
+
 .parallax-ui {
   position: -webkit-sticky;
   position: sticky;
@@ -1782,7 +1800,6 @@ section.docs .bs-callout {
 
 .media {
   width: 100%;
-  max-width: 700px;
   margin: var(--space) calc(0.5 * var(--space)) 0.2rem calc(0.5 * var(--space));
   -webkit-user-select: none;
      -moz-user-select: none;
@@ -1860,14 +1877,15 @@ section.docs .bs-callout {
   position: relative;
   display: flex;
   justify-content: center;
-  align-items: center; }
+  align-items: center;
+  overflow: hidden; }
 
 .carousel-btn {
-  border: none; }
+  border: none;
+  z-index: 10; }
 
 .carousel-prev-btn, .carousel-next-btn {
-  position: absolute;
-  top: 50%; }
+  position: absolute; }
 
 .carousel-prev-btn {
   left: 0; }
@@ -1895,8 +1913,24 @@ section.docs .bs-callout {
   transform-style: preserve-3d;
   transform-origin: center; }
   .carousel-items li {
-    transition: all 0.5s;
-    height: 100%; }
+    transition: all 0.5s; }
+  .carousel-items .carousel-item-min {
+    opacity: 0;
+    position: absolute; }
+  .carousel-items .carousel-item-main {
+    opacity: 100%;
+    position: relative;
+    height: 100%;
+    width: 100%; }
+  .carousel-items .carousel-item-prev, .carousel-items .carousel-item-next {
+    opacity: 50%;
+    z-index: -1;
+    top: 15%;
+    width: 50%; }
+  .carousel-items .carousel-item-prev {
+    left: -50%; }
+  .carousel-items .carousel-item-next {
+    right: -50%; }
   .carousel-items .carousel-item-middle {
     z-index: 10; }
     .carousel-items .carousel-item-middle.from-left, .carousel-items .carousel-item-middle.from-right {
@@ -2170,21 +2204,37 @@ figcaption, .float-with-caption {
   opacity: 1.0;
   transition: opacity 0.3s; }
 
-#modal-bg {
+.modal-bg {
   position: fixed;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   top: 0;
   left: 0;
-  background: rgba(30, 30, 45, 0.6);
+  background: rgba(30, 30, 45, 0);
   z-index: 200;
-  transition: all 0.5s; }
+  transition: background 0.5s; }
+
+.modal-bg-open {
+  background: rgba(30, 30, 45, 0.8); }
 
 #modal {
   position: fixed;
-  top: 25%;
-  left: 25%;
   z-index: 201; }
+
+.modal-zoom {
+  width: 98vw;
+  height: 98vh;
+  transform: scale(0);
+  opacity: 0.5;
+  transition: transform 0.5s; }
+
+.modal-zoomed {
+  opacity: 1.0;
+  transform: scale(1); }
+
+.modal-zoomed-item {
+  border: var(--line-width) solid var(--line-color);
+  box-shadow: 0px 0px 85px 3px rgba(150, 150, 250, 0.55); }
 
 .hud {
   position: fixed;
@@ -2448,6 +2498,20 @@ figcaption, .float-with-caption {
 #gallery {
   z-index: 100; }
 
+#gallery-3 {
+  z-index: 40; }
+
+.gallery-insta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+  align-content: bottom;
+  text-align: center; }
+  .gallery-insta > .gallery-insta-item {
+    background: var(--bg-4); }
+    .gallery-insta > .gallery-insta-item * {
+      border: var(--line-width) solid var(--line-color); }
+
 /* wanted to put in own file but wasnt compatible with live reload solution... */
 :root {
   /* general vars */
@@ -2579,7 +2643,7 @@ figcaption, .float-with-caption {
   --box-faint-color:      hsla(0, 0%, var(--lum-dark-1), var(--opacity-faint));
   --box-regular-color-flip:    hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
   --box-faint-color-flip:      hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
-  --line-color:           hsla(0, 0%, 47%, 1.0);
+  --line-color:           hsla(0, 0%, 60%, 1.0);
   --gradient-bg-main: linear-gradient(-77deg,
                                       hsl(280, 15%, 8%),
                                       var(--bg-1))
@@ -2778,11 +2842,7 @@ body {
   color: var(--fg-1);
   background-color: var(--bg-1);
   width: calc(100% - 2 * var(--space-edges));
-  margin: auto;
-  /* no overflow hidden on body = iphone can scroll sideways. on body works but sticky header breaks */
-  /* -webkit-overflow-x: hidden; nope... no work */
-  /* overflow-x: hidden; /1* gotta be on both or doesnt work on iphone hmm *1/ */
-  /* -webkit-overflow-scrolling: touch; */ }
+  margin: auto; }
 
 li {
   list-style: none; }
