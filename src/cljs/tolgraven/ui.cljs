@@ -24,11 +24,12 @@
                           (util/log :error "Component" (pr-str info))
                           (rf/dispatch [:exception [category]
                                         {:error error :info info}])) ; error and info are empty.
-   :get-derived-state-from-error ;"defined as instance method and will be ignored. define as static"
-   (fn [error] ;this should update state to serve like, an error page (for render) "if using getDerivedState methods, the state has to be plain JS object as React implementation uses Object.assign to merge partial state into the current state."
-    (rf/dispatch [:exception [category]
-                  {:error error :info (:info exception)}])
-    #js {}) ; empty new state since not using react state
+   ; :get-derived-state-from-error ;"defined as instance method and will be ignored. define as static"
+   ; (fn [error] ;this should update state to serve like, an error page (for render) "if using getDerivedState methods, the state has to be plain JS object as React implementation uses Object.assign to merge partial state into the current state."
+   ;  (rf/dispatch [:exception [category]
+   ;                {:error error :info (:info exception)}])
+   ;  #js {}) ; empty new state since not using react state
+    ; ^ found above in some blog post, just makes it go blank on error...
    :reagent-render
    (fn [category component]
     (if-not @exception   ;state change downstream? then it gets easier to debug "in-page",
