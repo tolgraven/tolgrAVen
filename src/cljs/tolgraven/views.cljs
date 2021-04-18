@@ -288,6 +288,26 @@
     [ui/auto-layout-text-imgs content]
     [:br] [:br]]])
 
+(defn zoom-to-modal "E.g. bring up image to semi-fullscreen when clicked.
+                     Pass current dom elem so can animate smooth from its current pos and size."
+  ; or well like what we can do is just set width to 80vw or whatever and anim to that.
+  ; and pos absolute to break it out
+  ; need to create an additional el anyways cause dont want it to disappear from current pos..
+  [id]
+  (when-let [component @(rf/subscribe [:state [:modal-zoom id :component]])]
+    (let [opened (and @(rf/subscribe [:state [:modal-zoom id :opened]])
+                      @(rf/subscribe [:state [:modal-zoom id :loaded]]))
+          on-click #(rf/dispatch [:modal-zoom id :close])] ;actually guess container will handle click on img too. but later if add buttons etc, nyah
+      [:div.modal-bg.center-content
+       {:class (when opened "modal-bg-open")
+        :on-click on-click }
+       [:div#modal.modal-zoom.center-content
+        {:class (when opened "modal-zoomed")
+         :on-click on-click
+         :ref #(when % (rf/dispatch [:modal-zoom id :loaded])) } ;to apply things only later
+        (util/add-attrs component
+                        {:class "modal-zoomed-item"}) ]])))
+
 (defn ui-gallery "Stupid css thing slides sidewayus x) Make it go out left side would be cool"
   [img-attrs]
   [:section#gallery.covering.fullwide
