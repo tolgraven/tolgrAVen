@@ -886,7 +886,6 @@ h3::first-letter {
   top: var(--header-height-current); }
 
 .appear-wrapper {
-  display: initial;
   transition: all 0.8s; }
   .appear-wrapper.opacity {
     opacity: 0;
@@ -903,8 +902,8 @@ h3::first-letter {
     transition: transform 0.55s; }
   .appear-wrapper.slide-in {
     opacity: 0;
-    transform: translateY(30%);
-    transition: opacity 0.39s, transform 0.98s ease; }
+    transform: translateY(80%);
+    transition: opacity 0.19s, transform 0.98s ease; }
   .appear-wrapper.basic {
     visibility: hidden; }
   .appear-wrapper.background * {
@@ -912,7 +911,6 @@ h3::first-letter {
   .appear-wrapper.appeared {
     opacity: 1;
     transform: none;
-    translate: none;
     visibility: visible; }
   .appear-wrapper.slow {
     transition: all 1.5s; }
