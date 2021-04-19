@@ -159,7 +159,7 @@
                  {:width "80%" ; TODO nvm not hardcoding and not going crazy large when vw high, should be based on img size so don't blow up too much anyways
                   :margin "var(--space-lg) 10%"})
         :on-click #(r/rswap! zoomed? not)}
-       [seen (str "auto-layout-" id) "slide-in"
+       [seen (str "auto-layout-" id) "zoom" ;"slide-in"
         [:img.media.image-inset img-attr]]
        (when caption [:figcaption caption])])))
 
