@@ -346,6 +346,11 @@
      [ui-story @(rf/subscribe [:content [:story]])]
      [ui-interlude (get-lewd)]
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
-     [ui-gallery-2 @(rf/subscribe [:content [:gallery]])]
-     [cv]]))
+     ; [ui-gallery-3 @(rf/subscribe [:content [:gallery]])]
+     ; [ui-gallery-2 @(rf/subscribe [:content [:gallery]])]
+
+     ; [ui-strava ]
+     ; [ui-soundcloud]
+     ; [cv]
+     ]))
 
