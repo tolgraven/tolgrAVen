@@ -126,8 +126,7 @@
 
 (rf/reg-event-fx :reloaded
  (fn [db [_ _]]
-   ; {:dispatch [:diag/new :info "JS" "Reloaded"]}))
-   {:db nil}))
+   {:dispatch [:diag/new :info "JS" "Reloaded"]}))
 
 
 (rf/reg-event-fx :to-db
