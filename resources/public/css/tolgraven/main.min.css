@@ -917,10 +917,21 @@ h3::first-letter {
   .appear-wrapper.extra-slow {
     transition: all 3.0s; }
 
+.covering, .covering-2, .covering-3 {
+  /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
+  background: var(--gradient-bg-main); }
+
 .covering {
   /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
-  z-index: 10;
-  background: var(--gradient-bg-main); }
+  z-index: 10; }
+
+.covering-2 {
+  /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
+  z-index: 20; }
+
+.covering-3 {
+  /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
+  z-index: 30; }
 
 .covering-faded {
   /* jk */
@@ -1516,7 +1527,6 @@ textarea.blog-adding-comment-textbox {
 
 .user-section-wrapper {
   max-height: 0;
-  overflow-y: scroll;
   opacity: 0.6;
   -webkit-backdrop-filter: blur(0.3rem);
           backdrop-filter: blur(0.3rem);
@@ -1790,8 +1800,8 @@ section.docs .bs-callout {
 
 .close-btn {
   position: absolute;
-  right: -0.7em;
-  top: -0.2em; }
+  right: 0;
+  top: 0; }
   .close-btn:hover {
     outline: 0;
     transform: scale(1.1); }
@@ -1824,6 +1834,8 @@ section.docs .bs-callout {
 .media-as-bg {
   position: absolute;
   left: 0;
+  top: 0;
+  z-index: -1;
   width: 100%;
   max-width: unset;
   -o-object-fit: cover;
@@ -2269,8 +2281,8 @@ figcaption, .float-with-caption {
     padding-right: var(--space-lg);
     padding-bottom: calc(0.33 * var(--space)); }
   .hud-message .close-btn {
-    top: -0.6em;
-    right: -1.2em; }
+    top: -0.5em;
+    right: -0.75em; }
 
 .hud-modal-main {
   padding: 0.75rem 2rem; }
@@ -2284,6 +2296,10 @@ figcaption, .float-with-caption {
   border-bottom: 0; }
   .log-container table, .log-container thead, .log-container tbody, .log-container tr {
     width: 100%; }
+
+#log-container {
+  z-index: 11;
+  border-top: none; }
 
 .log {
   background: var(--bg-3); }
@@ -2312,6 +2328,56 @@ figcaption, .float-with-caption {
 
 .log-level.debug {
   color: var(--green); }
+
+.strava {
+  background: linear-gradient(90deg, #7d2601, #873001); }
+  .strava .strava-profile-image {
+    width: calc(10 * var(--space));
+    height: calc(10 * var(--space)); }
+  .strava .strava-profile {
+    margin: var(--space-lg); }
+  .strava > h1 {
+    margin: calc(var(--space)); }
+  .strava .strava-stats {
+    padding: var(--space);
+    background: linear-gradient(0deg, rgba(135, 48, 1, 0.5), rgba(145, 58, 3, 0.7));
+    border: var(--line-width-sm) solid #fc4c02;
+    box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.1); }
+    .strava .strava-stats > div:first-of-type {
+      margin-right: calc(4 * var(--space-lg));
+      color: var(--fg-5); }
+    .strava .strava-stats div, .strava .strava-stats h3 {
+      margin: 0.25rem;
+      margin-right: 1em; }
+    .strava .strava-stats h3 {
+      font-weight: bolder; }
+    .strava .strava-stats span {
+      color: var(--fg-5); }
+    .strava .strava-stats > div:last-of-type {
+      background: none;
+      margin-left: -2em; }
+      .strava .strava-stats > div:last-of-type > div:first-of-type {
+        margin-top: 7.0em; }
+  .strava .strava-activities {
+    margin: calc(2 * var(--space-lg)); }
+    .strava .strava-activities .strava-activity span {
+      background: #fc4c02;
+      border-radius: 100%;
+      box-shadow: 0px 0px 3px 3px rgba(252, 76, 2, 0.4); }
+    .strava .strava-activities .strava-activity .strava-activity-details {
+      z-index: 200;
+      position: absolute;
+      bottom: 25%;
+      padding: var(--space);
+      background: linear-gradient(0deg, rgba(135, 48, 1, 0.2), rgba(145, 58, 3, 0.3));
+      box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.05); }
+
+.soundcloud .soundcloud-players {
+  /* EXT IN IFRAME CANT BE STYLED */ }
+  .soundcloud .soundcloud-players > div {
+    margin-bottom: -2.00em;
+    background: #fc4c02;
+    height: 120%; }
 
 /****************************************************/
 /*    Mainly #id selectors for front page stuff     */
@@ -2800,9 +2866,6 @@ figcaption, .float-with-caption {
 /* MEDIA corrections which need to go after everything else (or use !important lol)       */
 /******************************************************************************************/
 @media all and (orientation: landscape) {
-  :root {
-    --header-height-current: 0rem !important;
-    --header-height: 0rem !important; }
   header {
     position: relative !important; }
   .line-header {
