@@ -254,7 +254,7 @@
   /* background: linear-gradient(-30deg, var(--color-1), var(--bg-1)); */
   background: linear-gradient(var(--deg), var(--color-1), var(--color-2));
   background-size: 230%;
-  animation: gradient-bg 10s ease infinite;
+  animation: gradient-bg 25s ease infinite;
   // backdrop-filter: blur(4px) contrast(70%);
 }
 @keyframes gradient-bg {
