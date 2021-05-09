@@ -87,13 +87,14 @@
         num-activities 30
         activities @(rf/subscribe [:content [:strava :activities]])
         watts-high (apply max (map :average_watts activities))]
-    [:div.strava-activities
-     {:style {:position :relative
-              :height height}}
-     (map-indexed 
+    [ui/seen-anon "opacity extra-slow"
+     [:div.strava-activities
+      {:style {:position :relative
+               :height height}}
+      (map-indexed 
        (fn [i activity]
          [activity-dot activity i num-activities watts-high])
-       (reverse activities))]))
+       (reverse activities))]]))
 
 (defn strava "Make an increasingly fancy visualizer feed thingy for practice"
   []
