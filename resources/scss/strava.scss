@@ -21,13 +21,10 @@
   .strava-profile {
     margin: var(--space-lg);
 
-    > div:last-of-type { // logo
-      margin-left: calc(2 * var(--space-lg));
-
-      img {
-        transform: scale(1.4);
-      }
-      
+    .strava-story { // story
+      margin-left: calc(1 * var(--space-lg));
+      font-size: 90%;
+      max-width: 50%;
     }
   }
 

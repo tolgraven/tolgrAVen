@@ -1601,10 +1601,10 @@ textarea.blog-adding-comment-textbox {
     margin-right: var(--space-lg); }
   .strava .strava-profile {
     margin: var(--space-lg); }
-    .strava .strava-profile > div:last-of-type {
-      margin-left: calc(2 * var(--space-lg)); }
-      .strava .strava-profile > div:last-of-type img {
-        transform: scale(1.4); }
+    .strava .strava-profile .strava-story {
+      margin-left: calc(1 * var(--space-lg));
+      font-size: 90%;
+      max-width: 50%; }
   .strava > h1 {
     margin: calc(var(--space)); }
   .strava .strava-stats {

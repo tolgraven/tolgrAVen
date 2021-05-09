@@ -119,8 +119,7 @@
        [:div (:bio athlete)]
        [:div (:city athlete)]
        [:div (:weight athlete) " kg"]]
-      ; [:div.center-content [:img {:src "img/strava_logo_nav.png"}]]
-      ]
+      [:div.strava-story (:story data)]]
       
      [:div.strava-stats.flex
       [:div

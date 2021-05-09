@@ -94,6 +94,9 @@
                               ["cljs" {:src "img/cljs.png" :alt "cljs"}
                                "clojurescript in the house"] ]}
 
+             :strava {:story "I used to be in really good shape, before stomach issues and multiple surgeries.
+                              Cycling became my way back to fitness, and I've gone pretty much all in. Here you can follow my progress, or lack of it."}
+
              :interlude [{:title "What does that mean?"
                           :caption "Stage light visualizer for the browser with custom shaders"
                           :bg [:video.media.media-as-bg
