@@ -343,7 +343,7 @@
 (rf/reg-event-fx :init ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
  (fn [{:keys [db]} [_ _]]
   {:dispatch-n [[:init/scroll-storage]
-                [:listener/scroll-direction]
+                ; [:listener/scroll-direction]
                 [:id-counters/fetch]
                 [:strava/init]]}))
 
