@@ -57,6 +57,15 @@
     :ref #(rf/dispatch [:appear id (boolean %)])}
    (into [:<>] components)])
 
+(defn appear-anon "Animate mount. Dont use events just ratoms"
+  [kind & components]
+  (let [appeared (r/atom false)]
+    (fn [kind & components]
+      [:div.appear-wrapper
+       {:class (str kind " " (when @appeared "appeared"))
+        :ref #(r/rswap! appeared not)}
+       (into [:<>] components)])))
+
 (defn seen "Animate on coming into view"
   [id kind & components]
   (let [on-change (fn [frac]
@@ -76,6 +85,41 @@
         :ref #(observer %)}
        (into [:<>] components)])))
 
+(defn seen-anon "Animate on coming into view"
+  [kind & components]
+  (let [seen (r/atom false)
+        on-change (fn [frac]
+                    (cond
+                       (and (>= frac 0.50) (not @seen))
+                       (reset! seen true)
+                       (and (< frac 0.50) @seen)
+                       (reset! seen false)))
+        observer (util/observer on-change)]
+    (fn [kind & components]
+      [:div.appear-wrapper
+       {:class (str kind " " (when @seen "appeared"))
+        :ref #(observer %)}
+       (into [:<>] components)])))
+
+(defn seen-2 "Animate on coming into view. takes a map"
+  [id kind div & components]
+  (let [on-change (fn [frac]
+                    (let [state @(rf/subscribe [:state [:seen id]])]
+                      (cond
+                       (and (>= frac 0.50) (not state))
+                       (rf/dispatch [:state [:seen id] true])
+                       (and (< frac 0.50) state)
+                       (rf/dispatch [:state [:seen id] false]))))
+        observer (util/observer on-change (str "seen-" id))]
+    (fn [id kind & components]
+      (into div
+            [{:id id
+              :class (str "appear-wrapper "
+                          kind " "
+                          (when @(rf/subscribe [:state [:seen id]])
+                            "appeared"))
+              :ref #(observer %)}
+             (into [:<>] components)]))))
 
 (defn user-avatar "Display a user avatar, with common fallbacks"
   [user-map & [extra-class]]
