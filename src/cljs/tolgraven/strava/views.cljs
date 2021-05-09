@@ -49,12 +49,13 @@
           [:div.strava-activity-full
            [:h3 [:b (:name activity)]]
            [:div.flex
-            [:div
-             {:style {:color "var(--fg-5)"}}
+            [ui/appear-anon "opacity extra-slow"
+             [:div
+              {:style {:color "var(--fg-5)"}}
               [:p "Relative effort"]
               [:p "Watts"]
               [:p "Average speed"]
-              [:p "Heartrate"]]
+              [:p "Heartrate"]]]
            [:div
             [:p (:suffer_score activity)]
             [:p (:average_watts activity)]
