@@ -21,7 +21,7 @@
                    (:docs response))]
     (zipmap ks
             (walk/keywordize-keys  
-             (map :data docs)))))
+             (map :data (:docs response))))))
 
 (defn normalize-firestore-general "Reformat data for our app-db storage. Fix so compat w blog-posts..."
   [response]
