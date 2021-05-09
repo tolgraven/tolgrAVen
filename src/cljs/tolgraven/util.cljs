@@ -81,12 +81,15 @@
     ""))
 
 
-(defn format-number [n]
-  (case n
-    (nil, 0) "0"
-    (-> (pprint/cl-format nil "~,2f" n)
-        (string/replace #"\." ","))))
+(defn format-number [n & [precision]]
+  (let [precision (or precision 3)]
+    (case n
+      (nil, 0) 0
+      (-> (pprint/cl-format nil (str "~," precision "f") n)
+          js/parseFloat))))
 
+(defn abs [n]
+  (max n (- n)))
 
 
 (defn- format-css-var [var-name]
