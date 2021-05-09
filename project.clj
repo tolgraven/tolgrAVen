@@ -66,6 +66,7 @@
                  
                  [cljsjs/highlight "9.12.0-2"]
                  [cljsjs/codemirror "5.44.0-1"]
+                 [cljsjs/react-player "1.11.0-0"]
                  [cljsjs/react-transition-group "4.3.0-0"]]
 
   ; :managed-dependencies [] ; can pin specific versions...

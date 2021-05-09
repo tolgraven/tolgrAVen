@@ -568,4 +568,12 @@ figcaption, .float-with-caption {
 .log-level.debug   { color: var(--green); }
 
 
-
+.soundcloud {
+  .soundcloud-players { /* EXT IN IFRAME CANT BE STYLED */
+    > div {
+      margin-bottom: -2.00em;
+      background: #fc4c02; //XXX fix real
+      height: 120%;
+    }
+  }
+}

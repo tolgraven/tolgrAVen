@@ -3,7 +3,7 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    [clojure.string :as string]
-   [markdown.core :refer [md->html]]
+   [cljsjs.react-player]
    [tolgraven.ui :as ui]
    [tolgraven.strava.views :as strava]
    [tolgraven.db :as db]
@@ -331,6 +331,34 @@
    [:h1 "Resume"]
    [:p "Here goes the CV. Make it nice and funky with graphix n stuff."]])
 
+
+(defn remote-player
+  [url]
+  [:> js/ReactPlayer
+   {:url url
+    :width "100%"
+    :height "100%"}])
+
+(defn soundcloud-player
+  [artist song]
+  (let [base-url "https://soundcloud.com/"
+        url (str base-url artist "/" song)]
+    [ui/seen-anon "zoom-y"
+     [remote-player url]]))
+
+(defn ui-soundcloud "Soundcloud feed, plus selected tunes. Bonus if can do anything fun with it"
+  []
+  (let [base-url "https://soundcloud.com/tolgraven/"
+        artist "tolgraven"
+        tunes ["pop-music-for-cool-people-sketch-1-session-1"
+               "stateless-nearing-completion-messy-mix"
+               "a-taste-of-what-i-will-sound-like-live"]]
+    [:section.soundcloud.fullwide.covering
+     [:div.soundcloud-players
+      (for [tune tunes
+            :let [url (str base-url tune)]]
+        [soundcloud-player artist tune])]]))
+
 (defn ui []
   (let [interlude @(rf/subscribe [:content [:interlude]])
         interlude-counter (atom 0)
@@ -351,7 +379,7 @@
      ; [ui-gallery-2 @(rf/subscribe [:content [:gallery]])]
 
      [strava/strava ]
-     ; [ui-soundcloud]
+     [ui-soundcloud]
      ; [cv]
      ]))
 
