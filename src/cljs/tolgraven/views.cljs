@@ -5,6 +5,7 @@
    [clojure.string :as string]
    [markdown.core :refer [md->html]]
    [tolgraven.ui :as ui]
+   [tolgraven.strava.views :as strava]
    [tolgraven.db :as db]
    [tolgraven.util :as util :refer [at]]))
 
@@ -349,7 +350,7 @@
      ; [ui-gallery-3 @(rf/subscribe [:content [:gallery]])]
      ; [ui-gallery-2 @(rf/subscribe [:content [:gallery]])]
 
-     ; [ui-strava ]
+     [strava/strava ]
      ; [ui-soundcloud]
      ; [cv]
      ]))
