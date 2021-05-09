@@ -353,7 +353,7 @@
         tunes ["pop-music-for-cool-people-sketch-1-session-1"
                "stateless-nearing-completion-messy-mix"
                "a-taste-of-what-i-will-sound-like-live"]]
-    [:section.soundcloud.fullwide.covering
+    [:section.soundcloud.fullwide.covering-3
      [:div.soundcloud-players
       (for [tune tunes
             :let [url (str base-url tune)]]
