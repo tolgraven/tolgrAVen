@@ -11,6 +11,7 @@
     [tolgraven.util :as util]
     [tolgraven.blog.events]
     [tolgraven.user.events]
+    [tolgraven.strava.events]
     [tolgraven.doc-fx]
     [tolgraven.cofx :as cofx]
     [clojure.string :as string]
