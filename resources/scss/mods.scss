@@ -224,9 +224,17 @@
   &.extra-slow { transition: all 3.0s; }
 }
 
+.covering, .covering-2, .covering-3 { /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
+  background: var(--gradient-bg-main);
+}
 .covering { /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
   z-index: 10;
-  background: var(--gradient-bg-main);
+}
+.covering-2 { /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
+  z-index: 20;
+}
+.covering-3 { /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
+  z-index: 30;
 }
 .covering-faded { /* jk */ /* incidentally not easy to type on a proper vim setup */
   --opacity: 0.65;
