@@ -133,9 +133,10 @@
        [:div "Average speed"]]
       [totals-stats stats :all_ride_totals "Total"] 
       [totals-stats stats :recent_ride_totals "Last month"]
-      [:div
-       [ui/seen-anon "slide-in" [arrow :up]] ;XXX fix actual comparison
-       [ui/seen-anon "slide-in" [arrow :up]]]]
+      ; [:div
+      ;  [ui/seen-anon "slide-in" [arrow :up]] ;XXX fix actual comparison
+      ;  [ui/seen-anon "slide-in" [arrow :up]]]
+      ]
 
      [activities-graph]
      ; [:pre {} (first (:activities data))]

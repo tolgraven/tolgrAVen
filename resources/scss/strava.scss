@@ -53,7 +53,7 @@
     box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.1);
 
     > div:first-of-type { // description col
-      margin-right: calc(4 * var(--space-lg));
+      margin-right: calc(3.5 * var(--space));
       color: var(--fg-5);
     }
     div, h3 {
@@ -66,13 +66,13 @@
     span {
       color: var(--fg-5);
     }
-    > div:last-of-type { // change col
-      background: none;
-      margin-left: -2em;
-      > div:first-of-type { // arrows. ugly should be part of col3...
-        margin-top: 7.0em;
-      }
-    }
+    // > div:last-of-type { // change col
+    //   background: none;
+    //   margin-left: -2em;
+    //   > div:first-of-type { // arrows. ugly should be part of col3...
+    //     margin-top: 7.0em;
+    //   }
+    // }
     
   }
 
