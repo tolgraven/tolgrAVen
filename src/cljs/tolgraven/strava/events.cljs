@@ -22,7 +22,7 @@
 (rf/reg-event-fx :strava/store-client   [(rf/inject-cofx :now)
                                          debug]
   (fn [{:keys [db now]} [_ data]]
-    (let [data (util/normalize-firestore data)] ; TEMP. FIGURE OUT AND FIX THE WHOLE THING INSTEAD
+    (let [data (util/normalize-firestore-general data)] ; TEMP. FIGURE OUT AND FIX THE WHOLE THING INSTEAD
       {:db (assoc-in db [:strava] data)
        :dispatch-n [[:strava/fetch] ;XXX wont work if need refresh.
                     (when (neg? (- (-> data :auth :expires_at) now)) ;can actually refresh each time also, get same access token back then
