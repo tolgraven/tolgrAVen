@@ -340,11 +340,12 @@
      :dispatch [:listener/before-unload-save-scroll]}))
 
 
-
 (rf/reg-event-fx :init ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
  (fn [{:keys [db]} [_ _]]
   {:dispatch-n [[:init/scroll-storage]
-                [:id-counters/fetch]]}))
+                [:listener/scroll-direction]
+                [:id-counters/fetch]
+                [:strava/init]]}))
 
 ; generic helpers for rapid prototyping.
 ; NOT FOR LONG-TERM USE if straight to data path not viable
@@ -390,6 +391,7 @@
 
 (rf/reg-event-fx :http/post [debug]
   (get-http-fn :post
+               {:format (ajax/json-request-format)}
                               ))
                ; {:format (ajax/transit-request-format)}))
 
