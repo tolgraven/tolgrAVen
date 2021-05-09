@@ -1608,6 +1608,7 @@ textarea.blog-adding-comment-textbox {
   .strava > h1 {
     margin: calc(var(--space)); }
   .strava .strava-stats {
+    font-size: 90%;
     padding: var(--space);
     background: linear-gradient(0deg, rgba(135, 48, 1, 0.5), rgba(145, 58, 3, 0.7));
     border: var(--line-width-sm) solid #fc4c02;
