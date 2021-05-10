@@ -6,7 +6,6 @@
    [clojure.string :as string]
    [markdown.core :refer [md->html]]
    [tolgraven.ui :as ui]
-   [tolgraven.views :as view]
    [tolgraven.db :as db]
    [tolgraven.util :as util :refer [at]]))
 
@@ -16,6 +15,15 @@
     {:class "fa fa-user"
      :on-click #(rf/dispatch (if @(rf/subscribe [:user/ui-open?])
                                                 [:user/close-ui] [:user/open-ui]))}]])
+
+(defn input-toggle "Don't forget to put ze label - only was sep in first place due to css bs?"
+  [id checked-path & {:keys [class label]}]
+  [:input ;.toggle
+   {:id id :class class ;must be outside header or breaks...
+    :type "checkbox"    :default-checked @(rf/subscribe checked-path)
+    :on-click (fn []
+                (rf/dispatch (into checked-path
+                                   [(not @(rf/subscribe checked-path))])))}])
 
 (defn loading-spinner [model kind]
   (when (at model) ;should it be outside so not put anything when not loading? or better know element goes here
@@ -73,7 +81,7 @@
 
 (defn header [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   [:<>
-   [view/input-toggle "nav-menu-open" [:menu] :class "burger-check"]
+   [input-toggle "nav-menu-open" [:menu] :class "burger-check"]
    [:header
     [:div.cover.cover-clip] ;covers around lines and that... XXX breaks when very wide tho.
     [header-logo @(rf/subscribe [:header-text])]

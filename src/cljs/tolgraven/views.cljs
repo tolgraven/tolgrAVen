@@ -36,15 +36,6 @@
       [:p text]]
      [:h2 title]]))
 
-(defn input-toggle "Don't forget to put ze label - only was sep in first place due to css bs?"
-  [id checked-path & {:keys [class label]}]
-  [:input ;.toggle
-   {:id id :class class ;must be outside header or breaks...
-    :type "checkbox"    :default-checked @(rf/subscribe checked-path)
-    :on-click (fn []
-                (rf/dispatch (into checked-path
-                                   [(not @(rf/subscribe checked-path))])))}])
-
 
 
 (defn ui-fading "Hitherto just css but prog gen prob easier in some cases..."
