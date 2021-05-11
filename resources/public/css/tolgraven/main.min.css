@@ -261,9 +261,12 @@ menu > nav > .nav-section:last-of-type > .nav-links {
           clip-path: var(--path); }
   #nav-menu-open:checked ~ header .user-btn {
     position: absolute;
-    top: 16%;
-    right: 11%;
+    right: 3%;
     z-index: 5; }
+  #nav-menu-open:checked ~ header .blog-link-btn {
+    position: absolute;
+    right: 0%;
+    top: 80%; }
   #nav-menu-open:checked ~ header .cover {
     display: block; }
     #nav-menu-open:checked ~ header .cover.cover-clip {
@@ -1594,65 +1597,70 @@ textarea.blog-adding-comment-textbox {
 .user-name {
   font-size: 0.6em; }
 
-.strava {
-  background: linear-gradient(90deg, #7d2601, #873001); }
-  .strava .strava-profile-image {
-    width: calc(8 * var(--space));
-    height: calc(8 * var(--space));
-    margin-right: var(--space-lg); }
-  .strava .strava-profile {
-    margin: var(--space-lg); }
-    .strava .strava-profile .strava-story {
-      margin-left: calc(1 * var(--space-lg));
-      font-size: 90%;
-      max-width: 50%; }
-  .strava > h1 {
-    margin: calc(var(--space)); }
-  .strava .strava-stats {
+.strava .strava-profile-image {
+  width: calc(8 * var(--space));
+  height: calc(8 * var(--space));
+  margin-right: var(--space-lg); }
+
+.strava .strava-profile {
+  margin: var(--space-lg); }
+  .strava .strava-profile .strava-story {
+    margin-left: calc(1 * var(--space-lg));
     font-size: 90%;
+    max-width: 50%; }
+
+.strava > h1 {
+  margin: calc(var(--space)); }
+
+.strava .strava-stats {
+  font-size: 90%;
+  padding: var(--space);
+  background: linear-gradient(0deg, rgba(135, 48, 1, 0.5), rgba(145, 58, 3, 0.7));
+  border: var(--line-width-sm) solid #fc4c02;
+  box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.1); }
+  .strava .strava-stats > div:first-of-type {
+    margin-right: calc(3.5 * var(--space));
+    color: var(--fg-5); }
+  .strava .strava-stats div, .strava .strava-stats h3 {
+    margin: 0.25rem;
+    margin-right: 1em; }
+  .strava .strava-stats h3 {
+    font-weight: bolder; }
+  .strava .strava-stats span {
+    color: var(--fg-5); }
+
+.strava .strava-activities {
+  margin: calc(1.5 * var(--space-lg));
+  margin-bottom: 0; }
+  .strava .strava-activities .strava-activity .strava-activity-dot {
+    color: transparent;
+    background: #fc4c02;
+    border-radius: 100%;
+    box-shadow: 0px 0px 3px 3px rgba(252, 76, 2, 0.4);
+    transition: all 0.6s ease, color 1.5s; }
+    .strava .strava-activities .strava-activity .strava-activity-dot:hover {
+      filter: brightness(120%); }
+    .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full {
+      padding: var(--space); }
+      .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full .strava-activity-stats {
+        margin-top: calc(0.5 * var(--space));
+        justify-content: space-between; }
+      .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full > div > div > div:first-of-type {
+        margin-right: calc(2 * var(--space-lg)); }
+      .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full .strava-activity-photo > img {
+        border: var(--line-width-sm) solid #fc4c02; }
+  .strava .strava-activities .strava-activity .strava-activity-details {
+    z-index: 200;
+    position: absolute;
+    bottom: 0;
     padding: var(--space);
-    background: linear-gradient(0deg, rgba(135, 48, 1, 0.5), rgba(145, 58, 3, 0.7));
-    border: var(--line-width-sm) solid #fc4c02;
-    box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.1); }
-    .strava .strava-stats > div:first-of-type {
-      margin-right: calc(3.5 * var(--space));
-      color: var(--fg-5); }
-    .strava .strava-stats div, .strava .strava-stats h3 {
-      margin: 0.25rem;
-      margin-right: 1em; }
-    .strava .strava-stats h3 {
-      font-weight: bolder; }
-    .strava .strava-stats span {
-      color: var(--fg-5); }
-  .strava .strava-activities {
-    margin: calc(1.5 * var(--space-lg));
-    margin-bottom: 0; }
-    .strava .strava-activities .strava-activity .strava-activity-dot {
-      color: transparent;
-      background: #fc4c02;
-      border-radius: 100%;
-      box-shadow: 0px 0px 3px 3px rgba(252, 76, 2, 0.4);
-      transition: all 0.6s ease, color 1.5s; }
-      .strava .strava-activities .strava-activity .strava-activity-dot:hover {
-        filter: brightness(120%); }
-      .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full {
-        padding: var(--space); }
-        .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full .strava-activity-stats {
-          margin-top: calc(0.5 * var(--space)); }
-        .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full > div > div:first-of-type {
-          margin-right: calc(2 * var(--space-lg)); }
-    .strava .strava-activities .strava-activity .strava-activity-details {
-      z-index: 200;
-      position: absolute;
-      bottom: 0;
-      padding: var(--space);
-      margin: calc(-2.5 * var(--space-lg));
-      margin-bottom: calc(-1 * var(--space-lg));
-      width: 125%;
-      background: linear-gradient(0deg, rgba(135, 48, 1, 0.2), rgba(145, 58, 3, 0.3));
-      box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.05); }
-      .strava .strava-activities .strava-activity .strava-activity-details span {
-        margin-right: 0.5em; }
+    margin: calc(-2.5 * var(--space-lg));
+    margin-bottom: calc(-1 * var(--space-lg));
+    width: 125%;
+    background: linear-gradient(0deg, rgba(135, 48, 1, 0.2), rgba(145, 58, 3, 0.3));
+    box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.05); }
+    .strava .strava-activities .strava-activity .strava-activity-details span {
+      margin-right: 0.5em; }
 
 .experiments {
   z-index: 30; }

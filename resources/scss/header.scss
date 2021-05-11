@@ -169,9 +169,13 @@ menu > nav > .nav-section:last-of-type > .nav-links {
   
   .user-btn {
     position: absolute;
-    top: 16%;
-    right: 11%;
+    right: 3%;
     z-index: 5;
+  }
+  .blog-link-btn {
+    position: absolute;
+    right: 0%;
+    top: 80%;
   }
   .cover {
     display: block;
