@@ -1087,7 +1087,7 @@ button:hover .blur-bg, button:active .blur-bg,
   /* scale(calc(1.1 * var(--parallax-sm-scale))); */ }
 
 .parallax-bg {
-  transform: translateZ(var(--parallax-px)) translateY(-60%) scale(var(--parallax-scale));
+  transform: translateZ(var(--parallax-px)) translateY(-100%) scale(var(--parallax-scale));
   z-index: -1;
   /* another issue being mindfuck of using this as fg (ie text) heh... */
   /* transform-origin: 50% -150%; *1/ /1* perf on chrome, mac safari, but fucks ios... */ }
@@ -1633,12 +1633,13 @@ textarea.blog-adding-comment-textbox {
       box-shadow: 0px 0px 3px 3px rgba(252, 76, 2, 0.4);
       transition: all 0.6s ease, color 1.5s; }
       .strava .strava-activities .strava-activity .strava-activity-dot:hover {
-        filter: brightness(130%); }
+        filter: brightness(120%); }
       .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full {
         padding: var(--space); }
+        .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full .strava-activity-stats {
+          margin-top: calc(0.5 * var(--space)); }
         .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full > div > div:first-of-type {
-          margin-right: calc(4 * var(--space-lg));
-          color: transparent; }
+          margin-right: calc(2 * var(--space-lg)); }
     .strava .strava-activities .strava-activity .strava-activity-details {
       z-index: 200;
       position: absolute;
