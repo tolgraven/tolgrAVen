@@ -4,7 +4,7 @@ header {
   /* TODO: ios issue: zoom in and back out, main left border faintly visible left side of header */
   position: sticky;
   top: 0;
-  height: var(--header-height-current);
+  min-height: var(--header-height-current);
   overflow-y: hidden;
   display: flex;
   flex-flow: row wrap;

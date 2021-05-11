@@ -15,6 +15,7 @@
   --header-height:           4.5rem; /* beware can be 3 or 6 in practice.... temp bc reading arbitrary css vars with calc is fiddly */
   --header-with-menu-height: 18rem; /* not truly dynamic bc of annoying sticky */
   --header-height-current:   var(--header-height); /* will then be changed by js dep on whether menu open... */
+  --header-height-offset:    var(--header-height);
   --footer-height:           3.25rem; // 3.00rem; // measured...
   --footer-height-current:   var(--footer-height);
   --footer-bottom:           0rem;
