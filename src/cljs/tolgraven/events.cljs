@@ -12,6 +12,7 @@
     [tolgraven.blog.events]
     [tolgraven.user.events]
     [tolgraven.strava.events]
+    [tolgraven.instagram.events]
     [tolgraven.doc-fx]
     [tolgraven.cofx :as cofx]
     [clojure.string :as string]
@@ -345,7 +346,8 @@
   {:dispatch-n [[:init/scroll-storage]
                 ; [:listener/scroll-direction]
                 [:id-counters/fetch]
-                [:strava/init]]}))
+                [:strava/init]
+                [:instagram/init]]}))
 
 ; generic helpers for rapid prototyping.
 ; NOT FOR LONG-TERM USE if straight to data path not viable

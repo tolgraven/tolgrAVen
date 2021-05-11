@@ -316,6 +316,18 @@
           (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
          [:img.media img]))]])
 
+(defn ui-insta "Future insta gallery"
+  [srcs]
+  [:section#gallery-3.fullwide.covering
+   ; [:h1 "MY INSTA"]
+   [:div.covering.gallery-insta
+    (for [src srcs
+          :let [item [:img #_.media {:src src} ]]]
+      ^{:key (str "gallery-" src)}
+         [:div.gallery-insta-item
+          {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])}
+          item])]])
+
 (defn cv "Write dat cv. Put it on the site. Probably not last? Dunno."
   []
   [:section.cv
@@ -371,6 +383,7 @@
 
      [strava/strava ]
      [ui-soundcloud]
+     [ui-insta (map :media_url (vals @(rf/subscribe [:content [:instagram :posts]])))]
      ; [cv]
      ]))
 
