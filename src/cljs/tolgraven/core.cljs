@@ -233,9 +233,11 @@
   (rf/clear-subscription-cache!)
   (rf/dispatch-sync [:exception nil])
   (rf/dispatch [:reloaded])
+  (util/log "Mounting root component")
   (rdom/render [#'page] (.getElementById js/document "app")))
 
-(defn init! "Called only on page load" []
+
+(defn init "Called only on page load" []
   (start-router!)
   (rf/dispatch-sync [:init-db])
   (ajax/load-interceptors!)
@@ -243,6 +245,8 @@
   (init-firebase)
   (rf/dispatch [:init]) ; dispatch firebase general fetches, test case is silly id counter persistence. which then needs to be fetched into app-db once ready
   (rf/dispatch cookie-notice)
-  (util/log "Init complete, mounting root component")
+  (util/log "Init complete")
   (mount-components))
 
+(defn ^:export init!  []
+  (defonce _init_ (init))) ;; why still need for thisi don't get it init! is now being called each reload?
