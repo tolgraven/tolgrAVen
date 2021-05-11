@@ -49,12 +49,22 @@
 
 (rf/reg-event-fx :strava/get
   (fn [{:keys [db]} [_ path save-to]]
+    {:dispatch [:strava/get-and-dispatch
+                path
+                [:content (into [:strava] save-to)] ]}))
+
+(rf/reg-event-fx :strava/get-and-dispatch
+  (fn [{:keys [db]} [_ path event]]
     (let [uri "https://www.strava.com/api/v3/"]
       {:dispatch [:http/get {:uri (str uri path)
                              :headers {"Authorization" (str "Bearer " (-> db :strava :auth :access_token))}
                              :response-format (ajax/json-response-format {:keywords? true})}
-                  [:content (into [:strava] save-to)]]})))
+                  event
+                  [:strava/on-error]]})))
 
+(rf/reg-event-db :strava/on-error
+  (fn [db [_ error]]
+    (update-in db [:content :strava :error] conj error)))
 
 (rf/reg-event-fx :strava/fetch
   (fn [{:keys [db]} [_ ]]
@@ -63,7 +73,31 @@
         [:stats]]
        [:strava/get "athlete"
         [:athlete]]             
-       [:strava/get "athlete/activities"
-        [:activities]]             
+       [:strava/get-and-dispatch "athlete/activities"
+        [:strava/store-activities]]
        [:strava/get "segments/starred"
         [:starred]]]}))
+
+(rf/reg-event-fx :strava/store-activities
+  (fn [{:keys [db]} [_ data]]
+    (let [gear (->> data (map :gear_id) set)]
+      {:db (assoc-in db [:content :strava :activities] data)
+       :dispatch-n (mapv (fn [id] [:strava/fetch-gear id]) gear)})))
+
+(rf/reg-event-fx :strava/fetch-gear ;needs calling after activities using gear in activities, hmm...
+  (fn [{:keys [db]} [_ id]]         ;bit redundant since detailed activity includes, hmm
+    {:dispatch-n [(when-not (get-in db [:content :strava :gear id])
+                    [:strava/get (str "gear/" id)
+                     [:gear id]])]}))
+
+(rf/reg-event-fx :strava/fetch-stream
+  (fn [{:keys [db]} [_ id data-type]]
+    {:dispatch-n [(when-not (get-in db [:content :strava :activity-stream id])
+                    [:strava/get (str "activities/" id "/streams" "?keys=" data-type "&key_by_type=")
+                     [:activity-stream id]])]}))
+
+(rf/reg-event-fx :strava/fetch-activity
+  (fn [{:keys [db]} [_ id ]]
+    {:dispatch-n [(when-not (get-in db [:content :strava :activity id])
+                    [:strava/get (str "activities/" id  "?include_all_efforts=")
+                     [:activity id]])]}))
