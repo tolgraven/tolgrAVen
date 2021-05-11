@@ -450,3 +450,15 @@
              (assoc-in db [:hud :modal] id)))))
 
 
+(rf/reg-event-fx :modal-zoom
+ (fn [{:keys [db]} [_ id action item]]
+  (case action
+    :close {:db (update-in db [:state :modal-zoom id] dissoc :opened)
+            :dispatch-later {:ms 500
+                             :dispatch [:modal-zoom id :closed]}}
+    :closed {:db (update-in db [:state :modal-zoom] dissoc id)}
+    :open {:db (-> db
+                   (assoc-in [:state :modal-zoom id :component] item)
+                   (assoc-in [:state :modal-zoom id :opened] true))}
+    :loaded {:db (assoc-in db [:state :modal-zoom id :loaded] true)})))
+
