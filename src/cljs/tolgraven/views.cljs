@@ -252,7 +252,7 @@
                    :style (merge (when-not (pos? @frac)
                                    {:opacity 0})
                                    {:transition "transform 8.5s ease, opacity 3s"
-                                    :transform (str "scale(1.125) translateZ(" (* @frac -3) "px)")})})] ; need to be above 1.1 or goes jumpy weirdshit clip UGH why
+                                    :transform (str "scale(1.125) translateZ(" (* @frac -1.5) "px)")})})] ; need to be above 1.1 or goes jumpy weirdshit clip UGH why
          [:section#intro-end.center-content
           ; {:class "darken-8 parallax-sm origin-toptop"
           ;  :style {:background-image (str "url(" (:src bg) ")")
@@ -260,7 +260,7 @@
           [:h1.h0-responsive.parallax-bg
            {:style {:z-index 10
                     :transition "transform 8.5s ease"
-                    :transform (str "translateZ(" (* 35 @frac) "px)")}}
+                    :transform (str "translateZ(" (* 14 @frac) "px)")}}
            title]] ;ideally want this also growing (and moving quicker upwards)]
          [ui-inset caption 3]
          [ui-inset (str "Fraction visible:" @frac) 2]
