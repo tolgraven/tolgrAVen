@@ -29,7 +29,6 @@
   [activity i num-total watts-high]
   (let [hovered? (r/atom false)
         opened? (r/atom false) ;like above but lock with click
-        details @(rf/subscribe [:strava/content [:activity (:id activity)]])
         cutoff 80
         size (str (max 0.5 (* 1.5 (/ (:suffer_score activity) 300))) "em")]
     (fn [activity i num-total watts-high]
@@ -50,6 +49,7 @@
                    :border-radius "0%"}
            :on-click #(reset! opened? false)}
           
+          (let [details @(rf/subscribe [:strava/content [:activity (:id activity)]])]
           [:div.strava-activity-full
            {:ref #(when %
                     (rf/dispatch [:strava/fetch-stream (:id activity) "latlng"])
@@ -82,11 +82,20 @@
                [:p hr " bpm"])
              (when-let [kudos (:kudos_count details)]
                [:p  (repeat kudos "*")])]
-            ; [:div (-> details :photos :count)]
+            
             (when (pos? (-> details :photos :count)) ;TODO small thumbnail clickable with zoom-to-modal
-               [:img {:src (-> details :photos :primary :urls :600)
-                      :style {:width "40%"
-                              :margin-left "var(--space-lg)" }}])
+              (let [item [:img {:src (-> details :photos :primary :urls :600)
+                                :style {:object-fit "cover"
+                                        :max-width "90%"
+                                        :margin-left "var(--space-lg)" }}]] 
+                [:div
+                 {:style {:max-width "30%"
+                          :margin-left "var(--space-lg)" }
+                  :on-click (fn [e] (.stopPropagation e)
+                              (rf/dispatch [:modal-zoom :fullscreen :open
+                                            (util/add-attrs item
+                                                            {:style {:max-width "100%"}})]))}
+                 item]))
             ; [:div "segments"] ;TODO list of segment achievments
              ]
            
@@ -94,7 +103,7 @@
            ;     [:img.media-as-bg {:src (-> photos :primary :urls :600)
            ;            :style {:width "100%"
            ;                    :z-index -1}}])
-           ]]
+           ])]
          
          [:div.strava-activity-dot
           {:style {:position :absolute
