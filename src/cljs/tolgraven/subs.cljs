@@ -4,6 +4,7 @@
             [tolgraven.util :as util]
             [tolgraven.blog.subs]
             [tolgraven.user.subs]
+            [tolgraven.strava.subs]
             [clojure.edn :as edn]
             [clojure.walk :as walk]
             [cljs-time.core :as ct]))
