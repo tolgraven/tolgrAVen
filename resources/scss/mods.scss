@@ -362,7 +362,7 @@ button:hover .blur-bg, button:active .blur-bg,
 }
 .parallax-bg {
   transform: translateZ(var(--parallax-px))
-             translateY(-100%)
+             translateY(-130%)
              scale(var(--parallax-scale));
 
   z-index: -1;

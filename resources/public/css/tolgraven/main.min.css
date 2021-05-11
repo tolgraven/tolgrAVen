@@ -1088,7 +1088,7 @@ button:hover .blur-bg, button:active .blur-bg,
   /* scale(calc(1.1 * var(--parallax-sm-scale))); */ }
 
 .parallax-bg {
-  transform: translateZ(var(--parallax-px)) translateY(-100%) scale(var(--parallax-scale));
+  transform: translateZ(var(--parallax-px)) translateY(-130%) scale(var(--parallax-scale));
   z-index: -1;
   /* another issue being mindfuck of using this as fg (ie text) heh... */
   /* transform-origin: 50% -150%; *1/ /1* perf on chrome, mac safari, but fucks ios... */ }
