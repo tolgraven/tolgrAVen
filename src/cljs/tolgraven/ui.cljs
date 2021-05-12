@@ -218,7 +218,7 @@
                             (count (:images content))))
          result (->> (util/interleave-all (map #(into [float-img] %)
                                                (:images content))
-                                          (map #(into [:p] %)
+                                          (map #(into [:div] %)
                                                (partition chunk-size chunk-size
                                                           (repeat "") text-part)))
                       (map-indexed (fn [i v]
