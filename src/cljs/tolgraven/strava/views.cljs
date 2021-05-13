@@ -62,48 +62,43 @@
                            (:gear_id activity)))] ]
            
            [:div.strava-activity-stats.flex
-            [ui/appear-anon "opacity extra-slow"
+            [:div.flex
+             [ui/appear-anon "opacity extra-slow"
+              [:div
+               {:style {:color "var(--fg-5)"}}
+               [:p "Relative effort"]
+               [:p "Watts"]
+               [:p "Average speed"]
+               [:p "Distance"]
+               (when (:average_heartrate activity)
+                 [:p "Heartrate"])
+               (when (:kudos_count details)
+                 [:p "Kudos"])]]
              [:div
-              {:style {:color "var(--fg-5)"}}
-              [:p "Relative effort"]
-              [:p "Watts"]
-              [:p "Average speed"]
-              [:p "Distance"]
-              (when (:average_heartrate activity)
-                [:p "Heartrate"])
-              (when (:kudos_count details)
-                [:p "Kudos"])]]
-            [:div
-             [:p (:suffer_score activity)]
-             [:div [:p (:average_watts activity)]]
-             [:p (util/format-number (* 3.6 (:average_speed activity)) 1) " km/h"]
-             [:p (util/format-number (/ (:distance activity) 1000) 1) " km"]
-             (when-let [hr (:average_heartrate activity)]
-               [:p hr " bpm"])
-             (when-let [kudos (:kudos_count details)]
-               [:p  (repeat kudos "*")])]
+              [:p (:suffer_score activity)]
+              [:div [:p (:average_watts activity)]]
+              [:p (util/format-number (* 3.6 (:average_speed activity)) 1) " km/h"]
+              [:p (util/format-number (/ (:distance activity) 1000) 1) " km"]
+              (when-let [hr (:average_heartrate activity)]
+                [:p hr " bpm"])
+              (when-let [kudos (:kudos_count details)]
+                [:p  (repeat kudos "*")])]]
             
             (when (pos? (-> details :photos :count)) ;TODO small thumbnail clickable with zoom-to-modal
               (let [item [:img {:src (-> details :photos :primary :urls :600)
                                 :style {:object-fit "cover"
-                                        :max-width "90%"
-                                        :margin-left "var(--space-lg)" }}]] 
-                [:div
+                                        :max-width "150%" }}]] 
+                [:div.strava-activity-photo
                  {:style {:max-width "30%"
                           :margin-left "var(--space-lg)" }
                   :on-click (fn [e] (.stopPropagation e)
                               (rf/dispatch [:modal-zoom :fullscreen :open
                                             (util/add-attrs item
                                                             {:style {:max-width "100%"}})]))}
-                 item]))
+                 [ui/appear-anon "zoom"
+                 item]]))
             ; [:div "segments"] ;TODO list of segment achievments
-             ]
-           
-           ; (when-let [photos  (:photos details)] ;TODO small thumbnail clickable with zoom-to-modal
-           ;     [:img.media-as-bg {:src (-> photos :primary :urls :600)
-           ;            :style {:width "100%"
-           ;                    :z-index -1}}])
-           ])]
+             ] ])]
          
          [:div.strava-activity-dot
           {:style {:position :absolute
@@ -176,7 +171,8 @@
                 [:i.fa {:class (str "fa-arrow-" (name direction))
                         :style {:color "#fc4c02"}}])]
     [:section.strava.section-with-media-bg-wrapper.covering-2
-     [:img.media-as-bg {:src "img/strava-heatmap-3.png"}]
+     [ui/appear-anon "opacity"
+      [:img.media-as-bg {:src "img/strava-heatmap-3.png"}]]
      [:h1  [:img {:src "img/strava_logo_nav.png"}]]
      (if athlete
        [:div.strava-profile.flex
