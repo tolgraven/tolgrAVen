@@ -464,6 +464,7 @@ figcaption, .float-with-caption {
   transform: scale(1.0);
 }
 .modal-zoomed-item {
+  width: inherit;
   border: var(--line-width) solid var(--line-color);
   box-shadow: 0px 0px 85px 3px rgba(150, 150, 250, 0.55);
 }
