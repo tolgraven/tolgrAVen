@@ -24,6 +24,21 @@
      [:div (util/format-number (/ distance (:count stats)) 2) [:span " km"]]
      [:div (util/format-number (/ distance hours) 1) [:span " km/h"]]]))
 
+(defn activity-photo
+  [data]
+  (when (pos? (:count data))
+    (let [item [:img {:src (-> data :primary :urls :600)
+                      :style {:object-fit "cover"
+                              :max-width "150%" }}]] 
+      [:div.strava-activity-photo
+       {:style {:max-width "30%"
+                :margin-left "var(--space-lg)" }
+        :on-click (fn [e] (.stopPropagation e)
+                    (rf/dispatch [:modal-zoom :fullscreen :open
+                                  (util/add-attrs item
+                                                  {:style {:max-width "100%"}})]))}
+       [ui/appear-anon "zoom"
+        item]])))
 
 (defn activity-dot
   [activity i num-total watts-high]
@@ -84,19 +99,7 @@
               (when-let [kudos (:kudos_count details)]
                 [:p  (repeat kudos "*")])]]
             
-            (when (pos? (-> details :photos :count)) ;TODO small thumbnail clickable with zoom-to-modal
-              (let [item [:img {:src (-> details :photos :primary :urls :600)
-                                :style {:object-fit "cover"
-                                        :max-width "150%" }}]] 
-                [:div.strava-activity-photo
-                 {:style {:max-width "30%"
-                          :margin-left "var(--space-lg)" }
-                  :on-click (fn [e] (.stopPropagation e)
-                              (rf/dispatch [:modal-zoom :fullscreen :open
-                                            (util/add-attrs item
-                                                            {:style {:max-width "100%"}})]))}
-                 [ui/appear-anon "zoom"
-                 item]]))
+            [activity-photo (:photos details)]
             ; [:div "segments"] ;TODO list of segment achievments
              ] ])]
          
