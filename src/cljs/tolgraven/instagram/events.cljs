@@ -8,38 +8,60 @@
     [tolgraven.interceptors :as inter]
     [clojure.string :as string]))
 
+(def debug (when ^boolean goog.DEBUG rf/debug))
 
 (rf/reg-event-fx :instagram/init
  (fn [{:keys [db]} [_ _]]
    {:dispatch
     [:<-store [:instagram] [:instagram/store-client]]}))
 
-(rf/reg-event-fx :instagram/store-client
+(rf/reg-event-fx :instagram/store-client [debug]
  (fn [{:keys [db]} [_ data]]
    (let [data (util/normalize-firestore-general data)]
-     {:db (assoc-in db [:instagram] data)
+     {:db (-> db (assoc-in [:instagram] data)
+                 (assoc-in [:content :instagram :posts] (:posts data)))
       :dispatch
-      [:http/get {:uri (str "https://graph.instagram.com/me/media"
-                            "?fields=id"
-                            "&access_token=" (get-in data [:auth :access_token]))
+      [:http/get {:uri "https://graph.instagram.com/me/media"
+                  :url-params {:access_token (get-in data [:auth :access_token])
+                               :fields "id"}
                   :response-format (ajax/json-response-format {:keywords? true})}
-       [:instagram/fetch]] })))
+       [:instagram/fetch]
+       [:content [:instagram :error]]] })))
 
 (rf/reg-event-fx :instagram/get
  (fn [{:keys [db]} [_ id]]
    (let [uri "https://graph.instagram.com/"
          fields "id,media_type,media_url,username,timestamp"
+         ; fields "id,media_type,media_url,username,timestamp,name,description,comments,likes"
          token (get-in db [:instagram :auth :access_token])]
      {:dispatch
-      [:http/get {:uri (str uri id "?fields=" fields "&access_token=" token)
+      [:http/get {:uri (str uri id)
+                  :url-params {:fields fields :access_token token}
                   :response-format (ajax/json-response-format {:keywords? true})}
-       [:content [:instagram :posts id]]] })))
+       [:instagram/store-post id]
+       [:content [:instagram :error id]]] })))
 
-(rf/reg-event-fx :instagram/fetch
-  (fn [{:keys [db]} [_ id-data]]
+(rf/reg-event-fx :instagram/store-post
+ (fn [{:keys [db]} [_ id post]]
+   {:db (assoc-in db [:content :instagram :posts (keyword id)] post)
+    :dispatch [:store-> [:instagram :posts] {id post} [:posts]]}))
+
+(rf/reg-event-fx :instagram/fetch [debug]
+  (fn [{:keys [db]} [_ data]]
+    (let [new-ids (map :id (:data data))
+          old-ids (get-in db [:instagram :ids])
+          match? (= new-ids old-ids)]
+      (if-not match?
+       {:db (-> db (assoc-in [:instagram :ids] new-ids)
+                   (assoc-in [:instagram :data] (get-in data [:paging])))
+        :dispatch-n [[:store-> [:instagram :ids] {:ids new-ids}]
+                     [:instagram/fetch-from-insta new-ids]] }))))
+
+
+(rf/reg-event-fx :instagram/fetch-from-insta [debug]
+  (fn [{:keys [db]} [_ ids]]
     {:dispatch-n
-      (mapv (fn [id] [:instagram/get id])
-            (map :id (:data id-data)))}))
+      (mapv (fn [id] [:instagram/get id]) ids)}))
 
 
 (rf/reg-event-fx :instagram/refresh-token ;needs refreshing every 60 days so fix dis sometime

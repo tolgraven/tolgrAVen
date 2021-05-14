@@ -319,7 +319,6 @@
 (defn ui-insta "Future insta gallery"
   [srcs]
   [:section#gallery-3.fullwide.covering
-   ; [:h1 "MY INSTA"]
    [:div.covering.gallery-insta
     (for [src srcs
           :let [item [:img #_.media {:src src} ]]]
@@ -377,13 +376,13 @@
      [ui-moneyshot @(rf/subscribe [:content [:moneyshot]])]
      [ui-story @(rf/subscribe [:content [:story]])]
      [ui-interlude (get-lewd)]
-     [ui-gallery @(rf/subscribe [:content [:gallery]])]
-     ; [ui-gallery-3 @(rf/subscribe [:content [:gallery]])]
+     
      ; [ui-gallery-2 @(rf/subscribe [:content [:gallery]])]
 
      [strava/strava ]
      [ui-soundcloud]
-     [ui-insta (map :media_url (vals @(rf/subscribe [:content [:instagram :posts]])))]
+     [ui-insta @(rf/subscribe [:instagram/posts-urls 24])]
+     [ui-gallery @(rf/subscribe [:content [:gallery]])]
      ; [cv]
      ]))
 
