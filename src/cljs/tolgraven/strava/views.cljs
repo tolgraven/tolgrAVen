@@ -163,7 +163,7 @@
                    :left (str (* 100 (/ (- lng lng-min) (- lng-max lng-min))) "%")
                    :height "3px" :width "4px"
                    :background "rgba(246, 255, 245, 0.3)"}} ])]
-       [views/loading-spinner true :massive]) ]))
+       [views/loading-spinner true]) ]))
 
 
 (defn strava "Make an increasingly fancy visualizer feed thingy for practice"
