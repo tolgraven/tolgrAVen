@@ -345,7 +345,7 @@
   [artist song]
   (let [base-url "https://soundcloud.com/"
         url (str base-url artist "/" song)]
-    [ui/seen-anon "zoom-y"
+    [ui/seen-anon "slide-in"
      [remote-player url]]))
 
 (defn ui-soundcloud "Soundcloud feed, plus selected tunes. Bonus if can do anything fun with it"
