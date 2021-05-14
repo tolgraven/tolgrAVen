@@ -1633,6 +1633,7 @@ textarea.blog-adding-comment-textbox {
   margin: calc(1.5 * var(--space-lg));
   margin-bottom: 0; }
   .strava .strava-activities .strava-activity .strava-activity-dot {
+    position: absolute;
     color: transparent;
     background: #fc4c02;
     border-radius: 100%;
@@ -1640,16 +1641,35 @@ textarea.blog-adding-comment-textbox {
     transition: all 0.6s ease, color 1.5s; }
     .strava .strava-activities .strava-activity .strava-activity-dot:hover {
       filter: brightness(120%); }
+    .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-top-bg {
+      position: absolute;
+      background: linear-gradient(0deg, rgba(252, 76, 2, 0), rgba(52, 76, 2, 0.25) 25%, rgba(52, 76, 2, 0.5));
+      width: 100%;
+      height: 5.5rem;
+      z-index: -1; }
     .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full {
       padding: var(--space); }
       .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full .strava-activity-stats {
         margin-top: calc(0.5 * var(--space));
         justify-content: space-between; }
+        .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full .strava-activity-stats span {
+          color: var(--fg-5); }
       .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full > div > div > div:first-of-type {
         margin-right: calc(2 * var(--space-lg)); }
-      .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full .strava-activity-photo > img {
+      .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full .strava-activity-photo img {
         border: var(--line-width-sm) solid #fc4c02; }
-  .strava .strava-activities .strava-activity .strava-activity-details {
+  .strava .strava-activities .strava-activity .strava-activity-dot-expanded {
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    color: var(--fg-2);
+    background: linear-gradient(0deg, rgba(135, 48, 1, 0.7), rgba(145, 58, 3, 0.8));
+    border: var(--line-width-sm) solid #fc4c02;
+    box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.1);
+    border-radius: 0; }
+  .strava .strava-activities .strava-activity .strava-activity-summary {
     z-index: 200;
     position: absolute;
     bottom: 0;
@@ -1659,8 +1679,14 @@ textarea.blog-adding-comment-textbox {
     width: 125%;
     background: linear-gradient(0deg, rgba(135, 48, 1, 0.2), rgba(145, 58, 3, 0.3));
     box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.05); }
-    .strava .strava-activities .strava-activity .strava-activity-details span {
-      margin-right: 0.5em; }
+    .strava .strava-activities .strava-activity .strava-activity-summary span {
+      margin-right: 1.2em; }
+
+.strava-kudo-dot {
+  width: 1.00em;
+  height: 1em;
+  margin-right: -0.80em;
+  padding: 0.10em; }
 
 .experiments {
   z-index: 30; }
@@ -2162,7 +2188,7 @@ figcaption, .float-with-caption {
   text-shadow: .04em .04em .2em white; }
 
 .loading-spinner-massive {
-  padding: 20rem;
+  padding: 10rem;
   font-size: 900%;
   -webkit-animation: fade-in 3.5s ease 0.7s;
           animation: fade-in 3.5s ease 0.7s;
@@ -2194,27 +2220,27 @@ figcaption, .float-with-caption {
 
 @-webkit-keyframes wiggle-z {
   from {
-    transform: translateZ(1em); }
+    transform: translateZ(0.6em); }
   to {
-    transform: translateZ(-0.4em); } }
+    transform: translateZ(-0.3em); } }
 
 @keyframes wiggle-z {
   from {
-    transform: translateZ(1em); }
+    transform: translateZ(0.6em); }
   to {
-    transform: translateZ(-0.4em); } }
+    transform: translateZ(-0.3em); } }
 
 @-webkit-keyframes wiggle-y {
   from {
-    transform: translateY(0.7em); }
+    transform: translateY(0.5em); }
   to {
-    transform: translateY(-0.4em); } }
+    transform: translateY(-0.3em); } }
 
 @keyframes wiggle-y {
   from {
-    transform: translateY(0.7em); }
+    transform: translateY(0.5em); }
   to {
-    transform: translateY(-0.4em); } }
+    transform: translateY(-0.3em); } }
 
 .main-loading {
   border: 0; }
@@ -2312,6 +2338,7 @@ figcaption, .float-with-caption {
   transform: scale(1); }
 
 .modal-zoomed-item {
+  width: inherit;
   border: var(--line-width) solid var(--line-color);
   box-shadow: 0px 0px 85px 3px rgba(150, 150, 250, 0.55); }
 
@@ -2598,10 +2625,10 @@ figcaption, .float-with-caption {
   flex-wrap: wrap;
   justify-content: space-evenly;
   text-align: center; }
-  .gallery-insta > .gallery-insta-item {
+  .gallery-insta .gallery-insta-item {
     max-width: 33.3%;
     max-height: 33%; }
-    .gallery-insta > .gallery-insta-item img {
+    .gallery-insta .gallery-insta-item img {
       border: var(--line-width) solid var(--fg-2);
       width: 100%;
       height: 100%;
