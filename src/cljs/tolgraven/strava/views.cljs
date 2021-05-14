@@ -40,6 +40,50 @@
        [ui/appear-anon "zoom"
         item]])))
 
+(defn activity-stats
+  [activity details]
+  [:div.strava-activity-stats.flex
+   [:div.flex
+    [ui/appear-anon "opacity extra-slow"
+     [:div
+      {:style {:color "var(--fg-5)"}}
+      [:p "Relative effort"]
+      [:p "Watts"]
+      [:p "Average speed"]
+      [:p "Distance"]
+      (when (:average_heartrate activity)
+        [:p "Heartrate"])
+      (when (:kudos_count details)
+        [:p "Kudos"])]]
+    [:div
+     [:p (:suffer_score activity)]
+     [:div [:p (:average_watts activity)]]
+     [:p (util/format-number (* 3.6 (:average_speed activity)) 1) [:span " km/h"]]
+     [:p (util/format-number (/ (:distance activity) 1000) 1) [:span " km"]]
+     (when-let [hr (:average_heartrate activity)]
+       [:p hr [:span " bpm"]])
+     (when-let [kudos (:kudos_count details)]
+       ; [:p  (repeat kudos [:span.strava-kudo-dot [:i.fa.fa-chevron-up]])])
+       [:p  (repeat kudos [:span.strava-kudo-dot [:img {:src "img/strava-icon.png"
+                                                        :style {:width "1.25em"}} ]])])
+    ; [:div "segments"] ;TODO list of segment achievments
+     ]]
+
+   [activity-photo (:photos details)] ])
+
+(defn activity-header
+  [activity details]
+  [:<>
+   [:h2 [:b (:name activity)]]
+   [:div.flex
+    {:style {:justify-content :space-between
+             :font-size "90%"}}
+    [:div.strava-activity-description (:description details)]
+    [:div.strava-activity-gear
+     (:name (get @(rf/subscribe [:strava/content [:gear]])
+                 (:gear_id activity)))] ]
+   ])
+
 (defn activity-dot
   [activity i num-total watts-high]
   (let [hovered? (r/atom false)
@@ -50,62 +94,23 @@
       [:<>
        [:div.strava-activity
        (if @opened?
-         [:div.strava-activity-dot ;.section-with-media-bg-wrapper
-          {:style {:position :absolute
-                   :left 0 :bottom 0
-                   :width "100%" :height "100%"
-                   :z-index 10
-                   :color "var(--fg-2)"
-                   :background "linear-gradient(0deg,
-                                rgba(135, 48, 1, 0.7),
-                                rgba(145, 58, 3, 0.8))"
-                   :border "var(--line-width-sm) solid #fc4c02"
-                   :box-shadow "3px 3px 15px 10px inset rgba(252, 76, 2, 0.1)"
-                   :border-radius "0%"}
-           :on-click #(reset! opened? false)}
+         [:div.strava-activity-dot.strava-activity-dot-expanded ;.section-with-media-bg-wrapper
+          {:on-click #(reset! opened? false)}
+
+          [:div.strava-activity-top-bg]
           
           (let [details @(rf/subscribe [:strava/content [:activity (:id activity)]])]
-          [:div.strava-activity-full
-           {:ref #(when %
-                    (rf/dispatch [:strava/fetch-stream (:id activity) "latlng"])
-                    (rf/dispatch [:strava/fetch-activity (:id activity)]))}
-           
-           [:h2 [:b (:name activity)]]
-           [:div.flex
-            [:div (:description details)]
-            [:div (:name (get @(rf/subscribe [:strava/content [:gear]])
-                           (:gear_id activity)))] ]
-           
-           [:div.strava-activity-stats.flex
-            [:div.flex
-             [ui/appear-anon "opacity extra-slow"
-              [:div
-               {:style {:color "var(--fg-5)"}}
-               [:p "Relative effort"]
-               [:p "Watts"]
-               [:p "Average speed"]
-               [:p "Distance"]
-               (when (:average_heartrate activity)
-                 [:p "Heartrate"])
-               (when (:kudos_count details)
-                 [:p "Kudos"])]]
-             [:div
-              [:p (:suffer_score activity)]
-              [:div [:p (:average_watts activity)]]
-              [:p (util/format-number (* 3.6 (:average_speed activity)) 1) " km/h"]
-              [:p (util/format-number (/ (:distance activity) 1000) 1) " km"]
-              (when-let [hr (:average_heartrate activity)]
-                [:p hr " bpm"])
-              (when-let [kudos (:kudos_count details)]
-                [:p  (repeat kudos "*")])]]
-            
-            [activity-photo (:photos details)]
-            ; [:div "segments"] ;TODO list of segment achievments
-             ] ])]
+            [:div.strava-activity-full
+             {:ref #(when %
+                      (rf/dispatch [:strava/fetch-stream (:id activity) "latlng"])
+                      (rf/dispatch [:strava/fetch-activity (:id activity)]))}
+
+             [activity-header activity details]
+
+             [activity-stats activity details] ])]
          
          [:div.strava-activity-dot
-          {:style {:position :absolute
-                   :left (str (* 100 (/ i num-total)) "%")
+          {:style {:left (str (* 100 (/ i num-total)) "%")
                    :bottom (str (* 100 (/ (- (:average_watts activity) cutoff)
                                           (- watts-high cutoff))) "%")
                    :width size :height size}
@@ -114,7 +119,7 @@
            :on-click #(do (swap! opened? not)
                           (reset! hovered? false))}])
        (when @hovered?
-         [:div.strava-activity-details
+         [:div.strava-activity-summary
           [:span [:b (:name activity)]]
           [:span (:suffer_score activity) " relative effort "]
           [:span (:average_watts activity) " watts"]])]
@@ -177,6 +182,10 @@
      [ui/appear-anon "opacity"
       [:img.media-as-bg {:src "img/strava-heatmap-3.png"}]]
      [:h1  [:img {:src "img/strava_logo_nav.png"}]]
+     (when (:error data)
+       [:div
+        [:h3 "Rate limited?"]
+        [:p "Uh-oh, looks like we're being throttled. This won't be an issue once cache serverside."]])
      (if athlete
        [:div.strava-profile.flex
         [:img.strava-profile-image.user-avatar
