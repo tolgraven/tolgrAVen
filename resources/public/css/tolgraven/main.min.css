@@ -1598,7 +1598,7 @@ textarea.blog-adding-comment-textbox {
   font-size: 0.6em; }
 
 .strava {
-  --activity-details-height: 23em; }
+  --activity-details-height: 20em; }
   .strava .strava-profile-image {
     width: calc(8 * var(--space));
     height: calc(8 * var(--space));
@@ -1628,18 +1628,18 @@ textarea.blog-adding-comment-textbox {
     .strava .strava-stats span {
       color: var(--fg-5); }
   .strava .strava-activities {
-    margin: calc(1.5 * var(--space-lg));
+    margin: calc(1.0 * var(--space));
     margin-bottom: 0; }
     .strava .strava-activities .strava-activity .strava-activity-dot {
       position: absolute;
-      color: transparent;
       background: #fc4c02;
       border-radius: 100%;
       box-shadow: 0px 0px 3px 3px rgba(252, 76, 2, 0.4);
       transition: all 0.6s ease, color 1.5s;
       cursor: pointer; }
       .strava .strava-activities .strava-activity .strava-activity-dot:hover {
-        filter: brightness(120%); }
+        filter: brightness(140%);
+        transform: scale(1.2); }
       .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-top-bg {
         position: absolute;
         background: linear-gradient(0deg, rgba(252, 76, 2, 0), rgba(52, 76, 2, 0.25) 25%, rgba(52, 76, 2, 0.5));
@@ -1649,8 +1649,10 @@ textarea.blog-adding-comment-textbox {
       .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full {
         position: relative;
         padding: var(--space);
-        overflow: scroll;
-        height: var(--activity-details-height); }
+        overflow: hidden; }
+        .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full .strava-activity-full-inner {
+          overflow: scroll;
+          height: var(--activity-details-height); }
         .strava .strava-activities .strava-activity .strava-activity-dot .strava-activity-full .strava-activity-stats {
           margin-top: calc(0.5 * var(--space));
           justify-content: space-between; }
@@ -1687,6 +1689,9 @@ textarea.blog-adding-comment-textbox {
       box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.1);
       border-radius: 0;
       cursor: initial; }
+      .strava .strava-activities .strava-activity .strava-activity-dot-expanded:hover {
+        filter: initial;
+        transform: initial; }
     .strava .strava-activities .strava-activity .strava-activity-summary {
       z-index: 200;
       position: absolute;
@@ -1720,12 +1725,26 @@ textarea.blog-adding-comment-textbox {
 
 .strava-activity-splits {
   position: relative;
-  width: 90%;
-  height: 100%;
+  width: 100%;
+  height: 85%;
   margin-top: calc(1 * var(--space-lg));
-  font-size: 70%; }
+  font-size: 70%;
+  margin-left: 0.2em;
+  margin-right: 0.4em; }
   .strava-activity-splits .strava-activity-split {
-    position: absolute; }
+    position: absolute;
+    color: var(--fg-1);
+    padding: 0.5em; }
+  .strava-activity-splits .strava-activity-split-legend {
+    position: absolute;
+    text-align: center; }
+  .strava-activity-splits > .scroll-reminder {
+    position: absolute;
+    right: 1%;
+    bottom: 10%; }
+  .strava-activity-splits .strava-activity-split-details {
+    position: absolute;
+    font-size: 120%; }
 
 .strava-activity-kudos {
   position: relative; }
@@ -1739,6 +1758,14 @@ textarea.blog-adding-comment-textbox {
     right: 0;
     -webkit-animation: fade-in 0.5s;
             animation: fade-in 0.5s; }
+
+.strava-popup {
+  position: absolute;
+  z-index: 2;
+  padding: 0.5em !important;
+  background: linear-gradient(rgba(30, 30, 30, 0.85), rgba(100, 40, 1, 0.85)) !important;
+  -webkit-backdrop-filter: blur(0.25rem);
+          backdrop-filter: blur(0.25rem); }
 
 .strava-award {
   font-size: 110%;
