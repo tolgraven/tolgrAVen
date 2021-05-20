@@ -41,20 +41,51 @@
        [ui/appear-anon "zoom"
         item]])))
 
+(defn activity-split "Single split dot"
+  [i {:keys [average_speed] :as split} num-splits min-speed max-speed space-per-split]
+  (let [hovered? (r/atom false)
+        left (* space-per-split num-splits (/ i num-splits))
+        bottom (* 100 (util/rescale-to-frac average_speed min-speed max-speed))]
+    (fn [i {:keys [average_speed] :as split} num-splits min-speed max-speed space-per-split]
+      [:<>
+       [:div.strava-activity-split.strava-activity-dot
+        {:style {:left (str left "%")
+                 :bottom (str bottom "%")}
+         :on-mouse-enter #(reset! hovered? true)
+         :on-mouse-leave #(reset! hovered? false)}
+        [:span (util/format-number (* 3.6 (:average_speed split)) 1)]]
+       [:p.strava-activity-split-legend
+        {:class (when @hovered? "strava-activity-dot")
+         :style {:left (str (+ 2 left) "%") ;ugly magic number but aligns perfectly
+                 :bottom 0 }}
+        i]
+       (when @hovered?
+         [:div.strava-activity-split-details.strava-popup.strava-stats
+           {:style {:position :absolute
+                    :left (str (+ left 9) "%")
+                    :bottom (str (- bottom 25) "%")}}
+           [:div.flex
+            [:div
+             [:p "Heartrate"]
+             [:p "Grade"]]
+            [:div
+            [:p (util/format-number (:average_heartrate split) 0) [:span " bpm"]]
+            [:p (util/format-number (/ (:elevation_difference split) (:distance split)) 3)]]]])])))
+
 (defn activity-splits "km splits from activity"
   [{:keys [splits_metric] :as details}]
   (let [num-splits (count splits_metric)
-        [min-speed max-speed] (map #(apply % (map :average_speed splits_metric)) [min max]) ]
+        [min-speed max-speed] (map #(apply % (map :average_speed splits_metric)) [min max])
+        space-per-split 6
+        size (* space-per-split num-splits)]
     [:div.strava-activity-splits.flex
      (map-indexed
       (fn [i {:keys [average_speed] :as split}]
-        [:div.strava-activity-split
-         {:style {:left (str (* 100 (/ i num-splits)) "%")
-                  :bottom (str (* 100 (util/rescale-to-frac average_speed min-speed max-speed)) "%")}
-          }
-         [:span (util/format-number (* 3.6 (:average_speed split)) 1)]])
+        [activity-split i split num-splits min-speed max-speed space-per-split])
       splits_metric)
 
+     (when (< 100 size) ;overflow, scroll sideways
+       [:span.scroll-reminder "scroll " [:i.fa.fa-chevron-right]])
      ]))
 
 (defn activity-segments "Segments for activity"
