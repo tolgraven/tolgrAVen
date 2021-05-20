@@ -138,8 +138,7 @@
      (when-let [kudos_count (:kudos_count details)]
        [kudos activity])
      (when (pos? (:pr_count activity))
-       [:p (repeat (:pr_count activity)
-                    [:i.fa.fa-award.strava-award])])]]
+       [:p [:i.fa.fa-award.strava-award] (:pr_count activity)])]]
 
    [activity-photo (:photos details)] ]])
 
