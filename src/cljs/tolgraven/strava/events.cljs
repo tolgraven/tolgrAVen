@@ -3,7 +3,6 @@
     [reagent.core :as r]
     [re-frame.core :as rf]
     [ajax.core :as ajax]
-    [day8.re-frame.http-fx]
     [tolgraven.util :as util]
     [tolgraven.cofx :as cofx]
     [tolgraven.interceptors :as inter]
@@ -28,13 +27,14 @@
                     (when (neg? (- (-> data :auth :expires_at) now)) ;can actually refresh each time also, get same access token back then
                       [:strava/refresh (-> data :auth :refresh_token)])]})))
 
-(rf/reg-event-fx :strava/store-session
+(rf/reg-event-fx :strava/store-session  [debug]
   (fn [{:keys [db now]} [_ response]]
     {:db (update-in db [:strava :auth] merge response)
      :dispatch-n [[:store-> [:strava :auth]
-                   (merge (get-in db [:strava :auth]) response)]]}))
+                   (merge (get-in db [:strava :auth]) response)]
+                  [:strava/fetch]]})) ;bit ugly making one doomed request and then yada etc but eh
 
-(rf/reg-event-fx :strava/refresh
+(rf/reg-event-fx :strava/refresh  [debug]
   (fn [{:keys [db]} [_ refresh-token]]
     (let [info (get-in db [:strava :auth])]
       {:dispatch
@@ -42,8 +42,7 @@
                     :url-params {:client_id (:client_id info)
                                  :client_secret (:client_secret info)
                                  :grant_type "refresh_token"
-                                 :refresh_token refresh-token}
-                    :response-format (ajax/json-response-format {:keywords? true})}
+                                 :refresh_token refresh-token}}
         [:strava/store-session]]})))
 
 
@@ -57,8 +56,7 @@
   (fn [{:keys [db]} [_ path event]]
     (let [uri "https://www.strava.com/api/v3/"]
       {:dispatch [:http/get {:uri (str uri path)
-                             :headers {"Authorization" (str "Bearer " (-> db :strava :auth :access_token))}
-                             :response-format (ajax/json-response-format {:keywords? true})}
+                             :headers {"Authorization" (str "Bearer " (-> db :strava :auth :access_token))}}
                   event
                   [:strava/on-error]]})))
 
@@ -101,3 +99,9 @@
     {:dispatch-n [(when-not (get-in db [:content :strava :activity id])
                     [:strava/get (str "activities/" id  "?include_all_efforts=")
                      [:activity id]])]}))
+
+(rf/reg-event-fx :strava/fetch-kudos
+  (fn [{:keys [db]} [_ id ]]
+    {:dispatch-n [(when-not (get-in db [:content :strava :kudos id])
+                    [:strava/get (str "activities/" id "/kudos")
+                     [:kudos id]])]}))
