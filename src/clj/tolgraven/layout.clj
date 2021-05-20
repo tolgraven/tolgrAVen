@@ -85,7 +85,9 @@
     "css/fontawesome.css"
     "css/brands.min.css"
     "css/solid.css"
-    "https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"])
+    "https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
+    "https://fonts.googleapis.com/css?family=Fira+Sans:300,400,500,600,700,800,900"
+    "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"])
 
 (def js-paths
   [{:src "js/compiled/app.js"}])
