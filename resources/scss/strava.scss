@@ -86,7 +86,8 @@
         cursor: pointer;
 
         &:hover {
-          filter:  brightness(120%);
+          filter:  brightness(140%);
+          transform: scale(1.2);
         }
 
         .strava-activity-top-bg {
@@ -171,6 +172,11 @@
         box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.1);
         border-radius: 0;
         cursor: initial;
+
+        &:hover {
+          filter: initial;
+          transform: initial;
+        }
       }
 
       .strava-activity-summary {
