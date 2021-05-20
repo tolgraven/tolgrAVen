@@ -388,14 +388,16 @@
         extra-defaults
         opts)})))
 
-(rf/reg-event-fx :http/get [debug]
+(rf/reg-event-fx :http/get-internal
   (get-http-fn :get))
+
+(rf/reg-event-fx :http/get
+  (get-http-fn :get
+               {:response-format (ajax/json-response-format {:keywords? true})}))
 
 (rf/reg-event-fx :http/post [debug]
   (get-http-fn :post
-               {:format (ajax/json-request-format)}
-                              ))
-               ; {:format (ajax/transit-request-format)}))
+               {:format (ajax/json-request-format)}))
 
 (rf/reg-event-fx :http/put [debug]
   (get-http-fn :put
