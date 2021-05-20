@@ -355,7 +355,7 @@
     (doseq [[[lat lng] watt] (partition 2 (interleave latlng (or watts (repeat 200))))]
       (set! (.-strokeStyle ctx) (str "rgb("
                                      "252.7,"
-                                     170 #_(* 255 (util/rescale-to-frac watt (or watt-min 0) (or watt-max 250))) ","
+                                     (* 255 (util/rescale-to-frac watt (or watt-min 0) (or watt-max 250))) ","
                                      "50" ")"))
       (line-to (normalize lat lng)))
     (.fillText ctx "start"
