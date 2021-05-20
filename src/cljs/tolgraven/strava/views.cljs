@@ -237,25 +237,27 @@
                                        :on-click #(do (.stopPropagation %)
                                                       (reset! tab id-key))}
                               (name id-key)])
-                 tabs {:summary [activity-stats activity details]
+                tabs (merge {:summary [activity-stats activity details]
                        :splits [activity-splits details]
-                       :laps [activity-laps details]
                        :segments [activity-segments details]
                        :map [activity-map-leaflet activity]
-                       :graphs [activity-graphs activity]}]
-            [:div.strava-activity-full
-             {:ref #(when % ; fetch our additional stuff on mount
-                      (rf/dispatch [:strava/fetch-activity (:id activity)])
-                      (rf/dispatch [:strava/fetch-stream (:id activity)
-                                    "latlng,watts,heartrate,velocity_smooth,altitude,cadence,time"]))}
+                       :graphs [activity-graphs activity]}
+                            (when (< 1 (count (:laps details)))
+                              {:laps [activity-laps details]}))]
+                       
+             [:div.strava-activity-full
+              {:ref #(when % ; fetch our additional stuff on mount
+                       (rf/dispatch [:strava/fetch-activity (:id activity)])
+                       (rf/dispatch [:strava/fetch-stream (:id activity)
+                                     "latlng,watts,heartrate,velocity_smooth,altitude,cadence,time"]))}
 
-             [:h3 [:b (:name activity)]]
-             (@tab tabs) 
+              [:h3 [:b (:name activity)]]
+              [:div.strava-activity-full-inner
+               (@tab tabs)] 
               (into [:div.flex
                      {:style {:position :absolute
-                       :top 0 :right 0}}]
-                    (map (fn [k] [tab-button k]) (keys tabs)))
-              ])]
+                              :top 0 :right 0}}]
+                    (map (fn [k] [tab-button k]) (keys tabs))) ])]
          
          [:div.strava-activity-dot
           {:style {:left (str (* 100 (/ i num-total)) "%")
