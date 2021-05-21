@@ -11,8 +11,7 @@
     [ring.middleware.flash :refer [wrap-flash]]
     [ring.middleware.gzip :as gzip]
     [ring.adapter.undertow.middleware.session :refer [wrap-session]]
-    [ring.middleware.defaults :refer [site-defaults wrap-defaults]])
-  )
+    [ring.middleware.defaults :refer [site-defaults wrap-defaults secure-site-defaults]]))
 
 (defn wrap-internal-error [handler]
   (fn [req]
@@ -46,7 +45,10 @@
       wrap-flash
       (wrap-session {:cookie-attrs {:http-only true}})
       (wrap-defaults
-        (-> site-defaults
+        (-> (if (or (env :dev) (env :test))
+              site-defaults
+              (-> secure-site-defaults ;use ssl and setup for heroku
+                  (assoc-in [:proxy] true)))
             (assoc-in [:security :anti-forgery] false)
             (dissoc :session)))
       gzip/wrap-gzip
