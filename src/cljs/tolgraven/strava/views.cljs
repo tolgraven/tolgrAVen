@@ -242,7 +242,7 @@
                                      (xy-in-rect % [:x :y]
                                                  (.getBoundingClientRect (.-target %))))
              }]]]
-         [views/loading-spinner true]) ])))
+         #_[views/loading-spinner true]) ]))) ; so need to track whether not yet data or doesnt exist...
 
 (defn activity-graphs
   [activity]

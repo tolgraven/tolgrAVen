@@ -22,12 +22,11 @@
                 ((partial filter #(= (:type %) stream-type)))
                 first)
           data (partition downsampling data)
-          reducing #(reduce % [] data)]
+          reducing #(when (seq data) (reduce % [] data))]
       (case type
         "latlng" (reducing (fn [l v]
                              (conj l (map #(/ % downsampling)
                                           (apply map + v)))))
-        #_"watts" (reducing (fn [l v]
-                            (conj l (/ (apply + v) downsampling))))
-        ))))
+        (reducing (fn [l v]
+                    (conj l (/ (apply + v) downsampling))))))))
 
