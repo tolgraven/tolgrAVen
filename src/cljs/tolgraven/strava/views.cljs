@@ -164,7 +164,7 @@
       [:p "Elevation gain"]
       (when (:average_heartrate activity)
         [:p "Heartrate"])
-      (when (:kudos_count details)
+      (when (pos? (:kudos_count details))
         [:p "Kudos"])
        (when (pos? (:pr_count activity))
         [:p "PRs"])]]
@@ -176,7 +176,7 @@
      [:p (:total_elevation_gain details) [:span " m"]]
      (when-let [hr (:average_heartrate activity)]
        [:p hr [:span " bpm"]])
-     (when-let [kudos_count (:kudos_count details)]
+     (when (pos? (:kudos_count details))
        [kudos activity])
      (when (pos? (:pr_count activity))
        [:p [:i.fa.fa-award.strava-award] (:pr_count activity)])]]
