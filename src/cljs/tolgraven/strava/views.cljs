@@ -127,8 +127,8 @@
          :on-mouse-enter #(reset! hovered? true)
          :on-mouse-leave #(reset! hovered? false)} ]
        (when @hovered?
-         [:div.strava-kudos-popup
-           [:pre (:firstname kudoer) " " (:lastname kudoer)]])])))
+         [:div.strava-kudos-popup.strava-popup
+           [:p (:firstname kudoer) " " (:lastname kudoer)]])])))
 
 (defn kudos "List kudos"
   [activity]
