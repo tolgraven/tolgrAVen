@@ -60,9 +60,9 @@
                          [["Audio"    "bullhorn"   ["Sound engineering" "Broadcasting" "Recording" "Music production"]]
                           ["Video"    "film"       ["Editing" "Production" "Shoot inna pinch"]]
                           ["Stage"    "lightbulb"  ["Event production" "Concert" "Club" "Automation" "Retrofitting"]]
-                          ["Design"   "joint"      ["I mean not really" "But sorta dig the logo" "Not like I'm qualified" "For any of this"]]
-                          ["Software" "code"       ["Open source (evtly)" "Bespoke projects" "Rapid prototyping" "From (cl)JS to C++" "Current focus"]]
-                          ["Web"      "laptop"     ["This is my first website!" "I'll make more once" "my stack runs fulleth"]]]
+                          ["Design"   "joint"      ["How bout that logo?" "Or this site"]]
+                          ["Software" "code"       ["Open source" "Bespoke projects" "Rapid prototyping" "From (cl)JS to C++" "Current focus"]]
+                          ["Web"      "laptop"     ["Want a site like this?" "Small or large projects" "my stack runs fulleth"]]]
                          :bg {:src "img/vim-code-small.jpg" :alt "neovim editor"}
                          :caption "neovim"}
 
@@ -105,12 +105,22 @@
                           :caption "Nihiloxica video shoot, Kampala"
                           :bg [:video.media.media-as-bg
                                {:poster "media/nihil-shoot2.png" :src "media/nihil-shoot2.mp4" :playsInline true :muted true } ]}
-                         {:title "No portfloio , have some random photos"
-                          :caption "But one will appear here somewhere, soon enough."
+                         {:title "Portfolio forthcoming, have some components"
+                          :caption "Be ready"
                           :bg [:img.media.media-as-bg {:src "img/collage-strips.jpg"}]}
-                         {:title "Placeholder"
-                          :caption "Maybe put like a small resume or similar?"
-                          :bg [:img.media.media-as-bg.anim-gradient-bg {:src "img/wide-spot-ctrl-small.jpg"}]}]
+                         {:title "CV"
+                          :caption "My resume. such as it is."
+                          :bg [:img.media.media-as-bg.anim-gradient-bg {:src "img/wide-spot-ctrl-small.jpg"}]
+                          :cv {:intro "Multi talented developer with a background in live TV production, who throughout the years has also kept occupied with music, events, moving the world over etc. Hitherto autodidact currently getting a Comp Sci degree at an accelerated pace.
+                                       Main focus is web development, primarily front-end.
+                                       Constructing my website https://tolgraven.se from scratch as a showcase of my skills."
+                               :education
+                               [["2020–  "   "Bachelor programme, computer science, Stockholm University"]
+                                ["2019–2020" "Full stack web development, Chas Academy"]
+                                ["2012–2014" "Musicology, Stockholm University (60 hp)"]
+                                ["2007–2009" "Industriell Ekonomi, Royal Institute of Technology"]
+                                ["2004–2007" "Natural Science program, mathematics and computer science, Kärrtorps gymnasium" ]]
+                               }}]
 
              :article-links [{:title "A link thingy"    ;fix autograbber!
                               :text "maybe line or two" ;fix autograbber!
@@ -139,14 +149,12 @@
                        :text ["© 2019-2020"]
                        :img {:src "img/cljs.png" :alt "cljs logo"}}
                       {:id "right"
-                     ; :title "More ways to get in touch"
                        :links [{:name "Github" :href "https://github.com/tolgraven" :icon "github"}
                                {:name "LinkedIn" :href "https://www.linkedin.com/in/joen-tolgraven-5205701b9" :icon "linkedin"}
                                {:name "Instagram" :href "https://www.instagram.com/tolgraven" :icon "instagram"}
                                {:name "Twitter" :href "https://twitter.com/joen.tolgraven" :icon "twitter"}
                                {:name "Facebook" :href "https://facebook.com/tolgraven" :icon "facebook"}
                                {:name "Soundcloud" :href "https://soundcloud.com/tolgraven" :icon "soundcloud"}
-                             ; {:name "linkedin once i grow up and have one lol"}
                                ]}]}
 
    :options {:auto-save-vars true
