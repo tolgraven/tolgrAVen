@@ -261,6 +261,19 @@
   }
 }
 
+.strava-activity-segments {
+  .strava-activity-segment {
+    display: flex;
+    justify-content: space-between;
+    font-size: 90%;
+
+    .strava-award {
+      margin-right: 0.4em;
+    }
+  }
+
+}
+
 .strava-activity-kudos {
   position: relative;
 
@@ -293,10 +306,23 @@
 
 .strava-award {
   font-size: 110%;
-  color: rgba(247, 177, 20, 0.6);
   margin-right: 0.1em;
+  color: rgba(247, 177, 20, 0.6);
   background: -webkit-linear-gradient(rgba(247, 177, 20, 0.8), rgba(247, 177, 20, 0.3));
-  -webkit-background-clip: text;
+  &.silver {
+    color: rgba(207, 177, 170, 0.6);
+    background: -webkit-linear-gradient(rgba(207, 177, 170, 0.8), rgba(207, 177, 170, 0.3));
+    -webkit-background-clip: text; // needs to be set after background/color, weird...
+    -webkit-text-fill-color: transparent;
+  }
+  &.bronze {
+    color: rgba(247, 107, 20, 0.6);
+    background: -webkit-linear-gradient(rgba(247, 107, 20, 0.8), rgba(247, 107, 20, 0.3));
+    -webkit-background-clip: text; // needs to be set after background/color, weird...
+    -webkit-text-fill-color: transparent;
+  }
+  
+  -webkit-background-clip: text; // needs to be set after background/color, weird...
   -webkit-text-fill-color: transparent;
 }
 

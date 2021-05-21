@@ -92,10 +92,20 @@
   [{:keys [segment_efforts] :as details}]
   [:div.strava-activity-segments
    (for [segment segment_efforts]
-     [:div.strava-activity-segment
-      [:h4 (:name segment)]
-      [:p (util/format-number (* 3.6 (/ (:distance segment) (:elapsed_time segment))) 1) [:span " km/h"]]
-      ])])
+     [:div.strava-activity-segment.flex
+      [:p (:name segment) ]
+      [:p
+       (when-let [achievements (:achievements segment)]
+         (for [achievement achievements]
+           [:i.fa.fa-award.strava-award
+            {:class (case (:type achievement)
+                      "pr" (case (:rank achievement)
+                             1 "gold"
+                             2 "silver"
+                             3 "bronze"))}]))
+       (util/format-number (* 3.6 (/ (:distance segment)
+                                     (:elapsed_time segment))) 1)
+       [:span " km/h"]] ])])
 
 (defn activity-laps "Laps for activity"
   [{:keys [laps] :as details}]
