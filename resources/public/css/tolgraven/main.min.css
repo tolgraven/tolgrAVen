@@ -1617,7 +1617,7 @@ textarea.blog-adding-comment-textbox {
     background: linear-gradient(0deg, rgba(135, 48, 1, 0.5), rgba(145, 58, 3, 0.7));
     border: var(--line-width-sm) solid #fc4c02;
     box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.1); }
-    .strava .strava-stats > div:first-of-type {
+    .strava .strava-stats > .strava-stats-legend {
       margin-right: calc(3.5 * var(--space));
       color: var(--fg-5); }
     .strava .strava-stats div, .strava .strava-stats h3 {
@@ -1723,6 +1723,9 @@ textarea.blog-adding-comment-textbox {
         height: 21.0em;
         filter: invert(0.95) hue-rotate(170deg); }
 
+.strava-activity-description {
+  margin-right: var(--space); }
+
 .strava-activity-splits {
   position: relative;
   width: 100%;
@@ -1745,6 +1748,13 @@ textarea.blog-adding-comment-textbox {
   .strava-activity-splits .strava-activity-split-details {
     position: absolute;
     font-size: 120%; }
+
+.strava-activity-segments .strava-activity-segment {
+  display: flex;
+  justify-content: space-between;
+  font-size: 90%; }
+  .strava-activity-segments .strava-activity-segment .strava-award {
+    margin-right: 0.4em; }
 
 .strava-activity-kudos {
   position: relative; }
@@ -1769,11 +1779,21 @@ textarea.blog-adding-comment-textbox {
 
 .strava-award {
   font-size: 110%;
-  color: rgba(247, 177, 20, 0.6);
   margin-right: 0.1em;
+  color: rgba(247, 177, 20, 0.6);
   background: -webkit-linear-gradient(rgba(247, 177, 20, 0.8), rgba(247, 177, 20, 0.3));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent; }
+  .strava-award.silver {
+    color: rgba(207, 177, 170, 0.6);
+    background: -webkit-linear-gradient(rgba(207, 177, 170, 0.8), rgba(207, 177, 170, 0.3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; }
+  .strava-award.bronze {
+    color: rgba(247, 107, 20, 0.6);
+    background: -webkit-linear-gradient(rgba(247, 107, 20, 0.8), rgba(247, 107, 20, 0.3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; }
 
 .strava-activity-graph-legend {
   font-size: 80%;
