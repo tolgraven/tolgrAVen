@@ -183,31 +183,37 @@
          (not (.-ended video))
          (< 2 (.-readyState video)))))
 
+
+; this sometimes gets stuck on infinite loop dragging down page speed
+; or actually if only triggers 330ms apart dunno but either way.
+; i guess if something triggers 
 (defn play-pauser "Returns fn to :play or :pause video smoothly by changing playback rate progressively (calls itself in intervals)"
   [video & {:keys [rate-step time-per-step]
             :or {rate-step 0.34 time-per-step 330}}]
   (let [state (atom (if (playing? video) :playing :paused)) ; :playing, :to-play, :paused, :to-pause
         speed (atom (case @state :paused 0 :playing 1)) ]
     (fn play-pause-updater [action]
-      (reset! state (case action ; only needs doing first time but easier this way
-                      :play :to-play
-                      :pause :to-pause))
-      (reset! speed (case @state  ; actually update playback speed
-                      :to-pause (max 0 (- @speed rate-step))
-                      :to-play  (min 1 (+ @speed rate-step))
-                      @speed))
-      (when (some #{:to-pause :to-play} [@state])
+      (when-not (or (and (= :playing @state) (= :play action))
+                    (and (= :paused @state) (= :pause action))) ;ignore action if already done
+        (reset! speed (case action  ; actually update playback speed
+                        :pause (max 0 (- @speed rate-step))
+                        :play  (min 1 (+ @speed rate-step))
+                        @speed))
         (reset! state (cond
-                       (>= 0.05 @speed) :paused
-                       (<= 1.0 @speed) :playing
-                       :else @state)))
-      (set! (.-playbackRate video) @speed)
-      (if (some #{:playing :to-play :to-pause} [@state])
-        (try (.play video) (catch js/Error _)) ;also only really needs doing once but
-        (try (.pause video) (catch js/Error _)))
-      (when-not (some #{:playing :paused} [@state])
-        (rf/dispatch [:run-in! :play-pauser time-per-step ; event spam just gets annoying tho, should use straight js trigger? tho still want to find way to interrupt something queued earlier...
-                      #(play-pause-updater action)])))))
+                         (>= 0.05 @speed) :paused
+                         (<= 1.0 @speed) :playing
+                         :else (case action ; only needs doing first time but easier this way
+                                 :play :to-play
+                                 :pause :to-pause)))
+        (set! (.-playbackRate video) @speed)
+        (if (some #{:playing :to-play :to-pause} [@state])
+          (when-not (playing? video)
+            (try (.play video) (catch js/Error _))) ;also only really needs doing once but
+          (when (playing? video)
+            (try (.pause video) (catch js/Error _)))) ;sometimes get uncaught exceptions about call to play interrupted by pause yada...
+        (when (some #{:to-play :to-pause} [@state])
+          (rf/dispatch [:run-in! :play-pauser time-per-step ; event spam just gets annoying tho, should use straight js trigger? tho still want to find way to interrupt something queued earlier...
+                        play-pause-updater action]))))))
 
 
 (defn elem-by-id [id]

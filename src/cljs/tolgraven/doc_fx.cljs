@@ -25,14 +25,14 @@
   (fn [_ [_ id-key ms f & args]]
     {:dispatch-later
      {:ms ms
-      :dispatch [:run-fn! id-key f args]}}))
+      :dispatch (into [:run-fn! id-key f] args)}}))
 
 (rf/reg-event-fx :run-fn!
   (fn [_ [_ id-key f & args]]
     {:run-fn-fx! [id-key f args]}))
 
 (rf/reg-fx :run-fn-fx!
-  (fn [[id-key f & args]]
+  (fn [[id-key f args]]
     (if args
       (apply f args)
       (f))))
