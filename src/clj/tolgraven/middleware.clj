@@ -10,6 +10,7 @@
     [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
     [ring.middleware.flash :refer [wrap-flash]]
     [ring.middleware.gzip :as gzip]
+    [ring.middleware.partial-content :refer [wrap-partial-content]]
     [ring.adapter.undertow.middleware.session :refer [wrap-session]]
     [ring.middleware.defaults :refer [site-defaults wrap-defaults secure-site-defaults]]))
 
@@ -52,4 +53,5 @@
             (assoc-in [:security :anti-forgery] false)
             (dissoc :session)))
       gzip/wrap-gzip
+      wrap-partial-content
       wrap-internal-error))

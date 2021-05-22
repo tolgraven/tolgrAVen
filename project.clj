@@ -43,6 +43,7 @@
                  [ring/ring-core "1.8.2"]
                  [ring/ring-defaults "0.3.2"]
                  [bk/ring-gzip "0.3.0" :exclusions [clojure-complete]]
+                 [ring-partial-content "2.0.1"] ; handle safari video playback / 206 response
 
                  [selmer "1.12.31"]
 
