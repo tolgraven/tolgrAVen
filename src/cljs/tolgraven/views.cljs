@@ -303,7 +303,7 @@
                    :style (merge (when-not (pos? @frac)
                                    {:opacity 0})
                                    {:transition "transform 8.5s ease, opacity 3s"
-                                    :transform (str "scale(1.125) translateZ(" (* @frac -1.5) "px)")})})] ; need to be above 1.1 or goes jumpy weirdshit clip UGH why
+                                    :transform (str "scale(1.125) translateZ(" (* @frac -0.5) "px)")})})] ; need to be above 1.1 or goes jumpy weirdshit clip UGH why
          [:section#intro-end.center-content
           ; {:class "darken-8 parallax-sm origin-toptop"
           ;  :style {:background-image (str "url(" (:src bg) ")")
