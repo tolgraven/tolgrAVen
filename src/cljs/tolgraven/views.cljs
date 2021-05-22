@@ -21,12 +21,6 @@
      {:class "logo-tolgraven"
       :style {:background-image (str "url('" path "')")}} ])) ; cant remember why I did the weird path-in-css bs but anyways...
 
-(defn ui-inset [caption nr]
-  (let [pos (case (mod nr 4)
-              0 "bottom right"  1 "bottom left"  2 "top right"   3 "top left")]
-    [:p.caption-inset {:class pos}
-     caption]))
-
 (defn link-img-title "Link eith an image and a title, for posts for example"
   [{:as content :keys [title text url side]
     :or [side :left]}]
@@ -115,7 +109,7 @@
          :style {:transition "opacity 4.5s"
                  :opacity (str "calc(0.95 - 0.55 *" @in-view ")")}} ;well dumb but
         [:h1.h-responsive  title]]
-       [ui-inset caption nr]]))) ; these arent showing up...
+       [ui/ui-inset caption nr]])))
 
 
 (defn ui-portfolio "GOT NO PPORTFOLIE" [])
@@ -236,7 +230,7 @@
   [:section#section-services
     {:class "link-anchor stick-up section-with-media-bg-wrapper"}
     [:a {:name "link-services"}]
-     [ui-inset caption 4] ;auto-gen
+     [ui/ui-inset caption 4] ;auto-gen
      [:img (merge bg {:class "media-as-bg darken-5 parallax-bg"})]
      [services-fullscreenable categories]])
 
@@ -262,8 +256,8 @@
                     :transition "transform 8.5s ease"
                     :transform (str "translateZ(" (* 14 @frac) "px)")}}
            title]] ;ideally want this also growing (and moving quicker upwards)]
-         [ui-inset caption 3]
-         [ui-inset (str "Fraction visible:" @frac) 2]
+         [ui/ui-inset caption 3]
+         [ui/ui-inset (str "Fraction visible:" @frac) 2]
          [ui-fading]])))
 
 

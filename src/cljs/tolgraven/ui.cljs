@@ -141,6 +141,13 @@
         (util/add-attrs component
                         {:class "modal-zoomed-item"}) ]])))
 
+(defn ui-inset [caption nr]
+  (let [pos (case (mod nr 4)
+              0 "bottom right"  1 "bottom left"  2 "top right"   3 "top left")]
+    [:p.caption-inset {:class pos}
+     caption]))
+
+
 (defn user-avatar "Display a user avatar, with common fallbacks"
   [user-map & [extra-class]]
   (let [fallback @(rf/subscribe [:user/default-avatar])
