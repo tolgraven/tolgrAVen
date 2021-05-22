@@ -114,6 +114,16 @@
 
 (defn ui-portfolio "GOT NO PPORTFOLIE" [])
 
+
+(defn carousel-idx-btns
+  [idx-model amount]
+  [:div.carousel-idxs
+   (doall (for [idx (range amount)]
+            [:button.carousel-btn.carousel-idx
+             {:class (when (= @idx-model idx) "topborder")
+              :on-click #(reset! idx-model idx)}
+             "*"]))])
+
 (defn carousel "Three-showing carousel with zoom up of center item, and animating changes.
                 The generic enough stuff could go in a more general carousel-builder
                 or we just make two."
