@@ -228,17 +228,18 @@
        {:id id :class (or pos "left")
         :style (when @zoomed?
                  {:width "80%" ; TODO nvm not hardcoding and not going crazy large when vw high, should be based on img size so don't blow up too much anyways
-                  :margin "var(--space-lg) 10%"})
-        :on-click #(r/rswap! zoomed? not)}
-       [seen (str "auto-layout-" id) "zoom" ;"slide-in"
-        [:img.media.image-inset img-attr]]
+                  :margin "var(--space-lg) 10%"}) }
+       [seen-anon "zoom" ;"slide-in"
+        [:img.media.image-inset
+         (merge img-attr
+         {:on-click #(r/rswap! zoomed? not)})]]
        (when caption [:figcaption caption])])))
 
 (defn auto-layout-text-imgs "Take text and images and space out floats appropriately. Pretty dumb but eh"
   [content]
   (let [text-part (for [line (string/split-lines (:text content))]
                     [:<>
-                     [seen (str "auto-layout-text-" line) "slide-in"
+                     [seen-anon "slide-in"
                       [:span line]]
                      [:br]])
          chunk-size (int (/ (count text-part)
