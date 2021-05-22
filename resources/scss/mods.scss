@@ -349,20 +349,18 @@ button:hover .blur-bg, button:active .blur-bg,
   perspective-origin: center; /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */
 }
 .parallax-sm, .parallax-bg, .parallax-fg {
-  transform-origin: bottom;
+  transform-origin: center;
   transform-style: preserve-3d;
   overflow-y: auto;
 }
 .parallax-sm {
-  /* transform: translateZ(var(--parallax-sm-px)) scale(var(--parallax-sm-scale)); */
   transform: translateZ(var(--parallax-sm-px))
-             translateY(-8%) /* still dont get why the offset when origin center... */
+             translateY(-12.5%)
              scale(var(--parallax-sm-scale));
-             /* scale(calc(1.1 * var(--parallax-sm-scale))); */
 }
 .parallax-bg {
   transform: translateZ(var(--parallax-px))
-             translateY(-130%)
+             translateY(-30%)
              scale(var(--parallax-scale));
 
   z-index: -1;

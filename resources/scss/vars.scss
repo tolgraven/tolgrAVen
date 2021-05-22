@@ -40,7 +40,7 @@
   --navigation-transition-time: 0.20s;
 
   --perspective:       100;
-  --parallax:          50;
+  --parallax:          10;  // isnt like 1/10-1/5 normal? not half...
   --parallax-scale:    calc(1 + (var(--parallax) / var(--perspective)));
   --parallax-px:       calc(-1px * var(--parallax));
   
