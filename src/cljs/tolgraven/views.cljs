@@ -343,7 +343,7 @@
       ^{:key (str "gallery-" src)}
          [:div.gallery-insta-item
           {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])}
-          item])]])
+          item ])]])
 
 (defn cv "Write dat cv. Put it on the site. Probably not last? Dunno."
   []
