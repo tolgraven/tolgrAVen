@@ -103,6 +103,7 @@
                            :ref (fn [el]
                                   (when el
                                     (reset! vid-ref el)
+                                    (set! (.-muted el) true)
                                     (reset! controls (util/play-pauser el))))
                            :muted true}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:div
