@@ -1087,11 +1087,10 @@ button:hover .blur-bg, button:active .blur-bg,
   overflow-y: auto; }
 
 .parallax-sm {
-  transform: translateZ(var(--parallax-sm-px)) translateY(-8%) scale(var(--parallax-sm-scale));
-  /* scale(calc(1.1 * var(--parallax-sm-scale))); */ }
+  transform: translateZ(var(--parallax-sm-px)) translateY(-12.5%) scale(var(--parallax-sm-scale)); }
 
 .parallax-bg {
-  transform: translateZ(var(--parallax-px)) translateY(-130%) scale(var(--parallax-scale));
+  transform: translateZ(var(--parallax-px)) translateY(-30%) scale(var(--parallax-scale));
   z-index: -1;
   /* another issue being mindfuck of using this as fg (ie text) heh... */
   /* transform-origin: 50% -150%; *1/ /1* perf on chrome, mac safari, but fucks ios... */ }
@@ -1697,7 +1696,7 @@ textarea.blog-adding-comment-textbox {
       position: absolute;
       bottom: 0;
       padding: var(--space);
-      margin: calc(-2.5 * var(--space-lg));
+      margin: calc(-1.5 * var(--space-lg));
       margin-bottom: calc(-1 * var(--space-lg));
       width: 125%;
       background: linear-gradient(0deg, rgba(135, 48, 1, 0.2), rgba(145, 58, 3, 0.3));
@@ -1771,11 +1770,17 @@ textarea.blog-adding-comment-textbox {
 
 .strava-popup {
   position: absolute;
+  bottom: 0;
+  left: 20%;
+  min-height: 4em;
+  min-width: 8em;
   z-index: 2;
   padding: 0.5em !important;
   background: linear-gradient(rgba(30, 30, 30, 0.85), rgba(100, 40, 1, 0.85)) !important;
   -webkit-backdrop-filter: blur(0.25rem);
-          backdrop-filter: blur(0.25rem); }
+          backdrop-filter: blur(0.25rem);
+  box-shadow: 0px 0px 19px 10px rgba(25, 26, 26, 0.2) !important;
+  border: var(--line-width-sm) solid #fc4c02; }
 
 .strava-award {
   font-size: 110%;
@@ -2812,7 +2817,7 @@ figcaption, .float-with-caption {
   --header-expand-time:         0.2s;
   --navigation-transition-time: 0.20s;
   --perspective:       100;
-  --parallax:          50;
+  --parallax:          10;
   --parallax-scale:    calc(1 + (var(--parallax) / var(--perspective)));
   --parallax-px:       calc(-1px * var(--parallax));
   --parallax-sm:       calc(0.50 * var(--parallax));
