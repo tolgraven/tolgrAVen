@@ -141,7 +141,7 @@
         (util/add-attrs component
                         {:class "modal-zoomed-item"}) ]])))
 
-(defn ui-inset [caption nr]
+(defn inset [caption nr]
   (let [pos (case (mod nr 4)
               0 "bottom right"  1 "bottom left"  2 "top right"   3 "top left")]
     [:p.caption-inset {:class pos}
