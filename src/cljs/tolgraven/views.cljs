@@ -105,6 +105,7 @@
                                     (reset! vid-ref el)
                                     (set! (.-muted el) true)
                                     (reset! controls (util/play-pauser el))))
+                           :onloadedmetadata "this.muted=true"
                            :muted true}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:div
         {:class "covering-faded widescreen-safe center-content parallax-group"

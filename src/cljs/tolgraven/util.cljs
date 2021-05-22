@@ -206,6 +206,7 @@
                                  :play :to-play
                                  :pause :to-pause)))
         (set! (.-playbackRate video) @speed)
+        (set! (.-muted video) true)
         (if (some #{:playing :to-play :to-pause} [@state])
           (when-not (playing? video)
             (try (.play video) (catch js/Error _))) ;also only really needs doing once but
