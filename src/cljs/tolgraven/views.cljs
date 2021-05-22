@@ -103,7 +103,8 @@
                            :ref (fn [el]
                                   (when el
                                     (reset! vid-ref el)
-                                    (reset! controls (util/play-pauser el))))}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
+                                    (reset! controls (util/play-pauser el))))
+                           :muted true}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:div
         {:class "covering-faded widescreen-safe center-content parallax-group"
          :ref #(observer %) ;oh yeah check first el for :video cant work it's rendered at that point lol
