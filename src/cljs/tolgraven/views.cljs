@@ -175,13 +175,56 @@
            (first content))]]
        
        [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} ">"]
+       [carousel-idx-btns index (count content)] ])))
 
-       [:div.carousel-idxs
-        (doall (for [idx (range (count content))]
-                 [:button.carousel-btn.carousel-idx
-                  {:class (when (= @index idx) "topborder")
-                   :on-click #(reset! index idx)}
-                  "*"]))] ])))
+(defn carousel-normal "Don't fuck up with fancy hot swaps for transitions, just stuff everything in."
+  [id options content]
+  (let [num-items-shown 3
+        index (r/atom 1) ; (rf/subscribe [:state [:carousel id :index]])
+        first-idx (max 0 (- @index
+                            (/ (dec num-items-shown) 2))) ;get middle
+        content-shown (subvec content
+                              first-idx
+                              (+ first-idx (dec num-items-shown)))
+        dec-fn (fn []
+                 (swap! index #(if (neg? (dec %))
+                                 (dec (count content))
+                                 (dec %)))
+                 (rf/dispatch [:carousel/rotate id @index :dec]))
+        inc-fn (fn []
+                 (swap! index #(if (< (inc %) (count content))
+                                 (inc %)
+                                 0))
+                 (rf/dispatch [:carousel/rotate id @index :inc]))
+        moving (rf/subscribe [:state [:carousel id :direction]])
+        left-content #(if (pos? %)
+                       (get content (dec %))
+                       (last content))
+        right-content #(if (< % (dec (count content)))
+                         (get content (inc %))
+                         (first content))]
+    (fn [id options content]
+      [:div.carousel.carousel-normal
+       (merge options
+              {:id (name id)})
+
+       [:button.carousel-btn.carousel-prev-btn {:on-click dec-fn} "<"]
+
+       (into [:ul.carousel-items]
+        (map-indexed
+         (fn [i item]
+           [:li.carousel-item-min ; XXX still need to fix extra for left/right so those not display: hidden or w/e
+            {:class (condp = @index
+                      i "carousel-item-main"
+                      (inc i) "carousel-item-prev"
+                      (dec i) "carousel-item-next"
+                      nil)
+             :on-click #([:dispatch-prev-next-or-fullscreen])}
+            item])
+         content))
+
+       [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} ">"]
+       [carousel-idx-btns index (count content)] ])))
 
 (defn service-category-full
   "Fullscreen version of a services category. Should eventually be like a mini-site/portfolio
