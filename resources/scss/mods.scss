@@ -329,7 +329,7 @@ button:hover .blur-bg, button:active .blur-bg,
   position: relative;
   height: 100%; /* default, can override in attrs */
   width: 100%;
-  perspective: calc(1px * var(--perspective));
+  // perspective: calc(1px * var(--perspective)); //apparently breaks parallax. thought it'd be the other way???
   perspective-origin: center; /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */
   overflow-y: auto;
 }
