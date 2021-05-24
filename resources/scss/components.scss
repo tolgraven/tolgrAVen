@@ -368,12 +368,12 @@ figcaption, .float-with-caption {
   }
 }
 @keyframes wiggle-z {
-  from { transform:  translateZ(1.0em); }
-  to   { transform:  translateZ(-0.4em); }
+  from { transform:  translateZ(0.6em); }
+  to   { transform:  translateZ(-0.3em); }
 }
 @keyframes wiggle-y {
-  from { transform:  translateY(0.7em); }
-  to   { transform:  translateY(-0.4em); }
+  from { transform:  translateY(0.5em); }
+  to   { transform:  translateY(-0.3em); }
 }
 .main-loading {
   border: 0;
