@@ -88,7 +88,7 @@
     [header-nav menu]
 
     [loading-spinner (rf/subscribe [:state [:is-loading]])]   ; menu
-    [:button.noborder
+    [:button.blog-link-btn.noborder
      {:on-click #(rf/dispatch [:common/navigate! :blog])}
      [:i.fa.fa-pen-fancy]]
     [user-btn]
