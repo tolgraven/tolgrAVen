@@ -43,7 +43,7 @@
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
 (defn header-logo [[text subtitle]]
   [:div.header-logo
-   [:a {:href "#"} ;works w/o reitit fiddle
+   [:a {:href (rfe/href :home)} ;works w/o reitit fiddle
     [:h1 text]]
    [:div.header-logo-text ; if I want this to do its flip when changes text, do I need to make a whole componentDidChange dance with it? :I
     (for [line subtitle] ^{:key (str "header-text-" line)}
