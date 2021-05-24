@@ -121,14 +121,15 @@
   [kudoer]
   (let [hovered? (r/atom false)]
     (fn [kudoer]
-      [:<>
+      [:span.strava-kudo-dot-container
+       {:style {:position :relative}
+        :on-mouse-enter #(reset! hovered? true)
+        :on-mouse-leave #(reset! hovered? false)}
        [:img.strava-kudo-dot
-        {:src "img/strava-icon.png"
-         :on-mouse-enter #(reset! hovered? true)
-         :on-mouse-leave #(reset! hovered? false)} ]
+        {:src "img/strava-icon.png" }]
        (when @hovered?
          [:div.strava-kudos-popup.strava-popup
-           [:p (:firstname kudoer) " " (:lastname kudoer)]])])))
+           [:span (:firstname kudoer) " " (:lastname kudoer)]])])))
 
 (defn kudos "List kudos"
   [activity]
