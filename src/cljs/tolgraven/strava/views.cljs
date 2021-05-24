@@ -248,11 +248,9 @@
 (defn activity-graphs
   [activity]
   (let [watts @(rf/subscribe [:strava/activity-stream (:id activity) "watts" 10])]
-    [:div.strava-activity-graphs
-     [graph-canvas "watts" activity]
-     [graph-canvas "heartrate" activity]
-     [graph-canvas "velocity_smooth" activity]
-     [graph-canvas "cadence" activity]]))
+    (into [:div.strava-activity-graphs]
+          (map (fn [kind] [graph-canvas (name kind) activity])
+               [:watts :heartrate :velocity_smooth :cadence])))) ; TODO expose whats available and have a button with dropdown to add graph, like shitty v of intervals.icu
 
 
 (defn activity-dot
