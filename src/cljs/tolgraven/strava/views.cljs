@@ -27,7 +27,7 @@
      [:div (util/format-number (/ distance (:count stats)) 2) [:span " km"]]
      [:div (util/format-number (/ distance hours) 1) [:span " km/h"]]]))
 
-(defn activity-photo
+(defn activity-photo "Display photo for activity and allow to view fullscreen. Sadly seems can only get primary photo from Strava, not all?"
   [data]
   (when (pos? (:count data))
     (let [item [:img {:src (-> data :primary :urls :600)
@@ -61,14 +61,14 @@
         i]
        (when @hovered?
          [:div.strava-activity-split-details.strava-popup.strava-stats
-           {:style {:position :absolute
+           {:style {:position :absolute ;TODO proper tooltip positioning. but put that in ui haha
                     :left (str (+ left 9) "%")
                     :bottom (str (- bottom 25) "%")}}
            [:div.flex
             [:div
              [:p "Heartrate"]
              [:p "Grade"]]
-            [:div
+           [:div
             [:p (util/format-number (:average_heartrate split) 0) [:span " bpm"]]
             [:p (util/format-number (/ (:elevation_difference split) (:distance split)) 3)]]]])])))
 
@@ -114,8 +114,7 @@
      [:div.strava-activity-lap
       [:h4 (:name lap)]
       [:p (/ (:distance lap) 1000) [:span " km"]]
-      [:p (* 3.6 (:average_speed lap)) [:span " km/h"]]])
-   ])
+      [:p (* 3.6 (:average_speed lap)) [:span " km/h"]]])])
 
 (defn kudo "Strava icon for kudos, show name on hover"
   [kudoer]
@@ -211,8 +210,6 @@
      data))
     (.stroke ctx)))
 
-
-
 (defn graph-canvas ""
   [kind activity]
   (let [data @(rf/subscribe [:strava/activity-stream (:id activity) kind 50])
@@ -290,10 +287,11 @@
                        (rf/dispatch [:strava/fetch-stream (:id activity)
                                      "latlng,watts,heartrate,velocity_smooth,altitude,cadence,time"]))}
 
-              [:h3 [:b (:name activity)]]
+              [:h3 {:style {:z-index 2}}
+               [:b (:name activity)]]
               [:div.strava-activity-full-inner
                (@tab tabs)] 
-              (into [:div.flex
+              (into [:div.flex ;tab buttons
                      {:style {:position :absolute
                               :top 0 :right 0}}]
                     (map (fn [k] [tab-button k]) (keys tabs))) ])]
@@ -459,7 +457,7 @@
       
      (if stats
        [:div.strava-stats.flex
-        [:div
+        [:div.strava-stats-legend
          [:h3 [:img {:src "img/strava-icon.png"
                      :style {:width "1.25em"}}]]
          [:div "Rides"]
