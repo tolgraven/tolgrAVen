@@ -103,8 +103,8 @@
 (defn abs [n]
   (max n (- n)))
 
-(defn rescale-to-frac [n min max]
-  (/ (- n min) (- max min)))
+(defn rescale-to-frac [n min-input max-input]
+  (max 0.0 (min 1.0 (/ (- n min-input) (- max-input min-input)))))
 
 (defn- format-css-var [var-name]
   (or (and (some? (string/index-of var-name "--"))
