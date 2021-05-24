@@ -570,6 +570,11 @@ figcaption, .float-with-caption {
     width: 100%;
   }
 }
+#log-container {
+  // all this specific stuff really should go elsewhere, akin to main-page
+  z-index: 11;
+  border-top: none;
+}
 .log {
   background: var(--bg-3);
   
