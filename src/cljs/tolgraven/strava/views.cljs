@@ -459,7 +459,8 @@
         [:h3 "Rate limited?"]
         [:p "Uh-oh, looks like we failed to fetch the strava data. Try refreshing the page."]])
      (if athlete
-       [:div.strava-profile.flex
+       [ui/appear-anon "opacity"
+        [:div.strava-profile.flex
         [:img.strava-profile-image.user-avatar
          {:src (:profile_medium athlete)
           :width "50%" :height "50%"}]
@@ -468,7 +469,7 @@
          [:div (:bio athlete)]
          [:div (:city athlete)]
          [:div (:weight athlete) " kg"]]
-        [:div.strava-story (:story data)]]
+        [:div.strava-story (:story data)]]]
        [views/loading-spinner true])
       
      (if stats
