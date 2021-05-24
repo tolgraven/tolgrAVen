@@ -47,11 +47,6 @@ body {
   background-color: var(--bg-1);
   width: calc(100% - 2 * var(--space-edges));
   margin: auto;
-
-  /* no overflow hidden on body = iphone can scroll sideways. on body works but sticky header breaks */
-  /* -webkit-overflow-x: hidden; nope... no work */
-  /* overflow-x: hidden; /1* gotta be on both or doesnt work on iphone hmm *1/ */
-  /* -webkit-overflow-scrolling: touch; */
 }
 
 
