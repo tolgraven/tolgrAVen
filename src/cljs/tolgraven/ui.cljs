@@ -57,13 +57,13 @@
     :ref #(rf/dispatch [:appear id (boolean %)])}
    (into [:<>] components)])
 
-(defn appear-anon "Animate mount. Dont use events just ratoms"
+(defn appear-anon "Animate mount. Dont use events just ratoms."
   [kind & components]
   (let [appeared (r/atom false)]
     (fn [kind & components]
       [:div.appear-wrapper
        {:class (str kind " " (when @appeared "appeared"))
-        :ref #(r/rswap! appeared not)}
+        :ref #(when % (reset! appeared true))}
        (into [:<>] components)])))
 
 (defn seen "Animate on coming into view"
