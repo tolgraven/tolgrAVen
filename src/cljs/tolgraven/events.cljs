@@ -47,7 +47,7 @@
                         :dispatch (if-let [saved-pos (get-in db [:state :scroll-position (-> new-match :path)])]
                                     [:scroll/px saved-pos]
                                     [:scroll/to "linktotop"])} ; TODO use localstorage so restores on return visit halfway if someone follows link from blog etc..
-       :document/set-title (->> new-name
+       :document/set-title (->> new-match :data :name ;TODO want further info in title, like blog post title...
                                 name string/capitalize
                                 (str (get-in db [:content :title] "tolgrAVen") " - "))})))
 
@@ -95,11 +95,8 @@
 (defn assoc-in-factory [base-path]
   (fn [db [_ path value]]
     (assoc-in db (into base-path path) value)))
-; (doseq [k [:content :state :option :exception :form-field]]
-;   (rf/reg-event-db :state
-;     (assoc-in-factory [k])))
 
-(rf/reg-event-db :content ;[debug]
+(rf/reg-event-db :content
                  (assoc-in-factory [:content]))
 
 (rf/reg-event-db :state
@@ -128,7 +125,7 @@
 
 (rf/reg-event-fx :reloaded
  (fn [db [_ _]]
-   {:dispatch [:diag/new :info "JS" "Reloaded"]}))
+   {:dispatch [:diag/new :debug "JS" "Reloaded"]}))
 
 
 (rf/reg-event-fx :to-db
@@ -187,8 +184,7 @@
 
 (rf/reg-event-fx :page/init-home ;[debug]
  (fn [_ _]
-   {:dispatch-n [[:state [:is-loading] false]
-                 [:state [:is-personal] false]
+   {:dispatch-n [[:state [:is-personal] false]
                  ; [:->css-var! "line-width-vert" "0px"]
                  ]})) ; be careful w dispatch-n, entire chain stops if one throws (like here w css-var...)
 
@@ -249,8 +245,7 @@
  (fn [{:keys [ls]} [_ ls-path v]]
    {:ls (assoc-in ls ls-path v)}))
 
-(rf/reg-event-fx :ls/get-path   [debug
-                                 (rf/inject-cofx :ls)]
+(rf/reg-event-fx :ls/get-path   [(rf/inject-cofx :ls)]
  (fn [{:keys [db ls]} [_ ls-path db-path]] ;map of keys to paths I guess?
    {:db (assoc-in db db-path (get-in ls ls-path)) }))
 
@@ -267,7 +262,7 @@
               el)]
      (.addEventListener el event f))))
 
-(rf/reg-event-fx :scroll/direction  [debug]
+(rf/reg-event-fx :scroll/direction
  (fn [{:keys [db]} [_ direction position accum]]
    (let [header-height (if (get-in db [:state :menu])
                             @(rf/subscribe [:get-css-var "header-with-menu-height"])
@@ -324,7 +319,7 @@
      {:dispatch [:listener/add! "document" "scroll" callback]})))
  
 
-(rf/reg-event-fx :listener/before-unload-save-scroll ; 
+(rf/reg-event-fx :listener/before-unload-save-scroll ; gets called even when link to save page, silly results.
  (fn [{:keys [db]} [_ ]]
   (let [scroll-to-ls (fn []
                        (rf/dispatch-sync [:state [:scroll-position (-> db :common/route :data :name)]
@@ -334,8 +329,7 @@
     {:dispatch-n [[:listener/add! "window" "beforeunload" scroll-to-ls]]})))
 
 
-(rf/reg-event-fx :init/scroll-storage  [debug
-                                        (rf/inject-cofx :ls)] ;fetch any existing values, setup listener to persist...
+(rf/reg-event-fx :init/scroll-storage  [(rf/inject-cofx :ls)] ;fetch any existing values, setup listener to persist...
   (fn [{:keys [db ls]} _]
     {:db (assoc-in db [:state :scroll-position] (:scroll-position ls))
      :dispatch [:listener/before-unload-save-scroll]}))
