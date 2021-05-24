@@ -75,6 +75,8 @@
 .media-as-bg {
   position: absolute;
   left: 0;
+  top: 0;
+  z-index: -1;
   width: 100%;
   max-width: unset;
   object-fit: cover;
