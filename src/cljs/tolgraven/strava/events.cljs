@@ -7,6 +7,7 @@
     [tolgraven.cofx :as cofx]
     [tolgraven.interceptors :as inter]
     [clojure.string :as string]
+    [clojure.walk :as walk]
     [cljs-time.core :as ct]
     [cljs-time.coerce :as ctc]))
 
@@ -18,23 +19,25 @@
     {:dispatch
       [:<-store [:strava] [:strava/store-client]]}))
 
-(rf/reg-event-fx :strava/store-client   [(rf/inject-cofx :now)
-                                         debug]
+(rf/reg-event-fx :strava/store-client   [(rf/inject-cofx :now)]
   (fn [{:keys [db now]} [_ data]]
-    (let [data (util/normalize-firestore-general data)] ; TEMP. FIGURE OUT AND FIX THE WHOLE THING INSTEAD
+    (let [data (util/normalize-firestore-general data) ; TEMP. FIGURE OUT AND FIX THE WHOLE THING INSTEAD
+          expired? (neg? (- (-> data :auth :expires_at) (/ now 1000)))]
       {:db (assoc-in db [:strava] data)
-       :dispatch-n [[:strava/fetch] ;XXX wont work if need refresh.
-                    (when (neg? (- (-> data :auth :expires_at) now)) ;can actually refresh each time also, get same access token back then
+       :dispatch-n [(when-not expired?
+                      [:strava/fetch]) ;XXX wont work if need refresh.
+                    (when expired? ;can actually refresh each time also, get same access token back then
                       [:strava/refresh (-> data :auth :refresh_token)])]})))
 
-(rf/reg-event-fx :strava/store-session  [debug]
+(rf/reg-event-fx :strava/store-session
   (fn [{:keys [db now]} [_ response]]
-    {:db (update-in db [:strava :auth] merge response)
-     :dispatch-n [[:store-> [:strava :auth]
-                   (merge (get-in db [:strava :auth]) response)]
-                  [:strava/fetch]]})) ;bit ugly making one doomed request and then yada etc but eh
+    (let [data (walk/keywordize-keys response)]
+      {:db (update-in db [:strava :auth] merge data)
+       :dispatch-n [[:store-> [:strava :auth]
+                     (merge (get-in db [:strava :auth]) data)]
+                    [:strava/fetch]]}))) ;bit ugly making one doomed request and then yada etc but eh
 
-(rf/reg-event-fx :strava/refresh  [debug]
+(rf/reg-event-fx :strava/refresh
   (fn [{:keys [db]} [_ refresh-token]]
     (let [info (get-in db [:strava :auth])]
       {:dispatch
