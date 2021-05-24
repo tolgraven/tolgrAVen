@@ -232,6 +232,7 @@
 ;; Initialize app
 (defn mount-components "Called each update when developing" []
   (rf/clear-subscription-cache!)
+  (start-router!) ; restart router on reload?
   (rf/dispatch-sync [:exception nil])
   (rf/dispatch [:reloaded])
   (util/log "Mounting root component")
@@ -239,7 +240,6 @@
 
 
 (defn init "Called only on page load" []
-  (start-router!)
   (rf/dispatch-sync [:init-db])
   (ajax/load-interceptors!)
 
