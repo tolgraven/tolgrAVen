@@ -94,6 +94,12 @@
                     [:strava/get (str "activities/" id "/streams" "?keys=" data-type "&key_by_type=")
                      [:activity-stream id]])]}))
 
+(rf/reg-event-fx :strava/fetch-segment-stream
+  (fn [{:keys [db]} [_ id data-type]]
+    {:dispatch-n [(when-not (get-in db [:content :strava :segment-stream id])
+                    [:strava/get (str "segments/" id "/streams" "?keys=" data-type "&key_by_type=")
+                     [:segment-stream id]])]}))
+
 (rf/reg-event-fx :strava/fetch-activity
   (fn [{:keys [db]} [_ id ]]
     {:dispatch-n [(when-not (get-in db [:content :strava :activity id])
