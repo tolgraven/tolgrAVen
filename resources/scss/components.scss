@@ -18,7 +18,7 @@
 .line.line-header {
   position: sticky; /* starts between header and main, turns into demarcation */
   z-index: 100;
-  top: var(--header-height); /* not -current since being overridden in header.css then */
+  top: var(--header-height-current);
   transition: top var(--header-expand-time) ease 0.0s;
   margin-top: var(--space-top); /* space before sticky starts */
 }
