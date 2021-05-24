@@ -85,27 +85,43 @@
       splits_metric)
 
      (when (< 100 size) ;overflow, scroll sideways
-       [:span.scroll-reminder "scroll " [:i.fa.fa-chevron-right]])
-     ]))
+       [:span.scroll-reminder "scroll " [:i.fa.fa-chevron-right]]) ]))
+
+(defn activity-segment "List a specific segment"
+  [segment]
+  (let [hovered? (r/atom false)]
+    (fn [segment]
+      [:<>
+       [:div.strava-activity-segment.flex
+        [:p
+         {:on-mouse-over #(do (rf/dispatch [:strava/fetch-segment-stream
+                                            (-> segment :segment :id)
+                                            "latlng,altitude"])
+                         (reset! hovered? true))
+          :on-mouse-leave #(reset! hovered? false)}
+         (:name segment) ]
+        [:p
+         (when-let [achievements (:achievements segment)]
+           (for [achievement achievements]
+             [:i.fa.fa-award.strava-award
+              {:class (case (:type achievement)
+                        "pr" (case (:rank achievement)
+                               1 "gold"
+                               2 "silver"
+                               3 "bronze"))}]))
+         (util/format-number (* 3.6 (/ (:distance segment)
+                                       (:elapsed_time segment))) 1)
+         [:span " km/h"]] ]
+       (when @hovered?
+         [:div.strava-popup
+          [:pre @(rf/subscribe [:strava/content [:segment-stream (-> segment :segment :id)]])]
+          "Map etc goes here"])])))
 
 (defn activity-segments "Segments for activity"
   [{:keys [segment_efforts] :as details}]
   [:div.strava-activity-segments
    (for [segment segment_efforts]
-     [:div.strava-activity-segment.flex
-      [:p (:name segment) ]
-      [:p
-       (when-let [achievements (:achievements segment)]
-         (for [achievement achievements]
-           [:i.fa.fa-award.strava-award
-            {:class (case (:type achievement)
-                      "pr" (case (:rank achievement)
-                             1 "gold"
-                             2 "silver"
-                             3 "bronze"))}]))
-       (util/format-number (* 3.6 (/ (:distance segment)
-                                     (:elapsed_time segment))) 1)
-       [:span " km/h"]] ])])
+     [activity-segment segment])])
 
 (defn activity-laps "Laps for activity"
   [{:keys [laps] :as details}]
