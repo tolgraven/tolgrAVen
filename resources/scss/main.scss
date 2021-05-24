@@ -72,7 +72,7 @@ main { /* dunno purpose of why I choose .main-content... */
   border-left:  var(--line-width-vert) solid var(--line-color); /* should make configurable. off looks p nice on main page */
   border-right: var(--line-width-vert) solid var(--line-color); /* should make configurable. off looks p nice on main page */
   margin-top: var(--space-lg);
-  padding-bottom: var(--footer-height); /* XXX actually, footer height... */
+  padding-bottom: var(--footer-height-current);
 
   animation: fade-in 2.5s ease-in;
 }

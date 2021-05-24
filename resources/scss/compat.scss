@@ -73,8 +73,8 @@
 @media screen and (max-width: 500px) {
   :root {
     font-size: 0.80rem;
-    --space: 0.6rem;
-    --space-lg: 0.9rem;
+    --space: 0.75rem;
+    --space-lg: 1.0rem;
   }
 }
 @media screen and (max-width: 400px) {
@@ -103,6 +103,7 @@
   :root {
     --header-height-current: 0rem !important; // eh this takes it away entirely dummy
     // --header-height: 0rem !important;
+    --header-height-offset: 0rem !important;
   }
   header {
     position: relative !important;

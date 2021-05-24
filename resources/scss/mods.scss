@@ -75,7 +75,7 @@
     transform: translateX(-150%);
   }
 
-  &.swapped-out {
+  &.swapped-out { // bc we cant animate display: none so would need a yet additional class to fully hide right? nuke from dom seems wiser tho...
     pointer-events: none;
     transition: 0.5s ease;
   }
@@ -106,10 +106,6 @@
   }
 }
 
-@keyframes hider {
-  0% { opacity: 1;
-  } 100% { opacity: 0; }
-}
 
 
 /* Show/hide and slide in from left. */
@@ -219,6 +215,7 @@
     opacity: 1;
     transform: none;
     visibility: visible;
+    background-color: initial;
   }
   &.slow {       transition: all 1.5s; }
   &.extra-slow { transition: all 3.0s; }

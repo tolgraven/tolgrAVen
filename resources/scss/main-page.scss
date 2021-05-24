@@ -17,6 +17,7 @@
 #intro {
   position: relative;
   max-height: var(--media-width-main);
+  border-top: 0;
   p {
     padding: 0 var(--space-lg);
   }
@@ -60,7 +61,6 @@
 }
 #headshot {
   width: 20%;
-  max-width: 150px;
 }
 #byline > img {
   border-radius: 0.5em;
@@ -69,7 +69,6 @@
 #multimeter {
   width: 30%;
   min-width: 150px;
-  max-width: 300px;
 }
 
 #building-tools {

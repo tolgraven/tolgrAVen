@@ -2,7 +2,7 @@
 .user-section-wrapper {
   max-height: 0; // prob use scale-y + move instead remember gpu-accel
   // overflow-y: hidden;
-  overflow-y: scroll;
+  // overflow-y: scroll; // suddenly causes weird padding beneath...
   opacity: 0.6;
   backdrop-filter: blur(0.3rem);
   transition: max-height 0.7s ease, margin 0.7s ease, opacity 0.8s ;
@@ -12,7 +12,7 @@
   opacity: 1.0;
   margin-top: var(--space-lg);
   transition: max-height 0.6s ease, margin 0.6s ease, opacity 0.8s ease;
-  box-shadow: 1px 1px 8px 10px var(--user-box-shadow);
+  box-shadow: 3px 3px 15px 10px var(--user-box-shadow) inset;
 }
 .user-section {
   border: var(--line-width) solid var(--line-color);
