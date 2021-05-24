@@ -14,6 +14,7 @@
     [tolgraven.strava.events]
     [tolgraven.instagram.events]
     [tolgraven.doc-fx]
+    [tolgraven.effects]
     [tolgraven.cofx :as cofx]
     [clojure.string :as string]
     ; [muuntaja.core :as m]
