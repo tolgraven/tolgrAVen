@@ -203,30 +203,8 @@
                      {:what "Better way?"
                       :than :like-this
                       3 {:just "add buttons"}}
-                     {:sticky? true}])
+                     {:sticky? false #_true}])
 
-(def firebase-app-info
-  {:apiKey        "AIzaSyBsqgWFXZfLq4W8FPRfSVd3AzSt183w9HQ"
-   :projectId     "tolgraven-8fd35"
-   :authDomain    "tolgraven-8fd35.firebaseapp.com"
-   :databaseURL   "https://tolgraven-8fd35.firebaseio.com"
-   :storageBucket "tolgraven-8fd35.appspot.com"})
-(def firebase-app-info-test
-  {:apiKey        "AIzaSyAvjzBy68cWrdbLGOs8Yx4hD2JkfoHhjAg"
-   :projectId     "tolgraven-test"
-   :authDomain    "tolgraven-test.firebaseapp.com"
-   :databaseURL   "https://tolgraven-test.firebaseio.com"
-   :storageBucket "tolgraven-test.appspot.com"})
-
-(defn init-firebase []
-  (firebase/init :firebase-app-info      (case @(rf/subscribe [:option [:firebase :project]])
-                                           :main firebase-app-info
-                                           :test firebase-app-info-test)
-                 :firestore-settings     @(rf/subscribe [:option [:firebase :settings]]) ; Shouldn't be used on later versions. See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
-                 :get-user-sub           [:fb/get-user]
-                 :set-user-event         [:fb/set-user]
-                 :default-error-handler  [:fb/error])
-  (rf/dispatch [:fb/fetch-users])) ; or more like, dont wait til blog init but can also defer a bit...
 
 ;; -------------------------
 ;; Initialize app
@@ -242,9 +220,7 @@
 (defn init "Called only on page load" []
   (rf/dispatch-sync [:init-db])
   (ajax/load-interceptors!)
-
-  (init-firebase)
-  (rf/dispatch [:init]) ; dispatch firebase general fetches, test case is silly id counter persistence. which then needs to be fetched into app-db once ready
+  (rf/dispatch [:fb/fetch-settings])
   (rf/dispatch cookie-notice)
   (util/log "Init complete")
   (mount-components))

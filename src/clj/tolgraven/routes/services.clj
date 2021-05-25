@@ -65,6 +65,15 @@
    ["/ping"
     {:get (constantly (response/ok {:message "pong"}))}]
    
+   ["/firebase-settings" ;XXX obviously needs to be behind basic auth
+    {:get (fn [_]
+            (-> "firebase/firebase_SECRETS.edn"
+                io/resource
+                slurp
+                (#(m/encode formats/instance "application/transit+json" %))
+                response/ok
+                (response/content-type "application/transit+json")))}]
+   
    ["/math"
     {:swagger {:tags ["math"]}}
 

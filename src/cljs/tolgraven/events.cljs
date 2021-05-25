@@ -161,14 +161,22 @@
 
 (rf/reg-event-fx :fb/fetch-settings [debug]
   (fn [{:keys [db]} _]
-    {:dispatch [:http/get {:uri "/api/firebase-settings"}
-                [:option [:firebase]]]}))
+    {:dispatch [:http/get-internal {:uri "/api/firebase-settings"}
+                [:fb/init]]}))
 
 (rf/reg-event-fx :fb/error
   (fn [{:keys [db]} [_ error]]
     {:dispatch [:diag/new :error "Server error" error]}))
 
-
+(rf/reg-event-fx :fb/init
+  (fn [{:keys [db]} [_ data]]
+    (firebase/init :firebase-app-info      (edn/read-string data)
+                   :firestore-settings     @(rf/subscribe [:option [:firebase :settings]]) ; Shouldn't be used on later versions. See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
+                   :get-user-sub           [:fb/get-user]
+                   :set-user-event         [:fb/set-user]
+                   :default-error-handler  [:fb/error])
+    {:dispatch-n [[:init]
+                  [:fb/fetch-users]]}))
 
 
 ; PROBLEM: would obviously want to trigger fetch on start-navigation,
