@@ -194,10 +194,8 @@
        ]})) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
 
 (rf/reg-event-fx :page/init-home ;[debug]
- (fn [_ _]
-   {:dispatch-n [[:state [:is-personal] false]
-                 ; [:->css-var! "line-width-vert" "0px"]
-                 ]})) ; be careful w dispatch-n, entire chain stops if one throws (like here w css-var...)
+ (fn [{:keys [db]} _]
+   {:db (assoc-in db [:state :is-personal] true) }))
 
 (rf/reg-event-fx :appear
   (fn [{:keys [db]} [_ id value]]  ; would just set something in state that then sets css class.
@@ -213,9 +211,9 @@
           difference (->> (map js/parseFloat [open-height closed-height])
                           (apply -)
                           (* 0.5))]
-      {:dispatch-n
-        [[:state [:menu] state]
-         [:->css-var! "header-height-current"
+      {:db (assoc-in db [:state :menu] state)
+       :dispatch-n
+        [[:->css-var! "header-height-current"
                       (if state open-height closed-height)]]
         :dispatch-later {:ms 250
                          :dispatch [:scroll/by (cond-> difference state -)]}}))) ;;haha silly.
@@ -281,7 +279,8 @@
          footer-height @(rf/subscribe [:get-css-var "footer-height"])
          trigger? (>= accum 0.01)
          far-enough? (>= position 0.10)]
-    {:dispatch-n [(when trigger? ;(and (>= accum 0.01) #_(>= position 0.10))
+    {:db (assoc-in db [:state :scroll-direction] direction)
+     :dispatch-n [(when trigger? ;(and (>= accum 0.01) #_(>= position 0.10))
                     [:->css-var! "header-height-current" ;prob more reasonable offset :top yea?
                     (case direction
                       :down (if far-enough?
