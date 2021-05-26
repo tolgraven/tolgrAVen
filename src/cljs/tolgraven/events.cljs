@@ -64,11 +64,16 @@
     {:common/navigate-fx! [url-key params query]}))
 
 
-(rf/reg-event-fx :swap-trigger
+(rf/reg-event-fx :swap/trigger
   (fn [{:keys [db]} [_ item]]
-    {:dispatch [:state [:swap :running] item]
+    {:db (assoc-in db [:state :swap :running] item)
      :dispatch-later {:ms 2000 ; got transition taking 1s yet this (?) sometimes triggers abruptly before it ends hmm (+ hardly optimal so long...)
-                      :dispatch [:state [:swap :finished] item]}}))
+                      :dispatch [:swap/finish item]}}))
+
+(rf/reg-event-fx :swap/finish
+  (fn [{:keys [db]} [_ item]]
+    {:db (assoc-in db [:state :swap :finished] item) }))
+
 
 (rf/reg-event-fx :carousel/rotate
   (fn [{:keys [db]} [_ id curr-idx direction]]

@@ -41,7 +41,7 @@
                        "swapped-out") " "
                      (when (:finished swap)
                        "removed") " ")
-         :ref #(when % (rf/dispatch [:swap-trigger %]))} ; trigger anim out and deferred hiding
+         :ref #(when % (rf/dispatch [:swap/trigger %]))} ; trigger anim out and deferred hiding
         ; getting duplicate triggers for some reason.
         comp-out])]))
 
