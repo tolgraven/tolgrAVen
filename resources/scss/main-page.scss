@@ -142,12 +142,11 @@
   }
   
   &.service-fullscreen {
-    font-size: 300%;
-    // width: 160%; // correct for whatever reason
-    width: 120%; // meh
+    font-size: 250%;
+    width: 90%; // meh
     height: 100%; // seems to be in relation to section? & doesnt actually tell outer to expand unless put margin..
     z-index: 100;
-    margin-bottom: 18rem; // pad container. just a value to approximate regular section height.
+    margin-bottom: 15rem; // pad container. just a value to approximate regular section height.
     cursor: initial;
   }
   &.service-minimized {
