@@ -81,6 +81,11 @@
  (fn [db [_ _]]
    (get-in db [:state :menu])))
 
+(rf/reg-sub :loading
+ :<- [:state [:loading]]
+ (fn [loading [_ kind id]]
+   (let [which (get loading kind loading)]
+     (some? (vals loading)))))
 
 (rf/reg-sub :diag/messages
  (fn [db [_ _]]

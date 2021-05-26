@@ -22,7 +22,7 @@
 
 (def data ; default db. Needs to be cleaned out of content already haha.
   {:state {:menu false
-           :is-loading false
+           :is-loading {}
            :theme-force-dark true
            :is-personal false
            :experiments :parallax

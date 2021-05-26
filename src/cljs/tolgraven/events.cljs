@@ -376,8 +376,8 @@
 (defn get-http-fn "Return fn used for http-get/post"
   [kind & [extra-defaults]]
   (fn http-fn [{:keys [db]} [_ opts & [on-success on-error]]]
-    (let [cleanup [:state [:is-loading] false]] ; set something to indicate request is underway
-      {:dispatch [:state  [:is-loading] true]   ;; tho usually want this locally so figure out. by passing path frag maybe...
+    (let [cleanup [:loading/off kind]] ; set something to indicate request is underway
+      {:dispatch [:loading/on kind]   ;; tho want this per-request so figure out. by passing path frag maybe... slightly better now at least
        :http-xhrio
        (merge
         {:method          kind
