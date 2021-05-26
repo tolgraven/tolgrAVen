@@ -89,23 +89,30 @@
   (let [vid-ref (atom nil) ; docs says reg atom better but only updates w ratom, bc 2nd fn or? also .play no works
         controls (atom nil)
         in-view (r/atom 0.0)
+        do-control (fn [action]
+                     (when-let [video @vid-ref]
+                       (when @controls
+                         (@controls action))))
         on-change (fn [frac]
                     (reset! in-view frac)
-                    (when (and (<= frac 0.2) @controls)
-                      (@controls :pause)))
-        observer (util/observer on-change (str "interlude-" nr))]
+                    (when (<= frac 0.2)
+                      (do-control :pause)))
+        observer (util/observer on-change (str "interlude-" nr)) ]
     (fn [{:keys [title caption bg nr]}]
-      [:section.nopadding {:id (str "interlude-" nr)
-             :class "section-with-media-bg-wrapper parallax-wrapper"
-             :on-mouse-enter #(when-let [video @vid-ref] (@controls :play))
-             :on-mouse-leave #(when-let [video @vid-ref] (@controls :pause))}
+      [:section.nopadding
+       {:id (str "interlude-" nr)
+        :class "section-with-media-bg-wrapper parallax-wrapper"
+        :on-mouse-enter #(do-control :play)
+        :on-mouse-leave #(do-control :pause)
+        :on-touch-start #(do-control :play)
+        :on-touch-end   #(do-control :pause)}
        (util/add-attrs bg {:id (str "interlude-bg-" nr)
                            :ref (fn [el]
                                   (when el
                                     (reset! vid-ref el)
-                                    (set! (.-muted el) true)
-                                    (reset! controls (util/play-pauser el))))
-                           :onloadedmetadata "this.muted=true"
+                                    (set! (.-muted el) true)))
+                           :onLoadedMetadata #(set! (.-muted %) true)
+                           :onCanPlay #(reset! controls (util/play-pauser @vid-ref))
                            :muted true}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:div
         {:class "covering-faded widescreen-safe center-content parallax-group"
