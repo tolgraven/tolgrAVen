@@ -278,7 +278,6 @@
        [:div.strava-activity
        (if @opened?
          [:div.strava-activity-dot.strava-activity-dot-expanded ;.section-with-media-bg-wrapper
-          {:on-click #(reset! opened? false)}
 
           [:div.strava-activity-top-bg]
           
@@ -290,10 +289,10 @@
                                                       (reset! tab id-key))}
                               (name id-key)])
                 tabs (merge {:summary [activity-stats activity details]
-                       :splits [activity-splits details]
-                       :segments [activity-segments details]
-                       :map [activity-map-leaflet activity]
-                       :graphs [activity-graphs activity]}
+                             :splits [activity-splits details]
+                             :segments [activity-segments details]
+                             :map [activity-map-leaflet activity]
+                             :graphs [activity-graphs activity]}
                             (when (< 1 (count (:laps details)))
                               {:laps [activity-laps details]}))]
                        
@@ -309,8 +308,10 @@
                (@tab tabs)] 
               (into [:div.flex ;tab buttons
                      {:style {:position :absolute
-                              :top 0 :right 0}}]
-                    (map (fn [k] [tab-button k]) (keys tabs))) ])]
+                              :top 0 :right "5%"}}]
+                    (map (fn [k] [tab-button k])
+                         (keys tabs))) 
+              [ui/close #(reset! opened? false)]])]
          
          [:div.strava-activity-dot
           {:style {:left (str (* 100 (/ i num-total)) "%")
