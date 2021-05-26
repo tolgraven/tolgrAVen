@@ -58,6 +58,7 @@
                  [kee-frame "0.4.0" :exclusions [args4j]]
                  [day8.re-frame/http-fx "0.2.1"]
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
+                 [day8.re-frame/async-flow-fx "0.2.0"]
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
                  [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j]]
                  ; [day8.re-frame/undo "0.3.3"]

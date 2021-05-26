@@ -6,6 +6,7 @@
     [day8.re-frame.http-fx]
     [com.degel.re-frame-firebase :as firebase]
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
+    [day8.re-frame.async-flow-fx :as async-flow-fx]
     [akiroz.re-frame.storage :as localstore]
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
