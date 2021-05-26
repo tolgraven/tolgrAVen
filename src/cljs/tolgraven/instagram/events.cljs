@@ -36,8 +36,7 @@
          token (get-in db [:instagram :auth :access_token])]
      {:dispatch
       [:http/get {:uri (str uri id)
-                  :url-params {:fields fields :access_token token}
-                  :response-format (ajax/json-response-format {:keywords? true})}
+                  :url-params {:fields fields :access_token token} }
        [:instagram/store-post id]
        [:content [:instagram :error id]]] })))
 
@@ -48,11 +47,11 @@
 
 (rf/reg-event-fx :instagram/fetch [debug]
   (fn [{:keys [db]} [_ data]]
-    (let [new-ids (map :id (:data data))
-          old-ids (get-in db [:instagram :ids])
+    (let [new-ids (into (sorted-set) (map :id (:data data)))
+          old-ids (into (sorted-set) (get-in db [:instagram :ids :ids]))
           match? (= new-ids old-ids)]
-      (if-not match?
-       {:db (-> db (assoc-in [:instagram :ids] new-ids)
+      (when-not match?
+       {:db (-> db (assoc-in [:instagram :ids :ids] new-ids)
                    (assoc-in [:instagram :data] (get-in data [:paging])))
         :dispatch-n [[:store-> [:instagram :ids] {:ids new-ids}]
                      [:instagram/fetch-from-insta new-ids]] }))))
