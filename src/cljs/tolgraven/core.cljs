@@ -141,7 +141,7 @@
                :view #'doc-page
                :controllers [{:start (fn [_] (doall (map rf/dispatch [[:page/init-docs]
                                                                       [:state [:is-personal] true]])))}]}] ; really overkill this triggers each time. gotta be built-in solution somewhere? else work around
-     ["blog" {:controllers [{:start (fn [_] (rf/dispatch [:page/init-blog]))}] }
+     ["blog" {:controllers [{:start (fn [_] #_(rf/dispatch [:page/init-blog]))}] }
       [""     {:name :blog
                :view #'blog-page
                :controllers [{:start (fn [_] (rf/dispatch [:blog/set-posts-per-page 3]))}]}] ; should also allow 0 = infinite scroll

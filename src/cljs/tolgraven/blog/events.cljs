@@ -13,7 +13,7 @@
 
 (rf/reg-event-fx :page/init-blog [debug]
   (fn [{:keys [db]} _]
-    (if-not (-> db :state :booted :blog)
+    (when-not (:blog db)
      {:dispatch-n [[:blog/nav-page 1]
                    [:booted :blog]
                    [:<-store [:blog-posts]    [:blog/set-content :posts]]

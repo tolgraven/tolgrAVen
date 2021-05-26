@@ -177,7 +177,8 @@
                    :get-user-sub           [:fb/get-user]
                    :set-user-event         [:fb/set-user]
                    :default-error-handler  [:fb/error])
-    {:dispatch-n [[:init]
+    {:db (assoc-in db [:state :firebase-initialized] true)
+     :dispatch-n [[:init]
                   [:fb/fetch-users]]}))
 
 
@@ -351,7 +352,8 @@
                 ; [:listener/scroll-direction]
                 [:id-counters/fetch]
                 [:strava/init]
-                [:instagram/init]]}))
+                [:instagram/init]
+                [:page/init-blog]]}))
 
 ; generic helpers for rapid prototyping.
 ; NOT FOR LONG-TERM USE if straight to data path not viable

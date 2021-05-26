@@ -42,13 +42,15 @@
     (get-in db (into [:state :form-field] path))))
 
 (rf/reg-sub :<-store
-  (fn [db [_ & coll-docs]]
-    (let [look-in (if (even? (count coll-docs))
-                    {:path-document coll-docs}
-                    {:path-collection coll-docs})]
-      (-> @(rf/subscribe [:firestore/on-snapshot look-in])
-      :data
-      (walk/keywordize-keys)))))
+  :<- [:state [:firebase-initialized]]
+  (fn [initialized [_ & coll-docs]]
+    (when initialized
+      (let [look-in (if (even? (count coll-docs))
+                      {:path-document coll-docs}
+                      {:path-collection coll-docs})]
+        (-> @(rf/subscribe [:firestore/on-snapshot look-in])
+            :data
+            (walk/keywordize-keys))))))
 
 
 (rf/reg-sub :header-text
