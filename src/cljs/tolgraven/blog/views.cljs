@@ -265,7 +265,7 @@
   (let [user @(rf/subscribe [:user/user user])]
     [ui/appear (str "blog-post-" id) "zoom-x"
      [:section.blog-post
-     {:ref #(rf/dispatch [:run-highlighter! %])}
+     {:ref #(when % (rf/dispatch [:run-highlighter! %]))}
      [:div.flex.blog-post-header
       [ui/user-avatar user "blog-user-avatar"]
       [:div.blog-post-header-main
