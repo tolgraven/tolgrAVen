@@ -2,10 +2,6 @@
   (:require
    [reagent.core :as r]
    [re-frame.core :as rf]
-   ; [cljsjs.codemirror :as codemirror]
-   ; [cljsjs.codemirror.keymap.vim]
-   ; [cljsjs.codemirror.mode.markdown]
-   [markdown.core :refer [md->html]]
    [clojure.string :as string]
    [tolgraven.util :as util :refer [at]]
    [tolgraven.views-common :as common]
@@ -263,7 +259,7 @@
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text permalink comments] :as blog-post}]
   (let [user @(rf/subscribe [:user/user user])]
-    [ui/appear (str "blog-post-" id) "zoom-x"
+    [ui/appear-anon "zoom-x"
      [:section.blog-post
      {:ref #(when % (rf/dispatch [:run-highlighter! %]))}
      [:div.flex.blog-post-header
@@ -271,7 +267,8 @@
       [:div.blog-post-header-main
        [:a {:href (make-link (or permalink id))}
          [:h1.blog-post-title title]]
-       [ui/appear :posted-by "opacity" [posted-by id user ts]]
+       [ui/appear-anon  "slide-in" #_"opacity"
+        [posted-by id user ts]]
        (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
          [:button.noborder.nomargin
           {:on-click #(rf/dispatch [:blog/edit-post blog-post])}
@@ -281,7 +278,7 @@
      ; [a custom sticky mini "how far youve scrolled bar" on right?]
      [:div.blog-post-text [ui/md->div text]]
      [:br] [:br]
-     [ui/appear (str "blog-post-" id "-comments") "zoom-y" [comments-section blog-post]]]]))
+     [ui/appear-anon "zoom-y" [comments-section blog-post]]]]))
 
 (defn blog-single-post []
   (let [post (or @(rf/subscribe [:blog/post
@@ -344,17 +341,17 @@
       back-btn nav-idxs fwd-btn]))
 
 (defn blog-feed "all the blogs. Should be called" []
-  (let [total @(rf/subscribe [:blog/count])
-        user @(rf/subscribe [:user/active-user])
+  (when-let [total @(rf/subscribe [:blog/count])]
+   (let [user @(rf/subscribe [:user/active-user])
         per-page (min total @(rf/subscribe [:blog/posts-per-page]))
-        idx @(rf/subscribe [:blog/state [:page]])
+        idx @(rf/subscribe [:blog/nav-page])
         posts @(rf/subscribe [:blog/posts-for-page idx per-page]) ]
     (when (pos? total)
       [:<>
        (doall (for [post posts] ^{:key (str "blog-post-" (:id post))}
-                   [blog-post post]))
+                [blog-post post]))
 
-       [blog-nav total idx per-page]])))
+       [blog-nav total idx per-page]]))))
 
 (defn blog-container
   [section]
