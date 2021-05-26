@@ -76,6 +76,11 @@
     --space: 0.75rem;
     --space-lg: 1.0rem;
   }
+  
+  button {
+    --around: var(--space) var(--space) !important;
+    font-size: 110% !important;
+  }
 }
 @media screen and (max-width: 400px) {
   :root {
