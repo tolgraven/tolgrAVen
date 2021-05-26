@@ -331,7 +331,6 @@
          [activity-map-canvas activity])])))
 
 
-
 (defn activities-graph "List multiple activities, currently as a graph from watts and RE"
   []
   (let [height "22em"
@@ -366,10 +365,8 @@
 
 (defn activity-map-leaflet "Visualize latlng somehow! Currently goes behind activity-full but putting it on bg would be best (fix latlng so fits...)"
   [activity]
-  (let [latlng @(rf/subscribe [:strava/activity-stream (:id activity) "latlng" 5])
-        [lats lngs] (map #(map % latlng) [first second])
-        [lat-max lat-min] (map #(apply % lats) [max min])
-        [lng-max lng-min] (map #(apply % lngs) [max min]) ]
+  (let [latlng @(rf/subscribe [:strava/activity-stream (:id activity) "latlng" 15])
+        [lats lngs] (map #(map % latlng) [first second])]
     [:div.strava-activity-map
      {:on-click #(.stopPropagation %)}
      (if latlng
@@ -422,11 +419,9 @@
 
 (defn activity-map-canvas "Visualize latlng somehow! Currently goes behind activity-full but putting it on bg would be best (fix latlng so fits...)"
   [activity]
-  (let [latlng @(rf/subscribe [:strava/activity-stream (:id activity) "latlng" 10])
+  (let [latlng @(rf/subscribe [:strava/activity-stream (:id activity) "latlng" 50])
         [lats lngs] (map #(map % latlng) [first second])
-        [lat-max lat-min] (map #(apply % lats) [max min])
-        [lng-max lng-min] (map #(apply % lngs) [max min])
-        watts @(rf/subscribe [:strava/activity-stream (:id activity) "watts" 10])
+        watts @(rf/subscribe [:strava/activity-stream (:id activity) "watts" 50])
         node (r/atom nil)]
     [:div.strava-activity-map
      (if latlng
@@ -444,10 +439,6 @@
   (let [data @(rf/subscribe [:content [:strava]])
         stats (:stats data)
         athlete (:athlete data)
-        recent (:recent_ride_totals stats)
-        distance (-> (:distance recent)
-                     (/ 1000)
-                     (util/format-number 2))
         arrow (fn [direction]
                 [:i.fa {:class (str "fa-arrow-" (name direction))
                         :style {:color "#fc4c02"}}])]
