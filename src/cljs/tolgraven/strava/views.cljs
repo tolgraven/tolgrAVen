@@ -81,7 +81,9 @@
     [:div.strava-activity-splits.flex
      (map-indexed
       (fn [i {:keys [average_speed] :as split}]
-        [activity-split i split num-splits min-speed max-speed space-per-split])
+        (with-meta
+         [activity-split i split num-splits min-speed max-speed space-per-split]
+         {:key (str "strava-activity-split-" i)}))
       splits_metric)
 
      (when (< 100 size) ;overflow, scroll sideways
@@ -120,7 +122,7 @@
 (defn activity-segments "Segments for activity"
   [{:keys [segment_efforts] :as details}]
   [:div.strava-activity-segments
-   (for [segment segment_efforts]
+   (for [segment segment_efforts] ^{:key (str "strava-activity-segment-" (:name segment))}
      [activity-segment segment])])
 
 (defn activity-laps "Laps for activity"
@@ -153,7 +155,7 @@
      {:style {:position :relative}
       :ref #(when %
               (rf/dispatch [:strava/fetch-kudos (:id activity)]))}
-     (for [kudoer kudoers]
+     (for [kudoer kudoers] ^{:key (str "strava-kudoer-" (:firstname kudoer) "-" (:lastname kudoer))}
        [kudo kudoer]) ]))
 
 (defn activity-stats
@@ -342,7 +344,7 @@
       {:style {:position :relative
                :height height}}
       (map-indexed 
-       (fn [i activity]
+       (fn [i activity] ^{:key (str "strava-activity-dot-" i)}
          [activity-dot activity i num-activities watts-high])
        (reverse activities))]]))
 
