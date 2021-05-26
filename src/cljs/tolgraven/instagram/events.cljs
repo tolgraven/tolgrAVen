@@ -64,8 +64,8 @@
 
 
 (rf/reg-event-fx :instagram/refresh-token ;needs refreshing every 60 days so fix dis sometime
- (fn [{:keys [db]} [_ ]]
-   {:dispatch "https://graph.instagram.com/refresh_access_token
-  ?grant_type=ig_refresh_token
-  &access_token={long-lived-access-token}"
-    }))
+ (fn [{:keys [db]} [_ token]]
+   {:dispatch [:http/get {:uri "https://graph.instagram.com/refresh_access_token"
+                          :url-params {:grant_type "ig_refresh_token" :access_token token} }
+               [:instagram/store-token]
+               [:content [:instagram :error :token]]] }))
