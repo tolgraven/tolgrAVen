@@ -7,14 +7,37 @@
     [reitit.ring.middleware.muuntaja :as muuntaja]
     [reitit.ring.middleware.multipart :as multipart]
     [reitit.ring.middleware.parameters :as parameters]
+    [ring.middleware.basic-authentication :refer [wrap-basic-authentication]]
+    [muuntaja.core :as m]
     [ring.util.http-response :as response]
     [taoensso.timbre :as timbre]
     [tolgraven.middleware.formats :as formats]
     [tolgraven.middleware.exception :as exception]
-    [clojure.java.io :as io]))
+    [clojure.java.io :as io]
+    [clojure.edn :as edn])
+  (:import [java.io File FileInputStream FileOutputStream]))
 
 (defn plain-text-header [resp]
   (response/header resp "Content-Type" "text/plain; charset=utf-8"))
+
+(defn authenticated? [username password]
+  (= [username password]
+     [(System/getenv "AUTH_USER") (System/getenv "AUTH_PASS")]))
+
+; file upload: 
+(def resource-path "/public/img/uploads/")
+
+(defn file-path [path & [filename]]
+  (java.net.URLDecoder/decode
+    (str path File/separator filename)
+    "utf-8"))
+
+(defn upload-file "uploads a file to the target folder"
+  [path {:keys [tempfile size filename]}]
+  (with-open [in (io/input-stream tempfile)
+              out (io/output-stream (file-path path filename))]
+    (io/copy in out)))
+
 
 (defn service-routes []
   ["/api"
@@ -99,6 +122,7 @@
              :parameters {:multipart {:file multipart/temp-file-part}}
              :responses {200 {:body {:name string?, :size int?}}}
              :handler (fn [{{{:keys [file]} :multipart} :parameters}]
+                        (upload-file resource-path file)
                         {:status 200
                          :body {:name (:filename file)
                                 :size (:size file)}})}}]
