@@ -62,14 +62,14 @@
                               response/ok
                               #_plain-text-header)))}]
 
-   ["/ping"
-    {:get (constantly (response/ok {:message "pong"}))}]
-   
-   ["/firebase-settings" ;XXX obviously needs to be behind basic auth
-    {:get (fn [_]
-            (-> "firebase/firebase_SECRETS.edn"
+   ["/firebase-settings" ;XXX obviously needs to be behind basic auth. well no proper auth because otherwise same issue of giving client info. whole lot better than having in code tho...
+    {;:middleware [#(wrap-basic-authentication % authenticated?)] ; not enough need to hook it up
+     :get (fn [_]
+            (-> "firebase/firebase-project.edn"
                 io/resource
                 slurp
+                edn/read-string
+                (merge {:apiKey (System/getenv "FIREBASE_API_KEY")})
                 (#(m/encode formats/instance "application/transit+json" %))
                 response/ok
                 (response/content-type "application/transit+json")))}]

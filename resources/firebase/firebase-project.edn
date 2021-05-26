@@ -1,5 +1,4 @@
-{:apiKey        "AIzaSyBsqgWFXZfLq4W8FPRfSVd3AzSt183w9HQ"
- :projectId     "tolgraven-8fd35"
+{:projectId     "tolgraven-8fd35"
  :authDomain    "tolgraven-8fd35.firebaseapp.com"
  :databaseURL   "https://tolgraven-8fd35.firebaseio.com"
  :storageBucket "tolgraven-8fd35.appspot.com"}
