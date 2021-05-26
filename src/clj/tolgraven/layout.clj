@@ -18,6 +18,9 @@
 ; structure of it. but first just make general hiccup
 (defn- js [js] [:script (merge js {:type "text/javascript"})])
 (defn- css [href] [:link {:href href :rel "stylesheet" :type "text/css"}])
+(defn- js-preload  [path] [:link {:rel "preload" :as "script" :href path}])
+(defn- img-preload [path] [:link {:rel "preload" :as "image" :href path}])
+(defn- css-preload [path] [:link {:rel "preload" :as "style" :href path}])
 
 (defn- loading-spinner
   [text]
@@ -53,7 +56,7 @@
       [:h5 "c 2020"]]]]])
 
 (defn- home
-  [& {:keys [loading-content title description css-paths js-paths anti-forgery]
+  [& {:keys [loading-content title description css-paths js-paths css-pre js-pre img-pre anti-forgery]
       :or {title "tolgrAVen"
            description "A website by Joen Tolgraven"
            css-paths ["css/main.min.css"]
@@ -67,9 +70,13 @@
     [:meta {:name "description" :content description}]
     [:base {:href "/"}]
 
+    (for [path css-pre]
+      (css-preload path))
+    (for [path img-pre]
+      (img-preload path))
     (for [href css-paths]
       (css href))]
- 
+    
    [:body {:class "container themable framing-shadow sticky-footer-container"}
     
     [:div#app loading-content]
@@ -77,6 +84,8 @@
     (when anti-forgery
       [:script {:type "text/javascript"}
        (str "var csrfToken = \"" anti-forgery "\";")])
+    (for [path js-pre]
+      (js-preload path))
     (for [path js-paths]
       (js path))]])
 
@@ -85,12 +94,34 @@
     "css/fontawesome.css"
     "css/brands.min.css"
     "css/solid.css"
+    "css/codemirror.css"
     "https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
     "https://fonts.googleapis.com/css?family=Fira+Sans:300,400,500,600,700,800,900"
     "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"])
 
+(def css-pre
+  ["css/tolgraven/main.min.css"])
+(def js-pre
+  ["js/compiled/app.js"])
+(def img-pre
+  ["img/foggy-shit-small.jpg"])
+
 (def js-paths
-  [{:src "js/compiled/app.js"}])
+  [;{:src "https://www.gstatic.com/firebasejs/8.0.0/firebase-app.js"}
+   ;{:src "https://www.gstatic.com/firebasejs/8.0.0/firebase-analytics.js"}
+    {:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
+   {:src "js/compiled/app.js"}])
+
+(def google-analytics
+  "<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-XXXXX-Y', 'auto');
+ga('send', 'pageview');
+</script>")
 
 (defn render-hiccup
   [request]
@@ -101,7 +132,11 @@
                          :title "tolgrAVen"
                          :css-paths css-paths
                          :js-paths js-paths
-                         :anti-forgery *anti-forgery-token*)))
+                         :css-pre css-pre
+                         :js-pre js-pre
+                         :img-pre img-pre
+                         :anti-forgery *anti-forgery-token*))
+           google-analytics)
       ok
       (content-type "text/html; charset=utf-8")))
 
