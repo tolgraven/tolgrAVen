@@ -6,6 +6,7 @@
    [cljsjs.react-player]
    [tolgraven.ui :as ui]
    [tolgraven.strava.views :as strava]
+   [tolgraven.chat.views :as chat]
    [tolgraven.db :as db]
    [tolgraven.util :as util :refer [at]]))
 
@@ -418,6 +419,7 @@
      
      ; [ui-gallery-2 @(rf/subscribe [:content [:gallery]])]
 
+     [chat/chat]
      [strava/strava ]
      [ui-soundcloud]
      [ui-insta @(rf/subscribe [:instagram/posts-urls 24])]

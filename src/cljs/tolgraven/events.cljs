@@ -15,6 +15,7 @@
     [tolgraven.user.events]
     [tolgraven.strava.events]
     [tolgraven.instagram.events]
+    [tolgraven.chat.events]
     [tolgraven.doc-fx]
     [tolgraven.effects]
     [tolgraven.cofx :as cofx]

@@ -6,6 +6,7 @@
             [tolgraven.user.subs]
             [tolgraven.strava.subs]
             [tolgraven.instagram.subs]
+            [tolgraven.chat.subs]
             [clojure.edn :as edn]
             [clojure.walk :as walk]
             [cljs-time.core :as ct]))

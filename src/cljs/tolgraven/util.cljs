@@ -84,13 +84,21 @@
   [ts]
   (if-let [ts (ctc/from-long ts)]
     (let [mins (ct/mins-ago ts)]
-      (if (< mins 60)
+      (if (zero? mins)
+        "now"
+        (if (< mins 60)
         (str (pluralize mins "minute") " ago")
         (let [day-ago (ct/minus (ct/now) (ct/hours 24))]
           (if (ct/after? ts day-ago)
             (str (pluralize (int (/ mins 60)) "hour") " ago")
-            (ctf/unparse (ctf/formatters :date) ts)))))
+            (ctf/unparse (ctf/formatters :date) ts))))))
     ""))
+
+(defn unix->ts "Convert unix time to human-readable"
+  [ms & [custom-format]]
+  (let [custom-format (or custom-format :hour-minute-second)]
+    (ctf/unparse (ctf/formatters custom-format)
+                 (ctc/from-long ms))))
 
 
 (defn format-number [n & [precision]]
