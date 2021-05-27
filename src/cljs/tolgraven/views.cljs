@@ -401,6 +401,26 @@
             :let [url (str base-url tune)]]
         [soundcloud-player artist tune])]]))
 
+(defn github-commits "List Github commits for this repo"
+  []
+  (let [commits @(rf/subscribe [:github/commits])]
+    [:section.github-commits.covering-2
+     {:ref #(when % (rf/dispatch [:github/fetch-commits]))}
+     
+     [:h2 [:i.fab.fa-github] " Commits to this website"]
+     [:div.github-commits-inner
+      (for [{:keys [commit author] :as item} commits
+            :let [ts (get-in commit [:author :date])
+                  [date clock] (string/split ts "T")]]
+        [:div.github-commit.flex
+         [:img.user-avatar.center-content {:src (:avatar_url author)}]
+         [:div
+          [:span.github-commit-time date]
+          [:span.github-commit-time clock]
+
+          [:p.github-commit-message
+           (:message commit)]]])]]))
+
 (defn ui []
   (let [interlude @(rf/subscribe [:content [:interlude]])
         interlude-counter (atom 0)
@@ -418,9 +438,8 @@
      [ui-fading :dir "bottom"]
      [ui-interlude (get-lewd)]
      
-     [:section.nopadding.covering-2
-      [ui/fading-bg-heading {:title "Chat" :bg {:src "img/wide-spot-ctrl-small.jpg"} :tint "blue"}]]
-      [chat/chat]
+     [chat/chat]
+     [github-commits]
      [strava/strava ]
      [ui-soundcloud]
      [ui-insta @(rf/subscribe [:instagram/posts-urls 24])]

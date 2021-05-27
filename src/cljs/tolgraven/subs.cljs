@@ -125,3 +125,8 @@
 (rf/reg-sub :modal
  (fn [db [_ _]]
    (get-in db [:state :modal])))
+
+(rf/reg-sub :github/commits
+ :<- [:content [:github]]
+ (fn [github]
+   (:repo github)))

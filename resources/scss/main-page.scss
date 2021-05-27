@@ -243,3 +243,42 @@
     }
   }
 }
+
+.github-commits {
+  font-size: 85%;
+  background: var(--bg-3);
+
+  h2 {
+    text-align: center;
+    margin-bottom: var(--space);
+  }
+
+  .github-commits-inner {
+    border-top: var(--line-width-sm) solid var(--line-color);
+    box-shadow: 6px 7px 15px 8px inset rgba(127, 127, 200, 0.07);
+    background: var(--bg-2);
+    
+    max-height: 30em;
+    overflow-y: scroll;
+  }
+  
+  .github-commit {
+    position: relative;
+    margin-bottom: 0.4em;
+
+    .github-commit-time {
+      font-size: 90%;
+      color: var(--fg-5);
+      margin-right: 0.5em;
+    }
+
+    .user-avatar {
+      position: relative;
+      top: 20%;
+      width: 2.2em;
+      height: 2.2em;
+      margin: 0.4em;
+      margin-right: 0.5em;
+    }
+  }
+}
