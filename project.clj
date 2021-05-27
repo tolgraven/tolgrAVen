@@ -23,7 +23,6 @@
                  [metosin/jsonista "0.2.7"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
                  [metosin/muuntaja "0.6.7"]
                  [metosin/reitit "0.5.10" :exclusions [org.clojure/spec.alpha com.fasterxml.jackson.core/jackson-core com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.core/jackson-annotations]]
-                 [metosin/ring-http-response "0.9.1"]
 
                  [mount "0.1.16"]
                  [nrepl "0.8.2"]
@@ -37,15 +36,18 @@
                  [com.taoensso/timbre "5.1.0" :exclusions [org.clojure/tools.reader]]
                  [com.fzakaria/slf4j-timbre "0.3.20" :exclusions [org.slf4j/slf4j-api]] ;route java logging through timbre. but dunno. hard to manage
                  [clj-logging-config "1.9.12"]
-                 [radicalzephyr/ring.middleware.logger "0.6.0"]
                  [io.aviso/pretty "0.1.37"] ;pretty exceptions, pretty logging...
 
                  [ring/ring-core "1.8.2"]
                  [ring/ring-defaults "0.3.2"]
                  [bk/ring-gzip "0.3.0" :exclusions [clojure-complete]]
                  [ring-partial-content "2.0.1"] ; handle safari video playback / 206 response
+                 [ring-basic-authentication "1.1.0"]
+                 [radicalzephyr/ring.middleware.logger "0.6.0"]
+                 [metosin/ring-http-response "0.9.1"]
 
                  [selmer "1.12.31"]
+                 [nrepl/drawbridge "0.2.1"] ; nrepl over http
 
                  ; CLJS
                  [cljs-ajax "0.8.1"  :exclusions [com.cognitect/transit-cljs com.cognitect/transit-cljs]]
@@ -65,6 +67,7 @@
                  [reagent "0.10.0"]
                  [re-frame-utils "0.1.0"]
                  [com.smxemail/re-frame-cookie-fx "0.0.2"  :exclusions [args4j]]
+                 [district0x.re-frame/google-analytics-fx "1.0.0"]
                  
                  [cljsjs/highlight "9.12.0-2"]
                  [cljsjs/codemirror "5.44.0-1"]
