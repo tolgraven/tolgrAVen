@@ -8,7 +8,9 @@
     [ring.util.http-response :refer [content-type ok]]
     [ring.util.anti-forgery :refer [anti-forgery-field]]
     [ring.middleware.anti-forgery :refer [*anti-forgery-token*]]
-    [ring.util.response]))
+    [ring.util.response]
+    [optimus.link :as olink]
+    [optimus.html :as ohtml]))
 
 (parser/set-resource-path!  (clojure.java.io/resource "html"))
 (parser/add-tag! :csrf-field (fn [_ _] (anti-forgery-field)))
@@ -56,7 +58,7 @@
       [:h5 "c 2020"]]]]])
 
 (defn- home
-  [& {:keys [loading-content title description css-paths js-paths css-pre js-pre img-pre anti-forgery]
+  [request & {:keys [loading-content title description css-paths js-paths css-pre js-pre img-pre anti-forgery]
       :or {title "tolgrAVen"
            description "A website by Joen Tolgraven"
            css-paths ["css/main.min.css"]
@@ -70,10 +72,11 @@
     [:meta {:name "description" :content description}]
     [:base {:href "/"}]
 
-    (for [path css-pre]
-      (css-preload path))
+    ; (for [path css-pre]
+    ;   (css-preload path))
     (for [path img-pre]
       (img-preload path))
+    (ohtml/link-to-css-bundles request ["styles.css"])
     (for [href css-paths]
       (css href))]
     
@@ -84,17 +87,19 @@
     (when anti-forgery
       [:script {:type "text/javascript"}
        (str "var csrfToken = \"" anti-forgery "\";")])
-    (for [path js-pre]
-      (js-preload path))
-    (for [path js-paths]
-      (js path))]])
+    ; (for [path js-pre]
+    ;   (js-preload path))
+    ; (for [path js-paths]
+    ;   (js path))
+     (ohtml/link-to-js-bundles request ["app.js"])  
+    ]])
 
 (def css-paths ; should come from config?
-   ["css/tolgraven/main.min.css"
-    "css/fontawesome.css"
-    "css/brands.min.css"
-    "css/solid.css"
-    "css/codemirror.css"
+   [;"css/tolgraven/main.min.css"
+    ; "css/fontawesome.css"
+    ; "css/brands.min.css"
+    ; "css/solid.css"
+    ; "css/codemirror.css"
     "https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
     "https://fonts.googleapis.com/css?family=Fira+Sans:300,400,500,600,700,800,900"
     "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"])
@@ -127,6 +132,7 @@ ga('send', 'pageview');
   [request]
   (-> (str "<!DOCTYPE html>\n"
            (hiccup/html (home
+                         request
                          ; :loading-content (loading-spinner "Stand by for tolgrAVen...")
                          :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"])
                          :title "tolgrAVen"

@@ -45,6 +45,7 @@
                  [ring-basic-authentication "1.1.0"]
                  [radicalzephyr/ring.middleware.logger "0.6.0"]
                  [metosin/ring-http-response "0.9.1"]
+                 [optimus "0.20.2"] ;optimization of assets
 
                  [selmer "1.12.31"]
                  [nrepl/drawbridge "0.2.1"] ; nrepl over http
