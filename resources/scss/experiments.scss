@@ -57,7 +57,7 @@
   transform: translateZ(75px) scale(.75);
   z-index: 1;
   background-color: hsl(284,30%,40%);
-  background-image: url('../img/tolgrav.png');
+  background-image: url('../../img/tolgrav.png');
 }
 .parallax__layer--base {
   z-index: 4;
@@ -68,13 +68,13 @@
   transform: translateZ(-150px) scale(1.5);
   z-index: 3;
   background: hsl(23,30%,40%);
-  background-image: url('../img/vim-code-small.jpg');
+  background-image: url('../../img/vim-code-small.jpg');
 }
 .parallax__layer--deep {
   transform: translateZ(-300px) scale(2);
   z-index: 2;
   background: hsl(184,30%,40%);
-  background-image: url('../img/crowd-lbp.jpg');
+  background-image: url('../../img/crowd-lbp.jpg');
 }
 
 
