@@ -25,6 +25,11 @@
  (fn [state [_ path]]
    (get-in state path)))
 
+(rf/reg-sub :blog/nav-page
+ :<- [:blog/state [:page]]
+ (fn [page [_ _]]
+   (or page 0)))
+
 (rf/reg-sub :blog/count
  :<- [:blog [:posts]]
  (fn [posts [_ _]]
