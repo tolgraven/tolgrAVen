@@ -30,7 +30,7 @@
   (let [content @(rf/subscribe [:chat/content])
         latest-id @(rf/subscribe [:chat/latest-seq-id])]
     [:section.chat.noborder.covering-2
-     (for [message content]
+     (for [message content] ^{:key (str "chat-message-" (:time message) "-" (:user message))}
        [chat-message message])
      [:div.chat-input.flex 
       [ui/input-text
