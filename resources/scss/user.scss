@@ -79,7 +79,7 @@
 .user-avatar { // outside because also used by blog
   border-radius: 50%;
   border: var(--line-width-sm) solid var(--line-color);
-  box-shadow: 0px 0px 10px 1px var(--user-avatar-shadow);
+  box-shadow: 0px 0px 8px 1px var(--user-avatar-shadow);
   // margin-right: var(--space-lg);
   width: calc(6.5 * var(--space));
   height: calc(6.5 * var(--space));
