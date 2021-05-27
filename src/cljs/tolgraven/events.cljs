@@ -484,3 +484,19 @@
      {:dispatch [:http/get {:uri "https://api.github.com/repos/tolgraven/tolgraven/commits"
                             :headers {"Accept" "application/vnd.github.v3+json"}}
                  [:content [:github :repo]]]})))
+
+(rf/reg-event-fx :text-effect-char-by-char/start
+ (fn [{:keys [db]} [_ path text ms]]
+   (when-not (get-in db path)
+     {:db (assoc-in db path {:text-full text
+                             :text-out ""})
+    :dispatch-later {:ms ms
+                     :dispatch [:text-effect-char-by-char/tick path text 0 ms]}})))
+
+(rf/reg-event-fx :text-effect-char-by-char/tick
+ (fn [{:keys [db]} [_ path text num-chars ms]]
+   (when-not (= text (:text-out (get-in db path)))
+     (let [text-out (apply str (take (inc num-chars) (seq text)))]
+       {:db (update-in db path merge {:text-out text-out})
+        :dispatch-later {:ms ms
+                         :dispatch [:text-effect-char-by-char/tick path text (inc num-chars) ms]}}))))

@@ -76,7 +76,11 @@
    [:img#top-banner.media.media-as-bg (first bg)]
 
    [:<>
-    [:h1.h-responsive title]
+    [:h1.h-responsive
+     {:ref #(when % (rf/dispatch [:text-effect-char-by-char/start
+                                  [:state :text-effect :intro]
+                                  title 150]))}
+     @(rf/subscribe [:state [:text-effect :intro :text-out]])]
     (into [:<>] (ln->br text)) ; or just fix :pre css lol
     [:br]
     [:div.buttons
