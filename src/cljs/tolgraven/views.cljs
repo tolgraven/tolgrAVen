@@ -415,11 +415,12 @@
      [ui-interlude (get-lewd)]
      [ui-moneyshot @(rf/subscribe [:content [:moneyshot]])]
      [ui-story @(rf/subscribe [:content [:story]])]
+     [ui-fading :dir "bottom"]
      [ui-interlude (get-lewd)]
      
-     ; [ui-gallery-2 @(rf/subscribe [:content [:gallery]])]
-
-     [chat/chat]
+     [:section.nopadding.covering-2
+      [ui/fading-bg-heading {:title "Chat" :bg {:src "img/wide-spot-ctrl-small.jpg"} :tint "blue"}]]
+      [chat/chat]
      [strava/strava ]
      [ui-soundcloud]
      [ui-insta @(rf/subscribe [:instagram/posts-urls 24])]

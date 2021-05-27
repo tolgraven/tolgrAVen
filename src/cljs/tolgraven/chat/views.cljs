@@ -29,8 +29,7 @@
   []
   (let [content @(rf/subscribe [:chat/content])
         latest-id @(rf/subscribe [:chat/latest-seq-id])]
-    [:section.covering-2.chat
-     [:h3 "Chat"]
+    [:section.chat.noborder.covering-2
      (for [message content]
        [chat-message message])
      [:div.chat-input.flex 
@@ -39,5 +38,9 @@
        :placeholder "Message"
        :on-change #(rf/dispatch [:form-field [:chat] %])
        :on-enter #(rf/dispatch [:chat/post latest-id])]
-      [:button {:on-click #(rf/dispatch [:chat/post latest-id])}]] ]))
+      [:button {:on-click #(rf/dispatch [:chat/post latest-id])}
+       [:i.fa.fa-arrow-right]]]
+     [:p.chat-description
+      [:b "Step 1. "] "Open two browser windows." [:br]
+      [:b "Step 2. "] "Talk to yourself in real time"] ]))
 

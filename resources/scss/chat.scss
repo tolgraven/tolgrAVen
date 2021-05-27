@@ -4,6 +4,14 @@
 
   .chat-input {
     margin-top: var(--space);
+
+    button {
+      margin-top: 0; // to align same size as input box
+    }
+  }
+  .chat-description {
+    font-size: 90%;
+    color: var(--blue-2);
   }
 }
 
@@ -49,6 +57,4 @@
       height: 1.5em;
     }
   }
-
-  
 }
