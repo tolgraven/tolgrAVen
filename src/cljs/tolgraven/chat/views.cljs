@@ -9,7 +9,6 @@
 (defn chat-message "A single chat message"
   [message]
   (let [user @(rf/subscribe [:user/user (:user message)])
-        ; now @(rf/subscribe [:now])
         hovered? (r/atom false)]
     (fn [message]
       [:div.chat-message
@@ -23,20 +22,21 @@
        [:span.chat-message-text (:text message)]
        [:div.chat-message-user.flex
         (or (:name user) "anon")
-        (when (:name user) [ui/user-avatar user])]])))
+        [ui/user-avatar user]]])))
 
 (defn chat "A place to hang out with real-time messaging"
   []
   (let [content @(rf/subscribe [:chat/content])
         latest-id @(rf/subscribe [:chat/latest-seq-id])]
     [:section.chat.noborder.covering-2
+     ; need ref -> scroll to bottom
      (for [message content] ^{:key (str "chat-message-" (:time message) "-" (:user message))}
        [chat-message message])
      [:div.chat-input.flex 
       [ui/input-text
        :path [:form-field [:chat]]
        :placeholder "Message"
-       :on-change #(rf/dispatch [:form-field [:chat] %])
+       :on-change #(rf/dispatch-sync [:form-field [:chat] %])
        :on-enter #(rf/dispatch [:chat/post latest-id])]
       [:button {:on-click #(rf/dispatch [:chat/post latest-id])}
        [:i.fa.fa-arrow-right]]]
