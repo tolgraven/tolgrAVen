@@ -139,24 +139,20 @@
 (rf/reg-event-fx
  :user/upload-avatar ; save new avatar upload. So upload to server, get filename, use it to update user in db and store
  (fn [{:keys [db]} [_ file]] ;also inject active-user here, use for filename
-   {:dispatch
-    [:http/post {:uri "/api/files/upload" ;could also upload to firebase. not sure if implemented in re-frame-firebase tho
-                 :format (ajax/text-request-format)
-                 :body (doto
+   (let [filename (str "avatar-" (get-in db [:state :user]) ".png")]
+     {:dispatch
+      [:http/post {:uri "/api/files/upload" ;could also upload to firebase. not sure if implemented in re-frame-firebase tho
+                   :format (ajax/text-request-format)
+                   :body (doto
                            (js/FormData.)
                            (.append "id" "10")
-                           (.append "file" file "avatar.png")) ;but would want (need! for extension lol) to extract the thing yo
-                 :on-success [:user/save-avatar]}] }))
+                           (.append "file" file filename)) ;but would want (need! for extension lol) to extract the thing yo
+                   :on-success [:user/save-avatar filename]}] })))
 (rf/reg-event-fx
- :user/save-avatar [debug] ;[(rf/inject-cofx :inject/inject [:user/active-user])]
- (fn [{:keys [db inject]} [_ path]]
-   {;:db (assoc-in db [:fb/users (:id inject) :avatar] path)
-    :dispatch-n [;[:user/set-field (:id inject) :avatar path] 
-                 [:diag/new :warning "File upload" "Your avatar reached the server!\n ...but was not saved since that's not implemented."]]
-    ; [:store-> [:users (:id inject)]
-    ;                     {:avatar path}
-    ;                     [:avatar]]
-    }))
+ :user/save-avatar
+ (fn [{:keys [db]} [_ filename]]
+   {:dispatch [[:user/set-field (get-in db [:state :user])
+                :avatar (str "img/uploads/" filename)]]}))
 
 (rf/reg-event-fx
  :user/set-field

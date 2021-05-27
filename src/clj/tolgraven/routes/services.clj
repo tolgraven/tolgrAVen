@@ -25,7 +25,7 @@
      [(System/getenv "AUTH_USER") (System/getenv "AUTH_PASS")]))
 
 ; file upload: 
-(def resource-path "/public/img/uploads/")
+(def resource-path "resources/public/img/uploads/")
 
 (defn file-path [path & [filename]]
   (java.net.URLDecoder/decode
