@@ -31,18 +31,20 @@
      [:div.swap-in
       {:class (str class " "
                    (when (or (not comp-out)
-                             (:running swap))
+                             (not swap)
+                             (= (:running swap) comp-out))
                      "swapped-in")) }
       comp-in] ;will have to be behind for z then revealed by curr page moving out the way.
      (when comp-out
        [:div.swapped
-        {:class (str class " "
-                     (when (:running swap)
+        {:class (str (when (= (:running swap) comp-out)
+                       class) " "
+                     (when (= (:running swap) comp-out)
                        "swapped-out") " "
-                     (when (:finished swap)
+                     (when (or (= (:finished swap) comp-out)
+                               (not swap))
                        "removed") " ")
-         :ref #(when % (rf/dispatch [:swap/trigger %]))} ; trigger anim out and deferred hiding
-        ; getting duplicate triggers for some reason.
+         :ref #(when % (rf/dispatch [:swap/trigger comp-out]))} ; trigger anim out and deferred hiding. triggers three(!) times each time but later no effect so.
         comp-out])]))
 
 (defn page "Render active page inbetween header, footer and general stuff." []

@@ -62,13 +62,14 @@
   transform: none;
   opacity: 1;
 
-  transition: all 0.0s;
+  transition: all var(--navigation-transition-time) ease;
   z-index: 1000;
 
   display: inherit;
   
   &.opacity {
     opacity: 0;
+    transition: all var(--navigation-transition-time) ease;
   }
   &.left {
     z-index: -1;
@@ -77,18 +78,22 @@
 
   &.swapped-out { // bc we cant animate display: none so would need a yet additional class to fully hide right? nuke from dom seems wiser tho...
     pointer-events: none;
-    transition: 0.5s ease;
   }
 }
 
 .swap-in {
-  transition: all 0.0s;
+  transition: all 0.0s; // i guess so opacity 0 get applied instantly?
   // transform-style: preserve-3d;
   // perspective: 1000px;
 
   &.right {
     transform: translateX(150%);
-    transition: all 0s;
+    transition: all 0.0s;
+    z-index: -1;
+  }
+  &.left {
+    transform: translateX(-150%);
+    transition: all 0.0s;
     z-index: -1;
   }
   &.rotate {
@@ -100,7 +105,7 @@
     opacity: 0;
   }
   &.swapped-in {
-    transition: all 0.5s;
+    transition: all var(--navigation-transition-time) ease;
     opacity: 1;
     transform: none;
   }
