@@ -30,8 +30,9 @@
         latest-id @(rf/subscribe [:chat/latest-seq-id])]
     [:section.chat.noborder.covering-2
      ; need ref -> scroll to bottom
-     (for [message content] ^{:key (str "chat-message-" (:time message) "-" (:user message))}
-       [chat-message message])
+     [:div.chat-messages
+      (for [message content] ^{:key (str "chat-message-" (:time message) "-" (:user message))}
+        [chat-message message])]
      [:div.chat-input.flex 
       [ui/input-text
        :path [:form-field [:chat]]

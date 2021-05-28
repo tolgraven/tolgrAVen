@@ -2,6 +2,11 @@
 .chat {
   font-size: 95%;
 
+  .chat-messages {
+    max-height: 30em;
+    overflow-y: scroll;
+  }
+
   .chat-input {
     margin-top: var(--space);
 
