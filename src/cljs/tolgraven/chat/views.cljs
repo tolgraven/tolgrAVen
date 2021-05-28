@@ -29,8 +29,8 @@
   (let [content @(rf/subscribe [:chat/content])
         latest-id @(rf/subscribe [:chat/latest-seq-id])]
     [:section.chat.noborder.covering-2
-     ; need ref -> scroll to bottom
      [:div.chat-messages
+      {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))}
       (for [message content] ^{:key (str "chat-message-" (:time message) "-" (:user message))}
         [chat-message message])]
      [:div.chat-input.flex 
