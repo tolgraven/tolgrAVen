@@ -5,7 +5,12 @@
 (rf/reg-sub :chat/content
   :<- [:<-store :chat :messages]         
   (fn [content]
-    (map second content)))
+    (map second
+         (into (sorted-map)
+               (reduce-kv (fn [m k v]
+                            (assoc m (-> k name str js/parseInt) v))
+                          {}
+                          content)))))
 
 (rf/reg-sub :chat/latest-seq-id
   :<- [:<-store :chat :messages]         
