@@ -416,7 +416,7 @@
      [:div.github-commits-inner
       (for [{:keys [commit author] :as item} commits
             :let [ts (get-in commit [:author :date])
-                  [date clock] (string/split ts "T")]]
+                  [date clock] (string/split ts "T")]] ^{:key (str "github-commit-" ts)}
         [:div.github-commit.flex
          [:img.user-avatar.center-content {:src (:avatar_url author)}]
          [:div
