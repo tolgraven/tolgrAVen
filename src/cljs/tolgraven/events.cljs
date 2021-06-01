@@ -477,13 +477,14 @@
                    (assoc-in [:state :modal-zoom id :opened] true))}
     :loaded {:db (assoc-in db [:state :modal-zoom id :loaded] true)})))
 
-(rf/reg-event-fx
- :github/fetch-commits
- (fn [{:keys [db]} [_ _]]
-   (when-not (get-in db [:content :github :repo])
-     {:dispatch [:http/get {:uri "https://api.github.com/repos/tolgraven/tolgraven/commits"
-                            :headers {"Accept" "application/vnd.github.v3+json"}}
-                 [:content [:github :repo]]]})))
+(rf/reg-event-fx :github/fetch-commits
+ (fn [{:keys [db]} [_ user repo]]
+   (let [url "https://api.github.com/repos/"]
+     (when-not (get-in db [:content :github :repo])
+       {:dispatch [:http/get {:uri (str url user "/" repo "/commits")
+                              :headers {"Accept" "application/vnd.github.v3+json"}}
+                   [:content [:github :repo]]]}))))
+
 
 (rf/reg-event-fx :text-effect-char-by-char/start
  (fn [{:keys [db]} [_ path text ms]]
