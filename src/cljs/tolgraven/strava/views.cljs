@@ -69,8 +69,11 @@
              [:p "Heartrate"]
              [:p "Grade"]]
            [:div
-            [:p (util/format-number (:average_heartrate split) 0) [:span " bpm"]]
-            [:p (util/format-number (/ (:elevation_difference split) (:distance split)) 3)]]]])])))
+            [:p (util/format-number (:average_heartrate split) 0)
+             [:span " bpm"]]
+            [:p (util/format-number (* 100 (/ (:elevation_difference split)
+                                              (:distance split))) 2)
+             [:span "%"]]]]])])))
 
 (defn activity-splits "km splits from activity"
   [{:keys [splits_metric] :as details}]
