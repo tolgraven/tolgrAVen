@@ -37,6 +37,10 @@
     // margin: 0.20em;
     // margin-left: var(--space);
   }
+  span {
+    color: var(--fg-5);
+  }
+  
   .strava-stats {
     font-size: 90%;
     padding: var(--space);
@@ -56,9 +60,6 @@
     }
     h3 {
       font-weight: bolder;
-    }
-    span {
-      color: var(--fg-5);
     }
     
   }
