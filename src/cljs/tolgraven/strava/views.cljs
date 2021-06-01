@@ -190,7 +190,8 @@
        (when (pos? (:kudos_count details))
         [:p "Kudos"])]]
     [:div.strava-activity-stats-numbers
-     [:p (:suffer_score activity)]
+     (when (:suffer_score activity)
+        [:p (:suffer_score activity)])
      [:div [:p (:average_watts activity)]]
      [:p (util/format-number (* 3.6 (:average_speed activity)) 1) [:span " km/h"]]
      [:p (util/format-number (/ (:distance activity) 1000) 1) [:span " km"]]
