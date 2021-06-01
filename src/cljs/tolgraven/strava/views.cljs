@@ -177,7 +177,6 @@
    [:div.flex
     [ui/appear-anon "opacity extra-slow"
      [:div.strava-activity-stats-descriptions
-      {:style {:color "var(--fg-5)"}}
       (when (:suffer_score activity)
         [:p "Relative effort"])
       [:p "Watts"]

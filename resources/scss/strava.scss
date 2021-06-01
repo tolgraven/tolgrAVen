@@ -118,6 +118,7 @@
           // > div > div > div:first-of-type { // description col
           .strava-activity-stats-descriptions { // description col
             margin-right: calc(2 * var(--space-lg));
+            color: var(--fg-5);
           }
 
           .strava-activity-photo {
