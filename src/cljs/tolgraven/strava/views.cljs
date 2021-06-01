@@ -104,7 +104,7 @@
          (:name segment) ]
         [:p
          (when-let [achievements (:achievements segment)]
-           (for [achievement achievements]
+           (for [achievement achievements] ^{:key (str "strava-segment-achievement-" (:type achievement) "-" (:rank achievement))}
              [:i.fa.fa-award.strava-award
               {:class (case (:type achievement)
                         "pr" (case (:rank achievement) ; TODO add for KOM/top10rank
