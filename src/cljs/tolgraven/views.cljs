@@ -408,11 +408,12 @@
 
 (defn github-commits "List Github commits for this repo"
   []
-  (let [commits @(rf/subscribe [:github/commits])]
+  (let [commits @(rf/subscribe [:github/commits])
+        amount @(rf/subscribe [:github/commit-count])]
     [:section.github-commits.covering-2
      {:ref #(when % (rf/dispatch [:github/fetch-commits "tolgraven" "tolgraven"]))}
      
-     [:h2 [:i.fab.fa-github] " Commits to this website"]
+     [:h2 [:i.fab.fa-github] " " amount " commits to this website"]
      [:div.github-commits-inner
       (for [{:keys [commit author] :as item} commits
             :let [ts (get-in commit [:author :date])

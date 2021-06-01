@@ -481,9 +481,22 @@
  (fn [{:keys [db]} [_ user repo]]
    (let [url "https://api.github.com/repos/"]
      (when-not (get-in db [:content :github :repo])
+       {:dispatch-n [[:http/get {:uri (str url user "/" repo "/commits")
+                                 :headers {"Accept" "application/vnd.github.v3+json"}}
+                      [:content [:github :repo]]]
+                     [:github/fetch-commit-count user repo]]}))))
+
+(rf/reg-event-fx :github/fetch-commit-count
+ (fn [{:keys [db]} [_ user repo]]
+   (let [url "https://api.github.com/repos/"]
+     (when-not (get-in db [:content :github :repo-headers])
        {:dispatch [:http/get {:uri (str url user "/" repo "/commits")
+                              :url-params {:per_page 1}
+                              :response-format {:read #(js->clj (.getResponseHeaders %)
+                                                                :keywordize-keys true)
+                                                :description "headers"}
                               :headers {"Accept" "application/vnd.github.v3+json"}}
-                   [:content [:github :repo]]]}))))
+                   [:content [:github :repo-headers]] ]}))))
 
 
 (rf/reg-event-fx :text-effect-char-by-char/start
