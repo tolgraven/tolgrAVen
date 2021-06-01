@@ -107,10 +107,11 @@
            (for [achievement achievements]
              [:i.fa.fa-award.strava-award
               {:class (case (:type achievement)
-                        "pr" (case (:rank achievement)
+                        "pr" (case (:rank achievement) ; TODO add for KOM/top10rank
                                1 "gold"
                                2 "silver"
-                               3 "bronze"))}]))
+                               3 "bronze")
+                        "segment_effort_count_leader" "purple")}]))
          (util/format-number (* 3.6 (/ (:distance segment)
                                        (:elapsed_time segment))) 1)
          [:span " km/h"]] ]

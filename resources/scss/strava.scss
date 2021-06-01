@@ -322,6 +322,18 @@
     -webkit-background-clip: text; // needs to be set after background/color, weird...
     -webkit-text-fill-color: transparent;
   }
+  &.purple {
+    color: rgba(147, 50, 250, 0.9);
+    background: -webkit-linear-gradient(rgba(147, 50, 250, 0.9), rgba(147, 50, 220, 0.6));
+    -webkit-background-clip: text; // needs to be set after background/color, weird...
+    -webkit-text-fill-color: transparent;
+  }
+  &.blue {
+    color: rgba(47, 50, 250, 0.9);
+    background: -webkit-linear-gradient(rgba(47, 50, 250, 0.9), rgba(57, 70, 220, 0.6));
+    -webkit-background-clip: text; // needs to be set after background/color, weird...
+    -webkit-text-fill-color: transparent;
+  }
   
   -webkit-background-clip: text; // needs to be set after background/color, weird...
   -webkit-text-fill-color: transparent;
