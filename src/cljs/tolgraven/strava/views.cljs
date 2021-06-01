@@ -447,6 +447,7 @@
     [:section.strava.section-with-media-bg-wrapper.covering-2
      [ui/appear-anon "opacity"
       [:img.media-as-bg {:src "img/strava-heatmap-3.png"}]]
+     [ui/inset "Click the dots for details" 4]
      [:h1  [:img {:src "img/strava_logo_nav.png"}]]
      (when (:error data)
        [:div
