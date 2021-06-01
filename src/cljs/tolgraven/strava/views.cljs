@@ -278,7 +278,7 @@
         opened? (r/atom false) ;like above but lock with click
         tab (r/atom #_:splits :summary)
         cutoff 80
-        size (str (max 0.5 (* 1.5 (/ (:suffer_score activity) 300))) "em")]
+        size (str (max 0.85 (* 2.5 (/ (:suffer_score activity) 300))) "em")]
     (fn [activity i num-total watts-high]
       [:<>
        [:div.strava-activity
