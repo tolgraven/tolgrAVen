@@ -141,6 +141,9 @@
             overflow: scroll;
 
             .strava-activity-graph {
+              .strava-activity-graph-inner {
+                position: relative;
+              }
               canvas {
                 height: 6em;
                 width: 100%;

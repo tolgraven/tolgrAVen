@@ -243,7 +243,7 @@
       [:div.strava-activity-graph
        (if data
          [ui/appear-anon "opacity slow"
-          [:div.flex
+          [:div.strava-activity-graph-inner.flex
            [:div.strava-activity-graph-legend
             [:div.strava-activity-graph-legend-high
              data-max]
