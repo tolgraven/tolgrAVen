@@ -410,7 +410,7 @@
   []
   (let [commits @(rf/subscribe [:github/commits])]
     [:section.github-commits.covering-2
-     {:ref #(when % (rf/dispatch [:github/fetch-commits]))}
+     {:ref #(when % (rf/dispatch [:github/fetch-commits "tolgraven" "tolgraven"]))}
      
      [:h2 [:i.fab.fa-github] " Commits to this website"]
      [:div.github-commits-inner
