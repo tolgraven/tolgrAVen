@@ -72,7 +72,7 @@
     .strava-activity {
       .strava-activity-dot {
         position: absolute;
-        background: #fc4c02;
+        background: radial-gradient(#fc4c02, rgba(252, 125, 25, 0.8));
         border-radius: 100%;
         box-shadow: 0px 0px 3px 3px rgba(252, 76, 2, 0.4);
         transition: all 0.6s ease, color 1.5s;
