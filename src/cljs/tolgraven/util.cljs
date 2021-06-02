@@ -105,8 +105,10 @@
   (let [precision (or precision 3)]
     (case n
       (nil, 0) 0
-      (-> (pprint/cl-format nil (str "~," precision "f") n)
-          js/parseFloat))))
+      (try
+       (-> (pprint/cl-format nil (str "~," precision "f") n)
+           js/parseFloat)
+       (catch js/Error e n)))))
 
 (defn abs [n]
   (max n (- n)))
