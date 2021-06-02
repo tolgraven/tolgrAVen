@@ -144,6 +144,11 @@
               .strava-activity-graph-inner {
                 position: relative;
               }
+              .strava-activity-graph-legend {
+                font-size: 75%;
+                position: absolute;
+                pointer-events: none;
+              }
               canvas {
                 height: 6em;
                 width: 100%;
@@ -351,7 +356,3 @@
   -webkit-text-fill-color: transparent;
 }
 
-.strava-activity-graph-legend {
-  font-size: 80%;
-  position: absolute;
-}

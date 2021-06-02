@@ -212,47 +212,73 @@
           :y (- (.-clientY e) (.-top rect))}]
   (map m dimension))) ;ok so now will return vec even for one dim
 
+(defn resize-canvas-to-display-size
+  [canvas]
+  (let [[w h] [(.-clientWidth canvas) (.-clientHeight canvas)]
+        needs-resize (or (not= (.-width canvas) w)
+                         (not= (.-height canvas) h))]
+    (when needs-resize
+      (set! (.-width canvas) w)
+      (set! (.-height canvas) h))))
+ 
+
 (defn draw-graph
   [canvas id data cursor-pos]
   (let [ctx (.getContext canvas "2d")
         [data-max data-min] (map #(apply % data) [max min])
         data-min 0
-        [w h] [(.-clientWidth canvas) (.-clientHeight canvas)]
-        size (count data)]
+        _ (resize-canvas-to-display-size canvas)
+        [w h] [(.-width canvas) (.-height canvas)]
+        size (count data)
+        cursor-index (int (* size (/ (first @cursor-pos) w)))]
+    (.clearRect ctx 0 0 w h)
     (set! (.-strokeStyle ctx) "rgb(252,136,54)")
     (set! (.-fillStyle ctx) "rgb(252,176,172)")
     (set! (.-lineWidth ctx) 2)
+    (.beginPath ctx)
     (.moveTo ctx 0 (- h (* h (util/rescale-to-frac (first data) data-min data-max))))
     
-    ; (.fillText ctx "start" 0 0)
     (doall (map-indexed
      (fn [i point]
       (let [x (* w (util/rescale-to-frac i 0 size))
             y (- h (* h (util/rescale-to-frac point data-min data-max)))]
-        (.lineTo ctx x y)))
+        (.lineTo ctx x y)
+        (when (= i cursor-index)
+          (set! (.-lineWidth ctx) 4)
+          (set! (.-strokeStyle ctx) "rgb(52,136,254)")
+          (.arc ctx x y, 3, 0, 2 * js/Math.PI)
+          (.lineTo ctx x y)
+          (.stroke ctx))
+          (set! (.-strokeStyle ctx) "rgb(252,136,54)")
+          (set! (.-lineWidth ctx) 2)))
      data))
     (.stroke ctx)))
 
 (defn graph-canvas ""
   [kind activity]
-  (let [data @(rf/subscribe [:strava/activity-stream (:id activity) kind 50])
+  (let [data @(rf/subscribe [:strava/activity-stream (:id activity) kind 20])
         [data-max data-min] (map #(apply % data) [max min])
         data-size (count data)
-        cursor-pos (r/atom nil)
+        cursor-pos (r/atom [0 0])
         canvas (r/atom nil)]
     (fn [kind activity]
       [:div.strava-activity-graph
-       (if data
+       (when data
          [ui/appear-anon "opacity slow"
           [:div.strava-activity-graph-inner.flex
            [:div.strava-activity-graph-legend
             [:div.strava-activity-graph-legend-high
-             data-max]
+             [:span data-max]]
             [:div.strava-activity-graph-legend-current
-             (map #(str (util/format-number % 2) " ") @cursor-pos)]
-             ; (nth data (/ data-size ))]
+             (let [width (if @canvas
+                           (-> (.getContext @canvas "2d")
+                               .-canvas
+                               .-width)
+                           (first @cursor-pos))]
+               [:b (nth data (int (* data-size (/ (first @cursor-pos)
+                                                  width))))]) ]
             [:div.strava-activity-graph-legend-low
-             data-min]
+             [:span data-min]]
             [:div
              kind]]
            [:canvas
@@ -261,9 +287,8 @@
                      (draw-graph % kind data cursor-pos))
              :on-mouse-move #(reset! cursor-pos
                                      (xy-in-rect % [:x :y]
-                                                 (.getBoundingClientRect (.-target %))))
-             }]]]
-         #_[views/loading-spinner true]) ]))) ; so need to track whether not yet data or doesnt exist...
+                                                 (.getBoundingClientRect
+                                                  (.-target %))))}]]])]))) ; soo, for spinner would need to track whether not yet data or doesnt exist...
 
 (defn activity-graphs
   [activity]
