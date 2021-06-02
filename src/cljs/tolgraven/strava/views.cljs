@@ -133,7 +133,7 @@
 (defn activity-laps "Laps for activity"
   [{:keys [laps] :as details}]
   [:div.strava-activity-laps
-   (for [lap laps]
+   (for [lap laps] ^{:key (str "strava-lap-" (:name lap))}
      [:div.strava-activity-lap
       [:h4 (:name lap)]
       [:p (util/format-number (/ (:distance lap) 1000) 1) [:span " km"]]
