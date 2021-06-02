@@ -307,11 +307,16 @@
         (.observe observer el)
         (.disconnect observer))))) ;prob needs tearing down for reload or?
 
+(defn xy-in-rect [e dimension rect]
+ (let [m {:x (- (.-clientX e) (.-left rect)) ;XXX shouldnt do unneccessary work tho
+          :y (- (.-clientY e) (.-top rect))}]
+  (map m dimension))) ;ok so now will return vec even for one dim
 
-(defn crap []
-  (scroll-to "headshot")
-  (rem-to-px 13.5) ;217
-  (js/window.scrollBy 0 200)
-  (js/window.scrollBy 0 -200)
-  (scroll-by -13.5)
-  (scroll-by 13.5))
+(defn resize-canvas-to-display-size
+  [canvas]
+  (let [[w h] [(.-clientWidth canvas) (.-clientHeight canvas)]
+        needs-resize (or (not= (.-width canvas) w)
+                         (not= (.-height canvas) h))]
+    (when needs-resize
+      (set! (.-width canvas) w)
+      (set! (.-height canvas) h))))

@@ -207,27 +207,12 @@
    [activity-photo (:photos details)] ]])
 
 
-(defn xy-in-rect [e dimension rect]
- (let [m {:x (- (.-clientX e) (.-left rect)) ;XXX shouldnt do unneccessary work tho
-          :y (- (.-clientY e) (.-top rect))}]
-  (map m dimension))) ;ok so now will return vec even for one dim
-
-(defn resize-canvas-to-display-size
-  [canvas]
-  (let [[w h] [(.-clientWidth canvas) (.-clientHeight canvas)]
-        needs-resize (or (not= (.-width canvas) w)
-                         (not= (.-height canvas) h))]
-    (when needs-resize
-      (set! (.-width canvas) w)
-      (set! (.-height canvas) h))))
- 
-
 (defn draw-graph
   [canvas id data cursor-pos]
   (let [ctx (.getContext canvas "2d")
         [data-max data-min] (map #(apply % data) [max min])
         data-min 0
-        _ (resize-canvas-to-display-size canvas)
+        _ (util/resize-canvas-to-display-size canvas)
         [w h] [(.-width canvas) (.-height canvas)]
         size (count data)
         cursor-index (int (* size (/ (first @cursor-pos) w)))]
@@ -286,9 +271,9 @@
                      (reset! canvas %)
                      (draw-graph % kind data cursor-pos))
              :on-mouse-move #(reset! cursor-pos
-                                     (xy-in-rect % [:x :y]
-                                                 (.getBoundingClientRect
-                                                  (.-target %))))}]]])]))) ; soo, for spinner would need to track whether not yet data or doesnt exist...
+                                     (util/xy-in-rect % [:x :y]
+                                                      (.getBoundingClientRect
+                                                       (.-target %))))}]]])]))) ; soo, for spinner would need to track whether not yet data or doesnt exist...
 
 (defn activity-graphs
   [activity]
