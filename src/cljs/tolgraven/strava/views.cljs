@@ -135,8 +135,9 @@
    (for [lap laps]
      [:div.strava-activity-lap
       [:h4 (:name lap)]
-      [:p (/ (:distance lap) 1000) [:span " km"]]
-      [:p (* 3.6 (:average_speed lap)) [:span " km/h"]]])])
+      [:p (util/format-number (/ (:distance lap) 1000) 1) [:span " km"]]
+      [:p (util/format-number (* 3.6 (:average_speed lap)) 1) [:span " km/h"]]
+      [:p (util/format-number (:average_watts lap) 1) [:span " watts"]]])])
 
 (defn kudo "Strava icon for kudos, show name on hover"
   [kudoer]

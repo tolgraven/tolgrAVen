@@ -151,6 +151,12 @@
             }
           }
 
+          .strava-activity-laps {
+            .strava-activity-lap {
+              margin-bottom: 0.5em;
+            }
+          }
+
           .strava-activity-gear {
             color: var(--fg-4);
             font-size: 90%;
