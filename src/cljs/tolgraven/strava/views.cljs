@@ -114,7 +114,8 @@
                                1 "gold"
                                2 "silver"
                                3 "bronze")
-                        "segment_effort_count_leader" "purple")}]))
+                        "segment_effort_count_leader" "blue"
+                        "overall" "purple")}]))
          (util/format-number (* 3.6 (/ (:distance segment)
                                        (:elapsed_time segment))) 1)
          [:span " km/h"]] ]
