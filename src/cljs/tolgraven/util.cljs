@@ -314,9 +314,10 @@
 
 (defn resize-canvas-to-display-size
   [canvas]
-  (let [[w h] [(.-clientWidth canvas) (.-clientHeight canvas)]
-        needs-resize (or (not= (.-width canvas) w)
-                         (not= (.-height canvas) h))]
-    (when needs-resize
-      (set! (.-width canvas) w)
-      (set! (.-height canvas) h))))
+  (when canvas
+    (let [[w h] [(.-clientWidth canvas) (.-clientHeight canvas)]
+          needs-resize (or (not= (.-width canvas) w)
+                           (not= (.-height canvas) h))]
+      (when needs-resize
+        (set! (.-width canvas) w)
+        (set! (.-height canvas) h)))))
