@@ -246,7 +246,11 @@
         [data-max data-min] (map #(apply % data) [max min])
         data-size (count data)
         cursor-pos (r/atom [0 0])
-        canvas (r/atom nil)]
+        canvas (r/atom nil)
+        on-move #(reset! cursor-pos
+                         (util/xy-in-rect % [:x :y]
+                                          (.getBoundingClientRect
+                                           (.-target %))))]
     (fn [kind activity]
       [:div.strava-activity-graph
        (when data
@@ -271,10 +275,9 @@
             {:ref #(when %
                      (reset! canvas %)
                      (draw-graph % kind data cursor-pos))
-             :on-mouse-move #(reset! cursor-pos
-                                     (util/xy-in-rect % [:x :y]
-                                                      (.getBoundingClientRect
-                                                       (.-target %))))}]]])]))) ; soo, for spinner would need to track whether not yet data or doesnt exist...
+             :on-mouse-move on-move
+             :on-touch-start on-move
+             :on-touch-move on-move}]]])]))) ; soo, for spinner would need to track whether not yet data or doesnt exist...
 
 (defn activity-graphs
   [activity]
