@@ -66,6 +66,7 @@
                  [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j]]
                  ; [day8.re-frame/undo "0.3.3"]
                  [reagent "0.10.0"]
+                 [reanimated "0.6.1"]
                  [re-frame-utils "0.1.0"]
                  [com.smxemail/re-frame-cookie-fx "0.0.2"  :exclusions [args4j]]
                  [re-pollsive "0.1.0"] ; periodic polling/timer stuff
