@@ -468,7 +468,7 @@
       [:img.media-as-bg {:src "img/strava-heatmap-new.png"}]]
      [ui/inset "Click the dots for details" 4]
      [:h1  [:img {:src "img/strava_logo_nav.png"}]]
-     (when (:error data)
+     #_(when (:error data)
        [:div
         [:h3 "Rate limited?"]
         [:p "Uh-oh, looks like we failed to fetch the strava data. Try refreshing the page."]])
