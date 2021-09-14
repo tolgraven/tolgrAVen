@@ -86,10 +86,16 @@
    (get-in db [:state :menu])))
 
 (rf/reg-sub :loading
- :<- [:state [:loading]]
+ :<- [:state [:is-loading]]
  (fn [loading [_ kind id]]
-   (let [which (get loading kind loading)]
-     (some? (vals loading)))))
+   (let [category (get loading kind)
+         specific (some #{id} category)]
+     (if (some? category)
+       (if id
+         (boolean specific)
+         (boolean (seq category)))
+       (not-every? nil? (map seq (vals loading))))))) ;if no args passed just check if any active load
+
 
 (rf/reg-sub :diag/messages
  (fn [db [_ _]]

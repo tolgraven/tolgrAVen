@@ -239,11 +239,11 @@
                           :on-success [:id-counters/handle]}}))
 
 (rf/reg-event-db :loading/on ;; TODO should queue up a (cancelable) timeout event that will trigger unless category confirmed loading finished
- (fn [db [_ category]]
-   (assoc-in db [:state :is-loading category] true)))
-(rf/reg-event-db :loading/off
- (fn [db [_ category]]
-   (assoc-in db [:state :is-loading category] false)))
+ (fn [db [_ category id]]
+   (update-in db [:state :is-loading category] (comp set conj) (or id :default))))
+(rf/reg-event-db :loading/off ;; TODO also gen unique ID so can have nultiple loads same cat not interfering
+ (fn [db [_ category id]]
+   (update-in db [:state :is-loading category] (comp set disj) (or id :default))))
 
 (rf/reg-event-db :booted
  (fn [db [_ page]]
