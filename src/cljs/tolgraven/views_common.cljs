@@ -89,7 +89,7 @@
     [header-logo @(rf/subscribe [:header-text])]
     [header-nav menu]
 
-    [loading-spinner (rf/subscribe [:state [:is-loading]])]   ; menu
+    [loading-spinner (rf/subscribe [:loading])]
     [:button.blog-link-btn.noborder
      {:on-click #(rf/dispatch [:common/navigate! :blog])}
      [:i.fa.fa-pen-fancy]]
