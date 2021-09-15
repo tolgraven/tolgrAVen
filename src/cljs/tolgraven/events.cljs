@@ -39,22 +39,20 @@
   (fn [{:as cofx :keys [db scroll-position]} [_ match]]
     (let [old-match (:common/route db)
           new-match (assoc match :controllers
-                                 (rfc/apply-controllers (:controllers old-match) match))
-          new-name (-> new-match :data :name)]
+                                 (rfc/apply-controllers (:controllers old-match) match))]
       {:db (-> db
                (assoc :common/route new-match)
                (assoc :common/route-last old-match)
                (assoc-in [:state :error-page] nil) ; reset 404 page in case was triggered
-               (assoc-in [:state :swap] nil)  ; reset for new swap (:db not event cause want it instant)
-               (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position)) ; yields a silly nilly slask men vafan no biggie
-       :dispatch-n [[:exception [:page] nil]] ; reset exception state since using same error boundary for all pages
-       :dispatch-later {:ms 100 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
-                        :dispatch (if-let [saved-pos (get-in db [:state :scroll-position (-> new-match :path)])]
-                                    [:scroll/px saved-pos]
-                                    [:scroll/to "linktotop"])} ; TODO use localstorage so restores on return visit halfway if someone follows link from blog etc..
-       :document/set-title (->> new-match :data :name ;TODO want further info in title, like blog post title...
-                                name string/capitalize
-                                (str (get-in db [:content :title] "tolgrAVen") " - "))})))
+               ; (assoc-in [:state :swap] nil)  ; reset for new swap (:db not event cause want it instant)
+               (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
+       :dispatch-n [[:exception [:page] nil] ; reset exception state since using same error boundary for all pages
+                    [:scroll/on-navigate (-> new-match :path)]]
+       :document/set-title (str (get-in db [:content :title] "tolgrAVen") " - "
+                                (-> new-match :data :name ;TODO want further info in title, like blog post title...
+                                    name string/capitalize) " "
+                                (-> new-match :parameters :path vals first))})))
+
 
 (rf/reg-fx :common/navigate-fx!
   (fn [[k & [params query]]]
@@ -64,6 +62,32 @@
   (fn [_ [_ url-key params query]]
     {:common/navigate-fx! [url-key params query]}))
 
+(rf/reg-event-fx :history/popped
+  (fn [{:keys [db]} [_ e]]
+    (let [our-action? (get-in db [:state :browser-nav :is-manual-popping])]
+      (if-not our-action?  ; bona fide back (or fwd??) event! ; set a flag affecting next common/navigate event
+        {:db (assoc-in db [:state :browser-nav :got-nav] true)}))))
+
+(rf/reg-event-fx :scroll/on-navigate ; TODO detect fresh/reload and treat it as browser nav so dont lose position on page...
+  (fn [{:keys [db]} [_ path]]
+    (let [browser-nav? (get-in db [:state :browser-nav :got-nav])
+          saved-pos (get-in db [:state :scroll-position path])]
+      {:db (update-in db [:state :browser-nav] dissoc :got-nav) ;clear any browser nav flag since we consume it
+       :dispatch-later {:ms 200 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
+                        :dispatch (if browser-nav?
+                                    (when saved-pos
+                                      [:scroll/px saved-pos])
+                                    [:scroll/to-top-and-arm-restore path])} })))
+
+(rf/reg-event-fx :scroll/to-top-and-arm-restore ; when follow links etc want to get to top of new page. but if have visited page earlier, offer to restore latest view pos. ACE!!!
+  (fn [{:keys [db]} [_ path saved-pos]]
+    {:dispatch-n [[:scroll/to "linktotop"]
+                  [:diag-could-work-in-context-of-long-articles-etc] ;but too annoying on most all navs
+                  ;; diag first time it happens to point out new button next to "to top" button
+                  ;; which will show when available
+                  ;; beauty is with ls it'll work across reloads etc as well
+                  ;; could also expose as pref whether to force old more (crappy) appy behavior
+                  ]}))
 
 (rf/reg-event-fx :swap/trigger
   (fn [{:keys [db]} [_ item]]
@@ -346,6 +370,11 @@
                                                          [:state :scroll-position]]))] ; im sure we'll want more tho?
     {:dispatch-n [[:listener/add! "window" "beforeunload" scroll-to-ls]]})))
 
+(rf/reg-event-fx :listener/popstate-back ; gets called on browser back. or if we nanually pop state, so keep track of that if end up doing it...
+ (fn [{:keys [db]} [_ ]]
+   (let [f (fn [e]
+             (rf/dispatch-sync [:history/popped e]))] ; which will actually have fresh db and can do stuff ugh
+    {:dispatch [:listener/add! "window" "popstate" f]})))
 
 (rf/reg-event-fx :init/scroll-storage  [(rf/inject-cofx :ls)] ;fetch any existing values, setup listener to persist...
   (fn [{:keys [db ls]} _]
@@ -358,6 +387,7 @@
   {:dispatch-n [[:init/scroll-storage]
                 ; [:listener/scroll-direction]
                 [:id-counters/fetch]
+                [:listener/popstate-back]
                 [:strava/init]
                 [:instagram/init]
                 [:page/init-blog]]}))
