@@ -3,9 +3,10 @@
   max-height: 0; // prob use scale-y + move instead remember gpu-accel
   // overflow-y: hidden;
   // overflow-y: scroll; // suddenly causes weird padding beneath...
-  opacity: 0.6;
+  opacity: 0.1;
+  z-index: -1;
   backdrop-filter: blur(0.3rem);
-  transition: max-height 0.7s ease, margin 0.7s ease, opacity 0.8s ;
+  transition: max-height 0.7s ease, margin 0.7s ease, opacity 0.8s ease;
 }
 .user-section-wrapper.active {
   max-height: 80vh; // so how best control how much space needed from js side? obviously breaks on eg landscape...
