@@ -186,10 +186,10 @@ video {
   height: auto;
 }
 
-textarea, input, button {
+textarea, input {
   &:focus {
     outline: 0;
-    border: 2px solid var(--fg-3);
+    border: 2px solid var(--fg-3); // well should be outline instead no so stuff doesnt move?
   }
 }
 textarea, input, .form-control {
