@@ -1,11 +1,6 @@
 # tolgraven
 
-Attempt at making an actual website off html/css mockup did for school last year.
-Very early stage, ported existing stuff and added a bit, mostly made worse.
-Will incorporate more code from my other projects and then turn to backend rendering,
-some lil CMS, a real db, yada yada.
-
-Don't forget to update here and in .org ya dummy
+The code for my main website at https://tolgraven.se
 
 ## Prerequisites
 
@@ -21,4 +16,4 @@ To start a web server for the application, run:
 
 ## License
 
-Copyright © 2020 Joen Tolgraven
+Copyright © 2020-2021 Joen Tolgraven
