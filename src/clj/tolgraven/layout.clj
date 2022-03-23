@@ -55,7 +55,7 @@
     [:div.footer-content ;; XXX should adapt to available height, also disappear...
      [:div
       [:h4 "joen.tolgraven@gmail.com"]
-      [:h5 "c 2020"]]]]])
+      [:h5 "c 2020-2022"]]]]])
 
 (defn- home
   [request & {:keys [loading-content title description css-paths js-paths css-pre js-pre img-pre anti-forgery]
