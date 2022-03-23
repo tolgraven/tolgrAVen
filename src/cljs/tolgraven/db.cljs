@@ -146,7 +146,7 @@
 
              :footer [{:id "left"
                        :title "joen.tolgraven@gmail.com"
-                       :text ["© 2019-2020"]
+                       :text ["© 2020-2022"]
                        :img {:src "img/cljs.png" :alt "cljs logo"}}
                       {:id "right"
                        :links [{:name "Github" :href "https://github.com/tolgraven" :icon "github"}
