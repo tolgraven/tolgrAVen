@@ -341,6 +341,16 @@ figcaption, .float-with-caption {
 .float-wrapper { overflow: auto; } /* clearfix */
 
 
+.float-wrapper {
+  overflow: hidden;
+} /* clearfix */
+
+.float-wrapper::after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
 
 .md-icon {
   width:  var(--space-lg);
