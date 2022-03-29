@@ -72,7 +72,7 @@
 
              :story {:heading {:title "Breaking things down"
                                :bg {:src "img/wide-spot-ctrl-small.jpg"}}
-                     :title "Not a real company... yet"
+                     :title "The ideal partner for your project"
                      :text "After spending my working life in sports television, and lacking the passion of my colleagues within that subject - despite interesting and varied work (everything from PA, graphics, video editing, 'When IT says it can't be done' tech wizard) I started a transition towards programming a number of years ago.
                             Currently studying computer science, and having picked up some web design chops the past few years to supplement my existing graphics experience, I built this website from scratch as a learning-cum-demo environment.  Then came the point where it started reflecting something real.
                             With a simple CMS, plus blog/comments system with user accounts, it's pretty full-featured and a good representation of my abilities. I think the Clojure and ClojureScript ecosystem seems good in this regard. It's daunting, but the lack of rails, as it were, might force a deeper understanding of each aspect. And it's close enough to the JS ecosystem everyone is in that skills will surely translate.
