@@ -45,7 +45,7 @@
                                         ["Docs"      "#/docs"     :docs]
                                         ["Test"      "#/test"     :docs]
                                         ["Log"       "#/log"      :log]]} }
-             :intro {:title "Building experience"
+             :intro {:title "Building experiences"
                      :text "Is what it all comes down to.
                             So many roads, yet I'm determined to track most of them halfway down.
                             There's only one way to find out."
@@ -74,8 +74,8 @@
                                :bg {:src "img/wide-spot-ctrl-small.jpg"}}
                      :title "Not a real company... yet"
                      :text "After spending my working life in sports television, and lacking the passion of my colleagues within that subject - despite interesting and varied work (everything from PA, graphics, video editing, 'When IT says it can't be done' tech wizard) I started a transition towards programming a number of years ago.
-                            Currently studying computer science, and having picked up some web design chops last year, I'm building this website from scratch as a learning environment.  The hope of course being it'll one day reflect something real.
-                           My plan is to build a simple CMS, plus blog/comments system with user accounts. I think the Clojure and ClojureScript ecosystem seems good in this regard. It's daunting, but the lack of rails, as it were, might force a deeper understanding of each aspect. And it's close enough to the JS ecosystem everyone is in that skills will surely translate.
+                            Currently studying computer science, and having picked up some web design chops the past few years to supplement my existing graphics experience, I built this website from scratch as a learning-cum-demo environment.  Then came the point where it started reflecting something real.
+                            With a simple CMS, plus blog/comments system with user accounts, it's pretty full-featured and a good representation of my abilities. I think the Clojure and ClojureScript ecosystem seems good in this regard. It's daunting, but the lack of rails, as it were, might force a deeper understanding of each aspect. And it's close enough to the JS ecosystem everyone is in that skills will surely translate.
                             Also, Hiccup is awesome.
 
                             Well let's see what else. I make music, have dabbled in being a rave promoter, soundboy, am a big enough ally to have hosted gay parties in Uganda, and all-around upstanding chap. I reckon.
@@ -84,7 +84,7 @@
                             Persistance of blog posts, comments, votes and users has been achieved by way of Firebase. Still need such back-end rarities as content not defined in app-db, and more.
                             Of course I actually intend to write stuff - about the process, life in general, I'm not sure yet. All in due time.
                             
-                            Leave a comment! Give me a job!"
+                            Leave a comment! Let me build your website! Give me a job!"
 
                      :images [["headshot" {:src "img/Leg-tasteful-small.jpg" :alt "Joen"}
                                "Yours truly. Smiling!"]
