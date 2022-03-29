@@ -20,13 +20,18 @@
 
     .strava-story { // story
       margin-left: calc(1 * var(--space-lg));
-      font-size: 90%;
+      font-size: 85%;
       max-width: 50%;
     }
   }
 
   .strava-athlete {
-    
+    div:first-of-type {
+      font-size: 0.8em;
+    }
+    div:last-of-type {
+      font-size: 0.7em;
+    }
   }
 
   > h1 {
