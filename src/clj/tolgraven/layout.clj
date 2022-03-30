@@ -16,8 +16,6 @@
 (parser/add-tag! :csrf-field (fn [_ _] (anti-forgery-field)))
 (filters/add-filter! :markdown (fn [content] [:safe (md-to-html-string content)]))
 
-; was thimking before give server-side render a go can at least replicate basic
-; structure of it. but first just make general hiccup
 (defn- js [js] [:script (merge js {:type "text/javascript"})])
 (defn- css [href] [:link {:href href :rel "stylesheet" :type "text/css"}])
 (defn- js-preload  [path] [:link {:rel "preload" :as "script" :href path}])
@@ -55,14 +53,10 @@
     [:div.footer-content ;; XXX should adapt to available height, also disappear...
      [:div
       [:h4 "joen.tolgraven@gmail.com"]
-      [:h5 "c 2020-2022"]]]]])
+      [:h5 "© 2020-2022"]]]]])
 
 (defn- home
-  [request & {:keys [loading-content title description css-paths js-paths css-pre js-pre img-pre anti-forgery]
-      :or {title "tolgrAVen"
-           description "A website by Joen Tolgraven"
-           css-paths ["css/main.min.css"]
-           js-paths ["js/compiled/app.js"]}}]
+  [request & {:keys [loading-content title description css-paths js-paths css-pre js-pre img-pre anti-forgery]}]
   [:html {:lang "en"}
    [:head
     [:meta {:charset "UTF-8"}]
@@ -71,36 +65,33 @@
     [:title title]
     [:meta {:name "description" :content description}]
     [:base {:href "/"}]
-
-    ; (for [path css-pre]
-    ;   (css-preload path))
+    
     (for [path img-pre]
       (img-preload path))
-    (ohtml/link-to-css-bundles request ["styles.css"])
+
+    (for [path css-pre]
+      (css-preload path))
+    (ohtml/link-to-css-bundles request ["styles.css"]) ; this is where everything ends up for prod but cant remember why?
     (for [href css-paths]
-      (css href))]
+      (css href))
+    
+    (when anti-forgery
+      [:script {:type "text/javascript"}
+       (str "var csrfToken = \"" anti-forgery "\";")])
+    (for [path js-pre]
+      (js-preload path))
+    (for [path js-paths]
+      (js path))]
     
    [:body {:class "container themable framing-shadow sticky-footer-container"}
     
     [:div#app loading-content]
+    
+    (ohtml/link-to-js-bundles request ["app.js"]) ]])
 
-    (when anti-forgery
-      [:script {:type "text/javascript"}
-       (str "var csrfToken = \"" anti-forgery "\";")])
-    ; (for [path js-pre]
-    ;   (js-preload path))
-    ; (for [path js-paths]
-    ;   (js path))
-     (ohtml/link-to-js-bundles request ["app.js"])  
-    ]])
 
 (def css-paths ; should come from config?
-   [;"css/tolgraven/main.min.css"
-    ; "css/fontawesome.css"
-    ; "css/brands.min.css"
-    ; "css/solid.css"
-    ; "css/codemirror.css"
-    "https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
+   ["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
     "https://fonts.googleapis.com/css?family=Fira+Sans:300,400,500,600,700,800,900"
     "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"])
 
@@ -114,8 +105,7 @@
 (def js-paths
   [;{:src "https://www.gstatic.com/firebasejs/8.0.0/firebase-app.js"}
    ;{:src "https://www.gstatic.com/firebasejs/8.0.0/firebase-analytics.js"}
-    {:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
-   {:src "js/compiled/app.js"}])
+   {:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}])
 
 (def google-analytics
   "<script>
@@ -136,11 +126,12 @@ ga('send', 'pageview');
                          ; :loading-content (loading-spinner "Stand by for tolgrAVen...")
                          :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"])
                          :title "tolgrAVen"
+                         :description "A website by Joen Tolgraven"
                          :css-paths css-paths
                          :js-paths js-paths
-                         :css-pre css-pre
-                         :js-pre js-pre
-                         :img-pre img-pre
+                         ; :css-pre css-pre
+                         ; :js-pre js-pre
+                         ; :img-pre img-pre
                          :anti-forgery *anti-forgery-token*))
            google-analytics)
       ok
