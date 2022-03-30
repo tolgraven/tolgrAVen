@@ -54,6 +54,18 @@
                                 rgba(145, 58, 3, 0.7));
     border: var(--line-width-sm) solid #fc4c02;
     box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.1);
+    
+    max-height: 100vh;
+    transition: all 0.5s ease;
+    overflow: hidden;
+
+    &.stats-minimized {
+      height: 0.0em;
+      padding: 0;
+      margin: 0;
+      border: 0;
+      transition: all 0.5s ease;
+    }
 
     > .strava-stats-legend {
       margin-right: calc(3.5 * var(--space));

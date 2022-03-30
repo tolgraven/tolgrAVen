@@ -3,6 +3,7 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    [clojure.string :as string]
+   [reanimated.core :as anim]
    [tolgraven.ui :as ui]
    [tolgraven.views-common :as views]
    [tolgraven.util :as util :refer [at]]
@@ -291,11 +292,14 @@
   [activity i num-total watts-high]
   (let [hovered? (r/atom false)
         opened? (r/atom false) ;like above but lock with click
-        tab (r/atom #_:splits :summary)
+        tab (r/atom :summary)
         cutoff 80
-        size (str (max 0.85 (* 2.5 (/ (:suffer_score activity) 300))) "em")]
+        size (max 0.85 (* 2.5 (/ (:suffer_score activity) 300)))
+        anim-size (r/atom 0.1)
+        result-size (anim/spring anim-size)]
     (fn [activity i num-total watts-high]
-      [:<>
+      (when-not (:private activity)
+       [:<>
        [:div.strava-activity
        (if @opened?
          [:div.strava-activity-dot.strava-activity-dot-expanded ;.section-with-media-bg-wrapper
@@ -332,24 +336,27 @@
                               :top 0 :right "5%"}}]
                     (map (fn [k] [tab-button k])
                          (keys tabs))) 
-              [ui/close #(reset! opened? false)]])]
-         
+              [ui/close #(do (reset! opened? false)
+                             (rf/dispatch [:state [:strava :stats-minimized] false]))]])]
+ 
          [:div.strava-activity-dot
           {:style {:left (str (* 100 (/ i num-total)) "%")
                    :bottom (str (* 100 (/ (- (:average_watts activity) cutoff)
                                           (- watts-high cutoff))) "%")
-                   :width size :height size}
+                   :width (str @result-size "em") :height (str @result-size "em")}
            :on-mouse-enter #(reset! hovered? true)
            :on-mouse-leave #(reset! hovered? false)
            :on-click #(do (swap! opened? not)
-                          (reset! hovered? false))}])
+                          (rf/dispatch [:state [:strava :stats-minimized] true])
+                          (reset! hovered? false))}
+          [anim/timeout #(reset! anim-size size) (+ 500 (rand-int 1000))]])
        (when @hovered?
          [:div.strava-activity-summary
           [:span [:b (:name activity)]]
           [:span (:suffer_score activity) " relative effort "]
           [:span (:average_watts activity) " watts"]])]
        (when @opened?
-         [activity-map-canvas activity])])))
+         [activity-map-canvas activity])]))))
 
 
 (defn activities-graph "List multiple activities, currently as a graph from watts and RE"
@@ -488,6 +495,7 @@
       
      (if stats
        [:div.strava-stats.flex
+        {:class (when @(rf/subscribe [:state [:strava :stats-minimized]]) "stats-minimized")}
         [:div.strava-stats-legend
          [:h3 [:img {:src "img/strava-icon.png"
                      :style {:width "1.25em"}}]]
