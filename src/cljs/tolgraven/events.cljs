@@ -312,8 +312,7 @@
          far-enough? (>= position (+ (util/rem-to-px @(rf/subscribe [:get-css-var "header-height"]))     ; distance from top to main is header-height + space-top above/below,
                                      (* 2 (util/rem-to-px @(rf/subscribe [:get-css-var "space-top"]))))) ; + space-lg above main. but header + 2x space-top seems sufficient...
          hidden? (get-in db [:state :hidden-header-footer])]
-    {:db (assoc-in db [:state :scroll-direction] direction)
-     :dispatch-n (if (or (and hidden?
+    {:dispatch-n (if (or (and hidden?
                               (= direction :up))
                          (>= position ; restore header and footer when scroll nears end of page (with a bit of a buffer)
                              (- (.-clientHeight js/document.body)
@@ -328,8 +327,8 @@
                      [[:state [:hidden-header-footer] true]
                       [:->css-var! "header-height-current" "0rem"] ]))})))
 
- 
-(rf/reg-event-fx :listener/scroll-direction ;but to fully emulate safari for hiding would need certain amounts of fires in same dir in x amount of time etc
+
+(rf/reg-event-fx :listener/scroll-direction ; this causes event spam obviously but since need subs & db it's necessary.
  (fn [{:keys [db]} [_ _]]
    (let [scroll-pos (atom 0)
          last-direction (atom :up)
@@ -344,10 +343,10 @@
                         (when (not= @scroll-pos new-pos)
                           (reset! accum-in-direction (if (= new-direction @last-direction)
                                                        (+ @accum-in-direction (util/abs (- new-pos @scroll-pos)))
-                                                       0))
+                                                       (util/abs (- new-pos @scroll-pos))))
                           (reset! last-direction new-direction)
                           (reset! scroll-pos new-pos)
-                          (when (<= 100 @accum-in-direction)
+                          (when (<= 250 @accum-in-direction)
                             (reset! accum-in-direction 0)
                             (rf/dispatch [:scroll/direction
                                           @last-direction @scroll-pos])))))]
