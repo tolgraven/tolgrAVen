@@ -185,7 +185,8 @@
   [:section.noborder
    [back-btn]
    [ui/close #(rf/dispatch [:user/close-ui])]
-   [component user]])
+   (when (not= component :none)
+     [component user])])
 
 (defn user-section
   [active-section]
@@ -209,5 +210,6 @@
              :comments     comments
              :change-avatar change-avatar
              :change-password change-password
-             :change-username change-username)]) ]) ]))
+             :change-username change-username
+             :closing         :none)]) ]) ]))
 
