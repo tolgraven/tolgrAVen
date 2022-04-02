@@ -517,6 +517,7 @@ figcaption, .float-with-caption {
 .hud {
   position: fixed;
   z-index: 100;
+  transition: bottom var(--header-expand-time) ease;
   bottom: calc(var(--footer-height-current) + 0.25rem); /* ;actually, footer, if sticky... */
   right: calc(var(--space-edges) + 0.05rem);
   max-width: 70%;

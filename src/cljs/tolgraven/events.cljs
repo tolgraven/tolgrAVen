@@ -319,13 +319,15 @@
                                 (.-innerHeight js/window)
                                 250)))
                    [[:state [:hidden-header-footer] false]
-                    [:->css-var! "header-height-current" header-height]]
+                    [:->css-var! "header-height-current" header-height]
+                    [:->css-var! "footer-height-current" footer-height]]
                    (when (and (not hidden?)
                               (= direction :down)
                               far-enough?
                               (not (get-in db [:state :menu])))
                      [[:state [:hidden-header-footer] true]
-                      [:->css-var! "header-height-current" "0rem"] ]))})))
+                      [:->css-var! "header-height-current" "0rem"]
+                      [:->css-var! "footer-height-current" "0rem"]]))})))
 
 
 (rf/reg-event-fx :listener/scroll-direction ; this causes event spam obviously but since need subs & db it's necessary.
