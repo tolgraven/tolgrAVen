@@ -10,7 +10,7 @@
    [tolgraven.util :as util :refer [at]]))
 
 (defn user-btn [model]
-  [:button.noborder
+  [:button.user-btn.noborder
    {:on-click #(rf/dispatch (if @(rf/subscribe [:user/ui-open?])
                                                 [:user/close-ui] [:user/open-ui]))}
    [:i.user-btn
