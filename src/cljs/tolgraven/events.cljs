@@ -304,7 +304,7 @@
      (.addEventListener el event f))))
 
 (rf/reg-event-fx :scroll/direction
- (fn [{:keys [db]} [_ direction position accum]]
+ (fn [{:keys [db]} [_ direction position]]
    (let [header-height (if (get-in db [:state :menu])
                             @(rf/subscribe [:get-css-var "header-with-menu-height"])
                             @(rf/subscribe [:get-css-var "header-height"]))
@@ -343,9 +343,10 @@
                                                        0))
                           (reset! last-direction new-direction)
                           (reset! scroll-pos new-pos)
-                          (when (<= 50 @accum-in-direction)
+                          (when (<= 100 @accum-in-direction)
+                            (reset! accum-in-direction 0)
                             (rf/dispatch [:scroll/direction
-                                          @last-direction @scroll-pos @accum-in-direction])))))]
+                                          @last-direction @scroll-pos])))))]
      {:dispatch [:listener/add! "document" "scroll" callback]})))
 
 (rf/reg-event-fx :listener/before-unload-save-scroll ; gets called even when link to save page, silly results.
