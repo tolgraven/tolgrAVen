@@ -259,14 +259,14 @@
   (-> (js/getComputedStyle js/document.documentElement)
       .-fontSize
       js/parseFloat
-      (* rem-val)))
+      (* (js/parseFloat rem-val))))
 
 (defn px-to-rem "Convert pixels to rem. Doesnt seem like gets quite perfect..."
   [px-val]
   (->> (js/getComputedStyle js/document.documentElement)
        .-fontSize
        js/parseFloat
-       (/ px-val)))
+       (/ (js/parseFloat px-val))))
 
 (defn run-highlighter! [el-type & [div-ref]]
   (let [selected (-> (or div-ref js/document) ;cant querySelectorAll on document?
