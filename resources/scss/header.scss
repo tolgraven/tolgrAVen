@@ -146,7 +146,7 @@ menu > nav > .nav-section:last-of-type > .nav-links {
 #nav-menu-open:checked ~ .line-header {
   top:  var(--header-with-menu-height);
   margin-top: 0;
-  margin-bottom: var(--space-top); /* killing margin leds to shitty jumps, so we compensate */
+  // margin-bottom: var(--space-top); /* killing margin leds to shitty jumps, so we compensate */ // now it was the other way round instead (for user box), interesting...
   /* transition: margin 0.4s ease 0.1s; */
 }
 
