@@ -310,7 +310,8 @@
                             @(rf/subscribe [:get-css-var "header-height"]))
          footer-height @(rf/subscribe [:get-css-var "footer-height"])
          fraction (/ position (.-clientHeight js/document.body))
-         far-enough? (>= fraction 0.10) ; ideally would be more fine-grained / content-based...
+         far-enough? (>= position (+ (util/rem-to-px @(rf/subscribe [:get-css-var "header-height"]))     ; distance from top to main is header-height + space-top above/below,
+                                     (* 2 (util/rem-to-px @(rf/subscribe [:get-css-var "space-top"]))))) ; + space-lg above main. but header + 2x space-top seems sufficient...
          hidden? (get-in db [:state :hidden-header-footer])]
     {:db (assoc-in db [:state :scroll-direction] direction)
      :dispatch-n (if (and hidden?
