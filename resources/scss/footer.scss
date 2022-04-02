@@ -11,6 +11,13 @@ footer {
   /* causes some silly ios behavior and might just deal with enough layers already... */
   /* position: sticky; */
   /* bottom: 0; */
+  height: var(--footer-height);
+  transition: height var(--header-expand-time) ease;
+
+  &.hide {
+    height: calc(1 * var(--line-width));
+    transition: height var(--header-expand-time) ease;
+  }
 }
 .footer-sticky {
   position: fixed;

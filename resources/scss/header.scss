@@ -15,7 +15,7 @@ header {
   margin-top: var(--space-top);
   margin-right: var(--line-width); /* make main right border stay "outside" right edge of header, needed because of particular effect/design... */
   padding: 0 calc(var(--space));
-  transition: height var(--header-expand-time) ease,
+  transition: all var(--header-expand-time) ease,
               background 0.0s ease;
               
   .cover {
@@ -24,6 +24,12 @@ header {
     left: 0; top: 0;
     background: var(--bg-1);
     z-index: 1;
+  }
+
+  &.hide {
+    height: 0px;
+    min-height: 0px;
+    transition: all var(--header-expand-time) ease;
   }
 }
 

@@ -85,6 +85,8 @@
   [:<>
    [input-toggle "nav-menu-open" [:menu] :class "burger-check"]
    [:header
+    {:class (when @(rf/subscribe [:state [:hidden-header-footer]])
+              "hide")}
     [:div.cover.cover-clip] ;covers around lines and that... XXX breaks when very wide tho.
     [header-logo @(rf/subscribe [:header-text])]
     [header-nav menu]
@@ -95,7 +97,10 @@
      [:i.fa.fa-pen-fancy]]
     [user-btn]
     [:label.burger {:for "nav-menu-open"}]]
-   [:div.line.line-header]])
+   
+   [:div.line.line-header
+    {:class (when @(rf/subscribe [:state [:hidden-header-footer]])
+             "hide")}]])
 
 
 (defn footer-sticky "Thinking just something tiny visible maybe not actually entire time but at whatever points, framing things in. Might be job for css tho dunno"
@@ -112,6 +117,8 @@
 (defn footer "Might want to bail on left/middle/right just push whatever. do the current ids matter?"
   [content]
   [:footer.footer-sticky ; [:footer>div.footer-content
+   {:class (when @(rf/subscribe [:state [:hidden-header-footer]])
+             "hide")}
    [:div.line.line-footer] ;cant this be outside main ugh
    [:div.footer-content ;; XXX should adapt to available height, also disappear...
     (for [{:keys [title text id links img] :as column} content

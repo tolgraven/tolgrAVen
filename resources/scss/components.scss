@@ -19,8 +19,13 @@
   position: sticky; /* starts between header and main, turns into demarcation */
   z-index: 100;
   top: var(--header-height-current);
-  transition: top var(--header-expand-time) ease 0.0s;
+  transition: top var(--header-expand-time) ease;
   margin-top: var(--space-top); /* space before sticky starts */
+
+  &.hide {
+    top: 0;
+    transition: top var(--header-expand-time) ease;
+  }
 }
 .line.line-footer {
   position: absolute;

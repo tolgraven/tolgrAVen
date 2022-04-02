@@ -309,57 +309,44 @@
                             @(rf/subscribe [:get-css-var "header-with-menu-height"])
                             @(rf/subscribe [:get-css-var "header-height"]))
          footer-height @(rf/subscribe [:get-css-var "footer-height"])
-         trigger? (>= accum 0.01)
-         far-enough? (>= position 0.10)]
+         fraction (/ position (.-clientHeight js/document.body))
+         far-enough? (>= fraction 0.10) ; ideally would be more fine-grained / content-based...
+         hidden? (get-in db [:state :hidden-header-footer])]
     {:db (assoc-in db [:state :scroll-direction] direction)
-     :dispatch-n [(when trigger? ;(and (>= accum 0.01) #_(>= position 0.10))
-                    [:->css-var! "header-height-current" ;prob more reasonable offset :top yea?
-                    (case direction
-                      :down (if far-enough?
-                              "0rem"
-                              header-height)
-                      :up header-height)])
-                      (when trigger?
-                        [:->css-var! "footer-bottom" ; not getting anim on height somehow...
-                         (case direction
-                           :down (if far-enough?
-                                   footer-height
-                                   "0rem")
-                           :up "0rem")])
-                 [:state [:scroll-direction] direction] ]})))
+     :dispatch-n (if (and hidden?
+                          (= direction :up))
+                   [[:state [:hidden-header-footer] false]
+                    [:->css-var! "header-height-current" header-height]]
+                   (when (and (not hidden?)
+                              (= direction :down)
+                              far-enough?
+                              (not (get-in db [:state :menu])))
+                     [[:state [:hidden-header-footer] true]
+                      [:->css-var! "header-height-current" "0rem"] ]))})))
 
-
+ 
 (rf/reg-event-fx :listener/scroll-direction ;but to fully emulate safari for hiding would need certain amounts of fires in same dir in x amount of time etc
  (fn [{:keys [db]} [_ _]]
    (let [scroll-pos (atom 0)
          last-direction (atom :up)
-         last-page-size (atom (.-height (.getBoundingClientRect js/document.body)))
-         ; last-invoked (atom (js/Date.now))
          accum-in-direction (atom 0)
          callback (fn [e]
-                    (when true #_(< 100 (- (js/Date.now) @last-invoked))
-                      ; (reset! last-invoked (js/Date.now))
-                      (let [height (.-height (.getBoundingClientRect js/document.body))
-                            new-pos (-> (.-scrollY js/window)
-                                        (/ height)
-                                        util/format-number)
-                            new-direction (cond
-                                           (> new-pos @scroll-pos) :down
-                                           (< new-pos @scroll-pos) :up
-                                           :else @last-direction)]
-                        (when (and (not= @scroll-pos new-pos) ;tho fraction gets silly should be absolute/px i guess
-                                   (= @last-page-size height)) ;avoid faux scroll on page resize.
+                    (let [new-pos (-> (.-scrollY js/window)
+                                      (util/format-number 3))
+                          new-direction (cond
+                                         (> new-pos @scroll-pos) :down
+                                         (< new-pos @scroll-pos) :up
+                                         :else @last-direction)]
+                        (when (not= @scroll-pos new-pos)
                           (reset! accum-in-direction (if (= new-direction @last-direction)
                                                        (+ @accum-in-direction (util/abs (- new-pos @scroll-pos)))
                                                        0))
                           (reset! last-direction new-direction)
                           (reset! scroll-pos new-pos)
-                          (when (<= 0.05 @accum-in-direction)
+                          (when (<= 50 @accum-in-direction)
                             (rf/dispatch [:scroll/direction
-                                          @last-direction @scroll-pos @accum-in-direction])))
-                        (reset! last-page-size height))))]
+                                          @last-direction @scroll-pos @accum-in-direction])))))]
      {:dispatch [:listener/add! "document" "scroll" callback]})))
- 
 
 (rf/reg-event-fx :listener/before-unload-save-scroll ; gets called even when link to save page, silly results.
  (fn [{:keys [db]} [_ ]]
@@ -385,7 +372,7 @@
 (rf/reg-event-fx :init ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
  (fn [{:keys [db]} [_ _]]
   {:dispatch-n [[:init/scroll-storage]
-                ; [:listener/scroll-direction]
+                [:listener/scroll-direction]
                 [:id-counters/fetch]
                 [:listener/popstate-back]
                 [:strava/init]
