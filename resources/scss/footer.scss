@@ -57,6 +57,7 @@ footer {
   margin-top: var(--space-lg);
 
   .footer-column {
+    margin: 0.0rem var(--space-lg) 0.0rem 0.5em;
     flex: 1 0 auto;
   }
 
@@ -93,7 +94,6 @@ footer {
 
 .footer-column {
   // flex: 1 0 auto;
-  margin: 0.0rem var(--space-lg) 0.0rem 0.5em;
 }
 .footer-icons {
   text-align: end;
