@@ -202,10 +202,11 @@
   (rfe/start! router on-nav router-settings))
 
 (def cookie-notice [:diag/new :info "Cookie notice"
-                     {:what "Better way?"
-                      :than :like-this
-                      3 {:just "add buttons"}}
-                     {:sticky? false #_true}])
+                     {:what "This website may use cookies"
+                      :why "To track whether you've agreed to the use of cookies"
+                      :how {:by-removing-this-box "You agree to not only cookies"
+                            :but "also milk"}}
+                     {:sticky? true}])
 
 
 ;; -------------------------
