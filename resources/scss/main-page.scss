@@ -98,6 +98,8 @@
   text-align: center;
   flex-wrap: wrap;
   
+  color: var(--light-4); // dark background so cant have fg as color, only light
+  
   &.categories-fullscreened {
     display: initial;
   }

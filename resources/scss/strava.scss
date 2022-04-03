@@ -9,6 +9,8 @@
 
 .strava {
   --activity-details-height: 24em;
+  
+  color: var(--light-3); // dark background so cant have fg as color, only light
 
   .strava-profile-image {
     width: calc(8 * var(--space));
@@ -43,7 +45,7 @@
     // margin-left: var(--space);
   }
   span {
-    color: var(--fg-5);
+    color: var(--light-5);
   }
   
   .strava-stats {
@@ -69,7 +71,7 @@
 
     > .strava-stats-legend {
       margin-right: calc(3.5 * var(--space));
-      color: var(--fg-5);
+      color: var(--light-5);
     }
     div, h3 {
       margin: 0.25rem;
@@ -119,6 +121,7 @@
           padding-bottom: 0; // actually want inner div padding gone but it's there despite being 0???
           overflow: hidden;
           
+          color: var(--light-2);
 
           .strava-activity-full-inner {
             overflow: scroll;
@@ -132,14 +135,14 @@
             justify-content: space-between;
 
             span {
-              color: var(--fg-5);
+              color: var(--light-5);
             }
           }
 
           // > div > div > div:first-of-type { // description col
           .strava-activity-stats-descriptions { // description col
             margin-right: calc(2 * var(--space-lg));
-            color: var(--fg-5);
+            color: var(--light-5);
           }
 
           .strava-activity-photo {
@@ -156,6 +159,7 @@
             padding: 0.2em 0.3em;
             border: var(--line-width-sm) solid rgba(252, 76, 2, 0.5);
             
+            color: var(--light-2);
           }
 
           h3 {
@@ -188,7 +192,7 @@
           }
 
           .strava-activity-gear {
-            color: var(--fg-4);
+            color: var(--light-4);
             font-size: 90%;
           }
         }
@@ -198,7 +202,7 @@
         left: 0; bottom: 0;
         width: 100%;
         z-index: 10;
-        color: var(--fg-2);
+        color: var(--light-2);
         background: linear-gradient(0deg,
                     rgba(135, 48, 1, 0.7),
                     rgba(145, 58, 3, 0.8));
@@ -274,7 +278,7 @@
 
   .strava-activity-split {
     position: absolute;
-    color: var(--fg-1);
+    color: var(--light-1);
     padding: 0.5em;
     // height: 2em;
     // width: 2em;
