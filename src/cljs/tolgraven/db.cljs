@@ -173,8 +173,8 @@
                                     {:name "Soundcloud" :href "https://soundcloud.com/tolgraven" :info "tolgraven"}]}
                            {:id "third"
                             :title "The stack"
-                            :text ["While we command many a paradigm, our stack of choice is our most powerful weapon."
-                                   "It is how this site is being built."]
+                            :text ["While we command many a paradigm, our stack of choice is a most powerful weapon."
+                                   "This is how the site is built:"]
                             :img [{:src "img/logo/icon/clojure-logo-icon.png" :alt "clojure logo"}
                                   {:src "img/logo/icon/react-logo-icon.png" :alt "react logo"}
                                   {:src "img/logo/icon/sass-logo-icon.png" :alt "sass logo"}
