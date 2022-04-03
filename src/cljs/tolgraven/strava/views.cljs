@@ -58,7 +58,9 @@
        [:p.strava-activity-split-legend
         {:class (when @hovered? "strava-activity-dot")
          :style {:left (str (+ 2 left) "%") ;ugly magic number but aligns perfectly
-                 :bottom 0 }}
+                 :bottom 0}
+         :on-mouse-enter #(reset! hovered? true)
+         :on-mouse-leave #(reset! hovered? false)}
         i]
        (when @hovered?
          [:div.strava-activity-split-details.strava-popup.strava-stats
@@ -103,7 +105,7 @@
          {:on-mouse-over #(do (rf/dispatch [:strava/fetch-segment-stream
                                             (-> segment :segment :id)
                                             "latlng,altitude"])
-                         (reset! hovered? true))
+                              (reset! hovered? true))
           :on-mouse-leave #(reset! hovered? false)}
          (:name segment) ]
         [:p
@@ -243,7 +245,7 @@
 
 (defn graph-canvas ""
   [kind activity]
-  (let [data @(rf/subscribe [:strava/activity-stream (:id activity) kind 20])
+  (let [data @(rf/subscribe [:strava/activity-stream (:id activity) kind 25])
         [data-max data-min] (map #(apply % data) [max min])
         data-size (count data)
         cursor-pos (r/atom [0 0])
@@ -361,14 +363,12 @@
 
 (defn activities-graph "List multiple activities, currently as a graph from watts and RE"
   []
-  (let [height "22em"
-        num-activities 30
+  (let [num-activities 30
         activities @(rf/subscribe [:content [:strava :activities]])
         watts-high (apply max (map :average_watts activities))]
     [ui/seen-anon "opacity extra-slow"
      [:div.strava-activities
-      {:style {:position :relative
-               :height height}}
+      {:style {:position :relative}}
       (map-indexed 
        (fn [i activity] ^{:key (str "strava-activity-dot-" i)}
          [activity-dot activity i num-activities watts-high])
