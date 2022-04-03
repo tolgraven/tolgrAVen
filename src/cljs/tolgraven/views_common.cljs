@@ -148,7 +148,8 @@
                            "hide")
                          (when @(rf/subscribe [:state [:at-bottom]])
                            "full")])
-    :style {:max-height @(rf/subscribe [:get-css-var "footer-height-current"])}}
+    :style (when-not @(rf/subscribe [:state [:hidden-header-footer]])
+             {:max-height @(rf/subscribe [:get-css-var "footer-height-current"])})}
    
    [:div.line.line-footer] ;cant this be outside main ugh
    [:div.footer-content ;; XXX should adapt to available height, also disappear...
