@@ -182,8 +182,8 @@
    [:div.flex
     [ui/appear-anon "opacity extra-slow"
      [:div.strava-activity-stats-descriptions
-      (when (:suffer_score activity)
-        [:p "Relative effort"])
+      (when (:kilojoules activity)
+        [:p "Kilojoules"])
       [:p "Watts"]
       [:p "Average speed"]
       [:p "Distance"]
@@ -195,8 +195,8 @@
        (when (pos? (:kudos_count details))
         [:p "Kudos"])]]
     [:div.strava-activity-stats-numbers
-     (when (:suffer_score activity)
-        [:p (:suffer_score activity)])
+     (when (:kilojoules activity)
+        [:p (:kilojoules activity)])
      [:div [:p (:average_watts activity)]]
      [:p (util/format-number (* 3.6 (:average_speed activity)) 1) [:span " km/h"]]
      [:p (util/format-number (/ (:distance activity) 1000) 1) [:span " km"]]
@@ -296,7 +296,7 @@
         opened? (r/atom false) ;like above but lock with click
         tab (r/atom :summary)
         cutoff 80
-        size (max 0.85 (* 2.5 (/ (:suffer_score activity) 300)))
+        size (max 0.85 (/ (:kilojoules activity) 1000))
         anim-size (r/atom 0.1)
         result-size (anim/spring anim-size)]
     (fn [activity i num-total watts-high]
@@ -355,7 +355,7 @@
        (when @hovered?
          [:div.strava-activity-summary
           [:span [:b (:name activity)]]
-          [:span (:suffer_score activity) " relative effort "]
+          [:span (:kilojoules activity) " kilojoules "]
           [:span (:average_watts activity) " watts"]])]
        (when @opened?
          [activity-map-canvas activity])]))))
