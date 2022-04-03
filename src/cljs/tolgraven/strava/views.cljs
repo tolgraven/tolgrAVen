@@ -173,7 +173,8 @@
    [:div.flex
     {:style {:justify-content :space-between
              :font-size "90%"}}
-    [:div.strava-activity-description (:description details)]
+    (into [:div.strava-activity-description]
+          (map #(vec [:p %]) (string/split-lines (:description details))))
     [:div.strava-activity-gear
      (:name (get @(rf/subscribe [:strava/content [:gear]])
                  (:gear_id activity)))] ]
