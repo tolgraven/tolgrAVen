@@ -150,12 +150,29 @@
                        :img {:src "img/cljs.png" :alt "cljs logo"}}
                       {:id "right"
                        :links [{:name "Github" :href "https://github.com/tolgraven" :icon "github"}
-                               {:name "LinkedIn" :href "https://www.linkedin.com/in/joen-tolgraven-5205701b9" :icon "linkedin"}
-                               {:name "Instagram" :href "https://www.instagram.com/tolgraven" :icon "instagram"}
-                               {:name "Twitter" :href "https://twitter.com/joen.tolgraven" :icon "twitter"}
+                               {:name "LinkedIn" :href "https://linkedin.com/in/tolgraven" :icon "linkedin"}
+                               {:name "Instagram" :href "https://instagram.com/tolgraven" :icon "instagram"}
+                               {:name "Twitter" :href "https://twitter.com/joentolgraven" :icon "twitter"}
                                {:name "Facebook" :href "https://facebook.com/tolgraven" :icon "facebook"}
-                               {:name "Soundcloud" :href "https://soundcloud.com/tolgraven" :icon "soundcloud"}
-                               ]}]}
+                               {:name "Soundcloud" :href "https://soundcloud.com/tolgraven" :icon "soundcloud"}]}]
+             :post-footer [{:id "left"
+                            :title "Furthermore"
+                            :text ["Several lines of text"
+                                   "Followed by serious facts about company"
+                                   "And some kind of enourmous sitemap"]
+                            :img {:src "img/cljs.png" :alt "cljs logo"}}
+                           {:id "right"
+                            :title "Links again hehu"
+                            :links [{:name "Github" :href "https://github.com/tolgraven" :info "tolgraven"}
+                                    {:name "LinkedIn" :href "https://linkedin.com/in/tolgraven" :info "tolgraven"}
+                                    {:name "Instagram" :href "https://instagram.com/tolgraven" :info "tolgraven"}
+                                    {:name "Twitter" :href "https://twitter.com/joentolgraven" :info "joentolgraven"}
+                                    {:name "Facebook" :href "https://facebook.com/tolgraven" :info "tolgraven"}
+                                    {:name "Soundcloud" :href "https://soundcloud.com/tolgraven" :info "tolgraven"}]}
+                           {:id "third"
+                            :title "test"
+                            :text ["Welp welp welp welp"
+                                   "Gutsy ass shitshitshitshitshit"]}]}
 
    :options {:auto-save-vars true
              :transition {:time 200 :style :slide} ; etc
