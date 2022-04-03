@@ -33,6 +33,22 @@ header {
   }
 }
 
+.fill-side-top {
+  background: linear-gradient(-135deg, var(--bg-1) 10%, var(--blue) 335%);
+  width: calc(var(--space-sides));
+  height: var(--header-height-current);
+  transition: height var(--header-expand-time) ease,
+              opacity calc(0.3 * var(--header-expand-time)) ease;
+  position: fixed;
+  top: 0px;
+  right: 0px;
+  z-index: -1;
+  
+  &.hide {
+    opacity: 0;
+  }
+}
+
 menu {
   position: relative;
   display: flex;

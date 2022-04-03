@@ -100,6 +100,10 @@
      [:i.fa.fa-pen-fancy]]
     [user-btn]
     [:label.burger {:for "nav-menu-open"}]]
+
+   [:div.fill-side-top
+    {:class (when-not @(rf/subscribe [:state [:scroll :past-top]])
+              "hide")}]
    
    [:div.line.line-header
     {:class (when @(rf/subscribe [:state [:hidden-header-footer]])

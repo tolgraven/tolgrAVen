@@ -12,11 +12,26 @@ footer {
   /* position: sticky; */
   /* bottom: 0; */
   height: var(--footer-height);
-  transition: height var(--header-expand-time) ease;
+  transition: all var(--header-expand-time) ease;
 
   &.hide {
     height: calc(1 * var(--line-width));
-    transition: height var(--header-expand-time) ease;
+    transition: all var(--header-expand-time) ease;
+  }
+
+  &.full {
+    padding-top: var(--space);
+  }
+  
+  &:before {
+    content: "";
+    background: linear-gradient(35deg, var(--bg-1), var(--blue) 335%);
+    width: calc(var(--space-sides) - var(--line-width));
+    height: 100%;
+    position: absolute;
+    bottom: 0px;
+    left: calc(0px - var(--space-sides));
+    z-index: -1;
   }
 }
 .footer-sticky {
