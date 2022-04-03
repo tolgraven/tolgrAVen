@@ -235,10 +235,10 @@
 
     .strava-activity-map {
       position: relative;
-      top: 5%;
-      left: 5%;
-      height: 90%;
-      width: 90%;
+      top: 0%;
+      left: 0%;
+      height: 100%;
+      width: 100%;
 
       .strava-activity-map-point {
         position: absolute;
@@ -249,11 +249,9 @@
 
       .leaflet-container {
         border: var(--line-width-sm) solid #fc4c02;
-        margin-top: 0.5em;
-        margin-left: -3em;
-        // margin-left: calc(0 - var(--space-lg));
-        width: 119%;
-        height: 21.0em;
+        margin-left: calc(0px - var(--space-lg));
+        width: 112%;
+        height: 29.0em;
         filter: invert(0.95) hue-rotate(170deg);
       }
     }
