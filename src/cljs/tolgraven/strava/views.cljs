@@ -46,7 +46,7 @@
   [i {:keys [average_speed] :as split} num-splits min-speed max-speed space-per-split]
   (let [hovered? (r/atom false)
         left (* space-per-split num-splits (/ i num-splits))
-        bottom (* 100 (util/rescale-to-frac average_speed min-speed max-speed))]
+        bottom (+ 10 (* 85 (util/rescale-to-frac average_speed min-speed max-speed)))]
     (fn [i {:keys [average_speed] :as split} num-splits min-speed max-speed space-per-split]
       [:<>
        [:div.strava-activity-split.strava-activity-dot
