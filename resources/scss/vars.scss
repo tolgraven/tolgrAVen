@@ -36,7 +36,7 @@
   --right-marker:       calc(100% - 1 * var(--left-marker) - 2 * var(--line-width)); /* makes sense right side needs one more unit since it has the right border... */
   --top-to-menu-height: calc(2 * var(--space-top) + 2em - 5 * var(--line-width));
   
-  --header-expand-time:         0.2s;
+  --header-expand-time:         0.5s;
   --navigation-transition-time: 0.7s;
 
   --perspective:       100;
