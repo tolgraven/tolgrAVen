@@ -339,10 +339,10 @@
                     (if (get-in db [:state :hidden-header-footer])
                       "0rem"
                       @(rf/subscribe [:get-css-var "footer-height"])))]]
-    :dispatch-later {:ms 50
-                     :dispatch
-                     (when bottom?
-                       [:scroll/by (js/parseFloat @(rf/subscribe [:get-css-var "footer-height-full"]))])}}))
+    :dispatch-later (when bottom?
+                      {:ms 50
+                       :dispatch
+                       [:scroll/by (js/parseFloat @(rf/subscribe [:get-css-var "footer-height-full"]))]})}))
 
 
 (rf/reg-event-fx :hide-header-footer

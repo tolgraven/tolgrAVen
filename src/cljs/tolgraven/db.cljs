@@ -147,7 +147,7 @@
              :footer [{:id "left"
                        :title "joen.tolgraven@gmail.com"
                        :text ["© 2020-2022"]
-                       :img {:src "img/cljs.png" :alt "cljs logo"}}
+                       :logo {:src "img/tolgrav-square.png" :alt "tolgrAVen logo"}}
                       {:id "right"
                        :links [{:name "Github" :href "https://github.com/tolgraven" :icon "github"}
                                {:name "LinkedIn" :href "https://linkedin.com/in/tolgraven" :icon "linkedin"}
@@ -156,13 +156,15 @@
                                {:name "Facebook" :href "https://facebook.com/tolgraven" :icon "facebook"}
                                {:name "Soundcloud" :href "https://soundcloud.com/tolgraven" :icon "soundcloud"}]}]
              :post-footer [{:id "left"
-                            :title "Furthermore"
-                            :text ["Several lines of text"
-                                   "Followed by serious facts about company"
-                                   "And some kind of enourmous sitemap"]
-                            :img {:src "img/cljs.png" :alt "cljs logo"}}
+                            :title "Inquiries"
+                            :text ["Send me an email and let's discuss your idea!"
+                                   "Open to projects, long-term freelance work,"
+                                   "full-time employment."
+                                   "•"
+                                   "On your page this will probably be"
+                                   "some massive sitemap."]}
                            {:id "right"
-                            :title "Links again hehu"
+                            :title "Links"
                             :links [{:name "Github" :href "https://github.com/tolgraven" :info "tolgraven"}
                                     {:name "LinkedIn" :href "https://linkedin.com/in/tolgraven" :info "tolgraven"}
                                     {:name "Instagram" :href "https://instagram.com/tolgraven" :info "tolgraven"}
@@ -170,9 +172,13 @@
                                     {:name "Facebook" :href "https://facebook.com/tolgraven" :info "tolgraven"}
                                     {:name "Soundcloud" :href "https://soundcloud.com/tolgraven" :info "tolgraven"}]}
                            {:id "third"
-                            :title "test"
-                            :text ["Welp welp welp welp"
-                                   "Gutsy ass shitshitshitshitshit"]}]}
+                            :title "The stack"
+                            :text ["While we command many a paradigm, our stack of choice is our most powerful weapon."
+                                   "It is how this site is being built."]
+                            :img [{:src "img/logo/icon/clojure-logo-icon.png" :alt "clojure logo"}
+                                  {:src "img/logo/icon/react-logo-icon.png" :alt "react logo"}
+                                  {:src "img/logo/icon/sass-logo-icon.png" :alt "sass logo"}
+                                  {:src "img/logo/icon/re-frame-logo.png" :alt "re-frame logo"}]}]}
 
    :options {:auto-save-vars true
              :transition {:time 200 :style :slide} ; etc

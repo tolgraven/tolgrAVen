@@ -119,14 +119,15 @@
                               :id id}
 
           (when title [:h4 title])
-          ; (when img [util/merge-attr img])
           (when text (for [line text] ^{:key (str id "-" line)}
                           [:h5 line]))
           (when links [:div.footer-links
                        (for [{:keys [name href info]} links] ^{:key (str "post-footer-link-" name)}
                             [:a {:href href :name name}
                              [:div.footer-link-with-text
-                              [:p name] [:p info]]])])])])
+                              [:p name] [:p info]]])])
+          (when img (for [img img]  ^{:key (str id "-" (:src img))}
+                      [:img.img-icon img]))])])
 
 (defn footer-sticky "Thinking just something tiny visible maybe not actually entire time but at whatever points, framing things in. Might be job for css tho dunno"
   [content]
@@ -147,24 +148,25 @@
                            "hide")
                          (when @(rf/subscribe [:state [:at-bottom]])
                            "full")])
-    :style {:height (when @(rf/subscribe [:state [:at-bottom]])
-                      @(rf/subscribe [:get-css-var "footer-height-current"]))}}
+    :style {:max-height @(rf/subscribe [:get-css-var "footer-height-current"])}}
+   
    [:div.line.line-footer] ;cant this be outside main ugh
    [:div.footer-content ;; XXX should adapt to available height, also disappear...
-    (for [{:keys [title text id links img] :as column} content
+    (for [{:keys [title text id links logo] :as column} content
           :let [id (str "footer-" id)]] ^{:key id}
          [:div.footer-column {:id id}
 
-          (when title [:h4 title])
-          ; (when img [util/merge-attr img])
-          (when text (for [line text] ^{:key (str id "-" line)}
-                          [:h5 line]))
+          (when logo
+            [:img.img-icon logo])
+          [:div
+           (when title [:h4 title])
+           (when text (for [line text] ^{:key (str id "-" line)}
+                        [:h5 line]))]
           (when links [:div.footer-icons
                        (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
                             [:a {:href href :name name}
                              [:i.fab {:class (str "fa-" icon)}]])])])]
-   (when @(rf/subscribe [:state [:at-bottom]])
-     [post-footer @(rf/subscribe [:content [:post-footer]])])])
+   [post-footer @(rf/subscribe [:content [:post-footer]])]])
 
 
 (defn to-top "A silly arrow, and twice lol. why." [icon]

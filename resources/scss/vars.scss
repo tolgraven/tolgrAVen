@@ -17,6 +17,7 @@
   --header-height-current:   var(--header-height); /* will then be changed by js dep on whether menu open... */
   --header-height-offset:    var(--header-height);
   --footer-height:           3.25rem; // 3.00rem; // measured...
+  --footer-height-full:      22.0rem; // 3.00rem; // measured...
   --footer-height-current:   var(--footer-height);
   --footer-bottom:           0rem;
   --link-offset:         calc( var(--header-height-current));

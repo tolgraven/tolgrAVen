@@ -3,7 +3,7 @@ footer {
   position: relative;
   /* padding-top: 0.5rem; */
   padding-bottom: env(safe-area-inset-bottom); /* handle iphone x+, no harm for rest. TODO also adjust top-shortcut */
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 
   border-left: var(--line-width) solid var(--line-color); /* connect bottom to main on left side */
 
@@ -11,11 +11,11 @@ footer {
   /* causes some silly ios behavior and might just deal with enough layers already... */
   /* position: sticky; */
   /* bottom: 0; */
-  height: var(--footer-height);
+  max-height: var(--footer-height);
   transition: all var(--header-expand-time) ease;
 
   &.hide {
-    height: calc(1 * var(--line-width));
+    max-height: calc(1 * var(--line-width));
     transition: all var(--header-expand-time) ease;
   }
 
@@ -51,6 +51,11 @@ footer {
   /* margin: 1rem 0.4rem; */
   margin: calc(0.5 * var(--space)) var(--space-sides);
 
+}
+
+img.img-icon {
+  margin: calc(0.5 * var(--space));
+  height: 2.25rem;
 }
 
 .post-footer-content {
@@ -93,7 +98,15 @@ footer {
 }
 
 .footer-column {
-  // flex: 1 0 auto;
+
+  &#footer-left {
+    display: flex;
+
+    .img-icon {
+      margin-top: 0;
+      border-radius: 50%;
+    }
+  }
 }
 .footer-icons {
   text-align: end;
