@@ -444,12 +444,12 @@
      [ui-fading :dir "bottom"]
      [ui-interlude (get-lewd)]
      
-     [chat/chat]
-     [github-commits]
-     [strava/strava ]
+     [strava/strava]
      [ui-soundcloud]
      [ui-insta @(rf/subscribe [:instagram/posts-urls 24])]
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
      ; [cv]
+     [github-commits]
+     [chat/chat]
      ]))
 
