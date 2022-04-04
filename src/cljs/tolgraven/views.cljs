@@ -71,22 +71,31 @@
 
 
 (defn ui-intro [{:keys [title text buttons logo-bg bg]}]
-  (let [title-sub @(rf/subscribe [:state [:text-effect :intro :text-out]])]
-    [:section#intro
+  (let [showing-title (r/atom 0)
+        curr-pos (atom 0.0)
+        showing-title-inter (anim/interpolate-to
+                             showing-title
+                             {:duration 4000
+                              :easing (fn [a b dur t]
+                                        (let [pos (reset! curr-pos
+                                                          (if (< 5 (rand-int 10))
+                                                            (/ t dur)
+                                                            @curr-pos)) ]
+                                          (+ (- 1.0 (js/Math.pow (- 1.0 (/ (* b pos) b))
+                                                              2)))))})]
+    (fn [{:keys [title text buttons logo-bg bg]}]
+     [:section#intro
      [bg-logo logo-bg]
      [:img#top-banner.media.media-as-bg (first bg)]
 
      [:h1.h-responsive
-      {:ref #(when (and % (not (pos? (count (seq title-sub)))))
-               (rf/dispatch [:text-effect-char-by-char/start
-                             [:state :text-effect :intro]
-                             title 150]))}
-      title-sub]
+      [anim/timeout #(reset! showing-title (count (seq title))) 500]
+      (take (int @showing-title-inter) title)]
      (into [:<>] (ln->br text)) ; or just fix :pre css lol
      [:br]
      [:div.buttons
       (for [[text id] buttons] ^{:key (str "intro-button-" id)}
-        [ui/button text id :link id :bg-div-class "blur-bg"])]]))
+        [ui/button text id :link id :bg-div-class "blur-bg"])]])))
 
 
 (defn ui-interlude "Banner across with some image or video or w/e
