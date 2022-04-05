@@ -89,9 +89,11 @@
      [bg-logo logo-bg]
      [:img#top-banner.media.media-as-bg (first bg)]
 
-     [:h1.h-responsive
+     [:div.h1-wrapper.center-content
+      [:h1.h-responsive.h-intro
       [anim/timeout #(reset! showing-title (count (seq title))) 500]
-      (take (int @showing-title-inter) title)]
+      (take (int @showing-title-inter) title)]]
+     
      (into [:<>] (ln->br text)) ; or just fix :pre css lol
      [:br]
      [:div.buttons

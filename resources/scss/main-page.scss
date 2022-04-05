@@ -21,6 +21,32 @@
   p {
     padding: 0 var(--space-lg);
   }
+  .h-intro {
+    position: relative;
+    display: inline;
+  }
+  
+  @keyframes grow-line {
+    0%   { width: 0% }
+    100% { width: 95%; }
+  }
+  @keyframes skew-line {
+    0%   { transform: skew(0deg); }
+    100% { transform: skew(-30deg); }
+  }
+  h1:after {
+    content: "";
+    height: 0.3em;
+    background: linear-gradient(to right, rgba(216, 187, 182, 0.63), var(--fg-2) 185%);
+    animation: grow-line 1.2s ease 3.5s,
+               skew-line 1.5s ease 5s;
+    animation-fill-mode: forwards;
+    position: absolute;
+    bottom: 1.25rem;
+    opacity: 50%;
+    left: 0.2em;
+    z-index: -1;
+  }
 }
 #moneyshot {
   border-top: var(--line-width) solid var(--line-color);
