@@ -26,25 +26,31 @@
 
 (defn swapper "Swap between outgoing and incoming page view"
   [class comp-in comp-out]
-  (let [swap @(rf/subscribe [:state [:swap]])]
+  (let [swap (rf/subscribe [:state [:swap]])
+        curr-page (-> (rf/subscribe [:common/route ]) deref :data :name)
+        prev-page (-> (rf/subscribe [:common/route :last]) deref :data :name)]
     [:div.swapper
      [:div.swap-in
       {:class (str class " "
                    (when (or (not comp-out)
-                             (not swap)
-                             (= (:running swap) comp-out))
-                     "swapped-in")) }
+                             (not @swap)
+                             (= (:running @swap) prev-page)
+                             (= (:finished @swap) prev-page))
+                     "swapped-in"))}
       comp-in] ;will have to be behind for z then revealed by curr page moving out the way.
      (when comp-out
        [:div.swapped
-        {:class (str (when (= (:running swap) comp-out)
+        {:class (str (when (= (:running @swap) prev-page)
                        class) " "
-                     (when (= (:running swap) comp-out)
+                     (when (= (:running @swap) prev-page)
                        "swapped-out") " "
-                     (when (or (= (:finished swap) comp-out)
-                               (not swap))
+                     (when (or (= (:finished @swap) prev-page)
+                               (not @swap))
                        "removed") " ")
-         :ref #(when % (rf/dispatch [:swap/trigger comp-out]))} ; trigger anim out and deferred hiding. triggers three(!) times each time but later no effect so.
+         :ref #(when (and %
+                          (not= prev-page (:running @swap))
+                          (not= prev-page (:finished @swap)))
+               (rf/dispatch [:swap/trigger prev-page]))} ; trigger anim out and deferred hiding. triggers three(!) times each time but later no effect so.
         comp-out])]))
 
 (defn page "Render active page inbetween header, footer and general stuff." []

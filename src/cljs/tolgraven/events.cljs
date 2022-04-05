@@ -97,7 +97,8 @@
 
 (rf/reg-event-fx :swap/finish
   (fn [{:keys [db]} [_ item]]
-    {:db (-> db (assoc-in [:state :swap :finished] item)) }))
+    {:db (-> db (assoc-in [:state :swap :finished] item)
+                (update-in [:state :swap] dissoc :running)) }))
 
 
 (rf/reg-event-fx :carousel/rotate
