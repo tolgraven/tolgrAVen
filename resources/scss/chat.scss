@@ -23,6 +23,7 @@
 .chat-message {
   position: relative;
   padding-bottom: 0.2em;
+  display: flex;
 
   > span {
     margin-right: 0.5em;
@@ -39,6 +40,8 @@
     position: relative;
     font-size: 80%;
     color: var(--fg-6);
+    flex: 0 0 auto;
+    align-self: center;
 
     .chat-message-time-exact {
       position: absolute;
@@ -50,14 +53,18 @@
     }
   }
   .chat-message-user {
-    position: absolute;
+    position: relative;
     right: 0;
     bottom: 0;
     font-size: 85%;
     color: var(--fg-4);
+    flex: 1 0 auto;
+    flex-direction: row-reverse;
+    align-self: center;
 
     .user-avatar {
       margin-left: 0.5em;
+      margin-right: 0.3em;
       width: 1.5em;
       height: 1.5em;
     }
