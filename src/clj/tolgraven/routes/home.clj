@@ -21,7 +21,11 @@
    {:middleware [middleware/wrap-csrf
                  middleware/wrap-formats]}
    ["/" {:get home-page}]
-   ["/docs" {:get (fn [_]
+   ["/blog*" {:get home-page}]
+   ["/log*" {:get home-page}]
+   ["/test*" {:get home-page}]
+   ["/docs*" {:get home-page}]
+   ["/api/docs" {:get (fn [_]
                     (-> "docs/docs.md" io/resource slurp
                         response/ok
                         plain-text-header))}]

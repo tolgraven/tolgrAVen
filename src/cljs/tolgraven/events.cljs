@@ -219,7 +219,7 @@
   (fn [{:keys [db]} _]
     {:dispatch-n
       [(when-not (-> db :content :docs :md) ; no re-request for this...
-         [:http/get {:uri             "/docs"
+         [:http/get {:uri             "/api/docs"
                       :response-format (ajax/raw-response-format)}
            [:content [:docs :md]]])
        ; [:->css-var! "line-width-vert" @(rf/subscribe [:get-css-var "line-width"])]
