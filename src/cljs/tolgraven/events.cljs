@@ -334,7 +334,12 @@
          footer-height @(rf/subscribe [:get-css-var "footer-height"])
          past-top? (>= position (+ (util/rem-to-px @(rf/subscribe [:get-css-var "header-height"]))     ; distance from top to main is header-height + space-top above/below,
                                    (* 2 (util/rem-to-px @(rf/subscribe [:get-css-var "space-top"]))))) ; + space-lg above main. but header + 2x space-top seems sufficient...
-         hidden? (get-in db [:state :hidden-header-footer])]
+         hidden? (get-in db [:state :hidden-header-footer])
+         at-bottom? (>= position
+                        (- (.-clientHeight js/document.body)
+                           (.-innerHeight js/window)
+                           250
+                           (util/rem-to-px @(rf/subscribe [:get-css-var "footer-height-full"]))))] ; will jump page so...
     {:dispatch-n [(if (or (and hidden?
                                (= direction :up))
                           at-bottom?)
@@ -363,7 +368,7 @@
                       "0rem"
                       @(rf/subscribe [:get-css-var "footer-height"])))]]
     :dispatch-later (when bottom?
-                      {:ms 50
+                      {:ms 350
                        :dispatch
                        [:scroll/by (js/parseFloat @(rf/subscribe [:get-css-var "footer-height-full"]))]})}))
 
@@ -395,29 +400,32 @@
                      (* 2 (util/rem-to-px @(rf/subscribe [:get-css-var "space-top"]))))
          callback (fn [e]
                     (let [new-pos (.-scrollY js/window)
-                          new-height (.-clientHeight js/document.body)
+                          new-height (.-clientHeight js/document.body) ; jumps between actual and ~double val causing jitter and badness...
                           new-direction (cond
                                          (> new-pos @scroll-pos) :down
                                          (< new-pos @scroll-pos) :up
                                          :else @last-direction)
-                          at-bottom? (>= (.-scrollY js/window) ; always emit event towards end of page
+                          at-bottom? (>= new-pos ; always emit event towards end of page
                                          (- new-height
                                             (.-innerHeight js/window)
-                                            200))]
-                        (when (not= @scroll-pos new-pos)
+                                            250))
+                          at-top? (<= @scroll-pos top-size)]
+                      (util/log :debug "pos" new-pos new-height new-direction at-bottom?)
+                        (when (and (not= @scroll-pos new-pos)
+                                   #_(= @page-height new-height)) ; avoid running up accum from massive page size jumps...
                           (reset! accum-in-direction (if (= new-direction @last-direction)
                                                        (+ @accum-in-direction (util/abs (- new-pos @scroll-pos)))
                                                        0 #_(util/abs (- new-pos @scroll-pos))))
                           (reset! last-direction new-direction)
                           (reset! scroll-pos new-pos)
                           (when (and (or at-bottom?
-                                         (<= @scroll-pos top-size)
+                                         at-top?
                                          (= @page-height new-height)) ; ensure "scroll" isn't due to content resizing
                                      (or at-bottom? ; time debounce unless at bottom
-                                         (<= @scroll-pos top-size)
+                                         at-top? ; at top
                                          (ct/after? (ct/minus (ct/now) (ct/millis 250)) @triggered-at))
                                      (or (<= 250 @accum-in-direction) ; bit of debounce
-                                         (<= @scroll-pos top-size)
+                                         at-top?
                                          (and at-bottom?
                                               (= new-direction :down)))) ; always post when at bottom, regardless of accum
                             (reset! accum-in-direction 0)
