@@ -4,6 +4,7 @@
    [re-frame.core :as rf]
    [clojure.string :as string]
    [cljsjs.react-player]
+   [reanimated.core :as anim]
    [tolgraven.ui :as ui]
    [tolgraven.strava.views :as strava]
    [tolgraven.chat.views :as chat]
