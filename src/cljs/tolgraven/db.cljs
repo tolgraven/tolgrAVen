@@ -146,7 +146,7 @@
 
              :footer [{:id "left"
                        :title "joen.tolgraven@gmail.com"
-                       :text ["© 2020-2022"]
+                       :text [(str "© 2020-" (.getFullYear (js/Date.)))]
                        :logo {:src "img/tolgrav-square.png" :alt "tolgrAVen logo"}}
                       {:id "right"
                        :links [{:name "Github" :href "https://github.com/tolgraven" :icon "github"}
