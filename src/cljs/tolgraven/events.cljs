@@ -39,19 +39,33 @@
   (fn [{:as cofx :keys [db scroll-position]} [_ match]]
     (let [old-match (:common/route db)
           new-match (assoc match :controllers
-                                 (rfc/apply-controllers (:controllers old-match) match))]
+                           (rfc/apply-controllers (:controllers old-match) match))]
+      (if-not (= (-> new-match :data :view)
+                 (-> old-match :data :view))
       {:db (-> db
                (assoc :common/route new-match)
                (assoc :common/route-last old-match)
-               (assoc-in [:state :error-page] nil) ; reset 404 page in case was triggered
-               ; (assoc-in [:state :swap] nil)  ; reset for new swap (:db not event cause want it instant)
+               (update-in [:state] dissoc :error-page) ; reset 404 page in case was triggered
+               ; (update-in [:state] dissoc :swap)  ; cant reset swap since in middle of running...
+               (update-in [:state :exception] dissoc :page)
+               ; (assoc-in [:exception [:page] nil]) ; reset exception state since using same error boundary for all pages
                (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
-       :dispatch-n [[:exception [:page] nil] ; reset exception state since using same error boundary for all pages
-                    [:scroll/on-navigate (-> new-match :path)]]
+        :dispatch-later
+        {:ms 150
+         :dispatch [:scroll/on-navigate (:path new-match)]}
        :document/set-title (str (get-in db [:content :title] "tolgrAVen") " - "
                                 (-> new-match :data :name ;TODO want further info in title, like blog post title...
                                     name string/capitalize) " "
-                                (-> new-match :parameters :path vals first))})))
+                                (-> new-match :parameters :path vals first))}
+      (let [fragment (-> db :state :fragment)] ;; matches are equal (fragment not part of match)
+        (if (pos? (count (seq fragment))) 
+          {:db (update-in db [:state] dissoc :fragment)
+           :dispatch-n [[:scroll/to "linktotop"] ]
+
+           :dispatch-later {:ms 150 ; obv too much. but maybe scroll issues partly from swapper bs?
+                            :dispatch [:scroll/to fragment]}}
+          #_{:dispatch-later {:ms 500 ; trying to avoid duplicates but went haywire...
+                            :dispatch [:history/pop]}}))))))
 
 
 (rf/reg-fx :common/navigate-fx!
@@ -64,20 +78,28 @@
 
 (rf/reg-event-fx :history/popped
   (fn [{:keys [db]} [_ e]]
-    (let [our-action? (get-in db [:state :browser-nav :is-manual-popping])]
-      (if-not our-action?  ; bona fide back (or fwd??) event! ; set a flag affecting next common/navigate event
+    ; (js/console.log (.-isNavigation e))
+    (let [nav-action? true  #_(.-isNavigation e)] ; by fact we getting the event heh
+      (if nav-action?  ; bona fide back (or fwd??) event! ; set a flag affecting next common/navigate event
         {:db (assoc-in db [:state :browser-nav :got-nav] true)}))))
 
+(rf/reg-event-fx :history/pop!
+  (fn [{:keys [db]} [_ _]]
+    (.back js/window.history)))
+
 (rf/reg-event-fx :scroll/on-navigate ; TODO detect fresh/reload and treat it as browser nav so dont lose position on page...
-  (fn [{:keys [db]} [_ path]]
+  (fn [{:keys [db]} [_ path]]        ; TODO !! on iphone (also mac safari?) cancel transition on browser nav! fugly
     (let [browser-nav? (get-in db [:state :browser-nav :got-nav])
           saved-pos (get-in db [:state :scroll-position path])]
-      {:db (update-in db [:state :browser-nav] dissoc :got-nav) ;clear any browser nav flag since we consume it
-       :dispatch-later {:ms 200 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
-                        :dispatch (if browser-nav?
-                                    (when saved-pos
-                                      [:scroll/px saved-pos])
-                                    [:scroll/to-top-and-arm-restore path])} })))
+      {;:db (update-in db [:state :browser-nav] dissoc :got-nav) ;clear any browser nav flag since we consume it
+       :dispatch (if browser-nav? ; used back/fwd, since clicking a link should equal there or top...
+                   (if saved-pos
+                     [:scroll/px saved-pos] ; shouldnt be in relation to current/old pos tho?
+                   [:scroll/to-top-and-arm-restore path]) ; guess should check for frag, query etc tho
+                   [:scroll/to-top-and-arm-restore path])
+       :dispatch-later {:ms 300 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
+                        :dispatch [:state [:browser-nav :got-nav] false]} })))
+
 
 (rf/reg-event-fx :scroll/to-top-and-arm-restore ; when follow links etc want to get to top of new page. but if have visited page earlier, offer to restore latest view pos. ACE!!!
   (fn [{:keys [db]} [_ path saved-pos]]

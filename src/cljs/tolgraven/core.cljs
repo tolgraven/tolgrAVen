@@ -28,11 +28,13 @@
   [class comp-in comp-out]
   (let [swap (rf/subscribe [:state [:swap]])
         curr-page (-> (rf/subscribe [:common/route ]) deref :data :name)
-        prev-page (-> (rf/subscribe [:common/route :last]) deref :data :name)]
+        prev-page (-> (rf/subscribe [:common/route :last]) deref :data :name)
+        force? (empty? (seq class))] ; no transition
     [:div.swapper
      [:div.swap-in
       {:class (str class " "
-                   (when (or (not comp-out)
+                   (when (or force?
+                             (not comp-out)
                              (not @swap)
                              (= (:running @swap) prev-page)
                              (= (:finished @swap) prev-page))
@@ -45,7 +47,8 @@
                      (when (= (:running @swap) prev-page)
                        "swapped-out") " "
                      (when (or (= (:finished @swap) prev-page)
-                               (not @swap))
+                               (not @swap)
+                               force?)
                        "removed") " ")
          :ref #(when (and %
                           (not= prev-page (:running @swap))
@@ -68,8 +71,9 @@
        (let [page-prev @(rf/subscribe [:common/page :last])
              anim-class (cond
                          (= (get-in @(rf/subscribe [:common/route]) [:data :name])
-                            (get-in @(rf/subscribe [:common/route true]) [:data :name])) "" ; or :last not true?
-                         (= js/window.performance.navigation.type 2) ""
+                            (get-in @(rf/subscribe [:common/route :last]) [:data :name])) ""
+                         (= js/window.performance.navigation.type 2) "" ;doesnt ever hit 2, i guess because we hijackin?
+                         @(rf/subscribe [:state [:browser-nav :got-nav]]) ""
                          :else "opacity")] ; should be dep on, nav same as last no anim, nav by history no anim...
          [:main.main-content.perspective-top
           [swapper anim-class
