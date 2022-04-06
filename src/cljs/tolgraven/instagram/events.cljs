@@ -50,7 +50,7 @@
     (let [new-ids (into (sorted-set) (map :id (:data data)))
           old-ids (into (sorted-set) (get-in db [:instagram :ids :ids]))
           match? (= new-ids old-ids)]
-      (when-not false ;match?
+      (when-not match?
        {:db (-> db (assoc-in [:instagram :ids :ids] new-ids)
                    (assoc-in [:instagram :data] (get-in data [:paging])))
         :dispatch-n [[:store-> [:instagram :ids] {:ids new-ids}]
