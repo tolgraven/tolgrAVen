@@ -37,20 +37,20 @@
             :log "log"}
    :content {:header {:text ["tolgrAVen" ["audio" "visual"]]
                       :text-personal ["tolgraven" ["" "joen"]]
-                      :menu {:work  [["Services"  "#link-services" :services] ; should have two sections either by collapse
-                                     ["Story"     "#about"        :about]         ; or just opp sides with the /
-                                     ["Tools"     "#tools"        :tools]
-                                     ["Portfolio" "#portfolio"    :portfolio]]
-                             :personal [["Blog"      "#/blog"     :blog]
-                                        ["Docs"      "#/docs"     :docs]
-                                        ["Test"      "#/test"     :docs]
-                                        ["Log"       "#/log"      :log]]} }
+                      :menu {:work  [["Services"  "#section-services" :services] ; should have two sections either by collapse
+                                     ["Story"     "#about"         :about]         ; or just opp sides with the /
+                                     ["Hire me"   "#hire"          :hire]
+                                     ["CV"        "cv"            :cv]]
+                             :personal [["Blog"      "/blog"     :blog]
+                                        ["Docs"      "/docs"     :docs]
+                                        ["Test"      "/test"     :docs]
+                                        ["Log"       "/log"      :log]]} }
              :intro {:title "Building experiences"
                      :text "Is what it all comes down to.
                             So many roads, yet I'm determined to track most of them halfway down.
                             There's only one way to find out."
-                     :buttons  [["Join me"            "#should-open-user-panel"]
-                                ["Read my thoughts"   "#/blog"]]
+                     :buttons  [["Join me"            "?userBox=true"]
+                                ["Read my thoughts"   "/blog"]]
                      :bg [{:src "img/foggy-shit-small.jpg" :alt "Purple enthusiast"}
                           {:src "img/live-session-small.jpg" :alt "Ableton Live"}
                           {:src "img/afterglow-new-web-old-small.jpg" :alt "My actual first web project"}]

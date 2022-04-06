@@ -198,15 +198,29 @@
      {:data {:controllers [{:start (util/log :debug "start" "root-controller")
                             :stop  (util/log :debug "stop" "root controller")}]}}]))
 
-(defn on-nav [match _]
-  (util/log :debug "Match:" match)
+(defn on-nav [match history]
+  ; (js/console.log match)
   (if match ; cant do fallback route in router apparently, but we get nil matches so can use that
     (rf/dispatch [:common/navigate match])
-    (rf/dispatch [:state [:error-page] not-found-page])))
+    (if true #_(util/elem-by-id )
+      (do
+       (rf/dispatch [:diag/new :error "404" (str "Not found")])
+       ; (rf/dispatch [:common/navigate! :not-found]) ;TODO should provide some context. sought url etc. also shan't redirect dammit
+       (rf/dispatch [:state [:error-page] not-found-page])))))
+
+(defn ignore-anchor-click?
+  [router e el uri]
+  ; (js/console.log (.-fragment_ uri))
+  (rf/dispatch-sync [:state [:fragment] (.-fragment_ uri)])
+  (and #_:identical-uri ; cause pollutes history with duplicates
+       #_:fragments-at-other-base-paths
+       (rfh/ignore-anchor-click? router e el uri)))
 
 (def router-settings
-  {:use-fragment true ;doesnt do nuffin without (tho still takes over) so dunno point?
-   :ignore-anchor-click? rfh/ignore-anchor-click?})
+  {:use-fragment false ;doesnt do nuffin without (tho still takes over) so dunno point?
+   :ignore-anchor-click?  ignore-anchor-click?
+  })
+
 
 (defn start-router! []
   (rfe/start! router on-nav router-settings))
