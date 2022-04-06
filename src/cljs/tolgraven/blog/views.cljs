@@ -2,6 +2,7 @@
   (:require
    [reagent.core :as r]
    [re-frame.core :as rf]
+   [reitit.frontend.easy :as rfe]
    [clojure.string :as string]
    [tolgraven.util :as util :refer [at]]
    [tolgraven.views-common :as common]
