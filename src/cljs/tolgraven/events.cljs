@@ -408,7 +408,6 @@
                                             (.-innerHeight js/window)
                                             250))
                           at-top? (<= @scroll-pos top-size)]
-                      (util/log :debug "pos" new-pos new-height new-direction at-bottom?)
                         (when (and (not= @scroll-pos new-pos)
                                    #_(= @page-height new-height)) ; avoid running up accum from massive page size jumps...
                           (reset! accum-in-direction (if (= new-direction @last-direction)
