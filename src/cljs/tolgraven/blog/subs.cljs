@@ -30,6 +30,17 @@
  (fn [page [_ _]]
    (or page 0)))
 
+(rf/reg-sub :blog/page-index-for-nav-action
+ :<- [:blog/nav-page]
+ :<- [:blog/posts-per-page]
+ :<- [:blog/count]
+ (fn [[curr-idx posts-per-page total] [_ action]]
+   (case action
+     :prev (when-not (= 0 curr-idx)
+             (inc (dec curr-idx)))
+     :next (when-not (<= total (* posts-per-page (inc curr-idx)))
+                  (inc (inc curr-idx))))))
+
 (rf/reg-sub :blog/count
  :<- [:blog [:posts]]
  (fn [posts [_ _]]

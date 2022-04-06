@@ -51,13 +51,13 @@
    (let [nr (case nav
               :prev (dec (inc db)) :next (inc (inc db)) ;just to clarify we're matching the offset version..
               nav)]
-     {:dispatch [:common/navigate! :blog-page {:nr nr}]}))) ;not very clean but would get messy otherwise..
+     {:dispatch [:blog/nav-page nr]}))) ;not very clean but would get messy otherwise..
 
 (rf/reg-event-fx :blog/nav-page ; TODO should also (deferred) fetch content for next/prev/last and any by id directly clickable pages
   [(path [:state :blog :page])]
  (fn [{:keys [db]} [_ nr]]
-   {:db (dec (js/parseInt nr))
-    :dispatch [:scroll/to "linktotop"]}))
+   {:db (dec (js/parseInt nr))})) ;problem tho, shouldn't try when back-nav etc...
+
 
 (rf/reg-event-fx :blog/fetch-navigatable-pages
                  [(path [:state :blog :navigatable-pages])]

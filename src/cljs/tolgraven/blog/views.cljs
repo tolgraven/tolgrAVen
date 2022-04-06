@@ -326,17 +326,17 @@
 (defn blog-nav "Blog navigation buttons"
   [total-posts current-idx posts-per-page]
   (let [nav-btn (fn [nav label & [attrs]]
-                  [:button.blog-btn.blog-nav-btn.topborder
-                   (merge {:on-click (fn [_] (rf/dispatch [:blog/nav-action nav]))}
-                          attrs)
-                   label])
+                  [:a {:href (rfe/href :blog-page {:nr nav})}
+                   [:button.blog-btn.blog-nav-btn.topborder
+                    attrs
+                    label]])
         nav-idxs (doall (for [i (range 1 (inc (/ total-posts posts-per-page)))] ^{:key (str "blog-nav-btn-" i)}
                           [nav-btn i i (when (= i (inc current-idx))
                                          {:class "current"})]))
-        back-btn (when-not (= 0 current-idx)
-                   [nav-btn :prev [:i.fa.fa-chevron-left]])
-        fwd-btn (when-not (<= total-posts (* posts-per-page (inc current-idx)))
-                  [nav-btn :next [:i.fa.fa-chevron-right]])]
+        back-btn (when-let [idx @(rf/subscribe [:blog/page-index-for-nav-action :prev])]
+                   [nav-btn idx [:i.fa.fa-chevron-left]])
+        fwd-btn (when-let [idx @(rf/subscribe [:blog/page-index-for-nav-action :next])]
+                  [nav-btn idx [:i.fa.fa-chevron-right]])]
     [:div.blog-nav.center-content
       back-btn nav-idxs fwd-btn]))
 
@@ -363,10 +363,12 @@
     (when (some #{(:id @(rf/subscribe [:user/active-user]))}
                 (:bloggers @(rf/subscribe [:<-store :auth :roles])))
       [:button.noborder [:a {:href "#/post-blog"} [:i.fa.fa-feather-alt]] ])
-    [:button.blog-btn.noborder {:on-click #(rf/dispatch [:common/navigate! :blog])}
-     "Home"]
-    [:button.blog-btn.noborder {:on-click #(rf/dispatch [:common/navigate! :blog-archive])}
-     "Archive"]]
+    [:a {:href (rfe/href :blog)}
+     [:button.blog-btn.noborder
+     "Home"]]
+    [:a {:href (rfe/href :blog-archive)}
+     [:button.blog-btn.noborder
+     "Archive"]]]
    [:div.blog-powered-by.center-content
     [:p "Proudly powered by "
     [:a {:href "https://github.com/tolgraven/tolgraven"} "tolgrAVen"]

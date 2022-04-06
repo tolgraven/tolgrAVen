@@ -40,8 +40,10 @@
     (let [old-match (:common/route db)
           new-match (assoc match :controllers
                            (rfc/apply-controllers (:controllers old-match) match))]
-      (if-not (= (-> new-match :data :view)
-                 (-> old-match :data :view))
+      (if-not (and (= (-> new-match :data :view)
+                      (-> old-match :data :view))
+                   (= (-> new-match :path-params)
+                      (-> old-match :path-params)))
       {:db (-> db
                (assoc :common/route new-match)
                (assoc :common/route-last old-match)
@@ -60,12 +62,8 @@
       (let [fragment (-> db :state :fragment)] ;; matches are equal (fragment not part of match)
         (if (pos? (count (seq fragment))) 
           {:db (update-in db [:state] dissoc :fragment)
-           :dispatch-n [[:scroll/to "linktotop"] ]
-
            :dispatch-later {:ms 150 ; obv too much. but maybe scroll issues partly from swapper bs?
-                            :dispatch [:scroll/to fragment]}}
-          #_{:dispatch-later {:ms 500 ; trying to avoid duplicates but went haywire...
-                            :dispatch [:history/pop]}}))))))
+                            :dispatch [:scroll/to fragment]}}))))))
 
 
 (rf/reg-fx :common/navigate-fx!

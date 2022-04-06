@@ -164,7 +164,7 @@
         :controllers
         [{:parameters {:path [:nr]}
           :start (fn [{:keys [path]}]
-                   (rf/dispatch [:blog/nav-page (:nr path)]))
+                   (rf/dispatch [:blog/nav-action (:nr path)]))
           :stop (fn [{:keys [path]}])}]}]
       ["/post/:permalink"
        {:name :blog-post
