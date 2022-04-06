@@ -142,13 +142,20 @@
 (def router ; XXX weird thing doesnt automatically scroll to top when change page...
   (reitit/router
     ["/"
+     {:controllers [{:parameters {:query [:userBox]} ; ok so this how done. but surely will get unwieldy af?
+                     :start (fn [{:keys [query]}]    ; and how get to update url with changes...
+                              (util/log "start / controller" )
+                              (case (:userBox query) ; was thinking "have :user/open-ui passing true/false and no case but would be spammy"
+                               "true" (rf/dispatch [:user/open-ui])
+                               ("false" nil) (rf/dispatch [:user/close-ui]))) ; well this being on start it wouldn't be open anyways
+                     :stop (fn [{:keys [query]}]    ; why is this being run without leaving page?
+                             (util/log "stop / controller"))}]}
      [""
       {:name        :home
        :view        #'view/ui
-       :controllers [{:start (fn [_]
-                               (rf/dispatch [:page/init-home]))
-                      :stop (fn [_]
-                              (rf/dispatch [:state [:is-personal] true]))}]}]
+       :controllers [{:start (fn [{:keys [path]}]
+                               (rf/dispatch [:state [:is-personal] false])
+                               (rf/dispatch [:page/init-home]))}]}]
      ["docs" {:name :docs
                :view #'doc-page
                :controllers [{:start (fn [_] (doall (map rf/dispatch [[:page/init-docs]
