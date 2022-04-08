@@ -6,6 +6,8 @@
             [cljsjs.codemirror :as codemirror]
             [cljsjs.codemirror.keymap.vim]
             [cljsjs.codemirror.mode.markdown]
+            [cljsjs.react-leaflet]
+            [cljsjs.leaflet]
             [react-transition-group :as rtg]))
 
 ; (def css-trans-group (r/adapt-react-class rtg/CSSTransitionGroup))
@@ -35,7 +37,7 @@
       
       [:div.elem-group
         (doall (for [el @elems] ^{:key el}
-          [ui/appear (keyword (str "el-" el)) "opacity" [:div el]]))]
+          [ui/appear-anon "opacity" [:div el]]))]
 
       [:button {:on-click #(rf/dispatch [:conj [:state :elems]
                                                (inc (first @elems))])}
@@ -76,33 +78,33 @@
   :on-cm-init (fn [cm] -> nil)
     called with the CodeMirror instance, for whatever extra fiddling you want to do."
   [& {:keys [style js-cm-opts on-cm-init]}]
-  (let [cm (atom nil)
-        model (atom "")]
+  (let [cm (r/atom nil)
+        model (r/atom "")]
     (r/create-class
      {:component-did-mount
       (fn [this]
-
-        ; (let [inst (js/CodeMirror. ; or codemirror/CodeMirror.?
-        ;             (r/dom-node this)
-        ;             (clj->js
-        ;              (merge
-        ;               {:lineNumbers true
-        ;                :viewportMargin js/Infinity
-        ;                :matchBrackets true
-        ;                :autofocus true
-        ;                :value @model
-        ;                :autoCloseBrackets true
-        ;                :mode "markdown"}
-        ;               js-cm-opts)))]
-        ;   (reset! cm inst)
-        ;   (.on inst "change"
-        ;        (fn []
-        ;          (let [value (.getValue inst)]
-        ;            (when-not (= value @model)
-        ;              (reset! model value)))))
-        ;   (when on-cm-init
-        ;     (on-cm-init inst))
-        ;   #_(rdom/render inst (r/dom-node this)))
+        (let [inst (js/CodeMirror. ; or codemirror/CodeMirror.?
+                    (r/dom-node this)
+                    (clj->js
+                     (merge
+                      {:lineNumbers true
+                       :viewportMargin js/Infinity
+                       :matchBrackets true
+                       :autofocus true
+                       :value @model
+                       :autoCloseBrackets true
+                       :mode "markdown"}
+                      js-cm-opts)))]
+          (reset! cm inst)
+          (.on inst "change"
+               (fn []
+                 (let [value (.getValue inst)]
+                   (when-not (= value @model)
+                     (reset! model value)))))
+          (when on-cm-init
+            (on-cm-init inst))
+          ; (rdom/render inst (r/dom-node this))
+          )
         )
 
       :component-did-update
@@ -116,11 +118,31 @@
 
       :reagent-render
       (fn [_ _ _]
-        @model ;how does deref to force render work when reg atom? trigs did-update?
-        [:<> [:div {:style style} "fart"]
-         ; [:p @model]
-         ])}))) ; how is inst injected here lol?inst injected here lol?
-        ; [@cm]
-        ; [:div {:style style}])}))) ; how is inst injected here lol?inst injected here lol?
+        [:textarea]
+        ; @model ;how does deref to force render work when reg atom? trigs did-update?
+        ; [:<> [:div {:style style} "fart"]
+        ;  ; [:p @model]
+        ;  ])}))) ; how is inst injected here lol?inst injected here lol?
+        ; (if @cm
+        ;   [:div (js->clj @cm)]
+        ;   [:div "Some bullshit"])
+        )}))) ; how is inst injected here lol?inst injected here lol?
+
+(defn leaflet []
+ [:section.leaflet-test
+  [:div.covering-2
+   {:style {:background "black"
+            :z-index 50
+            :width "100%"
+            :height "30em"}}
+   [:> js/ReactLeaflet.MapContainer
+    {:center [59.272861 18.067398]
+     :zoom 13}
+
+    [:> js/ReactLeaflet.TileLayer
+     {:attribution "&copy; contributors"
+      :url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"}] ]]])
+
+
 
 

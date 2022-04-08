@@ -97,15 +97,17 @@
 
 (defn test-page []
   [with-heading [:common :banner-heading]
-   (let [routes {:parallax experiment/parallax :codemirror experiment/code-mirror :broken [:div]}
+   (let [routes {:parallax experiment/parallax
+                 :codemirror experiment/code-mirror
+                 :leaflet experiment/leaflet
+                 :broken [:div]}
           tab @(rf/subscribe [:state [:experiments]])]
      [:section.experiments.solid-bg.fullwide.noborder
       [:ul.tabs-container.flex
-       (for [tab-key [:parallax :codemirror :broken]] ^{:key tab-key}
-         [:li [:button {:class (if (= tab tab-key) "bottomborder" "topborder")
-                        ; :on-click #(rf/dispatch [:state [:experiments] tab-key])}
-                        :on-click #(rf/dispatch [:common/navigate! :test-tab {:tab tab-key}])}
-               tab-key]])]
+       (for [tab-key (keys routes)] ^{:key tab-key}
+         [:li [:a {:href (rfe/href :test-tab {:tab tab-key})}
+               [:button {:class (if (= tab tab-key) "bottomborder" "topborder")}
+               tab-key]]])]
       [ui/safe :experiments [(tab routes)]]])
     {:title "Experiments" :tint "green"}])
 
