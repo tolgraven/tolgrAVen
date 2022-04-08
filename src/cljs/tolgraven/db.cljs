@@ -121,6 +121,11 @@
                                 ["2007–2009" "Industriell Ekonomi, Royal Institute of Technology"]
                                 ["2004–2007" "Natural Science program, mathematics and computer science, Kärrtorps gymnasium" ]]
                                }}]
+             :soundcloud {:url "https://soundcloud.com/"
+                          :artist "tolgraven"
+                          :tunes ["pop-music-for-cool-people-sketch-1-session-1"
+                                  "stateless-nearing-completion-messy-mix"
+                                  "a-taste-of-what-i-will-sound-like-live"]}
 
              :article-links [{:title "A link thingy"    ;fix autograbber!
                               :text "maybe line or two" ;fix autograbber!

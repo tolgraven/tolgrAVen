@@ -410,15 +410,10 @@
 
 (defn ui-soundcloud "Soundcloud feed, plus selected tunes. Bonus if can do anything fun with it"
   []
-  (let [base-url "https://soundcloud.com/tolgraven/"
-        artist "tolgraven"
-        tunes ["pop-music-for-cool-people-sketch-1-session-1"
-               "stateless-nearing-completion-messy-mix"
-               "a-taste-of-what-i-will-sound-like-live"]]
+  (let [{:keys [url artist tunes]} @(rf/subscribe [:content [:soundcloud]]) ]
     [:section.soundcloud.fullwide.covering-3
      [:div.soundcloud-players
-      (for [tune tunes
-            :let [url (str base-url tune)]]
+      (for [tune tunes] ^{:key (str "soundcloud-player-" tune)}
         [soundcloud-player artist tune])]]))
 
 (defn github-commits "List Github commits for this repo"
