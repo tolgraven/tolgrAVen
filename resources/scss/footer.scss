@@ -48,8 +48,7 @@ footer {
   justify-content: space-between;
   flex-flow: row wrap;
 
-  /* margin: 1rem 0.4rem; */
-  margin: calc(0.5 * var(--space)) var(--space-sides);
+  margin: calc(0.5 * var(--space)) var(--space);
 
 }
 
