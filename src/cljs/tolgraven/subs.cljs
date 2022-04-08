@@ -10,6 +10,8 @@
             [clojure.edn :as edn]
             [clojure.walk :as walk]
             [clojure.string :as string]
+            [reitit.frontend.easy :as rfe]
+            [cljs-time.coerce :as ctc]
             [cljs-time.core :as ct]))
 
 (rf/reg-sub :get ;should this be discontinued? or only used transiently like migrate everything away once got a comp working?
@@ -161,3 +163,25 @@
  :<- [:state [:browser-nav]]
  (fn [nav]
    (:got-nav nav)))
+
+(rf/reg-sub :href-add-query ;  "Append query to href of current page, or passed k/params"
+ :<- [:common/page-id]           
+ :<- [:common/route]           
+ (fn [[k route] [_ query-map]]
+   (let [params (:path-params route)
+         query (merge (:query-params route) query-map)]
+    (rfe/href k params query))))
+
+
+(rf/reg-sub :href
+ :<- [:common/page-id]           
+ :<- [:common/route]           
+ (fn [[page-id route] [_ k & [params query]]] ;"Like rfe/href, but preserves existing query"
+  (let [path (if (keyword? k)
+               k
+               page-id)
+        query (merge (:query-params route) query)
+        uri (rfe/href path params query)]
+    (if (keyword? k)
+      uri
+      (string/replace-first uri #"/(\w.*)(\?.*)?" (str "/" "$1" k "$2"))))))

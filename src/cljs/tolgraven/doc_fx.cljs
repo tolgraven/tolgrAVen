@@ -65,11 +65,14 @@
    (util/scroll-by value in-elem-id)))
 
 (rf/reg-event-fx :scroll/to
- (fn [_ [_ id & [offset]]]
-   {:scroll/to [id offset]}))
+ (fn [_ [_ id delay-ms]]
+   (if delay-ms
+     {:dispatch-later {:ms delay-ms
+                       :dispatch [:scroll/to id]}}
+     {:scroll/to id})))
 (rf/reg-fx :scroll/to
- (fn [[id offset]]
-   (util/scroll-to id offset)))
+ (fn [id]
+   (util/scroll-to id)))
 
 (rf/reg-event-fx :scroll/px
  (fn [_ [_ px]]

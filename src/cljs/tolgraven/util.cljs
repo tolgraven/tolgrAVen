@@ -325,10 +325,3 @@
         (set! (.-width canvas) w)
         (set! (.-height canvas) h)))))
 
-(defn href-add-query "Append query to href of current page, or passed k/params"
-  [query-map]
-  (let [k @(rf/subscribe [:common/page-id])
-        params (:path-params @(rf/subscribe [:common/route]))
-        curr-query (:query-params @(rf/subscribe [:common/route]))
-        query (merge curr-query query-map)]
-    (rfe/href k params query)))

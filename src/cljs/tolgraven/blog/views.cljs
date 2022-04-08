@@ -255,7 +255,7 @@
               [:span tag]))]))
 
 (defn make-link [path]
-  (rfe/href :blog-post {:permalink path}))
+  @(rf/subscribe [:href {:permalink path}]))
 
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text permalink comments] :as blog-post}]
@@ -328,7 +328,7 @@
 (defn blog-nav "Blog navigation buttons"
   [total-posts current-idx posts-per-page]
   (let [nav-btn (fn [nav label & [attrs]]
-                  [:a {:href (rfe/href :blog-page {:nr nav})}
+                  [:a {:href @(rf/subscribe [:href :blog-page {:nr nav}])}
                    [:button.blog-btn.blog-nav-btn.topborder
                     attrs
                     label]])
@@ -364,11 +364,12 @@
    [:div.flex.center-content
     (when (some #{(:id @(rf/subscribe [:user/active-user]))}
                 (:bloggers @(rf/subscribe [:<-store :auth :roles])))
-      [:button.noborder [:a {:href "#/post-blog"} [:i.fa.fa-feather-alt]] ])
-    [:a {:href (rfe/href :blog)}
+      [:a {:href @(rf/subscribe [:href :post-blog])}
+       [:button.noborder [:i.fa.fa-feather-alt]]])
+    [:a {:href @(rf/subscribe [:href :blog])}
      [:button.blog-btn.noborder
      "Home"]]
-    [:a {:href (rfe/href :blog-archive)}
+    [:a {:href @(rf/subscribe [:href :blog-archive])}
      [:button.blog-btn.noborder
      "Archive"]]]
    [:div.blog-powered-by.center-content

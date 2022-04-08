@@ -76,6 +76,7 @@
                          @(rf/subscribe [:state [:browser-nav :got-nav]]) ""
                          :else "opacity")] ; should be dep on, nav same as last no anim, nav by history no anim...
          [:main.main-content.perspective-top
+          {:id "main"}
           [swapper anim-class
            [ui/safe :page [page]]
            (when page-prev
@@ -85,7 +86,7 @@
    [common/footer @(rf/subscribe [:content [:footer]])]
    [ui/safe :hud [ui/hud (rf/subscribe [:hud])]]
    [common/to-top]
-   [:a {:name "bottom"}]])
+   [:a {:name "bottom" :id "bottom"}]])
 
 
 (defn with-heading
@@ -105,7 +106,7 @@
      [:section.experiments.solid-bg.fullwide.noborder
       [:ul.tabs-container.flex
        (for [tab-key (keys routes)] ^{:key tab-key}
-         [:li [:a {:href (rfe/href :test-tab {:tab tab-key})}
+         [:li [:a {:href @(rf/subscribe [:href :test-tab {:tab tab-key}])}
                [:button {:class (if (= tab tab-key) "bottomborder" "topborder")}
                tab-key]]])]
       [ui/safe :experiments [(tab routes)]]])
@@ -158,6 +159,27 @@
        :controllers [{:start (fn [{:keys [path]}]
                                (rf/dispatch [:state [:is-personal] false])
                                (rf/dispatch [:page/init-home]))}]}]
+     ["about"
+      {:name        :about
+       :view        #'view/ui
+       :controllers [{:start (fn [_]
+                               (rf/dispatch [:scroll/to "about" 700]))}]}]
+     ["services"
+      {:name        :services
+       :view        #'view/ui
+       :controllers [{:start (fn [_]
+                               (rf/dispatch [:scroll/to "main" 700]) ; hack because stickied so "already there"...
+                               (rf/dispatch [:scroll/to "section-services" 1300]))}]}]
+     ["cv"
+      {:name        :cv
+       :view        #'view/ui
+       :controllers [{:start (fn [_]
+                               (rf/dispatch [:scroll/to "cv" 700]))}]}]
+     ["hire"
+      {:name        :hire
+       :view        #'view/ui
+       :controllers [{:start (fn [_]
+                               (rf/dispatch [:scroll/to "bottom" 700]))}]}]
      ["docs" {:name :docs
                :view #'doc-page
                :controllers [{:start (fn [_] (doall (map rf/dispatch [[:page/init-docs]

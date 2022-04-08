@@ -58,11 +58,13 @@ li {
 a {
   color: var(--fg-2);
   text-decoration: none;
-  
-  &:focus, &:hover, &:active {
-    transform: scale(1.10);
-    // filter: brightness(125%);
-            // drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1)); // causing weird jumping
+
+  div {
+    &:focus, &:hover, &:active {
+      transform: scale(1.10); // causing weird jumping
+      filter: brightness(125%) 
+              drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1)); // causing weird jumping
+    }
   }
 }
 

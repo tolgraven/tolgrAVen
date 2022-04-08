@@ -37,13 +37,13 @@
             :log "log"}
    :content {:header {:text ["tolgrAVen" ["audio" "visual"]]
                       :text-personal ["tolgraven" ["" "joen"]]
-                      :menu {:work  [["Services"  "#section-services" :services] ; should have two sections either by collapse
-                                     ["Story"     "#about"         :about]         ; or just opp sides with the /
-                                     ["Hire me"   "#hire"          :hire]
+                      :menu {:work  [["Services"  "services"  :services] ; should have two sections either by collapse
+                                     ["Story"     "about"        :about]         ; or just opp sides with the /
+                                     ["Hire me"   "hire"         :hire]
                                      ["CV"        "cv"            :cv]]
                              :personal [["Blog"      "/blog"     :blog]
                                         ["Docs"      "/docs"     :docs]
-                                        ["Test"      "/test"     :docs]
+                                        ["Test"      "/test"     :test]
                                         ["Log"       "/log"      :log]]} }
              :intro {:title "Building experiences"
                      :text "Is what it all comes down to.

@@ -45,7 +45,9 @@
                    (= (-> new-match :path-params)
                       (-> old-match :path-params))
                    (= (-> new-match :query-params)
-                      (-> old-match :query-params)))
+                      (-> old-match :query-params))
+                   (= (-> new-match :path)
+                      (-> old-match :path)))
       (merge
        {:db (-> db
                (assoc :common/route new-match)
@@ -58,8 +60,10 @@
                                 (-> new-match :data :name ;TODO want further info in title, like blog post title...
                                     name string/capitalize) " "
                                 (-> new-match :parameters :path vals first))}
-      (when (= (:query-params new-match)
-               (:query-params old-match))
+       (when (and (= (:query-params new-match)
+                     (:query-params old-match))
+                  (= (:path new-match)
+                     (:path old-match)))
         {:dispatch-later
          {:ms 150
           :dispatch [:scroll/on-navigate (:path new-match)]}}))
@@ -100,7 +104,7 @@
                    [:scroll/to-top-and-arm-restore path]) ; guess should check for frag, query etc tho
                    [:scroll/to-top-and-arm-restore path])
        :dispatch-later {:ms 300 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
-                        :dispatch [:state [:browser-nav :got-nav] false]} })))
+                        :dispatch [:state [:browser-nav :got-nav] false]} }))) ; waiting because checks in main-page
 
 
 (rf/reg-event-fx :scroll/to-top-and-arm-restore ; when follow links etc want to get to top of new page. but if have visited page earlier, offer to restore latest view pos. ACE!!!

@@ -10,8 +10,8 @@
    [tolgraven.util :as util :refer [at]]))
 
 (defn user-btn [model]
-  [:a {:href (util/href-add-query  
-              {:userBox (not @(rf/subscribe [:user/ui-open?]))})}
+  [:a {:href @(rf/subscribe [:href-add-query  
+                             {:userBox (not @(rf/subscribe [:user/ui-open?]))}])}
    [:button.user-btn.noborder
    (if-let [user @(rf/subscribe [:user/active-user])]
      [ui/user-avatar user "btn-img"]
@@ -50,7 +50,7 @@
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
 (defn header-logo [[text subtitle]]
   [:div.header-logo
-   [:a {:href (rfe/href :home)} ;works w/o reitit fiddle
+   [:a {:href @(rf/subscribe [:href :home])} ;works w/o reitit fiddle
     [:h1 text]]
    [:div.header-logo-text ; if I want this to do its flip when changes text, do I need to make a whole componentDidChange dance with it? :I
     (for [line subtitle] ^{:key (str "header-text-" line)}
@@ -62,10 +62,11 @@
                     (doall
                      (for [[title url page] links
                            :let [id (str "menu-link-" (string/lower-case title))]]  ^{:key id}
-                          [:li [:a {:href url :name title :id id
+                          [:li [:a {:href @(rf/subscribe [:href page])
+                                    :name title :id id
                                     :class (when (= page
                                                     @(rf/subscribe [:common/page-id]))
-                                             "is-active")} ;some (rfe/href ::about auto thing too)
+                                             "is-active")}
                                 (string/upper-case title)]])))]
     [:menu ; XXX put bg stuff in mwnu not nav...
      [:nav
@@ -99,9 +100,9 @@
     [header-nav menu]
 
     [loading-spinner (rf/subscribe [:loading])]
-    [:button.blog-link-btn.noborder
-     {:on-click #(rf/dispatch [:common/navigate! :blog])}
-     [:i.fa.fa-pen-fancy]]
+    [:a {:href @(rf/subscribe [:href :blog])}
+     [:button.blog-link-btn.noborder
+      [:i.fa.fa-pen-fancy]]]
     [user-btn]
     [:label.burger {:for "nav-menu-open"}]]
 
@@ -177,6 +178,5 @@
 (defn to-top "A silly arrow, and twice lol. why." [icon]
  (let [icon (or icon "angle-double-up")
        i [:i {:class (str "fas fa-" icon)}]]
-   [:<>
-    [:a {:id "to-top" :class "to-top" :href "#linktotop" :name "Up"} i]]))
+    [:a {:id "to-top" :class "to-top" :href @(rf/subscribe [:href "#main"]) :name "Up"} i]))
 
