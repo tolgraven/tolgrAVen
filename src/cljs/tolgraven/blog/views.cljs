@@ -255,7 +255,7 @@
               [:span tag]))]))
 
 (defn make-link [path]
-  (str "/#/blog/post/" path))
+  (rfe/href :blog-post {:permalink path}))
 
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text permalink comments] :as blog-post}]
