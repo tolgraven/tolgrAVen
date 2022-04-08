@@ -29,13 +29,19 @@
                                    [(not @(rf/subscribe checked-path))])))}])
 
 (defn loading-spinner [model kind]
-  (when (at model) ;should it be outside so not put anything when not loading? or better know element goes here
+  (if (and (at model)
+           (not= :timeout (at model))) ;should it be outside so not put anything when not loading? or better know element goes here
     [:div.loading-container>div.loading-wiggle-z>div.loading-wiggle-y
      [ui/appear-anon "zoom slow"
       [:i.loading-spinner
        {:class (str "fa fa-spinner fa-spin"
                     (when (= kind :massive)
-                      " loading-spinner-massive"))}]]]))
+                      " loading-spinner-massive"))}]]]
+    (when (= :timeout (at model))
+      [:div.loading-container
+       [ui/appear-anon "opacity slow"
+        [:i.loading-timeout
+         {:class (str "fa fa-solid fa-hexagon-exclamation")}]]])))
 
 (defn flashing-ersatz-text-like-everyone-uses
   "Better than wee loading spinner no? Eg Docs, we know big page is coming
