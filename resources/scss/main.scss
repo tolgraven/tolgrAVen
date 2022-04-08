@@ -61,7 +61,8 @@ a {
   
   &:focus, &:hover, &:active {
     transform: scale(1.10);
-    filter: brightness(125%) drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1));
+    // filter: brightness(125%);
+            // drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1)); // causing weird jumping
   }
 }
 

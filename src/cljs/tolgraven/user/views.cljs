@@ -184,7 +184,9 @@
   [user component]
   [:section.noborder
    [back-btn]
-   [ui/close #(rf/dispatch [:user/close-ui])]
+   [:a {:href (util/href-add-query {:userBox (not @(rf/subscribe [:user/ui-open?]))})}
+    [:button.close-btn.noborder
+     [:i.fa.fa-times]]]
    (when (not= component :none)
      [component user])])
 

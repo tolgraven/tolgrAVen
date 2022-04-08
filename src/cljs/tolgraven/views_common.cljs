@@ -10,14 +10,12 @@
    [tolgraven.util :as util :refer [at]]))
 
 (defn user-btn [model]
-  [:button.user-btn.noborder
-   {:on-click #(rf/dispatch (if @(rf/subscribe [:user/ui-open?])
-                              [:user/close-ui]
-                              [:user/open-ui]))}
+  [:a {:href (util/href-add-query  
+              {:userBox (not @(rf/subscribe [:user/ui-open?]))})}
+   [:button.user-btn.noborder
    (if-let [user @(rf/subscribe [:user/active-user])]
      [ui/user-avatar user "btn-img"]
-     [:i.user-btn
-      {:class "fa fa-user"}])])
+     [:i.user-btn {:class "fa fa-user"}])]])
 
 (defn input-toggle "Don't forget to put ze label - only was sep in first place due to css bs?"
   [id checked-path & {:keys [class label]}]
