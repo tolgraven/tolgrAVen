@@ -259,8 +259,9 @@
 
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text permalink comments] :as blog-post}]
-  (let [user @(rf/subscribe [:user/user user])]
-    [ui/appear-anon "zoom-x"
+  (let [user @(rf/subscribe [:user/user user])
+        back? @(rf/subscribe [:history/popped?])]
+    [ui/appear-anon (if back? "" "zoom-x")
      [:section.blog-post
      {:ref #(when % (rf/dispatch [:run-highlighter! %]))}
      [:div.flex.blog-post-header

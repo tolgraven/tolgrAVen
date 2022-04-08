@@ -157,3 +157,7 @@
          js/parseInt)
      "Loading")))
 
+(rf/reg-sub :history/popped?
+ :<- [:state [:browser-nav]]
+ (fn [nav]
+   (:got-nav nav)))
