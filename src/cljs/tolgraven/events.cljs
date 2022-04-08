@@ -43,22 +43,26 @@
       (if-not (and (= (-> new-match :data :view)
                       (-> old-match :data :view))
                    (= (-> new-match :path-params)
-                      (-> old-match :path-params)))
-      {:db (-> db
+                      (-> old-match :path-params))
+                   (= (-> new-match :query-params)
+                      (-> old-match :query-params)))
+      (merge
+       {:db (-> db
                (assoc :common/route new-match)
                (assoc :common/route-last old-match)
                (update-in [:state] dissoc :error-page) ; reset 404 page in case was triggered
                ; (update-in [:state] dissoc :swap)  ; cant reset swap since in middle of running...
                (update-in [:state :exception] dissoc :page)
-               ; (assoc-in [:exception [:page] nil]) ; reset exception state since using same error boundary for all pages
                (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
-        :dispatch-later
-        {:ms 150
-         :dispatch [:scroll/on-navigate (:path new-match)]}
        :document/set-title (str (get-in db [:content :title] "tolgrAVen") " - "
                                 (-> new-match :data :name ;TODO want further info in title, like blog post title...
                                     name string/capitalize) " "
                                 (-> new-match :parameters :path vals first))}
+      (when (= (:query-params new-match)
+               (:query-params old-match))
+        {:dispatch-later
+         {:ms 150
+          :dispatch [:scroll/on-navigate (:path new-match)]}}))
       (let [fragment (-> db :state :fragment)] ;; matches are equal (fragment not part of match)
         (if (pos? (count (seq fragment))) 
           {:db (update-in db [:state] dissoc :fragment)
