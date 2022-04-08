@@ -374,15 +374,18 @@
          [:img.media img]))]])
 
 (defn ui-insta "Future insta gallery"
-  [srcs]
-  [:section#gallery-3.fullwide.covering
-   [:div.covering.gallery-insta
-    (for [src srcs
-          :let [item [:img #_.media {:src src} ]]]
-      ^{:key (str "gallery-" src)}
-         [:div.gallery-insta-item
-          {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])}
-          item ])]])
+  []
+  (let [amount (r/atom 24)
+        posts @(rf/subscribe [:instagram/posts @amount])]
+    [:section#gallery-3.fullwide.covering
+     [:div.covering.gallery-insta
+      (for [post posts
+            :let [item [:img {:src (:media_url post)
+                              :on-error #(rf/dispatch [:instagram/fetch-from-insta [[(:id post)]]])}]]]
+        ^{:key (str "gallery-instagram-" (:id post))}
+        [:div.gallery-insta-item
+         {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])}
+         item])]]))
 
 (defn cv "Write dat cv. Put it on the site. Probably not last? Dunno."
   []
@@ -458,7 +461,7 @@
      
      [strava/strava]
      [ui-soundcloud]
-     [ui-insta @(rf/subscribe [:instagram/posts-urls 24])]
+     [ui-insta]
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
      ; [cv]
      [github-commits]

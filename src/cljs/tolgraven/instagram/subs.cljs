@@ -1,6 +1,8 @@
 (ns tolgraven.instagram.subs
   (:require
-    [re-frame.core :as rf]))
+    [re-frame.core :as rf]
+    [cljs-time.coerce :as ctc]
+    [cljs-time.core :as ct]))
 
 (rf/reg-sub :instagram/data
  (fn [db [_ path]]
@@ -13,10 +15,13 @@
 
 (rf/reg-sub :instagram/posts
  :<- [:instagram/content [:posts]]
- (fn [posts-map [_ id]]
+ (fn [posts-map [_ amount]]
    (->> posts-map
-        (into (sorted-map))
-        vals)))
+        (reduce (fn [m [k v]]
+          (assoc m (ctc/from-string (:timestamp v)) v))
+        (sorted-map-by ct/after?))
+        vals
+        (take amount))))
 
 (rf/reg-sub :instagram/posts-urls
  :<- [:instagram/posts]
