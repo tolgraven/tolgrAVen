@@ -33,8 +33,8 @@
 (rf/reg-sub :instagram/prev-page-url
  :<- [:instagram [:paging]]
  (fn [paging [_]]
-   (get-in paging :prev)))
+   (get paging :prev)))
 (rf/reg-sub :instagram/next-page-url
  :<- [:instagram [:paging]]
  (fn [paging [_]]
-   (get-in paging :next)))
+   (get paging :next)))
