@@ -173,16 +173,9 @@
   (fn [db [_ path value]]
     (assoc-in db (into base-path path) value)))
 
-(rf/reg-event-db :content
-                 (assoc-in-factory [:content]))
-
-(rf/reg-event-db :state
-  (fn [db [_ path value]]
-    (assoc-in db (into [:state] path) value)))
-
-(rf/reg-event-db :option ;[debug]
-  (fn [db [_ path value]]
-    (assoc-in db (into [:options] path) value)))
+(rf/reg-event-db :content (assoc-in-factory [:content]))
+(rf/reg-event-db :state   (assoc-in-factory [:state]))
+(rf/reg-event-db :option  (assoc-in-factory [:option]))
 
 (rf/reg-event-fx :debug ;[debug]
   (fn [{:keys [db]} [_ path value]]
