@@ -486,18 +486,18 @@
 
      [ui-interlude (get-lewd)]
      [ui-moneyshot @(rf/subscribe [:content [:moneyshot]])]
-     [lazy-load [:on-booted :site [:strava/init]]]
      [ui-story @(rf/subscribe [:content [:story]])]
-     [lazy-load [:on-booted :site [:instagram/init]]]
      [ui-fading :dir "bottom"]
      [ui-interlude (get-lewd)]
      
+     [lazy-load [:on-booted :site [:strava/init]]]
      [strava/strava]
      [ui-soundcloud]
+     [lazy-load [:on-booted :site [:instagram/init]]]
      [ui-insta]
-     [lazy-load [:on-booted :site [:github/fetch-commits "tolgraven" "tolgraven"]]]
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
      ; [cv]
+     [lazy-load [:on-booted :site [:github/fetch-commits "tolgraven" "tolgraven"]]]
      [github-commits]
      [chat/chat]
      ]))
