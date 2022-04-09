@@ -359,11 +359,16 @@
          past-top? (>= position (+ (util/rem-to-px @(rf/subscribe [:get-css-var "header-height"]))     ; distance from top to main is header-height + space-top above/below,
                                    (* 2 (util/rem-to-px @(rf/subscribe [:get-css-var "space-top"]))))) ; + space-lg above main. but header + 2x space-top seems sufficient...
          hidden? (get-in db [:state :hidden-header-footer])
+         main-height (- (.-clientHeight (util/elem-by-id "main"))
+                        (-> (util/elem-by-id "main")
+                            js/getComputedStyle
+                            .-paddingBottom
+                            js/parseFloat))
          at-bottom? (>= position
-                        (- (.-clientHeight js/document.body)
+                        (- main-height
                            (.-innerHeight js/window)
-                           250
-                           (util/rem-to-px @(rf/subscribe [:get-css-var "footer-height-full"]))))] ; will jump page so...
+                           (- 50)
+                           (util/rem-to-px @(rf/subscribe [:get-css-var "footer-height-current"]))))] ; will jump page so...
     {:dispatch-n [(if (or (and hidden?
                                (= direction :up))
                           at-bottom?)
@@ -391,12 +396,12 @@
    (merge
     {:db (assoc-in db [:state :scroll :at-bottom] bottom?)
      :dispatch-n [[:->css-var! "footer-height-current"
-                   (if bottom?
+                   (if (and bottom?) ; "is on front page", trickier than first might think due to idiosyncraticlol design choices
                      @(rf/subscribe [:get-css-var "footer-height-full"])
                      (if (get-in db [:state :hidden-header-footer])
                        "0rem"
                        @(rf/subscribe [:get-css-var "footer-height"])))]]}
-   #_(when bottom?
+   (when bottom?
      {:dispatch-later {:ms 300
                        :dispatch
                        [:scroll/by (js/parseFloat @(rf/subscribe [:get-css-var "footer-height-full"]))]}}))))
