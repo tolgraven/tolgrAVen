@@ -112,11 +112,10 @@
       [ui/safe :experiments [(tab routes)]]])
     {:title "Experiments" :tint "green"}])
 
-
 (defn doc-page []
   (let [docs @(rf/subscribe [:content [:docs]])]
     [with-heading [:docs :heading]
-     [:section.docs.solid-bg.hi-z
+     [:section.docs.solid-bg.hi-z.noborder
       {:ref #(when % (util/run-highlighter! "pre" %))} ; very nice way to get a did-mount
       [ui/md->div (:md docs)]]]))
 
