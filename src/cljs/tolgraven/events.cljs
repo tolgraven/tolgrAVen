@@ -60,10 +60,12 @@
                                 (-> new-match :data :name ;TODO want further info in title, like blog post title...
                                     name string/capitalize) " "
                                 (-> new-match :parameters :path vals first))}
-       (when (and (= (:query-params new-match)
+       (when (and (= (:query-params new-match) ; TODO maybe query params did change but also something else tho
                      (:query-params old-match))
-                  (= (:path new-match)
-                     (:path old-match)))
+                  (or (not= (get-in new-match [:data :view])
+                            (get-in old-match [:data :view]))
+                      (not= (get-in new-match [:path-params])
+                            (get-in old-match [:path-params]))))
         {:dispatch-later
          {:ms 150
           :dispatch [:scroll/on-navigate (:path new-match)]}}))
@@ -109,13 +111,25 @@
 
 (rf/reg-event-fx :scroll/to-top-and-arm-restore ; when follow links etc want to get to top of new page. but if have visited page earlier, offer to restore latest view pos. ACE!!!
   (fn [{:keys [db]} [_ path saved-pos]]
-    {:dispatch-n [[:scroll/to "linktotop"]
-                  [:diag-could-work-in-context-of-long-articles-etc] ;but too annoying on most all navs
+    {;:db (assoc-in db [:state :scrolling-to-top] true)
+     :dispatch-n [[:scroll/to "linktotop"]
+                  ; [:diag-could-work-in-context-of-long-articles-etc] ;but too annoying on most all navs
                   ;; diag first time it happens to point out new button next to "to top" button
                   ;; which will show when available
                   ;; beauty is with ls it'll work across reloads etc as well
                   ;; could also expose as pref whether to force old more (crappy) appy behavior
-                  ]}))
+                  ]
+     :dispatch-later {:ms 10
+                      :dispatch [:scroll/set-scrolling-to-top true]}}))
+
+(rf/reg-event-fx :scroll/set-scrolling-to-top
+  (fn [{:keys [db]} [_ is?]]
+    (merge
+     {:db (assoc-in db [:state :scrolling-to-top] is?)}
+     (when is?
+       {:dispatch-later {:ms 1500
+                         :dispatch [:scroll/set-scrolling-to-top false]}}))))
+
 
 (rf/reg-event-fx :swap/trigger
   (fn [{:keys [db]} [_ item]]
@@ -363,28 +377,33 @@
                               past-top?
                               (not (get-in db [:state :menu])))
                      [:hide-header-footer true]))
-                  (if (and at-bottom? (not @(rf/subscribe [:state [:at-bottom]])))
+                  (if (and at-bottom? (not @(rf/subscribe [:state [:scroll :at-bottom]])))
                     [:scroll/at-bottom true]
-                    (when (and (not at-bottom?) @(rf/subscribe [:state [:at-bottom]]))
+                    (when (and (not at-bottom?) @(rf/subscribe [:state [:scroll :at-bottom]]))
                       [:scroll/at-bottom false]))
                   (if (and past-top? (not @(rf/subscribe [:state [:scroll :past-top]])))
-                    [:state [:scroll :past-top] true]
+                    [:scroll/past-top true]
                     (when (and (not past-top?) @(rf/subscribe [:state [:scroll :past-top]]))
-                      [:state [:scroll :past-top] false]))]})))
+                      [:scroll/past-top false]))]})))
+
+(rf/reg-event-fx :scroll/past-top
+ (fn [{:keys [db]} [_ past-top?]]
+   {:db (assoc-in db [:state :scroll :past-top] past-top?) }))
 
 (rf/reg-event-fx :scroll/at-bottom
  (fn [{:keys [db]} [_ bottom?]]
-   {:dispatch-n [[:state [:at-bottom] bottom?]
-                 [:->css-var! "footer-height-current"
-                  (if bottom?
-                    @(rf/subscribe [:get-css-var "footer-height-full"])
-                    (if (get-in db [:state :hidden-header-footer])
-                      "0rem"
-                      @(rf/subscribe [:get-css-var "footer-height"])))]]
-    :dispatch-later (when bottom?
-                      {:ms 350
+   (merge
+    {:db (assoc-in db [:state :scroll :at-bottom] bottom?)
+     :dispatch-n [[:->css-var! "footer-height-current"
+                   (if bottom?
+                     @(rf/subscribe [:get-css-var "footer-height-full"])
+                     (if (get-in db [:state :hidden-header-footer])
+                       "0rem"
+                       @(rf/subscribe [:get-css-var "footer-height"])))]]}
+   #_(when bottom?
+     {:dispatch-later {:ms 300
                        :dispatch
-                       [:scroll/by (js/parseFloat @(rf/subscribe [:get-css-var "footer-height-full"]))]})}))
+                       [:scroll/by (js/parseFloat @(rf/subscribe [:get-css-var "footer-height-full"]))]}}))))
 
 
 (rf/reg-event-fx :hide-header-footer
@@ -399,7 +418,7 @@
                          @(rf/subscribe [:get-css-var "footer-height"]))]
      {:dispatch-n [[:state [:hidden-header-footer] hide?]
                    [:->css-var! "header-height-current" header-height]
-                   (when-not @(rf/subscribe [:state [:at-bottom]])
+                   (when-not @(rf/subscribe [:state [:scroll :at-bottom]])
                      [:->css-var! "footer-height-current" footer-height])]})))
 
 

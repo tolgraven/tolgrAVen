@@ -68,18 +68,20 @@
    (util/scroll-by value in-elem-id)))
 
 (rf/reg-event-fx :scroll/to
- (fn [_ [_ id delay-ms]]
+ (fn [db [_ id delay-ms]]
    (if delay-ms
      {:dispatch-later {:ms delay-ms
                        :dispatch [:scroll/to id]}}
-     {:scroll/to id})))
+     (when-not (get-in db [:state :scrolling-to-top])
+       {:scroll/to id}))))
 (rf/reg-fx :scroll/to
  (fn [id]
    (util/scroll-to id)))
 
 (rf/reg-event-fx :scroll/px
- (fn [_ [_ px]]
-   {:scroll/px px}))
+ (fn [db [_ px delay-ms]]
+   (when-not (get-in db [:state :scrolling-to-top])
+     {:scroll/px px})))
 (rf/reg-fx :scroll/px
  (fn [px]
    (util/scroll-to-px px)))
