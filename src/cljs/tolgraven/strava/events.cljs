@@ -8,6 +8,7 @@
     [tolgraven.interceptors :as inter]
     [clojure.string :as string]
     [clojure.walk :as walk]
+    [goog.crypt.base64 :as b64]
     [cljs-time.core :as ct]
     [cljs-time.coerce :as ctc]))
 
@@ -115,3 +116,24 @@
     {:dispatch-n [(when-not (get-in db [:content :strava :kudos id])
                     [:strava/get (str "activities/" id "/kudos")
                      [:kudos id]])]}))
+
+
+(rf/reg-event-fx :intervals/get
+  (fn [{:keys [db]} [_ path save-to]]
+    {:dispatch [:intervals/get-and-dispatch
+                path
+                [:content (into [:intervals] save-to)] ]}))
+
+(rf/reg-event-fx :intervals/get-and-dispatch
+  (fn [{:keys [db]} [_ path event]]
+    (let [id (get-in db [:strava :auth :intervals_athlete_id])
+          uri (str "https://intervals.icu/api/v1/athlete/" id "/")]
+      {:dispatch [:http/get {:uri (str uri path)
+                             :headers {"Authorization"
+                                       (str "Basic "
+                                            (b64/encodeString
+                                             (str "API_KEY:"
+                                                  (-> db :strava :auth :intervals_api_key))))}}
+                  event
+                  [:strava/on-error]]})))
+
