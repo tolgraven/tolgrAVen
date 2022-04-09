@@ -231,7 +231,8 @@
 (rf/reg-event-fx :fb/fetch-settings [debug]
   (fn [{:keys [db]} _]
     {:dispatch [:http/get-internal {:uri "/api/firebase-settings"}
-                [:fb/init]]}))
+                [:fb/init]
+                [:fb/error]]}))
 
 (rf/reg-event-fx :fb/error
   (fn [{:keys [db]} [_ error]]
