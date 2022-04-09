@@ -157,14 +157,15 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
 
 .to-top {
   position: fixed;
-  /* right:  calc(var(--space-edges) + 0.5 * var(--space)); */
-  right:  calc(var(--space-edges) * 0.35);
-  bottom: calc(1 * var(--space));
+  left:  calc(var(--space-sides) + 0.75 * var(--space));
+  bottom: calc(0.33 * var(--space) + var(--footer-height-current));
   color: var(--fg-2);
   font-size: 1.2rem;
   /* z-index: -1; */
   z-index: 200;
   text-shadow: 1px 1px 1.0rem var(--fg-2);
+  opacity: 0.6;
+  transition: bottom 0.5s ease;
 }
 #to-top-bg {
   /* filter: brightness(150%); */
