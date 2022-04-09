@@ -259,7 +259,7 @@
 (def cookie-notice [:diag/new :info "Cookie notice"
                      {:what "This website may use cookies"
                       :why "To track whether you've agreed to the use of cookies"
-                      :how {:by-removing-this-box "You agree to not only cookies"
+                      :how {:by-closing-this-box "You agree to not only cookies"
                             :but "also milk"}}
                      {:sticky? true}])
 
@@ -277,9 +277,9 @@
 
 (defn init "Called only on page load" []
   (rf/dispatch-sync [:init-db])
+  (rf/dispatch-sync [:fb/fetch-settings]) ;sync because number of early fetches depend on this...
   (ajax/load-interceptors!)
-  (rf/dispatch [:fb/fetch-settings])
-  (rf/dispatch cookie-notice)
+  (rf/dispatch cookie-notice) ; do later first check if prev visit
   (util/log "Init complete")
   (mount-components))
 
