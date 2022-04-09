@@ -8,6 +8,7 @@
 
 
 (rf/reg-cofx :now         #(assoc % :now (ctc/to-long (ct/now))))
+(rf/reg-cofx :now-ct      #(assoc % :now-ct (ct/now)))
 
 (rf/reg-cofx :user/gen-color
              #(assoc % :bg-color (util/css-str "hsla"
