@@ -29,8 +29,8 @@
 (rf/reg-event-fx :fb/set-user [debug]
   (fn [{:keys [db]} [_ user]]
     (when (some? (:uid user)) ; sometimes called with empty map...
-     {:dispatch-n [[:state [:firebase :user] user]
-                   [:user/login (:uid user)]]
+     {:db (assoc-in db [:state :firebase :user] user)
+      :dispatch-n [[:user/login (:uid user)]]
       :dispatch-later
       {:ms 3000 ;ugly, but login event is dispatched so early in boot no time to receive updated user data from firestore...
                 ; ok-ish since defering only the storing part and not sign-in itself.. and may receive subs in meantime for user data
@@ -92,15 +92,13 @@
    :dispatch [:user/close-ui]}))
 
 
-(rf/reg-event-fx
- :user/request-register [(path [:state])]
+(rf/reg-event-fx :user/request-register [(path [:state])]
  (fn [{:keys [db]} [_ info]]
    (let [{:keys [email password]} (-> db :form-field :login) ]
    {:dispatch-n [[:fb/create-user email password]
                  [:user/active-section :admin :force]]})))
 
-(rf/reg-event-fx
- :user/request-page
+(rf/reg-event-fx :user/request-page
  (fn [{:keys [db]} [_ info]]
    (let [user (get-in db [:state :user])]
      {:dispatch (if user
@@ -108,27 +106,23 @@
                   [:user/active-section :login :force])})))
 
 
-(rf/reg-event-db
- :user/active-section
+(rf/reg-event-db :user/active-section
  (fn [db [_ v force?]]
    (if (or force? (= v :closed))
        (assoc-in db [:state :user-section] [v])
        (update-in db [:state :user-section] (comp vec conj) v)))) ;tho might wanna push closed as well then check alsewhere when reopen whether pos then pop/disj :closed...
 
-(rf/reg-event-db
- :user/to-last-section
+(rf/reg-event-db :user/to-last-section
  (fn [db [_ _]]
    (update-in db [:state :user-section] pop)))
 
-(rf/reg-event-fx ;needs to defer changing :user-section to false
- :user/close-ui
+(rf/reg-event-fx :user/close-ui ;needs to defer changing :user-section to false
  (fn [{:keys [db]} [_ ]]
    {:dispatch [:user/active-section :closing]
     :dispatch-later {:ms 1000,
                      :dispatch [:user/active-section :closed]}}))
 
-(rf/reg-event-fx ;needs to defer changing :user-section to false
- :user/open-ui
+(rf/reg-event-fx :user/open-ui ;needs to defer changing :user-section to false
  (fn [{:keys [db]} [_ page]]
    {:dispatch [:user/active-section :closing]
     :dispatch-later {:ms 5,
@@ -136,8 +130,7 @@
                                  [:user/active-section page]
                                  [:user/request-page])}}))
 
-(rf/reg-event-fx
- :user/upload-avatar ; save new avatar upload. So upload to server, get filename, use it to update user in db and store
+(rf/reg-event-fx :user/upload-avatar ; save new avatar upload. So upload to server, get filename, use it to update user in db and store
  (fn [{:keys [db]} [_ file]] ;also inject active-user here, use for filename
    (let [filename (str "avatar-" (get-in db [:state :user]) ".png")]
      {:dispatch
@@ -148,14 +141,13 @@
                            (.append "id" "10")
                            (.append "file" file filename)) ;but would want (need! for extension lol) to extract the thing yo
                    :on-success [:user/save-avatar filename]}] })))
-(rf/reg-event-fx
- :user/save-avatar
+
+(rf/reg-event-fx :user/save-avatar
  (fn [{:keys [db]} [_ filename]]
    {:dispatch [[:user/set-field (get-in db [:state :user])
                 :avatar (str "img/uploads/" filename)]]}))
 
-(rf/reg-event-fx
- :user/set-field
+(rf/reg-event-fx :user/set-field
  (fn [{:keys [db]} [_ user field value]]
    {:db (assoc-in db [:fb/users user field] value)
     :dispatch [:store-> [:users user]
