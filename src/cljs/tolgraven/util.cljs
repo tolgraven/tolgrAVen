@@ -42,7 +42,10 @@
 
 (defmacro ors "(or), but treats empty string as nil. not working"
   ([] nil)
-  ([x] x)
+  ([x] (if (string? ~x)
+         (when-not (empty? (seq ~x))
+           x)
+         x))
   ([x & next]
    `(let [or# ~x]
           (if or# or# (ors ~@next)))))
