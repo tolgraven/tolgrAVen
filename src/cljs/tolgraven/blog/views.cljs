@@ -75,19 +75,20 @@
   (let [inited? (r/atom false)]
     (fn [parent-id comments]
       [:div.blog-comment-reply.flex
-       {:style {:transition "max-height 1s ease"
+       {:style {:cursor "zoom-in"
+                :transition "max-height 1s ease"
                 :max-height (if @inited? "3rem" 0)}
         :ref #(when % (reset! inited? true))
-        :on-click #(rf/dispatch [:blog/state [:comment-thread-collapsed parent-id] false])}
+        :on-click #(rf/dispatch [:blog/state [:comment-thread-uncollapsed parent-id] true])}
        [:div.blog-comment-border]
        [:section.blog-comment.blog-comment-collapsed-placeholder
-        (str (count comments) " hidden")]])))
+        (util/pluralize (count comments) " hidden reply")]])))
 
 (defn comment-post "A comment, and any children."
   [path {:keys [id seq-id ts user title text score comments] :as post}]
   (let [active-user @(rf/subscribe [:user/active-user])
         user @(rf/subscribe [:user/user user])
-        collapsed? (rf/subscribe [:blog/state [:comment-thread-collapsed id]])
+        uncollapsed? (rf/subscribe [:blog/state [:comment-thread-uncollapsed id]])
         collapsing? (rf/subscribe [:blog/state [:comment-thread-collapsing id]])
         vote-btn (fn [vote]
                    (when active-user
@@ -96,17 +97,17 @@
                         {:class (if (= vote voted)
                                   "noborder"
                                   (case vote :up "topborder" :down "bottomborder"))
-                         :on-click (fn [_] (rf/dispatch [:blog/comment-vote 
-                                                         user active-user path vote]))}
+                         :on-click #(rf/dispatch [:blog/comment-vote 
+                                                  user active-user path vote])}
                         (case vote :up "+" :down "-")])))]
     [:<>
       [:div.flex.blog-comment-around
        [:div.blog-comment-border
-        {:style {:cursor "pointer"
+        {:style {:cursor (if @uncollapsed? "zoom-out" "zoom-in")
                  :background-color (:bg-color user)} ; somehow doesnt fly, why?
-         :on-click #(rf/dispatch [:blog/state [:comment-thread-collapsed id] (not @collapsed?)])}]
+         :on-click #(rf/dispatch [:blog/state [:comment-thread-uncollapsed id] (not @uncollapsed?)])}]
      [:section.blog-comment
-      [:div.flex
+      [:div
        [ui/user-avatar user]
        
        [:div.blog-comment-main
@@ -129,13 +130,13 @@
      (if comments ;replies
        [:div.blog-comment-reply-outer
         [:div.blog-comment-reply
-         {:class (when @collapsed?
+         {:class (when-not @uncollapsed?
                    "collapsed")}
          (doall (for [[k post] (into (sorted-map) comments)]
                   ^{:key (get-id-str (conj path (:id post)))}
                   [ui/appear-anon "slide-behind"
                    [comment-post (conj path (:id post)) post]]))]
-        (when @collapsed?
+        (when-not @uncollapsed?
           [collapsed-reply-view id comments])])]))
 
 
