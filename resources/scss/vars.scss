@@ -23,7 +23,7 @@
   --link-offset:         calc( var(--header-height-current));
   --menu-width-fraction: 0.70;
 
-  --comment-gap:         calc(0.5 * var(--space));
+  --comment-gap:         calc(0.20 * var(--space));
 
   --line-scale-factor: 0.5;
   --line-width:        2.0px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */

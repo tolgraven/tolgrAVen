@@ -227,3 +227,11 @@
 ; pull comments one by one, chunked so maybe like first five
 ; put intersectionobserver on maybe second to last one
 ; that triggers another equal pull etc
+
+(rf/reg-event-fx :blog/collapse-comment
+ (fn [{:keys [db]} [_ id timeout]]
+   (let [timeout (or timeout 400)
+         collapsed? (get-in db [:state :comment-thread-collapsed id])] 
+     {:dispatch [:blog/state [:comment-thread-collapsing id] (not collapsed?)]
+      :dispatch-later {:ms timeout
+                       :dispatch [:blog/state [:comment-thread-collapsed id] (not collapsed?)]}})))
