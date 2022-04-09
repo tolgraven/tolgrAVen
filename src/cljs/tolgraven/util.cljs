@@ -79,9 +79,13 @@
 
 (defn pluralize "Swap 0/no and grammar"
   [amount thing]
-  (str amount ;(if (zero? amount) "No" amount)
-       " " thing
-       (when-not (= 1 amount) "s")))
+  (let [plural (if (string/ends-with? thing "y")
+                 (string/replace thing #"y$" "ies")
+                 (str thing "s"))]
+    (str amount ;(if (zero? amount) "No" amount)
+         " "
+         (if-not (= 1 amount)
+           plural thing))))
 
 
 (defn timestamp "Use 0-59 mins ago, 1-24 hrs ago, datestamp..."
