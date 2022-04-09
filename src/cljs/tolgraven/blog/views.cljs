@@ -35,8 +35,10 @@
     (when (some #{(:id user)} (:admins @(rf/subscribe [:<-store :auth :roles])))
       [:span "(admin)"])
      [:span ts]
-     [:span (cond (pos? score) "+" (neg? score) "-")
-      (when-not (= 0 score) score)]])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
+     (when-not (= 0 score)
+       [:span (cond (pos? score) "+"
+                    (neg? score) "-")
+        score])])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
 
 (defn add-comment-btn "Seemed like a good idea to swap button for input field when pressed but yeah, no..."
   [parent-path kind]
