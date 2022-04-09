@@ -85,7 +85,7 @@
 
 (rf/reg-event-fx :instagram/try-authorize [debug] ;get token from scratch...
  (fn [{:keys [db]} [_ _]]
-   {:dispatch [:<-store [:instagram :secrets]
+   {:dispatch [:<-store [:secrets :instagram]
                [:instagram/new-authorize]]}))
 
 (rf/reg-event-fx :instagram/new-authorize [debug] ;get token from scratch...
