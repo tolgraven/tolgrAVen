@@ -63,7 +63,7 @@
   opacity: 1;
 
   transition: all var(--navigation-transition-time) ease;
-  z-index: 1000;
+  z-index: -1;
 
   display: inherit;
   
