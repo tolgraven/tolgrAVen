@@ -146,7 +146,7 @@
       .blog-comment {
         &.blog-comment-collapsed-placeholder {
           display: flex;
-          padding: 0;
+          padding: 0.2em;
         }
       }
     }
@@ -208,8 +208,8 @@
   }
   .user-avatar {
     filter: brightness(0.9);
-    --blog-comment-avatar: 4.5rem;
-    margin: 0.2rem var(--space) calc(0.5 * var(--space));
+    --blog-comment-avatar: 4.0rem;
+    margin: 0.2rem var(--space) calc(0.25 * var(--space));
     height: var(--blog-comment-avatar);
     width: var(--blog-comment-avatar);
     
@@ -231,12 +231,15 @@
       font-weight: bold;
     }
     .blog-comment-text {
-      margin-top: calc(0.25 * var(--space));
+      // margin-top: calc(0.25 * var(--space));
+      margin-top: 0.20em;
     }
     .blog-info { // both blog-post and blog-comment use same component for displaying info
       font-size: 0.7em;
 
-      border-bottom: var(--line-width-sm) solid var(--fg-6);
+      .blog-user { 
+        border-bottom: var(--line-width-sm) solid var(--fg-6);
+      }
     }
   }
 }
