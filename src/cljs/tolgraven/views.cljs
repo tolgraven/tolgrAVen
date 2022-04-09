@@ -350,7 +350,7 @@
    [:div.fader>div.fade-to-black.between]
 
    [:a {:name "about"}]
-   [:section#about-story.anim-gradient-bg.noborder
+   [:section#about.anim-gradient-bg.noborder
     [:h1 (:title content)]
     [:br]
     [ui/auto-layout-text-imgs content]
