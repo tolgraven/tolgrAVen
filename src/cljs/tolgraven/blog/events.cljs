@@ -11,18 +11,16 @@
     [tolgraven.util :as util]))
 
 
-(rf/reg-event-fx :page/init-blog [debug]
+(rf/reg-event-fx :blog/init [debug]
   (fn [{:keys [db]} _]
-    (when-not (:blog db)
-     {:dispatch-n [;[:blog/nav-page 1] ;causes trouble when arriving by link/to specific page. i am dumb
-                   [:booted :blog]
-                   [:<-store [:blog-posts]    [:blog/set-content :posts]]
-                   [:<-store [:blog-comments] [:blog/set-content :comments]] ] ; would be nice to defer (further in?) mount til certain of these run, now loads before happens... so set in initial db
-      }))) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
+    (when-not (get-in db [:state :booted :blog])
+     {:dispatch-n [[:<-store [:blog-posts]    [:blog/set-content :posts]]
+                   [:<-store [:blog-comments] [:blog/set-content :comments]]
+                   [:booted :blog]]}))) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
 
-(rf/reg-event-fx :page/init-post-blog [debug]
+(rf/reg-event-fx :blog/init-posting [debug]
   (fn [{:keys [db]} _]
-    {:dispatch-n [ [:user/close-ui]]})) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
+    {:dispatch-n [[:user/close-ui]]})) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
 
 (rf/reg-event-fx :blog/edit-post [debug]
   (fn [{:keys [db]} [_ post]] ; seems gross somehow, passing full data from view. but that's where we have easy access to it so... any case would just be pass id, ask to fetch rest of contents somewhere, whe

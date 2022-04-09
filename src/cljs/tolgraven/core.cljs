@@ -211,7 +211,7 @@
                    :view #'blog-archive-page}]]
      ["post-blog" {:name :post-blog
                    :view #'post-blog-page
-                   :controllers [{:start (fn [_] (rf/dispatch [:page/init-post-blog]))}]}]        
+                   :controllers [{:start (fn [_] (rf/dispatch [:blog/init-posting]))}]}]        
      ["log" {:name :log
               :view #'log-page}]
      ["test" 

@@ -488,7 +488,6 @@
                 [:listener/scroll-direction]
                 [:id-counters/fetch]
                 [:listener/popstate-back]
-                [:page/init-blog] ; maybe could hold off init blog a few secs tho even if we dont wait for nav to init
                 [:booted :site]]})) ; should work, main page specific init events won't get queued unless on main so...
 
 ; generic helpers for rapid prototyping.
