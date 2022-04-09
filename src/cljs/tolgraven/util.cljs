@@ -308,10 +308,11 @@
   (let [fired? (atom false) ; since can't disconnect from closure this will have to do for now
         observer (js/IntersectionObserver.
                   (fn [[entry & _]]
-                    (when-not @fired?
+                    (when (and (not @fired?)
+                               (= 1 (.-intersectionRatio entry))) ; fires a 0 on load for some reason...
                       (on-view)
                       (reset! fired? true)))
-                  (clj->js {:threshold [0]}))]
+                  (clj->js {:threshold [1.0]}))]
     (fn [el]
       (if el
         (.observe observer el)
