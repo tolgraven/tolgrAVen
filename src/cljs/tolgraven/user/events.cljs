@@ -83,8 +83,11 @@
 
 (rf/reg-event-fx :user/login [debug]
 (fn [{:keys [db]} [_ user]]
-  {:db (assoc-in db [:state :user] user)
-   :dispatch [:user/active-section :admin :force]}))
+  (let [auto-open? (get-in db [:options :user :auto-open?])]
+    (merge
+     {:db (assoc-in db [:state :user] user)}
+     (when auto-open?
+       {:dispatch [:user/open-ui :admin]})))))
 
 (rf/reg-event-fx :user/logout 
 (fn [{:keys [db]} [_ user]]
@@ -127,7 +130,7 @@
    {:dispatch [:user/active-section :closing]
     :dispatch-later {:ms 5,
                      :dispatch (if page
-                                 [:user/active-section page]
+                                 [:user/active-section page :force]
                                  [:user/request-page])}}))
 
 (rf/reg-event-fx :user/upload-avatar ; save new avatar upload. So upload to server, get filename, use it to update user in db and store
