@@ -150,7 +150,8 @@
         {:class "covering-faded widescreen-safe center-content parallax-group"
          :ref #(observer %) ;oh yeah check first el for :video cant work it's rendered at that point lol
          :style {:transition "opacity 4.5s"
-                 :opacity (str "calc(0.95 - 0.55 *" @in-view ")")}} ;well dumb but
+                 :opacity (when-not (zero? @in-view)
+                            "0.4")}}
         [:h1.h-responsive  title]]
        [ui/inset caption nr]])))
 
