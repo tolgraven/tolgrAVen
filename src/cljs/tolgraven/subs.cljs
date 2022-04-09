@@ -177,11 +177,15 @@
  :<- [:common/page-id]           
  :<- [:common/route]           
  (fn [[page-id route] [_ k & [params query]]] ;"Like rfe/href, but preserves existing query"
-  (let [path (if (keyword? k)
-               k
-               page-id)
-        query (merge (:query-params route) query)
-        uri (rfe/href path params query)]
-    (if (keyword? k)
-      uri
-      (string/replace-first (or uri "") #"/(\w.*)(\?.*)?" (str "/" "$1" k "$2"))))))
+  (when (and page-id k)
+    (let [path (if (keyword? k)
+                 k
+                 page-id)
+          query (merge (:query-params route) query)
+          uri (rfe/href path params query)]
+      (if (keyword? k)
+        uri
+        (string/replace (or uri "")
+                        #"/(\w.*)?(\?.*)?"
+                        (str "/" "$1" "$2" k)))))))
+
