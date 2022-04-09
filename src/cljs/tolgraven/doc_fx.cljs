@@ -52,10 +52,13 @@
 
 
 (rf/reg-event-fx :->css-var!
-  (fn [_ [_ var-name value]]
-    (util/->css-var var-name value)
-    nil)) ;avoid it trying to parse heh
+  (fn [{:keys [db]} [_ var-name value]]
+    {:db (assoc-in db [:state :css-var var-name] value)
+     :set-css-var [var-name value]}))
 
+(rf/reg-fx :set-css-var
+  (fn [[var-name value]]
+    (util/->css-var var-name value)))
 
 (rf/reg-event-fx :scroll/by
  (fn [_ [_ value & [in-elem-id]]] ; rem (should handle % too tho?), id of container..
