@@ -26,13 +26,19 @@
                                :fields "id"}
                   :response-format (ajax/json-response-format {:keywords? true})}
        [:instagram/fetch]
-       [:content [:instagram :error]]] })))
+       [:instagram/error]]})))
+
+(rf/reg-event-fx :instagram/error
+ (fn [{:keys [db]} [_ error]]
+   (let [event (case error
+                 "expired-token-thingy" [:instagram/try-authorize]
+                 [:content [:instagram :error] error])]
+     {:dispatch event})))
 
 (rf/reg-event-fx :instagram/get
  (fn [{:keys [db]} [_ id]]
    (let [uri "https://graph.instagram.com/"
-         fields "id,media_type,media_url,username,timestamp"
-         ; fields "id,media_type,media_url,username,timestamp,name,description,comments,likes"
+         fields "caption,id,media_type,media_url,username,timestamp" ; want likes n comments tho...
          token (get-in db [:instagram :auth :access_token])]
      {:dispatch
       [:http/get {:uri (str uri id)
@@ -54,7 +60,7 @@
        {:db (-> db (assoc-in [:instagram :ids :ids] new-ids)
                    (assoc-in [:instagram :data] (get-in data [:paging])))
         :dispatch-n [[:store-> [:instagram :ids] {:ids new-ids}]
-                     [:instagram/fetch-from-insta new-ids]] }))))
+                     [:instagram/fetch-from-insta new-ids]] })))) ;fetch all since url signatures expire after a while...
 
 
 (rf/reg-event-fx :instagram/fetch-from-insta [debug]
