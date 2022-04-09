@@ -388,19 +388,34 @@
           (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
          [:img.media img]))]])
 
+(defn insta-post "An instagram post"
+  [post item]
+  (let [hover? (r/atom false)]
+    (fn [post item]
+      [:div.gallery-insta-item
+       {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])
+        :on-mouse-enter #(reset! hover? true)
+        :on-mouse-leave #(reset! hover? false)}
+       item
+       (when @hover?
+         [:div.insta-caption
+          (or (:caption post) "We will be with you in a moment.")])])))
+
+
 (defn ui-insta "Future insta gallery"
   []
   (let [amount (r/atom 24)
-        posts @(rf/subscribe [:instagram/posts @amount])]
-    [:section#gallery-3.fullwide.covering
-     [:div.covering.gallery-insta
-      (for [post posts
-            :let [item [:img {:src (:media_url post)
-                              :on-error #(rf/dispatch [:instagram/fetch-from-insta [[(:id post)]]])}]]]
-        ^{:key (str "gallery-instagram-" (:id post))}
-        [:div.gallery-insta-item
-         {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])}
-         item])]]))
+        posts (rf/subscribe [:instagram/posts @amount])]
+    (fn []
+      [:section#gallery-3.fullwide.covering
+       [:div.covering.gallery-insta
+        (for [post (or @posts (range @amount))
+              :let [item [:img {:class (when-not (:media_url post) "transparent-border")
+                                :src (or (:media_url post) "img/logo/instagram-fallback-logo.png")
+                                :on-error #(rf/dispatch [:instagram/fetch-from-insta [[(:id post)]]])}]]] ; dispatch on failed fetch due to url expiry
+          ^{:key (str "gallery-instagram-" (or (:id post) post))}
+          [insta-post post item])]])))
+
 
 (defn cv "Write dat cv. Put it on the site. Probably not last? Dunno."
   []

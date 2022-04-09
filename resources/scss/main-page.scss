@@ -259,15 +259,38 @@
   // object-fit: cover;
   justify-content: space-evenly;
   text-align: center;
+
+  background: linear-gradient(to bottom,
+                             hsla(276, 51%, 17%, 0.3),
+                             hsla(340, 75%, 14%, 0.5),
+                             hsla(20, 92%, 19%, 0.7),
+                             hsla(35, 97%, 19%, 0.3)
+                           );
   
   .gallery-insta-item {
     max-width: 33.3333%;
     max-height: 33%;
+    position: relative;
+
     img {
       border: var(--line-width) solid var(--fg-2);
       width: 100%;
       height: 100%;
       object-fit: cover;
+      cursor: zoom-in;
+    }
+
+    .insta-caption {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      padding: calc(0.5 * var(--space));
+      margin: var(--line-width);
+      font-size: 70%;
+      font-family: Helvetica;
+      text-align: left;
+      background-color: var(--dark-2);
+      opacity: 0.7;
     }
   }
 }
