@@ -16,12 +16,12 @@
 (rf/reg-sub :instagram/posts
  :<- [:instagram/content [:posts]]
  (fn [posts-map [_ amount]]
-   (->> posts-map
-        (reduce (fn [m [k v]]
-          (assoc m (ctc/from-string (:timestamp v)) v))
-        (sorted-map-by ct/after?))
-        vals
-        (take amount))))
+   (some->> posts-map
+            (reduce (fn [m [k v]]
+                      (assoc m (ctc/from-string (:timestamp v)) v))
+                    (sorted-map-by ct/after?)) ; dumb but sort-by was giving me shit
+            vals
+            (take amount))))
 
 (rf/reg-sub :instagram/posts-urls
  :<- [:instagram/posts]
