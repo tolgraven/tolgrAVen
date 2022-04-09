@@ -66,7 +66,7 @@
                 :warning js/console.warn
                 :info js/console.log)]
    ; (println (string/capitalize (name level)) "\t" message)
-   (js-fn message)
+   (js-fn msg)
    (rf/dispatch [:diag/new level title msg]))))
 
 (defn log-errors [errors]
