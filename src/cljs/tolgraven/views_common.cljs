@@ -151,7 +151,7 @@
    {:class (string/join " "
                         [(when @(rf/subscribe [:state [:hidden-header-footer]])
                            "hide")
-                         (when @(rf/subscribe [:state [:at-bottom]])
+                         (when @(rf/subscribe [:state [:scroll :at-bottom]])
                            "full")])
     :style (when-not @(rf/subscribe [:state [:hidden-header-footer]])
              {:max-height @(rf/subscribe [:get-css-var "footer-height-current"])})}
