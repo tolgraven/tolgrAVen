@@ -88,6 +88,8 @@
   border: 0;
   border-top: var(--line-width-md) solid;
   box-shadow: 2px 5px 11px 3px rgba(200, 200, 255, 0.10) inset;
+  font-size: 90%;
+  font-family: Helvetica;
   @include rounded-bottom;
   
   .blog-collapse-btn {
@@ -126,13 +128,14 @@
       border: 0;
       margin-left: calc(1.0 * var(--space));
       margin-bottom: 0.3em;
-      max-height: 100vh;
+      max-height: 70vh;
       overflow-y: scroll;
-      transition: max-height 0.5s ease;
+      transition: max-height 1.0s ease;
 
       &.collapsed {
         max-height: 0rem;
         margin-bottom: 0;
+        transition: max-height 0.4s ease;
       }
 
       &.restored-height {
@@ -152,7 +155,8 @@
       text-align: end;
       position: absolute;
       display: grid;
-      right: 5%;
+      right: calc(0.5 * var(--space));
+      top: calc(0.5 * var(--space));
       transition: right 0.3s ease;
       opacity: 0.8;
       > button {
@@ -172,6 +176,7 @@
 .blog-comment {
   position: relative;
   max-height: 100vh; // for smoof hiding
+  overflow-y: hidden;
   margin-bottom: var(--comment-gap);
   padding: 1.0em 1.5em 1.0em 0.0em;
   background-color: var(--bg-2);
@@ -198,15 +203,19 @@
     // background-color: color.scale(#333, $lightness: -10%); // color. is apparently broken :S
   }
 
+  .user-avatar-container {
+    float: left;
+  }
   .user-avatar {
     filter: brightness(0.9);
     --blog-comment-avatar: 4.5rem;
-    margin-top: 0.2rem;
-    margin-left: 1.0rem;
+    margin: 0.2rem var(--space) calc(0.5 * var(--space));
     height: var(--blog-comment-avatar);
     width: var(--blog-comment-avatar);
     
     object-fit: cover;
+
+    float: left;
     // background-size: cover;
     // background-repeat: no-repeat;
     // background-position: center;
@@ -222,10 +231,12 @@
       font-weight: bold;
     }
     .blog-comment-text {
-      margin-top: 0.2em;
+      margin-top: calc(0.25 * var(--space));
     }
     .blog-info { // both blog-post and blog-comment use same component for displaying info
       font-size: 0.7em;
+
+      border-bottom: var(--line-width-sm) solid var(--fg-6);
     }
   }
 }
@@ -249,7 +260,7 @@
 
 .blog-info { // both blog-post and blog-comment use same component for displaying info
   font-size: 0.8em;
-  padding-bottom: 1.00em;
+  margin-bottom: 1.00em;
 
   span {
     margin-left: 1.00em;
