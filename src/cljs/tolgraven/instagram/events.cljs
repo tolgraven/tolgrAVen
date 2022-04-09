@@ -69,9 +69,59 @@
       (mapv (fn [id] [:instagram/get id]) ids)}))
 
 
-(rf/reg-event-fx :instagram/refresh-token ;needs refreshing every 60 days so fix dis sometime
+(rf/reg-event-fx :instagram/refresh-token [debug] ;needs refreshing every 60 days so fix dis sometime
  (fn [{:keys [db]} [_ token]]
    {:dispatch [:http/get {:uri "https://graph.instagram.com/refresh_access_token"
                           :url-params {:grant_type "ig_refresh_token" :access_token token} }
                [:instagram/store-token]
                [:content [:instagram :error :token]]] }))
+
+
+(rf/reg-event-fx :instagram/store-token ;needs refreshing every 60 days so fix dis sometime
+ (fn [{:keys [db]} [_ data]]
+   (let [data (util/normalize-firestore-general data)]
+     {:db (assoc-in db [:instagram :auth :access_token] (get-in data [:auth :access_token]))
+      :dispatch [:store-> [:instagram :auth :access_token] (get-in data [:auth :access_token])] })))
+
+(rf/reg-event-fx :instagram/try-authorize [debug] ;get token from scratch...
+ (fn [{:keys [db]} [_ _]]
+   {:dispatch [:<-store [:instagram :secrets]
+               [:instagram/new-authorize]]}))
+
+(rf/reg-event-fx :instagram/new-authorize [debug] ;get token from scratch...
+ (fn [{:keys [db]} [_ secrets]]
+   (let [secrets (util/normalize-firestore-general secrets)] ;btw should have interceptor for this!
+     {:db (assoc db :instagram secrets)
+      :dispatch [:redirect-to-uri-well-actually-no-popup-a-link
+                 {:uri "https://www.instagram.com/oauth/authorize"
+                  :url-params {:client_id (:client_id secrets)
+                               :redirect_uri "https://tolgraven.se"
+                               :scope "user_profile,user_media"
+                               :response_type "code"}}]})))
+
+; ^ not how it works we need to redirect to that url then redirects back and capture the query
+; so would change redir url to like tolgraven.se/redir/instagram and have controller there
+; capturing query, stripping #_, sending to next event.
+
+(rf/reg-event-fx :instagram/new-short-token [debug] ;get token from scratch...
+ (fn [{:keys [db]} [_ code]]
+   (if-let [secrets (get-in db [:instagram :secrets])]
+     {:dispatch [:http/post {:uri "https://api.instagram.com/oauth/access_token"
+                             :url-params {:client_id (:client_id secrets) ; obviously get these from db or firebase (only if admin) not hardcoded...
+                                          :client_secret (:client_secret secrets)
+                                          :grant_type "authorization_code"
+                                          :redirect_uri (:redirect_uri secrets)
+                                          :code code} }
+                 [:instagram/new-token]
+                 [:content [:instagram :error :short-token]]] }
+     [:diag/new :error "Hacking attempt detected" "Go away evildoer"])))
+
+(rf/reg-event-fx :instagram/new-token [debug]
+ (fn [{:keys [db]} [_ short-token]]
+   (if-let [secrets (get-in db [:instagram :secrets])]
+     {:dispatch [:http/get {:uri "https://graph.instagram.com/refresh_access_token"
+                            :url-params {:grant_type "ig_exchange_token"
+                                         :client_secret (:client_secret secrets)
+                                         :access_token short-token}}
+                 [:instagram/store-token]
+                 [:content [:instagram :error :token]]] })))
