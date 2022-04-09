@@ -184,4 +184,4 @@
         uri (rfe/href path params query)]
     (if (keyword? k)
       uri
-      (string/replace-first uri #"/(\w.*)(\?.*)?" (str "/" "$1" k "$2"))))))
+      (string/replace-first (or uri "") #"/(\w.*)(\?.*)?" (str "/" "$1" k "$2"))))))
