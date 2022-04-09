@@ -308,7 +308,9 @@
 
 (rf/reg-event-fx :on-booted ; queue event up to fire once init complete
   (fn [{:keys [db]} [_ id event]]
-    {:db (update-in db [:state :on-booted id] (comp set conj) event)}))
+    (if (get-in db [:state :booted id])
+      {:dispatch event} ; just send it if already booted
+      {:db (update-in db [:state :on-booted id] (comp set conj) event)})))
 
 (rf/reg-event-fx :booted
  (fn [{:keys [db]} [_ id]]
