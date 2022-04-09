@@ -16,8 +16,9 @@
 
 (rf/reg-event-fx :strava/init ;so, currently makes assumption app is authed and some stuff is in firebase...
   (fn [{:keys [db]} [_ ]]
-    {:dispatch
-      [:<-store [:strava] [:strava/store-client]]}))
+    (when-not (get-in db [:strava])
+      {:dispatch
+       [:<-store [:strava] [:strava/store-client]]})))
 
 (rf/reg-event-fx :strava/store-client   [(rf/inject-cofx :now)]
   (fn [{:keys [db now]} [_ data]]

@@ -12,8 +12,9 @@
 
 (rf/reg-event-fx :instagram/init
  (fn [{:keys [db]} [_ _]]
-   {:dispatch
-    [:<-store [:instagram] [:instagram/store-client]]}))
+   (when-not (get-in db [:instagram :ids])
+     {:dispatch
+      [:<-store [:instagram] [:instagram/store-client]]})))
 
 (rf/reg-event-fx :instagram/store-client [debug]
  (fn [{:keys [db]} [_ data]]
