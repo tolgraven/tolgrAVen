@@ -224,7 +224,8 @@
           (when (playing? video)
             (.pause video))) ;sometimes get uncaught exceptions about call to play interrupted by pause yada...
         (when (some #{:to-play :to-pause} [@state])
-          (rf/dispatch [:run-in! :play-pauser time-per-step
+          (js/setTimeout #(play-pause-updater action) time-per-step) ; at least until impl handling conflicts and freezing pending events, no need for dispatch...
+          #_(rf/dispatch [:run-in! :play-pauser time-per-step
                         play-pause-updater action]))))))
 
 

@@ -107,10 +107,16 @@
   (let [vid-ref (atom nil) ; docs says reg atom better but only updates w ratom, bc 2nd fn or? also .play no works
         controls (atom nil)
         in-view (r/atom 0.0)
+        control-time 1000
         do-control (fn [action]
                      (when-let [video @vid-ref]
                        (when @controls
-                         (@controls action))))
+                         (@controls action)
+                         (when (= action :play)
+                           (js/setTimeout
+                            #(@controls :pause)
+                            (- (* 1000 (- (.-duration video) (.-currentTime video)))
+                               control-time))))))
         on-change (fn [frac]
                     (reset! in-view frac)
                     (when (<= frac 0.2)
@@ -130,7 +136,15 @@
                                     (reset! vid-ref el)
                                     (set! (.-muted el) true)))
                            :onLoadedMetadata #(set! (.-muted %) true)
-                           :onCanPlay #(reset! controls (util/play-pauser @vid-ref))
+                           :onCanPlay (fn []
+                                        (when-not @controls
+                                          (reset! controls (util/play-pauser
+                                                            @vid-ref
+                                                            :time-per-step (/ control-time 3)))
+                                          (set! (.-currentTime @vid-ref) 0)
+                                          (.pause @vid-ref)
+                                          (js/setTimeout #(do-control :play) 5000))) ; should be read from css i guess to correspond with other anim
+                           :loop true
                            :muted true}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:div
         {:class "covering-faded widescreen-safe center-content parallax-group"
