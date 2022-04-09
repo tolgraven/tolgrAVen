@@ -451,7 +451,6 @@
   (let [commits @(rf/subscribe [:github/commits])
         amount @(rf/subscribe [:github/commit-count])]
     [:section.github-commits.covering-2
-     {:ref #(when % (rf/dispatch [:github/fetch-commits "tolgraven" "tolgraven"]))}
      
      [:h2 [:i.fab.fa-github] " " amount " commits to this website"]
      [:div.github-commits-inner
@@ -467,6 +466,13 @@
           [:p.github-commit-message
            (:message commit)]]])]]))
 
+(defn lazy-load "Dispatch init event when approaching something previous"
+  [event]
+  (let [observer (util/when-seen #(rf/dispatch event))]
+    (fn [event]
+      [:div
+       {:ref #(observer %)}])))
+
 (defn ui []
   (let [interlude @(rf/subscribe [:content [:interlude]])
         interlude-counter (atom 0)
@@ -480,13 +486,16 @@
 
      [ui-interlude (get-lewd)]
      [ui-moneyshot @(rf/subscribe [:content [:moneyshot]])]
+     [lazy-load [:on-booted :site [:strava/init]]]
      [ui-story @(rf/subscribe [:content [:story]])]
+     [lazy-load [:on-booted :site [:instagram/init]]]
      [ui-fading :dir "bottom"]
      [ui-interlude (get-lewd)]
      
      [strava/strava]
      [ui-soundcloud]
      [ui-insta]
+     [lazy-load [:on-booted :site [:github/fetch-commits "tolgraven" "tolgraven"]]]
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
      ; [cv]
      [github-commits]

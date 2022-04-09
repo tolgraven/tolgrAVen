@@ -296,6 +296,20 @@
   [scroll-y-px] ; should have bangs, also take parent id like -by, if necessary?
   (.scrollTo js/window 0 scroll-y-px))
 
+(defn when-seen "Dispatch event when observer hit, then end"
+  [on-view]
+  (let [fired? (atom false) ; since can't disconnect from closure this will have to do for now
+        observer (js/IntersectionObserver.
+                  (fn [[entry & _]]
+                    (when-not @fired?
+                      (on-view)
+                      (reset! fired? true)))
+                  (clj->js {:threshold [0]}))]
+    (fn [el]
+      (if el
+        (.observe observer el)
+        (.disconnect observer)))))
+
 (defn observer [on-view-change & [id]] ;what's with the weird scrolling bug?
   (let [in-view (atom 0.0)
         on-change (fn [[entry & _]]

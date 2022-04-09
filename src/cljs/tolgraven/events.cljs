@@ -298,9 +298,17 @@
  (fn [db [_ category id]]
    (update-in db [:state :is-loading category] (comp set disj) (or id :default))))
 
-(rf/reg-event-db :booted
- (fn [db [_ page]]
-   (assoc-in db [:state :booted page] true)))
+(rf/reg-event-fx :on-booted ; queue event up to fire once init complete
+  (fn [{:keys [db]} [_ id event]]
+    {:db (update-in db [:state :on-booted id] (comp set conj) event)}))
+
+(rf/reg-event-fx :booted
+ (fn [{:keys [db]} [_ id]]
+   {:db (-> db
+            (assoc-in [:state :booted id] true)
+            (update-in [:state :on-booted] dissoc id))
+    :dispatch-n (vec (get-in db [:state :on-booted id]))}))
+
 
 
 (localstore/reg-co-fx! :state       ;; local storage key
@@ -467,9 +475,8 @@
                 [:listener/scroll-direction]
                 [:id-counters/fetch]
                 [:listener/popstate-back]
-                [:strava/init]
-                [:instagram/init]
-                [:page/init-blog]]}))
+                [:page/init-blog] ; maybe could hold off init blog a few secs tho even if we dont wait for nav to init
+                [:booted :site]]})) ; should work, main page specific init events won't get queued unless on main so...
 
 ; generic helpers for rapid prototyping.
 ; NOT FOR LONG-TERM USE if straight to data path not viable
