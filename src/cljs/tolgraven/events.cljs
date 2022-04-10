@@ -356,20 +356,15 @@
                                        (rf/inject-cofx :css-var [:footer-height])
                                        (rf/inject-cofx :css-var [:space-top])
                                        (rf/inject-cofx :css-var [:footer-height-current])]
- (fn [{:keys [db css-var]} [_ direction position at-bottom?]]
+ (fn [{:keys [db css-var]} [_ direction position height at-bottom?]]
    (let [header-height (if (get-in db [:state :menu])
                             (:header-with-menu-height css-var)
                             (:header-height css-var))
          past-top? (>= position (+ (util/rem-to-px (:header-height css-var))     ; distance from top to main is header-height + space-top above/below,
                                    (* 2 (util/rem-to-px (:space-top css-var))))) ; + space-lg above main. but header + 2x space-top seems sufficient...
          hidden? (get-in db [:state :hidden-header-footer])
-         main-height (- (.-clientHeight (util/elem-by-id "main"))
-                        (-> (util/elem-by-id "main")
-                            js/getComputedStyle
-                            .-paddingBottom
-                            js/parseFloat))
          at-bottom? (>= position
-                        (- main-height
+                        (- height
                            (.-innerHeight js/window)
                            (- 50)
                            (util/rem-to-px (:footer-height-current css-var))))] ; will jump page so...
@@ -436,14 +431,20 @@
    (let [scroll-pos (atom 0)
          last-direction (atom :up)
          accum-in-direction (atom 0)
-         page-height (atom (.-clientHeight (util/elem-by-id "main")))
+         get-height (fn []
+                      (- (.-clientHeight (util/elem-by-id "main"))
+                         (-> (util/elem-by-id "main")
+                             js/getComputedStyle
+                             .-paddingBottom
+                             js/parseFloat)))
+         page-height (atom (get-height))
          triggered-at (atom (ct/now))
          top-size (+ (util/rem-to-px (:header-height css-var))     ; distance from top to main is header-height + space-top above/below,
                      (* 2 (util/rem-to-px (:space-top css-var)))
                      50)
          callback (fn [e]
                     (let [new-pos (.-scrollY js/window)
-                          new-height (.-clientHeight (util/elem-by-id "main")) ; jumps between actual and ~double val causing jitter and badness...
+                          new-height (get-height) ; jumps between actual and ~double val causing jitter and badness...
                           new-direction (cond
                                          (> new-pos @scroll-pos) :down
                                          (< new-pos @scroll-pos) :up
@@ -454,7 +455,7 @@
                                             (- 0)))
                           at-top? (<= @scroll-pos top-size)]
                         (when (and (not= @scroll-pos new-pos)
-                                   #_(= @page-height new-height)) ; avoid running up accum from massive page size jumps...
+                                   (= @page-height new-height)) ; avoid running up accum from massive page size jumps...
                           (reset! accum-in-direction (if (= new-direction @last-direction)
                                                        (+ @accum-in-direction (util/abs (- new-pos @scroll-pos)))
                                                        0 #_(util/abs (- new-pos @scroll-pos))))
@@ -473,7 +474,7 @@
                             (reset! accum-in-direction 0)
                             (reset! triggered-at (ct/now))
                             (rf/dispatch [:scroll/direction
-                                          @last-direction @scroll-pos at-bottom?])))
+                                          @last-direction @scroll-pos @page-height at-bottom?])))
                         (reset! page-height new-height)))]
      {:dispatch [:listener/add! "document" "scroll" callback]})))
 
