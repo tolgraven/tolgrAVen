@@ -368,7 +368,7 @@
          at-bottom? (>= position
                         (- height
                            (.-innerHeight js/window)
-                           (- 50)
+                           50
                            (util/rem-to-px (:footer-height-current css-var))))] ; will jump page so...
     {:dispatch-n [(if (or (and hidden?
                                (= direction :up))
@@ -406,7 +406,7 @@
    (when bottom?
      {:dispatch-later {:ms 300
                        :dispatch
-                       [:scroll/by (js/parseFloat @(rf/subscribe [:get-css-var "footer-height-full"]))]}}))))
+                       [:scroll/by (js/parseFloat (:footer-height-full css-var))]}}))))
 
 
 (rf/reg-event-fx :hide-header-footer  [(rf/inject-cofx :css-var [:header-with-menu-height])
@@ -421,8 +421,8 @@
          footer-height (if hide?
                          "0rem"
                          (:footer-height css-var))]
-     {:dispatch-n [[:state [:hidden-header-footer] hide?]
-                   [:->css-var! "header-height-current" header-height]
+     {:db (assoc-in db [:state :hidden-header-footer] hide?)
+      :dispatch-n [[:->css-var! "header-height-current" header-height]
                    (when-not (get-in db [:state :scroll :at-bottom])
                      [:->css-var! "footer-height-current" footer-height])]})))
 
@@ -454,7 +454,7 @@
                           at-bottom? (>= new-pos ; XXX use calc from :scroll/direction instead...
                                          (- new-height
                                             (.-innerHeight js/window)
-                                            (- 0)))
+                                            500)) ; "maybe at bottom"
                           at-top? (<= @scroll-pos top-size)]
                         (when (and (not= @scroll-pos new-pos)
                                    (= @page-height new-height)) ; avoid running up accum from massive page size jumps...
@@ -465,18 +465,16 @@
                           (reset! scroll-pos new-pos)
                           (when (and (or at-bottom?
                                          at-top?
-                                         (= @page-height new-height)) ; ensure "scroll" isn't due to content resizing
-                                     (or at-bottom? ; time debounce unless at bottom
-                                         at-top? ; at top
-                                         (ct/after? (ct/minus (ct/now) (ct/millis 250)) @triggered-at))
+                                         (ct/after? (ct/minus (ct/now) (ct/millis 250)) @triggered-at)) ; ensure "scroll" isn't due to content resizing
                                      (or (<= 250 @accum-in-direction) ; bit of debounce
-                                         at-top?
-                                         (and at-bottom?
-                                              (= new-direction :down)))) ; always post when at bottom, regardless of accum
+                                          (and at-top?
+                                               (= new-direction :up))
+                                          (and at-bottom?
+                                               (= new-direction :down)))) ; always post when at bottom, regardless of accum
                             (reset! accum-in-direction 0)
                             (reset! triggered-at (ct/now))
                             (rf/dispatch [:scroll/direction
-                                          @last-direction @scroll-pos @page-height at-bottom?])))
+                                          @last-direction @scroll-pos new-height at-bottom?])))
                         (reset! page-height new-height)))]
      {:dispatch [:listener/add! "document" "scroll" callback]})))
 
