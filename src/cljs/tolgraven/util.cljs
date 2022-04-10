@@ -305,13 +305,11 @@
 
 (defn when-seen "Dispatch event when observer hit, then end"
   [on-view]
-  (let [fired? (atom false) ; since can't disconnect from closure this will have to do for now
-        observer (js/IntersectionObserver.
-                  (fn [[entry & _]]
-                    (when (and (not @fired?)
-                               (= 1 (.-intersectionRatio entry))) ; fires a 0 on load for some reason...
+  (let [observer (js/IntersectionObserver.
+                  (fn [[entry & _] observer]
+                    (when (= 1 (.-intersectionRatio entry)) ; fires a 0 on load for some reason...
                       (on-view)
-                      (reset! fired? true)))
+                      (.disconnect observer)))
                   (clj->js {:threshold [1.0]}))]
     (fn [el]
       (if el
