@@ -18,9 +18,15 @@
                                                0.5)))
 
 (rf/reg-cofx :css-var
- (fn [cofx [css-var-k _]]
-   (assoc-in cofx [:css-var css-var-k]
-             (util/<-css-var (name css-var-k)))))
+ (fn [cofx [css-var-k force-fetch?]]
+   (let [value (if-let [cached-var (get-in (:db cofx) [:state :css-var css-var-k])]
+                 (if-not force-fetch?
+                   cached-var
+                   (util/<-css-var (name css-var-k)))
+                 (util/<-css-var (name css-var-k)))]
+     (-> cofx
+         (assoc-in [:css-var css-var-k] value)
+         (assoc-in [:db :state :css-var css-var-k] value)))))
 
 (defonce id-counters (atom {})) ;js has its own id gen thing so use that maybe. but no sequential then?
 ; silly using defonce and atom instead of (or rather parallel with) db right?

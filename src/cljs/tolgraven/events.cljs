@@ -350,14 +350,18 @@
               el)]
      (.addEventListener el event f))))
 
-(rf/reg-event-fx :scroll/direction
- (fn [{:keys [db]} [_ direction position at-bottom?]]
+
+(rf/reg-event-fx :scroll/direction    [(rf/inject-cofx :css-var [:header-with-menu-height])
+                                       (rf/inject-cofx :css-var [:header-height])
+                                       (rf/inject-cofx :css-var [:footer-height])
+                                       (rf/inject-cofx :css-var [:space-top])
+                                       (rf/inject-cofx :css-var [:footer-height-current])]
+ (fn [{:keys [db css-var]} [_ direction position at-bottom?]]
    (let [header-height (if (get-in db [:state :menu])
-                            @(rf/subscribe [:get-css-var "header-with-menu-height"])
-                            @(rf/subscribe [:get-css-var "header-height"]))
-         footer-height @(rf/subscribe [:get-css-var "footer-height"])
-         past-top? (>= position (+ (util/rem-to-px @(rf/subscribe [:get-css-var "header-height"]))     ; distance from top to main is header-height + space-top above/below,
-                                   (* 2 (util/rem-to-px @(rf/subscribe [:get-css-var "space-top"]))))) ; + space-lg above main. but header + 2x space-top seems sufficient...
+                            (:header-with-menu-height css-var)
+                            (:header-height css-var))
+         past-top? (>= position (+ (util/rem-to-px (:header-height css-var))     ; distance from top to main is header-height + space-top above/below,
+                                   (* 2 (util/rem-to-px (:space-top css-var))))) ; + space-lg above main. but header + 2x space-top seems sufficient...
          hidden? (get-in db [:state :hidden-header-footer])
          main-height (- (.-clientHeight (util/elem-by-id "main"))
                         (-> (util/elem-by-id "main")
@@ -368,7 +372,7 @@
                         (- main-height
                            (.-innerHeight js/window)
                            (- 50)
-                           (util/rem-to-px @(rf/subscribe [:get-css-var "footer-height-current"]))))] ; will jump page so...
+                           (util/rem-to-px (:footer-height-current css-var))))] ; will jump page so...
     {:dispatch-n [(if (or (and hidden?
                                (= direction :up))
                           at-bottom?)
@@ -378,71 +382,76 @@
                               past-top?
                               (not (get-in db [:state :menu])))
                      [:hide-header-footer true]))
-                  (if (and at-bottom? (not @(rf/subscribe [:state [:scroll :at-bottom]])))
+                  (if (and at-bottom? (not (get-in db [:state :scroll :at-bottom])))
                     [:scroll/at-bottom true]
-                    (when (and (not at-bottom?) @(rf/subscribe [:state [:scroll :at-bottom]]))
+                    (when (and (not at-bottom?) (get-in db [:state :scroll :at-bottom]))
                       [:scroll/at-bottom false]))
-                  (if (and past-top? (not @(rf/subscribe [:state [:scroll :past-top]])))
+                  (if (and past-top? (not (get-in db [:state :scroll :past-top])))
                     [:scroll/past-top true]
-                    (when (and (not past-top?) @(rf/subscribe [:state [:scroll :past-top]]))
+                    (when (and (not past-top?) (get-in db [:state :scroll :past-top]))
                       [:scroll/past-top false]))]})))
 
 (rf/reg-event-fx :scroll/past-top
  (fn [{:keys [db]} [_ past-top?]]
    {:db (assoc-in db [:state :scroll :past-top] past-top?) }))
 
-(rf/reg-event-fx :scroll/at-bottom
- (fn [{:keys [db]} [_ bottom?]]
+(rf/reg-event-fx :scroll/at-bottom    [(rf/inject-cofx :css-var [:footer-height])
+                                       (rf/inject-cofx :css-var [:footer-height-full])]
+ (fn [{:keys [db css-var]} [_ bottom?]]
    (merge
     {:db (assoc-in db [:state :scroll :at-bottom] bottom?)
      :dispatch-n [[:->css-var! "footer-height-current"
                    (if (and bottom?) ; "is on front page", trickier than first might think due to idiosyncraticlol design choices
-                     @(rf/subscribe [:get-css-var "footer-height-full"])
+                     (:footer-height-full css-var)
                      (if (get-in db [:state :hidden-header-footer])
                        "0rem"
-                       @(rf/subscribe [:get-css-var "footer-height"])))]]}
+                       (:footer-height css-var)))]]}
    (when bottom?
      {:dispatch-later {:ms 300
                        :dispatch
                        [:scroll/by (js/parseFloat @(rf/subscribe [:get-css-var "footer-height-full"]))]}}))))
 
 
-(rf/reg-event-fx :hide-header-footer
- (fn [{:keys [db]} [_ hide?]]
+(rf/reg-event-fx :hide-header-footer  [(rf/inject-cofx :css-var [:header-with-menu-height])
+                                       (rf/inject-cofx :css-var [:header-height])
+                                       (rf/inject-cofx :css-var [:footer-height])]
+ (fn [{:keys [db css-var]} [_ hide?]]
    (let [header-height (if hide?
                          "0rem"
                          (if (get-in db [:state :menu])
-                            @(rf/subscribe [:get-css-var "header-with-menu-height"])
-                            @(rf/subscribe [:get-css-var "header-height"])))
+                            (:header-with-menu-height css-var)
+                            (:header-height css-var)))
          footer-height (if hide?
                          "0rem"
-                         @(rf/subscribe [:get-css-var "footer-height"]))]
+                         (:footer-height css-var))]
      {:dispatch-n [[:state [:hidden-header-footer] hide?]
                    [:->css-var! "header-height-current" header-height]
-                   (when-not @(rf/subscribe [:state [:scroll :at-bottom]])
+                   (when-not (get-in db [:state :scroll :at-bottom])
                      [:->css-var! "footer-height-current" footer-height])]})))
 
-
-(rf/reg-event-fx :listener/scroll-direction ; this causes event spam obviously but since need subs & db it's necessary.
- (fn [{:keys [db]} [_ _]]
+ ; this causes event spam obviously but since need subs & db it's necessary.
+(rf/reg-event-fx :listener/scroll-direction   [(rf/inject-cofx :css-var [:header-height])
+                                               (rf/inject-cofx :css-var [:space-top])]
+ (fn [{:keys [db css-var]} [_ _]]
    (let [scroll-pos (atom 0)
          last-direction (atom :up)
          accum-in-direction (atom 0)
-         page-height (atom (.-clientHeight js/document.body))
+         page-height (atom (.-clientHeight (util/elem-by-id "main")))
          triggered-at (atom (ct/now))
-         top-size (+ (util/rem-to-px @(rf/subscribe [:get-css-var "header-height"]))     ; distance from top to main is header-height + space-top above/below,
-                     (* 2 (util/rem-to-px @(rf/subscribe [:get-css-var "space-top"]))))
+         top-size (+ (util/rem-to-px (:header-height css-var))     ; distance from top to main is header-height + space-top above/below,
+                     (* 2 (util/rem-to-px (:space-top css-var)))
+                     50)
          callback (fn [e]
                     (let [new-pos (.-scrollY js/window)
-                          new-height (.-clientHeight js/document.body) ; jumps between actual and ~double val causing jitter and badness...
+                          new-height (.-clientHeight (util/elem-by-id "main")) ; jumps between actual and ~double val causing jitter and badness...
                           new-direction (cond
                                          (> new-pos @scroll-pos) :down
                                          (< new-pos @scroll-pos) :up
                                          :else @last-direction)
-                          at-bottom? (>= new-pos ; always emit event towards end of page
+                          at-bottom? (>= new-pos ; XXX use calc from :scroll/direction instead...
                                          (- new-height
                                             (.-innerHeight js/window)
-                                            250))
+                                            (- 0)))
                           at-top? (<= @scroll-pos top-size)]
                         (when (and (not= @scroll-pos new-pos)
                                    #_(= @page-height new-height)) ; avoid running up accum from massive page size jumps...
