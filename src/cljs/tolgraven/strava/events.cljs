@@ -51,11 +51,15 @@
         [:strava/store-session]]})))
 
 
+(rf/reg-event-fx :strava/save
+  (fn [{:keys [db]} [_ path content]]
+    {:db (assoc-in db (into [:content :strava] path) content)}))
+
 (rf/reg-event-fx :strava/get
   (fn [{:keys [db]} [_ path save-to]]
     {:dispatch [:strava/get-and-dispatch
                 path
-                [:content (into [:strava] save-to)] ]}))
+                [:strava/save save-to] ]}))
 
 (rf/reg-event-fx :strava/get-and-dispatch
   (fn [{:keys [db]} [_ path event]]
@@ -65,9 +69,10 @@
                   event
                   [:strava/on-error]]})))
 
-(rf/reg-event-db :strava/on-error
-  (fn [db [_ error]]
-    (update-in db [:content :strava :error] conj error)))
+(rf/reg-event-fx :strava/on-error
+  (fn [{:keys [db]} [_ error]]
+    {:db (update-in db [:content :strava :error] conj error)
+     :dispatch [:diag/new :error "Strava error" error]}))
 
 (rf/reg-event-fx :strava/fetch
   (fn [{:keys [db]} [_ ]]
