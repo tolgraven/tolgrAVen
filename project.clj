@@ -3,76 +3,77 @@
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
 
-  :dependencies [[clojure.java-time "0.3.2"]
-                 [com.cognitect/transit-clj "1.0.324"]
+  :dependencies [[clojure.java-time "0.3.3"]
+                 [com.cognitect/transit-clj "1.0.329"]
                  
-                 [org.clojure/java.jdbc "0.7.11"]
-                 [org.postgresql/postgresql "42.2.18"]
-                 [honeysql "1.0.444"]
+                 [org.clojure/java.jdbc "0.7.12"]
+                 [org.postgresql/postgresql "42.3.3"]
+                 [honeysql "1.0.461"]
                  [com.google.guava/guava "25.1-jre"] ;what is
-                 [cprop "0.1.17"] ;env loading
-                 [expound "0.8.6"] ;spec failure explainers
+                 [cprop "0.1.19"] ;env loading
+                 [expound "0.9.0"] ;spec failure explainers
                  [funcool/struct "1.4.0"] ;is what?
 
-                 [luminus-transit "0.1.2"]
-                 [luminus-undertow "0.1.7"]
+                 [luminus-transit "0.1.5"]
+                 [luminus-undertow "0.1.14"]
                  [luminus/ring-ttl-session "0.3.3"]
 
-                 [markdown-clj "1.10.5"]
+                 [markdown-clj "1.11.0"]
 
-                 [metosin/jsonista "0.2.7"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
-                 [metosin/muuntaja "0.6.7"]
-                 [metosin/reitit "0.5.10" :exclusions [org.clojure/spec.alpha com.fasterxml.jackson.core/jackson-core com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.core/jackson-annotations]]
+                 [metosin/jsonista "0.3.5"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
+                 [metosin/muuntaja "0.6.8"]
+                 [metosin/reitit "0.5.18" :exclusions [org.clojure/spec.alpha com.fasterxml.jackson.core/jackson-core com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.core/jackson-annotations]]
 
                  [mount "0.1.16"]
-                 [nrepl "0.8.2"]
-                 [org.clojure/clojure "1.10.1"]
-                 [org.clojure/clojurescript "1.10.773" :scope "provided" :exclusions [com.google.errorprone/error_prone_annotations]]
-                 [org.clojure/tools.cli "1.0.194"]
-                 [org.clojure/core.async "1.3.610"]
+                 [nrepl "0.9.0"]
+                 [org.clojure/clojure "1.11.1"]
+                 [org.clojure/clojurescript "1.11.4" :scope "provided" :exclusions [com.google.errorprone/error_prone_annotations]]
+                 [org.clojure/tools.cli "1.0.206"]
+                 [org.clojure/core.async "1.5.648"]
 
                  ; LOGGING
-                 [org.clojure/tools.logging "1.1.0"]
-                 [com.taoensso/timbre "5.1.0" :exclusions [org.clojure/tools.reader]]
-                 [com.fzakaria/slf4j-timbre "0.3.20" :exclusions [org.slf4j/slf4j-api]] ;route java logging through timbre. but dunno. hard to manage
+                 [org.clojure/tools.logging "1.2.4"]
+                 [com.taoensso/timbre "5.2.1" :exclusions [org.clojure/tools.reader]]
+                 [com.fzakaria/slf4j-timbre "0.3.21" :exclusions [org.slf4j/slf4j-api]] ;route java logging through timbre. but dunno. hard to manage
                  [clj-logging-config "1.9.12"]
-                 [io.aviso/pretty "0.1.37"] ;pretty exceptions, pretty logging...
+                 [io.aviso/pretty "1.1.1"] ;pretty exceptions, pretty logging...
 
-                 [ring/ring-core "1.8.2"]
-                 [ring/ring-defaults "0.3.2"]
+                 [ring/ring-core "1.9.5"]
+                 [ring/ring-defaults "0.3.3"]
                  [bk/ring-gzip "0.3.0" :exclusions [clojure-complete]]
                  [ring-partial-content "2.0.1"] ; handle safari video playback / 206 response
-                 [ring-basic-authentication "1.1.0"]
+                 [ring-basic-authentication "1.1.1"]
                  [radicalzephyr/ring.middleware.logger "0.6.0"]
-                 [metosin/ring-http-response "0.9.1"]
-                 [optimus "0.20.2"] ;optimization of assets
+                 [metosin/ring-http-response "0.9.3"]
+                 [optimus "2022-02-13"] ;optimization of assets
 
-                 [selmer "1.12.31"]
+                 [selmer "1.12.50"]
                  [nrepl/drawbridge "0.2.1"] ; nrepl over http
 
                  ; CLJS
-                 [cljs-ajax "0.8.1"  :exclusions [com.cognitect/transit-cljs com.cognitect/transit-cljs]]
+                 [cljs-ajax "0.8.4"  :exclusions [com.cognitect/transit-cljs com.cognitect/transit-cljs]]
                  [com.andrewmcveigh/cljs-time "0.5.2"]
                  [cljsjs/smoothscroll-polyfill "0.4.0-0"]
 
                  [appliedscience/js-interop "0.2.5"]
 
-                 [re-frame "1.1.1"]
-                 [kee-frame "0.4.0" :exclusions [args4j]]
-                 [day8.re-frame/http-fx "0.2.1"]
+                 [re-frame "1.2.0"]
+                 ; [kee-frame "0.4.0" :exclusions [args4j]]
+                 [day8.re-frame/http-fx "0.2.4"]
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
-                 [day8.re-frame/async-flow-fx "0.2.0"]
+                 [day8.re-frame/async-flow-fx "0.3.0"]
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
                  [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j]]
-                 ; [day8.re-frame/undo "0.3.3"]
-                 [reagent "0.10.0"]
+                 [reagent "1.1.1"]
+                 [cljsjs/react "17.0.2-0"]
+                 [cljsjs/react-dom "17.0.2-0"]
                  [reanimated "0.6.1"]
                  [re-frame-utils "0.1.0"]
                  [com.smxemail/re-frame-cookie-fx "0.0.2"  :exclusions [args4j]]
                  [re-pollsive "0.1.0"] ; periodic polling/timer stuff
                  [district0x.re-frame/google-analytics-fx "1.0.0"]
                  
-                 [cljsjs/highlight "9.12.0-2"]
+                 [cljsjs/highlight "10.3.1-0"]
                  [cljsjs/codemirror "5.44.0-1"]
                  [cljsjs/react-player "1.11.0-0"]
                  [cljsjs/react-leaflet "3.1.0-0"]
