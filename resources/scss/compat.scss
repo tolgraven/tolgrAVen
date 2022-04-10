@@ -2,18 +2,36 @@
 
 @media screen and (min-width: 800px) and (min-height: 800px) {
   :root {
-    --space: 1.5rem;
-    --space-lg: 2.25rem;
+    --space: 1.3rem;
+    --space-lg: 2.15rem;
+    --space-sides: 5vw;
+    --space-edges: 5vw;
   }
 }
 @media screen and (min-width: 1000px) {
   .line { /* i guess x overflow only important on ios, so we hype here */
-    width: 200%; /* extend out like damn */
+    // width: 200%; /* extend out like damn */
   }
   :root {
-    --space-edges: 10vw;
-    --space-sides: 10vw;
+    --space: 1.6rem;
+    --space-lg: 2.5rem;
+    --space-edges: 12vw;
+    --space-sides: 12vw;
     font-size: 1.10rem;
+  }
+}
+@media screen and (min-width: 1300px) {
+  :root {
+    --space: 2.3rem;
+    --space-lg: 3.5rem;
+    --space-edges: 20vw;
+    --space-sides: 20vw;
+  }
+}
+@media screen and (min-width: 1500px) {
+  :root {
+    --space-edges: 25vw;
+    --space-sides: 25vw;
   }
 }
 @media screen and (max-width: 600px),
@@ -72,7 +90,7 @@
 
 @media screen and (max-width: 500px) {
   :root {
-    font-size: 0.80rem;
+    font-size: 0.75rem;
     --space: 0.75rem;
     --space-lg: 1.0rem;
   }
@@ -84,7 +102,7 @@
 }
 @media screen and (max-width: 400px) {
   :root {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     --space-sides: calc(0.5 * var(--space)); /* remember -sides based on the smaller num for mobile (since margins are more precious) */
     --space-edges: calc(0.0 * var(--space));
     --line-width-vert: 0;
