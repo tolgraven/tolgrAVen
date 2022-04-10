@@ -39,15 +39,14 @@
   (fn [{:as cofx :keys [db scroll-position]} [_ match]]
     (let [old-match (:common/route db)
           new-match (assoc match :controllers
-                           (rfc/apply-controllers (:controllers old-match) match))]
-      (if-not (and (= (-> new-match :data :view)
-                      (-> old-match :data :view))
-                   (= (-> new-match :path-params)
-                      (-> old-match :path-params))
-                   (= (-> new-match :query-params)
-                      (-> old-match :query-params))
-                   (= (-> new-match :path)
-                      (-> old-match :path)))
+                           (rfc/apply-controllers (:controllers old-match) match))
+          same (fn [& path]
+                 (= (get-in new-match path)
+                    (get-in old-match path)))]
+      (if-not (and (same :data :view)
+                   (same :path-params)
+                   (same :query-params)
+                   (same :path))
       (merge
        {:db (-> db
                (assoc :common/route new-match)
@@ -60,15 +59,13 @@
                                 (-> new-match :data :name ;TODO want further info in title, like blog post title...
                                     name string/capitalize) " "
                                 (-> new-match :parameters :path vals first))}
-       (when (and (= (:query-params new-match) ; TODO maybe query params did change but also something else tho
-                     (:query-params old-match))
-                  (or (not= (get-in new-match [:data :view])
-                            (get-in old-match [:data :view]))
-                      (not= (get-in new-match [:path-params])
-                            (get-in old-match [:path-params]))))
+       (when (and (same :query-params) ; TODO maybe query params did change but also something else tho
+                  (or (not (same :data :view))
+                      (not (same :path-params))))
         {:dispatch-later
          {:ms 150
           :dispatch [:scroll/on-navigate (:path new-match)]}}))
+      
       (let [fragment (-> db :state :fragment)] ;; matches are equal (fragment not part of match)
         (if (pos? (count (seq fragment))) 
           {:db (update-in db [:state] dissoc :fragment)
@@ -86,7 +83,6 @@
 
 (rf/reg-event-fx :history/popped
   (fn [{:keys [db]} [_ e]]
-    ; (js/console.log (.-isNavigation e))
     (let [nav-action? true  #_(.-isNavigation e)] ; by fact we getting the event heh
       (if nav-action?  ; bona fide back (or fwd??) event! ; set a flag affecting next common/navigate event
         {:db (assoc-in db [:state :browser-nav :got-nav] true)}))))
@@ -101,10 +97,8 @@
           saved-pos (get-in db [:state :scroll-position path])]
       {;:db (update-in db [:state :browser-nav] dissoc :got-nav) ;clear any browser nav flag since we consume it
        :dispatch (if browser-nav? ; used back/fwd, since clicking a link should equal there or top...
-                   (if saved-pos
-                     [:scroll/px saved-pos] ; shouldnt be in relation to current/old pos tho?
-                   [:scroll/to-top-and-arm-restore path]) ; guess should check for frag, query etc tho
-                   [:scroll/to-top-and-arm-restore path])
+                   [:scroll/and-block (or saved-pos "main")] ; guess should check for frag, query etc tho
+                   [:scroll/and-block "main"])
        :dispatch-later {:ms 300 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
                         :dispatch [:state [:browser-nav :got-nav] false]} }))) ; waiting because checks in main-page
 
@@ -120,15 +114,23 @@
                   ;; could also expose as pref whether to force old more (crappy) appy behavior
                   ]
      :dispatch-later {:ms 10
-                      :dispatch [:scroll/set-scrolling-to-top true]}}))
+                      :dispatch [:scroll/set-block true]}}))
 
-(rf/reg-event-fx :scroll/set-scrolling-to-top
+(rf/reg-event-fx :scroll/and-block ; when follow links etc want to get to top of new page. but if have visited page earlier, offer to restore latest view pos. ACE!!!
+  (fn [{:keys [db]} [_ px-or-elem-id]]
+    {:dispatch (if (number? px-or-elem-id)
+                 [:scroll/px px-or-elem-id]
+                 [:scroll/to px-or-elem-id])
+     :dispatch-later {:ms 1
+                      :dispatch [:scroll/set-block true]}}))
+
+(rf/reg-event-fx :scroll/set-block
   (fn [{:keys [db]} [_ is?]]
     (merge
-     {:db (assoc-in db [:state :scrolling-to-top] is?)}
+     {:db (assoc-in db [:state :scroll :block] is?)}
      (when is?
-       {:dispatch-later {:ms 1500
-                         :dispatch [:scroll/set-scrolling-to-top false]}}))))
+       {:dispatch-later {:ms 1000
+                         :dispatch [:scroll/set-block false]}}))))
 
 
 (rf/reg-event-fx :swap/trigger
