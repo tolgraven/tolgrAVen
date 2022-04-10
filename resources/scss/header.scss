@@ -5,6 +5,7 @@ header {
   position: sticky;
   top: 0;
   min-height: var(--header-height-current);
+  max-height: var(--header-height-current);
   overflow-y: hidden;
   display: flex;
   flex-flow: row wrap;
