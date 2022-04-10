@@ -275,10 +275,11 @@
            (update-in db [:state :appear] dissoc id))})) ; now just generic
 
 
-(rf/reg-event-fx :menu ;; this why better sep. can then inject css var and not sub? i somehow remeber that being badd
-  (fn [{:as cofx :keys [db]} [_ state]]
-    (let [open-height   @(rf/subscribe [:get-css-var "header-with-menu-height"])
-          closed-height @(rf/subscribe [:get-css-var "header-height"]) ;TODO should rather be set from here with data-attr? ideally depends on content
+(rf/reg-event-fx :menu    [(rf/inject-cofx :css-var [:header-with-menu-height])
+                           (rf/inject-cofx :css-var [:header-height])]
+  (fn [{:as cofx :keys [db css-var]} [_ state]]
+    (let [open-height   (:header-with-menu-height css-var)
+          closed-height (:header-height css-var) ;TODO should rather be set from here with data-attr? ideally depends on content
           difference (->> (map js/parseFloat [open-height closed-height])
                           (apply -)
                           (* 0.5))]
