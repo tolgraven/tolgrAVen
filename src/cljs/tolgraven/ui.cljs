@@ -58,13 +58,19 @@
    (into [:<>] components)])
 
 (defn appear-anon "Animate mount. Dont use events just ratoms."
-  [kind & components]
+  [opts & components]
   (let [appeared (r/atom false)]
-    (fn [kind & components]
-      [:div.appear-wrapper
-       {:class (str kind " " (when @appeared "appeared"))
-        :ref #(when % (reset! appeared true))}
-       (into [:<>] components)])))
+    (fn [opts & components]
+      (let [kind (if (map? opts)
+                   (:class opts)
+                   opts)]
+        [:div.appear-wrapper
+         {:class (str kind " " (when (or @appeared
+                                         (empty? (seq kind))
+                                         (:force opts))
+                                 "appeared"))
+          :ref #(when % (reset! appeared true))}
+         (into [:<>] components)]))))
 
 (defn seen "Animate on coming into view"
   [id kind & components]
