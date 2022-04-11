@@ -505,7 +505,7 @@
    {:class (when (seq @to-show) "visible")}
    (for [msg @to-show
          :let [id (str "hud-id-" (:id msg))]] ^{:key id}
-     [appear id "zoom-x slow"
+     [appear-anon "zoom-x slow"
       [msg-fn msg]])]))
 
 
