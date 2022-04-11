@@ -273,8 +273,8 @@
 
 (defn close [on-click]
  [:button.close-btn.noborder
-  [:i.fa.fa-times
-   {:on-click on-click}]])
+  {:on-click on-click}
+  [:i.fa.fa-times]])
 
 (defn formatted-data [title path-or-data]
  (let [data (if (vector? path-or-data)
@@ -494,12 +494,13 @@
                                                        [[:diag/unhandled :remove id]
                                                         [:common/navigate! :log]])] ;TODO should then find elem by log id and scroll to it
                                        (rf/dispatch action)))}
-                  [:h4.hud-message-title title]
+                  [:div.hud-message-top
+                   [:h4.hud-message-title title]
+                   [close (fn [e]
+                            (.stopPropagation e) ;it's causing a click on hud-message as well...
+                            (rf/dispatch [:diag/unhandled :remove id]))]]
                   (when message
-                    [:pre (format-log-message message)])
-                  [close (fn [e]
-                             (.stopPropagation e) ;it's causing a click on hud-message as well...
-                             (rf/dispatch [:diag/unhandled :remove id]))]])]
+                    [:pre (format-log-message message)])])]
   [:div.hud.hidden
    {:class (when (seq @to-show) "visible")}
    (for [msg @to-show

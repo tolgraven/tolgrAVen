@@ -556,16 +556,26 @@ figcaption, .float-with-caption {
     padding: 0.5em 0.5em;
     margin: 0 -0.5em 0 -0.5em;
   }
-  .hud-message-title {
-    font-weight: bold;
-    padding-right: var(--space-lg);
-    padding-bottom: calc(0.33 * var(--space));
-    // max-width: calc(100% - var(--space-lg));
-  }
 
-  .close-btn {
-    top: -0.5em;
-    right: -0.75em;
+  .hud-message-top {
+    display: flex;
+    justify-content: space-between;
+    
+    .hud-message-title {
+      font-weight: bold;
+      padding-right: var(--space-lg);
+      padding-bottom: calc(0.33 * var(--space));
+      // max-width: calc(100% - var(--space-lg));
+    }
+    
+    .close-btn {
+      // top: -0.5em;
+      // right: -0.75em;
+      position: relative;
+      margin: 0;
+      padding: 0;
+      padding-bottom: calc(0.33 * var(--space));
+    }
   }
 }
 
