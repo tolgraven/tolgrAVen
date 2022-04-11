@@ -291,15 +291,13 @@
     [:div#services>div.categories
      {:class (when full-screened "categories-fullscreened")
       :on-click #(rf/dispatch [:state [:services] nil])}
-     ; [carousel :services-carousel {} ["one" "two" "three" "four" "five"]]
-     ; [:div] ;grid
 
      (for [[title icon-name lines] categories ;(if-not full-screened categories (filter #(= (first %) full-screened) categories)) ;XXX change to keys!!
            :let [on-click (fn [e] (.stopPropagation e)
                             (rf/dispatch [:state [:services]
                                           (when-not full-screened title)]))
                  id (str "service-" title)]] ^{:key id}
-       [ui/seen id "zoom-x"
+       [ui/seen-anon "zoom-x"
         (into [:ul {:class (cond (= full-screened title) "service-fullscreen"
                                  full-screened "service-minimized")
                     :on-click on-click}
