@@ -411,7 +411,7 @@
         (for [post (or @posts (range @amount))
               :let [item [:img {:class (when-not (:media_url post) "transparent-border")
                                 :src (or (:media_url post) "img/logo/instagram-fallback-logo.png")
-                                :on-error #(rf/dispatch [:instagram/fetch-from-insta [[(:id post)]]])}]]] ; dispatch on failed fetch due to url expiry
+                                :on-error #(rf/dispatch [:instagram/fetch-from-insta [(:id post)]])}]]] ; dispatch on failed fetch due to url expiry
           ^{:key (str "gallery-instagram-" (or (:id post) post))}
           [insta-post post item])]])))
 
