@@ -294,7 +294,8 @@
 (defn activity-dot
   [activity i num-total watts-high]
   (let [hovered? (r/atom false)
-        opened? (r/atom false) ;like above but lock with click
+        which-expanded (rf/subscribe [:strava/activity-expanded]) ;needs be post/sub so can have prev/next btns
+        opened? (fn [] ((fnil = -1) @which-expanded i))
         tab (r/atom :summary)
         cutoff 80
         size (max 0.85 (/ (:kilojoules activity) 1000))
@@ -304,8 +305,9 @@
       (when-not (:private activity)
        [:<>
        [:div.strava-activity
-       (if @opened?
+       (if (opened?)
          [:div.strava-activity-dot.strava-activity-dot-expanded ;.section-with-media-bg-wrapper
+          {:on-click #(.stopPropagation %)}
 
           [:div.strava-activity-top-bg]
           
@@ -339,7 +341,7 @@
                               :top 0 :right "5%"}}]
                     (map (fn [k] [tab-button k])
                          (keys tabs))) 
-              [ui/close #(do (reset! opened? false)
+              [ui/close #(do (rf/dispatch [:strava/activity-expand nil])
                              (rf/dispatch [:state [:strava :stats-minimized] false]))]])]
  
          [:div.strava-activity-dot
@@ -349,7 +351,8 @@
                    :width (str @result-size "em") :height (str @result-size "em")}
            :on-mouse-enter #(reset! hovered? true)
            :on-mouse-leave #(reset! hovered? false)
-           :on-click #(do (swap! opened? not)
+           :on-click #(do (.stopPropagation %)
+                          (rf/dispatch [:strava/activity-expand i])
                           (rf/dispatch [:state [:strava :stats-minimized] true])
                           (reset! hovered? false))}
           [anim/timeout #(reset! anim-size size) (+ 500 (rand-int 1000))]])
@@ -358,7 +361,7 @@
           [:span [:b (:name activity)]]
           [:span (:kilojoules activity) " kilojoules "]
           [:span (:average_watts activity) " watts"]])]
-       (when @opened?
+       (when (opened?)
          [activity-map-canvas activity])]))))
 
 
@@ -472,6 +475,7 @@
                 [:i.fa {:class (str "fa-arrow-" (name direction))
                         :style {:color "#fc4c02"}}])]
     [:section.strava.section-with-media-bg-wrapper.covering-2
+     {:on-click #(rf/dispatch [:strava/activity-expand nil])}
      [ui/appear-anon "opacity"
       [:img.media-as-bg {:src "img/strava-heatmap-new.png"}]]
      [ui/inset "Click the dots for details" 4]

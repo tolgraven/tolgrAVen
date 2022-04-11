@@ -1,6 +1,9 @@
 (ns tolgraven.strava.subs
   (:require
     [re-frame.core :as rf]
+    [cljs-time.core :as ct]
+    [cljs-time.format :as ctf]
+    [cljs-time.coerce :as ctc]
     [tolgraven.util :as util]))
 
 
@@ -8,6 +11,17 @@
  :<- [:content [:strava]]
  (fn [strava [_ path]]
    (get-in strava path)))
+
+(rf/reg-sub :strava/state
+ :<- [:state [:strava]]
+ (fn [strava [_ path]]
+   (get-in strava path)))
+
+(rf/reg-sub :strava/activity-expanded
+ :<- [:strava/state [:activity-expanded]]
+ (fn [id [_ _]]
+   (or id -1)))
+
 
 ; XXX only currently works with latlng!!
 (rf/reg-sub :strava/activity-stream ; get an activity stream, also downsample it

@@ -123,6 +123,23 @@
                      [:kudos id]])]}))
 
 
+; OTHER STRAVA EVENTS
+
+(rf/reg-event-fx :strava/activity-expand
+  (fn [{:keys [db]} [_ id-or-action]]
+    (let [curr-id (get-in db [:state :strava :activity-expanded] -1)
+          num-activities (count (get-in db [:content :strava :activities]))
+          id (case id-or-action
+               :next (cond-> curr-id
+                       (< (inc curr-id) num-activities) inc)
+               :prev (cond-> curr-id
+                       (>= (dec curr-id) 0) dec)
+               id-or-action)]
+      {:db (assoc-in db [:state :strava :activity-expanded] id)})))
+
+
+; INTERVALS FETCHES
+ 
 (rf/reg-event-fx :intervals/get
   (fn [{:keys [db]} [_ path save-to]]
     {:dispatch [:intervals/get-and-dispatch
