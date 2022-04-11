@@ -36,11 +36,12 @@
      component
      (let [[component state] component] ;cant remember why this is
         [:section.component-failed
-          [:p "Component exception"]
+          [:h2 "Component exception"]
+          [:p (name category)]
           [:pre (-> @exception :info pr-str pprint/pprint)]
           [:pre (-> @exception :error pr-str pprint/pprint)]
           [:div
-           [:button {:on-click #(rf/dispatch [:state [:exception category] nil])}
+           [:button {:on-click #(rf/dispatch [:exception [category] nil])}
             "Attempt reload"]]])))})))
 
 
