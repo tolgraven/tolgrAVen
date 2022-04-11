@@ -623,14 +623,36 @@
                    (assoc-in [:state :modal-zoom id :opened] true))}
     :loaded {:db (assoc-in db [:state :modal-zoom id :loaded] true)})))
 
-(rf/reg-event-fx :github/fetch-commits
+
+
+(rf/reg-event-fx :github/init
  (fn [{:keys [db]} [_ user repo]]
+   (when-not (get-in db [:state :github :pages-fetched])
+     {:dispatch-n [[:github/fetch-commits user repo 1]
+                   [:github/fetch-commit-count user repo]]})))
+
+(rf/reg-event-fx :github/fetch-commits
+ (fn [{:keys [db]} [_ user repo page]]
    (let [url "https://api.github.com/repos/"]
-     (when-not (get-in db [:content :github :repo])
+     (when (and page
+                (not (some #{page} (get-in db [:state :github :pages-fetched]))))
        {:dispatch-n [[:http/get {:uri (str url user "/" repo "/commits")
-                                 :headers {"Accept" "application/vnd.github.v3+json"}}
-                      [:content [:github :repo]]]
-                     [:github/fetch-commit-count user repo]]}))))
+                                 :headers {"Accept" "application/vnd.github.v3+json"}
+                                 :params {:page page}}
+                      [:github/save-commits page]]]}))))
+
+(rf/reg-event-fx :github/save-commits
+ (fn [{:keys [db]} [_ page data]]
+   {:db (-> db
+            (update-in [:content :github :repo] concat data)
+            (update-in [:state :github :pages-fetched] conj page))}))
+
+(rf/reg-event-fx :github/fetch-commits-next
+ (fn [{:keys [db]} [_ user repo]]
+   (when-let [page (some->> (get-in db [:state :github :pages-fetched])
+                            (apply max)
+                            inc)]
+     {:dispatch [:github/fetch-commits user repo page]})))
 
 (rf/reg-event-fx :github/fetch-commit-count
  (fn [{:keys [db]} [_ user repo]]

@@ -445,6 +445,21 @@
       (for [tune tunes] ^{:key (str "soundcloud-player-" tune)}
         [soundcloud-player artist tune])]]))
 
+
+(defn lazy-load-repeatedly "Dispatch update event when approaching something"
+  [event & [root-id]]
+  (let [observer (util/observer (fn [frac]
+                                  (when (= frac 1.0)
+                                    (rf/dispatch event)))
+                                (merge {:threshold 1.0}
+                                 (when root-id
+                                   {:root (util/elem-by-id root-id)})))]
+    (fn [event]
+      [:div
+       {:ref (fn [el]
+               (util/log (str "observer el " el " event " event))
+               (observer el))}])))
+
 (defn github-commits "List Github commits for this repo"
   []
   (let [commits @(rf/subscribe [:github/commits])
@@ -452,18 +467,40 @@
     [:section.github-commits.covering-2
      
      [:h2 [:i.fab.fa-github] " " amount " commits to this website"]
-     [:div.github-commits-inner
-      (for [{:keys [commit author] :as item} commits
+     [:div#github-commits-box.github-commits-inner
+      (for [{:keys [commit author html_url] :as item} commits
             :let [ts (get-in commit [:author :date])
-                  [date clock] (string/split ts "T")]] ^{:key (str "github-commit-" ts)}
+                  [date clock] (string/split ts "T") ; all this should be moved to subs yea
+                  [info subtitle title :as message]
+                  (map string/trim
+                       (some-> (:message commit)
+                               (string/replace #"\b(\w+):" "$1\n")
+                               string/split-lines
+                               reverse))]]
+        ^{:key (str "github-commit-" ts)}
         [:div.github-commit.flex
          [:img.user-avatar.center-content {:src (:avatar_url author)}]
-         [:div
+         [:div.github-commit-details
           [:span.github-commit-time date]
           [:span.github-commit-time clock]
+          [:a {:href html_url}
+           [:span.github-commit-sha (apply str (take 8 (seq (get-in commit [:tree :sha]))))]]
 
-          [:p.github-commit-message
-           (:message commit)]]])]]))
+          [:div.github-commit-message
+           [:div.info info]
+           (if title
+             [:div
+              [:span.title title]
+              [:i.fa.fa-solid.fa-arrow-right]
+              [:span.subtitle subtitle]]
+             (when subtitle
+               [:div
+                [:span.title subtitle]]))]]])
+      ; [view/loading-spinner true]
+      [:div.github-loading [:h3 "Scroll down to load more..."]]
+      [lazy-load-repeatedly
+       [:github/fetch-commits-next "tolgraven" "tolgraven"]
+       "github-commits-box"]]]))
 
 (defn lazy-load "Dispatch init event when approaching something previous"
   [event]
@@ -496,7 +533,7 @@
      [ui-insta]
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
      ; [cv]
-     [lazy-load [:on-booted :site [:github/fetch-commits "tolgraven" "tolgraven"]]]
+     [lazy-load [:on-booted :site [:github/init "tolgraven" "tolgraven"]]]
      [github-commits]
      [chat/chat]
      ]))
