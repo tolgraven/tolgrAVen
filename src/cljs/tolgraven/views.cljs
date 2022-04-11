@@ -121,7 +121,7 @@
                     (reset! in-view frac)
                     (when (<= frac 0.2)
                       (do-control :pause)))
-        observer (util/observer on-change (str "interlude-" nr)) ]
+        observer (util/observer on-change (str "interlude-" nr))]
     (fn [{:keys [title caption bg nr]}]
       [:section.nopadding
        {:id (str "interlude-" nr)
@@ -132,7 +132,7 @@
         :on-touch-end   #(do-control :pause)}
        (util/add-attrs bg {:id (str "interlude-bg-" nr)
                            :ref (fn [el]
-                                  (when el
+                                  (when (and el (not @vid-ref)) ;presumably everything torn down on nil anyways so?
                                     (reset! vid-ref el)
                                     (set! (.-muted el) true)))
                            :onLoadedMetadata #(set! (.-muted %) true)
@@ -143,7 +143,7 @@
                                                             :time-per-step (/ control-time 3)))
                                           (set! (.-currentTime @vid-ref) 0)
                                           (.pause @vid-ref)
-                                          (js/setTimeout #(do-control :play) 5000))) ; should be read from css i guess to correspond with other anim
+                                          (js/setTimeout #(do-control :play) 8000))) ; should be read from css i guess to correspond with other anim
                            :loop true
                            :muted true}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:div
