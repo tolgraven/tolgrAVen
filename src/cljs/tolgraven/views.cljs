@@ -83,7 +83,7 @@
                                                             (/ t dur)
                                                             @curr-pos)) ]
                                           (+ (- 1.0 (js/Math.pow (- 1.0 (/ (* b pos) b))
-                                                              2)))))})]
+                                                                 2)))))})]
     (fn [{:keys [title text buttons logo-bg bg]}]
      [:section#intro
      [bg-logo logo-bg]
@@ -91,8 +91,9 @@
 
      [:div.h1-wrapper.center-content
       [:h1.h-responsive.h-intro
-      [anim/timeout #(reset! showing-title (count (seq title))) 500]
-      (take (int @showing-title-inter) title)]]
+      [anim/timeout #(reset! showing-title (count (seq title))) 3000]
+      (str (when (< @showing-title-inter 1) "•")
+           (string/join (take (int @showing-title-inter) title)))]]
      
      (into [:<>] (ln->br text)) ; or just fix :pre css lol
      [:br]
