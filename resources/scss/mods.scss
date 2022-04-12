@@ -66,6 +66,10 @@
   z-index: -1;
 
   display: inherit;
+  pointer-events: none;
+  div {
+    transition: all none;
+  }
   
   &.opacity {
     opacity: 0;
@@ -77,7 +81,7 @@
   }
 
   &.swapped-out { // bc we cant animate display: none so would need a yet additional class to fully hide right? nuke from dom seems wiser tho...
-    pointer-events: none;
+    display: none;
   }
 }
 

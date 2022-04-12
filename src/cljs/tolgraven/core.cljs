@@ -54,7 +54,11 @@
                           (not= prev-page (:running @swap))
                           (not= prev-page (:finished @swap)))
                (rf/dispatch [:swap/trigger prev-page]))} ; trigger anim out and deferred hiding. triggers three(!) times each time but later no effect so.
-        comp-out])]))
+        (when-not (:finished @swap)
+          comp-out)])]))
+;; ^^ this works but obviously should be going back and forth between two "equal" comps
+;; that are therefore not being reloaded on leaving...
+
 
 (defn page "Render active page inbetween header, footer and general stuff." []
   [:<>
