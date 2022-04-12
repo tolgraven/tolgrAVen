@@ -430,12 +430,22 @@
     :width "100%"
     :height "100%"}])
 
+(defn soundcloud-loading "A dummy to show before initing react-player"
+  [artist song]
+  [:div.soundcloud-player-loading
+   [:img.center-content
+    {:src "img/soundcloud-logo.png"}]
+   [:h3 song]
+   [:h4 artist]])
+
 (defn soundcloud-player
   [artist song]
   (let [base-url "https://soundcloud.com/"
         url (str base-url artist "/" song)]
     [ui/seen-anon "slide-in"
-     [remote-player url]]))
+     (if @(rf/subscribe [:state [:soundcloud :init]])
+       [remote-player url]
+       [soundcloud-loading artist song])]))
 
 (defn ui-soundcloud "Soundcloud feed, plus selected tunes. Bonus if can do anything fun with it"
   []
@@ -531,6 +541,7 @@
      
      [lazy-load [:on-booted :site [:strava/init]]]
      [strava/strava]
+     [lazy-load [:on-booted :site [:state [:soundcloud :init] true]]]
      [ui-soundcloud]
      [lazy-load [:on-booted :site [:instagram/init]]]
      [ui-insta]

@@ -638,5 +638,17 @@ figcaption, .float-with-caption {
       background: #fc4c02; //XXX fix real
       height: 120%;
     }
+
+    .soundcloud-player-loading {
+      // display: flex;
+      height: calc(148px - var(--space)); // same as widget
+      padding: var(--space);
+      border: var(--line-width) solid #fc4c02; //XXX fix real
+      background-color: var(--orange);
+
+      img {
+        height: 2rem;
+      }
+    }
   }
 }
