@@ -38,8 +38,8 @@
     content: "";
     height: 0.3em;
     background: linear-gradient(to right, rgba(216, 187, 182, 0.63), var(--fg-2) 185%);
-    animation: grow-line 1.2s ease 3.5s,
-               skew-line 1.5s ease 5s;
+    animation: grow-line 1.2s ease 6.0s,
+               skew-line 1.5s ease 7s;
     animation-fill-mode: forwards;
     position: absolute;
     bottom: 1.25rem;
