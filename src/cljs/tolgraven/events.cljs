@@ -373,7 +373,7 @@
                            (util/rem-to-px (:footer-height-current css-var))))] ; will jump page so...
     {:dispatch-n [(if (or (and hidden?
                                (= direction :up))
-                          at-bottom?)
+                          at-bottom?) ; not checking for already hidden leads to spam but somehow stabilizes...
                    [:hide-header-footer false]
                    (when (and (not hidden?)
                               (= direction :down)
@@ -462,20 +462,22 @@
                           (reset! accum-in-direction (if (= new-direction @last-direction)
                                                        (+ @accum-in-direction (util/abs (- new-pos @scroll-pos)))
                                                        0 #_(util/abs (- new-pos @scroll-pos))))
-                          (reset! last-direction new-direction)
-                          (reset! scroll-pos new-pos)
                           (when (and (or at-bottom?
                                          at-top?
-                                         (ct/after? (ct/minus (ct/now) (ct/millis 250)) @triggered-at)) ; ensure "scroll" isn't due to content resizing
+                                         (ct/after? (ct/minus (ct/now) (ct/millis 500)) @triggered-at)) ; ensure "scroll" isn't due to content resizing
                                      (or (<= 250 @accum-in-direction) ; bit of debounce
                                           (and at-top?
-                                               (= new-direction :up))
+                                               (= new-direction :up)
+                                               (= @last-direction :down))
                                           (and at-bottom?
-                                               (= new-direction :down)))) ; always post when at bottom, regardless of accum
+                                               (= new-direction :down)
+                                               (= @last-direction :up)))) ; always post when at bottom, regardless of accum
                             (reset! accum-in-direction 0)
                             (reset! triggered-at (ct/now))
                             (rf/dispatch [:scroll/direction
-                                          @last-direction @scroll-pos new-height at-bottom?])))
+                                          new-direction new-pos new-height at-bottom?]))
+                          (reset! scroll-pos new-pos)
+                          (reset! last-direction new-direction))
                         (reset! page-height new-height)))]
      {:dispatch [:listener/add! "document" "scroll" callback]})))
 
