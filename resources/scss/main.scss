@@ -59,9 +59,13 @@ a {
   color: var(--fg-2);
   text-decoration: none;
 
+  span, p {
+    text-decoration: underline var(--blue);
+  }
+
   div {
     &:focus, &:hover, &:active {
-      transform: scale(1.10); // causing weird jumping
+      transform: scale(1.10); // causing weird jumping if applied straight to a...
       filter: brightness(125%) 
               drop-shadow(0.2rem 0.2rem 0.1rem var(--bg-1)); // causing weird jumping
     }

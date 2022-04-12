@@ -249,8 +249,8 @@
                    :get-user-sub           [:fb/get-user]
                    :set-user-event         [:fb/set-user]
                    :default-error-handler  [:fb/error])
-    {:db (assoc-in db [:state :booted :firebase] true)
-     :dispatch-n [[:fb/fetch-users]
+    {:dispatch-n [[:booted :firebase]
+                  [:fb/fetch-users]
                   [:id-counters/fetch]]}))
 
 
@@ -508,7 +508,7 @@
 (rf/reg-event-fx :listener/load
  (fn [{:keys [db]} [_ _]]
    (let [f (fn [e]
-             (rf/dispatch [:state [:booted :load] true]))] ; which will actually have fresh db and can do stuff ugh
+             (rf/dispatch [:booted :load]))] ; which will actually have fresh db and can do stuff ugh
     {:dispatch [:listener/add! "window" "load" f]})))
 
 (rf/reg-event-fx :init  [debug] ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
