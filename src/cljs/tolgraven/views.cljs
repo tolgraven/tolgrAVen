@@ -468,7 +468,6 @@
     (fn [event]
       [:div
        {:ref (fn [el]
-               (util/log (str "observer el " el " event " event))
                (observer el))}])))
 
 (defn github-commits "List Github commits for this repo"

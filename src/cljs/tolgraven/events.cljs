@@ -507,8 +507,7 @@
 (rf/reg-event-fx :listener/load
  (fn [{:keys [db]} [_ _]]
    (let [f (fn [e]
-             (rf/dispatch [:state [:booted :load] true])
-             (rf/dispatch [:diag/new :info "Loaded" "full load event fired"]))] ; which will actually have fresh db and can do stuff ugh
+             (rf/dispatch [:state [:booted :load] true]))] ; which will actually have fresh db and can do stuff ugh
     {:dispatch [:listener/add! "window" "load" f]})))
 
 (rf/reg-event-fx :init  [debug] ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
