@@ -85,7 +85,7 @@
            [ui/safe :page [page]]
            (when page-prev
              [ui/safe :page-prev [page-prev]])]])
-       [common/loading-spinner true :massive]))
+       [ui/loading-spinner true :massive]))
 
    [common/footer @(rf/subscribe [:content [:footer]])]
    [ui/safe :hud [ui/hud (rf/subscribe [:hud])]]

@@ -392,7 +392,7 @@
          [:span.strava-activity-map-point
           {:style {:bottom (str (* 100 (/ (- lat lat-min) (- lat-max lat-min))) "%")
                    :left (str (* 100 (/ (- lng lng-min) (- lng-max lng-min))) "%") }} ])]
-       [views/loading-spinner true]) ]))
+       [ui/loading-spinner true]) ]))
 
 
 (defn activity-map-leaflet "Visualize latlng somehow! Currently goes behind activity-full but putting it on bg would be best (fix latlng so fits...)"
@@ -415,7 +415,7 @@
           [:> js/ReactLeaflet.Polyline
            {:pathOptions {:color "#fc4c02"}
             :positions latlng}]]]]
-       [views/loading-spinner true]) ]))
+       [ui/loading-spinner true]) ]))
 
 
 
@@ -462,7 +462,7 @@
          {:ref #(when %
                   (reset! node %)
                   (draw-map % latlng watts))} ]]
-       [views/loading-spinner true]) ]))
+       [ui/loading-spinner true]) ]))
 
 
 
@@ -497,7 +497,7 @@
          [:div (:city athlete)]
          [:div (:weight athlete) " kg"]]
         [:div.strava-story (:story data)]]]
-       [views/loading-spinner true])
+       [ui/loading-spinner true])
       
      (if stats
        [:div.strava-stats.flex
@@ -512,7 +512,7 @@
          [:div "Average speed"]]
         [totals-stats stats :all_ride_totals "Total"] 
         [totals-stats stats :recent_ride_totals "Recent"] ]
-       [views/loading-spinner true :massive])
+       [ui/loading-spinner true :massive])
 
      [activities-graph] ]))
 
