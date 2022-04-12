@@ -371,9 +371,11 @@ figcaption, .float-with-caption {
   display: flex;
   align-items: center;
   justify-content: center;
-  position: absolute;
-  top: calc(1 * var(--space-lg)); // wiggles so move down
-  right: calc(2.5 * var(--space-lg));
+  // position: absolute;
+  // top: calc(1 * var(--space-lg)); // wiggles so move down
+  // right: calc(2.5 * var(--space-lg));
+}
+.loading-wiggle {
   animation: 0.9s linear 0.2s infinite both alternate running wiggle;
 }
 .loading-wiggle-z {

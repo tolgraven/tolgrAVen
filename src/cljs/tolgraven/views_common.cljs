@@ -29,12 +29,15 @@
 (defn loading-spinner [model kind]
   (if (and (at model)
            (not= :timeout (at model))) ;should it be outside so not put anything when not loading? or better know element goes here
-    [:div.loading-container>div.loading-wiggle-z>div.loading-wiggle-y
+    [:div.loading-container
+     [(if (not= kind :still)
+                :div.loading-wiggle>div.loading-wiggle-z>div.loading-wiggle-y
+                :<>)
      [ui/appear-anon "zoom slow"
       [:i.loading-spinner
        {:class (str "fa fa-spinner fa-spin"
                     (when (= kind :massive)
-                      " loading-spinner-massive"))}]]]
+                      " loading-spinner-massive"))}]]]]
     (when (= :timeout (at model))
       [:div.loading-container
        [ui/appear-anon "opacity slow"
