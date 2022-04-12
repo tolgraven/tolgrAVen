@@ -340,7 +340,7 @@
            title]] ;ideally want this also growing (and moving quicker upwards)]
          [ui/inset caption 3]
          [ui/inset (str "Fraction visible:" @frac) 2]
-         [ui-fading]])))
+         [ui/fading]])))
 
 
 (defn ui-story "Big img header + story" [{:keys [heading] :as content}]
