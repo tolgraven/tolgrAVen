@@ -12,3 +12,7 @@
                        :text text
                        :user (get-in db [:state :user] "anon")} }
                   [id]]})))
+
+(rf/reg-event-fx :chat/set-visible
+  (fn [{:keys [db]} [_ visible?]]
+    {:db (assoc-in db [:state :chat :visible] visible?)}))

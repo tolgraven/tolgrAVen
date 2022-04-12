@@ -7,12 +7,13 @@
   (fn [content]
     (->> content
          (reduce-kv (fn [m k v]
-                      (assoc m (-> k name str js/parseInt) v))
+                      (let [id (-> k name str js/parseInt)]
+                        (assoc m id (assoc v :id id))))
                           {})
          (into (sorted-map))
          (map second))))
 
 (rf/reg-sub :chat/latest-seq-id
-  :<- [:<-store :chat :messages]         
+  :<- [:chat/content]         
   (fn [messages]
-    (apply max (map #(-> % first name str js/parseInt) messages))))
+    (apply max (map :id messages))))
