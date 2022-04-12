@@ -55,6 +55,7 @@ footer {
 img.img-icon {
   margin: calc(0.5 * var(--space));
   height: 2.25rem;
+  filter: saturate(0.6);
 }
 
 .post-footer-content {
