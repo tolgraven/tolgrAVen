@@ -122,7 +122,7 @@
                     (reset! in-view frac)
                     (when (<= frac 0.2)
                       (do-control :pause)))
-        observer (util/observer on-change (str "interlude-" nr))]
+        observer (util/observer on-change)]
     (fn [{:keys [title caption bg nr]}]
       [:section.nopadding
        {:id (str "interlude-" nr)
@@ -333,7 +333,7 @@
 (defn ui-moneyshot "needs better name lol. what is hero img halfway down page?"
   [{:keys [title caption bg]}]
   (let [frac (r/atom 0.0)
-        observer (util/observer #(reset! frac %) :moneyshot)]
+        observer (util/observer #(reset! frac %))]
     (fn [{:keys [title caption bg]}]
         [:div#moneyshot {:class "section-with-media-bg-wrapper parallax-wrapper covering stick-up"
           :ref #(observer %)}

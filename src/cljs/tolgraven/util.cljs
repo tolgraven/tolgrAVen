@@ -316,15 +316,16 @@
         (.observe observer el)
         (.disconnect observer)))))
 
-(defn observer [on-view-change & [id]] ;what's with the weird scrolling bug?
+(defn observer [on-view-change & [opt-map]] ;what's with the weird scrolling bug?
   (let [in-view (atom 0.0)
         on-change (fn [[entry & _]]
                     (let [frac (-> (.-intersectionRatio entry)
                                    (* 100) int
-                                   float (/ 100))]
+                                   float (/ 100))] ; cant remember why hah but
                       (when-not (= @in-view frac)
                         (on-view-change (reset! in-view frac)))))
-        opts {:threshold [0 0.2 0.4 0.6 0.8 1.0]}
+        opts (merge {:threshold [0 0.2 0.4 0.6 0.8 1.0]}
+                    opt-map)
         observer (js/IntersectionObserver. on-change (clj->js opts))]
     (fn [el]
       (if el
