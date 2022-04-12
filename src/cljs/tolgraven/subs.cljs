@@ -7,6 +7,7 @@
             [tolgraven.strava.subs]
             [tolgraven.instagram.subs]
             [tolgraven.chat.subs]
+            [tolgraven.github.subs]
             [clojure.edn :as edn]
             [clojure.walk :as walk]
             [clojure.string :as string]
@@ -142,22 +143,6 @@
 (rf/reg-sub :modal
  (fn [db [_ _]]
    (get-in db [:state :modal])))
-
-(rf/reg-sub :github/commits
- :<- [:content [:github]]
- (fn [github]
-   (:repo github)))
-
-(rf/reg-sub :github/commit-count
- :<- [:content [:github :repo-headers]]
- (fn [headers]
-   (if headers
-     (-> headers
-         :link
-         (string/split "page=") last
-         (string/split ">")     first
-         js/parseInt)
-     "Loading")))
 
 (rf/reg-sub :history/popped?
  :<- [:state [:browser-nav]]
