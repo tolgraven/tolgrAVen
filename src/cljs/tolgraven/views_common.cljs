@@ -9,41 +9,6 @@
    [tolgraven.db :as db]
    [tolgraven.util :as util :refer [at]]))
 
-(defn user-btn [model]
-  [:a {:href @(rf/subscribe [:href-add-query  
-                             {:userBox (not @(rf/subscribe [:user/ui-open?]))}])}
-   [:button.user-btn.noborder
-   (if-let [user @(rf/subscribe [:user/active-user])]
-     [ui/user-avatar user "btn-img"]
-     [:i.user-btn {:class "fa fa-user"}])]])
-
-(defn input-toggle "Don't forget to put ze label - only was sep in first place due to css bs?"
-  [id checked-path & {:keys [class label]}]
-  [:input ;.toggle
-   {:id id :class class ;must be outside header or breaks...
-    :type "checkbox"    :default-checked @(rf/subscribe checked-path)
-    :on-click (fn []
-                (rf/dispatch (into checked-path
-                                   [(not @(rf/subscribe checked-path))])))}])
-
-(defn loading-spinner [model kind]
-  (if (and (at model)
-           (not= :timeout (at model))) ;should it be outside so not put anything when not loading? or better know element goes here
-    [:div.loading-container
-     [(if (not= kind :still)
-                :div.loading-wiggle>div.loading-wiggle-z>div.loading-wiggle-y
-                :<>)
-     [ui/appear-anon "zoom slow"
-      [:i.loading-spinner
-       {:class (str "fa fa-spinner fa-spin"
-                    (when (= kind :massive)
-                      " loading-spinner-massive"))}]]]]
-    (when (= :timeout (at model))
-      [:div.loading-container
-       [ui/appear-anon "opacity slow"
-        [:i.loading-timeout
-         {:class (str "fa fa-solid fa-hexagon-exclamation")}]]])))
-
 (defn flashing-ersatz-text-like-everyone-uses
   "Better than wee loading spinner no? Eg Docs, we know big page is coming
    so while loading should be expanded to that size already yo"
@@ -94,7 +59,7 @@
 
 (defn header [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   [:<>
-   [input-toggle "nav-menu-open" [:menu] :class "burger-check"]
+   [ui/input-toggle "nav-menu-open" [:menu] :class "burger-check"]
    [:header
     {:class (when @(rf/subscribe [:state [:hidden-header-footer]])
               "hide")}
@@ -102,11 +67,11 @@
     [header-logo @(rf/subscribe [:header-text])]
     [header-nav menu]
 
-    [loading-spinner (rf/subscribe [:loading])]
+    [ui/loading-spinner (rf/subscribe [:loading]) :still]
     [:a {:href @(rf/subscribe [:href :blog])}
      [:button.blog-link-btn.noborder
       [:i.fa.fa-pen-fancy]]]
-    [user-btn]
+    [ui/user-btn]
     [:label.burger {:for "nav-menu-open"}]]
 
    [:div.fill-side-top

@@ -24,22 +24,6 @@
      {:class "logo-tolgraven"
       :style {:background-image (str "url('" path "')")}} ])) ; cant remember why I did the weird path-in-css bs but anyways...
 
-(defn link-img-title "Link eith an image and a title, for posts for example"
-  [{:as content :keys [title text url side]
-    :or [side :left]}]
-  (let []
-    [:div.float-wrapper
-     [:div.caption-inset {:class (str side)}
-      [:p text]]
-     [:h2 title]]))
-
-
-
-(defn ui-fading "Hitherto just css but prog gen prob easier in some cases..."
-  [& {:keys [fade-to dir content classes]
-      :or {fade-to "fade-to-black" dir "light-from-below"}}]
-  [:div.fader [:div {:class (str fade-to " " dir " " classes)}]])
-
 (defn ui-carousel-bg "Intro (bg img only) jumbotron slider
                       Should be a generic system also working for page transitions etc"
   [img-attrs]
@@ -457,19 +441,6 @@
         [soundcloud-player artist tune])]]))
 
 
-(defn lazy-load-repeatedly "Dispatch update event when approaching something"
-  [event & [root-id]]
-  (let [observer (util/observer (fn [frac]
-                                  (when (= frac 1.0)
-                                    (rf/dispatch event)))
-                                (merge {:threshold 1.0}
-                                 (when root-id
-                                   {:root (util/elem-by-id root-id)})))]
-    (fn [event]
-      [:div
-       {:ref (fn [el]
-               (observer el))}])))
-
 (defn github-commits "List Github commits for this repo"
   []
   (let [commits @(rf/subscribe [:github/commits])
@@ -508,19 +479,12 @@
                [:div.github-commit-titles
                 [:span.title subtitle]]))]]])
       [:div {:style {:padding "var(--space)"}}
-       [view/loading-spinner true :still]]
-      [lazy-load-repeatedly
+       [ui/loading-spinner true :still]]
+      [ui/lazy-load-repeatedly
        [:github/fetch-commits-next "tolgraven" "tolgraven"]
        "github-commits-box"]
       [:div.github-loading [:h3 "Scroll down to load more..."]]]]
-     [ui-fading :dir "bottom"]]))
-
-(defn lazy-load "Dispatch init event when approaching something previous"
-  [event]
-  (let [observer (util/when-seen #(rf/dispatch event))]
-    (fn [event]
-      [:div
-       {:ref #(observer %)}])))
+     [ui/fading :dir "bottom"]]))
 
 (defn ui []
   (let [interlude @(rf/subscribe [:content [:interlude]])
@@ -536,18 +500,18 @@
      [ui-interlude (get-lewd)]
      [ui-moneyshot @(rf/subscribe [:content [:moneyshot]])]
      [ui-story @(rf/subscribe [:content [:story]])]
-     [ui-fading :dir "bottom"]
+     [ui/fading :dir "bottom"]
      [ui-interlude (get-lewd)]
      
-     [lazy-load [:on-booted :firebase [:strava/init]]]
+     [ui/lazy-load [:on-booted :firebase [:strava/init]]]
      [strava/strava]
-     [lazy-load [:on-booted :site [:state [:soundcloud :init] true]]]
+     [ui/lazy-load [:on-booted :site [:state [:soundcloud :init] true]]]
      [ui-soundcloud]
-     [lazy-load [:on-booted :firebase [:instagram/init]]]
+     [ui/lazy-load [:on-booted :firebase [:instagram/init]]]
      [ui-insta]
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
      ; [cv]
-     [lazy-load [:on-booted :site [:github/init "tolgraven" "tolgraven"]]]
+     [ui/lazy-load [:on-booted :site [:github/init "tolgraven" "tolgraven"]]]
      [github-commits]
      [chat/chat]
      ]))

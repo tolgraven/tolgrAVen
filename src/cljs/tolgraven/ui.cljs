@@ -128,6 +128,28 @@
               :ref #(observer %)}
              (into [:<>] components)]))))
 
+(defn lazy-load "Dispatch init event when approaching something previous"
+  [event]
+  (let [observer (util/when-seen #(rf/dispatch event))]
+    (fn [event]
+      [:div
+       {:ref #(observer %)}])))
+
+(defn lazy-load-repeatedly "Dispatch update event when approaching something"
+  [event & [root-id]]
+  (let [observer (util/observer (fn [frac]
+                                  (when (= frac 1.0)
+                                    (rf/dispatch event)))
+                                (merge {:threshold 1.0}
+                                 (when root-id
+                                   {:root (util/elem-by-id root-id)})))]
+    (fn [event]
+      [:div
+       {:ref (fn [el]
+               (observer el))}])))
+
+
+
 (defn zoom-to-modal "E.g. bring up image to semi-fullscreen when clicked.
                      This version just generically zooms, would be nice if animated from current pos.
                      Would need to grab actual pos and size from DOM for that..."
@@ -166,6 +188,14 @@
          :src (if @error? fallback (or (:avatar user-map) fallback))
          :on-error #(reset! error? true)
          :alt (str (:name user-map) " profile picture")} ]])))
+
+(defn user-btn [model]
+  [:a {:href @(rf/subscribe [:href-add-query  
+                             {:userBox (not @(rf/subscribe [:user/ui-open?]))}])}
+   [:button.user-btn.noborder
+   (if-let [user @(rf/subscribe [:user/active-user])]
+     [user-avatar user "btn-img"]
+     [:i.user-btn {:class "fa fa-user"}])]])
 
 
 (defn fading-bg-heading [{:keys [title target bg tint] :as content}]
@@ -515,6 +545,48 @@
      [appear-anon "zoom-x slow"
       [msg-fn msg]])]))
 
+
+(defn input-toggle "Don't forget to put ze label - only was sep in first place due to css bs?"
+  [id checked-path & {:keys [class label]}]
+  [:input ;.toggle
+   {:id id :class class ;must be outside header or breaks...
+    :type "checkbox"    :default-checked @(rf/subscribe checked-path)
+    :on-click (fn []
+                (rf/dispatch (into checked-path
+                                   [(not @(rf/subscribe checked-path))])))}])
+
+(defn loading-spinner [model kind]
+  (if (and (at model)
+           (not= :timeout (at model))) ;should it be outside so not put anything when not loading? or better know element goes here
+    [:div.loading-container
+     [(if (not= kind :still)
+                :div.loading-wiggle>div.loading-wiggle-z>div.loading-wiggle-y
+                :<>)
+     [appear-anon "zoom slow"
+      [:i.loading-spinner
+       {:class (str "fa fa-spinner fa-spin"
+                    (when (= kind :massive)
+                      " loading-spinner-massive"))}]]]]
+    (when (= :timeout (at model))
+      [:div.loading-container
+       [appear-anon "opacity slow"
+        [:i.loading-timeout
+         {:class (str "fa fa-solid fa-hexagon-exclamation")}]]])))
+
+
+(defn link-img-title "Link eith an image and a title, for posts for example"
+  [{:as content :keys [title text url side]
+    :or [side :left]}]
+  (let []
+    [:div.float-wrapper
+     [:div.caption-inset {:class (str side)}
+      [:p text]]
+     [:h2 title]]))
+
+(defn fading "Hitherto just css but prog gen prob easier in some cases..."
+  [& {:keys [fade-to dir content classes]
+      :or {fade-to "fade-to-black" dir "light-from-below"}}]
+  [:div.fader [:div {:class (str fade-to " " dir " " classes)}]])
 
 
 (def trans-group (r/adapt-react-class rtg/TransitionGroup))
