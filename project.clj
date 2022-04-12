@@ -211,10 +211,7 @@
 
    :uberjar {:omit-source true
              :prep-tasks ["compile"
-                          ["cljsbuild" "once" "min"]
-                          ; ["sassc" "once"]
-                          ; "autoprefixer"
-                          ]
+                          ["cljsbuild" "once" "min"]]
              :cljsbuild {:builds
                          {:min
                           {:source-paths ["src/cljc" "src/cljs" "env/prod/cljs"]
@@ -225,6 +222,8 @@
                             :asset-path "js/compiled/out"
                             :closure-defines {goog.DEBUG false}
                             :optimizations :advanced
+                            :language-in     :ecmascript-next
+                            :language-out    :ecmascript-next
                             :pretty-print false
                             :infer-externs true
                             :parallel-build true

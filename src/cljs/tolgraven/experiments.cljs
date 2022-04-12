@@ -84,7 +84,7 @@
      {:component-did-mount
       (fn [this]
         (let [inst (js/CodeMirror. ; or codemirror/CodeMirror.?
-                    (r/dom-node this)
+                    ; (r/dom-node this)
                     (clj->js
                      (merge
                       {:lineNumbers true
