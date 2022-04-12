@@ -272,7 +272,6 @@
 (defn mount-components "Called each update when developing" []
   (rf/clear-subscription-cache!)
   (start-router!) ; restart router on reload?
-  (rf/dispatch-sync [:exception nil])
   (rf/dispatch [:reloaded])
   (util/log "Mounting root component")
   (rdom/render [#'page] (.getElementById js/document "app")))
@@ -284,7 +283,8 @@
   (ajax/load-interceptors!)
   (rf/dispatch cookie-notice) ; do later first check if prev visit
   (util/log "Init complete")
-  (mount-components))
+  (mount-components)
+  (rf/dispatch [:init])) ; listeners and stuff that might depend on being mounted
 
 (defn ^:export init!  []
   (defonce _init_ (init))) ;; why still need for thisi don't get it init! is now being called each reload?

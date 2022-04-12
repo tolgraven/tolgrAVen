@@ -540,11 +540,11 @@
      [ui-fading :dir "bottom"]
      [ui-interlude (get-lewd)]
      
-     [lazy-load [:on-booted :site [:strava/init]]]
+     [lazy-load [:on-booted :firebase [:strava/init]]]
      [strava/strava]
      [lazy-load [:on-booted :site [:state [:soundcloud :init] true]]]
      [ui-soundcloud]
-     [lazy-load [:on-booted :site [:instagram/init]]]
+     [lazy-load [:on-booted :firebase [:instagram/init]]]
      [ui-insta]
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
      ; [cv]

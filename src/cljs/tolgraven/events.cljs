@@ -197,7 +197,8 @@
 
 (rf/reg-event-fx :reloaded
  (fn [db [_ _]]
-   {:dispatch [:diag/new :debug "JS" "Reloaded"]}))
+   {:dispatch-n [[:exception nil]
+                 [:diag/new :debug "JS" "Reloaded"]]}))
 
 
 (rf/reg-event-fx :to-db
@@ -242,14 +243,14 @@
 
 (rf/reg-event-fx :fb/init
   (fn [{:keys [db]} [_ data]]
-    (firebase/init :firebase-app-info      data
+    (firebase/init :firebase-app-info      data ; well should go in fx tho...
                    :firestore-settings     @(rf/subscribe [:option [:firebase :settings]]) ; Shouldn't be used on later versions. See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
                    :get-user-sub           [:fb/get-user]
                    :set-user-event         [:fb/set-user]
                    :default-error-handler  [:fb/error])
-    {:db (assoc-in db [:state :firebase-initialized] true)
-     :dispatch-n [[:init]
-                  [:fb/fetch-users]]}))
+    {:db (assoc-in db [:state :booted :firebase] true)
+     :dispatch-n [[:fb/fetch-users]
+                  [:id-counters/fetch]]}))
 
 
 ; PROBLEM: would obviously want to trigger fetch on start-navigation,
@@ -440,7 +441,7 @@
                              js/getComputedStyle
                              .-paddingBottom
                              js/parseFloat)))
-         page-height (atom (get-height))
+         page-height (atom 0)
          triggered-at (atom (ct/now))
          top-size (+ (util/rem-to-px (:header-height css-var))     ; distance from top to main is header-height + space-top above/below,
                      (* 2 (util/rem-to-px (:space-top css-var)))
@@ -464,7 +465,7 @@
                                                        0 #_(util/abs (- new-pos @scroll-pos))))
                           (when (and (or at-bottom?
                                          at-top?
-                                         (ct/after? (ct/minus (ct/now) (ct/millis 500)) @triggered-at)) ; ensure "scroll" isn't due to content resizing
+                                         (ct/after? (ct/minus (ct/now) (ct/millis 250)) @triggered-at)) ; ensure "scroll" isn't due to content resizing
                                      (or (<= 250 @accum-in-direction) ; bit of debounce
                                           (and at-top?
                                                (= new-direction :up)
@@ -483,11 +484,13 @@
 
 (rf/reg-event-fx :listener/before-unload-save-scroll ; gets called even when link to save page, silly results.
  (fn [{:keys [db]} [_ ]]
-  (let [scroll-to-ls (fn []
-                       (rf/dispatch-sync [:state [:scroll-position (-> db :common/route :data :name)]
-                                          (.-scrollY js/window)])
-                       (rf/dispatch-sync [:ls/store-path [:scroll-position]
-                                                         [:state :scroll-position]]))] ; im sure we'll want more tho?
+  (let [scroll-to-ls
+        (fn []
+          (rf/dispatch-sync [:state [:scroll-position
+                                     (-> db :common/route :data :name)]
+                             (.-scrollY js/window)])
+          (rf/dispatch-sync [:ls/store-path [:scroll-position]
+                             [:state :scroll-position]]))] ; im sure we'll want more tho?
     {:dispatch-n [[:listener/add! "window" "beforeunload" scroll-to-ls]]})))
 
 (rf/reg-event-fx :listener/popstate-back ; gets called on browser back. or if we nanually pop state, so keep track of that if end up doing it...
@@ -501,13 +504,19 @@
     {:db (assoc-in db [:state :scroll-position] (:scroll-position ls))
      :dispatch [:listener/before-unload-save-scroll]}))
 
-
-(rf/reg-event-fx :init ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
+(rf/reg-event-fx :listener/load
  (fn [{:keys [db]} [_ _]]
-  {:dispatch-n [[:init/scroll-storage]
-                [:listener/scroll-direction]
-                [:id-counters/fetch]
+   (let [f (fn [e]
+             (rf/dispatch [:state [:booted :load] true])
+             (rf/dispatch [:diag/new :info "Loaded" "full load event fired"]))] ; which will actually have fresh db and can do stuff ugh
+    {:dispatch [:listener/add! "window" "load" f]})))
+
+(rf/reg-event-fx :init  [debug] ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
+ (fn [{:keys [db]} [_ _]]
+  {:dispatch-n [[:listener/load]
+                [:init/scroll-storage]
                 [:listener/popstate-back]
+                [:listener/scroll-direction]
                 [:booted :site]]})) ; should work, main page specific init events won't get queued unless on main so...
 
 ; generic helpers for rapid prototyping.
