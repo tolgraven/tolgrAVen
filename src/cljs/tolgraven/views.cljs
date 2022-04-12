@@ -464,7 +464,8 @@
   []
   (let [commits @(rf/subscribe [:github/commits])
         amount @(rf/subscribe [:github/commit-count])]
-    [:section.github-commits.covering-2
+    [:<>
+     [:section.github-commits.covering-2
      
      [:h2 [:i.fab.fa-github] " " amount " commits to this website"]
      [:div#github-commits-box.github-commits-inner
@@ -489,18 +490,20 @@
           [:div.github-commit-message
            [:div.info info]
            (if title
-             [:div
-              [:span.title title]
-              [:i.fa.fa-solid.fa-arrow-right]
-              [:span.subtitle subtitle]]
+             [:div.github-commit-titles
+              [:span.subtitle subtitle]
+              [:i.fa.fa-solid.fa-arrow-left]
+              [:span.title title]]
              (when subtitle
-               [:div
+               [:div.github-commit-titles
                 [:span.title subtitle]]))]]])
-      ; [view/loading-spinner true]
-      [:div.github-loading [:h3 "Scroll down to load more..."]]
+      [:div {:style {:padding "var(--space)"}}
+       [view/loading-spinner true :still]]
       [lazy-load-repeatedly
        [:github/fetch-commits-next "tolgraven" "tolgraven"]
-       "github-commits-box"]]]))
+       "github-commits-box"]
+      [:div.github-loading [:h3 "Scroll down to load more..."]]]]
+     [ui-fading :dir "bottom"]]))
 
 (defn lazy-load "Dispatch init event when approaching something previous"
   [event]
