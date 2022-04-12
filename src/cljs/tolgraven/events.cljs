@@ -250,8 +250,7 @@
                    :set-user-event         [:fb/set-user]
                    :default-error-handler  [:fb/error])
     {:dispatch-n [[:booted :firebase]
-                  [:fb/fetch-users]
-                  [:id-counters/fetch]]}))
+                  [:fb/fetch-users]]}))
 
 
 ; PROBLEM: would obviously want to trigger fetch on start-navigation,
@@ -517,6 +516,7 @@
                 [:init/scroll-storage]
                 [:listener/popstate-back]
                 [:listener/scroll-direction]
+                [:on-booted :firebase [:id-counters/fetch]]
                 [:booted :site]]})) ; should work, main page specific init events won't get queued unless on main so...
 
 ; generic helpers for rapid prototyping.
