@@ -35,9 +35,9 @@
 
 
 (defn ui-fading "Hitherto just css but prog gen prob easier in some cases..."
-  [& {:keys [fade-to dir content]
+  [& {:keys [fade-to dir content classes]
       :or {fade-to "fade-to-black" dir "light-from-below"}}]
-  [:div.fader [:div {:class (str fade-to " " dir)}]])
+  [:div.fader [:div {:class (str fade-to " " dir " " classes)}]])
 
 (defn ui-carousel-bg "Intro (bg img only) jumbotron slider
                       Should be a generic system also working for page transitions etc"
