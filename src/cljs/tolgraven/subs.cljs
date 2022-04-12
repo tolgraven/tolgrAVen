@@ -47,7 +47,7 @@
     (get-in db (into [:state :form-field] path))))
 
 (rf/reg-sub :<-store
-  :<- [:state [:firebase-initialized]]
+  :<- [:state [:booted :firebase]]
   (fn [initialized [_ & coll-docs]]
     (when initialized
       (let [look-in (if (even? (count coll-docs))
