@@ -14,7 +14,9 @@
     [:<>
      [:section.github-commits.covering-2
      
-     [:h2 [:i.fab.fa-github] " " amount " commits to this website"]
+     [:h2 [:i.fab.fa-github]" " amount " commits to "
+      [:a {:href (first (string/split (:html_url (first commits)) #"/commit/"))}
+       [:span "this website"]]]
      [:div#github-commits-box.github-commits-inner
       (for [{:keys [commit author html_url] :as item} commits
             :let [ts (get-in commit [:author :date])
