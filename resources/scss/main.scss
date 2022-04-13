@@ -59,8 +59,25 @@ a {
   color: var(--fg-2);
   text-decoration: none;
 
+  &:visited {
+    text-decoration: underline var(--purple);
+  }
+
   span, p {
     text-decoration: underline var(--blue);
+    text-decoration-thickness: 1px;
+    position: relative;
+
+    &:after {
+      content: "\f0c1";
+      font-family: 'Font Awesome 5 Free';
+      font-size: 40%;
+      vertical-align: top;
+      position: relative;
+      top: 0.5em;
+      left: 0.3em;
+      text-decoration: none;  // not taking, don't get why...
+    }
   }
 
   div {

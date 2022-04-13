@@ -14,6 +14,14 @@ footer {
   max-height: var(--footer-height);
   transition: all var(--header-expand-time) ease;
 
+  a {
+    p {
+      &:after {
+        content: "";
+      }
+    }
+  }
+
   &.hide {
     max-height: calc(1 * var(--line-width));
     transition: all var(--header-expand-time) ease;

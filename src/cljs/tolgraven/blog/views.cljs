@@ -388,7 +388,7 @@
   [:section.blog.fullwide.noborder ;then chuck flip-move on eeet. or just same slide nav thing
    (if section
      section
-     [:h1.center-content [common/loading-spinner true]])
+     [:h1.center-content [ui/loading-spinner true]])
    [:div.flex.center-content
     (when (some #{(:id @(rf/subscribe [:user/active-user]))}
                 (:bloggers @(rf/subscribe [:<-store :auth :roles])))
