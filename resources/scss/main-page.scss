@@ -300,10 +300,15 @@
   background: var(--bg-3);
   padding: calc(0.75 * var(--space));
   padding-top: calc(1.0 * var(--space));
+  overflow-x: hidden;
 
   h2 {
     text-align: center;
     margin-bottom: var(--space);
+
+    i {
+      margin-right: 0.2em;
+    }
   }
 
   .github-commits-inner {
