@@ -38,28 +38,19 @@
        [:span "this website"]]]
      [:div#github-commits-box.github-commits-inner
       (if (= @view :commits)
-        (for [{:keys [commit author html_url sha] :as item} @commits
-            :let [ts (get-in commit [:author :date])
-                  [date clock] (string/split ts "T") ; all this should be moved to subs yea
-                  [info subtitle title :as message]
-                  (map string/trim
-                       (some-> (:message commit)
-                               (string/replace #"\b(\w+):" "$1=====")
-                               (string/split #"=====")
-                               reverse))]]
+           (for [{:keys [commit author html_url sha sha7 message date clock ts] :as item} @commits
+                 :let [[info subtitle title] message]]
         ^{:key (str "github-commit-" ts)}
         [:div.github-commit.flex
-         {:on-hover #(rf/dispatch [:github/fetch-commit "tolgraven" "tolgraven"
-                                   sha])
-          :on-click #(do (rf/dispatch [:github/fetch-commit "tolgraven" "tolgraven"
-                                       sha])
+         {:on-hover #(rf/dispatch [:github/fetch-commit "tolgraven" "tolgraven" sha])
+          :on-click #(do (rf/dispatch [:github/fetch-commit "tolgraven" "tolgraven" sha])
                          (reset! view sha))}
          [:img.user-avatar.center-content {:src (:avatar_url author)}]
          [:div.github-commit-details
           [:span.github-commit-time date]
           [:span.github-commit-time clock]
           [:a {:href html_url}
-           [:span.github-commit-sha (apply str (take 7 (seq sha)))]]
+           [:span.github-commit-sha sha7]]
 
           [:div.github-commit-message
            [:div.info info]
@@ -86,6 +77,6 @@
         [ui/loading-spinner true :still]]
        [:button {:style {:margin-top "var(--space-lg)"}
                  :on-click #(rf/dispatch [:github/fetch-commits-next "tolgraven" "tolgraven"])}
-        "...or you can click here"] ]) ]]
+        "...or you can click here"]])]]
      [ui/fading :dir "bottom"]])))
 

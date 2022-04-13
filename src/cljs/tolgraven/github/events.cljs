@@ -2,6 +2,7 @@
   (:require
     [reagent.core :as r]
     [re-frame.core :as rf]
+    [clojure.string :as string]
     [cljs-time.core :as ct]
     [cljs-time.coerce :as ctc]))
 
@@ -24,9 +25,23 @@
 
 (rf/reg-event-fx :github/save-commits
  (fn [{:keys [db]} [_ page data]]
-   {:db (-> db
+   (let [commits (for [{:keys [commit author html_url sha] :as item} data
+                       :let [ts (get-in commit [:author :date])
+                             [date clock] (string/split ts "TZ") ; all this should be moved to subs yea
+                             [info subtitle title :as message]
+                             (map string/trim
+                                  (some-> (:message commit)
+                                          (string/replace #"\b(\w+):" "$1=====")
+                                          (string/split #"=====")
+                                          reverse))]]
+                   (assoc item
+                          :date date :clock clock :ts ts
+                          :message message
+                          :sha7 (apply str (take 7 (seq sha)))))]
+     {:db (-> db
             (update-in [:content :github :repo] concat data)
-            (update-in [:state :github :pages-fetched] conj page))}))
+            (update-in [:content :github :commits] concat commits)
+            (update-in [:state :github :pages-fetched] conj page))})))
 
 (rf/reg-event-fx :github/fetch-commits-next
  (fn [{:keys [db]} [_ user repo]]

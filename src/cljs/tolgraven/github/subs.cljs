@@ -7,7 +7,7 @@
 (rf/reg-sub :github/commits
  :<- [:content [:github]]
  (fn [github]
-   (:repo github)))
+   (:commits github)))
 
 (rf/reg-sub :github/commit-count
  :<- [:content [:github :repo-headers]]
