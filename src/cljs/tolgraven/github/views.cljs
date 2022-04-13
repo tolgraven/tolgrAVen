@@ -24,8 +24,8 @@
                   [info subtitle title :as message]
                   (map string/trim
                        (some-> (:message commit)
-                               (string/replace #"\b(\w+):" "$1\n")
-                               string/split-lines
+                               (string/replace #"\b(\w+):" "$1=====")
+                               (string/split #"=====")
                                reverse))]]
         ^{:key (str "github-commit-" ts)}
         [:div.github-commit.flex
