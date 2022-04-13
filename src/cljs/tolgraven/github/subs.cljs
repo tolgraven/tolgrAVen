@@ -20,3 +20,7 @@
          js/parseInt)
      "Loading")))
 
+(rf/reg-sub :github/commit
+ :<- [:content [:github]]
+ (fn [github [_ sha]]
+   (get-in github [:commit sha])))

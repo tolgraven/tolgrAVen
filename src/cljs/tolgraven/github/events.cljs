@@ -48,3 +48,18 @@
                    [:content [:github :repo-headers]] ]}))))
 
 
+(rf/reg-event-fx :github/fetch-commit
+ (fn [{:keys [db]} [_ user repo sha]]
+   (let [url "https://api.github.com/repos/"]
+     (when (and sha
+                (not (some #{sha} (get-in db [:state :github :commits-fetched]))))
+       {:dispatch-n [[:http/get {:uri (str url user "/" repo "/commits/" sha)
+                                 :headers {"Accept" "application/vnd.github.v3+json"}}
+                      [:github/save-commit sha]
+                      [:content [:github :errors]]]]}))))
+
+(rf/reg-event-fx :github/save-commit
+ (fn [{:keys [db]} [_ sha data]]
+   {:db (-> db
+            (assoc-in [:content :github :commit sha] data)
+            (update-in [:state :github :commits-fetched] conj sha))}))

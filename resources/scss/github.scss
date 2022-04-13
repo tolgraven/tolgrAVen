@@ -100,4 +100,56 @@
       margin: 0.4em 0.6em;
     }
   }
+  
+  .close-btn {
+    position: relative;
+  }
+}
+
+.github-commit-full {
+  position: relative;
+  overflow: hidden;
+
+
+  div {
+    overflow: scroll;
+  }
+  pre {
+    flex: 1 0 auto;
+    background: none;
+    overflow: visible;
+  }
+  .diff {
+    flex: 0 0 auto;
+  }
+  .hljs-deletion, .hljs-addition {
+    position: relative;
+    color: black;
+    overflow: visible;
+    font-size: 0.75em;
+    z-index: 0;
+    pointer-events: none;
+
+    &:after {
+      position: absolute;
+      left: 0;
+      top: 0;
+      content: "";
+      // width: calc(100vw - 2 * var(--space-sides) - var(--space));
+      width: 100em;
+      height: 1.4em;
+      opacity: 15%;
+    }
+  }
+  
+  .hljs-deletion {
+    &:after {
+      background-color: var(--red);
+    }
+  }
+  .hljs-addition {
+    &:after {
+      background-color: var(--green);
+    }
+  }
 }
