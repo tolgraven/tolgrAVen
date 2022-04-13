@@ -51,6 +51,10 @@
       [ui/lazy-load-repeatedly
        [:github/fetch-commits-next "tolgraven" "tolgraven"]
        "github-commits-box"]
-      [:div.github-loading [:h3 "Scroll down to load more..."]]]]
+      [:div.github-loading
+       [:h3 "Scrolling down should load more..."]
+       [:button {:style {:margin-top "var(--space-lg)"}
+                 :on-click #(rf/dispatch [:github/fetch-commits-next "tolgraven" "tolgraven"])}
+        "...or you can click here"]]]]
      [ui/fading :dir "bottom"]]))
 
