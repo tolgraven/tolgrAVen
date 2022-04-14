@@ -22,7 +22,7 @@
     box-shadow: 6px 7px 15px 8px inset rgba(127, 127, 200, 0.07);
     background: var(--bg-2);
     
-    max-height: 40em;
+    height: 50em;
     overflow-y: scroll;
 
     .github-loading {
@@ -59,6 +59,10 @@
       font-size: 80%;
       margin-left: 0.5em;
       text-decoration: none;
+
+      &:after {
+        color: var(--fg-5);
+      }
     }
 
     .github-commit-message {
@@ -101,9 +105,6 @@
     }
   }
   
-  .close-btn {
-    position: relative;
-  }
 }
 
 .github-commit-full {
@@ -111,16 +112,38 @@
   overflow: hidden;
 
 
-  div {
+  > div {
     overflow: scroll;
+
+    > code, p {
+      padding-left: 1em;
+    }
   }
   pre {
     flex: 1 0 auto;
     background: none;
     overflow: visible;
+
+    &.linenum, &.diff {
+      margin-right: 0.0em;
+      flex: 0 0 auto;
+    }
+    &.linenum {
+      text-align: right;
+      background: var(--bg-3);
+      padding: 1em;
+      padding-left: 1.5em;
+      padding-right: 0.4em;
+      border-right: var(--line-width-sm) solid var(--bg-1);
+    }
+
+    &:last-of-type {
+      background-color: hsla(var(--hue-3), 70%, 15%, 0.125);
+      margin-left: 0;
+    }
   }
   .diff {
-    flex: 0 0 auto;
+      background: var(--bg-1);
   }
   .hljs-deletion, .hljs-addition {
     position: relative;

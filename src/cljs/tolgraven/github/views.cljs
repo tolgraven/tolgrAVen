@@ -8,20 +8,41 @@
 
 
 (defn commit "Show a single commit with highlighted diff etc..."
-  [sha]
+  [sha close]
   (let [commit @(rf/subscribe [:github/commit sha])]
     [:div.github-commit-full
+     close
      (for [file  (-> commit :files)]
-       [:div.flex
+       [:div
         {:ref #(when % (rf/dispatch [:run-highlighter! %]))} ;screws up live preview :( jumpy
-        [:pre.diff
-         (-> (:patch file)
-             (string/replace #"(?m)(^.).*" "$1")
-             (string/replace #"^.*\n" ""))]
-        [:pre.clojure
-         (-> (:patch file)
-             (string/replace #"(?m)^." "")
-             (string/replace #"^.*\n" ""))]])]))
+        [:code
+         (:filename file)]
+        [:div
+         (let [hunks (-> (:patch file)
+                         (string/split #"(?m)^@@.*@@$")
+                         rest)
+               headers (-> (:patch file)
+                           (string/replace #"(?m)(@@\n)(.|\n)*(^@@)?" "$1$3")
+                           (string/split-lines))]
+           (for [[hunk header] (partition 2 (interleave hunks headers))]
+             [:div
+              [:p header]
+              [:div.flex
+               [:pre.diff
+                (-> hunk
+                    (string/replace #"(?m)(^.).*" "$1"))]
+               [:pre.linenum
+                (let [start  (->> (re-find #"-(\d*)," header)
+                                  second
+                                  js/parseInt)
+                      len (-> (string/split-lines hunk)
+                              count)
+                      lines (->> (range start (+ start len))
+                                (string/join "\n"))]
+                lines)]
+               [:pre.clojure
+                (-> hunk
+                    (string/replace #"(?m)^." ""))]]]))]])]))
 
 
 (defn commits "List Github commits for this repo"
@@ -36,14 +57,18 @@
      [:h2 [:i.fab.fa-github]" " @amount " commits to "
       [:a {:href (first (string/split (:html_url (first @commits)) #"/commit/"))}
        [:span "this website"]]]
+        
      [:div#github-commits-box.github-commits-inner
+      (when (= @view :commits)
+        [:div {:style {:text-align "center"
+                       :padding "1em"}}
+          "Click a commit for details and diff"])
       (if (= @view :commits)
            (for [{:keys [commit author html_url sha sha7 message date clock ts] :as item} @commits
                  :let [[info subtitle title] message]]
         ^{:key (str "github-commit-" ts)}
         [:div.github-commit.flex
-         {:on-hover #(rf/dispatch [:github/fetch-commit "tolgraven" "tolgraven" sha])
-          :on-click #(do (rf/dispatch [:github/fetch-commit "tolgraven" "tolgraven" sha])
+         {:on-click #(do (rf/dispatch [:github/fetch-commit "tolgraven" "tolgraven" sha])
                          (reset! view sha))}
          [:img.user-avatar.center-content {:src (:avatar_url author)}]
          [:div.github-commit-details
@@ -64,8 +89,8 @@
                 [:span.title subtitle]]))]]])
 
           [:div
-            [ui/close #(reset! view :commits)]
-            [commit @view]])
+            
+            [commit @view [ui/close #(reset! view :commits)]]])
       
      (when (= @view :commits)
       [:div.github-loading
