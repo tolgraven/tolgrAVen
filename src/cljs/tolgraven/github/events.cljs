@@ -27,7 +27,7 @@
  (fn [{:keys [db]} [_ page data]]
    (let [commits (for [{:keys [commit author html_url sha] :as item} data
                        :let [ts (get-in commit [:author :date])
-                             [date clock] (string/split ts "TZ") ; all this should be moved to subs yea
+                             [date clock] (string/split ts "T")
                              [info subtitle title :as message]
                              (map string/trim
                                   (some-> (:message commit)
