@@ -62,7 +62,7 @@ footer {
 
 img.img-icon {
   margin: calc(0.5 * var(--space));
-  height: 2.25rem;
+  height: 2em;
   filter: saturate(0.6);
 }
 
@@ -111,7 +111,7 @@ img.img-icon {
     display: flex;
 
     .img-icon {
-      margin-top: 0;
+      margin-top: 0.25em;
       border-radius: 50%;
     }
   }
