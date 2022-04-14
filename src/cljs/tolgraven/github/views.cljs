@@ -12,25 +12,32 @@
   (let [commit @(rf/subscribe [:github/commit sha])]
     [:div.github-commit-full
      close
-     (for [file  (-> commit :files)]
+     (for [file (:files commit)
+           :let [suffix (-> (:filename file)
+                            (string/split #"\.")
+                            last)]]
        [:div
         {:ref #(when % (rf/dispatch [:run-highlighter! %]))} ;screws up live preview :( jumpy
         [:code
          (:filename file)]
+        [:p (util/pluralize (:additions file) " addition") ", "
+            (util/pluralize (:deletions file) " deletion") ", "
+            (util/pluralize (:changes file)   " change") "."]
         [:div
          (let [hunks (-> (:patch file)
-                         (string/split #"(?m)^@@.*@@$")
+                         (string/split #"(?m)^@@.*@@")
                          rest)
                headers (-> (:patch file)
                            (string/replace #"(?m)(@@\n)(.|\n)*(^@@)?" "$1$3")
                            (string/split-lines))]
-           (for [[hunk header] (partition 2 (interleave hunks headers))]
+           ; (util/log :error "fo" (count hunks) (count headers))
+           (into [:<>]
+            (for [[hunk header] (partition 2 2 (interleave hunks headers))]
              [:div
               [:p header]
               [:div.flex
                [:pre.diff
-                (-> hunk
-                    (string/replace #"(?m)(^.).*" "$1"))]
+                (string/replace hunk #"(?m)(^.).*" "$1")]
                [:pre.linenum
                 (let [start  (->> (re-find #"-(\d*)," header)
                                   second
@@ -38,11 +45,15 @@
                       len (-> (string/split-lines hunk)
                               count)
                       lines (->> (range start (+ start len))
-                                (string/join "\n"))]
+                                 (string/join "\n"))]
                 lines)]
-               [:pre.clojure
+               [:pre
+                {:class (case suffix
+                          ("clj", "cljs") "clojure"
+                          "scss"          "css"
+                          "")}
                 (-> hunk
-                    (string/replace #"(?m)^." ""))]]]))]])]))
+                    (string/replace #"(?m)^." ""))]]])))]])]))
 
 
 (defn commits "List Github commits for this repo"
