@@ -39,8 +39,8 @@
   
   .github-commit {
     position: relative;
-    margin-top: 0.2em;
-    margin-bottom: 0.4em;
+    padding-top: 0.2em;
+    padding-bottom: 0.4em;
 
     .github-commit-details {
       width: 100%;
@@ -75,26 +75,6 @@
         white-space: pre-line;
       }
 
-      .github-commit-titles {
-        flex: 0 0 auto;
-        margin-right: calc(0.5 * var(--space));
-        margin-left: calc(1.0 * var(--space));
-
-        > span, i {
-          padding: 0.2em 0.35em;
-          height: fit-content;
-          border-radius: 0.3em;
-        }
-        i {
-          font-size: 70%;
-        }
-        .title {
-          background-color: var(--bg-6);
-        }
-        .subtitle {
-          background-color: var(--bg-4);
-        }
-      }
     }
 
     .user-avatar {
@@ -105,6 +85,27 @@
     }
   }
   
+}
+.github-commit-titles {
+  flex: 0 0 auto;
+  margin: auto;
+  margin-right: calc(0.5 * var(--space));
+  margin-left: calc(1.0 * var(--space));
+
+  > span, i {
+    padding: 0.2em 0.35em;
+    height: fit-content;
+    border-radius: 0.3em;
+  }
+  i {
+    font-size: 70%;
+  }
+  .title {
+    background-color: var(--bg-6);
+  }
+  .subtitle {
+    background-color: var(--bg-4);
+  }
 }
 
 .github-commit-full {

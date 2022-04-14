@@ -78,18 +78,17 @@
            [:span.github-commit-sha sha7]]
 
           [:div.github-commit-message
-           [:div.info info]
-           (if title
+           [:div.info info]]]
+          (if title
              [:div.github-commit-titles
               [:span.subtitle subtitle]
               [:i.fa.fa-solid.fa-arrow-left]
               [:span.title title]]
              (when subtitle
                [:div.github-commit-titles
-                [:span.title subtitle]]))]]])
+                [:span.title subtitle]]))])
 
           [:div
-            
             [commit @view [ui/close #(reset! view :commits)]]])
       
      (when (= @view :commits)
