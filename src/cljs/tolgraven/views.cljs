@@ -59,17 +59,16 @@
 
 (defn ui-intro [{:keys [title text buttons logo-bg bg]}]
   (let [showing-title (r/atom 0)
-        curr-pos (atom 0.0)
-        showing-title-inter (anim/interpolate-to
-                             showing-title
-                             {:duration 4000
-                              :easing (fn [a b dur t]
-                                        (let [pos (reset! curr-pos
-                                                          (if (< 5 (rand-int 10))
-                                                            (/ t dur)
-                                                            @curr-pos)) ]
-                                          (+ (- 1.0 (js/Math.pow (- 1.0 (/ (* b pos) b))
-                                                                 2)))))})]
+        updater-2 (fn update-2 []
+                    (let [frac (/ (count title)
+                                  (swap! showing-title inc))
+                          time-next (+ 25 (* @showing-title 18)
+                                       (when (= (nth title @showing-title) " ")
+                                         500)
+                                       (when (= @showing-title (dec (count title)))
+                                         600))]
+                    (when-not (= @showing-title (count title))
+                      (js/setTimeout #(update-2) time-next))))]
     (fn [{:keys [title text buttons logo-bg bg]}]
      [:section#intro
      [bg-logo logo-bg]
@@ -77,9 +76,9 @@
 
      [:div.h1-wrapper.center-content
       [:h1.h-responsive.h-intro
-      [anim/timeout #(reset! showing-title (count (seq title))) 3000]
-      (str (when (< @showing-title-inter 1) "•")
-           (string/join (take (int @showing-title-inter) title)))]]
+      [anim/timeout updater-2 2000]
+      (str (when (< @showing-title 1) "•")
+           (string/join (take @showing-title title)))]]
      
      (into [:<>] (ln->br text)) ; or just fix :pre css lol
      [:br]
