@@ -466,9 +466,9 @@
      [ui/lazy-load [:on-booted :firebase [:instagram/init]]]
      [ui-insta]
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
-     ; [cv]
      [ui/lazy-load [:on-booted :site [:github/init "tolgraven" "tolgraven"]]]
      [github/commits]
+     [cv/cv]
      [chat/chat]
      ]))
 

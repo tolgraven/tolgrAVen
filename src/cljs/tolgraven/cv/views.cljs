@@ -19,7 +19,7 @@
                   :width size}}
          [:p.cv-from from]
          [:p.cv-to (if to to "-")]
-         [:p.cv-what what]
+         [:p.cv-what [:strong what]]
          [:p.cv-position position]
          [:p.cv-where where]
          [:img {:src logo}]]
@@ -29,7 +29,7 @@
           :on-click #(reset! expanded? false)}
          [:p.cv-from from]
          [:p.cv-to (if to to "-")]
-         [:h2.cv-what what]
+         [:h2.cv-what [:strong what]]
          [:p.cv-position position]
          (for [item how]
              [:span.cv-how item])
@@ -81,7 +81,7 @@
                 (gen-items :work)]
                [:div.cv-items.cv-life
                 (gen-items :life)]]]
-    [:section.cv.nopadding
+    [:section#cv.cv.nopadding
      {:class (when @(rf/subscribe [:state [:cv :fullscreen]]) "fullscreen")}
      [:div.cv-intro
       [:img.fullwide {:src "img/tolgrav.png"}]
