@@ -1,0 +1,130 @@
+
+.cv {
+  color: var(--fg-3);
+
+  transition: all 0.5s ease;
+}
+
+.cv-intro {
+  background: linear-gradient(180deg, black 30%, var(--dark-2) 80%, var(--bg-3) 90%);
+
+  img {
+    filter: invert(0.95) hue-rotate(180deg);
+  }
+  
+  h1 {
+    padding-top: var(--space-lg);
+    text-align: center;
+  }
+  > p {
+    padding: var(--space-lg);
+  }
+
+}
+
+.modal-zoom {
+  .cv-boxes {
+    font-size: 75%;
+  }
+}
+
+.cv-boxes {
+  overflow-x: scroll;
+  font-size: 80%;
+}
+
+.cv-items {
+  position: relative;
+  padding: calc(0.5 * var(--space));
+  border: var(--line-width-sm) solid var(--bg-6);
+  min-height: 15em;
+  width: 150em;
+  overflow-x: scroll;
+
+  &.cv-education {
+    background: linear-gradient(0deg, var(--bg-2), var(--bg-3));
+    max-height: 15em;
+
+    .cv-detail {
+      max-height: 18em;
+    }
+  }
+  &.cv-work {
+    background: linear-gradient(0deg, var(--bg-4), var(--bg-3));
+    height: 40em;
+  }
+  &.cv-life {
+    background: linear-gradient(0deg, var(--bg-4), var(--bg-3));
+    height: 32em;
+  }
+}
+
+.cv-detail {
+  font-size: 0.8em;
+  position: absolute;
+  // padding: 0.5em;
+  margin: calc(0.5 * var(--space));
+  // padding: calc(0.25 * var(--space));
+  background-color: var(--fg-4);
+  color: var(--bg-1);
+  // height: 22%;
+  min-height: 10em;
+  // opacity: 80%;
+  border-radius: 0.2em;
+  box-shadow: 2px 2px 17px var(--box-regular-color); 
+  
+
+  transition: all 0.5s ease;
+
+  img {
+    position: absolute;
+    width: 3.75em;
+    bottom: 0;
+    right: 0;
+    padding: 0.4em;
+  }
+  
+  span, p {
+    margin: 0.3em;
+    margin-left: 0.6em;
+    margin-right: 0.6em;
+  }
+
+  .cv-to {
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+
+
+  &.cv-detail-expanded {
+    height: 25em;
+    position: fixed;
+    z-index: 10;
+    left: 10%;
+    width: 80%;
+    padding: var(--space-lg);
+    font-size: 0.9rem;
+    opacity: 90%;
+    backdrop-filter: blur(1rem); // no go unless have alpha on bg color, sadfly
+
+    img {
+      width: 8em;
+    }
+    
+    .cv-from {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    h2 {
+      padding-bottom: var(--space);
+    }
+    
+    .cv-what {
+    }
+    .cv-where {
+    }
+  }
+}

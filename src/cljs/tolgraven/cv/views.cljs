@@ -7,38 +7,45 @@
    [tolgraven.util :as util :refer [at]]))
 
 (defn box "One thing, accomplishment, employment, etc"
-  [[from to what how where] pos size overlap-level]
+  [{:keys [from to what position how where logo color] :as all} domain pos size overlap-level]
   (let [expanded? (r/atom false)]
-    (fn [[from to what how where] pos size overlap-level]
+    (fn [{:keys [from to what position how where logo color] :as all} domain pos size overlap-level]
       (if-not @expanded?
         [:div.cv-detail
          {:on-click #(reset! expanded? true)
-          :style {:left pos
-                  :top (str (* 25 overlap-level) "%") ;only supports 4 tall then tho
+          :style {:background-color color
+                  :left pos
+                  :top (str (* 24 overlap-level) "%") ;only supports 4 tall then tho
                   :width size}}
-         [:p from]
+         [:p.cv-from from]
          [:p.cv-to (if to to "-")]
          [:p.cv-what what]
-         [:p.cv-where where]]
+         [:p.cv-position position]
+         [:p.cv-where where]
+         [:img {:src logo}]]
         
         [:div.cv-detail.cv-detail-expanded
-         {:on-click #(reset! expanded? false)}
-         [:p from]
+         {:style {:background-color color}
+          :on-click #(reset! expanded? false)}
+         [:p.cv-from from]
          [:p.cv-to (if to to "-")]
-         [:p.cv-what what]
+         [:h2.cv-what what]
+         [:p.cv-position position]
          (for [item how]
              [:span.cv-how item])
-         [:p.cv-where where]]))))
+         [:p.cv-where where]
+         [:img {:src logo}]]))))
 
 (defn cv "Main cv component"
   []
   (let [{:keys [title caption cv]} @(rf/subscribe [:content [:cv]])
         {:keys [intro education work]} cv
-        first-year (apply min (map first (concat education work)))
+        first-year (apply min (map :from (concat education work)))
         last-year  (apply max (map #(if (number? %)
                                       %
                                       2025)
-                                   (map second (concat education work))))
+                                   (map :to (concat education work))))
+        ; _ (println first-year)
         get-pos (fn [start end]
                   (str (* 95
                           (/ (- start first-year)
@@ -50,25 +57,40 @@
                              (/ (- end start)
                                 (- last-year first-year)))
                           "%")))
-        curr-end (atom "2000")
+        curr-end (atom 1970)
         overlap-level (r/atom 0)
         gen-items (fn [domain]
-                    (doall (for [[from to what how where :as all] (domain cv)
+                    (doall (for [{:keys [from to] :as all} (domain cv)
                                  :let [last-end @curr-end
-                                       new-end (reset! curr-end to)
-                                       level (if (>= last-end new-end)
+                                       new-end to
+                                       ; _ (when (> to @curr-end) (reset! curr-end to))
+                                       _ (reset! curr-end to)
+                                       level (if (> last-end from)
                                                (swap! overlap-level inc)
                                                (reset! overlap-level 0))]]
-                             [box all
+                             [box all domain
                               (get-pos from to)
                               (get-size from to)
-                              @overlap-level])))]
-    [:div.cv
-     [:h1 title]
-     [:p (:intro cv)]
-     [:div.cv-boxes
-      [:div.cv-items.cv-education
-       (gen-items :education)]
-      [:div.cv-items.cv-work
-       (gen-items :work)]]]))
+                              @overlap-level])))
+        boxes [:div.cv-boxes
+               {:ref #(when % (set! (.-scrollLeft %) (.-scrollWidth %)))}
+               [ui/close #(rf/dispatch [:modal-zoom :fullscreen :close])]
+               [:div.cv-items.cv-education
+                (gen-items :education)]
+               [:div.cv-items.cv-work
+                (gen-items :work)]
+               [:div.cv-items.cv-life
+                (gen-items :life)]]]
+    [:section.cv.nopadding
+     {:class (when @(rf/subscribe [:state [:cv :fullscreen]]) "fullscreen")}
+     [:div.cv-intro
+      [:img.fullwide {:src "img/tolgrav.png"}]
+      [:h1 title]
+      [:p (:intro cv)]
+      ; [:button {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open boxes])}
+      [:div.center-content
+       [:button
+        {:on-click #(rf/dispatch [:toggle [:state :cv :fullscreen]])}
+        "Fullscreen"]]]
+     boxes]))
 

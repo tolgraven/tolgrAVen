@@ -9,6 +9,7 @@
    [tolgraven.strava.views :as strava]
    [tolgraven.chat.views :as chat]
    [tolgraven.github.views :as github]
+   [tolgraven.cv.views :as cv]
    [tolgraven.db :as db]
    [tolgraven.views-common :as view]
    [tolgraven.util :as util :refer [at]]))
