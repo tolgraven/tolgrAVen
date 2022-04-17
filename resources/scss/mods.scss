@@ -157,6 +157,13 @@
   z-index: 99;
 }
 
+.fullscreen { // expand to entire width of screen, past main...
+  border: var(--line-width) solid var(--fg-6);
+  margin: 0px calc(0px - var(--space-sides));
+  width: calc(100vw - 1 * var(--line-width-vert)); // no idea why 1x not 2x hah
+  max-width: unset;
+}
+
 .fullwide { /* expand div back to full width of main despite regular paddings/margins */
   /* guess should work to only fuck w margin+width directly not left etc? */
   /* i guess this should be for only when breaking out of margin bs */
