@@ -114,8 +114,8 @@
               site-defaults
               (-> secure-site-defaults ;use ssl and setup for heroku
                   (assoc-in [:proxy] true)))
-            (assoc-in [:security :anti-forgery] false)
-            (dissoc :session)))
+            #_(assoc-in [:security :anti-forgery] false) ; what's with this? from before we injected csrf or?
+            #_(dissoc :session))) ; why?
       wrap-optimus
       gzip/wrap-gzip
       wrap-partial-content

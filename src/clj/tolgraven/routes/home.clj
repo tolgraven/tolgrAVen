@@ -25,6 +25,11 @@
    ["/log*" {:get home-page}]
    ["/test*" {:get home-page}]
    ["/docs*" {:get home-page}]
+   ["/about*" {:get home-page}]
+   ["/services*" {:get home-page}]
+   ["/cv*" {:get home-page}]
+   ["/hire*" {:get home-page}]
+   ["/site/*" {:get home-page}]
    ["/api/docs" {:get (fn [_]
                     (-> "docs/docs.md" io/resource slurp
                         response/ok
