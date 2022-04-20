@@ -132,6 +132,7 @@
     font-size: 0.9rem;
     opacity: 90%;
     backdrop-filter: blur(1rem); // no go unless have alpha on bg color, sadfly
+    border-bottom-right-radius: 2.4em;
 
     img {
       width: 8em;
