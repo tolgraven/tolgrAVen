@@ -119,29 +119,29 @@
                                {:from 2019, :to 2020, :what "Full stack web development", :how [], :where "Chas Academy" :logo "img/logo/chas-logo.png" :color "var(--green)"}
                                {:from 2020, :to 2023 , :what "Bachelor programme, Computer Science", :how ["remote"]  :where "Stockholm University" :logo "img/logo/su-logo.png" :color "var(--yellow)"}]
                               :work
-                              [{:from 2001  :to 2005  :what "SvFF"  :position "Referee", :color "var(--green-3)"  :logo "img/logo/svff-logo.png"}
-                               {:from 2007, :to 2010, :what "TV4 Sport", :position "Live graphics operator" :how ["", "", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)"}
-                               {:from 2007, :to 2018, :what "TV4", :position "20-30 different positions", :how ["Total time employed"] :where "Stockholm" :logo "img/logo/TV4-logo.svg" :color "var(--red-2)"}
-                               {:from 2008  :to 2011  :what "Royal Institute of Technology" :position "Lab assistant" :logo "img/logo/KTH-logo.jpg" :color "var(--blue)"}
-                               {:from 2010, :to 2018, :what "TV4 Sport", :position "Junior producer & live graphics team leader" :how ["Live graphics team leader", "Junior producer", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)"}
-                               {:from 2012, :to 2016, :what "A number of clients", :position "Freelance" :how ["List them here", "", ""], :where "Stockholm"  :color "#cfcbc4"}
-                               {:from 2014, :to 2018, :what "TV4 Sport", :position "Developer" :how ["In-house developer", "Video editor", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)"}
-                               {:from 2018, :to 2019, :what "Systim Nostra", :position "Manager" :how ["Soundsystem operator", "Venue operation"], :where "Kampala" :color "#cfcbc4"},
-                               {:from 2019, :to 2023,  :what "tolgrAVen audiovisual", :position "Owner-operator, Web developer" :how ["Owner-operator", "Web designer & developer"], :where "Stockholm" :logo "img/tolgrav-square.png" :color "#cfcbc4"}
-                               {:from 2021, :to 2023,  :what "Crosstown", :how [], :position "Cyclist" :where "Stockholm" :logo "img/logo/crosstown-logo.png" :color "var(--orange-2)"}
-                               {:from 2022, :to 2025, :what "Your company here", :position "Web developer, or something else" :how ["Web developer"], :where "Remote, hybrid or office" :logo "img/questionmark.png" :color "var(--aqua)"}]
+                              [{:from 2001  :to 2005  :what "SvFF"  :position "Referee", :color "var(--green-3)"  :logo "img/logo/svff-logo.png" :level 0}
+                               {:from 2007, :to 2010, :what "TV4 Sport", :position "Live graphics operator" :how ["", "", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)" :level 1}
+                               {:from 2007, :to 2018, :what "TV4", :position "20-30 different positions", :how ["Total time employed"] :where "Stockholm" :logo "img/logo/TV4-logo.svg" :color "var(--red-2)" :level 0}
+                               {:from 2008  :to 2011  :what "Royal Institute of Technology" :position "Lab assistant" :logo "img/logo/KTH-logo.jpg" :color "var(--blue)" :level 2}
+                               {:from 2010, :to 2018, :what "TV4 Sport", :position "Junior producer & live graphics team leader" :how ["Live graphics team leader", "Junior producer", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)" :level 1}
+                               {:from 2012, :to 2016, :what "A number of clients", :position "Freelance" :how ["List them here", "", ""], :where "Stockholm"  :color "#cfcbc4" :level 2}
+                               {:from 2014, :to 2018, :what "TV4 Sport", :position "Developer" :how ["In-house developer", "Video editor", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)" :level 3}
+                               {:from 2018, :to 2019, :what "Systim Nostra", :position "Manager" :how ["Soundsystem operator", "Venue operation"], :where "Kampala" :color "#cfcbc4" :level 0},
+                               {:from 2019, :to 2023,  :what "tolgrAVen audiovisual", :position "Owner-operator, Web developer" :how ["Owner-operator", "Web designer & developer"], :where "Stockholm" :logo "img/tolgrav-square.png" :color "#cfcbc4" :level 0}
+                               {:from 2021, :to 2023,  :what "Crosstown", :how [], :position "Cyclist" :where "Stockholm" :logo "img/logo/crosstown-logo.png" :color "var(--orange-2)" :level 1}
+                               {:from 2022, :to 2025, :what "Your company here", :position "Web developer, or something else" :how ["Web developer"], :where "Remote, hybrid or office" :logo "img/questionmark.png" :color "var(--aqua)" :level 2}]
                               :life
                               [{:from 1988  :to 1988  :what "Born"}
                                {:from 1994  :to 2001  :what "Football Player"}
-                               {:from 2003  :to 2006  :what "Started producing music" :color "var(--blue-2)"}
-                               {:from 2004  :to 2007  :what "First started coding, in C++ and OpenGL" :color "var(--orange-2)"}
-                               {:from 2009  :to 2011  :what "Lived in Australia" :color "var(--green-3)"}
-                               {:from 2012  :to 2015  :what "Got serious about music production" :color "var(--blue-2)"}
-                               {:from 2013  :to 2015  :what "Started coding again, with goal of making it a career" :color "var(--orange-2)"}
-                               {:from 2015  :to 2022   :what "Rave promoter" :color "var(--blue-2)"}
-                               {:from 2016  :to 2018  :what "Started doing functional programming" :color "var(--orange-2)"}
-                               {:from 2019  :to 2021  :what "Started focusing on web development" :color "var(--orange-2)"}
-                               {:from 2018  :to 2019  :what "Lived in Uganda" :color "var(--green-3)"}]}}
+                               {:from 2003  :to 2006  :what "Started producing music" :color "var(--purple-3)" :level 0}
+                               {:from 2004  :to 2007  :what "First started coding, in C++ and OpenGL" :color "var(--orange-2)" :level 1}
+                               {:from 2009  :to 2011  :what "Lived in Australia" :color "var(--green-3)" :level 2}
+                               {:from 2012  :to 2015  :what "Got serious about music production" :color "var(--purple-3)" :level 0}
+                               {:from 2013  :to 2015  :what "Started coding again, with goal of making it a career" :color "var(--orange-2)" :level 1}
+                               {:from 2015  :to 2022  :what "Rave promoter" :color "var(--purple-3)" :level 0}
+                               {:from 2016  :to 2018  :what "Started doing functional programming" :color "var(--orange-2)" :level 1}
+                               {:from 2019  :to 2021  :what "Started focusing on web development" :color "var(--orange-2)" :level 1}
+                               {:from 2018  :to 2019  :what "Lived in Uganda" :color "var(--green-3)" :level 2}]}}
              :soundcloud {:url "https://soundcloud.com/"
                           :artist "tolgraven"
                           :tunes ["pop-music-for-cool-people-sketch-1-session-1"

@@ -60,18 +60,18 @@
         curr-end (atom 1970)
         overlap-level (r/atom 0)
         gen-items (fn [domain]
-                    (doall (for [{:keys [from to] :as all} (domain cv)
+                    (doall (for [{:keys [from to level] :as all} (domain cv)
                                  :let [last-end @curr-end
                                        new-end to
                                        ; _ (when (> to @curr-end) (reset! curr-end to))
                                        _ (reset! curr-end to)
-                                       level (if (> last-end from)
+                                       olevel (if (> last-end from)
                                                (swap! overlap-level inc)
                                                (reset! overlap-level 0))]]
                              [box all domain
                               (get-pos from to)
                               (get-size from to)
-                              @overlap-level])))
+                              (or level @overlap-level)])))
         boxes [:div.cv-boxes
                {:ref #(when % (set! (.-scrollLeft %) (.-scrollWidth %)))}
                [ui/close #(rf/dispatch [:modal-zoom :fullscreen :close])]
