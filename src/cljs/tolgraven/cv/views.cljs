@@ -45,7 +45,6 @@
                                       %
                                       2025)
                                    (map :to (concat education work))))
-        ; _ (println first-year)
         get-pos (fn [start end]
                   (str (* 95
                           (/ (- start first-year)
@@ -88,10 +87,12 @@
       [:img.fullwide {:src "img/tolgrav.png"}]
       [:h1 title]
       [:p (:intro cv)]
-      ; [:button {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open boxes])}
       [:div.center-content
-       [:button
-        {:on-click #(rf/dispatch [:toggle [:state :fullscreen :cv]])}
-        "Fullscreen"]]]
+       [:p.cv-howto
+        "Scroll sideways to look back, or click "
+        [:button
+         {:on-click #(rf/dispatch [:toggle [:state :fullscreen :cv]])}
+         "Fullscreen"]
+        " and maximize your browser window."]]]
      boxes]))
 

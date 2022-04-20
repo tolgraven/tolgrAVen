@@ -9,8 +9,12 @@
 .cv-intro {
   background: linear-gradient(180deg, black 10%, var(--dark-1) 60%, var(--bg-2) 90%);
 
+  .cv-howto {
+    font-size: 80%;
+  }
+
   img {
-    filter: invert(0.95) hue-rotate(180deg);
+    filter: invert(0.95) hue-rotate(180deg) brightness(130%);
   }
   
   h1 {
@@ -19,6 +23,9 @@
   }
   > p {
     padding: var(--space-lg);
+  }
+  button {
+    margin-bottom: var(--space-lg);
   }
 
 }
@@ -51,7 +58,7 @@
   overflow-x: scroll;
 
   &.cv-education {
-    background: linear-gradient(0deg, var(--bg-3), var(--bg-1));
+    background: linear-gradient(0deg, var(--bg-3), var(--bg-2));
     max-height: 12em;
     
     @include i-gradient;
