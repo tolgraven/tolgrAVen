@@ -119,13 +119,21 @@
                                {:from 2019, :to 2020, :what "Full stack web development", :how [], :where "Chas Academy" :logo "img/logo/chas-logo.png" :color "var(--green)"}
                                {:from 2020, :to 2023 , :what "Bachelor programme, Computer Science", :how ["remote"]  :where "Stockholm University" :logo "img/logo/su-logo.png" :color "var(--yellow)"}]
                               :work
-                              [{:from 2001  :to 2005  :what "SvFF"  :position "Referee", :color "var(--green-3)"  :logo "img/logo/svff-logo.png" :level 0}
-                               {:from 2007, :to 2010, :what "TV4 Sport", :position "Live graphics operator" :how ["", "", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)" :level 1}
-                               {:from 2007, :to 2018, :what "TV4", :position "20-30 different positions", :how ["Total time employed"] :where "Stockholm" :logo "img/logo/TV4-logo.svg" :color "var(--red-2)" :level 0}
-                               {:from 2008  :to 2011  :what "Royal Institute of Technology" :position "Lab assistant" :logo "img/logo/KTH-logo.jpg" :color "var(--blue)" :level 2}
+                              [{:from 2001  :to 2005  :what "SvFF"  :position "Referee", :how ["From 5, 7 to 11 (adult) games"] :color "var(--green-3)"  :logo "img/logo/svff-logo.png" :level 0}
+                               {:from 2007, :to 2010, :what "TV4 Sport", :position "PA & Live graphics operator" :how ["Team leader and responsible for group of 7-10 people in live graphics department.
+", "Specified, ordered and followed up implementation, rollout and operations for projects, many of them TV graphics solutions, internally vis a vis project leads as well as externally with solutions providers like ChyronHego, Ericsson Broadcast Systems and buyers (for example Svenska Spel).
+", "On-site responsibility for testing of systems, communication with providers and operators, working with them on solving issues (or often debugging them myself), reporting and follow-up. Included server administration, code-level debugging and fixes..
+", "Throughout the years I also worked on things like the ice hockey World Championship, 
+Fotbollskanalen Europa, Club Calcio and TV4Nyheterna in a variety of roles."], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)" :level 1}
+                               {:from 2007, :to 2018, :what "TV4", :position "Many different positions, expand for details", :how ["Mainly assistant editor and video editor but on project basis also editor, 
+producer, reporter, PA, graphics technician, music administrator etc"] :where "Stockholm" :logo "img/logo/TV4-logo.svg" :color "var(--red-2)" :level 0}
+                               {:from 2008  :to 2011  :what "Royal Institute of Technology" :position "Programming lab/teaching assistant" :how ["Python, C++, Java"] :logo "img/logo/KTH-logo.jpg" :color "var(--blue)" :level 2}
                                {:from 2010, :to 2018, :what "TV4 Sport", :position "Junior producer & live graphics team leader" :how ["Live graphics team leader", "Junior producer", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)" :level 1}
-                               {:from 2012, :to 2016, :what "A number of clients", :position "Freelance" :how ["List them here", "", ""], :where "Stockholm"  :color "#cfcbc4" :level 2}
-                               {:from 2014, :to 2018, :what "TV4 Sport", :position "Developer" :how ["In-house developer", "Video editor", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)" :level 3}
+                               {:from 2012, :to 2016, :what "A number of clients", :position "Freelance" :how ["SvT", "Endemol", "Svenska Spel",  "Nyhetsbolaget" "C More" "Ericsson Broadcast Systems", "2AM", "Oh my!", "and more"], :where "Stockholm"  :color "#cfcbc4" :level 2}
+                               {:from 2014, :to 2018, :what "TV4 Sport", :position "Developer" :how ["Developed custom creative tech solutions, generally as a response to IT department or tech suppliers saying a requested feature or workflow wasn’t possible on our tech stack.
+“The missing one-man in-house development team”.", "Personally developed and operated systems during large TV events (such as the football World Cup) to eg. record 2-10+ different channels of international TV and radio, keep all streams syncronized to each other as well as our own feeds, and using this footage and audio live. A combination of network administration, scripting, programming, audio tech and video editing.
+", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)" :level 3}
+                               {:from 2013, :to 2022, :what "Club/party promoter", :position "Promoter" :how ["Rave promoter", "Venue operation"], :color "#cfcbc4" :level 4},
                                {:from 2018, :to 2019, :what "Systim Nostra", :position "Manager" :how ["Soundsystem operator", "Venue operation"], :where "Kampala" :color "#cfcbc4" :level 0},
                                {:from 2019, :to 2023,  :what "tolgrAVen audiovisual", :position "Owner-operator, Web developer" :how ["Owner-operator", "Web designer & developer"], :where "Stockholm" :logo "img/tolgrav-square.png" :color "#cfcbc4" :level 0}
                                {:from 2021, :to 2023,  :what "Crosstown", :how [], :position "Cyclist" :where "Stockholm" :logo "img/logo/crosstown-logo.png" :color "var(--orange-2)" :level 1}
@@ -133,15 +141,32 @@
                               :life
                               [{:from 1988  :to 1988  :what "Born"}
                                {:from 1994  :to 2001  :what "Football Player"}
-                               {:from 2003  :to 2006  :what "Started producing music" :color "var(--purple-3)" :level 0}
-                               {:from 2004  :to 2007  :what "First started coding, in C++ and OpenGL" :color "var(--orange-2)" :level 1}
+                               {:from 2003  :to 2006  :what "Started producing music" :color "var(--purple-2)" :level 0}
+                               {:from 2004  :to 2007  :what "First started coding, in C++ and OpenGL" :color "var(--aqua-3)" :level 1}
                                {:from 2009  :to 2011  :what "Lived in Australia" :color "var(--green-3)" :level 2}
-                               {:from 2012  :to 2015  :what "Got serious about music production" :color "var(--purple-3)" :level 0}
-                               {:from 2013  :to 2015  :what "Started coding again, with goal of making it a career" :color "var(--orange-2)" :level 1}
-                               {:from 2015  :to 2022  :what "Rave promoter" :color "var(--purple-3)" :level 0}
-                               {:from 2016  :to 2018  :what "Started doing functional programming" :color "var(--orange-2)" :level 1}
-                               {:from 2019  :to 2021  :what "Started focusing on web development" :color "var(--orange-2)" :level 1}
-                               {:from 2018  :to 2019  :what "Lived in Uganda" :color "var(--green-3)" :level 2}]}}
+                               {:from 2012  :to 2015  :what "Got serious about music production" :color "var(--purple-2)" :level 0}
+                               {:from 2013  :to 2015  :what "Started coding again, with goal of making it a career" :color "var(--aqua-3)" :level 1}
+                               {:from 2016  :to 2018  :what "Started doing functional programming" :color "var(--aqua-3)" :level 1}
+                               {:from 2019  :to 2021  :what "Started focusing on web development" :color "var(--aqua-3)" :level 1}
+                               {:from 2018  :to 2019  :what "Lived in Uganda" :color "var(--green-3)" :level 2}]
+                              :skills {:software ["Full stack web development and design"
+                                                  "Specialized in front-end work: JavaScript (React/Native), CSS"
+                                                  "Functional programming, Clojure/ClojureScript (Reagent/Re-frame)"
+                                                  "Python, Java, C++"
+                                                  "3D and 2D graphics"
+                                                  "Git, Docker, Heroku, Firebase, GraphQL, AWS etc"
+                                                  "Bash, zsh, fish (20k+ loc), Powershell"
+                                                  "Vim ninja"
+                                                  "Server admin and some DevOps"]
+                                       :digital ["Adobe Premiere, Final Cut Pro X",
+                                                 "Adobe Photoshop, After Effects, Illustrator"
+                                                 "Ableton Live, Logic Pro, iZotope RX, Adobe Audition"
+                                                 "Max/MSP, TouchDesigner, Resolume"
+                                                 "Microsoft Excel / Google Sheets - advanced scripting"
+                                                 "OS - macOS/Darwin Unix, Linux, Windows including Windows Server"]
+                                       :language ["Swedish - Native"
+                                                  "English - Fluent, native level"
+                                                  "Spanish - Limited, but get by in Spanish speaking countries"]}}}
              :soundcloud {:url "https://soundcloud.com/"
                           :artist "tolgraven"
                           :tunes ["pop-music-for-cool-people-sketch-1-session-1"

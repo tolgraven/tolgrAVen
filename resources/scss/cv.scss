@@ -4,13 +4,35 @@
   z-index: 30;
 
   transition: all 0.5s ease;
+
+  .cv-skills {
+    background: linear-gradient(180deg, var(--bg-2) 20%, var(--bg-3) 90%);
+    margin-top: calc(0px - 1.0 * var(--space));
+    font-size: 0.7em;
+
+    h1 {
+      padding: var(--space);
+      text-align: center;
+    }
+
+    .cv-skill {
+      padding: var(--space);
+      color: var(--fg-6);
+      
+      .cv-skill-line span {
+        background: var(--bg-3);
+        color: var(--fg-2);
+      }
+    }
+  }
 }
 
 .cv-intro {
   background: linear-gradient(180deg, black 10%, var(--dark-1) 60%, var(--bg-2) 90%);
 
   .cv-howto {
-    font-size: 80%;
+    font-size: 65%;
+    padding: var(--space);
   }
 
   img {
@@ -130,7 +152,8 @@
 
 
   &.cv-detail-expanded {
-    height: 25em;
+    min-height: 25em;
+    max-height: 40em;
     position: fixed;
     z-index: 10;
     left: 10%;
@@ -140,9 +163,17 @@
     opacity: 90%;
     backdrop-filter: blur(1rem); // no go unless have alpha on bg color, sadfly
     border-bottom-right-radius: 2.4em;
+    
+    i {
+      background: linear-gradient(-45deg, var(--bg-1), var(--bg-6));
+      background-clip: text;
+      color: transparent;
+      margin-left: calc(0px - var(--space));
+      margin-right: calc(0.35 * var(--space));
+    }
 
     img {
-      width: 8em;
+      width: 6em;
     }
     
     .cv-from {

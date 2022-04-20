@@ -30,16 +30,15 @@
          [:p.cv-from from]
          [:p.cv-to (if to to "-")]
          [:h2.cv-what [:strong what]]
-         [:p.cv-position position]
          (for [item how]
-             [:span.cv-how item])
+             [:p.cv-how [:i.fas.fa-arrow-right] item])
          [:p.cv-where where]
          [:img {:src logo}]]))))
 
 (defn cv "Main cv component"
   []
   (let [{:keys [title caption cv]} @(rf/subscribe [:content [:cv]])
-        {:keys [intro education work]} cv
+        {:keys [intro education work life skills]} cv
         first-year (apply min (map :from (concat education work)))
         last-year  (apply max (map #(if (number? %)
                                       %
@@ -88,11 +87,28 @@
       [:h1 title]
       [:p (:intro cv)]
       [:div.center-content
-       [:p.cv-howto
+       [:div.cv-howto
+        [:p "Click a box for further details."]
+
         "Scroll sideways to look back, or click "
         [:button
          {:on-click #(rf/dispatch [:toggle [:state :fullscreen :cv]])}
          "Fullscreen"]
-        " and maximize your browser window."]]]
-     boxes]))
+        " and maximize your browser window. "]]]
+     boxes
+     [ui/fading :dir "bottom"]
+     [:div.cv-skills
+      [:h1 "Skills"]
+      [:div.cv-skill.cv-software
+       [:h3 [:i.fas.fa-code] " Software"]
+       (for [line (:software skills)]
+        [:p.cv-skill-line "- " [:span line]])]
+      [:div.cv-skill.cv-digital
+       [:h3 [:i.fas.fa-calculator] " Digital"]
+       (for [line (:digital skills)]
+        [:p.cv-skill-line "- " [:span line]])]
+      [:div.cv-skill.cv-language
+       [:h3 [:i.fas.fa-globe] " Language"]
+       (for [line (:language skills)]
+        [:p.cv-skill-line "- " [:span line]])]]]))
 
