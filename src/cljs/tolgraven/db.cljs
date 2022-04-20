@@ -114,18 +114,18 @@
                                       Main focus is functional programming and web development, primarily front-end."
                               :education
                               [{:from 2004, :to 2007, :what "Natural Science program, mathematics and computer science", :how ["3.96 (19.8) GPA"], :where "Kärrtorps gymnasium" :logo "img/logo/karrtorp-logo.png" :color "var(--purple)"}
-                               {:from 2007, :to 2009, :what "Industrial Economics and Management", :how [], :where "Royal Institute of Technology" :logo "img/logo/kth-logo.jpg" :color "var(--blue)"}
+                               {:from 2007, :to 2009, :what "Industrial Economics and Management", :how [], :where "Royal Institute of Technology" :logo "img/logo/KTH-logo.jpg" :color "var(--blue)"}
                                {:from 2012, :to 2014, :what "Musicology (60hp)", :how [], :where "Stockholm University" :logo "img/logo/su-logo.png" :color "var(--yellow)"}
                                {:from 2019, :to 2020, :what "Full stack web development", :how [], :where "Chas Academy" :logo "img/logo/chas-logo.png" :color "var(--green)"}
                                {:from 2020, :to 2023 , :what "Bachelor programme, Computer Science", :how ["remote"]  :where "Stockholm University" :logo "img/logo/su-logo.png" :color "var(--yellow)"}]
                               :work
                               [{:from 2001  :to 2005  :what "SvFF"  :position "Referee", :color "var(--green-3)"  :logo "img/logo/svff-logo.png"}
-                               {:from 2007, :to 2010, :what "TV4 Sport", :position "Live graphics operator" :how ["", "", ""], :where "Stockholm" :logo "img/logo/tv4sport-logo.png" :color "var(--orange)"}
-                               {:from 2007, :to 2018, :what "TV4", :position "20-30 different positions", :how ["Total time employed"] :where "Stockholm" :logo "img/logo/tv4-logo.svg" :color "var(--red-2)"}
-                               {:from 2008  :to 2011  :what "Royal Institute of Technology" :position "Lab assistant" :logo "img/logo/kth-logo.jpg" :color "var(--blue)"}
-                               {:from 2010, :to 2018, :what "TV4 Sport", :position "Junior producer & live graphics team leader" :how ["Live graphics team leader", "Junior producer", ""], :where "Stockholm" :logo "img/logo/tv4sport-logo.png" :color "var(--orange)"}
+                               {:from 2007, :to 2010, :what "TV4 Sport", :position "Live graphics operator" :how ["", "", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)"}
+                               {:from 2007, :to 2018, :what "TV4", :position "20-30 different positions", :how ["Total time employed"] :where "Stockholm" :logo "img/logo/TV4-logo.svg" :color "var(--red-2)"}
+                               {:from 2008  :to 2011  :what "Royal Institute of Technology" :position "Lab assistant" :logo "img/logo/KTH-logo.jpg" :color "var(--blue)"}
+                               {:from 2010, :to 2018, :what "TV4 Sport", :position "Junior producer & live graphics team leader" :how ["Live graphics team leader", "Junior producer", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)"}
                                {:from 2012, :to 2016, :what "A number of clients", :position "Freelance" :how ["List them here", "", ""], :where "Stockholm"  :color "#cfcbc4"}
-                               {:from 2014, :to 2018, :what "TV4 Sport", :position "Developer" :how ["In-house developer", "Video editor", ""], :where "Stockholm" :logo "img/logo/tv4sport-logo.png" :color "var(--orange)"}
+                               {:from 2014, :to 2018, :what "TV4 Sport", :position "Developer" :how ["In-house developer", "Video editor", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)"}
                                {:from 2018, :to 2019, :what "Systim Nostra", :position "Manager" :how ["Soundsystem operator", "Venue operation"], :where "Kampala" :color "#cfcbc4"},
                                {:from 2019, :to 2023,  :what "tolgrAVen audiovisual", :position "Owner-operator, Web developer" :how ["Owner-operator", "Web designer & developer"], :where "Stockholm" :logo "img/tolgrav-square.png" :color "#cfcbc4"}
                                {:from 2021, :to 2023,  :what "Crosstown", :how [], :position "Cyclist" :where "Stockholm" :logo "img/logo/crosstown-logo.png" :color "var(--orange-2)"}
