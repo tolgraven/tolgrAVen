@@ -9,6 +9,7 @@
    [tolgraven.strava.views :as strava]
    [tolgraven.chat.views :as chat]
    [tolgraven.github.views :as github]
+   [tolgraven.instagram.views :as instagram]
    [tolgraven.cv.views :as cv]
    [tolgraven.db :as db]
    [tolgraven.views-common :as view]
@@ -373,41 +374,6 @@
           (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
          [:img.media img]))]])
 
-(defn insta-post "An instagram post"
-  [post item]
-  (let [hover? (r/atom false)]
-    (fn [post item]
-      [:div.gallery-insta-item
-       {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])
-        :on-mouse-enter #(reset! hover? true)
-        :on-mouse-leave #(reset! hover? false)}
-       item
-       (when @hover?
-         [:div.insta-caption
-          (or (:caption post) "We will be with you in a moment.")])])))
-
-
-(defn ui-insta "Future insta gallery"
-  []
-  (let [amount (r/atom 24)
-        posts (rf/subscribe [:instagram/posts @amount])]
-    (fn []
-      [:section#gallery-3.fullwide.covering
-       [:div.covering.gallery-insta
-        (for [post (or @posts (range @amount))
-              :let [item [:img {:class (when-not (:media_url post) "transparent-border")
-                                :src (or (:media_url post) "img/logo/instagram-fallback-logo.png")
-                                :on-error #(rf/dispatch [:instagram/fetch-from-insta [(:id post)]])}]]] ; dispatch on failed fetch due to url expiry
-          ^{:key (str "gallery-instagram-" (or (:id post) post))}
-          [insta-post post item])]])))
-
-
-(defn cv "Write dat cv. Put it on the site. Probably not last? Dunno."
-  []
-  [:section.cv
-   [:h1 "Resume"]
-   [:p "Here goes the CV. Make it nice and funky with graphix n stuff."]])
-
 
 (defn remote-player
   [url]
@@ -464,7 +430,7 @@
      [ui/lazy-load [:on-booted :site [:state [:soundcloud :init] true]]]
      [ui-soundcloud]
      [ui/lazy-load [:on-booted :firebase [:instagram/init]]]
-     [ui-insta]
+     [instagram/instagram]
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
      [ui/lazy-load [:on-booted :site [:github/init "tolgraven" "tolgraven"]]]
      [github/commits]
