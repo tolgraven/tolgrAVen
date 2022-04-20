@@ -66,6 +66,9 @@
                         {"app.js" ["/js/compiled/app.js"] })
    (assets/load-assets "public"
                        [#"/img/.+\.png$"
+                        #"/img/.+\.svg$"
+                        #"/img/.+\.gif$"
+                        #"/img/.+\.jpeg$"
                         #"/img/.+\.jpg$"])))
 
 (import-vars [optimus.optimizations.minify
