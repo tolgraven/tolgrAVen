@@ -108,6 +108,29 @@
         :ref #(observer %)}
        (into [:<>] components)])))
 
+(defn seen-merge "Animate on coming into view. Attempts to merge existing stuff to avoid wrapping"
+  [kind component]
+  (let [seen (r/atom false)
+        on-change (fn [frac]
+                    (cond
+                       (and (>= frac 0.50) (not @seen))
+                       (reset! seen true)
+                       (and (< frac 0.50) @seen)
+                       (reset! seen false)))
+        observer (util/observer on-change) ]
+    (fn [kind component]
+      (let [wrap-ref (if-let [existing (-> component second :ref)]
+                       #(do (observer %)
+                            (existing %))
+                       #(observer %))
+            classes (str "appear-wrapper " kind " " (when @seen "appeared"))
+            wrap-class (if-let [existing (-> component second :class)]
+                         (str existing " " classes)
+                         classes)
+            attrs {:ref wrap-ref :class wrap-class}
+            component (util/add-attrs component attrs)]
+        component))))
+
 (defn seen-2 "Animate on coming into view. takes a map"
   [id kind div & components]
   (let [on-change (fn [frac]
