@@ -34,6 +34,14 @@
   font-size: 80%;
 }
 
+@mixin i-gradient {
+  i {
+    background: linear-gradient(-45deg, var(--fg-1), var(--bg-6));
+    background-clip: text;
+    color: transparent;
+  }
+}
+
 .cv-items {
   position: relative;
   padding-top: calc(0.5 * var(--space));
@@ -44,7 +52,9 @@
 
   &.cv-education {
     background: linear-gradient(0deg, var(--bg-2), var(--bg-3));
-    max-height: 15em;
+    max-height: 12em;
+    
+    @include i-gradient;
 
     .cv-detail {
       max-height: 18em;
@@ -52,17 +62,24 @@
   }
   &.cv-work {
     background: linear-gradient(0deg, var(--bg-4), var(--bg-3));
-    height: 40em;
+    height: 36em;
+    @include i-gradient;
   }
   &.cv-life {
     background: linear-gradient(0deg, var(--bg-4), var(--bg-3));
-    height: 32em;
+    height: 26em;
+    
+    @include i-gradient;
   }
   h1 {
     text-align: right;
     color: var(--fg-6);
     padding: 0;
     padding-right: var(--space);
+
+    i {
+      padding-right: calc(0.5 * var(--space));
+    }
   }
 }
 

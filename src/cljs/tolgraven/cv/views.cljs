@@ -62,9 +62,7 @@
         gen-items (fn [domain]
                     (doall (for [{:keys [from to level] :as all} (domain cv)
                                  :let [last-end @curr-end
-                                       new-end to
-                                       ; _ (when (> to @curr-end) (reset! curr-end to))
-                                       _ (reset! curr-end to)
+                                       new-end (reset! curr-end to)
                                        olevel (if (> last-end from)
                                                (swap! overlap-level inc)
                                                (reset! overlap-level 0))]]
@@ -76,13 +74,13 @@
                {:ref #(when % (set! (.-scrollLeft %) (.-scrollWidth %)))}
                [ui/close #(rf/dispatch [:modal-zoom :fullscreen :close])]
                [:div.cv-items.cv-education
-                [:h1 (name :education)]
+                [:h1 [:i.fas.fa-solid.fa-graduation-cap] "education"]
                 (gen-items :education)]
                [:div.cv-items.cv-work
-                [:h1 (name :work)]
+                [:h1 [:i.fas.fa-solid.fa-briefcase] "work"]
                 (gen-items :work)]
                [:div.cv-items.cv-life
-                [:h1 (name :life)]
+                [:h1 [:i.fas.fa-book] "life"]
                 (gen-items :life)]]]
     [:section#cv.cv.nopadding
      {:class (when @(rf/subscribe [:fullscreen/get :cv]) "fullscreen")}
