@@ -82,7 +82,7 @@
                [:div.cv-items.cv-life
                 (gen-items :life)]]]
     [:section#cv.cv.nopadding
-     {:class (when @(rf/subscribe [:state [:cv :fullscreen]]) "fullscreen")}
+     {:class (when @(rf/subscribe [:fullscreen/get :cv]) "fullscreen")}
      [:div.cv-intro
       [:img.fullwide {:src "img/tolgrav.png"}]
       [:h1 title]
@@ -90,7 +90,7 @@
       ; [:button {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open boxes])}
       [:div.center-content
        [:button
-        {:on-click #(rf/dispatch [:toggle [:state :cv :fullscreen]])}
+        {:on-click #(rf/dispatch [:toggle [:state :fullscreen :cv]])}
         "Fullscreen"]]]
      boxes]))
 

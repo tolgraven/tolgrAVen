@@ -174,3 +174,14 @@
                         #"/(\w.*)?(\?.*)?"
                         (str "/" "$1" "$2" k)))))))
 
+(rf/reg-sub :fullscreen/get
+ :<- [:state [:fullscreen]]           
+ (fn [fullscreen [_ k]]
+  (if k
+    (get fullscreen k)
+    fullscreen)))
+
+(rf/reg-sub :fullscreen/any?
+ :<- [:state [:fullscreen]]           
+ (fn [fullscreen [_ _]]
+  (apply some? (filter true? (vals fullscreen)))))

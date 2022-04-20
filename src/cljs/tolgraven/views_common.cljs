@@ -60,9 +60,10 @@
 (defn header [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   [:<>
    [ui/input-toggle "nav-menu-open" [:menu] :class "burger-check"]
-   [:div.header-before
-    {:class (when @(rf/subscribe [:state [:scroll :past-top]])
-              "past-top")}]
+   (when @(rf/subscribe [:fullscreen/any?])
+     [:div.header-before
+      {:class (when @(rf/subscribe [:state [:scroll :past-top]])
+                "past-top")}])
    [:header
     {:class (when @(rf/subscribe [:state [:hidden-header-footer]])
               "hide")}
