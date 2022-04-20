@@ -15,7 +15,7 @@
          {:on-click #(reset! expanded? true)
           :style {:background-color color
                   :left pos
-                  :top (str (* 24 overlap-level) "%") ;only supports 4 tall then tho
+                  :top (str (+ 2.5 (* 24 overlap-level)) "%") ;only supports 4 tall then tho
                   :width size}}
          [:p.cv-from from]
          [:p.cv-to (if to to "-")]

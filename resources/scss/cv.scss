@@ -45,13 +45,13 @@
 .cv-items {
   position: relative;
   padding-top: calc(0.5 * var(--space));
-  border: var(--line-width-sm) solid var(--bg-6);
+  border-bottom: var(--line-width-sm) solid var(--bg-6);
   min-height: 15em;
   width: 150em;
   overflow-x: scroll;
 
   &.cv-education {
-    background: linear-gradient(0deg, var(--bg-2), var(--bg-3));
+    background: linear-gradient(0deg, var(--bg-3), var(--bg-1));
     max-height: 12em;
     
     @include i-gradient;
@@ -61,12 +61,12 @@
     }
   }
   &.cv-work {
-    background: linear-gradient(0deg, var(--bg-4), var(--bg-3));
+    background: linear-gradient(0deg, var(--bg-5), var(--bg-3));
     height: 36em;
     @include i-gradient;
   }
   &.cv-life {
-    background: linear-gradient(0deg, var(--bg-4), var(--bg-3));
+    background: linear-gradient(0deg, var(--bg-6), var(--bg-5));
     height: 26em;
     
     @include i-gradient;
@@ -86,15 +86,12 @@
 .cv-detail {
   font-size: 0.8em;
   position: absolute;
-  // padding: 0.5em;
-  margin: calc(0.5 * var(--space));
-  // padding: calc(0.25 * var(--space));
   background-color: var(--fg-4);
   color: var(--bg-1);
-  // height: 22%;
   min-height: 10em;
   opacity: 90%;
   border-radius: 0.2em;
+  border-bottom-right-radius: 1.2em;
   box-shadow: 2px 2px 17px var(--box-regular-color); 
   
 
