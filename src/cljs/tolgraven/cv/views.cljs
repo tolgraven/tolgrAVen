@@ -76,10 +76,13 @@
                {:ref #(when % (set! (.-scrollLeft %) (.-scrollWidth %)))}
                [ui/close #(rf/dispatch [:modal-zoom :fullscreen :close])]
                [:div.cv-items.cv-education
+                [:h1 (name :education)]
                 (gen-items :education)]
                [:div.cv-items.cv-work
+                [:h1 (name :work)]
                 (gen-items :work)]
                [:div.cv-items.cv-life
+                [:h1 (name :life)]
                 (gen-items :life)]]]
     [:section#cv.cv.nopadding
      {:class (when @(rf/subscribe [:fullscreen/get :cv]) "fullscreen")}

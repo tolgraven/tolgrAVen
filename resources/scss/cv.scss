@@ -58,6 +58,12 @@
     background: linear-gradient(0deg, var(--bg-4), var(--bg-3));
     height: 32em;
   }
+  h1 {
+    text-align: right;
+    color: var(--fg-6);
+    padding: 0;
+    padding-right: var(--space);
+  }
 }
 
 .cv-detail {
@@ -70,7 +76,7 @@
   color: var(--bg-1);
   // height: 22%;
   min-height: 10em;
-  // opacity: 80%;
+  opacity: 90%;
   border-radius: 0.2em;
   box-shadow: 2px 2px 17px var(--box-regular-color); 
   
