@@ -118,7 +118,7 @@ ga('create', 'UA-XXXXX-Y', 'auto');
 ga('send', 'pageview');
 </script>")
 
-(defn render-hiccup
+(defn render-home
   [request]
   (-> (str "<!DOCTYPE html>\n"
            (hiccup/html (home
@@ -137,6 +137,12 @@ ga('send', 'pageview');
       ok
       (content-type "text/html; charset=utf-8")))
 
+(defn render-hiccup
+  [page & args]
+  (-> (str "<!DOCTYPE html>\n"
+           (hiccup/html (apply page args)))
+      ok
+      (content-type "text/html; charset=utf-8")))
 
 (defn render
   "renders the HTML template located relative to resources/html"
@@ -150,6 +156,27 @@ ga('send', 'pageview');
           :csrf-token *anti-forgery-token*)))
     "text/html; charset=utf-8"))
 
+(defn error-page-hiccup
+  [error-details]
+  [:html {:lang "en"}
+   [:head
+    [:meta {:charset "UTF-8"}]
+    [:meta {:name "viewport"
+            :content "width=device-width, initial-scale=1, shrink-to-fit=no"}]
+    [:title "Something bad happened"]
+    [:meta {:name "description" :content "Error page"}]
+    
+    (ohtml/link-to-css-bundles error-details ["styles.css"])] ; this is where everything ends up for prod but cant remember why?
+    
+    [:script {:type "text/javascript"}
+       (str "var csrfToken = \"" *anti-forgery-token* "\";")]
+    
+   [:body {:class "container themable framing-shadow sticky-footer-container"}
+    [:header
+     [:h1 "Error: " (:status error-details)]]
+
+     [:main.main-content.center-content>div [:h2 (:title error-details)]] ]])
+
 (defn error-page ; reckon bail on this and make in hiccup then can nuke parser.
   "error-details should be a map containing the following keys:
    :status - error status
@@ -161,3 +188,13 @@ ga('send', 'pageview');
   {:status  (:status error-details)
    :headers {"Content-Type" "text/html; charset=utf-8"}
    :body    (parser/render-file "error.html" error-details)})
+
+#_(defn error-page ; reckon bail on this and make in hiccup then can nuke parser.
+  "error-details should be a map containing the following keys:
+   :status - error status
+   :title - error title (optional)
+   :message - detailed error message (optional)
+
+   returns a response map with the error page as the body and the status specified by the status key"
+  [error-details]
+  (render-hiccup error-page-hiccup error-details))

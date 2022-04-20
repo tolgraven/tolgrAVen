@@ -10,7 +10,7 @@
    [ring.util.http-response :as response]))
 
 (defn home-page [request]
-  (layout/render-hiccup request))
+  (layout/render-home request))
 
 (defn plain-text-header
   [resp]
