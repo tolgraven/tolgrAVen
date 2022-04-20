@@ -10,14 +10,15 @@
   [post item]
   (let [hover? (r/atom false)]
     (fn [post item]
-      [:div.instagram-item
-       {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])
-        :on-mouse-enter #(reset! hover? true)
-        :on-mouse-leave #(reset! hover? false)}
-       item
-       (when @hover?
-         [:div.instagram-caption
-          (or (:caption post) "We will be with you in a moment.")])])))
+      [ui/seen-merge "opacity"
+       [:div.instagram-item
+        {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])
+         :on-mouse-enter #(reset! hover? true)
+         :on-mouse-leave #(reset! hover? false)}
+        item
+        (when @hover?
+          [:div.instagram-caption
+           (or (:caption post) "We will be with you in a moment.")])]])))
 
 
 (defn instagram "Instagram gallery"
