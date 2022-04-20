@@ -36,7 +36,7 @@
 
 .cv-items {
   position: relative;
-  padding: calc(0.5 * var(--space));
+  padding-top: calc(0.5 * var(--space));
   border: var(--line-width-sm) solid var(--bg-6);
   min-height: 15em;
   width: 150em;

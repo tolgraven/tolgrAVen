@@ -133,12 +133,13 @@
                               :life
                               [{:from 1988  :to 1988  :what "Born"}
                                {:from 1994  :to 2001  :what "Football Player"}
-                               {:from 2003  :to 2022   :what "Musician & producer" :color "var(--blue-2)"}
+                               {:from 2003  :to 2006  :what "Started producing music" :color "var(--blue-2)"}
                                {:from 2004  :to 2007  :what "First started coding, in C++ and OpenGL" :color "var(--orange-2)"}
                                {:from 2009  :to 2011  :what "Lived in Australia" :color "var(--green-3)"}
+                               {:from 2012  :to 2015  :what "Got serious about music production" :color "var(--blue-2)"}
                                {:from 2013  :to 2015  :what "Started coding again, with goal of making it a career" :color "var(--orange-2)"}
                                {:from 2015  :to 2022   :what "Rave promoter" :color "var(--blue-2)"}
-                               {:from 2017  :to 2019  :what "Started doing functional programming" :color "var(--orange-2)"}
+                               {:from 2016  :to 2018  :what "Started doing functional programming" :color "var(--orange-2)"}
                                {:from 2019  :to 2021  :what "Started focusing on web development" :color "var(--orange-2)"}
                                {:from 2018  :to 2019  :what "Lived in Uganda" :color "var(--green-3)"}]}}
              :soundcloud {:url "https://soundcloud.com/"
