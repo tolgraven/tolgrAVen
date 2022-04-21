@@ -5,11 +5,13 @@
     [ajax.core :as ajax]
     [day8.re-frame.http-fx]
     [com.degel.re-frame-firebase :as firebase]
+    [district0x.re-frame.google-analytics-fx]
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
     [day8.re-frame.async-flow-fx :as async-flow-fx]
     [akiroz.re-frame.storage :as localstore]
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
+    [re-pollsive.core :as poll]
     [tolgraven.util :as util]
     [tolgraven.blog.events]
     [tolgraven.user.events]
@@ -147,17 +149,13 @@
 (rf/reg-event-fx :debug ;[debug]
   (fn [{:keys [db]} [_ path value]]
     (case path
-      [:layers] (-> (js/document.querySelector "main")
+      [:layers] (-> (js/document.querySelector "main") ; should be fx no?
                     .-classList
                     (.toggle "debug-layers")))
     {:db (assoc-in db (into [:state :debug] path) value)}))
 
-
-(rf/reg-event-db :exception
-  (assoc-in-factory [:state :exception]))
-
-(rf/reg-event-db :form-field ;gets spammy lol. maybe internal til on blur hey...
-  (assoc-in-factory [:state :form-field]))
+(rf/reg-event-db :exception (assoc-in-factory [:state :exception]))
+(rf/reg-event-db :form-field (assoc-in-factory [:state :form-field])) ;gets spammy lol. maybe internal til on blur hey...
 
 
 (rf/reg-event-fx :reloaded
@@ -165,10 +163,6 @@
    {:dispatch-n [[:exception nil]
                  [:diag/new :debug "JS" "Reloaded"]]}))
 
-
-(rf/reg-event-fx :to-db
-  (fn [db [_ path value]]
-    (assoc-in db path value)))
 
 ; renamed store-> not fire->, should work to hide fire behind stuff so can swap out easier
 (rf/reg-event-fx :store->
@@ -186,15 +180,29 @@
 ; but then in component still always have latest value.
 ; if that actually (easily) possible hmm
 
+; TODO surely should wrap on-success to strip metadata etc and just store keywordized :data directly here
+; with util/normalize-firestore. just need to get rid of that from elsewhere then tho
 (rf/reg-event-fx :<-store ; event version of <-store takes an on-success cb event
-  (fn [_ [_ path on-success]]
+  (fn [_ [_ path on-success on-failure]]
     (let [kind (if (even? (count path))
                  :path-document
                  :path-collection)]
-      {:firestore/get {kind path
-                       :expose-objects true
-                       :on-success on-success}})))
+      {:firestore/get (merge {kind path
+                              :expose-objects true
+                              ; :on-success (apply gen-wrapped-event-fx
+                              ;                    :store :on-success
+                              ;                    (first on-success) (rest on-success))}
+                              ; :on-success [:store/on-success on-success]} ;TODO mod firestore lib to accept vectors/wrapping. goddamn
+                              :on-success on-success} ;TODO mod firestore lib to accept vectors/wrapping. goddamn
+                             (when on-failure
+                               {:on-failure on-failure}))})))
 
+(rf/reg-event-fx :store/on-success ; strip metadata etc
+  (fn [_ [_ on-success data]]
+    {:dispatch [on-success (util/normalize-firestore data)]}))
+
+(rf/reg-event-fx :store/on-success-wrapper
+  (fn [_ [_ ]]))
 
 (rf/reg-event-fx :fb/fetch-settings [debug]
   (fn [{:keys [db]} _]
@@ -262,7 +270,7 @@
     {:dispatch [:diag/new :debug "ID-counters" (str "Restored to " state)]
      :id-counters/set! state}))
 
-(rf/reg-event-fx :id-counters/fetch
+(rf/reg-event-fx :id-counters/fetch ; obviously needs to be a sub-sub and put in views only, since otherwise concurrent usage would cause clashes hehe. tho better to have server gen these anyways.
   (fn [{:keys [db]} [_ _]]
     {:firebase/read-once {:path [:id-counters]
                           :on-success [:id-counters/handle]}}))
