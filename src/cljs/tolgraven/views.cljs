@@ -434,7 +434,5 @@
      [ui-gallery @(rf/subscribe [:content [:gallery]])]
      [ui/lazy-load [:on-booted :site [:github/init "tolgraven" "tolgraven"]]]
      [github/commits]
-     [cv/cv]
-     [chat/chat]
-     ]))
+     [chat/chat]]))
 

@@ -49,7 +49,7 @@
                      :text "Is what it all comes down to.
                             So many roads, yet I'm determined to track most of them halfway down.
                             There's only one way to find out."
-                     :buttons  [["Join me"            "?userBox=true"]
+                     :buttons  [["Check my CV"        "/cv"]
                                 ["Read my thoughts"   "/blog"]]
                      :bg [{:src "img/foggy-shit-small.jpg" :alt "Purple enthusiast"}
                           {:src "img/live-session-small.jpg" :alt "Ableton Live"}
@@ -58,10 +58,10 @@
 
              :services  {:categories
                          [["Audio"    "bullhorn"   ["Sound engineering" "Broadcasting" "Recording" "Music production"]]
-                          ["Video"    "film"       ["Editing" "Production" "Shoot inna pinch"]]
+                          ["Video"    "film"       ["Editing" "Production" "Shooting"]]
                           ["Stage"    "lightbulb"  ["Event production" "Concert" "Club" "Automation" "Retrofitting"]]
-                          ["Design"   "joint"      ["How bout that logo?" "Or this site"]]
-                          ["Software" "code"       ["Open source" "Bespoke projects" "Rapid prototyping" "From (cl)JS to C++" "Current focus"]]
+                          ["Design"   "joint"      ["Websites" "Logos" "Brand colors"]]
+                          ["Software" "code"       ["Open source" "Bespoke projects" "Rapid prototyping" "From (cl)JS to C++"]]
                           ["Web"      "laptop"     ["Want a site like this?" "Small or large projects" "my stack runs fulleth"]]]
                          :bg {:src "img/vim-code-small.jpg" :alt "neovim editor"}
                          :caption "neovim"}
@@ -83,7 +83,7 @@
                             Currently most of the front-end is finished (well, alpha finished) while the back-end is, shall we say... not.
                             Persistance of blog posts, comments, votes and users has been achieved by way of Firebase. Still need such back-end rarities as content not defined in app-db, and more.
                             Of course I actually intend to write stuff - about the process, life in general, I'm not sure yet. All in due time.
-                            
+
                             Leave a comment! Let me build your website! Give me a job!"
 
                      :images [["headshot" {:src "img/Leg-tasteful-small.jpg" :alt "Joen"}
@@ -108,7 +108,11 @@
                          {:title "Portfolio forthcoming, have some components"
                           :caption "Be ready"
                           :bg [:img.media.media-as-bg {:src "img/collage-strips.jpg"}]}]
-             :cv        {:title "CV"
+             :cv        {:heading {:title "CV"
+                                   :target :cv
+                                   :bg {:src "img/wide-spot-ctrl-small.jpg"}
+                                   :tint "fg-6"}
+                         :title "CV"
                          :caption "My resume. such as it is."
                          :cv {:intro "Multi talented developer with a background in live TV production, who throughout the years has also kept occupied with music, events, moving the world over etc. Hitherto autodidact currently getting a Comp Sci degree at an accelerated pace.
                                       Main focus is functional programming and web development, primarily front-end."

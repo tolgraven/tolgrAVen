@@ -16,6 +16,7 @@
     [tolgraven.views-common :as common]
     [tolgraven.blog.views :as blog]
     [tolgraven.user.views :as user]
+    [tolgraven.cv.views :as cv]
     [tolgraven.experiments :as experiment]
     [reitit.core :as reitit]
     [reitit.frontend.history :as rfh]
@@ -133,6 +134,9 @@
 (defn blog-post-page []
   [with-heading [:blog :heading] [blog/blog-single-post]])
 
+(defn cv-page []
+  [with-heading [:cv :heading] [cv/cv]])
+
 (defn log-page []
   [with-heading [:common :banner-heading]
    [ui/log (rf/subscribe [:option [:log]])
@@ -175,9 +179,9 @@
                                (rf/dispatch [:scroll/to "section-services" 1300]))}]}]
      ["cv"
       {:name        :cv
-       :view        #'view/ui
-       :controllers [{:start (fn [_]
-                               (rf/dispatch [:scroll/to "cv" 700]))}]}]
+       :view        #'cv-page
+       #_:controllers #_[{:start (fn [_]
+                               (rf/dispatch [:scroll/to "cv" 500]))}]}]
      ["hire"
       {:name        :hire
        :view        #'view/ui

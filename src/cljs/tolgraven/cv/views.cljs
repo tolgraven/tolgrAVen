@@ -82,11 +82,10 @@
                [:div.cv-items.cv-life
                 [:h1 [:i.fas.fa-book] "life"]
                 (gen-items :life)]]]
-    [:section#cv.cv.nopadding
+    [:section#cv.cv.nopadding.noborder
      {:class (when @(rf/subscribe [:fullscreen/get :cv]) "fullscreen")}
      [:div.cv-intro
       [:img.fullwide {:src "img/tolgrav.png"}]
-      [:h1 title]
       [:p (:intro cv)]
       [:div.center-content
        [:div.cv-howto
