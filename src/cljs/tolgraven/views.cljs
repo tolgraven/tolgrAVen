@@ -427,7 +427,7 @@
      
      [ui/lazy-load [:on-booted :firebase [:strava/init]]]
      [strava/strava]
-     [ui/lazy-load [:on-booted :site [:state [:soundcloud :init] true]]]
+     [ui/lazy-load [:on-booted :site [:booted :soundcloud]]]
      [ui-soundcloud]
      [ui/lazy-load [:on-booted :firebase [:instagram/init]]]
      [instagram/instagram]
