@@ -229,9 +229,9 @@
        ; [:->css-var! "line-width-vert" @(rf/subscribe [:get-css-var "line-width"])]
        ]})) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
 
-(rf/reg-event-fx :page/init-home ;[debug]
+(rf/reg-event-fx :page/init-home ;[debug] ; really should do the fetch from wherever it is content eventually comes from...
  (fn [{:keys [db]} _]
-   {:db (assoc-in db [:state :is-personal] true) }))
+   {:db (assoc-in db [:state :is-personal] false)}))
 
 (rf/reg-event-fx :appear
   (fn [{:keys [db]} [_ id value]]  ; would just set something in state that then sets css class.
