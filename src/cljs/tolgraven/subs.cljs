@@ -47,7 +47,7 @@
     (get-in db (into [:state :form-field] path))))
 
 (rf/reg-sub :<-store
-  :<- [:state [:booted :firebase]]
+  :<- [:booted? :firebase]
   (fn [initialized [_ & coll-docs]]
     (when initialized
       (let [look-in (if (even? (count coll-docs))
@@ -185,3 +185,8 @@
  :<- [:state [:fullscreen]]           
  (fn [fullscreen [_ _]]
   (apply some? (filter true? (vals fullscreen)))))
+
+(rf/reg-sub :booted?
+ :<- [:state [:booted]]           
+ (fn [booted [_ k]]
+  (get booted k false)))

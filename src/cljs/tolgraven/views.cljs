@@ -395,7 +395,7 @@
   (let [base-url "https://soundcloud.com/"
         url (str base-url artist "/" song)]
     [ui/seen-anon "slide-in"
-     (if @(rf/subscribe [:state [:soundcloud :init]])
+     (if @(rf/subscribe [:booted? :soundcloud])
        [remote-player url]
        [soundcloud-loading artist song])]))
 
