@@ -4,24 +4,14 @@
     [re-frame.core :as rf]
     [tolgraven.util :as util]))
 
+; a fancier version would stash both fn and args in db
+; allow to modify queued call instead of cancel-and-anew
+; or line something up but not ms, instead looking for a piece of data?
+; but makes more sense w event version then... hook on events.
+; this is really only for working with js objs directly, keeping at least
+; some track of what's happening.
 
-; (rf/reg-event-fx :run-in 
-;   (fn [_ [_ id-key ms f & args]]
-;     {:dispatch-later
-;      {:ms ms
-;       :dispatch [:run-fn (into [id-key f] args)]}}))
-
-; (rf/reg-event-fx :run-fn
-;   (fn [_ [_ id-key f & args]]
-;     (apply f args)
-;     nil))
-
-(rf/reg-event-fx :run-in! ; trying to figure out why'd be bad idea.
-; certainly would be if over-used (js cb hell) but for like, what would otherwise be:
-; define evt, define second evt, dispatch-later to second.
-; just dispatch to a generic evt that takes a fn. basically the :get of events I suppose, bad in long run
-; but can do some things easy quick - dont have to define stuff for every little document/window etc callout.
-; and passing an id we can still see what is what so..  plus get to close over stuff etc yada.
+(rf/reg-event-fx :run-in!
   (fn [_ [_ id-key ms f & args]]
     {:dispatch-later
      {:ms ms
@@ -37,6 +27,45 @@
       (apply f args)
       (f))))
 
+; THIS VERSION DROPS SUBSEQ CALLS IF SOMETHING ALREADY THERE
+; (rf/reg-event-fx :run-in! ; trying to figure out why'd be bad idea.
+; ; certainly would be if over-used (js cb hell) but for like, what would otherwise be:
+; ; define evt, define second evt, dispatch-later to second.
+; ; just dispatch to a generic evt that takes a fn. basically the :get of events I suppose, bad in long run
+; ; but can do some things easy quick - dont have to define stuff for every little document/window etc callout.
+; ; and passing an id we can still see what is what so..  plus get to close over stuff etc yada.
+;   (fn [{:keys [db]} [_ id-key ms f & args]]
+;     ; (when-not (some (-> db :state :run-fn set) [id-key]) ;something's already queued to run
+;     ;   )
+;     {:db (update-in db [:state :run-fn] conj id-key)
+;        :dispatch-later
+;        {:ms ms
+;         :dispatch (into [:run-fn! id-key f] args)}}))
+;     ; {:dispatch-throtle
+;     ;  {:id id-key
+;     ;   :window-duration ms
+;     ;   :trailing? true
+;     ;   :dispatch (into [:run-fn! id-key f] args)}}))
+   
+; (rf/reg-event-fx :run-in-overwrite! ; THIS VERSION DROPS EARLIER CALLS (so needs additional seq-id to keep track?)
+;                  ; welp needed anyways really or queued calls would be reactivated...
+;   (fn [{:keys [db]} [_ id-key ms f & args]]
+;     (when-not (some (-> db :state :run-fn set) [id-key])
+;       {:db (update-in db [:state :run-fn] conj id-key)
+;        :dispatch-later
+;        {:ms ms
+;         :dispatch (into [:run-fn! id-key f] args)}})))
+
+; (rf/reg-event-fx :stop-run-fn
+;   (fn [{:keys [db]} [_ id-key]]
+;     {:db (update-in db [:state :run-fn] #(-> % set (disj id-key)))}))
+
+; (rf/reg-event-fx :run-fn!
+;   (fn [{:keys [db]} [_ id-key f & args]]
+;     (when (some (-> db :state :run-fn set) [id-key])
+;       {:db (update-in db [:state :run-fn] #(-> % set (disj id-key)))
+;        :run-fn-fx! [id-key f args] })))
+
 
 (rf/reg-fx :document/set-title
   (fn [title]
@@ -44,7 +73,6 @@
 
 (rf/reg-event-fx :focus-element
   (fn [_ [_ elem-id]]
-    ; (r/after-render #(some-> (util/elem-by-id elem-id) .focus))
     {:focus-to-element elem-id}))
 (rf/reg-fx :focus-to-element
   (fn [elem-id] 
@@ -72,7 +100,7 @@
    (if delay-ms
      {:dispatch-later {:ms delay-ms
                        :dispatch [:scroll/to id]}}
-     (when-not (get-in db [:state :scrolling-to-top])
+     (when-not (get-in db [:state :scroll :block])
        {:scroll/to id}))))
 (rf/reg-fx :scroll/to
  (fn [id]
@@ -80,7 +108,7 @@
 
 (rf/reg-event-fx :scroll/px
  (fn [db [_ px delay-ms]]
-   (when-not (get-in db [:state :scrolling-to-top])
+   (when-not (get-in db [:state :scroll :block])
      {:scroll/px px})))
 (rf/reg-fx :scroll/px
  (fn [px]
@@ -89,8 +117,7 @@
 
 (rf/reg-event-fx :run-highlighter!
  (fn [_ [_ elem]]
-   (when elem
-     {:run-highlighter-fx! elem})))
+   {:run-highlighter-fx! elem}))
 
 (rf/reg-fx :run-highlighter-fx!
  (fn [elem]
