@@ -63,7 +63,9 @@
                                        new-end (reset! curr-end to)
                                        olevel (if (> last-end from)
                                                (swap! overlap-level inc)
-                                               (reset! overlap-level 0))]]
+                                               (reset! overlap-level 0))
+                                       id (str from "-" to "-" (:what all))]]
+                            ^{:key id}
                              [box all domain
                               (get-pos from to)
                               (get-size from to)
@@ -101,14 +103,14 @@
       [:h1 "Skills"]
       [:div.cv-skill.cv-software
        [:h3 [:i.fas.fa-code] " Software"]
-       (for [line (:software skills)]
+       (for [line (:software skills)] ^{:key line}
         [:p.cv-skill-line "- " [:span line]])]
       [:div.cv-skill.cv-digital
        [:h3 [:i.fas.fa-calculator] " Digital"]
-       (for [line (:digital skills)]
+       (for [line (:digital skills)] ^{:key line}
         [:p.cv-skill-line "- " [:span line]])]
       [:div.cv-skill.cv-language
        [:h3 [:i.fas.fa-globe] " Language"]
-       (for [line (:language skills)]
+       (for [line (:language skills)] ^{:key line}
         [:p.cv-skill-line "- " [:span line]])]]]))
 
