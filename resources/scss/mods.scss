@@ -368,12 +368,12 @@ button:hover .blur-bg, button:active .blur-bg,
 }
 .parallax-sm {
   transform: translateZ(var(--parallax-sm-px))
-             translateY(-5%)
+             // translateY(-1%)
              scale(var(--parallax-sm-scale));
 }
 .parallax-bg {
   transform: translateZ(var(--parallax-px))
-             translateY(-10%)
+             // translateY(-2%)
              scale(var(--parallax-scale));
 
   z-index: -1;

@@ -86,8 +86,10 @@
   max-width: unset;
   object-fit: cover;
   margin: 0;
+  transform: scale(1.125)
+             translateY(5.5%);
 
-  transition: transform 2.0s ease;
+  transition: transform 4.0s ease;
 }
 .section-with-media-bg-wrapper { /* like section-bg-wrapper but NOT using background for img/video */
   position: relative;
@@ -96,7 +98,7 @@
   /* border-top: var(--line-width) solid; */
   
   &:hover .media-as-bg {
-    transform: scale(1.10);
+    transform: scale(1.2);
   }
 }
 .media-container {
