@@ -299,8 +299,7 @@
         tab (r/atom :summary)
         cutoff 80
         size (max 0.85 (/ (:kilojoules activity) 1000))
-        anim-size (r/atom 0.1)
-        result-size (anim/spring anim-size)]
+        anim-size (r/atom (rand 0.2))]
     (fn [activity i num-total watts-high]
       (when-not (:private activity)
        [:<>
@@ -348,14 +347,14 @@
           {:style {:left (str (* 100 (/ i num-total)) "%")
                    :bottom (str (* 100 (/ (- (:average_watts activity) cutoff)
                                           (- watts-high cutoff))) "%")
-                   :width (str @result-size "em") :height (str @result-size "em")}
+                   :width (str @anim-size "em") :height (str @anim-size "em")}
            :on-mouse-enter #(reset! hovered? true)
            :on-mouse-leave #(reset! hovered? false)
            :on-click #(do (.stopPropagation %)
                           (rf/dispatch [:strava/activity-expand i])
                           (rf/dispatch [:state [:strava :stats-minimized] true])
                           (reset! hovered? false))}
-          [anim/timeout #(reset! anim-size size) (+ 500 (rand-int 1000))]])
+          [anim/timeout #(reset! anim-size size) (+ 750 (rand-int 2500))]])
        (when @hovered?
          [:div.strava-activity-summary
           [:span [:b (:name activity)]]
