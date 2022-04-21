@@ -92,6 +92,9 @@
 
 (rf/reg-event-fx :history/pop!
   (fn [{:keys [db]} [_ _]]
+    {:history/pop _}))
+(rf/reg-fx :history/pop
+  (fn [_]
     (.back js/window.history)))
 
 
