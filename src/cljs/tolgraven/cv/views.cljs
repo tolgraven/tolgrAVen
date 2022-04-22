@@ -35,6 +35,25 @@
          [:p.cv-where where]
          [:img {:src logo}]]))))
 
+(defn capabilities "The various skills"
+  [skills]
+  (let [software [:div.cv-skill.cv-software
+                 [:h3 [:i.fas.fa-code] " Software"]
+                 (for [line (:software skills)] ^{:key line}
+                   [:p.cv-skill-line "- " [:span line]])]
+        digital [:div.cv-skill.cv-digital
+                 [:h3 [:i.fas.fa-calculator] " Digital"]
+                 (for [line (:digital skills)] ^{:key line}
+                   [:p.cv-skill-line "- " [:span line]])]
+        language [:div.cv-skill.cv-language
+                  [:h3 [:i.fas.fa-globe] " Language"]
+                  (for [line (:language skills)] ^{:key line}
+                    [:p.cv-skill-line "- " [:span line]])]]
+    [:div.cv-skills
+     {:style {:min-height "20em"}}
+     [:h1 "Skills"]
+     [ui/carousel-normal :cv/skills {} [software digital language]]]))
+
 (defn cv "Main cv component"
   []
   (let [{:keys [title caption cv]} @(rf/subscribe [:content [:cv]])
@@ -98,18 +117,5 @@
         " and maximize your browser window. "]]]
      boxes
      [ui/fading :dir "bottom"]
-     [:div.cv-skills
-      [:h1 "Skills"]
-      [:div.cv-skill.cv-software
-       [:h3 [:i.fas.fa-code] " Software"]
-       (for [line (:software skills)] ^{:key line}
-        [:p.cv-skill-line "- " [:span line]])]
-      [:div.cv-skill.cv-digital
-       [:h3 [:i.fas.fa-calculator] " Digital"]
-       (for [line (:digital skills)] ^{:key line}
-        [:p.cv-skill-line "- " [:span line]])]
-      [:div.cv-skill.cv-language
-       [:h3 [:i.fas.fa-globe] " Language"]
-       (for [line (:language skills)] ^{:key line}
-        [:p.cv-skill-line "- " [:span line]])]]]))
+     [capabilities skills]]))
 
