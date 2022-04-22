@@ -680,9 +680,10 @@
        [carousel-idx-btns index (count content)] ])))
 
 (defn carousel-normal "Don't fuck up with fancy hot swaps for transitions, just stuff everything in."
-  [id options content]
+  [id attrs content]
   (let [num-items-shown 3
-        index (r/atom 1) ; (rf/subscribe [:state [:carousel id :index]])
+        ; index (r/atom 1) ; (rf/subscribe [:state [:carousel id :index]])
+        index (rf/subscribe [:state [:carousel id :index]])
         first-idx (max 0 (- @index
                             (/ (dec num-items-shown) 2))) ;get middle
         content-shown (subvec content
@@ -692,25 +693,27 @@
                     (dec (count content))
                     (dec %))
         dec-fn (fn []
-                 (swap! index dec-wrap)
-                 (rf/dispatch [:carousel/rotate id @index :dec]))
+                 ; (swap! index dec-wrap)
+                 (rf/dispatch [:carousel/rotate id content :dec]))
         inc-wrap #(if (< (inc %) (count content))
                     (inc %)
                     0)
         inc-fn (fn []
-                 (swap! index inc-wrap)
-                 (rf/dispatch [:carousel/rotate id @index :inc]))
+                 ; (swap! index inc-wrap)
+                 (rf/dispatch [:carousel/rotate id content :inc]))
         moving (rf/subscribe [:state [:carousel id :direction]])
         left-content #(if (pos? %)
                         (get content (dec %))
                         (last content))
         right-content #(if (< % (dec (count content)))
                          (get content (inc %))
-                         (first content))]
-    (fn [id options content]
+                         (first content))
+        ref-f #(when % (rf/dispatch [:carousel/set-index id 0]))]
+    (fn [id attrs content]
       [:div.carousel.carousel-normal
-       (merge options
-              {:id (name id)})
+       (merge attrs
+              {:id (name id)
+               :ref ref-f})
 
        [:button.carousel-btn.carousel-prev-btn {:on-click dec-fn} [:i.fas.fa-angle-left]]
 
@@ -727,8 +730,7 @@
          content))
 
        [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} [:i.fas.fa-angle-right]]
-       [carousel-idx-btns index (count content)] ])))
-
+       [carousel-idx-btns id index (count content)] ])))
 
 
 (def trans-group (r/adapt-react-class rtg/TransitionGroup))

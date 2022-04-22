@@ -113,16 +113,15 @@
 
 
 (rf/reg-event-fx :carousel/rotate
-  (fn [{:keys [db]} [_ id curr-idx direction]]
-    {:dispatch-n [[:carousel/set-direction id (case direction
-                                                :dec "from-right"
-                                                :inc "from-left")]
-                  #_[:carousel/request-index id (case direction
-                                                :dec (if (neg? (dec curr-idx))
-                                                       (dec (count content))
-                                                       (dec %)))]] ; XXX should defer send later tho
-     :dispatch-later {:ms 25
-                      :dispatch [:carousel/set-direction id nil]}}))
+  (fn [{:keys [db]} [_ id content direction]]
+    (let [curr-idx (get-in db [:state :carousel id :index])]
+      {:dispatch [:carousel/set-index id (case direction
+                                                  :dec (if (neg? (dec curr-idx))
+                                                         (dec (count content))
+                                                         (dec curr-idx))
+                                                  :inc (if (< (inc curr-idx) (count content))
+                                                         (inc curr-idx)
+                                                         0))]})))
 
 (rf/reg-event-db :carousel/set-direction
   (fn [db [_ id direction-class]]

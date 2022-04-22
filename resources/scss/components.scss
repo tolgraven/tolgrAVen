@@ -170,11 +170,18 @@
   bottom: 0;
   display: flex;
   
-  &.carousel-idx { // idea use large index bobbles same bg blur as category bg, looks nice
-    border: var(--line-width) solid var(--line-color);
-    border-radius: 100%;
+  .carousel-idx { // idea use large index bobbles same bg blur as category bg, looks nice
+    background: none;
+    border-radius: 20%;
 
     margin-right: 0.5rem;
+    font-size: 50%;
+
+    &.carousel-idx-current {
+      opacity: 80%;
+      font-size: 75%;
+      // transform: scale(1.2);
+    }
   }
 }
 .carousel-three {
@@ -201,7 +208,6 @@
     transition: left 0.5s ease, opacity 0.1s ease;
     width: 100%;
     height: 100%;
-    background: var(--bg-6);
   }
   .carousel-item-main {
     opacity: 100%;
@@ -210,7 +216,7 @@
   }
   .carousel-item-prev, .carousel-item-next {
     position: absolute;
-    opacity: 100%;
+    opacity: 50%;
     z-index: -1;
   }
   .carousel-item-prev {
