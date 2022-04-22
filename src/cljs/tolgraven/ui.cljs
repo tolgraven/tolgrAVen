@@ -612,5 +612,124 @@
   [:div.fader [:div {:class (str fade-to " " dir " " classes)}]])
 
 
+(defn carousel-idx-btns
+  [idx-model amount]
+  [:div.carousel-idxs
+   (doall (for [idx (range amount)]
+            [:button.carousel-btn.carousel-idx
+             {:class (when (= @idx-model idx) "topborder")
+              :on-click #(reset! idx-model idx)}
+             [:i.fas.fa-circle]]))])
+
+(defn carousel "Three-showing carousel with zoom up of center item, and animating changes.
+                The generic enough stuff could go in a more general carousel-builder
+                or we just make two."
+  [id options content]
+  (let [num-items-shown 3
+        index (r/atom 1) ; (rf/subscribe [:state [:carousel id :index]])
+        dec-fn (fn [] ; remove duplication here by only dispatching and index being generic "roll arounder"
+                 (swap! index #(if (neg? (dec %))
+                                 (dec (count content))
+                                 (dec %)))
+                 (rf/dispatch [:carousel/rotate id @index :dec]))
+        inc-fn (fn []
+                 (swap! index #(if (< (inc %) (count content))
+                                 (inc %)
+                                 0))
+                 (rf/dispatch [:carousel/rotate id @index :inc]))
+        moving (rf/subscribe [:state [:carousel id :direction]])
+        left-content #(if (pos? %)
+                       (get content (dec %))
+                       (last content))
+        right-content #(if (< % (dec (count content)))
+                         (get content (inc %))
+                         (first content))]
+    (fn [id options content]
+      [:div.carousel.carousel-three
+       (merge options
+              {:id (name id)})
+       
+       [:button.carousel-btn.carousel-prev-btn {:on-click dec-fn} "<"]
+       
+       [:ul.carousel-items
+        [:li.carousel-item-left-pseudo
+         {:class @moving}
+         (if (pos? (dec @index))
+           (get content (dec (dec @index)))
+           (last content))]
+        [:li.carousel-item-left
+         {:class @moving
+          :on-click dec-fn}
+         (left-content @index)]
+        
+        [:li.carousel-item-middle
+         {:class @moving}
+         (get content @index)]
+        
+        [:li.carousel-item-right
+         {:class @moving
+          :on-click inc-fn}
+         (right-content @index)]
+        [:li.carousel-item-right-pseudo
+         {:class @moving}
+         (if (< (inc @index) (dec (count content)))
+           (get content (inc (inc @index)))
+           (first content))]]
+       
+       [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} ">"]
+       [carousel-idx-btns index (count content)] ])))
+
+(defn carousel-normal "Don't fuck up with fancy hot swaps for transitions, just stuff everything in."
+  [id options content]
+  (let [num-items-shown 3
+        index (r/atom 1) ; (rf/subscribe [:state [:carousel id :index]])
+        first-idx (max 0 (- @index
+                            (/ (dec num-items-shown) 2))) ;get middle
+        content-shown (subvec content
+                              first-idx
+                              (+ first-idx (dec num-items-shown)))
+        dec-wrap #(if (neg? (dec %))
+                    (dec (count content))
+                    (dec %))
+        dec-fn (fn []
+                 (swap! index dec-wrap)
+                 (rf/dispatch [:carousel/rotate id @index :dec]))
+        inc-wrap #(if (< (inc %) (count content))
+                    (inc %)
+                    0)
+        inc-fn (fn []
+                 (swap! index inc-wrap)
+                 (rf/dispatch [:carousel/rotate id @index :inc]))
+        moving (rf/subscribe [:state [:carousel id :direction]])
+        left-content #(if (pos? %)
+                        (get content (dec %))
+                        (last content))
+        right-content #(if (< % (dec (count content)))
+                         (get content (inc %))
+                         (first content))]
+    (fn [id options content]
+      [:div.carousel.carousel-normal
+       (merge options
+              {:id (name id)})
+
+       [:button.carousel-btn.carousel-prev-btn {:on-click dec-fn} [:i.fas.fa-angle-left]]
+
+       (into [:ul.carousel-items]
+        (map-indexed
+         (fn [i item]
+           [:li.carousel-item-min ; XXX still need to fix extra for left/right so those not display: hidden or w/e
+            {:class (cond
+                      (= i @index) "carousel-item-main"
+                      (= (inc-wrap i) @index) "carousel-item-prev"
+                      (= (dec-wrap i) @index) "carousel-item-next") 
+             :on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])}
+            item])
+         content))
+
+       [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} [:i.fas.fa-angle-right]]
+       [carousel-idx-btns index (count content)] ])))
+
+
+
 (def trans-group (r/adapt-react-class rtg/TransitionGroup))
 (def css-trans (r/adapt-react-class rtg/CSSTransition))
