@@ -690,27 +690,61 @@
         right-content #(if (< % (dec (count content)))
                          (get content (inc %))
                          (first content))
-        ref-f #(when % (rf/dispatch [:carousel/set-index id 0]))]
+        ref-f #(when % (rf/dispatch [:carousel/set-index id 0]))
+        interact-start (atom {:x 0 :y 0})]
     (fn [id attrs content]
       [:div.carousel.carousel-normal
        (merge attrs
               {:id (name id)
                :ref ref-f})
 
-       [:button.carousel-btn.carousel-prev-btn {:on-click dec-fn} [:i.fas.fa-angle-left]]
+       [:button.carousel-btn.carousel-prev-btn
+        {:on-click dec-fn}
+        [:i.fas.fa-angle-left]]
 
-       (into [:ul.carousel-items]
-        (map-indexed
-         (fn [i item]
-           [:li.carousel-item-min
-            {:class (cond
-                      (= i @index) "carousel-item-main"
-                      (= (inc-wrap i) @index) "carousel-item-prev"
-                      (= (dec-wrap i) @index) "carousel-item-next")}
-            item])
-         content))
+       (into [:ul.carousel-items
+              {:on-mouse-move #(js/console.warn "mouse move!")
+               :on-mouse-down #(do (js/console.warn "mouse down")
+                                 (reset! interact-start
+                                        {:x (.-offsetX %)
+                                         :y (.-offsetY %)}))
+               :on-mouse-up (fn [e]
+                              (let [interact-end {:x (.-offsetX e)
+                                                  :y (.-offsetY e)}]
+                                (js/console.warn interact-end)
+                                (cond
+                                  (> (:x @interact-start) (:x interact-end))
+                                  (inc-fn)
+                                  (< (:x @interact-start) (:x interact-end))
+                                  (dec-fn))))
+               :on-touch-start #(reset! interact-start
+                                        {:x (-> % .-changedTouches first .-screenX)
+                                         :y (-> % .-changedTouches first .-screenY)})
+               :on-touch-end (fn [e]
+                               (let [interact-end {:x (-> e .-changedTouches first .-screenX)
+                                                   :y (-> e .-changedTouches first .-screenY)}]
+                                 (cond
+                                   (> (:x @interact-start) (:x interact-end))
+                                   (inc-fn)
+                                   (< (:x @interact-start) (:x interact-end))
+                                   (dec-fn))))}]
+             (doall
+              (map-indexed
+               (fn [i item]
+                 (with-meta 
+                  [:li.carousel-item-min
+                    {:class (cond
+                              (= i @index) "carousel-item-main"
+                              (= (inc-wrap i) @index) "carousel-item-prev"
+                              (= (dec-wrap i) @index) "carousel-item-next")}
+                    item]
+                   {:key (str "carousel-" (name id) "-item-" i)}))
+               content)))
 
-       [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} [:i.fas.fa-angle-right]]
+       [:button.carousel-btn.carousel-next-btn
+        {:on-click inc-fn
+         :on-mouse-down #(js/console.warn "mouse move!")}
+        [:i.fas.fa-angle-right]]
        [carousel-idx-btns id index (count content)] ])))
 
 
