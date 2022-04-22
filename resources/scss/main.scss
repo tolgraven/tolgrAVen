@@ -61,6 +61,7 @@ li {
 a {
   color: var(--fg-2);
   text-decoration: none;
+  touch-action: manipulation;
 
   &:visited {
     text-decoration: underline var(--purple);
@@ -189,6 +190,7 @@ button {
   cursor: pointer;
   outline: 1px transparent;
   transition: outline-color 0.25s, transform 0.25s, text-shadow 0.25s;
+  touch-action: manipulation;
 
   &:hover, &:focus {
     border-radius: 0;
