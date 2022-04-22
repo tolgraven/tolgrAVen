@@ -16,8 +16,8 @@
 (parser/add-tag! :csrf-field (fn [_ _] (anti-forgery-field)))
 (filters/add-filter! :markdown (fn [content] [:safe (md-to-html-string content)]))
 
-(defn- js [js] [:script (merge js {:type "text/javascript"})])
-(defn- css [href] [:link {:href href :rel "stylesheet" :type "text/css"}])
+(defn- js [js] [:script (merge js {:type "text/javascript" :async true})])
+(defn- css [href] [:link {:href href :rel "stylesheet" :type "text/css" :media "print" :onload "this.media='all'"}])
 (defn- js-preload  [path] [:link {:rel "preload" :as "script" :href path}])
 (defn- img-preload [path] [:link {:rel "preload" :as "image" :href path}])
 (defn- css-preload [path] [:link {:rel "preload" :as "style" :href path}])
@@ -108,7 +108,7 @@
    {:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}])
 
 (def google-analytics
-  "<script>
+  "<script async>
 (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
 (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
 m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
