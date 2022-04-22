@@ -139,36 +139,6 @@
 
 }
 
-// use dark by default
-// @media (prefers-color-scheme: dark) {
-:root[color-mode="light"] {
-  // should use some sass trick for this tho...
-  --fg-1:       var(--dark-1);
-  --fg-2:       var(--dark-2);
-  --fg-3:       var(--dark-3);
-  --fg-4:       var(--dark-4);
-  --fg-5:       var(--dark-5);
-  --fg-6:       var(--dark-6);
-  --lum-fg-1:   var(--lum-dark-1);
-  --lum-fg-2:   var(--lum-dark-2);
-  --lum-fg-3:   var(--lum-dark-3);
-  --lum-fg-4:   var(--lum-dark-4);
-  --lum-fg-5:   var(--lum-dark-5);
-  --lum-fg-6:   var(--lum-dark-6);
-  --bg-1:       var(--light-1);
-  --bg-2:       var(--light-text);
-  --bg-3:       var(--light-3);
-  --bg-4:       var(--light-4);
-  --bg-5:       var(--light-5);
-  --bg-6:       var(--light-6);
-  --lum-bg-1:   var(--lum-light-1);
-  --lum-bg-2:   var(--lum-light-2);
-  --lum-bg-3:   var(--lum-light-3);
-  --lum-bg-4:   var(--lum-light-4);
-  --lum-bg-5:   var(--lum-light-5);
-  --lum-bg-6:   var(--lum-light-6);
-}
-
 :root { /* we run dark by default */
     --fg-1:     var(--light-1);
     --fg-2:     var(--light-2);
@@ -197,3 +167,39 @@
     --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
     --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
   }
+
+// @media (prefers-color-scheme: light) {
+:root.theme-light {
+// :root {
+  // should use some sass trick for this tho...
+  --fg-1:       var(--dark-1);
+  --fg-2:       var(--dark-2);
+  --fg-3:       var(--dark-3);
+  --fg-4:       var(--dark-4);
+  --fg-5:       var(--dark-5);
+  --fg-6:       var(--dark-6);
+  --lum-fg-1:   var(--lum-dark-1);
+  --lum-fg-2:   var(--lum-dark-2);
+  --lum-fg-3:   var(--lum-dark-3);
+  --lum-fg-4:   var(--lum-dark-4);
+  --lum-fg-5:   var(--lum-dark-5);
+  --lum-fg-6:   var(--lum-dark-6);
+  --bg-1:       var(--light-1);
+  --bg-2:       var(--light-text);
+  --bg-3:       var(--light-3);
+  --bg-4:       var(--light-4);
+  --bg-5:       var(--light-5);
+  --bg-6:       var(--light-6);
+  --lum-bg-1:   var(--lum-light-1);
+  --lum-bg-2:   var(--lum-light-2);
+  --lum-bg-3:   var(--lum-light-3);
+  --lum-bg-4:   var(--lum-light-4);
+  --lum-bg-5:   var(--lum-light-5);
+  --lum-bg-6:   var(--lum-light-6);
+  
+  --gradient-bg-main: linear-gradient(-77deg,
+                                      hsl(280, 15%, 88%),
+                                      var(--bg-1));
+}
+// }
+
