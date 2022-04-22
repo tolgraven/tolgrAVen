@@ -71,7 +71,10 @@
     [header-logo @(rf/subscribe [:header-text])]
     [header-nav menu]
 
-    [ui/loading-spinner (rf/subscribe [:loading]) :still]
+    [ui/loading-spinner (rf/subscribe [:loading]) :still
+     {:style {:position :absolute
+              :left "50%" :top "38%"}}]
+    
     [:a {:href @(rf/subscribe [:href :blog])}
      [:button.blog-link-btn.noborder
       [:i.fa.fa-pen-fancy]]]

@@ -599,10 +599,11 @@
                 (rf/dispatch (into checked-path
                                    [(not @(rf/subscribe checked-path))])))}])
 
-(defn loading-spinner [model kind]
+(defn loading-spinner [model kind & [attrs]]
   (if (and (at model)
            (not= :timeout (at model))) ;should it be outside so not put anything when not loading? or better know element goes here
     [:div.loading-container
+     attrs
      [(if (not= kind :still)
                 :div.loading-wiggle>div.loading-wiggle-z>div.loading-wiggle-y
                 :<>)
