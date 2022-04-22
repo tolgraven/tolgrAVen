@@ -65,7 +65,7 @@
                     (let [frac (/ (count title)
                                   (swap! showing-title inc))
                           time-next (+ 25 (* @showing-title 18)
-                                       (when (= (nth title @showing-title) " ")
+                                       (when (= (nth title (dec @showing-title)) " ")
                                          500)
                                        (when (= @showing-title (dec (count title)))
                                          600))]
