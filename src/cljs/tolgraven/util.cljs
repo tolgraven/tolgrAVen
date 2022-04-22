@@ -251,6 +251,11 @@
               node)]
   (.addEventListener node event f active?)))
 
+(defn toggle-class "Toggle class on element. Avoid for general use. Good for root"
+  [id class]
+  (-> (or (elem-by-id id) js/document.documentElement)
+      .-classList
+      (.toggle class)))
 
 
 (defn bounding-rect [e]

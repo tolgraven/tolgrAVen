@@ -162,6 +162,12 @@
    {:dispatch-n [[:exception nil]
                  [:diag/new :debug "JS" "Reloaded"]]}))
 
+(rf/reg-event-fx :toggle-class!
+ (fn [db [_ id class]]
+   {:toggle-class [id class]}))
+(rf/reg-fx :toggle-class
+  (fn [[id class]]
+    (util/toggle-class id class)))
 
 ; renamed store-> not fire->, should work to hide fire behind stuff so can swap out easier
 (rf/reg-event-fx :store->
