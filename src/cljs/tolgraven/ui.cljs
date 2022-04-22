@@ -626,17 +626,11 @@
                 or we just make two."
   [id options content]
   (let [num-items-shown 3
-        index (r/atom 1) ; (rf/subscribe [:state [:carousel id :index]])
+        index (rf/subscribe [:state [:carousel id :index]])
         dec-fn (fn [] ; remove duplication here by only dispatching and index being generic "roll arounder"
-                 (swap! index #(if (neg? (dec %))
-                                 (dec (count content))
-                                 (dec %)))
-                 (rf/dispatch [:carousel/rotate id @index :dec]))
+                 (rf/dispatch [:carousel/rotate id content :dec]))
         inc-fn (fn []
-                 (swap! index #(if (< (inc %) (count content))
-                                 (inc %)
-                                 0))
-                 (rf/dispatch [:carousel/rotate id @index :inc]))
+                 (rf/dispatch [:carousel/rotate id content :inc]))
         moving (rf/subscribe [:state [:carousel id :direction]])
         left-content #(if (pos? %)
                        (get content (dec %))
@@ -677,7 +671,7 @@
            (first content))]]
        
        [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} ">"]
-       [carousel-idx-btns index (count content)] ])))
+       [carousel-idx-btns id index (count content)] ])))
 
 (defn carousel-normal "Don't fuck up with fancy hot swaps for transitions, just stuff everything in."
   [id attrs content]
