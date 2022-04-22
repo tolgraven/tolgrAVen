@@ -154,7 +154,7 @@
             [:button.carousel-btn.carousel-idx
              {:class (when (= @idx-model idx) "topborder")
               :on-click #(reset! idx-model idx)}
-             "*"]))])
+             [:i.fas.fa-circle]]))])
 
 (defn carousel "Three-showing carousel with zoom up of center item, and animating changes.
                 The generic enough stuff could go in a more general carousel-builder
@@ -228,20 +228,22 @@
         content-shown (subvec content
                               first-idx
                               (+ first-idx (dec num-items-shown)))
+        dec-wrap #(if (neg? (dec %))
+                    (dec (count content))
+                    (dec %))
         dec-fn (fn []
-                 (swap! index #(if (neg? (dec %))
-                                 (dec (count content))
-                                 (dec %)))
+                 (swap! index dec-wrap)
                  (rf/dispatch [:carousel/rotate id @index :dec]))
+        inc-wrap #(if (< (inc %) (count content))
+                    (inc %)
+                    0)
         inc-fn (fn []
-                 (swap! index #(if (< (inc %) (count content))
-                                 (inc %)
-                                 0))
+                 (swap! index inc-wrap)
                  (rf/dispatch [:carousel/rotate id @index :inc]))
         moving (rf/subscribe [:state [:carousel id :direction]])
         left-content #(if (pos? %)
-                       (get content (dec %))
-                       (last content))
+                        (get content (dec %))
+                        (last content))
         right-content #(if (< % (dec (count content)))
                          (get content (inc %))
                          (first content))]
@@ -250,22 +252,21 @@
        (merge options
               {:id (name id)})
 
-       [:button.carousel-btn.carousel-prev-btn {:on-click dec-fn} "<"]
+       [:button.carousel-btn.carousel-prev-btn {:on-click dec-fn} [:i.fas.fa-angle-left]]
 
        (into [:ul.carousel-items]
         (map-indexed
          (fn [i item]
            [:li.carousel-item-min ; XXX still need to fix extra for left/right so those not display: hidden or w/e
-            {:class (condp = @index
-                      i "carousel-item-main"
-                      (inc i) "carousel-item-prev"
-                      (dec i) "carousel-item-next"
-                      nil)
-             :on-click #([:dispatch-prev-next-or-fullscreen])}
+            {:class (cond
+                      (= i @index) "carousel-item-main"
+                      (= (inc-wrap i) @index) "carousel-item-prev"
+                      (= (dec-wrap i) @index) "carousel-item-next") 
+             :on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])}
             item])
          content))
 
-       [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} ">"]
+       [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} [:i.fas.fa-angle-right]]
        [carousel-idx-btns index (count content)] ])))
 
 (defn service-category-full
