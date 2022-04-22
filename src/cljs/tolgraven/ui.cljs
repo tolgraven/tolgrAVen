@@ -73,6 +73,27 @@
           :ref #(when % (reset! appeared true))}
          (into [:<>] components)]))))
 
+(defn appear-merge "Animate mount. Dont use events just ratoms. Merge into component, don't wrap"
+  [opts component]
+  (let [appeared (r/atom false)
+        wrap-ref (if-let [existing (-> component second :ref)]
+                   #(do (when % (reset! appeared true))
+                        (existing %))
+                   #(when % (reset! appeared true)))]
+    (fn [opts component]
+      (let [classes (str "appear-wrapper "
+                         (if (string? opts)
+                           opts (:class opts)) " "
+                         (when (or @appeared
+                                   (empty? (seq opts)))
+                           "appeared"))
+            wrap-class (if-let [existing (-> component second :class)]
+                         (str existing " " classes)
+                         classes)
+            attrs {:ref wrap-ref :class wrap-class}
+            component (util/add-attrs component attrs)]
+        component))))
+
 (defn seen "Animate on coming into view"
   [id kind & components]
   (let [on-change (fn [frac]
