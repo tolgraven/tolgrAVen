@@ -681,27 +681,15 @@
 
 (defn carousel-normal "Don't fuck up with fancy hot swaps for transitions, just stuff everything in."
   [id attrs content]
-  (let [num-items-shown 3
-        ; index (r/atom 1) ; (rf/subscribe [:state [:carousel id :index]])
-        index (rf/subscribe [:state [:carousel id :index]])
-        first-idx (max 0 (- @index
-                            (/ (dec num-items-shown) 2))) ;get middle
-        content-shown (subvec content
-                              first-idx
-                              (+ first-idx (dec num-items-shown)))
+  (let [index (rf/subscribe [:state [:carousel id :index]])
         dec-wrap #(if (neg? (dec %))
                     (dec (count content))
                     (dec %))
-        dec-fn (fn []
-                 ; (swap! index dec-wrap)
-                 (rf/dispatch [:carousel/rotate id content :dec]))
+        dec-fn #(rf/dispatch [:carousel/rotate id content :dec])
         inc-wrap #(if (< (inc %) (count content))
                     (inc %)
                     0)
-        inc-fn (fn []
-                 ; (swap! index inc-wrap)
-                 (rf/dispatch [:carousel/rotate id content :inc]))
-        moving (rf/subscribe [:state [:carousel id :direction]])
+        inc-fn #(rf/dispatch [:carousel/rotate id content :inc])
         left-content #(if (pos? %)
                         (get content (dec %))
                         (last content))
@@ -720,12 +708,11 @@
        (into [:ul.carousel-items]
         (map-indexed
          (fn [i item]
-           [:li.carousel-item-min ; XXX still need to fix extra for left/right so those not display: hidden or w/e
+           [:li.carousel-item-min
             {:class (cond
                       (= i @index) "carousel-item-main"
                       (= (inc-wrap i) @index) "carousel-item-prev"
-                      (= (dec-wrap i) @index) "carousel-item-next") 
-             :on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])}
+                      (= (dec-wrap i) @index) "carousel-item-next")}
             item])
          content))
 

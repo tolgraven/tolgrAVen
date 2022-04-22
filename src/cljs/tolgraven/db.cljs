@@ -168,6 +168,11 @@ producer, reporter, PA, graphics technician, music administrator etc"] :where "S
                                                  "Max/MSP, TouchDesigner, Resolume"
                                                  "Microsoft Excel / Google Sheets - advanced scripting"
                                                  "OS - macOS/Darwin Unix, Linux, Windows including Windows Server"]
+                                       :general ["Project management"
+                                                 "Working with internal and external stakeholders and ensuring projects stays on track"
+                                                 "Interop between technical and artistic or executive"
+                                                 "Research"
+                                                 "Documenting best practices to ensure stability and ease onboarding"]
                                        :language ["Swedish - Native"
                                                   "English - Fluent, native level"
                                                   "Spanish - Limited, but get by in Spanish speaking countries"]}}}
