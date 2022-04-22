@@ -79,8 +79,10 @@
      [:div.h1-wrapper.center-content
       [:h1.h-responsive.h-intro
       [anim/timeout updater-2 2000]
-      (str (when (< @showing-title 1) "•")
-           (string/join (take @showing-title title)))]]
+      (if (< @showing-title 1)
+        "•"
+        (for [letter (take @showing-title title)]
+          [ui/appear-merge "opacity" [:span letter]]))]]
      
      (into [:<>] (ln->br text)) ; or just fix :pre css lol
      [:br]
