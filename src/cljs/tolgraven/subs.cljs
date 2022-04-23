@@ -142,7 +142,7 @@
 
 (rf/reg-sub :modal
  (fn [db [_ _]]
-   (get-in db [:state :modal])))
+   (get-in db [:state :modal-zoom])))
 
 (rf/reg-sub :history/popped?
  :<- [:state [:browser-nav]]
