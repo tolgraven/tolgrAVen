@@ -732,15 +732,12 @@
         [:i.fas.fa-angle-left]]
 
        (into [:ul.carousel-items
-              {:on-mouse-move #(js/console.warn "mouse move!")
-               :on-mouse-down #(do (js/console.warn "mouse down")
-                                 (reset! interact-start
-                                        {:x (.-offsetX %)
-                                         :y (.-offsetY %)}))
+              {:on-mouse-down #(reset! interact-start
+                                       {:x (.-offsetX %)
+                                        :y (.-offsetY %)})
                :on-mouse-up (fn [e]
                               (let [interact-end {:x (.-offsetX e)
                                                   :y (.-offsetY e)}]
-                                (js/console.warn interact-end)
                                 (cond
                                   (> (:x @interact-start) (:x interact-end))
                                   (inc-fn)
@@ -771,8 +768,7 @@
                content)))
 
        [:button.carousel-btn.carousel-next-btn
-        {:on-click inc-fn
-         :on-mouse-down #(js/console.warn "mouse move!")}
+        {:on-click inc-fn}
         [:i.fas.fa-angle-right]]
        [carousel-idx-btns id index (count content)] ])))
 
