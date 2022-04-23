@@ -81,8 +81,12 @@
       [anim/timeout updater-2 2000]
       (if (< @showing-title 1)
         "•"
-        (for [letter (take @showing-title title)]
-          [ui/appear-merge "opacity" [:span letter]]))]]
+        (map-indexed
+         (fn [i letter]
+           (with-meta
+            [ui/appear-merge "opacity" [:span letter]]
+            {:key (str "intro-letter-" i)}))
+         (take @showing-title title)))]]
      
      (into [:<>] (ln->br text)) ; or just fix :pre css lol
      [:br]
