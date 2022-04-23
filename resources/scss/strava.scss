@@ -13,15 +13,15 @@
   color: var(--light-3); // dark background so cant have fg as color, only light
 
   .strava-profile-image {
-    width: calc(8 * var(--space));
-    height: calc(8 * var(--space));
+    width: 8em;
+    height: 8em;
     margin-right: var(--space-lg);
   }
   .strava-profile {
     margin: var(--space-lg) 0;
 
-    .strava-story { // story
-      margin-left: calc(1 * var(--space-lg));
+    .strava-story {
+      margin-left: calc(1 * var(--space));
       font-size: 85%;
       max-width: 50%;
     }
