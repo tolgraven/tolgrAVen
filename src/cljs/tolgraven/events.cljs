@@ -422,8 +422,8 @@
 (rf/reg-event-fx :diag/new  ;this needs a throttle lol
  [(rf/inject-cofx :now)
   (rf/inject-cofx :gen-id [:diag])]
- (fn [{:keys [db now id]} [_ level title message {:keys [sticky? actions]}]] ;error, warning, info
-  (let [id (-> id :id :diag)]
+ (fn [{:keys [db now id]} [_ level title message {:keys [sticky? actions buttons custom-id]}]] ;error, warning, info
+  (let [id (or custom-id (-> id :id :diag))]
     (merge
      {:db (update-in db [:diagnostics :messages]
                      assoc id {:level   level
@@ -431,6 +431,7 @@
                                :title   title
                                :message message
                                :time    now
+                               :buttons buttons
                                :actions actions})}
      (when (not= level :debug) ;also filtered in hud tho..
        {:dispatch    [:diag/unhandled :add    id]

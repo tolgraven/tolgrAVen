@@ -563,16 +563,15 @@
 
 (defn hud "Render a HUD sorta like figwheel's but at reagent/re-frame level"
   [to-show]
- (let [msg-fn (fn [{:keys [level title message time actions id]}]
+ (let [msg-fn (fn [{:keys [level title message time actions buttons id]}]
                 ^{:key (str "hud-message-" id)}
                 [:div.hud-message
                   {:class (name level)
                    :style {:position :relative}
-                   ; :ref #(when % (rf/dispatch [:run-highlighter! %]))
                    :ref #(when % (util/run-highlighter! "pre" %)) ;this works but dispatch not??
-                   :on-click #(doall (for [action (or (:on-click actions)
-                                                       [[:diag/unhandled :remove id]
-                                                        [:common/navigate! :log]])] ;TODO should then find elem by log id and scroll to it
+                   :on-click #(doall (for [action (or actions
+                                                      [[:diag/unhandled :remove id]
+                                                       [:common/navigate! :log]])] ;TODO should then find elem by log id and scroll to it
                                        (rf/dispatch action)))}
                   [:div.hud-message-top
                    [:h4.hud-message-title title]
@@ -580,7 +579,16 @@
                             (.stopPropagation e) ;it's causing a click on hud-message as well...
                             (rf/dispatch [:diag/unhandled :remove id]))]]
                   (when message
-                    [:pre (format-log-message message)])])]
+                    [:pre (format-log-message message)])
+                  (when buttons
+                    [:div.hud-message-buttons
+                     (for [{:keys [id text action] :as button} buttons]
+                        ^{:key (str "hud-message-" (cond-> id
+                                                     (keyword? id) name)
+                                    "-button-" (:id button))}
+                       [:button.hud-message-button
+                        {:on-click #(rf/dispatch action)}
+                        text])])])]
   [:div.hud.hidden
    {:class (when (seq @to-show) "visible")}
    (for [msg @to-show
