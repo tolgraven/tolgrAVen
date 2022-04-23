@@ -520,18 +520,17 @@
                            (set! (.-scrollTop @table-ref)
                                  (.-scrollHeight @table-ref))) ;resort to this since :scroll-top @ratom in the actual element doesnt work...
     :reagent-render
-    (fn []
+    (fn [options content]
       (let [messages (:messages @content)]
         [:section#log-container.log-container.solid-bg
          {:ref #(when % (rf/dispatch [:run-highlighter! %]))}
-         ; {:ref #(when % (util/run-highlighter! "pre" %))}
          [minimize [:state [:display :log]]] ;this also needs to send an event to scroll-top the fucker...
-         [:table ;.lined-container-sm
+         [:table
             {:ref (fn [el]
                     (reset! table-ref el))
              :style {:max-height (if (:minimized @options) "1.2em" "20em")}}
           [:tbody.log
-           (for [msg (map messages (sort (keys messages))
+           (for [msg (map messages (sort-by #(str %) (keys messages))
                           ; (if (:minimized @options) ;upside-down?
                           ;     [(count messages)]
                           ;     (sort (keys messages)))
