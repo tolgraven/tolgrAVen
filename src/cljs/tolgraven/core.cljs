@@ -263,13 +263,6 @@
 (defn start-router! []
   (rfe/start! router on-nav router-settings))
 
-(def cookie-notice [:diag/new :info "Cookie notice"
-                     {:what "This website may use cookies"
-                      :why "To track whether you've agreed to the use of cookies"
-                      :how {:by-closing-this-box "You agree to not only cookies"
-                            :but "also milk"}}
-                     {:sticky? true}])
-
 
 ;; -------------------------
 ;; Initialize app
@@ -285,7 +278,7 @@
   (rf/dispatch-sync [:init-db])
   (rf/dispatch-sync [:fb/fetch-settings]) ;sync because number of early fetches depend on this...
   (ajax/load-interceptors!)
-  (rf/dispatch cookie-notice) ; do later first check if prev visit
+  (rf/dispatch [:cookie/show-notice]) ; do later first check if prev visit
   (util/log "Init complete")
   (mount-components)
   (rf/dispatch [:init])) ; listeners and stuff that might depend on being mounted

@@ -318,7 +318,30 @@
  (fn [{:keys [db ls]} [_ ls-path db-path]] ;map of keys to paths I guess?
    {:db (assoc-in db db-path (get-in ls ls-path)) }))
 
+(rf/reg-event-fx :cookie/show-notice   [(rf/inject-cofx :ls)]
+ (fn [{:keys [db ls]} [_ ]] ;map of keys to paths I guess?
+   (let [id :cookie-notice]
+     (when-not (get-in ls [:cookie-notice-accepted])
+       {:dispatch [:diag/new :info "Cookie notice"
+                   {:what "This website may use cookies"
+                    :why "To track whether you've agreed to the use of cookies"
+                    :how {:by-closing-or-pressing-ok "You agree to not only cookies"
+                          :but "also milk"}}
+                   {:sticky? true
+                    :custom-id id
+                    :actions [[:cookie/accept-notice true]]
+                    :buttons [{:id :accept
+                               :text "OK"
+                               :action [:cookie/accept-notice true]}
+                              {:id :decline
+                               :text "No, never!"
+                               :action [:cookie/accept-notice false]}]}]}))))
 
+(rf/reg-event-fx :cookie/accept-notice
+ (fn [{:keys [db]} [_ accepted?]]
+   {:dispatch-n [[:diag/unhandled :remove :cookie-notice]
+                 (when accepted?
+                   [:ls/store-val [:cookie-notice-accepted] true])]}))
 
 (rf/reg-event-fx :hide-header-footer  [(rf/inject-cofx :css-var [:header-with-menu-height])
                                        (rf/inject-cofx :css-var [:header-height])
