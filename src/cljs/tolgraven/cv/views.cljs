@@ -8,32 +8,31 @@
 
 (defn box "One thing, accomplishment, employment, etc"
   [{:keys [from to what position how where logo color] :as all} domain pos size overlap-level]
-  (let [expanded? (r/atom false)]
+  (let [expanded? (r/atom false)
+        closing? (r/atom false)]
     (fn [{:keys [from to what position how where logo color] :as all} domain pos size overlap-level]
-      (if-not @expanded?
-        [:div.cv-detail
-         {:on-click #(reset! expanded? true)
-          :style {:background-color color
-                  :left pos
-                  :top (str (+ 2.5 (* 24 overlap-level)) "%") ;only supports 4 tall then tho
-                  :width size}}
-         [:p.cv-from from]
-         [:p.cv-to (if to to "-")]
-         [:p.cv-what [:strong what]]
-         [:p.cv-position position]
-         [:p.cv-where where]
-         [:img {:src logo}]]
-        
-        [:div.cv-detail.cv-detail-expanded
-         {:style {:background-color color}
-          :on-click #(reset! expanded? false)}
-         [:p.cv-from from]
-         [:p.cv-to (if to to "-")]
-         [:h2.cv-what [:strong what]]
+      [:div.cv-detail
+       {:on-click (fn []
+                    (swap! closing? not)
+                    (js/setTimeout #(do (swap! expanded? not)
+                                        (swap! closing? not))
+                                   500))
+        :style (merge {:background-color color}
+                      (when-not @expanded?
+                        {:left pos
+                         :top (str (+ 2.5 (* 19 overlap-level)) "%") ;only supports 4 tall then tho
+                         :width size}))
+        :class (str (when @expanded? "cv-detail-expanded ")
+                    (when @closing? "cv-detail-closing"))}
+       [:p.cv-from from]
+       [:p.cv-to (if to to "-")]
+       [:p.cv-what [:strong what]]
+       (if @expanded?
          (for [item how]
-             [:p.cv-how [:i.fas.fa-arrow-right] item])
-         [:p.cv-where where]
-         [:img {:src logo}]]))))
+           [:p.cv-how [:i.fas.fa-arrow-right] item])
+         [:p.cv-position position])
+       [:p.cv-where where]
+       [:img {:src logo}]])))
 
 (defn capabilities "The various skills"
   [skills]

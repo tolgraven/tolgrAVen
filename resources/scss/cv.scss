@@ -151,7 +151,6 @@
     top: 0;
   }
 
-
   &.cv-detail-expanded {
     min-height: 25em;
     max-height: 40em;
@@ -164,6 +163,7 @@
     opacity: 90%;
     backdrop-filter: blur(1rem); // no go unless have alpha on bg color, sadfly
     border-bottom-right-radius: 2.4em;
+    transform: scale(1);
     
     i {
       background: linear-gradient(-45deg, var(--bg-1), var(--bg-6));
@@ -192,4 +192,9 @@
     .cv-where {
     }
   }
+
+  &.cv-detail-closing {
+    transform: scale(0);
+  }
+
 }
