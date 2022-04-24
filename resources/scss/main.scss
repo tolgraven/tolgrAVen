@@ -44,6 +44,13 @@ html {
   /* overscroll-behavior-y: none; /1* actually works in chrome, stops from overscroll. BUT makes scrolling and esp sticky jittery it seems? *1/ */
 }
 
+@keyframes fade-in-site {
+  0% {
+    opacity: 0%;
+    transform: scaleX(0);
+  } 100% { }
+}
+
 body {
   font-family: 'Open Sans', sans-serif;
   // font-family: 'Fira Sans', sans-serif;
@@ -51,6 +58,8 @@ body {
   background-color: var(--bg-1);
   width: calc(100% - 2 * var(--space-edges));
   margin: auto;
+
+  animation: fade-in-site 1000ms;
 }
 
 
