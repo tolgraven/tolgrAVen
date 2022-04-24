@@ -96,7 +96,7 @@
     "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"])
 
 (def css-pre
-  ["css/tolgraven/main.min.css"])
+  ["css/tolgraven/preload.css"])
 (def js-pre
   ["js/compiled/app.js"])
 (def img-pre
@@ -129,7 +129,7 @@ ga('send', 'pageview');
                          :description "A website by Joen Tolgraven"
                          :css-paths css-paths
                          :js-paths js-paths
-                         ; :css-pre css-pre
+                         :css-pre css-pre
                          ; :js-pre js-pre
                          ; :img-pre img-pre
                          :anti-forgery *anti-forgery-token*))
