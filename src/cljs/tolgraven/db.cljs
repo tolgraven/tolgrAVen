@@ -244,7 +244,7 @@ producer, reporter, PA, graphics technician, music administrator etc"] :where "S
              :transition {:time 200 :style :slide} ; etc
              :blog {:posts-per-page 3}
              :firebase {:project :main
-                        :settings {}} ; {:timestampsInSnapshots true} ; for old version
+                        :settings {:timestampsInSnapshots true}} ; for old version
              :hud {:timeout 30 :level :info}}})
 
 

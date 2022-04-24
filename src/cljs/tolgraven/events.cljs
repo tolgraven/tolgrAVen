@@ -222,7 +222,7 @@
 (rf/reg-event-fx :fb/init
   (fn [{:keys [db]} [_ data]]
     (firebase/init :firebase-app-info      data ; well should go in fx tho...
-                   :firestore-settings     @(rf/subscribe [:option [:firebase :settings]]) ; Shouldn't be used on later versions. See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
+                   :firestore-settings     (get-in db [:option :firebase :settings]) ; Shouldn't be used on later versions. See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
                    :get-user-sub           [:fb/get-user]
                    :set-user-event         [:fb/set-user]
                    :default-error-handler  [:fb/error])
