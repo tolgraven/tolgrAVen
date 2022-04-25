@@ -98,12 +98,12 @@
             ; [lein-kibit "0.1.2"]
             ]
   :sassc
-  [{:src "resources/scss/all.scss"
+  [{:src "resources/scss/main.scss"
     :output-to "resources/public/css/tolgraven/main.css"
     :style "nested"
     :import-path "resources/scss"}]
   :autoprefixer {:src "resources/public/css/tolgraven"
-                 :browsers "> 2%, Last 9 versions"} ;; optional
+                 :browsers "> 5%, Last 2 versions"} ;; optional
   :auto
   {"sassc" {:file-pattern #"\.(scss|sass)$" :paths ["resources/scss"]}
    "autoprefixer" {:file-pattern #"\.(css)$" :paths ["resources/public/css/tolgraven"]}}
