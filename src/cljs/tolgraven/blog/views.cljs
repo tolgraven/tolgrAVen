@@ -99,6 +99,7 @@
                         {:class (if (= vote voted)
                                   "noborder"
                                   (case vote :up "topborder" :down "bottomborder"))
+                         :disabled (when (= vote voted) true)
                          :on-click #(rf/dispatch [:blog/comment-vote 
                                                   user active-user path vote])}
                         (case vote :up "+" :down "-")])))]
