@@ -96,3 +96,10 @@
 
 (rf/reg-sub :comments/for-id
  (fn [db [_ comment-id]]))
+
+(rf/reg-sub :comments/thread-uncollapsed?
+ :<- [:blog/state [:comment-thread-uncollapsed]] 
+ (fn [uncollapsed [_ path]]
+   (or (get uncollapsed path) ; actively uncollapsed
+       (= 2 (count path)))))  ; is first-level comment (blog-post is first id) - meaning first two levels always shown
+

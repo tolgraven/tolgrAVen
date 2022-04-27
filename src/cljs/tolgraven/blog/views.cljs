@@ -73,15 +73,20 @@
           (rest path)))
 
 (defn collapsed-reply-view
-  [parent-id comments]
+  [path parent-id comments]
   (let [inited? (r/atom false)]
-    (fn [parent-id comments]
+    (fn [path parent-id comments]
       [:div.blog-comment-reply.flex
        {:style {:cursor "zoom-in"
                 :transition "max-height 1s ease"
                 :max-height (if @inited? "3rem" 0)}
         :ref #(when % (reset! inited? true))
-        :on-click #(rf/dispatch [:blog/state [:comment-thread-uncollapsed parent-id] true])}
+        :on-click (fn [e]
+                    (rf/dispatch [:blog/state [:comment-thread-uncollapsed path] true])
+                    (doseq [[k post] comments]
+                      (rf/dispatch [:blog/state [:comment-thread-uncollapsed
+                                                 (conj path (:id post))]
+                                    true])))}
        [:div.blog-comment-border]
        [:section.blog-comment.blog-comment-collapsed-placeholder
         (util/pluralize (count comments) " hidden reply")]])))
@@ -90,8 +95,7 @@
   [path {:keys [id seq-id ts user title text score comments] :as post}]
   (let [active-user @(rf/subscribe [:user/active-user])
         user @(rf/subscribe [:user/user user])
-        uncollapsed? (rf/subscribe [:blog/state [:comment-thread-uncollapsed id]])
-        collapsing? (rf/subscribe [:blog/state [:comment-thread-collapsing id]])
+        uncollapsed? (rf/subscribe [:comments/thread-uncollapsed? path])
         vote-btn (fn [vote]
                    (when active-user
                      (let [voted @(rf/subscribe [:blog/state [:voted path]])]
@@ -108,7 +112,8 @@
        [:div.blog-comment-border
         {:style {:cursor (if @uncollapsed? "zoom-out" "zoom-in")
                  :background-color (:bg-color user)} ; somehow doesnt fly, why?
-         :on-click #(rf/dispatch [:blog/state [:comment-thread-uncollapsed id] (not @uncollapsed?)])}]
+         :on-click #(rf/dispatch [:blog/state [:comment-thread-uncollapsed path]
+                                  (not @uncollapsed?)])}]
      [:section.blog-comment
       [:div
        [ui/user-avatar user]
@@ -140,7 +145,7 @@
                   [ui/appear-anon "slide-behind"
                    [comment-post (conj path (:id post)) post]]))]
         (when-not @uncollapsed?
-          [collapsed-reply-view id comments])])]))
+          [collapsed-reply-view path id comments])])]))
 
 
 (defn comments-section "Comments section!"
