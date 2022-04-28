@@ -110,10 +110,10 @@
     [:<>
       [:div.flex.blog-comment-around
        [:div.blog-comment-border
-        {:style {:cursor (if @uncollapsed? "zoom-out" "zoom-in")
+        {:style {:cursor (if @uncollapsed? "zoom-out" (when comments "zoom-in"))
                  :background-color (:bg-color user)} ; somehow doesnt fly, why?
-         :on-click #(rf/dispatch [:blog/state [:comment-thread-uncollapsed path]
-                                  (not @uncollapsed?)])}]
+         :on-click #(when comments (rf/dispatch [:blog/state [:comment-thread-uncollapsed path]
+                                                 (not @uncollapsed?)]))}]
      [:section.blog-comment
       [:div
        [ui/user-avatar user]

@@ -92,7 +92,18 @@
    ; but no, cause children.
    ; so map from ids to nil or more map if children.
    ; or just fuck this and use a real database?
-   (vals (select-keys comments (get post :comments)))))
+  (vals (select-keys comments (->> (:comments post)
+                                    keys
+                                    (map name)
+                                    (map js/parseInt)))))) ;workaround for comments being keywords. should change to nr but maybe keep in place for compatibility
+
+
+(rf/reg-sub :comments/for-comment ;replies. only works for top level, fix...
+ (fn [[_ blog-id comment-id]]
+   [(rf/subscribe [:comments/for-post blog-id])
+    (rf/subscribe [:blog/post blog-id])])
+ (fn [[comments post] [_ blog-id comment-id]]
+   (filter #(= (:id %) comment-id) (:comments post))))
 
 (rf/reg-sub :comments/for-id
  (fn [db [_ comment-id]]))
@@ -101,5 +112,5 @@
  :<- [:blog/state [:comment-thread-uncollapsed]] 
  (fn [uncollapsed [_ path]]
    (or (get uncollapsed path) ; actively uncollapsed
-       (= 2 (count path)))))  ; is first-level comment (blog-post is first id) - meaning first two levels always shown
-
+       (and (= 2 (count path))  ; is second level comment (blog-post is first id) - meaning first two levels always shown. (2) yields replies to replies collapsing
+            (nil? (get uncollapsed path)))))) ; not yet un or collapsed...
