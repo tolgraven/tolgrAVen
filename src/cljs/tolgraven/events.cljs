@@ -154,7 +154,11 @@
     {:db (assoc-in db (into [:state :debug] path) value)}))
 
 (rf/reg-event-db :exception (assoc-in-factory [:state :exception]))
-(rf/reg-event-db :form-field (assoc-in-factory [:state :form-field])) ;gets spammy lol. maybe internal til on blur hey...
+
+(rf/reg-event-fx :form-field []
+  (fn [{:keys [db]} [_ path value]]
+    {:db (assoc-in db (into [:state :form-field] path) value)
+     :dispatch [:ls/store-val (into [:form-field] path) value]}))
 
 
 (rf/reg-event-fx :reloaded

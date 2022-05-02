@@ -11,7 +11,7 @@
     [tolgraven.util :as util]))
 
 
-(rf/reg-event-fx :blog/init [debug]
+(rf/reg-event-fx :blog/init []
   (fn [{:keys [db]} _]
     (when-not (get-in db [:state :booted :blog])
      {:dispatch-n [[:<-store [:blog-posts]    [:blog/set-content :posts]]
@@ -19,17 +19,17 @@
                    [:ls/get-path [:blog :comment-thread-expanded] [:state :blog :comment-thread-expanded]] ; get state of thangs
                    [:booted :blog]]}))) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
 
-(rf/reg-event-fx :blog/init-posting [debug]
+(rf/reg-event-fx :blog/init-posting []
   (fn [{:keys [db]} _]
     {:dispatch-n [[:user/close-ui]]})) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
 
-(rf/reg-event-fx :blog/edit-post [debug]
+(rf/reg-event-fx :blog/edit-post []
   (fn [{:keys [db]} [_ post]] ; seems gross somehow, passing full data from view. but that's where we have easy access to it so... any case would just be pass id, ask to fetch rest of contents somewhere, whe
     {:dispatch-n [[:form-field [:post-blog] post] ;well only text tags id but who's counting
                   [:blog/state [:editing] post]
                   [:common/navigate! :post-blog]]}))
 
-(rf/reg-event-fx :blog/set-content [debug]
+(rf/reg-event-fx :blog/set-content []
  (fn [{:keys [db]} [_ category response]]
    {:db (assoc-in db [:blog category]
                   (util/normalize-firestore response))}))
