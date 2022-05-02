@@ -16,6 +16,7 @@
     (when-not (get-in db [:state :booted :blog])
      {:dispatch-n [[:<-store [:blog-posts]    [:blog/set-content :posts]]
                    [:<-store [:blog-comments] [:blog/set-content :comments]]
+                   [:ls/get-path [:blog :comment-thread-expanded] [:state :blog :comment-thread-expanded]] ; get state of thangs
                    [:booted :blog]]}))) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
 
 (rf/reg-event-fx :blog/init-posting [debug]
@@ -228,10 +229,8 @@
 ; put intersectionobserver on maybe second to last one
 ; that triggers another equal pull etc
 
-(rf/reg-event-fx :blog/collapse-comment
- (fn [{:keys [db]} [_ id timeout]]
-   (let [timeout (or timeout 400)
-         collapsed? (get-in db [:state :comment-thread-collapsed id])] 
-     {:dispatch [:blog/state [:comment-thread-collapsing id] (not collapsed?)]
-      :dispatch-later {:ms timeout
-                       :dispatch [:blog/state [:comment-thread-collapsed id] (not collapsed?)]}})))
+(rf/reg-event-fx :blog/expand-comment-thread
+ (fn [{:keys [db]} [_ path expand?]]
+   (let [] 
+     {:db (assoc-in db [:state :blog :comment-thread-expanded path] expand?)
+      :dispatch [:ls/store-val [:blog :comment-thread-expanded path] expand?]})))

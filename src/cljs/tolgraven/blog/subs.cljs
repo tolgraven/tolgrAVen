@@ -108,9 +108,9 @@
 (rf/reg-sub :comments/for-id
  (fn [db [_ comment-id]]))
 
-(rf/reg-sub :comments/thread-uncollapsed?
- :<- [:blog/state [:comment-thread-uncollapsed]] 
- (fn [uncollapsed [_ path]]
-   (or (get uncollapsed path) ; actively uncollapsed
+(rf/reg-sub :comments/thread-expanded?
+ :<- [:blog/state [:comment-thread-expanded]] 
+ (fn [expanded [_ path]]
+   (or (get expanded path) ; actively expanded
        (and (= 2 (count path))  ; is second level comment (blog-post is first id) - meaning first two levels always shown. (2) yields replies to replies collapsing
-            (nil? (get uncollapsed path)))))) ; not yet un or collapsed...
+            (nil? (get expanded path)))))) ; not yet un or collapsed...

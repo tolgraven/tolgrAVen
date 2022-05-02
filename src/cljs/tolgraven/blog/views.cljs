@@ -82,10 +82,10 @@
                 :max-height (if @inited? "3rem" 0)}
         :ref #(when % (reset! inited? true))
         :on-click (fn [e]
-                    (rf/dispatch [:blog/state [:comment-thread-uncollapsed path] true])
+                    (rf/dispatch [:blog/expand-comment-thread path true])
                     (doseq [[k post] comments]
-                      (rf/dispatch [:blog/state [:comment-thread-uncollapsed
-                                                 (conj path (:id post))]
+                      (rf/dispatch [:blog/expand-comment-thread
+                                    (conj path (:id post))
                                     true])))}
        [:div.blog-comment-border]
        [:section.blog-comment.blog-comment-collapsed-placeholder
@@ -95,10 +95,10 @@
   [path {:keys [id seq-id ts user title text score comments] :as post}]
   (let [active-user @(rf/subscribe [:user/active-user])
         user @(rf/subscribe [:user/user user])
-        uncollapsed? (rf/subscribe [:comments/thread-uncollapsed? path])
+        expanded? (rf/subscribe [:comments/thread-expanded? path])
         vote-btn (fn [vote]
                    (when active-user
-                     (let [voted @(rf/subscribe [:blog/state [:voted path]])]
+                     (let [voted @(rf/subscribe [:blog/state [:voted path]])] ; obviously needs to be firestore sub. but also local debounce
                        [:button.blog-btn.blog-comment-vote-btn
                         {:class (if (= vote voted)
                                   "noborder"
@@ -110,10 +110,10 @@
     [:<>
       [:div.flex.blog-comment-around
        [:div.blog-comment-border
-        {:style {:cursor (if @uncollapsed? "zoom-out" (when comments "zoom-in"))
+        {:style {:cursor (if @expanded? "zoom-out" (when comments "zoom-in"))
                  :background-color (:bg-color user)} ; somehow doesnt fly, why?
-         :on-click #(when comments (rf/dispatch [:blog/state [:comment-thread-uncollapsed path]
-                                                 (not @uncollapsed?)]))}]
+         :on-click #(when comments (rf/dispatch [:blog/expand-comment-thread path
+                                                 (not @expanded?)]))}]
      [:section.blog-comment
       [:div
        [ui/user-avatar user]
@@ -138,13 +138,13 @@
      (if comments ;replies
        [:div.blog-comment-reply-outer
         [:div.blog-comment-reply
-         {:class (when-not @uncollapsed?
+         {:class (when-not @expanded?
                    "collapsed")}
          (doall (for [[k post] (into (sorted-map) comments)]
                   ^{:key (get-id-str (conj path (:id post)))}
                   [ui/appear-anon "slide-behind"
                    [comment-post (conj path (:id post)) post]]))]
-        (when-not @uncollapsed?
+        (when-not @expanded?
           [collapsed-reply-view path id comments])])]))
 
 
