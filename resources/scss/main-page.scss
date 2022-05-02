@@ -54,6 +54,11 @@
   h1 {
     text-shadow: 3px 3px 9px white;
   }
+  img {
+    opacity: 0.3;
+    transition: transform 8.5s ease,
+                opacity 3s;
+  }
 }
 #intro-end { /* lbp pic "YOU" */
   height: #{'min(60vh, 100vw - 2 * var(--space-edges))'};
