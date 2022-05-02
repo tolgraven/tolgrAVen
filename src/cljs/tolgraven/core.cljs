@@ -179,9 +179,7 @@
                                (rf/dispatch [:scroll/to "section-services" 1300]))}]}]
      ["cv"
       {:name        :cv
-       :view        #'cv-page
-       #_:controllers #_[{:start (fn [_]
-                               (rf/dispatch [:scroll/to "cv" 500]))}]}]
+       :view        #'cv-page}]
      ["hire"
       {:name        :hire
        :view        #'view/ui
