@@ -316,7 +316,13 @@
 
 (rf/reg-event-fx :ls/store-val    [(rf/inject-cofx :ls)]
  (fn [{:keys [ls]} [_ ls-path v]]
-   {:ls (assoc-in ls ls-path v)}))
+   (if-not (nil? v)
+     {:ls (assoc-in ls ls-path v)}
+     {:dispatch [:ls/dissoc ls-path]})))
+
+(rf/reg-event-fx :ls/dissoc       [(rf/inject-cofx :ls)] ; keep localstorage reasonably clean...
+ (fn [{:keys [ls]} [_ ls-path]]
+   {:ls (update-in ls (butlast ls-path) dissoc (last ls-path))}))
 
 (rf/reg-event-fx :ls/get-path   [(rf/inject-cofx :ls)]
  (fn [{:keys [db ls]} [_ ls-path db-path]] ;map of keys to paths I guess?
@@ -369,13 +375,14 @@
     {:db (assoc-in db [:state :scroll-position] (:scroll-position ls))
      :dispatch [:listener/before-unload-save-scroll]}))
 
-(rf/reg-event-fx :init  [debug] ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
+(rf/reg-event-fx :init  [] ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
  (fn [{:keys [db]} [_ _]]
   {:dispatch-n [[:listener/load]
                 [:init/scroll-storage]
                 [:listener/popstate-back]
                 [:listener/scroll-direction]
                 [:on-booted :firebase [:id-counters/fetch]]
+                [:ls/get-path [:form-field] [:state :form-field]] ; restore any active form-fields
                 [:booted :site]]})) ; should work, main page specific init events won't get queued unless on main so...
 
 ; generic helpers for rapid prototyping.
