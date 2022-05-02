@@ -251,8 +251,6 @@
 }
 .covering-faded { /* jk */ /* incidentally not easy to type on a proper vim setup */
   --opacity: 0.65;
-  /* --color-1: hsl(var(--hue-1),  38%,  var(--lum-bg-1), var(--opacity)); */
-  /* --color-2: hsl(var(--hue-2),  36%,  var(--lum-bg-1), var(--opacity)); */
   --color-1: hsl(var(--hue-1),  38%,  var(--lum-bg-1));
   --color-2: hsl(var(--hue-2),  36%,  var(--lum-bg-1));
   background: linear-gradient(-40deg, var(--color-1), var(--color-2));
@@ -261,7 +259,7 @@
   /* think prob compositing is bad enough, even worse with gradient or? */
   /* definitely move to burn-in on video either way. then if want to transition to no fg do it by fading to orig version */
   /* if html n shit server side can just have it gen appropriate vids/imgs etc once from settings */
-  /* background: var(--bg-1); */
+  pointer-events: none; // pass through so can click play below if blocking autoplay or on battery-save
 }
 .covering-faded:hover, .covering-faded:focus { /* jk */ /* incidentally not easy to type on a proper vim setup */
   opacity: 0.50;
