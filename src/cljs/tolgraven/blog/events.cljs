@@ -16,7 +16,7 @@
     (when-not (get-in db [:state :booted :blog])
      {:dispatch-n [[:<-store [:blog-posts]    [:blog/set-content :posts]]
                    [:<-store [:blog-comments] [:blog/set-content :comments]]
-                   [:ls/get-path [:blog :comment-thread-expanded] [:state :blog :comment-thread-expanded]] ; get state of thangs
+                   [:ls/get-path [:blog] [:state :blog]] ; get state of thangs
                    [:booted :blog]]}))) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
 
 (rf/reg-event-fx :blog/init-posting []
@@ -234,3 +234,10 @@
    (let [] 
      {:db (assoc-in db [:state :blog :comment-thread-expanded path] expand?)
       :dispatch [:ls/store-val [:blog :comment-thread-expanded path] expand?]})))
+
+(rf/reg-event-fx :blog/adding-comment
+ (fn [{:keys [db]} [_ parent-path adding?]]
+   (let [] 
+     {:db (assoc-in db [:state :blog :adding-comment parent-path] adding?)
+      :dispatch [:ls/store-val [:blog :adding-comment parent-path] adding?]})))
+

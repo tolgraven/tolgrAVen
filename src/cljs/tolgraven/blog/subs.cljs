@@ -114,3 +114,8 @@
    (or (get expanded path) ; actively expanded
        (and (= 2 (count path))  ; is second level comment (blog-post is first id) - meaning first two levels always shown. (2) yields replies to replies collapsing
             (nil? (get expanded path)))))) ; not yet un or collapsed...
+
+(rf/reg-sub :comments/adding?
+ :<- [:blog/state [:adding-comment]] 
+ (fn [adding [_ path]]
+   (get adding path)))

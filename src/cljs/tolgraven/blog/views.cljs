@@ -42,10 +42,10 @@
 
 (defn add-comment-btn "Seemed like a good idea to swap button for input field when pressed but yeah, no..."
   [parent-path kind]
-  (let [adding-comment? @(rf/subscribe [:blog/state [:adding-comment parent-path]])
+  (let [adding-comment? @(rf/subscribe [:comments/adding? parent-path])
         attrs {:on-click
                #(rf/dispatch
-                 [:blog/state [:adding-comment parent-path] (not adding-comment?)])}]
+                 [:blog/adding-comment parent-path (not adding-comment?)])}]
     (case kind
       :comment (when-not adding-comment?
                  [:button.blog-btn.topborder
@@ -181,7 +181,7 @@
 
 (defn add-comment "Post http or do a gql mutation, yada yada"
   [parent-path]
-  (let [adding-comment? (rf/subscribe [:blog/state [:adding-comment parent-path]])
+  (let [adding-comment? (rf/subscribe [:comments/adding? parent-path])
         editing (rf/subscribe [:blog/state [:editing-comment parent-path]]) ;XXX would break when multiple replies to same parent
         model (rf/subscribe [:form-field [:write-comment parent-path]]) ;should use db tho, no good accidental nav and lose shit
         input-valid? (fn [input]
@@ -209,7 +209,7 @@
                        :disabled (when-not (input-valid? @model) true)
                        :on-click (fn [_]
                                    (when (input-valid? @model)
-                                     (rf/dispatch [:blog/state [:adding-comment parent-path] false])
+                                     (rf/dispatch [:blog/adding-comment parent-path nil])
                                      (rf/dispatch [:blog/comment-submit parent-path @model @editing])
                                      (rf/dispatch [:form-field [:write-comment parent-path] nil])))}
                       "Submit"])
