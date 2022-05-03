@@ -68,7 +68,7 @@
                   (or (not (same :data :view))
                       (not (same :path-params))))
         {:dispatch-later
-         {:ms 150
+         {:ms 250
           :dispatch [:scroll/on-navigate (:path new-match)]}}))
       
       (let [fragment (-> db :state :fragment)] ;; matches are equal (fragment not part of match)

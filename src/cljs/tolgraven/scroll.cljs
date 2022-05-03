@@ -12,12 +12,13 @@
   (fn [{:keys [db]} [_ path]]        ; TODO !! on iphone (also mac safari?) cancel transition on browser nav! fugly
     (let [browser-nav? (get-in db [:state :browser-nav :got-nav])
           saved-pos (get-in db [:state :scroll-position path])]
-      {;:db (update-in db [:state :browser-nav] dissoc :got-nav) ;clear any browser nav flag since we consume it
-       :dispatch (if browser-nav? ; used back/fwd, since clicking a link should equal there or top...
-                   [:scroll/and-block (or saved-pos "main")] ; guess should check for frag, query etc tho
-                   [:scroll/and-block "main"])
-       :dispatch-later {:ms 300 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
-                        :dispatch [:state [:browser-nav :got-nav] false]} }))) ; waiting because checks in main-page
+      (merge
+       {:dispatch (if browser-nav? ; used back/fwd, since clicking a link should equal there or top...
+                    [:scroll/and-block (or saved-pos "main")] ; guess should check for frag, query etc tho
+                    [:scroll/and-block "main"])}
+       (when browser-nav?
+         {:dispatch-later {:ms 300 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
+                           :dispatch [:state [:browser-nav :got-nav] false]} }))))) ; waiting because checks in main-page
 
 
 (rf/reg-event-fx :scroll/to-top-and-arm-restore ; when follow links etc want to get to top of new page. but if have visited page earlier, offer to restore latest view pos. ACE!!!
@@ -30,7 +31,7 @@
                   ;; beauty is with ls it'll work across reloads etc as well
                   ;; could also expose as pref whether to force old more (crappy) appy behavior
                   ]
-     :dispatch-later {:ms 10
+     :dispatch-later {:ms 50
                       :dispatch [:scroll/set-block true]}}))
 
 (rf/reg-event-fx :scroll/and-block ; when follow links etc want to get to top of new page. but if have visited page earlier, offer to restore latest view pos. ACE!!!
@@ -38,7 +39,7 @@
     {:dispatch (if (number? px-or-elem-id)
                  [:scroll/px px-or-elem-id]
                  [:scroll/to px-or-elem-id])
-     :dispatch-later {:ms 1
+     :dispatch-later {:ms 50
                       :dispatch [:scroll/set-block true]}}))
 
 (rf/reg-event-fx :scroll/set-block
