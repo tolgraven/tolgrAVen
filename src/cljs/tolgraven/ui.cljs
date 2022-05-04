@@ -720,7 +720,8 @@
                          (get content (inc %))
                          (first content))
         ref-f #(when % (rf/dispatch [:carousel/set-index id 0]))
-        interact-start (atom {:x 0 :y 0})]
+        interact-start (atom {:x 0 :y 0})
+        left-offset (r/atom 0)]
     (fn [id attrs content]
       [:div.carousel.carousel-normal
        (merge attrs
@@ -749,11 +750,16 @@
                :on-touch-end (fn [e]
                                (let [interact-end {:x (-> e .-changedTouches first .-screenX)
                                                    :y (-> e .-changedTouches first .-screenY)}]
+                                 (reset! left-offset 0)
                                  (cond
                                    (> (:x @interact-start) (:x interact-end))
                                    (inc-fn)
                                    (< (:x @interact-start) (:x interact-end))
-                                   (dec-fn))))}]
+                                   (dec-fn))))
+               :on-touch-move (fn [e]
+                                (let [interact-pos {:x (-> e .-changedTouches first .-screenX)
+                                                    :y (-> e .-changedTouches first .-screenY)}]
+                                 (reset! left-offset (- (:x interact-pos) (:x @interact-start)))))}]
              (doall
               (map-indexed
                (fn [i item]
@@ -762,7 +768,9 @@
                     {:class (cond
                               (= i @index) "carousel-item-main"
                               (= (inc-wrap i) @index) "carousel-item-prev"
-                              (= (dec-wrap i) @index) "carousel-item-next")}
+                              (= (dec-wrap i) @index) "carousel-item-next")
+                     :style {:left (when (= i @index)
+                                     (str @left-offset "px"))}}
                     item]
                    {:key (str "carousel-" (name id) "-item-" i)}))
                content)))
