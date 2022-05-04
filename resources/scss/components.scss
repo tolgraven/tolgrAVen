@@ -145,17 +145,19 @@
   position: relative;
   display: flex;
   justify-content: center;
-  align-items: center;
+  // align-items: center; // causes some offsetting of wrapped elem so avoid
   overflow: hidden;
 }
 .carousel-btn {
   border: none;
+  padding: 0;
+  margin: 0;
   z-index: 10;
   // position: absolute;
 }
 .carousel-prev-btn, .carousel-next-btn {
   position: absolute;
-  // top: 50%;
+  top: 50%;
 }
 .carousel-prev-btn {
   left: 0;
