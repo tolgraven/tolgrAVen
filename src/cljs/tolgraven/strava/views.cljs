@@ -13,21 +13,6 @@
 (declare activity-map-canvas)
 (declare activity-map-leaflet)
 
-(defn totals-stats
-  [athlete category heading]
-  (let [stats (category athlete)
-        distance (-> (:distance stats)
-                     (/ 1000)
-                     (util/format-number 2))
-        hours (/ (:moving_time stats) 3600)]
-    [:div
-     [:h3 heading]
-     [:div  (:count stats)]
-     [:div distance [:span " km"]]
-     [:div (util/format-number hours 1) [:span " hours"]]
-     [:div (util/format-number (/ distance (:count stats)) 2) [:span " km"]]
-     [:div (util/format-number (/ distance hours) 1) [:span " km/h"]]]))
-
 (defn activity-photo "Display photo for activity and allow to view fullscreen. Sadly seems can only get primary photo from Strava, not all?"
   [data]
   (when (pos? (:count data))
@@ -464,6 +449,35 @@
        [ui/loading-spinner true]) ]))
 
 
+(defn totals-stats
+  [athlete category heading]
+  (let [stats (category athlete)
+        distance (-> (:distance stats)
+                     (/ 1000)
+                     (util/format-number 2))
+        hours (/ (:moving_time stats) 3600)]
+    [:div
+     [:h3 heading]
+     [:div  (:count stats)]
+     [:div distance [:span " km"]]
+     [:div (util/format-number hours 1) [:span " hours"]]
+     [:div (util/format-number (/ distance (:count stats)) 2) [:span " km"]]
+     [:div (util/format-number (/ distance hours) 1) [:span " km/h"]]]))
+
+(defn strava-general-stats "Box of stats (rides, total distance and stuff)"
+  [stats]
+  [:div.strava-stats.flex
+   {:class (when @(rf/subscribe [:state [:strava :stats-minimized]]) "stats-minimized")}
+   [:div.strava-stats-legend
+    [:h3 [:img {:src "img/strava-icon.png"
+                :style {:width "1.25em"}}]]
+    [:div "Rides"]
+    [:div "Total distance"]
+    [:div "Time"]
+    [:div "Average distance"]
+    [:div "Average speed"]]
+   [totals-stats stats :all_ride_totals "Total"] 
+   [totals-stats stats :recent_ride_totals "Recent"] ])
 
 (defn strava "Make an increasingly fancy visualizer feed thingy for practice"
   []
@@ -499,18 +513,7 @@
        [ui/loading-spinner true])
       
      (if stats
-       [:div.strava-stats.flex
-        {:class (when @(rf/subscribe [:state [:strava :stats-minimized]]) "stats-minimized")}
-        [:div.strava-stats-legend
-         [:h3 [:img {:src "img/strava-icon.png"
-                     :style {:width "1.25em"}}]]
-         [:div "Rides"]
-         [:div "Total distance"]
-         [:div "Time"]
-         [:div "Average distance"]
-         [:div "Average speed"]]
-        [totals-stats stats :all_ride_totals "Total"] 
-        [totals-stats stats :recent_ride_totals "Recent"] ]
+       [strava-general-stats stats]
        [ui/loading-spinner true :massive])
 
      [activities-graph] ]))
