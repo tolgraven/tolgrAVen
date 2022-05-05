@@ -492,8 +492,9 @@
      [ui/appear-anon "opacity"
       [:img.media-as-bg {:src "img/strava-heatmap-new.png"}]]
      [ui/inset "Click the dots for details" 4]
-     [:h1  [:img {:style {:height "2rem"}
-                  :src "img/strava_logo_nav.png"}]]
+     [:a {:href "https://www.strava.com/athletes/20725659"}
+      [:h1  [:img {:style {:height "2rem"}
+                   :src "img/strava_logo_nav.png"}]]]
      #_(when (:error data)
        [:div
         [:h3 "Rate limited?"]
