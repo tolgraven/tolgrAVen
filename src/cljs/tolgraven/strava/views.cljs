@@ -316,13 +316,12 @@
                        (rf/dispatch [:strava/fetch-stream (:id activity)
                                      "latlng,watts,heartrate,velocity_smooth,altitude,cadence,time"]))}
 
-              [:h3 {:style {:z-index 2}}
-               [:b (:name activity)]]
+              [:h3 [:b (:name activity)]]
               [:div.strava-activity-full-inner
                (@tab tabs)] 
-              (into [:div.flex ;tab buttons
+              (into [:div.strava-activity-tabs.flex ;tab buttons
                      {:style {:position :absolute
-                              :top 0 :right "5%"}}]
+                              :bottom 0 :right 0}}]
                     (map (fn [k] [tab-button k])
                          (keys tabs))) 
               [ui/close #(do (rf/dispatch [:strava/activity-expand nil])
@@ -490,7 +489,7 @@
         arrow (fn [direction]
                 [:i.fa {:class (str "fa-arrow-" (name direction))
                         :style {:color "#fc4c02"}}])]
-    [:section.strava.section-with-media-bg-wrapper.covering-2
+    [:section#strava.strava.section-with-media-bg-wrapper.covering-2
      {:on-click #(rf/dispatch [:strava/activity-expand nil])}
      [ui/appear-anon "opacity"
       [:img.media-as-bg {:src "img/strava-heatmap-new.png"}]]

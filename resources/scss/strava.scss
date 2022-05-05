@@ -40,10 +40,6 @@
     margin: calc(var(--space));
   }
 
-  div {
-    // margin: 0.20em;
-    // margin-left: var(--space);
-  }
   span {
     color: var(--light-5);
   }
@@ -70,13 +66,14 @@
     }
 
     > .strava-stats-legend {
-      margin-right: calc(3.5 * var(--space));
+      margin-left: 0;
+      margin-right: calc(2.0 * var(--space));
       color: var(--light-5);
     }
     div, h3 {
       margin: 0.2rem;
-      margin-left: calc(0.75 * var(--space));
-      margin-right: calc(0.75 * var(--space));
+      margin-left: calc(0.5 * var(--space));
+      margin-right: calc(0.5 * var(--space));
     }
     h3 {
       font-weight: bolder;
@@ -124,11 +121,15 @@
         .strava-activity-full {
           position: relative;
           padding: 0; // no padding on sides, individual tabs can have as needed.
-          padding-top: var(--space-lg);
+          padding-top: var(--space);
           padding-bottom: 0; // actually want inner div padding gone but it's there despite being 0???
           overflow: hidden;
           
           color: var(--light-2);
+
+          h3 {
+            padding-right: var(--space-lg);
+          }
 
           .strava-activity-full-inner {
             overflow: scroll;
@@ -138,7 +139,7 @@
           }
 
           .strava-activity-stats {
-            margin-top: calc(0.5 * var(--space));
+            margin-top: calc(1.0 * var(--space));
             justify-content: space-between;
 
             span {
@@ -146,10 +147,17 @@
             }
           }
 
-          // > div > div > div:first-of-type { // description col
           .strava-activity-stats-descriptions { // description col
-            margin-right: calc(2 * var(--space-lg));
+            padding-left: 0.33em;
+            padding-right: calc(1.0 * var(--space-lg));
             color: var(--light-5);
+          }
+          .strava-activity-stats-numbers { // numbers col
+            padding-left: calc(1.00 * var(--space-lg));
+            p:first-letter {
+              font-size: 100%;
+              filter: none;
+            }
           }
 
           .strava-activity-photo {
