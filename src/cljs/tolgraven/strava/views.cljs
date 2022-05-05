@@ -477,7 +477,10 @@
     [:div "Average distance"]
     [:div "Average speed"]]
    [totals-stats stats :all_ride_totals "Total"] 
-   [totals-stats stats :recent_ride_totals "Recent"] ])
+   [ui/carousel-normal "strava-general-stats-carousel"
+    {}
+    [[totals-stats stats :recent_ride_totals "Recent"]
+     [totals-stats stats :ytd_ride_totals (.getFullYear (js/Date.))]]] ])
 
 (defn strava "Make an increasingly fancy visualizer feed thingy for practice"
   []

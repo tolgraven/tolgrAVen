@@ -74,11 +74,18 @@
       color: var(--light-5);
     }
     div, h3 {
-      margin: 0.25rem;
-      margin-right: 1em;
+      margin: 0.2rem;
+      margin-left: calc(0.75 * var(--space));
+      margin-right: calc(0.75 * var(--space));
     }
     h3 {
       font-weight: bolder;
+    }
+
+    #strava-general-stats-carousel {
+      .carousel-idx {
+        display: none;
+      }
     }
     
   }
