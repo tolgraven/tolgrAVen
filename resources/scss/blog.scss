@@ -238,7 +238,7 @@
       font-size: 0.7em;
 
       .blog-user { 
-        border-bottom: var(--line-width-sm) solid var(--fg-6);
+        // border-bottom: var(--line-width-sm) solid var(--fg-6);
       }
     }
   }
@@ -271,6 +271,7 @@
   .blog-user {
     font-style: italic;
     font-weight: bold;
+    color: var(--fg-6);
   }
 }
 
