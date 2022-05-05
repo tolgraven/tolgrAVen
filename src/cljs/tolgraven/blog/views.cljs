@@ -302,13 +302,13 @@
       [ui/user-avatar user "blog-user-avatar"]
       [:div.blog-post-header-main
        [:a {:href (make-link (or permalink id))}
-         [:h1.blog-post-title title]]
+         [:h1.blog-post-title title
+          (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
+            [:button.noborder.nomargin
+             {:on-click #(rf/dispatch [:blog/edit-post blog-post])}
+             [:i.fa.fa-edit] ])]]
        [ui/appear-anon  "slide-in" #_"opacity"
         [posted-by id user ts]]
-       (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
-         [:button.noborder.nomargin
-          {:on-click #(rf/dispatch [:blog/edit-post blog-post])}
-          [:i.fa.fa-edit] ])
        [tags-list blog-post]]]
      [:br]
      ; [a custom sticky mini "how far youve scrolled bar" on right?]
