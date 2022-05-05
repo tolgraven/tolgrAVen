@@ -231,14 +231,22 @@
         {:class extra-class
          :src (if @error? fallback (or (:avatar user-map) fallback))
          :on-error #(reset! error? true)
-         :alt (str (:name user-map) " profile picture")} ]])))
+         :alt (str (:name user-map) " profile picture")
+         :on-click (when (and (:avatar user-map)
+                              (not (:no-zoom user-map)))
+                     #(rf/dispatch [:modal-zoom :fullscreen :open
+                                    [:img
+                                     {:src (:avatar user-map)}]]))
+         :style (when (and (:avatar user-map)
+                           (not (:no-zoom user-map)))
+                  {:cursor "pointer"})} ]])))
 
 (defn user-btn [model]
   [:a {:href @(rf/subscribe [:href-add-query  
                              {:userBox (not @(rf/subscribe [:user/ui-open?]))}])}
    [:button.user-btn.noborder
    (if-let [user @(rf/subscribe [:user/active-user])]
-     [user-avatar user "btn-img"]
+     [user-avatar (merge user {:no-zoom true}) "btn-img"]
      [:i.user-btn {:class "fa fa-user"}])]])
 
 

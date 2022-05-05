@@ -504,9 +504,9 @@
      (if athlete
        [ui/appear-anon "opacity"
         [:div.strava-profile.flex
-        [:img.strava-profile-image.user-avatar
-         {:src (:profile_medium athlete)
-          :width "50%" :height "50%"}]
+         [ui/user-avatar {:avatar (:profile_medium athlete)
+                          :name (str (:firstname athlete) " " (:lastname athlete))}
+                         "strava-profile-image"]
         [:div.strava-athlete ;.flex
          [:h3 (:firstname athlete) " " (:lastname athlete)]
          [:div (:bio athlete)]
