@@ -281,12 +281,15 @@
                                   (merge {:user user} input)
                                   editing])
                     (rf/dispatch [:common/navigate! :blog]))]]]))
+
 (defn tags-list [{:keys [id tags] :as post}]
   (when (pos? (count tags))
     [:div.blog-post-tags
      (doall (for [tag (string/split tags " ")]
               ^{:key (str "blog-post-" id "-category-" tag)}
-              [:span tag]))]))
+              [:span [:a.blog-tag-link
+                      {:href @(rf/subscribe [:href :blog-tag {:tag tag}])}
+                      tag]]))]))
 
 (defn make-link [path]
   @(rf/subscribe [:href :blog-post {:permalink path}]))
@@ -350,11 +353,28 @@
         [tags-list blog-post]
         [:div (->> text string/split-lines (take 2) (string/join " ") ui/md->div)] ])]]))
 
-(defn blog-tag-cloud "Tin"
-  [])
-
 (defn blog-tag-view "View posts filed with tag"
-  [])
+  []
+  (when-let [tag @(rf/subscribe [:blog/state [:viewing-tag]])]
+    [blog-container
+     [:div.blog-posts-with-tag
+      [:h2 {:style {:text-align :center}}
+       "Posts tagged " [:div.blog-post-tags
+                        [:span tag]]] [:br] [:br]
+      (for [{:keys [id ts user title text permalink] :as post} @(rf/subscribe [:blog/posts-with-tag tag])]
+        ^{:key (str "blog-with-tag-" (:id post))}
+        [blog-post post])]]))
+
+(defn blog-tag-cloud "Tin"
+  []
+  (let [tags @(rf/subscribe [:blog/all-tags])]
+    [:div.blog-post-tags.flex.center-content
+     [:p "Tags "]
+     (doall (for [tag tags]
+              ^{:key (str "blog-tag-" tag)}
+              [:span [:a.blog-tag-link
+                      {:href @(rf/subscribe [:href :blog-tag {:tag tag}])}
+                      tag]]))]))
 
 (defn blog-intros-view "Headline and a paragraph, many on each page."
   [])
@@ -406,6 +426,7 @@
     [:a {:href @(rf/subscribe [:href :blog-archive])}
      [:button.blog-btn.noborder
      "Archive"]]]
+    [blog-tag-cloud]
    [:div.blog-powered-by.center-content
     [:p "Proudly powered by "
     [:a {:href "https://github.com/tolgraven/tolgraven"} "tolgrAVen"]

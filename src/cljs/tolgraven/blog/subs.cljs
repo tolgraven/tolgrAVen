@@ -1,6 +1,8 @@
 (ns tolgraven.blog.subs
   (:require
-    [re-frame.core :as rf]))
+    [re-frame.core :as rf]
+    [tolgraven.util :as util]
+    [clojure.string :as string]))
 
 
 (rf/reg-sub :blog ; should prob go straight to posts and comments same
@@ -19,6 +21,42 @@
  :<- [:blog [:posts]]
  (fn [posts [_ id]]
   (get posts id)))
+
+(rf/reg-sub :blog/post-tags
+ (fn [[_ id]]
+   (rf/subscribe [:blog/post id]))
+ (fn [post [_ _]]
+  (some-> (:tags post)
+          (string/split " ")
+          set)))
+
+(rf/reg-sub :blog/posts-with-tag
+ :<- [:blog [:posts]]
+ (fn [posts [_ tag]]
+  (vals
+   (select-keys
+    posts
+    (-> (reduce (fn [m [k v]]
+              (let [v (assoc v :tags (string/split (:tags v) " "))]
+                (if (some #{tag} (:tags v))
+                  (assoc m k v)
+                  m)))
+            {} posts)
+        reverse
+        keys)))))
+
+(rf/reg-sub :blog/all-tags
+ :<- [:blog [:posts]]
+ (fn [posts [_ ]]
+  (->> (reduce (fn [s [k v]]
+            (let [tags (when (pos? (count (:tags v)))
+                         (string/split (:tags v) " "))]
+              (if (some? (seq tags))
+                (concat s tags)
+                s)))
+           #{} posts)
+       set)))
+
 
 (rf/reg-sub :blog/state
  :<- [:state [:blog]]

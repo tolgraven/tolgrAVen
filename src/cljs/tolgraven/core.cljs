@@ -213,7 +213,15 @@
           :stop (fn [{:keys [path]}]
                   (js/console.log "stop" "blog-post controller" (:permalink path)))}]}]
       ["/archive" {:name :blog-archive
-                   :view #'blog-archive-page}]]
+                   :view #'blog-archive-page}]
+      ["/tag/:tag" {:name :blog-tag
+                   :view #'blog-tag-page
+                   :controllers
+                   [{:parameters {:path [:tag]}
+                     :start (fn [{:keys [path]}]
+                              (rf/dispatch [:blog/state [:viewing-tag] (:tag path)]))
+                     :stop (fn [{:keys [path]}]
+                             (rf/dispatch [:blog/state [:viewing-tag] nil]))}]}]]
      ["post-blog" {:name :post-blog
                    :view #'post-blog-page
                    :controllers [{:start (fn [_] (rf/dispatch [:blog/init-posting]))}]}]        
