@@ -316,9 +316,7 @@
 
 (rf/reg-event-fx :ls/store-val    [(rf/inject-cofx :ls)]
  (fn [{:keys [ls]} [_ ls-path v]]
-   (if-not (nil? v)
-     {:ls (assoc-in ls ls-path v)}
-     {:dispatch [:ls/dissoc ls-path]})))
+   {:ls (assoc-in ls ls-path v)}))
 
 (rf/reg-event-fx :ls/dissoc       [(rf/inject-cofx :ls)] ; keep localstorage reasonably clean...
  (fn [{:keys [ls]} [_ ls-path]]
