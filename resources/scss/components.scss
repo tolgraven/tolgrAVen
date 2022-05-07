@@ -160,10 +160,10 @@
   top: 50%;
 }
 .carousel-prev-btn {
-  left: 0;
+  left: var(--space);
 }
 .carousel-next-btn {
-  right: 0;
+  right: var(--space);
 }
 
 .carousel-idxs {
