@@ -14,7 +14,7 @@
 
 (defn plain-text-header
   [resp]
-  (response/header resp "Content-Type" "text/plain; charset=utf-8"))
+  (response/content-type resp "text/plain; charset=utf-8"))
 
 (defn home-routes []
   [""
@@ -33,7 +33,7 @@
    ["/api/docs" {:get (fn [_]
                     (-> "docs/docs.md" io/resource slurp
                         response/ok
-                        plain-text-header))}]
+                        plain-text-header))}] ; isnt this the exact equivalent of serving asset directly?
    ["/user/:id" {:get (fn [{{:keys [id]} :path-params}]
                         (let [user "none"]
                           (timbre/debug user)

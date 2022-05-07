@@ -20,7 +20,7 @@
 (defn- css [href] [:link {:href href :rel "stylesheet" :type "text/css" :media "print" :onload "this.media='all'"}])
 (defn- js-preload  [path] [:link {:rel "preload" :as "script" :href path}])
 (defn- img-preload [path] [:link {:rel "preload" :as "image" :href path}])
-(defn- css-preload [path] [:link {:rel "preload" :as "style" :href path}])
+(defn- css-preload [path] [:link {:rel "preload" :as "style" :type "text/css" :href path}])
 
 (defn- loading-spinner
   [text]

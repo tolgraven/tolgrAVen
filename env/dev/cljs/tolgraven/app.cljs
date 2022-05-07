@@ -1,4 +1,4 @@
-(ns^:figwheel-no-load tolgraven.app
+(ns ^:figwheel-no-load tolgraven.app
   (:require
     [tolgraven.core :as core]
     [cljs.spec.alpha :as s]
@@ -17,7 +17,10 @@
 
 (devtools/install!)
 
-; (re-frisk/enable) ;nicer to have toggleable here no?
+; (re-frisk/enable {:ext_height 1000 :ext_width 1200}) ;nicer to have toggleable here no?
+; (re-frisk/enable-re-frisk-remote!) ;nicer to have toggleable here no?
+; (re-frisk/start-re-frisk-remote!)
 ; can also disable events with {:events? false}
+; couldn't get re-frisk-remote working for the life of me, hmm
 
 (core/init!)
