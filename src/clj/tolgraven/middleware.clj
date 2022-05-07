@@ -24,6 +24,7 @@
     [optimus.optimizations.minify]
     [optimus.optimizations.add-last-modified-headers]
     [optimus.optimizations.inline-css-imports]
+    [optimus-img-transform.core :refer [transform-images]]
     [potemkin :refer [import-vars]]))
 
 (defn wrap-internal-error [handler]
@@ -88,6 +89,9 @@
       (minify-js-assets options)
       (inline-css-imports)
       (concatenate-bundles options)
+      (transform-images {:regexp #"/img/.*\.(jpg|png)" ; in-place which would be baddd on dev but only runs on prod so
+                         :quality 0.75
+                         :progressive true})
       (add-cache-busted-expires-headers)
       (add-last-modified-headers)))
 
