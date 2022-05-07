@@ -20,7 +20,7 @@ out/
 resources/public/js/compiled/
 resources/public/js/app.js
 .vscode/
-resources/public/css/main.css
-resources/public/css/tolgraven/main.css
-pg/
+/resources/public/css/
+/pg/
+/trash
 .google-oath
