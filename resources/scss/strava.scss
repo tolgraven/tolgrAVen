@@ -9,6 +9,9 @@
 
 .strava {
   --activity-details-height: 24em;
+  --strava-color: hsl(18, 98%, 50%);
+  --strava-color-muted: hsl(18, 58%, 50%);
+  --strava-color-alpha: hsla(18, 58%, 50%, 0.3);
   
   color: var(--light-3); // dark background so cant have fg as color, only light
 
