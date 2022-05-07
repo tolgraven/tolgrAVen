@@ -492,7 +492,7 @@
     [:section#strava.strava.section-with-media-bg-wrapper.covering-2
      {:on-click #(rf/dispatch [:strava/activity-expand nil])}
      [ui/appear-anon "opacity"
-      [:img.media-as-bg {:src "img/strava-heatmap-new.png"}]]
+      [:img.media-as-bg {:src (:background data)}]]
      [ui/inset "Click the dots for details" 4]
      [:a {:href "https://www.strava.com/athletes/20725659"}
       [:h1  [:img {:style {:height "2rem"}

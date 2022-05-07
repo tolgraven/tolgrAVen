@@ -78,7 +78,9 @@
                                "clojurescript in the house"] ]}
 
              :strava {:story "I used to be in really good shape, before stomach issues and multiple surgeries.
-                              Cycling became my way back to fitness, and I've gone pretty much all in. Here you can follow my progress, or lack of it."}
+                              Cycling became my way back to fitness, and I've gone pretty much all in. Here you can follow my progress, or lack of it."
+                      :background "ing/strava-heatmap-new.jpg"
+                      :profile-url "https://www.strava.com/athletes/20725659"}
 
              :interlude [{:title "What does that mean?"
                           :caption "Stage light visualizer for the browser with custom shaders"
@@ -100,7 +102,7 @@
                          :cv {:intro "Multi talented developer with a background in live TV production, who throughout the years has also kept occupied with music, events, moving the world over etc. Hitherto autodidact currently getting a Comp Sci degree at an accelerated pace.
                                       Main focus is functional programming and web development, primarily front-end."
                               :education
-                              [{:from 2004, :to 2007, :what "Natural Science program, mathematics and computer science", :how ["3.96 (19.8) GPA"], :where "Kärrtorps gymnasium" :logo "img/logo/karrtorp-logo.png" :color "var(--purple)"}
+                              [{:from 2004, :to 2007, :what "Natural Science program, mathematics and computer science", :how ["3.96 (19.8) GPA"], :where "Kärrtorps gymnasium" :logo "img/logo/karrtorp-logo.jpg" :color "var(--purple)"}
                                {:from 2007, :to 2009, :what "Industrial Economics and Management", :how [], :where "Royal Institute of Technology" :logo "img/logo/KTH-logo.jpg" :color "var(--blue)"}
                                {:from 2012, :to 2014, :what "Musicology (60hp)", :how [], :where "Stockholm University" :logo "img/logo/su-logo.png" :color "var(--yellow)"}
                                {:from 2019, :to 2020, :what "Full stack web development", :how [], :where "Chas Academy" :logo "img/logo/chas-logo.png" :color "var(--green)"}
