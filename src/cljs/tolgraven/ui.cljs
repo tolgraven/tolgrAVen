@@ -712,7 +712,8 @@
        [carousel-idx-btns id index (count content)] ])))
 
 (defn carousel-normal "Don't fuck up with fancy hot swaps for transitions, just stuff everything in."
-  [id attrs content]
+  [id attrs content & {:keys [autoplay seconds-autoplay]
+                       :or {seconds-autoplay 10}}]
   (let [index (rf/subscribe [:state [:carousel id :index]])
         dec-wrap #(if (neg? (dec %))
                     (dec (count content))
@@ -728,9 +729,16 @@
         right-content #(if (< % (dec (count content)))
                          (get content (inc %))
                          (first content))
-        ref-f #(when % (rf/dispatch [:carousel/set-index id 0]))
+        ref-f #(when %
+                 (rf/dispatch [:carousel/set-index id 0])
+                 (when autoplay
+                   (rf/dispatch [:dispatch-in/set {:ms (* 1000 seconds-autoplay)
+                                                   :repeat true
+                                                   :k id
+                                                   :dispatch [:carousel/rotate id content :inc]}]))     )
         interact-start (atom {:x 0 :y 0})
-        left-offset (r/atom 0)]
+        left-offset (r/atom 0)
+        autoplaying (r/atom autoplay)]
     (fn [id attrs content]
       [:div.carousel.carousel-normal
        (merge attrs
@@ -742,7 +750,10 @@
         [:i.fas.fa-angle-left]]
 
        (into [:ul.carousel-items
-              {:on-mouse-down #(reset! interact-start
+              {:on-mouse-enter #(reset! autoplaying false)
+               :on-mouse-leave #(when autoplay
+                                  (reset! autoplaying true))
+               :on-mouse-down #(reset! interact-start
                                        {:x (.-offsetX %)
                                         :y (.-offsetY %)})
                :on-mouse-up (fn [e]
