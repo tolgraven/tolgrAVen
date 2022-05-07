@@ -450,7 +450,8 @@
    (fn [& {:keys [value path on-enter on-change placeholder width height min-rows
                   change-on-blur? disabled? class style attr input-type type]
            :or {input-type :input.form-control
-               width "15em"}}] ;to pass through from outer
+                width "15em"
+                on-change #(rf/dispatch-sync (conj path %))}}] ;to pass through from outer
    (let [latest-ext-model (or @(rf/subscribe path) (at value)) ;how repl this if not passing model but sub?
          disabled?        (at disabled?)
          change-on-blur?  (at change-on-blur?)
