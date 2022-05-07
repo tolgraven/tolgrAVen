@@ -64,9 +64,10 @@
                                 (-> new-match :data :name ;TODO want further info in title, like blog post title...
                                     name string/capitalize) " "
                                 (-> new-match :parameters :path vals first))}
-       (when (and (same :query-params) ; TODO maybe query params did change but also something else tho
-                  (or (not (same :data :view))
-                      (not (same :path-params))))
+       (when (or (and (same :query-params) ; TODO maybe query params did change but also something else tho
+                      (or (not (same :data :view))
+                          (not (same :path-params))))
+                 (not old-match)) ; restore last position if followed a link from elsewhere (even if go to top for internal links)
         {:dispatch-later
          {:ms 250
           :dispatch [:scroll/on-navigate (:path new-match)]}}))
