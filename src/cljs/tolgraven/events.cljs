@@ -619,3 +619,17 @@
        {:db (update-in db path merge {:text-out text-out})
         :dispatch-later {:ms ms
                          :dispatch [:text-effect-char-by-char/tick path text (inc num-chars) ms]}}))))
+
+(rf/reg-event-fx :darken/but-element
+ (fn [{:keys [db]} [_ id-or-class timeout]]
+   {:db (assoc-in db [:state :darken-but] id-or-class)
+    :dispatch-n [[:toggle-class! id-or-class "darken-fadeout-restore"]
+                 [:toggle-class! nil "darken-fadeout"]]
+    :dispatch-later {:ms timeout
+                     :dispatch [:darken/restore id-or-class]}}))
+
+(rf/reg-event-fx :darken/restore
+ (fn [{:keys [db]} [_ id-or-class]]
+   {:db (update-in db [:state] dissoc :darken-but)
+    :dispatch-n [[:toggle-class! id-or-class "darken-fadeout-restore"]
+                 [:toggle-class! nil "darken-fadeout"]]}))

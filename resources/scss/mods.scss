@@ -333,6 +333,14 @@ button:hover .blur-bg, button:active .blur-bg,
 .topborder { border-top: var(--line-width-sm) solid var(--line-color); }
 .bottomborder { border-bottom: var(--line-width-sm) solid var(--line-color); }
 
+.darken-fadeout { // for root. make everything darkkk
+  transition: filter 5s ease;
+  filter: brightness(0.5);
+}
+.darken-fadeout-restore { // for class/type/elem, restore brightness + pop
+  transition: filter 5s ease;
+  filter: brightness(1.15);
+}
 
 /* PARALLAX */
 /* needs to be torn down and redone properly. messy as balls now */
