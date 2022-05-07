@@ -62,10 +62,9 @@
                             Also, Hiccup is awesome.
 
                             Well let's see what else. I make music, have dabbled in being a rave promoter, soundboy, am a big enough ally to have hosted gay parties in Uganda, and all-around upstanding chap. I reckon.
-                            Before I run my own web design/custom music tech/yada yada real company I still try to do those things, on a hobbyist basis. Or working for the man?
-                            Currently most of the front-end is finished (well, alpha finished) while the back-end is, shall we say... not.
-                            Persistance of blog posts, comments, votes and users has been achieved by way of Firebase. Still need such back-end rarities as content not defined in app-db, and more.
-                            Of course I actually intend to write stuff - about the process, life in general, I'm not sure yet. All in due time.
+                            Finally having reached the level of running my own web design/custom music tech/yada yada actual company, rather than merely on an advanced hobbyist basis, I feel like I've landed right where I belong. Not that I've got anything against working for the man, hint hint.
+                            My main focus these days has ended up the web front... not that I, as full stack, am wanting in the back - but in the end it's just not quite as much fun.
+                            Meanwhile I will do my best trying to write stuff on the blog - about the process, life in general, I'm not sure yet. All in due time.
 
                             Leave a comment! Let me build your website! Give me a job!"
 
@@ -79,7 +78,7 @@
 
              :strava {:story "I used to be in really good shape, before stomach issues and multiple surgeries.
                               Cycling became my way back to fitness, and I've gone pretty much all in. Here you can follow my progress, or lack of it."
-                      :background "ing/strava-heatmap-new.jpg"
+                      :background "img/strava-heatmap-new.jpg"
                       :profile-url "https://www.strava.com/athletes/20725659"}
 
              :interlude [{:title "What does that mean?"
@@ -226,8 +225,10 @@ producer, reporter, PA, graphics technician, music administrator etc"] :where "S
                                   {:src "img/logo/icon/re-frame-logo.png" :alt "re-frame logo"}]}]}
 
    :options {:auto-save-vars true
-             :transition {:time 200 :style :slide} ; etc
-             :blog {:posts-per-page 3}
+             :transition {:time 500 :style :slide} ; etc
+             :blog {:posts-per-page 3} ; XXX should go in query-params no
+             :theme {:dark-mode true
+                     :colorscheme "default"}
              :firebase {:project :main
                         :settings {:timestampsInSnapshots true}} ; for old version
              :hud {:timeout 30 :level :info}}})

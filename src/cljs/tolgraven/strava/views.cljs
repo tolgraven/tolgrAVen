@@ -494,7 +494,7 @@
      [ui/appear-anon "opacity"
       [:img.media-as-bg {:src (:background data)}]]
      [ui/inset "Click the dots for details" 4]
-     [:a {:href "https://www.strava.com/athletes/20725659"}
+     [:a {:href (:profile-url data)}
       [:h1  [:img {:style {:height "2rem"}
                    :src "img/strava_logo_nav.png"}]]]
      #_(when (:error data)
