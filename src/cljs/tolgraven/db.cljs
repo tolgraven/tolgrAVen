@@ -188,7 +188,7 @@ producer, reporter, PA, graphics technician, music administrator etc"] :where "S
                        :user-avatar-fallback "img/tolgrav-square.png"}
 
              :footer [{:id "left"
-                       :title "joen.tolgraven@gmail.com"
+                       :email "joen.tolgraven@gmail.com"
                        :text [(str "© 2020-" (.getFullYear (js/Date.)))]
                        :logo {:src "img/tolgrav-square.png" :alt "tolgrAVen logo"}}
                       {:id "right"
