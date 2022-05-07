@@ -3,23 +3,6 @@
             [re-frame.core :as rf]
             [cljs.reader]))
 
-; localstorage i took from somewhere, maybe use for partly written comments
-(def user-key "tolglow-web-dev-storage")  ;; localstore key
-
-(defn set-user-ls [user]
-  (.setItem js/localStorage user-key (str user)))  ;; sorted-map written as an EDN map
-
-(defn remove-user-ls  []
-  (.removeItem js/localStorage user-key))
-
-(rf/reg-cofx :local-store-user
- (fn [cofx _]
-   (assoc cofx :local-store-user  ;; put the local-store user into the coeffect under :local-store-user
-          (into (sorted-map)      ;; read in user from localstore, and process into a sorted map
-                (some->> (.getItem js/localStorage user-key)
-                         (cljs.reader/read-string))))))  ;; EDN map -> map
-
-
 (def data ; default db. Needs to be cleaned out of content already haha.
   {:state {:menu false
            :is-loading {}
