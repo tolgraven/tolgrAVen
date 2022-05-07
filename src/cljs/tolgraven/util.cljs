@@ -164,6 +164,9 @@
 
 (defn cs [& names] (string/join " " (filter identity names)))
 
+(defn m->json [m]
+  (.stringify js/JSON (clj->js m)))
+
 (defn add-attrs "Put more attrs in something already defined..."
   [component attrs]
   (if (map? (second component))

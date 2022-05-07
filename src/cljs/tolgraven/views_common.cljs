@@ -120,9 +120,77 @@
           [:div.footer-column {:id id}
           [:h3 title]])]])
 
+(defn contact-form-popup
+  []
+  (let [inited? (r/atom nil)]
+    (fn []
+      (let [{:keys [show? sent? closing?]} @(rf/subscribe [:state [:contact-form]])
+            loading? (rf/subscribe [:loading :post])]
+        (when show?
+          [:section.contact-form-popup
+           {:class (str
+                    (when closing? "closing ")
+                    (when (or sent? @loading?) "result ")
+                    (when @inited? "inited"))
+            :ref #(reset! inited? (boolean %))}
+           [ui/close #(rf/dispatch [:contact/close])]
+           [:h2 "Get in touch"]
+           [:p "Whether for work, collaboration or something else, I'll do my best to accomodate you."]
+           [:br]
+           (when sent?
+             [:div
+              [:br] [:br]
+              [ui/appear-merge "slide-in"
+               [:h2 "Your message has been sent!"]]
+              [:br]
+              [ui/appear-merge "opacity"
+               [:h3 "I'll get back to you shortly."]]])
+           [ui/loading-spinner loading?]
+
+           [:div.contact-form-form
+            {:style {:height (when (or sent? @loading?) 0)}}
+            [ui/input-text
+             :placeholder "Name"
+             :width "50%"
+             :path [:form-field [:contact :name]]]
+            [ui/input-text
+             :input-type :input.email
+             :placeholder "Email"
+             :width "50%"
+             :path [:form-field [:contact :email]]]
+            [ui/input-text
+             :placeholder "Title"
+             :width "100%"
+             :path [:form-field [:contact :title]]]
+            [ui/appear-anon "slide-in slow"
+             [ui/input-text
+             :placeholder "Message"
+             :input-type :textarea
+             :width "100%"
+             :height "15em"
+             :path [:form-field [:contact :message]]]]
+            [:button
+             {:disable (when true "true")
+              :on-click #(rf/dispatch [:contact/send-request])}
+             "Submit"]]])))))
+
+(defn contact-ways [email]
+  (let [show-mail-form? @(rf/subscribe [:state [:contact-form :show?]])]
+    [:div
+     [contact-form-popup]
+     [:h4 [:button.nomargin.nopadding.bottomborder
+           {:on-click #(rf/dispatch (if show-mail-form? [:contact/close] [:contact/open]))}
+           "Contact"]
+      [:span {:style {:color "var(--fg-6)"}}
+       " | "]
+      [:a {:href (str "mailto:" email)
+           :style {:font-size "80%"}}
+       email]]]))
+
+
 (defn footer "Might want to bail on left/middle/right just push whatever. do the current ids matter?"
   [content]
-  [:footer.footer-sticky ; [:footer>div.footer-content
+  [:footer#footer.footer-sticky
    {:class (string/join " "
                         [(when @(rf/subscribe [:state [:hidden-header-footer]])
                            "hide")
@@ -133,7 +201,7 @@
    
    [:div.line.line-footer] ;cant this be outside main ugh
    [:div.footer-content ;; XXX should adapt to available height, also disappear...
-    (for [{:keys [title text id links logo] :as column} content
+    (for [{:keys [title email text id links logo] :as column} content
           :let [id (str "footer-" id)]] ^{:key id}
          [:div.footer-column {:id id}
 
@@ -141,6 +209,7 @@
             [:img.img-icon logo])
           [:div
            (when title [:h4 title])
+           (when email [contact-ways email])
            (when text (for [line text] ^{:key (str id "-" line)}
                         [:h5 line]))]
           (when links [:div.footer-icons

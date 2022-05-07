@@ -233,8 +233,9 @@
     visibility: visible;
     background-color: initial;
   }
-  &.slow {       transition: all 1.5s; }
-  &.extra-slow { transition: all 3.0s; }
+  &.slow {       transition: all 1.2s ease; }
+  &.extra-slow { transition: all 2.5s ease; }
+  &.super-slow { transition: all 5.0s ease; }
 }
 
 .covering, .covering-2, .covering-3 { /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
