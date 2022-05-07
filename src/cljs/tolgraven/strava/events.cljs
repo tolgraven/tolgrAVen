@@ -88,7 +88,7 @@
 
 (rf/reg-event-fx :strava/store-activities
   (fn [{:keys [db]} [_ data]]
-    (let [gear (->> data (map :gear_id) set)]
+    (let [gear (->> data (map :gear_id) set (filter identity))]
       {:db (assoc-in db [:content :strava :activities] data)
        :dispatch-n (mapv (fn [id] [:strava/fetch-gear id]) gear)})))
 
