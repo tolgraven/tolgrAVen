@@ -2,6 +2,7 @@
   (:require
     [reagent.core :as r]
     [re-frame.core :as rf]
+    [re-frame.std-interceptors :as interceptor]
     [ajax.core :as ajax]
     [day8.re-frame.http-fx]
     [com.degel.re-frame-firebase :as firebase]
@@ -111,6 +112,76 @@
   (fn [{:keys [db]} [_ item]]
     {:db (-> db (assoc-in [:state :swap :finished] item)
                 (update-in [:state :swap] dissoc :running)) }))
+
+
+
+(rf/reg-event-fx :dispatch-in/set      [(rf/inject-cofx :gen-id [:dispatch-later])
+                                        (rf/inject-cofx :now-ct)]
+  (fn [{:keys [db id now-ct]} [_ {:keys [k ms dispatch dispatch-n]}]]
+    (let [id (get-in id [:id :dispatch-later])
+          events (into dispatch-n dispatch)]
+      {:db {assoc-in db [:state :dispatch-in k id] {:ms ms
+                                                    :elapsed 0
+                                                    :events events
+                                                    :started now-ct               
+                                                    :js-id nil}} ;not yet running
+       :dispatch-in/set [k id ms events]})))
+
+(rf/reg-event-fx :dispatch-in/save-timeout-id
+  (fn [{:keys [db]} [_ [k id js-id]]]
+    {:db (assoc-in db [:state :dispatch-in k id :js-id] js-id)}))
+
+(rf/reg-event-fx
+ :dispatch-in/cancel      [(interceptor/path [:state :dispatch-in])]
+ (fn [{:keys [db]} [_ [k & [id]]]]
+   (let [ids (or id (-> db k keys))]
+     (if (= 1 (count ids))
+       (let [js-id (get-in db [k id :js-id])]
+         {:db (dissoc db k)
+          :dispatch-in/stop [k id js-id]})
+       {:dispatch-n (for [single-id ids]
+                      [:dispatch-in/cancel k single-id])}))))
+
+(rf/reg-event-fx
+ :dispatch-in/pause     [(rf/inject-cofx :now-ct)
+                         (interceptor/path [:state :dispatch-in])]
+ (fn [{:keys [db now-ct]} [_ [k & [id]]]]
+   (let [id (or id (-> db
+                       (select-keys k)
+                       key))
+         js-id (get-in db [k id :js-id])]
+     {:db (-> db
+              (assoc-in [k id :js-id] nil)
+              (assoc-in [k id :elapsed]
+                        (- now-ct (get-in db [k id :started]))))
+      :dispatch-in/stop [k id js-id]})))
+
+(rf/reg-event-fx
+ :dispatch-in/resume      [(interceptor/path [:state :dispatch-in])]
+ (fn [{:keys [db]} [_ [k & [id]]]]
+   (let [id (or id (-> db
+                       (select-keys k)
+                       key))
+         {:keys [ms elapsed events]} (get-in db [k id])
+         ms (- ms elapsed)]
+     {:db (assoc-in db [k :ms] ms)
+      :dispatch-in/set [k id ms events]})))
+
+#_(rf/reg-event-fx :dispatch-in/ignore ; keep em running just ignore them. useful?
+  (fn [{:keys [db]} [_ [k id]]]
+    {:db nil }))
+
+(rf/reg-fx :dispatch-in/set
+  (fn [[k id ms events]]
+    (let [js-id (js/setTimeout #(doseq [event events]
+                                  (rf/dispatch event))
+                               ms)]
+     (rf/dispatch [:dispatch-in/save-timeout-id k id js-id]))))
+
+(rf/reg-fx :dispatch-in/stop
+  (fn [[k id js-id]]
+    (js/clearTimeout js-id)))
+
 
 
 (rf/reg-event-fx :carousel/rotate
