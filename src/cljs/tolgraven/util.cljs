@@ -167,11 +167,34 @@
 (defn m->json [m]
   (.stringify js/JSON (clj->js m)))
 
+(defn merge-attrs "Combine attrs instead of replacing. Would support some common stuff like merging :style, wrapping :ref, combining :class strs"
+  [attrs-1 attrs-2]
+  (let [ref-f (if (and (:ref attrs-1) (:ref attrs-2))
+                #(do (:ref attrs-1)
+                     (:ref attrs-2))
+                (if (:ref attrs-1)
+                  (:ref attrs-1)
+                  (when (:ref attrs-2)
+                    (:ref attrs-2))))
+        classes (if (and (:class attrs-1) (:class attrs-2))
+                  (str (:class attrs-1) " " (:class attrs-2))
+                  (if (:class attrs-1)
+                  (:class attrs-1)
+                  (when (:class attrs-2)
+                    (:class attrs-2))))]
+    (-> (merge attrs-1 attrs-2)
+        (assoc :ref ref-f)
+        (assoc :class classes))))
+
 (defn add-attrs "Put more attrs in something already defined..."
   [component attrs]
-  (if (map? (second component))
-      (update component 1 merge attrs) ; oh yeah forgot about update-in going inside heh. also not even needed!
-      [(first component) attrs (rest component)])) ; eh uh but
+  (let [comp-attrs (if (map? (second component))
+                     (second component)
+                     {})
+        attrs (merge-attrs comp-attrs attrs)]
+    (if (map? (second component))
+      (assoc component 1 attrs) ; oh yeah forgot about update-in going inside heh. also not even needed!
+      [(first component) attrs (rest component)]))) ; eh uh but
 
 (defn deep-merge "Recursively merge maps. If vals are not maps, the last value wins."
  [& values]
