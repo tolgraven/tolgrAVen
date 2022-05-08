@@ -738,6 +738,12 @@
                                                    :k id
                                                    :dispatch [:carousel/rotate id content :inc]}]))     )
         interact-start (atom {:x 0 :y 0})
+        handle-interaction (fn [start end]
+                             (cond
+                              (> (:x start) (:x end))
+                              (inc-fn)
+                              (< (:x start) (:x end))
+                              (dec-fn)))
         left-offset (r/atom 0)
         autoplaying (r/atom autoplay)]
     (fn [id attrs content]
@@ -758,25 +764,19 @@
                                        {:x (.-offsetX %)
                                         :y (.-offsetY %)})
                :on-mouse-up (fn [e]
-                              (let [interact-end {:x (.-offsetX e)
-                                                  :y (.-offsetY e)}]
-                                (cond
-                                  (> (:x @interact-start) (:x interact-end))
-                                  (inc-fn)
-                                  (< (:x @interact-start) (:x interact-end))
-                                  (dec-fn))))
+                              (let [interact-end {:x (.-pageX e)
+                                                  :y (.-pageY e)}]
+                                ; (.stopPropagation e)
+                                (handle-interaction @interact-start interact-end)))
                :on-touch-start #(reset! interact-start
                                         {:x (-> % .-changedTouches first .-screenX)
                                          :y (-> % .-changedTouches first .-screenY)})
                :on-touch-end (fn [e]
                                (let [interact-end {:x (-> e .-changedTouches first .-screenX)
                                                    :y (-> e .-changedTouches first .-screenY)}]
-                                 (reset! left-offset 0)
-                                 (cond
-                                   (> (:x @interact-start) (:x interact-end))
-                                   (inc-fn)
-                                   (< (:x @interact-start) (:x interact-end))
-                                   (dec-fn))))
+                                 ; (.stopPropagation e)
+                                 (handle-interaction @interact-start interact-end)
+                                 (reset! left-offset 0)))
                :on-touch-move (fn [e]
                                 (let [interact-pos {:x (-> e .-changedTouches first .-screenX)
                                                     :y (-> e .-changedTouches first .-screenY)}]
@@ -790,8 +790,11 @@
                               (= i @index) "carousel-item-main"
                               (= (inc-wrap i) @index) "carousel-item-prev"
                               (= (dec-wrap i) @index) "carousel-item-next")
-                     :style {:left (when (= i @index)
-                                     (str @left-offset "px"))}}
+                     :style {:left (cond
+                                    (= i @index) (str @left-offset "px")
+                                    ; (= (inc-wrap i) @index) (str "calc(-100% +" @left-offset ")")
+                                    ; (= (dec-wrap i) @index) (str "calc(100% -" @left-offset ")")
+                                    )}}
                     item]
                    {:key (str "carousel-" (name id) "-item-" i)}))
                content)))
