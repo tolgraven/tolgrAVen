@@ -152,6 +152,28 @@
      (for [kudoer kudoers] ^{:key (str "strava-kudoer-" (:firstname kudoer) "-" (:lastname kudoer))}
        [kudo kudoer]) ]))
 
+(defn gear "Display gear details"
+  [id]
+  (let [hovered? (r/atom false)
+        gear (rf/subscribe [:strava/content [:gear id]])]
+    (fn [id]
+      [:div.strava-activity-gear
+       {:on-mouse-enter #(reset! hovered? true)
+        :on-mouse-leave #(reset! hovered? false)}
+       (map #(vec [:span %])
+            (string/split (get-in @gear [:name])
+                          #" - "))
+       (when @hovered?
+         (let [info @(rf/subscribe [:strava/content [:gear-info id]])]
+           [:div.strava-activity-gear-popup.strava-popup
+            {:style {:animation "fade-in 2.5s ease 1.0s forwards"}}
+            [:p [:span (:converted_distance @gear)] [:span "km"]]
+            [:p (:desc info)]
+            [ui/seen-merge "opacity extra-slow"
+             [:img {:src (:img info)
+                    :style {:width "100%"
+                            :margin-bottom "-0.275em"}}]]]))]))) ; no idea why this extra space at bottom...
+
 (defn activity-stats
   [activity details]
   [:<>
@@ -159,10 +181,7 @@
     {:style {:justify-content :space-between
              :font-size "90%"}}
     (into [:div.strava-activity-description]
-          (map #(vec [:p %]) (string/split-lines (:description details))))
-    [:div.strava-activity-gear
-     (:name (get @(rf/subscribe [:strava/content [:gear]])
-                 (:gear_id activity)))] ]
+          (map #(vec [:p %]) (string/split-lines (:description details))))]
    [:div.strava-activity-stats.flex
    
    [:div.flex
@@ -194,7 +213,8 @@
      (when (pos? (:kudos_count details))
        [kudos activity])]]
 
-   [activity-photo (:photos details)] ]])
+   [activity-photo (:photos details)] ]
+   [gear (:gear_id activity)]])
 
 
 (defn draw-graph

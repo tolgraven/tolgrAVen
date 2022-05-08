@@ -79,7 +79,13 @@
              :strava {:story "I used to be in really good shape, before stomach issues and multiple surgeries.
                               Cycling became my way back to fitness, and I've gone pretty much all in. Here you can follow my progress, or lack of it."
                       :background "img/strava-heatmap-new.jpg"
-                      :profile-url "https://www.strava.com/athletes/20725659"}
+                      :profile-url "https://www.strava.com/athletes/20725659"
+                      :gear-info {"b9423162" {:img "img/cargo.jpg"
+                                              :desc "A cargo bike from work, we have three or so. Usage is rare for me."}
+                                 "b8866753" {:img "img/growly.jpg"
+                                             :desc "My main bike these days. A carbon cyclocross with SRAM Force."}
+                                 "b8575793" {:img "img/speedy.jpg"
+                                             :desc "Where it all began. Endurance racer, maxed out with Di2 and deep carbon wheels."}}}
 
              :interlude [{:title "What does that mean?"
                           :caption "Stage light visualizer for the browser with custom shaders"

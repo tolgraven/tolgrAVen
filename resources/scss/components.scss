@@ -414,6 +414,18 @@ figcaption, .float-with-caption {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+@keyframes zoom-in-y {
+  from { transform: scaleY(0); }
+  to   { transform: none; }
+}
+@keyframes zoom-in-x {
+  from { transform: scaleX(0); }
+  to   { transform: none; }
+}
+@keyframes zoom-in {
+  from { transform: scale(0); }
+  to   { transform: none; }
+}
 @keyframes wiggle {
   from {
     transform: translateX(-0.7em);
