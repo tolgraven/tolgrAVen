@@ -91,8 +91,14 @@
      (into [:<>] (ln->br text)) ; or just fix :pre css lol
      [:br]
      [:div.buttons
-      (for [[text id] buttons] ^{:key (str "intro-button-" id)}
-        [ui/button text id :link id :bg-div-class "blur-bg"])]])))
+      (for [[text what] buttons] ^{:key (str "intro-button-" text)}
+        [:button
+          {:on-click (when (vector? what)
+                        #(rf/dispatch what)) }
+          [:div {:class "blur-bg"}]
+          (if (string? what)
+            [:a {:href what} text]
+            [:label text])])]])))
 
 
 (defn ui-interlude "Banner across with some image or video or w/e

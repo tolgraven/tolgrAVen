@@ -76,7 +76,8 @@
               :left "50%" :top "38%"}}]
     
     [:a {:href @(rf/subscribe [:href :blog])}
-     [:button.blog-link-btn.noborder
+     [:button.blog-link-btn.noborder.nomargin
+      {:title "My blog"}
       [:i.fa.fa-pen-fancy]]]
     [ui/user-btn]
     [:label.burger {:for "nav-menu-open"}]]
@@ -178,14 +179,18 @@
   (let [show-mail-form? @(rf/subscribe [:state [:contact-form :show?]])]
     [:div
      [contact-form-popup]
-     [:h4 [:button.nomargin.nopadding.bottomborder
-           {:on-click #(rf/dispatch (if show-mail-form? [:contact/close] [:contact/open]))}
-           "Contact"]
+     [:h4 
+      [:span [:a {:href (str "mailto:" email)
+                  :style {:font-size "85%"}}
+              email]]
       [:span {:style {:color "var(--fg-6)"}}
        " | "]
-      [:a {:href (str "mailto:" email)
-           :style {:font-size "80%"}}
-       email]]]))
+      [:button.nomargin.nopadding.noborder
+           {:title "Contact us by form"
+            :on-click #(rf/dispatch (if show-mail-form? [:contact/close] [:contact/open]))
+            :style {:color "var(--fg-5)"}}
+           [:i.fas.fa-envelope]]]]))
+            
 
 
 (defn footer "Might want to bail on left/middle/right just push whatever. do the current ids matter?"

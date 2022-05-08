@@ -33,6 +33,7 @@
                             So many roads, yet I'm determined to track most of them halfway down.
                             There's only one way to find out."
                      :buttons  [["Check my CV"        "/cv"]
+                                ["Contact me"         [:state [:contact-form :show?] true]]
                                 ["Read my thoughts"   "/blog"]]
                      :bg [{:src "img/foggy-shit-small.jpg" :alt "Purple enthusiast"}
                           {:src "img/live-session-small.jpg" :alt "Ableton Live"}
@@ -45,7 +46,7 @@
                           ["Stage"    "lightbulb"  ["Event production" "Concert" "Club" "Automation" "Retrofitting"]]
                           ["Design"   "joint"      ["Websites" "Logos" "Brand colors"]]
                           ["Software" "code"       ["Open source" "Bespoke projects" "Rapid prototyping" "From (cl)JS to C++"]]
-                          ["Web"      "laptop"     ["Want a site like this?" "Small or large projects" "my stack runs fulleth"]]]
+                          ["Web"      "laptop"     ["Want a site like this?" "Small or large projects" "My stack runs fulleth"]]]
                          :bg {:src "img/vim-code-small.jpg" :alt "neovim editor"}
                          :caption "neovim"}
 

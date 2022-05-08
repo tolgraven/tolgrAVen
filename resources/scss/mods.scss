@@ -291,7 +291,7 @@
   top: 0; left: 0;
   /* pointer-events: none; */
   width: 100%;
-  z-index: 0;
+  z-index: -1;
   height: 100%;
   opacity: 0.6;
   backdrop-filter: blur(2rem) brightness(110%);
