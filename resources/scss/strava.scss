@@ -218,8 +218,13 @@
           }
 
           .strava-activity-laps {
+            display: flex;
+            justify-content: space-between;
+            
             .strava-activity-lap {
-              margin-bottom: 0.5em;
+              flex: 1 0 auto;
+              margin-right: var(--space);
+              // margin-bottom: 0.5em;
             }
           }
 
