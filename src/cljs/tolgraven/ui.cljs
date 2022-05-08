@@ -38,8 +38,9 @@
         [:section.component-failed
           [:h2 "Component exception"]
           [:p (name category)]
-          [:pre (-> @exception :info pr-str pprint/pprint)]
-          [:pre (-> @exception :error pr-str pprint/pprint)]
+          [:pre {:style {:color "var(--red)"}}
+           (-> @exception :info ex-message)]
+          [:pre (-> state str pprint/pprint with-out-str (string/escape {\" ""}))]
           [:div
            [:button {:on-click #(rf/dispatch [:exception [category] nil])}
             "Attempt reload"]]])))})))
