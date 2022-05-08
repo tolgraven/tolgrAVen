@@ -153,7 +153,6 @@
   padding: 0;
   margin: 0;
   z-index: 10;
-  // position: absolute;
 }
 .carousel-prev-btn, .carousel-next-btn {
   position: absolute;
@@ -168,21 +167,20 @@
 
 .carousel-idxs {
   position: absolute;
-  // bottom: var(--space);
-  bottom: 0;
+  bottom: var(--space);
   display: flex;
   
   .carousel-idx { // idea use large index bobbles same bg blur as category bg, looks nice
     background: none;
     border-radius: 20%;
+    opacity: 70%;
 
     margin-right: 0.5rem;
-    font-size: 50%;
+    font-size: 0.8em;
 
     &.carousel-idx-current {
-      opacity: 80%;
-      font-size: 75%;
-      // transform: scale(1.2);
+      opacity: 100%;
+      font-size: 1.25em;
     }
   }
 }
@@ -190,42 +188,45 @@
   background-color: rgba(30, 30, 45, 0.8);
 }
 .carousel-items {
-  display: flex; // no point flex if controlling items individually anyways, or?
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  transform-style: preserve-3d;
-  transform-origin: center;
 
   li {
     transition: all 0.5s;
   }
 
   .carousel-item-min {
+    object-fit: cover;
     opacity: 0;
     position: absolute;
     top: 0;
     left: 0;
     z-index: -1;
-    transition: left 0.5s ease, opacity 0.1s ease;
+    transition: left 0.5s ease, opacity 0.5s ease;
+    width: 100%;
+    height: 100%;
+    display: none;
+
+    .media {
+      margin: 0;
+      width: unset;
+    }
   }
   .carousel-item-main {
     opacity: 100%;
     position: relative;
-    z-index: 10;
-    width: 100%;
-    height: 100%;
+    z-index: 5;
+    display: initial;
   }
   .carousel-item-prev, .carousel-item-next {
     position: absolute;
     opacity: 50%;
     z-index: -1;
+    display: initial;
   }
   .carousel-item-prev {
-    left: -120%;
+    left: -105%;
   }
   .carousel-item-next {
-    left: 120%;
+    left: 105%;
   }
 
   
