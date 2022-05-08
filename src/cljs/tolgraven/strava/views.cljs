@@ -160,19 +160,20 @@
       [:div.strava-activity-gear
        {:on-mouse-enter #(reset! hovered? true)
         :on-mouse-leave #(reset! hovered? false)}
-       (map #(vec [:span %])
-            (string/split (get-in @gear [:name])
-                          #" - "))
+       (let [[nickname desc] (string/split (get-in @gear [:name])
+                                           #" - ")]
+         [:<> [:span nickname] [:p desc]])
        (when @hovered?
          (let [info @(rf/subscribe [:strava/content [:gear-info id]])]
            [:div.strava-activity-gear-popup.strava-popup
             {:style {:animation "fade-in 2.5s ease 1.0s forwards"}}
-            [:p [:span (:converted_distance @gear)] [:span "km"]]
-            [:p (:desc info)]
-            [ui/seen-merge "opacity extra-slow"
-             [:img {:src (:img info)
-                    :style {:width "100%"
-                            :margin-bottom "-0.275em"}}]]]))]))) ; no idea why this extra space at bottom...
+            
+            [:div
+             {:style {:background-image (str "url(" (:img info) ")")
+                      :height "22em"
+                      :background-size "cover"}}
+             [:p [:span (:converted_distance @gear)] [:span "km"]]
+             [:p (:desc info)]]]))])))
 
 (defn activity-stats
   [activity details]

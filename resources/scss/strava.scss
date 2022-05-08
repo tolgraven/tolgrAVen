@@ -10,8 +10,8 @@
 .strava {
   --activity-details-height: 24em;
   --strava-color: hsl(18, 98%, 50%);
-  --strava-color-muted: hsl(18, 58%, 50%);
-  --strava-color-alpha: hsla(18, 58%, 50%, 0.3);
+  --strava-color-muted: hsl(18, 48%, 50%);
+  --strava-color-alpha: hsla(18, 58%, 50%, 0.5);
   
   color: var(--light-3); // dark background so cant have fg as color, only light
 
@@ -240,12 +240,28 @@
                 color: var(--light-2);
               }
             }
-            p {
-              padding: 0.4em;
-            }
-            .strava-popup {
-              padding: 0;
-              opacity: 0;
+
+            .strava-activity-gear-popup {
+              p {
+                padding: 0.4em;
+
+                &:last-of-type {
+                  position: absolute;
+                  bottom: 0;
+                  background-color: var(--strava-color-alpha);
+                  color: var(--fg-1);
+                  font-size: 90%;
+
+                }
+              }
+              
+              &.strava-popup {
+                padding: 0;
+                opacity: 0;
+                left: 10%;
+                font-size: 90%;
+                width: 200%;
+              }
             }
           }
         }
@@ -386,7 +402,7 @@
 
 .strava-popup {
   position: absolute;
-  bottom: var(--space);
+  bottom: 1.5em; // dont use space here, just want it above origin line yeah
   left: 20%;
   min-height: 2.5em;
   min-width: 8em;
@@ -396,7 +412,7 @@
   background: linear-gradient(rgba(30, 30, 30, 0.85), rgba(100, 40, 1, 0.85));
   backdrop-filter: blur(0.25rem);
   box-shadow: 0px 0px 19px 10px rgba(25, 26, 26, 0.2);
-  border: var(--line-width-sm) solid #fc4c02;
+  border: var(--line-width-sm) solid var(--strava-color-muted);
 }
 
 .strava-award {
