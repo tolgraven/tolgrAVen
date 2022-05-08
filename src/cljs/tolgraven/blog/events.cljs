@@ -190,7 +190,8 @@
                          :seq-id (inc sibling-count)
                          :user user-id ;todo how auth this?
                          :score 0})]
-       {:dispatch [:blog/comment path comment]})))
+       {:dispatch-n [[:blog/comment path comment]
+                     [:blog/expand-comment-thread path true]]})))
 
 
 (rf/reg-event-fx :blog/comment-vote [debug] ;TODO def sub firestore on-snapshot just because (plus for general comments as well)
