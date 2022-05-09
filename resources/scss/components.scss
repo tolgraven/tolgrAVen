@@ -679,10 +679,10 @@ figcaption, .float-with-caption {
 
 .contact-form-popup {
   position: fixed;
-  width: calc(100% - 2 * var(--space-sides));
+  width: calc(100% - 2 * var(--space-sides) - 2 * var(--line-width-vert));
   max-height: 0%;
   opacity: 0%;
-  left: var(--space-sides);
+  left: calc(var(--space-sides) + var(--line-width-vert));
   bottom: 0;
   overflow: hidden;
 
@@ -691,7 +691,12 @@ figcaption, .float-with-caption {
   background: linear-gradient(180deg, rgba(65, 20, 160, 0.9),
                                       rgba(80, 20, 200, 0.8) 50%,
                                       rgba(30, 10, 120, 0.66));
+  backdrop-filter: blur(3px);
+  box-shadow: 0px 0px 25px 3px rgba(150, 150, 250, 0.30);
                                     
+  input, textarea {
+    opacity: 85%;
+  }
                                     
   > h2 {
     text-decoration-line: underline;
@@ -713,7 +718,7 @@ figcaption, .float-with-caption {
   }
 
   .contact-form-form {
-    margin-top: var(--space-lg);
+    margin-top: var(--space);
     overflow: hidden;
     transition: all 0.5s ease;
 

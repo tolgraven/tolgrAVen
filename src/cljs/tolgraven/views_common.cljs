@@ -137,7 +137,6 @@
            [ui/close #(rf/dispatch [:contact/close])]
            [:h2 "Get in touch"]
            [:p "Whether for work, collaboration or something else, I'll do my best to accomodate you."]
-           [:br]
            (when sent?
              [:div
               [:br] [:br]
