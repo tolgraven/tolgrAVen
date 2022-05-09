@@ -126,7 +126,8 @@
   (let [inited? (r/atom nil)]
     (fn []
       (let [{:keys [show? sent? closing?]} @(rf/subscribe [:state [:contact-form]])
-            loading? (rf/subscribe [:loading :post])]
+            loading? (rf/subscribe [:loading :post])
+            contents (rf/subscribe [:form-field [:contact]])]
         (when show?
           [:section.contact-form-popup
            {:class (str
@@ -170,7 +171,8 @@
              :height "15em"
              :path [:form-field [:contact :message]]]]
             [:button
-             {:disable (when true "true")
+             {:disabled (or (string/blank? (:email @contents))
+                            (string/blank? (:message @contents)))
               :on-click #(rf/dispatch [:contact/send-request])}
              "Submit"]]])))))
 

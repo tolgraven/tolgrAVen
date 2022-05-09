@@ -191,7 +191,6 @@ button {
   --around: calc(0.4 * var(--space)) calc(0.4 * var(--space-lg));
   padding: var(--around);
   margin: var(--around);
-  // background: hsla(var(--hue-1), 7%, var(--lum-bg-2), 0.35);
   background: transparent;
   color: var(--fg-2);
   border: var(--line-width-md) solid var(--line-color);
@@ -219,6 +218,11 @@ button {
       transition: transform 1.0s;
       transform: none;
     }
+  }
+  &:disabled {
+    color: var(--fg-6);
+    text-shadow: unset;
+    opacity: 90%;
   }
 
   label {
