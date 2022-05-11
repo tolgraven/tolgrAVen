@@ -118,6 +118,10 @@ img.img-icon {
       border-radius: 50%;
     }
   }
+
+  > div {
+    flex: 1 0 auto;
+  }
 }
 .footer-icons {
   text-align: end;
