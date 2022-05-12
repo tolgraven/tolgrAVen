@@ -12,7 +12,7 @@
 
 (rf/reg-cofx :user/gen-color
              #(assoc % :bg-color (util/css-str "hsla"
-                                               (rand 360)
+                                               (str (rand 360) "deg")
                                                (+ 0.1 (rand 0.2))
                                                (+ 0.2 (rand 0.1))
                                                0.5)))
