@@ -264,6 +264,13 @@ textarea, input, .form-control {
   margin-bottom: 0.4em;
   border: 1px solid var(--bg-5);
 }
+textarea {
+  font-size: 1em;
+}
+label {
+  margin-left: 0.6em;
+  margin-right: 0.6em;
+}
 
 
 * { //kill scrollbar. should rather mod it tho...
