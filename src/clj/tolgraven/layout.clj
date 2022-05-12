@@ -9,6 +9,7 @@
     [ring.util.anti-forgery :refer [anti-forgery-field]]
     [ring.middleware.anti-forgery :refer [*anti-forgery-token*]]
     [ring.util.response]
+    [tolgraven.config :refer [env]]
     [optimus.link :as olink]
     [optimus.html :as ohtml]))
 
@@ -107,20 +108,22 @@
    ;{:src "https://www.gstatic.com/firebasejs/8.0.0/firebase-analytics.js"}
    {:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}])
 
-(def google-analytics
-  "<script async>
-(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+(defonce google-analytics
+  (when (:prod env)
+    "<!-- Global site tag (gtag.js) - Google Analytics -->
+   <script async src=\"https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V\"></script>
+   <script>
+   window.dataLayer = window.dataLayer || [];
+   function gtag(){dataLayer.push(arguments);}
+                   gtag('js', new Date());
 
-ga('create', 'UA-XXXXX-Y', 'auto');
-ga('send', 'pageview');
-</script>")
+                   gtag('config', 'G-Y8H6RLZX3V');
+                   </script>"))
 
 (defn render-home
   [request]
   (-> (str "<!DOCTYPE html>\n"
+           google-analytics
            (hiccup/html (home
                          request
                          ; :loading-content (loading-spinner "Stand by for tolgrAVen...")
@@ -132,8 +135,7 @@ ga('send', 'pageview');
                          ; :css-pre css-pre
                          ; :js-pre js-pre
                          ; :img-pre img-pre
-                         :anti-forgery *anti-forgery-token*))
-           google-analytics)
+                         :anti-forgery *anti-forgery-token*)))
       ok
       (content-type "text/html; charset=utf-8")))
 
