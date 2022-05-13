@@ -57,7 +57,7 @@
       [:h5 "© 2020-2022"]]]]])
 
 (defn- home
-  [request & {:keys [loading-content title description css-paths js-paths css-pre js-pre img-pre anti-forgery]}]
+  [request & {:keys [loading-content title description css-paths js-paths js-raw css-pre js-pre img-pre anti-forgery]}]
   [:html {:lang "en"}
    [:head
     [:meta {:charset "UTF-8"}]
@@ -82,7 +82,9 @@
     (for [path js-pre]
       (js-preload path))
     (for [path js-paths]
-      (js path))]
+      (js path))
+    (for [script js-raw]
+      [:script {:type "text/javascript"} script])]
     
    [:body {:class "container themable framing-shadow sticky-footer-container"}
     
@@ -104,34 +106,28 @@
   ["img/foggy-shit-small.jpg"])
 
 (def js-paths
-  [;{:src "https://www.gstatic.com/firebasejs/8.0.0/firebase-app.js"}
-   ;{:src "https://www.gstatic.com/firebasejs/8.0.0/firebase-analytics.js"}
-   {:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}])
+  [{:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
+   {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"}])
 
-(defonce google-analytics
+(def google-analytics
   (when-not (:dev env)
-    "<!-- Global site tag (gtag.js) - Google Analytics -->
-   <script async src=\"https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V\"></script>
-   <script>
-   window.dataLayer = window.dataLayer || [];
-   function gtag(){dataLayer.push(arguments);}
-                   gtag('js', new Date());
+    ["window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
 
-                   gtag('config', 'G-Y8H6RLZX3V');
-                   </script>"))
+      gtag('config', 'G-Y8H6RLZX3V');"]))
 
 (defn render-home
   [request]
   (-> (str "<!DOCTYPE html>\n"
-           google-analytics
            (hiccup/html (home
                          request
-                         ; :loading-content (loading-spinner "Stand by for tolgrAVen...")
                          :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"])
                          :title "tolgrAVen"
-                         :description "A website by Joen Tolgraven"
+                         :description "tolgrAVen audiovisual"
                          :css-paths css-paths
                          :js-paths js-paths
+                         :js-raw google-analytics
                          ; :css-pre css-pre
                          ; :js-pre js-pre
                          ; :img-pre img-pre
