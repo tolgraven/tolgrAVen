@@ -109,7 +109,7 @@
    {:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}])
 
 (defonce google-analytics
-  (when (:prod env)
+  (when-not (:dev env)
     "<!-- Global site tag (gtag.js) - Google Analytics -->
    <script async src=\"https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V\"></script>
    <script>
