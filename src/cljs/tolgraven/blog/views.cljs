@@ -37,7 +37,7 @@
      [:span ts]
      (when-not (= 0 score)
        [:span (cond (pos? score) "+"
-                    (neg? score) "-")
+                    (neg? score) "")
         score])])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
 
 (defn add-comment-btn "Seemed like a good idea to swap button for input field when pressed but yeah, no..."
