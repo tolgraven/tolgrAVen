@@ -148,14 +148,14 @@
 (rf/reg-event-fx :blog/comment [debug]
  (fn [{:keys [db]} [_ path comment]]
    (let [id (:id comment)
-         user-id (-> comment :user)
-         full-path (assemble-path [:blog :posts (first path)]
+         user-id (-> comment :user keyword)
+         full-path (assemble-path [:blog :posts (keyword (str (first path)))]
                                   (concat (rest path) [id]))
          user-comments (concat (get-in db [:fb/users user-id :comments])
-                               [id])]
+                               [id])] ; append to list of user comment ids
        {:db (-> db
                 (assoc-in full-path comment) ;XXX should only store id
-                (assoc-in [:blog :comments id] comment) ;main comments store
+                (assoc-in [:blog :comments id] comment) ;main comments store, should it be (keyword id)?
                 (update-in [:fb/users user-id] merge
                            {:comments user-comments
                             :comment-count (count user-comments)})) ; or just, inc it..
@@ -180,7 +180,7 @@
  (fn [{:keys [db now id]} [_ path comment]]
    (let [id (str (-> id :id :comment) "-" (-> id :uuid))
          user-id (get-in db [:state :user])
-         full-path (assemble-path [:blog :posts (first path)]
+         full-path (assemble-path [:blog :posts (keyword (str (first path)))]
                                   (concat (rest path) [id]))
          sibling-count (count (get-in db full-path))
          comment (merge comment
