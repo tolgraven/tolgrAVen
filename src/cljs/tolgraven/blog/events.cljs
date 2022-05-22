@@ -31,8 +31,7 @@
 
 (rf/reg-event-fx :blog/set-content []
  (fn [{:keys [db]} [_ category response]]
-   {:db (assoc-in db [:blog category]
-                  (util/normalize-firestore response))}))
+   {:db (assoc-in db [:blog category] response)}))
 
 (rf/reg-event-db :blog/state [;debug
                               (path [:state :blog])]

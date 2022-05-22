@@ -301,17 +301,13 @@
                  :path-collection)]
       {:firestore/get (merge {kind path
                               :expose-objects true
-                              ; :on-success (apply gen-wrapped-event-fx
-                              ;                    :store :on-success
-                              ;                    (first on-success) (rest on-success))}
-                              ; :on-success [:store/on-success on-success]} ;TODO mod firestore lib to accept vectors/wrapping. goddamn
-                              :on-success on-success} ;TODO mod firestore lib to accept vectors/wrapping. goddamn
+                              :on-success [:store/on-success on-success]} ;TODO mod firestore lib to accept vectors/wrapping. goddamn
                              (when on-failure
                                {:on-failure on-failure}))})))
 
 (rf/reg-event-fx :store/on-success ; strip metadata etc
   (fn [_ [_ on-success data]]
-    {:dispatch [on-success (util/normalize-firestore data)]}))
+    {:dispatch (conj on-success (util/normalize-firestore-general data))}))
 
 (rf/reg-event-fx :store/on-success-wrapper
   (fn [_ [_ ]]))

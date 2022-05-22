@@ -26,7 +26,8 @@
 
 (defn normalize-firestore-general "Reformat data for our app-db storage. Fix so compat w blog-posts..."
   [response]
-  (let [docs (or (:docs response) response)
+  (let [docs (as-> (or (:docs response) response) $
+                   (if (vector? $) $ [$]))
         ks (reduce (fn [ks v]
                      (conj ks (-> v :id keyword)))
                    []

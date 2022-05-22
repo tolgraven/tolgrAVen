@@ -23,8 +23,7 @@
 
 (rf/reg-event-fx :strava/store-client   [(rf/inject-cofx :now)]
   (fn [{:keys [db now]} [_ data]]
-    (let [data (util/normalize-firestore-general data) ; TEMP. FIGURE OUT AND FIX THE WHOLE THING INSTEAD
-          expired? (neg? (- (-> data :auth :expires_at) (/ now 1000)))]
+    (let [expired? (neg? (- (-> data :auth :expires_at) (/ now 1000)))]
       {:db (assoc-in db [:strava] data)
        :dispatch-n [(when-not expired?
                       [:strava/fetch]) ;XXX wont work if need refresh.

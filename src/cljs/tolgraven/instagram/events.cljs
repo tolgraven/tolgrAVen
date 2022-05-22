@@ -18,16 +18,15 @@
 
 (rf/reg-event-fx :instagram/store-client [debug]
  (fn [{:keys [db]} [_ data]]
-   (let [data (util/normalize-firestore-general data)]
-     {:db (-> db (assoc-in [:instagram] data)
-                 (assoc-in [:content :instagram :posts] (:posts data)))
+   {:db (-> db (assoc-in [:instagram] data)
+               (assoc-in [:content :instagram :posts] (:posts data)))
       :dispatch
       [:http/get {:uri "https://graph.instagram.com/me/media"
                   :url-params {:access_token (get-in data [:auth :access_token])
                                :fields "id"}
                   :response-format (ajax/json-response-format {:keywords? true})}
        [:instagram/fetch]
-       [:instagram/error]]})))
+       [:instagram/error]]}))
 
 (rf/reg-event-fx :instagram/error
  (fn [{:keys [db]} [_ error]]
@@ -80,9 +79,8 @@
 
 (rf/reg-event-fx :instagram/store-token ;needs refreshing every 60 days so fix dis sometime
  (fn [{:keys [db]} [_ data]]
-   (let [data (util/normalize-firestore-general data)]
-     {:db (assoc-in db [:instagram :auth :access_token] (get-in data [:auth :access_token]))
-      :dispatch [:store-> [:instagram :auth :access_token] (get-in data [:auth :access_token])] })))
+   {:db (assoc-in db [:instagram :auth :access_token] (get-in data [:access_token]))
+    :dispatch [:store-> [:instagram :auth :access_token] (get-in data [:access_token])] }))
 
 (rf/reg-event-fx :instagram/try-authorize [debug] ;get token from scratch...
  (fn [{:keys [db]} [_ _]]
@@ -91,14 +89,13 @@
 
 (rf/reg-event-fx :instagram/new-authorize [debug] ;get token from scratch...
  (fn [{:keys [db]} [_ secrets]]
-   (let [secrets (util/normalize-firestore-general secrets)] ;btw should have interceptor for this!
-     {:db (assoc db :instagram secrets)
-      :dispatch [:redirect-to-uri-well-actually-no-popup-a-link
-                 {:uri "https://www.instagram.com/oauth/authorize"
-                  :url-params {:client_id (:client_id secrets)
-                               :redirect_uri "https://tolgraven.se"
-                               :scope "user_profile,user_media"
-                               :response_type "code"}}]})))
+   {:db (assoc db :instagram secrets)
+    :dispatch [:redirect-to-uri-well-actually-no-popup-a-link
+               {:uri "https://www.instagram.com/oauth/authorize"
+                :url-params {:client_id (:client_id secrets)
+                             :redirect_uri "https://tolgraven.se"
+                             :scope "user_profile,user_media"
+                             :response_type "code"}}]}))
 
 ; ^ not how it works we need to redirect to that url then redirects back and capture the query
 ; so would change redir url to like tolgraven.se/redir/instagram and have controller there
