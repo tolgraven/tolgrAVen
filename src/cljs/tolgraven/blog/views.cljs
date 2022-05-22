@@ -7,8 +7,6 @@
    [tolgraven.util :as util :refer [at]]
    [tolgraven.views-common :as common]
    [tolgraven.ui :as ui]))
-;; should be a rather large overlapping functionality post blog/post comment
-;; will need logged in user and all dis jazz. But still important differences so urgh
 
 (defn preview-comment "Live md preview I guess. Prob best just ratom not db thing..."
   [model]
@@ -91,61 +89,75 @@
        [:section.blog-comment.blog-comment-collapsed-placeholder
         (util/pluralize (count comments) " hidden reply")]])))
 
-(defn comment-post "A comment, and any children."
-  [path {:keys [id seq-id ts user title text score comments] :as post}]
-  (let [active-user @(rf/subscribe [:user/active-user])
-        user @(rf/subscribe [:user/user user])
-        expanded? (rf/subscribe [:comments/thread-expanded? path])
-        vote-btn (fn [vote]
-                   (when active-user
-                     (let [voted @(rf/subscribe [:blog/state [:voted path]])] ; obviously needs to be firestore sub. but also local debounce
-                       [:button.blog-btn.blog-comment-vote-btn
-                        {:class (if (= vote voted)
-                                  "noborder"
-                                  (case vote :up "topborder" :down "bottomborder"))
-                         :disabled (when (= vote voted) true)
-                         :on-click #(rf/dispatch [:blog/comment-vote 
-                                                  user active-user path vote])}
-                        (case vote :up "+" :down "-")])))]
-    [:<>
-      [:div.flex.blog-comment-around
-       [:div.blog-comment-border
-        {:style {:cursor (if @expanded? "zoom-out" (when comments "zoom-in"))
-                 :background-color (:bg-color user)} ; somehow doesnt fly, why?
-         :on-click #(when comments (rf/dispatch [:blog/expand-comment-thread path
-                                                 (not @expanded?)]))}]
-     [:section.blog-comment
-      [:div
-       [ui/user-avatar user]
-       
-       [:div.blog-comment-main
-        [:h4.blog-comment-title title]
-        [posted-by id user ts score]
-        (when (not= active-user user)
-          [:span.blog-comment-vote [vote-btn :up] [vote-btn :down]])
-        [:div.blog-comment-text
-         {:style {:filter (when (neg? score)
-                            (str "brightness(calc(1 + "
-                                 (max -0.7 (* 0.1 score)) "))"))}}
-         [ui/md->div text]]]
-       
-       [:div.blog-comment-actions
-        (when (= active-user user)
-          [edit-comment (conj path id)])
-        (when active-user
-          [add-comment-btn path :reply])]]]] 
-     [add-comment path]
-     (if comments ;replies
-       [:div.blog-comment-reply-outer
-        [:div.blog-comment-reply
-         {:class (when-not @expanded?
-                   "collapsed")}
-         (doall (for [[k post] (into (sorted-map) comments)]
-                  ^{:key (get-id-str (conj path (:id post)))}
-                  [ui/appear-anon "slide-behind"
-                   [comment-post (conj path (:id post)) post]]))]
-        (when-not @expanded?
-          [collapsed-reply-view path id comments])])]))
+(defn comment-post "A comment, and any children, rendered by recursion, deferring doing much if optional arg visible? is false"
+  [path {:keys [id seq-id ts user title text score comments] :as post} & [visible?]]
+  (let [showing? (r/atom false)] ; start false to avoid even temp initing what's not visible. Bit confusing since will usually be immediately reset to true.
+    (fn [path {:keys [id seq-id ts user title text score comments] :as post} & [visible?]]
+      (if (and visible? (not @visible?))
+        (js/setTimeout (fn [] (reset! showing? false)) 1000) ; if previously visible, only remove from dom/subs once anim complete
+        (reset! showing? true))
+      
+      (when @showing? ; also means could defer fetches for like immensely big ass threads. first needs rework to use only id from blog not entire body... much needed anyways
+        (let [active-user @(rf/subscribe [:user/active-user])
+              user @(rf/subscribe [:user/user user])
+              expanded? (rf/subscribe [:comments/thread-expanded? path])
+              vote-btn (fn [vote]
+                         (when active-user
+                           (let [voted @(rf/subscribe [:blog/state [:voted path]])] ; obviously needs to be firestore sub. but also local debounce
+                             [:button.blog-btn.blog-comment-vote-btn
+                              {:class (if (= vote voted)
+                                        "noborder"
+                                        (case vote :up "topborder" :down "bottomborder"))
+                               :disabled (when (= vote voted) true)
+                               :on-click #(rf/dispatch [:blog/comment-vote 
+                                                        user active-user path vote])}
+                              (case vote :up "+" :down "-")])))]
+          [:<>
+           [:div.flex.blog-comment-around
+            [:div.blog-comment-border
+             {:style {:cursor (if (and @expanded? comments)
+                                "zoom-out"
+                                (when comments "zoom-in"))
+                      :background-color (:bg-color user)} ; somehow doesnt fly, why? missing a deg in gen
+              :on-click #(when comments
+                           (rf/dispatch [:blog/expand-comment-thread path
+                                         (not @expanded?)]))}]
+            [:section.blog-comment
+             [:div
+              [ui/user-avatar user]
+
+              [:div.blog-comment-main
+               [:h4.blog-comment-title title]
+               [posted-by id user ts score]
+               (when (not= active-user user)
+                 [:span.blog-comment-vote [vote-btn :up]
+                                          [vote-btn :down]])
+               [:div.blog-comment-text
+                {:style {:filter (when (neg? score)
+                                   (str "brightness(calc(1 + "
+                                        (max -0.7 (* 0.1 score)) "))"))}}
+                [ui/md->div text]]]
+
+              [:div.blog-comment-actions
+               (when (= active-user user)
+                 [edit-comment (conj path id)])
+               (when active-user
+                 [add-comment-btn path :reply])]]]] 
+           (when (and active-user
+                      @(rf/subscribe [:comments/adding? path]))
+             [add-comment path])
+
+           (when comments ;replies
+             [:div.blog-comment-reply-outer
+              [:div.blog-comment-reply
+               {:class (when-not @expanded?
+                         "collapsed")}
+               (doall (for [[k post] (into (sorted-map) comments)]
+                        ^{:key (get-id-str (conj path (:id post)))}
+                        [ui/appear-anon "slide-behind"
+                         [comment-post (conj path (:id post)) post expanded?]]))]
+              (when-not @expanded?
+                [collapsed-reply-view path id comments])])])))))
 
 
 (defn comments-section "Comments section!"
