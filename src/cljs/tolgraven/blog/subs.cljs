@@ -156,4 +156,4 @@
 (rf/reg-sub :comments/adding?
  :<- [:blog/state [:adding-comment]] 
  (fn [adding [_ path]]
-   (get adding path)))
+   (get-in adding path)))
