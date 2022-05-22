@@ -12,15 +12,15 @@
 (rf/reg-sub :blog/post-feed
  :<- [:blog [:posts]]
  (fn [posts [_ path]]
-  (some->> (keys posts) ;XXX temp, fetch more sanely (for learning not bc needed)
-           sort
-           reverse
-           (map posts))))
+   (some->> posts
+            vals
+            (sort-by :ts)
+            reverse)))
 
 (rf/reg-sub :blog/post
  :<- [:blog [:posts]]
  (fn [posts [_ id]]
-  (get posts id)))
+  (get posts id (get posts (keyword (str id))))))
 
 (rf/reg-sub :blog/post-tags
  (fn [[_ id]]
@@ -107,12 +107,14 @@
              idx)
         (catch js/Error _))))) ;usually throws on first load saying idx not a number...
 
-(rf/reg-sub :comments/all
- :<- [:blog [:comments]]
+(rf/reg-sub :comments/all ;literally should not exist though
+ :<- [:<-store-2 :blog-comments]
  (fn [comments [_ _]]
    comments))
 
-(rf/reg-sub :comments/for-user ; tho w firestore can at least query so do that hah
+;; XXX make subcollections for comments.
+;; those can be grouped and searched so can stick to nested, no flat extra bs?
+(rf/reg-sub :comments/for-user
  (fn [[_ user-id]]
    [(rf/subscribe [:comments/all])
     (rf/subscribe [:user/user user-id])])
