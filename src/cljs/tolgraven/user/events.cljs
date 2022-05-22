@@ -147,8 +147,8 @@
 
 (rf/reg-event-fx :user/save-avatar
  (fn [{:keys [db]} [_ filename]]
-   {:dispatch [[:user/set-field (get-in db [:state :user])
-                :avatar (str "img/uploads/" filename)]]}))
+   {:dispatch [:user/set-field (get-in db [:state :user])
+               :avatar (str "img/uploads/" filename)]}))
 
 (rf/reg-event-fx :user/set-field
  (fn [{:keys [db]} [_ user field value]]
