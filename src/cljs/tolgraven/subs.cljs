@@ -53,10 +53,30 @@
       (let [look-in (if (even? (count coll-docs))
                       {:path-document coll-docs}
                       {:path-collection coll-docs})]
-        (-> @(rf/subscribe [:firestore/on-snapshot look-in])
-            :data
-            (walk/keywordize-keys))))))
+        (some-> (rf/subscribe [:firestore/on-snapshot look-in])
+                deref
+                :data
+                (walk/keywordize-keys))))))
 
+(rf/reg-sub :<-store-2 ; newer version which mostly works but not quite everywhere, differing in how keys are handled...
+  :<- [:booted? :firebase]
+  (fn [initialized [_ & coll-docs]]
+    (when initialized
+      (let [look-in (if (even? (count coll-docs))
+                      {:path-document (vec coll-docs)}
+                      {:path-collection (vec coll-docs)})]
+        #_(rf/subscribe [:firestore/on-snapshot look-in])
+        (some-> (rf/subscribe [:firestore/on-snapshot look-in])
+                deref
+                util/normalize-firestore-general)))))
+
+(rf/reg-sub :<-store-q
+  :<- [:booted? :firebase]
+  (fn [initialized [_ opts]]
+    (when initialized
+      (some-> (rf/subscribe [:firestore/on-snapshot opts])
+                deref
+                util/normalize-firestore-general))))
 
 (rf/reg-sub :header-text
  :<- [:state [:is-personal]]
