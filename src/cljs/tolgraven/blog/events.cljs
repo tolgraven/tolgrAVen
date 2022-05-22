@@ -178,7 +178,7 @@
                                     (rf/inject-cofx :now)
                                     (rf/inject-cofx :gen-id [:comment])]
  (fn [{:keys [db now id]} [_ path comment]]
-   (let [id (-> id :id :comment)
+   (let [id (str (-> id :id :comment) "-" (-> id :uuid))
          user-id (get-in db [:state :user])
          full-path (assemble-path [:blog :posts (first path)]
                                   (concat (rest path) [id]))
