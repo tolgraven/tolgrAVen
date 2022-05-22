@@ -10,7 +10,7 @@
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
 
-(rf/reg-event-fx :fb/finish-sign-in [debug
+(rf/reg-event-fx :fb/setup-new-user [debug
                                      (rf/inject-cofx :user/gen-color)
                                      (rf/inject-cofx :gen-id [:user])]
  (fn [{:keys [db bg-color id]} [_ user]]
@@ -22,34 +22,38 @@
                    :comment-count 0
                    :karma 0
                    :seq-id (-> id :id :user)} ;well not proper it runs each time...
-         merged (merge defaults (get-in db [:fb/users (:uid user)]))]
-     {:db (assoc-in db [:fb/users (:uid user)] merged)
-      :dispatch [:store-> [:users (:uid user)] merged]}))) ; problem: overwrites any changed values on login. so def need fetch all users on boot...
+         merged (merge defaults user)]
+     {:db (assoc-in db [:state :active-user] merged)
+      :dispatch [:store-> [:users (:uid user)] merged]})))
 
 (rf/reg-event-fx :fb/set-user [debug]
+  (fn [{:keys [db]} [_ fb-user]]
+    (when (and fb-user (some? (:uid fb-user))) ; sometimes called with empty map...
+     {:db (assoc-in db [:state :firebase :user] fb-user)
+      :dispatch-n [[:<-store [:users (:uid fb-user)]
+                    [:fb/handle-login]]]})))
+
+(rf/reg-event-fx :fb/handle-login [debug]
   (fn [{:keys [db]} [_ user]]
-    (when (some? (:uid user)) ; sometimes called with empty map...
-     {:db (assoc-in db [:state :firebase :user] user)
-      :dispatch-n [[:user/login (:uid user)]]
-      :dispatch-later
-      {:ms 3000 ;ugly, but login event is dispatched so early in boot no time to receive updated user data from firestore...
-                ; ok-ish since defering only the storing part and not sign-in itself.. and may receive subs in meantime for user data
-                ; guess only really affects first time signer inner?
-                ; or with the boot fx lib could queue it up have it run after store-users
-                ; of course simply updating the user in firebase makes more sense ;)
-                ; prob extend re-frame-firebase for bunch of such extra things.
-                ; can call manually in meantime.
-       :dispatch [:fb/finish-sign-in user]}})))
+   (when-let [user (first (vals user))]
+     {:db (assoc-in db [:state :active-user] user)
+      :dispatch-n [(when (not (:seq-id user)) ; not "registered", lacks our keys(s)
+                     [:fb/setup-new-user user])
+                   (if (or (get-in db [:options :user :auto-open?])
+                           (not (:seq-id user))) ; not "registered", lacks our keys(s)
+                     [:user/request-page :admin]
+                     [:user/attempt-page :admin])
+                   [:user/login (:id user)]]})))
                    
 (rf/reg-event-fx :fb/fetch-users ; try find and fix bug in re-frame-firebase that causes this
   (fn [{:keys [db]} [_ user]]
-    {:firestore/get {:path-collection [:users]
-                     :on-success [:fb/store-users]}}))
+    {:dispatch
+      [:<-store [:users] [:fb/store-users]]}))
 
 (rf/reg-event-db :fb/store-users [debug]
   (fn [db [_ response]]
-    (assoc-in db [:fb/users]
-              (util/normalize-firestore response))))
+    (assoc-in db [:fb/users] response)))
+
 
 (rf/reg-event-fx :fb/create-user [debug]
  (fn [_ [_ email password]]
@@ -82,17 +86,20 @@
 
 
 (rf/reg-event-fx :user/login [debug]
-(fn [{:keys [db]} [_ user]]
-  (let [auto-open? (get-in db [:options :user :auto-open?])]
+(fn [{:keys [db]} [_ user-id]]
+  (let [auto-open? (get-in db [:options :user :auto-open?])] ;would also need to update url tho per current way of doing things, to keep consistent...
     (merge
-     {:db (assoc-in db [:state :user] user)}
-     (when auto-open?
-       {:dispatch [:user/open-ui :admin]})))))
+     {:db (assoc-in db [:state :user] user-id)}
+     (if auto-open?
+       {:dispatch [:user/request-open-ui]}
+       {:dispatch [:user/attempt-page :admin]})))))
 
 (rf/reg-event-fx :user/logout 
 (fn [{:keys [db]} [_ user]]
-  {:db (update-in db [:state] dissoc :user)
-   :dispatch [:user/close-ui]}))
+  {:db (-> db (update-in [:state] dissoc :user)
+              (update-in [:state] dissoc :active-user)
+              (update-in [:state :firebase] dissoc :user))
+   :dispatch [:user/request-close-ui]}))
 
 
 (rf/reg-event-fx :user/request-register [(path [:state])]
@@ -101,13 +108,20 @@
    {:dispatch-n [[:fb/create-user email password]
                  [:user/active-section :admin :force]]})))
 
-(rf/reg-event-fx :user/request-page
- (fn [{:keys [db]} [_ info]]
-   (let [user (get-in db [:state :user])]
+(rf/reg-event-fx :user/request-page ; go to userbox page, opening if not already
+ (fn [{:keys [db]} [_ ]]
+   (let [user (get-in db [:state :active-user])]
      {:dispatch (if user
                   [:user/active-section :admin :force]
                   [:user/active-section :login :force])})))
 
+(rf/reg-event-fx :user/attempt-page ; same as above but don't open unless already...
+ (fn [{:keys [db]} [_ ]]
+   (let [user (get-in db [:state :active-user])
+         user-section (get-in db [:state :user-section])]
+     {:dispatch (if user
+                  [:user/active-section :admin]
+                  [:user/active-section :login])})))
 
 (rf/reg-event-db :user/active-section
  (fn [db [_ v force?]]
@@ -132,6 +146,15 @@
                      :dispatch (if page
                                  [:user/active-section page :force]
                                  [:user/request-page])}}))
+
+(rf/reg-event-fx :user/request-close-ui ;just updates query like
+ (fn [{:keys [db]} [_ ]]
+   {:dispatch [:href/update-current {:query {:userBox "false"}}] }))
+
+(rf/reg-event-fx :user/request-open-ui ;same
+ (fn [{:keys [db]} [_ page]]
+   {:dispatch [:href/update-current {:query {:userBox "true"}}] }))
+
 
 (rf/reg-event-fx :user/upload-avatar ; save new avatar upload. So upload to server, get filename, use it to update user in db and store
  (fn [{:keys [db]} [_ file]] ;also inject active-user here, use for filename

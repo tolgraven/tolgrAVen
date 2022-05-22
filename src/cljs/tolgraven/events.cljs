@@ -88,6 +88,15 @@
   (fn [_ [_ url-key params query]]
     {:common/navigate-fx! [url-key params query]}))
 
+(rf/reg-event-fx :href/update-current
+  (fn [{:keys [db]} [_ {:keys [path query]}]]
+    (let [k (get-in db [:common/route :data :name])
+          p (get-in db [:common/route :parameters :path])
+          q (get-in db [:common/route :parameters :query])]
+      {:dispatch
+       [:common/navigate! k (merge p path) (merge q query)]})))
+
+
 (rf/reg-event-fx :history/popped
   (fn [{:keys [db]} [_ e]]
     (let [nav-action? true  #_(.-isNavigation e)] ; by fact we getting the event heh
