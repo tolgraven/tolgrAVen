@@ -156,4 +156,4 @@
 (rf/reg-sub :comments/adding?
  :<- [:blog/state [:adding-comment]] 
  (fn [adding [_ path]]
-   (get-in adding path)))
+   (get adding path))) ; entire path is the key, hence get not get-in
