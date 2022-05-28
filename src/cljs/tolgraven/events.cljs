@@ -426,13 +426,13 @@
  (fn [{:keys [ls]} [_ ls-path v]]
    {:ls (assoc-in ls ls-path v)}))
 
-(rf/reg-event-fx :ls/dissoc       [(rf/inject-cofx :ls)] ; keep localstorage reasonably clean...
+(rf/reg-event-fx :ls/dissoc       [(rf/inject-cofx :ls)] ; keep localstorage reasonably clean... doesn't appear to work!!
  (fn [{:keys [ls]} [_ ls-path]]
-   {:ls (update-in ls (butlast ls-path) dissoc (last ls-path))}))
+   {:ls (update-in ls (butlast ls-path) dissoc (last ls-path))})) ; investigate why won't take.
 
 (rf/reg-event-fx :ls/get-path   [(rf/inject-cofx :ls)]
  (fn [{:keys [db ls]} [_ ls-path db-path]] ;map of keys to paths I guess?
-   {:db (assoc-in db db-path (get-in ls ls-path)) }))
+   {:db (update-in db db-path merge (get-in ls ls-path)) }))
 
 (rf/reg-event-fx :cookie/show-notice   [(rf/inject-cofx :ls)]
  (fn [{:keys [db ls]} [_ ]] ;map of keys to paths I guess?
