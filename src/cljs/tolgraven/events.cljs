@@ -461,18 +461,19 @@
 (rf/reg-event-fx :hide-header-footer  [(rf/inject-cofx :css-var [:header-with-menu-height])
                                        (rf/inject-cofx :css-var [:header-height])
                                        (rf/inject-cofx :css-var [:footer-height])]
- (fn [{:keys [db css-var]} [_ hide?]]
-   (let [header-height (if hide?
+ (fn [{:keys [db css-var]} [_ hide-header? hide-footer?]]
+   (let [header-height (if hide-header?
                          "0rem"
                          (if (get-in db [:state :menu])
                             (:header-with-menu-height css-var)
                             (:header-height css-var)))
-         footer-height (if hide?
+         footer-height (if hide-footer?
                          "0rem"
                          (:footer-height css-var))]
-     {:db (assoc-in db [:state :hidden-header-footer] hide?)
+     {:db (-> db (assoc-in [:state :hidden :header] hide-header?)
+                 (assoc-in [:state :hidden :footer] hide-footer?))
       :dispatch-n [[:->css-var! "header-height-current" header-height]
-                   (when-not (get-in db [:state :scroll :at-bottom])
+                   (when-not (get-in db [:state :scroll :at-bottom]) ; wait what
                      [:->css-var! "footer-height-current" footer-height])]})))
 
 (rf/reg-event-fx :init/scroll-storage  [(rf/inject-cofx :ls)] ;fetch any existing values, setup listener to persist...

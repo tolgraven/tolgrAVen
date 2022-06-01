@@ -64,21 +64,23 @@
          past-top? (>= position (+ (util/rem-to-px (:header-height css-var))     ; distance from top to main is header-height + space-top above/below,
                                    (util/rem-to-px (:space-lg css-var))
                                    (* 2 (util/rem-to-px (:space-top css-var))))) ; + space-lg above main. but header + 2x space-top seems sufficient...
-         hidden? (get-in db [:state :hidden-header-footer])
+         hidden? (get-in db [:state :hidden :header])
          at-bottom? (>= position
                         (- height
                            (.-innerHeight js/window)
                            50
                            (util/rem-to-px (:footer-height-current css-var))))] ; will jump page so...
-    {:dispatch-n [(if (or (and hidden?
-                               (= direction :up))
-                          at-bottom?) ; not checking for already hidden leads to spam but somehow stabilizes...
-                   [:hide-header-footer false]
-                   (when (and (not hidden?)
+     {:dispatch-n [(cond (and hidden?
+                              (= direction :up))
+                   [:hide-header-footer false false]
+                         at-bottom? ; not checking for already hidden leads to spam but somehow stabilizes...
+                   [:hide-header-footer false true] ; don't unhide footer at bottom...
+                         (and (not hidden?)
                               (= direction :down)
                               past-top?
                               (not (get-in db [:state :menu])))
-                     [:hide-header-footer true]))
+                   [:hide-header-footer true true]) ; hide header and footer
+                   
                   (if (and at-bottom? (not (get-in db [:state :scroll :at-bottom])))
                     [:scroll/at-bottom true]
                     (when (and (not at-bottom?) (get-in db [:state :scroll :at-bottom]))
@@ -100,7 +102,7 @@
      :dispatch-n [[:->css-var! "footer-height-current"
                    (if (and bottom?) ; "is on front page", trickier than first might think due to idiosyncraticlol design choices
                      (:footer-height-full css-var)
-                     (if (get-in db [:state :hidden-header-footer])
+                     (if (get-in db [:state :hidden :footer])
                        "0rem"
                        (:footer-height css-var)))]]}
    (when bottom?

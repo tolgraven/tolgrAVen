@@ -65,7 +65,7 @@
       {:class (when @(rf/subscribe [:state [:scroll :past-top]])
                 "past-top")}])
    [:header
-    {:class (when @(rf/subscribe [:state [:hidden-header-footer]])
+    {:class (when @(rf/subscribe [:state [:hidden :header] ])
               "hide")}
     [:div.cover.cover-clip] ;covers around lines and that... XXX breaks when very wide tho.
     [header-logo @(rf/subscribe [:header-text])]
@@ -87,7 +87,7 @@
               "hide")}]
    
    [:div.line.line-header
-    {:class (when @(rf/subscribe [:state [:hidden-header-footer]])
+    {:class (when @(rf/subscribe [:state [:hidden :header]])
              "hide")}]])
 
 
@@ -198,11 +198,11 @@
   [content]
   [:footer#footer.footer-sticky
    {:class (string/join " "
-                        [(when @(rf/subscribe [:state [:hidden-header-footer]])
+                        [(when @(rf/subscribe [:state [:hidden :footer]])
                            "hide")
                          (when @(rf/subscribe [:state [:scroll :at-bottom]])
                            "full")])
-    :style (when-not @(rf/subscribe [:state [:hidden-header-footer]])
+    :style (when-not @(rf/subscribe [:state [:hidden :footer]])
              {:max-height @(rf/subscribe [:get-css-var "footer-height-current"])})}
    
    [:div.line.line-footer] ;cant this be outside main ugh
