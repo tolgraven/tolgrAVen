@@ -74,7 +74,6 @@
                  [re-frame-utils "0.1.0"]
                  [com.smxemail/re-frame-cookie-fx "0.0.2"  :exclusions [args4j]]
                  [re-pollsive "0.1.0"] ; periodic polling/timer stuff
-                 [district0x.re-frame/google-analytics-fx "1.0.0"]
                  
                  [cljsjs/highlight "10.3.1-0"]
                  [cljsjs/codemirror "5.44.0-1"]

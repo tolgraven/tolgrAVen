@@ -6,7 +6,6 @@
     [ajax.core :as ajax]
     [day8.re-frame.http-fx]
     [com.degel.re-frame-firebase :as firebase]
-    [district0x.re-frame.google-analytics-fx]
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
     [day8.re-frame.async-flow-fx :as async-flow-fx]
     [akiroz.re-frame.storage :as localstore]
