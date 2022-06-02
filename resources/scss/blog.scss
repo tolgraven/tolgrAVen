@@ -61,9 +61,13 @@
     justify-content: space-evenly;
   }
   .blog-powered-by {
-    font-size: 0.7em;
-    padding-bottom: calc(2.5 * var(--space));
-    padding-top: calc(0.5 * var(--space));
+    font-size: 1.25em;
+    padding-bottom: calc(3 * var(--space));
+    padding-top: calc(2.5 * var(--space));
+    
+    i {
+      padding-left: 0.25em;
+    }
   }
 }
 .blog-post-preview {

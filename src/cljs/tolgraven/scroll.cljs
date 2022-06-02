@@ -100,13 +100,7 @@
    (merge
     {:db (assoc-in db [:state :scroll :at-bottom] bottom?)
      :dispatch-n [[:->css-var! "footer-height-current"
-                   (if (and bottom?) ; "is on front page", trickier than first might think due to idiosyncraticlol design choices
-                     (:footer-height-full css-var)
-                     (if (get-in db [:state :hidden :footer])
+                   (if (get-in db [:state :hidden :footer])
                        "0rem"
-                       (:footer-height css-var)))]]}
-   (when bottom?
-     {:dispatch-later {:ms 300
-                       :dispatch
-                       [:scroll/by (js/parseFloat (:footer-height-full css-var))]}}))))
+                       (:footer-height css-var))]]})))
 

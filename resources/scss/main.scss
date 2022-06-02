@@ -106,11 +106,9 @@ main { /* dunno purpose of why I choose .main-content... */
   width: 100%;
   
   border-top: var(--line-width) solid var(--line-color); /* should make configurable. off looks p nice on main page */
-  border-bottom: var(--line-width) solid var(--line-color); /* should make configurable. off looks p nice on main page */
   border-left:  var(--line-width-vert) solid var(--line-color); /* should make configurable. off looks p nice on main page */
   border-right: var(--line-width-vert) solid var(--line-color); /* should make configurable. off looks p nice on main page */
   margin-top: var(--space-lg);
-  padding-bottom: var(--footer-height-current);
 
   animation: fade-in 1.0s ease-in;
 }

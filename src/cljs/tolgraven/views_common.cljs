@@ -91,35 +91,6 @@
              "hide")}]])
 
 
-(defn post-footer "Extra stuff after the basic footer. Not very useful for me but for other sites."
-  [content]
-  [:div.footer-content.post-footer-content ;; XXX should adapt to available height, also disappear...
-    (for [{:keys [title text id links img] :as column} content
-          :let [id (str "post-footer-" id)]] ^{:key id}
-         [:div.footer-column {:class (:id column)
-                              :id id}
-
-          (when title [:h4 title])
-          (when text (for [line text] ^{:key (str id "-" line)}
-                          [:h5 line]))
-          (when links [:div.footer-links
-                       (for [{:keys [name href info]} links] ^{:key (str "post-footer-link-" name)}
-                            [:a {:href href :name name}
-                             [:div.footer-link-with-text
-                              [:p name] [:p info]]])])
-          (when img (for [img img]  ^{:key (str id "-" (:src img))}
-                      [:img.img-icon img]))])])
-
-(defn footer-sticky "Thinking just something tiny visible maybe not actually entire time but at whatever points, framing things in. Might be job for css tho dunno"
-  [content]
-  [:<>
-    [:footer.footer-sticky>div.footer-content
-      {:style {:position :fixed}}
-      [:div.line.line-footer] ;cant this be outside main ugh
-        (for [{:keys [title text id links] :as column} content
-          :let [id (str "footer-stick-" id)]] ^{:key id}
-          [:div.footer-column {:id id}
-          [:h3 title]])]])
 
 (defn contact-form-popup
   []
@@ -192,37 +163,63 @@
             :style {:color "var(--fg-5)"}}
            [:i.fas.fa-envelope]]]]))
             
-
-
-(defn footer "Might want to bail on left/middle/right just push whatever. do the current ids matter?"
+(defn footer-content "Upper content (first few rows) of footer"
   [content]
-  [:footer#footer.footer-sticky
-   {:class (string/join " "
-                        [(when @(rf/subscribe [:state [:hidden :footer]])
-                           "hide")
-                         (when @(rf/subscribe [:state [:scroll :at-bottom]])
-                           "full")])
+  [:div.footer-content ;; XXX should adapt to available height, also disappear...
+   (for [{:keys [title email text id links logo] :as column} content
+         :let [id (str "footer-" id)]] ^{:key id}
+     [:div.footer-column {:id id}
+
+      (when logo
+        [:img.img-icon logo])
+      [:div
+       (when title [:h4 title])
+       (when email [contact-ways email])
+       (when text (for [line text] ^{:key (str id "-" line)}
+                    [:h5 line]))]
+      (when links [:div.footer-icons
+                   (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
+                     [:a {:href href :name name}
+                      [:i.fab {:class (str "fa-" icon)}]])])])])
+
+
+(defn post-footer "Extra stuff after the basic footer. Not very useful for me but for other sites."
+  [content]
+  [:div.footer-content.post-footer-content ;; XXX should adapt to available height, also disappear...
+    (for [{:keys [title text id links img] :as column} content
+          :let [id (str "post-footer-" id)]] ^{:key id}
+         [:div.footer-column {:class (:id column)
+                              :id id}
+
+          (when title [:h4 title])
+          (when text (for [line text] ^{:key (str id "-" line)}
+                          [:h5 line]))
+          (when links [:div.footer-links
+                       (for [{:keys [name href info]} links] ^{:key (str "post-footer-link-" name)}
+                            [:a {:href href :name name}
+                             [:div.footer-link-with-text
+                              [:p name] [:p info]]])])
+          (when img (for [img img]  ^{:key (str id "-" (:src img))}
+                      [:img.img-icon img]))])])
+
+
+(defn footer "The sticky footer visible at load or when scrolling up."
+  [content]
+  [:footer#footer-sticky.footer-sticky
+   {:class (when @(rf/subscribe [:state [:hidden :footer]])
+             "hide")
     :style (when-not @(rf/subscribe [:state [:hidden :footer]])
              {:max-height @(rf/subscribe [:get-css-var "footer-height-current"])})}
-   
-   [:div.line.line-footer] ;cant this be outside main ugh
-   [:div.footer-content ;; XXX should adapt to available height, also disappear...
-    (for [{:keys [title email text id links logo] :as column} content
-          :let [id (str "footer-" id)]] ^{:key id}
-         [:div.footer-column {:id id}
+   [footer-content content]])
 
-          (when logo
-            [:img.img-icon logo])
-          [:div
-           (when title [:h4 title])
-           (when email [contact-ways email])
-           (when text (for [line text] ^{:key (str id "-" line)}
-                        [:h5 line]))]
-          (when links [:div.footer-icons
-                       (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
-                            [:a {:href href :name name}
-                             [:i.fab {:class (str "fa-" icon)}]])])])]
-   [post-footer @(rf/subscribe [:content [:post-footer]])]])
+(defn footer-full "Render the full footer at bottom of page"
+  [content]
+  (when @(rf/subscribe [:state [:hidden :footer]])
+  [:footer#footer-end.footer-full
+   {:class "full"}
+   
+   [footer-content content]
+   [post-footer @(rf/subscribe [:content [:post-footer]])]]))
 
 
 (defn to-top "A silly arrow, and twice lol. why." [icon]

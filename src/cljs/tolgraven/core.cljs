@@ -88,6 +88,7 @@
              [ui/safe :page-prev [page-prev]])]])
        [ui/loading-spinner true :massive]))
 
+   [common/footer-full @(rf/subscribe [:content [:footer]])]
    [common/footer @(rf/subscribe [:content [:footer]])]
    [ui/safe :hud [ui/hud (rf/subscribe [:hud])]]
    [common/to-top]

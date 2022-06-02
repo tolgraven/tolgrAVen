@@ -1,17 +1,11 @@
 
 footer {
   position: relative;
-  /* padding-top: 0.5rem; */
   padding-bottom: env(safe-area-inset-bottom); /* handle iphone x+, no harm for rest. TODO also adjust top-shortcut */
   font-size: 0.85rem;
 
   border-left: var(--line-width) solid var(--line-color); /* connect bottom to main on left side */
 
-  /* try (actual tru sticky) footer */
-  /* causes some silly ios behavior and might just deal with enough layers already... */
-  /* position: sticky; */
-  /* bottom: 0; */
-  max-height: var(--footer-height);
   transition: all var(--header-expand-time) ease;
 
   a {
@@ -40,15 +34,24 @@ footer {
     bottom: 0px;
     left: calc(0px - var(--space-sides));
     z-index: -1;
+    border-top: var(--line-width) solid var(--line-color);
   }
+  border-top: var(--line-width) solid var(--line-color);
 }
+
 .footer-sticky {
   position: fixed;
   z-index: 101;
+  max-height: var(--footer-height);
   left: var(--space-edges);
   bottom: calc(0rem - var(--footer-bottom));
   width: calc(100% - 2 * var(--space-edges));
   background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
+}
+
+.footer-full {
+  background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
+  max-height: var(--footer-height-full);
 }
 
 .footer-content {

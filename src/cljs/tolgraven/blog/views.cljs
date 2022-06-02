@@ -432,16 +432,19 @@
                 (:bloggers @(rf/subscribe [:<-store :auth :roles])))
       [:a {:href @(rf/subscribe [:href :post-blog])}
        [:button.noborder [:i.fa.fa-feather-alt]]])
+    
     [:a {:href @(rf/subscribe [:href :blog])}
      [:button.blog-btn.noborder
      "Home"]]
     [:a {:href @(rf/subscribe [:href :blog-archive])}
      [:button.blog-btn.noborder
      "Archive"]]]
+   
     [blog-tag-cloud]
+    
    [:div.blog-powered-by.center-content
     [:p "Proudly powered by "
     [:a {:href "https://github.com/tolgraven/tolgraven"} "tolgrAVen"]
-    [:i.fab.fa-github]] ]])
+    [:i.fab.fa-github]]]])
 
 
