@@ -339,11 +339,13 @@
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text permalink comments] :as blog-post}]
   (if-not text
-    [ui/loading-spinner true :massive] ; ideally some placeholder flashing textish
+   [ui/loading-spinner true :massive] ; ideally some placeholder flashing textish
    (let [user @(rf/subscribe [:user/user user])
         back? @(rf/subscribe [:history/popped?])]
     [ui/appear-anon (if back? "" "zoom-x")
      [:section.blog-post
+      {:ref #(rf/dispatch [:run-highlighter!])}
+      
      [:div.flex.blog-post-header
       [ui/appear-merge "zoom slower"
        [ui/user-avatar user "blog-user-avatar"]]
