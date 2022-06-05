@@ -70,6 +70,18 @@
           (str "blog-post-" (first path) "-comment")
           (rest path)))
 
+(defn vote-btn [user active-user path vote]
+  (when active-user
+    (let [voted @(rf/subscribe [:blog/state [:voted path]])] ; obviously needs to be firestore sub. but also local debounce
+      [:button.blog-btn.blog-comment-vote-btn
+       {:class (if (= vote voted)
+                 "noborder"
+                 (case vote :up "topborder" :down "bottomborder"))
+        :disabled (when (= vote voted) true)
+        :on-click #(rf/dispatch [:blog/comment-vote 
+                                 user active-user path vote])}
+       (case vote :up "+" :down "-")])))
+
 (defn collapsed-reply-view
   [path parent-id comments]
   (let [inited? (r/atom false)]
@@ -90,9 +102,20 @@
         (util/pluralize (count comments) " hidden reply")]])))
 
 (defn comment-post "A comment, and any children, rendered by recursion, deferring doing much if optional arg visible? is false"
-  [path {:keys [id seq-id ts user title text score comments] :as post} & [visible?]]
-  (let [showing? (r/atom false)] ; start false to avoid even temp initing what's not visible. Bit confusing since will usually be immediately reset to true.
-    (fn [path {:keys [id seq-id ts user title text score comments] :as post} & [visible?]]
+  [path {:keys [id seq-id ts user title text score] :as post} & [visible?]]
+  (let [showing? (r/atom false) ; start false to avoid even temp initing what's not visible. Bit confusing since will usually be immediately reset to true.
+        lines (string/split-lines text)
+        full? (r/atom nil) ; nil means uninited/not relevant, false unexpanded...
+        height (atom 0)
+        show-expand-to-full? (r/atom false)
+        comments (rf/subscribe [:comments/for-q-flat (first path) (when (<= 2 (count path))
+                                                                      (last path))])
+        ref-fn #(when %
+                  (js/console.log (.-clientHeight %))
+                  (reset! height (.-clientHeight %))
+                  (when (> (util/px-to-rem @height) 24)
+                    (reset! full? false))) ]
+    (fn [path {:keys [id seq-id ts user title text score] :as post} & [visible?]]
       (if (and visible? (not @visible?))
         (js/setTimeout (fn [] (reset! showing? false)) 1000) ; if previously visible, only remove from dom/subs once anim complete
         (reset! showing? true))
@@ -100,29 +123,22 @@
       (when @showing? ; also means could defer fetches for like immensely big ass threads. first needs rework to use only id from blog not entire body... much needed anyways
         (let [active-user @(rf/subscribe [:user/active-user])
               user @(rf/subscribe [:user/user user])
-              expanded? (rf/subscribe [:comments/thread-expanded? path])
-              vote-btn (fn [vote]
-                         (when active-user
-                           (let [voted @(rf/subscribe [:blog/state [:voted path]])] ; obviously needs to be firestore sub. but also local debounce
-                             [:button.blog-btn.blog-comment-vote-btn
-                              {:class (if (= vote voted)
-                                        "noborder"
-                                        (case vote :up "topborder" :down "bottomborder"))
-                               :disabled (when (= vote voted) true)
-                               :on-click #(rf/dispatch [:blog/comment-vote 
-                                                        user active-user path vote])}
-                              (case vote :up "+" :down "-")])))]
+              expanded? (rf/subscribe [:comments/thread-expanded? path])]
           [:<>
            [:div.flex.blog-comment-around
             [:div.blog-comment-border
-             {:style {:cursor (if (and @expanded? comments)
+             {:style {:cursor (if (and @expanded? @comments)
                                 "zoom-out"
-                                (when comments "zoom-in"))
+                                (when @comments "zoom-in"))
                       :background-color (:bg-color user)} ; somehow doesnt fly, why? missing a deg in gen
-              :on-click #(when comments
+              :on-click #(when @comments
                            (rf/dispatch [:blog/expand-comment-thread path
                                          (not @expanded?)]))}]
             [:section.blog-comment
+             {:style {:max-height (if-not @full? "25rem" "150em")
+                      :overflow (when @full? "scroll")}
+              :ref ref-fn}
+             
              [:div
               [ui/user-avatar user]
 
@@ -130,34 +146,50 @@
                [:h4.blog-comment-title title]
                [posted-by id user ts score]
                (when (not= active-user user)
-                 [:span.blog-comment-vote [vote-btn :up]
-                                          [vote-btn :down]])
+                 [:span.blog-comment-vote [vote-btn user active-user path :up]
+                                          [vote-btn user active-user path :down]])
                [:div.blog-comment-text
                 {:style {:filter (when (neg? score)
                                    (str "brightness(calc(1 + "
                                         (max -0.7 (* 0.1 score)) "))"))}}
                 [ui/md->div text]]]
 
-              [:div.blog-comment-actions
+             [:div.blog-comment-actions
                (when (= active-user user)
                  [edit-comment (conj path id)])
                (when active-user
-                 [add-comment-btn path :reply])]]]] 
+                 [add-comment-btn path :reply])]]
+             [:div.blog-comment-expansion.center-content
+              (when (false? @full?)
+                [:<>
+                 (when @show-expand-to-full?
+                   [:button.blog-comment-view-full-btn
+                    {:on-click #(reset! full? true)}
+                    "+"
+                    #_[:i.fa.fas.fa-angles-down]])
+                 [:div.fade-to-black.bottom
+                  {;:style {:opacity (if @show-expand-to-full? 0.5 1.0)} ; wont animate so useless fix or nuke
+                   :on-mouse-over #(reset! show-expand-to-full? true)
+                   :on-mouse-out #(reset! show-expand-to-full? false)}]])
+              (when @full?
+                [:button.blog-comment-view-full-btn
+                 {:on-click #(reset! full? false)}
+                 "-"])]]] 
            (when (and active-user
                       @(rf/subscribe [:comments/adding? path]))
              [add-comment path])
 
-           (when comments ;replies
+           (when @comments ;replies
              [:div.blog-comment-reply-outer
               [:div.blog-comment-reply
                {:class (when-not @expanded?
                          "collapsed")}
-               (doall (for [[k post] (into (sorted-map) comments)]
+               (doall (for [[k post] (into (sorted-map) @comments)]
                         ^{:key (get-id-str (conj path (:id post)))}
                         [ui/appear-anon "slide-behind"
                          [comment-post (conj path (:id post)) post expanded?]]))]
               (when-not @expanded?
-                [collapsed-reply-view path id comments])])])))))
+                [collapsed-reply-view path id @comments])])])))))
 
 
 (defn comments-section "Comments section!"
@@ -175,7 +207,7 @@
           (if-not @expanded? (str "Show all " amount-str) "Collapse")])
 
        (when (seq comments)
-         (let [comments' (vals (into (sorted-map) comments))]
+         (let [comments' (vals @(rf/subscribe [:comments/for-q-flat id nil]))]
            [:div.blog-comments-inner
             {:class (when-not @expanded? "collapsed")}
             (doall (for [comment (if @expanded?
@@ -238,9 +270,7 @@
             [:<>
              [box :title :input :style valid-bg :ui-name "Title (optional)"]
              [box :text :textarea :ui-name "Comment"]]) ;[:br]
-          [submit-btn] [add-comment-btn parent-path :cancel]
-          
-          ]))))
+          [submit-btn] [add-comment-btn parent-path :cancel]]))))
 
      ; :on-key-up (fn [e] (when (= "Alt-Enter-however-written" (.-key e)) (submit)))
 ; not here but whatever: thing from MYH site where heading slots into header
@@ -308,13 +338,15 @@
 
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text permalink comments] :as blog-post}]
-  (let [user @(rf/subscribe [:user/user user])
+  (if-not text
+    [ui/loading-spinner true :massive] ; ideally some placeholder flashing textish
+   (let [user @(rf/subscribe [:user/user user])
         back? @(rf/subscribe [:history/popped?])]
     [ui/appear-anon (if back? "" "zoom-x")
      [:section.blog-post
-     {:ref #(when % (rf/dispatch [:run-highlighter! %]))}
      [:div.flex.blog-post-header
-      [ui/user-avatar user "blog-user-avatar"]
+      [ui/appear-merge "zoom slower"
+       [ui/user-avatar user "blog-user-avatar"]]
       [:div.blog-post-header-main
        [:a {:href (make-link (or permalink id))}
          [:h1.blog-post-title title
@@ -329,24 +361,25 @@
      ; [a custom sticky mini "how far youve scrolled bar" on right?]
      [:div.blog-post-text [ui/md->div text]]
      [:br] [:br]
-     [ui/appear-anon "zoom-y" [comments-section blog-post]]]]))
+     [ui/appear-anon "zoom-y" [comments-section blog-post]]]])))
 
 (defn blog-single-post []
-  (let [post (or @(rf/subscribe [:blog/post
-                                  @(rf/subscribe [:blog/state [:current-post-id]])])
-                  {:title "Not found" :text "This page doesn't exist. Authorities have been notified*"
-                   :comments {:0 {:title "jk" :text "*Not yet implemented"}}})]
+  (let [post (rf/subscribe [:blog/post
+                            @(rf/subscribe [:blog/state [:current-post-id]])])]
     [blog-container
      [:<>
-     [blog-post post]
-     (when (:id post)
+     [ui/loading-spinner (r/atom (not @post)) :massive]
+     [blog-post @post]
+     (when (:id @post)
        [:div.blog-prev-next-links
-        (when-let [post @(rf/subscribe [:blog/adjacent-post :prev (:id post)])]
-          [:a {:href (make-link (or (:permalink post) (:id post)))}
-           [:span [:i.fa.fa-chevron-left] " " (:title post)]])
-        (when-let [post @(rf/subscribe [:blog/adjacent-post :next (:id post)])]
-          [:a {:href (make-link (or (:permalink post) (:id post)))}
-           [:span (:title post) " " [:i.fa.fa-chevron-right]]])]) ]]))
+        (when-let [id @(rf/subscribe [:blog/adjacent-post-id :prev (:id post)])]
+          (let [post @(rf/subscribe [:blog/post id])]
+           [:a {:href (make-link (or (:permalink post) (:id post)))}
+            [:span [:i.fa.fa-chevron-left] " " (:title post)]]))
+        (when-let [id @(rf/subscribe [:blog/adjacent-post-id :next (:id post)])]
+          (let [post @(rf/subscribe [:blog/post id])]
+            [:a {:href (make-link (or (:permalink post) (:id post)))}
+            [:span (:title post) " " [:i.fa.fa-chevron-right]]]))]) ]]))
 
 (defn blog-archive "List of all posts with headlines etc. Maybe for a sidebar." []
   (let [posts @(rf/subscribe [:blog/post-feed])]
@@ -413,11 +446,11 @@
    (let [user @(rf/subscribe [:user/active-user])
         per-page (min total @(rf/subscribe [:blog/posts-per-page]))
         idx @(rf/subscribe [:blog/nav-page])
-        posts @(rf/subscribe [:blog/posts-for-page idx per-page]) ]
+        posts @(rf/subscribe [:blog/ids-for-page idx per-page]) ]
     (when (pos? total)
       [:<>
-       (doall (for [post posts] ^{:key (str "blog-post-" (:id post))}
-                [blog-post post]))
+       (doall (for [id posts] ^{:key (str "blog-post-" id)}
+                [blog-post @(rf/subscribe [:blog/post id])]))
 
        [blog-nav total idx per-page]]))))
 
