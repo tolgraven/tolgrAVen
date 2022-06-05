@@ -111,7 +111,6 @@
         comments (rf/subscribe [:comments/for-q-flat (first path) (when (<= 2 (count path))
                                                                       (last path))])
         ref-fn #(when %
-                  (js/console.log (.-clientHeight %))
                   (reset! height (.-clientHeight %))
                   (when (> (util/px-to-rem @height) 24)
                     (reset! full? false))) ]
