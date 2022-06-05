@@ -9,7 +9,7 @@
  (fn [db [_ path] ]
    (get-in db (into [:blog] path))))
 
-(rf/reg-sub :blog/post-feed
+(rf/reg-sub :blog/post-feed ; would likely return a reasonable amount of posts, then paged for more.
  :<- [:blog [:posts]]
  (fn [posts [_ path]]
    (some->> posts
@@ -17,12 +17,21 @@
             (sort-by :ts)
             reverse)))
 
-(rf/reg-sub :blog/post
- :<- [:blog [:posts]]
- (fn [posts [_ id]]
-  (get posts id (get posts (keyword (str id))))))
+(rf/reg-sub :blog/post-ids
+ (fn [_ _]
+   (rf/subscribe [:<-store-2 :blog-post-ids :ids]))
+ (fn [ids [_ path]]
+   (reverse (-> ids :ids :ids))))
 
-(rf/reg-sub :blog/post-tags
+(rf/reg-sub :blog/post
+  (fn [[_ post-id]]
+    (rf/subscribe [:<-store-q {:path-collection [:blog-posts]
+                               :where [[:id :== post-id] ]
+                               :doc-changes true}]))          
+  (fn [post [_ post-id]]
+    (get post (keyword (str post-id)))))
+
+(rf/reg-sub :blog/post-tags ; XXX should be an array already as stored...
  (fn [[_ id]]
    (rf/subscribe [:blog/post id]))
  (fn [post [_ _]]
@@ -45,7 +54,7 @@
         reverse
         keys)))))
 
-(rf/reg-sub :blog/all-tags
+(rf/reg-sub :blog/all-tags ; TODO probably keep an array of them so dont have to trawl all posts to get all tags...
  :<- [:blog [:posts]]
  (fn [posts [_ ]]
   (->> (reduce (fn [s [k v]]
@@ -97,8 +106,15 @@
        :prev (last before)
        :next (second current-and-after)))))
 
+(rf/reg-sub :blog/adjacent-post-id
+ :<- [:blog/post-ids]
+ (fn [post-ids [_ direction current-id]]
+   (let [[before current-and-after] (split-with #(> (:id %) current-id) post-ids)]
+     (case direction
+       :prev (last before)
+       :next (second current-and-after)))))
 
-(rf/reg-sub :blog/posts-for-page
+(rf/reg-sub :blog/posts-for-page ; XXX ids-for-page
  :<- [:blog/post-feed] ; obvs will be, figure out idx range and ask server (then cache all already delivered in db)
  (fn [posts [_ idx page-size]]
      (when (seq posts)
@@ -106,6 +122,16 @@
         (nth (partition-all page-size posts)
              idx)
         (catch js/Error _))))) ;usually throws on first load saying idx not a number...
+
+(rf/reg-sub :blog/ids-for-page
+ :<- [:blog/post-ids] ; obvs will be, figure out idx range and ask server (then cache all already delivered in db)
+ (fn [ids [_ idx page-size]]
+     (when (seq ids)
+       (try
+        (nth (partition-all page-size ids)
+             idx)
+        (catch js/Error _))))) ;usually throws on first load saying idx not a number...
+
 
 (rf/reg-sub :comments/all ;literally should not exist though
  :<- [:<-store-2 :blog-comments]
@@ -120,30 +146,56 @@
     (rf/subscribe [:user/user user-id])])
  (fn [[comments user] [_ user-id]]
    (vals (select-keys comments
-                      (:comments user)))))
+                      (map keyword (:comments user))))))
+
+(rf/reg-sub :comments/for-user-q
+ (fn [[_ user-id]]
+   [(rf/subscribe [:<-store-q {:path-collection [:blog-comments]
+                               :where [[:user :== user-id] ]
+                               ; :limit 100 ; can then grab last item and use :last-visible. but would be tricky here...
+                               :order-by [[:id :desc]]
+                               :doc-changes true }])])
+ (fn [comments [_ user-id]]
+   (first comments)))
+
+
+(rf/reg-sub :comments/count-for-user
+ (fn [[_ user-id]]
+   [(rf/subscribe [:comments/for-user-q user-id])])
+ (fn [[comments]]
+   (count comments)))
+
 
 (rf/reg-sub :comments/for-post
  (fn [[_ blog-id]]
    [(rf/subscribe [:comments/all])
     (rf/subscribe [:blog/post blog-id])])
  (fn [[comments post] [_ _]]
-   ; somehow recursively, urr.
-   ; the blog has :comments contains ids as set?
-   ; but no, cause children.
-   ; so map from ids to nil or more map if children.
-   ; or just fuck this and use a real database?
-  (vals (select-keys comments (->> (:comments post)
-                                    keys
-                                    (map name)
-                                    (map js/parseInt)))))) ;workaround for comments being keywords. should change to nr but maybe keep in place for compatibility
+   (let [comment-ids (if (seq? (:comments post)) ; support old style (store )
+                       (:comments post)
+                       (keys (:comments post)))]
+     (vals (select-keys comments comment-ids)))))
 
+(rf/reg-sub :comments/for-post-q
+ (fn [[_ blog-id]]
+   [(rf/subscribe [:<-store-q {:path-collection [:blog-posts]
+                               :where [[:id :== blog-id] ]
+                               :order-by [[:ts :desc]] ; well will need publication ts, can just update though i guess
+                               :doc-changes true }])])
+ (fn [[post] [_ _]]
+   (:comments post)))
 
-(rf/reg-sub :comments/for-comment ;replies. only works for top level, fix...
- (fn [[_ blog-id comment-id]]
-   [(rf/subscribe [:comments/for-post blog-id])
-    (rf/subscribe [:blog/post blog-id])])
- (fn [[comments post] [_ blog-id comment-id]]
-   (filter #(= (:id %) comment-id) (:comments post))))
+(rf/reg-sub :comments/for-q-flat
+ (fn [[_ blog-id maybe-parent-comment-id]]
+   (let [where [[:parent-post :== blog-id]
+                [:parent-comment :== maybe-parent-comment-id]]] ; nil hopefully works? NOPE wtf
+     [(rf/subscribe [:<-store-q {:path-collection [:blog-comments]
+                                 :where where
+                                 :order-by [[:ts :desc]] ; well will need publication ts, can just update though i guess
+                                 :doc-changes true}])]))
+ (fn [[comments] [_ _]]
+   (when (seq comments)
+     comments)))
 
 (rf/reg-sub :comments/for-id
  (fn [db [_ comment-id]]))

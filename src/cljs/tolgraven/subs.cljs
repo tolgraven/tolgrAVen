@@ -65,7 +65,6 @@
       (let [look-in (if (even? (count coll-docs))
                       {:path-document (vec coll-docs)}
                       {:path-collection (vec coll-docs)})]
-        #_(rf/subscribe [:firestore/on-snapshot look-in])
         (some-> (rf/subscribe [:firestore/on-snapshot look-in])
                 deref
                 util/normalize-firestore-general)))))
@@ -77,6 +76,21 @@
       (some-> (rf/subscribe [:firestore/on-snapshot opts])
                 deref
                 util/normalize-firestore-general))))
+
+; DONE PROPERLY. but somehow ends up with sub sometimes never returning anything but {} (as always does first run)
+; WHAT THE FUCK honestly. 
+; (rf/reg-sub :<-store-q
+;   (fn [[_ opts]]
+;     ; (util/log (str "firebase init: " (.-length js/firebase.app)))
+;     [(rf/subscribe [:booted? :firebase])
+;      (rf/subscribe (if (pos? (.-length js/firebase.app))
+;                      [:firestore/on-snapshot opts]
+;                      [:nil]))])
+;   (fn [[initialized snapshot] [_ opts]]
+;     (when initialized
+;       (some-> snapshot
+;               util/normalize-firestore-general))))
+               
 
 (rf/reg-sub :header-text
  :<- [:state [:is-personal]]
