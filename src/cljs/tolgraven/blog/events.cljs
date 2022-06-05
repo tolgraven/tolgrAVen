@@ -188,6 +188,9 @@
                          :id id
                          :seq-id (inc sibling-count)
                          :user user-id ;todo how auth this?
+                         :parent-post (first path)
+                         :parent-comment (when (< 1 (count path))
+                                           (last path))
                          :score 0})]
        {:dispatch-n [[:blog/comment path comment]
                      [:blog/expand-comment-thread path true]]})))
