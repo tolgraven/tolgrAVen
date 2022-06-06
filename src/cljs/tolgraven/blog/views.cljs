@@ -336,7 +336,7 @@
   @(rf/subscribe [:href :blog-post {:permalink path}]))
 
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
-  [{:keys [id ts user title text permalink comments] :as blog-post}]
+  [{:keys [id ts user title text permalink comments] :as post}]
   (if-not text
    [ui/loading-spinner true :massive] ; ideally some placeholder flashing textish
    (let [user @(rf/subscribe [:user/user user])
@@ -353,25 +353,25 @@
          [:h1.blog-post-title title
           (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
             [:button.noborder.nomargin
-             {:on-click #(rf/dispatch [:blog/edit-post blog-post])}
+             {:on-click #(rf/dispatch [:blog/edit-post post])}
              [:i.fa.fa-edit] ])]]
        [ui/appear-anon  "slide-in" #_"opacity"
         [posted-by id user ts]]
-       [tags-list blog-post]]]
+       [tags-list post]]]
      [:br]
      ; [a custom sticky mini "how far youve scrolled bar" on right?]
      [:div.blog-post-text [ui/md->div text]]
      [:br] [:br]
-     [ui/appear-anon "zoom-y" [comments-section blog-post]]]])))
+     [ui/appear-anon "zoom-y" [comments-section post]]]])))
 
 (defn blog-single-post []
-  (let [post (rf/subscribe [:blog/post
-                            @(rf/subscribe [:blog/state [:current-post-id]])])]
+  (let [post @(rf/subscribe [:blog/post
+                             @(rf/subscribe [:blog/state [:current-post-id]])])]
     [blog-container
      [:<>
-     [ui/loading-spinner (r/atom (not @post)) :massive]
-     [blog-post @post]
-     (when (:id @post)
+     [ui/loading-spinner (r/atom (not post)) :massive]
+     [blog-post post]
+     (when (:id post)
        [:div.blog-prev-next-links
         (when-let [id @(rf/subscribe [:blog/adjacent-post-id :prev (:id post)])]
           (let [post @(rf/subscribe [:blog/post id])]
