@@ -18,7 +18,7 @@
             reverse)))
 
 (rf/reg-sub :blog/post-ids
- (fn [_ _]
+ (fn [[_ _]]
    (rf/subscribe [:<-store-2 :blog-post-ids :ids]))
  (fn [ids [_ path]]
    (reverse (-> ids :ids :ids))))
@@ -30,6 +30,16 @@
                                :doc-changes true}]))          
   (fn [post [_ post-id]]
     (get post (keyword (str post-id)))))
+
+(rf/reg-sub :blog/post-preview
+ (fn [[_ id]]
+   (rf/subscribe [:blog/post id]))
+ (fn [post [_ id]]
+   (some->> (:text post)
+            string/split-lines
+            (filter #(not (string/blank? %)))
+            (take 2)
+            (string/join "  \n"))))
 
 (rf/reg-sub :blog/post-tags ; XXX should be an array already as stored...
  (fn [[_ id]]

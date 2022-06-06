@@ -389,15 +389,23 @@
       [:h2 {:style {:text-align :center}} "All posts"] [:br] [:br]
       ; make bit of month(?) at least year, indicators.
       ; which means we need to pre-sort+split
-     (for [{:keys [id ts user title text permalink] :as post} posts] ^{:key (str "blog-archive-" (:id post))}
+     (doall (for [{:keys [id ts user title text permalink] :as post} posts] ^{:key (str "blog-archive-" (:id post))}
        [:div.blog-archive-post
         [:a {:href (make-link (or permalink id))}
             [:h2 title]] ;should be link
         [posted-by id @(rf/subscribe [:user/user user]) ts]
         (when (pos? (count (:comments post)))
-          [:span {:style {:font-size "0.7em"}} [util/pluralize (count (:comments post)) "comment"]])
-        [tags-list blog-post]
-        [:div (->> text string/split-lines (take 2) (string/join " ") ui/md->div)] ])]]))
+          [:span
+           {:style {:font-size "0.7em"
+                    :filter "brightness(0.8)"}}
+           [util/pluralize (count (:comments post)) "comment"]])
+        [tags-list post]
+        [:div {:style {:padding-top "0.4em"
+                       :padding-bottom "var(--space)"
+                       :font-size "0.9em"}}
+         [ui/md->div @(rf/subscribe [:blog/post-preview id])]] ]))]]))
+
+@(rf/subscribe [:blog/post-preview 25])
 
 (defn blog-tag-view "View posts filed with tag"
   []
