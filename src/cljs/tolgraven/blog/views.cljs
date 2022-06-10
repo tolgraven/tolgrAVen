@@ -192,33 +192,31 @@
 
 
 (defn comments-section "Comments section!"
-  [{:keys [id comments] :as blog-post}] ;actually apart from id -> path could prob call this again for replies. w right css
-  (let []
-    (let [expanded? (rf/subscribe [:blog/state [:comments-expanded id]]) ;will have to be sub so add comment can auto expand
-          amount-show-collapsed 3
-          amount-str (util/pluralize (count comments) "comment")] ; then should dyn load more as scroll down hehu
-      [:section.blog-comments
-       (if (<= (count comments) amount-show-collapsed) ;only show a few comments unless expanded
-         [:h6.bottomborder amount-str]
-         [:button.blog-btn.blog-collapse-btn.nomargin.bottomborder
-          {;:class (if @expanded? "bottomborder" "topborder")
-           :on-click #(rf/dispatch [:blog/state [:comments-expanded id] (not @expanded?)])} ;rswap bc dont want to return false for react (not a problem here tho - why?) https://github.com/day8/re-frame/wiki/Beware-Returning-False
-          (if-not @expanded? (str "Show all " amount-str) "Collapse")])
+  [{:keys [id] :as blog-post}]
+  (let [comments (vals @(rf/subscribe [:comments/for-q-flat id]))
+        expanded? @(rf/subscribe [:blog/state [:comments-expanded id]])
+        amount-show-collapsed 4
+        amount-str (util/pluralize (count comments) "comment")]
+    [:section.blog-comments
+     (if (<= (count comments) amount-show-collapsed) ;only show a few comments unless expanded
+       [:h6.bottomborder amount-str]
+       [:button.blog-btn.blog-collapse-btn.nomargin.bottomborder
+        {:on-click #(rf/dispatch [:blog/state [:comments-expanded id] (not expanded?)])}
+        (if-not expanded? (str "Show all " amount-str) "Collapse")])
 
-       (when (seq comments)
-         (let [comments' (vals @(rf/subscribe [:comments/for-q-flat id nil]))]
-           [:div.blog-comments-inner
-            {:class (when-not @expanded? "collapsed")}
-            (doall (for [comment (if @expanded?
-                                   comments'
-                                   (take amount-show-collapsed comments'))
-                         :let [path [(:id blog-post) (:id comment)]]]
-                     ^{:key (get-id-str path)}
-                     [comment-post path comment]))]))
+     (when (seq comments)
+       [:div.blog-comments-inner
+        {:class (when-not expanded? "collapsed")}
+        (doall (for [comment (if expanded?
+                               comments
+                               (take amount-show-collapsed comments))
+                     :let [path [(:id blog-post) (:id comment)]]]
+                 ^{:key (get-id-str path)}
+                 [comment-post path comment]))])
 
-       (when @(rf/subscribe [:user/active-user])
-         [add-comment-btn [id] :comment]) ;new comment button
-       [add-comment [id]]]))) ;usually nil
+     (when @(rf/subscribe [:user/active-user])
+       [add-comment-btn [id] :comment]) ;new comment button
+     [add-comment [id]]]))
 
 
 
