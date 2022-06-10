@@ -119,7 +119,7 @@
 (rf/reg-sub :blog/adjacent-post-id
  :<- [:blog/post-ids]
  (fn [post-ids [_ direction current-id]]
-   (let [[before current-and-after] (split-with #(> (:id %) current-id) post-ids)]
+   (let [[before current-and-after] (split-with #(> % current-id) post-ids)]
      (case direction
        :prev (last before)
        :next (second current-and-after)))))
