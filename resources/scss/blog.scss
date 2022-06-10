@@ -78,12 +78,17 @@
 
 .blog-post-tags {
   margin-top: 0.4em;
+  display: flex;
+  flex-flow: wrap;
+  align-items: baseline;
+  
   p {
     margin-right: var(--space);
   }
 
   span { // should be linked too
     margin-right: var(--space);
+    margin-bottom: var(--space);
     padding: 0.15em 0.4em;
     background-color: var(--bg-4);
   }
