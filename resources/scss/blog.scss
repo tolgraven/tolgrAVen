@@ -242,6 +242,10 @@
     font-size: 2rem;
     bottom: 0.0em;
     z-index: 2;
+
+    &.blog-comment-view-less-btn {
+      position: relative;
+    }
   }
   
   .blog-comment-main {

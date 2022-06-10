@@ -109,7 +109,7 @@
         height (atom 0)
         show-expand-to-full? (r/atom false)
         comments (rf/subscribe [:comments/for-q-flat (first path) (when (<= 2 (count path))
-                                                                      (last path))])
+                                                                    (last path))])
         ref-fn #(when %
                   (reset! height (.-clientHeight %))
                   (when (> (util/px-to-rem @height) 24)
@@ -134,8 +134,8 @@
                            (rf/dispatch [:blog/expand-comment-thread path
                                          (not @expanded?)]))}]
             [:section.blog-comment
-             {:style {:max-height (if-not @full? "25rem" "150em")
-                      :overflow (when @full? "scroll")}
+             {:class (when @full?
+                       "blog-comment-full")
               :ref ref-fn}
              
              [:div
@@ -158,22 +158,23 @@
                  [edit-comment (conj path id)])
                (when active-user
                  [add-comment-btn path :reply])]]
+             
              [:div.blog-comment-expansion.center-content
               (when (false? @full?)
                 [:<>
                  (when @show-expand-to-full?
                    [:button.blog-comment-view-full-btn
                     {:on-click #(reset! full? true)}
-                    "+"
-                    #_[:i.fa.fas.fa-angles-down]])
+                    [:i.fa.fa-angle-down]])
                  [:div.fade-to-black.bottom
                   {;:style {:opacity (if @show-expand-to-full? 0.5 1.0)} ; wont animate so useless fix or nuke
                    :on-mouse-over #(reset! show-expand-to-full? true)
                    :on-mouse-out #(reset! show-expand-to-full? false)}]])
               (when @full?
-                [:button.blog-comment-view-full-btn
+                [:button.blog-comment-view-full-btn.blog-comment-view-less-btn
                  {:on-click #(reset! full? false)}
-                 "-"])]]] 
+                 [:i.fa.fa-angle-up]])]]] 
+           
            (when (and active-user
                       @(rf/subscribe [:comments/adding? path]))
              [add-comment path])
