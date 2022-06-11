@@ -318,10 +318,11 @@
           
           (let [details @(rf/subscribe [:strava/content [:activity (:id activity)]])
                 tab-button (fn [id-key]
-                             [:button {:style {:background (when (= id-key @tab)
-                                                             "rgba(252, 76, 2, 0.3)")}
-                                       :on-click #(do (.stopPropagation %)
-                                                      (reset! tab id-key))}
+                             [:button.strava-tab-btn
+                              {:class (when (= id-key @tab)
+                                        "active-tab")
+                               :on-click #(do (.stopPropagation %)
+                                              (reset! tab id-key))}
                               (name id-key)])
                 tabs (merge {:summary [activity-stats activity details]
                              :splits [activity-splits details]
