@@ -148,13 +148,13 @@
 (rf/reg-event-fx :intervals/get-and-dispatch
   (fn [{:keys [db]} [_ path event]]
     (let [id (get-in db [:strava :auth :intervals_athlete_id])
-          uri (str "https://intervals.icu/api/v1/athlete/" id "/")]
+          uri (str "https://intervals.icu/api/v1/athlete/" id "/")
+          api-key (-> db :strava :auth :intervals_api_key)]
       {:dispatch [:http/get {:uri (str uri path)
                              :headers {"Authorization"
                                        (str "Basic "
                                             (b64/encodeString
-                                             (str "API_KEY:"
-                                                  (-> db :strava :auth :intervals_api_key))))}}
+                                             (str "API_KEY:" api-key)))}}
                   event
                   [:strava/on-error]]})))
 
