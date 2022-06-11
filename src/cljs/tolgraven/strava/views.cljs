@@ -347,7 +347,7 @@
                     (map (fn [k] [tab-button k])
                          (keys tabs))) 
               [ui/close #(do (rf/dispatch [:strava/activity-expand nil])
-                             (rf/dispatch [:state [:strava :stats-minimized] false]))]])]
+                             (rf/dispatch [:strava/state [:stats-minimized] false]))]])]
  
          [:div.strava-activity-dot
           {:style {:left (str (* 100 (/ i num-total)) "%")
@@ -358,7 +358,7 @@
            :on-mouse-leave #(reset! hovered? false)
            :on-click #(do (.stopPropagation %)
                           (rf/dispatch [:strava/activity-expand i])
-                          (rf/dispatch [:state [:strava :stats-minimized] true])
+                          (rf/dispatch [:strava/state [:stats-minimized] true])
                           (reset! hovered? false))}
           [anim/timeout #(reset! anim-size size) (+ 750 (rand-int 2500))]])
        (when @hovered?
@@ -373,7 +373,7 @@
 (defn activities-graph "List multiple activities, currently as a graph from watts and RE"
   []
   (let [num-activities 30
-        activities @(rf/subscribe [:content [:strava :activities]])
+        activities @(rf/subscribe [:strava/content [:activities]])
         watts-high (apply max (map :average_watts activities))]
     [ui/seen-anon "opacity extra-slow"
      [:div.strava-activities
@@ -505,7 +505,7 @@
 
 (defn strava "Make an increasingly fancy visualizer feed thingy for practice"
   []
-  (let [data @(rf/subscribe [:content [:strava]])
+  (let [data @(rf/subscribe [:strava/content])
         stats (:stats data)
         athlete (:athlete data)
         arrow (fn [direction]
