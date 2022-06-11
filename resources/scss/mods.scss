@@ -319,6 +319,9 @@ button:hover .blur-bg, button:active .blur-bg,
 .darken-5 { filter: brightness(50%); }
 .darken-8 { filter: brightness(80%); }
 
+.transparent-border {
+  border: var(--line-width) solid transparent !important;
+}
 .noborder, .horizborders, .vertborders, .topborder, .bottomborder {
   border: 0;
 }
