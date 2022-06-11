@@ -31,7 +31,7 @@
 (rf/reg-event-fx :instagram/error
  (fn [{:keys [db]} [_ error]]
    (let [event (case error
-                 "expired-token-thingy" [:instagram/try-authorize]
+                 "expired-token-thingy" [:instagram/try-authorize] ; which shouldn't ever hit since should refresh...
                  [:content [:instagram :error] error])]
      {:dispatch event})))
 
@@ -66,7 +66,8 @@
 (rf/reg-event-fx :instagram/fetch-from-insta [debug]
   (fn [{:keys [db]} [_ ids]]
     {:dispatch-n
-      (mapv (fn [id] [:instagram/get id]) ids)}))
+      (conj (mapv (fn [id] [:instagram/get id]) ids)
+            [:instagram/refresh-token (get-in db [:instagram :auth :access_token])])})) ; fetch-from-insta means either has new post or an url signature has expired, seems an appropriate time to refresh token!
 
 
 (rf/reg-event-fx :instagram/refresh-token [debug] ;needs refreshing every 60 days so fix dis sometime
