@@ -24,14 +24,23 @@
 (defn instagram "Instagram gallery"
   []
   (let [amount (r/atom 24)
-        posts (rf/subscribe [:instagram/posts @amount])]
+        posts (rf/subscribe [:instagram/posts @amount])
+        fallback-url "img/logo/instagram-fallback-logo.png"
+        fallback (r/atom nil)] ; would need to be a map of ids to status, so it's per img
     (fn []
       [:section#gallery-3.fullwide.covering
        [:div.covering.instagram
-        (for [post (or @posts (range @amount))
-              :let [item [:img {:class (when-not (:media_url post) "transparent-border")
-                                :src (or (:media_url post) "img/logo/instagram-fallback-logo.png")
-                                :on-error #(rf/dispatch [:instagram/fetch-from-insta [(:id post)]])}]]] ; dispatch on failed fetch due to url expiry
-          ^{:key (str "instagram-" (or (:id post) post))}
+        {:ref #(when (and % @posts)
+                 (reset! fallback nil))} ; wouldn't work
+        (for [post (or @posts (range @amount)) ; empty seq triggers fallbacks
+              :let [item [:img {:class (when-not (:media_url post)
+                                         "transparent-border")
+                                :src (or #_@fallback ; would cause all to show fallback if one errors
+                                         (:media_url post)
+                                         fallback-url)
+                                :on-error (fn [_]
+                                            (rf/dispatch [:instagram/fetch-from-insta [(:id post)]]) ; dispatch on failed fetch due to url expiry
+                                            #_(reset! fallback fallback-url))}]]] ; in the meantime (til fetch comes through to sub) use fallback ratom
+          ^{:key (str "instagram-" (or (:id post) (random-uuid)))}
           [instagram-post post item])]])))
 
