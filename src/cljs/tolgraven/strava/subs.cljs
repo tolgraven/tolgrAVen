@@ -41,6 +41,11 @@
         "latlng" (reducing (fn [l v]
                              (conj l (map #(/ % downsampling)
                                           (apply map + v)))))
+        "velocity_smooth" (reducing
+                           (fn [l v]
+                             (conj l (-> (apply + v)
+                                         (/ downsampling)
+                                         (* 3.6)))))
         (reducing (fn [l v]
                     (conj l (/ (apply + v) downsampling))))))))
 

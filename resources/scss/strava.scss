@@ -12,6 +12,7 @@
   --strava-color: hsl(18, 98%, 50%);
   --strava-color-muted: hsl(18, 48%, 50%);
   --strava-color-alpha: hsla(18, 58%, 50%, 0.5);
+  --strava-color-alpha-2: hsla(18, 58%, 50%, 0.2);
   
   color: var(--light-3); // dark background so cant have fg as color, only light
 
@@ -197,11 +198,22 @@
             .strava-activity-graph {
               .strava-activity-graph-inner {
                 position: relative;
+                margin-bottom: var(--space);
+                background: linear-gradient(0deg,
+                                            var(--strava-color-alpha),
+                                            var(--strava-color-alpha-2));
+                border-bottom: var(--line-width) solid var(--strava-color-muted);
+                border-top-left-radius: 0.75em;
+                border-top-right-radius: 0.75em;
               }
               .strava-activity-graph-legend {
                 font-size: 75%;
-                position: absolute;
+                justify-content: space-between;
                 pointer-events: none;
+
+                > div {
+                  margin: 0 0.4em;
+                }
               }
               canvas {
                 height: 6em;

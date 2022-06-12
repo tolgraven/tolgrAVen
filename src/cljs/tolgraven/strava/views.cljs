@@ -250,10 +250,10 @@
      data))
     (.stroke ctx)))
 
-(defn graph-canvas ""
-  [kind activity]
-  (let [data @(rf/subscribe [:strava/activity-stream (:id activity) kind 25])
-        [data-max data-min] (map #(apply % data) [max min])
+(defn graph-canvas "Canvas for drawing graphs, and legend"
+  [label unit data]
+  (let [[data-max data-min] (map #(util/format-number % 1)
+                                 (map #(apply % data) [max min]))
         data-size (count data)
         cursor-pos (r/atom [0 0])
         canvas (r/atom nil)
@@ -261,40 +261,48 @@
                          (util/xy-in-rect % [:x :y]
                                           (.getBoundingClientRect
                                            (.-target %))))]
-    (fn [kind activity]
+    (fn [label unit data]
       [:div.strava-activity-graph
        (when data
          [ui/appear-anon "opacity slow"
-          [:div.strava-activity-graph-inner.flex
-           [:div.strava-activity-graph-legend
-            [:div.strava-activity-graph-legend-high
-             [:span data-max]]
+          [:div.strava-activity-graph-inner
+           [:canvas
+            {:ref #(when %
+                     (reset! canvas %)
+                     (draw-graph % label data cursor-pos))
+             :on-mouse-move on-move
+             :on-touch-start on-move
+             :on-touch-move on-move}]
+           
+           [:div.strava-activity-graph-legend.flex
+            [:div
+             label]
             [:div.strava-activity-graph-legend-current
              (let [width (if @canvas
                            (-> (.getContext @canvas "2d")
                                .-canvas
                                .-width)
-                           (first @cursor-pos))]
-               [:b (nth data (int (* data-size (/ (first @cursor-pos)
-                                                  width))))]) ]
-            [:div.strava-activity-graph-legend-low
-             [:span data-min]]
-            [:div
-             kind]]
-           [:canvas
-            {:ref #(when %
-                     (reset! canvas %)
-                     (draw-graph % kind data cursor-pos))
-             :on-mouse-move on-move
-             :on-touch-start on-move
-             :on-touch-move on-move}]]])]))) ; soo, for spinner would need to track whether not yet data or doesnt exist...
+                           (first @cursor-pos))
+                   current (-> (nth data (-> (first @cursor-pos)
+                                             (/ width)
+                                             (* data-size)
+                                             int
+                                             (max 0)))
+                               (util/format-number 1))]
+               [:b current [:span " " unit]])]
+            [:div.strava-activity-graph-legend-range
+             [:span data-min] " - " [:span data-max]]]]])]))) ; soo, for spinner would need to track whether not yet data or doesnt exist...
 
 (defn activity-graphs
   [activity]
   (let [watts @(rf/subscribe [:strava/activity-stream (:id activity) "watts" 10])]
     (into [:div.strava-activity-graphs]
-          (map (fn [kind] [graph-canvas (name kind) activity])
-               [:watts :heartrate :velocity_smooth :cadence])))) ; TODO expose whats available and have a button with dropdown to add graph, like shitty v of intervals.icu
+          (map (fn [[kind unit]]
+                 [graph-canvas
+                  (string/capitalize (name kind)) 
+                  unit
+                  @(rf/subscribe [:strava/activity-stream (:id activity) (name kind) 25])])
+               [[:watts "W"] [:heartrate "bpm"] [:velocity_smooth "km/h"] [:cadence "rpm"]])))) ; TODO expose whats available and have a button with dropdown to add graph, like shitty v of intervals.icu
 
 
 (defn activity-dot
