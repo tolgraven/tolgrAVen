@@ -655,6 +655,7 @@
   [id idx-model amount]
   [:div.carousel-idxs
    (doall (for [idx (range amount)]
+            ^{:id (str "carousel-" id "-index-btn-" idx)}
             [:button.carousel-btn.carousel-idx
              {:class (when (= @idx-model idx) "carousel-idx-current")
               :on-click #(rf/dispatch [:carousel/set-index id idx])}
