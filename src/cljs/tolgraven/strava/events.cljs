@@ -10,6 +10,7 @@
     [clojure.walk :as walk]
     [goog.crypt.base64 :as b64]
     [cljs-time.core :as ct]
+    [cljs-time.format :as ctf]
     [cljs-time.coerce :as ctc]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
@@ -83,7 +84,8 @@
        [:strava/get-and-dispatch "athlete/activities"
         [:strava/store-activities]]
        [:strava/get "segments/starred"
-        [:starred]]]}))
+        [:starred]]
+       [:intervals/fetch-summary]]}))
 
 (rf/reg-event-fx :strava/store-activities
   (fn [{:keys [db]} [_ data]]
@@ -157,4 +159,14 @@
                                              (str "API_KEY:" api-key)))}}
                   event
                   [:strava/on-error]]})))
+
+(rf/reg-event-fx :intervals/fetch-summary
+  (fn [{:keys [db]} [_ ]]
+    (let [start (ctf/unparse {:format-str "yyyy-MM-dd"}
+                             (ct/minus (ct/today) (ct/months 1)))
+          end (ctf/unparse {:format-str  "yyyy-MM-dd"}
+                             (ct/today))]
+      {:dispatch-n
+       [[:intervals/get (str "athlete-summary{ext}?start=" start "&end=" end)
+         [:summary]]]})))
 
