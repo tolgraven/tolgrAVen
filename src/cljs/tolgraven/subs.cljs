@@ -8,6 +8,7 @@
             [tolgraven.instagram.subs]
             [tolgraven.chat.subs]
             [tolgraven.github.subs]
+            [tolgraven.search.subs]
             [clojure.edn :as edn]
             [clojure.walk :as walk]
             [clojure.string :as string]

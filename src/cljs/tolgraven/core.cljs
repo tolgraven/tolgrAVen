@@ -16,6 +16,7 @@
     [tolgraven.views-common :as common]
     [tolgraven.blog.views :as blog]
     [tolgraven.user.views :as user]
+    [tolgraven.search.views :as search]
     [tolgraven.cv.views :as cv]
     [tolgraven.experiments :as experiment]
     [reitit.core :as reitit]

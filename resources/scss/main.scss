@@ -15,6 +15,7 @@
 @import "github.scss";
 @import "instagram.scss";
 @import "cv.scss";
+@import "search.scss";
 @import "experiments.scss";
 @import "components.scss";
 @import "main-page.scss";
@@ -271,6 +272,28 @@ label {
   margin-right: 0.6em;
 }
 
+mark {
+  background-color: transparent;
+  color: var(--fg-2);
+  font-weight: 700;
+  position: relative;
+
+  &:after {
+    content: "";
+    position: absolute;
+    left: -0.15em;
+    top: 9.5%;
+    width: calc(100% + 0.3em);
+    height: 85%;
+    background: linear-gradient(90deg, var(--green), var(--purple-3));
+    transform: skew(-12deg);
+    filter: brightness(65%);
+
+    z-index: -1;
+
+  }
+
+}
 
 * { //kill scrollbar. should rather mod it tho...
   scrollbar-color: transparent transparent; /* thumb and track color */
