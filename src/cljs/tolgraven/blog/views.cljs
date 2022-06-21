@@ -24,14 +24,20 @@
 
 (defn posted-by "Get details of blog/comment..."
   [id user ts score]
-  (let [user [:em.blog-user 
-              (if (count (:name user)) (:name user) "anon")]
+  (let [user (if (string? user) ; user-id, not user-map
+               @(rf/subscribe [:user/user user])
+               user)
+        username [:em.blog-user 
+                  (if-let [username (:name user)]
+                    username
+                    "anon")]
         by (str "posted by ")
         ts (util/timestamp ts)]
     [:span.blog-info
-     user
+     username
     (when (some #{(:id user)} (:admins @(rf/subscribe [:<-store :auth :roles])))
-      [:span "(admin)"])
+      [:span {:style {:font-size "80%"}}
+       "admin"])
      [:span ts]
      (when-not (= 0 score)
        [:span (cond (pos? score) "+"
