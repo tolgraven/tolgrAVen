@@ -401,6 +401,7 @@ figcaption, .float-with-caption {
   font-size: 150%;
   // text-shadow: 1px 1px 4px white;
   text-shadow: .04em .04em .2em white;
+  padding: 1em;
 }
 .loading-spinner-massive { // full page size
   // position: absolute;
@@ -428,20 +429,16 @@ figcaption, .float-with-caption {
   to   { transform: none; }
 }
 @keyframes wiggle {
-  from {
-    transform: translateX(-0.7em);
-  }
-  to   {
-    transform: translateX(0.7em);
-  }
+  from { transform: translateX(-0.4em); }
+  to   { transform: translateX(0.5em); }
 }
 @keyframes wiggle-z {
-  from { transform:  translateZ(0.6em); }
-  to   { transform:  translateZ(-0.3em); }
+  from { transform:  translateZ(0.24em); }
+  to   { transform:  translateZ(-0.20em); }
 }
 @keyframes wiggle-y {
-  from { transform:  translateY(0.5em); }
-  to   { transform:  translateY(-0.3em); }
+  from { transform:  translateY(0.35em); }
+  to   { transform:  translateY(-0.23em); }
 }
 .main-loading {
   border: 0;
