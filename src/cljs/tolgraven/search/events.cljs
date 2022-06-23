@@ -21,14 +21,16 @@
 
 (def header-type "X-TYPESENSE-API-KEY")
 
+(defn get-host
+  [host & [port]]
+  (str (when-not (string/index-of host "https://") "https://") host
+       (when port ":") port))
+
 (rf/reg-event-fx :search/search
   (fn [{:keys [db]} [_ collection query query-by opts]]
     (let [{:keys [api_key host port]} (get-in db [:search :typesense])
           query-by (string/join "," query-by)
-          url (str (if (string/index-of host "https://")
-                     ""
-                     "https://")
-                   host ":" port
+          url (str (get-host host port)
                    "/collections/" collection
                    "/documents/search")]
       {:dispatch-n
@@ -41,6 +43,22 @@
         [:search/latest-query collection query]]})))
 
 
+(rf/reg-event-fx :search/multi-search
+  (fn [{:keys [db]} [_ collections query query-by opts]] ; might need support for different opts per collection
+    (let [{:keys [api_key host port]} (get-in db [:search :typesense])
+          query-by (string/join "," query-by)
+          url (str (get-host host port)
+                   "multi_search")]
+      {:dispatch-n
+       [[:http/get {:uri url
+                    :headers {header-type api_key}
+                    :url-params {:searches (for [coll collections]
+                                             (merge {:collection coll
+                                                     :q query
+                                                     :query_by query-by}
+                                                    opts))}}
+         [:search/store-search-response [collections query]]]
+        [:search/latest-query collections query]]})))
 
 (rf/reg-event-fx :search/store-search-response [debug]
   (fn [{:keys [db]} [_ path response]]
