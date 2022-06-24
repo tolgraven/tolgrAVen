@@ -96,6 +96,7 @@
             [lein-sassc "0.10.4"]
             [lein-autoprefixer "0.1.1"]
             [lein-auto "0.1.2"]
+            [lein-codox "0.10.8"]
             ; [lein-npm "0.6.2"]; "no more lein-npm, even few packages gives hundreds of deps total and slows down figwheel reloads something fierce"
             ; [lein-kibit "0.1.2"]
             ]
@@ -126,6 +127,12 @@
    :nrepl-port 7002
    :css-dirs ["resources/public/css"]
    :nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
+
+  :codox
+  {:language :clojurescript
+   :output-path "resources/docs/codox"
+   :metadata {:doc/format :markdown}
+   :source-uri "https://github.com/tolgraven/tolgraven/blob/master/{filepath}#L{line}"}
 
   :profiles
   {:dev           [:project/dev :profiles/dev]
@@ -234,7 +241,8 @@
 
    :uberjar {:omit-source true
              :prep-tasks ["compile"
-                          ["cljsbuild" "once" "min"]]
+                          ["cljsbuild" "once" "min"]
+                          ["codox"]]
              :cljsbuild {:builds
                          {:min
                           {:source-paths ["src/cljc" "src/cljs" "env/prod/cljs"]
