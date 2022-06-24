@@ -9,6 +9,7 @@
             [tolgraven.chat.subs]
             [tolgraven.github.subs]
             [tolgraven.search.subs]
+            [tolgraven.docs.subs]
             [clojure.edn :as edn]
             [clojure.walk :as walk]
             [clojure.string :as string]

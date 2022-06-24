@@ -20,6 +20,7 @@
     [tolgraven.chat.events]
     [tolgraven.github.events]
     [tolgraven.search.events]
+    [tolgraven.docs.events]
     [tolgraven.listener]
     [tolgraven.scroll]
     [tolgraven.doc-fx]

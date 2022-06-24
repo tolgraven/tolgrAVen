@@ -4,7 +4,6 @@
    [re-frame.core :as rf]
    [clojure.string :as string]
    [tolgraven.ui :as ui]
-   [tolgraven.views-common :as views]
    [tolgraven.blog.views :as blog]
    [tolgraven.util :as util :refer [at]]))
 
