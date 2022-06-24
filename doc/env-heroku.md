@@ -1,0 +1,10 @@
+### HEROKU
+# tolgrAVen website
+## And something of a template/framework for spawning other projects
+
+The site is (currently) hosted on Heroku and has some specific things depending on it.
+As well as some setup stuff.  
+
+Should probably migrate it to my Hetzner box and CapRover in future, but paying my $7 a month for now.
+
+Not much provisioning needed outside of a few env vars though. Document those here!
