@@ -195,7 +195,7 @@
   // display: inline-block; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post
   // ^^ above also screws up appearing text with [seen]. let's find what breaks without it?
   // width: 100%; // same as above, fixes but maybe also screws? yes it does
-  transition: all 0.6s;
+  transition: all 0.45s;
   
   &.opacity {
     opacity: 0;
@@ -220,6 +220,12 @@
     transform: translateY(20%);
     transition: opacity 0.12s, transform 0.35s ease;
   }
+  &.slide-behind {
+    opacity: 0.5;
+    z-index: -1;
+    transform: translateY(-80%) scaleY(0.4);
+    transition: opacity 0.12s, transform 0.35s ease;
+  }
   &.basic {
     visibility: hidden;
   }
@@ -233,6 +239,8 @@
     visibility: visible;
     background-color: initial;
   }
+  &.fast {       transition: all 0.25s ease; }
+  &.faster {     transition: all 0.15s ease; }
   &.slow {       transition: all 1.2s ease; }
   &.extra-slow { transition: all 2.5s ease; }
   &.super-slow { transition: all 5.0s ease; }
