@@ -21,6 +21,10 @@
 
 (def header-type "X-TYPESENSE-API-KEY")
 
+(rf/reg-event-fx :search/state
+  (fn [{:keys [db]} [_ path value]]
+    {:db (assoc-in db (into [:state :search] path) value)}))
+
 (defn get-host
   [host & [port]]
   (str (when-not (string/index-of host "https://") "https://") host
@@ -34,12 +38,13 @@
                    "/collections/" collection
                    "/documents/search")]
       {:dispatch-n
-       [[:http/get {:uri url
-                    :headers {header-type api_key}
-                    :url-params (merge {:q query
-                                        :query_by query-by}
-                                       opts)}
-         [:search/store-search-response [collection query]]]
+       [(when-not (string/blank? query)
+          [:http/get {:uri url
+                      :headers {header-type api_key}
+                      :url-params (merge {:q query
+                                          :query_by query-by}
+                                         opts)}
+           [:search/store-search-response [collection query]]])
         [:search/latest-query collection query]]})))
 
 
@@ -50,17 +55,18 @@
           url (str (get-host host port)
                    "multi_search")]
       {:dispatch-n
-       [[:http/get {:uri url
-                    :headers {header-type api_key}
-                    :url-params {:searches (for [coll collections]
-                                             (merge {:collection coll
-                                                     :q query
-                                                     :query_by query-by}
-                                                    opts))}}
-         [:search/store-search-response [collections query]]]
+       [(when-not (string/blank? query)
+          [:http/get {:uri url
+                      :headers {header-type api_key}
+                      :url-params {:searches (for [coll collections]
+                                               (merge {:collection coll
+                                                       :q query
+                                                       :query_by query-by}
+                                                      opts))}}
+           [:search/store-search-response [collections query]]])
         [:search/latest-query collections query]]})))
 
-(rf/reg-event-fx :search/store-search-response [debug]
+(rf/reg-event-fx :search/store-search-response
   (fn [{:keys [db]} [_ path response]]
     (let [data (walk/keywordize-keys response)]
       {:db (update-in db (into [:search :results] path) merge data)})))

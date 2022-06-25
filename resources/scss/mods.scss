@@ -190,6 +190,15 @@
   top: var(--header-height-current);
 }
 
+.stick-absolute {
+  position: absolute !important;
+  top: var(--header-height-current);
+}
+.stick-fixed {
+  position: fixed !important;
+  top: var(--header-height-current);
+}
+
 .appear-wrapper {
   // display: initial; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post
   // display: inline-block; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post

@@ -20,6 +20,14 @@
  (fn [db [_ collection]]
    (get-in db [:search :previous-query collection])))
 
+(rf/reg-sub :search/state
+ (fn [db [_ path]]
+   (get-in db (into [:state :search] path))))
+
+(rf/reg-sub :search/open?
+ (fn [db [_ path]]
+   (get-in db [:state :search :open?])))
+
 (rf/reg-sub
  :search/results-for-query
  (fn [[_ collection & [maybe-query]]]
