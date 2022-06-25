@@ -18,6 +18,7 @@
     [tolgraven.user.views :as user]
     [tolgraven.search.views :as search]
     [tolgraven.cv.views :as cv]
+    [tolgraven.docs.views :as docs]
     [tolgraven.experiments :as experiment]
     [reitit.core :as reitit]
     [reitit.frontend.history :as rfh]
@@ -120,12 +121,10 @@
     {:title "Experiments" :tint "green"}])
 
 (defn doc-page []
-  (let [docs @(rf/subscribe [:content [:docs]])]
+  (let [path (or @(rf/subscribe [:docs/state [:page]]) "01-intro")]
     [with-heading [:docs :heading]
-     [:section.docs.solid-bg.hi-z.noborder
-      {:ref #(when % (util/run-highlighter! "pre" %))} ; very nice way to get a did-mount
-      [ui/md->div (:md docs)]]]))
-
+     [:section.docs.solid-bg.hi-z.noborder.fullwide
+      [docs/page]]]))
 
 (defn blog-page []
   [with-heading [:blog :heading] [blog/blog-container [blog/blog-feed]]])
@@ -189,10 +188,22 @@
        :view        #'view/ui
        :controllers [{:start (fn [_]
                                (rf/dispatch [:scroll/to "bottom" 700]))}]}]
-     ["docs" {:name :docs
-               :view #'doc-page
-               :controllers [{:start (fn [_] (doall (map rf/dispatch [[:page/init-docs]
-                                                                      [:state [:is-personal] true]])))}]}] ; really overkill this triggers each time. gotta be built-in solution somewhere? else work around
+     ["docs" {:controllers
+              [{:start (fn [_]
+                         (rf/dispatch [:on-booted :firebase [:docs/init]]))}]}
+      ["" {:name :docs
+           :view #'doc-page
+           :controllers
+           [{:start (fn [_])}]}]
+      ["/codox/:doc"
+       {:name :docs-codox-page
+        :view #'doc-page
+        :controllers
+        [{:parameters {:path [:doc]}
+          :start (fn [{:keys [path]}]
+                   (rf/dispatch [:docs/get (:doc path)])
+                   (rf/dispatch [:docs/set-page (:doc path)]))}]}]]
+     
      ["blog" {:controllers [{:start (fn [_] (rf/dispatch [:on-booted :firebase [:blog/init]]))}] }
       [""     {:name :blog
                :view #'blog-page

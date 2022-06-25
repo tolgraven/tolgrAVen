@@ -65,6 +65,17 @@
      {:get (swagger-ui/create-swagger-ui-handler
              {:url "/api/swagger.json"
               :config {:validator-url nil}})}]]
+   
+   ["/doc" {:summary "Get doc stuff, with extra html stripped out"
+            :parameters {:query {:path string?}}
+            :get (fn [{{{:keys [path]} :query} :parameters}]
+                  (when-not (string/blank? path)
+                    (-> (str "docs/codox/" path ".html")
+                        io/resource
+                        slurp
+                        (string/replace #"^[\s\S]*<body[^\>]*>([\s\S]*)<\/body>[\s\S]*$" "$1") ; strip html and head body tags
+                        response/ok
+                        plain-text-header)))}]
 
    ["/blog" {:summary "Get specific blog-post"
              :parameters {:query {:id int?}}

@@ -10,5 +10,13 @@
 (defn page "Display a codox page"
   []
   (let [html @(rf/subscribe [:docs/page-html])]
-   [:section.docs
-     {:dangerouslySetInnerHTML {:__html html}}] ))
+   [:div.docs
+     [:div.codox
+      {:ref (fn [el]
+              (doseq [el (.querySelectorAll js/document ".codox a")]
+                (set! (.-href el) ; XXX gotta keep it from doing this to github links!
+                      (str "/docs/codox/"
+                           (-> (.-href el)
+                               (string/replace  #"http://.*/" "")
+                               (string/replace  #"\.html" ""))))))
+       :dangerouslySetInnerHTML {:__html html}}]] ))
