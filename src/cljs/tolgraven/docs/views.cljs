@@ -11,12 +11,15 @@
   []
   (let [html @(rf/subscribe [:docs/page-html])]
    [:div.docs
-     [:div.codox
+     (if html
+      [:div.codox
       {:ref (fn [el]
               (doseq [el (.querySelectorAll js/document ".codox a")]
                 (set! (.-href el) ; XXX gotta keep it from doing this to github links!
-                      (str "/docs/codox/"
+                      (str (when-not (string/index-of (.-href el) "github")
+                             "/docs/codox/")
                            (-> (.-href el)
                                (string/replace  #"http://.*/" "")
                                (string/replace  #"\.html" ""))))))
-       :dangerouslySetInnerHTML {:__html html}}]] ))
+       :dangerouslySetInnerHTML {:__html html}}]
+      [ui/loading-spinner (not html) :massive])]))

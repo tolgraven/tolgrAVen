@@ -24,14 +24,18 @@
 
 (rf/reg-event-fx :docs/set-page
   (fn [{:keys [db]} [_ page]]
-    {:db (assoc-in db [:state :docs :current-page] page)}))
+    (let [old-page (get-in db [:state :docs :current-page])]
+      {:db (-> db
+               (assoc-in [:state :docs :current-page] page)
+               (assoc-in [:state :docs :previous-page] old-page))})))
 
 (rf/reg-event-fx :docs/get
   (fn [{:keys [db]} [_ page]]
-    {:dispatch [:http/get-internal
-                {:uri (str "/api/doc?path=" page)
-                 :response-format (ajax/raw-response-format)}
-                [:docs/store-page page]]}))
+    (when-not (get-in db [:docs page])
+      {:dispatch [:http/get-internal
+                  {:uri (str "/api/doc?path=" page)
+                   :response-format (ajax/raw-response-format)}
+                  [:docs/store-page page]]})))
 
 (rf/reg-event-fx :docs/store-page
   (fn [{:keys [db]} [_ page data]]

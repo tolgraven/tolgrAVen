@@ -25,6 +25,7 @@
  :<- [:docs/get]
  :<- [:docs/state]
  :<- [:docs/current-page]
- (fn [[docs state current-page] [_ page]]
+ :<- [:docs/previous-page]
+ (fn [[docs state current-page previous-page] [_ page]]
    (let [page (or page current-page "01-intro")]
-     (get-in docs [page]))))
+     (get-in docs [page] (get-in docs [previous-page])))))
