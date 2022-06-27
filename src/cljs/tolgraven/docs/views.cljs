@@ -14,12 +14,15 @@
      (if html
       [:div.codox
       {:ref (fn [el]
-              (doseq [el (.querySelectorAll js/document ".codox a")]
+              (doseq [el (.querySelectorAll js/document ".codox a")
+                      :let [is-github? (string/index-of (.-href el) "github")]]
                 (set! (.-href el) ; XXX gotta keep it from doing this to github links!
-                      (str (when-not (string/index-of (.-href el) "github")
+                      (str (when-not is-github?
                              "/docs/codox/")
-                           (-> (.-href el)
-                               (string/replace  #"http://.*/" "")
-                               (string/replace  #"\.html" ""))))))
+                           (if-not is-github?
+                             (-> (.-href el)
+                               (string/replace  #"http(s)?://.*/" "")
+                               (string/replace  #"\.html" ""))
+                             (.-href el))))))
        :dangerouslySetInnerHTML {:__html html}}]
       [ui/loading-spinner (not html) :massive])]))
