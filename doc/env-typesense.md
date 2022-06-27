@@ -1,6 +1,5 @@
-### TYPESENSE
-# tolgrAVen website
-## And something of a template/framework for spawning other projects
+# TYPESENSE
+## env
 
 Typesense specific stuff, the five vars etc
 

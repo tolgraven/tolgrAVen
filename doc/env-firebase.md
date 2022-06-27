@@ -1,6 +1,5 @@
-### FIREBASE
-# tolgrAVen website
-## And something of a template/framework for spawning other projects
+# FIREBASE
+## env
 
 In lieu of a fancier backend with streaming GraphQL queries (really need to get on that,
 can use cue-db GQL stuff as base...) I'm using Firebase for a lot of stuff, anything dynamic really.  

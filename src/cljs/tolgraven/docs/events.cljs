@@ -12,10 +12,11 @@
 
 (rf/reg-event-fx :docs/init
  (fn [{:keys [db]} [_ ]]
-   (when-not (get-in db [:docs])
-    {:dispatch-n
-      [[:docs/get "01-intro"]
-       [:docs/set-page "01-intro"]]})))
+   (let [page (get-in db [:state :docs :current-page])] ;this shouldn't be needed, but early get from controller somehow doesn't ever continue its chain
+     (when-not (get-in db [:docs])
+       {:dispatch-n
+        [[:docs/get (or page "index")]
+         [:docs/set-page (or page "index")]]}))))
 
 
 (rf/reg-event-fx :docs/state

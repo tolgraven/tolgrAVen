@@ -1,6 +1,5 @@
-### HEROKU
-# tolgrAVen website
-## And something of a template/framework for spawning other projects
+# HEROKU
+## env
 
 The site is (currently) hosted on Heroku and has some specific things depending on it.
 As well as some setup stuff.  
