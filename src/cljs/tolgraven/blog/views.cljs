@@ -336,8 +336,6 @@
                       {:href @(rf/subscribe [:href :blog-tag {:tag tag}])}
                       tag]]))]))
 
-(defn make-link [path]
-  @(rf/subscribe [:href :blog-post {:permalink path}]))
 
 (defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text permalink comments] :as post}]
@@ -353,7 +351,7 @@
       [ui/appear-merge "zoom slower"
        [ui/user-avatar user "blog-user-avatar"]]
       [:div.blog-post-header-main
-       [:a {:href (make-link (or permalink id))}
+       [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
          [:h1.blog-post-title title
           (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
             [:button.noborder.nomargin
@@ -379,11 +377,11 @@
        [:div.blog-prev-next-links
         (when-let [id @(rf/subscribe [:blog/adjacent-post-id :prev (:id post)])]
           (let [post @(rf/subscribe [:blog/post id])]
-           [:a {:href (make-link (or (:permalink post) (:id post)))}
+           [:a {:href @(rf/subscribe  [:blog/permalink-for-path  (or (:permalink post) (:id post))])}
             [:span [:i.fa.fa-chevron-left] " " (:title post)]]))
         (when-let [id @(rf/subscribe [:blog/adjacent-post-id :next (:id post)])]
           (let [post @(rf/subscribe [:blog/post id])]
-            [:a {:href (make-link (or (:permalink post) (:id post)))}
+            [:a {:href @(rf/subscribe [:blog/permalink-for-path  (or (:permalink post) (:id post))])}
             [:span (:title post) " " [:i.fa.fa-chevron-right]]]))]) ]]))
 
 (defn blog-archive "List of all posts with headlines etc. Maybe for a sidebar." []
@@ -395,7 +393,7 @@
       ; which means we need to pre-sort+split
      (doall (for [{:keys [id ts user title text permalink] :as post} posts] ^{:key (str "blog-archive-" (:id post))}
        [:div.blog-archive-post
-        [:a {:href (make-link (or permalink id))}
+        [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
             [:h2 title]] ;should be link
         [posted-by id @(rf/subscribe [:user/user user]) ts]
         (when (pos? (count (:comments post)))

@@ -19,9 +19,16 @@
 
 (rf/reg-sub :blog/post-ids
  (fn [[_ _]]
-   (rf/subscribe [:<-store-2 :blog-post-ids :ids]))
+   (rf/subscribe [:<-store-2 :blog-post-ids :id]))
  (fn [ids [_ path]]
-   (reverse (-> ids :ids :ids))))
+   (->> (:id ids)
+        (filter #(true? (val %)))
+        keys
+        (map name)
+        (map js/Number)
+        sort
+        reverse)))
+
 
 (rf/reg-sub :blog/post
   (fn [[_ post-id]]
@@ -31,15 +38,25 @@
   (fn [post [_ post-id]]
     (get post (keyword (str post-id)))))
 
+(rf/reg-sub :blog/permalink-for-path
+ (fn [[_ path]]
+   (rf/subscribe [:href :blog-post {:permalink path}]))
+ (fn [link _]
+   link))
+
 (rf/reg-sub :blog/post-preview
  (fn [[_ id]]
-   (rf/subscribe [:blog/post id]))
- (fn [post [_ id]]
-   (some->> (:text post)
-            string/split-lines
-            (filter #(not (string/blank? %)))
-            (take 2)
-            (string/join "  \n"))))
+   [(rf/subscribe [:blog/post id])
+    (rf/subscribe [:blog/permalink-for-path id])])
+ (fn [[post link] [_ id]]
+   (let [preview (some->> (:text post)
+                          string/split-lines
+                          (filter #(not (string/blank? %)))
+                          (take 2)
+                          (string/join "  \n"))]
+     (str preview
+          (when (> (count (:text post)) (count preview))
+            (str "    \n[...](" link ")"))))))
 
 (rf/reg-sub :blog/post-tags ; XXX should be an array already as stored...
  (fn [[_ id]]
@@ -108,13 +125,6 @@
  (fn [options [_ ]]
    (get options :posts-per-page 1)))
 
-(rf/reg-sub :blog/adjacent-post ; when move to not fetching all posts at boot, sub like this (get whole post not just id) will help auto prefetch wohoo
- :<- [:blog/post-feed]
- (fn [posts [_ direction current-id]]
-   (let [[before current-and-after] (split-with #(> (:id %) current-id) posts)]
-     (case direction
-       :prev (last before)
-       :next (second current-and-after)))))
 
 (rf/reg-sub :blog/adjacent-post-id
  :<- [:blog/post-ids]
@@ -124,14 +134,6 @@
        :prev (last before)
        :next (second current-and-after)))))
 
-(rf/reg-sub :blog/posts-for-page ; XXX ids-for-page
- :<- [:blog/post-feed] ; obvs will be, figure out idx range and ask server (then cache all already delivered in db)
- (fn [posts [_ idx page-size]]
-     (when (seq posts)
-       (try
-        (nth (partition-all page-size posts)
-             idx)
-        (catch js/Error _))))) ;usually throws on first load saying idx not a number...
 
 (rf/reg-sub :blog/ids-for-page
  :<- [:blog/post-ids] ; obvs will be, figure out idx range and ask server (then cache all already delivered in db)
@@ -163,7 +165,7 @@
    [(rf/subscribe [:<-store-q {:path-collection [:blog-comments]
                                :where [[:user :== user-id] ]
                                ; :limit 100 ; can then grab last item and use :last-visible. but would be tricky here...
-                               :order-by [[:id :desc]]
+                               :order-by [[:ts :desc]]
                                :doc-changes true }])])
  (fn [comments [_ user-id]]
    (first comments)))
