@@ -87,10 +87,65 @@
   }
 
   span { // should be linked too
+    position: relative;
     margin-right: var(--space);
     margin-bottom: var(--space);
     padding: 0.15em 0.4em;
     background-color: var(--bg-4);
+    border-radius: 3%;
+    box-shadow: 2.5px 2.5px 5px 1px rgba(200, 200, 255, 0.03); 
+    text-shadow: 1px 1px 1px var(--orange);
+
+    &:before, &:after {
+      content: "";
+      position: absolute;
+      transition: all 0.5s ease;
+
+    }
+    &:before {
+      top: 0%;
+      left: -2%;
+      width: 104%;
+      height: 100%;
+      transform: skew(-15deg);
+      background-color: var(--bg-4);
+      z-index: -1;
+    }
+    &:after {
+      top: 25%;
+      left: 25%;
+      width: 50%;
+      height: 50%;
+      transition: all 0.5s ease;
+      transform: none;
+      background-color: var(--bg-6);
+      z-index: -2;
+    }
+    
+    &:hover {
+      transform: scale(1.1);
+      &:after {
+        top: -5%;
+        left: -2.5%;
+        width: 105%;
+        height: 110%;
+        transform: rotate(1deg) skew(10deg);
+      }
+
+      &:before {
+        transform: rotate(1deg) skew(10deg) scale(0.9);
+      }
+    }
+
+  }
+}
+
+.blog-posts-with-tag {
+  > h2 {
+    padding-top: calc(2 * var(--space));
+  }
+  > h2 > .blog-post-tags {
+    justify-content: center;
   }
 }
 
