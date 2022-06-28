@@ -1,16 +1,16 @@
 # TYPESENSE
 ## env
-
-Typesense specific stuff, the five vars etc
-
-Based on CapRover being up and running...
-
-Install typesense-cli,
-`git clone https://github.com/AlexBV117/typesense-cli.git`
-`npm run typesense-cli`
-`npm link` for global access
-make an api key limited to search:
-
+    
+Typesense specific stuff, the five vars etc    
+    
+Based on CapRover being up and running...    
+    
+Install typesense-cli,    
+`git clone https://github.com/AlexBV117/typesense-cli.git`    
+`npm run typesense-cli`    
+`npm link` for global access    
+make an api key limited to search:    
+    
 ```
 typesense --key --new \
           '{
@@ -19,8 +19,8 @@ typesense --key --new \
             "collections": ["blog-posts", "blog-comments"]
           }'
 ```          
-add the collections like:
-
+add the collections like:    
+    
 
 ```          
 curl "https://typesense.box.tolgraven.se:443/collections" \
@@ -42,6 +42,6 @@ curl "https://typesense.box.tolgraven.se:443/collections" \
          "default_sorting_field": "ts"
        }'
 ```          
-
+    
 Ideally this would set up on backend when run with init params and auto pushed to
 firestore...
