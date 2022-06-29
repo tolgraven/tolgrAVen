@@ -383,6 +383,10 @@
           :y (- (.-clientY e) (.-top rect))}]
   (map m dimension))) ;ok so now will return vec even for one dim
 
+(defn xy-in [e dimension]
+ (let [rect (.getBoundingClientRect (.-target e))]
+  (xy-in-rect e dimension rect)))
+
 (defn resize-canvas-to-display-size
   [canvas]
   (when canvas
