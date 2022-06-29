@@ -149,8 +149,14 @@
      {:style {:position :relative}
       :ref #(when %
               (rf/dispatch [:strava/fetch-kudos (:id activity)]))}
-     (for [kudoer kudoers] ^{:key (str "strava-kudoer-" (:firstname kudoer) "-" (:lastname kudoer))}
-       [kudo kudoer]) ]))
+     (if kudoers
+       (for [kudoer kudoers] ^{:key (str "strava-kudoer-" (:firstname kudoer) "-" (:lastname kudoer))}
+         [ui/seen-anon "slide-in slow"
+          [kudo kudoer]])
+       [ui/loading-spinner true nil
+        {:style {:font-size "70%"
+                 :width "0.7em"
+                 :height "1.0em"}}]) ]))
 
 (defn gear "Display gear details"
   [id]
@@ -166,12 +172,10 @@
        (when @hovered?
          (let [info @(rf/subscribe [:strava/content [:gear-info id]])]
            [:div.strava-activity-gear-popup.strava-popup
-            {:style {:animation "fade-in 2.5s ease 1.0s forwards"}}
+            {:style {:animation "fade-in 1.5s ease 0.3s forwards"}}
             
             [:div
-             {:style {:background-image (str "url(" (:img info) ")")
-                      :height "22em"
-                      :background-size "cover"}}
+             {:style {:background-image (str "url(" (:img info) ")")}}
              [:p [:span (:converted_distance @gear)] [:span "km"]]
              [:p (:desc info)]]]))])))
 
@@ -199,7 +203,8 @@
       (when (pos? (:pr_count activity))
         [:p "PRs"])
        (when (pos? (:kudos_count details))
-        [:p "Kudos"])]]
+        [:p "Kudos"])
+       [:p "Bike"]]]
     [:div.strava-activity-stats-numbers
      (when (:kilojoules activity)
         [:p (:kilojoules activity)])
@@ -212,10 +217,10 @@
      (when (pos? (:pr_count activity))
        [:p [:i.fa.fa-award.strava-award] (:pr_count activity)])
      (when (pos? (:kudos_count details))
-       [kudos activity])]]
+       [kudos activity])
+     [gear (:gear_id activity)]]]
 
-   [activity-photo (:photos details)] ]
-   [gear (:gear_id activity)]])
+   [activity-photo (:photos details)] ] ])
 
 
 (defn draw-graph

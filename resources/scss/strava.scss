@@ -49,6 +49,7 @@
   }
   
   .strava-stats {
+    --strava-stats-height: 14em;
     position: relative;
     font-size: 90%;
     padding: var(--space);
@@ -59,18 +60,43 @@
     box-shadow: 3px 3px 15px 10px inset rgba(252, 76, 2, 0.1);
     
     max-height: 100vh;
+    min-height: var(--strava-stats-height);
     transition: all 0.8s ease;
     overflow: hidden;
 
-    &.stats-minimized {
-      height: 0.0em;
-      padding: 0;
-      margin: 0;
-      border: 0;
-      transition: all 0.8s ease;
+    .strava-stats-tabs {
+      position: relative;
+      top: 0;
+      left: 0;
+      margin: calc(0px - var(--space));
+      margin-right: initial;
+      display: flex;
+      flex-flow: column;
+      justify-content: space-evenly;
+
+
+      .strava-tab-btn {
+        padding-top: 0.6em;
+        padding-bottom: 0.6em;
+
+        .strava-stats-tab-img {
+          width: 1.75em;
+        }
+        div {
+          font-size: 0.7em;
+        }
+      }
     }
 
-    > .strava-stats-legend {
+    &.stats-minimized {
+      max-height: 0;
+      padding: 0;
+      border: 0;
+      transition: all 0.8s ease; // still jumps rather than animates height?
+      // opacity: 0;
+    }
+
+    .strava-stats-legend {
       margin-left: 0;
       margin-right: calc(2.0 * var(--space));
       color: var(--light-5);
@@ -234,8 +260,6 @@
           }
 
           .strava-activity-gear {
-            position: absolute;
-            bottom: var(--space);
             color: var(--light-4);
             font-size: 90%;
 
@@ -265,7 +289,12 @@
                 opacity: 0;
                 left: 10%;
                 font-size: 90%;
-                width: 200%;
+                width: 50%;                // width: 100%;
+
+                > div {
+                  background-size: cover;
+                  height: 30em;
+                }
               }
             }
           }
@@ -405,6 +434,7 @@
 
 .strava-activity-kudos {
   position: relative;
+  display: flex;
 
   .strava-kudo-dot {
     width: 1.25em; height: 1em;
