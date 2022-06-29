@@ -71,7 +71,7 @@
      [ui/appear-merge "zoom-y fast"
       [:div.search-instant-result.blog-post
        [:div.blog-post-header-main
-        [:a {:href (blog/make-link (or permalink id))}
+        [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
          [:h2.blog-post-title title]]
         [blog/posted-by id user ts]
         [blog/tags-list document]]
