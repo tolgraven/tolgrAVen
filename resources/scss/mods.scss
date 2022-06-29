@@ -41,7 +41,7 @@
 }
 .fade-to-black.light-from-below {
   background: linear-gradient(180deg, transparent 0%,
-      hsl(var(--hue-2), 8%, var(--lum-fg-2)) 120%);
+      hsl(var(--hue-2), 8%, var(--lum-light-2)) 120%);
   --height: 25vh; // problem attic but cant just put percentage then get nothing
   height: calc(var(--height));
   bottom: 0;
