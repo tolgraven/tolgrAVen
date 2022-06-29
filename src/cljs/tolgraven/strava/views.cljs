@@ -495,7 +495,7 @@
        [ui/loading-spinner true]) ]))
 
 
-(defn totals-stats
+(defn strava-totals-stats
   [athlete category heading]
   (let [stats (category athlete)
         distance (-> (:distance stats)
@@ -504,29 +504,112 @@
         hours (/ (:moving_time stats) 3600)]
     [:div
      [:h3 heading]
-     [:div  (:count stats)]
-     [:div distance [:span " km"]]
-     [:div (util/format-number hours 1) [:span " hours"]]
-     [:div (util/format-number (/ distance (:count stats)) 2) [:span " km"]]
-     [:div (util/format-number (/ distance hours) 1) [:span " km/h"]]]))
+     [:div (:count stats)]
+     [:div distance                                               [:span " km"]]
+     [:div (util/format-number hours 1)                           [:span " hours"]]
+     [:div (util/format-number (/ distance (:count stats)) 2)     [:span " km"]]
+     [:div (util/format-number (/ distance hours) 1)              [:span " km/h"]]
+     [:div (util/format-number (/ (:elevation_gain stats) 1000))  [:span " km"]]]))
+
 
 (defn strava-general-stats "Box of stats (rides, total distance and stuff)"
+  []
+  (let [stats @(rf/subscribe [:strava/content [:stats]])]
+    [:<>
+     [:div.strava-stats-legend
+      [:h3 [:img {:src "img/strava-icon.png"
+                  :style {:width "1.25em"}}]]
+      [:div "Rides"]
+      [:div "Total distance"]
+      [:div "Time"]
+      [:div "Average distance"]
+      [:div "Average speed"]
+      [:div "Elevation gain"]]
+     [strava-totals-stats stats :all_ride_totals "Total"] 
+     [ui/carousel-normal "strava-general-stats-carousel"
+      {}
+      [[strava-totals-stats stats :recent_ride_totals "Recent"]
+       [strava-totals-stats stats :ytd_ride_totals (.getFullYear (js/Date.))]]]]))
+
+(defn strava-details-stats "Use rides to calc stuff"
+  []
+  [:div])
+
+
+(defn intervals-totals-stats
+  [stats index]
+  (let [{:keys [count calories total_elevation_gain
+                training_load fitness fatigue] :as stats} (get stats index)
+        distance (-> (:distance stats)
+                     (/ 1000)
+                     (util/format-number 2))
+        hours (/ (:moving_time stats) 3600)]
+    [:div
+     [:h3 (-> stats :date (string/replace-first #"\d*-" ""))]
+     [:div count]
+     [:div distance                           [:span " km"]]
+     [:div (util/format-number hours 1)       [:span " hours"]]
+     [:div calories                           [:span " kcal"]]
+     [:div total_elevation_gain               [:span " m"]]
+     [:div training_load                      [:span " TSS"]]
+     [:div (util/format-number fitness 1)     [:span " CTL"]]
+     [:div (util/format-number fatigue 1)     [:span " ATL"]]]))
+
+(defn intervals-general-stats "Box of stats (graphs n shit!)"
+  []
+  (let [stats @(rf/subscribe [:intervals/content [:summary]])]
+    [:<> ;div.strava-stats-intervals
+     [:div.strava-stats-legend
+      [:h3 [:img {:src "img/intervals-icon.png"
+                  :style {:width "1.25em"
+                          :border-radius "50%"}}]
+      " Week"]
+      [:div "Rides"]
+      [:div "Distance"]
+      [:div "Time"]
+      [:div "Calories"]
+      [:div "Elevation"]
+      [:div "Load"]
+      [:div "Fitness"]
+      [:div "Fatigue"]]
+     [intervals-totals-stats stats 0 "This"]
+     [intervals-totals-stats stats 1 "Last"]
+     [intervals-totals-stats stats 2 "Before"]]))
+
+(defn intervals-graphs "Nice graphs"
+  []
+  (let [stats @(rf/subscribe [:intervals/content [:summary]])]
+   [:div]))
+
+(defn general-stats "Box of stats, from strava or other related provider"
   [stats]
-  [:div.strava-stats.flex
-   {:class (when @(rf/subscribe [:state [:strava :stats-minimized]]) "stats-minimized")}
-   [:div.strava-stats-legend
-    [:h3 [:img {:src "img/strava-icon.png"
-                :style {:width "1.25em"}}]]
-    [:div "Rides"]
-    [:div "Total distance"]
-    [:div "Time"]
-    [:div "Average distance"]
-    [:div "Average speed"]]
-   [totals-stats stats :all_ride_totals "Total"] 
-   [ui/carousel-normal "strava-general-stats-carousel"
-    {}
-    [[totals-stats stats :recent_ride_totals "Recent"]
-     [totals-stats stats :ytd_ride_totals (.getFullYear (js/Date.))]]] ])
+  (let [active-tab (r/atom :strava-stats)
+        strava-logo {:src "img/strava-icon.png"}
+        intervals-logo {:src "img/intervals-icon.png"
+                        :style {:border-radius "50%"}}]
+    (fn [stats]
+      [:div.strava-stats.flex
+       {:class (when @(rf/subscribe [:strava/state [:stats-minimized]])
+                 "stats-minimized")}
+
+       [:div.strava-stats-tabs
+        (for [tab [{:id :strava-stats       :caption "summary"  :logo strava-logo}
+                   {:id :strava-detailed    :caption "detailed" :logo strava-logo}
+                   {:id :intervals-stats    :caption "stats"    :logo intervals-logo}
+                   {:id :intervals-graphs   :caption "graphs"   :logo intervals-logo}]]
+          ^{:key (str "strava-general-stats-" (:id tab))}
+          [:button.strava-tab-btn
+           {:on-click #(reset! active-tab (:id tab))
+            :class (when (= @active-tab (:id tab))
+                     "active-tab")}
+           [:img.strava-stats-tab-img (:logo tab)]
+           [:div (:caption tab)]])]
+
+       (case @active-tab
+         :strava-stats      [strava-general-stats]
+         :strava-detailed   [strava-details-stats]
+         :intervals-stats   [intervals-general-stats]
+         :intervals-graphs  [intervals-graphs])])))
 
 (defn strava "Make an increasingly fancy visualizer feed thingy for practice"
   []
