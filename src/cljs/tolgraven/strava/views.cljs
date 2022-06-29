@@ -224,18 +224,25 @@
 
 
 (defn draw-graph
-  [canvas id data cursor-pos]
+  [canvas id data cursor-pos & {:keys [colors zoom current-drag]
+                                :or {colors {:line "rgb(252,136,54)"
+                                             :fill "rgb(252,176,172)"
+                                             :highlight "rgb(52,136,254)"}
+                                     zoom [0.0 1.0]}}]
+  (util/resize-canvas-to-display-size canvas)
   (let [ctx (.getContext canvas "2d")
         [data-max data-min] (map #(apply % data) [max min])
-        data-min 0
-        _ (util/resize-canvas-to-display-size canvas)
         [w h] [(.-width canvas) (.-height canvas)]
         size (count data)
         cursor-index (int (* size (/ (first @cursor-pos) w)))]
     (.clearRect ctx 0 0 w h)
-    (set! (.-strokeStyle ctx) "rgb(252,136,54)")
-    (set! (.-fillStyle ctx) "rgb(252,176,172)")
-    (set! (.-lineWidth ctx) 2)
+    (set! (.-strokeStyle ctx) (:line colors))
+    (set! (.-fillStyle ctx) (:fill colors))
+    (set! (.-lineWidth ctx) 1.5)
+    (set! (.-shadowBlur ctx) 4)
+    (set! (.-shadowOffsetX ctx) 1)
+    (set! (.-shadowOffsetY ctx) 1)
+    (set! (.-shadowColor ctx) (:highlight colors));
     (.beginPath ctx)
     (.moveTo ctx 0 (- h (* h (util/rescale-to-frac (first data) data-min data-max))))
     
@@ -245,43 +252,48 @@
             y (- h (* h (util/rescale-to-frac point data-min data-max)))]
         (.lineTo ctx x y)
         (when (= i cursor-index)
-          (set! (.-lineWidth ctx) 4)
-          (set! (.-strokeStyle ctx) "rgb(52,136,254)")
-          (.arc ctx x y, 3, 0, 2 * js/Math.PI)
-          (.lineTo ctx x y)
-          (.stroke ctx))
-          (set! (.-strokeStyle ctx) "rgb(252,136,54)")
-          (set! (.-lineWidth ctx) 2)))
+          (set! (.-strokeStyle ctx) (:highlight colors))
+          (set! (.-lineWidth ctx) 2.5)
+          (.arc ctx x y, 4, 0, 2 * js/Math.PI)
+          (.stroke ctx)
+          (set! (.-lineWidth ctx) 2.5)
+          (.moveTo ctx x y)
+          ; (.stroke ctx)
+          (set! (.-strokeStyle ctx) (:line colors))
+          (set! (.-lineWidth ctx) 1.5))))
      data))
     (.stroke ctx)))
 
 (defn graph-canvas "Canvas for drawing graphs, and legend"
-  [label unit data]
+  [label unit data] ;also maybe an atom we can update to change downsampling/range
   (let [[data-max data-min] (map #(util/format-number % 1)
                                  (map #(apply % data) [max min]))
         data-size (count data)
         cursor-pos (r/atom [0 0])
         canvas (r/atom nil)
-        on-move #(reset! cursor-pos
-                         (util/xy-in-rect % [:x :y]
-                                          (.getBoundingClientRect
-                                           (.-target %))))]
+        on-move #(reset! cursor-pos (util/xy-in % [:x :y]))
+        zoom-to (r/atom {:start 0.0 :end 1.0})
+        on-down #(swap! zoom-to update :start util/xy-in % [:x])
+        on-up   #(swap! zoom-to update :end util/xy-in % [:x])]
     (fn [label unit data]
       [:div.strava-activity-graph
        (when data
-         [ui/appear-anon "opacity slow"
+         [ui/appear-anon "zoom-y slow"
           [:div.strava-activity-graph-inner
            [:canvas
             {:ref #(when %
                      (reset! canvas %)
                      (draw-graph % label data cursor-pos))
              :on-mouse-move on-move
+             :on-mouse-down on-down
+             :on-mouse-up   on-up
              :on-touch-start on-move
              :on-touch-move on-move}]
            
            [:div.strava-activity-graph-legend.flex
             [:div
              label]
+            [:div (pr-str @zoom-to)]
             [:div.strava-activity-graph-legend-current
              (let [width (if @canvas
                            (-> (.getContext @canvas "2d")
@@ -548,10 +560,10 @@
          [:div (:city athlete)]
          [:div (:weight athlete) " kg"]]
         [:div.strava-story (:story data)]]]
-       [ui/loading-spinner true])
+       [ui/loading-spinner (rf/subscribe [:loading :strava])])
       
      (if stats
-       [strava-general-stats stats]
+       [general-stats stats]
        [ui/loading-spinner true :massive])
 
      [activities-graph] ]))
