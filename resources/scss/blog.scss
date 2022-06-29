@@ -243,13 +243,12 @@
       top: calc(0.5 * var(--space));
       transition: right 0.3s ease;
       opacity: 0.8;
+      
       > button {
         margin: 0;
         &:hover {
           opacity: 1.0;
-          background: black;
         }
-        background: rgba(30, 30, 30, 0.5);
       }
     }
   }
