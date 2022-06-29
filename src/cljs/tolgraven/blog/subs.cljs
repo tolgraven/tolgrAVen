@@ -22,13 +22,17 @@
    (rf/subscribe [:<-store-2 :blog-post-ids :id]))
  (fn [ids [_ path]]
    (->> (:id ids)
-        (filter #(true? (val %)))
         keys
         (map name)
         (map js/Number)
         sort
         reverse)))
 
+(rf/reg-sub :blog/get-new-post-id ; send this inced to post event... ditch the silly counters already lol
+ (fn [[_ _]]
+   (rf/subscribe [:blog/post-ids]))
+ (fn [ids [_ path]]
+   (inc (apply max ids))))
 
 (rf/reg-sub :blog/post
   (fn [[_ post-id]]
