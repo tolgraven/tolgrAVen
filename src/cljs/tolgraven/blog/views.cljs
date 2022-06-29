@@ -316,6 +316,8 @@
      [ui/button "Save draft" :save-blog-draft] ;should save to firebase etc.
      [ui/button "Highlight code" :highlight-blog-code
       :action #(rf/dispatch [:run-highlighter!])]
+     [:button {:on-click #(rf/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
+      [:label "Cancel"]]
      [:br]
      [:section.blog-post-preview
       [preview-blog input]]

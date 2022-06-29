@@ -29,6 +29,11 @@
                   [:blog/state [:editing] post]
                   [:common/navigate! :post-blog]]}))
 
+(rf/reg-event-fx :blog/cancel-edit
+  (fn [{:keys [db]} [_ _]]
+    {:dispatch-n [[:form-field [:post-blog] nil] ;well only text tags id but who's counting
+                  [:blog/state [:editing] nil]]}))
+
 (rf/reg-event-fx :blog/set-content []
  (fn [{:keys [db]} [_ category response]]
    {:db (assoc-in db [:blog category] response)}))

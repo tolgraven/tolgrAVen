@@ -239,7 +239,8 @@
                              (rf/dispatch [:blog/state [:viewing-tag] nil]))}]}]]
      ["post-blog" {:name :post-blog
                    :view #'post-blog-page
-                   :controllers [{:start (fn [_] (rf/dispatch [:blog/init-posting]))}]}]        
+                   :controllers [{:start (fn [_] (rf/dispatch [:blog/init-posting]))}
+                                 {:stop (fn [_] (rf/dispatch [:blog/cancel-edit]))}]}]
      ["log" {:name :log
               :view #'log-page}]
      ["test" 
