@@ -30,12 +30,10 @@
 
 .burger-check:checked ~ header .burger {
   position: absolute; /* position: relative; /1* if relative affects width of banner logo ugh *1/ */
-  top: var(--space-top); /* needs to be a static amount or lines break... */
-  right: 0;
-  width: calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
-              + 0.75 * var(--space));
+  bottom: -0.6em;
+  right: 0.1em;
+  width: 0%;
   border: 0;
-  border-top: var(--line-width) solid currentColor;
   border-radius: 0;
   transition: border-bottom 0.45s ease-in-out;
   

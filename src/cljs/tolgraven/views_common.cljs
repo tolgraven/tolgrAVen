@@ -71,16 +71,20 @@
     [header-logo @(rf/subscribe [:header-text])]
     [header-nav menu]
 
+    (when @(rf/subscribe [:state [:menu]])
+      [:div.line])
+
     [ui/loading-spinner (rf/subscribe [:loading]) :still
      {:style {:position :absolute
               :left "50%" :top "38%"}}]
     
-    [:a {:href @(rf/subscribe [:href :blog])}
+    [:div.header-icons
+     [:a {:href @(rf/subscribe [:href :blog])}
      [:button.blog-link-btn.noborder.nomargin
       {:title "My blog"}
       [:i.fa.fa-pen-fancy]]]
     [ui/user-btn]
-    [:label.burger {:for "nav-menu-open"}]]
+    [:label.burger {:for "nav-menu-open"}]]]
 
    [:div.fill-side-top
     {:class (when-not @(rf/subscribe [:state [:scroll :past-top]])
