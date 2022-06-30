@@ -517,14 +517,15 @@
 (defn get-http-fn "Return fn used for http-get/post"
   [kind & [extra-defaults]]
   (fn http-fn [{:keys [db]} [_ opts & [on-success on-error]]]
-    (let [cleanup [:loading/off kind]] ; set something to indicate request is underway
-      {:dispatch [:loading/on kind]   ;; tho want this per-request so figure out. by passing path frag maybe... slightly better now at least
+    (let [id (get opts :loading-id (js/gen-uuid))
+          loading-key (get opts :loading kind)
+          cleanup [:loading/off loading-key id]] ; set something to indicate request is underway
+      {:dispatch [:loading/on loading-key id]   ;; tho want this per-request so figure out. by passing path frag maybe... slightly better now at least
        :http-xhrio
        (merge
         {:method          kind
          :timeout         8000                                           ;; optional see API docs
          :response-format (ajax/transit-response-format)  ;; IMPORTANT!: You must provide this.
-         ; :response-format (ajax/json-response-format {:keywords? true})  ;; IMPORTANT!: You must provide this.
          :on-success      [:http-result-wrapper
                            (or on-success [:default-http-result]) cleanup]
          :on-failure      [:http-result-wrapper
@@ -541,7 +542,8 @@
 
 (rf/reg-event-fx :http/post [debug]
   (get-http-fn :post
-               {:format (ajax/json-request-format)}))
+               {:format (ajax/json-request-format)
+                :response-format (ajax/json-response-format {:keywords? true})}))
 
 (rf/reg-event-fx :http/put [debug]
   (get-http-fn :put
