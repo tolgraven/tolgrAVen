@@ -517,7 +517,7 @@
 (defn get-http-fn "Return fn used for http-get/post"
   [kind & [extra-defaults]]
   (fn http-fn [{:keys [db]} [_ opts & [on-success on-error]]]
-    (let [id (get opts :loading-id (js/gen-uuid))
+    (let [id (get opts :loading-id (random-uuid))
           loading-key (get opts :loading kind)
           cleanup [:loading/off loading-key id]] ; set something to indicate request is underway
       {:dispatch [:loading/on loading-key id]   ;; tho want this per-request so figure out. by passing path frag maybe... slightly better now at least
