@@ -281,7 +281,6 @@
 (defn preview-blog "Render new post preview"
   [{:keys [title text]}]
   [:div
-   ; {:ref #(rf/dispatch [:run-highlighter!])} ;screws up live preview :( jumpy
     [:h2.blog-post-title title]
     [:br]
     [ui/md->div text]])
@@ -289,7 +288,8 @@
 (defn post-blog "Render post-making ui" [] ; XXX move this and similar to own file...
   (let [input @(rf/subscribe [:form-field [:post-blog]])
         user @(rf/subscribe [:user/active-user])
-        editing @(rf/subscribe [:blog/state [:editing]])]
+        editing @(rf/subscribe [:blog/state [:editing]])
+        new-id @(rf/subscribe [:blog/get-new-post-id])]
     [:section.blog.blog-new-post
      [:h2 "Write blog post"]
      [:br]
@@ -312,12 +312,10 @@
       :path [:form-field [:post-blog :text]]
       :on-change #(rf/dispatch-sync [:form-field [:post-blog :text] %])]
      
-     [:br]
-     [ui/button "Save draft" :save-blog-draft] ;should save to firebase etc.
+     [ui/button "Save draft" :save-blog-draft] ;should save to firebase etc. Really just have an :unpublished true flag yeah.
      [ui/button "Highlight code" :highlight-blog-code
       :action #(rf/dispatch [:run-highlighter!])]
-     [:button {:on-click #(rf/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
-      [:label "Cancel"]]
+     
      [:br]
      [:section.blog-post-preview
       [preview-blog input]]
@@ -326,8 +324,11 @@
       [ui/button "Submit" :post-new-blog
        :action #(do (rf/dispatch [:blog/submit
                                   (merge {:user user} input)
-                                  editing])
-                    (rf/dispatch [:common/navigate! :blog]))]]]))
+                                  editing
+                                  new-id])
+                    (rf/dispatch [:common/navigate! :blog]))]
+      [:button {:on-click #(rf/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
+       [:label "Cancel"]]]]))
 
 (defn tags-list [{:keys [id tags] :as post}]
   (when (pos? (count tags))

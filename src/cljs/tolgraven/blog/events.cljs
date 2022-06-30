@@ -75,10 +75,10 @@
   (fn [{:keys [db]} [_ indexes]]))
 
 (rf/reg-event-fx :blog/submit
- (fn [_ [_ input editing]]
+ (fn [_ [_ input editing id]]
    {:dispatch-n [(if editing
                    [:blog/post (merge editing input)] ;input comes after cause will have changed
-                   [:blog/post-new input])
+                   [:blog/post-new input id])
                  [:form-field [:post-blog] nil]
                  [:blog/state [:editing] nil]
                  [:blog/nav-page 1]]})) ;or whatever. also applies (even more!) to comment-ui
@@ -87,16 +87,14 @@
  (fn [{:keys [db]} [_ post]]
    {:db (assoc-in db [:blog :posts (:id post)] post)
       :dispatch-n [[:store-> [:blog-posts (str (:id post))] post]
+                   [:store-> [:blog-post-ids :id] {(:id post) (:ts post)} [:id]] ;can this work with an array? or would need to fetch entire list of ids and thread it through to here? or rework to not use array but
                    [:store-> [:users (-> post :user :id)]
                              {:blog-posts (:id post)}
                              [:blog-posts]] ]}))
 
-(rf/reg-event-fx :blog/post-new [inter/persist-id-counters
-                                 (rf/inject-cofx :now)
-                                 (rf/inject-cofx :gen-id [:blog])]
- (fn [{:keys [db now id]} [_ post]]
-   (let [id (-> id :id :blog)
-         post (assoc post
+(rf/reg-event-fx :blog/post-new [(rf/inject-cofx :now)]
+ (fn [{:keys [db now]} [_ post id]]
+   (let [post (assoc post
                      :ts now
                      :id id
                      :user (-> post :user :id)
