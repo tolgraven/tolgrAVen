@@ -555,7 +555,9 @@
    {:dispatch [:diag/new :debug "HTTP" (str res)]}))
 (rf/reg-event-fx :default-http-error
  (fn [db [_ {:as res :keys [uri status status-text failure]}]]
-   {:dispatch [:diag/new :error "HTTP" (str status " " status-text ": " uri)]}))
+   {:dispatch [:diag/new :error "HTTP" (str status
+                                            (some-> status-text (str " "))
+                                            ": " uri)]}))
 
 (rf/reg-event-fx :http-result-wrapper
  (fn [db [_ handler cleanup res]]
