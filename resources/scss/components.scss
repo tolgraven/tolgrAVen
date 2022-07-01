@@ -514,14 +514,14 @@ figcaption, .float-with-caption {
 }
 #modal {
   position: fixed;
-  // top: 25%;
-  // left: 25%;
+  top: 0;
+  left: 0;
   z-index: 201;
 }
 .modal-zoom {
   // needs to, _after being created in place_, break out (w absolute or fixed)
   // but for now just do a generic zoom...
-  width: 98vw; height: 98vh;
+  width: 99vw; height: 99vh;
   transform: scale(0.0);
   opacity: 0.5;
   transition: transform 0.5s;
@@ -531,7 +531,8 @@ figcaption, .float-with-caption {
   transform: scale(1.0);
 }
 .modal-zoomed-item {
-  width: inherit;
+  max-width: 100%;
+  max-height: 100%;
   border: var(--line-width) solid var(--line-color);
   box-shadow: 0px 0px 85px 3px rgba(150, 150, 250, 0.55);
 }
