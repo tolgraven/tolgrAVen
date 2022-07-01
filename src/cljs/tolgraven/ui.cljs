@@ -507,8 +507,9 @@
 
 (defn format-log-message
   [message]
-  (with-out-str (pprint/pprint message)) ;XXX temp.
-  (pprint/write message :stream nil) ;XXX temp.
+  ; (with-out-str (pprint/pprint message)) ;XXX temp.
+  message
+  ; (pprint/write message :stream nil) ;XXX temp.
   ; (cond
   ;   (string? message) message
   ;   (object? message) (-> message js->clj :message str))
