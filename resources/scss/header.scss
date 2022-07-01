@@ -9,6 +9,7 @@ header {
   overflow-y: hidden;
   display: flex;
   flex-flow: row wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   background-color: var(--bg-1);
@@ -76,7 +77,8 @@ header {
 menu {
   position: relative;
   display: flex;
-  min-width: calc(3 * var(--space-lg));
+  min-width: calc(2 * var(--space-lg));
+  margin-left: var(--space);
   z-index: 2;
   transition: min-width 0.8s ease;
   animation: menu-anim-out 0.3s;
@@ -99,10 +101,10 @@ menu {
 nav {
   display: flex;
   align-items: center;
-  flex: 1 0 auto;
+  flex: 1 2 auto;
   min-height: 2.2em; /* h1 */ /* dont think right basing on space, just use rem */
   max-height: var(--space);
-  min-width: 7.0em;
+  min-width: calc(2 * var(--space-lg));
   background: linear-gradient(-77deg, var(--bg-1) -10%, var(--nav-accent) 80%);
   border-top:     var(--line-width-sm) solid  var(--line-color);
   
@@ -194,6 +196,8 @@ menu > nav > .nav-section:last-of-type > .nav-links {
 #nav-menu-open:checked ~ header {
   min-height:  var(--header-with-menu-height);
   font-size: 1.5rem;
+  
+  flex-wrap: wrap;
   justify-content: space-between;
   align-content: space-evenly;
 

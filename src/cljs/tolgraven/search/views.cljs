@@ -10,7 +10,7 @@
 (defn button "Search button, press to show input field..."
   []
   (let [open? (rf/subscribe [:search/open?])]
-    [:button.search-ui-btn
+    [:button.search-ui-btn.noborder.nomargin
      {:on-click (fn [e]
                   (rf/dispatch [:search/state [:open?]
                                 (not @open?)])
