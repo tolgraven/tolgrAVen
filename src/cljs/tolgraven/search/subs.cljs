@@ -28,6 +28,10 @@
  (fn [db [_ path]]
    (get-in db [:state :search :open?])))
 
+(rf/reg-sub :search/results-open?
+ (fn [db [_ path]]
+   (get-in db [:state :search :results-open?])))
+
 (rf/reg-sub
  :search/results-for-query
  (fn [[_ collection & [maybe-query]]]
@@ -39,6 +43,38 @@
      (when-not (string/blank? query)
        (get-in data [query]
                (get-in data [last-query])))))) ;show old results until new are ready! doesn't really help when typing rapidly heh
+
+(rf/reg-sub
+ :search/autocomplete-for-current-query
+ (fn [[_ collection]]
+   [(rf/subscribe [:search/results-for-query collection])])
+ (fn [[results] [_ collection]]
+   (set
+    (for [hit (:hits results)
+          :let [{:keys [highlights document]} hit
+                {:keys [id permalink title text user ts]} document
+                {:keys [snippet matched_tokens field]} (first highlights)]]
+      (let [token (first matched_tokens)
+            snippet' (-> snippet
+                         (string/replace #"<mark>" "öööö")
+                         (string/replace #"</mark>" "åååå"))
+            data (-> (string/split snippet' (re-pattern token))
+                     last
+                     (string/split #" ")
+                     (->>
+                      (take 5) ; thinking it'll be cached and not change but maybe not
+                      (string/join " ")))
+            text (str token (string/replace data #"öööö|åååå" ""))
+            trimmed (-> (str token data)
+                        (string/replace #"\n.*" "")
+                        (string/replace #"öööö" "<mark>")
+                        (string/replace #"åååå" "</mark>"))]
+        
+        {:html trimmed
+         :text text})))))
+
+@(rf/subscribe [:search/autocomplete-for-current-query "blog-comments"])
+
 
 (rf/reg-sub
  :search/snippets-for-query

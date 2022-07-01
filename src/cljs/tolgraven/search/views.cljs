@@ -21,38 +21,75 @@
                     :filter "invert(100%)"}}]]))
 
 (defn input "Search input field"
- [collections & {:as args :keys [value opts query-by open?]}]
- (let [model (r/atom (or value ""))
-       div-ref (r/atom nil)]
+ [collections & {:as args :keys [model opts query-by open?]}]
+ (let [external-model (r/atom model)
+       internal-model (r/atom (or @model ""))
+       div-ref (r/atom nil)
+       last-timeout-id (atom nil)]
    (fn [collections &
-        {:keys [query-by on-enter placeholder width height open?]
+        {:keys [query-by model on-enter placeholder width height open?]
          :or {height "2em"
               query-by ["text" "title"]}}]
+     (let [latest-ext-model @model
+           suggestion (first @(rf/subscribe [:search/autocomplete-for-current-query (first collections)]))]
+       (when (not= @external-model latest-ext-model)
+         (reset! external-model latest-ext-model)
+         (reset! internal-model latest-ext-model))
    [:div.search-input-container
         
       [:input#search-input.search-input ;problem if multiple search boxes on same page tho
       {:type "search"
-       :style {:display "inline-flex" :flex "1 1 auto"
-               :min-width width :max-width width
+       :style {:min-width width :max-width width
                :min-height height :max-height height
                :padding (when (or (zero? width) (zero? height)) 0)
                :border (when (or (zero? width) (zero? height)) 0)}
        :placeholder placeholder
-       ; :autoComplete (string/lower-case placeholder)
-       :value       @model
+       :autoComplete "off"
+       :value       @internal-model
        :ref         #(when % (reset! div-ref %))
        :on-change (fn [e] ; XXX needs debounce I guess
                     (let [new-val (-> e .-target .-value)]
-                      (reset! model new-val)
+                      (reset! internal-model new-val)
+                      (reset! external-model @internal-model)
+                      ; (js/clearTimeout @last-timeout-id)
+                      #_(reset! last-timeout-id
+                              (js/setTimeout #(doseq [coll collections]
+                                               (rf/dispatch [:search/search coll new-val query-by opts]))
+                                             250))
                       (doseq [coll collections]
-                        (rf/dispatch [:search/search coll @model query-by opts]))))
+                                (rf/dispatch [:search/search coll new-val query-by opts]))))
        :on-key-up (fn [e]
                     (case (.-key e)
                       "Enter" (when (and on-enter (not= "" @model))
-                                (on-enter @model))
+                                (reset! internal-model suggestion)
+                                (reset! external-model @internal-model))
                       "Escape" (do (.preventDefault e) ; can't seem to stop it from blanking query hmm
                                    (rf/dispatch [:search/state [:open?] false]))
-                      true))}]]))) ;after not before, want to be able to override stuff duh
+                      true))}]
+      [:div.search-input.search-input-autocomplete.form-control
+          {:style {:min-height height
+                   }}
+         (:text suggestion)
+         ]])))) ;after not before, want to be able to override stuff duh
+
+(defn suggestions "Display a dropdown of suggested further terms"
+  [collection]
+  (let [suggestions (rf/subscribe [:search/autocomplete-for-current-query collection])
+        last-suggestions (atom nil)]
+    (fn [collection]
+      (let [suggestions' (or @suggestions @last-suggestions)]
+        (reset! last-suggestions suggestions')
+        [:div.search-autocomplete
+         {:class (when (and @(rf/subscribe [:search/open?])
+                            (not (string/blank? @(rf/subscribe [:search/get-query "blog-posts"]))))
+                   "search-autocomplete-open")}
+         (for [suggestion (drop 1 suggestions') ; rework as map-indexed so can highhlight and pick by keyboard
+               :let [html (:html suggestion)
+                     text (:text suggestion)]]
+           [:div.search-autocomplete-item
+            {:on-click (fn [e]
+                         (rf/dispatch [:search/search collection text ["text" "title"]]))}
+            [ui/md->div html]])]))))
 
 
 (defn instant-result-category "Wrapper for type of results/collection"
@@ -106,7 +143,8 @@
 (defn instant-results "Show results while searching"
   [open?]
   (let []
-    (when-not (string/blank? @(rf/subscribe [:search/get-query "blog-posts"]))
+    (when (and open?
+               (not (string/blank? @(rf/subscribe [:search/get-query "blog-posts"]))))
       [:section.search-instant-results
        [instant-result-category "blog-posts" blog-post-results]
        [instant-result-category "blog-comments" blog-comment-results]])))
@@ -123,7 +161,11 @@
        {:ref #(when % (rf/dispatch [:search/init]))}
        
        [input ["blog-posts" "blog-comments"]
-        :value @(rf/subscribe [:search/get-query "blog-posts"])
+        :model (rf/subscribe [:search/get-query "blog-posts"])
         :open? @open?
+        :placeholder "Search"
         :height (if @open? "2em" 0)]
-       [instant-results collection @open?]])))
+       [suggestions "blog-posts"]
+       ; [suggestions "blog-comments"]
+       [instant-results @open?]
+       ])))
