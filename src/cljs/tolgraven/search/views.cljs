@@ -16,7 +16,9 @@
                                 (not @open?)])
                   (when-not @open? ; going from closed to open
                     (rf/dispatch [:focus-element "search-input"])))}
-     [:i.fa.fa-solid.fa-magnifying-glass]]))
+     [:img {:src "svg/search-ico.svg"
+            :style {:width "1.2em" :height "1.2em"
+                    :filter "invert(100%)"}}]]))
 
 (defn input "Search input field"
  [collections & {:as args :keys [value opts query-by open?]}]
