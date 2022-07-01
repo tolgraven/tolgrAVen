@@ -85,6 +85,7 @@
   // margin-right: var(--space-lg);
   width: calc(6.5 * var(--space));
   height: calc(6.5 * var(--space));
+  object-fit: cover;
 }
 
 .user-admin-content {

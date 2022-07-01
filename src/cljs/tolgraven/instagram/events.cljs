@@ -81,7 +81,7 @@
 (rf/reg-event-fx :instagram/store-token ;needs refreshing every 60 days so fix dis sometime
  (fn [{:keys [db]} [_ data]]
    {:db (assoc-in db [:instagram :auth :access_token] (get-in data [:access_token]))
-    :dispatch [:store-> [:instagram :auth :access_token] (get-in data [:access_token])] }))
+    :dispatch [:store-> [:instagram :auth] (select-keys data [:access_token])] }))
 
 (rf/reg-event-fx :instagram/try-authorize [debug] ;get token from scratch...
  (fn [{:keys [db]} [_ _]]
