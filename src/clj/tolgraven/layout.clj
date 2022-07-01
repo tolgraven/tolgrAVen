@@ -123,8 +123,8 @@
            (hiccup/html (home
                          request
                          :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"])
-                         :title "tolgrAVen"
-                         :description "tolgrAVen audiovisual"
+                         :title "tolgrAVen audiovisual"
+                         :description "tolgrAVen audiovisual by Joen Tolgraven"
                          :css-paths css-paths
                          :js-paths js-paths
                          :js-raw google-analytics
