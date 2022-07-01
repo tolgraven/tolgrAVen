@@ -7,6 +7,7 @@
    [markdown.core :refer [md->html]]
    [tolgraven.ui :as ui]
    [tolgraven.db :as db]
+   [tolgraven.search.views :as search]
    [tolgraven.util :as util :refer [at]]))
 
 (defn flashing-ersatz-text-like-everyone-uses
@@ -76,13 +77,15 @@
 
     [ui/loading-spinner (rf/subscribe [:loading]) :still
      {:style {:position :absolute
-              :left "50%" :top "38%"}}]
+              :left "25%" :top "0%"}}]
     
     [:div.header-icons
      [:a {:href @(rf/subscribe [:href :blog])}
      [:button.blog-link-btn.noborder.nomargin
       {:title "My blog"}
       [:i.fa.fa-pen-fancy]]]
+    
+    [search/button]
     [ui/user-btn]
     [:label.burger {:for "nav-menu-open"}]]]
 

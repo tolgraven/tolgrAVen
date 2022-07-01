@@ -74,6 +74,11 @@
   body { /* prevent insane bumping of p font size in landscape and more */
     text-size-adjust: 100%; -webkit-text-size-adjust: 100%;
   }
+
+  
+  .search-input-autocomplete {
+    left: 2.0em; // compensate for safari search icon
+  }
 }
 @media only screen and (-webkit-device-pixel-ratio: 3) {
   :root { /* *im thinking this is what it's about. 3 vs 2 pixels per pixel */

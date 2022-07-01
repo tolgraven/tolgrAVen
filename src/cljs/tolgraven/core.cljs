@@ -70,8 +70,8 @@
    
    [ui/zoom-to-modal :fullscreen]
    [ui/safe :user [user/user-section @(rf/subscribe [:user/active-section])]]
-   
-   (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; TODO any time do nav or like trigger :is-loading, start timer, if not flag done set within timeout, also error
+   [ui/safe :search [search/ui]]
+   (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
       [error-page]]
      (if-let [page @(rf/subscribe [:common/page])]
@@ -104,11 +104,17 @@
                                   override)]
    component])
 
+(defn search-ui
+  []
+  [search/ui "blog-posts"])
+
 (defn test-page []
   [with-heading [:common :banner-heading]
    (let [routes {:parallax experiment/parallax
                  :codemirror experiment/code-mirror
                  :leaflet experiment/leaflet
+                 :leaflet-2 experiment/leaflet-react-component
+                 :search search-ui
                  :broken [:div]}
           tab @(rf/subscribe [:state [:experiments]])]
      [:section.experiments.solid-bg.fullwide.noborder

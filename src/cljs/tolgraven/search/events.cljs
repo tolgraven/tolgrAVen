@@ -13,7 +13,7 @@
  (fn [{:keys [db]} [_ ]]
    (when-not (get-in db [:search])
       {:dispatch
-       [:<-store [:secrets :typesense] [:search/store-client]]})))
+       [:<-store [:typesense :auth] [:search/store-client]]})))
 
 (rf/reg-event-fx :search/store-client [debug]
   (fn [{:keys [db]} [_ data]]
@@ -32,7 +32,7 @@
 
 (rf/reg-event-fx :search/search
   (fn [{:keys [db]} [_ collection query query-by opts]]
-    (let [{:keys [api_key host port]} (get-in db [:search :typesense])
+    (let [{:keys [api_key host port]} (get-in db [:search :auth])
           query-by (string/join "," query-by)
           url (str (get-host host port)
                    "/collections/" collection
@@ -50,7 +50,7 @@
 
 (rf/reg-event-fx :search/multi-search
   (fn [{:keys [db]} [_ collections query query-by opts]] ; might need support for different opts per collection
-    (let [{:keys [api_key host port]} (get-in db [:search :typesense])
+    (let [{:keys [api_key host port]} (get-in db [:search :auth])
           query-by (string/join "," query-by)
           url (str (get-host host port)
                    "multi_search")]
