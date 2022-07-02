@@ -49,13 +49,15 @@
  (fn [[_ collection]]
    [(rf/subscribe [:search/results-for-query collection])])
  (fn [[results] [_ collection]]
-   (set
+   (distinct
     (for [hit (:hits results)
-          :let [{:keys [highlights document]} hit
+          :let [{:keys [highlights document text_match]} hit
                 {:keys [id permalink title text user ts]} document
                 {:keys [snippet matched_tokens field]} (first highlights)]]
       (let [token (first matched_tokens)
             snippet' (-> snippet
+                         (string/replace #"(```)|(`).*" "")
+                         ; (string/replace #"\..*" "")
                          (string/replace #"<mark>" "öööö")
                          (string/replace #"</mark>" "åååå"))
             data (-> (string/split snippet' (re-pattern token))
@@ -71,9 +73,21 @@
                         (string/replace #"åååå" "</mark>"))]
         
         {:html trimmed
-         :text text})))))
+         :text text
+         :score text_match})))))
 
-@(rf/subscribe [:search/autocomplete-for-current-query "blog-comments"])
+(rf/reg-sub
+ :search/autocomplete-multi
+ (fn [[_ collections]]
+   (mapv #(rf/subscribe [:search/autocomplete-for-current-query %]) collections))
+ (fn [results [_ collections]]
+   (tap> results)
+   (tap> collections)
+   (let [results' (for [[result coll] (interleave results collections)]
+                   result
+                   #_(assoc result :collection coll))]
+     (->> (apply concat results)
+          (sort-by :score >)))))
 
 
 (rf/reg-sub
