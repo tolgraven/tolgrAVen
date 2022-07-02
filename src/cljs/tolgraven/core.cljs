@@ -113,7 +113,7 @@
    (let [routes {:parallax experiment/parallax
                  :codemirror experiment/code-mirror
                  :leaflet experiment/leaflet
-                 :leaflet-2 experiment/leaflet-react-component
+                 ; :leaflet-2 experiment/leaflet-react-component
                  :search search-ui
                  :broken [:div]}
           tab @(rf/subscribe [:state [:experiments]])]
