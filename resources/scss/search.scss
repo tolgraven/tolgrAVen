@@ -1,17 +1,29 @@
 .search-ui {
-  width: calc(100% + 2 * var(--line-width));
+  position: relative;
   padding: 0;
   border: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: all 0.5s ease;
+
+  &.search-ui-open {
+    max-height: 500vh;
+    overflow: initial;
+  }
 }
 
 .search-input-container {
+  width: calc(100% - 2 * var(--line-width));
   display: flex;
   position: sticky;
   top: calc(var(--line-width) + var(--header-height-current));
-  left: 0;
+  margin-left: var(--line-width);
   z-index: 10;
+  background: rgba(30, 28, 33, 0.75);
+  backdrop-filter: blur(3px);
   
   .search-input {
+    width: calc(100% + 4 * var(--line-width));
     display: inline-flex;
     flex: 1 1 auto;
 
@@ -28,7 +40,6 @@
   .search-input-autocomplete {
     position: absolute;
     top: 0.07em;
-    // left: -0.05em;
     z-index: -1;
     // font-weight: 300;
     border: 1px solid transparent;
@@ -40,16 +51,24 @@
 
 .search-autocomplete {
   transition: all 0.5s ease;
+  max-height: 0;
+  overflow: hidden;
 
   &.search-autocomplete-open {
-    padding: 0.4em 0.8em;
-    padding-bottom: var(--space);
-    background-color: var(--bg-3);
+    background-color: var(--bg-1);
+    max-height: 30rem;
+    overflow: initial;
 
   }
 
   .search-autocomplete-item {
-    margin-bottom: 0.4em;
+    padding: 0.4em 0.8em;
+    border-bottom: 0.5px solid var(--bg-3);
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: var(--bg-3);
+    }
   }
 
 }
@@ -62,7 +81,6 @@
   padding-bottom: 1em;
 
   .blog {
-    // background: rgba(30, 20, 60, 0.3);
     background: var(--bg-2);
   }
 
@@ -83,6 +101,10 @@
       padding-top: var(--space);
       padding-bottom: var(--space);
       margin-bottom: 2.0em;
+
+      pre {
+        margin: var(--space);
+      }
     }
   }
 
