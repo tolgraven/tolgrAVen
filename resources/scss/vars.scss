@@ -63,8 +63,8 @@
   --lum-dark-2:        12%;
   --lum-dark-3:        15%;
   --lum-dark-4:        18%;
-  --lum-dark-5:        26%;
-  --lum-dark-6:        34%;
+  --lum-dark-5:        23%;
+  --lum-dark-6:        30%;
   --lum-light-1:       calc(100% - var(--lum-dark-1));
   --lum-light-2:       calc(100% - var(--lum-dark-2));
   --lum-light-3:       calc(100% - var(--lum-dark-3));
@@ -75,7 +75,7 @@
   --light-1:           hsl(var(--hue-2), 20%, var(--lum-light-2));
   --light-2:           hsl(var(--hue-2), 7%, var(--lum-light-1));
   --light-text:        hsl(29, 35%, 86%);
-  --light-3:           #ededed;
+  --light-3:           hsl(var(--hue-2), 15%, var(--lum-light-3));
   --light-4:           hsl(var(--hue-2), 7%, var(--lum-light-4));
   --light-5:           hsl(var(--hue-2), 7%, var(--lum-light-5));
   --light-6:           hsl(var(--hue-2), 7%, var(--lum-light-6));
@@ -85,27 +85,27 @@
   --selection-accent: hsl(14, 75%, 80%, 0.7);
   --neutral-accent: #99aaee; /* link? */
   /* fixc bruv/box */
-  --red       : #d18479;
-  --red-2     : #af7370;
-  --red-3     : #ea9a98;
-  --green     : #b4b88d;
-  --green-2   : #8b8c63;
-  --green-3   : #ccdaa8;
-  --yellow    : #dabd7a;
-  --yellow-2  : #d0af80;
-  --yellow-3  : #d9c894;
-  --blue      : #7692ab;
-  --blue-2    : #80a0b3;
-  --blue-3    : #a6c0cd;
-  --purple    : #bd979d;
-  --purple-2  : #af8589;
-  --purple-3  : #d9b7b7;
-  --aqua      : #91b8a4;
-  --aqua-2    : #9ab499;
-  --aqua-3    : #B6D1B4;
-  --orange    : #cca687;
-  --orange-2  : #dba184;
-  --orange-3  : #d9a58a;
+  --red       : rgb(209, 132, 121);
+  --red-2     : rgb(175, 115, 112);
+  --red-3     : rgb(234, 154, 152);
+  --green     : rgb(180, 184, 141);
+  --green-2   : rgb(139, 140, 99) ;
+  --green-3   : rgb(204, 218, 168);
+  --yellow    : rgb(218, 189, 122);
+  --yellow-2  : rgb(208, 175, 128);
+  --yellow-3  : rgb(217, 200, 148);
+  --blue      : rgb(118, 146, 171);
+  --blue-2    : rgb(128, 160, 179);
+  --blue-3    : rgb(166, 192, 205);
+  --purple    : rgb(189, 151, 157);
+  --purple-2  : rgb(175, 133, 137);
+  --purple-3  : rgb(217, 183, 183);
+  --aqua      : rgb(145, 184, 164);
+  --aqua-2    : rgb(154, 180, 153);
+  --aqua-3    : rgb(182, 209, 180);
+  --orange    : rgb(204, 166, 135);
+  --orange-2  : rgb(219, 161, 132);
+  --orange-3  : rgb(217, 165, 138);
   
   --dark-1:     hsl(var(--hue-1),  7%,  var(--lum-dark-1));
   --dark-2:     hsl(var(--hue-3),  7%,  var(--lum-dark-2));
@@ -114,8 +114,8 @@
   --dark-5:     hsl(var(--hue-2),  7%,  var(--lum-dark-5));
   --dark-6:     hsl(var(--hue-3),  7%,  var(--lum-dark-6));
 
-  --opacity-regular:  0.35;
-  --opacity-faint:    0.15;
+  --opacity-regular:  0.40;
+  --opacity-faint:    0.20;
   --box-regular-color:    hsla(0, 0%, var(--lum-dark-1), var(--opacity-regular));
   --box-faint-color:      hsla(0, 0%, var(--lum-dark-1), var(--opacity-faint));
   --box-regular-color-flip:    hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
@@ -126,8 +126,7 @@
   // will need drastic tweaking for light theme
   --gradient-bg-main: linear-gradient(-77deg,
                                       hsl(280, 15%, 8%),
-                                      var(--bg-1))
-                                      ;
+                                      var(--bg-1));
   // --gradient-bg-main: linear-gradient(-77deg,
   //                                     hsl(280, 20%, var(--lum-bg-1)),
   //                                     hsl(100, 11%, var(--lum-bg-1)));
@@ -200,6 +199,29 @@
   --gradient-bg-main: linear-gradient(-77deg,
                                       hsl(280, 15%, 88%),
                                       var(--bg-1));
+ 
+
+  --red       : rgb(104, 56, 50);
+  --red-2     : rgb(87, 47, 46);
+  --red-3     : rgb(117, 67, 66);
+  --green     : rgb(80, 92, 60);
+  --green-2   : rgb(59, 70, 39) ;
+  --green-3   : rgb(92, 109, 74);
+  --yellow    : rgb(109, 94, 51);
+  --yellow-2  : rgb(104, 87, 54);
+  --yellow-3  : rgb(108, 100, 64);
+  --blue      : rgb(49, 63, 85);
+  --blue-2    : rgb(54, 70, 89);
+  --blue-3    : rgb(73, 86, 102);
+  --purple    : rgb(94, 65, 78);
+  --purple-2  : rgb(87, 56, 68);
+  --purple-3  : rgb(108, 81, 91);
+  --aqua      : rgb(62, 92, 82);
+  --aqua-2    : rgb(67, 90, 76);
+  --aqua-3    : rgb(81, 104, 90);
+  --orange    : rgb(102, 73, 57);
+  --orange-2  : rgb(109, 80, 76);
+  --orange-3  : rgb(108, 82, 59);
 }
 // }
 
