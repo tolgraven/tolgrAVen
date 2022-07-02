@@ -59,10 +59,10 @@
    (assets/load-bundle "public"
                        "styles.css"
                        ["/css/tolgraven/main.min.css" ;should have a list for these, edn ting...
-                        "/css/fontawesome.css"
-                        "/css/brands.min.css"
-                        "/css/solid.css"
-                        "/css/codemirror.css"])
+                        ; "/css/fontawesome.css"
+                        ; "/css/brands.min.css"
+                        ; "/css/solid.css"
+                        ])
    (assets/load-bundles "public"
                         {"app.js" ["/js/compiled/app.js"] })
    (assets/load-assets "public"
@@ -70,7 +70,8 @@
                         #"/img/.+\.svg$"
                         #"/img/.+\.gif$"
                         #"/img/.+\.jpeg$"
-                        #"/img/.+\.jpg$"])))
+                        #"/img/.+\.jpg$"
+                        #"/media/.*\.jpg"])))
 
 (import-vars [optimus.optimizations.minify
               minify-js-assets
@@ -87,12 +88,13 @@
 (defn optimize-all [assets options]
   (-> assets
       (minify-js-assets options)
+      ; (minify-css-assets options) ;my css breaks it ofc ; not anymore apparently ; well it's already minified by autoprefixer or? could anyways
       (inline-css-imports)
       (concatenate-bundles options)
-      (transform-images {:regexp #"/img/.*\.(jpg|png)" ; in-place which would be baddd on dev but only runs on prod so
+      (transform-images {:regexp #"(/media/.*\.jpg)|(/img/.*\.(jpg|png))" ; in-place which would be baddd on dev but only runs on prod so
                          :quality 0.75
                          :progressive true})
-      (add-cache-busted-expires-headers)
+      ; (add-cache-busted-expires-headers)
       (add-last-modified-headers)))
 
 (defn wrap-optimus

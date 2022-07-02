@@ -95,11 +95,12 @@
 
 (def css-paths ; should come from config?
    ["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
-    "https://fonts.googleapis.com/css?family=Fira+Sans:300,400,500,600,700,800,900"
+    "css/fontawesome.css"
+    "css/brands.min.css"
     "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"])
 
 (def css-pre
-  ["css/tolgraven/main.min.css"])
+  ["css/solid.css"])
 (def js-pre
   ["js/compiled/app.js"])
 (def img-pre
@@ -128,9 +129,9 @@
                          :css-paths css-paths
                          :js-paths js-paths
                          :js-raw google-analytics
-                         ; :css-pre css-pre
+                         :css-pre css-pre
                          ; :js-pre js-pre
-                         ; :img-pre img-pre
+                         :img-pre img-pre
                          :anti-forgery *anti-forgery-token*)))
       ok
       (content-type "text/html; charset=utf-8")))
