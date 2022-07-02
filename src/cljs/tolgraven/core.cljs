@@ -309,7 +309,17 @@
   (rf/dispatch [:cookie/show-notice]) ; do later first check if prev visit
   (util/log "Init complete")
   (mount-components)
-  (rf/dispatch [:init])) ; listeners and stuff that might depend on being mounted
+  ; (rf/dispatch [:on-booted :firebase [:init]])
+  (rf/dispatch [:on-booted :firebase [:init/imagor]])
+  (js/setTimeout #(doseq [evt [; temp crapfix, running this to early suddenly results in... nothing. what.
+                               [:init/scroll-storage]
+                               [:listener/popstate-back]
+                               [:listener/scroll-direction]
+                               [:on-booted :firebase [:id-counters/fetch]]
+                               [:ls/get-path [:form-field] [:state :form-field]] ; restore any active form-fields
+                               [:booted :site]]]
+                    (rf/dispatch evt))
+                 3000)) ; listeners and stuff that might depend on being mounted
 
 (defn ^:export init!  []
   (defonce _init_ (init))) ;; why still need for thisi don't get it init! is now being called each reload?
