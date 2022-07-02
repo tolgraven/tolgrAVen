@@ -47,7 +47,18 @@
     left: 0.2em;
     z-index: -1;
   }
+
+  .buttons {
+    a {
+      font-size: 0.9em;
+    }
+    label {
+      font-size: 1.1em;
+    }
+  }
+
 }
+
 #moneyshot {
   border-top: var(--line-width) solid var(--line-color);
 
