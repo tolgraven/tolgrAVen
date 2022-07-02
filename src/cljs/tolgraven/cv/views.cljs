@@ -101,7 +101,7 @@
     [:section#cv.cv.nopadding.noborder
      {:class (when @(rf/subscribe [:fullscreen/get :cv]) "fullscreen")}
      [:div.cv-intro
-      [:img.fullwide {:src "img/tolgrav.png"}]
+      [:img.fullwide {:src "img/logo/tolgraven-logo.png"}]
       [:p (:intro cv)]
       [:div.center-content
        [:div.cv-howto
