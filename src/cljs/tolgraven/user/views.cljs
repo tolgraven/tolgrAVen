@@ -162,22 +162,28 @@
       [:div.flex
        [avatar user true]
        [:div.user-info
-        [:h3 (:name user)]
-        [:span [:em (:email user)]]
-        [:br] [:br]
-        [:span (str (or (:comment-count user) 0) " comments")]
-        [section-btn "View" :comments :comments]
+        [:h3 {:style {:display :inline}}
+         (:name user)]
         (when (some #{(:id user)} (:admins roles)) ; some way to sep / hl this...
-          [:<>
-           [:span " - "]
-           [ui/button "Admin" :site-admin :link "#/site-admin"]]) ]]]
+           [:span {:style {:font-size "80%"}}
+            "admin"])
+        [:span [:em (:email user)]]
+        [:p {:style {:font-size "80%"}}
+         (:karma user) " karma"]
+        [:buttton
+         {:on-click #(rf/dispatch [:user/active-section :comments])}
+         (str (or (:comment-count user) 0) " comments (view)")]]]]
      
      [:div.user-change-options
-      [:span "Change: "]
+      {:style {:position :relative}}
+      [:span "Change "]
       [section-btn "Username"  :username :change-username]
-      [section-btn "Password"  :password :change-password]] ; firebase has its own so should just put a link for reset-password email
+      [section-btn "Password"  :password :change-password] ; firebase has its own so should just put a link for reset-password email
       
-      [ui/button "Log out" :logout  :action #(rf/dispatch [:fb/sign-out])] ]))
+     [:button.border
+      {:on-click #(rf/dispatch [:fb/sign-out])
+       :style {:position "relative" :right 0}}
+      "Log out"]]]))
 
 
 (defn user-box "Wrapper for user views"
