@@ -96,13 +96,14 @@
 (def css-paths ; should come from config?
    ["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
     "css/fontawesome.css"
+    "css/solid.css"
     "css/brands.min.css"
     "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"])
 
 (def css-pre
   ["css/solid.css"])
 (def js-pre
-  ["js/compiled/app.js"])
+  ["js/compiled/app.js"]) ; no work with optimus
 (def img-pre
   ["img/foggy-shit-small.jpg"])
 
