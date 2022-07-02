@@ -51,6 +51,15 @@
       max-width: 820px;
       // align-self: center;
     }
+    
+    .blog-comments {
+      margin-top: var(--space-lg);
+    }
+    
+    .blog-post-tags {
+      height: 2.0em;
+      margin: 0.4em 0;
+    }
   }
   .blog-archive {
     padding: var(--space-lg);

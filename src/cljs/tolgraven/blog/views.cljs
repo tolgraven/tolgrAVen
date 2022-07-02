@@ -351,23 +351,23 @@
       {:ref #(rf/dispatch [:run-highlighter!])}
       
      [:div.flex.blog-post-header
-      [ui/appear-merge "zoom slower"
+      [ui/appear-anon (if back? "" "zoom slower")
        [ui/user-avatar user "blog-user-avatar"]]
       [:div.blog-post-header-main
        [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
-         [:h1.blog-post-title title
-          (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
-            [:button.noborder.nomargin
-             {:on-click #(rf/dispatch [:blog/edit-post post])}
-             [:i.fa.fa-edit] ])]]
-       [ui/appear-anon  "slide-in" #_"opacity"
+         [:h1.blog-post-title title ]]
+       [ui/appear-anon  (if back? "" "slide-in")
         [posted-by id user ts]]
-       [tags-list post]]]
-     [:br]
+       [:div.flex
+        [tags-list post]
+        (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
+          [:button.noborder.nomargin
+           {:on-click #(rf/dispatch [:blog/edit-post post])}
+           [:i.fa.fa-edit] ])]]]
      ; [a custom sticky mini "how far youve scrolled bar" on right?]
      [:div.blog-post-text [ui/md->div text]]
-     [:br] [:br]
-     [ui/appear-anon "zoom-y" [comments-section post]]]])))
+     [ui/appear-anon (if back? "" "zoom-y")
+      [comments-section post]]]])))
 
 (defn blog-single-post []
   (let [post @(rf/subscribe [:blog/post
@@ -410,7 +410,6 @@
                        :font-size "0.9em"}}
          [ui/md->div @(rf/subscribe [:blog/post-preview id])]] ]))]]))
 
-@(rf/subscribe [:blog/post-preview 25])
 
 (defn blog-tag-view "View posts filed with tag"
   []
@@ -418,8 +417,8 @@
     [blog-container
      [:div.blog-posts-with-tag
       [:h2 {:style {:text-align :center}}
-       "Posts tagged " [:div.blog-post-tags
-                        [:span tag]]] [:br] [:br]
+       "Posts tagged " [:span.blog-post-tags
+                        [:span tag]]]
       (for [{:keys [id ts user title text permalink] :as post} @(rf/subscribe [:blog/posts-with-tag tag])]
         ^{:key (str "blog-with-tag-" (:id post))}
         [blog-post post])]]))
