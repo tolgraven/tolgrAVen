@@ -31,13 +31,13 @@
          :or {height "2em"
               query-by ["text" "title"]}}]
      (let [latest-ext-model @model
-           suggestion (first @(rf/subscribe [:search/autocomplete-for-current-query (first collections)]))]
+           suggestion (first @(rf/subscribe [:search/autocomplete-multi collections]))]
        (when (not= @external-model latest-ext-model)
          (reset! external-model latest-ext-model)
          (reset! internal-model latest-ext-model))
    [:div.search-input-container
         
-      [:input#search-input.search-input ;problem if multiple search boxes on same page tho
+     [:input#search-input.search-input ;problem if multiple search boxes on same page tho
       {:type "search"
        :style {:min-width width :max-width width
                :min-height height :max-height height
@@ -51,45 +51,45 @@
                     (let [new-val (-> e .-target .-value)]
                       (reset! internal-model new-val)
                       (reset! external-model @internal-model)
-                      ; (js/clearTimeout @last-timeout-id)
-                      #_(reset! last-timeout-id
-                              (js/setTimeout #(doseq [coll collections]
-                                               (rf/dispatch [:search/search coll new-val query-by opts]))
-                                             250))
                       (doseq [coll collections]
                                 (rf/dispatch [:search/search coll new-val query-by opts]))))
        :on-key-up (fn [e]
                     (case (.-key e)
-                      "Enter" (when (and on-enter (not= "" @model))
-                                (reset! internal-model suggestion)
-                                (reset! external-model @internal-model))
+                      "Enter" (when (not= "" @model)
+                                (set! (.-value @div-ref) (:text suggestion))
+                                (doseq [coll collections]
+                                  (rf/dispatch [:search/search coll (:text suggestion) query-by opts])))
                       "Escape" (do (.preventDefault e) ; can't seem to stop it from blanking query hmm
                                    (rf/dispatch [:search/state [:open?] false]))
                       true))}]
       [:div.search-input.search-input-autocomplete.form-control
-          {:style {:min-height height
-                   }}
-         (:text suggestion)
-         ]])))) ;after not before, want to be able to override stuff duh
+       {:style {:min-height height}}
+       (:text suggestion) ]])))) ;after not before, want to be able to override stuff duh
 
 (defn suggestions "Display a dropdown of suggested further terms"
-  [collection]
-  (let [suggestions (rf/subscribe [:search/autocomplete-for-current-query collection])
-        last-suggestions (atom nil)]
-    (fn [collection]
-      (let [suggestions' (or @suggestions @last-suggestions)]
+  [collections]
+  (let [suggestions (rf/subscribe [:search/autocomplete-multi collections])
+        last-suggestions (atom nil)
+        query (rf/subscribe [:search/get-query "blog-posts"])]
+    (fn [collections]
+      (let [suggestions' (or @suggestions
+                             @last-suggestions)]
         (reset! last-suggestions suggestions')
         [:div.search-autocomplete
          {:class (when (and @(rf/subscribe [:search/open?])
-                            (not (string/blank? @(rf/subscribe [:search/get-query "blog-posts"]))))
+                            (not (string/blank? @query)))
                    "search-autocomplete-open")}
          (for [suggestion (drop 1 suggestions') ; rework as map-indexed so can highhlight and pick by keyboard
                :let [html (:html suggestion)
-                     text (:text suggestion)]]
+                     text (:text suggestion)
+                     without-query (string/replace-first text (re-pattern (str "(?i)" @query)) "")]]
            [:div.search-autocomplete-item
             {:on-click (fn [e]
-                         (rf/dispatch [:search/search collection text ["text" "title"]]))}
-            [ui/md->div html]])]))))
+                         (doseq [coll collections]
+                           (rf/dispatch [:search/search coll text ["text" "title"]])))}
+
+            [:b @query] without-query
+            #_[ui/md->div html]])]))))
 
 
 (defn instant-result-category "Wrapper for type of results/collection"
@@ -158,14 +158,14 @@
         results-open? (rf/subscribe [:search/results-open?])]
     (fn [collection]
       [:section.search-ui
-       {:ref #(when % (rf/dispatch [:search/init]))}
+       {:class (when @open? "search-ui-open")
+        :ref #(when % (rf/dispatch [:search/init]))}
        
        [input ["blog-posts" "blog-comments"]
         :model (rf/subscribe [:search/get-query "blog-posts"])
         :open? @open?
         :placeholder "Search"
         :height (if @open? "2em" 0)]
-       [suggestions "blog-posts"]
-       ; [suggestions "blog-comments"]
+       [suggestions ["blog-posts" "blog-comments"]]
        [instant-results @open?]
        ])))
