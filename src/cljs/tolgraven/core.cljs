@@ -213,8 +213,15 @@
      ["blog" {:controllers [{:start (fn [_] (rf/dispatch [:on-booted :firebase [:blog/init]]))}] }
       [""     {:name :blog
                :view #'blog-page
-               :controllers [{:start (fn [_] (rf/dispatch [:blog/set-posts-per-page 3]) ; should also allow 0 = infinite scroll
-                                             (rf/dispatch [:blog/nav-page 1]))}]}] ; needed here so going back from blog/page/2 to blog returns one to page 1...
+               :controllers [{:start (fn [_]
+                                       (rf/dispatch [:->css-var! "line-width" "1px"])
+                                       (rf/dispatch [:->css-var! "line-width-vert" "1px"])
+                                       ; TODO fix so does this without hardcoding either. Might also set line-color to something less pronounced.
+                                       (rf/dispatch [:blog/set-posts-per-page 3]) ; should also allow 0 = infinite scroll
+                                       (rf/dispatch [:blog/nav-page 1]))
+                              :stop (fn []
+                                       (rf/dispatch [:->css-var! "line-width" "2px"])
+                                       (rf/dispatch [:->css-var! "line-width-vert" "2px"]))}]}] ; needed here so going back from blog/page/2 to blog returns one to page 1...
       ["/page/:nr"
        {:name :blog-page
         :view #'blog-page
