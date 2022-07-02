@@ -194,6 +194,7 @@
                          :parent-post (first path)
                          :parent-comment (when (< 1 (count path))
                                            (last path))
+                         :path path
                          :score 0})]
        {:dispatch-n [[:blog/comment path comment]
                      [:blog/expand-comment-thread path true]]})))
