@@ -41,7 +41,7 @@
        [(when-not (string/blank? query)
           [:http/get {:uri url
                       :headers {header-type api_key}
-                      :url-params (merge {:q query
+                      :url-params (merge {:q (str \" query \")
                                           :query_by query-by}
                                          opts)}
            [:search/store-search-response [collection query]]])

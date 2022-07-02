@@ -56,8 +56,7 @@
                 {:keys [snippet matched_tokens field]} (first highlights)]]
       (let [token (first matched_tokens)
             snippet' (-> snippet
-                         (string/replace #"(```)|(`).*" "")
-                         ; (string/replace #"\..*" "")
+                         (string/replace #"(```)|(`).*" "") ; kill the code blocks
                          (string/replace #"<mark>" "öööö")
                          (string/replace #"</mark>" "åååå"))
             data (-> (string/split snippet' (re-pattern token))
