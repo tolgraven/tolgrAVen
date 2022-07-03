@@ -249,7 +249,8 @@
                               style)
                 :on-change (fn [e]
                              (let [new-val (-> e .-target .-value)]
-                               (rf/dispatch-sync [:form-field [:write-comment parent-path k] new-val])))}]) ; tho stashing half-written in localstorage is p awesome when done. so db evt
+                               (rf/dispatch-sync [:form-field [:write-comment parent-path k] new-val])))
+                :on-blur #(rf/dispatch-sync [:form-field [:write-comment parent-path k] (get @model k) :blur])}]) ; tho stashing half-written in localstorage is p awesome when done. so db evt
         submit-btn (fn []
                      [:button.blog-btn.noborder
                       {:class    (when (input-valid? @model) "topborder")
@@ -258,7 +259,7 @@
                                    (when (input-valid? @model)
                                      (rf/dispatch [:blog/adding-comment parent-path nil])
                                      (rf/dispatch [:blog/comment-submit parent-path @model @editing])
-                                     (rf/dispatch [:form-field [:write-comment parent-path] nil])))}
+                                     (rf/dispatch [:form-field [:write-comment parent-path] nil :blur])))}
                       "Submit"])
         valid-bg {:background-color "#182018"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
      (fn [parent-path] ; needed or recreates to empty when swapped out
@@ -296,21 +297,18 @@
 
      [ui/input-text
       :placeholder "Title"
-      :path [:form-field [:post-blog :title]]
-      :on-change #(rf/dispatch-sync [:form-field [:post-blog :title] %])]
+      :path [:form-field [:post-blog :title]]]
      
      [ui/input-text
       :placeholder "Tags"
-      :path [:form-field [:post-blog :tags]]
-      :on-change #(rf/dispatch-sync [:form-field [:post-blog :tags] %])]
+      :path [:form-field [:post-blog :tags]]]
      
      [ui/input-text :input-type :textarea
       :placeholder "Text (markdown)"
       :height "40vh"
       :min-rows 6
       :width "100%"
-      :path [:form-field [:post-blog :text]]
-      :on-change #(rf/dispatch-sync [:form-field [:post-blog :text] %])]
+      :path [:form-field [:post-blog :text]]]
      
      [ui/button "Save draft" :save-blog-draft] ;should save to firebase etc. Really just have an :unpublished true flag yeah.
      [ui/button "Highlight code" :highlight-blog-code

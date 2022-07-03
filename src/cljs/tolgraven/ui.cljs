@@ -452,7 +452,7 @@
                   change-on-blur? disabled? class style attr input-type type]
            :or {input-type :input.form-control
                 width "15em"
-                on-change #(rf/dispatch-sync (conj path %))}}] ;to pass through from outer
+                on-change #(rf/dispatch-sync (into path [%1 %2]))}}] ;to pass through from outer
    (let [latest-ext-model (or @(rf/subscribe path) (at value)) ;how repl this if not passing model but sub?
          disabled?        (at disabled?)
          change-on-blur?  (at change-on-blur?)
@@ -477,14 +477,13 @@
                          (let [new-val (-> e .-target .-value)]
                           (when (and on-change (not disabled?))
                            (reset! internal-model new-val)
-                           (when-not change-on-blur?
-                            (reset! external-model @internal-model) ;uhh cant do that obviously
-                            (on-change @internal-model)))))
+                           (reset! external-model @internal-model) ;uhh cant do that obviously
+                           (on-change @internal-model))))
              :on-blur   (fn [e]
-                         (when (and on-change change-on-blur?
-                                    (not= @internal-model @external-model))
+                         (when (and on-change #_change-on-blur?
+                                    #_(not= @internal-model @external-model))
                           (reset! external-model @internal-model) ;nor here...
-                          (on-change @internal-model)))
+                          (on-change @internal-model :blur)))
              :on-input  (when (and min-rows (= input-type :textarea) @div-ref) ;try make autoexpand...
                           (fn [e]
                             (let [row-diff (int (/ (- @base-scroll-height

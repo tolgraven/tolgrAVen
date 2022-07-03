@@ -37,7 +37,6 @@
       [ui/input-text
        :path [:form-field [:chat]]
        :placeholder "Message"
-       :on-change #(rf/dispatch-sync [:form-field [:chat] %])
        :on-enter #(rf/dispatch [:chat/post latest-id])]
       [:button {:on-click #(rf/dispatch [:chat/post latest-id])}
        [:i.fa.fa-arrow-right]]]

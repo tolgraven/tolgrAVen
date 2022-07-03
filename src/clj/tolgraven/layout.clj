@@ -43,12 +43,12 @@
     [:section#intro
      [:img.media.media-as-bg {:src hero-img}]
      (when error-text
-       [:h1.h-intro error-text])]
-    (when-not error-text ; just loading
-      [:div.loading-container
-        [:div.loading-wiggle-y
-         [:div.loading-wiggle-z
-          [:i.loading-spinner.loading-spinner-massive.fa.fa-spinner.fa-spin]]] ])]
+       [:div.h1-wrapper.center-content
+        [:h1.h-intro.h-responsive error-text]])]
+    [:div.loading-container ; will be hidden by main-error section z-index
+     [:div.loading-wiggle-y
+      [:div.loading-wiggle-z
+       [:i.loading-spinner.loading-spinner-massive.fa.fa-spinner.fa-spin]]] ]]
 
    [:footer.footer-sticky ; [:footer>div.footer-content
     [:div.footer-content ;; XXX should adapt to available height, also disappear...

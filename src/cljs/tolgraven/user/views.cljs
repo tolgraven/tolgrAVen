@@ -21,16 +21,14 @@
     :type (when-not @(rf/subscribe [:state [:login-show-password]]) :password)
     :placeholder placeholder
     :attr {:autoComplete "password"}
-    :path path
-    :on-change #(rf/dispatch (into path [%]))])
+    :path path])
 
 (defn sign-in-input "Sign in component" []
   [:section>form
    [ui/input-text
     :placeholder "Email"
     :attr {:autoComplete "email"}
-    :path [:form-field [:login :email]]
-    :on-change #(rf/dispatch [:form-field [:login :email] %])]
+    :path [:form-field [:login :email]]]
    [:br]
    [password-input]
    [ui/toggle [:state :login-show-password] "show"]])
@@ -72,10 +70,8 @@
    [sign-in-input] ;well need different validation here (not exists etc)
    [ui/input-text
     :path [:form-field [:register :email]]
-    :placeholder "Email"
-    :on-change #(rf/dispatch [:form-field [:register :email] %])]
+    :placeholder "Email"]
    
-   ; [:br]
    [:button
     {:on-click #(rf/dispatch [:user/request-register])}
     "Sign up"] ])
@@ -118,8 +114,7 @@
    [:p "Current username: " (:name user)]
    [ui/input-text
     :path [:form-field [:change :username]]
-    :placeholder "New username"
-    :on-change #(rf/dispatch [:form-field [:change :username] %])]
+    :placeholder "New username"]
    [ui/button "Change" :change-username
               :action #(rf/dispatch [:user/set-field
                                      (:id user) :name
@@ -138,8 +133,7 @@
    [:span "Or from url "]
    [ui/input-text
     :path [:form-field [:change :avatar-url]]
-    :placeholder "URL"
-    :on-change (fn [e] (rf/dispatch [:form-field [:change :avatar-url] e]))]
+    :placeholder "URL"]
    [ui/button "Change" :change-avatar-url
     :action #(rf/dispatch [:user/set-field (:id user) :avatar
                                           @(rf/subscribe [:form-field [:change :avatar-url]])])]])
