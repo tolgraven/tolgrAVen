@@ -16,12 +16,13 @@
 
 
 (defn safe "Error boundary for components. Also prints/logs error"
-  [category & children]
+  [category component]
  (let [exception (rf/subscribe [:exception [category]])] ;or reg not ratom or would cause etra re-render?
   (r/create-class
   {:display-name (str "Boundary: " (name category))
    :component-did-catch (fn [error info] ;apparently no :this oi!
-                          (util/log :error "Component" (pr-str info))
+                          (util/log :error (str "Component " (name category))
+                                    (-> info ex-message))
                           (rf/dispatch [:exception [category]
                                         {:error error :info info}])) ; error and info are empty.
    ; :get-derived-state-from-error ;"defined as instance method and will be ignored. define as static"
@@ -40,7 +41,7 @@
           [:p (name category)]
           [:pre {:style {:color "var(--red)"}}
            (-> @exception :info ex-message)]
-          [:pre (-> state str pprint/pprint with-out-str (string/escape {\" ""}))]
+          [:pre (-> state js->clj str pprint/pprint with-out-str (string/escape {\" ""}))]
           [:div
            [:button {:on-click #(rf/dispatch [:exception [category] nil])}
             "Attempt reload"]]])))})))
