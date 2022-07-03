@@ -60,6 +60,11 @@
       (cons (first (first seqs))
             (lazy-seq (apply interleave-all remaining))))))
 
+(defn lists->for
+  [& lists]
+  (let [len (count lists)]
+    (partition len len (apply interleave lists))))
+
 (defn log "Log to both console and app" ;XXX should add an endpoint to timbre instead.
  ([message] (log :debug "" message))
  ([level title message & messages]
@@ -119,8 +124,6 @@
            js/parseFloat)
        (catch js/Error e n)))))
 
-(defn abs [n]
-  (max n (- n)))
 
 (defn rescale-to-frac [n min-input max-input]
   (max 0.0 (min 1.0 (/ (- n min-input) (- max-input min-input)))))
@@ -225,7 +228,7 @@
          (mapcat #(tree-seq branch? children %)))))
 
 (defn at "Take symbol: if value, return it. If ratom, deref it, thereby avoiding nil derefing etc..."
- [val-or-atom & fallback]
+ [val-or-atom & [fallback]]
  (if (satisfies? IDeref val-or-atom) ;is satisfies equally slow on js? investigate...
   @val-or-atom
   (or val-or-atom fallback)))
@@ -316,6 +319,12 @@
         [top bottom] [(.-top rect) (.-bottom rect)]]
     (and (< top js/window.innerHeight) (>= bottom 0))))
 
+(defn ensure-elem
+  [el]
+  (if (string? el)
+    (elem-by-id el)
+    el))
+
 (defn rem-to-px "Convert rem to pixels. Doesnt seem like gets quite perfect..."
   [rem-val]
   (-> (js/getComputedStyle js/document.documentElement)
@@ -326,6 +335,20 @@
 (defn px-to-rem "Convert pixels to rem. Doesnt seem like gets quite perfect..."
   [px-val]
   (->> (js/getComputedStyle js/document.documentElement)
+       .-fontSize
+       js/parseFloat
+       (/ (js/parseFloat px-val))))
+
+(defn em->px "Convert em to pixels, passing element for sizing"
+  [el em-val]
+  (-> (js/getComputedStyle (ensure-elem el))
+      .-fontSize
+      js/parseFloat
+      (* (js/parseFloat em-val))))
+
+(defn px->em "Convert pixels to em, passing element for sizing"
+  [el px-val]
+  (->> (js/getComputedStyle (ensure-elem el))
        .-fontSize
        js/parseFloat
        (/ (js/parseFloat px-val))))
