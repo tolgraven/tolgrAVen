@@ -210,15 +210,15 @@
                    (rf/dispatch [:docs/get (:doc path)])
                    (rf/dispatch [:docs/set-page (:doc path)]))}]}]]
      
-     ["blog" {:controllers [{:start (fn [_] (rf/dispatch [:on-booted :firebase [:blog/init]]))}] }
+     ["blog" {:controllers [{:start (fn [_]
+                                      (rf/dispatch [:on-booted :firebase [:blog/init]])
+                                      (rf/dispatch [:blog/set-posts-per-page 3]) ; should also allow 0 = infinite scroll
+                                      (rf/dispatch [:blog/nav-page 1]))}] }
       [""     {:name :blog
                :view #'blog-page
                :controllers [{:start (fn [_]
-                                       (rf/dispatch [:->css-var! "line-width" "1px"])
-                                       (rf/dispatch [:->css-var! "line-width-vert" "1px"])
-                                       ; TODO fix so does this without hardcoding either. Might also set line-color to something less pronounced.
-                                       (rf/dispatch [:blog/set-posts-per-page 3]) ; should also allow 0 = infinite scroll
-                                       (rf/dispatch [:blog/nav-page 1]))
+                                       (rf/dispatch [:->css-var! "line-width" "1px"]); TODO fix so does this without hardcoding either. Might also set line-color to something less pronounced.
+                                       (rf/dispatch [:->css-var! "line-width-vert" "1px"]))
                               :stop (fn []
                                        (rf/dispatch [:->css-var! "line-width" "2px"])
                                        (rf/dispatch [:->css-var! "line-width-vert" "2px"]))}]}] ; needed here so going back from blog/page/2 to blog returns one to page 1...
@@ -237,9 +237,7 @@
         [{:parameters {:path [:permalink]}
           :start (fn [{:keys [path]}]
                    (let [id (-> path :permalink (string/split "-") last js/parseInt)]
-                     (rf/dispatch [:blog/state [:current-post-id] id])))
-          :stop (fn [{:keys [path]}]
-                  (js/console.log "stop" "blog-post controller" (:permalink path)))}]}]
+                     (rf/dispatch [:blog/state [:current-post-id] id])))}]}]
       ["/archive" {:name :blog-archive
                    :view #'blog-archive-page}]
       ["/tag/:tag" {:name :blog-tag
