@@ -31,8 +31,9 @@
        (when port ":") port))
 
 (rf/reg-event-fx :search/search
-  (fn [{:keys [db]} [_ collection query query-by opts]]
+  (fn [{:keys [db]} [_ collection query query-by opts & [no-quote?]]]
     (let [{:keys [api_key host port]} (get-in db [:search :auth])
+          query' (string/replace query #"(\w*)\s" "\"$1\" ")
           query-by (string/join "," query-by)
           url (str (get-host host port)
                    "/collections/" collection
@@ -41,15 +42,18 @@
        [(when-not (string/blank? query)
           [:http/get {:uri url
                       :headers {header-type api_key}
-                      :url-params (merge {:q (str \" query \")
+                      :url-params (merge {:q (if no-quote?
+                                              query
+                                              query')
                                           :query_by query-by}
                                          opts)}
-           [:search/store-search-response [collection query]]])
+           [:search/store-search-response [collection query] query-by opts no-quote?]
+           [:diag/new :debug "Search error"]])
         [:search/latest-query collection query]]})))
 
 
 (rf/reg-event-fx :search/multi-search
-  (fn [{:keys [db]} [_ collections query query-by opts]] ; might need support for different opts per collection
+  (fn [{:keys [db]} [_ collections query query-by opts & [no-quote?]]] ; might need support for different opts per collection
     (let [{:keys [api_key host port]} (get-in db [:search :auth])
           query-by (string/join "," query-by)
           url (str (get-host host port)
@@ -67,9 +71,17 @@
         [:search/latest-query collections query]]})))
 
 (rf/reg-event-fx :search/store-search-response
-  (fn [{:keys [db]} [_ path response]]
+  (fn [{:keys [db]} [_ path query-by opts no-quote? response]]
     (let [data (walk/keywordize-keys response)]
-      {:db (update-in db (into [:search :results] path) merge data)})))
+      (merge
+       {:db (update-in db (into [:search :results] path) merge data)}
+       (when (zero? (get-in response [:found]))
+         {:dispatch [:search/no-results path query-by opts no-quote?]})))))
+
+(rf/reg-event-fx :search/no-results
+  (fn [{:keys [db]} [_ [collection query] query-by opts no-quote?]]
+    (when-not no-quote?
+      {:dispatch [:search/search collection query query-by opts true]})))
 
 (rf/reg-event-fx :search/latest-query
   (fn [{:keys [db]} [_ collection query]]
