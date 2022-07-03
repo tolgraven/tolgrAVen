@@ -77,7 +77,8 @@
 
     [ui/loading-spinner (rf/subscribe [:loading]) :still
      {:style {:position :absolute
-              :left "25%" :top "0%"}}]
+              :left "-2.65em" ; puts it to left of header-logo, only partly visible. looks nice.
+              :top "0%"}}]
     
     [:div.header-icons
      [:a {:href @(rf/subscribe [:href :blog])}

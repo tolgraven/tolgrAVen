@@ -126,6 +126,28 @@ main { /* dunno purpose of why I choose .main-content... */
     z-index: 40;
   }
 }
+.main-loading {
+  // width: 100&;
+  #intro {
+    position: absolute;
+    max-height: 100%;
+    overflow: hidden;
+    z-index: 0;
+  }
+
+  .media-as-bg {
+    position: relative;
+    margin-top: calc(0px - var(--space-lg)); // adjust for mystery offset lol
+    z-index: initial;
+  }
+  .loading-container {
+    z-index: 100;
+  }
+}
+.main-error {
+  .media-as-bg {
+  }
+}
 
 pre {
   // overflow: scroll;

@@ -30,7 +30,7 @@
     [:i.loading-spinner.fa.fa-spinner.fa-spin]])
 
 (defn- basic-skeleton "Skeleton for main page layout. Would be nice if faded in yo. Css animation?"
-  [header-text subtext]
+  [header-text subtext hero-img & [error-text main-class]]
   [:div
    [:header
     [:div.header-logo
@@ -43,14 +43,19 @@
     [:label.burger]]
    [:div.line.line-header]
 
-   [:main.main-loading
-    [:div.loading-container
-     [:div.loading-wiggle-y
-      [:div.loading-wiggle-z
-       [:i.loading-spinner.loading-spinner-massive.fa.fa-spinner.fa-spin]]] ]]
+   [:main#main.main-loading.main-content
+    {:class main-class}
+    [:section#intro
+     [:img.media.media-as-bg {:src hero-img}]
+     (when error-text
+       [:h1.h-intro error-text])]
+    (when-not error-text ; just loading
+      [:div.loading-container
+        [:div.loading-wiggle-y
+         [:div.loading-wiggle-z
+          [:i.loading-spinner.loading-spinner-massive.fa.fa-spinner.fa-spin]]] ])]
 
    [:footer.footer-sticky ; [:footer>div.footer-content
-    [:div.line.line-footer] ;cant this be outside main ugh
     [:div.footer-content ;; XXX should adapt to available height, also disappear...
      [:div
       [:h4 "joen.tolgraven@gmail.com"]
@@ -124,7 +129,8 @@
   (-> (str "<!DOCTYPE html>\n"
            (hiccup/html (home
                          request
-                         :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"])
+                         :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"]
+                                                          "img/foggy-shit-small.jpg")
                          :title "tolgrAVen audiovisual"
                          :description "tolgrAVen audiovisual by Joen Tolgraven"
                          :css-paths css-paths
@@ -144,38 +150,32 @@
       ok
       (content-type "text/html; charset=utf-8")))
 
-(defn render
-  "renders the HTML template located relative to resources/html"
-  [request template & [params]]
-  (content-type
-    (ok
-      (parser/render-file
-        template
-        (assoc params
-          :page template
-          :csrf-token *anti-forgery-token*)))
-    "text/html; charset=utf-8"))
 
 (defn error-page-hiccup
   [error-details]
-  [:html {:lang "en"}
-   [:head
-    [:meta {:charset "UTF-8"}]
-    [:meta {:name "viewport"
-            :content "width=device-width, initial-scale=1, shrink-to-fit=no"}]
-    [:title "Something bad happened"]
-    [:meta {:name "description" :content "Error page"}]
-    
-    (ohtml/link-to-css-bundles error-details ["styles.css"])] ; this is where everything ends up for prod but cant remember why?
-    
-    [:script {:type "text/javascript"}
-       (str "var csrfToken = \"" *anti-forgery-token* "\";")]
-    
-   [:body {:class "container themable framing-shadow sticky-footer-container"}
-    [:header
-     [:h1 "Error: " (:status error-details)]]
+  (str
+   "<!DOCTYPE html>\n"
+   (hiccup/html
 
-     [:main.main-content.center-content>div [:h2 (:title error-details)]] ]])
+    [:html {:lang "en"}
+     [:head
+      [:meta {:charset "UTF-8"}]
+      [:meta {:name "viewport"
+              :content "width=device-width, initial-scale=1, shrink-to-fit=no"}]
+      [:title "Something bad happened - tolgrAVen"]
+      [:meta {:name "description" :content "Error page"}]
+
+      [:link {:href "css/tolgraven/main.min.css" :rel "stylesheet" :type "text/css"}]
+      #_(ohtml/link-to-css-bundles error-details ["styles.css"])] ; this is where everything ends up for prod but cant remember why?
+
+     [:script {:type "text/javascript"}
+      (str "var csrfToken = \"" *anti-forgery-token* "\";")]
+
+     [:body {:class "container themable framing-shadow sticky-footer-container"}
+      (basic-skeleton "tolgrAVen" ["error" (str (:status error-details))]
+                      "img/foggy-shit-small.jpg"
+                      (:title error-details)
+                      "main-error")]])))
 
 (defn error-page ; reckon bail on this and make in hiccup then can nuke parser.
   "error-details should be a map containing the following keys:
@@ -186,15 +186,7 @@
    returns a response map with the error page as the body and the status specified by the status key"
   [error-details]
   {:status  (:status error-details)
+   :title   {:title error-details}
    :headers {"Content-Type" "text/html; charset=utf-8"}
-   :body    (parser/render-file "error.html" error-details)})
+   :body    (error-page-hiccup error-details)})
 
-#_(defn error-page ; reckon bail on this and make in hiccup then can nuke parser.
-  "error-details should be a map containing the following keys:
-   :status - error status
-   :title - error title (optional)
-   :message - detailed error message (optional)
-
-   returns a response map with the error page as the body and the status specified by the status key"
-  [error-details]
-  (render-hiccup error-page-hiccup error-details))
