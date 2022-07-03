@@ -452,8 +452,7 @@
  [& {:as args :keys [value path on-enter]}]
  (let [external-model (r/atom (or (rf/subscribe path) (at value))) ;ok so why does (sub in ratom...) work, straight subscribe not...
        internal-model (r/atom (if (nil? @external-model) "" @external-model)) ;; Create a new atom from the model to be used internally (avoid nil)
-       div-ref        (r/atom nil)
-       base-scroll-height (atom 0)]
+       div-ref        (r/atom nil)]
    (fn [& {:keys [value path on-enter on-change placeholder width height min-rows
                   change-on-blur? disabled? class style attr input-type type]
            :or {input-type :input.form-control
@@ -462,23 +461,32 @@
    (let [latest-ext-model (or @(rf/subscribe path) (at value)) ;how repl this if not passing model but sub?
          disabled?        (at disabled?)
          change-on-blur?  (at change-on-blur?)
-         ]
+         id               (str "input-text-" path)
+         min-height (when (= input-type :textarea)
+                      {:min-height (when @div-ref
+                                     (-> @internal-model
+                                         (str "-")
+                                         string/split-lines
+                                         count (* 1.15) (+ 2)
+                                         (->>
+                                          (util/em->px id))
+                                         (str "px")))})]
     (when (not= @external-model latest-ext-model) ;; Has model changed externally?
      (reset! external-model latest-ext-model)
      (reset! internal-model latest-ext-model))
     [input-type
-     (merge {:class class, :type type ;for clear button ;"text"
+     (merge {:id id
+             :class class, :type type ;for clear button ;"text"
              :style (merge {:display "inline-flex" :flex "1 1 auto"
                             :width width ; how do like "min-width 'chars in str model + 10' up til 200 pixels yada?"
-                            :height height}       ; user best wrap in div or pass class for more fine grained control either way
-                           style)
+                            :min-height height}       ; user best wrap in div or pass class for more fine grained control either way
+                           style
+                           min-height)
              :placeholder placeholder
              :autoComplete (string/lower-case placeholder)
              :value       @internal-model
              :disabled    disabled?
-             :ref         (fn [el]
-                            (when el (reset! base-scroll-height (.-scrollHeight el)))
-                            (reset! div-ref el))
+             :ref         (fn [el] (reset! div-ref el))
              :on-change (fn [e]
                          (let [new-val (-> e .-target .-value)]
                           (when (and on-change (not disabled?))
@@ -490,12 +498,6 @@
                                     #_(not= @internal-model @external-model))
                           (reset! external-model @internal-model) ;nor here...
                           (on-change @internal-model :blur)))
-             :on-input  (when (and min-rows (= input-type :textarea) @div-ref) ;try make autoexpand...
-                          (fn [e]
-                            (let [row-diff (int (/ (- @base-scroll-height
-                                                      (.-scrollHeight @div-ref))
-                                                   16))] (set! (.-rows @div-ref)
-                                  (+ min-rows row-diff)))))
              :on-key-up (fn [e]
                          (if disabled? (.preventDefault e)
                           (case (.-key e)
