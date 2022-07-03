@@ -208,17 +208,21 @@
   ; TODO should also function as gallery if passing multiple elements
   ; TODO stop scroll events while active
   [id]
-  (when-let [component @(rf/subscribe [:state [:modal-zoom id :component]])]
-    (let [opened (and @(rf/subscribe [:state [:modal-zoom id :opened]])
-                      @(rf/subscribe [:state [:modal-zoom id :loaded]]))
-          on-click #(rf/dispatch [:modal-zoom id :close])] ;actually guess container will handle click on img too. but later if add buttons etc, nyah
+  (when-let [data @(rf/subscribe [:state [:modal-zoom id]])]
+    (let [component (:component data)
+          opened (and (:opened data)
+                      (:loaded data))
+          on-click #(do (.stopPropagation %)
+                        (rf/dispatch [:modal-zoom id :close]))] ;actually guess container will handle click on img too. but later if add buttons etc, nyah
       [:div.modal-bg.center-content
        {:class (when opened "modal-bg-open")
-        :on-click on-click }
+        :on-click on-click
+        :style {:overflow "hidden"}} ; prevent scrolling background
        [:div#modal.modal-zoom.center-content
         {:class (when opened "modal-zoomed")
-         :on-click on-click
+         ; :on-click on-click
          :ref #(when % (rf/dispatch [:modal-zoom id :loaded])) } ;to apply things only later
+        [close on-click]
         (util/add-attrs component
                         {:class "modal-zoomed-item"}) ]])))
 
