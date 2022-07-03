@@ -50,8 +50,7 @@
                  ; [optimus-sass "0.0.3"] ; load sass straight. pretty old dunno if still works
                  ; [optimus-autoprefixer "0.1.0"] ; same but autoprefixer. might be nice can avoid npm build and whatnot plus keep everything in one spot...
 
-                 [selmer "1.12.50"]
-                 [nrepl/drawbridge "0.2.1"] ; nrepl over http
+                 ; [nrepl/drawbridge "0.2.1"] ; nrepl over http
 
                  ; CLJS
                  [cljs-ajax "0.8.4"  :exclusions [com.cognitect/transit-cljs com.cognitect/transit-cljs]]

@@ -1,8 +1,6 @@
 (ns tolgraven.layout
   (:require
     [clojure.java.io]
-    [selmer.parser :as parser]
-    [selmer.filters :as filters]
     [hiccup.core :as hiccup]
     [markdown.core :refer [md-to-html-string]]
     [ring.util.http-response :refer [content-type ok]]
@@ -13,9 +11,6 @@
     [optimus.link :as olink]
     [optimus.html :as ohtml]))
 
-(parser/set-resource-path!  (clojure.java.io/resource "html"))
-(parser/add-tag! :csrf-field (fn [_ _] (anti-forgery-field)))
-(filters/add-filter! :markdown (fn [content] [:safe (md-to-html-string content)]))
 
 (defn- js [js] [:script (merge js {:type "text/javascript" :async true})])
 (defn- css [href] [:link {:href href :rel "stylesheet" :type "text/css" :media "print" :onload "this.media='all'"}])
