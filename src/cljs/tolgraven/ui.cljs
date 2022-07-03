@@ -47,8 +47,14 @@
 
 
 (defn md->div [md]
-  [:div.md-rendered
-   {:dangerouslySetInnerHTML {:__html (md->html md)}}])
+  (let [showing? (r/atom false)]
+    (fn [md]
+      [:div.md-rendered
+       {:style {:opacity (if @showing? 1.0 0.0)}
+        :ref #(when %
+                (rf/dispatch-sync [:run-highlighter! %])
+                (reset! showing? true))
+        :dangerouslySetInnerHTML {:__html (md->html (util/md->normal md))}}])))
 
 (defn appear "Animate mount"
   [id kind & components]

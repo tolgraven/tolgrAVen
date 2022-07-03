@@ -273,6 +273,13 @@
           #_(rf/dispatch [:run-in! :play-pauser time-per-step
                         play-pause-updater action]))))))
 
+(defn md->normal
+  [text]
+  (-> text
+      string/split-lines
+      (->> (map (fn [line]
+                  (str line "    ")))
+           (string/join "\n"))))
 
 (defn elem-by-id [id]
   (.getElementById js/document id))

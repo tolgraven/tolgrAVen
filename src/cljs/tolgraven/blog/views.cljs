@@ -11,11 +11,9 @@
   [model]
   (let [{:keys [user title text]} @model]
     [:div.blog-comment-preview
-     ; {:min-height "needs to match up with (auto expanding) comment box somehow..."}
-     {:style {:min-height "8rem"}}
+     {:style {:min-height "7.35rem"}}
      (when title
-       [:h4.blog-comment-title title])
-     [:br]
+       [:h3.blog-comment-title title])
      [ui/md->div text]]))
 
 (declare add-comment)
@@ -225,7 +223,6 @@
      [add-comment [id]]]))
 
 
-
 (defn add-comment "Post http or do a gql mutation, yada yada"
   [parent-path]
   (let [adding-comment? (rf/subscribe [:comments/adding? parent-path])
@@ -261,7 +258,7 @@
                                      (rf/dispatch [:blog/comment-submit parent-path @model @editing])
                                      (rf/dispatch [:form-field [:write-comment parent-path] nil :blur])))}
                       "Submit"])
-        valid-bg {:background-color "#182018"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
+        valid-bg {:background-color "var(--bg-3-2)"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
      (fn [parent-path] ; needed or recreates to empty when swapped out
        (when @adding-comment?
          [:div.blog-adding-comment
