@@ -35,6 +35,10 @@
         background-color: hsla(var(--hue-3), 70%, var(--lum-fg-6), 0.025);
       }
     }
+
+    input {
+      margin: 0;
+    }
   }
   
   .github-commit {

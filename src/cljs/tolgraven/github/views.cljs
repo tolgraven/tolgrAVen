@@ -58,7 +58,7 @@
 
 (defn commits "List Github commits for this repo"
   []
-  (let [commits (rf/subscribe [:github/commits])
+  (let [commits (rf/subscribe [:github/filter-by])
         amount (rf/subscribe [:github/commit-count])
         view (r/atom :commits)]
    (fn []
@@ -70,6 +70,12 @@
        [:span "this website"]]]
         
      [:div#github-commits-box.github-commits-inner
+      [ui/input-text
+       :input-type "input.search"
+       :placeholder "Search"
+       :width "100%"
+       :height "2em"
+       :path [:form-field [:github :search]]]
       (when (= @view :commits)
         [:div {:style {:text-align "center"
                        :padding "1em"}}
@@ -78,7 +84,8 @@
            (for [{:keys [commit author html_url sha sha7 message date clock ts] :as item} @commits
                  :let [[info subtitle title] message]]
         ^{:key (str "github-commit-" ts)}
-        [:div.github-commit.flex
+        [ui/appear-merge "slide-in slow"
+         [:div.github-commit.flex
          {:on-click #(do (rf/dispatch [:github/fetch-commit "tolgraven" "tolgraven" sha])
                          (reset! view sha))}
          [:img.user-avatar.center-content {:src (:avatar_url author)}]
@@ -92,12 +99,24 @@
            [:div.info info]]]
           (if title
              [:div.github-commit-titles
-              [:span.subtitle subtitle]
+              [:span.subtitle
+               {:style {:cursor "pointer"}
+                :on-click (fn [e] (.stopPropagation e)
+                            (rf/dispatch [:form-field [:github :search] subtitle]))}
+               subtitle]
               [:i.fa.fa-solid.fa-arrow-left]
-              [:span.title title]]
+              [:span.title
+               {:style {:cursor "pointer"}
+                :on-click (fn [e] (.stopPropagation e)
+                            (rf/dispatch [:form-field [:github :search] title]))}
+               title]]
              (when subtitle
                [:div.github-commit-titles
-                [:span.title subtitle]]))])
+                [:span.title
+                 {:style {:cursor "pointer"}
+                  :on-click (fn [e] (.stopPropagation e)
+                              (rf/dispatch [:form-field [:github :search] subtitle]))}
+                 subtitle]]))]])
 
           [:div
             [commit @view [ui/close #(reset! view :commits)]]])

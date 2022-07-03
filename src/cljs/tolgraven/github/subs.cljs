@@ -24,3 +24,13 @@
  :<- [:content [:github]]
  (fn [github [_ sha]]
    (get-in github [:commit sha])))
+
+(rf/reg-sub :github/filter-by
+ :<- [:github/commits]
+ :<- [:form-field [:github :search]]
+ (fn [[commits search] [_ override]]
+   (let [search (or override search)]
+     (cond->> commits
+       (not (string/blank? search)) (filter #(re-find (re-pattern search)
+                                                      (string/join (:message %))))))))
+
