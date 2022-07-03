@@ -232,22 +232,32 @@
                        (pos? (count (:text input))))
         preview? (r/atom false)
         box (fn [k kind & {:keys [style ui-name]}]
-              [kind ; diverging too much, sep...
-               {:class (str "blog-adding-comment-textbox")
+              (let [id (str "blog-adding-comment-" kind)
+                    this (r/atom nil) ]
+                (fn [k kind & {:keys [style ui-name]}]
+                  (let [height (when (= kind :textarea)
+                               {:min-height (when @this
+                                              (-> @model :text ;sadly linebreak doesnt count so only expands once text on newline.
+                                                  (str "-")
+                                                  string/split-lines
+                                                  count (* 1.15) (+ 2)
+                                                  (->>
+                                                   (util/em->px id))
+                                                  (str "px")))})]
+              [kind
+               {:id id
+                :class (str "blog-adding-comment-textbox")
                 :type :textbox
+                :ref #(when % (reset! this %))
                 :value (get @model k)
                 :name (or ui-name (name k))
                 :placeholder (string/capitalize (or ui-name (name k)))
-                :style (merge (when (= kind :textarea)
-                                {:min-height (-> @model :text ;sadly linebreak doesnt count so only expands once text on newline.
-                                                 string/split-lines
-                                                 count (+ 2)
-                                                 util/rem-to-px)})
-                              style)
+                :style (merge style
+                              height)
                 :on-change (fn [e]
                              (let [new-val (-> e .-target .-value)]
                                (rf/dispatch-sync [:form-field [:write-comment parent-path k] new-val])))
-                :on-blur #(rf/dispatch-sync [:form-field [:write-comment parent-path k] (get @model k) :blur])}]) ; tho stashing half-written in localstorage is p awesome when done. so db evt
+                :on-blur #(rf/dispatch-sync [:form-field [:write-comment parent-path k] (get @model k) :blur])}]))))
         submit-btn (fn []
                      [:button.blog-btn.noborder
                       {:class    (when (input-valid? @model) "topborder")
@@ -267,11 +277,14 @@
             :on-mouse-leave #(reset! preview? false)}
            "Preview"] [:br]
           (if @preview?
-            [preview-comment model]
-            [:<>
+            [ui/appear-anon "opacity fast"
+             [preview-comment model]]
+            [ui/appear-anon "opacity fast"
+             [:<>
              [box :title :input :style valid-bg :ui-name "Title (optional)"]
-             [box :text :textarea :ui-name "Comment"]]) ;[:br]
-          [submit-btn] [add-comment-btn parent-path :cancel]]))))
+             [box :text :textarea :ui-name "Comment"]]])
+          [submit-btn]
+          [add-comment-btn parent-path :cancel]]))))
 
      ; :on-key-up (fn [e] (when (= "Alt-Enter-however-written" (.-key e)) (submit)))
 ; not here but whatever: thing from MYH site where heading slots into header
