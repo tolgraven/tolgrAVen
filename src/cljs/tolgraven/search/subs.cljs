@@ -47,8 +47,10 @@
 (rf/reg-sub
  :search/autocomplete-for-current-query
  (fn [[_ collection]]
-   [(rf/subscribe [:search/results-for-query collection])])
- (fn [[results] [_ collection]]
+   [(rf/subscribe [:search/results-for-query collection])
+    (rf/subscribe [:search/get-query collection])])
+ (fn [[results query] [_ collection]]
+  (when (seq results)
    (distinct
     (for [hit (:hits results)
           :let [{:keys [highlights document text_match]} hit
@@ -57,6 +59,7 @@
       (let [token (first matched_tokens)
             snippet' (-> snippet
                          (string/replace #"(```)|(`).*" "") ; kill the code blocks
+                         (string/replace #"\n.*" "") ; kill the code blocks
                          (string/replace #"<mark>" "öööö")
                          (string/replace #"</mark>" "åååå"))
             data (-> (string/split snippet' (re-pattern token))
@@ -65,24 +68,26 @@
                      (->>
                       (take 5) ; thinking it'll be cached and not change but maybe not
                       (string/join " ")))
-            text (str token (string/replace data #"öööö|åååå" ""))
-            trimmed (-> (str token data)
+            text (str #_token (-> data
+                                  (string/replace #"öööö|åååå" "")
+                                  (string/replace #"[^a-zA-Z0-9\s']" "")))
+            trimmed (-> (str "<mark>" token data)
                         (string/replace #"\n.*" "")
+                        (string/replace #"([^a-zA-Z0-9\s'])" "")
                         (string/replace #"öööö" "<mark>")
                         (string/replace #"åååå" "</mark>"))]
         
         {:html trimmed
-         :text text
-         :score text_match})))))
+         :match token
+         :rest text
+         :score text_match}))))))
 
 (rf/reg-sub
  :search/autocomplete-multi
  (fn [[_ collections]]
    (mapv #(rf/subscribe [:search/autocomplete-for-current-query %]) collections))
  (fn [results [_ collections]]
-   (tap> results)
-   (tap> collections)
-   (let [results' (for [[result coll] (interleave results collections)]
+   (let [#_results' #_(for [[result coll] (interleave results collections)]
                    result
                    #_(assoc result :collection coll))]
      (->> (apply concat results)

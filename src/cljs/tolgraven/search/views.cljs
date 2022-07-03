@@ -30,11 +30,11 @@
         {:keys [query-by model on-enter placeholder width height open?]
          :or {height "2em"
               query-by ["text" "title"]}}]
-     (let [latest-ext-model @model
-           suggestion (first @(rf/subscribe [:search/autocomplete-multi collections]))]
-       (when (not= @external-model latest-ext-model)
-         (reset! external-model latest-ext-model)
-         (reset! internal-model latest-ext-model))
+     (let [suggestions @(rf/subscribe [:search/autocomplete-multi collections])
+           suggestion-str (string/join " " (:match suggestions))
+           suggestion (first suggestions)
+           ; suggestion (first )
+           query @(rf/subscribe [:search/get-query (first collections)])]
    [:div.search-input-container
         
      [:input#search-input.search-input ;problem if multiple search boxes on same page tho
@@ -45,26 +45,35 @@
                :border (when (or (zero? width) (zero? height)) 0)}
        :placeholder placeholder
        :autoComplete "off"
-       :value       @internal-model
+       :value       (if (and (not (string/blank? (:match suggestion)))
+                             (not= (:match suggestion) query))
+                      (str (:match suggestion) (re-find #"\s" query))
+                      @internal-model)
        :ref         #(when % (reset! div-ref %))
        :on-change (fn [e] ; XXX needs debounce I guess
                     (let [new-val (-> e .-target .-value)]
                       (reset! internal-model new-val)
                       (reset! external-model @internal-model)
                       (doseq [coll collections]
-                                (rf/dispatch [:search/search coll new-val query-by opts]))))
+                                (rf/dispatch [:search/search coll new-val query-by opts false]))))
        :on-key-up (fn [e]
                     (case (.-key e)
                       "Enter" (when (not= "" @model)
                                 (set! (.-value @div-ref) (:text suggestion))
                                 (doseq [coll collections]
-                                  (rf/dispatch [:search/search coll (:text suggestion) query-by opts])))
+                                  (rf/dispatch [:search/search coll (:text suggestion) query-by opts false])))
                       "Escape" (do (.preventDefault e) ; can't seem to stop it from blanking query hmm
                                    (rf/dispatch [:search/state [:open?] false]))
                       true))}]
+     (when-not (string/blank? (:match suggestion))
       [:div.search-input.search-input-autocomplete.form-control
        {:style {:min-height height}}
-       (:text suggestion) ]])))) ;after not before, want to be able to override stuff duh
+       [:pre
+        (str (-> (get suggestion :match "")
+                 (string/replace  #"\w|\s" " ")
+                 (string/replace #"\n" ""))
+             (-> (get suggestion :rest "")
+                 ))] ])]))))
 
 (defn suggestions "Display a dropdown of suggested further terms"
   [collections]
@@ -80,15 +89,15 @@
                             (not (string/blank? @query)))
                    "search-autocomplete-open")}
          (for [suggestion (drop 1 suggestions') ; rework as map-indexed so can highhlight and pick by keyboard
-               :let [html (:html suggestion)
-                     text (:text suggestion)
-                     without-query (string/replace-first text (re-pattern (str "(?i)" @query)) "")]]
+               :let [{:keys [html rest match]} suggestion
+                     without-query rest #_(string/replace-first text (re-pattern (str "(?i)" @query)) "")]]
            [:div.search-autocomplete-item
             {:on-click (fn [e]
                          (doseq [coll collections]
-                           (rf/dispatch [:search/search coll text ["text" "title"]])))}
+                           (rf/dispatch [:search/search coll (str match rest) ["text" "title"]])))}
 
-            [:b @query] without-query
+            ; [:b @query] without-query
+            [:b match] without-query
             #_[ui/md->div html]])]))))
 
 

@@ -19,7 +19,7 @@
   top: calc(var(--line-width) + var(--header-height-current));
   margin-left: var(--line-width);
   z-index: 10;
-  background: var(--bg-4-2);
+  background: var(--bg-2-2);
   backdrop-filter: blur(3px);
   
   .search-input {
@@ -31,10 +31,14 @@
     margin: 0;
     background: transparent;
     color: var(--fg-1);
+    font-family: 'Fira Code', monospace;
 
-    // font-weight: 900;
-
-    // margin-top: var(--space-lg);
+    pre {
+      margin: 0;
+      padding: 0;
+      font-size: 120%;
+      border: 0;
+    }
   }
 
   .search-input-autocomplete {
@@ -42,10 +46,9 @@
     top: 0.07em;
     left: 0.2em;
     z-index: -1;
-    // font-weight: 300;
     border: 1px solid transparent;
     color: var(--fg-6);
-    font-family: Arial;
+    font-family: 'Fira Code', monospace;
   }
 }
 
@@ -54,6 +57,7 @@
   transition: all 0.5s ease;
   max-height: 0;
   overflow: hidden;
+  font-family: 'Fira Code', monospace;
 
   &.search-autocomplete-open {
     background-color: var(--bg-3-2);
