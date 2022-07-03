@@ -87,11 +87,11 @@
 
 (defn comments "User comments page" [user]
   [section "User comments" ;will need to save comment id's to user when make new ones.
-   (let [comments @(rf/subscribe [:comments/for-user (:id user)])]
-     (doall (for [{:keys [id title text ts score] :as comment} comments] ^{:key (str "user-" (:id user) "-comment-" id)}
+   (let [comments @(rf/subscribe [:comments/for-user-q (:id user)])]
+     (doall (for [{:keys [id title text ts score] :as comment} (vals comments)] ^{:key (str "user-" (:id user) "-comment-" id)}
               [:div.blog-comment>div.blog-comment-main
                [:h4.blog-comment-title title]
-               [blog-views/posted-by id (:name user) ts score]
+               [blog-views/posted-by id user ts score]
                [:div.blog-comment-text
                 [ui/md->div text]]]))) ])
 
