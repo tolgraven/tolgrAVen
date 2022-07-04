@@ -20,9 +20,13 @@
         {:ref #(when % (rf/dispatch [:run-highlighter! %]))} ;screws up live preview :( jumpy
         [:code
          (:filename file)]
-        [:p (util/pluralize (:additions file) " addition") ", "
-            (util/pluralize (:deletions file) " deletion") ", "
-            (util/pluralize (:changes file)   " change") "."]
+        [:p
+         [:span {:style {:color "var(--green)"}}
+          (util/pluralize (:additions file) " addition")] ", "
+         [:span {:style {:color "var(--red)"}}
+          (util/pluralize (:deletions file) " deletion")] " = "
+         [:span {:style {:color "var(--orange)"}}
+          (util/pluralize (:changes file)   " change")] "."]
         [:div
          (let [hunks (-> (:patch file)
                          (string/split #"(?m)^@@.*@@")
@@ -30,20 +34,29 @@
                headers (-> (:patch file)
                            (string/replace #"(?m)(@@\n)(.|\n)*(^@@)?" "$1$3")
                            (string/split-lines))]
-           ; (util/log :error "fo" (count hunks) (count headers))
            (into [:<>]
-            (for [[hunk header] (partition 2 2 (interleave hunks headers))]
+            (for [[hunk header] (partition 2 2 (interleave hunks headers))
+                  :let [diff (string/replace hunk #"(?m)(^.).*" "$1")
+                        added (map-indexed (fn [i line]
+                                             (case
+                                               (string/starts-with? "+" line) i))
+                                           (string/split-lines diff))
+                        deleted (map-indexed (fn [i line]
+                                             (case
+                                               (string/starts-with? "-" line) i))
+                                           (string/split-lines diff)) ]]
+              
              [:div
               [:p header]
               [:div.flex
-               [:pre.diff
-                (string/replace hunk #"(?m)(^.).*" "$1")]
+               [:pre.diff diff]
                [:pre.linenum
                 (let [start  (->> (re-find #"-(\d*)," header)
                                   second
                                   js/parseInt)
                       len (-> (string/split-lines hunk)
-                              count)
+                              count
+                              #_(- (count (filter some? deleted))))
                       lines (->> (range start (+ start len))
                                  (string/join "\n"))]
                 lines)]
@@ -66,8 +79,9 @@
      [:section.github-commits.covering-2
      
      [:h2 [:i.fab.fa-github]" " @amount " commits to "
-      [:a {:href (first (string/split (:html_url (first @commits)) #"/commit/"))}
-       [:span "this website"]]]
+      [:span
+       [:a {:href (first (string/split (:html_url (first @commits)) #"/commit/"))}
+        "this website"]]]
         
      [:div#github-commits-box.github-commits-inner
       [ui/input-text

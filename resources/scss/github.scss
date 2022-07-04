@@ -135,7 +135,7 @@
     }
     &.linenum {
       text-align: right;
-      background: var(--bg-3);
+      background: var(--bg-2-2);
       padding: 1em;
       padding-left: 1.5em;
       padding-right: 0.4em;
@@ -148,13 +148,13 @@
     }
   }
   .diff {
-      background: var(--bg-1);
+      background: var(--bg-3-2);
   }
   .hljs-deletion, .hljs-addition {
     position: relative;
     color: black;
     overflow: visible;
-    font-size: 0.75em;
+    font-size: 0.80em;
     z-index: 0;
     pointer-events: none;
 
@@ -163,9 +163,10 @@
       left: 0;
       top: 0;
       content: "";
+      // width: 100%;
       // width: calc(100vw - 2 * var(--space-sides) - var(--space));
-      width: 100em;
-      height: 1.4em;
+      width: 90em;
+      height: 1.50em;
       opacity: 15%;
     }
   }
