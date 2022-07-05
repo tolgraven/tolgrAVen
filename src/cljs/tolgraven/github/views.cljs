@@ -68,6 +68,20 @@
                 (-> hunk
                     (string/replace #"(?m)^." ""))]]])))]])]))
 
+(defn loading "Lazy load more on scroll to bottom, with a button as fallback for the poors"
+  [user repo]
+  [:div.github-loading
+   [ui/lazy-load-repeatedly
+    [:github/fetch-commits-next user repo]
+    "github-commits-box"
+    :run-on-appear]
+   [:h2 "Loaded " (count @(rf/subscribe [:github/commits]))]
+   [:h3 "Scrolling down should load more..."]
+   [:div {:style {:padding "var(--space)"}}
+    [ui/loading-spinner true :still]]
+   [:button {:style {:margin-top "var(--space-lg)"}
+             :on-click #(rf/dispatch [:github/fetch-commits-next user repo])}
+    "...or you can click here"]])
 
 (defn commits "List Github commits for this repo"
   []
@@ -143,15 +157,6 @@
             [commit @view [ui/close #(reset! view :commits)]]])
       
      (when (= @view :commits)
-      [:div.github-loading
-       [ui/lazy-load-repeatedly
-        [:github/fetch-commits-next "tolgraven" "tolgraven"]
-        "github-commits-box"]
-       [:h3 "Scrolling down should load more..."]
-       [:div {:style {:padding "var(--space)"}}
-        [ui/loading-spinner true :still]]
-       [:button {:style {:margin-top "var(--space-lg)"}
-                 :on-click #(rf/dispatch [:github/fetch-commits-next "tolgraven" "tolgraven"])}
-        "...or you can click here"]])]]
+      [loading (first @from) (second @from)])]]]
      [ui/fading :dir "bottom"]])))
 
