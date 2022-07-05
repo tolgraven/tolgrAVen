@@ -201,6 +201,7 @@
                (observer el))}])))
 
 
+(declare close)
 
 (defn zoom-to-modal "E.g. bring up image to semi-fullscreen when clicked.
                      This version just generically zooms, would be nice if animated from current pos.
