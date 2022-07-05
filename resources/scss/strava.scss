@@ -96,16 +96,6 @@
       // opacity: 0;
     }
 
-    .strava-stats-legend {
-      margin-left: 0;
-      margin-right: calc(2.0 * var(--space));
-      color: var(--light-5);
-
-      h3 {
-        margin: 0;
-        margin-left: calc(0.5 * var(--space));
-      }
-    }
     div, h3 {
       margin: 0.2rem;
       margin-left: calc(0.5 * var(--space));
@@ -114,7 +104,17 @@
     h3 {
       font-weight: bolder;
     }
+    .strava-stats-legend {
+      margin-left: calc(0.5 * var(--space));
+      margin-right: calc(2.0 * var(--space));
+      color: var(--light-5);
 
+      h3 {
+        margin: 0;
+        margin-left: calc(0.5 * var(--space));
+      }
+    }
+    
     #strava-general-stats-carousel {
       .carousel-idx {
         display: none;
