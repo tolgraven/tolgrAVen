@@ -132,7 +132,7 @@ producer, reporter, PA, graphics technician, music administrator etc"] :where "S
                                {:from 2018, :to 2019, :what "Systim Nostra", :position "Manager" :how ["Soundsystem operator", "Venue operation"], :where "Kampala" :color "#cfcbc4" :level 0},
                                {:from 2019, :to 2023,  :what "tolgrAVen audiovisual", :position "Owner-operator, Web developer" :how ["Owner-operator", "Web designer & developer"], :where "Stockholm" :logo "img/tolgrav-square.png" :color "#cfcbc4" :level 0}
                                {:from 2021, :to 2023,  :what "Crosstown", :how [], :position "Cyclist" :where "Stockholm" :logo "img/logo/crosstown-logo.png" :color "var(--orange-2)" :level 1}
-                               {:from 2022, :to 2025, :what "Opter AB", :position "System developer (primarily apps)" :how ["Full-time",  "Currently working on a Xamarin Forms iOS (and soon to be Android) app"],  :where "Stockgolm" :logo "img/logo/opter-logo.png" :color "hsl(159, 41%, 21%)" :level 2}]
+                               {:from 2022, :to 2025, :what "Opter AB", :position "Systems developer (primarily apps)" :how ["Full-time",  "Currently working on a Xamarin Forms iOS (and soon to be Android) app"],  :where "Stockholm" :logo "img/logo/opter-logo.png" :color "hsl(159, 41%, 41%)" :level 2}]
                               :life
                               [{:from 1988  :to 1988  :what "Born"}
                                {:from 1994  :to 2001  :what "Football Player"}
