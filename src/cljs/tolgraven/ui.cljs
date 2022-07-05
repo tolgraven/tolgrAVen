@@ -188,9 +188,9 @@
        {:ref #(observer %)}])))
 
 (defn lazy-load-repeatedly "Dispatch update event when approaching something"
-  [event & [root-id]]
+  [event & [root-id run-on-appear?]]
   (let [observer (util/observer (fn [frac]
-                                  (when (= frac 1.0)
+                                  (when (<= frac 0.99)
                                     (rf/dispatch event)))
                                 (merge {:threshold 1.0}
                                  (when root-id
@@ -198,6 +198,8 @@
     (fn [event]
       [:div
        {:ref (fn [el]
+               (when (and el run-on-appear?)
+                 (rf/dispatch event))
                (observer el))}])))
 
 
