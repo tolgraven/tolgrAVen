@@ -71,9 +71,11 @@
 
 (defn commits "List Github commits for this repo"
   []
-  (let [commits (rf/subscribe [:github/filter-by])
+  (let [from (rf/subscribe [:github/get-from])
+        commits (rf/subscribe [:github/filter-by])
         amount (rf/subscribe [:github/commit-count])
-        view (r/atom :commits)]
+        view (r/atom :commits)
+        main-view-position (r/atom 0)]
    (fn []
     [:<>
      [:section.github-commits.covering-2
@@ -90,17 +92,22 @@
        :width "100%"
        :height "2em"
        :path [:form-field [:github :search]]]
-      (when (= @view :commits)
+      [:div#github-commits-main
+       {:ref #(when % (set! (.-scrollTop (util/elem-by-id "github-commits-box"))
+                            @main-view-position))}
+       (when (= @view :commits)
         [:div {:style {:text-align "center"
                        :padding "1em"}}
           "Click a commit for details and diff"])
       (if (= @view :commits)
-           (for [{:keys [commit author html_url sha sha7 message date clock ts] :as item} @commits
-                 :let [[info subtitle title] message]]
-        ^{:key (str "github-commit-" ts)}
+       (for [{:keys [commit author html_url sha sha7 message date clock ts] :as item} @commits
+              :let [[info subtitle title] message]]
+            ^{:key (str "github-commit-" ts)}
         [ui/appear-merge "slide-in slow"
-         [:div.github-commit.flex
-         {:on-click #(do (rf/dispatch [:github/fetch-commit "tolgraven" "tolgraven" sha])
+        [:div.github-commit.flex
+         {:on-click #(do (rf/dispatch [:github/fetch-commit (first @from) (second @from) sha])
+                         (reset! main-view-position
+                                 (.-scrollTop (util/elem-by-id "github-commits-box")))
                          (reset! view sha))}
          [:img.user-avatar.center-content {:src (:avatar_url author)}]
          [:div.github-commit-details
