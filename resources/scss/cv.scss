@@ -45,7 +45,9 @@
     text-align: center;
   }
   > p {
+    margin: calc(0px - 2.5 * var(--line-width)) 0;
     padding: var(--space-lg);
+    background: linear-gradient(180deg, hsl(0, 0%, 7%) 20%,  hsl(179, 9%, 11%));
   }
   button {
     margin-bottom: var(--space-lg);
