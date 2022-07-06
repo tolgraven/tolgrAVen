@@ -53,9 +53,14 @@
 
 (defn cv "Main cv component"
   []
-  (let [ref-fn #(when %
-                  (js/setTimeout (fn [_] (rf/dispatch [:state [:fullscreen :cv] true]))
-                                 2500))]
+  (let [ref-fn (fn [el]
+                 (when el
+                   (js/setTimeout #(rf/dispatch [:state [:fullscreen :cv] true])
+                                  2000)
+                   (js/setTimeout #(rf/dispatch [:scroll/by 50])
+                                  3000)
+                   (js/setTimeout #(rf/dispatch [:scroll/by -37])
+                                  4500)))]
    (fn []
     (let [{:keys [title caption cv]} @(rf/subscribe [:content [:cv]])
         {:keys [intro education work life skills]} cv
