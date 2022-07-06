@@ -52,7 +52,7 @@
                     (get-in old-match path)))]
       (if-not (and (same :data :view)
                    (same :path-params)
-                   (same :query-params)
+                   (same :query-params) ; causes some trouble with settingsbox getting stuck?
                    (same :path))
       (merge
        {:db (-> db
@@ -62,16 +62,15 @@
                ; (update-in [:state] dissoc :swap)  ; cant reset swap since in middle of running...
                (update-in [:state :exception] dissoc :page)
                (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
-       :document/set-title (str (get-in db [:content :title] "tolgrAVen") " - "
-                                (-> new-match :data :name ;TODO want further info in title, like blog post title...
-                                    name string/capitalize) " "
-                                (-> new-match :parameters :path vals first))}
+        :dispatch
+        [:later/dispatch {:ms 300 ; XXX like everything else this shouldn't be timed but fire after page booted (= height stabilized)
+                          :dispatch [:document/set-title! new-match]}]} ; title of site
        (when (or (and (same :query-params) ; TODO maybe query params did change but also something else tho
                       (or (not (same :data :view))
                           (not (same :path-params))))
                  (not old-match)) ; restore last position if followed a link from elsewhere (even if go to top for internal links)
         {:dispatch-later
-         {:ms 250
+         {:ms 150
           :dispatch [:scroll/on-navigate (:path new-match)]}}))
       
       (let [fragment (-> db :state :fragment)] ;; matches are equal (fragment not part of match)
@@ -88,6 +87,25 @@
 (rf/reg-event-fx :common/navigate!
   (fn [_ [_ url-key params query]]
     {:common/navigate-fx! [url-key params query]}))
+
+(rf/reg-event-fx :common/set-title [debug]
+  (fn [{:keys [db]} [_ title]]
+    {:db (assoc-in db [:state :document :title] title)}))
+
+(rf/reg-event-fx :document/set-title!
+  (fn [{:keys [db]} [_ match]]  ;TODO want further info in title, like blog post title...
+    {:document/set-title
+     (str (some-> (get-in db
+                          [:state :document :title]
+                          (some-> match :parameters :path vals first (string/replace #"-" " ")))
+                  (str " - "))
+          (some-> match :data :name name string/capitalize (str " ")) ; category
+          " - "   (get-in db [:content :document :title]))
+ }))
+
+(rf/reg-event-fx :later/dispatch
+  (fn [{:keys [db]} [_ m]]
+    {:dispatch-later m}))
 
 (rf/reg-event-fx :href/update-current
   (fn [{:keys [db]} [_ {:keys [path query]}]]

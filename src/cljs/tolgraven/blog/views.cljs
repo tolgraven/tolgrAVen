@@ -380,12 +380,19 @@
 (defn blog-single-post []
   (let [post @(rf/subscribe [:blog/post
                              @(rf/subscribe [:blog/state [:current-post-id]])])]
-    [blog-container
-     [:<>
-     [ui/loading-spinner (r/atom (not post)) :massive]
+   [blog-container
+    [:<>
+     [ui/loading-spinner (r/atom (not post)) :massive] ; would want a flashing skeletor instead
+     ; OTHER IDEA FOR LOADING NAV:
+     ; start with flashing text
+     ; then blur it <- how figure out when to kick off? can't do it when loaded, too slow
+     ; replace with post BUT VERY BLURRED quickly getting not blurry
+     ;
+     ; or just blur previous on nav then deblur-fade in new post...
      [blog-post post]
      (when (:id post)
        [:div.blog-prev-next-links
+        {:ref #(rf/dispatch [:common/set-title (when % (:title post))])} ; otherwise nil -> resets
         (when-let [id @(rf/subscribe [:blog/adjacent-post-id :prev (:id post)])]
           (let [post @(rf/subscribe [:blog/post id])]
            [:a {:href @(rf/subscribe  [:blog/permalink-for-path  (or (:permalink post) (:id post))])}
