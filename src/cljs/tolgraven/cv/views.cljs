@@ -63,7 +63,9 @@
                    (js/setTimeout #(rf/dispatch [:scroll/by 50])
                                   3000)
                    (js/setTimeout #(rf/dispatch [:scroll/by -37])
-                                  4500)))]
+                                  4500)
+                   (js/setTimeout #(rf/dispatch [:focus-element "fullscreen-btn"])
+                                  5500)))]
    (fn []
     (let [{:keys [title caption cv]} @(rf/subscribe [:content [:cv]])
         {:keys [intro education work life skills]} cv
@@ -112,7 +114,8 @@
                 [:h1 [:i.fas.fa-book] "life"]
                 (gen-items :life)]]
         fullscreen? (when @(rf/subscribe [:fullscreen/get :cv])
-                      "fullscreen")]
+                      "fullscreen")
+        win-fullscreen? @(rf/subscribe [:state [:window :fullscreen?]])]
     [:section#cv.cv.nopadding.noborder
      {:class fullscreen?
       :ref ref-fn}
@@ -124,11 +127,17 @@
        [:div.cv-howto
         [:p "Click a box for further details."]
 
-        "Scroll sideways to look back, or click "
+        (if-not win-fullscreen?
+          "Scroll sideways to look back, or click "
+          "Done snooping? Click ")
         [:button
-         {:on-click #(rf/dispatch [:toggle [:state :fullscreen :cv]])}
-         "Fullscreen"]
-        " and maximize your browser window. "]]]
+         {:on-click #(rf/dispatch [:window/fullscreen! (not win-fullscreen?)])}
+         (if-not win-fullscreen?
+           "Fullscreen"
+           "Exit fullscreen")]
+        (if-not win-fullscreen?
+          " to maximize your browser window. "
+          " to return to your trusty desktop")]]]
      boxes
      [ui/fading :dir "bottom"]
      [capabilities skills]]))))

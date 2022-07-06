@@ -92,17 +92,6 @@
   (fn [{:keys [db]} [_ title]]
     {:db (assoc-in db [:state :document :title] title)}))
 
-(rf/reg-event-fx :document/set-title!
-  (fn [{:keys [db]} [_ match]]  ;TODO want further info in title, like blog post title...
-    {:document/set-title
-     (str (some-> (get-in db
-                          [:state :document :title]
-                          (some-> match :parameters :path vals first (string/replace #"-" " ")))
-                  (str " - "))
-          (some-> match :data :name name string/capitalize (str " ")) ; category
-          " - "   (get-in db [:content :document :title]))
- }))
-
 (rf/reg-event-fx :later/dispatch
   (fn [{:keys [db]} [_ m]]
     {:dispatch-later m}))

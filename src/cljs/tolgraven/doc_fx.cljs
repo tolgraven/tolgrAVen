@@ -2,6 +2,7 @@
   (:require
     [reagent.core :as r]
     [re-frame.core :as rf]
+    [clojure.string :as string]
     [tolgraven.util :as util]))
 
 ; a fancier version would stash both fn and args in db
@@ -66,10 +67,42 @@
 ;       {:db (update-in db [:state :run-fn] #(-> % set (disj id-key)))
 ;        :run-fn-fx! [id-key f args] })))
 
+(rf/reg-event-fx :document/set-title!
+  (fn [{:keys [db]} [_ match]]
+    {:document/set-title
+     (str (some-> (or (get-in db [:state :document :title])   ; specifically set (and cleared!!) by a component and/or its controller
+                      (some-> match :parameters :path vals first
+                              (string/replace #"-" " ")))     ; backup: use path-params as base
+                  (str " - "))
+          (some-> match :data :name name string/capitalize (str " ")) ; category
+          " - "   (get-in db [:content :document :title]))})) ; site title comes last
+
 
 (rf/reg-fx :document/set-title
   (fn [title]
     (set! js/document.title title)))
+
+
+(rf/reg-event-fx :window/fullscreen!
+  (fn [{:keys [db]} [_ fullscreen?]]  ;TODO want further info in title, like blog post title...
+    {:db (assoc-in db [:state :window :fullscreen?] fullscreen?)
+     :window/fullscreen! fullscreen?}))
+
+(rf/reg-fx :window/fullscreen!
+  (fn [fullscreen?]
+    (if fullscreen?
+      (if-let [request-method (or js/document.documentElement.requestFullScreen
+                                  js/document.documentElement.webkitRequestFullScreen
+                                  js/document.documentElement.mozRequestFullScreen
+                                  js/document.documentElement.msRequestFullscreen)]
+        (.call request-method js/document.documentElement)
+        (rf/dispatch [:log/write! :error "Can't go fullscreen" "No method found"]))
+      (if-let [request-method (or js/document.exitFullScreen
+                                  js/document.webkitCancelFullScreen
+                                  js/document.mozCancelFullScreen
+                                  js/document.msCancelFullscreen)]
+        (.call request-method js/document)
+        (rf/dispatch [:log/write! :error "Can't exit fullscreen" "No method found"])))))
 
 (rf/reg-event-fx :focus-element
   (fn [_ [_ elem-id]]
