@@ -491,7 +491,8 @@
    [:div.flex.center-content
     (when (some #{(:id @(rf/subscribe [:user/active-user]))}
                 (:bloggers @(rf/subscribe [:<-store :auth :roles])))
-      [:a {:href @(rf/subscribe [:href :post-blog])}
+      [:a {:href @(rf/subscribe [:href :post-blog])
+           :title "Post blog"}
        [:button.noborder [:i.fa.fa-feather-alt]]])
     
     [:a {:href @(rf/subscribe [:href :blog])}

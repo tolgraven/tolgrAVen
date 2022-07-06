@@ -11,8 +11,11 @@
     [optimus.link :as olink]
     [optimus.html :as ohtml]))
 
+;also the thing about telling browser to expect certain loads
+(defn- prefetch [link & [kind]] [:link {:rel "prefetch" :href link :as (or kind "style")}])
+; :as document, script, style, font, image
 
-(defn- js [js] [:script (merge js {:type "text/javascript" :async true})])
+(defn- js [js] [:script (merge {:type "text/javascript" :async true} js)])
 (defn- css [href] [:link {:href href :rel "stylesheet" :type "text/css" :media "print" :onload "this.media='all'"}])
 (defn- js-preload  [path] [:link {:rel "preload" :as "script" :href path}])
 (defn- img-preload [path] [:link {:rel "preload" :as "image" :href path}])
@@ -45,10 +48,14 @@
      (when error-text
        [:div.h1-wrapper.center-content
         [:h1.h-intro.h-responsive error-text]])]
-    [:div.loading-container ; will be hidden by main-error section z-index
-     [:div.loading-wiggle-y
-      [:div.loading-wiggle-z
-       [:i.loading-spinner.loading-spinner-massive.fa.fa-spinner.fa-spin]]] ]]
+    (if-not error-text
+      [:div.loading-container ; will be hidden by main-error section z-index
+       [:div.loading-wiggle-y
+        [:div.loading-wiggle-z
+         [:i.loading-spinner.loading-spinner-massive.fa.fa-spinner.fa-spin]]] ]
+      [:h1#loading-full-page
+       "Error"
+       [:i.loading-spinner.fas.fa-bug.fa-spin]])]
 
    [:footer.footer-sticky ; [:footer>div.footer-content
     [:div.footer-content ;; XXX should adapt to available height, also disappear...
@@ -57,15 +64,22 @@
       [:h5 "© 2020-2022"]]]]])
 
 (defn- home
-  [request & {:keys [loading-content title description css-paths js-paths js-raw css-pre js-pre img-pre anti-forgery]}]
+  [request & {:keys [loading-content title description pre-pre css-paths js-paths
+                     js-raw css-pre js-pre img-pre anti-forgery title-img]}]
   [:html {:lang "en"}
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport"
             :content "width=device-width, initial-scale=1, shrink-to-fit=no"}]
     [:title title]
+    [:meta {:name "og:title" :content title}]
     [:meta {:name "description" :content description}]
+    [:meta {:name "og:description" :content description}]
+    [:meta {:name "og:image" :content title-img}]
     [:base {:href "/"}]
+    
+    (for [[path kind] pre-pre]
+      (prefetch path kind))
     
     (for [path img-pre]
       (img-preload path))
@@ -94,22 +108,32 @@
 
 
 (def css-paths ; should come from config?
-   ["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
+   [;"https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
     "css/fontawesome.css"
     "css/solid.css"
     "css/brands.min.css"
+    "css/opensans.css"
     "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"])
 
 (def css-pre
   ["css/solid.css"])
 (def js-pre
-  ["js/compiled/app.js"]) ; no work with optimus
+  [#_"js/compiled/out/cljs_base.js"
+   #_"js/compiled/app.js"]) ; no work with optimus
 (def img-pre
   ["img/foggy-shit-small.jpg"])
 
 (def js-paths
-  [{:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
-   {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"}])
+  [;{:src "js/compiled/out/cljs_base.js"}
+   ;{:src "js/compiled/app.js"}
+   {:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
+   {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"}
+   #_{:src "https://modelviewer.dev/node_modules/@google/model-viewer/dist/model-viewer.min.js" :type "module"}])
+
+(def pre-paths
+  [["media/fog-3d-small.mp4" "video"]
+   #_["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900" "font"]
+    #_["css/solid.css" "style"]]) ; well it gets bundled anyways
 
 (def google-analytics
   (when-not (:dev env)
@@ -128,13 +152,15 @@
                                                           "img/foggy-shit-small.jpg")
                          :title "tolgrAVen audiovisual"
                          :description "tolgrAVen audiovisual by Joen Tolgraven"
+                         :pre-pre pre-paths
                          :css-paths css-paths
                          :js-paths js-paths
                          :js-raw google-analytics
                          :css-pre css-pre
-                         ; :js-pre js-pre
+                         :js-pre js-pre
                          :img-pre img-pre
-                         :anti-forgery *anti-forgery-token*)))
+                         :title-img "img/logo/tolgraven-logo.png"
+                         :anti-forgery (force *anti-forgery-token*))))
       ok
       (content-type "text/html; charset=utf-8")))
 

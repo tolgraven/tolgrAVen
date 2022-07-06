@@ -107,7 +107,7 @@
      
      [:h2 [:i.fab.fa-github]" " @amount " commits to "
       [:span
-       [:a {:href @url}
+       [:a {:title "The repo" :href @url}
         "this website"]]]
         
      [:div#github-commits-box.github-commits-inner
