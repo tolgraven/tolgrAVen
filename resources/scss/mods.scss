@@ -158,10 +158,11 @@
 }
 
 .fullscreen { // expand to entire width of screen, past main...
-  border: var(--line-width) solid var(--fg-6);
-  margin: 0px calc(0px - var(--space-sides));
-  width: calc(100vw - 1 * var(--line-width-vert)); // no idea why 1x not 2x hah
-  max-width: unset;
+  border: var(--line-width) solid var(--fg-6) !important;
+  margin-left: calc(0px - var(--space-sides)) !important;
+  margin-right: calc(0px - var(--space-sides)) !important;
+  width: calc(100vw - 1 * var(--line-width-vert)) !important; // no idea why 1x not 2x hah
+  max-width: unset !important;
 }
 
 .fullwide { /* expand div back to full width of main despite regular paddings/margins */

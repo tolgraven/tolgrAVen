@@ -1,14 +1,31 @@
 
 .cv {
+  display: inline-grid;
   color: var(--fg-3);
   z-index: 30;
+  margin: 0;
+  width: 100%;
 
-  transition: all 0.5s ease;
+  transition: all 0.9s ease,
+              width 0.9s ease 0.0s,
+              max-width 0.9s ease 0.0s,
+              margin 0.3s ease 0.0s;
+
+  &.fullscreen {
+    border: var(--line-width) solid var(--line-color);
+    margin-top: calc(0px - var(--line-width));
+    z-index: 15; // ensure fader above blacks out top border within main
+  }
 
   .cv-skills {
     background: linear-gradient(180deg, var(--bg-2) 20%, var(--bg-3) 90%);
-    margin-top: calc(0px - 1.0 * var(--space));
+    margin-top: calc(0px - 2.0 * var(--space));
+    padding-top: calc(0px - 0.0 * var(--space));
     font-size: 0.7em;
+    padding-left: 15%;
+    padding-right: 15%;
+    z-index: 100;
+    border-top: var(--line-width) solid var(--line-color);
 
     h1 {
       padding: var(--space);
@@ -29,7 +46,7 @@
 }
 
 .cv-intro {
-  background: linear-gradient(180deg, black 10%, var(--dark-1) 60%, var(--bg-2) 90%);
+  background: linear-gradient(180deg, var(--bg-pure) 10%, var(--bg-1) 60%, var(--bg-2) 90%);
 
   .cv-howto {
     font-size: 65%;
@@ -37,7 +54,9 @@
   }
 
   img {
-    filter: invert(0.95) hue-rotate(180deg) brightness(130%);
+    filter: var(--logo-flip);
+    width: 100%;
+    background-color: var(--bg-pure);
   }
   
   h1 {
@@ -47,7 +66,8 @@
   > p {
     margin: calc(0px - 2.5 * var(--line-width)) 0;
     padding: var(--space-lg);
-    background: linear-gradient(180deg, hsl(0, 0%, 7%) 20%,  hsl(179, 9%, 11%));
+    border-bottom: var(--line-width) solid var(--line-color);
+    background: linear-gradient(180deg, var(--bg-pure) 20%,  hsl(179, 9%, var(--lum-bg-2)));
   }
   button {
     margin-bottom: var(--space-lg);
@@ -94,7 +114,7 @@
   }
   &.cv-work {
     background: linear-gradient(0deg, var(--bg-5), var(--bg-3));
-    height: 36em;
+    height: 46em;
     @include i-gradient;
   }
   &.cv-life {
@@ -125,8 +145,9 @@
   border-radius: 0.2em;
   border-bottom-right-radius: 1.2em;
   box-shadow: 2px 2px 17px var(--box-regular-color); 
+  overflow: hidden;
+  min-width: 12em;
   
-
   transition: all 0.5s ease;
 
   img {

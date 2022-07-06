@@ -25,7 +25,7 @@
         :class (str (when @expanded? "cv-detail-expanded ")
                     (when @closing? "cv-detail-closing"))}
        [:p.cv-from from]
-       [:p.cv-to (if to to "-")]
+       [:p.cv-to (if to to "current")]
        [:p.cv-what [:strong what]]
        (if @expanded?
          (for [item how]
@@ -53,7 +53,11 @@
 
 (defn cv "Main cv component"
   []
-  (let [{:keys [title caption cv]} @(rf/subscribe [:content [:cv]])
+  (let [ref-fn #(when %
+                  (js/setTimeout (fn [_] (rf/dispatch [:state [:fullscreen :cv] true]))
+                                 2500))]
+   (fn []
+    (let [{:keys [title caption cv]} @(rf/subscribe [:content [:cv]])
         {:keys [intro education work life skills]} cv
         first-year (apply min (map :from (concat education work)))
         last-year  (apply max (map #(if (number? %)
@@ -66,7 +70,7 @@
                              (- last-year first-year)))
                        "%"))
         get-size (fn [start end]
-                   (let [end (if (number? end) end 2023)]
+                   (let [end (if (number? end) end 2024)]
                      (str (* 93
                              (/ (- end start)
                                 (- last-year first-year)))
@@ -87,8 +91,9 @@
                               (get-size from to)
                               (or level @overlap-level)])))
         boxes [:div.cv-boxes
-               {:ref #(when % (set! (.-scrollLeft %) (.-scrollWidth %)))}
-               [ui/close #(rf/dispatch [:modal-zoom :fullscreen :close])]
+               {:ref #(when %
+                        (set! (.-scrollLeft %) (.-scrollWidth %)))}
+               [ui/close #(rf/dispatch [:state [:fullscreen :cv] false])]
                [:div.cv-items.cv-education
                 [:h1 [:i.fas.fa-solid.fa-graduation-cap] "education"]
                 (gen-items :education)]
@@ -97,11 +102,15 @@
                 (gen-items :work)]
                [:div.cv-items.cv-life
                 [:h1 [:i.fas.fa-book] "life"]
-                (gen-items :life)]]]
+                (gen-items :life)]]
+        fullscreen? (when @(rf/subscribe [:fullscreen/get :cv])
+                      "fullscreen")]
     [:section#cv.cv.nopadding.noborder
-     {:class (when @(rf/subscribe [:fullscreen/get :cv]) "fullscreen")}
+     {:class fullscreen?
+      :ref ref-fn}
      [:div.cv-intro
-      [:img.fullwide {:src "img/logo/tolgraven-logo.png"}]
+      [:img.fullwide
+       {:src "img/logo/tolgraven-logo.png"}]
       [:p (:intro cv)]
       [:div.center-content
        [:div.cv-howto
@@ -114,5 +123,5 @@
         " and maximize your browser window. "]]]
      boxes
      [ui/fading :dir "bottom"]
-     [capabilities skills]]))
+     [capabilities skills]]))))
 

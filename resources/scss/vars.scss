@@ -204,6 +204,9 @@
     --lum-bg-6: var(--lum-dark-6);
     --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
     --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
+    
+    --logo-flip: invert(0.95) hue-rotate(180deg) brightness(130%);
+    --bg-pure: hsla(0, 0%, var(--lum-bg-1), 1.0);
   }
 
 // @media (prefers-color-scheme: light) {
@@ -273,6 +276,9 @@
   --orange    : rgb(102, 73, 57);
   --orange-2  : rgb(109, 80, 76);
   --orange-3  : rgb(108, 82, 59);
+  
+  --logo-flip: none;
+    --bg-pure: hsla(0, 0%, 100%, 1.0);
 }
 // }
 
