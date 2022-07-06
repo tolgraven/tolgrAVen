@@ -130,13 +130,13 @@
         (if-not win-fullscreen?
           "Scroll sideways to look back, or click "
           "Done snooping? Click ")
-        [:button
+        [:button#fullscreen-btn
          {:on-click #(rf/dispatch [:window/fullscreen! (not win-fullscreen?)])}
          (if-not win-fullscreen?
            "Fullscreen"
            "Exit fullscreen")]
         (if-not win-fullscreen?
-          " to maximize your browser window. "
+          " or just tap your big ole' <Space>| to maximize your browser window. "
           " to return to your trusty desktop")]]]
      boxes
      [ui/fading :dir "bottom"]
