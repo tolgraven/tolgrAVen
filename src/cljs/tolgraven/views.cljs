@@ -119,7 +119,7 @@
                                control-time))))))
         on-change (fn [frac]
                     (reset! in-view frac)
-                    (when (<= frac 0.2)
+                    (when (<= frac 0.35)
                       (do-control :pause)))
         observer (util/observer on-change)]
     (fn [{:keys [title caption bg nr]}]
@@ -137,7 +137,8 @@
                                     (set! (.-muted el) true)))
                            :onLoadedMetadata #(set! (.-muted %) true)
                            :onCanPlay (fn []
-                                        (when-not @controls
+                                        (when (and (not @controls)
+                                                   @vid-ref)
                                           (reset! controls (util/play-pauser
                                                             @vid-ref
                                                             :time-per-step (/ control-time 3)))

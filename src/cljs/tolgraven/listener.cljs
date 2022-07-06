@@ -9,8 +9,9 @@
     [cljs-time.core :as ct]
     [cljs-time.coerce :as ctc]))
 
+(def debug (when ^boolean goog.DEBUG rf/debug))
 
-(rf/reg-event-fx :listener/add! 
+(rf/reg-event-fx :listener/add!  [debug]
  (fn [{:keys [db]} [_ el event f]]
    {:listener/add-fx [el event f]}))
 

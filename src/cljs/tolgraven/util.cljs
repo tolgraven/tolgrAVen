@@ -115,6 +115,9 @@
                  (ctc/from-long ms))))
 
 
+(defn abs [n]
+  (max n (- n)))
+
 (defn format-number [n & [precision]]
   (let [precision (or precision 3)]
     (case n
