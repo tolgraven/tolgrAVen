@@ -3,22 +3,23 @@
    [re-frame.core :as rf]
    [clojure.walk :as walk]))
 
+(rf/reg-sub :fb/get-user
+ :<- [:user/active-user]
+ (fn [user _]
+   user))
+
 (rf/reg-sub :user/users
- :<- [:get :users]
- :<- [:get :fb/users]
- (fn [[users fb-users] [_ path]]
-   (get-in users path
-           (get-in fb-users path))))
+ :<- [:<-store :users]
+ (fn [users [_ path]]
+   users))
 
 (rf/reg-sub :user/user ;find user
- :<- [:get :fb/users]
- (fn [fb-users [_ user-id]]
-   (when user-id
-     (get fb-users user-id
-          (-> @(rf/subscribe [:firestore/on-snapshot
-                              {:path-document [:users user-id]}])
-              :data
-              walk/keywordize-keys)))))
+ (fn [[_ user-id]]
+   (if user-id
+     (rf/subscribe [:<-store :users user-id])
+     (rf/subscribe [:nil]))) ; avoid nil input error haha
+ (fn [user [_ user-id]]
+   user)) ; here would merge in karma and whatnot
 
 (rf/reg-sub :user/default-avatar
  :<- [:get :content :common :user-avatar-fallback]
@@ -27,9 +28,9 @@
 
 
 (rf/reg-sub :user/active-user
- :<- [:state [:user]]
- (fn [user-id [_ _]]
-   @(rf/subscribe [:user/user user-id])))
+ :<- [:state [:active-user]]
+ (fn [user [_ _]]
+   user))
 
 (rf/reg-sub :user/active-section
  :<- [:state [:user-section]]
@@ -60,7 +61,7 @@
    (and (pos? (count (:email   login-field)))
         (<= 6 (count (:password login-field)))))) ; do proper validation tho talk to server and greenlight when correc.
 
-(rf/reg-sub :user/error
+(rf/reg-sub :user/error ; login-error, rename...
  :<- [:diag/unhandled]
   (fn [unhandled [_ _]]
     (->> unhandled

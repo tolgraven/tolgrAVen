@@ -70,7 +70,7 @@
                                        (when (= @showing-title (dec (count title)))
                                          600))]
                     (when-not (= @showing-title (count title))
-                      (js/setTimeout #(update-2) time-next))))]
+                      (js/setTimeout update-2 time-next))))]
     (fn [{:keys [title text buttons logo-bg bg]}]
      [:section#intro
      [bg-logo logo-bg]
@@ -102,17 +102,22 @@
 
 
 (defn ui-interlude "Banner across with some image or video or w/e
-                    TODO should stick top-border on outer (which should be section anyways ugh)"
+                    Partial content errors probably because stops buffering since we pause it.
+                    Let's try a tricky trick"
   [{:keys [title caption bg nr]}]
   (let [vid-ref (atom nil) ; docs says reg atom better but only updates w ratom, bc 2nd fn or? also .play no works
         controls (atom nil)
+        on-hold (r/atom nil)
         in-view (r/atom 0.0)
         control-time 1000
         do-control (fn [action]
                      (when-let [video @vid-ref]
                        (when @controls
                          (@controls action)
-                         (when (= action :play)
+                         (when (= action :play) ; set it to pause just before looping...
+                           (when @on-hold
+                             (reset! on-hold false)
+                             (set! (.-currentTime @vid-ref) 0))
                            (js/setTimeout
                             #(@controls :pause)
                             (- (* 1000 (- (.-duration video) (.-currentTime video)))
@@ -130,21 +135,25 @@
         :on-mouse-leave #(do-control :pause)
         :on-touch-start #(do-control :play)
         :on-touch-end   #(do-control :pause)}
+       (when-let [poster (-> bg second :poster)]
+         [:img.media.media-as-bg ; covering image since need to hide video
+          {:src poster
+           :style {:z-index 1}
+           :class (when (false? @on-hold) ; inited, not on hold
+                    "hidden")}]) ; doesnt actually engage :|
        (util/add-attrs bg {:id (str "interlude-bg-" nr)
                            :ref (fn [el]
                                   (when (and el (not @vid-ref)) ;presumably everything torn down on nil anyways so?
-                                    (reset! vid-ref el)
-                                    (set! (.-muted el) true)))
-                           :onLoadedMetadata #(set! (.-muted %) true)
+                                    (reset! vid-ref el)))
                            :onCanPlay (fn []
                                         (when (and (not @controls)
                                                    @vid-ref)
                                           (reset! controls (util/play-pauser
                                                             @vid-ref
                                                             :time-per-step (/ control-time 3)))
-                                          (set! (.-currentTime @vid-ref) 0)
-                                          (.pause @vid-ref)
-                                          (js/setTimeout #(do-control :play) 8000))) ; should be read from css i guess to correspond with other anim
+                                          (reset! on-hold true)
+                                          (js/setTimeout #(do-control :play)
+                                                         8000))) ; should be read from css i guess to correspond with other anim
                            :loop true
                            :muted true}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:div
@@ -153,7 +162,7 @@
          :style {:transition "opacity 4.5s"
                  :opacity (when-not (zero? @in-view)
                             "0.4")}}
-        [:h1.h-responsive  title]]
+        [:h1.h-responsive title]]
        [ui/inset caption nr]])))
 
 

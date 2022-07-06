@@ -279,6 +279,7 @@
   /* definitely move to burn-in on video either way. then if want to transition to no fg do it by fading to orig version */
   /* if html n shit server side can just have it gen appropriate vids/imgs etc once from settings */
   pointer-events: none; // pass through so can click play below if blocking autoplay or on battery-save
+  z-index: 10;
 }
 .covering-faded:hover, .covering-faded:focus { /* jk */ /* incidentally not easy to type on a proper vim setup */
   opacity: 0.50;
