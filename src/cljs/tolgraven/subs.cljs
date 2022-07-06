@@ -115,14 +115,11 @@
   (fn [[_ last?]]  (rf/subscribe [:common/route last?]))
   (fn [route [_ _]] (-> route :data :view)))
 
-(rf/reg-sub :now ;not how this is supposed to work eheh
- (fn [_ _])
-  js/Date.now)
-
-(rf/reg-sub :now-ct
-:<- [:now]
- (fn [now _]
-  (ctc/from-long now)))
+(rf/reg-sub :carousel/index
+  :<- [:state [:carousel]]
+  (fn [carousel [_ id]]
+    (prn carousel id)
+    (get-in carousel [id :index] 0)))
 
 (rf/reg-sub :get-css-var
  (fn [_ [_ var-name]]

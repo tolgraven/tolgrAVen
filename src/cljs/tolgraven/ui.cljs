@@ -732,7 +732,7 @@
 (defn carousel-normal "Don't fuck up with fancy hot swaps for transitions, just stuff everything in."
   [id attrs content & {:keys [autoplay seconds-autoplay]
                        :or {seconds-autoplay 10}}]
-  (let [index (rf/subscribe [:state [:carousel id :index]])
+  (let [index (rf/subscribe [:carousel/index id])
         dec-wrap #(if (neg? (dec %))
                     (dec (count content))
                     (dec %))
