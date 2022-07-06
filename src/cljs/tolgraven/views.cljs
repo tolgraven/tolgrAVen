@@ -252,8 +252,9 @@
   [img-attrs]
   [:section#gallery.covering.fullwide
    [:div.sideways
-    (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
-         [:img.media img])]]) ; TODO add captions and other features etc...
+    (when @(rf/subscribe [:state [:gallery :loaded]])
+      (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
+         [:img.media img]))]]) ; TODO add captions and other features etc...
 
 (defn ui-gallery-2 "Gallery carousel"
   [img-attrs]
@@ -318,20 +319,21 @@
      [ui-interlude (get-lewd)]
      [ui-services @(rf/subscribe [:content [:services]])]
 
+     [ui/lazy-load [:on-booted :firebase [:strava/init]]]
      [ui-interlude (get-lewd)]
+     [ui/lazy-load [:on-booted :site [:booted :soundcloud]]]
      [ui-moneyshot @(rf/subscribe [:content [:moneyshot]])]
+     [ui/lazy-load [:on-booted :firebase [:instagram/init]]]
      [ui-story @(rf/subscribe [:content [:story]])]
      [ui/fading :dir "bottom"]
      [ui-interlude (get-lewd)]
      
-     [ui/lazy-load [:on-booted :firebase [:strava/init]]]
      [strava/strava]
-     [ui/lazy-load [:on-booted :site [:booted :soundcloud]]]
+     [ui/lazy-load [:on-booted :site [:state [:gallery :loaded] true]]]
      [ui-soundcloud]
-     [ui/lazy-load [:on-booted :firebase [:instagram/init]]]
      [instagram/instagram]
-     [ui-gallery @(rf/subscribe [:content [:gallery]])]
      [ui/lazy-load [:on-booted :site [:github/init "tolgraven" "tolgraven"]]]
+     [ui-gallery @(rf/subscribe [:content [:gallery]])]
      [github/commits]
      [chat/chat]]))
 
