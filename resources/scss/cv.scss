@@ -14,6 +14,7 @@
   &.fullscreen {
     border: var(--line-width) solid var(--line-color);
     margin-top: calc(0px - var(--line-width));
+    margin-bottom: calc(0px - var(--line-width));
     z-index: 15; // ensure fader above blacks out top border within main
   }
 
@@ -25,7 +26,7 @@
     padding-left: 15%;
     padding-right: 15%;
     z-index: 100;
-    border-top: var(--line-width) solid var(--line-color);
+    border-top: var(--line-width) solid var(--bg-6);
 
     h1 {
       padding: var(--space);
@@ -66,7 +67,7 @@
   > p {
     margin: calc(0px - 2.5 * var(--line-width)) 0;
     padding: var(--space-lg);
-    border-bottom: var(--line-width) solid var(--line-color);
+    border-bottom: var(--line-width) solid var(--bg-6);
     background: linear-gradient(180deg, var(--bg-pure) 20%,  hsl(179, 9%, var(--lum-bg-2)));
   }
   button {

@@ -8,6 +8,7 @@ footer {
   border-left: var(--line-width) solid var(--line-color); /* connect bottom to main on left side */
 
   transition: all var(--header-expand-time) ease;
+  z-index: 20;
 
   a {
     p {
@@ -18,7 +19,9 @@ footer {
   }
 
   &.hide {
-    max-height: calc(1 * var(--line-width));
+    border: none;
+    bottom: calc(0px - var(--line-width));
+    max-height: 0;
     transition: all var(--header-expand-time) ease;
   }
 
@@ -53,6 +56,7 @@ footer {
 .footer-full {
   background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
   max-height: var(--footer-height-full);
+  margin-bottom: -8px; // no clue why but get a gap otherwise
 }
 
 .footer-content {
