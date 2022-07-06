@@ -188,7 +188,9 @@
                                (rf/dispatch [:scroll/to "section-services" 1300]))}]}]
      ["cv"
       {:name        :cv
-       :view        #'cv-page}]
+       :view        #'cv-page
+       :controllers [{:stop (fn [_]
+                              (rf/dispatch [:state [:fullscreen :cv] false]))}]}]
      ["hire"
       {:name        :hire
        :view        #'view/ui
