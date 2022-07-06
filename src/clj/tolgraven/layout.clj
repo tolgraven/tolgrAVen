@@ -32,7 +32,7 @@
   [:div
    [:header
     [:div.header-logo
-     [:a {:href "#"} [:h1 header-text]]
+     [:a {:href "/"} [:h1 header-text]]
      [:div.header-logo-text
       (for [line subtext] (:p line))]]
     [:menu [:nav]]
