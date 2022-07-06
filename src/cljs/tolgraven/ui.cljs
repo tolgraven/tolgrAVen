@@ -236,25 +236,32 @@
      caption]))
 
 
-(defn user-avatar "Display a user avatar, with common fallbacks"
+(defn user-avatar "Display a user avatar, with common fallbacks. Should probably display fallback while loading (often ext, slower) real"
   [user-map & [extra-class]]
   (let [fallback @(rf/subscribe [:user/default-avatar])
-        error? (r/atom false)]
+        error? (r/atom false)
+        loaded? (r/atom false)]
     (fn [user-map & [extra-class]]
+     (let [src (if @error? fallback (or (:avatar user-map) fallback))]
       [:div.user-avatar-container ; wrapping in div causes stretch bs not to occur, somehow makes img respect its given w/h
+       (when-not @loaded?
+         [:img.user-avatar
+          {:src fallback
+           :class extra-class
+           :style {:position "absolute"}}])
        [:img.user-avatar
         {:class extra-class
-         :src (if @error? fallback (or (:avatar user-map) fallback))
+         :src src
          :on-error #(reset! error? true)
+         :on-load #(reset! loaded? true)
          :alt (str (:name user-map) " profile picture")
          :on-click (when (and (:avatar user-map)
                               (not (:no-zoom user-map)))
                      #(rf/dispatch [:modal-zoom :fullscreen :open
-                                    [:img
-                                     {:src (:avatar user-map)}]]))
+                                    [:img {:src src}]]))
          :style (when (and (:avatar user-map)
                            (not (:no-zoom user-map)))
-                  {:cursor "pointer"})} ]])))
+                  {:cursor "pointer"})} ]]))))
 
 (defn user-btn [model]
   [:a {:href @(rf/subscribe [:href-add-query  
