@@ -18,17 +18,20 @@
   position: relative;
   max-height: var(--media-width-main);
   border-top: 0;
+  --line-percent: 95%;
+  
   p {
     padding: 0 var(--space-lg);
   }
   .h-intro {
     position: relative;
     display: inline;
+    white-space: nowrap;
   }
   
   @keyframes grow-line {
     0%   { width: 0% }
-    100% { width: 95%; }
+    100% { width: var(--line-percent); }
   }
   @keyframes skew-line {
     0%   { transform: skew(0deg); }
@@ -42,7 +45,7 @@
                skew-line 1.5s ease 7s;
     animation-fill-mode: forwards;
     position: absolute;
-    bottom: 1.25rem;
+    bottom: 20%;
     opacity: 50%;
     left: 0.2em;
     z-index: -1;

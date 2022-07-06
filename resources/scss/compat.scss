@@ -1,4 +1,9 @@
 /* BUNCH OF MEDIA QUERIES PROB DUMB LUMPING ALL IN SAME SPOT, ANYWAYS */
+@media screen and (min-width: 600px) {
+  :root {
+    --logo-ratio: 0.339;
+  }
+}
 
 @media screen and (min-width: 800px) and (min-height: 800px) {
   :root {
@@ -18,6 +23,7 @@
     --space-edges: 12vw;
     --space-sides: 12vw;
     font-size: 1.10rem;
+    --logo-ratio: 0.360;
   }
 }
 @media screen and (min-width: 1300px) {
@@ -26,6 +32,17 @@
     --space-lg: 3.5rem;
     --space-edges: 20vw;
     --space-sides: 20vw;
+    --logo-ratio: 0.341;
+  }
+
+  #intro {
+    --line-percent: 93%;
+    .h-intro {
+      &:after {
+        bottom: 24%;
+        left: 0.3em;
+      }
+    }
   }
 }
 @media screen and (min-width: 1500px) {
