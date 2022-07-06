@@ -276,9 +276,11 @@
 (rf/reg-event-db :exception (assoc-in-factory [:state :exception]))
 
 (rf/reg-event-fx :form-field []
-  (fn [{:keys [db]} [_ path value]]
-    {:db (assoc-in db (into [:state :form-field] path) value)
-     :dispatch [:ls/store-val (into [:form-field] path) value]}))
+  (fn [{:keys [db]} [_ path value blur?]]
+    (merge
+     {:db (assoc-in db (into [:state :form-field] path) value)}
+     (when blur?
+       {:dispatch [:ls/store-val (into [:form-field] path) value]})))) ; XXX slows down everything dont do it use beforeunload
 
 
 (rf/reg-event-fx :reloaded

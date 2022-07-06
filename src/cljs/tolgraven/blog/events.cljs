@@ -25,13 +25,13 @@
 
 (rf/reg-event-fx :blog/edit-post []
   (fn [{:keys [db]} [_ post]] ; seems gross somehow, passing full data from view. but that's where we have easy access to it so... any case would just be pass id, ask to fetch rest of contents somewhere, whe
-    {:dispatch-n [[:form-field [:post-blog] post] ;well only text tags id but who's counting
+    {:dispatch-n [[:form-field [:post-blog] post :blur] ;well only text tags id but who's counting
                   [:blog/state [:editing] post]
                   [:common/navigate! :post-blog]]}))
 
 (rf/reg-event-fx :blog/cancel-edit
   (fn [{:keys [db]} [_ _]]
-    {:dispatch-n [[:form-field [:post-blog] nil] ;well only text tags id but who's counting
+    {:dispatch-n [[:form-field [:post-blog] nil :blur] ;well only text tags id but who's counting
                   [:blog/state [:editing] nil]]}))
 
 (rf/reg-event-fx :blog/set-content []
@@ -79,7 +79,7 @@
    {:dispatch-n [(if editing
                    [:blog/post (merge editing input)] ;input comes after cause will have changed
                    [:blog/post-new input id])
-                 [:form-field [:post-blog] nil]
+                 [:form-field [:post-blog] nil :blur]
                  [:blog/state [:editing] nil]
                  [:blog/nav-page 1]]})) ;or whatever. also applies (even more!) to comment-ui
 
@@ -102,23 +102,6 @@
                                     (str "-" id)
                                     (string/replace " " "-")))]
      {:dispatch [:blog/post post]})))
-
-(rf/reg-event-fx :test-fetch [debug]
- (fn [{:keys [db]} [_ user-id]]
-   {:firestore/get {:path-collection [:blog-comments]
-                 :where [[:user :== user-id] ]
-                 :limit 100
-                 :order-by [[:id :desc]]
-                 ; :start-at ["CA" 1000]
-                 :doc-changes false
-                 :on-success [:test-store]}}))
-
-(rf/reg-event-fx :test-store [debug]
- (fn [{:keys [db]} [_ result]]
-   (println result)
-   {:db (assoc db :fire-result result)}))
-
-; (rf/dispatch [:test-fetch (:id @(rf/subscribe [:user/active-user]))])
 
 
 (defn paths-for "Would want a path builder that for given input returns both app-db and firestore paths. If they must differ ugh"
@@ -145,7 +128,7 @@
    {:dispatch-n [(if editing
                    [:blog/comment path (merge editing input)]
                    [:blog/comment-new path input])
-                 [:form-field [:write-comment path] nil]
+                 [:form-field [:write-comment path] nil :blur]
                  [:blog/state [:editing-comment path] nil]]}))
 
 (rf/reg-event-fx :blog/comment [debug]
