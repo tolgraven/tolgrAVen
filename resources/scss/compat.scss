@@ -75,10 +75,16 @@
     text-size-adjust: 100%; -webkit-text-size-adjust: 100%;
   }
 
-  
-  .search-input-autocomplete {
-    left: 2.0em; // compensate for safari search icon
+  input[type="search"]::-webkit-search-decoration,
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-results-button,
+  input[type="search"]::-webkit-search-results-decoration {
+    display: none;
   }
+  // .search-input-autocomplete {
+  //   padding-left: 5.0em; // compensate for safari search icon. same on mobile chrome tho...
+  //   left: 5.0em; // compensate for safari search icon. same on mobile chrome tho...
+  // }
 }
 @media only screen and (-webkit-device-pixel-ratio: 3) {
   :root { /* *im thinking this is what it's about. 3 vs 2 pixels per pixel */
