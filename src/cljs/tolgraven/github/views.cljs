@@ -10,7 +10,8 @@
 (defn commit "Show a single commit with highlighted diff etc..."
   [sha close]
   (let [commit @(rf/subscribe [:github/commit sha])]
-    [:div.github-commit-full
+    [ui/appear-merge "zoom-y"
+     [:div.github-commit-full
      close
      (for [file (:files commit)
            :let [suffix (-> (:filename file)
@@ -69,7 +70,7 @@
                           "scss"          "css"
                           "")}
                 (-> hunk
-                    (string/replace #"(?m)^." ""))]]])))]])]))
+                    (string/replace #"(?m)^." ""))]]])))]])]]))
 
 (defn loading "Lazy load more on scroll to bottom, with a button as fallback for the poors"
   [user repo]
