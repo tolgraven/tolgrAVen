@@ -110,7 +110,7 @@ nav {
   flex: 1 2 auto;
   min-height: 2.2em; /* h1 */ /* dont think right basing on space, just use rem */
   max-height: var(--space);
-  min-width: calc(2 * var(--space-lg));
+  max-width: calc(2 * var(--space-lg));
   background: linear-gradient(-77deg, var(--bg-1) -10%, var(--nav-accent) 80%);
   border-top:     var(--line-width-sm) solid  var(--line-color);
   
@@ -167,9 +167,10 @@ menu > nav > .nav-section:last-of-type > .nav-links {
 }
 .header-logo-text {
   display: inline-block;
-  font-size: 0.90em;
-  line-height: 0.80em;
-  // transition: 0.5s;
+  font-size: 0.70em;
+  line-height: 0.50em;
+  margin: 0;
+  padding: 0;
 }
 
 .user-btn {
@@ -323,6 +324,7 @@ menu > nav > .nav-section:last-of-type > .nav-links {
       position: relative;
       top: 0;
       max-height: var(--header-with-menu-height); /* for animation purposes i guess */
+      max-width: unset;
       border: 0;
       
       .nav-links {
