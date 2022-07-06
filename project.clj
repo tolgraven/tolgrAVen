@@ -27,13 +27,14 @@
                  [mount "0.1.16"]
                  [nrepl "0.9.0"]
                  [org.clojure/clojure "1.11.1"]
-                 [org.clojure/clojurescript "1.11.4" :scope "provided" :exclusions [com.google.errorprone/error_prone_annotations]]
+                 [org.clojure/clojurescript "1.11.60" :scope "provided" :exclusions [com.google.errorprone/error_prone_annotations]]
                  [org.clojure/tools.cli "1.0.206"]
                  [org.clojure/core.async "1.5.648"]
 
                  ; LOGGING
                  [org.clojure/tools.logging "1.2.4"]
                  [com.taoensso/timbre "5.2.1" :exclusions [org.clojure/tools.reader]]
+                 [com.taoensso/encore "3.23.0"]
                  [com.fzakaria/slf4j-timbre "0.3.21" :exclusions [org.slf4j/slf4j-api]] ;route java logging through timbre. but dunno. hard to manage
                  [clj-logging-config "1.9.12"]
                  [io.aviso/pretty "1.1.1"] ;pretty exceptions, pretty logging...
@@ -45,23 +46,31 @@
                  [ring-basic-authentication "1.1.1"]
                  [radicalzephyr/ring.middleware.logger "0.6.0"]
                  [metosin/ring-http-response "0.9.3"]
+                 [toyokumo/ring-middleware-csp "0.3.0"]
+                 
                  [optimus "2022-02-13"] ;optimization of assets
                  [optimus-img-transform "0.3.1"]
-                 ; [optimus-sass "0.0.3"] ; load sass straight. pretty old dunno if still works
-                 ; [optimus-autoprefixer "0.1.0"] ; same but autoprefixer. might be nice can avoid npm build and whatnot plus keep everything in one spot...
+                 [optimus-sass "0.0.3"] ; load sass straight. pretty old dunno if still works
+                 [optimus-autoprefixer "0.1.0"] ; same but autoprefixer. might be nice can avoid npm build and whatnot plus keep everything in one spot...
 
                  ; [nrepl/drawbridge "0.2.1"] ; nrepl over http
 
                  ; CLJS
                  [cljs-ajax "0.8.4"  :exclusions [com.cognitect/transit-cljs com.cognitect/transit-cljs]]
                  [com.andrewmcveigh/cljs-time "0.5.2"]
-                 [cljsjs/smoothscroll-polyfill "0.4.0-0"]
+                 ; [cljsjs/smoothscroll-polyfill "0.4.0-0"]
 
                  [appliedscience/js-interop "0.2.5"]
 
                  [re-frame "1.2.0"]
                  ; [kee-frame "0.4.0" :exclusions [args4j]]
                  [day8.re-frame/http-fx "0.2.4"]
+                 [superstructor/re-frame-fetch-fx "0.2.0"]
+                 [com.yetanalytics/sse-fx "0.1.1"]
+                 [superstructor/re-frame-clipboard-fx "0.0.2"]
+                 [re-frame-datatable "0.6.0"]
+                 [breaking-point "0.1.2"]
+                 
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
                  [day8.re-frame/async-flow-fx "0.3.0"]
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx

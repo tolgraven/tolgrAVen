@@ -57,8 +57,8 @@
                         (when (and (not= @scroll-pos new-pos)
                                    (= @page-height new-height)) ; avoid running up accum from massive page size jumps...
                           (reset! accum-in-direction (if (= new-direction @last-direction)
-                                                       (+ @accum-in-direction (util/abs (- new-pos @scroll-pos)))
-                                                       0 #_(util/abs (- new-pos @scroll-pos))))
+                                                       (+ @accum-in-direction (abs (- new-pos @scroll-pos)))
+                                                       0))
                           (when (and (or at-bottom?
                                          at-top?
                                          (ct/after? (ct/minus (ct/now) (ct/millis 250)) @triggered-at)) ; ensure "scroll" isn't due to content resizing
