@@ -29,16 +29,37 @@ footer {
     padding-top: var(--space);
   }
   
-  &:before {
+  &:before, &:after {
     content: "";
-    background: linear-gradient(35deg, var(--bg-1), var(--blue) 335%);
-    width: calc(var(--space-sides) - var(--line-width));
     height: 100%;
     position: absolute;
     bottom: 0px;
-    left: calc(0px - var(--space-sides));
     z-index: -1;
     border-top: var(--line-width) solid var(--line-color);
+  }
+  &:before {  
+    background: linear-gradient(35deg, var(--bg-1), var(--blue) 335%);
+    width: calc(var(--space-sides) - var(--line-width));
+    left: calc(0px - var(--space-sides));
+  }
+  &.adjust-for-fullscreen {
+    &:after {
+      background: var(--bg-1);
+      right: calc(0px - var(--space-sides));
+      width: calc(var(--space-sides) - 0 * var(--line-width));
+    }
+    // XXX WANT THIS EFFECT. Make it an elem cause out of ::before/::afters lol
+    // &:after {
+    //   content: "";
+    //   background: linear-gradient(35deg, var(--bg-1), var(--blue) 335%);
+    //   width: calc(var(--space-sides) - var(--line-width));
+    //   height: 100%;
+    //   position: absolute;
+    //   bottom: 0px;
+    //   right: calc(0px - var(--space-sides));
+    //   z-index: -1;
+    //   border-top: var(--line-width) solid var(--line-color);
+    // }
   }
   border-top: var(--line-width) solid var(--line-color);
 }

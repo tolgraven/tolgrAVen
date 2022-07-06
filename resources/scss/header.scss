@@ -65,6 +65,11 @@ header {
   &.hide {
     opacity: 0;
   }
+  &.adjust-for-fullscreen {
+    right: 0;
+    width: calc(var(--space-sides) + var(--line-width));
+    border-left: var(--line-width) solid var(--line-color);
+  }
 }
 
 .header-icons {

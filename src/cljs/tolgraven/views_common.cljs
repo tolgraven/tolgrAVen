@@ -91,8 +91,10 @@
     [:label.burger {:for "nav-menu-open"}]]]
 
    [:div.fill-side-top
-    {:class (when-not @(rf/subscribe [:state [:scroll :past-top]])
-              "hide")}]
+    {:class (str (when-not @(rf/subscribe [:state [:scroll :past-top]])
+                   "hide ")
+                 (when @(rf/subscribe [:fullscreen/any?])
+                   "adjust-for-fullscreen"))}]
    
    [:div.line.line-header
     {:class (when @(rf/subscribe [:state [:hidden :header]])
@@ -227,8 +229,10 @@
 (defn footer "The sticky footer visible at load or when scrolling up."
   [content]
   [:footer#footer-sticky.footer-sticky
-   {:class (when @(rf/subscribe [:state [:hidden :footer]])
-             "hide")
+   {:class (str (when @(rf/subscribe [:state [:hidden :footer]])
+                  "hide ")
+                (when @(rf/subscribe [:fullscreen/any?])
+                   "adjust-for-fullscreen"))
     :style (when-not @(rf/subscribe [:state [:hidden :footer]])
              {:max-height @(rf/subscribe [:get-css-var "footer-height-current"])})}
    [footer-content content]])
