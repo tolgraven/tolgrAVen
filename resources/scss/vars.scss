@@ -54,6 +54,8 @@
   --parallax-squeeze-px:    calc(-1px * var(--perspective));
   --parallax-squeeze-tf:    -1570%; /* fuck knows why */
 
+  --categories-spacing-percent: 37%;
+
 
   /* COLORS */
   --hue-1:             180; 
@@ -206,6 +208,7 @@
     --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
     
     --logo-flip: invert(0.95) hue-rotate(180deg) brightness(130%);
+    --dark-to-light: none;
     --bg-pure: hsla(0, 0%, var(--lum-bg-1), 1.0);
   }
 
@@ -278,6 +281,7 @@
   --orange-3  : rgb(108, 82, 59);
   
   --logo-flip: none;
+  --dark-to-light: invert(0.95) hue-rotate(180deg) brightness(80%);
     --bg-pure: hsla(0, 0%, 100%, 1.0);
 }
 // }

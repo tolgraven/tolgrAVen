@@ -251,9 +251,9 @@
   }
   &.fast {       transition: all 0.25s ease; }
   &.faster {     transition: all 0.15s ease; }
-  &.slow {       transition: all 1.2s ease; }
-  &.extra-slow { transition: all 2.5s ease; }
-  &.super-slow { transition: all 5.0s ease; }
+  &.slow {       transition: all 1.0s ease; }
+  &.extra-slow { transition: all 2.2s ease; }
+  &.super-slow { transition: all 4.5s ease; }
 }
 
 .covering, .covering-2, .covering-3 { /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
@@ -333,9 +333,9 @@ button:hover .blur-bg, button:active .blur-bg,
 .opacity-3 { opacity: 0.38; }
 .opacity-5 { opacity: 0.58; }
 .opacity-8 { opacity: 0.85; }
-.darken-3 { filter: brightness(35%); }
-.darken-5 { filter: brightness(50%); }
-.darken-8 { filter: brightness(80%); }
+.darken-3 { filter: brightness(45%); }
+.darken-5 { filter: brightness(70%); }
+.darken-8 { filter: brightness(85%); }
 
 .transparent-border {
   border: var(--line-width) solid transparent !important;

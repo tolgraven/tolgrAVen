@@ -18,21 +18,22 @@
     // width: 200%; /* extend out like damn */
   }
   :root {
-    --space: 1.6rem;
-    --space-lg: 2.5rem;
-    --space-edges: 12vw;
-    --space-sides: 12vw;
+    --space: 1.5rem;
+    --space-lg: 2.4rem;
+    --space-edges: 10vw;
+    --space-sides: 10vw;
     font-size: 1.10rem;
     --logo-ratio: 0.360;
   }
 }
 @media screen and (min-width: 1300px) {
   :root {
-    --space: 2.3rem;
-    --space-lg: 3.5rem;
-    --space-edges: 20vw;
-    --space-sides: 20vw;
+    --space: 2.1rem;
+    --space-lg: 3.2rem;
+    --space-edges: 15vw;
+    --space-sides: 15vw;
     --logo-ratio: 0.341;
+    --categories-spacing-percent: 42%;
   }
 
   #intro {
@@ -46,6 +47,12 @@
   }
 }
 @media screen and (min-width: 1500px) {
+  :root {
+    --space-edges: 20vw;
+    --space-sides: 20vw;
+  }
+}
+@media screen and (min-width: 1850px) {
   :root {
     --space-edges: 25vw;
     --space-sides: 25vw;

@@ -53,10 +53,7 @@
 
   .buttons {
     a {
-      font-size: 0.9em;
-    }
-    label {
-      font-size: 1.1em;
+      font-size: 0.8rem;
     }
   }
 
@@ -126,6 +123,7 @@
 
   .media-as-bg {
     transition: transform 10s ease;
+    filter: var(--dark-to-light);
   }
 }
 #services {
@@ -138,13 +136,13 @@
 
 .categories { /* List of services offered */
   display: grid; /* fuck with this */
-  grid-template-columns: repeat(2, 37%);
-  justify-content: space-evenly;
+  grid-template-columns: repeat(2, var(--categories-spacing-percent));
+  justify-content: space-around;
   align-content: bottom;
   text-align: center;
   flex-wrap: wrap;
   
-  color: var(--light-4); // dark background so cant have fg as color, only light
+  color: var(--light-2); // dark background so cant have fg as color, only light
   
   &.categories-fullscreened {
     display: initial;
@@ -169,7 +167,7 @@
   text-align: left;
   font-size: 1.1rem;
   backdrop-filter: blur(3.0px);
-  background: hsla(var(--hue-3), 70%, var(--lum-fg-6), 0.10);
+  background: hsla(var(--hue-3), 70%, var(--lum-light-6), 0.10);
   transition: backdrop-filter 0.5s, background 0.5s,
               border-radius 0.5s, transform 0.3s, width 0.2s, height 0.2s, margin 0.2s, padding 0.2s;
   // transition: 0.3s;
@@ -183,7 +181,7 @@
   &:hover {
     border-radius: 0.75rem;
     backdrop-filter: blur(0.6rem);
-    background: hsla(var(--hue-3), 60%, var(--lum-fg-5), 0.25);
+    background: hsla(var(--hue-3), 60%, var(--lum-light-5), 0.25);
     filter: brightness(1.1);
     // transform: scale(1.15);
     // transform: translateZ(20deg);
