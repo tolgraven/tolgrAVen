@@ -4,6 +4,12 @@
             [cljs-time.coerce :as ctc]
             [cljs-time.core :as ct]))
 
+(rf/reg-sub :github/get-from
+ :<- [:option [:github]]
+ (fn [github]
+   [(:user github)
+    (:repo github)]))
+
 (rf/reg-sub :github/commits
  :<- [:content [:github]]
  (fn [github]

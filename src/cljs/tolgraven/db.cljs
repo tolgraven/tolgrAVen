@@ -238,6 +238,8 @@ producer, reporter, PA, graphics technician, music administrator etc"] :where "S
                      :colorscheme "default"}
              :firebase {:project :main
                         :settings {:timestampsInSnapshots true}} ; for old version
+             :github {:user "tolgraven"
+                      :repo "tolgraven"}
              :hud {:timeout 30 :level :info}}})
 
 
