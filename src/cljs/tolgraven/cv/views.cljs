@@ -24,6 +24,8 @@
                          :width size}))
         :class (str (when @expanded? "cv-detail-expanded ")
                     (when @closing? "cv-detail-closing"))}
+       [:div.cv-bg-logo
+        {:style {:background-image (str "url(../../" logo ")")}}]
        [:p.cv-from from]
        [:p.cv-to (if to to "current")]
        [:p.cv-what [:strong what]]
@@ -32,7 +34,8 @@
            [:p.cv-how [:i.fas.fa-arrow-right] item])
          [:p.cv-position position])
        [:p.cv-where where]
-       [:img {:src logo}]])))
+       (when logo
+         [:img {:src logo}])])))
 
 (defn capabilities "The various skills"
   [skills]

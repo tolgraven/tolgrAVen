@@ -142,7 +142,7 @@
   background-color: var(--fg-4);
   color: var(--bg-1);
   min-height: 10em;
-  opacity: 90%;
+  opacity: 93%;
   border-radius: 0.2em;
   border-bottom-right-radius: 1.2em;
   box-shadow: 2px 2px 17px var(--box-regular-color); 
@@ -153,10 +153,31 @@
 
   img {
     position: absolute;
-    width: 3.75em;
+    // float: right;
+    width: 5em;
+    display: none;
     bottom: 0;
     right: 0;
-    padding: 0.4em;
+    margin: 0.2em;
+    padding: 0.2em;
+    border-radius: 25%;
+    border-bottom-right-radius: 20%;
+    border-right: 1px solid var(--bg-4);
+    border-bottom: 1px solid var(--bg-4);
+    box-shadow: 2px 2px 5px 4px var(--box-faint-color);
+    text-shadow: 2px 2px 5px 4px var(--box-faint-color);
+  }
+  
+  .cv-bg-logo {
+      height: 100%;
+      width: 100%;
+      position: absolute;
+      z-index: -100;
+      background-repeat: no-repeat;
+      opacity: 0.1;
+      background-size: inherit;
+      background-position-x: right;
+      background-position-y: bottom;
   }
   
   span, p {
@@ -173,6 +194,11 @@
     position: absolute;
     right: 0;
     top: 0;
+  }
+  
+  .cv-where {
+    position: absolute;
+    bottom: 0;
   }
 
   &.cv-detail-expanded {
@@ -198,7 +224,13 @@
     }
 
     img {
-      width: 6em;
+      position: absolute;
+      display: initial;
+      width: 10em;
+    }
+    
+    .cv-bg-logo {
+        background-size: contain;
     }
     
     .cv-from {
@@ -212,8 +244,6 @@
     }
     
     .cv-what {
-    }
-    .cv-where {
     }
   }
 
