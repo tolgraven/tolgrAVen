@@ -279,7 +279,7 @@ video {
 textarea, input {
   &:focus {
     outline: 0;
-    border: 2px solid var(--fg-3); // well should be outline instead no so stuff doesnt move?
+    border: 2px solid var(--fg-3); // well should be outline instead no so stuff doesnt move, but having issues at least when margin 0
   }
 }
 textarea, input, .form-control {
@@ -289,7 +289,7 @@ textarea, input, .form-control {
   font-size: 1.2em;
   padding: 0.3em 0.5em;
   margin-bottom: 0.4em;
-  border: 1px solid var(--bg-5);
+  border: 2px solid var(--bg-5);
 }
 textarea {
   font-size: 1em;
@@ -301,22 +301,24 @@ label {
 
 mark {
   background-color: transparent;
-  color: var(--fg-2);
+  color: var(--purple);
   font-weight: 700;
   position: relative;
 
   &:after {
     content: "";
     position: absolute;
-    left: -0.15em;
+    left: -0.175em;
     top: 9.5%;
     width: calc(100% + 0.3em);
     height: 85%;
-    background: linear-gradient(90deg, var(--green), var(--purple-3));
-    transform: skew(-12deg);
-    filter: brightness(65%);
+    // background: linear-gradient(90deg, var(--green), var(--purple-3));
+    transform: skew(-10deg);
+    filter: brightness(65%) saturate(180%);
+    border: 1px solid var(--fg-1);
+    opacity: 80%;
 
-    z-index: -1;
+    // z-index: -1; // sometimes hides it completely hmm.
 
   }
 

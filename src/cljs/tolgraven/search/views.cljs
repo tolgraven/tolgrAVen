@@ -11,7 +11,8 @@
   []
   (let [open? (rf/subscribe [:search/open?])]
     [:button.search-ui-btn.noborder.nomargin
-     {:on-click (fn [e]
+     {:name "Search" :title "Search site"
+      :on-click (fn [e]
                   (rf/dispatch [:search/state [:open?]
                                 (not @open?)])
                   (when-not @open? ; going from closed to open
@@ -21,19 +22,18 @@
                     :filter "invert(100%)"}}]]))
 
 (defn input "Search input field"
- [collections & {:as args :keys [model opts query-by open?]}]
+ [collections & {:as args :keys [query-by model on-enter placeholder
+                                 width height open? opts]}]
  (let [external-model (r/atom model)
        internal-model (r/atom (or @model ""))
-       div-ref (r/atom nil)
-       last-timeout-id (atom nil)]
+       div-ref (r/atom nil)]
    (fn [collections &
-        {:keys [query-by model on-enter placeholder width height open?]
+        {:keys [query-by model on-enter placeholder width height open? opts]
          :or {height "2em"
               query-by ["text" "title"]}}]
      (let [suggestions @(rf/subscribe [:search/autocomplete-multi collections])
            suggestion-str (string/join " " (:match suggestions))
            suggestion (first suggestions)
-           ; suggestion (first )
            query @(rf/subscribe [:search/get-query (first collections)])]
    [:div.search-input-container
         
@@ -43,37 +43,43 @@
                :min-height height :max-height height
                :padding (when (or (zero? width) (zero? height)) 0)
                :border (when (or (zero? width) (zero? height)) 0)}
-       :placeholder placeholder
+       :placeholder (or placeholder "Search") ; might want "Search for..." like
        :autoComplete "off"
+       :max 40
        :value       (if (and (not (string/blank? (:match suggestion)))
-                             (not= (:match suggestion) query))
-                      (str (:match suggestion) (re-find #"\s" query))
+                             (not= suggestion-str query)
+                             #_(not (re-find #"\s" query)))
+                      (str query #_(:match suggestion)
+                           #_(re-find #"\s" query))
                       @internal-model)
        :ref         #(when % (reset! div-ref %))
        :on-change (fn [e] ; XXX needs debounce I guess
                     (let [new-val (-> e .-target .-value)]
                       (reset! internal-model new-val)
-                      (reset! external-model @internal-model)
+                      ; (reset! external-model @internal-model)
                       (doseq [coll collections]
-                                (rf/dispatch [:search/search coll new-val query-by opts false]))))
+                        (rf/dispatch [:search/search coll new-val query-by opts false]))))
        :on-key-up (fn [e]
                     (case (.-key e)
                       "Enter" (when (not= "" @model)
-                                (set! (.-value @div-ref) (:text suggestion))
+                                ; (set! (.-value @div-ref) (:text suggestion))
+                                (reset! internal-model (:text suggestion))
                                 (doseq [coll collections]
                                   (rf/dispatch [:search/search coll (:text suggestion) query-by opts false])))
-                      "Escape" (do (.preventDefault e) ; can't seem to stop it from blanking query hmm
+                      "Escape" (do (.stopPropagation e) ; can't seem to stop it from blanking query hmm
+                                   (.preventDefault e)
                                    (rf/dispatch [:search/state [:open?] false]))
                       true))}]
      (when-not (string/blank? (:match suggestion))
       [:div.search-input.search-input-autocomplete.form-control
        {:style {:min-height height}}
-       [:pre
-        (str (-> (get suggestion :match "")
-                 (string/replace  #"\w|\s" " ")
-                 (string/replace #"\n" ""))
-             (-> (get suggestion :rest "")
-                 ))] ])]))))
+       [:pre.search-input-suggestion
+        (-> (str (-> (get suggestion :query "")
+                     (string/replace  #"\w" " ")) ; get as many spaces as there were letters
+                 (get suggestion :rest ""))
+            (string/replace #"\n.*" "")
+            (string/replace #"^(.{0,30})(.*)" "$1..."))]])
+     [:span.search-input-info "BETA"]]))))
 
 (defn suggestions "Display a dropdown of suggested further terms"
   [collections]
@@ -89,16 +95,15 @@
                             (not (string/blank? @query)))
                    "search-autocomplete-open")}
          (for [suggestion (drop 1 suggestions') ; rework as map-indexed so can highhlight and pick by keyboard
-               :let [{:keys [html rest match]} suggestion
-                     without-query rest #_(string/replace-first text (re-pattern (str "(?i)" @query)) "")]]
+               :let [{:keys [text html rest match query]} suggestion
+                     without-query rest
+                     #_(string/replace-first text (re-pattern (str "(?i)" @query)) "")]]
            [:div.search-autocomplete-item
             {:on-click (fn [e]
                          (doseq [coll collections]
                            (rf/dispatch [:search/search coll (str match rest) ["text" "title"]])))}
 
-            ; [:b @query] without-query
-            [:b match] without-query
-            #_[ui/md->div html]])]))))
+            [:b query] without-query])]))))
 
 
 (defn instant-result-category "Wrapper for type of results/collection"
@@ -173,7 +178,6 @@
        [input ["blog-posts" "blog-comments"]
         :model (rf/subscribe [:search/get-query "blog-posts"])
         :open? @open?
-        :placeholder "Search"
         :height (if @open? "2em" 0)]
        [suggestions ["blog-posts" "blog-comments"]]
        [instant-results @open?]

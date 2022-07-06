@@ -50,7 +50,8 @@
    [(rf/subscribe [:search/results-for-query collection])
     (rf/subscribe [:search/get-query collection])])
  (fn [[results query] [_ collection]]
-  (when (seq results)
+  (when (and (seq results)
+             (< 1 (count query)))
    (distinct
     (for [hit (:hits results)
           :let [{:keys [highlights document text_match]} hit
@@ -58,28 +59,32 @@
                 {:keys [snippet matched_tokens field]} (first highlights)]]
       (let [token (first matched_tokens)
             snippet' (-> snippet
-                         (string/replace #"(```)|(`).*" "") ; kill the code blocks
-                         (string/replace #"\n.*" "") ; kill the code blocks
-                         (string/replace #"<mark>" "öööö")
-                         (string/replace #"</mark>" "åååå"))
-            data (-> (string/split snippet' (re-pattern token))
-                     last
+                         (string/replace-first (str ".*" query) "")
+                         (string/replace #"(```)|(`.*)" "") ; kill the code blocks
+                         ; (string/replace #"\n.*" "") ; kill the code blocks
+                         (string/replace #"(<mark>)|(</mark>)" "")
+                         (string/replace #"([^a-zA-Z0-9\s'])|(\..*)" "")
+                         #_(string/replace #"<mark>" "öööö")
+                         #_(string/replace #"</mark>" "åååå"))
+            data (-> (string/split snippet' (re-pattern (str "(" query ")|(" token ")")))
+                     last ; here is where we might end up all wrong
                      (string/split #" ")
                      (->>
                       (take 5) ; thinking it'll be cached and not change but maybe not
                       (string/join " ")))
-            text (str #_token (-> data
-                                  (string/replace #"öööö|åååå" "")
-                                  (string/replace #"[^a-zA-Z0-9\s']" "")))
-            trimmed (-> (str "<mark>" token data)
-                        (string/replace #"\n.*" "")
-                        (string/replace #"([^a-zA-Z0-9\s'])" "")
+            text (str (-> data
+                          (string/replace #"öööö|åååå" "")))
+            trimmed (-> (str "<mark>" token query)
                         (string/replace #"öööö" "<mark>")
-                        (string/replace #"åååå" "</mark>"))]
+                        (string/replace #"åååå" "</mark>")
+                        (string/replace #"([^a-zA-Z0-9\s'])|(\.*)" ""))]
         
         {:html trimmed
          :match token
+         :query query
          :rest text
+         :text (str query text)
+         ; :text (str query (string/replace (str token text) (re-pattern query) ""))
          :score text_match}))))))
 
 (rf/reg-sub
@@ -91,6 +96,7 @@
                    result
                    #_(assoc result :collection coll))]
      (->> (apply concat results)
+          ; (filter #(= query (:match %)))
           (sort-by :score >)))))
 
 
