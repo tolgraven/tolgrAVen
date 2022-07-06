@@ -297,11 +297,13 @@
 
 ; renamed store-> not fire->, should work to hide fire behind stuff so can swap out easier
 (rf/reg-event-fx :store->
-  (fn [_ [_ path data merge-fields]]
-    {:firestore/set {:path path :data data
-                     :set-options
-                     (when merge-fields
-                       {:merge true :merge-fields merge-fields})}}))
+  (fn [{:keys [db]} [_ path data merge-fields]]
+    (if (get-in db [:state :booted :firebase])
+      {:firestore/set {:path path :data data
+                       :set-options
+                       (when merge-fields
+                         {:merge true :merge-fields merge-fields})}}
+      {:dispatch [:on-booted :firebase [:store-> path data merge-fields]]})))
 ; other thing could do is combo app-db/fire setter/getter
 ; so <-$ subs topic and tries grab from local, then far
 ; while dispatch will store value in both db and send to fire.
@@ -314,15 +316,17 @@
 ; TODO surely should wrap on-success to strip metadata etc and just store keywordized :data directly here
 ; with util/normalize-firestore. just need to get rid of that from elsewhere then tho
 (rf/reg-event-fx :<-store ; event version of <-store takes an on-success cb event
-  (fn [_ [_ path on-success on-failure]]
-    (let [kind (if (even? (count path))
-                 :path-document
-                 :path-collection)]
-      {:firestore/get (merge {kind path
-                              :expose-objects true
-                              :on-success [:store/on-success on-success]} ;TODO mod firestore lib to accept vectors/wrapping. goddamn
-                             (when on-failure
-                               {:on-failure on-failure}))})))
+  (fn [{:keys [db]} [_ path on-success on-failure]]
+    (if (get-in db [:state :booted :firebase])
+      (let [kind (if (even? (count path))
+                   :path-document
+                   :path-collection)]
+        {:firestore/get (merge {kind path
+                                :expose-objects true
+                                :on-success [:store/on-success on-success]} ;TODO mod firestore lib to accept vectors/wrapping. goddamn
+                               (when on-failure
+                                 {:on-failure on-failure}))})
+      {:dispatch [:on-booted :firebase [:<-store path on-success on-failure]]})))
 
 (rf/reg-event-fx :store/on-success ; strip metadata etc
   (fn [_ [_ on-success data]]
