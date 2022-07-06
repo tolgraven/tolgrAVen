@@ -4,6 +4,12 @@
             [cljs-time.coerce :as ctc]
             [cljs-time.core :as ct]))
 
+(rf/reg-sub :github/website-url
+  (fn [[_ _]]
+    (rf/subscribe [:github/commits])) ; dumb to rely on this tho since will re-run a bunch for same res.
+  (fn [commits _]
+    (first (string/split (:html_url (first commits)) #"/commit/"))))
+
 (rf/reg-sub :github/get-from
  :<- [:option [:github]]
  (fn [github]

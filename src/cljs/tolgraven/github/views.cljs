@@ -74,18 +74,19 @@
 
 (defn loading "Lazy load more on scroll to bottom, with a button as fallback for the poors"
   [user repo]
-  [:div.github-loading
+  (fn [user repo]
+   [:div.github-loading
    [ui/lazy-load-repeatedly
     [:github/fetch-commits-next user repo]
     "github-commits-box"
-    :run-on-appear]
+    #_:run-on-appear] ; fires twice too quickly and causes a double fetch so would need debounce
    [:h2 "Loaded " (count @(rf/subscribe [:github/commits]))]
    [:h3 "Scrolling down should load more..."]
    [:div {:style {:padding "var(--space)"}}
     [ui/loading-spinner true :still]]
    [:button {:style {:margin-top "var(--space-lg)"}
-             :on-click #(rf/dispatch [:github/fetch-commits-next user repo])}
-    "...or you can click here"]])
+             :on-click #(do (rf/dispatch [:github/fetch-commits-next user repo]))}
+    "...or you can click here"]]))
 
 (defn commits "List Github commits for this repo"
   []
@@ -93,14 +94,20 @@
         commits (rf/subscribe [:github/filter-by])
         amount (rf/subscribe [:github/commit-count])
         view (r/atom :commits)
-        main-view-position (r/atom 0)]
+        main-view-position (r/atom 0)
+        ref-fn #(when %
+                  (when-let [el (util/elem-by-id "github-commits-box")]
+                    (if (= @view :commits)
+                      (set! (.-scrollTop el) @main-view-position)
+                      (set! (.-scrollTop el) 0))))
+        url (rf/subscribe [:github/website-url])]
    (fn []
     [:<>
      [:section.github-commits.covering-2
      
      [:h2 [:i.fab.fa-github]" " @amount " commits to "
       [:span
-       [:a {:href (first (string/split (:html_url (first @commits)) #"/commit/"))}
+       [:a {:href @url}
         "this website"]]]
         
      [:div#github-commits-box.github-commits-inner
@@ -111,11 +118,7 @@
        :height "2em"
        :path [:form-field [:github :search]]]
       [:div#github-commits-main
-       {:ref #(when %
-                (when-let [el (util/elem-by-id "github-commits-box")]
-                  (if (= @view :commits)
-                    (set! (.-scrollTop el) @main-view-position)
-                    (set! (.-scrollTop el) 0))))} ; restore scroll when displaying details
+       {:ref ref-fn} ; restore scroll when displaying details
        (when (= @view :commits)
         [:div {:style {:text-align "center"
                        :padding "1em"}}
