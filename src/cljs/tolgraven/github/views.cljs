@@ -26,14 +26,17 @@
          [:span {:style {:color "var(--red)"}}
           (util/pluralize (:deletions file) " deletion")] " = "
          [:span {:style {:color "var(--orange)"}}
-          (util/pluralize (:changes file)   " change")] "."]
+          (util/pluralize (:changes file)   " change")] "."
+         (when (= 0 (:additions file) (:deletions file) (:changes file))
+           [:span {:style {:color "var(--blue)"}}
+            ".. word on the street has it the file IS the change!"])]
         [:div
-         (let [hunks (-> (:patch file)
-                         (string/split #"(?m)^@@.*@@")
-                         rest)
-               headers (-> (:patch file)
-                           (string/replace #"(?m)(@@\n)(.|\n)*(^@@)?" "$1$3")
-                           (string/split-lines))]
+         (let [hunks (some-> (:patch file)
+                             (string/split #"(?m)^@@.*@@")
+                             rest)
+               headers (some-> (:patch file)
+                               (string/replace #"(?m)(@@\n)(.|\n)*(^@@)?" "$1$3")
+                               (string/split-lines))]
            (into [:<>]
             (for [[hunk header] (partition 2 2 (interleave hunks headers))
                   :let [diff (string/replace hunk #"(?m)(^.).*" "$1")
@@ -107,8 +110,11 @@
        :height "2em"
        :path [:form-field [:github :search]]]
       [:div#github-commits-main
-       {:ref #(when % (set! (.-scrollTop (util/elem-by-id "github-commits-box"))
-                            @main-view-position))}
+       {:ref #(when %
+                (when-let [el (util/elem-by-id "github-commits-box")]
+                  (if (= @view :commits)
+                    (set! (.-scrollTop el) @main-view-position)
+                    (set! (.-scrollTop el) 0))))} ; restore scroll when displaying details
        (when (= @view :commits)
         [:div {:style {:text-align "center"
                        :padding "1em"}}
