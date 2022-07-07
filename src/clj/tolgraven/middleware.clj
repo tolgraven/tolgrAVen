@@ -38,8 +38,9 @@
     (try
       (handler req)
       (catch Throwable t
-        (log/error t (.getMessage t))
-        (error-page {:status 500
+        (error t (.getMessage t))
+        (error-page {:request req
+                     :status 500
                      :title "Internal error"
                      :message (.getMessage t)})))))
 

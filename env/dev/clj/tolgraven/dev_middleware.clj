@@ -1,11 +1,11 @@
 (ns tolgraven.dev-middleware
   (:require
     [ring.middleware.reload :refer [wrap-reload]]
-    [selmer.middleware :refer [wrap-error-page]]
+    [ring.middleware.lint :refer [wrap-lint]]
     [prone.middleware :refer [wrap-exceptions]]))
 
 (defn wrap-dev [handler]
   (-> handler
       wrap-reload
-      wrap-error-page
-      (wrap-exceptions {:app-namespaces ['tolgraven]})))
+      (wrap-exceptions #_{:app-namespaces ['tolgraven]})
+      wrap-lint))

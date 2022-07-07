@@ -63,6 +63,8 @@
       [:h4 "joen.tolgraven@gmail.com"]
       [:h5 "© 2020-2022"]]]]])
 
+; throw in CAPROVER_GIT_COMMIT_SHA somewhere for version
+; can pull in w env then fetch from client
 (defn- home
   [request & {:keys [loading-content title description pre-pre css-paths js-paths
                      js-raw css-pre js-pre img-pre anti-forgery title-img]}]
@@ -173,30 +175,29 @@
 
 
 (defn error-page-hiccup
-  [error-details]
-  (str
-   "<!DOCTYPE html>\n"
-   (hiccup/html
+  [request error-details]
+  (render-hiccup
+   (fn []
+     [:html {:lang "en"}
+      [:head
+       [:meta {:charset "UTF-8"}]
+       [:meta {:name "viewport"
+               :content "width=device-width, initial-scale=1, shrink-to-fit=no"}]
+       [:title "Something bad happened - tolgrAVen"]
+       [:meta {:name "description" :content "Error page"}]
 
-    [:html {:lang "en"}
-     [:head
-      [:meta {:charset "UTF-8"}]
-      [:meta {:name "viewport"
-              :content "width=device-width, initial-scale=1, shrink-to-fit=no"}]
-      [:title "Something bad happened - tolgrAVen"]
-      [:meta {:name "description" :content "Error page"}]
+       [:link {:href "css/tolgraven/main.min.css" :rel "stylesheet" :type "text/css"}]
+       #_(ohtml/link-to-css-bundles error-details ["styles.css"])
+       [:script {:type "text/javascript"}
+        (str "var csrfToken = \"" *anti-forgery-token* "\";")]] ; this is where everything ends up for prod but cant remember why?
 
-      [:link {:href "css/tolgraven/main.min.css" :rel "stylesheet" :type "text/css"}]
-      #_(ohtml/link-to-css-bundles error-details ["styles.css"])] ; this is where everything ends up for prod but cant remember why?
 
-     [:script {:type "text/javascript"}
-      (str "var csrfToken = \"" *anti-forgery-token* "\";")]
 
-     [:body {:class "container themable framing-shadow sticky-footer-container"}
-      (basic-skeleton "tolgrAVen" ["error" (str (:status error-details))]
-                      "img/foggy-shit-small.jpg"
-                      (:title error-details)
-                      "main-error")]])))
+      [:body {:class "container themable framing-shadow sticky-footer-container"}
+       (basic-skeleton "tolgrAVen" ["error" (str (:status error-details))]
+                       "img/foggy-shit-small.jpg"
+                       (:title error-details)
+                       "main-error")]])))
 
 (defn error-page ; reckon bail on this and make in hiccup then can nuke parser.
   "error-details should be a map containing the following keys:
@@ -209,5 +210,5 @@
   {:status  (:status error-details)
    :title   {:title error-details}
    :headers {"Content-Type" "text/html; charset=utf-8"}
-   :body    (error-page-hiccup error-details)})
+   :body    (error-page-hiccup (:request error-details) error-details)})
 
