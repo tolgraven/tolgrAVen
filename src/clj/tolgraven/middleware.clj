@@ -9,12 +9,17 @@
     [muuntaja.middleware :refer [wrap-format wrap-params]]
     [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
     [ring.middleware.flash :refer [wrap-flash]]
+    [ring.middleware.file :refer [wrap-file]]
+    [ring.middleware.resource :refer [wrap-resource]]
     [ring.middleware.gzip :as gzip]
     [ring.middleware.partial-content :refer [wrap-partial-content]]
+    [ring.middleware.multipart-params :refer [wrap-multipart-params]]
     [ring.middleware.content-type :refer [wrap-content-type]]
     [ring.middleware.not-modified :refer [wrap-not-modified]]
     [ring.adapter.undertow.middleware.session :refer [wrap-session]]
     [ring.middleware.defaults :refer [site-defaults wrap-defaults secure-site-defaults]]
+    ; [ring-middleware-csp.core :refer [wrap-csp]]
+    [ring.middleware.logger :refer [wrap-with-logger]]
     [optimus.prime :as optimus]
     [optimus.assets :as assets]
     [optimus.optimizations :as optimizations]
@@ -25,6 +30,7 @@
     [optimus.optimizations.add-last-modified-headers]
     [optimus.optimizations.inline-css-imports]
     [optimus-img-transform.core :refer [transform-images]]
+    [taoensso.timbre :as timbre :refer [debug log error]]
     [potemkin :refer [import-vars]]))
 
 (defn wrap-internal-error [handler]
@@ -107,22 +113,45 @@
          optimize-all)
        (if (:dev env)
          strategies/serve-live-assets
-         strategies/serve-frozen-assets))
-      (ring.middleware.content-type/wrap-content-type)
-      (ring.middleware.not-modified/wrap-not-modified)))
+         strategies/serve-frozen-assets))))
+
+(defn wrap-log "Log req then pass on unchanged"
+  [handler id]
+  (fn [req]
+    (timbre/debug (str "Wrap-log " id ": ") handler)
+    (timbre/debug (str "Wrap-log " id ": ") req)
+    (handler req)))
+
+(defn wrap-gzip-content-aware
+  [handler]
+  (fn [req]
+    (let [{:keys [status headers]} req
+          is-media (some? #(re-find #"image|video" (get headers "Content-Type"))) ]
+      (if is-media
+        ((gzip/wrap-gzip handler) req)
+        (handler req)))))
+
 
 (defn wrap-base [handler]
   (-> ((:middleware defaults) handler)
-      wrap-flash
-      (wrap-session {:cookie-attrs {:http-only true}})
+      ; wrap-flash
       (wrap-defaults
         (-> (if (or (env :dev) (env :test))
               site-defaults
-              (-> secure-site-defaults ;use ssl and setup for heroku
-                  (assoc-in [:proxy] true)))
-            #_(assoc-in [:security :anti-forgery] false) ; what's with this? from before we injected csrf or?
-            #_(dissoc :session))) ; why?
+              (-> secure-site-defaults ;use ssl and setup for rev proxy
+                  (assoc-in [:proxy] false)))
+            (assoc-in [:security :anti-forgery] true) ; what's with this? from before we injected csrf or?
+            )) ; why was there a dissoc :session? cause it's about what middleware we request to wrap us with. cause gotta choose either above or through defaults... get duplicate session warnings now that uncommented hmm.
+      ; (wrap-resource "public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
+      ; (wrap-file "resources/public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
       wrap-optimus
-      gzip/wrap-gzip
+      wrap-content-type ; must go after wrap-resource. checks file ext and adds correct content type
+      ; gzip/wrap-gzip
+      ; wrap-gzip-content-aware
+      ; (wrap-log "Wrapped gzip")
+      wrap-not-modified ; guess this doesnt work cause optimus gens new files tho..
+      ; (wrap-csp {:policy csp})
       wrap-partial-content
+      wrap-multipart-params
+      wrap-with-logger
       wrap-internal-error))
