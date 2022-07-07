@@ -59,7 +59,7 @@ header {
               opacity calc(0.3 * var(--header-expand-time)) ease;
   position: fixed;
   top: 0px;
-  right: 0px;
+  right: var(--line-width);
   z-index: 10; // -1;
   
   &.hide {
