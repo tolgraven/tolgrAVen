@@ -82,12 +82,13 @@
  (fn [{:keys [db]} [_ ]]
   (let [scroll-to-ls
         (fn []
-          (rf/dispatch-sync [:state [:scroll-position
-                                     (-> db :common/route :data :name)]
-                             (.-scrollY js/window)])
-          (rf/dispatch-sync [:ls/store-path [:scroll-position]
-                             [:state :scroll-position]]))] ; im sure we'll want more tho?
-    {:dispatch-n [[:listener/add! "window" "beforeunload" scroll-to-ls]]})))
+          (when (= js/document.visibilityState "hidden")
+            (rf/dispatch-sync [:state [:scroll-position ; doesnt it make more sense to save straight to ls tho instead of going by db... guess doesn't matter with -sync on both tho?
+                                       (-> db :common/route :data :name)]
+                               (.-scrollY js/window)])
+            (rf/dispatch-sync [:ls/store-path [:scroll-position]
+                               [:state :scroll-position]])))]
+    {:dispatch-n [[:listener/add! "window" "visibilitychange" scroll-to-ls]]})))
 
 (rf/reg-event-fx :listener/popstate-back ; gets called on browser back. or if we nanually pop state, so keep track of that if end up doing it...
  (fn [{:keys [db]} [_ ]]
