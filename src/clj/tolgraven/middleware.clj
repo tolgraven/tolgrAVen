@@ -140,7 +140,7 @@
         (-> (if (or (env :dev) (env :test))
               site-defaults
               (-> secure-site-defaults ;use ssl and setup for rev proxy
-                  (assoc-in [:proxy] false)))
+                  (assoc-in [:proxy] true)))
             (assoc-in [:security :anti-forgery] true) ; what's with this? from before we injected csrf or?
             )) ; why was there a dissoc :session? cause it's about what middleware we request to wrap us with. cause gotta choose either above or through defaults... get duplicate session warnings now that uncommented hmm.
       ; (wrap-resource "public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
