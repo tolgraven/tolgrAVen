@@ -530,7 +530,7 @@
 (defn format-log-message
   [message]
   ; (with-out-str (pprint/pprint message)) ;XXX temp.
-  message
+  (str (pr-str message))
   ; (pprint/write message :stream nil) ;XXX temp.
   ; (cond
   ;   (string? message) message
