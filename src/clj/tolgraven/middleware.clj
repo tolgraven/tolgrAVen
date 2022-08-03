@@ -73,12 +73,8 @@
    (assets/load-bundles "public"
                         {"app.js" ["/js/compiled/app.js"] })
    (assets/load-assets "public"
-                       [#"/img/.+\.png$"
-                        #"/img/.+\.svg$"
-                        #"/img/.+\.gif$"
-                        #"/img/.+\.jpeg$"
-                        #"/img/.+\.jpg$"
-                        #"/media/.*\.jpg"])))
+                       [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?)$"
+                        #"/media/.*\.(jpg?|jpeg?)$"])))
 
 (import-vars [optimus.optimizations.minify
               minify-js-assets
