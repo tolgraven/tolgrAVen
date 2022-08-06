@@ -72,6 +72,14 @@
     margin: calc(2 * var(--space));
     display: flex;
     justify-content: space-evenly;
+
+    a span {
+      text-decoration-thickness: 0.5px;
+      &:after {
+        content: '';
+      }
+    }
+
   }
   .blog-powered-by {
     font-size: 1.25em;
