@@ -214,11 +214,11 @@
      
      ["blog" {:controllers [{:start (fn [_]
                                       (rf/dispatch [:on-booted :firebase [:blog/init]])
-                                      (rf/dispatch [:blog/set-posts-per-page 3]) ; should also allow 0 = infinite scroll
-                                      (rf/dispatch [:blog/nav-page 1]))}] }
+                                      (rf/dispatch [:blog/set-posts-per-page 3]))}] } ; should also allow 0 = infinite scroll
       [""     {:name :blog
                :view #'blog-page
                :controllers [{:start (fn [_]
+                                       (rf/dispatch [:blog/nav-page 1]) ; down here so back-btn works from page/2 to blog aka page/1.
                                        (rf/dispatch [:->css-var! "line-width" "1px"]); TODO fix so does this without hardcoding either. Might also set line-color to something less pronounced.
                                        (rf/dispatch [:->css-var! "line-width-vert" "1px"]))
                               :stop (fn []
