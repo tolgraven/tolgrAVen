@@ -26,7 +26,13 @@
                                  width height open? opts]}]
  (let [external-model (r/atom model)
        internal-model (r/atom (or @model ""))
-       div-ref (r/atom nil)]
+       char-width 0.61225
+       div-ref (r/atom nil)
+       caret (r/atom 0)
+       selection-end (r/atom 0)
+       set-caret (fn [target]
+                   (reset! caret (.-selectionStart target))
+                   (reset! selection-end (.-selectionEnd target))) ]
    (fn [collections &
         {:keys [query-by model on-enter placeholder width height open? opts]
          :or {height "2em"
@@ -34,19 +40,63 @@
      (let [suggestions @(rf/subscribe [:search/autocomplete-multi collections])
            suggestion-str (string/join " " (:match suggestions))
            suggestion (first suggestions)
-           query @(rf/subscribe [:search/get-query (first collections)])]
+           query @(rf/subscribe [:search/get-query (first collections)])
+           caret-pos (str (* char-width @caret) "em")
+           selection-len (* char-width (abs (- @caret @selection-end)))
+           caret-watch (add-watch internal-model :caret-watch
+                                  (fn [rf k old new]
+                                    (reset! caret (inc (count new)))
+                                    (reset! selection-end (inc (count new)))))
+           caret-height (* 1.6 (max 0.(- 1.0 (* 0.03 selection-len) )))]
    [:div.search-input-container
-        
+    
+    [:div.search-query-visible
+     {:style {:height height }}
+     
+     [:label.search-caret.blinking.nomargin.nopadding
+      {:style {:position :absolute
+               :width (str (max char-width selection-len) "em")
+               :height (str caret-height "em")
+               :left caret-pos :top (str (- (/ (- 1.6 caret-height #_"-0.1em") 2) 0.15) "em")}}
+       "_"]
+     [:label.search-caret-under.nomargin.nopadding
+      {:style {:position :absolute
+               :left caret-pos :top "0.1em"
+               :animation (when-not (zero? selection-len)
+                            "unset")}}
+      "_"]
+     
+     (when-not (string/blank? query)
+       [:span {:style {:white-space :pre-wrap
+                       :display :inline-flex}}
+        #_query
+        (for [letter query] ; causes issues with spacing? nice lil zoom effect though, figure out.
+          [ui/appear-anon "zoom fast"
+           [:span.search-letter letter]])])
+     
+     (when-not (string/blank? (:match suggestion))
+      [:span.search-input.search-input-autocomplete
+       {:style {:min-height height
+                :white-space :nowrap}}
+       (-> (str #_(-> (get suggestion :query "")
+                     (string/replace  #"\w" " ")) ; get as many spaces as there were letters
+                 (get suggestion :rest ""))
+            (string/replace #"\n.*" "")
+            (string/replace #"^(.{0,30})(.*)" "$1..."))])]
+     
      [:input#search-input.search-input ;problem if multiple search boxes on same page tho
       {:type "search"
-       :style {:min-width width :max-width width
-               :min-height height :max-height height
+       :incremental true
+       :style {:opacity 0
+               :width width ;:min-width width :max-width width
+               :height height ;:min-height height :max-height height
                :padding (when (or (zero? width) (zero? height)) 0)
                :border (when (or (zero? width) (zero? height)) 0)}
        :placeholder (or placeholder "Search") ; might want "Search for..." like
        :autoComplete "off"
        :max 40
-       :value       (if (and (not (string/blank? (:match suggestion)))
+       :value      @internal-model #_query
+                  #_(if (and (not (string/blank? (:match suggestion)))
                              (not= suggestion-str query)
                              #_(not (re-find #"\s" query)))
                       (str query #_(:match suggestion)
@@ -56,9 +106,23 @@
        :on-change (fn [e] ; XXX needs debounce I guess
                     (let [new-val (-> e .-target .-value)]
                       (reset! internal-model new-val)
-                      ; (reset! external-model @internal-model)
+                      (doseq [coll collections]
+                        (rf/dispatch [:search/search coll new-val query-by opts false])))
+                    (set-caret (.-target e)))
+       :on-search (fn [e] ; this is da debounce! apparently recommended against. also not working anyways hahah
+                    (let [new-val (-> e .-target .-value)]
+                      ; (reset! internal-model new-val)
                       (doseq [coll collections]
                         (rf/dispatch [:search/search coll new-val query-by opts false]))))
+       
+       :on-key-down (fn [e] (set-caret (.-target e)))
+       :on-click (fn [e] (set-caret (.-target e)))
+       :on-touch-start (fn [e] (set-caret (.-target e)))
+       :on-touch-move (fn [e]
+                        (reset! selection-end (-> e .-target .-selectionEnd))) ; actually just set selection I suppose
+       :on-touch-end (fn [e]
+                       (reset! selection-end (-> e .-target .-selectionEnd)))
+       ; how handle moving caret using mobile keyboard tap and hold and swipe on spacebar?
        :on-key-up (fn [e]
                     (case (.-key e)
                       "Enter" (when (not= "" @model)
@@ -69,16 +133,9 @@
                       "Escape" (do (.stopPropagation e) ; can't seem to stop it from blanking query hmm
                                    (.preventDefault e)
                                    (rf/dispatch [:search/state [:open?] false]))
-                      true))}]
-     (when-not (string/blank? (:match suggestion))
-      [:div.search-input.search-input-autocomplete.form-control
-       {:style {:min-height height}}
-       [:pre.search-input-suggestion
-        (-> (str (-> (get suggestion :query "")
-                     (string/replace  #"\w" " ")) ; get as many spaces as there were letters
-                 (get suggestion :rest ""))
-            (string/replace #"\n.*" "")
-            (string/replace #"^(.{0,30})(.*)" "$1..."))]])
+                      true)
+                    (fn [e] (set-caret (.-target e))))}]
+     
      [:span.search-input-info "BETA"]]))))
 
 (defn suggestions "Display a dropdown of suggested further terms"
