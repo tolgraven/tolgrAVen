@@ -113,7 +113,7 @@
      [:div#github-commits-box.github-commits-inner
       [ui/input-text
        :input-type "input.search"
-       :placeholder "Search"
+       :placeholder "Search commits"
        :width "100%"
        :height "2em"
        :path [:form-field [:github :search]]]
