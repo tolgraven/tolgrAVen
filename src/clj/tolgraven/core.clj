@@ -20,6 +20,7 @@
                   :exception ex
                   :where (str "Uncaught exception on" (.getName thread))}))))
 
+
 (def cli-options
   [["-p" "--port PORT" "Port number"
     :parse-fn #(Integer/parseInt %)]])
@@ -29,8 +30,12 @@
   (http/start
     (-> env
         (update :io-threads #(or % (* 2 (.availableProcessors (Runtime/getRuntime))))) 
-        (assoc  :handler (handler/app))
-        (update :port #(or (-> env :options :port) %))))
+        ; (update :port #(or (-> env :port) %))
+        (merge {:handler (handler/app)}
+               {:port (env :port)
+                :http2? true
+                :websocket? true
+                :buffer-size 64368})))
   :stop
   (http/stop http-server))
 
