@@ -52,14 +52,14 @@
                   "com.zaxxer.hikari"                   :warn
                   "org.eclipse.jetty.server*"           :warn
                   "io.pedestal*"                        :info
-                  :all                                  :info}]
+                  :all                                  :debug}]
   (timbre/merge-config!
    {:enabled true
     :level :debug
     :timestamp-opts {:pattern "yyMMdd HH:mm:ss.SS"
                      :locale :jvm-default
                      :timezone (java.util.TimeZone/getDefault)}
-    :appenders {:println {:min-level :debug}
+    :appenders {:println {:min-level :info}
                 :rotor (merge (rotor/rotor-appender
                                {:path "log/tolgraven.log"
                                 :max-size 10000000 ;was set to just 100kb... thats like 10 stacktraces lol
@@ -71,10 +71,12 @@
 (defn init-logging "Hijack others, make exceptions nice, init timbre"
   []
   (taoensso.timbre.tools.logging/use-timbre) ;route logging through timbre
+  
   (io.aviso.repl/install-pretty-exceptions)
+  (io.aviso.logging/uncaught-exception-handler)
   (io.aviso.logging/install-pretty-logging) ;ya
   (init-timbre))
 
-; (defstate ^{:on-reload :noop} logger-timbre ;problem: afterglow timbre (im guessing) overwrites our config...
-;  :start (init-logging))
-(init-logging) ;want this to happen on load yo
+(defstate ^{:on-reload :noop} logger-timbre ;problem: afterglow timbre (im guessing) overwrites our config...
+ :start (init-logging))
+; (init-logging) ;want this to happen on load yo
