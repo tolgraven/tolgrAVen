@@ -1,13 +1,19 @@
 /* HIGHLIGHT.JS - TODO change color scheme to box */
+@use "sass:color" as color;
 
 .hljs {
 	display: block;
+  font-family: 'Fira Code', monospace;
 	overflow-x: auto;
   padding: 1.00em;
-  background: linear-gradient(100deg, var(--bg-2) 10%, var(--bg-3) 40%, var(--bg-2) 80%, var(--bg-1) 102%);
+  background: linear-gradient(100deg,
+      var(--bg-2) 10%, var(--bg-1-2) 40%,
+      var(--bg-2) 80%, var(--bg-1) 102%);
   border-bottom-left-radius: 0.7em;
   border-bottom-right-radius: 0.5em;
 	color: var(--fg-2);
+
+  box-shadow: 2px 1px 1em 0px rgba(110, 100, 120, 0.20);
 }
 
 .hljs-comment,
@@ -82,6 +88,7 @@
 
 .hljs-deletion {
 	background-color: var(--red-2);
+	// background-color: color.scale($red-2, $saturation: 50%);
 	/* color: #e6e1dc; */
 	display: inline-block;
 	width: 100%

@@ -626,14 +626,14 @@ figcaption, .float-with-caption {
   
   .log-messages {
     > td {
-      padding: 0.25em 0.5em;
+      padding: 0.05em 0.025em;
       font-size: 80%;
       max-width: 55vw;
       overflow-wrap: break-word;
       
       > pre {
         border: none;
-        padding: 0;
+        padding: 0.2em 0.2em;
         margin: 0;
         white-space: pre-wrap;
         overflow-x: auto;

@@ -124,7 +124,12 @@
   .media-as-bg {
     transition: transform 10s ease;
     filter: var(--dark-to-light);
+    
+    &:focus, &:hover {
+      transform: scale(1.23) translateY(-10%);
+    }
   }
+
 }
 #services {
   // color: var(--light-1); // dark bg so white text always

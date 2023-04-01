@@ -21,7 +21,7 @@
 pre, code {
     font-family: Monaco, DejaVu Sans Mono, Consolas, monospace;
     font-size: 9pt;
-    margin: 15px 0;
+    // margin: 15px 0;
 }
 
 h1 {
@@ -76,6 +76,9 @@ h5.license {
 
     &:hover {
       max-width: 30em;
+      // position: fixed;
+
+      transition: max-width 0.5s;
     }
 
     border-top: var(--line-width) solid var(--line-color);
@@ -92,12 +95,10 @@ h5.license {
 }
 
 #content.namespace-index, #content.document {
-    // left: 20em;
     flex: 1 1;
 }
 
 #content.namespace-docs {
-    // left: 452px;
     flex: 1 1;
 }
 
@@ -133,7 +134,6 @@ h5.license {
 
 .sidebar a {
     color: var(--blue-3);
-    // color: #333;
 }
 
 #header h2 {
@@ -175,7 +175,6 @@ h5.license {
 
 .sidebar li {
     display: block;
-    vertical-align: middle;
 }
 
 .sidebar li a, .sidebar li .no-link {
@@ -475,23 +474,28 @@ p {
 }
 
 .doc, .public, .namespace .index {
-    max-width: 680px;
-    overflow-x: visible;
+    max-width: 960px;
+    overflow-x: scroll;
 }
 
 .markdown pre > code {
     display: block;
-    padding: 10px;
+    // padding: 10px;
+    overflow: scroll;
+    // white-space: nowrap;
 }
 
 .markdown pre > code, .src-link a {
     border: 1px solid #e4e4e4;
     border-radius: 2px;
+    padding: 0.8em 1.2em;
 }
 
 .markdown code:not(.hljs), .src-link a {
-    background: var(--bg-4);
+    background: var(--bg-1);
+    color: var(--orange);
 }
+
 
 pre.deps {
     display: inline-block;

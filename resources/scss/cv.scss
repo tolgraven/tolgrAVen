@@ -145,26 +145,36 @@
   opacity: 93%;
   border-radius: 0.2em;
   border-bottom-right-radius: 1.2em;
-  box-shadow: 2px 2px 17px var(--box-regular-color); 
-  overflow: hidden;
+  box-shadow: 2px 2px 7px 5px var(--box-regular-color); 
+  // overflow: hidden;
   min-width: 12em;
   
   transition: all 0.5s ease;
 
   img {
     position: absolute;
+    transition: all 0.5s ease;
     width: 5em;
     display: none;
     bottom: 0;
     right: 0;
-    margin: 0.2em;
-    padding: 0.2em;
+    margin: 0.25em;
+    padding: 0.25em;
     border-radius: 25%;
     border-bottom-right-radius: 20%;
     border-right: 1px solid var(--bg-4);
     border-bottom: 1px solid var(--bg-4);
     box-shadow: 2px 2px 5px 4px var(--box-faint-color);
     text-shadow: 2px 2px 5px 4px var(--box-faint-color);
+    // background: linear-gradient(-45deg, rgba(0.5, 0.5, 0.5, 0.5),
+                //                         rgba(0.5, 0.5, 0.5, 0.2)); // bit meh
+    background: linear-gradient(-45deg, rgba(0.3, 0.3, 0.3, 0.2), (0.2, 0.2, 0.2, 0.1));
+    backdrop-filter: saturate(160%) blur(3px);
+
+    &:hover {
+      transform: scale(1.3) translateX(-1.5em) translateY(-1.5em);
+      box-shadow: 2px 4px 7px 4px var(--box-regular-color);
+    }
   }
 
   .cv-bg-logo {

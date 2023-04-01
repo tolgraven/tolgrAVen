@@ -88,7 +88,7 @@
     // top: initial;
   }
   section {
-    transform: translate3d(0, 0, 0); // apparently fixes safari sticky/fixed z-index scrolling bug! section might we bit of a wide net tho..
+    // transform: translate3d(0, 0, 0); // apparently fixes safari sticky/fixed z-index scrolling bug! section might we bit of a wide net tho..
   }
   .parallax-bg {
     transform: initial; // safari doesnt want the y -60% adjustment, initial since cant use parallax anyways

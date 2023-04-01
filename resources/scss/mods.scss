@@ -11,6 +11,11 @@
   position: absolute;
   width: 100%;
   --fade-to-color: var(--bg-1);
+  transition: all 0.5s ease;
+
+  &.tall {
+    height: calc(10 * var(--space-lg));
+  }
 }
 .fade-to-black.white { /* well this is certainly a misnomer. .fade-to? */
   --fade-to-color: var(--fg-1);
@@ -236,6 +241,12 @@
     transform: translateY(-80%) scaleY(0.4);
     transition: opacity 0.12s, transform 0.35s ease;
   }
+  &.slide-from-right {
+    opacity: 0.0;
+    z-index: -1;
+    transform: translateY(80%) scaleY(0.8);
+    transition: opacity 0.12s, transform 0.35s ease;
+  }
   &.basic {
     visibility: hidden;
   }
@@ -426,7 +437,9 @@ button:hover .blur-bg, button:active .blur-bg,
   /* -webkit-transform: translate3d(150px, 0, -150px) rotateY(30deg); */
   /* transform: translate3d(10px, -25px, -10px) rotateY(30deg); */
   /* transform:  rotateZ(30deg); */
-  transform: translate3d(10px, -25px, -10px)
+  // transform: translate3d(10px, -55px, -10px)
+  transform-origin: top;
+  transform: translate3d(10px, -95px, -30px)
              rotateY(1deg)
              rotateX(-1deg);
   /* opacity: 0.85; */
@@ -439,10 +452,32 @@ button:hover .blur-bg, button:active .blur-bg,
 .debug-layers {         box-shadow: 0 0 0 1px #6d8; }
 .debug-layers div {     box-shadow: 0 0 0 1px #3bf; }
 .debug-layers section { box-shadow: 0 0 0 1px #fb5; }
-.debug-layers .media {  box-shadow: 0 0 0 2px #f62; }
+.debug-layers .media img video {  box-shadow: 0 0 0 2px #f62; }
 
 .inline { display: inline; }
 .flex { display: flex; }
 .box-regular { box-shadow: 2px 1px 17px 7px var(--box-regular-color); }
 .box-faint {   box-shadow: 2px 1px 17px 7px var(--box-faint-color); }
 
+@keyframes blinking {
+	20%     { opacity:   0%;
+	} 40%  { background-position: 100%;
+	} 70%  { background-position: 50%;
+	} 80% { background-position: 0%;
+	}
+}
+.blinking {
+  animation: blinking 1s infinite;
+}
+
+@keyframes inverse {
+	50%     { filter: invert(1); }
+}
+@keyframes brighten {
+	0%     { filter: brightness(100%); }
+	50%     { filter: brightness(250%); }
+	80%     { filter: brightness(30%); }
+}
+@keyframes darken {
+	40%     { filter: brightness(0.3); }
+}

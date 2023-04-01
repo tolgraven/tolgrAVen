@@ -1,3 +1,4 @@
+@use "sass:color";
 
 /* wanted to put in own file but wasnt compatible with live reload solution... */
 :root { /* general vars */
@@ -32,6 +33,7 @@
   --line-width-lg:     calc(1 / (1 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --line-width-vert:   2px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --scale:             1.0; /* px line-width drifts when font scales so must compensate... better way? */
+  --section-rounded:   0%;
   
   --fiddle-multiplier: 1; /* was 3. works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
   --left-marker:       calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
@@ -108,6 +110,28 @@
   --selection-accent: hsl(14, 75%, 80%, 0.7);
   --neutral-accent: #99aaee; /* link? */
   /* fixc bruv/box */
+  $red       : rgb(209, 132, 121);
+  $red-2     : rgb(175, 115, 112);
+  $red-3     : rgb(234, 154, 152);
+  $green     : rgb(180, 184, 141);
+  $green-2   : rgb(139, 140, 99) ;
+  $green-3   : rgb(204, 218, 168);
+  $yellow    : rgb(218, 189, 122);
+  $yellow-2  : rgb(208, 175, 128);
+  $yellow-3  : rgb(217, 200, 148);
+  $blue      : rgb(118, 146, 171);
+  $blue-2    : rgb(128, 160, 179);
+  $blue-3    : rgb(166, 192, 205);
+  $purple    : rgb(189, 151, 157);
+  $purple-2  : rgb(175, 133, 137);
+  $purple-3  : rgb(217, 183, 183);
+  $aqua      : rgb(145, 184, 164);
+  $aqua-2    : rgb(154, 180, 153);
+  $aqua-3    : rgb(182, 209, 180);
+  $orange    : rgb(204, 166, 135);
+  $orange-2  : rgb(219, 161, 132);
+  $orange-3  : rgb(217, 165, 138);
+  
   --red       : rgb(209, 132, 121);
   --red-2     : rgb(175, 115, 112);
   --red-3     : rgb(234, 154, 152);
@@ -129,6 +153,7 @@
   --orange    : rgb(204, 166, 135);
   --orange-2  : rgb(219, 161, 132);
   --orange-3  : rgb(217, 165, 138);
+  
   
   --dark-1:     hsl(var(--hue-1),  7%,  var(--lum-dark-1));
   --dark-1-2:   hsl(var(--hue-1),  7%,  var(--lum-dark-1-2));
