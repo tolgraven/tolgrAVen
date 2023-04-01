@@ -162,17 +162,21 @@
                (when active-user
                  [add-comment-btn path :reply])]]
              
-             [:div.blog-comment-expansion.center-content
+             [:div.blog-comment-expansion
               (when (false? @full?)
                 [:<>
+                 [ui/appear-anon "opacity"
+                  [:div.fade-to-black.bottom
+                  ; {;:style {:opacity (if @show-expand-to-full? 0.5 1.0)} ; wont animate so useless fix or nuke
+                  {:style {:z-index "0"}
+                   :on-mouse-over #(reset! show-expand-to-full? true)
+                   :on-mouse-leave #(js/setTimeout (fn []
+                                                     (reset! show-expand-to-full? false))
+                                                   2000)}]]
                  (when @show-expand-to-full?
                    [:button.blog-comment-view-full-btn
                     {:on-click #(reset! full? true)}
-                    [:i.fa.fa-angle-down]])
-                 [:div.fade-to-black.bottom
-                  {;:style {:opacity (if @show-expand-to-full? 0.5 1.0)} ; wont animate so useless fix or nuke
-                   :on-mouse-over #(reset! show-expand-to-full? true)
-                   :on-mouse-out #(reset! show-expand-to-full? false)}]])
+                    [:i.fa.fa-angle-down]])])
               (when @full?
                 [:button.blog-comment-view-full-btn.blog-comment-view-less-btn
                  {:on-click #(reset! full? false)}
