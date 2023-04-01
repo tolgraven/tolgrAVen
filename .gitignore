@@ -10,7 +10,7 @@ test-config.edn
 /.lein-*
 profiles.clj
 /.env
-.nrepl-port
+.nrepl-port*
 
 /node_modules
 /log
@@ -24,3 +24,4 @@ resources/public/js/app.js
 /pg/
 /trash
 .google-oath
+resources/docs/codox/
