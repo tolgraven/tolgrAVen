@@ -49,6 +49,7 @@
                                     (reset! selection-end (inc (count new)))))
            caret-height (* 1.6 (max 0.(- 1.0 (* 0.03 selection-len) )))]
    [:div.search-input-container
+    {:class (when-not open? "closed")}
     
     [:div.search-query-visible
      {:style {:height height }}
@@ -103,7 +104,9 @@
        :incremental true
        :style {:opacity 0
                :width width ;:min-width width :max-width width
-               :height height ;:min-height height :max-height height
+               ; :height height 
+               :min-height height
+               :max-height height
                :padding (when (or (zero? width) (zero? height)) 0)
                :border (when (or (zero? width) (zero? height)) 0)}
        :placeholder (or placeholder "Search") ; might want "Search for..." like
@@ -249,7 +252,7 @@
        [input ["blog-posts" "blog-comments"]
         :model (rf/subscribe [:search/get-query "blog-posts"])
         :open? @open?
-        :height (if @open? "2em" 0)]
+        :height (if @open? "2em" "2em")]
        [suggestions ["blog-posts" "blog-comments"]]
        [instant-results @open?]
        ])))

@@ -4,10 +4,11 @@
   border: 0;
   max-height: 0;
   overflow: hidden;
-  transition: all 0.5s ease;
+  transition: all 0.4s ease;
 
   &.search-ui-open {
-    max-height: 500vh;
+    transition: all 1.8s ease;
+    max-height: 80vh;
     overflow: initial;
   }
 }
@@ -28,13 +29,23 @@
   width: calc(100% - 2 * var(--line-width));
   display: flex;
   position: sticky;
+  transition: all 0.3s ease;
   top: calc(var(--line-width) + var(--header-height-current));
   margin-left: var(--line-width);
+  margin-right: calc(-1 * var(--line-width));
+  margin-bottom: calc(-1 * var(--line-width));
   z-index: 10;
-  background: hsla(270deg, 10%, var(--lum-bg-3), 0.5);
-  backdrop-filter: blur(3px);
+  background-color: var(--bg-1);
+  border-bottom: var(--line-width) solid var(--line-color);
+  border-right: var(--line-width) solid var(--bg-1);
   overflow: hidden;
   
+  &.closed {
+    transition: all 0.35s;
+    margin-top: calc(-20 * var(--line-width));
+    border-bottom: calc(20 * var(--line-width)) solid var(--line-color);
+  }
+
   .search-input-info { // "BETA"
     position: absolute;
     right: 3em;
@@ -65,7 +76,7 @@
     position: absolute;
     width: 100%;
 
-    transition: all 0.00s ease;
+    transition: all 0.95s ease;
     margin: 0;
     background: transparent;
     color: var(--fg-1);
@@ -85,7 +96,7 @@
 
   .search-caret {
     background: var(--fg-1);
-    opacity: 0.45;
+    opacity: 0.35;
     transition: all 0.2s ease;
     border: 2px solid var(--yellow-2);
     box-shadow: 0px 0px 5px 5px hsla(0, 10%, 70%, 0.2);
@@ -143,7 +154,9 @@
 }
 
 .search-instant-results {
+  max-height: 80vh;
   overflow-y: scroll;
+  z-index: 0;
   background-color: var(--bg-2);
   border: var(--line-width) solid var(--line-color);
   
