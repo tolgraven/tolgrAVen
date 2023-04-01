@@ -75,14 +75,28 @@
            [:span.search-letter letter]])])
      
      (when-not (string/blank? (:match suggestion))
-      [:span.search-input.search-input-autocomplete
-       {:style {:min-height height
-                :white-space :nowrap}}
-       (-> (str #_(-> (get suggestion :query "")
-                     (string/replace  #"\w" " ")) ; get as many spaces as there were letters
-                 (get suggestion :rest ""))
-            (string/replace #"\n.*" "")
-            (string/replace #"^(.{0,30})(.*)" "$1..."))])]
+      (let [words (-> (str #_(-> (get suggestion :query "")
+                            (string/replace  #"\w" " ")) ; get as many spaces as there were letters
+                            (get suggestion :rest ""))
+                       (string/replace #"\n.*" "")
+                       (string/replace #"^(.{0,40})(.*)" "$1...")
+                       (string/replace query "")
+                       seq)
+             [char1 others] [(first words) (rest words)]]
+        [:span.search-input-autocomplete
+         {:style {:white-space :pre-wrap
+                  :display :inline-flex}}
+         [:span.first-char
+          char1]
+         (for [letter others] ; causes issues with spacing? nice lil zoom effect though, figure out.
+           [ui/appear-anon "slide-in faster"
+            [:span
+             {:style {:min-height height}}
+             letter]])
+         #_[:span.search-input
+          {:style {:min-height height
+                   :white-space :nowrap}}
+          others]]))]
      
      [:input#search-input.search-input ;problem if multiple search boxes on same page tho
       {:type "search"

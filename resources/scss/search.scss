@@ -65,7 +65,7 @@
     position: absolute;
     width: 100%;
 
-    transition: all 0.25s ease;
+    transition: all 0.00s ease;
     margin: 0;
     background: transparent;
     color: var(--fg-1);
@@ -85,10 +85,10 @@
 
   .search-caret {
     background: var(--fg-1);
-    opacity: 0.6;
+    opacity: 0.45;
     transition: all 0.2s ease;
     border: 2px solid var(--yellow-2);
-    box-shadow: 0px 0px 5px 5px hsla(0, 10%, 70%, 0.3);
+    box-shadow: 0px 0px 5px 5px hsla(0, 10%, 70%, 0.2);
     z-index: -1;
   }
   .search-caret-under {
@@ -99,10 +99,20 @@
 
   .search-input-autocomplete {
     display: inline;
-    z-index: -1;
-    color: var(--fg-6);
-    opacity: 0.7;
-    font-family: 'Fira Code', monospace;
+    div {
+      display: inline;
+    }
+    span {
+      display: inline;
+      z-index: 1;
+      color: var(--fg-6);
+      opacity: 0.7;
+      font-family: 'Fira Code', monospace;
+
+      &.first-char {
+        animation: darken 2.0s infinite 0.25s;
+      }
+    }
   }
 }
 

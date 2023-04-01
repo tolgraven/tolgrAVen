@@ -32,13 +32,18 @@
 
 (rf/reg-event-fx :search/search
   (fn [{:keys [db]} [_ collection query query-by opts & [no-quote?]]]
-    (let [{:keys [api_key host port]} (get-in db [:search :auth])
+    (when query ; search event sometimes sent with ""
+     (let [{:keys [api_key host port]} (get-in db [:search :auth])
           query' (string/replace query #"(\w*)\s" "\"$1\" ")
           query-by (string/join "," query-by)
           url (str (get-host host port)
                    "/collections/" collection
                    "/documents/search")]
-      {:dispatch-n
+       {:db (-> db ; store directly instead of new event just to cut every ms
+                (assoc-in [:search :previous-query collection]
+                          (get-in db [:search :query collection])) ; store last query so can fallback results to it while loading
+                (assoc-in [:search :query collection] query))
+       :dispatch-n
        [(when-not (string/blank? query)
           [:http/get {:uri url
                       :headers {header-type api_key}
@@ -49,7 +54,7 @@
                                          opts)}
            [:search/store-search-response [collection query] query-by opts no-quote?]
            [:diag/new :debug "Search error"]])
-        [:search/latest-query collection query]]})))
+        #_[:search/latest-query collection query]]}))))
 
 
 (rf/reg-event-fx :search/multi-search
