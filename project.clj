@@ -78,7 +78,8 @@
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
                  [day8.re-frame/async-flow-fx "0.3.0"]
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
-                 [com.degel/re-frame-firebase "0.10.0-SNAPSHOT" :exclusions [args4j]]
+                 ; [com.degel/re-frame-firebase "0.10.0-SNAPSHOT" :exclusions [args4j]]
+                 [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j]]
                  [reagent "1.1.1"]
                  [cljsjs/react "17.0.2-0"]
                  [cljsjs/react-dom "17.0.2-0"]
