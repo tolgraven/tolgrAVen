@@ -17,3 +17,5 @@ so read their docs and find out how to set that up hah.
     
 Ideally all that should remain is setting some var to specify admin account, then let that account
 set others as admins or bloggers etc from an in-page UI.
+
+[Import data from prod to emulators](https://medium.com/firebase-developers/how-to-import-production-data-from-cloud-firestore-to-the-local-emulator-e82ae1c6ed8)

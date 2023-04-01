@@ -11,7 +11,7 @@ Install typesense-cli,
 `npm link` for global access    
 make an api key limited to search:    
     
-```
+```shell
 typesense --key --new \
           '{
             "description": "Search-only blog key.",
