@@ -26,7 +26,7 @@
      [(System/getenv "AUTH_USER") (System/getenv "AUTH_PASS")]))
 
 ; file upload: 
-(def resource-path "resources/public/img/uploads/")
+(def upload-path "resources/public/img/uploads/")
 
 (defn file-path [path & [filename]]
   (java.net.URLDecoder/decode
@@ -98,6 +98,9 @@
                               #_plain-text-header)))}]
 
    ["/firebase-settings" ;XXX obviously needs to be behind basic auth. well no proper auth because otherwise same issue of giving client info. whole lot better than having in code tho...
+    ; OBVIOUSLY NOT IN THIS INSTANCE ALSO ALL KEYS GOING TO CLIENT WILL ALWAYS BE THEIRS.
+    ; this is why stuff is scoped :P
+    ; anyways leave this in the concept of sending env stuff, but especially modded edn stuff, to client surely useful later.
     {;:middleware [#(wrap-basic-authentication % authenticated?)] ; not enough need to hook it up
      :get (fn [_]
             (-> "firebase/firebase-project.edn"
@@ -134,7 +137,7 @@
              :parameters {:multipart {:file multipart/temp-file-part}}
              :responses {200 {:body {:name string?, :size int?}}}
              :handler (fn [{{{:keys [file]} :multipart} :parameters}]
-                        (upload-file resource-path file)
+                        (upload-file upload-path file)
                         {:status 200
                          :body {:name (:filename file)
                                 :size (:size file)}})}}]
