@@ -115,7 +115,7 @@
                                       Main focus is functional programming and web development, primarily front-end."
                               :education
                               [{:from 2004, :to 2007, :what "Natural Science program, mathematics and computer science", :how ["3.96 (19.8) GPA"], :where "Kärrtorps gymnasium" :logo "img/logo/karrtorp-logo.jpg" :color "var(--purple)"}
-                               {:from 2007, :to 2009, :what "Industrial Economics and Management", :how [], :where "Royal Institute of Technology" :logo "img/logo/KTH-logo.jpg" :color "var(--blue)"}
+                               {:from 2007, :to 2009, :what "Industrial Economics and Management", :how [], :where "Royal Institute of Technology" :logo "img/logo/KTH-logo.jpg" :color "var(--blue-2)"}
                                {:from 2012, :to 2014, :what "Musicology (60hp)", :how [], :where "Stockholm University" :logo "img/logo/su-logo.png" :color "var(--yellow)"}
                                {:from 2019, :to 2020, :what "Full stack web development", :how [], :where "Chas Academy" :logo "img/logo/chas-logo.png" :color "var(--green)"}
                                {:from 2020, :to 2023 , :what "Bachelor programme, Computer Science", :how ["remote"]  :where "Stockholm University" :logo "img/logo/su-logo.png" :color "var(--yellow)"}]
@@ -128,7 +128,7 @@
 Fotbollskanalen Europa, Club Calcio and TV4Nyheterna in a variety of roles."], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)" :level 1}
                                {:from 2007, :to 2018, :what "TV4", :position "Many different positions, expand for details", :how ["Mainly assistant editor and video editor but on project basis also editor, 
 producer, reporter, PA, graphics technician, music administrator etc"] :where "Stockholm" :logo "img/logo/TV4-logo.svg" :color "var(--red-2)" :level 0}
-                               {:from 2008  :to 2011  :what "Royal Institute of Technology" :position "Programming lab/teaching assistant" :how ["Python, C++, Java"] :logo "img/logo/KTH-logo.jpg" :color "var(--blue)" :level 2}
+                               {:from 2008  :to 2011  :what "Royal Institute of Technology" :position "Programming lab/teaching assistant" :how ["Python, C++, Java"] :logo "img/logo/KTH-logo.jpg" :color "var(--blue-2)" :level 2}
                                {:from 2010, :to 2018, :what "TV4 Sport", :position "Junior producer & live graphics team leader" :how ["Live graphics team leader", "Junior producer", ""], :where "Stockholm" :logo "img/logo/TV4Sport-logo.png" :color "var(--orange)" :level 1}
                                {:from 2012, :to 2016, :what "A number of clients", :position "Freelance" :how ["SvT", "Endemol", "Svenska Spel",  "Nyhetsbolaget" "C More" "Ericsson Broadcast Systems", "2AM", "Oh my!", "and more"], :where "Stockholm"  :color "var(--fg-1)" :level 2}
                                {:from 2014, :to 2018, :what "TV4 Sport", :position "Developer" :how ["Developed custom creative tech solutions, generally as a response to IT department or tech suppliers saying a requested feature or workflow wasn’t possible on our tech stack.
@@ -178,13 +178,6 @@ producer, reporter, PA, graphics technician, music administrator etc"] :where "S
                           :tunes ["pop-music-for-cool-people-sketch-1-session-1"
                                   "stateless-nearing-completion-messy-mix"
                                   "a-taste-of-what-i-will-sound-like-live"]}
-
-             :article-links [{:title "A link thingy"    ;fix autograbber!
-                              :text "maybe line or two" ;fix autograbber!
-                              :url "/about"}
-                             {:title "Second time's the charm"    ;fix autograbber!
-                              :text "Well what then now" ;fix autograbber!
-                              :url "/blog"}]
 
              :gallery [{:src "img/joen-mixer.jpg" :alt "My actual first web project"}
                        {:src "img/live-session-small.jpg" :alt "Ableton Live"}
@@ -246,7 +239,8 @@ producer, reporter, PA, graphics technician, music administrator etc"] :where "S
                         :settings {:timestampsInSnapshots true}} ; for old version
              :github {:user "tolgraven"
                       :repo "tolgraven"}
-             :hud {:timeout 30 :level :info}}})
+             :hud {:timeout 30 :level :info}}
+   :cookie-notice {:a :map}})
 
 
 (rf/reg-event-db :init-db
