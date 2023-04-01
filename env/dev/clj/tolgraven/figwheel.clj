@@ -4,7 +4,6 @@
   ; #_(:require #_[figwheel-sidecar.repl-api :as ra]))
 
 (defn start-fw []
-  #_(fw/start)
   (fw/start-figwheel!))
 
 (defn stop-fw []

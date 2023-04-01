@@ -1,4 +1,7 @@
 {:projectId     "tolgraven-8fd35"
  :authDomain    "tolgraven-8fd35.firebaseapp.com"
  :databaseURL   "https://tolgraven-8fd35.firebaseio.com"
- :storageBucket "tolgraven-8fd35.appspot.com"}
+ :storageBucket "tolgraven-8fd35.appspot.com"
+ :messagingSenderId "506323024574",
+ :appId             "1:506323024574:web:dd4124cc6018a121bf7cef",
+ :measurementId     "G-Y8H6RLZX3V"}

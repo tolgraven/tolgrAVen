@@ -1,0 +1,10 @@
+{:main tolgraven.core
+ :http-server-root "public"
+ :server-port 4001
+ :ring-handler tolgraven.handler/app-routes ;Embed ring handler in figwheel http-kit server, for simple ring servers, if it doesn't work for you just run your own (see lein-ring)
+ :server-logfile "log/figwheel-logfile.log"
+ :nrepl-port 7002
+ :css-dirs ["resources/public/css"]
+ :nrepl-middleware [cider.piggieback/wrap-cljs-repl]
+ :on-jsload "tolgraven.core/mount-components" ; only this bc dev/app calls init! (and more!) which also gets round multi-remount conundrum i solved uglily in cue-db... very reasonable to keep dev things away from general codebase so auto disabled
+ :wait-time-ms 15 }

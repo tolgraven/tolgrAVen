@@ -20,7 +20,7 @@
 
                  [markdown-clj "1.11.0"]
 
-                 [metosin/jsonista "0.3.5"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
+                 [metosin/jsonista "0.3.6"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
                  [metosin/muuntaja "0.6.8"]
                  [metosin/reitit "0.5.18" :exclusions [org.clojure/spec.alpha com.fasterxml.jackson.core/jackson-core com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.core/jackson-annotations]]
 
@@ -41,12 +41,14 @@
 
                  [ring/ring-core "1.9.5"]
                  [ring/ring-defaults "0.3.3"]
-                 [bk/ring-gzip "0.3.0" :exclusions [clojure-complete]]
+                 ; [bk/ring-gzip "0.3.0" :exclusions [clojure-complete]]
+                 [amalloy/ring-gzip-middleware "0.1.4"]
                  [ring-partial-content "2.0.1"] ; handle safari video playback / 206 response
                  [ring-basic-authentication "1.1.1"]
                  [radicalzephyr/ring.middleware.logger "0.6.0"]
                  [metosin/ring-http-response "0.9.3"]
                  [toyokumo/ring-middleware-csp "0.3.0"]
+                 [ring-ratelimit "0.2.2"] ; probably useful if I end up working on some popular website. so probably not anytime soon lol
                  
                  [optimus "2022-02-13"] ;optimization of assets
                  [optimus-img-transform "0.3.1"]
@@ -61,6 +63,8 @@
                  ; [cljsjs/smoothscroll-polyfill "0.4.0-0"]
 
                  [appliedscience/js-interop "0.2.5"]
+                 
+                 [differ "0.3.3"] ; diff with patch to apply
 
                  [re-frame "1.2.0"]
                  ; [kee-frame "0.4.0" :exclusions [args4j]]
@@ -74,7 +78,7 @@
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
                  [day8.re-frame/async-flow-fx "0.3.0"]
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
-                 [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j]]
+                 [com.degel/re-frame-firebase "0.10.0-SNAPSHOT" :exclusions [args4j]]
                  [reagent "1.1.1"]
                  [cljsjs/react "17.0.2-0"]
                  [cljsjs/react-dom "17.0.2-0"]
@@ -100,11 +104,12 @@
   :target-path "target/%s/"
   :main ^:skip-aot tolgraven.core
 
-  :plugins [[lein-cljsbuild "1.1.7"]
+  :plugins [[lein-cljsbuild "1.1.8"]
             [lein-sassc "0.10.4"]
             [lein-autoprefixer "0.1.1"]
             [lein-auto "0.1.2"]
             [lein-codox "0.10.8"]
+            ; [venantius/ultra "0.5.4"]
             ; [lein-npm "0.6.2"]; "no more lein-npm, even few packages gives hundreds of deps total and slows down figwheel reloads something fierce"
             ; [lein-kibit "0.1.2"]
             ]
@@ -114,12 +119,15 @@
     :style "nested"
     :import-path "resources/scss"}]
   :autoprefixer {:src "resources/public/css/tolgraven"
-                 :browsers "> 5%, Last 2 versions"} ;; optional
+                 :browsers "> 5%, Last 2 versions"
+                 :output-to "resources/public/css/tolgraven/main.min.css"} ;; optional
   :auto
   {"sassc" {:file-pattern #"\.(scss|sass)$" :paths ["resources/scss"]}
    "autoprefixer" {:file-pattern #"\.(css)$" :paths ["resources/public/css/tolgraven"]}}
   
   :aliases {"cssbuild" ["do" ["sassc" "once"] "autoprefixer"]}
+  ; :aliases {"fig" ["trampoline" "run" "-m" "figwheel.main"]
+  ;           "build-dev" ["trampoline" "run" "-m" "figwheel.main" "-b" "dev" "-r"]}
   :clean-targets ^{:protect false}
   [:target-path
    :compile-path
@@ -130,9 +138,10 @@
   :figwheel
   {:http-server-root "public"
    :server-port 4001
+   :nrepl-port 7002
    :ring-handler tolgraven.handler/app-routes ;Embed ring handler in figwheel http-kit server, for simple ring servers, if it doesn't work for you just run your own (see lein-ring)
    :server-logfile "log/figwheel-logfile.log"
-   :nrepl-port 7002
+   :wait-time-ms 15
    :css-dirs ["resources/public/css"]
    :nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
 
@@ -145,56 +154,69 @@
   :profiles
   {:dev           [:project/dev :profiles/dev]
    :test          [:project/dev :project/test :profiles/test]
+   :stage         [:uberjar :profiles/stage]
 
    :project/dev  {:jvm-opts ["-Dconf=dev-config.edn"]
-                  :dependencies [[binaryage/devtools "1.0.5"]
+                  :dependencies [[binaryage/devtools "1.0.6"]
                                  ; [binaryage/dirac "1.6.1"]
                                  [cider/piggieback "0.5.3"]
                                  [doo "0.1.11"]
                                  [figwheel-sidecar "0.5.20" :exclusions [args4j]]
-                                 ; [com.bhauman/figwheel-main "0.2.11"]
+                                 ; [com.bhauman/figwheel-main "0.2.18"]
                                  ; [com.bhauman/rebel-readline-cljs "0.1.4"] ;; optional but recommended
                                  ; [alembic "0.3.2"]
                                  [pjstadig/humane-test-output "0.11.0"]
                                  [prone "2021-04-23"]
                                  ; [re-frisk "1.3.4"  :exclusions [org.clojure/core.async org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize org.clojure/core.cache]]
-                                 [re-frisk "1.5.2"]
+                                 ; [re-frisk "1.6.0"]
                                  ; [re-frisk-remote "1.5.2"]
-                                 ; [day8.re-frame/re-frame-10x "0.7.0"]
-                                 ; [day8.re-frame/tracing "0.6.0"]
+                                 [day8.re-frame/re-frame-10x "1.2.7"]
+                                 [djblue/portal "0.28.0"]
+                                 ; [day8.re-frame/tracing "0.6.2"]
                                  [ring/ring-devel "1.9.5"]
                                  [ring/ring-mock "0.4.0"]]
-                  :plugins      [[com.jakemccrary/lein-test-refresh "0.24.1"]
-                                 [lein-doo "0.1.11"]
-                                 [lein-figwheel "0.5.20"]]
+                  :plugins      [#_[com.jakemccrary/lein-test-refresh "0.24.1"]
+                                 #_[lein-doo "0.1.11"]
+                                 #_[lein-figwheel "0.5.20"]]
                   :cljsbuild
                   {:builds
                    {:app
+                    
                     {:source-paths ["src/cljs" "src/cljc" "env/dev/cljs"]
-                     :figwheel {:on-jsload "tolgraven.core/mount-components"} ; only this bc dev/app calls init! (and more!) which also gets round multi-remount conundrum i solved uglily in cue-db... very reasonable to keep dev things away from general codebase so auto disabled
+                     :figwheel {:on-jsload "tolgraven.core/mount-components" ; only this bc dev/app calls init! (and more!) which also gets round multi-remount conundrum i solved uglily in cue-db... very reasonable to keep dev things away from general codebase so auto disabled
+                                }
                      :compiler
                      {:output-dir "resources/public/js/compiled/out"
                       :output-to "resources/public/js/compiled/app.js"
                       :asset-path "js/compiled/out"
+                      ; :init-fn tolgraven.core/init!
+                      
+                      ; :modules { 
+                      ;           :app {:entries #{tolgraven.core tolgraven.app}
+                      ;                  :output-to "resources/public/js/compiled/app.js"} }
+                      
+                      :language-in     :ecmascript-next
+                      :language-out    :ecmascript-next
                       :optimizations :none
+                      :infer-externs true
                       :parallel-build true ;or java only uses 100% cpu, gross
                       :recompile-dependents false
-                      ; :preloads [re-frisk-remote.preload devtools.preload day8.re-frame-10x.preload]
-                      :preloads [re-frisk.preload]
-                      ; :preloads [re-frisk-remote.preload]
-                      ; :preloads [devtools.preload day8.re-frame-10x.preload] ;can remove devtools preload cause have in app.cljs?
-                      :closure-defines {goog.DEBUG true "re_frame.trace.trace_enabled_QMARK_" true}
+                      :preloads [devtools.preload ;can remove devtools preload cause have in app.cljs?
+                                 day8.re-frame-10x.preload
+                                 #_re-frisk.preload #_re-frisk-remote.preload]
+                      :closure-defines {goog.DEBUG true
+                                        "re_frame.trace.trace_enabled_QMARK_" true}
                       :external-config
                       {:devtools/config
                        {;:features-to-install [:formatters :hints] ;add exception hints
                         :cljs-land-style "background-color: rgb(30, 30, 30, 0.5); color: #edc; border-radius: 7px;"
-                        :nil-style       "color: #d18479;"
-                        :keyword-style   "color: #76a2ab;"
-                        :integer-style   "color: #bd979d;"
-                        :float-style     "color: #bd979d;"
-                        :string-style    "color: #b4b88d;"
-                        :symbol-style    "color: #edc;"
-                        :bool-style      "color: #d18479;"
+                        :nil-style       "background-color: #282828; color: #d18479;"
+                        :keyword-style   "background-color: #282828; color: #76a2ab;"
+                        :integer-style   "background-color: #282828; color: #bd979d;"
+                        :float-style     "background-color: #282828; color: #bd979d;"
+                        :string-style    "background-color: #282828; color: #b4b88d;"
+                        :symbol-style    "background-color: #282828; color: #edc;"
+                        :bool-style      "background-color: #282828; color: #d18479;"
                         :print-config-overrides false}
                        :dirac.runtime/config
                        { ; foreground colors
@@ -216,6 +238,7 @@
                         :rich-text-ansi-style-46 "background-color: rgba(0, 128, 128, 0.2)"          ; cyan
                         :rich-text-ansi-style-47 "background-color: rgba(128, 128, 128, 0.2)"}}
                       :source-map true
+                      :source-map-timestamp true
                       :main "tolgraven.app" ;what is this why .app? ;; bc env/dev/app.cljs thingy. calls init
                       :pretty-print true}}}} ;} ;}
 
@@ -247,7 +270,7 @@
                       :optimizations :whitespace
                       :pretty-print true}}}}}
 
-   :uberjar {:omit-source true
+   :uberjar {;:omit-source true
              :prep-tasks ["compile"
                           ["cljsbuild" "once" "min"]
                           ["codox"]]
@@ -258,6 +281,7 @@
                            {:output-dir "resources/public/js/compiled"
                             :output-to "resources/public/js/compiled/app.js"
                             :source-map "resources/public/js/compiled/app.js.map"
+                            :source-map-timestamp true
                             :asset-path "js/compiled/out"
                             :closure-defines {goog.DEBUG false}
                             :optimizations :advanced
@@ -277,4 +301,5 @@
              :resource-paths ["env/prod/resources"]}
 
    :profiles/dev {}
-   :profiles/test {}})
+   :profiles/test {}
+   :profiles/stage {}})

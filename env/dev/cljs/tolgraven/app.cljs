@@ -10,19 +10,18 @@
 
 (day8.re-frame-10x/show-panel! false) ; auto hide by default since often test in private window or on mobile where cant press ctrl-h...
 
-(extend-protocol IPrintWithWriter
+(extend-protocol IPrintWithWriter ; get interactive prints in console
   js/Symbol
   (-pr-writer [sym writer _]
     (-write writer (str "\"" (.toString sym) "\""))))
 
+(enable-console-print!)
+; (devtools/install!) ; no need when use preload
+
 (set! s/*explain-out* expound/printer)
 
-(enable-console-print!)
 
-(devtools/install!)
-
-
-(defn portal []
+(defn portal [] ; instead open by ctrl alt x something
   (p/open))
 
 (add-tap #'p/submit)
