@@ -73,7 +73,7 @@
 (rf/reg-sub :blog/posts-with-tag
  :<- [:blog [:posts]]
  (fn [posts [_ tag]]
-  (vals
+  (->
    (select-keys
     posts
     (-> (reduce (fn [m [k v]]
@@ -83,7 +83,11 @@
                   m)))
             {} posts)
         reverse
-        keys)))))
+        keys))
+   vals
+   (sort-by :ts))))
+
+; (rf/subscribe [:blog/posts-with-tag "clojure"])
 
 (rf/reg-sub :blog/all-tags ; TODO probably keep an array of them so dont have to trawl all posts to get all tags...
  :<- [:blog [:posts]]
@@ -200,6 +204,7 @@
                                :doc-changes true }])])
  (fn [[post] [_ _]]
    (:comments post)))
+
 
 (rf/reg-sub :comments/for-q-flat
  (fn [[_ blog-id maybe-parent-comment-id]]
