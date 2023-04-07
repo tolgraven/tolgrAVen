@@ -84,7 +84,7 @@
                                "clojurescript in the house"] ]}
 
              :strava {:story "I used to be in really good shape, before stomach issues and multiple surgeries.
-                              Cycling became my way back to fitness, and I've gone pretty much all in. Here you can follow my progress, or lack of it."
+                              Cycling became my way back to fitness, and I've gone pretty much all in. Here you can follow my progress, or lack of it - I'm a part-time bike messenger which doesn't lend itself to the greatest avg speeds."
                       :background "img/strava-heatmap-new.jpg"
                       :profile-url "https://www.strava.com/athletes/20725659"
                       :gear-info {"b9423162" {:img "img/cargo.jpg"
