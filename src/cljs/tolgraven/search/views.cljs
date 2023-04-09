@@ -16,20 +16,47 @@
                   (rf/dispatch [:search/state [:open?]
                                 (not @open?)])
                   (when-not @open? ; going from closed to open
-                    (rf/dispatch [:focus-element "search-input"])))}
+                    (r/after-render #(js/setTimeout
+                      (fn []
+                        (some-> "search-input" util/elem-by-id .focus))
+                      0))))}
      [:img {:src "svg/search-ico.svg"
             :style {:width "1.2em" :height "1.2em"
                     :filter "invert(100%)"}}]]))
 
-(defn input "Search input field"
+(defn completion
+  [query suggestion height]
+  (when-not (string/blank? (:match suggestion))
+    (let [words (-> (str #_(-> (get suggestion :query "")
+                         (string/replace  #"\w" " ")) ; get as many spaces as there were letters
+                         (get suggestion :rest ""))
+                    (string/replace #"\n.*" "")
+                    (string/replace #"^(.{0,40})(.*)" "$1...")
+                    (string/replace query "")
+                    seq)
+          [char1 others] [(first words) (rest words)]]
+      [:span.search-input-autocomplete
+       {:style {:white-space :pre-wrap
+                :display :inline-flex}}
+       [:span.first-char char1]
+       (for [letter others] ; causes issues with spacing? nice lil zoom effect though, figure out.
+         [ui/appear-anon "slide-in faster"
+          [:span
+           {:style {:min-height height}}
+           letter]])])))
+
+(defn box "Search input field"
  [collections & {:as args :keys [query-by model on-enter placeholder
                                  width height open? opts]}]
- (let [external-model (r/atom model)
-       internal-model (r/atom (or @model ""))
+ (let [internal-model (r/atom (or @model ""))
        char-width 0.61225
        div-ref (r/atom nil)
        caret (r/atom 0)
        selection-end (r/atom 0)
+       caret-watch (add-watch internal-model :caret-watch
+                              (fn [rf k old new]
+                                (reset! caret (inc (count new)))
+                                (reset! selection-end (inc (count new)))))
        set-caret (fn [target]
                    (reset! caret (.-selectionStart target))
                    (reset! selection-end (.-selectionEnd target))) ]
@@ -43,10 +70,6 @@
            query @(rf/subscribe [:search/get-query (first collections)])
            caret-pos (str (* char-width @caret) "em")
            selection-len (* char-width (abs (- @caret @selection-end)))
-           caret-watch (add-watch internal-model :caret-watch
-                                  (fn [rf k old new]
-                                    (reset! caret (inc (count new)))
-                                    (reset! selection-end (inc (count new)))))
            caret-height (* 1.6 (max 0.(- 1.0 (* 0.03 selection-len) )))]
    [:div.search-input-container
     {:class (when-not open? "closed")}
@@ -54,7 +77,7 @@
     [:div.search-query-visible
      {:style {:height height }}
      
-     [:label.search-caret.blinking.nomargin.nopadding
+     [:label.search-caret.nomargin.nopadding
       {:style {:position :absolute
                :width (str (max char-width selection-len) "em")
                :height (str caret-height "em")
@@ -75,29 +98,7 @@
           [ui/appear-anon "zoom fast"
            [:span.search-letter letter]])])
      
-     (when-not (string/blank? (:match suggestion))
-      (let [words (-> (str #_(-> (get suggestion :query "")
-                            (string/replace  #"\w" " ")) ; get as many spaces as there were letters
-                            (get suggestion :rest ""))
-                       (string/replace #"\n.*" "")
-                       (string/replace #"^(.{0,40})(.*)" "$1...")
-                       (string/replace query "")
-                       seq)
-             [char1 others] [(first words) (rest words)]]
-        [:span.search-input-autocomplete
-         {:style {:white-space :pre-wrap
-                  :display :inline-flex}}
-         [:span.first-char
-          char1]
-         (for [letter others] ; causes issues with spacing? nice lil zoom effect though, figure out.
-           [ui/appear-anon "slide-in faster"
-            [:span
-             {:style {:min-height height}}
-             letter]])
-         #_[:span.search-input
-          {:style {:min-height height
-                   :white-space :nowrap}}
-          others]]))]
+     [completion query suggestion height]]
      
      [:input#search-input.search-input ;problem if multiple search boxes on same page tho
       {:type "search"
@@ -181,61 +182,62 @@
 
 
 (defn instant-result-category "Wrapper for type of results/collection"
-  [collection component]
+  [collection component inner-class appear-class]
   (if-let [hits (:hits @(rf/subscribe [:search/results-for-query collection]))]
-    [component hits]
+    [:<>
+     (when (seq hits)
+       (for [hit hits
+             :let [{:keys [highlights document]} hit
+                   {:keys [id text]} document]]
+         ^{:key (str "search-result-" collection "-" id)}
+         [ui/appear-merge (str appear-class " fast")
+          [:div.search-instant-result
+           {:class inner-class}
+           [component highlights document]]]))]
+
     [ui/loading-spinner true]))
 
 
+; these should be provided by blog probably? and other respective modules
+; could generalize a tiny bit but tricky due to css structure
 (defn blog-post-results "Show hits that are blog posts"
-  [hits]
-  [:div.blog
-   (doall
-   (for [hit hits
-         :let [{:keys [highlights document]} hit
-               {:keys [id permalink title text user ts]} document]]
-     ^{:key (str "search-result-post-" id)}
-     [ui/appear-merge "zoom-y fast"
-      [:div.search-instant-result.blog-post
-       [:div.blog-post-header-main
-        [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
-         [:h2.blog-post-title title]]
-        [blog/posted-by id user ts]
-        [blog/tags-list document]]
-       (for [highlight highlights]
-         ^{:key (str "search-result-highlight-" (:snippet highlight))}
-         [ui/md->div (:snippet highlight)])]]))])
+  [highlights document]
+  (let [{:keys [id permalink title text user ts]} document]
+    [:<>
+     [:div.blog-post-header-main
+      [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
+       [:h2.blog-post-title title]]
+      [blog/posted-by id user ts]
+      [blog/tags-list document]]
+     (for [highlight highlights]
+       ^{:key (str "search-result-highlight-" (:snippet highlight))}
+       [ui/md->div (:snippet highlight)])]))
 
 (defn blog-comment-results "Show hits that are blog post comments"
-  [hits]
-  (when (seq hits)
-    [:div.blog-comments>div.blog-comments-inner
-     (doall
-      (for [hit hits
-            :let [{:keys [highlights document]} hit
-                  {:keys [id title text user ts]} document]]
-        ^{:key (str "search-result-comment-" id)}
-        [ui/appear-merge "zoom fast"
-         [:div.search-instant-result.blog-comment-around.flex
-          [:div.blog-comment-border]
-          [:section.blog-comment
-           [ui/user-avatar @(rf/subscribe [:user/user user])]
-           [:div.blog-comment-main
-            [:h4.blog-comment-title title]
-            [blog/posted-by id user ts] 
-            (for [highlight highlights]
-              ^{:key (str "search-result-highlight-" (:snippet highlight))}
-              [:div.blog-comment-text
-               [ui/md->div (:snippet highlight)]])]]]]))]))
+  [highlights document]
+  (let [{:keys [id title text user ts]} document]
+    [:<>
+     [:div.blog-comment-border]
+     [:section.blog-comment
+      [ui/user-avatar @(rf/subscribe [:user/user user])]
+      [:div.blog-comment-main
+       [:h4.blog-comment-title title]
+       [blog/posted-by id user ts] 
+       (for [highlight highlights]
+         ^{:key (str "search-result-highlight-" (:snippet highlight))}
+         [:div.blog-comment-text
+          [ui/md->div (:snippet highlight)]])]]]))
 
 (defn instant-results "Show results while searching"
   [open?]
   (let []
     (when (and open?
                (not (string/blank? @(rf/subscribe [:search/get-query "blog-posts"]))))
-      [:section.search-instant-results
-       [instant-result-category "blog-posts" blog-post-results]
-       [instant-result-category "blog-comments" blog-comment-results]])))
+      [:div.search-instant-results
+       [:div.blog
+        [instant-result-category "blog-posts" blog-post-results "blog-post" "zoom-y"]]
+       [:div.blog-comments>div.blog-comments-inner
+        [instant-result-category "blog-comments" blog-comment-results "blog-comment-around flex" "zoom"]]])))
 
 (defn full-results "More full complete and whatnot"
   [collection query])
@@ -249,7 +251,7 @@
        {:class (when @open? "search-ui-open")
         :ref #(when % (rf/dispatch [:search/init]))}
        
-       [input ["blog-posts" "blog-comments"]
+       [box ["blog-posts" "blog-comments"]
         :model (rf/subscribe [:search/get-query "blog-posts"])
         :open? @open?
         :height (if @open? "2em" "2em")]
