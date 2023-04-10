@@ -1,0 +1,90 @@
+
+.gpt {
+  font-size: 95%;
+
+  .gpt-messages {
+    max-height: 30em;
+    overflow-y: scroll;
+  }
+
+  .gpt-input {
+    margin-top: var(--space);
+
+    button {
+      margin-top: 0; // to align same size as input box
+    }
+  }
+  .gpt-description {
+    font-size: 90%;
+    color: var(--blue-2);
+  }
+}
+
+.gpt-message {
+  position: relative;
+  padding-bottom: 0.2em;
+  // display: flex;
+
+  > span {
+    margin-right: 0.5em;
+  }
+  
+  .gpt-message-text {
+    padding: 0.0em 0.4em;
+    border-radius: 8%;
+    background: linear-gradient(45deg, var(--bg-1), var(--bg-2));
+    border: 1px solid var(--bg-4);
+
+    &.gpt-message-prompt {
+      margin: 1em 0em;
+      padding: 0.6em;
+      display: flex;
+      width: fit-content;
+
+      > div, span {
+        margin-right: 0.8em;
+      }
+
+      .gpt-message-time {
+        position: relative;
+        right: 0;
+        font-size: 80%;
+        color: var(--fg-6);
+        flex: 0 0 auto;
+        align-self: center;
+
+        .gpt-message-time-exact {
+          position: absolute;
+          left: 0;
+          top: 0;
+          background: var(--bg-1);
+          width: 100%;
+
+        }
+      }
+      .gpt-message-user {
+        position: relative;
+        right: 0;
+        bottom: 0;
+        font-size: 85%;
+        color: var(--fg-4);
+        flex: 1 0 auto;
+        flex-direction: row-reverse;
+        align-self: center;
+
+        .user-avatar {
+          margin-left: 0.5em;
+          margin-right: 0.3em;
+          width: 1.5em;
+          height: 1.5em;
+        }
+      }
+    }
+
+    &.gpt-message-reply {
+      margin-left: calc(3 * var(--space));
+    }
+  }
+  
+}
+
