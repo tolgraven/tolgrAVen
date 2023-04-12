@@ -11,8 +11,10 @@
     [muuntaja.core :as m]
     [ring.util.http-response :as response]
     [taoensso.timbre :as timbre]
+    [clojure.data.json :as json2]
     [tolgraven.middleware.formats :as formats]
     [tolgraven.middleware.exception :as exception]
+    [tolgraven.services.gpt :as gpt]
     [clojure.java.io :as io]
     [clojure.string :as string]
     [clojure.edn :as edn])
@@ -78,24 +80,14 @@
                         response/ok
                         plain-text-header)))}]
 
-   ["/blog" {:summary "Get specific blog-post"
-             :parameters {:query {:id int?}}
-             :get (fn [{{{:keys [id]} :query} :parameters}]
-                    (-> "not"
-                        response/ok
-                        plain-text-header))}]
-   ["/blog/:id" {:get (fn [{{:keys [id]} :path-params}]
-                          (timbre/debug "Blog: " id (string? id))
-                    (-> "nor"
-                        response/ok
-                        #_plain-text-header))}]
-   ["/user/:id" {:get (fn [{{:keys [id]} :path-params}]
-                        (let [user "never" #_(db/get-user id)]
-                          (timbre/debug user)
-                          (-> (or user {})
-                              ; pr-str
-                              response/ok
-                              #_plain-text-header)))}]
+   ["/gpt"
+    {:post {:summary "Poll OpenAI API"
+            :parameters {:body {:messages coll?}}
+            ; :responses {200 {:body {:reply string?}}}
+            :handler (fn [{{{:keys [messages]} :body} :parameters :as params}]
+                       (let [reply (gpt/chat messages)]
+                         {:status 200
+                          :body reply}))}}]
 
    ["/firebase-settings" ;XXX obviously needs to be behind basic auth. well no proper auth because otherwise same issue of giving client info. whole lot better than having in code tho...
     ; OBVIOUSLY NOT IN THIS INSTANCE ALSO ALL KEYS GOING TO CLIENT WILL ALWAYS BE THEIRS.

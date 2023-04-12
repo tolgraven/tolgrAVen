@@ -3,7 +3,7 @@
   font-size: 95%;
 
   .gpt-messages {
-    max-height: 30em;
+    max-height: 50em;
     overflow-y: scroll;
   }
 
@@ -17,6 +17,28 @@
   .gpt-description {
     font-size: 90%;
     color: var(--blue-2);
+  }
+
+  .gpt-thread-container {
+    padding-bottom: var(--space-lg);
+  }
+}
+
+.gpt-message-user {
+  position: relative;
+  right: 0;
+  bottom: 0;
+  font-size: 85%;
+  color: var(--fg-4);
+  flex: 1 0 auto;
+  flex-direction: row-reverse;
+  align-self: center;
+
+  .user-avatar {
+    margin-left: 0.5em;
+    margin-right: 0.3em;
+    width: 1.5em;
+    height: 1.5em;
   }
 }
 
@@ -33,19 +55,21 @@
     padding: 0.0em 0.4em;
     border-radius: 8%;
     background: linear-gradient(45deg, var(--bg-1), var(--bg-2));
-    border: 1px solid var(--bg-4);
+    border: 1px solid var(--bg-5);
+    margin: 1em 0em;
+    padding: 0.6em 1.0em;
 
     &.gpt-message-prompt {
-      margin: 1em 0em;
-      padding: 0.6em;
       display: flex;
       width: fit-content;
+      margin-right: calc(3 * var(--space));
 
       > div, span {
         margin-right: 0.8em;
       }
 
       .gpt-message-time {
+        margin-left: var(--space);
         position: relative;
         right: 0;
         font-size: 80%;
@@ -62,27 +86,11 @@
 
         }
       }
-      .gpt-message-user {
-        position: relative;
-        right: 0;
-        bottom: 0;
-        font-size: 85%;
-        color: var(--fg-4);
-        flex: 1 0 auto;
-        flex-direction: row-reverse;
-        align-self: center;
-
-        .user-avatar {
-          margin-left: 0.5em;
-          margin-right: 0.3em;
-          width: 1.5em;
-          height: 1.5em;
-        }
-      }
     }
 
     &.gpt-message-reply {
       margin-left: calc(3 * var(--space));
+      background: linear-gradient(45deg, var(--bg-4), var(--bg-3));
     }
   }
   
