@@ -32,7 +32,7 @@
                       [:strava/refresh (-> data :auth :refresh_token)])]})))
 
 (rf/reg-event-fx :strava/store-session
-  (fn [{:keys [db now]} [_ response]]
+  (fn [{:keys [db]} [_ response]]
     (let [data (walk/keywordize-keys response)]
       {:db (update-in db [:strava :auth] merge data)
        :dispatch-n [[:store-> [:strava :auth]
@@ -69,7 +69,7 @@
                   event
                   [:strava/on-error]]})))
 
-(rf/reg-event-fx :strava/on-error
+(rf/reg-event-fx :strava/on-error ;TODO parse error and refresh token if that's the issue
   (fn [{:keys [db]} [_ error]]
     {:db (update-in db [:content :strava :error] conj error)
      :dispatch [:diag/new :error "Strava error" error]}))

@@ -111,7 +111,7 @@
         "this website"]]]
         
      [:div#github-commits-box.github-commits-inner
-      [ui/input-text
+      [ui/input-text :id "github-commits-filter"
        :input-type "input.search"
        :placeholder "Search commits"
        :width "100%"

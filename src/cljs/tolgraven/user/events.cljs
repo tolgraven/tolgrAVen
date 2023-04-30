@@ -155,25 +155,27 @@
  (fn [{:keys [db]} [_ page]]
    {:dispatch [:href/update-current {:query {:userBox "true"}}] }))
 
-
+; (.-content (js/document.querySelector "meta[name=\"csrf-token\"]"))
+; (.-csrfToken js/window)
 (rf/reg-event-fx :user/upload-avatar ; save new avatar upload. So upload to server, get filename, use it to update user in db and store
  (fn [{:keys [db]} [_ file]] ;also inject active-user here, use for filename
    (let [filename (str "avatar-" (get-in db [:state :user]) ".png")]
      {:dispatch
-      [:http/post {:uri "/api/files/upload" ;could also upload to firebase. not sure if implemented in re-frame-firebase tho
-                   :format (ajax/text-request-format)
+      [:http/post {:uri "api/files/upload" ;could also upload to firebase. not sure if implemented in re-frame-firebase tho
+                   ; :headers {"X-CSRF-Token" (.-csrfToken js/window)}
+                   ; :format (ajax/text-request-format)
                    :body (doto
                            (js/FormData.)
                            (.append "id" "10")
                            (.append "file" file filename)) ;but would want (need! for extension lol) to extract the thing yo
                    :on-success [:user/save-avatar filename]}] })))
 
-(rf/reg-event-fx :user/save-avatar
+(rf/reg-event-fx :user/save-avatar [debug]
  (fn [{:keys [db]} [_ filename]]
    {:dispatch [:user/set-field (get-in db [:state :user])
                :avatar (str "img/uploads/" filename)]}))
 
-(rf/reg-event-fx :user/set-field
+(rf/reg-event-fx :user/set-field [debug]
  (fn [{:keys [db]} [_ user field value]]
    {:db (assoc-in db [:fb/users user field] value)
     :dispatch [:store-> [:users user]

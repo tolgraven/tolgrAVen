@@ -7,6 +7,7 @@
             [tolgraven.strava.subs]
             [tolgraven.instagram.subs]
             [tolgraven.chat.subs]
+            [tolgraven.gpt.subs]
             [tolgraven.github.subs]
             [tolgraven.search.subs]
             [tolgraven.docs.subs]
@@ -36,9 +37,8 @@
     (get-in db (into [:options] path))))
 
 (rf/reg-sub :debug
-  :<- [:state [:debug]]
-  (fn [debug [_ option]]
-    (get-in debug option)))
+  (fn [db [_ path]]
+    (get-in db (into [:state :debug] path))))
 
 (rf/reg-sub :exception
   (fn [db [_ path]]
@@ -121,8 +121,8 @@
     (prn carousel id)
     (get-in carousel [id :index] 0)))
 
-(rf/reg-sub :get-css-var
- (fn [_ [_ var-name]]
+(rf/reg-sub :get-css-var ; is obviously problematic (not pure, doesnt actually auto update(?)) so figure out way around
+ (fn [db [_ var-name]]
    (util/<-css-var var-name)))
 
 (rf/reg-sub :menu
@@ -207,6 +207,25 @@
                         #"/(\w.*)?(\?.*)?"
                         (str "/" "$1" "$2" k)))))))
 
+(defn imagor-hasher
+  [imagor-key url]
+  nil) ;implement
+
+(rf/reg-sub :href-external-img ; "Like href, but for external images" <- gen by copilot lol
+ :<- [:imagor :auth]    ; uses imagor to fetch and optionally mod ext images (avatars, instagram etc)
+ (fn [imagor [_ url & transforms]]
+  (let [host (:host imagor)
+        prefix (or (imagor-hasher (:key imagor) url) "unsafe")]
+    (str host "/" prefix "/"
+         (some-> (string/join "/" transforms)
+                 (str "/"))
+         url))))
+
+(rf/reg-sub :imagor
+ (fn [db [_ k]]
+  (get-in db [:state :imagor k])))
+
+
 (rf/reg-sub :fullscreen/get
  :<- [:state [:fullscreen]]           
  (fn [fullscreen [_ k]]
@@ -223,3 +242,13 @@
  :<- [:state [:booted]]           
  (fn [booted [_ k]]
   (get booted k false)))
+
+; (rf/reg-sub :theme/dark-mode
+;  :<- [:option [:theme]]           
+;  (fn [theme [_ _]]
+;   (get theme :dark-mode true)))
+
+; (rf/reg-sub :theme/colorscheme
+;  :<- [:option [:theme]]           
+;  (fn [theme [_ _]]
+;   (get theme :colorscheme "default")))

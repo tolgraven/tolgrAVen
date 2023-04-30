@@ -109,7 +109,11 @@
     {:focus-to-element elem-id}))
 (rf/reg-fx :focus-to-element
   (fn [elem-id] 
-    (r/after-render #(some-> (util/elem-by-id elem-id) .focus))))
+    (r/after-render #(js/setTimeout
+                      (fn []
+                        (some-> elem-id util/elem-by-id .focus))
+                      0))))
+    ; (some-> (util/elem-by-id elem-id) .focus)))
 
 
 (rf/reg-event-fx :->css-var!

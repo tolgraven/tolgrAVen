@@ -164,7 +164,7 @@
         [:span [:em (:email user)]]
         [:p {:style {:font-size "80%"}}
          (:karma user) " karma"]
-        [:buttton
+        [:button
          {:on-click #(rf/dispatch [:user/active-section :comments])}
          (str (or (:comment-count user) 0) " comments (view)")]]]]
      

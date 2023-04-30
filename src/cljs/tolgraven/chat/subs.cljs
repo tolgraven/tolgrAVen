@@ -11,7 +11,7 @@
                         (assoc m id (assoc v :id id))))
                           {})
          (into (sorted-map))
-         (map second))))
+         vals)))
 
 (rf/reg-sub :chat/latest-seq-id
   :<- [:chat/content]         

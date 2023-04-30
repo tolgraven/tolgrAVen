@@ -223,6 +223,12 @@
    [activity-photo (:photos details)] ] ])
 
 
+; some ideas:
+; diff colors for diff heights like intervals watts zones (use color lib to mod)
+; option to put dot at each point for graphs with fewer points
+; zoom - controlling by what data is provided makes most sense I think
+; but need support for displaying while selecting range to zoom into...
+; could be a general "highlight area" tho...
 (defn draw-graph
   [canvas id data cursor-pos & {:keys [colors zoom current-drag]
                                 :or {colors {:line "rgb(252,136,54)"
@@ -327,7 +333,7 @@
   (let [hovered? (r/atom false)
         which-expanded (rf/subscribe [:strava/activity-expanded]) ;needs be post/sub so can have prev/next btns
         opened? (fn [] ((fnil = -1) @which-expanded i))
-        tab (r/atom :summary)
+        tab (r/atom #_:graphs :summary)
         cutoff 80
         size (max 0.85 (/ (:kilojoules activity) 1000))
         anim-size (r/atom (rand 0.2))]
@@ -611,7 +617,7 @@
          :intervals-stats   [intervals-general-stats]
          :intervals-graphs  [intervals-graphs])])))
 
-(defn strava "Make an increasingly fancy visualizer feed thingy for practice"
+(defn strava "Make an increasingly fancy visualizer feed thingy. Relies on [:content :strava] in db"
   []
   (let [data @(rf/subscribe [:strava/content])
         stats (:stats data)

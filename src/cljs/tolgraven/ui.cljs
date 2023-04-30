@@ -539,7 +539,7 @@
 
 (defn log "Show an expandable log thingy. Prob dumb here but good base for any sorta feed thingy I guess!"
   [options content]
- (let [table-ref (atom nil)
+ (let [table-ref (r/atom nil)
        log-line (fn [{:keys [time level title message] :as msg}]
                   [:tr.log-messages
                     [:td.log-time (ctf/unparse (ctf/formatters :hour-minute-second)
@@ -562,8 +562,9 @@
             {:ref (fn [el]
                     (reset! table-ref el))
              :style {:max-height (if (:minimized @options) "1.2em" "20em")}}
-          [:tbody.log
-           (for [msg (map messages (sort-by #(str %) (keys messages))
+          [:tbody.log ;TODO sort by time ffs
+           (for [msg #_(into (apply sorted-map-by :time messages))
+                 (map messages (sort-by str (keys messages))
                           ; (if (:minimized @options) ;upside-down?
                           ;     [(count messages)]
                           ;     (sort (keys messages)))
@@ -819,7 +820,10 @@
                                     ; (= (inc-wrap i) @index) (str "calc(-100% +" @left-offset ")")
                                     ; (= (dec-wrap i) @index) (str "calc(100% -" @left-offset ")")
                                     )}}
-                    item]
+                    (when (or (= i @index) ; only show (hence init) item when visible or adjacent. needs to be an option though - needed for some stuff but would slow down direct jumps by idx-btns...
+                              (= (inc-wrap i) @index)
+                              (= (dec-wrap i) @index))
+                      item)]
                    {:key (str "carousel-" (name id) "-item-" i)}))
                content)))
 

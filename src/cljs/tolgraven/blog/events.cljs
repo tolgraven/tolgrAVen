@@ -213,6 +213,9 @@
         [:users (:id user)]
         {:karma (+ (:karma user) diff)}
         [:karma]]]})))
+       ; [:store-> ; store score in own collection. SHOULD get merged into (own) user obj so no crazy lookups or sep args here
+       ;  [:karma (:id user)]
+       ;  {:karma (+ (:karma user) diff)}]]})))
 
 ; for comment scroll lazy load:
 ; pull comments one by one, chunked so maybe like first five

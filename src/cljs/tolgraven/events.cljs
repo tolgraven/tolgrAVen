@@ -18,6 +18,7 @@
     [tolgraven.strava.events]
     [tolgraven.instagram.events]
     [tolgraven.chat.events]
+    [tolgraven.gpt.events]
     [tolgraven.github.events]
     [tolgraven.search.events]
     [tolgraven.docs.events]
@@ -28,6 +29,7 @@
     [tolgraven.cofx :as cofx]
     [clojure.string :as string]
     [clojure.edn :as edn]
+    [goog.object :as gobj]
     ; [muuntaja.core :as m]
     [cljs-time.core :as ct]
     [cljs-time.coerce :as ctc]))
@@ -295,6 +297,14 @@
   (fn [[id class]]
     (util/toggle-class id class)))
 
+(rf/reg-event-fx :theme/dark-mode
+ (fn [db [_ on?]]
+   {:db (assoc-in db [:options :theme :dark-mode] on?)}))
+
+(rf/reg-event-fx :theme/colorscheme
+ (fn [db [_ colorscheme]]
+   {:db (assoc-in db [:options :theme :colorscheme] (or colorscheme "default"))}))
+
 ; renamed store-> not fire->, should work to hide fire behind stuff so can swap out easier
 (rf/reg-event-fx :store->
   (fn [{:keys [db]} [_ path data merge-fields]]
@@ -345,6 +355,7 @@
   (fn [{:keys [db]} [_ error]]
     {:dispatch [:diag/new :error "Server error" error]}))
 
+;; reg fx for fb init...
 (rf/reg-event-fx :fb/init
   (fn [{:keys [db]} [_ data]]
     (firebase/init :firebase-app-info      data ; well should go in fx tho...
@@ -355,6 +366,20 @@
     {:dispatch-n [[:booted :firebase]
                   [:fb/fetch-users]]}))
 
+
+(rf/reg-event-fx :<-cms
+  (fn [{:keys [db]} [_ path stuff]]
+    (let [{:keys [url read-api-key]} (get-in db [:strapi :auth])]
+      {:dispatch
+       (if url
+         [:http/get {:uri (str url path)
+                     :headers {:Authorization (str "bearer " read-api-key)}}
+          [:content [:cms]]]
+         [:on-booted :cms [:<-cms path stuff]]) })))
+
+(rf/reg-event-fx :init/cms
+  (fn [{:keys [db]} [_ data]]
+    {:dispatch [:<-store [:strapi :auth] [:state [:strapi]]]}))
 
 ; PROBLEM: would obviously want to trigger fetch on start-navigation,
 ; not navigate...
@@ -396,6 +421,57 @@
 ;; XXX otherwise will have to uh, read var best we can and dispatch scroll event?
 
 
+(defonce wrapped-event-counter (atom 0))
+
+(defn gen-wrapped-event-fx "Dirty hack because I'm too lazy to mod a lib where on-success won't take arguments. And I wanted to try this"
+  [name-space prefix wrapped-event & args]
+  (let [wrapper-key (keyword (str (name name-space) "/"
+                                  (name prefix) "-"
+                                  (name wrapped-event) "-"
+                                  (swap! wrapped-event-counter inc))) ; so no clash if same event wrapped many times
+        f (fn [{:keys [db]} [_ result]]
+            {:dispatch [(-> [wrapped-event] ;or just flatten lol
+                            (into args)
+                            (into result))]})]
+    (rf/reg-event-fx wrapper-key f)
+    wrapper-key))
+
+; stuff could do
+; dynamically generate event handlers which close over args, preserving them
+; ^ I like this just for how insane it is
+; stash and retrieve args by interceptor
+; ^ more ideomatic reframe and way less messy but requires, fuck if I know?
+; handler event would still need to know where to look for args or well
+; no could just be one spot, so one interceptor for stashing and one for retrieving
+
+; but dynamic event reg seems like decent enough thing anyways
+; could also do stuff like chaining multiple events into one...
+; just grab the registered fns and feed them into eachother.
+;
+; and because events can trigger event creation some stuff otherwise done in
+; a block within an event (so we see in, and out) could be spread over multiple dynamic events?
+; 
+; _________________________________
+; IDEA FOR UNIFORM TRANSITIONS OUT
+; macro or fn (sometimes) replacing reg-event-fx and reg-sub
+; creating a second one with a -soft postfix or similar.
+; Actually guess event side easiest implemented as interceptor...
+; whatever is written to app-db, we copy it to our "shadow app-db"
+; BUT going to false or nil means deferring this for t ms.
+; 
+; Meaning all we do on "down" side is dispatch-later...
+;
+; sub to soft app-db remains, but somehow set a flag right
+; that closing/disappearing/ending has kicked off and we better clean up asap
+;
+; either above, or writing to somewhere specific in app-db gets shadowed
+; so don't have to think about changing event defs.
+; [:state-fuzzy] all paths mirror state exceot instead of `item`, [item state]
+; copier interceptor write latter same time change made to :state
+; then a dispatch-later for changing first
+; with a simple destructuring anything with :state / :content etc input
+; would work same as before (but no extra features), then optionally make use of second.
+
 (rf/reg-event-fx :id-counters/handle
   (fn [{:keys [db]} [_ state]]
     {:dispatch [:diag/new :debug "ID-counters" (str "Restored to " state)]
@@ -419,7 +495,7 @@
       {:dispatch event} ; just send it if already booted
       {:db (update-in db [:state :on-booted id] (comp set conj) event)})))
 
-(rf/reg-event-fx :booted
+(rf/reg-event-fx :booted [debug]
  (fn [{:keys [db]} [_ id]]
    {:db (-> db
             (assoc-in [:state :booted id] true)
@@ -470,8 +546,9 @@
 (rf/reg-event-fx :cookie/accept-notice
  (fn [{:keys [db]} [_ accepted?]]
    {:dispatch-n [[:diag/unhandled :remove :cookie-notice]
-                 (when accepted?
-                   [:ls/store-val [:cookie-notice-accepted] true])]}))
+                 (if accepted? ; TODO else should also refrain from cookies obviously hah
+                   [:ls/store-val [:cookie-notice-accepted] true]
+                   [:state [:cookies-allowed] false])]})) ; and then try to make google and shit actually not. how haha?
 
 (rf/reg-event-fx :hide-header-footer  [(rf/inject-cofx :css-var [:header-with-menu-height])
                                        (rf/inject-cofx :css-var [:header-height])
@@ -577,6 +654,57 @@
    {:dispatch-n [(into handler [res])
                  cleanup]}))
 
+(defn visibility-props "Get the name of the hidden property and the change event for visibility"
+  []
+  (cond
+    (some? js/document.hidden) {:hidden "hidden"
+                                :visibility-change "visibilitychange"}
+    (some? js/document.msHidden) {:hidden "msHidden"
+                                  :visibility-change "msvisibilitychange"}
+    (some? js/document.webkitHidden) {:hidden "webkitHidden"
+                                      :visibility-change "webkitvisibilitychange"}
+    :else (js/console.error "visibility prop not found in visibility-props fn")))
+
+(rf/reg-event-fx
+ :handle-visibility-change
+ (fn [{db :db} [_ hidden-prop-name]]
+   (let [visible? (not (gobj/get js/document hidden-prop-name))]
+     (prn "chrome tab visibility changed:" visible?)
+     {:db (assoc db :chrome-tab-visibility visible?)
+      :fx [(when visible? [:dispatch [:any-event-you-need-to-run]])]})))
+
+;; to be invoked once on init when mounting your app
+(rf/reg-event-fx
+ :register-visibility-change
+ (fn [{db :db} _]
+   (let [{:keys [hidden visibility-change]} (visibility-props)]
+     (js/document.addEventListener
+      visibility-change
+      #(rf/dispatch [:handle-visibility-change hidden]))
+     {:db (assoc db :chrome-tab-visibility true)})))
+
+
+(defonce debounce-timeouts (atom {}))
+
+(rf/reg-fx :dispatch-debounce
+ (fn [[id event-vec n]]
+   (js/clearTimeout (@debounce-timeouts id))
+   (swap! debounce-timeouts assoc id
+          (js/setTimeout (fn []
+                           (rf/dispatch event-vec)
+                           (swap! debounce-timeouts dissoc id))
+                         n))))
+
+(defonce throttle-timeouts (atom {}))
+
+(rf/reg-fx :dispatch-throttle
+ (fn [[id event-vec n]]
+   (when (not (get @throttle-timeouts id))
+     (swap! throttle-timeouts assoc id
+            (js/setTimeout (fn []
+                             (rf/dispatch event-vec)
+                             (swap! throttle-timeouts dissoc id))
+                           n)))))
 
 (rf/reg-event-fx :diag/new  ;this needs a throttle lol
  [(rf/inject-cofx :now)
@@ -613,6 +741,9 @@
              (update db :hud dissoc :modal)
              (assoc-in db [:hud :modal] id)))))
 
+;spotify
+; Client ID e475c2c005c7404394894beafd6a70d0
+; Client Secret 9dd238f2b27b4ecabf078393ddc09186
 
 (rf/reg-event-fx :modal-zoom
  (fn [{:keys [db]} [_ id action item]]
@@ -626,7 +757,10 @@
                    (assoc-in [:state :modal-zoom id :opened] true))}
     :loaded {:db (assoc-in db [:state :modal-zoom id :loaded] true)})))
 
-
+(rf/reg-event-fx :init/imagor
+ (fn [{:keys [db]} [_ _]]
+  (when-not (get db :imagor)
+    {:dispatch [:<-store [:imagor :auth] [:state [:imagor]]]})))
 
 (rf/reg-event-fx :text-effect-char-by-char/start ; this is super dumb plus obviously didnt work so well. keep things local unless necessary dammit
  (fn [{:keys [db]} [_ path text ms]]
@@ -644,6 +778,15 @@
         :dispatch-later {:ms ms
                          :dispatch [:text-effect-char-by-char/tick path text (inc num-chars) ms]}}))))
 
+
+(rf/reg-event-fx :log/write
+  (fn [{:keys [db]} [_ level title message]]
+    {:log/write! [level title message]}))
+(rf/reg-fx :log/write!
+  (fn [[level title message]]
+    (util/log level title message)))
+
+
 (rf/reg-event-fx :darken/but-element
  (fn [{:keys [db]} [_ id-or-class timeout]]
    {:db (assoc-in db [:state :darken-but] id-or-class)
@@ -657,3 +800,18 @@
    {:db (update-in db [:state] dissoc :darken-but)
     :dispatch-n [[:toggle-class! id-or-class "darken-fadeout-restore"]
                  [:toggle-class! nil "darken-fadeout"]]}))
+
+
+(rf/reg-event-fx :poll/start
+ (fn [{:keys [db]} [_ ]]
+   {:dispatch [::poll/set-rules
+  [;; rule #1
+   {:interval                 60
+    :event                    [:update-ts 60]
+    :poll-when                [:chat/visible?]}
+
+   ;; rule #2
+   {:interval                 6
+    :event                    [:events/log "POLL (every 6 seconds)"]
+    :poll-when                [:subs/poll?]
+    :dispatch-event-on-start? false} ]]}))

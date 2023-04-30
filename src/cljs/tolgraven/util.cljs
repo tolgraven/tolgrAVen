@@ -37,20 +37,6 @@
              (map :data docs)))))
 
 
-(defmacro handler-fn "Use in event-handlers instead of (fn [e/_]), returns nil so react doesnt get a false and ignore us"
-  ([& body]
-    `(fn [~'event] ~@body nil)))  ;; force return nil
-
-(defmacro ors "(or), but treats empty string as nil. not working"
-  ([] nil)
-  ([x] (if (string? ~x)
-         (when-not (empty? (seq ~x))
-           x)
-         x))
-  ([x & next]
-   `(let [or# ~x]
-          (if or# or# (ors ~@next)))))
-
 (defn interleave-all "interleaves including remainder of longer seqs." ;from SO, @SomeRando
   [& seqs]
   (when (not-empty (first seqs))

@@ -61,6 +61,22 @@
    (and (pos? (count (:email   login-field)))
         (<= 6 (count (:password login-field)))))) ; do proper validation tho talk to server and greenlight when correc.
 
+(rf/reg-sub :login/valid-email?
+ :<- [:form-field [:login]]
+ :<- [:login/valid-input?]
+ (fn [[login-field valid-input] [_ field]]
+  (->> (or (:email login-field) "")
+       (re-find #"\w+@\w+\.\w+")
+       boolean)))
+
+(rf/reg-sub :login/user-with-email? ; do fb lookup
+(fn [[_ email]]
+  (if email
+    (rf/subscribe [:<-store :users :email]) ; XXX wont work, fix once have ze data structure
+    (rf/subscribe [:nil])))
+(fn [user [_ email]]
+  (boolean user)))
+
 (rf/reg-sub :user/error ; login-error, rename...
  :<- [:diag/unhandled]
   (fn [unhandled [_ _]]

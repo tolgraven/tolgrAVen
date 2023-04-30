@@ -15,6 +15,18 @@
    so while loading should be expanded to that size already yo"
   [row-count])
 
+(defn component "Standard wrapper for component. Would have fallback loading thing, appear anim, disappear anim somehow..."
+  [id attrs model component]
+  (let [state @(rf/subscribe [:state [:component id]])
+        stage (:stage state)
+        hovered? (r/atom nil)
+        ]
+    (if (at model)
+      (when-not (= :closed stage)
+        [ui/appear-merge "slide-in"
+         (util/add-attrs component {:class stage})])
+      [ui/loading-spinner model])))
+
 ;; TODO curr 1px gap between outer lines and img. Fix whatever causing this by mistake (think lines are half-width)
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
 (defn header-logo [[text subtitle]]
@@ -85,7 +97,10 @@
      [:button.blog-link-btn.noborder.nomargin
       {:title "My blog"}
       [:i.fa.fa-pen-fancy]]]
-    
+    [:a {:href @(rf/subscribe [:href-add-query  
+                               {:settingsBox (not @(rf/subscribe [:state [:settings :panel-open]]))}])}
+     [:button.settings-btn.noborder.nomargin
+      [:i.settings-btn {:class "fa fa-cog"}]]]
     [search/button]
     [ui/user-btn]
     [:label.burger {:for "nav-menu-open"}]]]
@@ -251,4 +266,43 @@
  (let [icon (or icon "angle-double-up")
        i [:i {:class (str "fas fa-" icon)}]]
     [:a {:id "to-top" :class "to-top" :href @(rf/subscribe [:href "#main"]) :name "Up"} i]))
+
+(defn settings "Settings panel for theme and stuff"
+  []
+  (let [open? @(rf/subscribe [:state [:settings :panel-open]])
+        vars {:line-width         {:unit "px"   :min 0     :max 15}
+              :line-width-vert    {:unit "px"   :min 0     :max 15}
+              :section-rounded    {:unit "%"    :min 0     :max 10}
+              :space              {:unit "rem"  :min 0.0   :max 4.0 :step 0.1}
+              :space-lg           {:unit "rem"  :min 0.0   :max 6.0 :step 0.1}
+              :space-top          {:unit "rem"  :min 0.0   :max 6.0 :step 0.1}}]
+    [:div.settings-panel
+     {:class (when open? "opened")
+      :style {:position :sticky
+              :z-index 100}}
+     
+     [:h2 [:i {:class "fa fa-cog"}] " Settings"]
+     [:div
+      [:button {:on-click #(rf/dispatch [:toggle-class! nil "theme-light"])}
+       "Light/dark"]]
+
+     [:div.settings-numbers
+      (doall (for [[k {:keys [unit min max step]}] vars]
+        ^{:key (str "settings-input-var-" (name k))}
+        [:div.settings-number
+         [:input
+          {:id (str (name k) "-input")
+           :type :number
+           :min min :max max :step step
+           :default-value (str (js/parseFloat @(rf/subscribe [:get-css-var (name k)])))
+           :on-change #(rf/dispatch [:->css-var! (name k) (-> % .-target .-value (str unit))])}]
+         [:label {:for (str (name k) "-input")}
+          (-> (name k)
+              (string/replace "-" " ")
+              (string/capitalize))]]))]
+     
+     #_[:blog posts per page incl lazy-load option]
+     #_[:palette in general?
+     #_[:other css vars...]
+     #_[:idea to let customize as much as possible and eventually turn into a kinda interactive site-builder]]]))
 

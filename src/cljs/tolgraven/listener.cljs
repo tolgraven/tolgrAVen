@@ -78,6 +78,17 @@
                         (reset! page-height new-height)))]
      {:dispatch [:listener/add! "document" "scroll" callback]})))
 
+; TODO some things. apparently beforeunload is not recommended and doesn't fire reliably.
+; especially on mobile if swapping apps and then page gets killed in bg etc.
+; below combo of visibilitychange and sendbeacon which is meant to POST analytics.
+; could use a firebase function endpoint to POST-save stuff there and not merely ls.
+; will definitely become a thing in lexcraft at least...
+; document.addEventListener('visibilitychange', function logData() {
+;   if (document.visibilityState === 'hidden') {
+;     navigator.sendBeacon('/log', analyticsData);
+;   }
+; });
+
 (rf/reg-event-fx :listener/before-unload-save-scroll ; gets called even when link to save page, silly results.
  (fn [{:keys [db]} [_ ]]
   (let [scroll-to-ls

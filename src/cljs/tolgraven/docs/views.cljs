@@ -23,6 +23,7 @@
                              (-> (.-href el)
                                (string/replace  #"http(s)?://.*/" "")
                                (string/replace  #"\.html" ""))
-                             (.-href el))))))
+                             (.-href el)))))
+              (rf/dispatch [:run-highlighter! el]))
        :dangerouslySetInnerHTML {:__html html}}]
       [ui/loading-spinner (not html) :massive])]))

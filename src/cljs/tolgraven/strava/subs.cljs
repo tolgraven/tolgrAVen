@@ -27,7 +27,7 @@
 (rf/reg-sub :strava/activity-stream ; get an activity stream, also downsample it
             ; but we should actually request a resolution so becomes common, like 100 points.
  :<- [:strava/content [:activity-stream]]
-  (fn [activities [_ id stream-type downsampling]]
+  (fn [activities [_ id stream-type downsampling subrange]] ;subrange like [0.25 0.33] for a partial view...
     (let [stream-type (or stream-type "latlng")
           downsampling (or downsampling 5)
           {:keys [type data] :as activity}
@@ -48,4 +48,20 @@
                                          (* 3.6)))))
         (reducing (fn [l v]
                     (conj l (/ (apply + v) downsampling))))))))
+
+; (ct/week-number-of-year @(rf/subscribe [:now-ct]))
+(rf/reg-sub :strava/activities-for
+  :<- [:strava/content [:activities]]
+  :<- [:now-ct]
+  (fn [[activities now] [_ period-type period-num]]
+    (let [])
+    ;get current time
+    ; set cutoff time for :month / :week etc...
+    ; filter
+    ))
+
+(rf/reg-sub :intervals/content
+ :<- [:content [:intervals]]
+ (fn [intervals [_ path]]
+   (get-in intervals path)))
 
