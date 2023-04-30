@@ -3,12 +3,12 @@
     [tolgraven.core :as core]
     [cljs.spec.alpha :as s]
     [expound.alpha :as expound]
-    [day8.re-frame-10x :as r10x]
+    ; [day8.re-frame-10x :as r10x]
     [portal.web :as p]
     ; [re-frisk-remote.core :as re-frisk]
     [devtools.core :as devtools]))
 
-(day8.re-frame-10x/show-panel! false) ; auto hide by default since often test in private window or on mobile where cant press ctrl-h...
+; (day8.re-frame-10x/show-panel! false) ; auto hide by default since often test in private window or on mobile where cant press ctrl-h...
 
 (extend-protocol IPrintWithWriter ; get interactive prints in console
   js/Symbol

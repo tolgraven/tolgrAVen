@@ -3,54 +3,57 @@
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
 
-  :dependencies [[clojure.java-time "0.3.3"]
-                 [com.cognitect/transit-clj "1.0.329"]
+  :dependencies [[clojure.java-time "1.2.0"]
+                 [com.cognitect/transit-clj "1.0.333"]
                  
                  [org.clojure/java.jdbc "0.7.12"]
-                 [org.postgresql/postgresql "42.3.3"]
+                 [org.postgresql/postgresql "42.6.0"]
                  [honeysql "1.0.461"]
                  [com.google.guava/guava "25.1-jre"] ;what is
                  [cprop "0.1.19"] ;env loading
                  [expound "0.9.0"] ;spec failure explainers
                  [funcool/struct "1.4.0"] ;is what?
+                 [clj-http "3.12.3"]
 
-                 [luminus-transit "0.1.5"]
-                 [luminus-undertow "0.1.14"]
+                 [luminus-transit "0.1.6"]
+                 [luminus-undertow "0.1.17"]
                  [luminus/ring-ttl-session "0.3.3"]
 
-                 [markdown-clj "1.11.0"]
+                 [markdown-clj "1.11.4"]
 
-                 [metosin/jsonista "0.3.6"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
+                 [metosin/jsonista "0.3.7"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
                  [metosin/muuntaja "0.6.8"]
-                 [metosin/reitit "0.5.18" :exclusions [org.clojure/spec.alpha com.fasterxml.jackson.core/jackson-core com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.core/jackson-annotations]]
+                 [metosin/reitit "0.6.0" :exclusions [org.clojure/spec.alpha com.fasterxml.jackson.core/jackson-core com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.core/jackson-annotations]]
 
-                 [mount "0.1.16"]
-                 [nrepl "0.9.0"]
+                 [mount "0.1.17"]
+                 [nrepl "1.0.0"]
+                 [org.clojure/tools.nrepl "0.2.13"]
                  [org.clojure/clojure "1.11.1"]
                  [org.clojure/clojurescript "1.11.60" :scope "provided" :exclusions [com.google.errorprone/error_prone_annotations]]
-                 [org.clojure/tools.cli "1.0.206"]
-                 [org.clojure/core.async "1.5.648"]
+                 [org.clojure/tools.cli "1.0.214"]
+                 [org.clojure/data.json "2.4.0"]
+                 [org.clojure/core.async "1.6.673"]
 
                  ; LOGGING
                  [org.clojure/tools.logging "1.2.4"]
-                 [com.taoensso/timbre "5.2.1" :exclusions [org.clojure/tools.reader]]
-                 [com.taoensso/encore "3.23.0"]
+                 [com.taoensso/timbre "6.1.0" :exclusions [org.clojure/tools.reader]]
+                 [com.taoensso/encore "3.57.0"]
                  [com.fzakaria/slf4j-timbre "0.3.21" :exclusions [org.slf4j/slf4j-api]] ;route java logging through timbre. but dunno. hard to manage
                  [clj-logging-config "1.9.12"]
-                 [io.aviso/pretty "1.1.1"] ;pretty exceptions, pretty logging...
+                 [io.aviso/pretty "1.4"] ;pretty exceptions, pretty logging...
 
-                 [ring/ring-core "1.9.5"]
-                 [ring/ring-defaults "0.3.3"]
+                 [ring/ring-core "1.9.6"]
+                 [ring/ring-defaults "0.3.4"]
                  ; [bk/ring-gzip "0.3.0" :exclusions [clojure-complete]]
                  [amalloy/ring-gzip-middleware "0.1.4"]
-                 [ring-partial-content "2.0.1"] ; handle safari video playback / 206 response
-                 [ring-basic-authentication "1.1.1"]
+                 [ring-partial-content "2.1.0"] ; handle safari video playback / 206 response
+                 [ring-basic-authentication "1.2.0"]
                  [radicalzephyr/ring.middleware.logger "0.6.0"]
                  [metosin/ring-http-response "0.9.3"]
                  [toyokumo/ring-middleware-csp "0.3.0"]
                  [ring-ratelimit "0.2.2"] ; probably useful if I end up working on some popular website. so probably not anytime soon lol
                  
-                 [optimus "2022-02-13"] ;optimization of assets
+                 [optimus "2023-02-08"] ;optimization of assets
                  [optimus-img-transform "0.3.1"]
                  [optimus-sass "0.0.3"] ; load sass straight. pretty old dunno if still works
                  [optimus-autoprefixer "0.1.0"] ; same but autoprefixer. might be nice can avoid npm build and whatnot plus keep everything in one spot...
@@ -66,7 +69,7 @@
                  
                  [differ "0.3.3"] ; diff with patch to apply
 
-                 [re-frame "1.2.0"]
+                 [re-frame "1.3.0"]
                  ; [kee-frame "0.4.0" :exclusions [args4j]]
                  [day8.re-frame/http-fx "0.2.4"]
                  [superstructor/re-frame-fetch-fx "0.2.0"]
@@ -80,15 +83,16 @@
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
                  ; [com.degel/re-frame-firebase "0.10.0-SNAPSHOT" :exclusions [args4j]]
                  [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j]]
-                 [reagent "1.1.1"]
-                 [cljsjs/react "17.0.2-0"]
-                 [cljsjs/react-dom "17.0.2-0"]
+                 [reagent "1.2.0"]
+                 [cljsjs/react "18.2.0-1"]
+                 [cljsjs/react-dom "18.2.0-1"]
                  [reanimated "0.6.1"]
                  [re-frame-utils "0.1.0"]
                  [com.smxemail/re-frame-cookie-fx "0.0.2"  :exclusions [args4j]]
                  [re-pollsive "0.1.0"] ; periodic polling/timer stuff
                  
-                 [cljsjs/highlight "10.3.1-0"]
+                 [superstructor/re-highlight "2.0.2"]
+                 [cljsjs/highlight "11.7.0-0"]
                  [cljsjs/codemirror "5.44.0-1"]
                  [cljsjs/react-player "1.11.0-0"]
                  [cljsjs/react-leaflet "3.1.0-0"]
@@ -169,12 +173,12 @@
                                  [pjstadig/humane-test-output "0.11.0"]
                                  [prone "2021-04-23"]
                                  ; [re-frisk "1.3.4"  :exclusions [org.clojure/core.async org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize org.clojure/core.cache]]
-                                 ; [re-frisk "1.6.0"]
+                                 [re-frisk "1.6.0"]
                                  ; [re-frisk-remote "1.5.2"]
-                                 [day8.re-frame/re-frame-10x "1.2.7"]
-                                 [djblue/portal "0.28.0"]
+                                 ; [day8.re-frame/re-frame-10x "1.5.0" :exclusions [superstructor/re-highlight]]
+                                 [djblue/portal "0.38.1"]
                                  ; [day8.re-frame/tracing "0.6.2"]
-                                 [ring/ring-devel "1.9.5"]
+                                 [ring/ring-devel "1.9.6"]
                                  [ring/ring-mock "0.4.0"]]
                   :plugins      [#_[com.jakemccrary/lein-test-refresh "0.24.1"]
                                  #_[lein-doo "0.1.11"]
@@ -184,8 +188,7 @@
                    {:app
                     
                     {:source-paths ["src/cljs" "src/cljc" "env/dev/cljs"]
-                     :figwheel {:on-jsload "tolgraven.core/mount-components" ; only this bc dev/app calls init! (and more!) which also gets round multi-remount conundrum i solved uglily in cue-db... very reasonable to keep dev things away from general codebase so auto disabled
-                                }
+                     :figwheel {:on-jsload "tolgraven.core/mount-components"} ; only this bc dev/app calls init! (and more!) which also gets round multi-remount conundrum i solved uglily in cue-db... very reasonable to keep dev things away from general codebase so auto disabled
                      :compiler
                      {:output-dir "resources/public/js/compiled/out"
                       :output-to "resources/public/js/compiled/app.js"
@@ -203,7 +206,8 @@
                       :parallel-build true ;or java only uses 100% cpu, gross
                       :recompile-dependents false
                       :preloads [devtools.preload ;can remove devtools preload cause have in app.cljs?
-                                 day8.re-frame-10x.preload
+                                 re-frisk.preload-hidden
+                                 ; day8.re-frame-10x.preload
                                  #_re-frisk.preload #_re-frisk-remote.preload]
                       :closure-defines {goog.DEBUG true
                                         "re_frame.trace.trace_enabled_QMARK_" true}
