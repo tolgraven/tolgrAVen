@@ -26,17 +26,17 @@
 
 .gpt-message-user {
   position: relative;
-  right: 0;
-  bottom: 0;
+  right: 1.2em;
+  top: 0.6em;
   font-size: 85%;
   color: var(--fg-4);
-  flex: 1 0 auto;
+  // flex: 1 0 auto;
   flex-direction: row-reverse;
-  align-self: center;
+  align-self: top;
 
   .user-avatar {
     margin-left: 0.5em;
-    margin-right: 0.3em;
+    margin-right: 0.5em;
     width: 1.5em;
     height: 1.5em;
   }
@@ -50,47 +50,54 @@
   > span {
     margin-right: 0.5em;
   }
+
+  .gpt-prompt-container {
+    margin-top: var(--space);
+    margin-right: calc(3 * var(--space));
+  }
   
   .gpt-message-text {
+    position: relative;
     padding: 0.0em 0.4em;
-    border-radius: 8%;
+    border-radius: 1.0em 1% 1.5em 1%;
     background: linear-gradient(45deg, var(--bg-1), var(--bg-2));
     border: 1px solid var(--bg-5);
     margin: 1em 0em;
-    padding: 0.6em 1.0em;
+    padding: 0.6em 0.6em 0.8em 1.2em;
 
     &.gpt-message-prompt {
       display: flex;
       width: fit-content;
-      margin-right: calc(3 * var(--space));
+      border-radius: 0.1em 1% 1.5em 1%;
+      margin-bottom: 0.0em;
 
       > div, span {
         margin-right: 0.8em;
-      }
-
-      .gpt-message-time {
-        margin-left: var(--space);
-        position: relative;
-        right: 0;
-        font-size: 80%;
-        color: var(--fg-6);
-        flex: 0 0 auto;
-        align-self: center;
-
-        .gpt-message-time-exact {
-          position: absolute;
-          left: 0;
-          top: 0;
-          background: var(--bg-1);
-          width: 100%;
-
-        }
       }
     }
 
     &.gpt-message-reply {
       margin-left: calc(3 * var(--space));
       background: linear-gradient(45deg, var(--bg-4), var(--bg-3));
+    }
+
+    .gpt-message-time {
+      // margin-left: var(--space);
+      position: absolute;
+      right: 0.4em;
+      top: -1.5em;
+      font-size: 70%;
+      color: var(--fg-6);
+      flex: 0 0 auto;
+      align-self: top;
+
+      .gpt-message-time-exact {
+        position: absolute;
+        left: 0;
+        top: 0;
+        background: var(--bg-1);
+        width: 100%;
+      }
     }
   }
   

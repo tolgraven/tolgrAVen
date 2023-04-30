@@ -12,23 +12,24 @@
         hovered? (r/atom false)]
     (fn [prompt response thread]
       [:div.gpt-message
-       [:div.gpt-message-text.gpt-message-prompt
-        [:span prompt]
-        [:span.gpt-message-time
-         {:on-mouse-over #(reset! hovered? true)
-          :on-mouse-leave #(reset! hovered? false)}
-         (util/timestamp (:time thread))
-         [:span.gpt-message-time-exact
-          (when @hovered? (util/unix->ts (:time thread)))]]
-        [:div.gpt-message-user.flex
-         (or (-> (:name @user)
-                 (string/split #"\s|-|_")
-                 (->> (map string/capitalize)
-                      (map (partial take 1))
-                      flatten
-                      (apply str)))
-             "anon")
-         [ui/user-avatar @user]]]
+       [:div.gpt-prompt-container.flex
+        [:div.gpt-message-text.gpt-message-prompt
+         [:span prompt]
+         [:span.gpt-message-time
+          {:on-mouse-over #(reset! hovered? true)
+           :on-mouse-leave #(reset! hovered? false)}
+          (util/timestamp (:time thread))
+          [:span.gpt-message-time-exact
+           (when @hovered? (util/unix->ts (:time thread)))]]]
+         [:div.gpt-message-user.flex
+          (or (-> (:name @user)
+                  (string/split #"\s|-|_")
+                  (->> (map string/capitalize)
+                       (map (partial take 1))
+                       flatten
+                       (apply str)))
+              "anon")
+          [ui/user-avatar @user]]]
        [:div.gpt-message-text.gpt-message-reply
         (or response
             "...")] ])))
