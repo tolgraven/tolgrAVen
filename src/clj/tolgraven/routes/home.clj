@@ -18,8 +18,8 @@
 
 (defn home-routes []
   [""
-   {:middleware [middleware/wrap-csrf
-                 middleware/wrap-formats]}
+   {:middleware [;middleware/wrap-csrf ; csrf not really needed since no http auth and whatnot
+                 #_middleware/wrap-formats]}
    ["/" {:get home-page}]
    ["/blog*" {:get home-page}]
    ["/log*" {:get home-page}]

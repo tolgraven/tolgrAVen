@@ -2,7 +2,6 @@
   (:require
     [clojure.java.io]
     [hiccup.core :as hiccup]
-    [markdown.core :refer [md-to-html-string]]
     [ring.util.http-response :refer [content-type ok]]
     [ring.util.anti-forgery :refer [anti-forgery-field]]
     [ring.middleware.anti-forgery :refer [*anti-forgery-token*]]
@@ -74,10 +73,10 @@
     [:meta {:name "viewport"
             :content "width=device-width, initial-scale=1, shrink-to-fit=no"}]
     [:title title]
-    [:meta {:name "og:title" :content title}]
+    [:meta {:name "og:title" :content title}]             ; for link previews
     [:meta {:name "description" :content description}]
     [:meta {:name "og:description" :content description}]
-    [:meta {:name "og:image" :content title-img}]
+    [:meta {:name "og:image" :content title-img}]         ; ideally would get overridden on like, blog-post with cover img...
     [:base {:href "/"}]
     
     (for [[path kind] pre-pre]
@@ -137,34 +136,14 @@
    #_["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900" "font"]
     #_["css/solid.css" "style"]]) ; well it gets bundled anyways
 
-(def google-analytics
+(def google-analytics ; should somehow be moved to like, later? if drops cookies n stuff...
   (when-not (:dev env)
     ["window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
-      gtag('config', 'G-Y8H6RLZX3V');"]))
+      gtag('config', 'G-XKF1574RPL');"]))
 
-(defn render-home
-  [request]
-  (-> (str "<!DOCTYPE html>\n"
-           (hiccup/html (home
-                         request
-                         :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"]
-                                                          "img/foggy-shit-small.jpg")
-                         :title "tolgrAVen audiovisual"
-                         :description "tolgrAVen audiovisual by Joen Tolgraven"
-                         :pre-pre pre-paths
-                         :css-paths css-paths
-                         :js-paths js-paths
-                         :js-raw google-analytics
-                         :css-pre css-pre
-                         :js-pre js-pre
-                         :img-pre img-pre
-                         :title-img "img/logo/tolgraven-logo.png"
-                         :anti-forgery (force *anti-forgery-token*))))
-      ok
-      (content-type "text/html; charset=utf-8")))
 
 (defn render-hiccup
   [page & args]
@@ -172,6 +151,48 @@
            (hiccup/html (apply page args)))
       ok
       (content-type "text/html; charset=utf-8")))
+
+(def render-hiccup-memoized)
+
+(defn render-home
+  [request]
+  (render-hiccup
+   home
+   request
+   :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"]
+                                    "img/foggy-shit-small.jpg") ; uh obviously not for any page though, like blog and whatnot...
+   :title "tolgrAVen audiovisual"
+   :description "tolgrAVen audiovisual by Joen Tolgraven"
+   :pre-pre pre-paths
+   :css-paths css-paths
+   :js-paths js-paths
+   :js-raw google-analytics
+   :css-pre css-pre
+   :js-pre js-pre
+   :img-pre img-pre
+   :title-img "img/logo/tolgraven-logo.png"
+   :anti-forgery (force *anti-forgery-token*)))
+; (defn render-home
+;   [request]
+;   (-> (str "<!DOCTYPE html>\n"
+;            (hiccup/html (home
+;                          request
+;                          :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"]
+;                                                           "img/foggy-shit-small.jpg")
+;                          :title "tolgrAVen audiovisual"
+;                          :description "tolgrAVen audiovisual by Joen Tolgraven"
+;                          :pre-pre pre-paths
+;                          :css-paths css-paths
+;                          :js-paths js-paths
+;                          :js-raw google-analytics
+;                          :css-pre css-pre
+;                          :js-pre js-pre
+;                          :img-pre img-pre
+;                          :title-img "img/logo/tolgraven-logo.png"
+;                          :anti-forgery (force *anti-forgery-token*))))
+;       ok
+;       (content-type "text/html; charset=utf-8")))
+
 
 
 (defn error-page-hiccup
@@ -189,7 +210,7 @@
        [:link {:href "css/tolgraven/main.min.css" :rel "stylesheet" :type "text/css"}]
        #_(ohtml/link-to-css-bundles error-details ["styles.css"])
        [:script {:type "text/javascript"}
-        (str "var csrfToken = \"" *anti-forgery-token* "\";")]] ; this is where everything ends up for prod but cant remember why?
+        (str "var csrfToken = \"" (force *anti-forgery-token*) "\";")]] ; this is where everything ends up for prod but cant remember why?
 
 
 

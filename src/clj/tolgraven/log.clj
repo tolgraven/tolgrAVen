@@ -3,7 +3,7 @@
             [clojure.pprint :as pprint]
             [taoensso.timbre :as timbre]
             [taoensso.encore :as enc]
-            [taoensso.timbre.appenders.3rd-party.rotor :as rotor]
+            [taoensso.timbre.appenders.community.rotor :as rotor]
             [taoensso.timbre.tools.logging]
             [io.aviso.logging]
             [io.aviso.repl]

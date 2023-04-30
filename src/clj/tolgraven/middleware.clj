@@ -7,15 +7,19 @@
     [tolgraven.middleware.formats :as formats]
     [tolgraven.config :refer [env]]
     [muuntaja.middleware :refer [wrap-format wrap-params]]
+    [clojure.java.io :as io]
     [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
     [ring.middleware.flash :refer [wrap-flash]]
     [ring.middleware.file :refer [wrap-file]]
     [ring.middleware.resource :refer [wrap-resource]]
-    [ring.middleware.gzip :as gzip]
+    [ring.middleware.gzip :as gzip :refer [wrap-gzip]]
     [ring.middleware.partial-content :refer [wrap-partial-content]]
     [ring.middleware.multipart-params :refer [wrap-multipart-params]]
     [ring.middleware.content-type :refer [wrap-content-type]]
     [ring.middleware.not-modified :refer [wrap-not-modified]]
+    [ring.middleware.ratelimit :refer [wrap-ratelimit]]
+    [ring.middleware.cookies :refer [wrap-cookies]]
+    [ring.middleware.cors :refer [wrap-cors]]
     [ring.adapter.undertow.middleware.session :refer [wrap-session]]
     [ring.middleware.defaults :refer [site-defaults wrap-defaults secure-site-defaults]]
     ; [ring-middleware-csp.core :refer [wrap-csp]]
@@ -24,14 +28,9 @@
     [optimus.assets :as assets]
     [optimus.optimizations :as optimizations]
     [optimus.strategies :as strategies]
-    [optimus.optimizations.add-cache-busted-expires-headers]
-    [optimus.optimizations.concatenate-bundles]
-    [optimus.optimizations.minify]
-    [optimus.optimizations.add-last-modified-headers]
-    [optimus.optimizations.inline-css-imports]
     [optimus-img-transform.core :refer [transform-images]]
     [taoensso.timbre :as timbre :refer [debug log error]]
-    [potemkin :refer [import-vars]]))
+    ))
 
 (defn wrap-internal-error [handler]
   (fn [req]
@@ -76,29 +75,24 @@
                        [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?)$"
                         #"/media/.*\.(jpg?|jpeg?)$"])))
 
-(import-vars [optimus.optimizations.minify
-              minify-js-assets
-              #_minify-css-assets] ;my css breaks it ofc
-             [optimus.optimizations.concatenate-bundles
-              concatenate-bundles]
-             [optimus.optimizations.add-cache-busted-expires-headers
-              add-cache-busted-expires-headers]
-             [optimus.optimizations.add-last-modified-headers
-              add-last-modified-headers]
-             [optimus.optimizations.inline-css-imports
-              inline-css-imports])
+
 
 (defn optimize-all [assets options]
   (-> assets
-      (minify-js-assets options)
-      ; (minify-css-assets options) ;my css breaks it ofc ; not anymore apparently ; well it's already minified by autoprefixer or? could anyways
-      (inline-css-imports)
-      (concatenate-bundles options)
+      (optimizations/minify-js-assets options)
+      ; (optimizations/minify-css-assets options) ;my css breaks it ofc ; not anymore apparently ; well it's already minified by autoprefixer or? could anyways
+      (optimizations/inline-css-imports)
+      (optimizations/concatenate-bundles options)
       (transform-images {:regexp #"(/media/.*\.jpg)|(/img/.*\.(jpg|png))" ; in-place which would be baddd on dev but only runs on prod so
                          :quality 0.75
                          :progressive true})
-      ; (add-cache-busted-expires-headers)
-      (add-last-modified-headers)))
+      (optimizations/add-cache-busted-expires-headers) ; pisses off lighthouse. not sure why would want media to instantly expire anyways so
+      (optimizations/add-last-modified-headers)))
+
+(defonce serve-live-assets-maybe-autorefresh
+  (if (nil? (io/resource "/js/compiled/app.js"))
+    strategies/serve-live-assets
+    strategies/serve-live-assets-autorefresh))
 
 (defn wrap-optimus
   [app]
@@ -109,46 +103,54 @@
          optimizations/none
          optimize-all)
        (if (:dev env)
-         strategies/serve-live-assets
-         strategies/serve-frozen-assets))))
+         serve-live-assets-maybe-autorefresh ; like serve-live-assets but with watcher recompiling instead of timeout
+         ; strategies/serve-live-assets ; -autorefresh can't deal with cleans, errors on startup if no app.js. But I guess not too often have to do that, or well sometimes all the time but then not for weeks... check file 
+         strategies/serve-frozen-assets)
+       {;:cache-live-assets 60000
+        :uglify-js {:mangle-names false}})))
 
 (defn wrap-log "Log req then pass on unchanged"
   [handler id]
   (fn [req]
-    (timbre/debug (str "Wrap-log " id ": ") handler)
-    (timbre/debug (str "Wrap-log " id ": ") req)
+    (timbre/debug (str "Wrap-log " id ", handler: ") handler)
+    (timbre/debug (str "Wrap-log " id ", request: ") req)
     (handler req)))
 
-(defn wrap-gzip-content-aware
+(defn wrap-gzip-content-aware "Needed presumablY because optimus confuses the gzip middleware due to not raw files or whatever? At least it tries to gzip inappropriate stuff..."
   [handler]
   (fn [req]
     (let [{:keys [status headers]} req
           is-media (some? #(re-find #"image|video" (get headers "Content-Type"))) ]
       (if is-media
-        ((gzip/wrap-gzip handler) req)
-        (handler req)))))
+        (handler req)
+        ((gzip/wrap-gzip handler) req)))))
 
 
 (defn wrap-base [handler]
   (-> ((:middleware defaults) handler)
       ; wrap-flash
       (wrap-defaults
-        (-> (if (or (env :dev) (env :test))
+        (-> (if (or (env :dev) (env :test) (env :stage))
               site-defaults
               (-> secure-site-defaults ;use ssl and setup for rev proxy
                   (assoc-in [:proxy] true)))
-            (assoc-in [:security :anti-forgery] true) ; what's with this? from before we injected csrf or?
+            #_(assoc-in [:security :anti-forgery] true) ; what's with this? from before we injected csrf or?
             )) ; why was there a dissoc :session? cause it's about what middleware we request to wrap us with. cause gotta choose either above or through defaults... get duplicate session warnings now that uncommented hmm.
       ; (wrap-resource "public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
       ; (wrap-file "resources/public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
       wrap-optimus
       wrap-content-type ; must go after wrap-resource. checks file ext and adds correct content type
       ; gzip/wrap-gzip
-      ; wrap-gzip-content-aware
+      wrap-gzip-content-aware
       ; (wrap-log "Wrapped gzip")
       wrap-not-modified ; guess this doesnt work cause optimus gens new files tho..
       ; (wrap-csp {:policy csp})
       wrap-partial-content
       wrap-multipart-params
-      wrap-with-logger
+      wrap-formats
+      ; wrap-with-logger
       wrap-internal-error))
+
+; wrap-cors maybe good for api side once/if we get a real api heh. would need configure to only run on prod tho...
+; wrap-ratelimit sounds good to have for potential larger sites with actual exposure.
+; wrap-csp still need to investigate...
