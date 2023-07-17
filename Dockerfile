@@ -3,7 +3,7 @@ WORKDIR /usr/src/app
 COPY ./ /usr/src/app
 RUN npm install; npm run build
 
-FROM clojure:openjdk-8-lein-2.9.8
+FROM clojure:temurin-11-lein-alpine
 WORKDIR /clj
 COPY ./ /clj
 COPY --from=0 /usr/src/app/resources/ /clj/resources
