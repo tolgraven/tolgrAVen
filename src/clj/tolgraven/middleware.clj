@@ -19,7 +19,7 @@
     [ring.middleware.not-modified :refer [wrap-not-modified]]
     [ring.middleware.ratelimit :refer [wrap-ratelimit]]
     [ring.middleware.cookies :refer [wrap-cookies]]
-    [ring.middleware.cors :refer [wrap-cors]]
+    ; [ring.middleware.cors :refer [wrap-cors]]
     [ring.adapter.undertow.middleware.session :refer [wrap-session]]
     [ring.middleware.defaults :refer [site-defaults wrap-defaults secure-site-defaults]]
     ; [ring-middleware-csp.core :refer [wrap-csp]]
