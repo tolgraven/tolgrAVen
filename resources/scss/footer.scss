@@ -6,6 +6,7 @@ footer {
   font-size: 0.85rem;
 
   border-left: var(--line-width) solid var(--line-color); /* connect bottom to main on left side */
+  background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
 
   transition: all var(--header-expand-time) ease;
   z-index: 20;
@@ -19,14 +20,15 @@ footer {
   }
 
   &.hide {
-    border: none;
-    bottom: calc(0px - var(--line-width));
-    max-height: 0;
     transition: all var(--header-expand-time) ease;
+  }
+  &.bottomed {
+    bottom: calc(0px - var(--line-width));
   }
 
   &.full {
     padding-top: var(--space);
+    padding-left: calc(0.5 * var(--space))
   }
   
   &:before, &:after {
@@ -67,15 +69,13 @@ footer {
 .footer-sticky {
   position: fixed;
   z-index: 101;
-  max-height: var(--footer-height);
+  max-height: var(--footer-height-current);
   left: var(--space-edges);
   bottom: calc(0rem - var(--footer-bottom));
   width: calc(100% - 2 * var(--space-edges));
-  background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
 }
 
 .footer-full {
-  background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
   max-height: var(--footer-height-full);
   margin-bottom: -8px; // no clue why but get a gap otherwise
 }
@@ -85,7 +85,7 @@ footer {
   justify-content: space-between;
   flex-flow: row wrap;
 
-  margin: 0.6em var(--space);
+  padding: calc(0.50 * var(--space)) calc(1.00 * var(--space)) calc(0.4 * var(--space)) calc(0.5 * var(--space));
 
   button i {
     vertical-align: middle;
@@ -99,11 +99,15 @@ img.img-icon {
 }
 
 .post-footer-content {
-  margin-top: var(--space-lg);
+  // margin-top: var(--space);
 
   .footer-column {
-    margin: 0.0rem var(--space-lg) 0.0rem 0.5em;
+    margin: var(--space) var(--space-lg) 0.0rem 0.5em;
     flex: 1 0 auto;
+
+    &:last-of-type {
+      margin-bottom: var(--space-lg);
+    }
   }
 
   .footer-links {

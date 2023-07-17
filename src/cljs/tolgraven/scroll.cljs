@@ -100,7 +100,9 @@
    (merge
     {:db (assoc-in db [:state :scroll :at-bottom] bottom?)
      :dispatch-n [[:->css-var! "footer-height-current"
-                   (if (get-in db [:state :hidden :footer])
-                       "0rem"
-                       (:footer-height css-var))]]})))
+                   (if bottom?
+                     "0rem"
+                     (if (get-in db [:state :hidden :footer])
+                       "var(--line-width)"
+                       (:footer-height css-var)))]]})))
 

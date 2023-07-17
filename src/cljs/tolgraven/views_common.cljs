@@ -246,10 +246,10 @@
   [:footer#footer-sticky.footer-sticky
    {:class (str (when @(rf/subscribe [:state [:hidden :footer]])
                   "hide ")
+                (when @(rf/subscribe [:state [:scroll :at-bottom]])
+                  "bottomed ")
                 (when @(rf/subscribe [:fullscreen/any?])
-                   "adjust-for-fullscreen"))
-    :style (when-not @(rf/subscribe [:state [:hidden :footer]])
-             {:max-height @(rf/subscribe [:get-css-var "footer-height-current"])})}
+                   "adjust-for-fullscreen"))}
    [footer-content content]])
 
 (defn footer-full "Render the full footer at bottom of page"
