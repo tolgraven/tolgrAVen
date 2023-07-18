@@ -236,7 +236,7 @@ producer, reporter, PA, graphics technician, music administrator etc"] :where "S
              :theme {:dark-mode true
                      :colorscheme "default"}
              :firebase {:project :main
-                        :settings {:timestampsInSnapshots true}} ; for old version
+                        :settings {}}
              :github {:user "tolgraven"
                       :repo "tolgraven"}
              :hud {:timeout 30 :level :info}}
