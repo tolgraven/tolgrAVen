@@ -98,13 +98,18 @@
 }
 
 .blog-post-tags {
-  margin: 0.4em var(--space-lg);
-  display: flex;
-  flex-flow: wrap;
-  align-items: baseline;
+  margin: var(--space-lg);
+  flex-direction: column;
+
+  div {
+    display: flex;
+    flex-flow: wrap;
+    align-items: baseline;
+
+  }
   
   p {
-    margin-right: var(--space);
+    margin-bottom: calc(0.5 * var(--space));
   }
 
   span { // should be linked too

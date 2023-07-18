@@ -447,11 +447,12 @@
   (let [tags @(rf/subscribe [:blog/all-tags])]
     [:div.blog-post-tags.flex.center-content
      [:p "Tags "]
-     (doall (for [tag tags]
+     [:div.flex.center-content
+      (doall (for [tag tags]
               ^{:key (str "blog-tag-" tag)}
               [:span [:a.blog-tag-link
                       {:href @(rf/subscribe [:href :blog-tag {:tag tag}])}
-                      tag]]))]))
+                      tag]]))]]))
 
 (defn blog-intros-view "Headline and a paragraph, many on each page."
   [])
