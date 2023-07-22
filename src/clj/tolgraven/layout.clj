@@ -77,6 +77,9 @@
     [:meta {:name "description" :content description}]
     [:meta {:name "og:description" :content description}]
     [:meta {:name "og:image" :content title-img}]         ; ideally would get overridden on like, blog-post with cover img...
+    [:meta {:name "theme-color" :content "#1A1C1C"}]    ; for mobile safari status bar
+    [:meta {:name "apple-mobile-web-app-capable" :content "yes"}]
+    [:meta {:name "apple-mobile-web-app-status-bar-style" :content "black-translucent"}]
     [:base {:href "/"}]
     
     (for [[path kind] pre-pre]
