@@ -95,6 +95,7 @@
   position: relative;
   width: 100%;
   overflow: hidden;
+  -webkit-transform: translate3d(0,0,0); // for safari, work around z-index bug by creating new stacking context
   /* border-top: var(--line-width) solid; */
   
   &:hover .media-as-bg {
