@@ -111,6 +111,7 @@ a {
 
 main { /* dunno purpose of why I choose .main-content... */
   width: 100%;
+  min-height: 100vh;
   
   border-top: var(--line-width) solid var(--line-color); /* should make configurable. off looks p nice on main page */
   border-left:  var(--line-width-vert) solid var(--line-color); /* should make configurable. off looks p nice on main page */
