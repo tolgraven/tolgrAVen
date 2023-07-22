@@ -4,7 +4,6 @@
     [reagent.core :as r]
     [re-frame.core :as rf]
     ; [kee-frame.core :as k]
-
     [tolgraven.ajax :as ajax]
     [tolgraven.events]
     [tolgraven.db :as db]
@@ -156,16 +155,16 @@
 ;; ^^ this works but obviously should be going back and forth between two "equal" comps
 ;; that are therefore not being reloaded on leaving...
 
-(defn get-page-animation-class []
-  (if (or (= (get-in @(rf/subscribe [:common/route]) [:data :name])
-             (get-in @(rf/subscribe [:common/route :last]) [:data :name]))
-          (= js/window.performance.navigation.type 2)
-          (not (string/blank? js/document.referrer))
-          @(rf/subscribe [:state [:browser-nav :got-nav]]))
-    ""
-    "opacity"))
 
-(defn page "Render active page inbetween header, footer and general stuff." []
+(defn page "Render active page inbetween header, footer and general stuff." 
+  []
+  (let [get-animation-class #(if (or (= (get-in @(rf/subscribe [:common/route]) [:data :name])
+                                             (get-in @(rf/subscribe [:common/route :last]) [:data :name]))
+                                          (= js/window.performance.navigation.type 2)
+                                          (not (string/blank? js/document.referrer))
+                                          @(rf/subscribe [:state [:browser-nav :got-nav]]))
+                                    ""
+                                    "opacity")]
   [:<>
    [ui/safe :header [common/header @(rf/subscribe [:content [:header]])]] ;TODO smooth transition to personal
    [:a {:name "linktotop" :id "linktotop"}]
@@ -181,7 +180,7 @@
        (let [page-prev @(rf/subscribe [:common/page :last])]
          [:main.main-content.perspective-top
           {:id "main"}
-          [swapper (get-page-animation-class)
+          [swapper (get-animation-class)
            [ui/safe :page [page]]
            (when page-prev
              [ui/safe :page-prev [page-prev]])]])
@@ -191,7 +190,7 @@
    [common/footer @(rf/subscribe [:content [:footer]])]
    [ui/safe :hud [ui/hud (rf/subscribe [:hud])]]
    [common/to-top]
-   [:a {:name "bottom" :id "bottom"}]])
+   [:a {:name "bottom" :id "bottom"}]]))
 
 
 (defn with-heading
