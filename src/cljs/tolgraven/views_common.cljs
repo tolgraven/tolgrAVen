@@ -278,8 +278,7 @@
               :space-top          {:unit "rem"  :min 0.0   :max 6.0 :step 0.1}}]
     [:div.settings-panel
      {:class (when open? "opened")
-      :style {:position :sticky
-              :z-index 100}}
+      :style {:position :sticky }}
      
      [:h2 [:i {:class "fa fa-cog"}] " Settings"]
      [:div
