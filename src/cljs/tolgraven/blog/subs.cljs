@@ -85,9 +85,9 @@
         reverse
         keys))
    vals
-   (sort-by :ts))))
+   (->> (sort-by :ts)
+        reverse))))
 
-; (rf/subscribe [:blog/posts-with-tag "clojure"])
 
 (rf/reg-sub :blog/all-tags ; TODO probably keep an array of them so dont have to trawl all posts to get all tags...
  :<- [:blog [:posts]]
