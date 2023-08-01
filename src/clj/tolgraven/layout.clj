@@ -43,7 +43,7 @@
    [:main#main.main-loading.main-content
     {:class main-class}
     [:section#intro
-     [:img.media.media-as-bg {:src hero-img}]
+     #_[:img.media.media-as-bg {:src hero-img}]
      (when error-text
        [:div.h1-wrapper.center-content
         [:h1.h-intro.h-responsive error-text]])]
