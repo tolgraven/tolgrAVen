@@ -60,7 +60,7 @@
     [:div.footer-content ;; XXX should adapt to available height, also disappear...
      [:div
       [:h4 "joen.tolgraven@gmail.com"]
-      [:h5 "© 2020-2022"]]]]])
+      [:h5 "© 2020-2023"]]]]])
 
 ; throw in CAPROVER_GIT_COMMIT_SHA somewhere for version
 ; can pull in w env then fetch from client
