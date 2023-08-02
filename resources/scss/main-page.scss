@@ -176,7 +176,7 @@
   transition: backdrop-filter 0.5s, background 0.5s,
               border-radius 0.5s, transform 0.3s, width 0.2s, height 0.2s, margin 0.2s, padding 0.2s;
   // transition: 0.3s;
-  box-shadow: 1px -0px 17px 5px hsla(var(--hue-1), 20%, var(--lum-fg-6), 0.15);
+  box-shadow: 1px -0px 17px 3px var(--box-bright-heavy);
 
   cursor:  pointer;
   
