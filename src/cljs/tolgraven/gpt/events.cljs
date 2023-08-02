@@ -55,7 +55,8 @@
           :user (get-in db [:state :user] "anon")}
          [:messages]]
         [:http/post {:uri "/api/gpt"
-                     :params {:messages (conj history text)}}
+                     :params {:messages (conj history text)}
+                     :timeout 60000}
          [:gpt/on-response-thread id (conj history text)]]]})))
 
 (rf/reg-event-fx :gpt/on-response-thread [debug]
