@@ -40,8 +40,7 @@
      [[:store-> [:gpt-threads (str id)]
        {:time now
         :user (get-in db [:state :user] "anon")}
-       [(str id)]]
-      ]}))
+       [(str id)]]]}))
 
 (rf/reg-event-fx :gpt/post-in-thread [(rf/inject-cofx :now)
                                       debug]

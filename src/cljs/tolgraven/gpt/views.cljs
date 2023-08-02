@@ -22,13 +22,7 @@
           [:span.gpt-message-time-exact
            (when @hovered? (util/unix->ts (:time thread)))]]]
          [:div.gpt-message-user.flex
-          (or (-> (:name @user)
-                  (string/split #"\s|-|_")
-                  (->> (map string/capitalize)
-                       (map (partial take 1))
-                       flatten
-                       (apply str)))
-              "anon")
+          @(rf/subscribe [:gpt/user-short (:user thread)])
           [ui/user-avatar @user]]]
        [:div.gpt-message-text.gpt-message-reply
         (or response
