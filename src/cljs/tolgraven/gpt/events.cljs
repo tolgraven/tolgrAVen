@@ -45,8 +45,8 @@
 (rf/reg-event-fx :gpt/post-in-thread [(rf/inject-cofx :now)
                                       debug]
   (fn [{:keys [db now]} [_ id history]]
-    (let [text (get-in db [:state :form-field :gpt])]
-      {:db (update-in db [:state :form-field] dissoc :gpt)
+    (let [text (get-in db [:state :form-field :gpt-thread id])]
+      {:db (update-in db [:state :form-field :gpt-thread] dissoc id)
        :dispatch-n
        [[:store-> [:gpt-threads (str id)]
          {:time now

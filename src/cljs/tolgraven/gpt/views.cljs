@@ -28,24 +28,6 @@
         (or response
             "...")] ])))
 
-(defn gpt "A place to hang out with real-time messaging"
-  []
-  (let [content @(rf/subscribe [:gpt/content])
-        latest-id @(rf/subscribe [:gpt/latest-seq-id])]
-    [:section.gpt.noborder.covering-2
-     [:div.gpt-messages
-      {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))}
-      (for [message content] ^{:key (str "gpt-message-" (:time message) "-" (:user message))}
-        [gpt-message message])]
-
-     [:div.gpt-input.flex 
-      [ui/input-text
-       :path [:form-field [:gpt]]
-       :placeholder "Message"
-       :on-enter #(rf/dispatch [:gpt/post latest-id])]
-      [:button {:on-click #(rf/dispatch [:gpt/post-in-thread latest-id])}
-       [:i.fa.fa-arrow-right]]] ]))
-
 (defn thread
   [id]
   (let [open? (r/atom false)
@@ -69,11 +51,12 @@
             {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))} 
 
             (for [[prompt response] (partition 2 2 "..." (:messages @thread))]
+              ^{:key (str "gpt-message-" (:user @thread) "-" (:time @thread))}
               [gpt-message prompt response @thread])
 
             [:div.gpt-input.flex 
              [ui/input-text
-              :path [:form-field [:gpt]]
+              :path [:form-field [:gpt-thread id]]
               :placeholder "Message"
               :on-enter #(rf/dispatch [:gpt/post-in-thread id (:messages @thread)])]
              [:button {:on-click #(rf/dispatch [:gpt/post-in-thread id (:messages @thread)])}

@@ -3,7 +3,7 @@
   font-size: 95%;
 
   .gpt-messages {
-    max-height: 50em;
+    max-height: 90em;
     overflow-y: scroll;
   }
 
@@ -21,6 +21,11 @@
 
   .gpt-thread-container {
     padding-bottom: var(--space-lg);
+
+    .gpt-thread {
+      display: flex;
+      flex-direction: column;
+    }
   }
 }
 
@@ -64,10 +69,10 @@
     border: 1px solid var(--bg-5);
     margin: 1em 0em;
     padding: 0.6em 0.6em 0.8em 1.2em;
+    width: fit-content;
 
     &.gpt-message-prompt {
       display: flex;
-      width: fit-content;
       border-radius: 0.1em 1% 1.5em 1%;
       margin-bottom: 0.0em;
 
@@ -78,7 +83,10 @@
 
     &.gpt-message-reply {
       margin-left: calc(3 * var(--space));
-      background: linear-gradient(45deg, var(--bg-4), var(--bg-3));
+      background: linear-gradient(45deg, var(--bg-2), var(--bg-3));
+
+      white-space: pre;
+      float: right;
     }
 
     .gpt-message-time {
