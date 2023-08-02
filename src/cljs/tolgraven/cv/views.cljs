@@ -58,14 +58,10 @@
   []
   (let [ref-fn (fn [el]
                  (when el
-                   (js/setTimeout #(rf/dispatch [:state [:fullscreen :cv] true])
-                                  2000)
-                   (js/setTimeout #(rf/dispatch [:scroll/by 50])
-                                  3000)
-                   (js/setTimeout #(rf/dispatch [:scroll/by -37])
-                                  4500)
-                   (js/setTimeout #(rf/dispatch [:focus-element "fullscreen-btn"])
-                                  5500)))]
+                   (rf/dispatch [:dispatch-in/ms 2000 [:state [:fullscreen :cv] true]])
+                   (rf/dispatch [:dispatch-in/ms 3000 [:scroll/by 50]])
+                   (rf/dispatch [:dispatch-in/ms 4500 [:scroll/by -37]])
+                   (rf/dispatch [:dispatch-in/ms 5500 [:focus-element "fullscreen-btn"]])))]
    (fn []
     (let [{:keys [title caption cv]} @(rf/subscribe [:content [:cv]])
         {:keys [intro education work life skills]} cv
