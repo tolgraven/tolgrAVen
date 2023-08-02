@@ -7,5 +7,4 @@
 (defn wrap-dev [handler]
   (-> handler
       wrap-reload
-      (wrap-exceptions {:app-namespaces ['tolgraven]})
-      wrap-lint))
+      (wrap-exceptions {:app-namespaces ['tolgraven]})))
