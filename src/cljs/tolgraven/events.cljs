@@ -133,26 +133,33 @@
                 (update-in [:state :swap] dissoc :running)) }))
 
 
+(rf/reg-event-fx :dispatch-in/ms     debug
+  (fn [{:keys [db]} [_ ms & events]]
+    {:dispatch [:dispatch-in/set {:k :in
+                                  :ms ms
+                                  :dispatch-n events}]}))
+
 
 (rf/reg-event-fx :dispatch-in/set      [(rf/inject-cofx :gen-id [:dispatch-later])
-                                        (rf/inject-cofx :now-ct)]
+                                        (rf/inject-cofx :now-ct)
+                                        debug]
   (fn [{:keys [db id now-ct]} [_ {:keys [k ms dispatch dispatch-n]}]]
     (let [id (get-in id [:id :dispatch-later])
           events (into dispatch-n dispatch)]
-      {:db {assoc-in db [:state :dispatch-in k id] {:ms ms
+      {:db (assoc-in db [:state :dispatch-in k id] {:ms ms
                                                     :elapsed 0
                                                     :events events
                                                     :started now-ct               
-                                                    :js-id nil}} ;not yet running
+                                                    :js-id nil}) ;not yet running
        :dispatch-in/set [k id ms events]})))
 
 (rf/reg-event-fx :dispatch-in/save-timeout-id
-  (fn [{:keys [db]} [_ [k id js-id]]]
+  (fn [{:keys [db]} [_ k id js-id]]
     {:db (assoc-in db [:state :dispatch-in k id :js-id] js-id)}))
 
 (rf/reg-event-fx
  :dispatch-in/cancel      [(interceptor/path [:state :dispatch-in])]
- (fn [{:keys [db]} [_ [k & [id]]]]
+ (fn [{:keys [db]} [_ k & [id]]]
    (let [ids (or id (-> db k keys))]
      (if (= 1 (count ids))
        (let [js-id (get-in db [k id :js-id])]
@@ -164,7 +171,7 @@
 (rf/reg-event-fx
  :dispatch-in/pause     [(rf/inject-cofx :now-ct)
                          (interceptor/path [:state :dispatch-in])]
- (fn [{:keys [db now-ct]} [_ [k & [id]]]]
+ (fn [{:keys [db now-ct]} [_ k & [id]]]
    (let [id (or id (-> db
                        (select-keys k)
                        key))
@@ -177,7 +184,7 @@
 
 (rf/reg-event-fx
  :dispatch-in/resume      [(interceptor/path [:state :dispatch-in])]
- (fn [{:keys [db]} [_ [k & [id]]]]
+ (fn [{:keys [db]} [_ k & [id]]]
    (let [id (or id (-> db
                        (select-keys k)
                        key))
