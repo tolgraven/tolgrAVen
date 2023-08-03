@@ -269,18 +269,18 @@
                              )}]}
      [""
       {:name        :home
-       :view        #'view/ui
+       :view        #'view/ui-auto
        :controllers [{:start (fn [{:keys [path]}]
                                (rf/dispatch [:state [:is-personal] false])
                                (rf/dispatch [:page/init-home]))}]}]
      ["about"
       {:name        :about
-       :view        #'view/ui
+       :view        #'view/ui-auto
        :controllers [{:start (fn [_]
                                (rf/dispatch [:scroll/to "about" 700]))}]}]
      ["services"
       {:name        :services
-       :view        #'view/ui
+       :view        #'view/ui-auto
        :controllers [{:start (fn [_]
                                (rf/dispatch [:scroll/to "main" 700]) ; hack because stickied so "already there"...
                                (rf/dispatch [:scroll/to "section-services" 1300]))}]}]
@@ -291,7 +291,7 @@
                               (rf/dispatch [:state [:fullscreen :cv] false]))}]}]
      ["hire"
       {:name        :hire
-       :view        #'view/ui
+       :view        #'view/ui-auto
        :controllers [{:start (fn [_]
                                (rf/dispatch [:scroll/to "bottom" 700]))}]}]
      ["docs" {:controllers

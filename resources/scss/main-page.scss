@@ -76,10 +76,11 @@
   height: #{'min(60vh, 100vw - 2 * var(--space-edges))'};
   border-top: 0;
 }
-#interlude-2 {
-  z-index: 7;
+#interlude-1 {
+  z-index: 5;
+  border-top: none;
 }
-#interlude-3 { /* portfolio */
+#interlude-2 { /* portfolio */
   z-index: 29;
 }
 #portfolio { /* portfolio */
@@ -120,6 +121,7 @@
 
 #section-services {
   z-index: 6;
+  border-bottom: var(--line-width) solid var(--line-color);
 
   .media-as-bg {
     transition: transform 10s ease;

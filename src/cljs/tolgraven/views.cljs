@@ -7,6 +7,7 @@
    [reanimated.core :as anim]
    [tolgraven.ui :as ui]
    [tolgraven.strava.views :as strava]
+   [tolgraven.gpt.views :as gpt]
    [tolgraven.chat.views :as chat]
    [tolgraven.github.views :as github]
    [tolgraven.instagram.views :as instagram]
@@ -104,7 +105,7 @@
 (defn ui-interlude "Banner across with some image or video or w/e
                     Partial content errors probably because stops buffering since we pause it.
                     Let's try a tricky trick"
-  [{:keys [title caption bg nr]}]
+  [interludes nr]
   (let [vid-ref (atom nil) ; docs says reg atom better but only updates w ratom, bc 2nd fn or? also .play no works
         controls (atom nil)
         on-hold (r/atom nil)
@@ -127,7 +128,8 @@
                     (when (<= frac 0.35)
                       (do-control :pause)))
         observer (util/observer on-change)]
-    (fn [{:keys [title caption bg nr]}]
+    (fn [interludes nr]
+     (let [{:keys [title caption bg]} (get interludes nr)]
       [:section.nopadding
        {:id (str "interlude-" nr)
         :class "section-with-media-bg-wrapper parallax-wrapper"
@@ -163,7 +165,7 @@
                  :opacity (when-not (zero? @in-view)
                             "0.4")}}
         [:h1.h-responsive title]]
-       [ui/inset caption nr]])))
+       [ui/inset caption nr]]))))
 
 
 (defn ui-portfolio "GOT NO PPORTFOLIE" [])
@@ -255,7 +257,8 @@
     [:h1 (:title content)]
     [:br]
     [ui/auto-layout-text-imgs content]
-    [:br] [:br]]])
+    [:br] [:br]]
+   [ui/fading :dir "bottom"]])
 
 
 (defn ui-gallery "Stupid css thing slides sidewayus x) Make it go out left side would be cool"
@@ -318,32 +321,95 @@
         [soundcloud-player artist tune])]]))
 
 
-(defn ui []
-  (let [interlude @(rf/subscribe [:content [:interlude]])
-        interlude-counter (atom 0)
-        get-lewd #(merge (nth interlude @interlude-counter)
-                         {:nr (swap! interlude-counter inc)})]
+(declare sections)
+
+(defn run-init
+ [section]
+ (let [dep (get-in sections [section :dep])
+       event (get-in sections [section :init])]
+   (when event
+     [ui/lazy-load [:on-booted dep event]])))
+
+
+(def sections
+  {:intro       {:component ui-intro
+                 :content :intro}
+   :services    {:component ui-services
+                 :content :services
+                 :init [:state [:services :to-focus?] true]}
+   :moneyshot   {:component ui-moneyshot
+                 :content :moneyshot}
+   :story       {:component ui-story
+                 :content :story}
+   :gallery     {:component ui-gallery
+                 :content :gallery
+                 :dep :site
+                 :init [:state [:gallery :loaded] true]}
+   :soundcloud  {:component ui-soundcloud
+                 :dep :site
+                 :init [:booted :soundcloud]}
+   :strava      {:component strava/strava
+                 :dep :firebase
+                 :init [:strava/init]}
+   :instagram   {:component instagram/instagram
+                 :dep :firebase
+                 :init [:instagram/init]}
+   :github      {:component github/commits
+                 :dep :site
+                 :init [:github/init "tolgraven" "tolgraven"]} ; should inject, how?
+   :gpt         {:component gpt/threads}
+   :chat        {:component chat/chat}
+   :interlude   {:component ui-interlude
+                 :content :interlude}
+   :init        {:component run-init}})
+
+(def layouts
+  {:main [:intro
+          [:interlude 0]
+          :services
+          [:init :services] ; just focuses it
+          [:interlude 1]
+          :moneyshot
+          [:init :instagram]
+          [:init :strava]
+          :story
+          [:interlude 2]
+
+          [:init :soundcloud]
+
+          :strava
+          [:init :gallery]
+          :instagram
+          :gallery
+          :github
+          #_:gpt
+          :chat ]})
+
+
+(defn get-components "Get component, and its init event runner, if any."
+  [id section-map]
+  (let [{:keys [component content args dep init]} section-map]
     [:<>
-     [ui-intro @(rf/subscribe [:content [:intro]])]
+     (when init
+       [run-init id])
+     (cond-> [component]
+       content (conj @(rf/subscribe [:content [content]]))
+       args    (conj args))]))
 
-     [ui-interlude (get-lewd)]
-     [ui-services @(rf/subscribe [:content [:services]])]
+(defn get-section "Get a section, from either a vector (with args) or a straight keyword"
+  [section]
+  (if (vector? section)
+    (let [[id args] section]
+      [get-components id (merge (get sections id)
+                                {:args args})])
+    [get-components section (get sections section)]))
 
-     [ui/lazy-load [:on-booted :firebase [:strava/init]]]
-     [ui-interlude (get-lewd)]
-     [ui/lazy-load [:on-booted :site [:booted :soundcloud]]]
-     [ui-moneyshot @(rf/subscribe [:content [:moneyshot]])]
-     [ui/lazy-load [:on-booted :firebase [:instagram/init]]]
-     [ui-story @(rf/subscribe [:content [:story]])]
-     [ui/fading :dir "bottom"]
-     [ui-interlude (get-lewd)]
-     
-     [strava/strava]
-     [ui/lazy-load [:on-booted :site [:state [:gallery :loaded] true]]]
-     [ui-soundcloud]
-     [instagram/instagram]
-     [ui/lazy-load [:on-booted :site [:github/init "tolgraven" "tolgraven"]]]
-     [ui-gallery @(rf/subscribe [:content [:gallery]])]
-     [github/commits]
-     [chat/chat]]))
+(defn ui-auto "Present main page UI. Should come from data structure.
+               Should auto lazy load/init all components with such functionality at point,
+               apart from the separate lazy loading done before-hand (if loads in middle of page etc)"
+  []
+  [:<>
+   (for [component (layouts :main)]
+     [get-section component])])
+
 
