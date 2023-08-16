@@ -21,6 +21,7 @@ resources/public/js/compiled/
 resources/public/js/app.js
 .vscode/
 /resources/public/css/
+/resources/public/img/uploads/
 /pg/
 /trash
 .google-oath
