@@ -13,9 +13,10 @@
     (let [browser-nav? (get-in db [:state :browser-nav :got-nav])
           saved-pos (get-in db [:state :scroll-position path])]
       (merge
-       {:dispatch (if browser-nav? ; used back/fwd, since clicking a link should equal there or top...
-                    [:scroll/and-block (or saved-pos "main")] ; guess should check for frag, query etc tho
-                    [:scroll/and-block "main"])}
+       {:dispatch-n [[:scroll/and-block (if browser-nav? ; used back/fwd, since clicking a link should equal there or top...
+                                          (or saved-pos "main")
+                                          "main")]
+                     [:hide-header-footer false false]]}
        (when browser-nav?
          {:dispatch-later {:ms 300 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
                            :dispatch [:state [:browser-nav :got-nav] false]} }))))) ; waiting because checks in main-page
@@ -65,26 +66,32 @@
                                    (util/rem-to-px (:space-lg css-var))
                                    (* 2 (util/rem-to-px (:space-top css-var))))) ; + space-lg above main. but header + 2x space-top seems sufficient...
          hidden? (get-in db [:state :hidden :header])
+         footer-hidden? (get-in db [:state :hidden :footer])
          at-bottom? (>= position
                         (- height
-                           (.-innerHeight js/window)
+                           (.-innerHeight js/window) ; should be injected I guess
                            50
                            (util/rem-to-px (:footer-height-current css-var))))] ; will jump page so...
-     {:dispatch-n [(cond (and hidden?
-                              (= direction :up))
-                   [:hide-header-footer false false]
-                         at-bottom? ; not checking for already hidden leads to spam but somehow stabilizes...
-                   [:hide-header-footer false true] ; don't unhide footer at bottom...
+     {:dispatch-n [(cond (or (and (or hidden? footer-hidden?)
+                                  (= direction :up))
+                             (< position 50))
+                         [:hide-header-footer false false]
+
+                         (and (not footer-hidden?)
+                              at-bottom?) ; not checking for already hidden leads to spam but somehow stabilizes...
+                         [:hide-header-footer false true] ; don't unhide footer at bottom...
+
                          (and (not hidden?)
                               (= direction :down)
                               past-top?
                               (not (get-in db [:state :menu])))
-                   [:hide-header-footer true true]) ; hide header and footer
+                         [:hide-header-footer true true]) ; hide header and footer
                    
                   (if (and at-bottom? (not (get-in db [:state :scroll :at-bottom])))
                     [:scroll/at-bottom true]
                     (when (and (not at-bottom?) (get-in db [:state :scroll :at-bottom]))
                       [:scroll/at-bottom false]))
+
                   (if (and past-top? (not (get-in db [:state :scroll :past-top])))
                     [:scroll/past-top true]
                     (when (and (not past-top?) (get-in db [:state :scroll :past-top]))

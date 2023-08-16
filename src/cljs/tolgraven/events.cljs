@@ -72,13 +72,13 @@
                           (not (same :path-params))))
                  (not old-match)) ; restore last position if followed a link from elsewhere (even if go to top for internal links)
         {:dispatch-later
-         {:ms 150
+         {:ms 200
           :dispatch [:scroll/on-navigate (:path new-match)]}}))
       
       (let [fragment (-> db :state :fragment)] ;; matches are equal (fragment not part of match)
         (if (pos? (count (seq fragment))) 
           {:db (update-in db [:state] dissoc :fragment)
-           :dispatch-later {:ms 150 ; obv too much. but maybe scroll issues partly from swapper bs?
+           :dispatch-later {:ms 200 ; obv too much. but maybe scroll issues partly from swapper bs?
                             :dispatch [:scroll/to fragment]}}))))))
 
 
