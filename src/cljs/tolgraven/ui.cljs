@@ -181,8 +181,8 @@
              (into [:<>] components)]))))
 
 (defn lazy-load "Dispatch init event when approaching something previous"
-  [event]
-  (let [observer (util/when-seen #(rf/dispatch event))]
+  [event repeatedly?]
+  (let [observer (util/when-seen #(rf/dispatch event) repeatedly?)]
     (fn [event]
       [:div
        {:ref #(observer %)}])))

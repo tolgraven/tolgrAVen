@@ -76,10 +76,9 @@
   [user repo]
   (fn [user repo]
    [:div.github-loading
-   [ui/lazy-load-repeatedly
+   [ui/lazy-load
     [:github/fetch-commits-next user repo]
-    "github-commits-box"
-    #_:run-on-appear] ; fires twice too quickly and causes a double fetch so would need debounce
+    true]
    [:h2 "Loaded " (count @(rf/subscribe [:github/commits]))]
    [:h3 "Scrolling down should load more..."]
    [:div {:style {:padding "var(--space)"}}
