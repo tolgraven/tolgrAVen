@@ -254,12 +254,11 @@
 
 (defn footer-full "Render the full footer at bottom of page"
   [content]
-  (when @(rf/subscribe [:state [:hidden :footer]])
   [:footer#footer-end.footer-full
    {:class "full"}
    
    [footer-content content]
-   [post-footer @(rf/subscribe [:content [:post-footer]])]]))
+   [post-footer @(rf/subscribe [:content [:post-footer]])]])
 
 
 (defn to-top "A silly arrow, and twice lol. why." [icon]

@@ -44,9 +44,12 @@
 ;                               (util/log :error "Error" (apply str args))) })
 
 
-(rf/reg-event-fx :common/navigate   [(rf/inject-cofx :scroll-position)]
-  (fn [{:as cofx :keys [db scroll-position]} [_ match]]
-    (let [old-match (:common/route db)
+(rf/reg-event-fx :common/navigate   [debug
+                                     (rf/inject-cofx :scroll-position)
+                                     (rf/inject-cofx :gen-id [:navigations])]
+  (fn [{:as cofx :keys [db scroll-position counters]} [_ match]]
+    (let [navigation-count (-> counters :id :navigations)
+          old-match (:common/route db)
           new-match (assoc match :controllers
                            (rfc/apply-controllers (:controllers old-match) match))
           same (fn [& path]
@@ -56,7 +59,7 @@
                    (same :path-params)
                    (same :query-params) ; causes some trouble with settingsbox getting stuck?
                    (same :path))
-      (merge
+      (util/deep-merge
        {:db (-> db
                (assoc :common/route new-match)
                (assoc :common/route-last old-match)
@@ -72,15 +75,14 @@
                           (not (same :path-params))))
                  (not old-match)) ; restore last position if followed a link from elsewhere (even if go to top for internal links)
         {:dispatch-later
-         {:ms 200
-          :dispatch [:scroll/on-navigate (:path new-match)]}}))
+         {:ms 150
+          :dispatch [:scroll/on-navigate (:path new-match) navigation-count]}}))
       
       (let [fragment (-> db :state :fragment)] ;; matches are equal (fragment not part of match)
         (if (pos? (count (seq fragment))) 
           {:db (update-in db [:state] dissoc :fragment)
            :dispatch-later {:ms 200 ; obv too much. but maybe scroll issues partly from swapper bs?
                             :dispatch [:scroll/to fragment]}}))))))
-
 
 (rf/reg-fx :common/navigate-fx!
   (fn [[k & [params query]]]
