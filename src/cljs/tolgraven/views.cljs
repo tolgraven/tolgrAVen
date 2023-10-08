@@ -178,19 +178,22 @@
 
 (defn services-fullscreenable "yo"
   [categories]
-  (let [full-screened @(rf/subscribe [:state [:services]]) ]
+  (let [{:keys [to-focus? full-screened?]} @(rf/subscribe [:state [:services]]) ]
+    (when to-focus?
+      (rf/dispatch [:focus-element "services-bg"]))
     [:div#services>div.categories
-     {:class (when full-screened "categories-fullscreened")
-      :on-click #(rf/dispatch [:state [:services] nil])}
+     {:class (when full-screened? "categories-fullscreened")
+      :on-click #(rf/dispatch [:state [:services :full-screened?] nil])
+      :ref #(when % (rf/dispatch [:focus-element "services-bg"]))}
 
-     (for [[title icon-name lines] categories ;(if-not full-screened categories (filter #(= (first %) full-screened) categories)) ;XXX change to keys!!
+     (for [[title icon-name lines] categories ;(if-not full-screened? categories (filter #(= (first %) full-screened?) categories)) ;XXX change to keys!!
            :let [on-click (fn [e] (.stopPropagation e)
-                            (rf/dispatch [:state [:services]
-                                          (when-not full-screened title)]))
+                            (rf/dispatch [:state [:services :full-screened?]
+                                          (when-not full-screened? title)]))
                  id (str "service-" title)]] ^{:key id}
        [ui/seen-anon "zoom-x"
-        (into [:ul {:class (cond (= full-screened title) "service-fullscreen"
-                                 full-screened "service-minimized")
+        (into [:ul {:class (cond (= full-screened? title) "service-fullscreen"
+                                 full-screened? "service-minimized")
                     :on-click on-click}
                [:li 
                 [:i {:class (str "fas " "fa-" icon-name)}]
@@ -200,7 +203,7 @@
 
 (defn services-carousel "yo"
   [categories]
-  (let [full-screened @(rf/subscribe [:state [:services]]) ]
+  (let [full-screened? @(rf/subscribe [:state [:services]]) ]
     [:div#services>div.categories
      (for [[title icon-name lines] categories ;(if-not full-screened categories (filter #(= (first %) full-screened) categories)) ;XXX change to keys!!
            :let [id (str "service-" title)]] ^{:key id}
@@ -214,10 +217,12 @@
 (defn ui-services "List services on (fake) offer. Clicking one should bring it up to fill section..."
   [{:keys [categories bg caption]}]
   [:section#section-services
-    {:class "link-anchor stick-up section-with-media-bg-wrapper"}
+    {:class "link-anchor stick-up section-with-media-bg-wrapper"} ; want to  focus elem to zoomy zoom slow after reaching scroll
     [:a {:name "link-services"}]
      [ui/inset caption 4] ;auto-gen
-     [:img (merge bg {:class "media-as-bg darken-5 parallax-bg"})]
+     [:img#services-bg
+      (merge bg {:class "media-as-bg darken-5 parallax-bg"
+                 :ref #(when % (rf/dispatch [:focus-element "services-bg"]))})]
      [services-fullscreenable categories]])
 
 (defn ui-moneyshot "needs better name lol. what is hero img halfway down page?"
