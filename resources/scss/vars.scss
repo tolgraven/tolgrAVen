@@ -20,7 +20,7 @@
   --footer-height:           4.5rem; // 3.00rem; // measured...
   --footer-height-full:      35.0rem;
   --footer-height-current:   var(--footer-height);
-  --footer-bottom:           0rem;
+  --footer-bottom:           calc(0rem - var(--line-width));
   --link-offset:         calc( var(--header-height-current));
   --menu-width-fraction: 0.70;
 

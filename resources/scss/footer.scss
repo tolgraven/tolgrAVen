@@ -71,7 +71,7 @@ footer {
   z-index: 101;
   max-height: var(--footer-height-current);
   left: var(--space-edges);
-  bottom: calc(0rem - var(--footer-bottom));
+  bottom: var(--footer-bottom);
   width: calc(100% - 2 * var(--space-edges));
 }
 
