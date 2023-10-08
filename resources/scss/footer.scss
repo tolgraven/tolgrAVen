@@ -76,6 +76,7 @@ footer {
 }
 
 .footer-full {
+  animation: fade-in 1.0s ease-in;
   max-height: var(--footer-height-full);
   margin-bottom: -8px; // no clue why but get a gap otherwise
 }
