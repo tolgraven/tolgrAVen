@@ -4,7 +4,8 @@
    [re-frame.core :as rf]
    [clojure.string :as string]
    [tolgraven.ui :as ui]
-   [tolgraven.util :as util :refer [at]]))
+   [tolgraven.util :as util :refer [at]]
+   [cljs-time.core :as ct]))
 
 (defn box "One thing, accomplishment, employment, etc"
   [{:keys [from to what position how where logo color] :as all} domain pos size overlap-level]
@@ -16,7 +17,7 @@
                     (swap! closing? not)
                     (js/setTimeout #(do (swap! expanded? not)
                                         (swap! closing? not))
-                                   500))
+                                   250))
         :style (merge {:background-color color}
                       (when-not @expanded?
                         {:left pos
@@ -56,19 +57,22 @@
 
 (defn cv "Main cv component"
   []
-  (let [ref-fn (fn [el]
+  (let [_ (rf/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
+        ref-fn (fn [el]
                  (when el
+                   (rf/dispatch [:ls/store-val [:cv-visited] true])
                    (rf/dispatch [:dispatch-in/ms 2000 [:state [:fullscreen :cv] true]])
-                   (rf/dispatch [:dispatch-in/ms 3000 [:scroll/by 50]])
-                   (rf/dispatch [:dispatch-in/ms 4500 [:scroll/by -37]])
-                   (rf/dispatch [:dispatch-in/ms 5500 [:focus-element "fullscreen-btn"]])))]
+                   (when (not @(rf/subscribe [:state [:cv :visited]]))
+                     (rf/dispatch [:dispatch-in/ms 3000 [:scroll/by 50]])
+                     (rf/dispatch [:dispatch-in/ms 4500 [:scroll/by -37]])
+                     (rf/dispatch [:dispatch-in/ms 5500 [:focus-element "fullscreen-btn"]]))))]
    (fn []
     (let [{:keys [title caption cv]} @(rf/subscribe [:content [:cv]])
         {:keys [intro education work life skills]} cv
         first-year (apply min (map :from (concat education work)))
         last-year  (apply max (map #(if (number? %)
                                       %
-                                      2025)
+                                      (+ 2 (ct/year (ct/now))))
                                    (map :to (concat education work))))
         get-pos (fn [start end]
                   (str (* 95

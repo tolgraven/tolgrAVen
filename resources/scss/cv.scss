@@ -6,10 +6,10 @@
   margin: 0;
   width: 100%;
 
-  transition: all 0.9s ease,
+  transition: all 0.25s ease,
               width 0.9s ease 0.0s,
               max-width 0.9s ease 0.0s,
-              margin 0.3s ease 0.0s;
+              margin 0.25s ease 0.0s;
 
   &.fullscreen {
     border: var(--line-width) solid var(--line-color);
@@ -149,7 +149,7 @@
   // overflow: hidden;
   min-width: 12em;
   
-  transition: all 0.5s ease;
+  transition: all 0.25s ease;
 
   img {
     position: absolute;
@@ -192,7 +192,7 @@
       --from-alpha: 0.0;
       --to-fade: 65%;
       --to-alpha: 1.0;
-      transition: -webkit-mask 0.5s ease;
+      transition: -webkit-mask 0.25s ease;
       -webkit-mask: linear-gradient(to right, rgba(0,0,0,var(--from-alpha)) var(--from-fade),
                                               rgba(0,0,0,var(--to-alpha)) var(--to-fade));
   }
