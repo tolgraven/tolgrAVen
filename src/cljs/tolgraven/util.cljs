@@ -366,13 +366,14 @@
   (.scrollTo js/window 0 scroll-y-px))
 
 (defn when-seen "Dispatch event when observer hit, then end"
-  [on-view]
+  [on-view & [repeating?]]
   (let [observer (js/IntersectionObserver.
                   (fn [[entry & _] observer]
                     (when (= 1 (.-intersectionRatio entry)) ; fires a 0 on load for some reason...
                       (on-view)
-                      (.disconnect observer)))
-                  (clj->js {:threshold [1.0]}))]
+                      (when-not repeating?
+                        (.disconnect observer))))
+                  (clj->js {:threshold [0.95]}))]
     (fn [el]
       (if el
         (.observe observer el)
