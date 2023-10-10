@@ -369,11 +369,11 @@
   [on-view & [repeating?]]
   (let [observer (js/IntersectionObserver.
                   (fn [[entry & _] observer]
-                    (when (= 1 (.-intersectionRatio entry)) ; fires a 0 on load for some reason...
+                    (when (<= 0.5 (.-intersectionRatio entry)) ; fires a 0 on load for some reason...
                       (on-view)
                       (when-not repeating?
                         (.disconnect observer))))
-                  (clj->js {:threshold [0.95]}))]
+                  (clj->js {:threshold [0.5]}))]
     (fn [el]
       (if el
         (.observe observer el)
