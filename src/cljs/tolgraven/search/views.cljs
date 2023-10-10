@@ -22,7 +22,7 @@
                       0))))}
      [:img {:src "svg/search-ico.svg"
             :style {:width "1.2em" :height "1.2em"
-                    :filter "invert(100%)"}}]]))
+                    :filter "var(--light-to-dark)"}}]]))
 
 (defn completion
   [query suggestion height]

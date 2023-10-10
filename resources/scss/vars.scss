@@ -235,6 +235,7 @@
     
     --logo-flip: invert(0.95) hue-rotate(180deg) brightness(130%);
     --dark-to-light: none;
+    --light-to-dark: invert(1.0);
     --bg-pure: hsla(0, 0%, var(--lum-bg-1), 1.0);
   }
 
@@ -307,7 +308,8 @@
   --orange-3  : rgb(108, 82, 59);
   
   --logo-flip: none;
-  --dark-to-light: invert(0.95) hue-rotate(180deg) brightness(80%);
+  --dark-to-light: invert(0.95) hue-rotate(180deg) brightness(80%) saturate(80%);
+  --light-to-dark: none;
     --bg-pure: hsla(0, 0%, 100%, 1.0);
 }
 // }
