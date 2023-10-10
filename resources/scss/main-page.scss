@@ -276,3 +276,9 @@
 #gallery-3 {
   z-index: 40; // safari fix
 }
+
+#strava {
+  .media-as-bg {
+    filter: var(--dark-to-light);
+  }
+}
