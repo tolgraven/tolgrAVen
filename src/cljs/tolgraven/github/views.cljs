@@ -120,8 +120,10 @@
        {:ref ref-fn} ; restore scroll when displaying details
        (when (= @view :commits)
         [:div {:style {:text-align "center"
-                       :padding "1em"}}
-          "Click a commit for details and diff"])
+                       :padding "1em"
+                       :font-size "80%"
+                       :color "var(--fg-5)"}}
+          "Press a commit for details and diff"])
       (if (= @view :commits)
        (for [{:keys [commit author html_url sha sha7 message date clock ts] :as item} @commits
               :let [[info subtitle title] message]]
@@ -135,7 +137,8 @@
          [:img.user-avatar.center-content {:src (:avatar_url author)}]
          [:div.github-commit-details
           [:span.github-commit-time date]
-          [:span.github-commit-time clock]
+          [:span.github-commit-time (ctf/unparse (ctf/formatters :time-no-ms)
+                                                 (ct/to-default-time-zone (ctc/from-string clock)))]
           [:a {:href html_url}
            [:span.github-commit-sha sha7]]
 
