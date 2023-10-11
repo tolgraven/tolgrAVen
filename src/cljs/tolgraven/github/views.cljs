@@ -4,7 +4,10 @@
    [re-frame.core :as rf]
    [clojure.string :as string]
    [tolgraven.ui :as ui]
-   [tolgraven.util :as util :refer [at]]))
+   [tolgraven.util :as util :refer [at]]
+   [cljs-time.core :as ct]
+   [cljs-time.coerce :as ctc]
+   [cljs-time.format :as ctf]))
 
 
 (defn commit "Show a single commit with highlighted diff etc..."
