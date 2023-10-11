@@ -84,33 +84,9 @@ a {
     text-emphasis: var(--purple);
     text-decoration: underline var(--purple) var(--line-width);
 
-    &:after {
-      content: "\f0c1";
-      display: inline-block;
-    }
-
     * {
       // color: var(--purple-2);
       text-decoration: underline var(--purple) var(--line-width);
-      &:after {
-        content: "\f0c1";
-        display: inline-block;
-      }
-    }
-  }
-
-  span, p {
-    position: relative;
-
-    &:after {
-      content: "\f0c1";
-      font-family: 'Font Awesome 5 Free';
-      font-size: 40%;
-      vertical-align: top;
-      position: relative;
-      top: 0.5em;
-      left: 0.3em;
-      text-decoration: none;  // not taking, don't get why...
     }
   }
 

@@ -54,6 +54,19 @@
 
       a {
         color: var(--purple);
+
+        &:after {
+          content: "\f0c1";
+          font-family: 'Font Awesome 5 Free';
+          font-size: 40%;
+          vertical-align: top;
+          color: var(--fg-6);
+          position: relative;
+          top: 0.5em;
+          left: 0.3em;
+          text-decoration: none;  // not taking, don't get why...
+        }
+
       }
     }
 
