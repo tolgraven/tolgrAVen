@@ -52,7 +52,7 @@
                           at-bottom? (>= new-pos ; XXX use calc from :scroll/direction instead...
                                          (- new-height
                                             (.-innerHeight js/window)
-                                            500)) ; "maybe at bottom"
+                                            150)) ; "maybe at bottom"
                           at-top? (<= @scroll-pos top-size)]
                         (when (and (not= @scroll-pos new-pos)
                                    (= @page-height new-height)) ; avoid running up accum from massive page size jumps...
@@ -61,7 +61,7 @@
                                                        0))
                           (when (and (or at-bottom?
                                          at-top?
-                                         (ct/after? (ct/minus (ct/now) (ct/millis 250)) @triggered-at)) ; ensure "scroll" isn't due to content resizing
+                                         (ct/after? (ct/minus (ct/now) (ct/millis 150)) @triggered-at)) ; ensure "scroll" isn't due to content resizing
                                      (or (<= 250 @accum-in-direction) ; bit of debounce
                                           (and at-top?
                                                (= new-direction :up)

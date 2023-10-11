@@ -572,7 +572,7 @@
                             (:header-with-menu-height css-var)
                             (:header-height css-var)))
          footer-height (if hide-footer?
-                         "0rem"
+                         "calc(2 * var(--line-width))"
                          (:footer-height css-var))]
      {:db (-> db (assoc-in [:state :hidden :header] hide-header?)
                  (assoc-in [:state :hidden :footer] hide-footer?))

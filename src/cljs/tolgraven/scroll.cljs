@@ -71,12 +71,7 @@
                                    (util/rem-to-px (:space-lg css-var))
                                    (* 2 (util/rem-to-px (:space-top css-var))))) ; + space-lg above main. but header + 2x space-top seems sufficient...
          hidden? (get-in db [:state :hidden :header])
-         footer-hidden? (get-in db [:state :hidden :footer])
-         at-bottom? (>= position
-                        (- height
-                           (.-innerHeight js/window) ; should be injected I guess
-                           50
-                           (util/rem-to-px (:footer-height-current css-var))))] ; will jump page so...
+         footer-hidden? (get-in db [:state :hidden :footer])] ; will jump page so...
      {:dispatch-n [(cond (or (and (or hidden? footer-hidden?)
                                   (= direction :up))
                              (< position 50))
@@ -115,6 +110,6 @@
                    (if bottom?
                      "0rem"
                      (if (get-in db [:state :hidden :footer])
-                       "var(--line-width)"
+                       "calc(2 * var(--line-width))"
                        (:footer-height css-var)))]]})))
 
