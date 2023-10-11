@@ -77,13 +77,15 @@
                              (< position 50))
                          [:hide-header-footer false false]
 
-                         (and (not footer-hidden?)
-                              at-bottom?) ; not checking for already hidden leads to spam but somehow stabilizes...
+                         (and (or (not footer-hidden?) ; not checking for already hidden leads to spam
+                                  hidden?)
+                              at-bottom?)
                          [:hide-header-footer false true] ; don't unhide footer at bottom...
 
                          (and (not hidden?)
                               (= direction :down)
                               past-top?
+                              (not at-bottom?)
                               (not (get-in db [:state :menu])))
                          [:hide-header-footer true true]) ; hide header and footer
                    
