@@ -166,8 +166,6 @@
   z-index: 0;
   background-color: var(--bg-2);
   border: var(--line-width) solid var(--line-color);
-  
-  padding-bottom: 1em;
 
   .blog {
     background: var(--bg-2);
@@ -200,6 +198,7 @@
 
   .blog-comments {
     margin: 0;
+    border-radius: 0;
     // padding: var(--space);
   }
 }

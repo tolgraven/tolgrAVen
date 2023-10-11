@@ -39,7 +39,7 @@
   --left-marker:       calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
                             + 0.75 * var(--space) - 1 * (var(--fiddle-multiplier) * var(--line-width)));
   --right-marker:       calc(100% - 1 * var(--left-marker) - 2 * var(--line-width)); /* makes sense right side needs one more unit since it has the right border... */
-  --top-to-menu-height: calc(2 * var(--space-top) + 2em - 5 * var(--line-width));
+  --top-to-menu-height: calc(2 * var(--space-top) + 1.55em);
   
   --header-expand-time:         0.5s;
   --navigation-transition-time: 0.7s;

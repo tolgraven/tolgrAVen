@@ -80,12 +80,26 @@ a {
   touch-action: manipulation;
 
   &:visited {
-    text-decoration: underline var(--purple);
+    // color: var(--purple-2);
+    text-emphasis: var(--purple);
+    text-decoration: underline var(--purple) var(--line-width);
+
+    &:after {
+      content: "\f0c1";
+      display: inline-block;
+    }
+
+    * {
+      // color: var(--purple-2);
+      text-decoration: underline var(--purple) var(--line-width);
+      &:after {
+        content: "\f0c1";
+        display: inline-block;
+      }
+    }
   }
 
   span, p {
-    text-decoration: underline var(--blue);
-    text-decoration-thickness: 1px;
     position: relative;
 
     &:after {
