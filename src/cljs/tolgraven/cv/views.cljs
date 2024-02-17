@@ -11,10 +11,10 @@
 ;; and can put like projects, roles/promotions, courses etc for that specific thing
 ;; either as a full new timeline of same type, or inside the existing big box (that'd be made bigger)
 (defn box "One thing, accomplishment, employment, etc"
-  [{:keys [from to what position how where logo color] :as all} domain pos size overlap-level]
+  [{:keys [from to what position how where logo color] :as all} pos size overlap-level]
   (let [expanded? (r/atom false)
         closing? (r/atom false)]
-    (fn [{:keys [from to what position how where logo color] :as all} domain pos size overlap-level]
+    (fn [{:keys [from to what position how where logo color] :as all} pos size overlap-level]
       [:div.cv-detail
        {:on-click (fn []
                     (swap! closing? not)
@@ -22,16 +22,19 @@
                                         (swap! closing? not))
                                    250))
         :style (merge {:background-color color}
+                      {:left pos
+                       :top 0}
                       (when-not @expanded?
-                        {:left pos
-                         :top (str (+ 2.5 (* 19 overlap-level)) "%") ;only supports 4 tall then tho
+                        {:top (str (+ 2.5 (* 19 overlap-level)) "%")
                          :width size}))
         :class (str (when @expanded? "cv-detail-expanded ")
                     (when @closing? "cv-detail-closing"))}
        [:div.cv-bg-logo
         {:style {:background-image (str "url(../../" logo ")")}}]
        [:p.cv-from from]
-       [:p.cv-to (if to to "current")]
+       [:p.cv-to (if (= from to)
+                   ""
+                   (or to "current"))]
        [:p.cv-what [:strong what]]
        (if @expanded?
          (for [item how]
@@ -58,6 +61,33 @@
      [:h1 "Skills"]
      [ui/carousel-normal :cv/skills {} [software digital general language]]]))
 
+(defn intro
+  [cv]
+  (let [win-fullscreen? @(rf/subscribe [:state [:window :fullscreen?]])]
+    [:div.cv-intro
+     [ui/seen-anon "slide-in zoom opacity extra-slow"
+      [:img.fullwide
+       {:src "img/logo/tolgraven-logo.png"}]]
+     [:p (:intro cv)]
+     [:div.center-content
+      [:div.cv-howto
+       [:div.flex
+        [:p "Click a box for further details."]
+        [:p.cv-caption (:caption cv)]]
+
+       (if-not win-fullscreen?
+         "Scroll sideways to look back, or click "
+         "Done snooping? Click ")
+       [:button#fullscreen-btn
+        {:on-click #(rf/dispatch [:window/fullscreen! (not win-fullscreen?)])}
+        (if-not win-fullscreen?
+          "Fullscreen"
+          "Exit fullscreen")]
+       (if-not win-fullscreen?
+         " or just tap your big ole' <Space>| to maximize your browser window. "
+         " to return to your trusty desktop")]]]))
+
+
  ;; XXX TODO take out stuff specific to me (including categories, skill categories, logo etc) so is fully adaptable for others...
 (defn cv "Main cv component"
   []
@@ -73,13 +103,14 @@
                      (rf/dispatch [:dispatch-in/ms 5500 [:focus-element "fullscreen-btn"]]))))]
    (fn []
     (let [{:keys [title caption cv]} @(rf/subscribe [:content [:cv]])
-        {:keys [intro education work life skills]} cv
-        total-width "180em"
-        first-year (apply min (map :from (concat education work life)))
+        {:keys [timeline skills]} cv
+        total-width "200em"
+        base-height 9
+        first-year (apply min (map :from (mapcat :things timeline)))
         last-year  (apply max (map #(if (number? %)
                                       %
                                       (+ 3 (ct/year (ct/now))))
-                                   (map :to (concat education work life))))
+                                   (map :to (mapcat :things timeline))))
         get-pos (fn [start end]
                   (str (* 95
                           (/ (- start first-year)
@@ -92,72 +123,54 @@
                                 (- last-year first-year)))
                           "%")))
         decades (range (first (filter #(= 0 (mod % 10))
-                                      (take 10 (range 1988 (+ 10 1988)))))
-                       (inc 2024) 10)
+                                      (take 10 (range first-year (+ 10 first-year)))))
+                       (inc last-year) 10)
         curr-end (atom 1970) ; literally the dawn of time lols
         overlap-level (r/atom 0)
-        gen-items (fn [domain]
-                    (doall (for [{:keys [from to level] :as all} (domain cv)
+        gen-items (fn [things]
+                    (doall (for [{:keys [from to level what] :as thing} things
                                  :let [last-end @curr-end
                                        new-end (reset! curr-end to)
                                        olevel (if (> last-end from)
                                                (swap! overlap-level inc)
                                                (reset! overlap-level 0))
-                                       id (str from "-" to "-" (:what all))]]
+                                       id (str from "-" to "-" what)]]
                             ^{:key id}
-                             [box all domain
-                              (get-pos from to)
-                              (get-size from to)
-                              (or level @overlap-level)])))
-        boxes [:div.cv-boxes
-               {:ref #(when %
-                        (set! (.-scrollLeft %) (.-scrollWidth %)))}
-               [ui/close #(rf/dispatch [:state [:fullscreen :cv] false])]
-               [:div.cv-decade-lines
-                {:style {:width total-width}}
-                (for [decade decades]
-                  [:div.cv-decade-line
-                   {:style {:left (get-pos decade decade)
-                            :bottom 0}}
-                   [:div.cv-decade-label
-                    (str decade "s")]])]
-               [:div.cv-items.cv-education
-                {:width total-width} ; should be a var from db settings
-                [:h1 [:i.fas.fa-solid.fa-graduation-cap] "education"]
-                (gen-items :education)]
-               [:div.cv-items.cv-work
-                [:h1 [:i.fas.fa-solid.fa-briefcase] "work"]
-                (gen-items :work)]
-               [:div.cv-items.cv-life
-                [:h1 [:i.fas.fa-book] "life"]
-                (gen-items :life)]]
+                            [box thing 
+                             (get-pos from to)
+                             (get-size from to)
+                             (or level @overlap-level)])))
         fullscreen? (when @(rf/subscribe [:fullscreen/get :cv])
-                      "fullscreen")
-        win-fullscreen? @(rf/subscribe [:state [:window :fullscreen?]])]
+                      "fullscreen")]
     [:section#cv.cv.nopadding.noborder
      {:class fullscreen?
       :ref ref-fn}
-     [:div.cv-intro
-      [ui/seen-anon "slide-in zoom opacity extra-slow"
-       [:img.fullwide
-       {:src "img/logo/tolgraven-logo.png"}]]
-      [:p (:intro cv)]
-      [:div.center-content
-       [:div.cv-howto
-        [:p "Click a box for further details."]
+     [intro cv]
+     [:div.cv-boxes
+      {:ref #(when %
+               (set! (.-scrollLeft %) (.-scrollWidth %)))}
+      [ui/close #(rf/dispatch [:state [:fullscreen :cv] false])]
+      [:div.cv-decade-lines
+       {:style {:width total-width}}
+       (for [decade decades]
+         [:div.cv-decade-line
+          {:style {:left (get-pos decade decade)
+                   :bottom 0}}
+          [:div.cv-decade-label
+           (str decade "s")]])]
 
-        (if-not win-fullscreen?
-          "Scroll sideways to look back, or click "
-          "Done snooping? Click ")
-        [:button#fullscreen-btn
-         {:on-click #(rf/dispatch [:window/fullscreen! (not win-fullscreen?)])}
-         (if-not win-fullscreen?
-           "Fullscreen"
-           "Exit fullscreen")]
-        (if-not win-fullscreen?
-          " or just tap your big ole' <Space>| to maximize your browser window. "
-          " to return to your trusty desktop")]]]
-     boxes
-     [ui/fading :dir "bottom"]
+      (doall (for [[i {:keys [category icon things height-ratio]}] (util/for-i (:timeline cv))]
+               ^{:key (str "cv-category-" (name category))}
+               [:div.cv-items
+                {:class (str "cv-" (name category))
+                 :style {:width total-width
+                         :height (str (* height-ratio base-height) "em")
+                         :background (str "linear-gradient(0deg, var(--bg-"
+                                          (get (:background-color-indexes cv) (inc i)) ")" 
+                                          ", var(--bg-" (get (:background-color-indexes cv) i) "))")}}
+                [:h1 [:i {:class icon}] (name category)]
+                (gen-items things)]))]
+      [ui/fading :dir "bottom"]
+     
      [capabilities skills]]))))
 

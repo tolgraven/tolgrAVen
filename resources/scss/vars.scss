@@ -17,7 +17,7 @@
   --header-with-menu-height: 18rem; /* not truly dynamic bc of annoying sticky */
   --header-height-current:   var(--header-height); /* will then be changed by js dep on whether menu open... */
   --header-height-offset:    var(--header-height);
-  --footer-height:           4.5rem; // 3.00rem; // measured...
+  --footer-height:           3.0rem; // 4.50rem; // measured...
   --footer-height-full:      35.0rem;
   --footer-height-current:   var(--footer-height);
   --footer-bottom:           calc(0rem - var(--line-width));
@@ -91,19 +91,35 @@
   --lum-light-6:       calc(100% - var(--lum-dark-6-2));
   --lum-light-6-2:     calc(100% - var(--lum-dark-6));
 
-  --light-1:           hsl(var(--hue-2), 20%, var(--lum-light-2));
-  --light-1-2:         hsl(var(--hue-2), 20%, var(--lum-light-1-2));
-  --light-2:           hsl(var(--hue-2), 7%, var(--lum-light-1));
-  --light-2-2:         hsl(var(--hue-2), 7%, var(--lum-light-2-2));
-  --light-text:        hsl(29, 35%, 86%);
-  --light-3:           hsl(var(--hue-2), 15%, var(--lum-light-3));
-  --light-3-2:         hsl(var(--hue-2), 15%, var(--lum-light-3-2));
-  --light-4:           hsl(var(--hue-2), 7%, var(--lum-light-4));
-  --light-4-2:         hsl(var(--hue-2), 7%, var(--lum-light-4-2));
-  --light-5:           hsl(var(--hue-2), 7%, var(--lum-light-5));
-  --light-5-2:         hsl(var(--hue-2), 7%, var(--lum-light-5-2));
-  --light-6:           hsl(var(--hue-2), 7%, var(--lum-light-6));
-  --light-6-2:         hsl(var(--hue-2), 7%, var(--lum-light-6-2));
+  --light-base-0:           var(--hue-2), 5%, 100%;
+  --light-base-1:           var(--hue-2), 20%, var(--lum-light-2);
+  --light-base-1-2:         var(--hue-2), 20%, var(--lum-light-1-2);
+  --light-base-2:           var(--hue-2), 7%, var(--lum-light-1);
+  --light-base-2-2:         var(--hue-2), 7%, var(--lum-light-2-2);
+  --light-base-text:        29, 35%, 86%;
+  --light-base-3:           var(--hue-2), 15%, var(--lum-light-3);
+  --light-base-3-2:         var(--hue-2), 15%, var(--lum-light-3-2);
+  --light-base-4:           var(--hue-2), 7%, var(--lum-light-4);
+  --light-base-4-2:         var(--hue-2), 7%, var(--lum-light-4-2);
+  --light-base-5:           var(--hue-2), 7%, var(--lum-light-5);
+  --light-base-5-2:         var(--hue-2), 7%, var(--lum-light-5-2);
+  --light-base-6:           var(--hue-2), 7%, var(--lum-light-6);
+  --light-base-6-2:         var(--hue-2), 7%, var(--lum-light-6-2);
+
+  --light-0:           hsl(var(--light-base-0));
+  --light-1:           hsl(var(--light-base-1));
+  --light-1-2:         hsl(var(--light-base-1-2));
+  --light-2:           hsl(var(--light-base-2));
+  --light-2-2:         hsl(var(--light-base-2-2));
+  --light-text:        hsl(var(--light-base-text));
+  --light-3:           hsl(var(--light-base-3));
+  --light-3-2:         hsl(var(--light-base-3-2));
+  --light-4:           hsl(var(--light-base-4));
+  --light-4-2:         hsl(var(--light-base-4-2));
+  --light-5:           hsl(var(--light-base-5));
+  --light-5-2:         hsl(var(--light-base-5-2));
+  --light-6:           hsl(var(--light-base-6));
+  --light-6-2:         hsl(var(--light-base-6-2));
 
 
   --nav-accent: hsla(var(--hue-3), 40%, 20%, 0.35);
@@ -154,19 +170,34 @@
   --orange-2  : rgb(219, 161, 132);
   --orange-3  : rgb(217, 165, 138);
   
+
+  --dark-base-0:     var(--hue-1),  5%,  0%;
+  --dark-base-1:     var(--hue-1),  7%,  var(--lum-dark-1);
+  --dark-base-1-2:   var(--hue-1),  7%,  var(--lum-dark-1-2);
+  --dark-base-2:     var(--hue-3),  7%,  var(--lum-dark-2);
+  --dark-base-2-2:   var(--hue-3),  7%,  var(--lum-dark-2-2);
+  --dark-base-3:     var(--hue-2),  7%,  var(--lum-dark-3);
+  --dark-base-3-2:   var(--hue-2),  7%,  var(--lum-dark-3-2);
+  --dark-base-4:     var(--hue-2),  7%,  var(--lum-dark-4);
+  --dark-base-4-2:   var(--hue-2),  7%,  var(--lum-dark-4-2);
+  --dark-base-5:     var(--hue-2),  7%,  var(--lum-dark-5);
+  --dark-base-5-2:   var(--hue-2),  7%,  var(--lum-dark-5-2);
+  --dark-base-6:     var(--hue-3),  7%,  var(--lum-dark-6);
+  --dark-base-6-2:   var(--hue-3),  7%,  var(--lum-dark-6-2);
   
-  --dark-1:     hsl(var(--hue-1),  7%,  var(--lum-dark-1));
-  --dark-1-2:   hsl(var(--hue-1),  7%,  var(--lum-dark-1-2));
-  --dark-2:     hsl(var(--hue-3),  7%,  var(--lum-dark-2));
-  --dark-2-2:   hsl(var(--hue-3),  7%,  var(--lum-dark-2-2));
-  --dark-3:     hsl(var(--hue-2),  7%,  var(--lum-dark-3));;
-  --dark-3-2:   hsl(var(--hue-2),  7%,  var(--lum-dark-3-2));;
-  --dark-4:     hsl(var(--hue-2),  7%,  var(--lum-dark-4));
-  --dark-4-2:   hsl(var(--hue-2),  7%,  var(--lum-dark-4-2));
-  --dark-5:     hsl(var(--hue-2),  7%,  var(--lum-dark-5));
-  --dark-5-2:   hsl(var(--hue-2),  7%,  var(--lum-dark-5-2));
-  --dark-6:     hsl(var(--hue-3),  7%,  var(--lum-dark-6));
-  --dark-6-2:   hsl(var(--hue-3),  7%,  var(--lum-dark-6-2));
+  --dark-0:     hsl(var(--dark-base-0));
+  --dark-1:     hsl(var(--dark-base-1));
+  --dark-1-2:   hsl(var(--dark-base-1-2));
+  --dark-2:     hsl(var(--dark-base-2));
+  --dark-2-2:   hsl(var(--dark-base-2-2));
+  --dark-3:     hsl(var(--dark-base-3));
+  --dark-3-2:   hsl(var(--dark-base-3-2));
+  --dark-4:     hsl(var(--dark-base-4));
+  --dark-4-2:   hsl(var(--dark-base-4-2));
+  --dark-5:     hsl(var(--dark-base-5));
+  --dark-5-2:   hsl(var(--dark-base-5-2));
+  --dark-6:     hsl(var(--dark-base-6));
+  --dark-6-2:   hsl(var(--dark-base-6-2));
 
   --opacity-regular:  0.40;
   --opacity-faint:    0.20;
@@ -194,6 +225,22 @@
 }
 
 :root { /* we run dark by default */
+  
+    --fg-base-0:     var(--light-base-0);
+    --fg-base-1:     var(--light-base-1);
+    --fg-base-1-2:   var(--light-base-1-2);
+    --fg-base-2:     var(--light-base-2);
+    --fg-base-2-2:   var(--light-base-2-2);
+    --fg-base-3:     var(--light-base-3);
+    --fg-base-3-2:   var(--light-base-3-2);
+    --fg-base-4:     var(--light-base-4);
+    --fg-base-4-2:   var(--light-base-4-2);
+    --fg-base-5:     var(--light-base-5);
+    --fg-base-5-2:   var(--light-base-5-2);
+    --fg-base-6:     var(--light-base-6);
+    --fg-base-6-2:   var(--light-base-6-2);
+    --fg-base-0:     var(--light-base-0);
+    --fg-0:     var(--light-0);
     --fg-1:     var(--light-1);
     --fg-1-2:   var(--light-1-2);
     --fg-2:     var(--light-2);
@@ -212,6 +259,21 @@
     --lum-fg-4: var(--lum-light-4);
     --lum-fg-5: var(--lum-light-5);
     --lum-fg-6: var(--lum-light-6);
+
+    --bg-base-0:     var(--dark-base-0);
+    --bg-base-1:     var(--dark-base-1);
+    --bg-base-1-2:   var(--dark-base-1-2);
+    --bg-base-2:     var(--dark-base-2);
+    --bg-base-2-2:   var(--dark-base-2-2);
+    --bg-base-3:     var(--dark-base-3);
+    --bg-base-3-2:   var(--dark-base-3-2);
+    --bg-base-4:     var(--dark-base-4);
+    --bg-base-4-2:   var(--dark-base-4-2);
+    --bg-base-5:     var(--dark-base-5);
+    --bg-base-5-2:   var(--dark-base-5-2);
+    --bg-base-6:     var(--dark-base-6);
+    --bg-base-6-2:   var(--dark-base-6-2);
+    --bg-0:     var(--dark-0);
     --bg-1:     var(--dark-1);
     --bg-1-2:   var(--dark-1-2);
     --bg-2:     var(--dark-2);
@@ -243,6 +305,7 @@
 :root.theme-light {
 // :root {
   // should use some sass trick for this tho...
+    --fg-0:     var(--dark-0);
     --fg-1:     var(--dark-1);
     --fg-1-2:   var(--dark-1-2);
     --fg-2:     var(--dark-2);
@@ -261,6 +324,7 @@
   --lum-fg-4:   var(--lum-dark-4);
   --lum-fg-5:   var(--lum-dark-5);
   --lum-fg-6:   var(--lum-dark-6);
+    --bg-0:     var(--light-0);
     --bg-1:     var(--light-1);
     --bg-1-2:   var(--light-1-2);
     --bg-2:     var(--light-2);

@@ -18,13 +18,19 @@
     z-index: 15; // ensure fader above blacks out top border within main
   }
 
+  .cv-caption {
+    font-size: 70%;
+    color: var(--fg-6);
+    margin-left: calc(1 * var(--space-lg));
+  }
+
   .cv-skills {
     background: linear-gradient(180deg, var(--bg-2) 20%, var(--bg-3) 90%);
-    margin-top: calc(0px - 2.0 * var(--space));
+    margin-top: calc(0px - 0.5 * var(--space));
     padding-top: calc(0px - 0.0 * var(--space));
-    font-size: 0.7em;
-    padding-left: 15%;
-    padding-right: 15%;
+    font-size: 0.9em;
+    padding-left: 10%;
+    padding-right: 10%;
     z-index: 100;
     border-top: var(--line-width) solid var(--bg-6);
 
@@ -36,6 +42,10 @@
     .carousel-prev-btn, .carousel-next-btn {
       font-size: 400%;
       top: 25%;
+    }
+
+    .carousel-idxs {
+      margin-bottom: var(--space-lg);
     }
 
     .cv-skill {
@@ -100,7 +110,7 @@
     width: var(--line-width-sm);
     height: 5000%;
     background: var(--bg-6);
-    // z-index: 10;
+    z-index: 0;
 
     .cv-decade-label {
       position: absolute;
@@ -119,7 +129,7 @@
 
 @mixin i-gradient {
   i {
-    // background: linear-gradient(-45deg, var(--fg-1), var(--bg-6));
+    background: linear-gradient(-45deg, var(--fg-1), var(--bg-6));
     background-clip: text;
     color: transparent;
   }
@@ -130,7 +140,6 @@
   padding-top: calc(0.5 * var(--space));
   border-bottom: var(--line-width-sm) solid var(--bg-6);
   min-height: 15em;
-  width: 180em;
   overflow-x: scroll;
 
   &.cv-education, &.cv-work, &.cv-life {
@@ -138,23 +147,9 @@
 
     .cv-detail {
       max-height: 18em;
-      z-index: 11;
     }
   }
 
-  &.cv-education {
-    background: linear-gradient(0deg, var(--bg-3), var(--bg-2));
-    max-height: 12em; // these need to be set dynamically in code not here...
-  }
-  &.cv-work {
-    background: linear-gradient(0deg, var(--bg-5), var(--bg-3));
-    height: 46em;
-  }
-  &.cv-life {
-    background: linear-gradient(0deg, var(--bg-6), var(--bg-5));
-    height: 26em;
-    
-  }
   h1 {
     text-align: right;
     color: var(--fg-6);
@@ -174,6 +169,7 @@
   color: var(--bg-1);
   min-height: 10em;
   opacity: 93%;
+  z-index: 11;
   border-radius: 0.2em;
   border-bottom-right-radius: 1.2em;
   box-shadow: 2px 2px 7px 5px var(--box-regular-color); 
@@ -212,6 +208,8 @@
       height: 100%;
       width: 100%;
       position: absolute;
+      top: 0;
+      left: 0;
       z-index: -100;
       background-repeat: no-repeat;
       opacity: 0.1;
@@ -261,11 +259,11 @@
   }
 
   &.cv-detail-expanded {
-    min-height: 25em;
+    min-height: 15em;
     max-height: 40em;
-    position: fixed;
-    z-index: 10;
-    left: 10%;
+    overflow-y: scroll;
+    max-width: 20%;
+    z-index: 110;
     width: 80%;
     padding: var(--space-lg);
     font-size: 0.9rem;
@@ -274,6 +272,9 @@
     border-bottom-right-radius: 2.4em;
     transform: scale(1);
     
+    p {
+      margin-right: calc(3 * var(--space-lg));
+    }
     i {
       background: linear-gradient(-45deg, var(--bg-1), var(--bg-6));
       background-clip: text;
