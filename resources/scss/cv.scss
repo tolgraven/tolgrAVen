@@ -33,8 +33,12 @@
       text-align: center;
     }
 
+    .carousel-prev-btn, .carousel-next-btn {
+      font-size: 400%;
+      top: 25%;
+    }
+
     .cv-skill {
-      padding: var(--space);
       color: var(--fg-6);
       min-height: 25em;
       
@@ -50,7 +54,7 @@
   background: linear-gradient(180deg, var(--bg-pure) 10%, var(--bg-1) 60%, var(--bg-2) 90%);
 
   .cv-howto {
-    font-size: 65%;
+    font-size: 75%;
     padding: var(--space);
   }
 
@@ -67,11 +71,11 @@
   > p {
     margin: calc(0px - 2.5 * var(--line-width)) 0;
     padding: var(--space-lg);
-    border-bottom: var(--line-width) solid var(--bg-6);
+    border-bottom: var(--line-width-sm) solid var(--bg-6);
     background: linear-gradient(180deg, var(--bg-pure) 20%,  hsl(179, 9%, var(--lum-bg-2)));
   }
   button {
-    margin-bottom: var(--space-lg);
+    // margin-bottom: var(--space-lg);
   }
 
 }
@@ -82,14 +86,40 @@
   }
 }
 
+.cv-decade-lines {
+  position: relative;
+  height: 2%;
+  background-color: var(--bg-2);
+  border-bottom: var(--line-width-sm) solid var(--bg-6);
+  border-top: var(--line-width-sm) solid var(--bg-6);
+  z-index: 10;
+
+  .cv-decade-line {
+    position: absolute;
+    top: 0;
+    width: var(--line-width-sm);
+    height: 5000%;
+    background: var(--bg-6);
+    // z-index: 10;
+
+    .cv-decade-label {
+      position: absolute;
+      top: 0.25%;
+      left: 0.8em;
+    }
+  }
+}
+
 .cv-boxes {
   overflow-x: scroll;
+  overflow-y: hidden;
   font-size: 80%;
+  background: linear-gradient(180deg, var(--bg-pure) 10%, var(--bg-1) 60%, var(--bg-2) 90%);
 }
 
 @mixin i-gradient {
   i {
-    background: linear-gradient(-45deg, var(--fg-1), var(--bg-6));
+    // background: linear-gradient(-45deg, var(--fg-1), var(--bg-6));
     background-clip: text;
     color: transparent;
   }
@@ -103,26 +133,27 @@
   width: 180em;
   overflow-x: scroll;
 
-  &.cv-education {
-    background: linear-gradient(0deg, var(--bg-3), var(--bg-2));
-    max-height: 12em;
-    
+  &.cv-education, &.cv-work, &.cv-life {
     @include i-gradient;
 
     .cv-detail {
       max-height: 18em;
+      z-index: 11;
     }
+  }
+
+  &.cv-education {
+    background: linear-gradient(0deg, var(--bg-3), var(--bg-2));
+    max-height: 12em; // these need to be set dynamically in code not here...
   }
   &.cv-work {
     background: linear-gradient(0deg, var(--bg-5), var(--bg-3));
     height: 46em;
-    @include i-gradient;
   }
   &.cv-life {
     background: linear-gradient(0deg, var(--bg-6), var(--bg-5));
     height: 26em;
     
-    @include i-gradient;
   }
   h1 {
     text-align: right;

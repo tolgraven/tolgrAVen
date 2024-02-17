@@ -457,6 +457,7 @@
                                    :large-monitor]
                      :debounce-ms 250]) ;; optional
   (ajax/load-interceptors!)
+  (rf/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
   (rf/dispatch [:cookie/show-notice]) ; do later first check if prev visit
   (mount-components)
   ; (rf/dispatch [:on-booted :firebase [:init]])

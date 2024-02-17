@@ -7,6 +7,9 @@
    [tolgraven.util :as util :refer [at]]
    [cljs-time.core :as ct]))
 
+;; IDEA: make it possible for a box to contain its own timeline of boxes, so tapping it, "zooms in"
+;; and can put like projects, roles/promotions, courses etc for that specific thing
+;; either as a full new timeline of same type, or inside the existing big box (that'd be made bigger)
 (defn box "One thing, accomplishment, employment, etc"
   [{:keys [from to what position how where logo color] :as all} domain pos size overlap-level]
   (let [expanded? (r/atom false)
@@ -43,7 +46,7 @@
   (let [topic (fn [id icon]
                 [:div.cv-skill
                  {:class (str "cv-" (name id))}
-                 [:h3 [:i {:class icon}] (str " " (string/capitalize (name id)))]
+                 [:h2 [:i {:class icon}] (str " " (string/capitalize (name id)))]
                  (for [line (id skills)] ^{:key line}
                    [:p.cv-skill-line "- " [:span line]])])
         software (topic :software "fas fa-code")
@@ -55,37 +58,43 @@
      [:h1 "Skills"]
      [ui/carousel-normal :cv/skills {} [software digital general language]]]))
 
+ ;; XXX TODO take out stuff specific to me (including categories, skill categories, logo etc) so is fully adaptable for others...
 (defn cv "Main cv component"
   []
-  (let [_ (rf/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
+  (let [;_ (rf/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
+        visited (rf/subscribe [:state [:cv :visited]])
         ref-fn (fn [el]
                  (when el
                    (rf/dispatch [:ls/store-val [:cv-visited] true])
                    (rf/dispatch [:dispatch-in/ms 2000 [:state [:fullscreen :cv] true]])
-                   (when (not @(rf/subscribe [:state [:cv :visited]]))
+                   (when (not @visited)
                      (rf/dispatch [:dispatch-in/ms 3000 [:scroll/by 50]])
                      (rf/dispatch [:dispatch-in/ms 4500 [:scroll/by -37]])
                      (rf/dispatch [:dispatch-in/ms 5500 [:focus-element "fullscreen-btn"]]))))]
    (fn []
     (let [{:keys [title caption cv]} @(rf/subscribe [:content [:cv]])
         {:keys [intro education work life skills]} cv
-        first-year (apply min (map :from (concat education work)))
+        total-width "180em"
+        first-year (apply min (map :from (concat education work life)))
         last-year  (apply max (map #(if (number? %)
                                       %
-                                      (+ 2 (ct/year (ct/now))))
-                                   (map :to (concat education work))))
+                                      (+ 3 (ct/year (ct/now))))
+                                   (map :to (concat education work life))))
         get-pos (fn [start end]
                   (str (* 95
                           (/ (- start first-year)
                              (- last-year first-year)))
                        "%"))
         get-size (fn [start end]
-                   (let [end (if (number? end) end 2024)]
-                     (str (* 93
+                   (let [end (if (number? end) end (inc (ct/year (ct/now))))]
+                     (str (* 92
                              (/ (- end start)
                                 (- last-year first-year)))
                           "%")))
-        curr-end (atom 1970)
+        decades (range (first (filter #(= 0 (mod % 10))
+                                      (take 10 (range 1988 (+ 10 1988)))))
+                       (inc 2024) 10)
+        curr-end (atom 1970) ; literally the dawn of time lols
         overlap-level (r/atom 0)
         gen-items (fn [domain]
                     (doall (for [{:keys [from to level] :as all} (domain cv)
@@ -104,7 +113,16 @@
                {:ref #(when %
                         (set! (.-scrollLeft %) (.-scrollWidth %)))}
                [ui/close #(rf/dispatch [:state [:fullscreen :cv] false])]
+               [:div.cv-decade-lines
+                {:style {:width total-width}}
+                (for [decade decades]
+                  [:div.cv-decade-line
+                   {:style {:left (get-pos decade decade)
+                            :bottom 0}}
+                   [:div.cv-decade-label
+                    (str decade "s")]])]
                [:div.cv-items.cv-education
+                {:width total-width} ; should be a var from db settings
                 [:h1 [:i.fas.fa-solid.fa-graduation-cap] "education"]
                 (gen-items :education)]
                [:div.cv-items.cv-work
@@ -120,8 +138,9 @@
      {:class fullscreen?
       :ref ref-fn}
      [:div.cv-intro
-      [:img.fullwide
-       {:src "img/logo/tolgraven-logo.png"}]
+      [ui/seen-anon "slide-in zoom opacity extra-slow"
+       [:img.fullwide
+       {:src "img/logo/tolgraven-logo.png"}]]
       [:p (:intro cv)]
       [:div.center-content
        [:div.cv-howto
