@@ -123,7 +123,7 @@
         submit-hovered? (r/atom false)]
     (fn []
       (let [{:keys [show? sent? closing?]} @(rf/subscribe [:state [:contact-form]])
-            loading? (rf/subscribe [:loading :post])
+            loading? (rf/subscribe [:loading :post]) ; seems bit bruteforcy haha
             contents (rf/subscribe [:form-field [:contact]])]
         (when show?
           [:section.contact-form-popup
@@ -134,7 +134,7 @@
             :ref #(reset! inited? (boolean %))}
            [ui/close #(rf/dispatch [:contact/close])]
            [:h2 "Get in touch"]
-           [:p "Whether for work, collaboration or something else, I'll do my best to accomodate you."]
+           
            (when sent?
              [:div
               [:br] [:br]
@@ -143,7 +143,7 @@
               [:br]
               [ui/appear-merge "opacity"
                [:h3 "I'll get back to you shortly."]]])
-           [ui/loading-spinner loading?]
+           [ui/loading-spinner loading? :massive]
 
            [:form.contact-form-form
             {:style {:height (when (or sent? @loading?) 0)}}
@@ -166,24 +166,29 @@
              :input-type :textarea
              :width "100%"
              :height "15em"
-             :min-rows 15
+             :min-rows 8
              :path [:form-field [:contact :message]]]]
             (let [disabled? (or (string/blank? (:email @contents))
                                 (not (string/index-of (:email @contents) "@"))
                                 (string/blank? (:message @contents)))]
               [:div.flex
-               [:div 
-                {:on-mouse-enter #(reset! submit-hovered? true)
-                 :on-mouse-leave #(reset! submit-hovered? false) }
-                [:input
-                {:type "submit" :id "submit-contact"
-                 :disabled disabled?
-                 :title (when-not disabled? "Ready to go!")
-                 :on-click #(rf/dispatch [:contact/send-request])}]]
-               (when (and disabled? @submit-hovered?) ; mouseLeave never fires (wtf??) but still good enough I suppose
-                 [ui/appear-merge "slide-in"
+               {:on-mouse-enter #(reset! submit-hovered? true)
+                :on-mouse-leave #(reset! submit-hovered? false)}
+               [:input
+                 {:type "submit" :id "submit-contact"
+                  
+                  :disabled disabled?
+                  :title (when-not disabled? "Ready to go!")
+                  :on-click (fn [e]
+                              (.preventDefault e)
+                              (rf/dispatch [:contact/send-request]))}]
+               (if (and disabled? @submit-hovered?) ; mouseLeave never fires (wtf??) but still good enough I suppose
+                 [ui/appear-merge "slide-in slower"
                   [:label {:for "submit-contact"}
-                   "Must enter at least email and message"]])])]])))))
+                   "Must enter at least email and message"]]
+                 [:br])
+               [:p "Whether for work, collaboration or something else, I'll do my best to accomodate you.
+                    NOTE! Currently out of order, please just email me for now haha."]])]])))))
 
 (defn contact-ways [email]
   (let [show-mail-form? @(rf/subscribe [:state [:contact-form :show?]])]

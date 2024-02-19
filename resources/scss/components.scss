@@ -675,34 +675,48 @@ figcaption, .float-with-caption {
 
 .contact-form-popup {
   position: fixed;
-  width: calc(100% - 2 * var(--space-sides) - 2 * var(--line-width-vert));
+  width: calc(100% - 2 * var(--space-sides)); // - 2 * var(--line-width-vert));
   max-height: 0%;
   opacity: 0%;
-  left: calc(var(--space-sides) + var(--line-width-vert));
-  bottom: 0;
+  left: calc(var(--space-sides)); // + var(--line-width-vert));
+  bottom: calc(0px - var(--line-width));
   overflow: hidden;
 
   transition: bottom 0.5s ease, max-height 0.5s ease, opacity 0.8s ease;
 
   color: var(--light-3);
-  background: linear-gradient(180deg, rgba(65, 20, 160, 0.9),
+  background: linear-gradient(180deg, rgba(65, 20, 160, 0.3),
                                       rgba(80, 20, 200, 0.8) 50%,
-                                      rgba(30, 10, 120, 0.66));
-  backdrop-filter: blur(3px); // remember firefox lacks this so need fallback there when using this...
-  box-shadow: 0px 0px 25px 3px rgba(150, 150, 250, 0.30);
+                                      rgba(30, 10, 120, 0.36));
+  backdrop-filter: blur(4px); // remember firefox lacks this so need fallback there when using this...
+  box-shadow: 0px 0px 29px 3px rgba(150, 150, 250, 0.15);
+  padding: var(--space) 0.15em;
                                     
   input, textarea {
     opacity: 85%;
+    padding: 1em;
+  }
+
+  button {
+    // margin: none;
+    // padding: none;
+    font-size: 150%;
   }
                                     
   > h2 {
-    text-decoration-line: underline;
+    text-align: center;
     text-decoration-color: var(--purple);
+    font-size: 250%;
+    margin-bottom: calc(1 * var(--space));
+  }
+  p {
+    font-size: 120%;
+    margin: var(--space) var(--space-lg);
   }
 
   &.inited {
     max-height: 80%;
-    bottom: var(--footer-height-current);
+    bottom: calc(var(--footer-height-current) - var(--line-width));
     opacity: 100%;
   }
   &.result {
@@ -715,17 +729,31 @@ figcaption, .float-with-caption {
   }
 
   .contact-form-form {
-    margin-top: var(--space);
+    margin-top: 0.2em;
     overflow: hidden;
-    transition: all 0.5s ease;
+    transition: all 1.8s ease;
+    // position: relative;
 
     input {
       border-radius: 0;
       margin: 0;
 
       &[type="submit"] {
-        margin-top: calc(0px - var(--space-lg));
+        margin-top: -0.6em;
+        width: 100%;
+        background-color: var(--bg-2);
       }
+    }
+
+    > div {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    label {
+      color: var(--red-2);
+      margin-top: 0.4em;
+      font-size: 75%;
     }
   }
 }
