@@ -84,7 +84,7 @@
       (optimizations/inline-css-imports)
       (optimizations/concatenate-bundles options)
       (transform-images {:regexp #"(/media/.*\.jpg)|(/img/.*\.(jpg|png))" ; in-place which would be baddd on dev but only runs on prod so
-                         :quality 0.75
+                         :quality 0.65
                          :progressive true})
       (optimizations/add-cache-busted-expires-headers) ; pisses off lighthouse. not sure why would want media to instantly expire anyways so
       (optimizations/add-last-modified-headers)))
@@ -120,11 +120,10 @@
   [handler]
   (fn [req]
     (let [{:keys [status headers]} req
-          is-media (some? #(re-find #"image|video" (get headers "Content-Type"))) ]
+          is-media (some? (re-find #"image|video" (get headers "sec-fetch-dest"))) ]
       (if is-media
         (handler req)
         ((gzip/wrap-gzip handler) req)))))
-
 
 (defn wrap-base [handler]
   (-> ((:middleware defaults) handler)
@@ -136,7 +135,7 @@
                   (assoc-in [:proxy] true)))
             #_(assoc-in [:security :anti-forgery] true) ; what's with this? from before we injected csrf or?
             )) ; why was there a dissoc :session? cause it's about what middleware we request to wrap us with. cause gotta choose either above or through defaults... get duplicate session warnings now that uncommented hmm.
-      ; (wrap-resource "public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
+      (wrap-resource "public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
       ; (wrap-file "resources/public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
       wrap-optimus
       wrap-content-type ; must go after wrap-resource. checks file ext and adds correct content type
