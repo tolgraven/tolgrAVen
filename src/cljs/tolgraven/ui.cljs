@@ -476,7 +476,7 @@
    (let [latest-ext-model (or @(rf/subscribe path) (at value)) ;how repl this if not passing model but sub?
          disabled?        (at disabled?)
          change-on-blur?  (at change-on-blur?)
-         id               (str "input-text-" path)
+         id               (str "input-text-" (util/keyvec->str path))
          min-height (when (= input-type :textarea)
                       {:min-height (when @div-ref
                                      (-> @internal-model
@@ -501,6 +501,7 @@
              :autoComplete (string/lower-case placeholder)
              :value       @internal-model
              :disabled    disabled?
+             :rows        min-rows 
              :ref         (fn [el] (reset! div-ref el))
              :on-change (fn [e]
                          (let [new-val (-> e .-target .-value)]
