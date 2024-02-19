@@ -113,4 +113,27 @@
              (rf/dispatch [:booted :load]))] ; which will actually have fresh db and can do stuff ugh
     {:dispatch [:listener/add! "window" "load" f]})))
 
+(rf/reg-event-fx :listener/global-click [debug]
+ (fn [{:keys [db]} [_ _]]
+   {:dispatch [:listener/add! "document" "click"
+               #(rf/dispatch [:global-clicked %])]}))
+
+(defn visibility-props "Get the name of the hidden property and the change event for visibility"
+  []
+  (cond
+    (some? js/document.hidden) {:hidden "hidden"
+                                :visibility-change "visibilitychange"}
+    (some? js/document.msHidden) {:hidden "msHidden"
+                                  :visibility-change "msvisibilitychange"}
+    (some? js/document.webkitHidden) {:hidden "webkitHidden"
+                                      :visibility-change "webkitvisibilitychange"}
+    :else (js/console.error "visibility prop not found in visibility-props fn")))
+
+(rf/reg-event-fx :listener/visibility-change
+ (fn [{db :db} _]
+   (when-let [{:keys [hidden visibility-change]} (visibility-props)]
+     {:db (assoc db :chrome-tab-visibility true)
+      :dispatch [:listener/add! "document" visibility-change
+                 #(rf/dispatch [:handle-visibility-change hidden])]})))
+
 

@@ -450,7 +450,7 @@
 (defn init "Called only on page load" []
   (rf/dispatch-sync [:init-db])
   (rf/dispatch-sync [:fb/fetch-settings]) ;sync because number of early fetches depend on this...
-  (rf/dispatch-sync [::bp/set-breakpoints
+  (rf/dispatch      [::bp/set-breakpoints
                      :breakpoints [:mobile 560
                                    :tablet 992
                                    :small-monitor 1200
@@ -463,10 +463,14 @@
   ; (rf/dispatch [:on-booted :firebase [:init]])
   (rf/dispatch [:on-booted :firebase [:init/cms]])
   (rf/dispatch [:on-booted :firebase [:init/imagor]])
-  (js/setTimeout (fn [] (doseq [evt [; temp crapfix, running this too early suddenly results in... nothing. what.
+  (js/setTimeout #(rf/dispatch [:init])
+                 2000)
+  #_(js/setTimeout (fn [] (doseq [evt [; temp crapfix, running this too early suddenly results in... nothing. what.
+
                                [:init/scroll-storage]
                                [:listener/popstate-back]
                                [:listener/scroll-direction]
+                               [:listener/visibility-change]
                                ; [:on-booted :firebase [:id-counters/fetch]]
                                [:ls/get-path [:form-field] [:state :form-field]] ; restore any active form-fields
                                [:booted :site]]]

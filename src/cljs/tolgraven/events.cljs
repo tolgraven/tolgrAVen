@@ -239,19 +239,20 @@
 (rf/reg-event-fx :contact/send-request
  (fn [{:keys [db]} [_ _]]
    (let [{:keys [name email title message]} (get-in db [:state :form-field :contact])]
-     {:dispatch-n [[:http/post {:uri "https://script.google.com/macros/s/AKfycbxGp49fa2hLZSKWwYQs6KxzZPzgnACUMvHzPLungNMb3Y6WzTq2qDyWGEy06202-hU/exec"
-                                :body (util/m->json {:name name :email email :title title :message message})
-                                :redirect "follow"
+     {:dispatch-n [[:http/post {:uri "/api/send-contact-email"
+                                :params {:name name :email email :title title :message message}
                                 :response-format (ajax/json-response-format {:keywords? true})}
                     [:contact/request-sent]]]})))
 
-(rf/reg-event-fx :contact/request-sent
+(rf/reg-event-fx :contact/request-sent [debug]
   (fn [{:keys [db]} [_ response]]
     {:db (-> db
              (assoc-in [:state :contact-form :sent?] true)
              (assoc-in [:state :contact-form :response] response))
      :dispatch-n [[:form-field [:contact-form :message] nil]
-                  [:form-field [:contact-form :title] nil]]}))
+                  [:form-field [:contact-form :name] nil]
+                  [:form-field [:contact-form :title] nil]
+                  [:form-field [:contact-form :email] nil]]}))
 
 (rf/reg-event-fx :contact/open
   (fn [{:keys [db]} [_]]
@@ -591,7 +592,8 @@
                 [:init/scroll-storage]
                 [:listener/popstate-back]
                 [:listener/scroll-direction]
-                [:on-booted :firebase [:id-counters/fetch]]
+                [:listener/global-click]
+                ; [:on-booted :firebase [:id-counters/fetch]]
                 [:ls/get-path [:form-field] [:state :form-field]] ; restore any active form-fields
                 [:booted :site]]})) ; should work, main page specific init events won't get queued unless on main so...
 
@@ -666,34 +668,12 @@
    {:dispatch-n [(into handler [res])
                  cleanup]}))
 
-(defn visibility-props "Get the name of the hidden property and the change event for visibility"
-  []
-  (cond
-    (some? js/document.hidden) {:hidden "hidden"
-                                :visibility-change "visibilitychange"}
-    (some? js/document.msHidden) {:hidden "msHidden"
-                                  :visibility-change "msvisibilitychange"}
-    (some? js/document.webkitHidden) {:hidden "webkitHidden"
-                                      :visibility-change "webkitvisibilitychange"}
-    :else (js/console.error "visibility prop not found in visibility-props fn")))
-
 (rf/reg-event-fx
  :handle-visibility-change
  (fn [{db :db} [_ hidden-prop-name]]
    (let [visible? (not (gobj/get js/document hidden-prop-name))]
      (prn "chrome tab visibility changed:" visible?)
-     {:db (assoc db :chrome-tab-visibility visible?)
-      :fx [(when visible? [:dispatch [:any-event-you-need-to-run]])]})))
-
-;; to be invoked once on init when mounting your app
-(rf/reg-event-fx
- :register-visibility-change
- (fn [{db :db} _]
-   (let [{:keys [hidden visibility-change]} (visibility-props)]
-     (js/document.addEventListener
-      visibility-change
-      #(rf/dispatch [:handle-visibility-change hidden]))
-     {:db (assoc db :chrome-tab-visibility true)})))
+     {:db (assoc db [:state :tab-visible] visible?)})))
 
 
 (defonce debounce-timeouts (atom {}))
@@ -813,6 +793,12 @@
     :dispatch-n [[:toggle-class! id-or-class "darken-fadeout-restore"]
                  [:toggle-class! nil "darken-fadeout"]]}))
 
+
+(rf/reg-event-fx :global-clicked [debug]
+ (fn [{:keys [db]} [_ e]]
+   {:db (assoc-in db [:state :global-clicked] e)
+    :dispatch-later {:ms 300
+                     :dispatch [:state [:global-clicked] nil]}}))
 
 (rf/reg-event-fx :poll/start
  (fn [{:keys [db]} [_ ]]
