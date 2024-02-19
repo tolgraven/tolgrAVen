@@ -534,7 +534,7 @@
  (fn [{:keys [db ls]} [_ ls-path db-path]] ;map of keys to paths I guess?
    (let [value (get-in ls ls-path)]
      {:db (update-in db db-path (or (and (seqable? value) merge)
-                                    conj)
+                                    assoc)
                      value)})))
 
 (rf/reg-event-fx :cookie/show-notice   [(rf/inject-cofx :ls)]
