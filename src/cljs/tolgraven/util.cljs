@@ -46,10 +46,19 @@
       (cons (first (first seqs))
             (lazy-seq (apply interleave-all remaining))))))
 
+(defn keyvec->str "Converts a vector of keywords to a string"
+  [v]
+  (string/join "-" (map name (flatten v))))
+
 (defn lists->for
   [& lists]
   (let [len (count lists)]
     (partition len len (apply interleave lists))))
+
+(defn for-i
+  [l]
+  (lists->for (range (count l)) l))
+
 
 (defn log "Log to both console and app" ;XXX should add an endpoint to timbre instead.
  ([message] (log :debug "" message))
