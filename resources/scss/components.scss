@@ -541,7 +541,7 @@ figcaption, .float-with-caption {
   transition: bottom var(--header-expand-time) ease;
   bottom: calc(var(--footer-height-current) + 0.25rem); /* ;actually, footer, if sticky... */
   right: calc(var(--space-edges) + 0.05rem);
-  max-width: 70%;
+  max-width: 50em;
   max-height: 50%;
   // overflow-x: break-word;
   overflow-y: scroll;
