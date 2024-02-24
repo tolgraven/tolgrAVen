@@ -9,14 +9,14 @@
    user))
 
 (rf/reg-sub :user/users
- :<- [:<-store :users]
+ :<- [:<-store :fb/users]
  (fn [users [_ path]]
    users))
 
 (rf/reg-sub :user/user ;find user
  (fn [[_ user-id]]
-   (if user-id
-     (rf/subscribe [:<-store :users user-id])
+   (if (and user-id (not (coll? user-id)))
+     (rf/subscribe [:<-store :fb/users user-id])
      (rf/subscribe [:nil]))) ; avoid nil input error haha
  (fn [user [_ user-id]]
    user)) ; here would merge in karma and whatnot
