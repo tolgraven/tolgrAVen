@@ -16,6 +16,7 @@
 @import "instagram.scss";
 @import "cv.scss";
 @import "search.scss";
+@import "input.scss";
 @import "codox.scss";
 @import "experiments.scss";
 @import "components.scss";
@@ -69,6 +70,9 @@ body {
   animation: fade-in-site 1000ms;
 }
 
+#app {
+  position: relative;
+}
 
 li {
   list-style: none;
@@ -330,24 +334,22 @@ mark {
   position: relative;
   z-index: 2;
 
-  &:after {
+  &:before {
     content: "";
     position: absolute;
-    left: -0.175em;
-    top: 9.5%;
-    width: calc(100% + 0.3em);
-    height: 85%;
+    left: -0.225em;
+    top: 0%;
+    width: calc(100% + 0.4em);
+    height: 100%;
     // background: linear-gradient(90deg, var(--bg-1), var(--bg-2-2));
-    transform: skew(-10deg);
-    filter: brightness(85%) saturate(150%);
+    transform: skew(-7deg);
+    // filter: brightness(85%) saturate(150%);
     border: 0.5px solid var(--fg-4);
-    opacity: 90%;
+    opacity: 50%;
     box-shadow: 0px 0px 3px 3px hsla(0, 20%, 70%, 0.15);
 
     z-index: 0; // sometimes hides it completely hmm.
-
   }
-
 }
 
 * { //kill scrollbar. should rather mod it tho...

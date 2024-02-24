@@ -1,6 +1,7 @@
 (ns tolgraven.search.subs
   (:require
    [re-frame.core :as rf]
+   [tolgraven.ui :as ui]
    [clojure.string :as string]
    [clojure.walk :as walk]))
 
@@ -63,7 +64,7 @@
                          (string/replace #"(```)|(`.*)" "") ; kill the code blocks
                          ; (string/replace #"\n.*" "") ; kill the code blocks
                          (string/replace #"(<mark>)|(</mark>)" "")
-                         (string/replace #"([^a-zA-Z0-9\s'])|(\..*)" "")
+                         ; (string/replace #"([^a-zA-Z0-9\s'])|(\..*)" "")
                          #_(string/replace #"<mark>" "öööö")
                          #_(string/replace #"</mark>" "åååå"))
             data (-> (string/split snippet' (re-pattern (str "(" query ")|(" token ")")))
@@ -73,10 +74,10 @@
                       (take 5) ; thinking it'll be cached and not change but maybe not
                       (string/join " ")))
             text (str (-> data
-                          (string/replace #"öööö|åååå" "")))
+                          #_(string/replace #"öööö|åååå" "")))
             trimmed (-> (str "<mark>" token query)
-                        (string/replace #"öööö" "<mark>")
-                        (string/replace #"åååå" "</mark>")
+                        ; (string/replace #"öööö" "<mark>")
+                        ; (string/replace #"åååå" "</mark>")
                         (string/replace #"([^a-zA-Z0-9\s'])|(\.*)" ""))]
         
         {:html trimmed

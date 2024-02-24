@@ -13,126 +13,6 @@
   }
 }
 
-@keyframes pop {
-  0% {
-    transform: none;
-  } 25% {
-    transform: scale(1.2);
-  } 80% {
-    transform: scale(1.3);
-  } 100% {
-    transform: none;
-  }
-}
-
-.search-input-container {
-  width: calc(100% - 2 * var(--line-width));
-  display: flex;
-  position: sticky;
-  transition: all 0.3s ease;
-  top: calc(var(--line-width) + var(--header-height-current));
-  margin-left: var(--line-width);
-  margin-right: calc(-1 * var(--line-width));
-  margin-bottom: calc(-1 * var(--line-width));
-  z-index: 10;
-  background-color: var(--bg-1);
-  border-bottom: var(--line-width) solid var(--line-color);
-  border-right: var(--line-width) solid var(--bg-1);
-  overflow: hidden;
-  
-  &.closed {
-    transition: all 0.35s;
-    margin-top: calc(-20 * var(--line-width));
-    border-bottom: calc(20 * var(--line-width)) solid var(--line-color);
-  }
-
-  &:focus-within {
-    .search-caret {
-        background: var(--fg-1);
-        animation: blinking 1s infinite;
-    }
-  }
-
-  .search-input-info { // "BETA"
-    position: absolute;
-    right: 3em;
-    top: 0.5em;
-    color: var(--red-2);
-    z-index: 10;
-  }
-
-  .search-query-visible {
-    position: relative;
-    font-family: 'Fira Code', monospace;
-    margin-top: 0.5em;
-    margin-left: 0.8em;
-    width: 100%;
-
-    .search-letter {
-      // animation: pop 0.5s ease;
-    }
-
-    span, div {
-      font-family: 'Fira Code', monospace;
-      // flex: 1 0;
-
-    }
-  }
-  
-  .search-input {
-    position: absolute;
-    width: 100%;
-
-    transition: all 0.95s ease;
-    margin: 0;
-    background: transparent;
-    color: var(--fg-1);
-    font-family: 'Fira Code', monospace;
-    z-index: 2;
-
-
-    .search-input-suggestion {
-      margin: 0;
-      margin-bottom: 0.4em;
-      padding: 0;
-      font-size: 120%;
-      border: 0;
-      background: var(--bg-2);
-      opacity: 0.5;
-    }
-  }
-
-  .search-caret {
-    opacity: 0.35;
-    transition: all 0.2s ease;
-    border: 2px solid var(--yellow-2);
-    box-shadow: 0px 0px 5px 5px hsla(0, 10%, 70%, 0.2);
-    z-index: -1;
-  }
-  .search-caret-under {
-    animation: blinking 2s infinite 0.25s;
-    transition: all 0.4s ease;
-    color: var(--red-2);
-  }
-
-  .search-input-autocomplete {
-    display: inline;
-    div {
-      display: inline;
-    }
-    span {
-      display: inline;
-      z-index: 1;
-      color: var(--fg-6);
-      opacity: 0.7;
-      font-family: 'Fira Code', monospace;
-
-      &.first-char {
-        animation: darken 2.0s infinite 0.25s;
-      }
-    }
-  }
-}
 
 
 .search-autocomplete {
@@ -161,7 +41,7 @@
 }
 
 .search-instant-results {
-  max-height: 80vh;
+  max-height: 50vh;
   overflow-y: scroll;
   z-index: 0;
   background-color: var(--bg-2);
@@ -187,8 +67,10 @@
       
       padding-left: calc(1.00 * var(--space-lg));
       padding-top: var(--space-lg);
-      padding-bottom: var(--space-lg);
-      // margin-bottom: 2.0em;
+
+      &:last-of-type {
+        padding-bottom: var(--space-lg);
+      }
 
       pre {
         margin: var(--space);
@@ -199,6 +81,14 @@
   .blog-comments {
     margin: 0;
     border-radius: 0;
-    // padding: var(--space);
+    padding: 0;
+
+    > div {
+      margin: 1em;
+
+    }
+    .blog-comment {
+      margin: 1em;
+    }
   }
 }

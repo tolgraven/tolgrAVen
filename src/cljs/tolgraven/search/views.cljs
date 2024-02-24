@@ -27,15 +27,15 @@
 (defn completion
   [query suggestion height]
   (when-not (string/blank? (:match suggestion))
-    (let [words (-> (str #_(-> (get suggestion :query "")
-                         (string/replace  #"\w" " ")) ; get as many spaces as there were letters
-                         (get suggestion :rest ""))
-                    (string/replace #"\n.*" "")
-                    (string/replace #"^(.{0,40})(.*)" "$1...")
-                    (string/replace query "")
-                    seq)
+    (let [words (some-> (str #_(-> (get suggestion :query "")
+                             (string/replace  #"\w" " ")) ; get as many spaces as there were letters
+                             (get suggestion :rest nil))
+                        (string/replace #"\n.*" "")
+                        (string/replace #"^(.{0,40})(.*)" "$1...")
+                        (string/replace query "")
+                        seq)
           [char1 others] [(first words) (rest words)]]
-      [:span.search-input-autocomplete
+      [:span.styled-input-autocomplete
        {:style {:white-space :pre-wrap
                 :display :inline-flex}}
        [:span.first-char char1]
@@ -46,6 +46,28 @@
            letter]])])))
 
 (defn box "Search input field"
+ [collections & {:as args :keys [query-by model height open? opts]
+                 :or {height "2em"
+                      query-by ["text" "title"]}}]
+ (let [suggestions @(rf/subscribe [:search/autocomplete-multi collections])
+       query @(rf/subscribe [:search/get-query (first collections)])
+       on-change #(doseq [coll collections]
+                    (rf/dispatch [:search/search coll % query-by opts false]))
+       on-enter #(doseq [coll collections]
+                   (rf/dispatch [:search/search coll (:text (first suggestions)) query-by opts false]))
+       on-esc #(rf/dispatch [:search/state [:open?] false])]
+   [ui/input-text-styled
+    :query-by query-by
+    :model model
+    :height height
+    :open? open?
+    :on-change on-change
+    :on-enter on-enter
+    :on-esc on-esc
+    :completion-fn completion
+    :suggestions suggestions]))
+
+(defn box-orig "Search input field"
  [collections & {:as args :keys [query-by model on-enter placeholder
                                  width height open? opts]}]
  (let [internal-model (r/atom (or @model ""))
@@ -59,7 +81,9 @@
                                 (reset! selection-end (inc (count new)))))
        set-caret (fn [target]
                    (reset! caret (.-selectionStart target))
-                   (reset! selection-end (.-selectionEnd target))) ]
+                   (reset! selection-end (.-selectionEnd target)))
+       move-caret (fn [move]
+                    (swap! caret + move))]
    (fn [collections &
         {:keys [query-by model on-enter placeholder width height open? opts]
          :or {height "2em"
@@ -81,11 +105,13 @@
       {:style {:position :absolute
                :width (str (max char-width selection-len) "em")
                :height (str caret-height "em")
-               :left caret-pos :top (str (- (/ (- 1.6 caret-height #_"-0.1em") 2) 0.15) "em")}}
+               :left caret-pos
+               :top (str (- (/ (- 1.6 caret-height #_"-0.1em") 2) 0.15) "em")}}
        "_"]
      [:label.search-caret-under.nomargin.nopadding
       {:style {:position :absolute
-               :left caret-pos :top "0.1em"
+               :left caret-pos
+               :top "0.1em"
                :animation (when-not (zero? selection-len)
                             "unset")}}
       "_"]
@@ -113,13 +139,7 @@
        :placeholder (or placeholder "Search") ; might want "Search for..." like
        :autoComplete "off"
        :max 40
-       :value      @internal-model #_query
-                  #_(if (and (not (string/blank? (:match suggestion)))
-                             (not= suggestion-str query)
-                             #_(not (re-find #"\s" query)))
-                      (str query #_(:match suggestion)
-                           #_(re-find #"\s" query))
-                      @internal-model)
+       :value      @internal-model
        :ref         #(when % (reset! div-ref %))
        :on-change (fn [e] ; XXX needs debounce I guess
                     (let [new-val (-> e .-target .-value)]
@@ -133,7 +153,7 @@
                       (doseq [coll collections]
                         (rf/dispatch [:search/search coll new-val query-by opts false]))))
        
-       :on-key-down (fn [e] (set-caret (.-target e)))
+       ; :on-key-down (fn [e] (set-caret (.-target e)))
        :on-click (fn [e] (set-caret (.-target e)))
        :on-touch-start (fn [e] (set-caret (.-target e)))
        :on-touch-move (fn [e]
@@ -151,8 +171,10 @@
                       "Escape" (do (.stopPropagation e) ; can't seem to stop it from blanking query hmm
                                    (.preventDefault e)
                                    (rf/dispatch [:search/state [:open?] false]))
+                      "Left" (move-caret -1)
+                      "Right" (move-caret 1)
                       true)
-                    (fn [e] (set-caret (.-target e))))}]
+                    #_(fn [e] (set-caret (.-target e))))}]
      
      [:span.search-input-info "BETA"]]))))
 
@@ -216,7 +238,7 @@
 (defn blog-comment-results "Show hits that are blog post comments"
   [highlights document]
   (let [{:keys [id title text user ts]} document]
-    [:<>
+    [:div
      [:div.blog-comment-border]
      [:section.blog-comment
       [ui/user-avatar @(rf/subscribe [:user/user user])]
