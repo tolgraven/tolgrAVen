@@ -1,9 +1,8 @@
 (defproject tolgraven "0.1.0-SNAPSHOT"
+  :description "tolgrAVen.se website"
+  :url "https://tolgraven.se"
 
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
-
-  :dependencies [[clojure.java-time "1.2.0"]
+  :dependencies [[clojure.java-time "1.4.2"]
                  [com.cognitect/transit-clj "1.0.333"]
                  
                  [org.clojure/java.jdbc "0.7.12"]
@@ -16,44 +15,45 @@
                  [clj-http "3.12.3"]
 
                  [luminus-transit "0.1.6"]
-                 [luminus-undertow "0.1.17"]
+                 [luminus-undertow "0.1.18"]
                  [luminus/ring-ttl-session "0.3.3"]
 
-                 [markdown-clj "1.11.4"]
+                 [markdown-clj "1.11.9"]
 
-                 [metosin/jsonista "0.3.7"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
+                 [metosin/jsonista "0.3.8"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
                  [metosin/muuntaja "0.6.8"]
                  [metosin/reitit "0.6.0" :exclusions [org.clojure/spec.alpha com.fasterxml.jackson.core/jackson-core com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.core/jackson-annotations]]
 
                  [mount "0.1.17"]
-                 [nrepl "1.0.0"]
+                 [nrepl "1.1.1"]
                  [org.clojure/tools.nrepl "0.2.13"]
                  [org.clojure/clojure "1.11.1"]
                  [org.clojure/clojurescript "1.11.60" :scope "provided" :exclusions [com.google.errorprone/error_prone_annotations]]
-                 [org.clojure/tools.cli "1.0.214"]
-                 [org.clojure/data.json "2.4.0"]
-                 [org.clojure/core.async "1.6.673"]
+                 [org.clojure/tools.cli "1.1.230"]
+                 [org.clojure/data.json "2.5.0"]
+                 [org.clojure/core.async "1.6.681"]
 
                  ; LOGGING
-                 [org.clojure/tools.logging "1.2.4"]
-                 [com.taoensso/timbre "6.1.0" :exclusions [org.clojure/tools.reader]]
-                 [com.taoensso/encore "3.57.0"]
-                 [com.fzakaria/slf4j-timbre "0.3.21" :exclusions [org.slf4j/slf4j-api]] ;route java logging through timbre. but dunno. hard to manage
+                 [org.clojure/tools.logging "1.3.0"]
+                 [com.taoensso/timbre "6.4.0" :exclusions [org.clojure/tools.reader]]
+                 [com.taoensso/encore "3.83.0"]
+                 [com.fzakaria/slf4j-timbre "0.4.1" :exclusions [org.slf4j/slf4j-api]] ;route java logging through timbre. but dunno. hard to manage
                  [clj-logging-config "1.9.12"]
-                 [io.aviso/pretty "1.4"] ;pretty exceptions, pretty logging...
+                 [io.aviso/pretty "1.4.4"] ;pretty exceptions, pretty logging...
 
-                 [ring/ring-core "1.9.6"]
-                 [ring/ring-defaults "0.3.4"]
+                 [ring/ring-core "1.10.0" :exclusions [commons-io]]
+                 [ring/ring-defaults "0.4.0" :exclusions [commons-io]]
                  ; [bk/ring-gzip "0.3.0" :exclusions [clojure-complete]]
                  [amalloy/ring-gzip-middleware "0.1.4"]
                  [ring-partial-content "2.1.0"] ; handle safari video playback / 206 response
                  [ring-basic-authentication "1.2.0"]
                  [radicalzephyr/ring.middleware.logger "0.6.0"]
                  [metosin/ring-http-response "0.9.3"]
-                 [toyokumo/ring-middleware-csp "0.3.0"]
-                 [ring-ratelimit "0.2.2"] ; probably useful if I end up working on some popular website. so probably not anytime soon lol
+                 [toyokumo/ring-middleware-csp "0.4.63"]
+                 [ring-ratelimit "0.2.3"] ; probably useful if I end up working on some popular website. so probably not anytime soon lol
+                 [clojure-interop/apache-commons-io "1.0.0"]
                  
-                 [optimus "2023-02-08"] ;optimization of assets
+                 [optimus "2023.11.21"] ;optimization of assets
                  [optimus-img-transform "0.3.1"]
                  [optimus-sass "0.0.3"] ; load sass straight. pretty old dunno if still works
                  [optimus-autoprefixer "0.1.0"] ; same but autoprefixer. might be nice can avoid npm build and whatnot plus keep everything in one spot...
@@ -69,17 +69,17 @@
                  
                  [differ "0.3.3"] ; diff with patch to apply
 
-                 [re-frame "1.3.0"]
+                 [re-frame "1.4.3"]
                  ; [kee-frame "0.4.0" :exclusions [args4j]]
                  [day8.re-frame/http-fx "0.2.4"]
-                 [superstructor/re-frame-fetch-fx "0.2.0"]
+                 [superstructor/re-frame-fetch-fx "0.4.0"]
                  [com.yetanalytics/sse-fx "0.1.1"]
                  [superstructor/re-frame-clipboard-fx "0.0.2"]
                  [re-frame-datatable "0.6.0"]
                  [breaking-point "0.1.2"]
                  
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
-                 [day8.re-frame/async-flow-fx "0.3.0"]
+                 [day8.re-frame/async-flow-fx "0.4.0"]
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
                  ; [com.degel/re-frame-firebase "0.10.0-SNAPSHOT" :exclusions [args4j]]
                  [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j cljsjs/firebase]]
@@ -91,6 +91,9 @@
                  [re-frame-utils "0.1.0"]
                  [com.smxemail/re-frame-cookie-fx "0.0.2"  :exclusions [args4j]]
                  [re-pollsive "0.1.0"] ; periodic polling/timer stuff
+
+                 ; INVESTIGATE
+                 ; [com.github.oliyh/martian-re-frame "0.1.24"] ; interact nicely with http endpoints off swagger/openapi
                  
                  [superstructor/re-highlight "2.0.2"]
                  [cljsjs/highlight "11.7.0-0"]
@@ -163,7 +166,7 @@
    :stage         [:uberjar :profiles/stage]
 
    :project/dev  {:jvm-opts ["-Dconf=dev-config.edn"]
-                  :dependencies [[binaryage/devtools "1.0.6"]
+                  :dependencies [[binaryage/devtools "1.0.7"]
                                  ; [binaryage/dirac "1.6.1"]
                                  [cider/piggieback "0.5.3"]
                                  [doo "0.1.11"]
@@ -176,10 +179,10 @@
                                  ; [re-frisk "1.3.4"  :exclusions [org.clojure/core.async org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize org.clojure/core.cache]]
                                  [re-frisk "1.6.0"]
                                  ; [re-frisk-remote "1.5.2"]
-                                 ; [day8.re-frame/re-frame-10x "1.5.0" :exclusions [superstructor/re-highlight]]
-                                 [djblue/portal "0.38.1"]
+                                 [day8.re-frame/re-frame-10x "1.9.8" :exclusions [superstructor/re-highlight]]
+                                 [djblue/portal "0.52.2"]
                                  ; [day8.re-frame/tracing "0.6.2"]
-                                 [ring/ring-devel "1.9.6"]
+                                 [ring/ring-devel "1.11.0"]
                                  [ring/ring-mock "0.4.0"]]
                   :plugins      [#_[com.jakemccrary/lein-test-refresh "0.24.1"]
                                  #_[lein-doo "0.1.11"]
