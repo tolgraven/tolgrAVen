@@ -148,7 +148,7 @@
                                  {:from 2019, :to nil,  :what "tolgrAVen audiovisual", :position "Owner-operator, Web developer" :how ["Owner-operator", "Web designer & developer"], :where "Stockholm" :logo "img/tolgrav-square.png" :color "var(--fg-1)" :level 0}
                                  {:from 2021, :to nil,  :what "Crosstown", :how [], :position "Cyclist" :where "Stockholm" :logo "img/logo/crosstown-logo.png" :color "var(--orange-2)" :level 1}
                                  {:from 2022, :to 2024, :what "Opter AB", :position "Systems developer (primarily apps)" :how ["Full-time",  "Currently working on a Xamarin Forms iOS (and soon to be Android) app"],  :where "Stockholm" :logo "img/logo/opter-logo.png" :color "hsl(159, 41%, 41%)" :level 2}
-                                 {:from 2024, :to nil, :what "Polytope", :position "Clojure developer (frontend focus), consultant" :how ["Full-time",  "Developing the webapp for the platform"],  :where "Stockholm/remote" :logo "img/logo/polytope-logo.png" :color "hsl(199, 51%, 31%)" :level 2}]}
+                                 {:from 2024, :to nil, :what "Polytope", :position "Clojure developer (frontend focus), consultant" :how ["Full-time",  "Developing the webapp for the platform"],  :where "Stockholm/remote" :logo "img/logo/polytope-logo.png" :color "hsl(350, 39%, 63%)" :level 2}]}
                                {:category :life
                                 :icon "fas fa-heart"
                                 :height-ratio 3
