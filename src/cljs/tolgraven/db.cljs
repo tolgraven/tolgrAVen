@@ -112,7 +112,7 @@
                          :title "CV"
                          :caption "My resume. such as it is."
                          :cv {:intro "Multi talented developer with a background in live TV production, who throughout the years has also kept occupied with music, events, moving the world over etc.
-                                      My current day gig is primarily C# and .NET (advanced MAUI apps), but main focus otherwise functional programming and web development, primarily front-end."
+                                      My current day job is writing Clojure(Script), and main focus otherwise also functional programming and web development, primarily front-end."
                               :caption "The layout you see above is not hardcoded but generated from data in about 150 LoC."
                               :background-color-indexes [2 3 5 6 4 1]
                               :timeline
@@ -121,10 +121,10 @@
                                 :height-ratio 1
                                 :things 
                                 [{:from 2004, :to 2007, :what "Natural Science program, mathematics and computer science", :how ["3.96 (19.8) GPA"], :where "Kärrtorps gymnasium" :logo "img/logo/karrtorp-logo.jpg" :color "var(--purple)"}
-                                 {:from 2007, :to 2009, :what "Industrial Economics and Management", :how [], :where "Royal Institute of Technology" :logo "img/logo/KTH-logo.jpg" :color "var(--blue-2)"}
+                                 {:from 2007, :to 2009, :what "Industrial Economics and Management", :how ["Bombed out twice lol"], :where "Royal Institute of Technology" :logo "img/logo/KTH-logo.jpg" :color "var(--blue-2)"}
                                  {:from 2012, :to 2014, :what "Musicology (60hp)", :how [], :where "Stockholm University" :logo "img/logo/su-logo.png" :color "var(--yellow)"}
                                  {:from 2019, :to 2020, :what "Full stack web development", :how [], :where "Chas Academy" :logo "img/logo/chas-logo.png" :color "var(--green)"}
-                                 {:from 2020, :to 2023 , :what "Bachelor programme, Computer Science", :how ["remote"]  :where "Stockholm University" :logo "img/logo/su-logo.png" :color "var(--yellow)"}]}
+                                 {:from 2020, :to 2022 , :what "Bachelor programme, Computer Science", :how ["remote"]  :where "Stockholm University" :logo "img/logo/su-logo.png" :color "var(--yellow)"}]}
                                {:category :work
                                 :icon "fas fa-solid fa-briefcase"
                                 :height-ratio 5
@@ -147,8 +147,11 @@
                                  {:from 2018, :to 2019, :what "Systim Nostra", :position "Manager" :how ["Soundsystem operator", "Venue operation"], :where "Kampala" :color "var(--fg-1)" :level 0},
                                  {:from 2019, :to nil,  :what "tolgrAVen audiovisual", :position "Owner-operator, Web developer" :how ["Owner-operator", "Web designer & developer"], :where "Stockholm" :logo "img/tolgrav-square.png" :color "var(--fg-1)" :level 0}
                                  {:from 2021, :to nil,  :what "Crosstown", :how [], :position "Cyclist" :where "Stockholm" :logo "img/logo/crosstown-logo.png" :color "var(--orange-2)" :level 1}
-                                 {:from 2022, :to 2024, :what "Opter AB", :position "Systems developer (primarily apps)" :how ["Full-time",  "Currently working on a Xamarin Forms iOS (and soon to be Android) app"],  :where "Stockholm" :logo "img/logo/opter-logo.png" :color "hsl(159, 41%, 41%)" :level 2}
-                                 {:from 2024, :to nil, :what "Polytope", :position "Clojure developer (frontend focus), consultant" :how ["Full-time",  "Developing the webapp for the platform"],  :where "Stockholm/remote" :logo "img/logo/polytope-logo.png" :color "hsl(350, 39%, 63%)" :level 2}]}
+                                 {:from 2023, :to 2023, :what "Plutonia", :how ["Borderland burn"], :position "Second light tech" :where "Machine hall @ Borderland" :logo "img/logo/plutonia-avatar.jpg" :color "var(--purple-2)" :level 3}
+                                 {:from 2024, :to 2024, :what "Plutonia", :how ["Borderland burn" "Building light control systems and running them"], :position "Lights lead" :where "Machine hall @ Borderland" :logo "img/logo/plutonia-avatar.jpg" :color "var(--purple-2)" :level 3}
+                                 {:from 2022, :to 2024, :what "Opter AB", :position "App developer" :how ["Full-time", "Designing and building a Xamarin Forms/Maui next-gen app"],  :where "Stockholm" :logo "img/logo/opter-logo.png" :color "hsl(159, 41%, 41%)" :level 2}
+                                 {:from 2024, :to nil, :what "Polytope", :position "Clojure developer (frontend focus), consultant" :how ["Full-time", "Developing the webapp for the platform"],  :where "Stockholm/remote" :logo "img/logo/polytope-logo.png" :color "hsl(350, 39%, 63%)" :level 2}
+                                 {:from 2024, :to nil, :what "Engrate", :position "Backend developer" :how ["Consultant", "Through Polytope"],  :where "Stockholm/remote" :logo "img/logo/engrate-logo.svg" :color "var(--green-2)" :level 1}]}
                                {:category :life
                                 :icon "fas fa-heart"
                                 :height-ratio 3
@@ -162,7 +165,8 @@
                                  {:from 2013  :to 2015  :what "Started coding again, with goal of making it a career" :color "var(--aqua-3)" :level 1}
                                  {:from 2016  :to 2018  :what "Started doing functional programming" :color "var(--aqua-3)" :level 1}
                                  {:from 2019  :to 2021  :what "Started focusing on web development" :color "var(--aqua-3)" :level 1}
-                                 {:from 2018  :to 2019  :what "Lived in Uganda" :color "var(--green-3)" :level 2}]}]
+                                 {:from 2018  :to 2019  :what "Lived in Uganda" :color "var(--green-3)" :level 2}
+                                 {:from 2020  :to 2023  :what "Started serious cycling" :color "var(--blue-2)" :level 2}]}]
                               :skills {:software ["Full stack web development and design"
                                                   "Specialized in front-end work: JavaScript (React/Native), CSS"
                                                   "Functional programming, Clojure/ClojureScript (Reagent/Re-frame)"
