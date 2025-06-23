@@ -3,7 +3,12 @@
    [clojure.java.io :as io]
    [tolgraven.layout :as layout]
    [ring.util.response]
+   [ring.util.http-response :as response]
    [sitemap.core :as sitemap]))
+
+(defn plain-text-header
+  [resp]
+  (response/content-type resp "text/plain; charset=utf-8"))
 
 (defn home-page [request]
   (layout/render-home request))
@@ -32,14 +37,14 @@
   (concat [""
            {:middleware [;middleware/wrap-csrf ; csrf not really needed since no http auth and whatnot
                          #_middleware/wrap-formats]}
-           ["/" {:get home-page}]]
+           ["/" {:get home-page}]
+           ["/api/docs" {:get (fn [_]
+                    (-> "docs/docs.md" io/resource slurp
+                        response/ok
+                        plain-text-header))}]]
           (mapv (fn [route]
                   [(str route "*") {:get home-page}])
                 route-names)))
-
-(defn touch
-  [path]
-  )
 
 (defn gen-sitemap!
   "Generates a sitemap for the home page and its routes."
