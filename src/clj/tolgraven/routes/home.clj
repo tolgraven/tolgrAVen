@@ -65,7 +65,6 @@
                         plain-text-header))}] ; isnt this the exact equivalent of serving asset directly?
    ["/user/:id" {:get (fn [{{:keys [id]} :path-params}]                                                  
                         (let [user "none"]                                                               
-                          (timbre/debug user)                                                            
                           (-> (or user {})                                                               
                               str                                                                        
                               response/ok                                                                
