@@ -1,13 +1,11 @@
 (ns tolgraven.core
   (:require
     [tolgraven.handler :as handler]
+    [tolgraven.routes.home :as home]
     [tolgraven.nrepl :as nrepl]
-    [tolgraven.log :as tlog]
-    ; [tolgraven.db.core :as db]
     [luminus.http-server :as http]
     [tolgraven.config :refer [env]]
     [clojure.tools.cli :refer [parse-opts]]
-    [clojure.tools.logging :as log]
     [taoensso.timbre :as timbre]
     [mount.core :as mount])
   (:gen-class))
@@ -17,8 +15,8 @@
   (reify Thread$UncaughtExceptionHandler
     (uncaughtException [_ thread ex]
       (timbre/error {:what :uncaught-exception
-                  :exception ex
-                  :where (str "Uncaught exception on" (.getName thread))}))))
+                     :exception ex
+                     :where (str "Uncaught exception on" (.getName thread))}))))
 
 
 (def cli-options
@@ -30,7 +28,6 @@
   (http/start
     (-> env
         (update :io-threads #(or % (* 2 (.availableProcessors (Runtime/getRuntime))))) 
-        ; (update :port #(or (-> env :port) %))
         (merge {:handler (handler/app)}
                {:port (env :port)
                 :http2? true
@@ -55,6 +52,7 @@
   (shutdown-agents))
 
 (defn start-app [args]
+  (home/gen-sitemap!)
   (doseq [component (-> args
                         (parse-opts cli-options)
                         mount/start-with-args

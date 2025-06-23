@@ -16,6 +16,7 @@
 (add-tap (bound-fn* clojure.pprint/pprint)) ; (tap> ) goes to repl, anything else?
 
 (defn start "Starts application.  You'll usually want to run this on startup." []
+  (home/gen-sitemap!)
   (doseq [component (-> (mount/start-without #'tolgraven.core/repl-server)
                         :started)]
     (log/info component "started"))

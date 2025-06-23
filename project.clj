@@ -58,6 +58,7 @@
                  [optimus-sass "0.0.3"] ; load sass straight. pretty old dunno if still works
                  [optimus-autoprefixer "0.1.0"] ; same but autoprefixer. might be nice can avoid npm build and whatnot plus keep everything in one spot...
 
+                 [sitemap "0.4.0"]
                  ; [nrepl/drawbridge "0.2.1"] ; nrepl over http
 
                  ; CLJS
