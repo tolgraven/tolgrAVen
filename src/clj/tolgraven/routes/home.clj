@@ -33,18 +33,43 @@
           changing-route-names
           other-route-names))
 
-(defn home-routes []
+#_(defn home-routes []
   (concat [""
            {:middleware [;middleware/wrap-csrf ; csrf not really needed since no http auth and whatnot
                          #_middleware/wrap-formats]}
            ["/" {:get home-page}]
            ["/api/docs" {:get (fn [_]
-                    (-> "docs/docs.md" io/resource slurp
-                        response/ok
-                        plain-text-header))}]]
+                                (-> "docs/docs.md" io/resource slurp
+                                    response/ok
+                                    plain-text-header))}]]
           (mapv (fn [route]
                   [(str route "*") {:get home-page}])
                 route-names)))
+(defn home-routes []
+  [""
+   {:middleware [;middleware/wrap-csrf ; csrf not really needed since no http auth and whatnot
+                 #_middleware/wrap-formats]}
+   ["/" {:get home-page}]
+   ["/blog*" {:get home-page}]
+   ["/log*" {:get home-page}]
+   ["/test*" {:get home-page}]
+   ["/docs*" {:get home-page}]
+   ["/about*" {:get home-page}]                                                                          
+   ["/services*" {:get home-page}]                                                                       
+   ["/cv*" {:get home-page}]                                                                             
+   ["/hire*" {:get home-page}]                                                                           
+   ["/site/*" {:get home-page}]                                                                          
+   ["/api/docs" {:get (fn [_]                                                                            
+                    (-> "docs/docs.md" io/resource slurp                                                 
+                        response/ok                                                                      
+                        plain-text-header))}] ; isnt this the exact equivalent of serving asset directly?
+   ["/user/:id" {:get (fn [{{:keys [id]} :path-params}]                                                  
+                        (let [user "none"]                                                               
+                          (timbre/debug user)                                                            
+                          (-> (or user {})                                                               
+                              str                                                                        
+                              response/ok                                                                
+                              plain-text-header)))}]])                                                   
 
 (defn gen-sitemap!
   "Generates a sitemap for the home page and its routes."
