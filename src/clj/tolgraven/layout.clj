@@ -11,7 +11,9 @@
     [optimus.html :as ohtml]))
 
 ;also the thing about telling browser to expect certain loads
-(defn- prefetch [link & [kind]] [:link {:rel "prefetch" :href link :as (or kind "style")}])
+(defn- preconnect [link] [:link {:rel "preconnect" :href link}])
+(defn- prefetch [link & [kind]]
+  [:link {:rel "prefetch" :href link :as (or kind "style")}])
 ; :as document, script, style, font, image
 
 (defn- js [js] [:script (merge {:type "text/javascript" :async true} js)])
@@ -65,7 +67,7 @@
 ; throw in CAPROVER_GIT_COMMIT_SHA somewhere for version
 ; can pull in w env then fetch from client
 (defn- home
-  [request & {:keys [loading-content title description pre-pre css-paths js-paths
+  [request & {:keys [loading-content title description link-pre css-paths js-paths
                      js-raw css-pre js-pre img-pre anti-forgery title-img]}]
   [:html {:lang "en"}
    [:head
@@ -79,11 +81,11 @@
     [:meta {:name "og:image" :content title-img}]         ; ideally would get overridden on like, blog-post with cover img...
     [:meta {:name "theme-color" :content "#1A1C1C"}]    ; for mobile safari status bar
     [:meta {:name "apple-mobile-web-app-capable" :content "yes"}]
-    [:meta {:name "apple-mobile-web-app-status-bar-style" :content "black-translucent"}]
+    [:meta {:name "apple-mobile-web-app-status-bar-style" :content "black-translucent"}] ; ought to be theme dependent tho
     [:base {:href "/"}]
     
-    (for [[path kind] pre-pre]
-      (prefetch path kind))
+    (for [link link-pre]
+      (preconnect link))
     
     (for [path img-pre]
       (img-preload path))
@@ -125,19 +127,8 @@
   [#_"js/compiled/out/cljs_base.js"
    #_"js/compiled/app.js"]) ; no work with optimus
 (def img-pre
-  ["img/foggy-shit-small.jpg"])
+  [#_"img/foggy-shit-small.jpg"]) ; i mean only appears on main page so...
 
-(def js-paths
-  [;{:src "js/compiled/out/cljs_base.js"}
-   ;{:src "js/compiled/app.js"}
-   {:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
-   {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"}
-   #_{:src "https://modelviewer.dev/node_modules/@google/model-viewer/dist/model-viewer.min.js" :type "module"}])
-
-(def pre-paths
-  [["media/fog-3d-small.mp4" "video"]
-   #_["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900" "font"]
-    #_["css/solid.css" "style"]]) ; well it gets bundled anyways
 
 (def google-analytics ; should somehow be moved to like, later? if drops cookies n stuff...
   (when-not (:dev env)
@@ -145,8 +136,27 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
-      gtag('config', 'G-XKF1574RPL');"]))
+      gtag('config', 'G-Y8H6RLZX3V');"]))
 
+(def js-paths
+  (concat [;{:src "js/compiled/out/cljs_base.js"}
+           ;{:src "js/compiled/app.js"}
+           {:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
+           
+           #_{:src "https://modelviewer.dev/node_modules/@google/model-viewer/dist/model-viewer.min.js" :type "module"}]
+          (when-not (:dev env)
+            {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"}))
+
+(def pre-paths
+  [["media/fog-3d-small.mp4" "video"]
+   #_["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900" "font"]
+    #_["css/solid.css" "style"]]) ; well it gets bundled anyways
+
+(def link-prefetch
+  ["https://fonts.gstatic.com"
+   "https://www.googletagmanager.com"
+   "https://region1.google-analytics.com"
+   "https://firestore.googleapis.com"])
 
 (defn render-hiccup
   [page & args]
@@ -173,28 +183,9 @@
    :css-pre css-pre
    :js-pre js-pre
    :img-pre img-pre
+   :link-pre link-prefetch
    :title-img "img/logo/tolgraven-logo.png"
    :anti-forgery (force *anti-forgery-token*)))
-; (defn render-home
-;   [request]
-;   (-> (str "<!DOCTYPE html>\n"
-;            (hiccup/html (home
-;                          request
-;                          :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"]
-;                                                           "img/foggy-shit-small.jpg")
-;                          :title "tolgrAVen audiovisual"
-;                          :description "tolgrAVen audiovisual by Joen Tolgraven"
-;                          :pre-pre pre-paths
-;                          :css-paths css-paths
-;                          :js-paths js-paths
-;                          :js-raw google-analytics
-;                          :css-pre css-pre
-;                          :js-pre js-pre
-;                          :img-pre img-pre
-;                          :title-img "img/logo/tolgraven-logo.png"
-;                          :anti-forgery (force *anti-forgery-token*))))
-;       ok
-;       (content-type "text/html; charset=utf-8")))
 
 
 
