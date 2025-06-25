@@ -145,7 +145,7 @@
            
            #_{:src "https://modelviewer.dev/node_modules/@google/model-viewer/dist/model-viewer.min.js" :type "module"}]
           (when-not (:dev env)
-            {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"}))
+            {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"})))
 
 (def pre-paths
   [["media/fog-3d-small.mp4" "video"]
