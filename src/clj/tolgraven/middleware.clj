@@ -87,7 +87,7 @@
       (optimizations/add-last-modified-headers)))
 
 (defonce serve-live-assets-maybe-autorefresh
-  (if (nil? (io/resource "/js/compiled/out/main.js"))
+  (if (nil? (io/resource "/js/compiled/out/app.js"))
     strategies/serve-live-assets
     strategies/serve-live-assets-autorefresh))
 
