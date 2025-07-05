@@ -117,9 +117,9 @@
   "Needed presumablY because optimus confuses the gzip middleware due to not raw files or whatever? At least it tries to gzip inappropriate stuff..."
   [handler]
   (fn [{:keys [headers] :as req}]
-    (if (some-> (get headers "sec-fetch-dest") ; could also look at content-tupe?
-                (re-find #"image|video")
-                some?)
+    (if (some->> (get headers "sec-fetch-dest") ; could also look at content-tupe?
+                 (re-find #"image|video")
+                 some?)
       (handler req)
       ((gzip/wrap-gzip handler) req))))
 
