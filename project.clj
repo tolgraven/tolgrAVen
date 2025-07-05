@@ -102,6 +102,7 @@
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
                  ; [com.degel/re-frame-firebase "0.10.0-SNAPSHOT" :exclusions [args4j]]
                  [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j cljsjs/firebase]]
+                 [cljsjs/firebase "7.5.0-0"]
                  ; [cljsjs/firebase "9.6.8-0"]
                  [reagent "1.3.0"]
                  [cljsjs/react "18.3.1-1"]
