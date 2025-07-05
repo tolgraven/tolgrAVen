@@ -66,7 +66,7 @@
                        "styles.css"
                        ["/css/tolgraven/main.min.css"]) ;should have a list for these, edn ting...
    (assets/load-bundles "public"
-                        {"main.js" ["/js/compiled/out/app.js"]})
+                        {"main.js" ["/js/compiled/app.js"]})
    (assets/load-assets "public"
                        [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?)$"
                         #"/media/.*\.(jpg?|jpeg?)$"])
@@ -87,7 +87,7 @@
       (optimizations/add-last-modified-headers)))
 
 (defonce serve-live-assets-maybe-autorefresh
-  (if (nil? (io/resource "/js/compiled/out/app.js"))
+  (if (nil? (io/resource "/js/compiled/app.js"))
     strategies/serve-live-assets
     strategies/serve-live-assets-autorefresh))
 
