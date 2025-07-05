@@ -1,14 +1,27 @@
 {
   "dependencies": {
+    "@firebase/auth": "^1.10.6",
     "autoprefixer": "^10.2.5",
-    "node-sass": "^7.0.1",
+    "codemirror": "5.65.16",
+    "firebase": "^11.8.0",
+    "firebase-auth": "^0.1.2",
+    "highlight.js": "11.7.0",
+    "leaflet": "1.7.1",
+    "node-sass": "^9.0.0",
     "postcss": "^8.3.0",
-    "postcss-cli": "9.1.0"
+    "postcss-cli": "9.1.0",
+    "react": "17.0.2",
+    "react-dom": "17.0.2",
+    "react-leaflet": "3.1.0",
+    "react-transition-group": "4.3.0"
   },
   "scripts": {
     "sassc": "lein sassc once",
     "sass": "mkdir resources/public/css/tolgraven && node-sass --output-style compressed --no-source-maps resources/scss/main.scss > resources/public/css/tolgraven/main.css",
     "postcss": "postcss resources/public/css/tolgraven/main.css -o resources/public/css/tolgraven/main.min.css -u autoprefixer --no-map",
     "build": "npm run sass && npm run postcss"
+  },
+  "devDependencies": {
+    "shadow-cljs": "^3.1.3"
   }
 }

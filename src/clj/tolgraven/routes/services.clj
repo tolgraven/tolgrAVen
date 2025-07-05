@@ -9,9 +9,10 @@
     [reitit.ring.middleware.parameters :as parameters]
     [ring.middleware.basic-authentication :refer [wrap-basic-authentication]]
     [muuntaja.core :as m]
+    [clj-http.client :as http]
     [ring.util.http-response :as response]
     [taoensso.timbre :as timbre]
-    [clojure.data.json :as json2]
+    [clojure.data.json :as json]
     [tolgraven.middleware.formats :as formats]
     [tolgraven.middleware.exception :as exception]
     [tolgraven.services.gpt :as gpt]
@@ -88,6 +89,27 @@
                        (let [reply (gpt/chat messages)]
                          {:status 200
                           :body reply}))}}]
+
+   ["/send-contact-email"
+    {:post {:summary "Send email to self and contact"
+            :parameters {:body {:name string? :email string? :title string? :message string?}}
+            ; :responses {200 {:body {:reply string?}}}
+            :handler
+            (fn [{{{:keys [name email title message]} :body} :parameters :as params}]
+              (let [uri (str "https://script.google.com/macros/s/"
+                             (System/getenv "GOOGLE_SENDMAIL_SCRIPT")
+                             "/exec")
+                    reply (http/post uri
+                                     {:body (json/write-str {:name name
+                                                             :email email
+                                                             :title title
+                                                             :message message})
+                                      :headers {"Content-Type" "text/plain;charset=utf-8"}
+                                      :redirect "follow"})]
+                (timbre/debug "her emailz... " email)
+                (timbre/debug "reply is " reply)
+                {:status 200
+                 :body reply}))}}]
 
    ["/firebase-settings" ;XXX obviously needs to be behind basic auth. well no proper auth because otherwise same issue of giving client info. whole lot better than having in code tho...
     ; OBVIOUSLY NOT IN THIS INSTANCE ALSO ALL KEYS GOING TO CLIENT WILL ALWAYS BE THEIRS.

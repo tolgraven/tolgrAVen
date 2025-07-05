@@ -14,10 +14,10 @@
   (layout/render-home request))
 
 (def other-route-names
-  [
-   "/log"
+  ["/log"
    "/test"
-   "/docs"])
+   "/docs"
+   "/site/"])
 
 (def changing-route-names
   ["/blog"

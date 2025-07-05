@@ -2,58 +2,77 @@
   :description "tolgrAVen.se website"
   :url "https://tolgraven.se"
 
-  :dependencies [[clojure.java-time "1.4.2"]
+  :dependencies [[thheller/shadow-cljs "3.1.7"]
+
+                 ; all of shadows deps, explicit
+                 [org.clojure/clojure "1.12.1"]
+                 [org.clojure/data.json "2.5.1"]
+                 [org.clojure/tools.cli "1.1.230"]
+                 [org.clojure/tools.reader "1.5.2"]
+                 ; [nrepl "1.3.1"]
                  [com.cognitect/transit-clj "1.0.333"]
+                 [com.cognitect/transit-cljs "0.8.280"]
+                 [org.clojure/core.async "1.8.741"]
+                 [org.clojure/clojurescript "1.12.42"]
+                 [com.google.javascript/closure-compiler-unshaded "v20250528"]
+                 [org.clojure/google-closure-library "0.0-20250515-87401eb8"]
+                 [org.clojure/google-closure-library-third-party "0.0-20250515-87401eb8"]
+                 [thheller/shadow-util "0.7.0"]
+                 [thheller/shadow-client "1.4.0"]
+                 [thheller/shadow-undertow "0.3.4"]
+                 [thheller/shadow-cljsjs "0.0.22"]
+                 [hiccup "2.0.0"]
+                 [ring/ring-core "1.14.2"]
+                 [io.methvin/directory-watcher "0.19.1"]
+                 [expound "0.9.0"]
+                 [fipp "0.6.27"]
+                 [com.bhauman/cljs-test-display "0.1.1"]
+
+                 [clojure.java-time "1.4.3"]
+                 ; [com.cognitect/transit-clj "1.0.333"]
                  
                  [org.clojure/java.jdbc "0.7.12"]
-                 [org.postgresql/postgresql "42.6.0"]
+                 [org.postgresql/postgresql "42.7.7"]
                  [honeysql "1.0.461"]
-                 [com.google.guava/guava "25.1-jre"] ;what is
-                 [cprop "0.1.19"] ;env loading
-                 [expound "0.9.0"] ;spec failure explainers
+                 ; [com.google.guava/guava "25.1-jre"] ;what is
+                 [cprop "0.1.20"] ;env loading
+                 ; [expound "0.9.0"] ;spec failure explainers
                  [funcool/struct "1.4.0"] ;is what?
-                 [clj-http "3.12.3"]
+                 [clj-http "3.13.1"]
 
                  [luminus-transit "0.1.6"]
                  [luminus-undertow "0.1.18"]
                  [luminus/ring-ttl-session "0.3.3"]
 
-                 [markdown-clj "1.11.9"]
+                 [markdown-clj "1.12.4"]
 
-                 [metosin/jsonista "0.3.8"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
-                 [metosin/muuntaja "0.6.8"]
-                 [metosin/reitit "0.6.0" :exclusions [org.clojure/spec.alpha com.fasterxml.jackson.core/jackson-core com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.core/jackson-annotations]]
+                 [metosin/jsonista "0.3.13"] ;also json en/decoding. supposedly faster. [cheshire "5.10.0"] ;json decoding
+                 [metosin/muuntaja "0.6.11"]
+                 [metosin/reitit "0.9.1" :exclusions [org.clojure/spec.alpha com.fasterxml.jackson.core/jackson-core com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.core/jackson-annotations]]
 
-                 [mount "0.1.17"]
-                 [nrepl "1.1.1"]
-                 [org.clojure/tools.nrepl "0.2.13"]
-                 [org.clojure/clojure "1.11.1"]
-                 [org.clojure/clojurescript "1.11.60" :scope "provided" :exclusions [com.google.errorprone/error_prone_annotations]]
-                 [org.clojure/tools.cli "1.1.230"]
-                 [org.clojure/data.json "2.5.0"]
-                 [org.clojure/core.async "1.6.681"]
+                 [mount "0.1.23"]
 
                  ; LOGGING
                  [org.clojure/tools.logging "1.3.0"]
-                 [com.taoensso/timbre "6.4.0" :exclusions [org.clojure/tools.reader]]
-                 [com.taoensso/encore "3.83.0"]
+                 [com.taoensso/timbre "6.7.1" :exclusions [org.clojure/tools.reader]]
+                 [com.taoensso/encore "3.149.0"]
                  [com.fzakaria/slf4j-timbre "0.4.1" :exclusions [org.slf4j/slf4j-api]] ;route java logging through timbre. but dunno. hard to manage
                  [clj-logging-config "1.9.12"]
                  [io.aviso/pretty "1.4.4"] ;pretty exceptions, pretty logging...
 
-                 [ring/ring-core "1.10.0" :exclusions [commons-io]]
-                 [ring/ring-defaults "0.4.0" :exclusions [commons-io]]
+                 ; [ring/ring-core "1.10.0" :exclusions [commons-io]]
+                 [ring/ring-defaults "0.6.0" :exclusions [commons-io]]
                  ; [bk/ring-gzip "0.3.0" :exclusions [clojure-complete]]
                  [amalloy/ring-gzip-middleware "0.1.4"]
                  [ring-partial-content "2.1.0"] ; handle safari video playback / 206 response
                  [ring-basic-authentication "1.2.0"]
                  [radicalzephyr/ring.middleware.logger "0.6.0"]
-                 [metosin/ring-http-response "0.9.3"]
+                 [metosin/ring-http-response "0.9.5"]
                  [toyokumo/ring-middleware-csp "0.4.63"]
                  [ring-ratelimit "0.2.3"] ; probably useful if I end up working on some popular website. so probably not anytime soon lol
                  [clojure-interop/apache-commons-io "1.0.0"]
                  
-                 [optimus "2023.11.21"] ;optimization of assets
+                 [optimus "2025.01.19.2"] ;optimization of assets
                  [optimus-img-transform "0.3.1"]
                  [optimus-sass "0.0.3"] ; load sass straight. pretty old dunno if still works
                  [optimus-autoprefixer "0.1.0"] ; same but autoprefixer. might be nice can avoid npm build and whatnot plus keep everything in one spot...
@@ -64,7 +83,6 @@
                  ; CLJS
                  [cljs-ajax "0.8.4"  :exclusions [com.cognitect/transit-cljs com.cognitect/transit-cljs]]
                  [com.andrewmcveigh/cljs-time "0.5.2"]
-                 ; [cljsjs/smoothscroll-polyfill "0.4.0-0"]
 
                  [appliedscience/js-interop "0.2.5"]
                  
@@ -82,12 +100,12 @@
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
                  [day8.re-frame/async-flow-fx "0.4.0"]
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
-                 ; [com.degel/re-frame-firebase "0.10.0-SNAPSHOT" :exclusions [args4j]]
-                 [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j cljsjs/firebase]]
-                 [cljsjs/firebase "7.5.0-0"]
-                 [reagent "1.2.0"]
-                 [cljsjs/react "17.0.2-0"]
-                 [cljsjs/react-dom "17.0.2-0"]
+                 [com.degel/re-frame-firebase "0.10.0-SNAPSHOT" :exclusions [args4j]]
+                 ; [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j cljsjs/firebase]]
+                 [cljsjs/firebase "9.6.8-0"]
+                 [reagent "1.3.0"]
+                 [cljsjs/react "18.3.1-1"]
+                 [cljsjs/react-dom "18.3.1-1"]
                  [reanimated "0.6.1"]
                  [re-frame-utils "0.1.0"]
                  [com.smxemail/re-frame-cookie-fx "0.0.2"  :exclusions [args4j]]
@@ -98,10 +116,10 @@
                  
                  [superstructor/re-highlight "2.0.2"]
                  [cljsjs/highlight "11.7.0-0"]
-                 [cljsjs/codemirror "5.44.0-1"]
+                 [cljsjs/codemirror "5.65.16-0"]
                  [cljsjs/react-player "1.11.0-0"]
                  [cljsjs/react-leaflet "3.1.0-0"]
-                 [cljsjs/leaflet "1.7.1-0"]
+                 [cljsjs/leaflet "1.9.4-0"]
                  [cljsjs/react-transition-group "4.3.0-0"]]
 
   ; :managed-dependencies [] ; can pin specific versions...
@@ -145,15 +163,6 @@
    [:cljsbuild :builds :app :compiler :output-to]
    "resources/public/js/compiled/out"
    "resources/public/js/compiled/app.js"]
-  :figwheel
-  {:http-server-root "public"
-   :server-port 4001
-   :nrepl-port 7002
-   :ring-handler tolgraven.handler/app-routes ;Embed ring handler in figwheel http-kit server, for simple ring servers, if it doesn't work for you just run your own (see lein-ring)
-   :server-logfile "log/figwheel-logfile.log"
-   :wait-time-ms 15
-   :css-dirs ["resources/public/css"]
-   :nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
 
   :codox
   {:language :clojurescript
@@ -166,26 +175,23 @@
    :test          [:project/dev :project/test :profiles/test]
    :stage         [:uberjar :profiles/stage]
 
-   :project/dev  {:jvm-opts ["-Dconf=dev-config.edn"]
+   :project/dev  {:jvm-opts ["-Dconf=dev-config.edn" "-XX:-OmitStackTraceInFastThrow"]
                   :dependencies [[binaryage/devtools "1.0.7"]
-                                 ; [binaryage/dirac "1.6.1"]
-                                 [cider/piggieback "0.5.3"]
                                  [doo "0.1.11"]
-                                 [figwheel-sidecar "0.5.20" :exclusions [args4j]]
-                                 ; [com.bhauman/figwheel-main "0.2.18"]
                                  ; [com.bhauman/rebel-readline-cljs "0.1.4"] ;; optional but recommended
                                  ; [alembic "0.3.2"]
                                  [pjstadig/humane-test-output "0.11.0"]
                                  [prone "2021-04-23"]
-                                 ; [re-frisk "1.3.4"  :exclusions [org.clojure/core.async org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize org.clojure/core.cache]]
-                                 [re-frisk "1.6.0"]
+                                 [re-frisk "1.7.1"]
                                  ; [re-frisk-remote "1.5.2"]
-                                 [day8.re-frame/re-frame-10x "1.9.8" :exclusions [superstructor/re-highlight]]
-                                 [djblue/portal "0.52.2"]
+                                 [day8.re-frame/re-frame-10x "1.10.0" :exclusions [superstructor/re-highlight]]
+                                 [djblue/portal "0.59.1"]
                                  ; [day8.re-frame/tracing "0.6.2"]
-                                 [ring/ring-devel "1.11.0"]
-                                 [ring/ring-mock "0.4.0"]]
-                  :plugins      [#_[com.jakemccrary/lein-test-refresh "0.24.1"]
+                                 [ring/ring-devel "1.14.2"]
+                                 [ring/ring-mock "0.6.1"]]
+                  :plugins      [;[refactor-nrepl/refactor-nrepl "3.9.0"]
+                                 [cider/cider-nrepl "0.57.0"]
+                                 #_[com.jakemccrary/lein-test-refresh "0.24.1"]
                                  #_[lein-doo "0.1.11"]
                                  #_[lein-figwheel "0.5.20"]]
                   :cljsbuild
@@ -193,7 +199,7 @@
                    {:app
                     
                     {:source-paths ["src/cljs" "src/cljc" "env/dev/cljs"]
-                     :figwheel {:on-jsload "tolgraven.core/mount-components"} ; only this bc dev/app calls init! (and more!) which also gets round multi-remount conundrum i solved uglily in cue-db... very reasonable to keep dev things away from general codebase so auto disabled
+                     #_:figwheel #_{:on-jsload "tolgraven.core/mount-components"} ; only this bc dev/app calls init! (and more!) which also gets round multi-remount conundrum i solved uglily in cue-db... very reasonable to keep dev things away from general codebase so auto disabled
                      :compiler
                      {:output-dir "resources/public/js/compiled/out"
                       :output-to "resources/public/js/compiled/app.js"
@@ -252,7 +258,6 @@
                       :main "tolgraven.app" ;what is this why .app? ;; bc env/dev/app.cljs thingy. calls init
                       :pretty-print true}}}} ;} ;}
 
-
                   :doo {:build "test"}
                   :source-paths ["env/dev/clj"]
                   :resource-paths ["env/dev/resources"]
@@ -260,10 +265,9 @@
                                  :init-ns user
                                  :port 7000
                                  :init (start)
-                                 ; :init (do
-                                 ;        (require 'dirac.agent)
-                                 ;        (dirac.agent/boot!))
-                                 :nrepl-middleware [cider.piggieback/wrap-cljs-repl  ; direc.nrepl/middleware
+                                 :nrepl-middleware [shadow.cljs.devtools.server.nrepl/middleware
+                                                    ; cider.nrepl/cider-middleware
+                                                    ; refactor-nrepl.middleware/wrap-refactor
                                                     ] ; then just launch fucker w eg :IcedStartCljsRepl figwheel-sidecar
                                  :timeout 300000}
                   :injections [(require 'pjstadig.humane-test-output)

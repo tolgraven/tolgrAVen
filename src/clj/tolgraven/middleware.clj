@@ -64,17 +64,14 @@
   (concat
    (assets/load-bundle "public"
                        "styles.css"
-                       ["/css/tolgraven/main.min.css" ;should have a list for these, edn ting...
-                        ; "/css/fontawesome.css"
-                        ; "/css/brands.min.css"
-                        ; "/css/solid.css"
-                        ])
+                       ["/css/tolgraven/main.min.css"]) ;should have a list for these, edn ting...
    (assets/load-bundles "public"
-                        {"app.js" ["/js/compiled/app.js"] })
+                        {"main.js" ["/js/compiled/out/main.js"]})
    (assets/load-assets "public"
                        [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?)$"
-                        #"/media/.*\.(jpg?|jpeg?)$"])))
-
+                        #"/media/.*\.(jpg?|jpeg?)$"])
+   (assets/load-assets "public"
+                       ["/sitemap.xml" "/robots.txt"])))
 
 
 (defn optimize-all [assets options]
@@ -84,13 +81,13 @@
       (optimizations/inline-css-imports)
       (optimizations/concatenate-bundles options)
       (transform-images {:regexp #"(/media/.*\.jpg)|(/img/.*\.(jpg|png))" ; in-place which would be baddd on dev but only runs on prod so
-                         :quality 0.65
+                         :quality 0.75
                          :progressive true})
       (optimizations/add-cache-busted-expires-headers) ; pisses off lighthouse. not sure why would want media to instantly expire anyways so
       (optimizations/add-last-modified-headers)))
 
 (defonce serve-live-assets-maybe-autorefresh
-  (if (nil? (io/resource "/js/compiled/app.js"))
+  (if (nil? (io/resource "/js/compiled/out/main.js"))
     strategies/serve-live-assets
     strategies/serve-live-assets-autorefresh))
 
@@ -116,14 +113,15 @@
     (timbre/debug (str "Wrap-log " id ", request: ") req)
     (handler req)))
 
-(defn wrap-gzip-content-aware "Needed presumablY because optimus confuses the gzip middleware due to not raw files or whatever? At least it tries to gzip inappropriate stuff..."
+(defn wrap-gzip-content-aware
+  "Needed presumablY because optimus confuses the gzip middleware due to not raw files or whatever? At least it tries to gzip inappropriate stuff..."
   [handler]
-  (fn [req]
-    (let [{:keys [status headers]} req
-          is-media (some? (re-find #"image|video" (get headers "sec-fetch-dest"))) ]
-      (if is-media
-        (handler req)
-        ((gzip/wrap-gzip handler) req)))))
+  (fn [{:keys [headers] :as req}]
+    (if (some-> (get headers "sec-fetch-dest") ; could also look at content-tupe?
+                (re-find #"image|video")
+                some?)
+      (handler req)
+      ((gzip/wrap-gzip handler) req))))
 
 (defn wrap-base [handler]
   (-> ((:middleware defaults) handler)

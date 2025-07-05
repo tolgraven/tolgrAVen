@@ -110,7 +110,7 @@
     
     [:div#app loading-content]
     
-    (ohtml/link-to-js-bundles request ["app.js"]) ]])
+    (ohtml/link-to-js-bundles request ["main.js"]) ]])
 
 
 (def css-paths ; should come from config?
@@ -119,6 +119,7 @@
     "css/solid.css"
     "css/brands.min.css"
     "css/opensans.css"
+    "/css/tolgraven/main.min.css"
     "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"])
 
 (def css-pre
@@ -187,8 +188,6 @@
    :title-img "img/logo/tolgraven-logo.png"
    :anti-forgery (force *anti-forgery-token*)))
 
-
-
 (defn error-page-hiccup
   [request error-details]
   (render-hiccup
@@ -205,8 +204,6 @@
        #_(ohtml/link-to-css-bundles error-details ["styles.css"])
        [:script {:type "text/javascript"}
         (str "var csrfToken = \"" (force *anti-forgery-token*) "\";")]] ; this is where everything ends up for prod but cant remember why?
-
-
 
       [:body {:class "container themable framing-shadow sticky-footer-container"}
        (basic-skeleton "tolgrAVen" ["error" (str (:status error-details))]

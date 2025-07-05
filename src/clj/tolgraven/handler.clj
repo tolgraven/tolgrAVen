@@ -6,7 +6,6 @@
     [tolgraven.routes.services :refer [service-routes]]
     [reitit.swagger-ui :as swagger-ui]
     [reitit.ring :as ring]
-    ; [ring.middleware.content-type :refer [wrap-content-type]]
     [tolgraven.env :refer [defaults]]
     [mount.core :as mount]))
 
