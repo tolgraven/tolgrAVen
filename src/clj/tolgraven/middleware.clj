@@ -66,7 +66,7 @@
                        "styles.css"
                        ["/css/tolgraven/main.min.css"]) ;should have a list for these, edn ting...
    (assets/load-bundles "public"
-                        {"main.js" ["/js/compiled/out/main.js"]})
+                        {"main.js" ["/js/compiled/out/app.js"]})
    (assets/load-assets "public"
                        [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?)$"
                         #"/media/.*\.(jpg?|jpeg?)$"])
