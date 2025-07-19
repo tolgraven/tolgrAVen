@@ -53,9 +53,9 @@
       [:div.md-rendered
        {:style {:opacity (if @showing? 1.0 0.0)}
         :ref #(when %
-                (rf/dispatch-sync [:run-highlighter! %])
+                #_(rf/dispatch-sync [:run-highlighter! %])
                 (reset! showing? true))
-        :dangerouslySetInnerHTML {:__html (md->html (util/md->normal md))}}])))
+        :dangerouslySetInnerHTML (r/unsafe-html (md->html (util/md->normal md)))}])))
 
 (defn appear "Animate mount"
   [id kind & components]
