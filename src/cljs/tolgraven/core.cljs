@@ -409,13 +409,12 @@
       } ]))
 
 (defn on-nav [match history]
-  ; (println match)
   (if match ; cant do fallback route in router apparently, but we get nil matches so can use that
     ; TODO if match is same as current, skip navigate but maybe dispatch a scrolltotop
     ; hell if same as current maybe we can get passed any #anchor and manually scroll there?
     ; TODO if match lacks view could use controllers for just actions taken on [whatever current] page
     ; which could do anchor link simulation
-    (rf/dispatch [:common/navigate match])
+    (rf/dispatch-sync [:common/navigate match]) ; -sync avoids not having route when components mount
     (do
        (rf/dispatch [:diag/new :error "404" (str "Not found")])
        (rf/dispatch [:state [:error-page] not-found-page]))))
