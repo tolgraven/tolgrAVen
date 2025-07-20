@@ -25,5 +25,5 @@
                                (string/replace  #"\.html" ""))
                              (.-href el)))))
               (rf/dispatch [:run-highlighter! el]))
-       :dangerouslySetInnerHTML {:__html html}}]
+       :dangerouslySetInnerHTML (r/unsafe-html html)}]
       [ui/loading-spinner (not html) :massive])]))
