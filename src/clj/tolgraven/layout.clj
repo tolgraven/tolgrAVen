@@ -92,7 +92,9 @@
 
     (for [path css-pre]
       (css-preload path))
-    (ohtml/link-to-css-bundles request ["styles.css"]) ; this is where everything ends up for prod but cant remember why?
+    
+    (when-not (:dev env)
+      (ohtml/link-to-css-bundles request ["styles.css"])) ; this is where everything ends up for prod but cant remember why?
     (for [href css-paths]
       (css href))
     
@@ -114,19 +116,19 @@
 
 
 (def css-paths ; should come from config?
-   [;"https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
-    "css/fontawesome.css"
-    "css/solid.css"
-    "css/brands.min.css"
-    "css/opensans.css"
-    "/css/tolgraven/main.min.css"
-    "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"])
+  (concat [;"https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
+           "css/fontawesome.css"
+           "css/solid.css"
+           "css/brands.min.css"
+           "css/opensans.css"
+           "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]
+          [(when (:dev env)
+             "/css/tolgraven/main.min.css")])) ; only in dev
 
 (def css-pre
   ["css/solid.css"])
 (def js-pre
-  [#_"js/compiled/out/cljs_base.js"
-   #_"js/compiled/app.js"]) ; no work with optimus
+  [])
 (def img-pre
   [#_"img/foggy-shit-small.jpg"]) ; i mean only appears on main page so...
 
@@ -140,13 +142,9 @@
       gtag('config', 'G-Y8H6RLZX3V');"]))
 
 (def js-paths
-  (concat [;{:src "js/compiled/out/cljs_base.js"}
-           ;{:src "js/compiled/app.js"}
-           {:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
-           
-           #_{:src "https://modelviewer.dev/node_modules/@google/model-viewer/dist/model-viewer.min.js" :type "module"}]
-          (when-not (:dev env)
-            {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"})))
+  (concat [{:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
+           (when-not (:dev env)
+             {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"})])
 
 (def pre-paths
   [["media/fog-3d-small.mp4" "video"]
