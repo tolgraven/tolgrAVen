@@ -66,8 +66,6 @@ body {
   background-color: var(--bg-1);
   width: calc(100% - 2 * var(--space-edges));
   margin: auto;
-
-  animation: fade-in-site 1000ms;
 }
 
 #app {
@@ -113,7 +111,7 @@ main { /* dunno purpose of why I choose .main-content... */
   border-right: var(--line-width-vert) solid var(--line-color); /* should make configurable. off looks p nice on main page */
   margin-top: var(--space-lg);
 
-  animation: fade-in 1.0s ease-in;
+  animation: fade-in 1.2s ease-in;
 }
 .main-content {
   position: relative;
@@ -124,6 +122,10 @@ main { /* dunno purpose of why I choose .main-content... */
   > section:last-of-type { /* last section, no bottom border */
     margin-bottom: 0;
     z-index: 40;
+  }
+  
+  &.animate {
+    animation: fade-in-site 700ms;
   }
 }
 .main-loading {
@@ -171,15 +173,18 @@ pre {
   white-space: pre-wrap;
   background-color: var(--bg-1);
   color: var(--fg-2);
-  padding: 1.25em;
-  margin: 1.00em calc(-0.5 * var(--space));
+  padding: 0.25em;
+  margin: 0.125em calc(-0.5 * var(--space));
   border-top: var(--line-width-sm) solid var(--line-color);
 }
 
 p > code { /* single-word vars etc */
   background-color: var(--bg-2);
-  color: var(--fg-3);
-  padding: 0.4em 0.3em;
+  font-weight: 500;
+  color: var(--fg-6);
+  padding: 0.125em 0.3em;
+  border-radius: 0.2rem;
+  border: 0.5px solid var(--bg-6);
 }
 
 
@@ -242,7 +247,7 @@ button {
   background: transparent;
   color: var(--fg-2);
   border: var(--line-width-md) solid var(--line-color);
-  border-radius: 0.15rem;
+  border-radius: 0.25rem;
   position: relative;
   cursor: pointer;
   outline: 1px transparent;
@@ -271,6 +276,12 @@ button {
     color: var(--fg-6);
     text-shadow: unset;
     opacity: 90%;
+  }
+
+  &.background {
+    border-radius: 0.15rem;
+    background: hsla(0, 5%, 100%, 0.04);
+
   }
 
   label {

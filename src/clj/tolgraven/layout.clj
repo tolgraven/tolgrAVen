@@ -144,7 +144,7 @@
 (def js-paths
   (concat [{:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
            (when-not (:dev env)
-             {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"})])
+             {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"})]))
 
 (def pre-paths
   [["media/fog-3d-small.mp4" "video"]

@@ -26,6 +26,7 @@
 }
 
 .hljs-keyword,
+.hljs-meta-keyword,,
 .hljs-selector-tag {
 	color: var(--yellow-1);
 }
@@ -105,3 +106,38 @@
 .hljs-emphasis { font-style: italic }
 .hljs-strong { font-weight: 700 }
 .hljs-link { text-decoration: underline }
+
+/* REACT-SYNTAX-HIGHLIGHTER STYLING */
+
+/* Override react-syntax-highlighter default styles */
+.react-syntax-highlighter-line-number {
+  font-family: 'Fira Code', monospace ;
+  border-right: 0.5px solid var(--blue);
+  margin-right: calc(0.5 * var(--space));
+  padding-left: 0.5em;
+  background: linear-gradient(130deg,
+      var(--bg-2) 10%, var(--bg-1-2) 40%,
+      var(--bg-2) 60%, var(--bg-1) 102%);
+  
+}
+
+pre[class*="language-"] {
+	display: block;
+  font-family: 'Fira Code', monospace !important;
+	overflow-x: auto;
+  padding: 1.00em !important;
+  background: linear-gradient(100deg,
+      var(--bg-2) 10%, var(--bg-1-2) 40%,
+      var(--bg-2) 80%, var(--bg-1) 102%) !important;
+  border-bottom-left-radius: 0.7em;
+  border-bottom-right-radius: 0.5em;
+	color: var(--fg-2) !important;
+  box-shadow: 2px 1px 1em 0px rgba(110, 100, 120, 0.20);
+}
+
+/* Style the container div that react-syntax-highlighter creates */
+div > pre[class*="language-"] {
+  margin: 0;
+}
+
+/* Custom syntax highlighting colors for react-syntax-highlighter can be added here if needed */

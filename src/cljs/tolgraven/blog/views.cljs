@@ -111,8 +111,11 @@
         full? (r/atom nil) ; nil means uninited/not relevant, false unexpanded...
         height (atom 0)
         show-expand-to-full? (r/atom false)
-        comments (rf/subscribe [:comments/for-q-flat (first path) (when (<= 2 (count path))
-                                                                    (last path))])
+        is-preview? (= [:new-comment] path)
+        comments (if (not is-preview?)
+                   (rf/subscribe [:comments/for-q-flat (first path) (when (<= 2 (count path))
+                                                                      (last path))])
+                   (atom nil))
         ref-fn #(when %
                   (reset! height (.-clientHeight %))
                   (when (> (util/px-to-rem @height) 24)
@@ -132,13 +135,16 @@
              {:style {:cursor (if (and @expanded? @comments)
                                 "zoom-out"
                                 (when @comments "zoom-in"))
-                      :background-color (:bg-color user)} ; somehow doesnt fly, why? missing a deg in gen
+                      :background-color (:bg-color user)
+                      :opacity (if is-preview? 0.5 1.0)} ; somehow doesnt fly, why? missing a deg in gen
               :on-click #(when @comments
                            (rf/dispatch [:blog/expand-comment-thread path
                                          (not @expanded?)]))}]
             [:section.blog-comment
              {:class (when @full?
                        "blog-comment-full")
+              :style (when is-preview? {:background-color "var(--bg-2-2)"
+                                        :opacity 0.8})
               :ref ref-fn}
              
              [:div
@@ -173,7 +179,7 @@
                    :on-mouse-leave #(js/setTimeout (fn []
                                                      (reset! show-expand-to-full? false))
                                                    2000)}]]
-                 (when @show-expand-to-full?
+                 (when @show-expand-to-full? ; prob always show tbh...
                    [:button.blog-comment-view-full-btn
                     {:on-click #(reset! full? true)}
                     [:i.fa.fa-angle-down]])])
@@ -193,8 +199,9 @@
                          "collapsed")}
                (doall (for [[k post] (into (sorted-map) @comments)]
                         ^{:key (get-id-str (conj path (:id post)))}
-                        [ui/appear-anon "slide-behind"
-                         [comment-post (conj path (:id post)) post expanded?]]))]
+                        (conj
+                         [ui/appear-anon "slide-behind"]
+                         [comment-post (conj path (:id post)) post expanded?])))]
               (when-not @expanded?
                 [collapsed-reply-view path id @comments])])])))))
 
@@ -275,20 +282,31 @@
         valid-bg {:background-color "var(--bg-3-2)"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
      (fn [parent-path] ; needed or recreates to empty when swapped out
        (when @adding-comment?
-         [:div.blog-adding-comment
-          [:button.blog-btn
+         [:div.blog-comment-reply-outer
+          [:div.blog-comment-reply
+           [:div.blog-adding-comment
+          #_[:button.blog-btn
            {:on-mouse-over #(reset! preview? true)
             :on-mouse-leave #(reset! preview? false)}
-           "Preview"] [:br]
-          (if @preview?
+           "Preview"] #_[:br]
+          #_(if @preview?
             [ui/appear-anon "opacity fast"
              [preview-comment model]]
             [ui/appear-anon "opacity fast"
              [:<>
              [box :title :input :style valid-bg :ui-name "Title (optional)"]
              [box :text :textarea :ui-name "Comment"]]])
+          
+          [comment-post [:new-comment] {:user @(rf/subscribe [:user/active-user])
+                                        :title (get @model :title)
+                                        :text (get @model :text)}]
+          [ui/input-text-styled :model model
+           :on-change (fn [v]
+                        (rf/dispatch-sync [:form-field [:write-comment parent-path :text] v]))]
+          ; [box :text :textarea :ui-name "Comment" :style {:opacity 0.1
+          ;                                                 :z-index 10}]
           [submit-btn]
-          [add-comment-btn parent-path :cancel]]))))
+          [add-comment-btn parent-path :cancel]]]]))))
 
      ; :on-key-up (fn [e] (when (= "Alt-Enter-however-written" (.-key e)) (submit)))
 ; not here but whatever: thing from MYH site where heading slots into header
@@ -357,7 +375,7 @@
   (if-not text
    [ui/loading-spinner true :massive] ; ideally some placeholder flashing textish
    (let [user @(rf/subscribe [:user/user user])
-        back? @(rf/subscribe [:history/popped?])]
+         back? @(rf/subscribe [:history/back-nav-from-external?])]
     [ui/appear-anon (if back? "" "zoom-x")
      [:section.blog-post
       {:ref #(rf/dispatch [:run-highlighter!])}

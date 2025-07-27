@@ -7,8 +7,10 @@
    [clojure.string :as string]
    [clojure.pprint :as pprint]
    [markdown.core :refer [md->html]]
-   [highlight.js :as highlight.js] ; can auto-run on hook instead of tagging manually...
-   [cljsjs.highlight.langs.clojure] ; needs to be included somewhere
+   ["react-syntax-highlighter" :default SyntaxHighlighter]
+   ["react-syntax-highlighter/dist/esm/styles/hljs/darcula" :default darcula]
+   ["react-markdown" :default ReactMarkdown]
+   ["remark-gfm" :default remarkGfm]
    [react-transition-group :as rtg]
    [cljs-time.core :as ct]
    [cljs-time.coerce :as ctc]
@@ -46,16 +48,14 @@
            [:button {:on-click #(rf/dispatch [:exception [category] nil])}
             "Attempt reload"]]])))})))
 
-
+(declare parse-markdown-components)
 (defn md->div [md]
   (let [showing? (r/atom false)]
     (fn [md]
       [:div.md-rendered
        {:style {:opacity (if @showing? 1.0 0.0)}
-        :ref #(when %
-                #_(rf/dispatch-sync [:run-highlighter! %])
-                (reset! showing? true))
-        :dangerouslySetInnerHTML (r/unsafe-html (md->html (util/md->normal md)))}])))
+        :ref #(when % (reset! showing? true))}
+       [parse-markdown-components (util/md->normal md)]])))
 
 (defn appear "Animate mount"
   [id kind & components]
@@ -564,14 +564,18 @@
      {:style {:height height }}
      
      [:label.styled-caret.nomargin.nopadding
-      {:style {:position :absolute
+      {:id    "styled-caret"
+       :for   "styled-input"
+       :style {:position :absolute
                :width (str (max char-width selection-len) "em")
                :height (str caret-height "em")
                :left caret-pos
                :top (str (- (/ (- 1.6 caret-height #_"-0.1em") 2) 0.15) "em")}}
        "_"]
      [:label.styled-caret-under.nomargin.nopadding
-      {:style {:position :absolute
+      {:id    "styled-caret-under"
+       :for   "styled-input"
+       :style {:position :absolute
                :left caret-pos
                :top "0.1em"
                :animation (when-not (zero? selection-len)
@@ -582,7 +586,8 @@
         #_output
        [:span {:style {:white-space :pre-wrap
                        :display :inline-flex}}
-        (for [letter @internal-model] ; causes issues with spacing? nice lil zoom effect though, figure out.
+        (for [[i letter] (map-indexed vector @internal-model)] ; causes issues with spacing? nice lil zoom effect though, figure out.
+          ^{:key i}
           [appear-anon "zoom fast"
            [:span.styled-letter letter]])])
      
@@ -591,6 +596,7 @@
      
      [:input.styled-input ;problem if multiple search boxes on same page tho
       {:type "textarea"
+       :id   "styled-input"
        :style {:opacity 0
                :width width ;:min-width width :max-width width
                ; :height height 
@@ -933,6 +939,53 @@
         {:on-click inc-fn}
         [:i.fas.fa-angle-right]]
        [carousel-idx-btns id index (count content)] ])))
+
+
+(def syntax-highlighter (r/adapt-react-class SyntaxHighlighter))
+(def react-markdown (r/adapt-react-class ReactMarkdown))
+
+(defn code-block 
+  "Syntax highlighter component for code blocks"
+  [code & {:keys [language style basic?] 
+           :or {language "clojure" 
+                style darcula}}]
+  [syntax-highlighter
+   {:language language
+    :style style
+    :showLineNumbers (not basic?)
+    :children code
+    :wrapLines (not basic?)}])
+
+(defn markdown-code-component
+  "Custom code component for react-markdown that uses our syntax highlighter"
+  [props]
+  (let [props'(js->clj props {:keywordize-keys true})
+        children (some-> props' :children)
+        children' (js->clj {:keywordize-keys true})
+        class-name (some-> props' :className)
+        ;; Extract language from className (format: "language-javascript")
+        language (or (when class-name
+                       (or (second (re-find #"language-(\w+)" class-name))
+                           (second (re-find #"(\w+)" class-name))))
+                     "javascript")
+        ;; Get the actual code content
+        code (cond
+              (string? children) children
+              (map? children')  (some-> children' :target first :value)
+              :else (some-> children .-props .-children))]
+    
+    ;; Use our syntax highlighter for code blocks, fallback for inline code
+    (if (re-find #"\n" code)
+      [code-block code :language language]
+      [:code code])))
+
+(defn parse-markdown-components
+  "Parse markdown into pure React components using react-markdown"
+  [md-text]
+  [react-markdown
+   {:children md-text
+    :remarkPlugins #js [remarkGfm]
+    :components #js {:code (r/reactify-component markdown-code-component)}}])
 
 
 (def trans-group (r/adapt-react-class rtg/TransitionGroup))
