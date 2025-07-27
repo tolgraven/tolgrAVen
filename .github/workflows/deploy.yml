@@ -20,4 +20,3 @@ jobs:
           server: '${{ vars.CAPROVER_SERVER }}'
           appname: '${{ vars.APP_NAME }}'
           token: '${{ secrets.APP_TOKEN }}'
-          branch: master
