@@ -3,7 +3,7 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    [clojure.string :as string]
-   [cljsjs.react-player]
+   ; ["react-player" :as rp :refer (SoundCloud)]
    [reanimated.core :as anim]
    [tolgraven.ui :as ui]
    [tolgraven.strava.views :as strava]
@@ -93,7 +93,7 @@
      [:br]
      [:div.buttons
       (for [[text what] buttons] ^{:key (str "intro-button-" text)}
-        [:button
+        [:button.background
           {:on-click (when (vector? what)
                         #(rf/dispatch what)) }
           [:div {:class "blur-bg"}]
@@ -295,7 +295,8 @@
 
 (defn remote-player
   [url]
-  [:> js/ReactPlayer
+  [:div]
+  #_[:> SoundCloud
    {:url url
     :width "100%"
     :height "100%"}])
@@ -314,7 +315,8 @@
         url (str base-url artist "/" song)]
     [ui/seen-anon "slide-in"
      (if @(rf/subscribe [:booted? :soundcloud])
-       [remote-player url]
+       [ui/safe :player
+        [remote-player url]]
        [soundcloud-loading artist song])]))
 
 (defn ui-soundcloud "Soundcloud feed, plus selected tunes. Bonus if can do anything fun with it"
@@ -384,6 +386,7 @@
 
           :strava
           [:init :gallery]
+          :soundcloud
           :instagram
           :gallery
           :github
@@ -414,7 +417,8 @@
                apart from the separate lazy loading done before-hand (if loads in middle of page etc)"
   []
   [:<>
-   (for [component (layouts :main)]
+   (for [[i component] (map-indexed vector (layouts :main))]
+     ^{:key i}
      [get-section component])])
 
 

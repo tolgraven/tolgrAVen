@@ -7,10 +7,9 @@
   {:target :browser
    :modules {:main {:entries [tolgraven.core]
                     :init-fn tolgraven.core/init!}}
-   :js-options {:resolve {"highlight.js" {:target :npm :require "highlight.js/lib/core"}}}
+   :js-options {}
    :output-dir "resources/public/js/compiled/out"
    :asset-path "/js/compiled/out"
    :devtools {:watch-dir "resources/public"
               :repl-pprint true
-              :after-load tolgraven.core/mount-components}
-   :compiler-options {:infer-externs true}}}}
+              :after-load tolgraven.core/mount-components} }}}

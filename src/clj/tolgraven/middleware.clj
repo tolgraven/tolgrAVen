@@ -109,8 +109,7 @@
 (defn wrap-log "Log req then pass on unchanged"
   [handler id]
   (fn [req]
-    (timbre/debug (str "Wrap-log " id ", handler: ") handler)
-    (timbre/debug (str "Wrap-log " id ", request: ") req)
+    (timbre/debug (str "Wrap-log " id ", handler:") handler " request: " req)
     (handler req)))
 
 (defn wrap-gzip-content-aware

@@ -2,6 +2,7 @@
   (:require
     [reagent.dom :as rdom]
     [reagent.core :as r]
+    [reagent.dom.client :as rdomc]
     [re-frame.core :as rf]
     ; [kee-frame.core :as k]
     [tolgraven.ajax :as ajax]
@@ -107,11 +108,11 @@
                                    (not @swap)
                                    force?)
                            "removed") " ")
-             :ref #(when (and %
-                             (not= prev-page
-                                   (:running @swap))
-                             (not= prev-page (:finished @swap)))
-                    (rf/dispatch [:swap/trigger prev-page]))} ; trigger anim out and deferred hiding. triggers three(!) times each time but later no effect so.
+             :ref #(do (when (and %
+                                  (not= prev-page (:running @swap))
+                                  (not= prev-page (:finished @swap)))
+                         (rf/dispatch [:swap/trigger prev-page]))
+                       (rf/dispatch [:history/set-referrer [nil 0]]))} ; trigger anim out and deferred hiding. triggers three(!) times each time but later no effect so.
             (when-not (:finished @swap)
               comp-out)])]))))
 #_(defn swapper "Swap between outgoing and incoming page view"
@@ -158,13 +159,9 @@
 
 (defn page "Render active page inbetween header, footer and general stuff." 
   []
-  (let [get-animation-class #(if (or (= (get-in @(rf/subscribe [:common/route]) [:data :name])
-                                             (get-in @(rf/subscribe [:common/route :last]) [:data :name]))
-                                          (= js/window.performance.navigation.type 2)
-                                          (not (string/blank? js/document.referrer))
-                                          @(rf/subscribe [:state [:browser-nav :got-nav]]))
-                                    ""
-                                    "opacity")]
+  (let [ext-back? @(rf/subscribe [:history/back-nav-from-external?])
+        swap-class (if ext-back? "" "opacity")
+        click-evt @(rf/subscribe [:state [:global-clicked]])]
   [:<>
    [ui/safe :header [common/header @(rf/subscribe [:content [:header]])]] ;TODO smooth transition to personal
    [:a {:name "linktotop" :id "linktotop"}]
@@ -179,18 +176,18 @@
      (if-let [page @(rf/subscribe [:common/page])]
        (let [page-prev @(rf/subscribe [:common/page :last])]
          [:main.main-content.perspective-top
-          {:id "main"}
-          [swapper (get-animation-class)
+          {:id "main"
+           :class (when-not ext-back? "animate")}
+          [swapper swap-class
            [ui/safe :page [page]]
            (when page-prev
              [ui/safe :page-prev [page-prev]])]])
-       #_[ui/loading-spinner true :massive])) ; removed since jars now that have hero in original html
+       [ui/loading-spinner true :massive])) ; removed since jars now that have hero in original html
 
    [common/footer-full @(rf/subscribe [:content [:footer]])]
    [common/footer @(rf/subscribe [:content [:footer]])]
    [ui/safe :hud [ui/hud (rf/subscribe [:hud])]]
    [common/to-top]
-   [:a {:name "bottom" :id "bottom"}]]))
 
 
 (defn with-heading
@@ -297,7 +294,7 @@
                                (rf/dispatch [:scroll/to "bottom" 700]))}]}]
      ["docs" {:controllers
               [{:start (fn [_]
-                         (rf/dispatch [:on-booted :firebase [:docs/init]]))}]}
+                         (rf/dispatch [:docs/init]))}]}
       ["" {:name :docs
            :view #'doc-page
            :controllers
@@ -437,33 +434,40 @@
 
 ;; -------------------------
 ;; Initialize app
+
+(defonce root (atom nil))
+(defn render []
+  (reset! root
+    (rdomc/create-root (.getElementById js/document "app")))
+  (rdomc/render @root [#'page]))
+
 (defn mount-components "Called each update when developing" []
   (rf/clear-subscription-cache!)
   (start-router!) ; restart router on reload?
   (rf/dispatch [:reloaded])
   (util/log "Mounting root component")
-  (rdom/render [#'page] (.getElementById js/document "app")))
-
-
+  (render)
+  #_(rdom/render [#'page] (.getElementById js/document "app")))
 
 (defn init "Called only on page load" []
   (rf/dispatch-sync [:init-db])
   (rf/dispatch-sync [:fb/fetch-settings]) ;sync because number of early fetches depend on this...
-  (rf/dispatch      [::bp/set-breakpoints
-                     :breakpoints [:mobile 560
-                                   :tablet 992
-                                   :small-monitor 1200
-                                   :large-monitor]
-                     :debounce-ms 250]) ;; optional
+  (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
   (ajax/load-interceptors!)
+  (mount-components)
+  (rf/dispatch [::bp/set-breakpoints
+                :breakpoints [:mobile 560
+                              :tablet 992
+                              :small-monitor 1200
+                              :large-monitor]
+                :debounce-ms 250]) ;; optional
   (rf/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
   (rf/dispatch [:cookie/show-notice]) ; do later first check if prev visit
-  (mount-components)
   ; (rf/dispatch [:on-booted :firebase [:init]])
   (rf/dispatch [:on-booted :firebase [:init/cms]])
   (rf/dispatch [:on-booted :firebase [:init/imagor]])
   (js/setTimeout #(rf/dispatch [:init])
-                 2000)
+                 100)
   #_(js/setTimeout (fn [] (doseq [evt [; temp crapfix, running this too early suddenly results in... nothing. what.
 
                                [:init/scroll-storage]

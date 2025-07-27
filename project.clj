@@ -200,7 +200,6 @@
                    {:app
                     
                     {:source-paths ["src/cljs" "src/cljc" "env/dev/cljs"]
-                     #_:figwheel #_{:on-jsload "tolgraven.core/mount-components"} ; only this bc dev/app calls init! (and more!) which also gets round multi-remount conundrum i solved uglily in cue-db... very reasonable to keep dev things away from general codebase so auto disabled
                      :compiler
                      {:output-dir "resources/public/js/compiled/out"
                       :output-to "resources/public/js/compiled/app.js"
@@ -234,26 +233,7 @@
                         :string-style    "background-color: #282828; color: #b4b88d;"
                         :symbol-style    "background-color: #282828; color: #edc;"
                         :bool-style      "background-color: #282828; color: #d18479;"
-                        :print-config-overrides false}
-                       :dirac.runtime/config
-                       { ; foreground colors
-                        :rich-text-ansi-style-30 "color: #edc"                                       ; black
-                        :rich-text-ansi-style-31 "color: #d18479"                                    ; red
-                        :rich-text-ansi-style-32 "color: #b4b88d"                                    ; green
-                        :rich-text-ansi-style-33 "color: rgb(128, 128, 0)"                           ; yellow
-                        :rich-text-ansi-style-34 "color: #76a2ab"                                    ; blue
-                        :rich-text-ansi-style-35 "color: #bd979d"                                    ; magenta
-                        :rich-text-ansi-style-36 "color: rgb(0, 128, 128)"                           ; cyan
-                        :rich-text-ansi-style-37 "color: rgb(128, 128, 128)"                         ; gray
-                        ; background colors
-                        :rich-text-ansi-style-40 "background-color: #282828"                         ; black
-                        :rich-text-ansi-style-41 "background-color: rgba(128, 0, 0, 0.2)"            ; red
-                        :rich-text-ansi-style-42 "background-color: rgba(0, 128, 0, 0.2)"            ; green
-                        :rich-text-ansi-style-43 "background-color: rgba(128, 128, 0, 0.2)"          ; yellow
-                        :rich-text-ansi-style-44 "background-color: rgba(0, 0, 128, 0.2)"            ; blue
-                        :rich-text-ansi-style-45 "background-color: rgba(128, 0, 128, 0.2)"          ; magenta
-                        :rich-text-ansi-style-46 "background-color: rgba(0, 128, 128, 0.2)"          ; cyan
-                        :rich-text-ansi-style-47 "background-color: rgba(128, 128, 128, 0.2)"}}
+                        :print-config-overrides false} }
                       :source-map true
                       :source-map-timestamp true
                       :main "tolgraven.app" ;what is this why .app? ;; bc env/dev/app.cljs thingy. calls init

@@ -177,10 +177,30 @@
  (fn [db [_ _]]
    (get-in db [:state :modal-zoom])))
 
-(rf/reg-sub :history/popped?
+(rf/reg-sub :history/nav
  :<- [:state [:browser-nav]]
  (fn [nav]
-   (:got-nav nav)))
+   nav))
+
+(rf/reg-sub :history/popped?
+ :<- [:state [:browser-nav]]
+ :<- [:common/route]
+ :<- [:common/route :last]
+ (fn [[nav route last]]
+   (and (:got-nav nav)
+        (not= (:path route)
+              (:path last)))))
+
+(rf/reg-sub :history/back-nav-from-external?
+ :<- [:history/nav]
+ :<- [:common/route :last]
+ (fn [[nav last] [_]]
+   (and (not (get-in last [:data :name]))
+        (or (and (seq (:referrer nav))
+                 (not (string/includes? (:referrer nav) "tolgraven")))
+            (and (= "" (:referrer nav))
+                 (= (:nav-type nav) 2))))))
+
 
 (rf/reg-sub :href-add-query ;  "Append query to href of current page, or passed k/params"
  :<- [:common/page-id]           

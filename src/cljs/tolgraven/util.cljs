@@ -1,6 +1,5 @@
 (ns tolgraven.util
   (:require [re-frame.core :as rf]
-            [cljsjs.highlight :as hljs]
             [reitit.frontend.easy :as rfe]
             [cljs-time.core :as ct]
             [cljs-time.format :as ctf]
@@ -349,10 +348,12 @@
        (/ (js/parseFloat px-val))))
 
 (defn run-highlighter! [el-type & [div-ref]]
-  (let [selected (-> (or div-ref js/document) ;cant querySelectorAll on document?
-                     (.querySelectorAll el-type))]
-    (doseq [el selected]
-      (js/hljs.highlightBlock el)))) ;uh doseq more appropriate no
+  (let [selected (-> (or div-ref js/document)
+                       (.querySelectorAll el-type))]
+      #_(doseq [el selected]
+        (when-let [code (.-textContent el)]
+          ;; Note: With react-syntax-highlighter, highlighting is handled at component level
+          (js/console.log "Skipping DOM-based highlighting, using React components instead")))))
 
 
 (defn scroll-by "Manually scroll view by. But guess need custom for Safar-eye"

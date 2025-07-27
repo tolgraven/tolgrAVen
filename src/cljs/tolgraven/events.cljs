@@ -115,6 +115,12 @@
       (if nav-action?  ; bona fide back (or fwd??) event! ; set a flag affecting next common/navigate event
         {:db (assoc-in db [:state :browser-nav :got-nav] true)}))))
 
+(rf/reg-event-fx :history/set-referrer
+  (fn [{:keys [db]} [_ referrer nav-type]]
+    {:db (-> db
+             (assoc-in [:state :browser-nav :referrer] referrer)
+             (assoc-in [:state :browser-nav :nav-type] nav-type))}))
+
 (rf/reg-event-fx :history/pop!
   (fn [{:keys [db]} [_ _]]
     {:history/pop _}))
