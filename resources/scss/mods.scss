@@ -411,6 +411,19 @@ button:hover .blur-bg, button:active .blur-bg,
              // translateY(-1%)
              scale(var(--parallax-sm-scale));
 }
+
+/* Fix for elements with both media-as-bg and parallax classes */
+.media-as-bg.parallax-sm {
+  transform: translateZ(var(--parallax-sm-px))
+             translateY(5.5%)
+             scale(calc(1.125 * var(--parallax-sm-scale)));
+}
+
+.media-as-bg.parallax-bg {
+  transform: translateZ(var(--parallax-px))
+             translateY(5.5%)
+             scale(calc(1.125 * var(--parallax-scale)));
+}
 .parallax-bg {
   transform: translateZ(var(--parallax-px))
              // translateY(-2%)
