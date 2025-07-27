@@ -17,6 +17,6 @@ jobs:
       - name: Deploy App to CapRover
         uses: caprover/deploy-from-github@v1.0.1
         with:
-          server: '${{ variables.CAPROVER_SERVER }}'
-          app: '${{ variables.APP_NAME }}'
+          server: '${{ vars.CAPROVER_SERVER }}'
+          app: '${{ vars.APP_NAME }}'
           token: '${{ secrets.APP_TOKEN }}'
