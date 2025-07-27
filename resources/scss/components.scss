@@ -101,6 +101,19 @@
   &:hover .media-as-bg {
     transform: scale(1.2);
   }
+  
+  /* Fix hover for parallax background elements */
+  &:hover .media-as-bg.parallax-sm {
+    transform: translateZ(var(--parallax-sm-px))
+               translateY(5.5%)
+               scale(calc(1.2 * var(--parallax-sm-scale)));
+  }
+  
+  &:hover .media-as-bg.parallax-bg {
+    transform: translateZ(var(--parallax-px))
+               translateY(5.5%)
+               scale(calc(1.2 * var(--parallax-scale)));
+  }
 }
 .media-container {
   position: relative;

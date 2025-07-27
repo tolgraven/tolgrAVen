@@ -385,7 +385,7 @@ button:hover .blur-bg, button:active .blur-bg,
   position: relative;
   height: 100%; /* default, can override in attrs */
   width: 100%;
-  // perspective: calc(1px * var(--perspective)); //apparently breaks parallax. thought it'd be the other way???
+  perspective: calc(1px * var(--perspective)); /* re-enable perspective for parallax to work */
   perspective-origin: center; /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */
   overflow-y: auto;
 }
@@ -410,6 +410,19 @@ button:hover .blur-bg, button:active .blur-bg,
   transform: translateZ(var(--parallax-sm-px))
              // translateY(-1%)
              scale(var(--parallax-sm-scale));
+}
+
+/* Fix for elements with both media-as-bg and parallax classes */
+.media-as-bg.parallax-sm {
+  transform: translateZ(var(--parallax-sm-px))
+             translateY(5.5%)
+             scale(calc(1.125 * var(--parallax-sm-scale)));
+}
+
+.media-as-bg.parallax-bg {
+  transform: translateZ(var(--parallax-px))
+             translateY(5.5%)
+             scale(calc(1.125 * var(--parallax-scale)));
 }
 .parallax-bg {
   transform: translateZ(var(--parallax-px))
