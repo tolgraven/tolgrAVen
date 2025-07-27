@@ -16,6 +16,7 @@ jobs:
         uses: actions/checkout@v4
       - name: CapRover Deploy Token
         uses: Fabrimat/caprover-action@v2.3 
+        with:
           server: '${{ vars.CAPROVER_SERVER }}'
           appname: '${{ vars.APP_NAME }}'
           token: '${{ secrets.APP_TOKEN }}'
