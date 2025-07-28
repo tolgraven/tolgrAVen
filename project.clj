@@ -267,7 +267,7 @@
 
    
    :uberjar {:prep-tasks ["compile"
-                          ["shell" "npm" "install"]
+                          ["npm" "install"]
                           ["run" "-m" "shadow.cljs.devtools.cli" "release" "app"]
                           ["codox"]]
              :aot :all
