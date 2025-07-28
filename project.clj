@@ -108,7 +108,6 @@
                  [cljsjs/react "18.3.1-1"]
                  [cljsjs/react-dom "18.3.1-1"]
                  [reanimated "0.6.1"]
-                 [re-frame-utils "0.1.0"]
                  [com.smxemail/re-frame-cookie-fx "0.0.2"  :exclusions [args4j]]
                  [re-pollsive "0.1.0"] ; periodic polling/timer stuff
 
@@ -268,6 +267,7 @@
 
    
    :uberjar {:prep-tasks ["compile"
+                          ["shell" "npm" "install"]
                           ["run" "-m" "shadow.cljs.devtools.cli" "release" "app"]
                           ["codox"]]
              :aot :all
