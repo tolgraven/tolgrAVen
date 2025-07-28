@@ -2,20 +2,14 @@
   (:require
    [reagent.core :as r]
    [re-frame.core :as rf]
-   [tolgraven.db :as db]
    [tolgraven.util :as util :refer [at]]
    [clojure.string :as string]
    [clojure.pprint :as pprint]
-   [markdown.core :refer [md->html]]
-   ["react-syntax-highlighter" :default SyntaxHighlighter]
-   ["react-syntax-highlighter/dist/esm/styles/hljs/darcula" :default darcula]
-   ["react-markdown" :default ReactMarkdown]
-   ["remark-gfm" :default remarkGfm]
+   [tolgraven.ui.code :as code]
    [react-transition-group :as rtg]
    [cljs-time.core :as ct]
    [cljs-time.coerce :as ctc]
    [cljs-time.format :as ctf]))
-
 
 (defn safe "Error boundary for components. Also prints/logs error"
   [category component]
@@ -48,14 +42,13 @@
            [:button {:on-click #(rf/dispatch [:exception [category] nil])}
             "Attempt reload"]]])))})))
 
-(declare parse-markdown-components)
 (defn md->div [md]
   (let [showing? (r/atom false)]
     (fn [md]
       [:div.md-rendered
        {:style {:opacity (if @showing? 1.0 0.0)}
         :ref #(when % (reset! showing? true))}
-       [parse-markdown-components (util/md->normal md)]])))
+       [code/parse-markdown-components (util/md->normal md)]])))
 
 (defn appear "Animate mount"
   [id kind & components]
@@ -939,54 +932,6 @@
         {:on-click inc-fn}
         [:i.fas.fa-angle-right]]
        [carousel-idx-btns id index (count content)] ])))
-
-
-(def syntax-highlighter (r/adapt-react-class SyntaxHighlighter))
-(def react-markdown (r/adapt-react-class ReactMarkdown))
-
-(defn code-block 
-  "Syntax highlighter component for code blocks"
-  [code & {:keys [language style basic?] 
-           :or {language "clojure" 
-                style darcula}}]
-  [syntax-highlighter
-   {:language language
-    :style style
-    :showLineNumbers (not basic?)
-    :children code
-    :wrapLines (not basic?)}])
-
-(defn markdown-code-component
-  "Custom code component for react-markdown that uses our syntax highlighter"
-  [props]
-  (let [props'(js->clj props {:keywordize-keys true})
-        children (some-> props' :children)
-        children' (js->clj {:keywordize-keys true})
-        class-name (some-> props' :className)
-        ;; Extract language from className (format: "language-javascript")
-        language (or (when class-name
-                       (or (second (re-find #"language-(\w+)" class-name))
-                           (second (re-find #"(\w+)" class-name))))
-                     "javascript")
-        ;; Get the actual code content
-        code (cond
-              (string? children) children
-              (map? children')  (some-> children' :target first :value)
-              :else (some-> children .-props .-children))]
-    
-    ;; Use our syntax highlighter for code blocks, fallback for inline code
-    (if (re-find #"\n" code)
-      [code-block code :language language]
-      [:code code])))
-
-(defn parse-markdown-components
-  "Parse markdown into pure React components using react-markdown"
-  [md-text]
-  [react-markdown
-   {:children md-text
-    :remarkPlugins #js [remarkGfm]
-    :components #js {:code (r/reactify-component markdown-code-component)}}])
-
 
 (def trans-group (r/adapt-react-class rtg/TransitionGroup))
 (def css-trans (r/adapt-react-class rtg/CSSTransition))

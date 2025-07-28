@@ -10,6 +10,15 @@
    :js-options {}
    :output-dir "resources/public/js/compiled/out"
    :asset-path "/js/compiled/out"
+   :closure-defines {goog.DEBUG false}
+   :optimizations :advanced
+   :language-in     :ecmascript-next
+   :language-out    :ecmascript-next
+   :pretty-print false
+   :infer-externs true
+   :parallel-build true
+   :closure-warnings {:externs-validation :off
+                      :non-standard-jsdoc :off}
    :devtools {:watch-dir "resources/public"
               :repl-pprint true
               :after-load tolgraven.core/mount-components} }}}

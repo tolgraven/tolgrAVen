@@ -169,6 +169,7 @@
   {:language :clojurescript
    :output-path "resources/docs/codox"
    :metadata {:doc/format :markdown}
+   :namespaces [#"^(?!.*code\.cljs$).*\.cljs$"]
    :source-uri "https://github.com/tolgraven/tolgraven/blob/master/{filepath}#L{line}"}
 
   :profiles
@@ -265,7 +266,15 @@
                       :optimizations :whitespace
                       :pretty-print true}}}}}
 
-   :uberjar {;:omit-source true
+   
+   :uberjar {:prep-tasks ["compile"
+                          ["run" "-m" "shadow.cljs.devtools.cli" "release" "app"]
+                          ["codox"]]
+             :aot :all
+             :uberjar-name "tolgraven.jar"
+             :source-paths ["env/prod/clj"]
+             :resource-paths ["env/prod/resources" "resources"]}
+   #_{;:omit-source true
              :prep-tasks ["compile"
                           ["cljsbuild" "once" "min"]
                           ["codox"]]
@@ -286,8 +295,8 @@
                             :infer-externs true
                             :parallel-build true
                             :main "tolgraven.app"
-                            :closure-warnings
-                            {:externs-validation :off :non-standard-jsdoc :off}
+                            :closure-warnings {:externs-validation :off
+                                               :non-standard-jsdoc :off}
                             :externs ["react/externs/react.js"]}}}}
 
              :aot :all
