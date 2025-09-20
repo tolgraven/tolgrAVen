@@ -3,22 +3,60 @@
  :dev-http {4001 "resources/public"}
 
  :builds
- {:app
+ {:app-dev
   {:target :browser
    :modules {:main {:entries [tolgraven.core]
                     :init-fn tolgraven.core/init!}}
    :js-options {}
    :output-dir "resources/public/js/compiled/out"
    :asset-path "/js/compiled/out"
-   :closure-defines {goog.DEBUG false}
-   :optimizations :advanced
+   :closure-defines {goog.DEBUG true
+                     "re_frame.trace.trace_enabled_QMARK_" true}
+   :optimizations   :none
    :language-in     :ecmascript-next
    :language-out    :ecmascript-next
-   :pretty-print false
-   :infer-externs true
-   :parallel-build true
+   :pretty-print    true
+   :infer-externs   true
+   :parallel-build  true
    :closure-warnings {:externs-validation :off
                       :non-standard-jsdoc :off}
+   :recompile-dependents false
+   :preloads [devtools.preload ;can remove devtools preload cause have in app.cljs?
+              re-frisk.preload-hidden
+              day8.re-frame-10x.preload
+              #_re-frisk.preload #_re-frisk-remote.preload]
+   :external-config
+   {:devtools/config
+    {;:features-to-install [:formatters :hints] ;add exception hints
+     :cljs-land-style "background-color: rgb(30, 30, 30, 0.5); color: #edc; border-radius: 7px;"
+     :nil-style       "background-color: #282828; color: #d18479;"
+     :keyword-style   "background-color: #282828; color: #76a2ab;"
+     :integer-style   "background-color: #282828; color: #bd979d;"
+     :float-style     "background-color: #282828; color: #bd979d;"
+     :string-style    "background-color: #282828; color: #b4b88d;"
+     :symbol-style    "background-color: #282828; color: #edc;"
+     :bool-style      "background-color: #282828; color: #d18479;"
+     :print-config-overrides false} }
+   :source-map true
+   :source-map-timestamp true
    :devtools {:watch-dir "resources/public"
               :repl-pprint true
-              :after-load tolgraven.core/mount-components} }}}
+              :after-load tolgraven.core/mount-components}}
+
+  :app
+  {:target :browser
+   :modules {:main {:entries [tolgraven.core]
+                    :init-fn tolgraven.core/init!}}
+   :output-dir "resources/public/js/compiled/out"
+   :asset-path "/js/compiled/out"
+   :optimizations   :advanced
+   :language-in     :ecmascript-next
+   :language-out    :ecmascript-next
+   :pretty-print    false
+   :infer-externs   true
+   :parallel-build  true
+   :closure-warnings {:externs-validation :off
+                      :non-standard-jsdoc :off}
+   :recompile-dependents false
+   :source-map           false
+   :source-map-timestamp false}}}

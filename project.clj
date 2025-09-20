@@ -62,7 +62,6 @@
 
                  ; [ring/ring-core "1.10.0" :exclusions [commons-io]]
                  [ring/ring-defaults "0.6.0" :exclusions [commons-io]]
-                 ; [bk/ring-gzip "0.3.0" :exclusions [clojure-complete]]
                  [amalloy/ring-gzip-middleware "0.1.4"]
                  [ring-partial-content "2.1.0"] ; handle safari video playback / 206 response
                  [ring-basic-authentication "1.2.0"]
@@ -96,7 +95,7 @@
                  [superstructor/re-frame-clipboard-fx "0.0.2"]
                  [re-frame-datatable "0.6.0"]
                  [breaking-point "0.1.2"]
-                 
+
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
                  [day8.re-frame/async-flow-fx "0.4.0"]
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
@@ -114,13 +113,8 @@
                  ; INVESTIGATE
                  ; [com.github.oliyh/martian-re-frame "0.1.24"] ; interact nicely with http endpoints off swagger/openapi
                  
-                 [superstructor/re-highlight "2.0.2"]
-                 [cljsjs/highlight "11.7.0-0"]
                  [cljsjs/codemirror "5.65.16-0"]
-                 [cljsjs/react-player "1.11.0-0"]
-                 [cljsjs/react-leaflet "3.1.0-0"]
-                 [cljsjs/leaflet "1.9.4-0"]
-                 [cljsjs/react-transition-group "4.3.0-0"]]
+                 [cljsjs/react-player "1.11.0-0"]]
 
   ; :managed-dependencies [] ; can pin specific versions...
 
@@ -136,11 +130,7 @@
             [lein-sassc "0.10.4"]
             [lein-autoprefixer "0.1.1"]
             [lein-auto "0.1.2"]
-            [lein-codox "0.10.8"]
-            ; [venantius/ultra "0.5.4"]
-            ; [lein-npm "0.6.2"]; "no more lein-npm, even few packages gives hundreds of deps total and slows down figwheel reloads something fierce"
-            ; [lein-kibit "0.1.2"]
-            ]
+            [lein-codox "0.10.8"]]
   :sassc
   [{:src "resources/scss/main.scss"
     :output-to "resources/public/css/tolgraven/main.css"
@@ -154,8 +144,6 @@
    "autoprefixer" {:file-pattern #"\.(css)$" :paths ["resources/public/css/tolgraven"]}}
   
   :aliases {"cssbuild" ["do" ["sassc" "once"] "autoprefixer"]}
-  ; :aliases {"fig" ["trampoline" "run" "-m" "figwheel.main"]
-  ;           "build-dev" ["trampoline" "run" "-m" "figwheel.main" "-b" "dev" "-r"]}
   :clean-targets ^{:protect false}
   [:target-path
    :compile-path
@@ -191,25 +179,15 @@
                                  [ring/ring-devel "1.14.2"]
                                  [ring/ring-mock "0.6.1"]]
                   :plugins      [;[refactor-nrepl/refactor-nrepl "3.9.0"]
-                                 [cider/cider-nrepl "0.57.0"]
-                                 #_[com.jakemccrary/lein-test-refresh "0.24.1"]
-                                 #_[lein-doo "0.1.11"]
-                                 #_[lein-figwheel "0.5.20"]]
+                                 [cider/cider-nrepl "0.57.0"] ]
                   :cljsbuild
                   {:builds
                    {:app
-                    
                     {:source-paths ["src/cljs" "src/cljc" "env/dev/cljs"]
                      :compiler
                      {:output-dir "resources/public/js/compiled/out"
                       :output-to "resources/public/js/compiled/app.js"
                       :asset-path "js/compiled/out"
-                      ; :init-fn tolgraven.core/init!
-                      
-                      ; :modules { 
-                      ;           :app {:entries #{tolgraven.core tolgraven.app}
-                      ;                  :output-to "resources/public/js/compiled/app.js"} }
-                      
                       :language-in     :ecmascript-next
                       :language-out    :ecmascript-next
                       :optimizations :none
@@ -218,7 +196,7 @@
                       :recompile-dependents false
                       :preloads [devtools.preload ;can remove devtools preload cause have in app.cljs?
                                  re-frisk.preload-hidden
-                                 ; day8.re-frame-10x.preload
+                                 day8.re-frame-10x.preload
                                  #_re-frisk.preload #_re-frisk-remote.preload]
                       :closure-defines {goog.DEBUG true
                                         "re_frame.trace.trace_enabled_QMARK_" true}

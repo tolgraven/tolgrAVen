@@ -19,7 +19,7 @@
 
 (defn cljs-repl "Connects to a given build-id. Defaults to `:app`."
   ([]
-   (cljs-repl :app))
+   (cljs-repl :app-dev))
   ([build-id]
    (server/start!)
    (shadow/watch build-id)
@@ -30,8 +30,7 @@
   (doseq [component (-> (mount/start-without #'tolgraven.core/repl-server)
                         :started)]
     (log/info component "started"))
-  (cljs-repl)
-  #_(start-fw))
+  (cljs-repl))
 
 (defn stop "Stops application." []
   (doseq [component (-> (mount/stop-except #'tolgraven.core/repl-server)
