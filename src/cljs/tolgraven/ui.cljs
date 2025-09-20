@@ -521,10 +521,7 @@
 
 
 (defn input-text-styled "Custom text field with individual elements for each letter, and styled caret"
-  [& {:as args :keys [model on-enter placeholder
-                      width height open?
-                      suggestions completion-fn
-                      on-change on-enter on-esc]}]
+  [& {:as args :keys [model completion-fn]}]
  (let [internal-model (r/atom (or @model ""))
        char-width 0.61225
        div-ref (r/atom nil)
@@ -537,9 +534,10 @@
        set-caret (fn [target]
                    (reset! caret (.-selectionStart target))
                    (reset! selection-end (.-selectionEnd target))) ]
-   (fn [& {:keys [model on-enter placeholder
+   (fn [& {:keys [on-enter placeholder
                   width height open?
                   suggestions
+                  id class
                   on-change on-enter on-esc]
            :or {height "2em"
                 open? true}}]
@@ -575,7 +573,6 @@
       "_"]
      
      (when-not (string/blank? @internal-model)
-        #_output
        [:span {:style {:white-space :pre-wrap
                        :display :inline-flex}}
         (for [[i letter] (map-indexed vector @internal-model)] ; causes issues with spacing? nice lil zoom effect though, figure out.
@@ -588,7 +585,8 @@
      
      [:input.styled-input ;problem if multiple search boxes on same page tho
       {:type "textarea"
-       :id   "styled-input"
+       :id   (or id "styled-input")
+       :class class
        :style {:opacity 0
                :width width ;:min-width width :max-width width
                ; :height height 
