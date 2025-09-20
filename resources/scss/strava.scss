@@ -61,7 +61,7 @@
     
     max-height: 100vh;
     min-height: var(--strava-stats-height);
-    transition: all 0.8s ease;
+    transition: max-height 0.8s ease, padding 0.3s, border 0.2s;
     overflow: hidden;
 
     .strava-stats-tabs {
@@ -92,7 +92,7 @@
       max-height: 0;
       padding: 0;
       border: 0;
-      transition: all 0.8s ease; // still jumps rather than animates height?
+      transition: padding 0.8s ease; // still jumps rather than animates height?
       // opacity: 0;
     }
 
@@ -141,7 +141,7 @@
         background: radial-gradient(#fc4c02, rgba(252, 125, 25, 0.8));
         border-radius: 100%;
         box-shadow: 0px 0px 3px 3px rgba(252, 76, 2, 0.4);
-        transition: all 0.8s ease, color 1.5s;
+        transition: background 0.8s ease, color 1.5s, filter 0.5s ease, ;
         cursor: pointer;
 
         &:hover {

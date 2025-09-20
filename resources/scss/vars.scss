@@ -1,4 +1,4 @@
-@use "sass:color";
+// @use "sass:color";
 
 /* wanted to put in own file but wasnt compatible with live reload solution... */
 :root { /* general vars */
@@ -24,6 +24,9 @@
   --link-offset:         calc( var(--header-height-current));
   --menu-width-fraction: 0.70;
 
+  --page-scroll-percent: 0%;
+  --page-scroll-opacity: 0;
+
   --comment-gap:         calc(0.20 * var(--space));
 
   --line-scale-factor: 0.5;
@@ -36,9 +39,13 @@
   --section-rounded:   0%;
   
   --fiddle-multiplier: 1; /* was 3. works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
-  --left-marker:       calc(100% * ((1.0 - var(--menu-width-fraction)) / 2)
-                            + 0.75 * var(--space) - 1 * (var(--fiddle-multiplier) * var(--line-width)));
-  --right-marker:       calc(100% - 1 * var(--left-marker) - 2 * var(--line-width)); /* makes sense right side needs one more unit since it has the right border... */
+  --left-marker:       calc(100% *
+                            ((1 - var(--menu-width-fraction)) / 2) +
+                            0.75 * var(--space) -
+                            var(--fiddle-multiplier) * var(--line-width));
+  --right-marker:       calc(100% -
+                             1.5 * var(--line-width-vert) -
+                             var(--left-marker)); /* makes sense right side needs one more unit since it has the right border... */
   --top-to-menu-height: calc(2 * var(--space-top) + 1.55em);
   
   --header-expand-time:         0.5s;

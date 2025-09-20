@@ -11,7 +11,7 @@
   position: absolute;
   width: 100%;
   --fade-to-color: var(--bg-1);
-  transition: all 0.5s ease;
+  transition: height 0.5s ease, background 0.3s ease, top 0.4s ease;
 
   &.tall {
     height: calc(10 * var(--space-lg));
@@ -67,18 +67,19 @@
   transform: none;
   opacity: 1;
 
-  transition: all var(--navigation-transition-time) ease;
+  transition: opacity var(--navigation-transition-time) ease,
+              transform var(--navigation-transition-time) ease;
   z-index: -1;
 
   display: inherit;
   pointer-events: none;
   div {
-    transition: all none;
+    transition: unset;
   }
   
   &.opacity {
     opacity: 0;
-    transition: all var(--navigation-transition-time) ease;
+    transition: opacity var(--navigation-transition-time) ease;
   }
   &.left {
     z-index: -1;
@@ -91,18 +92,18 @@
 }
 
 .swap-in {
-  transition: all 0.0s; // i guess so opacity 0 get applied instantly?
+  transition: none; // i guess so opacity 0 get applied instantly?
   // transform-style: preserve-3d;
   // perspective: 1000px;
 
   &.right {
     transform: translateX(150%);
-    transition: all 0.0s;
+    transition: unset;
     z-index: -1;
   }
   &.left {
     transform: translateX(-150%);
-    transition: all 0.0s;
+    transition: unset;
     z-index: -1;
   }
   &.rotate {
@@ -114,7 +115,8 @@
     opacity: 0;
   }
   &.swapped-in {
-    transition: all var(--navigation-transition-time) ease;
+    transition: opacity var(--navigation-transition-time) ease,
+                transform var(--navigation-transition-time) ease;
     opacity: 1;
     transform: none;
   }
@@ -205,12 +207,20 @@
   top: var(--header-height-current);
 }
 
+@mixin all-transitions($time: 0.45s) {
+  transition: transform $time ease,
+              opacity $time ease,
+              background-color $time ease,
+              color $time ease;
+}
+
 .appear-wrapper {
   // display: initial; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post
   // display: inline-block; // initial doesnt work, this seems to. but this might change other types than inlines behavior? yup screws with blog-post
   // ^^ above also screws up appearing text with [seen]. let's find what breaks without it?
   // width: 100%; // same as above, fixes but maybe also screws? yes it does
-  transition: all 0.45s;
+  // --appear-time: 0.45s;
+  @include all-transitions(0.45s);
   
   &.opacity {
     opacity: 0;
@@ -228,7 +238,7 @@
   &.zoom-x {
     opacity: 0;
     transform: scaleX(0);
-    transition: transform 0.55s;
+    // transition: transform 0.55s;
   }
   &.slide-in {
     opacity: 0;
@@ -260,11 +270,21 @@
     visibility: visible;
     background-color: initial;
   }
-  &.fast {       transition: all 0.25s ease; }
-  &.faster {     transition: all 0.15s ease; }
-  &.slow {       transition: all 1.0s ease; }
-  &.extra-slow { transition: all 2.2s ease; }
-  &.super-slow { transition: all 4.5s ease; }
+  &.fast {
+    @include all-transitions(0.25s);
+  }
+  &.faster {
+    @include all-transitions(0.15s);
+  }
+  &.slow {
+    @include all-transitions(1.0s);
+  }
+  &.extra-slow {
+    @include all-transitions(2.2s);
+  }
+  &.super-slow {
+    @include all-transitions(4.5s);
+  }
 }
 
 .covering, .covering-2, .covering-3 { /* just, hide-out earlier stupid stickies. z-index should be a mixin giving layer, or by js parsing past? */
@@ -386,8 +406,10 @@ button:hover .blur-bg, button:active .blur-bg,
   height: 100%; /* default, can override in attrs */
   width: 100%;
   // perspective: calc(1px * var(--perspective)); //apparently breaks parallax. thought it'd be the other way???
-  perspective-origin: center; /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */
+  perspective-origin: top; /* starts where i want but then want it going other dir... or maybe going up-away better, more understated... */
+  perspective: 300px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .parallax-group {
   position: relative;
@@ -429,7 +451,7 @@ button:hover .blur-bg, button:active .blur-bg,
   /* transform-style: preserve-3d; */
 }
 .origin-toptop {
-  transform-origin: 50% -100%;
+  transform-origin: top;
 }
 
 
@@ -443,10 +465,6 @@ button:hover .blur-bg, button:active .blur-bg,
              rotateY(1deg)
              rotateX(-1deg);
   /* opacity: 0.85; */
-  transition: transform 0.3s;
-}
-* { /*for animation both ways */
-  transform: none;
   transition: transform 0.3s;
 }
 .debug-layers {         box-shadow: 0 0 0 1px #6d8; }

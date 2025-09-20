@@ -47,6 +47,7 @@ html, body {
 }
 html {
   height: 100%;
+  position: relative;
   overflow-x: hidden; /* gotta be on both or doesnt work on iphone hmm */
   scroll-behavior: smooth; /* makes in-page links scroll to target beautifully in chrome */
   /* overscroll-behavior-y: none; /1* actually works in chrome, stops from overscroll. BUT makes scrolling and esp sticky jittery it seems? *1/ */
@@ -61,7 +62,6 @@ html {
 
 body {
   font-family: 'Open Sans', sans-serif;
-  // font-family: 'Fira Sans', sans-serif;
   color: var(--fg-1);
   background-color: var(--bg-1);
   width: calc(100% - 2 * var(--space-edges));
@@ -103,7 +103,7 @@ a {
 
 main { /* dunno purpose of why I choose .main-content... */
   width: 100%;
-  min-height: 100vh;
+  min-height: 98vh;
   
   border-top: var(--line-width) solid var(--line-color); /* should make configurable. off looks p nice on main page */
   border-left:  var(--line-width-vert) solid var(--line-color); /* should make configurable. off looks p nice on main page */
@@ -129,6 +129,8 @@ main { /* dunno purpose of why I choose .main-content... */
   }
 }
 .main-loading {
+  --line-width: 0px;
+  --line-width-vert: 0px;
   // width: 100&;
   #intro {
     position: absolute;
@@ -363,14 +365,18 @@ mark {
   }
 }
 
-* { //kill scrollbar. should rather mod it tho...
+html { //kill main scrollbar. should rather implement custom tho...
   scrollbar-color: transparent transparent; /* thumb and track color */
-  scrollbar-width: 2px;
+  scrollbar-width: thin;
 }
-* { -ms-overflow-style: none; }
-*::-webkit-scrollbar { width: 0; }
-*::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb {
-  background: transparent;
-  border: none;
+// * { -ms-overflow-style: none; }
+
+@supports not (scrollbar-color: hotpink blue) { /* Only for engines w/o the standard prop */
+  *::-webkit-scrollbar-thumb {
+    background-color: transparent;
+  }
+  *::-webkit-scrollbar-track {
+    background-color: transparent;
+    border: none;
+  }
 }

@@ -23,7 +23,7 @@
   margin-top: var(--space-top); /* space before sticky starts */
 
   &.hide {
-    top: 0;
+    // top: 0;
     transition: top var(--header-expand-time) ease;
   }
 }
@@ -45,6 +45,21 @@
   border: var(--line-width-sm) solid var(--line-color);
 }
 
+.fill-above-line-header {
+  position: sticky;
+  top: 0;
+  width: calc(100% - 0 * var(--line-width-vert));
+  height: 0;
+  // transition: height 0.25s;
+  transition: height var(--header-expand-time) ease;
+
+  &.fill {
+    height: calc(var(--header-height-current) + var(--line-width);
+    background: var(--bg-1);
+    z-index: 10;
+    border-right: var(--line-width-vert) solid var(--line-color)
+  }
+}
 
 .close-btn {
   position: absolute;
@@ -214,10 +229,6 @@
 }
 .carousel-items {
 
-  li {
-    transition: all 0.5s;
-  }
-
   .carousel-item-min {
     object-fit: cover;
     opacity: 0;
@@ -270,7 +281,7 @@
     transition: 0.5s;
     // transform: scale(0.8);
 
-    &.from-left, &.from-right { transition: all 0.0s; }
+    &.from-left, &.from-right { transition: transform 0.0s; }
   }
   .carousel-item-left {
     // transform: rotateY(-30deg) scale(0.7);
@@ -421,7 +432,7 @@ figcaption, .float-with-caption {
 }
 .loading-spinner, .loading-spinner-massive {
   opacity: 0.8;
-  transition: all 0.5s;
+  transition: transform 0.5s;
   position: relative;
   font-size: 150%;
   // text-shadow: 1px 1px 4px white;
@@ -791,7 +802,7 @@ figcaption, .float-with-caption {
   opacity: 80%;
   height: 0;
   overflow: hidden;
-  transition: all var(--header-expand-time) ease;
+  transition: height var(--header-expand-time) ease;
   font-size: 0.8em;
 
   &.opened {
@@ -837,5 +848,30 @@ figcaption, .float-with-caption {
         // vertical-align:bottom;
       }
     }
+  }
+}
+
+.scrollbar {
+  position: absolute;
+  height: 100%;
+  width: calc(2.5 * var(--line-width-vert));
+  overflow: visible;
+  background-color: color-mix(in srgb, var(--bg-6) 25%, transparent);
+  top: 0;
+  right: calc(0rem - var(--space-sides));
+  opacity: var(--page-scroll-opacity);
+  transition: opacity calc(1.5 * var(--header-expand-time));
+
+  .scrollbar-thumb {
+    --thumb-height: var(--space-lg);
+    position: fixed;
+    top: #{'max(0px, var(--page-scroll-percent) - var(--thumb-height))'};
+    right: 0;
+    transition: top calc(0.25 * var(--header-expand-time));
+    height: var(--thumb-height);
+    width: calc(2 * var(--line-width-vert));
+    /* ^ though should be custom by page height */
+    background-color: var(--line-color);
+
   }
 }

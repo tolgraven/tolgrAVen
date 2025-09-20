@@ -175,14 +175,19 @@
   font-size: 1.1rem;
   backdrop-filter: blur(3.0px);
   background: hsla(var(--hue-3), 70%, var(--lum-light-6), 0.10);
-  transition: backdrop-filter 0.5s, background 0.5s,
-              border-radius 0.5s, transform 0.3s, width 0.2s, height 0.2s, margin 0.2s, padding 0.2s;
-  // transition: 0.3s;
+  transition: backdrop-filter 0.5s,
+              background 0.5s,
+              border-radius 0.5s,
+              transform 0.3s,
+              width 0.2s,
+              height 0.2s,
+              margin 0.2s,
+              padding 0.2s;
   box-shadow: 1px -0px 17px 3px var(--box-bright-heavy);
 
   cursor:  pointer;
   
-  border-radius: 1.50rem;
+  border-radius: 0.15rem;
   backdrop-filter: blur(1.0rem);
   
   &:hover {

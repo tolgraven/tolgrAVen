@@ -63,13 +63,11 @@
                                        (rf/inject-cofx :css-var [:space-top])
                                        (rf/inject-cofx :css-var [:space-lg])
                                        (rf/inject-cofx :css-var [:footer-height-current])]
- (fn [{:keys [db css-var]} [_ direction position height at-bottom?]]
+ (fn [{:keys [db css-var]} [_ direction position height at-top? at-bottom?]]
    (let [header-height (if (get-in db [:state :menu])
                             (:header-with-menu-height css-var)
                             (:header-height css-var))
-         past-top? (>= position (+ (util/rem-to-px (:header-height css-var))     ; distance from top to main is header-height + space-top above/below,
-                                   (util/rem-to-px (:space-lg css-var))
-                                   (* 2 (util/rem-to-px (:space-top css-var))))) ; + space-lg above main. but header + 2x space-top seems sufficient...
+         past-top? (not at-top?) ; + space-lg above main. but header + 2x space-top seems sufficient...
          hidden? (get-in db [:state :hidden :header])
          footer-hidden? (get-in db [:state :hidden :footer])] ; will jump page so...
      {:dispatch-n [(cond (or (and (or hidden? footer-hidden?)

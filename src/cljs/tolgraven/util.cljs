@@ -280,6 +280,8 @@
 
 (defn elem-by-id [id]
   (.getElementById js/document id))
+(defn elem-by-type [type]
+  (.querySelector js/document type))
 (defn on-window [event f]
  (js/window.addEventListener event f))
 (defn on-document [event f & [opt-map]]

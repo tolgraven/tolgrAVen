@@ -6,6 +6,7 @@ header {
   top: 0;
   min-height: var(--header-height-current);
   max-height: var(--header-height-current);
+  height: var(--header-height-current);
   overflow-y: hidden;
   display: flex;
   flex-flow: row wrap;
@@ -17,8 +18,12 @@ header {
   margin-top: var(--space-top);
   margin-right: var(--line-width); /* make main right border stay "outside" right edge of header, needed because of particular effect/design... */
   padding: 0 calc(var(--space));
-  transition: all var(--header-expand-time) ease,
-              background 0.0s ease;
+  transition: min-height calc(1.5 * var(--header-expand-time)) ease,
+              height calc(0.7 * var(--header-expand-time)),
+              transform 0.9s,
+              opacity calc(0.85 * var(--header-expand-time)),
+              background 0.0s;
+  transform: scale(1);
               
   .cover {
     /* attempt to cover up manually so can get some nice seethrough blur... */
@@ -31,7 +36,16 @@ header {
   &.hide {
     height: 0px;
     min-height: 0px;
-    transition: all var(--header-expand-time) ease;
+
+    .header-logo {
+      animation: header-logo-anim 1.3s ease 0.5s;
+      opacity: 0;
+      transition: opacity calc(0.7 * var(--header-expand-time));
+    }
+    :not(:first-of-type) {
+      opacity: 0;
+      transition: opacity calc(0.6 * var(--header-expand-time));
+    }
   }
 }
 
@@ -44,7 +58,7 @@ header {
                var(--line-width));
   background-color: var(--bg-1);
   z-index: 10;
-  transition: all var(--header-expand-time) ease;
+  transition: height var(--header-expand-time) ease;
 
   &.past-top {
     border-bottom: var(--line-width) solid var(--line-color);
@@ -52,23 +66,34 @@ header {
 }
 
 .fill-side-top {
-  background: linear-gradient(-135deg, var(--bg-1) 10%, var(--blue) 335%);
-  width: calc(var(--space-sides) - var(--line-width));
-  height: var(--header-height-current);
-  transition: height var(--header-expand-time) ease,
-              opacity calc(0.3 * var(--header-expand-time)) ease;
   position: fixed;
-  top: 0px;
-  right: var(--line-width);
-  z-index: 10; // -1;
-  
-  &.hide {
-    opacity: 0;
-  }
-  &.adjust-for-fullscreen {
-    right: 0;
-    width: calc(var(--space-sides) + var(--line-width));
-    border-left: var(--line-width) solid var(--line-color);
+  overflow-y: hidden;
+  right: 0;
+  top: 0;
+  bottom: var(--header-height-current);
+  height: var(--header-height-current);
+  transition: height var(--header-expand-time) ease;
+
+  div {
+    position: sticky;
+    background: linear-gradient(-135deg, var(--bg-1) 10%, var(--blue) 335%);
+    width: calc(var(--space-sides) - var(--line-width));
+    height: var(--header-height-current);
+    transition: height calc(var(--header-expand-time)) ease,
+                opacity calc(0.3 * var(--header-expand-time)) ease;
+    top: 0px;
+    z-index: 10; // -1;
+
+    &.hide {
+      transition: opacity 0, height 0;
+      opacity: 0;
+      height: 0;
+    }
+    &.adjust-for-fullscreen {
+      right: 0;
+      width: calc(var(--space-sides) + var(--line-width));
+      border-left: var(--line-width) solid var(--line-color);
+    }
   }
 }
 
@@ -157,8 +182,8 @@ menu > nav > .nav-section:last-of-type > .nav-links {
 
 .header-logo { /* actual text */
   min-width: 0;
-  animation: header-logo-anim-out 0.50s;
-  transition: margin 0.7s, min-width 0.5s;
+  animation: header-logo-anim-out var(--header-expand-time);
+  transition: margin var(--header-expand-time) ease, min-width 0.5s;
 
   h1 {
     display: inline;

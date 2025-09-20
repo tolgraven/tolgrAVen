@@ -6,8 +6,7 @@
   margin: 0;
   width: 100%;
 
-  transition: all 0.25s ease,
-              width 0.9s ease 0.0s,
+  transition: width 0.9s ease 0.0s,
               max-width 0.9s ease 0.0s,
               margin 0.25s ease 0.0s;
 
@@ -176,11 +175,11 @@
   // overflow: hidden;
   min-width: 12em;
   
-  transition: all 0.25s ease;
+  transition: opacity 0.25s ease;
 
   img {
     position: absolute;
-    transition: all 0.5s ease;
+    transition: width 0.5s ease, transform 0.3s, box-shadow 0.9s ease;
     width: 5em;
     display: none;
     bottom: 0;

@@ -8,7 +8,7 @@ footer {
   border-left: var(--line-width) solid var(--line-color); /* connect bottom to main on left side */
   background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
 
-  transition: all var(--header-expand-time) ease;
+  transition: max-height var(--header-expand-time) ease;
   z-index: 20;
 
   a {
@@ -20,7 +20,8 @@ footer {
   }
 
   &.hide {
-    transition: all var(--header-expand-time) ease;
+    transition: max-height var(--header-expand-time) ease,
+                bottom var(--header-expand-time) ease;
   }
   &.bottomed {
     bottom: calc(0px - var(--line-width));
@@ -73,6 +74,17 @@ footer {
   left: var(--space-edges);
   bottom: var(--footer-bottom);
   width: calc(100% - 2 * var(--space-edges));
+  transition: opacity var(--header-expand-time) ease,
+              max-height var(--header-expand-time) ease,
+              margin-top var(--header-expand-time) ease;
+
+  &.hide {
+    .footer-content {
+      // margin-top: var(--space);
+      transition: opacity var(--header-expand-time) ease;
+      opacity: 0;
+    }
+  }
 }
 
 .footer-full {
@@ -170,7 +182,7 @@ img.img-icon {
     }
 
     i {
-      transition: all 0.3s;
+      transition: transform 0.3s;
       &:hover {
         transform: scale(1.4) rotate(-7deg); // why no work??
       }

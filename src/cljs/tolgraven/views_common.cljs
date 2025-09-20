@@ -106,10 +106,15 @@
     [:label.burger {:for "nav-menu-open"}]]]
 
    [:div.fill-side-top
-    {:class (str (when-not @(rf/subscribe [:state [:scroll :past-top]])
-                   "hide ")
-                 (when @(rf/subscribe [:fullscreen/any?])
-                   "adjust-for-fullscreen"))}]
+    [:div
+     {:class (str (when-not @(rf/subscribe [:state [:scroll :past-top]])
+                    "hide ")
+                  (when @(rf/subscribe [:fullscreen/any?])
+                    "adjust-for-fullscreen"))}]]
+
+   [:div.fill-above-line-header
+    {:class (when @(rf/subscribe [:state [:hidden :header]])
+            "fill ")}]
    
    [:div.line.line-header
     {:class (when @(rf/subscribe [:state [:hidden :header]])
@@ -270,6 +275,13 @@
  (let [icon (or icon "angle-double-up")
        i [:i {:class (str "fas fa-" icon)}]]
     [:a {:id "to-top" :class "to-top" :href @(rf/subscribe [:href "#main"]) :name "Up"} i]))
+
+(defn scrollbar "Basic custom scroll indicator. Add full functionality later..."
+  [spec]
+  [:div.scrollbar
+   (merge spec
+          {:on-mouse-down (fn [e] (println "etc"))})
+   [:div.scrollbar-thumb]])
 
 (defn settings "Settings panel for theme and stuff"
   []
