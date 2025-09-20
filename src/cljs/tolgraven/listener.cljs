@@ -78,7 +78,8 @@
                           at-bottom? (>= new-pos ; XXX use calc from :scroll/direction instead...
                                          (- new-height
                                             (.-innerHeight js/window)
-                                            150)) ; "maybe at bottom"
+                                            (.-clientHeight (util/elem-by-id "footer-end"))
+                                            100)) ; "maybe at bottom"
                           at-top? (<= new-pos top-size)]
                         (when (and (> 10 (abs (- @page-height new-height)))
                                    (or (not= @scroll-pos new-pos)
