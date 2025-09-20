@@ -4,10 +4,8 @@
     [reagent.core :as r]
     [reagent.dom.client :as rdomc]
     [re-frame.core :as rf]
-    ; [kee-frame.core :as k]
     [tolgraven.ajax :as ajax]
     [tolgraven.events]
-    [tolgraven.db :as db]
     [tolgraven.subs]
     [tolgraven.ui :as ui]
     [tolgraven.util :as util]
@@ -24,7 +22,6 @@
     [reitit.frontend.history :as rfh]
     [reitit.frontend.easy :as rfe]
     [reitit.dev.pretty :as rpretty]
-    [reitit.exception :as exception]
     [goog.events]
     [clojure.string :as string]
     [clojure.pprint :refer [pprint]])
@@ -205,9 +202,7 @@
   [with-heading [:common :banner-heading]
    (let [routes {:parallax experiment/parallax
                  :model-viewer experiment/model-viewer
-                 :codemirror experiment/code-mirror
                  :leaflet experiment/leaflet
-                 ; :leaflet-2 experiment/leaflet-react-component
                  :search search-ui
                  :broken [:div]}
           tab @(rf/subscribe [:state [:experiments]])]
@@ -417,7 +412,7 @@
        (rf/dispatch [:state [:error-page] not-found-page]))))
 
 (defn ignore-anchor-click?
-  [router e el uri]
+  [router e el ^js uri]
   ; (js/console.log (.-fragment_ uri))
   (rf/dispatch-sync [:state [:fragment] (.-fragment_ uri)])
   (and #_:identical-uri ; cause pollutes history with duplicates
@@ -437,8 +432,9 @@
 
 (defonce root (atom nil))
 (defn render []
-  (reset! root
-    (rdomc/create-root (.getElementById js/document "app")))
+  (when-not @root
+    (reset! root
+            (rdomc/create-root (.getElementById js/document "app"))))
   (rdomc/render @root [#'page]))
 
 (defn mount-components "Called each update when developing" []
@@ -469,7 +465,6 @@
   (js/setTimeout #(rf/dispatch [:init])
                  100)
   #_(js/setTimeout (fn [] (doseq [evt [; temp crapfix, running this too early suddenly results in... nothing. what.
-
                                [:init/scroll-storage]
                                [:listener/popstate-back]
                                [:listener/scroll-direction]

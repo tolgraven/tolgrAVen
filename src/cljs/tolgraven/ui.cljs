@@ -6,7 +6,6 @@
    [clojure.string :as string]
    [clojure.pprint :as pprint]
    [tolgraven.ui.code :as code]
-   [react-transition-group :as rtg]
    [cljs-time.core :as ct]
    [cljs-time.coerce :as ctc]
    [cljs-time.format :as ctf]))
@@ -733,12 +732,14 @@
 
 (defn input-toggle "Don't forget to put ze label - only was sep in first place due to css bs?"
   [id checked-path & {:keys [class label]}]
-  [:input ;.toggle
-   {:id id :class class ;must be outside header or breaks...
-    :type "checkbox"    :default-checked @(rf/subscribe checked-path)
-    :on-click (fn []
-                (rf/dispatch (into checked-path
-                                   [(not @(rf/subscribe checked-path))])))}])
+  (let [checked? @(rf/subscribe checked-path)]
+   [:input ;.toggle
+    {:id id
+     :class class ;must be outside header or breaks...
+     :type "checkbox"
+     :default-checked checked?
+     :on-click (fn []
+                 (rf/dispatch (into checked-path [(not checked?)])))}]))
 
 (defn loading-spinner [model kind & [attrs]]
   (if (and (at model)
@@ -932,6 +933,3 @@
         {:on-click inc-fn}
         [:i.fas.fa-angle-right]]
        [carousel-idx-btns id index (count content)] ])))
-
-(def trans-group (r/adapt-react-class rtg/TransitionGroup))
-(def css-trans (r/adapt-react-class rtg/CSSTransition))

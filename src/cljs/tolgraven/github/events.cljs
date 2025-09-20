@@ -56,9 +56,11 @@
      (when-not (get-in db [:content :github :repo-headers])
        {:dispatch [:http/get {:uri (str url user "/" repo "/commits")
                               :url-params {:per_page 1}
-                              :response-format {:read #(js->clj (.getResponseHeaders %)
-                                                                :keywordize-keys true)
-                                                :description "headers"}
+                              :response-format
+                              {:read (fn [^js response]
+                                       (js->clj (.getResponseHeaders response)
+                                                :keywordize-keys true))
+                               :description "headers"}
                               :headers {"Accept" "application/vnd.github.v3+json"}}
                    [:content [:github :repo-headers]] ]}))))
 

@@ -1,18 +1,10 @@
 (ns tolgraven.experiments
   (:require [reagent.core :as r]
-            [reagent.dom :as rdom]
             [re-frame.core :as rf]
             [tolgraven.ui :as ui]
-            [cljsjs.codemirror :as codemirror]
-            [cljsjs.codemirror.keymap.vim]
-            [cljsjs.codemirror.mode.markdown]
-            [cljsjs.react-leaflet]
-            [cljsjs.leaflet]
-            [react-transition-group :as rtg]))
+            [react-leaflet]
+            [leaflet]))
 
-; (def css-trans-group (r/adapt-react-class rtg/CSSTransitionGroup))
-
-;       (.add "elem-enter"))))
 (defn transition-group "Might be good exercise in React to try implement in cljs?
                         Though understanding what causing issues / moving away from cljsjs would
                         likely be even better exercise in productivity. Q is what sought"
@@ -36,15 +28,11 @@
    (let [elems (or (rf/subscribe [:state [:elems]]) [1 2 3])]
      [:div.parallax-ui ;.fullwide
       [:div "Pure CSS parallax scroll demo #3 by Keith Clark -> tolgraven"]
-      [:> rtg/TransitionGroup
+      [ui/appear-anon "opacity"
        [:div.elem-group.flex
         (doall
          (for [el @elems] ^{:key el}
-           [:> rtg/CSSTransition
-            {:timeout {:enter 1000, :exit 1000}
-             :classNames "elem"
-             :appear true
-             :appeartimeout 500}
+           [ui/appear-anon "slide-in"
             [:div.elem el]]))]]
       [:br]
       
@@ -79,67 +67,67 @@
       ["base"]])] ])
 
 
-(defn code-mirror
-  "Create a code-mirror editor. The parameters:
-  value-atom (reagent atom)
-    when this changes, the editor will update to reflect it.
-  options
-  :style (reagent style map)
-    will be applied to the container element
-  :js-cm-opts
-    options passed into the CodeMirror constructor
-  :on-cm-init (fn [cm] -> nil)
-    called with the CodeMirror instance, for whatever extra fiddling you want to do."
-  [& {:keys [style js-cm-opts on-cm-init]}]
-  (let [cm (r/atom nil)
-        model (r/atom "")]
-    (r/create-class
-     {:component-did-mount
-      (fn [this]
-        (let [inst (js/CodeMirror. ; or codemirror/CodeMirror.?
-                    ; (r/dom-node this)
-                    (clj->js
-                     (merge
-                      {:lineNumbers true
-                       :viewportMargin js/Infinity
-                       :matchBrackets true
-                       :autofocus true
-                       :value @model
-                       :autoCloseBrackets true
-                       :mode "markdown"}
-                      js-cm-opts)))]
-          (reset! cm inst)
-          (.on inst "change"
-               (fn []
-                 (let [value (.getValue inst)]
-                   (when-not (= value @model)
-                     (reset! model value)))))
-          (when on-cm-init
-            (on-cm-init inst))
-          ; (rdom/render inst (r/dom-node this))
-          )
-        )
+; (defn code-mirror
+;   "Create a code-mirror editor. The parameters:
+;   value-atom (reagent atom)
+;     when this changes, the editor will update to reflect it.
+;   options
+;   :style (reagent style map)
+;     will be applied to the container element
+;   :js-cm-opts
+;     options passed into the CodeMirror constructor
+;   :on-cm-init (fn [cm] -> nil)
+;     called with the CodeMirror instance, for whatever extra fiddling you want to do."
+;   [& {:keys [style js-cm-opts on-cm-init]}]
+;   (let [cm (r/atom nil)
+;         model (r/atom "")]
+;     (r/create-class
+;      {:component-did-mount
+;       (fn [this]
+;         (let [inst (js/CodeMirror. ; or codemirror/CodeMirror.?
+;                     ; (r/dom-node this)
+;                     (clj->js
+;                      (merge
+;                       {:lineNumbers true
+;                        :viewportMargin js/Infinity
+;                        :matchBrackets true
+;                        :autofocus true
+;                        :value @model
+;                        :autoCloseBrackets true
+;                        :mode "markdown"}
+;                       js-cm-opts)))]
+;           (reset! cm inst)
+;           (.on inst "change"
+;                (fn []
+;                  (let [value (.getValue inst)]
+;                    (when-not (= value @model)
+;                      (reset! model value)))))
+;           (when on-cm-init
+;             (on-cm-init inst))
+;           ; (rdom/render inst (r/dom-node this))
+;           )
+;         )
 
-      :component-did-update
-      (fn [this old-argv]
-        (when-not (= @model (.getValue @cm))
-          (.setValue @cm @model)
-          ;; reset the cursor to the end of the text, if the text was changed externally
-          (let [last-line (.lastLine @cm)
-                last-ch (count (.getLine @cm last-line))]
-            (.setCursor @cm last-line last-ch))))
+;       :component-did-update
+;       (fn [this old-argv]
+;         (when-not (= @model (.getValue @cm))
+;           (.setValue @cm @model)
+;           ;; reset the cursor to the end of the text, if the text was changed externally
+;           (let [last-line (.lastLine @cm)
+;                 last-ch (count (.getLine @cm last-line))]
+;             (.setCursor @cm last-line last-ch))))
 
-      :reagent-render
-      (fn [_ _ _]
-        [:textarea]
-        ; @model ;how does deref to force render work when reg atom? trigs did-update?
-        ; [:<> [:div {:style style} "fart"]
-        ;  ; [:p @model]
-        ;  ])}))) ; how is inst injected here lol?inst injected here lol?
-        ; (if @cm
-        ;   [:div (js->clj @cm)]
-        ;   [:div "Some bullshit"])
-        )}))) ; how is inst injected here lol?inst injected here lol?
+;       :reagent-render
+;       (fn [_ _ _]
+;         [:textarea]
+;         ; @model ;how does deref to force render work when reg atom? trigs did-update?
+;         ; [:<> [:div {:style style} "fart"]
+;         ;  ; [:p @model]
+;         ;  ])}))) ; how is inst injected here lol?inst injected here lol?
+;         ; (if @cm
+;         ;   [:div (js->clj @cm)]
+;         ;   [:div "Some bullshit"])
+;         )}))) ; how is inst injected here lol?inst injected here lol?
 
 (defn leaflet []
  [:section.leaflet-test

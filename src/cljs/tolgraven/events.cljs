@@ -574,12 +574,15 @@
                                        (rf/inject-cofx :css-var [:footer-height])]
  (fn [{:keys [db css-var]} [_ hide-header? hide-footer?]]
    (let [header-height (if hide-header?
-                         "0rem"
+                         "var(--space)"
                          (if (get-in db [:state :menu])
                             (:header-with-menu-height css-var)
                             (:header-height css-var)))
+         at-bottom?    (get-in db [:state :scroll :at-bottom])
          footer-height (if hide-footer?
-                         "calc(2 * var(--line-width))"
+                         (if at-bottom?
+                           "0px"
+                           "calc(var(--space) + 2 * var(--line-width))")
                          (:footer-height css-var))]
      {:db (-> db (assoc-in [:state :hidden :header] hide-header?)
                  (assoc-in [:state :hidden :footer] hide-footer?))
@@ -596,8 +599,10 @@
  (fn [{:keys [db]} [_ _]]
   {:dispatch-n [[:listener/load]
                 [:init/scroll-storage]
+                [:scroll/update-direction]
+                [:scroll/update-css-var]
+                [:listener/scroll]
                 [:listener/popstate-back]
-                [:listener/scroll-direction]
                 [:listener/global-click]
                 ; [:on-booted :firebase [:id-counters/fetch]]
                 [:ls/get-path [:form-field] [:state :form-field]] ; restore any active form-fields
@@ -681,29 +686,6 @@
      (prn "chrome tab visibility changed:" visible?)
      {:db (assoc db [:state :tab-visible] visible?)})))
 
-
-(defonce debounce-timeouts (atom {}))
-
-(rf/reg-fx :dispatch-debounce
- (fn [[id event-vec n]]
-   (js/clearTimeout (@debounce-timeouts id))
-   (swap! debounce-timeouts assoc id
-          (js/setTimeout (fn []
-                           (rf/dispatch event-vec)
-                           (swap! debounce-timeouts dissoc id))
-                         n))))
-
-(defonce throttle-timeouts (atom {}))
-
-(rf/reg-fx :dispatch-throttle
- (fn [[id event-vec n]]
-   (when (not (get @throttle-timeouts id))
-     (swap! throttle-timeouts assoc id
-            (js/setTimeout (fn []
-                             (rf/dispatch event-vec)
-                             (swap! throttle-timeouts dissoc id))
-                           n)))))
-
 (rf/reg-event-fx :diag/new  ;this needs a throttle lol
  [(rf/inject-cofx :now)
   (rf/inject-cofx :gen-id [:diag])]
@@ -738,10 +720,6 @@
     :modal (if (= id :remove)
              (update db :hud dissoc :modal)
              (assoc-in db [:hud :modal] id)))))
-
-;spotify
-; Client ID e475c2c005c7404394894beafd6a70d0
-; Client Secret 9dd238f2b27b4ecabf078393ddc09186
 
 (rf/reg-event-fx :modal-zoom
  (fn [{:keys [db]} [_ id action item]]
