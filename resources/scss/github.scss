@@ -1,3 +1,5 @@
+@use "blog";
+
 
 .github-commits {
   font-size: 85%;
@@ -16,7 +18,7 @@
   }
 
   .github-commits-inner {
-    @include rounded-bottom;
+    @include blog.rounded-bottom;
     border: var(--line-width-sm) solid var(--bg-6);
     border-top: var(--line-width-sm) solid var(--line-color);
     box-shadow: 6px 7px 15px 8px inset rgba(127, 127, 200, 0.07);

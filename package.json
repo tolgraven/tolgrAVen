@@ -18,8 +18,8 @@
   "scripts": {
     "sassc": "lein sassc once",
     "sass": "mkdir -p resources/public/css/tolgraven && node-sass --output-style compressed --no-source-maps resources/scss/main.scss > resources/public/css/tolgraven/main.css",
-    "sass:dev": "sass --watch resources/scss:resources/public/css/tolgraven/main.css --embed-source-map --embed-sources",
-    "sass:build": "sass resources/scss:resources/public/css/tolgraven/main.css --style=compressed --no-error-css",
+    "sass:dev": "sass --watch resources/scss/main.scss:resources/public/css/tolgraven/main.css --embed-source-map --embed-sources",
+    "sass:build": "sass resources/scss/main.scss:resources/public/css/tolgraven/main.css --style=compressed --no-error-css",
     "postcss": "postcss resources/public/css/tolgraven/main.css -o resources/public/css/tolgraven/main.min.css -u autoprefixer --no-map",
     "build": "npm run sass:build && npm run postcss"
   },

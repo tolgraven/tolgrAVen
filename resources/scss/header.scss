@@ -159,7 +159,7 @@ nav {
         margin-left: 0.35rem;
         margin-right: 0.35rem; /* doesnt do equiv on other side.. */
         font-weight: bold;
-        text-shadow: hsla(0, 0, 80%, 0.25) 0 0 10px;
+        text-shadow: #{"hsla(0, 0, 80%, 0.25) 0 0 10px"};
       }
     }
   }

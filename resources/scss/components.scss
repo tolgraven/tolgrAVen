@@ -54,10 +54,10 @@
   transition: height var(--header-expand-time) ease;
 
   &.fill {
-    height: calc(var(--header-height-current) + var(--line-width);
+    height: calc(var(--header-height-current) + var(--line-width));
     background: var(--bg-1);
     z-index: 10;
-    border-right: var(--line-width-vert) solid var(--line-color)
+    border-right: var(--line-width-vert) solid var(--line-color);
   }
 }
 

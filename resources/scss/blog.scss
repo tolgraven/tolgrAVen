@@ -2,7 +2,7 @@
 // should be somewhere globally accessible
 @mixin rounded-bottom($left: 2em, $ratio: 2.5) {
   border-bottom-left-radius: $left;
-  border-bottom-right-radius: $left / $ratio;
+  border-bottom-right-radius: calc($left / $ratio);
 }
 @mixin lined-soft($width: 1px) {
   border: var(--line-width-md) solid;
@@ -284,8 +284,6 @@
     }
   }
 }
-
-@use "sass:color";
 
 .blog-comment {
   position: relative;
