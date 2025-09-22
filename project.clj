@@ -2,7 +2,7 @@
   :description "tolgrAVen.se website"
   :url "https://tolgraven.se"
 
-  :dependencies [[thheller/shadow-cljs "3.1.7"]
+  :dependencies [[thheller/shadow-cljs "3.2.0"]
 
                  ; all of shadows deps, explicit
                  [org.clojure/clojure "1.12.1"]
@@ -104,8 +104,8 @@
                  [cljsjs/firebase "7.5.0-0"]
                  ; [cljsjs/firebase "9.6.8-0"]
                  [reagent "1.3.0"]
-                 [cljsjs/react "18.3.1-1"]
-                 [cljsjs/react-dom "18.3.1-1"]
+                 ; [cljsjs/react "18.3.1-1"]
+                 ; [cljsjs/react-dom "18.3.1-1"]
                  [reanimated "0.6.1"]
                  [com.smxemail/re-frame-cookie-fx "0.0.2"  :exclusions [args4j]]
                  [re-pollsive "0.1.0"] ; periodic polling/timer stuff
@@ -224,10 +224,7 @@
                                  :init-ns user
                                  :port 7000
                                  :init (start)
-                                 :nrepl-middleware [shadow.cljs.devtools.server.nrepl/middleware
-                                                    ; cider.nrepl/cider-middleware
-                                                    ; refactor-nrepl.middleware/wrap-refactor
-                                                    ] ; then just launch fucker w eg :IcedStartCljsRepl figwheel-sidecar
+                                 :nrepl-middleware [shadow.cljs.devtools.server.nrepl/middleware]
                                  :timeout 300000}
                   :injections [(require 'pjstadig.humane-test-output)
                                (pjstadig.humane-test-output/activate!)]}
