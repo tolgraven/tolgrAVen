@@ -5,7 +5,7 @@
   :dependencies [[thheller/shadow-cljs "3.2.0"]
 
                  ; all of shadows deps, explicit
-                 [org.clojure/clojure "1.12.1"]
+                 [org.clojure/clojure "1.12.2"]
                  [org.clojure/data.json "2.5.1"]
                  [org.clojure/tools.cli "1.1.230"]
                  [org.clojure/tools.reader "1.5.2"]
@@ -14,7 +14,7 @@
                  [com.cognitect/transit-cljs "0.8.280"]
                  [org.clojure/core.async "1.8.741"]
                  [org.clojure/clojurescript "1.12.42"]
-                 [com.google.javascript/closure-compiler-unshaded "v20250528"]
+                 [com.google.javascript/closure-compiler-unshaded "v20250820"]
                  [org.clojure/google-closure-library "0.0-20250515-87401eb8"]
                  [org.clojure/google-closure-library-third-party "0.0-20250515-87401eb8"]
                  [thheller/shadow-util "0.7.0"]
@@ -22,17 +22,17 @@
                  [thheller/shadow-undertow "0.3.4"]
                  [thheller/shadow-cljsjs "0.0.22"]
                  [hiccup "2.0.0"]
-                 [ring/ring-core "1.14.2"]
+                 [ring/ring-core "1.15.2"]
                  [io.methvin/directory-watcher "0.19.1"]
                  [expound "0.9.0"]
-                 [fipp "0.6.27"]
+                 [fipp "0.6.29"]
                  [com.bhauman/cljs-test-display "0.1.1"]
 
                  [clojure.java-time "1.4.3"]
                  ; [com.cognitect/transit-clj "1.0.333"]
                  
                  [org.clojure/java.jdbc "0.7.12"]
-                 [org.postgresql/postgresql "42.7.7"]
+                 [org.postgresql/postgresql "42.7.8"]
                  [honeysql "1.0.461"]
                  ; [com.google.guava/guava "25.1-jre"] ;what is
                  [cprop "0.1.20"] ;env loading
@@ -54,14 +54,14 @@
 
                  ; LOGGING
                  [org.clojure/tools.logging "1.3.0"]
-                 [com.taoensso/timbre "6.7.1" :exclusions [org.clojure/tools.reader]]
-                 [com.taoensso/encore "3.149.0"]
+                 [com.taoensso/timbre "6.8.0" :exclusions [org.clojure/tools.reader]]
+                 [com.taoensso/encore "3.154.0"]
                  [com.fzakaria/slf4j-timbre "0.4.1" :exclusions [org.slf4j/slf4j-api]] ;route java logging through timbre. but dunno. hard to manage
                  [clj-logging-config "1.9.12"]
                  [io.aviso/pretty "1.4.4"] ;pretty exceptions, pretty logging...
 
                  ; [ring/ring-core "1.10.0" :exclusions [commons-io]]
-                 [ring/ring-defaults "0.6.0" :exclusions [commons-io]]
+                 [ring/ring-defaults "0.7.0" :exclusions [commons-io]]
                  [amalloy/ring-gzip-middleware "0.1.4"]
                  [ring-partial-content "2.1.0"] ; handle safari video playback / 206 response
                  [ring-basic-authentication "1.2.0"]
