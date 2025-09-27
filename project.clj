@@ -104,8 +104,8 @@
                  [cljsjs/firebase "7.5.0-0"]
                  ; [cljsjs/firebase "9.6.8-0"]
                  [reagent "1.3.0"]
-                 ; [cljsjs/react "18.3.1-1"]
-                 ; [cljsjs/react-dom "18.3.1-1"]
+                 [cljsjs/react "18.3.1-1"]
+                 [cljsjs/react-dom "18.3.1-1"]
                  [reanimated "0.6.1"]
                  [com.smxemail/re-frame-cookie-fx "0.0.2"  :exclusions [args4j]]
                  [re-pollsive "0.1.0"] ; periodic polling/timer stuff
