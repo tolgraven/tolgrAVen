@@ -45,6 +45,7 @@
 
   :app
   {:target :browser
+   :node-via-docker true
    :modules {:main {:entries [tolgraven.core]
                     :init-fn tolgraven.core/init!}}
    :output-dir "resources/public/js/compiled/out"
