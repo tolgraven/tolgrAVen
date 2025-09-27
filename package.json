@@ -1,28 +1,31 @@
 {
   "dependencies": {
-    "react-syntax-highlighter": "^15.6.6",
-    "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1",
     "autoprefixer": "^10.4.21",
     "firebase": "^12.3.0",
     "leaflet": "1.9.4",
-    "sass": "^1.93.2",
     "postcss": "^8.5.6",
     "postcss-cli": "11.0.1",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-leaflet": "5.0.0",
+    "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^15.6.6",
+    "remark-gfm": "^4.0.1",
+    "sass": "^1.93.2",
     "shadow-cljs": "^3.2.1"
   },
   "scripts": {
     "init": "mkdir -p resources/public/css/tolgraven; npm install",
-    "sass:dev": "sass --watch resources/scss/main.scss:resources/public/css/tolgraven/main.css --embed-source-map --embed-sources",
-    "sass:build": "sass resources/scss/main.scss:resources/public/css/tolgraven/main.css --style=compressed --no-error-css",
-    "postcss": "postcss resources/public/css/tolgraven/main.css -o resources/public/css/tolgraven/main.min.css -u autoprefixer --no-map",
-    "build": "npm run sass:build && npm run postcss",
+    "sass:dev": "sass --watch resources/scss/main.scss:resources/public/css/tolgraven/main.css --load-path resources/scss --embed-source-map --embed-sources",
+    "sass:build": "sass resources/scss/main.scss:resources/public/css/tolgraven/main.css --load-path resources/scss --style=compressed --no-error-css",
+    "postcss:dev": "postcss resources/public/css/tolgraven/main.css -o resources/public/css/tolgraven/main.min.css -u autoprefixer --watch",
+    "postcss:build": "postcss resources/public/css/tolgraven/main.css -o resources/public/css/tolgraven/main.min.css -u autoprefixer --no-map",
+    "dev": "concurrently \"npm run sass:dev\" \"npm run postcss:dev\"",
+    "build": "npm run sass:build && npm run postcss:build",
     "update": "npx npm-check-updates -u && npm install"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "shadow-cljs": "^3.2.1"
   }
 }
