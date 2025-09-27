@@ -126,31 +126,7 @@
   :target-path "target/%s/"
   :main ^:skip-aot tolgraven.core
 
-  :plugins [[lein-cljsbuild "1.1.8"]
-            [lein-sassc "0.10.4"]
-            [lein-autoprefixer "0.1.1"]
-            [lein-auto "0.1.2"]
-            [lein-codox "0.10.8"]]
-  :sassc
-  [{:src "resources/scss/main.scss"
-    :output-to "resources/public/css/tolgraven/main.css"
-    :style "nested"
-    :import-path "resources/scss"}]
-  :autoprefixer {:src "resources/public/css/tolgraven"
-                 :browsers "> 5%, Last 2 versions"
-                 :output-to "resources/public/css/tolgraven/main.min.css"} ;; optional
-  :auto
-  {"sassc" {:file-pattern #"\.(scss|sass)$" :paths ["resources/scss"]}
-   "autoprefixer" {:file-pattern #"\.(css)$" :paths ["resources/public/css/tolgraven"]}}
-  
-  :aliases {"cssbuild" ["do" ["sassc" "once"] "autoprefixer"]}
-  :clean-targets ^{:protect false}
-  [:target-path
-   :compile-path
-   [:cljsbuild :builds :app :compiler :output-dir]
-   [:cljsbuild :builds :app :compiler :output-to]
-   "resources/public/js/compiled/out"
-   "resources/public/js/compiled/app.js"]
+  :plugins [[lein-codox "0.10.8"]]
 
   :codox
   {:language :clojurescript
@@ -180,42 +156,6 @@
                                  [ring/ring-mock "0.6.2"]]
                   :plugins      [;[refactor-nrepl/refactor-nrepl "3.9.0"]
                                  [cider/cider-nrepl "0.57.0"] ]
-                  :cljsbuild
-                  {:builds
-                   {:app
-                    {:source-paths ["src/cljs" "src/cljc" "env/dev/cljs"]
-                     :compiler
-                     {:output-dir "resources/public/js/compiled/out"
-                      :output-to "resources/public/js/compiled/app.js"
-                      :asset-path "js/compiled/out"
-                      :language-in     :ecmascript-next
-                      :language-out    :ecmascript-next
-                      :optimizations :none
-                      :infer-externs true
-                      :parallel-build true ;or java only uses 100% cpu, gross
-                      :recompile-dependents false
-                      :preloads [devtools.preload ;can remove devtools preload cause have in app.cljs?
-                                 re-frisk.preload-hidden
-                                 day8.re-frame-10x.preload
-                                 #_re-frisk.preload #_re-frisk-remote.preload]
-                      :closure-defines {goog.DEBUG true
-                                        "re_frame.trace.trace_enabled_QMARK_" true}
-                      :external-config
-                      {:devtools/config
-                       {;:features-to-install [:formatters :hints] ;add exception hints
-                        :cljs-land-style "background-color: rgb(30, 30, 30, 0.5); color: #edc; border-radius: 7px;"
-                        :nil-style       "background-color: #282828; color: #d18479;"
-                        :keyword-style   "background-color: #282828; color: #76a2ab;"
-                        :integer-style   "background-color: #282828; color: #bd979d;"
-                        :float-style     "background-color: #282828; color: #bd979d;"
-                        :string-style    "background-color: #282828; color: #b4b88d;"
-                        :symbol-style    "background-color: #282828; color: #edc;"
-                        :bool-style      "background-color: #282828; color: #d18479;"
-                        :print-config-overrides false} }
-                      :source-map true
-                      :source-map-timestamp true
-                      :main "tolgraven.app" ;what is this why .app? ;; bc env/dev/app.cljs thingy. calls init
-                      :pretty-print true}}}} ;} ;}
 
                   :doo {:build "test"}
                   :source-paths ["env/dev/clj"]
@@ -242,41 +182,13 @@
 
    
    :uberjar {:prep-tasks ["compile"
-                          ["run" "-m" "shadow.cljs.devtools.cli" "release" "app"]
+                          ; ["run" "-m" "shadow.cljs.devtools.cli" "release" "app"]
+                          ["npx" "shadow-cljs" "release" "app"]
                           ["codox"]]
              :aot :all
              :uberjar-name "tolgraven.jar"
              :source-paths ["env/prod/clj"]
              :resource-paths ["env/prod/resources" "resources"]}
-   #_{;:omit-source true
-             :prep-tasks ["compile"
-                          ["cljsbuild" "once" "min"]
-                          ["codox"]]
-             :cljsbuild {:builds
-                         {:min
-                          {:source-paths ["src/cljc" "src/cljs" "env/prod/cljs"]
-                           :compiler
-                           {:output-dir "resources/public/js/compiled"
-                            :output-to "resources/public/js/compiled/app.js"
-                            :source-map "resources/public/js/compiled/app.js.map"
-                            :source-map-timestamp true
-                            :asset-path "js/compiled/out"
-                            :closure-defines {goog.DEBUG false}
-                            :optimizations :advanced
-                            :language-in     :ecmascript-next
-                            :language-out    :ecmascript-next
-                            :pretty-print false
-                            :infer-externs true
-                            :parallel-build true
-                            :main "tolgraven.app"
-                            :closure-warnings {:externs-validation :off
-                                               :non-standard-jsdoc :off}
-                            :externs ["react/externs/react.js"]}}}}
-
-             :aot :all
-             :uberjar-name "tolgraven.jar"
-             :source-paths ["env/prod/clj"]
-             :resource-paths ["env/prod/resources"]}
 
    :profiles/dev {}
    :profiles/test {}
