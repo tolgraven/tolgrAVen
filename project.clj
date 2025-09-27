@@ -2,7 +2,7 @@
   :description "tolgrAVen.se website"
   :url "https://tolgraven.se"
 
-  :dependencies [[thheller/shadow-cljs "3.2.0"]
+  :dependencies [[thheller/shadow-cljs "3.2.1"]
 
                  ; all of shadows deps, explicit
                  [org.clojure/clojure "1.12.2"]
@@ -173,11 +173,11 @@
                                  [prone "2021-04-23"]
                                  [re-frisk "1.7.1"]
                                  ; [re-frisk-remote "1.5.2"]
-                                 [day8.re-frame/re-frame-10x "1.10.0" :exclusions [superstructor/re-highlight]]
-                                 [djblue/portal "0.59.1"]
+                                 [day8.re-frame/re-frame-10x "1.10.1" :exclusions [superstructor/re-highlight]]
+                                 [djblue/portal "0.61.0"]
                                  ; [day8.re-frame/tracing "0.6.2"]
-                                 [ring/ring-devel "1.14.2"]
-                                 [ring/ring-mock "0.6.1"]]
+                                 [ring/ring-devel "1.15.2"]
+                                 [ring/ring-mock "0.6.2"]]
                   :plugins      [;[refactor-nrepl/refactor-nrepl "3.9.0"]
                                  [cider/cider-nrepl "0.57.0"] ]
                   :cljsbuild
