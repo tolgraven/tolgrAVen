@@ -1,7 +1,7 @@
 FROM node
 WORKDIR /usr/src/app
 COPY ./ /usr/src/app
-RUN npm install; npm run build
+RUN npm run init; npm run build
 
 FROM clojure:lein
 WORKDIR /clj
