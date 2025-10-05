@@ -24,6 +24,7 @@
 @use "vars";
 @use "compat";
 @use "fonts";
+@use "components/error";
 
 /* This keeps child nodes hidden while the element loads */
 :not(:defined) > * {
@@ -176,7 +177,7 @@ pre {
   background-color: var(--bg-1);
   color: var(--fg-2);
   padding: 0.25em;
-  margin: 0.125em calc(-0.5 * var(--space));
+  margin: 0.125em calc(0.5 * var(--space));
   border-top: var(--line-width-sm) solid var(--line-color);
 }
 
@@ -210,7 +211,6 @@ section { /* one main section (img + header + piece of content) */
 }
 
 article { // use for blog posts and other stuff
-  
 }
 
 aside { // use for text inserts and maybe sidebars
@@ -249,7 +249,7 @@ button {
   background: transparent;
   color: var(--fg-2);
   border: var(--line-width-md) solid var(--line-color);
-  border-radius: 0.25rem;
+  border-radius: 0.125rem;
   position: relative;
   cursor: pointer;
   outline: 1px transparent;
@@ -260,7 +260,7 @@ button {
     border-radius: 0;
     // outline: 1.0px solid;
     transition: outline-color 0.2s;
-    text-shadow: 1px 0px 3px var(--fg-1);
+    text-shadow: 1px 1px 3px var(--fg-3);
   }
   &:active {
     i {
@@ -281,9 +281,8 @@ button {
   }
 
   &.background {
-    border-radius: 0.15rem;
-    background: hsla(0, 5%, 100%, 0.04);
-
+    border-radius: 0.125rem;
+    background: hsla(0, 5%, 100%, 0.05);
   }
 
   label {

@@ -1,0 +1,33 @@
+
+.error-show {
+  font-size: 0.8rem;
+  color: var(--red);
+  background: var(--bg-2);
+}
+
+.error {
+  background: var(--bg-2);
+  // color: var(--red);
+  font-size: 0.8rem;
+
+  div:first-of-type {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  pre {
+    margin: 0;
+  }
+}
+
+#error-portal {
+  background: var(--bg-2);
+  position: fixed;
+  z-index: 9999;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+  // height: 40vh;
+}
+
