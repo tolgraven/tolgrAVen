@@ -17,8 +17,7 @@ profiles.clj
 .clj-kondo
 .lsp
 out/
-resources/public/js/compiled/
-resources/public/js/app.js
+resources/public/js/
 .vscode/
 /resources/public/css/
 /resources/public/img/uploads/
