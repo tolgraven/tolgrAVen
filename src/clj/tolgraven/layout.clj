@@ -152,10 +152,12 @@
     #_["css/solid.css" "style"]]) ; well it gets bundled anyways
 
 (def link-prefetch
-  ["https://fonts.gstatic.com"
-   "https://www.googletagmanager.com"
-   "https://region1.google-analytics.com"
-   "https://firestore.googleapis.com"])
+  (concat
+   ["https://firestore.googleapis.com"]
+   (when-not (:dev env)
+     ["https://fonts.gstatic.com"
+      "https://www.googletagmanager.com"
+      "https://region1.google-analytics.com"])))
 
 (defn render-hiccup
   [page & args]
@@ -198,7 +200,7 @@
        [:title "Something bad happened - tolgrAVen"]
        [:meta {:name "description" :content "Error page"}]
 
-       [:link {:href "css/tolgraven/main.min.css" :rel "stylesheet" :type "text/css"}]
+       [:link {:href "/css/tolgraven/main.min.css" :rel "stylesheet" :type "text/css"}]
        #_(ohtml/link-to-css-bundles error-details ["styles.css"])
        [:script {:type "text/javascript"}
         (str "var csrfToken = \"" (force *anti-forgery-token*) "\";")]] ; this is where everything ends up for prod but cant remember why?
