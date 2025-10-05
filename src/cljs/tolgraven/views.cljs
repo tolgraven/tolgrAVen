@@ -13,6 +13,7 @@
    [tolgraven.instagram.views :as instagram]
    [tolgraven.cv.views :as cv]
    [tolgraven.db :as db]
+   [tolgraven.macros :as m :include-macros true]
    [tolgraven.views-common :as view]
    [tolgraven.util :as util :refer [at]]))
 
@@ -233,7 +234,7 @@
         [:div#moneyshot {:class "section-with-media-bg-wrapper parallax-wrapper covering stick-up"
           :ref #(observer %)}
          [:img.media-as-bg ; TODO try it as background-image instead of separate div, see if calms down...
-          (merge bg {:class "darken-8 parallax-sm" ;origin-toptop
+          (merge bg {:class "darken-8 parallax-bg origin-toptop" ;origin-toptop
                      :style (merge (when (pos? @frac)
                                      {:opacity 1.0})
                                    #_{:transform (str "scale(1.125) translateZ(" (* @frac -0.5) "px)")})})] ; need to be above 1.1 or goes jumpy weirdshit clip UGH why
@@ -241,10 +242,10 @@
           ; {:class "darken-8 parallax-sm origin-toptop"
           ;  :style {:background-image (str "url(" (:src bg) ")")
           ;          :background-size "cover"}}
-          [:h1.h0-responsive.parallax-bg
+          [:h1.h0-responsive.parallax-fg
            {:style {:z-index 10
                     :transition "transform 8.5s ease"
-                    :transform (str "translateZ(" (* 14 @frac) "px)")}}
+                    #_:transform #_(str "translateZ(" (* 14 @frac) "px)")}}
            title]] ;ideally want this also growing (and moving quicker upwards)]
          [ui/inset caption 3]
          [ui/inset (str "Fraction visible:" @frac) 2]
@@ -370,6 +371,14 @@
                  :content :interlude}
    :init        {:component run-init}})
 
+; will want triggering all things to init
+; when loading page halfway down so scroll pos stays correct
+; so no lazy then
+; will need to put sections in db and make a sub like
+; (->> sections vals (map :init) (filter some?))
+; and event
+; (doall run/init @sub)
+
 (def layouts
   {:main [:intro
           [:interlude 0]
@@ -390,8 +399,11 @@
           :instagram
           :gallery
           :github
-          #_:gpt
-          :chat ]})
+          :gpt
+          :chat ]
+   :desktop :something-splitty
+   :joen :just-about-me/components
+   :av :just-about-company })
 
 
 (defn get-components "Get component, and its init event runner, if any."
@@ -412,11 +424,25 @@
                                 {:args args})])
     [get-components section (get sections section)]))
 
+(macroexpand '(m/defcomp <test-2>
+  "test-comp-2"
+  [spec]
+  [:div "goodbye" (throw (js/Error. "test2"))]))
+(m/defcomp <test-2>
+  "test-comp-2"
+  [spec]
+  [:div "goodbye" (throw (js/Error. "test2"))])
+(m/defcomp <test>
+  "test-comp"
+  [spec]
+  [:div "hello" spec [<test-2> spec] ])
+
 (defn ui-auto "Present main page UI. Should come from data structure.
                Should auto lazy load/init all components with such functionality at point,
                apart from the separate lazy loading done before-hand (if loads in middle of page etc)"
   []
   [:<>
+   [<test> {:wah "cool"}]
    (for [[i component] (map-indexed vector (layouts :main))]
      ^{:key i}
      [get-section component])])

@@ -39,9 +39,9 @@
                           :message message
                           :sha7 (apply str (take 7 (seq sha)))))]
      {:db (-> db
-            (update-in [:content :github :repo] concat data)
-            (update-in [:content :github :commits] concat commits)
-            (update-in [:state :github :pages-fetched] conj page))})))
+              (update-in [:content :github :repo] concat data)
+              (update-in [:content :github :commits] concat commits)
+              (update-in [:state :github :pages-fetched] conj page))})))
 
 (rf/reg-event-fx :github/fetch-commits-next
  (fn [{:keys [db]} [_ user repo]]

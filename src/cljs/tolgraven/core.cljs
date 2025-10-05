@@ -17,6 +17,7 @@
     [tolgraven.cv.views :as cv]
     [tolgraven.docs.views :as docs]
     [tolgraven.experiments :as experiment]
+    [tolgraven.macros :as m :include-macros true]
     [breaking-point.core :as bp]
     [reitit.core :as reitit]
     [reitit.frontend.history :as rfh]
@@ -180,6 +181,8 @@
            (when page-prev
              [ui/safe :page-prev [page-prev]])]])
        [ui/loading-spinner true :massive])) ; removed since jars now that have hero in original html
+
+   [:div#error-portal]
 
    [common/footer-full @(rf/subscribe [:content [:footer]])]
    [common/footer @(rf/subscribe [:content [:footer]])]

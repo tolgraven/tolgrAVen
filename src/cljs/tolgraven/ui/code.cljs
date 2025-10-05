@@ -3,7 +3,9 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    ["react-syntax-highlighter" :default SyntaxHighlighter]
-   ["react-syntax-highlighter/dist/esm/styles/hljs/darcula" :default darcula]
+   ["react-syntax-highlighter/dist/esm/styles/hljs" :refer [darcula gruvboxDark]]
+   ; ["react-syntax-highlighter/dist/esm/languages/hljs/clojure" :as clj-lang]
+   ; ["react-syntax-highlighter/dist/esm/languages/hljs/javascript" :as js-lang]
    ["react-markdown" :default ReactMarkdown]
    ["remark-gfm" :default remarkGfm]))
 
@@ -11,11 +13,15 @@
 (def syntax-highlighter (r/adapt-react-class SyntaxHighlighter))
 (def react-markdown (r/adapt-react-class ReactMarkdown))
 
+; (.registerLanguage SyntaxHighlighter "javascript" js-lang)
+; (.registerLanguage SyntaxHighlighter "clojure" clj-lang)
+
 (defn code-block 
   "Syntax highlighter component for code blocks"
   [code & {:keys [language style basic?] 
            :or {language "clojure" 
-                style darcula}}]
+                basic? true
+                style gruvboxDark}}]
   [syntax-highlighter
    {:language language
     :style style

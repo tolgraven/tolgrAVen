@@ -3,6 +3,7 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    [tolgraven.util :as util :refer [at]]
+   [tolgraven.macros :as m :include-macros true]
    [clojure.string :as string]
    [clojure.pprint :as pprint]
    [tolgraven.ui.code :as code]
@@ -10,9 +11,31 @@
    [cljs-time.coerce :as ctc]
    [cljs-time.format :as ctf]))
 
+;; GENERAL WRAPPER COMPONENT
+;; * Error boundary
+;; * Appear / Seen
+;; * Lazy load / init ref wrapping
+;; * Unmount animation
+;;
+;; Maybe destructure [& args] into [spec & components]?
+;; defcomp macro
+;;
+;; spec is:
+;; :props -> goes in div
+;; :opts  -> component specific specs (easier than select-keys on zillions)
+;; :with  -> {:appear :seen :lazy-load :<loading> :error-boundary} etc, defaults to be worked out, nil means default, false off, map custom?
+;; :init  -> to wrap :ref in, or just wrap whatever we put in :props :ref?
+;; :exit  -> any cleanup
+;; :css   -> if go with css in js but nah dunno, but if modular scss how ensure css gets loaded here?
+;;
+;; possibly more structured/dataish :init and :exit, for setup of websocket channels and such
+;; that will always be similar enough. it's that or sub abuse, dunno.
+;; also just init event to dispatch
+;; also setup event for when component module is loaded, ensure other data fetch goes parallel
+
 (defn safe "Error boundary for components. Also prints/logs error"
   [category component]
- (let [exception (rf/subscribe [:exception [category]])] ;or reg not ratom or would cause etra re-render?
+  (let [exception (rf/subscribe [:exception [category]])] ;or reg not ratom or ould cause etra re-render?
   (r/create-class
   {:display-name (str "Boundary: " (name category))
    :component-did-catch (fn [error info] ;apparently no :this oi!
