@@ -442,7 +442,7 @@
                apart from the separate lazy loading done before-hand (if loads in middle of page etc)"
   []
   [:<>
-   [<test> {:wah "cool"}]
+   ; [<test> {:wah "cool"}]
    (for [[i component] (map-indexed vector (layouts :main))]
      ^{:key i}
      [get-section component])])
