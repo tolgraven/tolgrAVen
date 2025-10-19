@@ -15,7 +15,7 @@
     "shadow-cljs": "^3.2.1"
   },
   "scripts": {
-    "init": "mkdir -p resources/public/css/tolgraven; npm install",
+    "init": "mkdir -p resources/public/css/tolgraven; npm install; npm i -g sass postcss postcss-cli",
     "sass:dev": "bash -lc 'SASS_PATH=$(find resources/scss -type d | paste -sd: -); export SASS_PATH; sass resources/scss/main.scss:resources/public/css/tolgraven/main.css --watch --poll --embed-source-map --embed-sources'",
     "sass:dev2": "sass resources/scss/main.scss:resources/public/css/tolgraven/main.css --load-path resources/scss/components --watch --poll --embed-source-map --embed-sources",
     "sass:build": "bash -lc 'SASS_PATH=$(find resources/scss -type d | paste -sd: -); export SASS_PATH; sass resources/scss/main.scss:resources/public/css/tolgraven/main.css --style=compressed --no-error-css'",

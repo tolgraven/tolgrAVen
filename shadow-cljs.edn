@@ -1,10 +1,12 @@
 ;; shadow-cljs configuration
-{:lein {:profile "+dev"}
- :dev-http {4001 "resources/public"}
+{;:lein {:profile "+dev"}
 
  :builds
  {:app-dev
-  {:target :browser
+  {:lein true
+   :jvm-opts ["-Ddev=true"]
+   ; :dev-http {4001 "resources/public"}
+   :target :browser
    :modules {:main {:entries [tolgraven.core]
                     :init-fn tolgraven.core/init!}}
    :js-options {}

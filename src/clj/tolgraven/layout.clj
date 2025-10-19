@@ -7,6 +7,7 @@
     [ring.middleware.anti-forgery :refer [*anti-forgery-token*]]
     [ring.util.response]
     [tolgraven.config :refer [env]]
+    [taoensso.timbre :as log]
     [optimus.link :as olink]
     [optimus.html :as ohtml]))
 
@@ -62,7 +63,10 @@
     [:div.footer-content ;; XXX should adapt to available height, also disappear...
      [:div
       [:h4 "joen.tolgraven@gmail.com"]
-      [:h5 "© 2020-2025"]]]]])
+      [:h5 (str "© 2020-" (-> (java.util.Date.)
+                              .toInstant
+                              (.atZone (.toZoneId (java.util.TimeZone/getDefault)))
+                              .getYear))]]]]])
 
 ; throw in CAPROVER_GIT_COMMIT_SHA somewhere for version
 ; can pull in w env then fetch from client
@@ -80,7 +84,7 @@
     [:meta {:name "og:description" :content description}]
     [:meta {:name "og:image" :content title-img}]         ; ideally would get overridden on like, blog-post with cover img...
     [:meta {:name "theme-color" :content "#1A1C1C"}]    ; for mobile safari status bar
-    [:meta {:name "apple-mobile-web-app-capable" :content "yes"}]
+    [:meta {:name "mobile-web-app-capable" :content "yes"}]
     [:meta {:name "apple-mobile-web-app-status-bar-style" :content "black-translucent"}] ; ought to be theme dependent tho
     [:base {:href "/"}]
     
@@ -97,6 +101,8 @@
       (ohtml/link-to-css-bundles request ["styles.css"])) ; this is where everything ends up for prod but cant remember why?
     (for [href css-paths]
       (css href))
+    (log/info "css-paths:" css-paths)
+    (log/info "env:" env)
     
     (when anti-forgery
       [:script {:type "text/javascript"}
@@ -113,51 +119,6 @@
     [:div#app loading-content]
     
     (ohtml/link-to-js-bundles request ["main.js"]) ]])
-
-
-(def css-paths ; should come from config?
-  (concat [;"https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
-           "css/fontawesome.css"
-           "css/solid.css"
-           "css/brands.min.css"
-           "css/opensans.css"
-           "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]
-          [(when (:dev env)
-             "/css/tolgraven/main.min.css")])) ; only in dev
-
-(def css-pre
-  ["css/solid.css"])
-(def js-pre
-  [])
-(def img-pre
-  [#_"img/foggy-shit-small.jpg"]) ; i mean only appears on main page so...
-
-
-(def google-analytics ; should somehow be moved to like, later? if drops cookies n stuff...
-  (when-not (:dev env)
-    ["window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-Y8H6RLZX3V');"]))
-
-(def js-paths
-  (concat [{:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
-           (when-not (:dev env)
-             {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"})]))
-
-(def pre-paths
-  [["media/fog-3d-small.mp4" "video"]
-   #_["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900" "font"]
-    #_["css/solid.css" "style"]]) ; well it gets bundled anyways
-
-(def link-prefetch
-  (concat
-   ["https://firestore.googleapis.com"]
-   (when-not (:dev env)
-     ["https://fonts.gstatic.com"
-      "https://www.googletagmanager.com"
-      "https://region1.google-analytics.com"])))
 
 (defn render-hiccup
   [page & args]
@@ -177,14 +138,35 @@
                                     "img/foggy-shit-small.jpg") ; uh obviously not for any page though, like blog and whatnot...
    :title "tolgrAVen audiovisual"
    :description "tolgrAVen audiovisual by Joen Tolgraven"
-   :pre-pre pre-paths
-   :css-paths css-paths
-   :js-paths js-paths
-   :js-raw google-analytics
-   :css-pre css-pre
-   :js-pre js-pre
-   :img-pre img-pre
-   :link-pre link-prefetch
+   :pre-pre [["media/fog-3d-small.mp4" "video"]
+             #_["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900" "font"]
+             #_["css/solid.css" "style"]]
+   :css-paths (concat [;"https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
+                       "css/fontawesome.css"
+                       "css/solid.css"
+                       "css/brands.min.css"
+                       "css/opensans.css"
+                       "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]
+                      [(when (:dev env)
+                         "css/tolgraven/main.min.css")])
+   :js-paths (concat [{:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
+                      (when-not (:dev env)
+                        {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"})])
+   :js-raw (when-not (:dev env)
+             ["window.dataLayer = window.dataLayer || [];
+               function gtag(){dataLayer.push(arguments);}
+               gtag('js', new Date());
+
+               gtag('config', 'G-Y8H6RLZX3V');"])
+   :css-pre ["css/solid.css"]
+   :js-pre []
+   :img-pre [#_"img/foggy-shit-small.jpg"]
+   :link-pre (concat
+              ["https://firestore.googleapis.com"]
+              (when-not (:dev env)
+                ["https://fonts.gstatic.com"
+                 "https://www.googletagmanager.com"
+                 "https://region1.google-analytics.com"]))
    :title-img "img/logo/tolgraven-logo.png"
    :anti-forgery (force *anti-forgery-token*)))
 
@@ -200,7 +182,8 @@
        [:title "Something bad happened - tolgrAVen"]
        [:meta {:name "description" :content "Error page"}]
 
-       [:link {:href "/css/tolgraven/main.min.css" :rel "stylesheet" :type "text/css"}]
+       (when-not (:dev env)
+         [:link {:href "/css/tolgraven/main.min.css" :rel "stylesheet" :type "text/css"}])
        #_(ohtml/link-to-css-bundles error-details ["styles.css"])
        [:script {:type "text/javascript"}
         (str "var csrfToken = \"" (force *anti-forgery-token*) "\";")]] ; this is where everything ends up for prod but cant remember why?

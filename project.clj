@@ -3,13 +3,17 @@
   :url "https://tolgraven.se"
 
   :dependencies [[thheller/shadow-cljs "3.2.1"]
+                 [thheller/shadow-util "0.7.0"]
+                 [thheller/shadow-client "1.4.0"]
+                 [thheller/shadow-undertow "0.3.4"]
+                 [thheller/shadow-cljsjs "0.0.22"]
 
                  ; all of shadows deps, explicit
                  [org.clojure/clojure "1.12.2"]
                  [org.clojure/data.json "2.5.1"]
                  [org.clojure/tools.cli "1.1.230"]
                  [org.clojure/tools.reader "1.5.2"]
-                 ; [nrepl "1.3.1"]
+                 [nrepl "1.3.1"]
                  [com.cognitect/transit-clj "1.0.333"]
                  [com.cognitect/transit-cljs "0.8.280"]
                  [org.clojure/core.async "1.8.741"]
@@ -17,13 +21,8 @@
                  [com.google.javascript/closure-compiler-unshaded "v20250820"]
                  [org.clojure/google-closure-library "0.0-20250515-87401eb8"]
                  [org.clojure/google-closure-library-third-party "0.0-20250515-87401eb8"]
-                 [thheller/shadow-util "0.7.0"]
-                 [thheller/shadow-client "1.4.0"]
-                 [thheller/shadow-undertow "0.3.4"]
-                 [thheller/shadow-cljsjs "0.0.22"]
                  [hiccup "2.0.0"]
-                 [ring/ring-core "1.15.2"]
-                 [io.methvin/directory-watcher "0.19.1"]
+                 ; [io.methvin/directory-watcher "0.19.1"]
                  [expound "0.9.0"]
                  [fipp "0.6.29"]
                  [com.bhauman/cljs-test-display "0.1.1"]
@@ -60,7 +59,7 @@
                  [clj-logging-config "1.9.12"]
                  [io.aviso/pretty "1.4.4"] ;pretty exceptions, pretty logging...
 
-                 ; [ring/ring-core "1.10.0" :exclusions [commons-io]]
+                 [ring/ring-core "1.15.2"]
                  [ring/ring-defaults "0.7.0" :exclusions [commons-io]]
                  [amalloy/ring-gzip-middleware "0.1.4"]
                  [ring-partial-content "2.1.0"] ; handle safari video playback / 206 response
@@ -73,8 +72,8 @@
                  
                  [optimus "2025.01.19.2"] ;optimization of assets
                  [optimus-img-transform "0.3.1"]
-                 [optimus-sass "0.0.3"] ; load sass straight. pretty old dunno if still works
-                 [optimus-autoprefixer "0.1.0"] ; same but autoprefixer. might be nice can avoid npm build and whatnot plus keep everything in one spot...
+                 ; [optimus-sass "0.0.3"] ; load sass straight. pretty old dunno if still works
+                 ; [optimus-autoprefixer "0.1.0"] ; same but autoprefixer. might be nice can avoid npm build and whatnot plus keep everything in one spot...
 
                  [sitemap "0.4.0"]
                  ; [nrepl/drawbridge "0.2.1"] ; nrepl over http
@@ -99,10 +98,8 @@
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
                  [day8.re-frame/async-flow-fx "0.4.0"]
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
-                 ; [com.degel/re-frame-firebase "0.10.0-SNAPSHOT" :exclusions [args4j]]
-                 [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j cljsjs/firebase]]
-                 [cljsjs/firebase "7.5.0-0"]
-                 ; [cljsjs/firebase "9.6.8-0"]
+                 [com.degel/re-frame-firebase "0.10.0-SNAPSHOT" :exclusions [args4j]]
+                 ; [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j cljsjs/firebase]]
                  [reagent "1.3.0"]
                  [cljsjs/react "18.3.1-1"]
                  [cljsjs/react-dom "18.3.1-1"]

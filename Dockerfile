@@ -7,6 +7,6 @@ FROM clojure:lein
 WORKDIR /clj
 COPY ./ /clj
 COPY --from=0 /usr/src/app/resources/ /clj/resources
-RUN npm run init; lein uberjar
+RUN npm run init; git submodule update --init --recursive; git submodule update --remote; lein uberjar
 EXPOSE 3000
 CMD ["java", "-Dclojure.main.report=stderr", "-cp", "target/uberjar/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]

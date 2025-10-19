@@ -1,0 +1,4 @@
+[submodule "checkouts/re-frame-firebase"]
+	path = checkouts/re-frame-firebase
+	url = https://github.com/tolgraven/re-frame-firebase
+  branch = update-for-modern-firebase
