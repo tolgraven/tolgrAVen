@@ -1,5 +1,6 @@
 ;; shadow-cljs configuration
 {;:lein {:profile "+dev"}
+ :source-paths ["src/clj" "src/cljs" "src/cljc"]
 
  :builds
  {:app-dev

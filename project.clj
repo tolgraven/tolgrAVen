@@ -178,9 +178,10 @@
                       :pretty-print true}}}}}
 
    
-   :uberjar {:prep-tasks ["compile"
-                          ; ["run" "-m" "shadow.cljs.devtools.cli" "release" "app"]
-                          ["npx" "shadow-cljs" "release" "app"]
+   :uberjar {:plugins [[lein-shell "0.5.0"]]
+             :prep-tasks ["compile"
+                          ["run" "-m" "shadow.cljs.devtools.cli" "release" "app"]
+                          ; ["shell" "npx" "shadow-cljs" "release" "app"]
                           ["codox"]]
              :aot :all
              :uberjar-name "tolgraven.jar"
