@@ -5,7 +5,6 @@ RUN npm run init && \
     npm run build
 
 FROM clojure:lein
-
 # install node + npm + npx
 RUN apt-get update && \
     apt-get install -y curl && \
@@ -14,10 +13,9 @@ RUN apt-get update && \
     apt-get install -y nodejs && \
     npm install -g shadow-cljs && \
     apt-get clean
-WORKDIR /usr/src/clj
-COPY ./ /usr/src/clj
-COPY --from=0 /usr/src/app/resources/ /usr/src/clj/resources
-COPY --from=0 /usr/src/app/node_modules/ /usr/src/clj/node_modules
+WORKDIR /usr/src/app
+ARG MAVEN_OPTS=${MAVEN_OPTS}
+ENV MAVEN_OPTS=${MAVEN_OPTS}
 RUN cd checkouts/re-frame-firebase && \
     lein install; \
     cd ../..; \
