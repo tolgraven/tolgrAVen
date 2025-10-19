@@ -10,7 +10,7 @@ RUN apt-get update && \
     apt-get install -y curl && \
     curl -fsSL https://deb.nodesource.com/setup_current.x -o nodesource_setup.sh && \
     bash nodesource_setup.sh && \
-    apt-get install -y nodejs && \
+    apt-get install -y nodejs git && \
     npm install -g shadow-cljs && \
     apt-get clean
 WORKDIR /usr/src/clj
@@ -19,7 +19,9 @@ COPY --from=0 /usr/src/app/resources/ /usr/src/clj/resources
 COPY --from=0 /usr/src/app/node_modules/ /usr/src/clj/node_modules
 ARG MAVEN_OPTS=${MAVEN_OPTS}
 ENV MAVEN_OPTS=${MAVEN_OPTS}
-RUN cd checkouts/re-frame-firebase && \
+RUN git submodule update --init --recursive && \
+    git submodule update --remote && \
+    cd checkouts/re-frame-firebase && \
     lein install
 RUN lein uberjar
 EXPOSE 3000
