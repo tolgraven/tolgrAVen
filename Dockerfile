@@ -13,7 +13,10 @@ RUN apt-get update && \
     apt-get install -y nodejs && \
     npm install -g shadow-cljs && \
     apt-get clean
-WORKDIR /usr/src/app
+WORKDIR /usr/src/clj
+COPY ./ /usr/src/clj
+COPY --from=0 /usr/src/app/resources/ /usr/src/clj/resources
+COPY --from=0 /usr/src/app/node_modules/ /usr/src/clj/node_modules
 ARG MAVEN_OPTS=${MAVEN_OPTS}
 ENV MAVEN_OPTS=${MAVEN_OPTS}
 RUN cd checkouts/re-frame-firebase && \
