@@ -20,8 +20,7 @@ COPY --from=0 /usr/src/app/node_modules/ /usr/src/clj/node_modules
 ARG MAVEN_OPTS=${MAVEN_OPTS}
 ENV MAVEN_OPTS=${MAVEN_OPTS}
 RUN cd checkouts/re-frame-firebase && \
-    lein install; \
-    cd ../..; \
-    lein uberjar
+    lein install
+RUN lein uberjar
 EXPOSE 3000
 CMD ["java", "-Dclojure.main.report=stderr", "-cp", "target/uberjar/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]
