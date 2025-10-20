@@ -123,7 +123,12 @@
   :target-path "target/%s/"
   :main ^:skip-aot tolgraven.core
 
-  :plugins [[lein-codox "0.10.8"]]
+  :repositories
+  [["private" {:url "https://tolgraven.hel1.your-objectstorage.com/m2/releases/"
+               :no-auth true}]]
+
+  :plugins [[s3-wagon-private "1.3.5"]
+            [lein-codox "0.10.8"]]
 
   :codox
   {:language :clojurescript

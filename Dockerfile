@@ -14,13 +14,18 @@ RUN apt-get update && \
     npm install -g shadow-cljs && \
     apt-get clean
 WORKDIR /usr/src/clj
-COPY ./ /usr/src/clj
-COPY --from=0 /usr/src/app/resources/ /usr/src/clj/resources
-COPY --from=0 /usr/src/app/node_modules/ /usr/src/clj/node_modules
+# COPY ./ /usr/src/clj
+# COPY --from=0 /usr/src/app/resources/ /usr/src/clj/resources
+# COPY --from=0 /usr/src/app/node_modules/ /usr/src/clj/node_modules
+COPY --from=0 /usr/src/app/ /usr/src/clj
 ARG MAVEN_OPTS=${MAVEN_OPTS}
 ENV MAVEN_OPTS=${MAVEN_OPTS}
-RUN cd checkouts/re-frame-firebase && \
-    lein install
+ARG AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+ARG AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+ENV AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+# RUN cd checkouts/re-frame-firebase && \
+#     lein install
 RUN lein uberjar
 EXPOSE 3000
 CMD ["java", "-Dclojure.main.report=stderr", "-cp", "target/uberjar/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]
