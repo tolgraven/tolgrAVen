@@ -306,12 +306,19 @@
    {:dispatch-n [[:exception nil]
                  [:diag/new :debug "JS" "Reloaded"]]}))
 
-(rf/reg-event-fx :toggle-class!
+(rf/reg-event-fx :html/toggle-class!
  (fn [db [_ id class]]
-   {:toggle-class [id class]}))
-(rf/reg-fx :toggle-class
+   {:html/toggle-class [id class]}))
+(rf/reg-fx :html/toggle-class
   (fn [[id class]]
-    (util/toggle-class id class)))
+    (util/toggle-class! id class)))
+
+(rf/reg-event-fx :html/set-attr!
+ (fn [db [_ id attr value]]
+   {:html/set-attr [id attr value]}))
+(rf/reg-fx :html/set-attr
+  (fn [[id attr value]]
+    (util/set-attr! id attr value)))
 
 (rf/reg-event-fx :theme/dark-mode
  (fn [db [_ on?]]
@@ -766,16 +773,16 @@
 (rf/reg-event-fx :darken/but-element
  (fn [{:keys [db]} [_ id-or-class timeout]]
    {:db (assoc-in db [:state :darken-but] id-or-class)
-    :dispatch-n [[:toggle-class! id-or-class "darken-fadeout-restore"]
-                 [:toggle-class! nil "darken-fadeout"]]
+    :dispatch-n [[:html/toggle-class! id-or-class "darken-fadeout-restore"]
+                 [:html/toggle-class! nil "darken-fadeout"]]
     :dispatch-later {:ms timeout
                      :dispatch [:darken/restore id-or-class]}}))
 
 (rf/reg-event-fx :darken/restore
  (fn [{:keys [db]} [_ id-or-class]]
    {:db (update-in db [:state] dissoc :darken-but)
-    :dispatch-n [[:toggle-class! id-or-class "darken-fadeout-restore"]
-                 [:toggle-class! nil "darken-fadeout"]]}))
+    :dispatch-n [[:html/toggle-class! id-or-class "darken-fadeout-restore"]
+                 [:html/toggle-class! nil "darken-fadeout"]]}))
 
 
 (rf/reg-event-fx :global-clicked [debug]

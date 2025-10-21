@@ -227,159 +227,188 @@
   --user-box-shadow:     hsla(240deg 53% var(--lum-bg-6) / 90%);
   --user-avatar-shadow:  hsla(240deg 100% var(--lum-fg-1) / 40%);
 
+  // DARK MODE (default) COLORS/VARS // *****
+  --fg-base-0:     var(--light-base-0);
+  --fg-base-1:     var(--light-base-1);
+  --fg-base-1-2:   var(--light-base-1-2);
+  --fg-base-2:     var(--light-base-2);
+  --fg-base-2-2:   var(--light-base-2-2);
+  --fg-base-3:     var(--light-base-3);
+  --fg-base-3-2:   var(--light-base-3-2);
+  --fg-base-4:     var(--light-base-4);
+  --fg-base-4-2:   var(--light-base-4-2);
+  --fg-base-5:     var(--light-base-5);
+  --fg-base-5-2:   var(--light-base-5-2);
+  --fg-base-6:     var(--light-base-6);
+  --fg-base-6-2:   var(--light-base-6-2);
+  --fg-base-0:     var(--light-base-0);
+  --fg-0:     var(--light-0);
+  --fg-1:     var(--light-1);
+  --fg-1-2:   var(--light-1-2);
+  --fg-2:     var(--light-2);
+  --fg-2-2:   var(--light-2-2);
+  --fg-3:     var(--light-3);
+  --fg-3-2:   var(--light-3-2);
+  --fg-4:     var(--light-4);
+  --fg-4-2:   var(--light-4-2);
+  --fg-5:     var(--light-5);
+  --fg-5-2:   var(--light-5-2);
+  --fg-6:     var(--light-6);
+  --fg-6-2:   var(--light-6-2);
+  --lum-fg-1: var(--lum-light-1);
+  --lum-fg-2: var(--lum-light-2);
+  --lum-fg-3: var(--lum-light-3);
+  --lum-fg-4: var(--lum-light-4);
+  --lum-fg-5: var(--lum-light-5);
+  --lum-fg-6: var(--lum-light-6);
+
+  --bg-base-0:     var(--dark-base-0);
+  --bg-base-1:     var(--dark-base-1);
+  --bg-base-1-2:   var(--dark-base-1-2);
+  --bg-base-2:     var(--dark-base-2);
+  --bg-base-2-2:   var(--dark-base-2-2);
+  --bg-base-3:     var(--dark-base-3);
+  --bg-base-3-2:   var(--dark-base-3-2);
+  --bg-base-4:     var(--dark-base-4);
+  --bg-base-4-2:   var(--dark-base-4-2);
+  --bg-base-5:     var(--dark-base-5);
+  --bg-base-5-2:   var(--dark-base-5-2);
+  --bg-base-6:     var(--dark-base-6);
+  --bg-base-6-2:   var(--dark-base-6-2);
+  --bg-0:     var(--dark-0);
+  --bg-1:     var(--dark-1);
+  --bg-1-2:   var(--dark-1-2);
+  --bg-2:     var(--dark-2);
+  --bg-2-2:   var(--dark-2-2);
+  --bg-3:     var(--dark-3);;
+  --bg-3-2:   var(--dark-3-2);
+  --bg-4:     var(--dark-4);
+  --bg-4-2:   var(--dark-4-2);
+  --bg-5:     var(--dark-5);
+  --bg-5-2:   var(--dark-5-2);
+  --bg-6:     var(--dark-6);
+  --bg-6-2:   var(--dark-6-2);
+  --lum-bg-1: var(--lum-dark-1);
+  --lum-bg-2: var(--lum-dark-2);
+  --lum-bg-3: var(--lum-dark-3);
+  --lum-bg-4: var(--lum-dark-4);
+  --lum-bg-5: var(--lum-dark-5);
+  --lum-bg-6: var(--lum-dark-6);
+  --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
+  --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
+  
+  --logo-flip: invert(0.95) hue-rotate(180deg) brightness(130%);
+  --dark-to-light: none;
+  --light-to-dark: invert(1.0);
+  --bg-pure: hsla(0, 0%, 6.5%, 1.0);
 }
-
-:root { /* we run dark by default */
+// 1) Define tokens
+$definitions: (
+  common: (
+  ),
+  dark: (
+  ),
+  light: (
+    fg-0:     var(--dark-0),
+    fg-1:     var(--dark-1),
+    fg-1-2:   var(--dark-1-2),
+    fg-2:     var(--dark-2),
+    fg-2-2:   var(--dark-2-2),
+    fg-3:     var(--dark-3),
+    fg-3-2:   var(--dark-3-2),
+    fg-4:     var(--dark-4),
+    fg-4-2:   var(--dark-4-2),
+    fg-5:     var(--dark-5),
+    fg-5-2:   var(--dark-5-2),
+    fg-6:     var(--dark-6),
+    fg-6-2:   var(--dark-6-2),
+    lum-fg-1:   var(--lum-dark-1),
+    lum-fg-2:   var(--lum-dark-2),
+    lum-fg-3:   var(--lum-dark-3),
+    lum-fg-4:   var(--lum-dark-4),
+    lum-fg-5:   var(--lum-dark-5),
+    lum-fg-6:   var(--lum-dark-6),
+    bg-0:     var(--light-0),
+    bg-1:     var(--light-1),
+    bg-1-2:   var(--light-1-2),
+    bg-2:     var(--light-2),
+    bg-2-2:   var(--light-2-2),
+    bg-3:     var(--light-3),
+    bg-3-2:   var(--light-3-2),
+    bg-4:     var(--light-4),
+    bg-4-2:   var(--light-4-2),
+    bg-5:     var(--light-5),
+    bg-5-2:   var(--light-5-2),
+    bg-6:     var(--light-6),
+    bg-6-2:   var(--light-6-2),
+    lum-bg-1:   var(--lum-light-1),
+    lum-bg-2:   var(--lum-light-2),
+    lum-bg-3:   var(--lum-light-3),
+    lum-bg-4:   var(--lum-light-4),
+    lum-bg-5:   var(--lum-light-5),
+    lum-bg-6:   var(--lum-light-6),
   
-    --fg-base-0:     var(--light-base-0);
-    --fg-base-1:     var(--light-base-1);
-    --fg-base-1-2:   var(--light-base-1-2);
-    --fg-base-2:     var(--light-base-2);
-    --fg-base-2-2:   var(--light-base-2-2);
-    --fg-base-3:     var(--light-base-3);
-    --fg-base-3-2:   var(--light-base-3-2);
-    --fg-base-4:     var(--light-base-4);
-    --fg-base-4-2:   var(--light-base-4-2);
-    --fg-base-5:     var(--light-base-5);
-    --fg-base-5-2:   var(--light-base-5-2);
-    --fg-base-6:     var(--light-base-6);
-    --fg-base-6-2:   var(--light-base-6-2);
-    --fg-base-0:     var(--light-base-0);
-    --fg-0:     var(--light-0);
-    --fg-1:     var(--light-1);
-    --fg-1-2:   var(--light-1-2);
-    --fg-2:     var(--light-2);
-    --fg-2-2:   var(--light-2-2);
-    --fg-3:     var(--light-3);
-    --fg-3-2:   var(--light-3-2);
-    --fg-4:     var(--light-4);
-    --fg-4-2:   var(--light-4-2);
-    --fg-5:     var(--light-5);
-    --fg-5-2:   var(--light-5-2);
-    --fg-6:     var(--light-6);
-    --fg-6-2:   var(--light-6-2);
-    --lum-fg-1: var(--lum-light-1);
-    --lum-fg-2: var(--lum-light-2);
-    --lum-fg-3: var(--lum-light-3);
-    --lum-fg-4: var(--lum-light-4);
-    --lum-fg-5: var(--lum-light-5);
-    --lum-fg-6: var(--lum-light-6);
-
-    --bg-base-0:     var(--dark-base-0);
-    --bg-base-1:     var(--dark-base-1);
-    --bg-base-1-2:   var(--dark-base-1-2);
-    --bg-base-2:     var(--dark-base-2);
-    --bg-base-2-2:   var(--dark-base-2-2);
-    --bg-base-3:     var(--dark-base-3);
-    --bg-base-3-2:   var(--dark-base-3-2);
-    --bg-base-4:     var(--dark-base-4);
-    --bg-base-4-2:   var(--dark-base-4-2);
-    --bg-base-5:     var(--dark-base-5);
-    --bg-base-5-2:   var(--dark-base-5-2);
-    --bg-base-6:     var(--dark-base-6);
-    --bg-base-6-2:   var(--dark-base-6-2);
-    --bg-0:     var(--dark-0);
-    --bg-1:     var(--dark-1);
-    --bg-1-2:   var(--dark-1-2);
-    --bg-2:     var(--dark-2);
-    --bg-2-2:   var(--dark-2-2);
-    --bg-3:     var(--dark-3);;
-    --bg-3-2:   var(--dark-3-2);
-    --bg-4:     var(--dark-4);
-    --bg-4-2:   var(--dark-4-2);
-    --bg-5:     var(--dark-5);
-    --bg-5-2:   var(--dark-5-2);
-    --bg-6:     var(--dark-6);
-    --bg-6-2:   var(--dark-6-2);
-    --lum-bg-1: var(--lum-dark-1);
-    --lum-bg-2: var(--lum-dark-2);
-    --lum-bg-3: var(--lum-dark-3);
-    --lum-bg-4: var(--lum-dark-4);
-    --lum-bg-5: var(--lum-dark-5);
-    --lum-bg-6: var(--lum-dark-6);
-    --box-regular-color-flip: hsla(0, 0%, var(--lum-light-1), var(--opacity-regular));
-    --box-faint-color-flip:   hsla(0, 0%, var(--lum-light-1), var(--opacity-faint));
-    
-    --logo-flip: invert(0.95) hue-rotate(180deg) brightness(130%);
-    --dark-to-light: none;
-    --light-to-dark: invert(1.0);
-    --bg-pure: hsla(0, 0%, 6.5%, 1.0);
-  }
-
-// @media (prefers-color-scheme: light) {
-:root.theme-light {
-// :root {
-  // should use some sass trick for this tho...
-    --fg-0:     var(--dark-0);
-    --fg-1:     var(--dark-1);
-    --fg-1-2:   var(--dark-1-2);
-    --fg-2:     var(--dark-2);
-    --fg-2-2:   var(--dark-2-2);
-    --fg-3:     var(--dark-3);
-    --fg-3-2:   var(--dark-3-2);
-    --fg-4:     var(--dark-4);
-    --fg-4-2:   var(--dark-4-2);
-    --fg-5:     var(--dark-5);
-    --fg-5-2:   var(--dark-5-2);
-    --fg-6:     var(--dark-6);
-    --fg-6-2:   var(--dark-6-2);
-  --lum-fg-1:   var(--lum-dark-1);
-  --lum-fg-2:   var(--lum-dark-2);
-  --lum-fg-3:   var(--lum-dark-3);
-  --lum-fg-4:   var(--lum-dark-4);
-  --lum-fg-5:   var(--lum-dark-5);
-  --lum-fg-6:   var(--lum-dark-6);
-    --bg-0:     var(--light-0);
-    --bg-1:     var(--light-1);
-    --bg-1-2:   var(--light-1-2);
-    --bg-2:     var(--light-2);
-    --bg-2-2:   var(--light-2-2);
-    --bg-3:     var(--light-3);;
-    --bg-3-2:   var(--light-3-2);
-    --bg-4:     var(--light-4);
-    --bg-4-2:   var(--light-4-2);
-    --bg-5:     var(--light-5);
-    --bg-5-2:   var(--light-5-2);
-    --bg-6:     var(--light-6);
-    --bg-6-2:   var(--light-6-2);
-  --lum-bg-1:   var(--lum-light-1);
-  --lum-bg-2:   var(--lum-light-2);
-  --lum-bg-3:   var(--lum-light-3);
-  --lum-bg-4:   var(--lum-light-4);
-  --lum-bg-5:   var(--lum-light-5);
-  --lum-bg-6:   var(--lum-light-6);
-  
-  --gradient-bg-main: linear-gradient(-77deg,
+    gradient-bg-main: linear-gradient(-77deg,
                                       hsl(280, 15%, 88%),
-                                      var(--bg-1));
- 
+                                      var(--bg-1)),
 
-  --red       : rgb(104, 56, 50);
-  --red-2     : rgb(87, 47, 46);
-  --red-3     : rgb(117, 67, 66);
-  --green     : rgb(80, 92, 60);
-  --green-2   : rgb(59, 70, 39) ;
-  --green-3   : rgb(92, 109, 74);
-  --yellow    : rgb(109, 94, 51);
-  --yellow-2  : rgb(104, 87, 54);
-  --yellow-3  : rgb(108, 100, 64);
-  --blue      : rgb(49, 63, 85);
-  --blue-2    : rgb(54, 70, 89);
-  --blue-3    : rgb(73, 86, 102);
-  --purple    : rgb(94, 65, 78);
-  --purple-2  : rgb(87, 56, 68);
-  --purple-3  : rgb(108, 81, 91);
-  --aqua      : rgb(62, 92, 82);
-  --aqua-2    : rgb(67, 90, 76);
-  --aqua-3    : rgb(81, 104, 90);
-  --orange    : rgb(102, 73, 57);
-  --orange-2  : rgb(109, 80, 76);
-  --orange-3  : rgb(108, 82, 59);
-  
-  --logo-flip: none;
-  --dark-to-light: invert(0.95) hue-rotate(180deg) brightness(80%) saturate(80%);
-  --light-to-dark: none;
-    --bg-pure: hsla(0, 0%, 100%, 1.0);
+    red       : rgb(104, 56, 50),
+    red-2     : rgb(87, 47, 46),
+    red-3     : rgb(117, 67, 66),
+    green     : rgb(80, 92, 60),
+    green-2   : rgb(59, 70, 39) ,
+    green-3   : rgb(92, 109, 74),
+    yellow    : rgb(109, 94, 51),
+    yellow-2  : rgb(104, 87, 54),
+    yellow-3  : rgb(108, 100, 64),
+    blue      : rgb(49, 63, 85),
+    blue-2    : rgb(54, 70, 89),
+    blue-3    : rgb(73, 86, 102),
+    purple    : rgb(94, 65, 78),
+    purple-2  : rgb(87, 56, 68),
+    purple-3  : rgb(108, 81, 91),
+    aqua      : rgb(62, 92, 82),
+    aqua-2    : rgb(67, 90, 76),
+    aqua-3    : rgb(81, 104, 90),
+    orange    : rgb(102, 73, 57),
+    orange-2  : rgb(109, 80, 76),
+    orange-3  : rgb(108, 82, 59),
+    
+    logo-flip: none,
+    dark-to-light: invert(0.95) hue-rotate(180deg) brightness(80%) saturate(80%),
+    light-to-dark: none,
+    bg-pure: hsla(0, 0%, 100%, 1.0),
+  )
+);
+
+// Helper: flatten nested definition maps into --vars
+// TODO also change rest of defs to SCSS and turn into regular CSS vars like this?
+@mixin theme-vars($map, $prefix: "") {
+  @each $k, $v in $map {
+    $name: if($prefix == "", $k, "#{$prefix}-#{$k}");
+    @if type-of($v) == "map" {
+      @include theme-vars($v, $name);
+    } @else {
+      --#{$name}: #{$v};
+    }
+  }
 }
-// }
+
+// 3) Build concrete theme maps
+// $theme-dark:  map-merge(map-get($definitions, common), map-get($definitions, dark));
+$theme-light: map-merge(map-get($definitions, common), map-get($definitions, light));
+
+// if prefers light, and not set dark, go light
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    @include theme-vars($theme-light);
+  }
+}
+
+// if set light, use light
+html[data-theme="light"] {
+  color-scheme: light;
+  @include theme-vars($theme-light);   // user override
+}
 

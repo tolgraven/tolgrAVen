@@ -295,15 +295,23 @@
               node)]
   (.addEventListener node event f active?)))
 
-(defn toggle-class "Toggle class on element. Avoid for general use. Good for root (pass id nil or :root), can also pass type/class"
-  [id-or class]
-  (if-let [elem (if (and id-or (not= id-or :root))
-                  (elem-by-id id-or)
-                  js/document.documentElement)]
-    (-> elem .-classList (.toggle class))
-    (doseq [elem (-> js/document (.querySelectorAll id-or))]
-      (-> elem .-classList (.toggle class)))))
+(defn elem-or-document
+  [id-or]
+  (if (and id-or (not= id-or :root))
+    (elem-by-id id-or)
+    js/document.documentElement))
 
+(defn toggle-class! "Toggle class on element. Avoid for general use. Good for root (pass id nil or :root), can also pass type/class"
+  [id-or class]
+  (if-let [elem (elem-or-document id-or)]
+    (some-> elem .-classList (.toggle class))
+    (doseq [elem (-> js/document (.querySelectorAll id-or))]
+      (some-> elem .-classList (.toggle class)))))
+
+(defn set-attr! "Set attribute on element. Avoid for general use. Good for document (pass id nil)"
+  [id-or attr value]
+  (when-let [elem (elem-or-document id-or)]
+    (some-> elem (.setAttribute attr value))))
 
 (defn bounding-rect [e]
  (.getBoundingClientRect (.-target e)))

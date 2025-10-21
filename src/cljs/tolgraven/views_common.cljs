@@ -298,7 +298,7 @@
      
      [:h2 [:i {:class "fa fa-cog"}] " Settings"]
      [:div
-      [:button {:on-click #(rf/dispatch [:toggle-class! nil "theme-light"])}
+      [:button {:on-click #(rf/dispatch [:html/set-attr! nil "data-theme" "light"])}
        "Light/dark"]]
 
      [:div.settings-numbers

@@ -43,6 +43,9 @@
   scroll-padding-top: var(--header-height-current);
 }
 
+:root { color-scheme: light dark; } /* enables native form controls/scrollbars */
+html[data-theme="dark"]  { color-scheme: dark;  }
+
 html, body {
   scroll-padding-top: var(--header-height-current);
 }
@@ -112,7 +115,7 @@ main { /* dunno purpose of why I choose .main-content... */
   border-right: var(--line-width-vert) solid var(--line-color); /* should make configurable. off looks p nice on main page */
   margin-top: var(--space-lg);
 
-  animation: fade-in 1.2s ease-in;
+  animation: fade-in 0.75s ease-in;
 }
 .main-content {
   position: relative;
@@ -126,7 +129,7 @@ main { /* dunno purpose of why I choose .main-content... */
   }
   
   &.animate {
-    animation: fade-in-site 700ms;
+    animation: fade-in-site 500ms;
   }
 }
 .main-loading {
