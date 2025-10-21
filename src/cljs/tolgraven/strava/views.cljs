@@ -7,7 +7,7 @@
    [tolgraven.ui :as ui]
    [tolgraven.views-common :as views]
    [tolgraven.util :as util :refer [at]]
-   [cljsjs.react-leaflet]))
+   [react-leaflet]))
 
 (declare activity-map)
 (declare activity-map-canvas)
@@ -31,7 +31,9 @@
   [i {:keys [average_speed] :as split} num-splits min-speed max-speed space-per-split]
   (let [hovered? (r/atom false)
         left (* space-per-split num-splits (/ i num-splits))
-        bottom (+ 10 (* 85 (util/rescale-to-frac average_speed min-speed max-speed)))]
+        bottom (+ 10 (* 85 (util/rescale-to-frac average_speed min-speed max-speed)))
+        gradient (* 100 (/ (:elevation_difference split)
+                           (:distance split)))]
     (fn [i {:keys [average_speed] :as split} num-splits min-speed max-speed space-per-split]
       [:<>
        [:div.strava-activity-split.strava-activity-dot
@@ -40,10 +42,18 @@
          :on-mouse-enter #(reset! hovered? true)
          :on-mouse-leave #(reset! hovered? false)}
         [:span (util/format-number (* 3.6 (:average_speed split)) 1)]]
+       [:div.strava-activity-split-gradient
+         {:style {:position "absolute"
+                  :width "2.5rem"
+                  :height "2px"
+                  :background "var(--dark-6)"
+                  :left (str left "%")
+                  :bottom "2rem"
+                  :transform (str "rotate(" (* -10 gradient) "deg)")}}]
        [:p.strava-activity-split-legend
         {:class (when @hovered? "strava-activity-dot")
          :style {:left (str (+ 2 left) "%") ;ugly magic number but aligns perfectly
-                 :bottom 0}
+                 :bottom "0.66rem"}
          :on-mouse-enter #(reset! hovered? true)
          :on-mouse-leave #(reset! hovered? false)}
         i]
@@ -59,8 +69,7 @@
            [:div
             [:p (util/format-number (:average_heartrate split) 0)
              [:span " bpm"]]
-            [:p (util/format-number (* 100 (/ (:elevation_difference split)
-                                              (:distance split))) 2)
+            [:p (util/format-number gradient 2)
              [:span "%"]]]]])])))
 
 (defn activity-splits "km splits from activity"
