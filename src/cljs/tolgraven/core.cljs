@@ -188,7 +188,8 @@
    [common/footer @(rf/subscribe [:content [:footer]])]
    [ui/safe :hud [ui/hud (rf/subscribe [:hud])]]
    [common/to-top]
-
+   [common/scrollbar {}]
+   [:a {:name "bottom" :id "bottom"}]]))
 
 (defn with-heading
   [heading-path component & [override]]
