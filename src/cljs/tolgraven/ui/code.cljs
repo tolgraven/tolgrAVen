@@ -7,7 +7,8 @@
    ; ["react-syntax-highlighter/dist/esm/languages/hljs/clojure" :as clj-lang]
    ; ["react-syntax-highlighter/dist/esm/languages/hljs/javascript" :as js-lang]
    ["react-markdown" :default ReactMarkdown]
-   ["remark-gfm" :default remarkGfm]))
+   ["remark-gfm" :default remarkGfm]
+   ["rehype-raw" :default rehypeRaw]))
 
 
 (def syntax-highlighter (r/adapt-react-class SyntaxHighlighter))
@@ -59,5 +60,6 @@
   [react-markdown
    {:children md-text
     :remarkPlugins #js [remarkGfm]
+    :rehypePlugins #js [rehypeRaw]
     :components #js {:code (r/reactify-component markdown-code-component)}}])
 
