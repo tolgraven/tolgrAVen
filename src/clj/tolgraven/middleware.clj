@@ -81,15 +81,13 @@
       (optimizations/inline-css-imports)
       (optimizations/concatenate-bundles options)
       (transform-images {:regexp #"(/media/.*\.jpg)|(/img/.*\.(jpg|png))" ; in-place which would be baddd on dev but only runs on prod so
-                         :quality 0.75
+                         :quality 0.80
                          :progressive true})
       (optimizations/add-cache-busted-expires-headers) ; pisses off lighthouse. not sure why would want media to instantly expire anyways so
       (optimizations/add-last-modified-headers)))
 
 (defonce serve-live-assets-maybe-autorefresh
-  (if (nil? (io/resource "/js/compiled/out/main.js"))
-    strategies/serve-live-assets
-    strategies/serve-live-assets-autorefresh))
+  strategies/serve-live-assets-autorefresh)
 
 (defn wrap-optimus
   [app]
