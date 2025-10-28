@@ -125,7 +125,7 @@
 
   :repositories
   [["private" {:url "https://tolgraven.hel1.your-objectstorage.com/m2/releases/"
-               :no-auth true}]]
+               :no-auth true}]] ; uses injected credentials
 
   :plugins [[s3-wagon-private "1.3.5"]
             [lein-codox "0.10.8"]]
