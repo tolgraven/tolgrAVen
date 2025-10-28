@@ -63,17 +63,17 @@
              :story {:heading {:title "Breaking things down"
                                :bg {:src "img/wide-spot-ctrl-small.jpg"}}
                      :title "The ideal partner for your project"
-                     :text "After spending my working life in sports television, and lacking the passion of my colleagues within that subject - despite interesting and varied work (everything from PA, graphics, video editing, 'When IT says it can't be done' tech wizard) I started a transition towards programming a number of years ago.
-                            Currently studying computer science, and having picked up some web design chops the past few years to supplement my existing graphics experience, I built this website from scratch as a learning-cum-demo environment.  Then came the point where it started reflecting something real.
-                            With a simple CMS, plus blog/comments system with user accounts, it's pretty full-featured and a good representation of my abilities. I think the Clojure and ClojureScript ecosystem seems good in this regard. It's daunting, but the lack of rails, as it were, might force a deeper understanding of each aspect. And it's close enough to the JS ecosystem everyone is in that skills will surely translate.
-                            Also, Hiccup is awesome.
+                     :text "After spending my working life in sports television, and lacking the passion of my colleagues within that subject - despite interesting and varied work (everything from PA, graphics, video editing, 'When IT says it can't be done' tech wizard/coder) I, now something like a decade ago, started a professional transition towards something I'd been both interested in and reasonably skilled at since age 15 or so: software development.
+                            After studying computer science, and having picked up very solid web design and backend chops over the years to supplement my old graphics experience, I originally built this website long ago from scratch as a learning-cum-demo environment. Then came the point where it started reflecting something real.
+                            After stints at both a more traditional tech company, making a very custom next-gen multiplatform app as lead developer, and time in the startup scene, I these days have all the experience necessary to also further my own projects, products, and offered services, in a much more serious way.
+                            Sometimes I'm busy working full-time for a client, other times I take it easier and focus more on my own stuff, especially related to music and stage lights. But also the website itself and the long-held goal of having most code as a re-usable library, so as to not just fork the entire codebase when building sites for others. The site really hasn't seen much love in years, and I'll be rewriting a lot of the code in a thoroughly well-architected way throughout 2025 and 2026.
 
-                            Well let's see what else. I make music, have dabbled in being a rave promoter, soundboy, am a big enough ally to have hosted gay parties in Uganda, and all-around upstanding chap. I reckon.
-                            Finally having reached the level of running my own web design/custom music tech/yada yada actual company, rather than merely on an advanced hobbyist basis, I feel like I've landed right where I belong. Not that I've got anything against working for the man, hint hint.
-                            My main focus these days has ended up the web front... not that I, as full stack, am wanting in the back - but in the end it's just not quite as much fun.
-                            Meanwhile I will do my best trying to write stuff on the blog - about the process, life in general, I'm not sure yet. All in due time.
+                            Well let's see what else. I make music, write lyrics, have dabbled in being a rave promoter, soundboy, am a big enough ally to have hosted gay parties in Uganda, and all-around upstanding chap. I reckon. I like to do a bit of everything, and find there is good synergy in being decently skilled across many domains.
+                            Finally having reached the level of running my own web design/custom music tech/stage lights company, rather than merely on an advanced hobbyist basis, I feel like I've landed right where I belong.
 
-                            Leave a comment! Let me build your website! Give me a job!"
+                            Gimme a shout if you're interested in working together on something or have an idea you want to see through. Everything from basic websites, more complex ones, apps, or large custom multi-technology projects is possible. I also work well in a team, and am good at jumping into even unfamiliar tech and large scary codebases quickly.
+                            
+                            Joen"
 
                      :images [["headshot" {:src "img/Leg-tasteful-small.jpg" :alt "Joen"}
                                "Yours truly. Smiling!"]
