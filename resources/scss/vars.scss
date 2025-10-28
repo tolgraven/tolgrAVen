@@ -1,3 +1,6 @@
+@use "sass:map";
+@use "sass:meta";
+
 /* wanted to put in own file but wasnt compatible with live reload solution... */
 :root { /* general vars */
   /* SIZES */
@@ -386,17 +389,17 @@ $definitions: (
 @mixin theme-vars($map, $prefix: "") {
   @each $k, $v in $map {
     $name: if($prefix == "", $k, "#{$prefix}-#{$k}");
-    @if type-of($v) == "map" {
+    @if meta.type-of($v) == "map" {
       @include theme-vars($v, $name);
     } @else {
-      --#{$name}: #{$v};
+      --#{'"" + $name'}: #{$v};
     }
   }
 }
 
 // 3) Build concrete theme maps
 // $theme-dark:  map-merge(map-get($definitions, common), map-get($definitions, dark));
-$theme-light: map-merge(map-get($definitions, common), map-get($definitions, light));
+$theme-light: map.merge(map.get($definitions, common), map.get($definitions, light));
 
 // if prefers light, and not set dark, go light
 @media (prefers-color-scheme: light) {
