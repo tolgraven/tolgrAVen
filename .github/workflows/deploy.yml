@@ -14,9 +14,12 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - name: CapRover Deploy Token
         uses: Fabrimat/caprover-action@v2.3 
         with:
           server: '${{ vars.CAPROVER_SERVER }}'
           appname: '${{ vars.APP_NAME }}'
           token: '${{ secrets.APP_TOKEN }}'
+          branch: '${{ github.head_ref }}'
