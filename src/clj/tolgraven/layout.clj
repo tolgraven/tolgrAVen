@@ -102,8 +102,6 @@
       (ohtml/link-to-css-bundles request ["styles.css"])) ; this is where everything ends up for prod but cant remember why?
     (for [href css-paths]
       (css href))
-    (log/info "css-paths:" css-paths)
-    (log/info "env:" env)
     
     (when anti-forgery
       [:script {:type "text/javascript"}
