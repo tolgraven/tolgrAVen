@@ -253,13 +253,21 @@
              :theme {:dark-mode true
                      :colorscheme "default"}
              :firebase {:project :main
-                        :settings {}}
+                        :settings {}
+                        :config {:projectId     "tolgraven-8fd35"
+                                 :authDomain    "tolgraven-8fd35.firebaseapp.com"
+                                 :databaseURL   "https://tolgraven-8fd35.firebaseio.com"
+                                 :storageBucket "tolgraven-8fd35.appspot.com"
+                                 :messagingSenderId "506323024574",
+                                 :appId             "1:506323024574:web:dd4124cc6018a121bf7cef",
+                                 :apiKey            "AIzaSyBsqgWFXZfLq4W8FPRfSVd3AzSt183w9HQ"
+                                 :measurementId     "G-Y8H6RLZX3V"}}
              :github {:user "tolgraven"
                       :repo "tolgraven"}
              :hud {:timeout 30 :level :info}}
    :cookie-notice {:a :map}})
 
 
-(rf/reg-event-db :init-db
+(rf/reg-event-db :init/app-db
   (fn [db _]
     data))

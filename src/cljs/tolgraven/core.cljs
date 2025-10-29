@@ -18,7 +18,6 @@
     [tolgraven.docs.views :as docs]
     [tolgraven.experiments :as experiment]
     [tolgraven.macros :as m :include-macros true]
-    [breaking-point.core :as bp]
     [reitit.core :as reitit]
     [reitit.frontend.history :as rfh]
     [reitit.frontend.easy :as rfe]
@@ -188,7 +187,17 @@
    [common/footer @(rf/subscribe [:content [:footer]])]
    [ui/safe :hud [ui/hud (rf/subscribe [:hud])]]
    [common/to-top]
-   [common/scrollbar {}]
+   ; [[:div.ripple-on-click
+   ;    {:class (when click-evt "ripple")
+   ;     :style {:left (str "calc(" (if click-evt
+   ;                                  (.-pageX click-evt)
+   ;                                  0)
+   ;                        "px - " 7 "em)")
+   ;             :top (str "calc(" (if click-evt
+   ;                                 (.-pageY click-evt)
+   ;                                 0)
+   ;                       "px - " 5 "em)")}}]common/scrollbar {}]
+   
    [:a {:name "bottom" :id "bottom"}]]))
 
 (defn with-heading
@@ -446,39 +455,16 @@
   (start-router!) ; restart router on reload?
   (rf/dispatch [:reloaded])
   (util/log "Mounting root component")
-  (render)
-  #_(rdom/render [#'page] (.getElementById js/document "app")))
+  (render))
 
 (defn init "Called only on page load" []
-  (rf/dispatch-sync [:init-db])
-  (rf/dispatch-sync [:fb/fetch-settings]) ;sync because number of early fetches depend on this...
+  (rf/dispatch-sync [:init/app-db])
+  (rf/dispatch-sync [:fb/init]) ;sync because number of early fetches depend on this... move back in here though because useless, all public anyways + not like it's secret after sent off ;P was just to test concept
   (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
   (ajax/load-interceptors!)
   (mount-components)
-  (rf/dispatch [::bp/set-breakpoints
-                :breakpoints [:mobile 560
-                              :tablet 992
-                              :small-monitor 1200
-                              :large-monitor]
-                :debounce-ms 250]) ;; optional
-  (rf/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
-  (rf/dispatch [:cookie/show-notice]) ; do later first check if prev visit
-  ; (rf/dispatch [:on-booted :firebase [:init]])
-  (rf/dispatch [:on-booted :firebase [:init/cms]])
-  (rf/dispatch [:on-booted :firebase [:init/imagor]])
-  (js/setTimeout #(rf/dispatch [:init])
-                 100)
-  #_(js/setTimeout (fn [] (doseq [evt [; temp crapfix, running this too early suddenly results in... nothing. what.
-                               [:init/scroll-storage]
-                               [:listener/popstate-back]
-                               [:listener/scroll-direction]
-                               [:listener/visibility-change]
-                               ; [:on-booted :firebase [:id-counters/fetch]]
-                               [:ls/get-path [:form-field] [:state :form-field]] ; restore any active form-fields
-                               [:booted :site]]]
-                    (rf/dispatch evt))
-                   (util/log "Site init complete"))
-                 3000)) ; listeners and stuff that might depend on being mounted
+  (js/setTimeout #(rf/dispatch [:init/init]) ; listeners and stuff that might depend on being mounted
+                 16))
 
 (defn ^:export init!  []
   (defonce _init_ (init))) ;; why still need for thisi don't get it init! is now being called each reload?

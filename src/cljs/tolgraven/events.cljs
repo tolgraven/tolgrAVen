@@ -12,6 +12,7 @@
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
     [re-pollsive.core :as poll]
+    [breaking-point.core :as bp]
     [tolgraven.util :as util]
     [tolgraven.blog.events]
     [tolgraven.user.events]
@@ -368,7 +369,7 @@
 (rf/reg-event-fx :store/on-success-wrapper
   (fn [_ [_ ]]))
 
-(rf/reg-event-fx :fb/fetch-settings [debug]
+(rf/reg-event-fx :fb/fetch-settings
   (fn [{:keys [db]} _]
     {:dispatch [:http/get-internal {:uri "/api/firebase-settings"}
                 [:fb/init]
@@ -378,10 +379,9 @@
   (fn [{:keys [db]} [_ error]]
     {:dispatch [:diag/new :error "Server error" error]}))
 
-;; reg fx for fb init...
 (rf/reg-event-fx :fb/init
-  (fn [{:keys [db]} [_ data]]
-    (firebase/init :firebase-app-info      data ; well should go in fx tho...
+  (fn [{:keys [db]} _]
+    (firebase/init :firebase-app-info      (get-in db [:options :firebase :config])
                    :firestore-settings     (get-in db [:options :firebase :settings]) ; Shouldn't be used on later versions. See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
                    :get-user-sub           [:fb/get-user]
                    :set-user-event         [:fb/set-user]
@@ -597,22 +597,29 @@
                    (when-not (get-in db [:state :scroll :at-bottom]) ; wait what
                      [:->css-var! "footer-height-current" footer-height])]})))
 
-(rf/reg-event-fx :init/scroll-storage  [(rf/inject-cofx :ls)] ;fetch any existing values, setup listener to persist...
-  (fn [{:keys [db ls]} _]
-    {:db (assoc-in db [:state :scroll-position] (:scroll-position ls))
-     :dispatch [:listener/before-unload-save-scroll]}))
-
-(rf/reg-event-fx :init  [] ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
+(rf/reg-event-fx :init/init  [] ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
  (fn [{:keys [db]} [_ _]]
   {:dispatch-n [[:listener/load]
-                [:init/scroll-storage]
+                [:ls/get-path [:scroll-position] [:state :scroll-position]]
+                [:listener/scroll]
                 [:scroll/update-direction]
                 [:scroll/update-css-var]
-                [:listener/scroll]
                 [:listener/popstate-back]
-                [:listener/global-click]
+                ; [:listener/global-click]
+                [:listener/visibility-change]
+                [:listener/before-unload-save-scroll]
                 ; [:on-booted :firebase [:id-counters/fetch]]
                 [:ls/get-path [:form-field] [:state :form-field]] ; restore any active form-fields
+                [:ls/get-path [:cv-visited] [:state :cv :visited]] ; should rather spec which paths to load and then do that (in one op)
+                [:cookie/show-notice]
+                [:on-booted :firebase [:init/cms]]
+                [:on-booted :firebase [:init/imagor]]
+                [::bp/set-breakpoints
+                 :breakpoints [:mobile 560
+                               :tablet 992
+                               :small-monitor 1200
+                               :large-monitor]
+                 :debounce-ms 250]
                 [:booted :site]]})) ; should work, main page specific init events won't get queued unless on main so...
 
 ; generic helpers for rapid prototyping.

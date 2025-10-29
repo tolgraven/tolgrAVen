@@ -155,7 +155,7 @@
                                (.-scrollY js/window)])
             (rf/dispatch-sync [:ls/store-path [:scroll-position]
                                [:state :scroll-position]])))]
-    {:dispatch-n [[:listener/add! "window" "visibilitychange" scroll-to-ls]]})))
+    {:dispatch [:listener/add! "window" "visibilitychange" scroll-to-ls]})))
 
 (rf/reg-event-fx :listener/popstate-back ; gets called on browser back. or if we nanually pop state, so keep track of that if end up doing it...
  (fn [{:keys [db]} [_ ]]
@@ -169,7 +169,7 @@
              (rf/dispatch [:booted :load]))] ; which will actually have fresh db and can do stuff ugh
     {:dispatch [:listener/add! "window" "load" f]})))
 
-(rf/reg-event-fx :listener/global-click [debug]
+(rf/reg-event-fx :listener/global-click
  (fn [{:keys [db]} [_ _]]
    {:dispatch [:listener/add! "document" "click"
                #(rf/dispatch [:global-clicked %])]}))
