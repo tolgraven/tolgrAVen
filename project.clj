@@ -183,10 +183,10 @@
                       :pretty-print true}}}}}
 
    
-   :uberjar {:plugins [[lein-shell "0.5.0"]]
+   :uberjar {:jvm-opts ["-Dconf=env/prod/resources/config.edn"]
+             :plugins [[lein-shell "0.5.0"]]
              :prep-tasks ["compile"
                           ["run" "-m" "shadow.cljs.devtools.cli" "release" "app"]
-                          ; ["shell" "npx" "shadow-cljs" "release" "app"]
                           ["codox"]]
              :aot :all
              :uberjar-name "tolgraven.jar"
