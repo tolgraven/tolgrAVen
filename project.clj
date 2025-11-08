@@ -167,9 +167,7 @@
                                  :port 7000
                                  :init (start)
                                  :nrepl-middleware [shadow.cljs.devtools.server.nrepl/middleware]
-                                 :timeout 300000}
-                  :injections [(require 'pjstadig.humane-test-output)
-                               (pjstadig.humane-test-output/activate!)]}
+                                 :timeout 30000} }
    :project/test {:jvm-opts ["-Dconf=test-config.edn"]
                   :resource-paths ["env/test/resources"]
                   :cljsbuild
@@ -184,6 +182,7 @@
 
    
    :uberjar {:jvm-opts ["-Dconf=env/prod/resources/config.edn"]
+             :local-repo "/root/.m2"
              :plugins [[lein-shell "0.5.0"]]
              :prep-tasks ["compile"
                           ["run" "-m" "shadow.cljs.devtools.cli" "release" "app"]

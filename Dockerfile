@@ -15,12 +15,10 @@ RUN apt-get update && \
     apt-get clean
 WORKDIR /usr/src/clj
 COPY --from=0 /usr/src/app/ /usr/src/clj
-ARG MAVEN_OPTS=${MAVEN_OPTS}
-ENV MAVEN_OPTS=${MAVEN_OPTS}
 ARG AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
 ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
 ARG AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
 ENV AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-RUN lein uberjar
+RUN --mount=type=cache,id=m2,target=/root/.m2,sharing=locked lein uberjar
 EXPOSE 3000
-CMD ["java", "-Dclojure.main.report=stderr", "-cp", "target/uberjar/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]
+CMD ["java", "-Dclojure.main.report=stderr", "-Dconf=env/prod/resources/config.edn", "-cp", "target/uberjar/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]
