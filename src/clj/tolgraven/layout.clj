@@ -62,7 +62,7 @@
    [:footer.footer-sticky ; [:footer>div.footer-content
     [:div.footer-content ;; XXX should adapt to available height, also disappear...
      [:div
-      [:h4 "joen.tolgraven@gmail.com"]
+      [:h4 "joen@tolgraven.se"]
       [:h5 (str "© 2020-" (-> (java.util.Date.)
                               .toInstant
                               (.atZone (.toZoneId (java.util.TimeZone/getDefault)))
@@ -98,6 +98,8 @@
     (for [path css-pre]
       (css-preload path))
     
+    ; inline style to avoid FOUC flash of unstyled content. needs more stuff tho
+    [:style "html {background-color: #121616; color: #edc;} a { color: #edc;}"]   
     (when-not (:dev env)
       (ohtml/link-to-css-bundles request ["styles.css"])) ; this is where everything ends up for prod but cant remember why?
     (for [href css-paths]
