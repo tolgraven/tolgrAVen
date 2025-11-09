@@ -5,6 +5,7 @@
    [clojure.string :as string]
    [reanimated.core :as anim]
    [tolgraven.ui :as ui]
+   [tolgraven.image :as img]
    [tolgraven.views-common :as views]
    [tolgraven.util :as util :refer [at]]
    [react-leaflet]))
@@ -16,9 +17,10 @@
 (defn activity-photo "Display photo for activity and allow to view fullscreen. Sadly seems can only get primary photo from Strava, not all?"
   [data]
   (when (pos? (:count data))
-    (let [item [:img {:src (-> data :primary :urls :600)
-                      :style {:object-fit "cover"
-                              :max-width "100%" }}]] 
+    (let [item [img/picture {:src (-> data :primary :urls :600)
+                             :alt "Activity photo"
+                             :style {:object-fit "cover"
+                                     :max-width "100%" }}]] 
       [:div.strava-activity-photo
        {:on-click (fn [e] (.stopPropagation e)
                     (rf/dispatch [:modal-zoom :fullscreen :open
@@ -145,8 +147,10 @@
        {:style {:position :relative}
         :on-mouse-enter #(reset! hovered? true)
         :on-mouse-leave #(reset! hovered? false)}
-       [:img.strava-kudo-dot
-        {:src "img/strava-icon.png" }]
+       [img/picture
+        {:src "img/strava-icon.png"
+         :alt "Strava"
+         :class "strava-kudo-dot"}]
        (when @hovered?
          [:div.strava-kudos-popup.strava-popup
            [:span (:firstname kudoer) " " (:lastname kudoer)]])])))
@@ -532,7 +536,8 @@
   (let [stats @(rf/subscribe [:strava/content [:stats]])]
     [:<>
      [:div.strava-stats-legend
-      [:h3 [:img {:src "img/strava-icon.png"
+      [:h3 [img/picture {:src "img/strava-icon.png"
+                        :alt "Strava"
                   :style {:width "1.25em"}}]]
       [:div "Rides"]
       [:div "Total distance"]
@@ -575,9 +580,10 @@
   (let [stats @(rf/subscribe [:intervals/content [:summary]])]
     [:<> ;div.strava-stats-intervals
      [:div.strava-stats-legend
-      [:h3 [:img {:src "img/intervals-icon.png"
-                  :style {:width "1.25em"
-                          :border-radius "50%"}}]
+      [:h3 [img/picture {:src "img/intervals-icon.png"
+                         :alt "Intervals.icu"
+                         :style {:width "1.25em"
+                                 :border-radius "50%"}}]
       " Week"]
       [:div "Rides"]
       [:div "Distance"]
@@ -617,7 +623,7 @@
            {:on-click #(reset! active-tab (:id tab))
             :class (when (= @active-tab (:id tab))
                      "active-tab")}
-           [:img.strava-stats-tab-img (:logo tab)]
+           [img/picture (merge (:logo tab) {:class "strava-stats-tab-img"})]
            [:div (:caption tab)]])]
 
        (case @active-tab
@@ -637,11 +643,12 @@
     [:section#strava.strava.section-with-media-bg-wrapper.covering-2
      {:on-click #(rf/dispatch [:strava/activity-expand nil])}
      [ui/appear-anon "opacity"
-      [:img.media-as-bg {:src (:background data)}]]
+      [img/media-as-bg {:src (:background data)}]]
      [ui/inset "Click the dots for details" 4]
      [:a {:href (:profile-url data)}
-      [:h1  [:img {:style {:height "2rem"}
-                   :src "img/strava_logo_nav.png"}]]]
+      [:h1  [img/picture {:style {:height "2rem"}
+                          :alt "Strava"
+                          :src "img/strava_logo_nav.png"}]]]
      #_(when (:error data)
        [:div
         [:h3 "Rate limited?"]

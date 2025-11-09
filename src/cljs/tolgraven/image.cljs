@@ -10,10 +10,18 @@
 
 (defn- should-use-modern-formats?
   "Determine if we should generate modern format sources for this image.
-   Skip for certain files like favicons, already modern formats, etc."
+   Skip for:
+   - SVG files (already vector-based)
+   - External URLs (we don't control those assets)
+   - URLs with query strings (likely already proxied/optimized)
+   - Favicons and app icons
+   - Already modern formats (webp, avif)"
   [src]
   (and (string? src)
        (re-find #"\.(jpe?g|png)$" src)
+       (not (re-find #"^(https?:|//)" src))               ;; Skip external URLs
+       (not (re-find #"\?" src))                          ;; Skip URLs with query strings
+       (not (re-find #"\.svg$" src))                      ;; Skip SVG files
        (not (re-find #"(favicon|android-chrome|apple-touch-icon|mstile)" src))))
 
 (defn picture

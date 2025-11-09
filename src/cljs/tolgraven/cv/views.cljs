@@ -4,6 +4,7 @@
    [re-frame.core :as rf]
    [clojure.string :as string]
    [tolgraven.ui :as ui]
+   [tolgraven.image :as img]
    [tolgraven.util :as util :refer [at]]
    [cljs-time.core :as ct]))
 
@@ -42,7 +43,7 @@
          [:p.cv-position position])
        [:p.cv-where where]
        (when logo
-         [:img {:src logo}])])))
+         [img/picture {:src logo :alt "Company logo"}])])))
 
 (defn capabilities "The various skills"
   [skills]
@@ -66,8 +67,10 @@
   (let [win-fullscreen? @(rf/subscribe [:state [:window :fullscreen?]])]
     [:div.cv-intro
      [ui/seen-anon "slide-in zoom opacity extra-slow"
-      [:img.fullwide
-       {:src "img/logo/tolgraven-logo.png"}]]
+      [img/picture
+       {:src "img/logo/tolgraven-logo.png"
+        :alt "tolgrAVen"
+        :class "fullwide"}]]
      [:p (:intro cv)]
      [:div.center-content
       [:div.cv-howto

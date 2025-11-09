@@ -4,8 +4,10 @@
    [re-frame.core :as rf]
    [clojure.string :as string]
    [tolgraven.ui :as ui]
+   [tolgraven.image :as img]
    [tolgraven.blog.views :as blog]
-   [tolgraven.util :as util :refer [at]]))
+   [tolgraven.util :as util :refer [at]])
+  (:require-macros [tolgraven.macros :as m]))
 
 (defn button "Search button, press to show input field..."
   []
@@ -15,15 +17,16 @@
       :on-click (fn [e]
                   (rf/dispatch [:search/state [:open?] (not @open?)])
                   (when-not @open? ; going from closed to open
-                    (r/after-render #(js/setTimeout
-                      (fn []
-                        (js/console.log "ran button")
-                        (util/scroll-to "search-input")
-                        (some-> "search-input" util/elem-by-id .focus))
-                      100))))}
-     [:img {:src "svg/search-ico.svg"
-            :style {:width "1.2em" :height "1.2em"
-                    :filter "var(--light-to-dark)"}}]]))
+                    (r/after-render
+                     #(js/setTimeout
+                       (fn []
+                         (util/scroll-to "search-input")
+                         (some-> "search-input" util/elem-by-id .focus))
+                       100))))}
+     [img/picture {:src "svg/search-ico.svg"
+                   :alt "Search"
+                   :style {:width "1.2em" :height "1.2em"
+                           :filter "var(--light-to-dark)"}}]]))
 
 (defn completion
   [query suggestion height]

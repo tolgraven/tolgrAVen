@@ -4,6 +4,7 @@
    [re-frame.core :as rf]
    [clojure.string :as string]
    [tolgraven.ui :as ui]
+   [tolgraven.image :as img]
    [tolgraven.util :as util :refer [at]]
    [cljs-time.core :as ct]
    [cljs-time.coerce :as ctc]
@@ -137,7 +138,9 @@
                          (reset! main-view-position
                                  (.-scrollTop (util/elem-by-id "github-commits-box")))
                          (reset! view sha))}
-         [:img.user-avatar.center-content {:src (:avatar_url author)}]
+         [img/picture {:src (:avatar_url author)
+                       :alt (str (:login author) " avatar")
+                       :class "user-avatar center-content"}]
          [:div.github-commit-details
           [:span.github-commit-time date]
           [:span.github-commit-time (ctf/unparse (ctf/formatters :time-no-ms)

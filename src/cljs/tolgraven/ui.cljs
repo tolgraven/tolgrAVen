@@ -3,6 +3,7 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    [tolgraven.util :as util :refer [at]]
+   [tolgraven.image :as img]
    [tolgraven.macros :as m :include-macros true]
    [clojure.string :as string]
    [clojure.pprint :as pprint]
@@ -260,12 +261,13 @@
      (let [src (if @error? fallback (or (:avatar user-map) fallback))]
       [:div.user-avatar-container ; wrapping in div causes stretch bs not to occur, somehow makes img respect its given w/h
        (when-not @loaded?
-         [:img.user-avatar
+         [img/picture
           {:src fallback
-           :class extra-class
+           :alt "User avatar"
+           :class (str "user-avatar " extra-class)
            :style {:position "absolute"}}])
-       [:img.user-avatar
-        {:class extra-class
+       [img/picture
+        {:class (str "user-avatar " extra-class)
          :src src
          :on-error #(reset! error? true)
          :on-load #(reset! loaded? true)
@@ -273,7 +275,7 @@
          :on-click (when (and (:avatar user-map)
                               (not (:no-zoom user-map)))
                      #(rf/dispatch [:modal-zoom :fullscreen :open
-                                    [:img {:src src}]]))
+                                    [img/picture {:src src :alt "Profile picture"}]]))
          :style (when (and (:avatar user-map)
                            (not (:no-zoom user-map)))
                   {:cursor "pointer"})} ]]))))
@@ -293,7 +295,7 @@
     {:class "section-with-media-bg-wrapper covering stick-up fullwidth"
      :on-click (when target #(rf/dispatch [:common/navigate! target]))}
     [:div.fader
-     [:img.media.media-as-bg bg]
+     [img/media-as-bg bg]
      [:section.covering-faded.noborder
       {:style (when tint {:background (str "var(--" tint ")")
                           :filter "saturate(1.7) brightness(0.9)"})}
@@ -356,10 +358,11 @@
                  {:width "80%" ; TODO nvm not hardcoding and not going crazy large when vw high, should be based on img size so don't blow up too much anyways
                   :margin "var(--space-lg) 10%"}) }
        [seen-anon "zoom" ;"slide-in"
-        [:img.media.image-inset
+        [img/picture
          (merge img-attr
-         {:on-click #(r/rswap! zoomed? not)})]]
-       (when caption [:figcaption caption])])))
+                {:class "media image-inset"
+                 :on-click #(r/rswap! zoomed? not)})]]]
+       (when caption [:figcaption caption]))))
 
 (defn auto-layout-text-imgs "Take text and images and space out floats appropriately. Pretty dumb but eh"
   [content]

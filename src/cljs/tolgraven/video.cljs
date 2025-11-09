@@ -13,10 +13,16 @@
 
 (defn- should-use-modern-formats?
   "Determine if we should generate modern format sources for this video.
-   Only for MP4 files currently."
+   Skip for:
+   - External URLs (we don't control those assets)
+   - URLs with query strings (likely already proxied/optimized)
+   - Streaming URLs (blob:, data:)
+   Only for local MP4/MOV files."
   [src]
   (and (string? src)
-       (re-find #"\.(mp4|mov)$" src)))
+       (re-find #"\.(mp4|mov)$" src)
+       (not (re-find #"^(https?:|//|blob:|data:)" src))    ;; Skip external/blob/data URLs
+       (not (re-find #"\?" src))))
 
 (defn video
   "Generate a <video> element with WebM (VP9/AV1) sources and fallback to original.
@@ -58,6 +64,16 @@
    Useful when you need to add attributes conditionally or from multiple sources."
   [base-attrs dynamic-attrs]
   [video (merge base-attrs dynamic-attrs)])
+
+(defn media-as-bg
+  "Generate video element optimized for use as background media.
+   Adds common background styling attributes and uses poster optimization."
+  [{:keys [src poster class] :as attrs}]
+  (let [combined-attrs (merge attrs
+                              {:class (str "media media-as-bg " (or class ""))})]
+    (if poster
+      [video-with-picture-poster combined-attrs {:poster poster}]
+      [video combined-attrs])))
 
 (defn get-src-variants
   "Get all available format variants for a video path.

@@ -96,15 +96,13 @@
 
              :interlude [{:title "What does that mean?"
                           :caption "Stage light visualizer for the browser with custom shaders"
-                          :bg [:video.media.media-as-bg
-                               {:poster "media/fog-3d-small.jpg" :src "media/fog-3d-small.mp4" :playsInline true :autoPlay true :muted true } ]}
+                          :bg {:poster "media/fog-3d-small.jpg" :src "media/fog-3d-small.mp4" :playsInline true :autoPlay true :muted true}}
                          {:title "For who?"
                           :caption "Nihiloxica video shoot, Kampala"
-                          :bg [:video.media.media-as-bg
-                               {:poster "media/nihil-shoot2.jpg" :src "media/nihil-shoot2.mp4" :playsInline true :autoPlay true :muted true } ]}
+                          :bg {:poster "media/nihil-shoot2.jpg" :src "media/nihil-shoot2.mp4" :playsInline true :autoPlay true :muted true}}
                          {:title "Portfolio forthcoming, have some components"
                           :caption "Be ready"
-                          :bg [:img.media.media-as-bg {:src "img/collage-strips.jpg"}]}]
+                          :bg {:src "img/collage-strips.jpg"}}]
              :cv        {:heading {:title "CV"
                                    :target :cv
                                    :bg {:src "img/wide-spot-ctrl-small.jpg"}

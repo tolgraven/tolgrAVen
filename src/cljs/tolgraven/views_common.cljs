@@ -6,6 +6,7 @@
    [clojure.string :as string]
    [markdown.core :refer [md->html]]
    [tolgraven.ui :as ui]
+   [tolgraven.image :as img]
    [tolgraven.db :as db]
    [tolgraven.search.views :as search]
    [tolgraven.util :as util :refer [at]]))
@@ -219,7 +220,7 @@
      [:div.footer-column {:id id}
 
       (when logo
-        [:img.img-icon logo])
+        [img/picture (merge logo {:class "img-icon"})])
       [:div
        (when title [:h4 title])
        (when email [contact-ways email])
@@ -247,8 +248,8 @@
                             [:a {:href href :name name}
                              [:div.footer-link-with-text
                               [:p name] [:p info]]])])
-          (when img (for [img img]  ^{:key (str id "-" (:src img))}
-                      [:img.img-icon img]))])])
+          (when img (for [img-data img]  ^{:key (str id "-" (:src img-data))}
+                      [img/picture (merge img-data {:class "img-icon"})]))])])
 
 
 (defn footer "The sticky footer visible at load or when scrolling up."

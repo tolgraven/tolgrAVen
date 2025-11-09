@@ -23,6 +23,16 @@
 (defn- img-preload [path] [:link {:rel "preload" :as "image" :href path}])
 (defn- css-preload [path] [:link {:rel "preload" :as "style" :type "text/css" :href path}])
 
+(defn- img-preload-modern
+  "Preload image with modern format support (AVIF/WebP/original).
+   Browsers will only fetch the format they support."
+  [path]
+  (let [base (clojure.string/replace path #"\.(jpg|jpeg|png)$" "")]
+    [:<>
+     [:link {:rel "preload" :as "image" :href (str base ".avif") :type "image/avif"}]
+     [:link {:rel "preload" :as "image" :href (str base ".webp") :type "image/webp"}]
+     [:link {:rel "preload" :as "image" :href path}]]))
+
 (defn- loading-spinner
   [text]
   [:h1#loading-full-page
@@ -84,24 +94,34 @@
     [:meta {:name "og:description" :content description}]
     [:meta {:name "og:image" :content title-img}]         ; ideally would get overridden on like, blog-post with cover img...
     [:meta {:name "theme-color" :content "#1A1C1C"}]    ; for mobile safari status bar
-    [:meta {:name "theme-color" :content "#edc" :media "(prefers-color-scheme: light)"}]    ; for mobile safari status bar
+    [:meta {:name "theme-color" :content "#edc"
+            :media "(prefers-color-scheme: light)"}]    ; for mobile safari status bar
     [:meta {:name "mobile-web-app-capable" :content "yes"}]
-    [:meta {:name "apple-mobile-web-app-status-bar-style" :content "black-translucent"}] ; ought to be theme dependent tho
+    #_[:meta {:name "apple-mobile-web-app-status-bar-style"
+            :content "black-translucent"}] ; ought to be theme dependent tho
     [:base {:href "/"}]
     
     (for [link link-pre]
       (preconnect link))
     
     (for [path img-pre]
-      (img-preload path))
+      (img-preload-modern path))
 
     (for [path css-pre]
       (css-preload path))
     
     ; inline style to avoid FOUC flash of unstyled content. needs more stuff tho
-    [:style "html {background-color: #121616; color: #edc;} a { color: #edc;}"]   
+    [:style "html {background-color: #121616; color: #edc;}
+             a { color: #edc;}"]   
     (when-not (:dev env)
-      (ohtml/link-to-css-bundles request ["styles.css"])) ; this is where everything ends up for prod but cant remember why?
+      (map (fn [path]
+             [:link {:href path
+                     :rel "stylesheet"
+                     :type "text/css"
+                     :async true
+                     :media "print"
+                     :onload "this.media='all'"}])
+           (olink/bundle-paths request ["styles.css"]))) ; this is where everything ends up for prod but cant remember why?
     (for [href css-paths]
       (css href))
     
@@ -128,7 +148,7 @@
       ok
       (content-type "text/html; charset=utf-8")))
 
-(def render-hiccup-memoized)
+(def render-hiccup-memo) ; well no because of anti forgery token, requests differing etc
 
 (defn render-home
   [request]
@@ -139,10 +159,8 @@
                                     "img/foggy-shit-small.jpg") ; uh obviously not for any page though, like blog and whatnot...
    :title "tolgrAVen audiovisual"
    :description "tolgrAVen audiovisual by Joen Tolgraven"
-   :pre-pre [["media/fog-3d-small.mp4" "video"]
-             #_["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900" "font"]
-             #_["css/solid.css" "style"]]
-   :css-paths (concat [;"https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
+   :pre-pre [["media/fog-3d-small.mp4" "video"]]
+   :css-paths (concat ["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
                        "css/fontawesome.css"
                        "css/solid.css"
                        "css/brands.min.css"
@@ -161,7 +179,7 @@
                gtag('config', 'G-Y8H6RLZX3V');"])
    :css-pre ["css/solid.css"]
    :js-pre []
-   :img-pre [#_"img/foggy-shit-small.jpg"]
+   :img-pre ["img/logo/tolgraven-logo.png"]  ; Preload logo for instant display
    :link-pre (concat
               ["https://firestore.googleapis.com"]
               (when-not (:dev env)
@@ -185,7 +203,7 @@
 
        (when-not (:dev env)
          [:link {:href "/css/tolgraven/main.min.css" :rel "stylesheet" :type "text/css"}])
-       #_(ohtml/link-to-css-bundles error-details ["styles.css"])
+       (ohtml/link-to-css-bundles request ["styles.css"])
        [:script {:type "text/javascript"}
         (str "var csrfToken = \"" (force *anti-forgery-token*) "\";")]] ; this is where everything ends up for prod but cant remember why?
 

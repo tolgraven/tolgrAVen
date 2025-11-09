@@ -4,6 +4,7 @@
    [re-frame.core :as rf]
    [clojure.string :as string]
    [tolgraven.ui :as ui]
+   [tolgraven.image :as img]
    [tolgraven.util :as util :refer [at]]))
 
 (defn instagram-post "An instagram post"
@@ -37,15 +38,16 @@
               :let [url @(rf/subscribe [:href-external-img
                                        (:media_url post)
                                        "fit-in" "800x800"])
-                    item [:img {:class (when-not (:media_url post)
-                                         "transparent-border")
-                                :src (or #_@fallback ; would cause all to show fallback if one errors
-                                         #_url      ; imagor not working with instagram so...
-                                         (:media_url post)
-                                         fallback-url)
-                                :on-error (fn [_]
-                                            (rf/dispatch [:instagram/fetch-from-insta [(:id post)]]) ; dispatch on failed fetch due to url expiry
-                                            #_(reset! fallback fallback-url))}]]] ; in the meantime (til fetch comes through to sub) use fallback ratom
+                    item [img/picture {:class (when-not (:media_url post)
+                                                     "transparent-border")
+                                       :alt (or (:caption post) "Instagram post")
+                                       :src (or #_@fallback ; would cause all to show fallback if one errors
+                                                #_url      ; imagor not working with instagram so...
+                                                (:media_url post)
+                                                fallback-url)
+                                       :on-error (fn [_]
+                                                   (rf/dispatch [:instagram/fetch-from-insta [(:id post)]]) ; dispatch on failed fetch due to url expiry
+                                                   #_(reset! fallback fallback-url))}]]] ; in the meantime (til fetch comes through to sub) use fallback ratom
           ^{:key (str "instagram-" (or (:id post) (random-uuid)))}
           [instagram-post post item]))]])))
 

@@ -6,6 +6,8 @@
    ; ["react-player" :as rp :refer (SoundCloud)]
    [reanimated.core :as anim]
    [tolgraven.ui :as ui]
+   [tolgraven.image :as img]
+   [tolgraven.video :as vid]
    [tolgraven.strava.views :as strava]
    [tolgraven.gpt.views :as gpt]
    [tolgraven.chat.views :as chat]
@@ -29,13 +31,20 @@
      {:class "logo-tolgraven"
       :style {:background-image (str "url('" path "')")}} ])) ; cant remember why I did the weird path-in-css bs but anyways...
 
+(defn- media-as-bg-smart "Detects whether media is image or video and uses appropriate component"
+  [media-data]
+  (let [src (:src media-data)]
+    (if (and src (re-find #"\.(mp4|mov|webm)$" src))
+      [vid/media-as-bg media-data]
+      [img/media-as-bg media-data])))
+
 (defn ui-carousel-bg "Intro (bg img only) jumbotron slider
                       Should be a generic system also working for page transitions etc"
   [img-attrs]
   [:div#top-banner.carousel ;{:class ""}
    ; (map-indexed )
-    (for [img img-attrs] ^{:key (str "carousel-bg-" (:src img))}
-         [:img.media.media-as-bg img])])
+    (for [img-data img-attrs] ^{:key (str "carousel-bg-" (:src img-data))}
+         [media-as-bg-smart img-data])])
          ; [:div.carousel-item
          ;  [:img.media.media-as-bg img]])])
 
@@ -52,7 +61,7 @@
            [:div.carousel__snapper
            [:a.carousel__prev {:href "#slide-fuckit-events are better4"}]
            [:a.carousel__next {:href "#carousel__slide2"} "Go to next"]] ;for nav
-           [:img.media.media-as-bg img]]
+           [media-as-bg-smart img]]
          {:key (str "carousel-bg-" (inc i))}))
      img-attrs)]
    [:aside.carousel-nav>ol
@@ -76,7 +85,7 @@
     (fn [{:keys [title text buttons logo-bg bg]}]
      [:section#intro
      [bg-logo logo-bg]
-     [:img#top-banner.media.media-as-bg (first bg)]
+     [img/media-as-bg (merge (first bg) {:id "top-banner"})]
 
      [:div.h1-wrapper.center-content
       [:h1.h-responsive.h-intro
@@ -139,11 +148,11 @@
         :on-touch-start #(do-control :play)
         :on-touch-end   #(do-control :pause)}
        (when-let [poster (-> bg second :poster)]
-         [:img.media.media-as-bg ; covering image since need to hide video
+         [img/picture ; Optimized poster with WebP/AVIF support
           {:src poster
-           :style {:z-index 1}
-           :class (when (false? @on-hold) ; inited, not on hold
-                    "hidden")}]) ; doesnt actually engage :|
+           :alt "Video poster"
+           :class (str "media media-as-bg " (when (false? @on-hold) "hidden"))
+           :style {:z-index 1}}]) ; doesnt actually engage :|
        (util/add-attrs bg {:id (str "interlude-bg-" nr)
                            :ref (fn [el]
                                   (when (and el (not @vid-ref)) ;presumably everything torn down on nil anyways so?
@@ -221,8 +230,9 @@
     {:class "link-anchor stick-up section-with-media-bg-wrapper"} ; want to  focus elem to zoomy zoom slow after reaching scroll
     [:a {:name "link-services"}]
      [ui/inset caption 4] ;auto-gen
-     [:img#services-bg
-      (merge bg {:class "media-as-bg darken-5 parallax-bg"
+     [img/media-as-bg
+      (merge bg {:id "services-bg"
+                 :class "darken-5 parallax-bg"
                  :ref #(when % (rf/dispatch [:focus-element "services-bg"]))})]
      [services-fullscreenable categories]])
 
@@ -233,7 +243,7 @@
     (fn [{:keys [title caption bg]}]
         [:div#moneyshot {:class "section-with-media-bg-wrapper parallax-wrapper covering stick-up"
           :ref #(observer %)}
-         [:img.media-as-bg ; TODO try it as background-image instead of separate div, see if calms down...
+         [img/media-as-bg ; TODO try it as background-image instead of separate div, see if calms down...
           (merge bg {:class "darken-8 parallax-bg origin-toptop" ;origin-toptop
                      :style (merge (when (pos? @frac)
                                      {:opacity 1.0})
@@ -273,7 +283,7 @@
    [:div.sideways
     (when @(rf/subscribe [:state [:gallery :loaded]])
       (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
-         [:img.media img]))]]) ; TODO add captions and other features etc...
+         [img/picture (merge img {:class "media"})]))]]) ; TODO add captions and other features etc...
 
 (defn ui-gallery-2 "Gallery carousel"
   [img-attrs]
@@ -282,7 +292,7 @@
    [ui/carousel-normal :gallery-2-normal {:style {:height "40vh"} }
     (into []
           (for [img img-attrs] ^{:key (str "gallery-2-normal-" (:src img))}
-            [:img.media img]))]])
+            [img/picture (merge img {:class "media"})]))]])
 
 (defn ui-gallery-3 "Gallery carousel"
   [img-attrs]
@@ -291,7 +301,7 @@
    [ui/carousel :gallery-2 {:style {:height "30vh"} }
     (into []
           (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
-         [:img.media img]))]])
+         [img/picture (merge img {:class "media"})]))]])
 
 
 (defn remote-player
@@ -305,8 +315,10 @@
 (defn soundcloud-loading "A dummy to show before initing react-player"
   [artist song]
   [:div.soundcloud-player-loading
-   [:img.center-content
-    {:src "img/soundcloud-logo.png"}]
+   [img/picture
+    {:src "img/soundcloud-logo.png"
+     :alt "SoundCloud"
+     :class "center-content"}]
    [:h3 song]
    [:h4 artist]])
 
