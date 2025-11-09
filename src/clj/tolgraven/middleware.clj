@@ -68,8 +68,8 @@
    (assets/load-bundles "public"
                         {"main.js" ["/js/compiled/out/main.js"]})
    (assets/load-assets "public"
-                       [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?)$"
-                        #"/media/.*\.(jpg?|jpeg?)$"])
+                       [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?|webp|avif)$"
+                        #"/media/.*\.(jpg?|jpeg?|webp|avif)$"])
    (assets/load-assets "public"
                        ["/sitemap.xml" "/robots.txt"])))
 
@@ -80,10 +80,10 @@
       ; (optimizations/minify-css-assets options) ;my css breaks it ofc ; not anymore apparently ; well it's already minified by autoprefixer or? could anyways
       (optimizations/inline-css-imports)
       (optimizations/concatenate-bundles options)
-      (transform-images {:regexp #"(/media/.*\.jpg)|(/img/.*\.(jpg|png))" ; in-place which would be baddd on dev but only runs on prod so
+      (transform-images {:regexp #"(/media/.*\.jpg)|(/img/.*\.(jpg|png))" ; Only transform originals, not webp/avif
                          :quality 0.80
-                         :progressive true})
-      (optimizations/add-cache-busted-expires-headers) ; pisses off lighthouse. not sure why would want media to instantly expire anyways so
+                         :progressive true}) ; webp/avif already optimized at creation time
+      ; (optimizations/add-cache-busted-expires-headers) ; pisses off lighthouse. not sure why would want media to instantly expire anyways so
       (optimizations/add-last-modified-headers)))
 
 (defonce serve-live-assets-maybe-autorefresh
