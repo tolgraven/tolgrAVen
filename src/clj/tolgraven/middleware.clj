@@ -69,7 +69,7 @@
                         {"main.js" ["/js/compiled/out/main.js"]})
    (assets/load-assets "public"
                        [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?|webp|avif)$"
-                        #"/media/.*\.(jpg?|jpeg?|webp|avif)$"])
+                        #"/media/.*\.(jpg?|jpeg?|webp|avif|mp4|webm)$"])
    (assets/load-assets "public"
                        ["/sitemap.xml" "/robots.txt"])))
 
