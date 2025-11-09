@@ -113,6 +113,7 @@
     ; inline style to avoid FOUC flash of unstyled content. needs more stuff tho
     [:style "html {background-color: #121616; color: #edc;}
              a { color: #edc;}"]   
+
     (when-not (:dev env)
       (map (fn [path]
              [:link {:href path
@@ -166,11 +167,11 @@
                        "css/brands.min.css"
                        "css/opensans.css"
                        "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]
-                      [(when (:dev env)
-                         "css/tolgraven/main.min.css")])
-   :js-paths (concat [{:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}
-                      (when-not (:dev env)
-                        {:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"})])
+                      (when (:dev env)
+                        ["css/tolgraven/main.min.css"]))
+   :js-paths (concat [{:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}]
+                     (when-not (:dev env)
+                       [{:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"}]))
    :js-raw (when-not (:dev env)
              ["window.dataLayer = window.dataLayer || [];
                function gtag(){dataLayer.push(arguments);}
@@ -179,7 +180,7 @@
                gtag('config', 'G-Y8H6RLZX3V');"])
    :css-pre ["css/solid.css"]
    :js-pre []
-   :img-pre ["img/logo/tolgraven-logo.png"]  ; Preload logo for instant display
+   :img-pre [#_"img/logo/tolgraven-logo.png"]  ; Preload logo for instant display
    :link-pre (concat
               ["https://firestore.googleapis.com"]
               (when-not (:dev env)

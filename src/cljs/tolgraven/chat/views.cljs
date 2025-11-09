@@ -18,7 +18,7 @@
         (util/timestamp (:time message))
         [:span.chat-message-time-exact
          (when @hovered? (util/unix->ts (:time message)))]]
-       
+
        [:span.chat-message-text (:text message)]
        [:div.chat-message-user.flex
         (or (:name user) "anon")

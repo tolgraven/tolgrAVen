@@ -59,59 +59,6 @@
     [:video attrs
      [:source {:src src}]]))
 
-(defn video-with-attrs
-  "Convenience wrapper that merges attributes into video element.
-   Useful when you need to add attributes conditionally or from multiple sources."
-  [base-attrs dynamic-attrs]
-  [video (merge base-attrs dynamic-attrs)])
-
-(defn media-as-bg
-  "Generate video element optimized for use as background media.
-   Adds common background styling attributes and uses poster optimization."
-  [{:keys [src poster class] :as attrs}]
-  (let [combined-attrs (merge attrs
-                              {:class (str "media media-as-bg " (or class ""))})]
-    (if poster
-      [video-with-picture-poster combined-attrs {:poster poster}]
-      [video combined-attrs])))
-
-(defn get-src-variants
-  "Get all available format variants for a video path.
-   Returns a map with :original, :vp9, and :av1 paths.
-   Useful for preloading or manual format selection."
-  [src]
-  (if (should-use-modern-formats? src)
-    {:original src
-     :vp9 (replace-extension src "vp9")
-     :av1 (replace-extension src "av1")}
-    {:original src}))
-
-(defn preload-link
-  "Generate a <link rel='preload'> for a video with modern format support.
-   Preloads the best format the browser supports."
-  [src]
-  (let [variants (get-src-variants src)]
-    (if (contains? variants :av1)
-      ;; For modern browsers, create preload hints for all formats
-      ;; Browser will only fetch the one it supports
-      [:<>
-       [:link {:rel "preload"
-               :as "video"
-               :href (:av1 variants)
-               :type "video/webm; codecs=av01.0.05M.08"}]
-       [:link {:rel "preload"
-               :as "video"
-               :href (:vp9 variants)
-               :type "video/webm; codecs=vp9"}]
-       [:link {:rel "preload"
-               :as "video"
-               :href (:original variants)
-               :type "video/mp4"}]]
-      ;; Fallback: just preload the original
-      [:link {:rel "preload"
-              :as "video"
-              :href (:original variants)}])))
-
 (defn video-with-picture-poster
   "Generate a video with an optimized poster image using modern formats.
 
@@ -131,48 +78,35 @@
 
    The video should have appropriate event handlers to hide the poster on play."
   [video-attrs {:keys [poster alt] :as poster-attrs}]
-  (let [poster-only-attrs (select-keys poster-attrs [:poster :alt :class :style])]
-    [:div.video-with-poster-wrapper
-     {:style {:position "relative"}}
-     ;; Optimized poster image using picture element
-     (when poster
-       [img/picture (merge {:src poster
-                           :alt (or alt "Video poster")
-                           :class "video-poster-image"
-                           :style {:position "absolute"
-                                   :top 0
-                                   :left 0
-                                   :width "100%"
-                                   :height "100%"
-                                   :object-fit "cover"
-                                   :z-index 1
-                                   :pointer-events "none"}}
-                          (select-keys poster-attrs [:class :style]))])
-     ;; Video element with modern formats
-     [video (dissoc video-attrs :poster)]]))
+  [:div.video-with-poster-wrapper
+   {:style {:position "relative"}}
+   ;; Optimized poster image using picture element
+   (when poster
+     [img/picture (merge {:src poster
+                         :alt (or alt "Video poster")
+                         :class "video-poster-image"
+                         :style {:position "absolute"
+                                 :top 0
+                                 :left 0
+                                 :width "100%"
+                                 :height "100%"
+                                 :object-fit "cover"
+                                 :z-index 1
+                                 :pointer-events "none"}}
+                        (select-keys poster-attrs [:class :style]))])
+   ;; Video element with modern formats
+   [video (assoc (dissoc video-attrs :poster) :style {:position :absolute
+                                                      :object-fit "cover"})]])
 
-(defn infer-poster
-  "Infer poster image path from video path.
-   E.g., 'media/video.mp4' -> 'media/video.jpg'
-   Returns nil if no poster can be inferred."
-  [video-src]
-  (when video-src
-    (string/replace video-src #"\.(mp4|mov|avi)$" ".jpg")))
-
-(defn video-with-auto-poster
-  "Convenience wrapper that automatically infers poster path from video path.
-
-   Usage:
-     [video-with-auto-poster {:src 'media/fog-3d-small.mp4' :loop true}]
-
-   Automatically looks for 'media/fog-3d-small.jpg' as the poster and uses
-   optimized formats (WebP/AVIF) via the picture element."
-  [video-attrs]
-  (let [poster-path (infer-poster (:src video-attrs))]
-    (if poster-path
-      [video-with-picture-poster video-attrs {:poster poster-path
-                                               :alt "Video preview"}]
-      [video video-attrs])))
+(defn media-as-bg
+  "Generate video element optimized for use as background media.
+   Adds common background styling attributes and uses poster optimization."
+  [{:keys [src poster class] :as attrs}]
+  (let [combined-attrs (merge attrs
+                              {:class (str "media media-as-bg " (or class ""))})]
+    (if poster
+      [video-with-picture-poster combined-attrs {:poster poster}]
+      [video combined-attrs])))
 
 ;; For backward compatibility - export main functions
 (def ^:export modernVideo video)

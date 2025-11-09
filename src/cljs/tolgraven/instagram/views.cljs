@@ -31,26 +31,24 @@
     (fn []
       [:section#gallery-3.fullwide.covering
        [:div.covering.instagram
-        {:ref #(when (and % @posts)
-                 (reset! fallback nil))} ; wouldn't work
-        (doall
-         (for [post (or @posts (range @amount)) ; empty seq triggers fallbacks
-              :let [url @(rf/subscribe [:href-external-img
-                                       (:media_url post)
-                                       "fit-in" "800x800"])
-                    item [img/picture {:class (when-not (:media_url post)
-                                                     "transparent-border")
-                                       :alt (or (:caption post) "Instagram post")
-                                       :src (or #_@fallback ; would cause all to show fallback if one errors
-                                                #_url      ; imagor not working with instagram so...
-                                                (:media_url post)
-                                                fallback-url)
-                                       :on-error (fn [_]
-                                                   (rf/dispatch [:instagram/fetch-from-insta [(:id post)]]) ; dispatch on failed fetch due to url expiry
-                                                   #_(reset! fallback fallback-url))}]]] ; in the meantime (til fetch comes through to sub) use fallback ratom
-          ^{:key (str "instagram-" (or (:id post) (random-uuid)))}
-          [instagram-post post item]))]])))
+        ; {:ref #(when (and % @posts)
+        ;          (reset! fallback nil))} ; wouldn't work
+        [:<>
+         (doall
+          (for [post (or @posts (range @amount)) ; empty seq triggers fallbacks
+                :let [url @(rf/subscribe [:href-external-img
+                                          (:media_url post)
+                                          "fit-in" "800x800"])
+                      item [img/picture {:class (when-not (:media_url post)
+                                                  "transparent-border")
+                                         :alt (or (:caption post) "Instagram post")
+                                         :src (or @fallback ; would cause all to show fallback if one errors
+                                                  url      ; imagor not working with instagram so...
+                                                  (:media_url post)
+                                                  fallback-url)
+                                         :on-error (fn [_]
+                                                     (rf/dispatch [:instagram/fetch-from-insta [(:id post)]]) ; dispatch on failed fetch due to url expiry
+                                                     (reset! fallback fallback-url))}]]] ; in the meantime (til fetch comes through to sub) use fallback ratom
+            ^{:key (str "instagram-" (or (:id post) (random-uuid)))}
+            [instagram-post post item]))]]])))
 
-; @(rf/subscribe [:href-external-img
-;                "XXXXX"
-;                "fit-in" "800x800"])

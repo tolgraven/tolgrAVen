@@ -614,17 +614,18 @@
                  "stats-minimized")}
 
        [:div.strava-stats-tabs
-        (for [tab [{:id :strava-stats       :caption "summary"  :logo strava-logo}
-                   {:id :strava-detailed    :caption "detailed" :logo strava-logo}
-                   {:id :intervals-stats    :caption "stats"    :logo intervals-logo}
-                   {:id :intervals-graphs   :caption "graphs"   :logo intervals-logo}]]
-          ^{:key (str "strava-general-stats-" (:id tab))}
-          [:button.strava-tab-btn
-           {:on-click #(reset! active-tab (:id tab))
-            :class (when (= @active-tab (:id tab))
-                     "active-tab")}
-           [img/picture (merge (:logo tab) {:class "strava-stats-tab-img"})]
-           [:div (:caption tab)]])]
+        (doall
+         (for [tab [{:id :strava-stats       :caption "summary"  :logo strava-logo}
+                    {:id :strava-detailed    :caption "detailed" :logo strava-logo}
+                    {:id :intervals-stats    :caption "stats"    :logo intervals-logo}
+                    {:id :intervals-graphs   :caption "graphs"   :logo intervals-logo}]]
+           ^{:key (str "strava-general-stats-" (:id tab))}
+           [:button.strava-tab-btn
+            {:on-click #(reset! active-tab (:id tab))
+             :class (when (= @active-tab (:id tab))
+                      "active-tab")}
+            [img/picture (merge (:logo tab) {:class "strava-stats-tab-img"})]
+            [:div (:caption tab)]]))]
 
        (case @active-tab
          :strava-stats      [strava-general-stats]

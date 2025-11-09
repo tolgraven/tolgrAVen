@@ -147,27 +147,29 @@
         :on-mouse-leave #(do-control :pause)
         :on-touch-start #(do-control :play)
         :on-touch-end   #(do-control :pause)}
-       (when-let [poster (-> bg second :poster)]
-         [img/picture ; Optimized poster with WebP/AVIF support
+       [vid/video-with-picture-poster
+        (merge
+         {:id (str "interlude-bg-" nr)
+          :ref (fn [el]
+                 (when (and el (not @vid-ref)) ;presumably everything torn down on nil anyways so?
+                   (reset! vid-ref el)))
+          :onCanPlay (fn []
+                       (when (and (not @controls)
+                                  @vid-ref)
+                         (reset! controls (util/play-pauser
+                                           @vid-ref
+                                           :time-per-step (/ control-time 3)))
+                         (reset! on-hold true)
+                         (js/setTimeout #(do-control :play)
+                                        8000))) ; should be read from css i guess to correspond with other anim
+          :loop true
+          :muted true}
+         bg)
+        (when-let [poster (-> bg second :poster)]
           {:src poster
            :alt "Video poster"
            :class (str "media media-as-bg " (when (false? @on-hold) "hidden"))
-           :style {:z-index 1}}]) ; doesnt actually engage :|
-       (util/add-attrs bg {:id (str "interlude-bg-" nr)
-                           :ref (fn [el]
-                                  (when (and el (not @vid-ref)) ;presumably everything torn down on nil anyways so?
-                                    (reset! vid-ref el)))
-                           :onCanPlay (fn []
-                                        (when (and (not @controls)
-                                                   @vid-ref)
-                                          (reset! controls (util/play-pauser
-                                                            @vid-ref
-                                                            :time-per-step (/ control-time 3)))
-                                          (reset! on-hold true)
-                                          (js/setTimeout #(do-control :play)
-                                                         8000))) ; should be read from css i guess to correspond with other anim
-                           :loop true
-                           :muted true}) ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
+           :style {:z-index 1}})] ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
        [:div
         {:class "covering-faded widescreen-safe center-content parallax-group"
          :ref #(observer %) ;oh yeah check first el for :video cant work it's rendered at that point lol
@@ -426,7 +428,8 @@
        [run-init id])
      (cond-> [component]
        content (conj @(rf/subscribe [:content [content]]))
-       args    (conj args))]))
+       args    (conj args)
+       true    vec)]))
 
 (defn get-section "Get a section, from either a vector (with args) or a straight keyword"
   [section]
