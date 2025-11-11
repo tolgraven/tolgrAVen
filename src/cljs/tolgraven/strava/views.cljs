@@ -602,12 +602,19 @@
   (let [stats @(rf/subscribe [:intervals/content [:summary]])]
    [:div]))
 
+(def strava-logo {:src "img/strava-icon.png"})
+(def intervals-logo {:src "img/intervals-icon.png"
+                     :style {:border-radius "50%"}})
+
+(def tabs
+  [{:id :strava-stats     :caption "summary"  :logo strava-logo :<comp> [strava-general-stats]}
+   {:id :strava-detailed  :caption "detailed" :logo strava-logo :<comp> [strava-details-stats]}
+   {:id :intervals-stats  :caption "stats"    :logo intervals-logo :<comp> [intervals-general-stats]}
+   {:id :intervals-graphs :caption "graphs"   :logo intervals-logo :<comp> [intervals-graphs]}])
+
 (defn general-stats "Box of stats, from strava or other related provider"
-  [stats]
-  (let [active-tab (r/atom :strava-stats)
-        strava-logo {:src "img/strava-icon.png"}
-        intervals-logo {:src "img/intervals-icon.png"
-                        :style {:border-radius "50%"}}]
+  [_]
+  (let [active-tab (r/atom :strava-stats)]
     (fn [stats]
       [:div.strava-stats.flex
        {:class (when @(rf/subscribe [:strava/state [:stats-minimized]])
@@ -615,10 +622,7 @@
 
        [:div.strava-stats-tabs
         (doall
-         (for [tab [{:id :strava-stats       :caption "summary"  :logo strava-logo}
-                    {:id :strava-detailed    :caption "detailed" :logo strava-logo}
-                    {:id :intervals-stats    :caption "stats"    :logo intervals-logo}
-                    {:id :intervals-graphs   :caption "graphs"   :logo intervals-logo}]]
+         (for [tab tabs]
            ^{:key (str "strava-general-stats-" (:id tab))}
            [:button.strava-tab-btn
             {:on-click #(reset! active-tab (:id tab))
@@ -627,11 +631,7 @@
             [img/picture (merge (:logo tab) {:class "strava-stats-tab-img"})]
             [:div (:caption tab)]]))]
 
-       (case @active-tab
-         :strava-stats      [strava-general-stats]
-         :strava-detailed   [strava-details-stats]
-         :intervals-stats   [intervals-general-stats]
-         :intervals-graphs  [intervals-graphs])])))
+       (:<comp> @active-tab)])))
 
 (defn strava "Make an increasingly fancy visualizer feed thingy. Relies on [:content :strava] in db"
   []

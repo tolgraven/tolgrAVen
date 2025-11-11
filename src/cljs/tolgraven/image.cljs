@@ -24,6 +24,17 @@
        (not (re-find #"\.svg$" src))                      ;; Skip SVG files
        (not (re-find #"(favicon|android-chrome|apple-touch-icon|mstile)" src))))
 
+(defn get-src-variants
+  "Get all available format variants for an image path.
+   Returns a map with :original, :webp, and :avif paths.
+   Useful for preloading or manual format selection."
+  [src]
+  (if (should-use-modern-formats? src)
+    {:original src
+     :webp (replace-extension src "webp")
+     :avif (replace-extension src "avif")}
+    {:original src}))
+
 (defn picture
   "Generate a <picture> element with WebP and AVIF sources and fallback to original.
 
@@ -63,17 +74,6 @@
   (let [combined-attrs (merge attrs
                               {:class (str "media media-as-bg " (or class ""))})]
     [picture combined-attrs]))
-
-(defn get-src-variants
-  "Get all available format variants for an image path.
-   Returns a map with :original, :webp, and :avif paths.
-   Useful for preloading or manual format selection."
-  [src]
-  (if (should-use-modern-formats? src)
-    {:original src
-     :webp (replace-extension src "webp")
-     :avif (replace-extension src "avif")}
-    {:original src}))
 
 ;; For backward compatibility - export main functions
 (def ^:export responsiveImage picture)

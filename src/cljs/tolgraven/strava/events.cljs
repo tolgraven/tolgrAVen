@@ -22,6 +22,10 @@
       {:dispatch
        [:<-store [:strava] [:strava/store-client]]})))
 
+(rf/reg-event-fx :strava/state
+  (fn [{:keys [db]} [_ path value]]
+    {:db (assoc-in db (into [:state :strava] path) value)}))
+
 (rf/reg-event-fx :strava/store-client   [(rf/inject-cofx :now)]
   (fn [{:keys [db now]} [_ data]]
     (let [expired? (neg? (- (-> data :auth :expires_at) (/ now 1000)))]

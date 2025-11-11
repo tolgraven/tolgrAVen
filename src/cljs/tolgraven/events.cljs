@@ -550,6 +550,11 @@
                                     assoc)
                      value)})))
 
+(rf/reg-event-fx :ls/get-path-as-event   [(rf/inject-cofx :ls)]
+ (fn [{:keys [_ ls]} [_ ls-path event]]
+   (let [value (get-in ls ls-path)]
+     {:dispatch (conj event value)})))
+
 (rf/reg-event-fx :cookie/show-notice   [(rf/inject-cofx :ls)]
  (fn [{:keys [db ls]} [_ ]] ;map of keys to paths I guess?
    (let [id :cookie-notice]

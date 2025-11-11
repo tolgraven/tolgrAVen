@@ -39,16 +39,20 @@
                 :let [url @(rf/subscribe [:href-external-img
                                           (:media_url post)
                                           "fit-in" "800x800"])
-                      item [img/picture {:class (when-not (:media_url post)
+                      item [img/picture {:class (when (or (not (:media_url post))
+                                                          @fallback)
                                                   "transparent-border")
                                          :alt (or (:caption post) "Instagram post")
                                          :src (or @fallback ; would cause all to show fallback if one errors
-                                                  url      ; imagor not working with instagram so...
+                                                  url       ; imagor not working with instagram... set up own thing
                                                   (:media_url post)
                                                   fallback-url)
                                          :on-error (fn [_]
-                                                     (rf/dispatch [:instagram/fetch-from-insta [(:id post)]]) ; dispatch on failed fetch due to url expiry
-                                                     (reset! fallback fallback-url))}]]] ; in the meantime (til fetch comes through to sub) use fallback ratom
+                                                     (rf/dispatch [:instagram/fetch-from-insta [(:id post)]])
+                                                     (reset! fallback fallback-url)
+                                                     #_(if-not @fallback
+                                                         (rf/dispatch [:instagram/fetch-from-insta [(:id post)]]) ; dispatch on failed fetch due to url expiry
+                                                         (reset! fallback fallback-url)))}]]] ; in the meantime (til fetch comes through to sub) use fallback ratom
             ^{:key (str "instagram-" (or (:id post) (random-uuid)))}
             [instagram-post post item]))]]])))
 

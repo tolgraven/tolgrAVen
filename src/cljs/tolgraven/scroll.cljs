@@ -9,6 +9,35 @@
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
+(rf/reg-event-fx :scroll/by
+ (fn [_ [_ value & [in-elem-id]]] ; rem (should handle % too tho?), id of container..
+   {:scroll/by [value in-elem-id]}))
+(rf/reg-fx :scroll/by
+ (fn [[value & [in-elem-id]]]
+   (util/scroll-by value in-elem-id)))
+
+(rf/reg-event-fx :scroll/to
+ (fn [db [_ id delay-ms]]
+   (if delay-ms
+     {:dispatch-later {:ms delay-ms
+                       :dispatch [:scroll/to id]}}
+     (when-not (get-in db [:state :scroll :block])
+       {:scroll/to id}))))
+(rf/reg-fx :scroll/to
+ (fn [id]
+   (util/scroll-to id)))
+
+(rf/reg-event-fx :scroll/px
+ (fn [db [_ px delay-ms]]
+   (if delay-ms
+     {:dispatch-later {:ms delay-ms
+                       :dispatch [:scroll/px px]}}
+     (when-not (get-in db [:state :scroll :block])
+       {:scroll/px px}))))
+(rf/reg-fx :scroll/px
+ (fn [px]
+   (util/scroll-to-px px)))
+
 (rf/reg-event-fx :scroll/on-navigate [debug]
   (fn [{:keys [db]} [_ path nav-count]]        ; TODO !! on iphone (also mac safari?) cancel transition on browser nav! fugly
     (let [first-nav? (zero? nav-count)
@@ -26,6 +55,25 @@
          {:dispatch-later {:ms 300 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
                            :dispatch [:state [:browser-nav :got-nav] false]} }))))) ; waiting because checks in main-page
 
+(rf/reg-event-fx :scroll/px-dev
+ (fn [db [_ delay-ms k px]]
+   (let [px' (get px k px)]
+     (if delay-ms
+       {:dispatch-later {:ms delay-ms
+                         :dispatch [:scroll/px px']}}
+       (when-not (get-in db [:state :scroll :block])
+         {:scroll/px px'})))))
+
+(rf/reg-event-fx :scroll/save-position-dev
+  (fn [{:keys [db]} [_]]
+    {:dispatch [:ls/store-val [:scroll-position]
+                  (.-scrollY js/window)]}))
+
+(rf/reg-event-fx :scroll/restore-position-dev
+  (fn [{:keys [_]} [_ delay-ms]]
+    {:dispatch [:ls/get-path-as-event
+                [:scroll-position :dev-current]
+                [:scroll/px delay-ms]]}))
 
 (rf/reg-event-fx :scroll/to-top-and-arm-restore ; when follow links etc want to get to top of new page. but if have visited page earlier, offer to restore latest view pos. ACE!!!
   (fn [{:keys [db]} [_ path saved-pos]]

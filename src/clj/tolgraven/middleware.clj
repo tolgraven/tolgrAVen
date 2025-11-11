@@ -101,7 +101,6 @@
          optimize-all)
        (if (:dev env)
          serve-live-assets-maybe-autorefresh ; like serve-live-assets but with watcher recompiling instead of timeout
-         ; strategies/serve-live-assets ; -autorefresh can't deal with cleans, errors on startup if no app.js. But I guess not too often have to do that, or well sometimes all the time but then not for weeks... check file 
          strategies/serve-frozen-assets)
        {;:cache-live-assets 60000
         :uglify-js {:mangle-names false}})))
@@ -113,10 +112,10 @@
     (handler req)))
 
 (defn wrap-gzip-content-aware
-  "Needed presumablY because optimus confuses the gzip middleware due to not raw files or whatever? At least it tries to gzip inappropriate stuff..."
+  "Needed presumably because optimus confuses the gzip middleware due to not raw files or whatever? At least it tries to gzip inappropriate stuff..."
   [handler]
   (fn [{:keys [headers] :as req}]
-    (if (some->> (get headers "sec-fetch-dest") ; could also look at content-tupe?
+    (if (some->> (get headers "sec-fetch-dest") ; could also look at content-type?
                  (re-find #"image|video")
                  some?)
       (handler req)
@@ -136,7 +135,6 @@
       ; (wrap-file "resources/public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
       wrap-optimus
       wrap-content-type ; must go after wrap-resource. checks file ext and adds correct content type
-      ; gzip/wrap-gzip
       wrap-gzip-content-aware
       ; (wrap-log "Wrapped gzip")
       wrap-not-modified ; guess this doesnt work cause optimus gens new files tho..

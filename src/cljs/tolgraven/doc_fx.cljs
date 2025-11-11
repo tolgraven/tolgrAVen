@@ -125,32 +125,6 @@
   (fn [[var-name value]]
     (util/->css-var var-name value)))
 
-(rf/reg-event-fx :scroll/by
- (fn [_ [_ value & [in-elem-id]]] ; rem (should handle % too tho?), id of container..
-   {:scroll/by [value in-elem-id]}))
-(rf/reg-fx :scroll/by
- (fn [[value & [in-elem-id]]]
-   (util/scroll-by value in-elem-id)))
-
-(rf/reg-event-fx :scroll/to
- (fn [db [_ id delay-ms]]
-   (if delay-ms
-     {:dispatch-later {:ms delay-ms
-                       :dispatch [:scroll/to id]}}
-     (when-not (get-in db [:state :scroll :block])
-       {:scroll/to id}))))
-(rf/reg-fx :scroll/to
- (fn [id]
-   (util/scroll-to id)))
-
-(rf/reg-event-fx :scroll/px
- (fn [db [_ px delay-ms]]
-   (when-not (get-in db [:state :scroll :block])
-     {:scroll/px px})))
-(rf/reg-fx :scroll/px
- (fn [px]
-   (util/scroll-to-px px)))
-
 
 (rf/reg-event-fx :run-highlighter!
  (fn [_ [_ elem]]

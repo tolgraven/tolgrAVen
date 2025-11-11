@@ -59,9 +59,15 @@ html {
 
 @keyframes fade-in-site {
   0% {
+    display: none;
     opacity: 0%;
     transform: scaleX(0);
-  } 100% { }
+  }
+  100% {
+    display: block;
+    opacity: 100%;
+    transform: scaleX(1);
+  }
 }
 
 body {
@@ -115,11 +121,12 @@ main { /* dunno purpose of why I choose .main-content... */
   border-right: var(--line-width-vert) solid var(--line-color); /* should make configurable. off looks p nice on main page */
   margin-top: var(--space-lg);
 
-  animation: fade-in 0.75s ease-in;
+  // animation: fade-in 0.75s ease-in;
 }
 .main-content {
   position: relative;
   background: var(--gradient-bg-main);
+
   > section:first-of-type { /* top section: no upper border */
     border-top: 0;
   }
@@ -129,6 +136,7 @@ main { /* dunno purpose of why I choose .main-content... */
   }
   
   &.animate {
+    display: block;
     animation: fade-in-site 500ms;
   }
 }

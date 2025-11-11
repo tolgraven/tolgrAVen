@@ -23,6 +23,7 @@
     [reitit.frontend.easy :as rfe]
     [reitit.dev.pretty :as rpretty]
     [goog.events]
+    [react :as react]
     [clojure.string :as string]
     [clojure.pprint :refer [pprint]])
   (:import [goog.History EventType]))
@@ -444,18 +445,28 @@
 ;; Initialize app
 
 (defonce root (atom nil))
+(defonce <page>
+  (if false #_:biggus-debuggus
+    (r/create-element react/StrictMode
+                      nil                ;; <-- props
+                      (r/as-element [page]))
+    [#'page]))
+
 (defn render []
   (when-not @root
-    (reset! root
-            (rdomc/create-root (.getElementById js/document "app"))))
+    (reset! root (rdomc/create-root (.getElementById js/document "app"))))
+  ; (rdomc/render @root <page>))
   (rdomc/render @root [#'page]))
 
 (defn mount-components "Called each update when developing" []
+  ; save pos
+  (rf/dispatch-sync [:scroll/save-position-dev])
   (rf/clear-subscription-cache!)
   (start-router!) ; restart router on reload?
   (rf/dispatch [:reloaded])
   (util/log "Mounting root component")
-  (render))
+  (render)
+  (rf/dispatch [:scroll/restore-position-dev 150]))
 
 (defn init "Called only on page load" []
   (rf/dispatch-sync [:init/app-db])
