@@ -392,7 +392,7 @@ $definitions: (
     @if meta.type-of($v) == "map" {
       @include theme-vars($v, $name);
     } @else {
-      --#{'$name'}: #{$v};
+      --#{$name}: #{$v};
     }
   }
 }
@@ -412,6 +412,11 @@ $theme-light: map.merge(map.get($definitions, common), map.get($definitions, lig
 // if set light, use light
 html[data-theme="light"] {
   color-scheme: light;
+  background-color: var(--bg-1);
+  color: var(--fg-1); // fix to override backup style set in raw html
   @include theme-vars($theme-light);   // user override
 }
+
+:root { color-scheme: light dark; } /* enables native form controls/scrollbars */
+html[data-theme="dark"]  { color-scheme: dark;  }
 
