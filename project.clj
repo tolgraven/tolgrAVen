@@ -160,7 +160,7 @@
                                  [cider/cider-nrepl "0.57.0"] ]
 
                   :doo {:build "test"}
-                  :source-paths ["env/dev/clj"]
+                  :source-paths ["env/dev/clj" "env/dev/cljs"]
                   :resource-paths ["env/dev/resources"]
                   :repl-options {:welcome (println "in DEV profile")
                                  :init-ns user
@@ -189,7 +189,7 @@
                           ["codox"]]
              :aot :all
              :uberjar-name "tolgraven.jar"
-             :source-paths ["env/prod/clj"]
+             :source-paths ["env/prod/clj" "env/prod/cljs"]
              :resource-paths ["env/prod/resources" "resources"]}
 
    :profiles/dev {}

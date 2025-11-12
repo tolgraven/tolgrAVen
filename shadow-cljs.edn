@@ -8,8 +8,8 @@
    :jvm-opts ["-Ddev=true"]
    ; :dev-http {4001 "resources/public"}
    :target :browser
-   :modules {:main {:entries [tolgraven.core]
-                    :init-fn tolgraven.core/init!}}
+   :modules {:main {:entries [tolgraven.app]
+                    :init-fn tolgraven.app/init!}}
    :js-options {}
    :output-dir "resources/public/js/compiled/out"
    :asset-path "/js/compiled/out"
@@ -49,8 +49,8 @@
   :app
   {:target :browser
    :node-via-docker true
-   :modules {:main {:entries [tolgraven.core]
-                    :init-fn tolgraven.core/init!}}
+   :modules {:main {:entries [tolgraven.app]
+                    :init-fn tolgraven.app/init!}}
    :output-dir "resources/public/js/compiled/out"
    :asset-path "/js/compiled/out"
    :optimizations   :advanced
