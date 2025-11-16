@@ -91,10 +91,8 @@
 
   .styled-input-autocomplete {
     display: inline;
-    div {
-      display: inline;
-    }
-    span {
+
+    div, span, p {
       display: inline;
       z-index: 1;
       color: var(--fg-6);
