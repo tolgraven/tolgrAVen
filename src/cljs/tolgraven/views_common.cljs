@@ -1,15 +1,15 @@
 (ns tolgraven.views-common
   (:require
-   [reagent.core :as r]
-   [re-frame.core :as rf]
-   [reitit.frontend.easy :as rfe]
-   [clojure.string :as string]
-   [markdown.core :refer [md->html]]
-   [tolgraven.ui :as ui]
-   [tolgraven.image :as img]
-   [tolgraven.db :as db]
-   [tolgraven.search.views :as search]
-   [tolgraven.util :as util :refer [at]]))
+    [reagent.core :as r]
+    [re-frame.core :as rf]
+    [reitit.frontend.easy :as rfe]
+    [clojure.string :as string]
+    [markdown.core :refer [md->html]]
+    [tolgraven.loader :as loader]
+    [tolgraven.ui :as ui]
+    [tolgraven.image :as img]
+    [tolgraven.db :as db]
+    [tolgraven.util :as util :refer [at]]))
 
 (defn flashing-ersatz-text-like-everyone-uses
   "Better than wee loading spinner no? Eg Docs, we know big page is coming
@@ -102,8 +102,8 @@
                                {:settingsBox (not @(rf/subscribe [:state [:settings :panel-open]]))}])}
      [:button.settings-btn.noborder.nomargin
       [:i.settings-btn {:class "fa fa-cog"}]]]
-    [search/button]
-    [ui/user-btn]
+    [loader/<lazy> {:module :search, :view :button}]
+    [loader/<lazy> {:module :user, :view :btn}]
     [:label.burger {:for "nav-menu-open"}]]]
 
    [:div.fill-side-top

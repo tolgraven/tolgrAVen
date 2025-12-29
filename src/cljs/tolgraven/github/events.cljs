@@ -2,16 +2,16 @@
   (:require
     [reagent.core :as r]
     [re-frame.core :as rf]
-    [clojure.string :as string]
-    [cljs-time.core :as ct]
-    [cljs-time.coerce :as ctc]))
+    [clojure.string :as string]))
 
 
 (rf/reg-event-fx :github/init
  (fn [{:keys [db]} [_ user repo]]
+   (let [user "tolgraven"
+         repo "tolgraven"] ; TODO should be injected from options
    (when-not (get-in db [:state :github :pages-fetched])
      {:dispatch-n [[:github/fetch-commits user repo 1]
-                   [:github/fetch-commit-count user repo]]})))
+                   [:github/fetch-commit-count user repo]]}))))
 
 (rf/reg-event-fx :github/fetch-commits
  (fn [{:keys [db]} [_ user repo page]]

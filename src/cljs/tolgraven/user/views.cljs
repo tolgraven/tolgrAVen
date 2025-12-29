@@ -1,11 +1,12 @@
 (ns tolgraven.user.views
   (:require
-   [reagent.core :as r]
-   [re-frame.core :as rf]
-   [clojure.string :as string]
-   [tolgraven.util :as util :refer [at]]
-   [tolgraven.blog.views :as blog-views]
-   [tolgraven.ui :as ui]))
+    [reagent.core :as r]
+    [re-frame.core :as rf]
+    [clojure.string :as string]
+    [tolgraven.image :as img]
+    [tolgraven.util :as util :refer [at]]
+    [tolgraven.blog.views :as blog-views]
+    [tolgraven.ui :as ui]))
 
 (defn back-btn [] ;tho ideally we push states and pop them... so becomes, yeah
   (when (< 1 (count @(rf/subscribe [:user/active-section])))
@@ -137,14 +138,14 @@
    [ui/button "Change" :change-avatar-url
     :action #(rf/dispatch [:user/set-field (:id user) :avatar
                                           @(rf/subscribe [:form-field [:change :avatar-url]])])]])
-
+(declare user-avatar)
 (defn avatar "Display user avatar and option to change it"
   [user-map allow-edit?]
   [:div.user-avatar-wrapper
    (when allow-edit?
      [:div.user-avatar-change
       [:i.fa.fa-edit {:on-click #(rf/dispatch [:user/active-section :change-avatar])}]])
-   [ui/user-avatar (merge user-map {:no-zoom true})] ])
+   [user-avatar (merge user-map {:no-zoom true})] ])
 
 (defn admin "User admin page" [user]
   (let [roles @(rf/subscribe [:<-store :auth :roles])
@@ -180,6 +181,43 @@
       "Log out"]]]))
 
 
+(defn user-avatar "Display a user avatar, with common fallbacks. Should probably display fallback while loading (often ext, slower) real"
+  [user-map & [extra-class]]
+  (let [fallback @(rf/subscribe [:user/default-avatar])
+        error? (r/atom false)
+        loaded? (r/atom false)]
+    (fn [user-map & [extra-class]]
+      (let [src (if @error? fallback (or (:avatar user-map) fallback))]
+        [:div.user-avatar-container ; wrapping in div causes stretch bs not to occur, somehow makes img respect its given w/h
+         (when-not @loaded?
+           [img/picture
+            {:src fallback
+             :alt "User avatar"
+             :class (str "user-avatar " extra-class)
+             :style {:position "absolute"}}])
+         [img/picture
+          {:class (str "user-avatar " extra-class)
+           :src src
+           :on-error #(reset! error? true)
+           :on-load #(reset! loaded? true)
+           :alt (str (:name user-map) " profile picture")
+           :on-click (when (and (:avatar user-map)
+                                (not (:no-zoom user-map)))
+                       #(rf/dispatch [:modal-zoom :fullscreen :open
+                                      [img/picture {:src src :alt "Profile picture"}]]))
+           :style (when (and (:avatar user-map)
+                             (not (:no-zoom user-map)))
+                    {:cursor "pointer"})} ]]))))
+
+(defn user-btn [model]
+  [:a {:href @(rf/subscribe [:href-add-query
+                             {:userBox (not @(rf/subscribe [:user/ui-open?]))}])}
+   [:button.user-btn.noborder
+    (if-let [user @(rf/subscribe [:user/active-user])]
+      [user-avatar (merge user {:no-zoom true}) "btn-img"]
+      [:i.user-btn {:class "fa fa-user"}])]])
+
+
 (defn user-box "Wrapper for user views"
   [user component]
   [:section.noborder
@@ -191,8 +229,9 @@
      [component user])])
 
 (defn user-section
-  [active-section]
-  (let [user @(rf/subscribe [:user/active-user])]
+  []
+  (let [active-section @(rf/subscribe [:user/active-section])
+        user @(rf/subscribe [:user/active-user])]
     [:div.user-section-wrapper.stick-up.hi-z
      {:class (when (and (some? active-section)
                         (not (some #{:closing :closed} active-section)))

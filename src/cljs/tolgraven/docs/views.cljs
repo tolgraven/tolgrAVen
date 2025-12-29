@@ -3,11 +3,9 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    [clojure.string :as string]
-   [tolgraven.ui :as ui]
-   [tolgraven.views-common :as views]
-   [tolgraven.util :as util :refer [at]]))
+   [tolgraven.ui :as ui]))
 
-(defn page "Display a codox page"
+(defn doc-page "Display a codox page"
   []
   (let [html @(rf/subscribe [:docs/page-html])]
    [:div.docs
@@ -27,3 +25,9 @@
               (rf/dispatch [:run-highlighter! el]))
        :dangerouslySetInnerHTML (r/unsafe-html html)}]
       [ui/loading-spinner (not html) :massive])]))
+
+(defn page []
+  [ui/with-heading [:docs :heading]
+   [:section.docs.solid-bg.hi-z.noborder.fullwide
+    [doc-page]]])
+

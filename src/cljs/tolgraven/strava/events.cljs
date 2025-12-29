@@ -2,19 +2,12 @@
   (:require
     [reagent.core :as r]
     [re-frame.core :as rf]
-    [ajax.core :as ajax]
-    [tolgraven.util :as util]
-    [tolgraven.cofx :as cofx]
-    [tolgraven.interceptors :as inter]
-    [clojure.string :as string]
     [clojure.walk :as walk]
     [goog.crypt.base64 :as b64]
     [cljs-time.core :as ct]
-    [cljs-time.format :as ctf]
-    [cljs-time.coerce :as ctc]))
+    [cljs-time.format :as ctf]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
-
 
 (rf/reg-event-fx :strava/init ;so, currently makes assumption app is authed and some stuff is in firebase...
   (fn [{:keys [db]} [_ ]]

@@ -1,11 +1,11 @@
 (ns tolgraven.blog.views
   (:require
-   [reagent.core :as r]
-   [re-frame.core :as rf]
-   [reitit.frontend.easy :as rfe]
-   [clojure.string :as string]
-   [tolgraven.util :as util :refer [at]]
-   [tolgraven.ui :as ui]))
+    [reagent.core :as r]
+    [re-frame.core :as rf]
+    [clojure.string :as string]
+    [tolgraven.loader :as loader]
+    [tolgraven.util :as util :refer [at]]
+    [tolgraven.ui :as ui]))
 
 (defn preview-comment "Live md preview I guess. Prob best just ratom not db thing..."
   [model]
@@ -148,7 +148,7 @@
               :ref ref-fn}
              
              [:div
-              [ui/user-avatar user]
+              [loader/<lazy> {:module :user, :view :avatar} user]
 
               [:div.blog-comment-main
                [:h4.blog-comment-title title]
@@ -199,9 +199,8 @@
                          "collapsed")}
                (doall (for [[k post] (into (sorted-map) @comments)]
                         ^{:key (get-id-str (conj path (:id post)))}
-                        (conj
-                         [ui/appear-anon "slide-behind"]
-                         [comment-post (conj path (:id post)) post expanded?])))]
+                        [ui/appear-anon "slide-behind"
+                         [comment-post (conj path (:id post)) post expanded?]] ))]
               (when-not @expanded?
                 [collapsed-reply-view path id @comments])])])))))
 
@@ -382,7 +381,7 @@
       
      [:div.flex.blog-post-header
       [ui/appear-anon (if back? "" "zoom slower")
-       [ui/user-avatar user "blog-user-avatar"]]
+       [loader/<lazy> {:module :user, :view :avatar} user "blog-user-avatar"]]
       [:div.blog-post-header-main
        [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
          [:h1.blog-post-title title ]]
@@ -532,4 +531,15 @@
     [:a {:href "https://github.com/tolgraven/tolgraven"} "tolgrAVen"]
     [:i.fab.fa-github]]]])
 
+
+(defn blog-page []
+  [ui/with-heading [:blog :heading] [blog-container [blog-feed]]])
+(defn post-blog-page [] ; how nicely set is-personal for this but also unset etc yada
+  [ui/with-heading [:blog :heading] [post-blog]])
+(defn blog-archive-page []
+  [ui/with-heading [:blog :heading] [blog-archive]])
+(defn blog-tag-page []
+  [ui/with-heading [:blog :heading] [blog-tag-view]])
+(defn blog-post-page []
+  [ui/with-heading [:blog :heading] [blog-single-post]])
 

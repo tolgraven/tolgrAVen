@@ -97,26 +97,30 @@
           :ref #(when % (reset! appeared true))}
          (into [:<>] components)]))))
 
-(defn appear-merge "Animate mount. Dont use events just ratoms. Merge into component, don't wrap"
-  [opts component]
-  (let [appeared (r/atom false)
-        wrap-ref (if-let [existing (-> component second :ref)]
-                   #(do (when % (reset! appeared true))
-                        (existing %))
-                   #(when % (reset! appeared true)))]
-    (fn [opts component]
-      (let [classes (str "appear-wrapper "
-                         (if (string? opts)
-                           opts (:class opts)) " "
-                         (when (or @appeared
-                                   (empty? (seq opts)))
-                           "appeared"))
-            wrap-class (if-let [existing (-> component second :class)]
-                         (str existing " " classes)
-                         classes)
-            attrs {:ref wrap-ref :class wrap-class}
-            component (util/add-attrs component attrs)]
-        component))))
+(defn appear-merge
+  "Animate mount. Merge attrs into component, don't wrap."
+  [_ _]
+  (let [appeared (r/atom false)]
+    (r/create-class
+      {:reagent-render
+       (fn [opts component]
+         (let [classes (str "appear-wrapper "
+                            (if (string? opts) opts (:class opts)) " "
+                            (when (or @appeared
+                                      (empty? (seq opts)))
+                              "appeared"))
+               wrap-class (if-let [existing (-> component second :class)]
+                            (str existing " " classes)
+                            classes)
+               attrs {:class wrap-class}]
+           (util/add-attrs component attrs)))
+
+       :component-did-mount
+       (fn [_] (reset! appeared true))
+
+       ;; optional, but nice if you ever remount/reuse
+       :component-will-unmount
+       (fn [_] (reset! appeared false))})))
 
 (defn seen "Animate on coming into view"
   [id kind & components]
@@ -201,7 +205,9 @@
   (let [observer (util/when-seen #(rf/dispatch event) repeatedly?)]
     (fn [event]
       [:div
-       {:ref #(observer %)}])))
+       {:ref #(if %
+                (js/setTimeout (fn [_] (observer %)) 500) ; delay to avoid firing immediately early on first complete page load
+                (observer %))}])))
 
 (defn lazy-load-repeatedly "Dispatch update event when approaching something"
   [event & [root-id run-on-appear?]]
@@ -217,7 +223,6 @@
                (when (and el run-on-appear?)
                  (rf/dispatch event))
                (observer el))}])))
-
 
 (declare close)
 
@@ -252,43 +257,6 @@
      caption]))
 
 
-(defn user-avatar "Display a user avatar, with common fallbacks. Should probably display fallback while loading (often ext, slower) real"
-  [user-map & [extra-class]]
-  (let [fallback @(rf/subscribe [:user/default-avatar])
-        error? (r/atom false)
-        loaded? (r/atom false)]
-    (fn [user-map & [extra-class]]
-     (let [src (if @error? fallback (or (:avatar user-map) fallback))]
-      [:div.user-avatar-container ; wrapping in div causes stretch bs not to occur, somehow makes img respect its given w/h
-       (when-not @loaded?
-         [img/picture
-          {:src fallback
-           :alt "User avatar"
-           :class (str "user-avatar " extra-class)
-           :style {:position "absolute"}}])
-       [img/picture
-        {:class (str "user-avatar " extra-class)
-         :src src
-         :on-error #(reset! error? true)
-         :on-load #(reset! loaded? true)
-         :alt (str (:name user-map) " profile picture")
-         :on-click (when (and (:avatar user-map)
-                              (not (:no-zoom user-map)))
-                     #(rf/dispatch [:modal-zoom :fullscreen :open
-                                    [img/picture {:src src :alt "Profile picture"}]]))
-         :style (when (and (:avatar user-map)
-                           (not (:no-zoom user-map)))
-                  {:cursor "pointer"})} ]]))))
-
-(defn user-btn [model]
-  [:a {:href @(rf/subscribe [:href-add-query  
-                             {:userBox (not @(rf/subscribe [:user/ui-open?]))}])}
-   [:button.user-btn.noborder
-   (if-let [user @(rf/subscribe [:user/active-user])]
-     [user-avatar (merge user {:no-zoom true}) "btn-img"]
-     [:i.user-btn {:class "fa fa-user"}])]])
-
-
 (defn fading-bg-heading [{:keys [title target bg tint] :as content}]
   [:<>
    [:div.fading-bg-heading
@@ -303,6 +271,14 @@
        {:style {:transform "translateY(-10%)"}}
        title]]]]
    [:div.fader>div.fade-to-black.bottom]])
+
+(defn with-heading
+  [heading-path component & [override]]
+  [:<>
+   [fading-bg-heading (merge @(rf/subscribe [:content heading-path])
+                                  override)]
+   component])
+
 
 
 (defn button "Pass text and id, plus either link anchor or action..."

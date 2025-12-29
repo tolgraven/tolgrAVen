@@ -3,6 +3,7 @@
   (:require [clojure.string :as string])
   #?(:cljs (:require [reagent.core :as r]
                      [re-frame.core :as rf]
+                     [shadow.lazy]
                      [tolgraven.components.error :as error]
                      [tolgraven.util :as util]))
   #?(:cljs (:require-macros [tolgraven.macros])))
@@ -26,6 +27,19 @@
   [[id xs & ls] <c>]
   `(doall (clojure.core/for [[i# ~id] (map-indexed vector ~xs) ~@ls]
             (with-meta ~<c> {:key i#}))))
+
+(defmacro make-modules
+  "Use keywords to generate Shadow lazy loadables.
+   ks must be a literal seq of keywords at the call site."
+  [base ks]
+  (let [base-str (str base)]
+    `(hash-map
+       ~@(mapcat
+           (fn [k]
+             (let [qsym# (symbol (str base-str "." (name k) ".module/spec"))]
+               [k `(shadow.lazy/loadable ~qsym#)]))
+           ks))))
+
 
 ;; also should include tooltip popup functionality
 ;; other possible route is middleware style where each piece of functionality

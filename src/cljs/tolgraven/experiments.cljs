@@ -1,6 +1,7 @@
 (ns tolgraven.experiments
   (:require [reagent.core :as r]
             [re-frame.core :as rf]
+            [tolgraven.loader :as loader]
             [tolgraven.ui :as ui]
             [react-leaflet]
             [leaflet]))
@@ -379,3 +380,25 @@
      [:div.info
       [:b "current view pos: "] (pr-str @view-position) [:br]
       [:b "current zoom level: "] (pr-str @zoom-level)] ])))
+
+(defn test-page []
+  [ui/with-heading [:common :banner-heading]
+   (let [routes {:parallax parallax
+                 :model-viewer model-viewer
+                 :leaflet leaflet
+                 :search [loader/<lazy> {:module :search, :view :view} "blog-posts"]
+                 :broken [:div]}
+         tab @(rf/subscribe [:state [:experiments]])]
+     [:section.experiments.solid-bg.fullwide.noborder
+      [:ul.tabs-container.flex
+       (for [tab-key (keys routes)] ^{:key tab-key}
+                                    [:li [:a {:href @(rf/subscribe [:href :test-tab {:tab tab-key}])}
+                                          [:button {:class (if (= tab tab-key) "bottomborder" "topborder")}
+                                           tab-key]]])]
+      [ui/safe :experiments [(tab routes)]]])
+   {:title "Experiments" :tint "green"}])
+
+(def spec
+  {:id :test
+   :view {:page #'test-page}})
+

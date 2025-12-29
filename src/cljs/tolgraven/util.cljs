@@ -35,6 +35,11 @@
             (walk/keywordize-keys  
              (map :data docs)))))
 
+(defn wrap-fn "Wraps a function so gets called as part of outer fn"
+  [f wrapped]
+  (fn [& args]
+    (apply wrapped args)
+    (apply f args)))
 
 (defn interleave-all "interleaves including remainder of longer seqs." ;from SO, @SomeRando
   [& seqs]

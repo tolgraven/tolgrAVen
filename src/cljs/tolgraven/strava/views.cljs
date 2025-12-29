@@ -1,14 +1,15 @@
 (ns tolgraven.strava.views
   (:require
-   [reagent.core :as r]
-   [re-frame.core :as rf]
-   [clojure.string :as string]
-   [reanimated.core :as anim]
-   [tolgraven.ui :as ui]
-   [tolgraven.image :as img]
-   [tolgraven.views-common :as views]
-   [tolgraven.util :as util :refer [at]]
-   [react-leaflet]))
+    [reagent.core :as r]
+    [re-frame.core :as rf]
+    [clojure.string :as string]
+    [reanimated.core :as anim]
+    [tolgraven.loader :as loader]
+    [tolgraven.ui :as ui]
+    [tolgraven.image :as img]
+    [tolgraven.views-common :as views]
+    [tolgraven.util :as util :refer [at]]
+    [react-leaflet]))
 
 (declare activity-map)
 (declare activity-map-canvas)
@@ -657,9 +658,11 @@
      (if athlete
        [ui/appear-anon "opacity"
         [:div.strava-profile.flex
-         [ui/user-avatar {:avatar (:profile_medium athlete)
-                          :name (str (:firstname athlete) " " (:lastname athlete))}
-                         "strava-profile-image"]
+         [loader/<lazy>
+          {:module :user, :view :avatar}
+          {:avatar (:profile_medium athlete)
+           :name   (str (:firstname athlete) " " (:lastname athlete))}
+          "strava-profile-image"]
         [:div.strava-athlete ;.flex
          [:h3 (:firstname athlete) " " (:lastname athlete)]
          [:div (:bio athlete)]

@@ -1,12 +1,13 @@
 (ns tolgraven.search.views
   (:require
-   [reagent.core :as r]
-   [re-frame.core :as rf]
-   [clojure.string :as string]
-   [tolgraven.ui :as ui]
-   [tolgraven.image :as img]
-   [tolgraven.blog.views :as blog]
-   [tolgraven.util :as util :refer [at]])
+    [reagent.core :as r]
+    [re-frame.core :as rf]
+    [clojure.string :as string]
+    [tolgraven.loader :as loader]
+    [tolgraven.ui :as ui]
+    [tolgraven.image :as img]
+    [tolgraven.blog.views :as blog]
+    [tolgraven.util :as util :refer [at]])
   (:require-macros [tolgraven.macros :as m]))
 
 (defn button "Search button, press to show input field..."
@@ -136,7 +137,7 @@
     [:div
      [:div.blog-comment-border]
      [:section.blog-comment
-      [ui/user-avatar @(rf/subscribe [:user/user user])]
+      [loader/<lazy> {:module :user, :view :avatar} @(rf/subscribe [:user/user user])]
       [:div.blog-comment-main
        [:h4.blog-comment-title title]
        [blog/posted-by id user ts] 

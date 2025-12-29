@@ -1,10 +1,11 @@
 (ns tolgraven.gpt.views
   (:require
-   [reagent.core :as r]
-   [re-frame.core :as rf]
-   [clojure.string :as string]
-   [tolgraven.ui :as ui]
-   [tolgraven.util :as util]))
+    [reagent.core :as r]
+    [re-frame.core :as rf]
+    [clojure.string :as string]
+    [tolgraven.loader :as loader]
+    [tolgraven.ui :as ui]
+    [tolgraven.util :as util]))
 
 (defn gpt-message "A single gpt message"
   [prompt response thread]
@@ -23,7 +24,7 @@
            (when @hovered? (util/unix->ts (:time thread)))]]]
          [:div.gpt-message-user.flex
           @(rf/subscribe [:gpt/user-short (:user thread)])
-          [ui/user-avatar @user]]]
+          [loader/<lazy> {:module :user, :view :avatar} @user]]]
        [:div.gpt-message-text.gpt-message-reply
         (or response
             "...")] ])))
@@ -44,7 +45,7 @@
 
           [:div.gpt-message-user.flex
            (or (:name user) "anon")
-           [ui/user-avatar user]]]
+           [loader/<lazy> {:module :user, :view :avatar} user]]]
 
          (when @open?
            [:div.gpt-messages.gpt-thread.open

@@ -14,15 +14,6 @@
     [re-pollsive.core :as poll]
     [breaking-point.core :as bp]
     [tolgraven.util :as util]
-    [tolgraven.blog.events]
-    [tolgraven.user.events]
-    [tolgraven.strava.events]
-    [tolgraven.instagram.events]
-    [tolgraven.chat.events]
-    [tolgraven.gpt.events]
-    [tolgraven.github.events]
-    [tolgraven.search.events]
-    [tolgraven.docs.events]
     [tolgraven.listener]
     [tolgraven.scroll]
     [tolgraven.doc-fx]
@@ -520,10 +511,13 @@
 
 (rf/reg-event-fx :booted [debug]
  (fn [{:keys [db]} [_ id]]
-   {:db (-> db
-            (assoc-in [:state :booted id] true)
-            (update-in [:state :on-booted] dissoc id))
-    :dispatch-n (vec (get-in db [:state :on-booted id]))}))
+   (when id
+     (let [ids (vec (get-in db [:state :on-booted id]))]
+       {:db         (-> db
+                        (assoc-in [:state :booted id] true)
+                        (update-in [:state :on-booted] dissoc id))
+        :dispatch-n (into ids
+                          (mapv (fn [id] [:booted id]) ids))})))) ; also fire booted for each id in case multiple levels
 
 
 

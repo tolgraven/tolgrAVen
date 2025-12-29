@@ -1,23 +1,19 @@
 (ns tolgraven.views
   (:require
-   [reagent.core :as r]
-   [re-frame.core :as rf]
-   [clojure.string :as string]
-   ; ["react-player" :as rp :refer (SoundCloud)]
-   [reanimated.core :as anim]
-   [tolgraven.ui :as ui]
-   [tolgraven.image :as img]
-   [tolgraven.video :as vid]
-   [tolgraven.strava.views :as strava]
-   [tolgraven.gpt.views :as gpt]
-   [tolgraven.chat.views :as chat]
-   [tolgraven.github.views :as github]
-   [tolgraven.instagram.views :as instagram]
-   [tolgraven.cv.views :as cv]
-   [tolgraven.db :as db]
-   [tolgraven.macros :as m :include-macros true]
-   [tolgraven.views-common :as view]
-   [tolgraven.util :as util :refer [at]]))
+    [reagent.core :as r]
+    [re-frame.core :as rf]
+    [clojure.string :as string]
+    ; ["react-player" :as rp :refer (SoundCloud)]
+    [reanimated.core :as anim]
+    [tolgraven.loader :as loader]
+    [tolgraven.ui :as ui]
+    [tolgraven.image :as img]
+    [tolgraven.video :as vid]
+    [tolgraven.cv.views :as cv]
+    [tolgraven.db :as db]
+    [tolgraven.macros :as m :include-macros true]
+    [tolgraven.views-common :as view]
+    [tolgraven.util :as util :refer [at]]))
 
 (defn ln->br "Ugh. UGH! Why"
   [text]
@@ -348,7 +344,8 @@
 (defn run-init
  [section]
  (let [dep (get-in sections [section :dep])
-       event (get-in sections [section :init])]
+       event (or (get-in sections [section :init])
+                 [:backend/init section])] ; initial refresh from service, then component runs its own init on mount once module loaded
    (when event
      [ui/lazy-load [:on-booted dep event]])))
 
@@ -370,17 +367,14 @@
    :soundcloud  {:component ui-soundcloud
                  :dep :site
                  :init [:booted :soundcloud]}
-   :strava      {:component strava/strava
-                 :dep :firebase
-                 :init [:strava/init]}
-   :instagram   {:component instagram/instagram
-                 :dep :firebase
-                 :init [:instagram/init]}
-   :github      {:component github/commits
-                 :dep :site
-                 :init [:github/init "tolgraven" "tolgraven"]} ; should inject, how?
-   :gpt         {:component gpt/threads}
-   :chat        {:component chat/chat}
+   :strava      {:module :strava
+                 :dep :firebase}
+   :instagram   {:module :instagram
+                 :dep :firebase}
+   :github      {:module :github
+                 :dep :site}
+   :gpt         {:module :gpt}
+   :chat        {:module :chat}
    :interlude   {:component ui-interlude
                  :content :interlude}
    :init        {:component run-init}})
@@ -420,13 +414,20 @@
    :av :just-about-company })
 
 
-(defn get-components "Get component, and its init event runner, if any."
+(defn get-component "Get component, and its init event runner, if any."
   [id section-map]
-  (let [{:keys [component content args dep init]} section-map]
+  (let [{:keys [module component content args dep init]} section-map
+        view (cond
+               module (if @(rf/subscribe [:booted? module])
+                        (into [loader/<lazy> {:module module
+                                              :view   (or component :view)}]
+                              args)
+                        [:div {:id (str (name id) "-will-load")}])
+               :else [component])]
     [:<>
      (when init
        [run-init id])
-     (cond-> [component]
+     (cond-> view
        content (conj @(rf/subscribe [:content [content]]))
        args    (conj args)
        true    vec)]))
@@ -435,9 +436,9 @@
   [section]
   (if (vector? section)
     (let [[id args] section]
-      [get-components id (merge (get sections id)
+      [get-component id (merge (get sections id)
                                 {:args args})])
-    [get-components section (get sections section)]))
+    [get-component section (get sections section)]))
 
 (macroexpand '(m/defcomp <test-2>
   "test-comp-2"

@@ -1,12 +1,14 @@
 (ns tolgraven.cv.views
   (:require
-   [reagent.core :as r]
-   [re-frame.core :as rf]
+   [cljs-time.core :as ct]
    [clojure.string :as string]
-   [tolgraven.ui :as ui]
+   [re-frame.core :as rf]
+   [reagent.core :as r]
    [tolgraven.image :as img]
-   [tolgraven.util :as util :refer [at]]
-   [cljs-time.core :as ct]))
+   [tolgraven.ui :as ui]
+   [tolgraven.util :as util])
+  (:require-macros
+   [tolgraven.macros :as m]))
 
 ;; IDEA: make it possible for a box to contain its own timeline of boxes, so tapping it, "zooms in"
 ;; and can put like projects, roles/promotions, courses etc for that specific thing
@@ -176,4 +178,7 @@
       [ui/fading :dir "bottom"]
      
      [capabilities skills]]))))
+
+(defn page []
+  [ui/with-heading [:cv :heading] [cv]])
 

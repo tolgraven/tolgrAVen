@@ -8,8 +8,29 @@
    :jvm-opts ["-Ddev=true"]
    ; :dev-http {4001 "resources/public"}
    :target :browser
+   :module-loader true
    :modules {:main {:entries [tolgraven.app]
-                    :init-fn tolgraven.app/init!}}
+                    :init-fn tolgraven.app/init!}
+             :search {:entries [tolgraven.search.module]
+                      :depends-on #{:main :blog}}
+             :user {:entries [tolgraven.user.module]
+                    :depends-on #{:main}}
+             :chat {:entries [tolgraven.chat.module]
+                    :depends-on #{:main :user}}
+             :github {:entries [tolgraven.github.module]
+                    :depends-on #{:main}}
+             :docs {:entries [tolgraven.docs.module]
+                      :depends-on #{:main}}
+             :gpt {:entries [tolgraven.gpt.module]
+                    :depends-on #{:main :user}}
+             :strava {:entries [tolgraven.strava.module]
+                    :depends-on #{:main}}
+             :instagram {:entries [tolgraven.instagram.module]
+                      :depends-on #{:main}}
+             :test {:entries [tolgraven.experiments]
+                    :depends-on #{:main}}
+             :blog {:entries [tolgraven.blog.module]
+                    :depends-on #{:main :user}}}
    :js-options {}
    :output-dir "resources/public/js/compiled/out"
    :asset-path "/js/compiled/out"

@@ -1,32 +1,23 @@
 (ns tolgraven.core
   (:require
-    [reagent.dom :as rdom]
-    [reagent.core :as r]
-    [reagent.dom.client :as rdomc]
-    [re-frame.core :as rf]
-    [tolgraven.ajax :as ajax]
-    [tolgraven.events]
-    [tolgraven.subs]
-    [tolgraven.ui :as ui]
-    [tolgraven.util :as util]
-    [tolgraven.views :as view]
-    [tolgraven.views-common :as common]
-    [tolgraven.blog.views :as blog]
-    [tolgraven.user.views :as user]
-    [tolgraven.search.views :as search]
-    [tolgraven.cv.views :as cv]
-    [tolgraven.docs.views :as docs]
-    [tolgraven.experiments :as experiment]
-    [tolgraven.macros :as m :include-macros true]
-    [reitit.core :as reitit]
-    [reitit.frontend.history :as rfh]
-    [reitit.frontend.easy :as rfe]
-    [reitit.dev.pretty :as rpretty]
-    [goog.events]
-    [react :as react]
-    [clojure.string :as string]
-    [clojure.pprint :refer [pprint]])
-  (:import [goog.History EventType]))
+   [clojure.string :as string]
+   [goog.events]
+   [re-frame.core :as rf]
+   [react :as react]
+   [reagent.core :as r]
+   [reagent.dom.client :as rdomc]
+   [reitit.core :as reitit]
+   [reitit.dev.pretty :as rpretty]
+   [reitit.frontend.easy :as rfe]
+   [reitit.frontend.history :as rfh]
+   [tolgraven.ajax :as ajax]
+   [tolgraven.events]
+   [tolgraven.loader :as loader]
+   [tolgraven.subs]
+   [tolgraven.ui :as ui]
+   [tolgraven.util :as util]
+   [tolgraven.views :as view]
+   [tolgraven.views-common :as common]))
 
 
 ; (defn swapper "Swap between outgoing and incoming page view"
@@ -165,9 +156,9 @@
    [:a {:name "linktotop" :id "linktotop"}]
    
    [ui/zoom-to-modal :fullscreen]
-   [ui/safe :user [user/user-section @(rf/subscribe [:user/active-section])]]
+   [ui/safe :user [loader/<lazy> {:module :user, :view :view}]]
    [ui/safe :settings [common/settings]]
-   [ui/safe :search [search/ui]]
+   [ui/safe :search [loader/<lazy> {:module :search, :view :view}]]
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
       [error-page]]
@@ -201,61 +192,14 @@
    
    [:a {:name "bottom" :id "bottom"}]]))
 
-(defn with-heading
-  [heading-path component & [override]]
-  [:<>
-   [ui/fading-bg-heading (merge @(rf/subscribe [:content heading-path])
-                                  override)]
-   component])
-
-(defn search-ui
-  []
-  [search/ui "blog-posts"])
-
-(defn test-page []
-  [with-heading [:common :banner-heading]
-   (let [routes {:parallax experiment/parallax
-                 :model-viewer experiment/model-viewer
-                 :leaflet experiment/leaflet
-                 :search search-ui
-                 :broken [:div]}
-          tab @(rf/subscribe [:state [:experiments]])]
-     [:section.experiments.solid-bg.fullwide.noborder
-      [:ul.tabs-container.flex
-       (for [tab-key (keys routes)] ^{:key tab-key}
-         [:li [:a {:href @(rf/subscribe [:href :test-tab {:tab tab-key}])}
-               [:button {:class (if (= tab tab-key) "bottomborder" "topborder")}
-               tab-key]]])]
-      [ui/safe :experiments [(tab routes)]]])
-    {:title "Experiments" :tint "green"}])
-
-(defn doc-page []
-  [with-heading [:docs :heading]
-   [:section.docs.solid-bg.hi-z.noborder.fullwide
-    [docs/page]]])
-
-(defn blog-page []
-  [with-heading [:blog :heading] [blog/blog-container [blog/blog-feed]]])
-(defn post-blog-page [] ; how nicely set is-personal for this but also unset etc yada
-  [with-heading [:blog :heading] [blog/post-blog]])
-(defn blog-archive-page []
-  [with-heading [:blog :heading] [blog/blog-archive]])
-(defn blog-tag-page []
-  [with-heading [:blog :heading] [blog/blog-tag-view]])
-(defn blog-post-page []
-  [with-heading [:blog :heading] [blog/blog-single-post]])
-
-(defn cv-page []
-  [with-heading [:cv :heading] [cv/cv]])
-
 (defn log-page []
-  [with-heading [:common :banner-heading]
+  [ui/with-heading [:common :banner-heading]
    [ui/log (rf/subscribe [:option [:log]])
     (rf/subscribe [:get :diagnostics])]
    {:title "Log" :tint "blue"}])
 
 (defn not-found-page []
-  [with-heading [:common :banner-heading]
+  [ui/with-heading [:common :banner-heading]
    [:div.center-content
     [:br] [:p "Four, oh four. Nothing to see here, move along."]]
    {:title "Not found" :tint "red"}])
@@ -293,7 +237,7 @@
                                (rf/dispatch [:scroll/to "section-services" 1300]))}]}]
      ["cv"
       {:name        :cv
-       :view        #'cv-page
+       :load        'tolgraven.cv.views/page
        :controllers [{:stop (fn [_]
                               (rf/dispatch [:state [:fullscreen :cv] false]))}]}]
      ["hire"
@@ -305,12 +249,12 @@
               [{:start (fn [_]
                          (rf/dispatch [:docs/init]))}]}
       ["" {:name :docs
-           :view #'doc-page
+           :load 'tolgraven.docs.views/page
            :controllers
            [{:start (fn [_])}]}]
       ["/codox/:doc"
        {:name :docs-codox-page
-        :view #'doc-page
+        :load 'tolgraven.docs.views/page
         :controllers
         [{:parameters {:path [:doc]}
           :start (fn [{:keys [path]}]
@@ -320,57 +264,67 @@
      ["blog" {:controllers [{:start (fn [_]
                                       (rf/dispatch [:on-booted :firebase [:blog/init]])
                                       (rf/dispatch [:blog/set-posts-per-page 3]))}] } ; should also allow 0 = infinite scroll
-      [""     {:name :blog
-               :view #'blog-page
-               :controllers [{:start (fn [_]
-                                       (rf/dispatch [:blog/nav-page 1]) ; down here so back-btn works from page/2 to blog aka page/1.
-                                       (rf/dispatch [:->css-var! "line-width" "1px"]); TODO fix so does this without hardcoding either. Might also set line-color to something less pronounced.
-                                       (rf/dispatch [:->css-var! "line-width-vert" "1px"]))
-                              :stop (fn []
-                                       (rf/dispatch [:->css-var! "line-width" "2px"])
-                                       (rf/dispatch [:->css-var! "line-width-vert" "2px"]))}]}] ; needed here so going back from blog/page/2 to blog returns one to page 1...
+      ["" {:name        :blog
+           :module      :blog
+           :page        :page
+           :controllers [{:start (fn [_]
+                                   (rf/dispatch [:blog/nav-page 1]) ; down here so back-btn works from page/2 to blog aka page/1.
+                                   (rf/dispatch [:->css-var! "line-width" "1px"]) ; TODO fix so does this without hardcoding either. Might also set line-color to something less pronounced.
+                                   (rf/dispatch [:->css-var! "line-width-vert" "1px"]))
+                          :stop  (fn []
+                                   (rf/dispatch [:->css-var! "line-width" "2px"])
+                                   (rf/dispatch [:->css-var! "line-width-vert" "2px"]))}]}] ; needed here so going back from blog/page/2 to blog returns one to page 1...
       ["/page/:nr"
-       {:name :blog-page
-        :view #'blog-page
+       {:name   :blog-page
+        :module :blog
+        :page   :page
         :controllers
         [{:parameters {:path [:nr]}
-          :start (fn [{:keys [path]}]
-                   (rf/dispatch [:blog/nav-action (:nr path)]))
-          :stop (fn [{:keys [path]}])}]}]
+          :start      (fn [{:keys [path]}]
+                        (rf/dispatch [:blog/nav-action (:nr path)]))
+          :stop       (fn [{:keys [path]}])}]}]
       ["/post/:permalink"
-       {:name :blog-post
-        :view #'blog-post-page
+       {:name   :blog-post
+        :module :blog
+        :page   :post
         :controllers
         [{:parameters {:path [:permalink]}
-          :start (fn [{:keys [path] :as data}]
-                   (let [id (-> path :permalink (string/split "-") last js/parseInt)]
-                     (rf/dispatch [:blog/state [:current-post-id] id])
-                     #_(rf/dispatch [:common/set-title "Blog post title: not implemented"])))
-          :stop (fn [{:keys [path] :as data}]
-                  (rf/dispatch [:blog/state [:current-post-id] nil])
-                  (rf/dispatch [:common/set-title nil]))}]}]
-      ["/archive" {:name :blog-archive
-                   :view #'blog-archive-page}]
-      ["/tag/:tag" {:name :blog-tag
-                   :view #'blog-tag-page
-                   :controllers
-                   [{:parameters {:path [:tag]}
-                     :start (fn [{:keys [path]}]
-                              (rf/dispatch [:blog/state [:viewing-tag] (:tag path)]))
-                     :stop (fn [{:keys [path]}]
-                             (rf/dispatch [:blog/state [:viewing-tag] nil]))}]}]]
-     ["post-blog" {:name :post-blog
-                   :view #'post-blog-page
+          :start      (fn [{:keys [path] :as data}]
+                        (let [id (-> path :permalink (string/split "-") last js/parseInt)]
+                          (rf/dispatch [:blog/state [:current-post-id] id])
+                          #_(rf/dispatch [:common/set-title "Blog post title: not implemented"])))
+          :stop       (fn [{:keys [path] :as data}]
+                        (rf/dispatch [:blog/state [:current-post-id] nil])
+                        (rf/dispatch [:common/set-title nil]))}]}]
+      ["/archive" {:name   :blog-archive
+                   :module :blog
+                   :page   :archive}]
+      ["/tag/:tag" {:name   :blog-tag
+                    :module :blog
+                    :page   :tag
+                    :controllers
+                    [{:parameters {:path [:tag]}
+                      :start      (fn [{:keys [path]}]
+                                    (rf/dispatch [:blog/state [:viewing-tag] (:tag path)]))
+                      :stop       (fn [{:keys [path]}]
+                                    (rf/dispatch [:blog/state [:viewing-tag] nil]))}]}]
+      ["new-post" {:name        :new-post
+                   :module      :blog
+                   :page        :new-post
                    :controllers [{:start (fn [_] (rf/dispatch [:blog/init-posting]))}
-                                 {:stop (fn [_] (rf/dispatch [:blog/cancel-edit]))}]}]
+                                 {:stop (fn [_] (rf/dispatch [:blog/cancel-edit]))}]}]]
+
+
      ["log" {:name :log
               :view #'log-page}]
      ["test" 
       ["" {:name :test
-           :view #'test-page}]
+           :module :test
+           :page :page}]
       ["/:tab"
        {:name :test-tab
-        :view #'test-page
+        :module :test
+        :page :page
        :controllers [{:parameters {:path [:tab]} ; seems like a nice middle ground of using routing and urls but not fully integrating (needing these views available/known here for example). So, keep doing sub tabs like this?
                       :start (fn [{:keys [path]}]
                                (rf/dispatch [:state [:experiments] (keyword (:tab path))])
@@ -414,16 +368,37 @@
       ;                       :stop  (fn [_])}]}
       } ]))
 
+(defn load-module! []
+  {})
+
 (defn on-nav [match history]
   (if match ; cant do fallback route in router apparently, but we get nil matches so can use that
     ; TODO if match is same as current, skip navigate but maybe dispatch a scrolltotop
     ; hell if same as current maybe we can get passed any #anchor and manually scroll there?
     ; TODO if match lacks view could use controllers for just actions taken on [whatever current] page
     ; which could do anchor link simulation
-    (rf/dispatch-sync [:common/navigate match]) ; -sync avoids not having route when components mount
+    ; (let [*loadable (-> match :data :load lazy/loadable) ; should really be a full spec with (default) fallbacks etc
+    (let [module (-> match :data :module) ; should really be a full spec with (default) fallbacks etc
+          page   (-> match :data :page)
+          name  (-> match :data :name)
+          ; {:keys [start stop]} (-> match :data)
+          ; controllers (-> match :data :controllers)
+          ; start (util/wrap-fn (:start controllers))
+          ->match   (fn [<comp>]
+                      (update-in match [:data :view] #(if % % <comp>)))
+          load-spec {:module  module
+                     :view    page
+                     :pre-fn  #(rf/dispatch-sync [:loading/on :page name])
+                     :post-fn (fn [spec & _]
+                                (rf/dispatch-sync [:common/navigate (->match (some-> spec :view page))])
+                                (rf/dispatch [:loading/off :page name]))}]
+      (when-let [<comp> (or (some-> match :data :view)
+                            (some-> (loader/load! load-spec) :view page))]
+        (rf/dispatch-sync [:common/navigate (->match <comp>)]))) ; -sync avoids not having route when components mount
     (do
-       (rf/dispatch [:diag/new :error "404" (str "Not found")])
-       (rf/dispatch [:state [:error-page] not-found-page]))))
+     (rf/dispatch-sync [:state [:error-page] not-found-page])
+     (rf/dispatch [:diag/new :error "404" "Not found"]))))
+
 
 (defn ignore-anchor-click?
   [router e el ^js uri]
@@ -453,10 +428,12 @@
     [#'page]))
 
 (defn render []
-  (when-not @root
-    (reset! root (rdomc/create-root (.getElementById js/document "app"))))
+  (let [app (.getElementById js/document "app")]
+    (when @root
+      (rdomc/unmount @root))
+    (reset! root (rdomc/create-root app))
   ; (rdomc/render @root <page>))
-  (rdomc/render @root [#'page]))
+  (rdomc/render @root [#'page])))
 
 (defn mount-components "Called each update when developing" []
   ; save pos
@@ -480,4 +457,3 @@
 (defn ^:export init!  []
   (defonce _init_ (init))) ;; why still need for thisi don't get it init! is now being called each reload?
 
-; (init!)
