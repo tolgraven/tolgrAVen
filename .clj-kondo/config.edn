@@ -1,0 +1,1 @@
+{:lint-as {tolgraven.macros/for clojure.core/for}}
