@@ -1,23 +1,24 @@
 (ns tolgraven.core
   (:require
-   [clojure.string :as string]
-   [goog.events]
-   [re-frame.core :as rf]
-   [react :as react]
-   [reagent.core :as r]
-   [reagent.dom.client :as rdomc]
-   [reitit.core :as reitit]
-   [reitit.dev.pretty :as rpretty]
-   [reitit.frontend.easy :as rfe]
-   [reitit.frontend.history :as rfh]
-   [tolgraven.ajax :as ajax]
-   [tolgraven.events]
-   [tolgraven.loader :as loader]
-   [tolgraven.subs]
-   [tolgraven.ui :as ui]
-   [tolgraven.util :as util]
-   [tolgraven.views :as view]
-   [tolgraven.views-common :as common]))
+    [clojure.string :as string]
+    [goog.events]
+    [re-frame.core :as rf]
+    [react :as react]
+    [reagent.core :as r]
+    [reagent.dom.client :as rdomc]
+    [reitit.core :as reitit]
+    [reitit.dev.pretty :as rpretty]
+    [reitit.frontend.easy :as rfe]
+    [reitit.frontend.history :as rfh]
+    [tolgraven.ajax :as ajax]
+    [tolgraven.events]
+    [tolgraven.loader :as l]
+    [tolgraven.macros :as m]
+    [tolgraven.subs]
+    [tolgraven.ui :as ui]
+    [tolgraven.util :as util]
+    [tolgraven.views :as view]
+    [tolgraven.views-common :as common]))
 
 
 ; (defn swapper "Swap between outgoing and incoming page view"
@@ -145,6 +146,16 @@
 ;; ^^ this works but obviously should be going back and forth between two "equal" comps
 ;; that are therefore not being reloaded on leaving...
 
+(defn <assets> "Load general assets"
+  []
+  [:<>
+   (m/for [css @(rf/subscribe [:loader/css])]
+          [:link {:rel  "stylesheet"
+                  :type "text/css"
+                  :href css}])
+   (m/for [js @(rf/subscribe [:loader/js])]
+          [:script {:type "text/javascript"
+                    :src  js}])])
 
 (defn page "Render active page inbetween header, footer and general stuff." 
   []
@@ -152,13 +163,15 @@
         swap-class (if ext-back? "" "opacity")
         click-evt @(rf/subscribe [:state [:global-clicked]])]
   [:<>
+   [<assets>]
+
    [ui/safe :header [common/header @(rf/subscribe [:content [:header]])]] ;TODO smooth transition to personal
    [:a {:name "linktotop" :id "linktotop"}]
    
    [ui/zoom-to-modal :fullscreen]
-   [ui/safe :user [loader/<lazy> {:module :user, :view :view}]]
+   [ui/safe :user [l/<> {:module :user, :view :view}]]
    [ui/safe :settings [common/settings]]
-   [ui/safe :search [loader/<lazy> {:module :search, :view :view}]]
+   [ui/safe :search [l/<> {:module :search, :view :view}]]
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
       [error-page]]
@@ -393,7 +406,7 @@
                                 (rf/dispatch-sync [:common/navigate (->match (some-> spec :view page))])
                                 (rf/dispatch [:loading/off :page name]))}]
       (when-let [<comp> (or (some-> match :data :view)
-                            (some-> (loader/load! load-spec) :view page))]
+                            (some-> (l/load! load-spec) :view page))]
         (rf/dispatch-sync [:common/navigate (->match <comp>)]))) ; -sync avoids not having route when components mount
     (do
      (rf/dispatch-sync [:state [:error-page] not-found-page])

@@ -3,7 +3,7 @@
     [reagent.core :as r]
     [re-frame.core :as rf]
     [clojure.string :as string]
-    [tolgraven.loader :as loader]
+    [tolgraven.loader :as l]
     [tolgraven.ui :as ui]
     [tolgraven.util :as util]))
 
@@ -24,7 +24,7 @@
            (when @hovered? (util/unix->ts (:time thread)))]]]
          [:div.gpt-message-user.flex
           @(rf/subscribe [:gpt/user-short (:user thread)])
-          [loader/<lazy> {:module :user, :view :avatar} @user]]]
+          [l/<> {:module :user, :view :avatar} @user]]]
        [:div.gpt-message-text.gpt-message-reply
         (or response
             "...")] ])))
@@ -45,7 +45,7 @@
 
           [:div.gpt-message-user.flex
            (or (:name user) "anon")
-           [loader/<lazy> {:module :user, :view :avatar} user]]]
+           [l/<> {:module :user, :view :avatar} user]]]
 
          (when @open?
            [:div.gpt-messages.gpt-thread.open

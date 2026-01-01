@@ -4,22 +4,20 @@
    [react :as react]
    [reagent.core :as r]
    [shadow.lazy :as lazy :rename {loadable l}])
-   (:require-macros
-     [tolgraven.macros :as m]))
+  (:require-macros
+   [tolgraven.macros :as m]))
 
-#_(def modules
-  {:blog (l tolgraven.blog.module/spec)
-   :search (l tolgraven.search.module/spec)
-   :user (l tolgraven.user.module/spec)
-   :chat (l tolgraven.chat.module/spec)
-   :github (l tolgraven.github.module/spec)
-   :docs (l tolgraven.docs.module/spec)
-   :gpt (l tolgraven.gpt.module/spec)
-   :strava (l tolgraven.strava.module/spec)
-   :instagram (l tolgraven.instagram.module/spec)
-   :test (l tolgraven.experiments/spec)})
+(rf/reg-event-fx :loader/load-css
+  (fn [{:keys [db]} [_ css-urls]]
+    {:db (assoc-in db [:loader :css] css-urls)}))
 
-#_(def module-ks (keys modules))
+(rf/reg-sub :loader/css
+  (fn [db _]
+    (get-in db [:loader :css])))
+
+(rf/reg-sub :loader/js
+            (fn [db _]
+              (get-in db [:loader :js])))
 
 (def modules (merge (m/make-modules "tolgraven" [:blog
                                                  :search
@@ -52,11 +50,13 @@
                          (when post-fn
                            (apply post-fn sym args))))))))))
 
-(defn <lazy>
+(defn <>
   "Loads a component as part of react-built DOM"
   [{:keys [module view post-fn <loading> <missing>] :as spec}
    & args]
-  (let [*module-spec (get modules module)]
+  (let [module (or module (first spec)) ; if vector
+        view (or view (second spec))
+        *module-spec (get modules module)]
     (letfn [(<missing>' [& args]
               (if <missing>
                 (if (vector? <missing>)
@@ -84,6 +84,8 @@
                        :post-fn (fn [sym & args]
                                   (when post-fn
                                     (apply post-fn sym args))
+                                  (when (:css sym)
+                                    (rf/dispatch [:loader/load-css (:css sym)]))
                                   #js {:default (r/reactify-component (-><inner> sym))})
                        :args args)))]
       (if (lazy/ready? *module-spec)

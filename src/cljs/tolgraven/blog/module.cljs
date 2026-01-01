@@ -12,4 +12,6 @@
           :post #'view/blog-post-page
           :archive #'view/blog-archive-page
           :tag #'view/blog-tag-page
-          :new-post #'view/post-blog-page}})
+          :new-post #'view/post-blog-page
+          :posted-by #'view/posted-by
+          :tags-list #'view/tags-list}})

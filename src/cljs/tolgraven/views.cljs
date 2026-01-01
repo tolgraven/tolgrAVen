@@ -5,7 +5,7 @@
     [clojure.string :as string]
     ; ["react-player" :as rp :refer (SoundCloud)]
     [reanimated.core :as anim]
-    [tolgraven.loader :as loader]
+    [tolgraven.loader :as l]
     [tolgraven.ui :as ui]
     [tolgraven.image :as img]
     [tolgraven.video :as vid]
@@ -419,8 +419,8 @@
   (let [{:keys [module component content args dep init]} section-map
         view (cond
                module (if @(rf/subscribe [:booted? module])
-                        (into [loader/<lazy> {:module module
-                                              :view   (or component :view)}]
+                        (into [l/<> {:module module
+                                     :view   (or component :view)}]
                               args)
                         [:div {:id (str (name id) "-will-load")}])
                :else [component])]

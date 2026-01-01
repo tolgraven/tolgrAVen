@@ -5,7 +5,7 @@
     [reitit.frontend.easy :as rfe]
     [clojure.string :as string]
     [markdown.core :refer [md->html]]
-    [tolgraven.loader :as loader]
+    [tolgraven.loader :as l]
     [tolgraven.ui :as ui]
     [tolgraven.image :as img]
     [tolgraven.db :as db]
@@ -102,8 +102,8 @@
                                {:settingsBox (not @(rf/subscribe [:state [:settings :panel-open]]))}])}
      [:button.settings-btn.noborder.nomargin
       [:i.settings-btn {:class "fa fa-cog"}]]]
-    [loader/<lazy> {:module :search, :view :button}]
-    [loader/<lazy> {:module :user, :view :btn}]
+    [l/<> {:module :search, :view :button}]
+    [l/<> {:module :user, :view :btn}]
     [:label.burger {:for "nav-menu-open"}]]]
 
    [:div.fill-side-top

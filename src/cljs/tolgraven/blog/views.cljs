@@ -3,7 +3,7 @@
     [reagent.core :as r]
     [re-frame.core :as rf]
     [clojure.string :as string]
-    [tolgraven.loader :as loader]
+    [tolgraven.loader :as l]
     [tolgraven.util :as util :refer [at]]
     [tolgraven.ui :as ui]))
 
@@ -148,7 +148,7 @@
               :ref ref-fn}
              
              [:div
-              [loader/<lazy> {:module :user, :view :avatar} user]
+              [l/<> {:module :user, :view :avatar} user]
 
               [:div.blog-comment-main
                [:h4.blog-comment-title title]
@@ -381,7 +381,7 @@
       
      [:div.flex.blog-post-header
       [ui/appear-anon (if back? "" "zoom slower")
-       [loader/<lazy> {:module :user, :view :avatar} user "blog-user-avatar"]]
+       [l/<> {:module :user, :view :avatar} user "blog-user-avatar"]]
       [:div.blog-post-header-main
        [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
          [:h1.blog-post-title title ]]

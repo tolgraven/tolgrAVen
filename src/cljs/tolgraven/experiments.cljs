@@ -1,7 +1,7 @@
 (ns tolgraven.experiments
   (:require [reagent.core :as r]
             [re-frame.core :as rf]
-            [tolgraven.loader :as loader]
+            [tolgraven.loader :as l]
             [tolgraven.ui :as ui]
             [react-leaflet]
             [leaflet]))
@@ -386,7 +386,7 @@
    (let [routes {:parallax parallax
                  :model-viewer model-viewer
                  :leaflet leaflet
-                 :search [loader/<lazy> {:module :search, :view :view} "blog-posts"]
+                 :search [l/<> {:module :search, :view :view} "blog-posts"]
                  :broken [:div]}
          tab @(rf/subscribe [:state [:experiments]])]
      [:section.experiments.solid-bg.fullwide.noborder
@@ -400,5 +400,6 @@
 
 (def spec
   {:id :test
+   :css ["https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]
    :view {:page #'test-page}})
 

@@ -4,7 +4,7 @@
     [re-frame.core :as rf]
     [clojure.string :as string]
     [reanimated.core :as anim]
-    [tolgraven.loader :as loader]
+    [tolgraven.loader :as l]
     [tolgraven.ui :as ui]
     [tolgraven.image :as img]
     [tolgraven.views-common :as views]
@@ -658,7 +658,7 @@
      (if athlete
        [ui/appear-anon "opacity"
         [:div.strava-profile.flex
-         [loader/<lazy>
+         [l/<>
           {:module :user, :view :avatar}
           {:avatar (:profile_medium athlete)
            :name   (str (:firstname athlete) " " (:lastname athlete))}

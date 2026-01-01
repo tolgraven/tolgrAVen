@@ -165,8 +165,7 @@
                        "css/fontawesome.css"
                        "css/solid.css"
                        "css/brands.min.css"
-                       "css/opensans.css"
-                       "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]
+                       "css/opensans.css"]
                       (when (:dev env)
                         ["css/tolgraven/main.min.css"]))
    :js-paths (concat [{:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}]

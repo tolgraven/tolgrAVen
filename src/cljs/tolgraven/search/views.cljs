@@ -3,7 +3,7 @@
     [reagent.core :as r]
     [re-frame.core :as rf]
     [clojure.string :as string]
-    [tolgraven.loader :as loader]
+    [tolgraven.loader :as l]
     [tolgraven.ui :as ui]
     [tolgraven.image :as img]
     [tolgraven.blog.views :as blog]
@@ -125,8 +125,8 @@
      [:div.blog-post-header-main
       [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
        [:h2.blog-post-title title]]
-      [blog/posted-by id user ts]
-      [blog/tags-list document]]
+      [l/<> {:module :blog :view :posted-by} id user ts]
+      [l/<> {:module :blog :view :tags-list} document]]
      (for [highlight highlights]
        ^{:key (str "search-result-highlight-" (:snippet highlight))}
        [ui/md->div (:snippet highlight)])]))
@@ -137,10 +137,10 @@
     [:div
      [:div.blog-comment-border]
      [:section.blog-comment
-      [loader/<lazy> {:module :user, :view :avatar} @(rf/subscribe [:user/user user])]
+      [l/<> {:module :user, :view :avatar} @(rf/subscribe [:user/user user])]
       [:div.blog-comment-main
        [:h4.blog-comment-title title]
-       [blog/posted-by id user ts] 
+       [blog/posted-by id user ts]
        (for [highlight highlights]
          ^{:key (str "search-result-highlight-" (:snippet highlight))}
          [:div.blog-comment-text

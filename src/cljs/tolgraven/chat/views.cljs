@@ -3,7 +3,7 @@
     [reagent.core :as r]
     [re-frame.core :as rf]
     [clojure.string :as string]
-    [tolgraven.loader :as loader]
+    [tolgraven.loader :as l]
     [tolgraven.ui :as ui]
     [tolgraven.util :as util]))
 
@@ -23,7 +23,7 @@
        [:span.chat-message-text (:text message)]
        [:div.chat-message-user.flex
         (or (:name user) "anon")
-        [loader/<lazy> {:module :user, :view :avatar} user]]])))
+        [l/<> {:module :user, :view :avatar} user]]])))
 
 (defn chat "A place to hang out with real-time messaging"
   []

@@ -12,7 +12,7 @@
    :modules {:main {:entries [tolgraven.app]
                     :init-fn tolgraven.app/init!}
              :search {:entries [tolgraven.search.module]
-                      :depends-on #{:main :blog}}
+                      :depends-on #{:main}}
              :user {:entries [tolgraven.user.module]
                     :depends-on #{:main}}
              :chat {:entries [tolgraven.chat.module]
