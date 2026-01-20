@@ -140,7 +140,7 @@
       [l/<> {:module :user, :view :avatar} @(rf/subscribe [:user/user user])]
       [:div.blog-comment-main
        [:h4.blog-comment-title title]
-       [blog/posted-by id user ts]
+       [l/<> {:module :blog :view :posted-by} id user ts]
        (for [highlight highlights]
          ^{:key (str "search-result-highlight-" (:snippet highlight))}
          [:div.blog-comment-text

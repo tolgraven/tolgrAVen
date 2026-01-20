@@ -51,30 +51,32 @@
                    (same :path-params)
                    (same :query-params) ; causes some trouble with settingsbox getting stuck?
                    (same :path))
-      (util/deep-merge
-       {:db (-> db
-               (assoc :common/route new-match)
-               (assoc :common/route-last old-match)
-               (update-in [:state] dissoc :error-page) ; reset 404 page in case was triggered
-               ; (update-in [:state] dissoc :swap)  ; cant reset swap since in middle of running...
-               (update-in [:state :exception] dissoc :page)
-               (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
-        :dispatch
-        [:later/dispatch {:ms 300 ; XXX like everything else this shouldn't be timed but fire after page booted (= height stabilized)
-                          :dispatch [:document/set-title! new-match]}]} ; title of site
-       (when (or (and (same :query-params) ; TODO maybe query params did change but also something else tho
-                      (or (not (same :data :view))
-                          (not (same :path-params))))
-                 (not old-match)) ; restore last position if followed a link from elsewhere (even if go to top for internal links)
-        {:dispatch-later
-         {:ms 150
-          :dispatch [:scroll/on-navigate (:path new-match) navigation-count]}}))
-      
-      (let [fragment (-> db :state :fragment)] ;; matches are equal (fragment not part of match)
-        (if (pos? (count (seq fragment))) 
+        (util/deep-merge
+          {:db (-> db
+                   (assoc :common/route new-match)
+                   (assoc :common/route-last old-match)
+                   (update-in [:state] dissoc :error-page)  ; reset 404 page in case was triggered
+                   ; (update-in [:state] dissoc :swap)  ; cant reset swap since in middle of running...
+                   (update-in [:state :exception] dissoc :page)
+                   (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
+           :dispatch-n
+           [[:later/dispatch {:ms       300                 ; XXX like everything else this shouldn't be timed but fire after page booted (= height stabilized)
+                              :dispatch [:document/set-title! new-match]}]]} ; title of site
+          (when (or (and (same :query-params)               ; TODO maybe query params did change but also something else tho
+                         (or (not (same :data :view))
+                             (not (same :path-params))))
+                    (not old-match))                        ; restore last position if followed a link from elsewhere (even if go to top for internal links)
+            {:dispatch-n
+             [[:later/dispatch
+               {:ms       150
+                :dispatch [:scroll/on-navigate (:path new-match) navigation-count]}]]}))
+
+      (let [fragment (-> db :state :fragment)]              ;; matches are equal (fragment not part of match)
+        (when (pos? (count (seq fragment)))
           {:db (update-in db [:state] dissoc :fragment)
-           :dispatch-later {:ms 200 ; obv too much. but maybe scroll issues partly from swapper bs?
-                            :dispatch [:scroll/to fragment]}}))))))
+           :dispatch-n
+           [[:later/dispatch {:ms       200                 ; obv too much. but maybe scroll issues partly from swapper bs?
+                              :dispatch [:scroll/to fragment]}]]}))))))
 
 (rf/reg-fx :common/navigate-fx!
   (fn [[k & [params query]]]
@@ -100,6 +102,10 @@
       {:dispatch
        [:common/navigate! k (merge p path) (merge q query)]})))
 
+(rf/reg-event-fx :backend/init
+  (fn [{:keys [db]} [_ module & args]]
+    (js/console.warn "Unhandled backend init event - no op" module args)
+    {:db db}))
 
 (rf/reg-event-fx :history/popped
   (fn [{:keys [db]} [_ e]]
@@ -395,17 +401,10 @@
   (fn [{:keys [db]} [_ data]]
     {:dispatch [:<-store [:strapi :auth] [:state [:strapi]]]}))
 
-; PROBLEM: would obviously want to trigger fetch on start-navigation,
-; not navigate...
-(rf/reg-event-fx :page/init-docs ;[debug]
-  (fn [{:keys [db]} _]
-    {:dispatch-n
-      [(when-not (-> db :content :docs :md) ; no re-request for this...
-         [:http/get {:uri             "/api/docs"
-                      :response-format (ajax/raw-response-format)}
-           [:content [:docs :md]]])
-       ; [:->css-var! "line-width-vert" @(rf/subscribe [:get-css-var "line-width"])]
-       ]})) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
+(rf/reg-event-fx :init/imagor
+                 (fn [{:keys [db]} [_ _]]
+                   (when-not (get db :imagor)
+                     {:dispatch [:<-store [:imagor :auth] [:state [:imagor]]]})))
 
 (rf/reg-event-fx :page/init-home ;[debug] ; really should do the fetch from wherever it is content eventually comes from...
  (fn [{:keys [db]} _]
@@ -692,12 +691,10 @@
    {:dispatch-n [(into handler [res])
                  cleanup]}))
 
-(rf/reg-event-fx
- :handle-visibility-change
+(rf/reg-event-fx :handle-visibility-change
  (fn [{db :db} [_ hidden-prop-name]]
    (let [visible? (not (gobj/get js/document hidden-prop-name))]
-     (prn "chrome tab visibility changed:" visible?)
-     {:db (assoc db [:state :tab-visible] visible?)})))
+     {:db (assoc-in db [:state :tab-visible] visible?)})))
 
 (rf/reg-event-fx :diag/new  ;this needs a throttle lol
  [(rf/inject-cofx :now)
@@ -745,11 +742,6 @@
                    (assoc-in [:state :modal-zoom id :component] item)
                    (assoc-in [:state :modal-zoom id :opened] true))}
     :loaded {:db (assoc-in db [:state :modal-zoom id :loaded] true)})))
-
-(rf/reg-event-fx :init/imagor
- (fn [{:keys [db]} [_ _]]
-  (when-not (get db :imagor)
-    {:dispatch [:<-store [:imagor :auth] [:state [:imagor]]]})))
 
 (rf/reg-event-fx :text-effect-char-by-char/start ; this is super dumb plus obviously didnt work so well. keep things local unless necessary dammit
  (fn [{:keys [db]} [_ path text ms]]

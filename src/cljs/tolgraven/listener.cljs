@@ -188,8 +188,7 @@
 (rf/reg-event-fx :listener/visibility-change
  (fn [{db :db} _]
    (when-let [{:keys [hidden visibility-change]} (visibility-props)]
-     {:db (assoc db :chrome-tab-visibility true)
-      :dispatch [:listener/add! "document" visibility-change
+     {:dispatch [:listener/add! "document" visibility-change
                  #(rf/dispatch [:handle-visibility-change hidden])]})))
 
 

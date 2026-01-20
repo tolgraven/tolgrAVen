@@ -1,5 +1,6 @@
 (ns tolgraven.blog.module
   (:require
+    [re-frame.core :as rf]
     [tolgraven.blog.events]
     [tolgraven.blog.subs]
     [tolgraven.blog.views :as view]))
@@ -14,4 +15,5 @@
           :tag #'view/blog-tag-page
           :new-post #'view/post-blog-page
           :posted-by #'view/posted-by
-          :tags-list #'view/tags-list}})
+          :tags-list #'view/tags-list}
+   :init #(rf/dispatch [:on-booted :firebase [:blog/init]])})

@@ -199,11 +199,13 @@
       (assoc component 1 attrs) ; oh yeah forgot about update-in going inside heh. also not even needed!
       [(first component) attrs (rest component)]))) ; eh uh but
 
-(defn deep-merge "Recursively merge maps. If vals are not maps, the last value wins."
- [& values]
- (if (every? map? values)
-  (apply merge-with deep-merge values)
-  (last values)))
+(defn deep-merge "Recursively merge maps, concat seqs."
+  [& values]
+  (if (every? map? values)
+    (apply merge-with deep-merge values)
+    (if (every? seq? values)
+      (apply concat values)
+      (last values))))
 
 (defn remove-nils "Remove keys with nil or empty seq values, even in nested maps."
   [m]

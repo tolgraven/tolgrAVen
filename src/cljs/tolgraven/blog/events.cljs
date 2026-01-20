@@ -2,13 +2,8 @@
   (:require
     [re-frame.core :as rf]
     [re-frame.std-interceptors :refer [path]]
-    ; [day8.re-frame.tracing :refer-macros [fn-traced]]
-    [clojure.edn :as edn]
-    [clojure.walk :as walk]
     [clojure.string :as string]
-    [ajax.core :as ajax]
-    [tolgraven.interceptors :as inter :refer [debug]]
-    [tolgraven.util :as util]))
+    [tolgraven.interceptors :as inter :refer [debug]]))
 
 
 (rf/reg-event-fx :blog/init []
@@ -17,6 +12,7 @@
      {:dispatch-n [[:<-store [:blog-posts]    [:blog/set-content :posts]]
                    [:<-store [:blog-comments] [:blog/set-content :comments]]
                    [:ls/get-path [:blog] [:state :blog]] ; get state of thangs
+                   [:blog/set-posts-per-page 3]
                    [:booted :blog]]}))) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
 
 (rf/reg-event-fx :blog/init-posting []

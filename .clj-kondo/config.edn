@@ -1,1 +1,3 @@
-{:lint-as {tolgraven.macros/for clojure.core/for}}
+{:linters {:unresolved-namespace {:level :off}}
+ :lint-as {tolgraven.macros/for     clojure.core/for
+           tolgraven.macros/defcomp clojure.core/defn}}

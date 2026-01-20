@@ -16,8 +16,8 @@
     (get-in db [:loader :css])))
 
 (rf/reg-sub :loader/js
-            (fn [db _]
-              (get-in db [:loader :js])))
+  (fn [db _]
+    (get-in db [:loader :js])))
 
 (def modules (merge (m/make-modules "tolgraven" [:blog
                                                  :search
@@ -86,6 +86,10 @@
                                     (apply post-fn sym args))
                                   (when (:css sym)
                                     (rf/dispatch [:loader/load-css (:css sym)]))
+                                  (when-let [init (:init sym)]
+                                    (when-not (module @(rf/subscribe [:state [:init :backend]]))
+                                      (rf/dispatch-sync [:loader/init-backend ])
+                                      (apply init args)))
                                   #js {:default (r/reactify-component (-><inner> sym))})
                        :args args)))]
       (if (lazy/ready? *module-spec)
