@@ -88,7 +88,7 @@
                                   (when (:css sym)
                                     (rf/dispatch [:loader/load-css (:css sym)]))
                                   (when-let [init (:init sym)]
-                                    (when-not (get @(rf/subscribe [:state [:scope module- :module]]))
+                                    (when-not (get @(rf/subscribe [:state [:scope module-]]) :module)
                                       (rf/dispatch-sync [:loader/init-backend])
                                       (apply init args)))
                                   #js {:default (r/reactify-component (-><inner> sym))})

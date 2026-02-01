@@ -19,9 +19,27 @@
 
 ## Coding Style & Naming Conventions
 - Clojure/ClojureScript: follow standard idioms (2-space indentation, align threading macros), use kebab-case for vars/functions, and keep namespaces aligned with file paths.
+- Re-frame: do not use ns-scoped keywords, but rather simple ns based on module name.
+- CLJS: general structure (apart from top-level) is folder containing module with events.cljs, subs.cljs, views.cljs, module.cljs with spec.
 - SCSS: keep files modular in `resources/scss`; prefer BEM-ish class names when adding new components.
 - Avoid introducing new formatters unless the team agrees; none are enforced in-repo.
 - Always confirm that variables (symbols) that are referred to actually exist in the given namespace, do not assume anything just from implicit context.
+
+### Code symbol naming
+- Use a star *prefix for derefable @symbols (atoms, refs, vars etc). Example:
+  - `(defonce *app-state (atom {}))`
+  - `(defn get-value [] @*app-state)`
+- Use a !suffix for functions with side effects. Example:
+  - `(defn save-data! [data] ...)`
+- Use a !prefix for frontend functions causing backend side effects (e.g., dispatching events that trigger HTTP calls). Example:
+  - `(defn !fetch-user-data [user-id] ...)`
+- Use a ? suffix? for predicate functions returning boolean values, and boolean value vars. Example:
+  - `(defn valid-input? [input] ...)`
+  - `(def user-logged-in? true)`
+- Use a - suffix for keyword variables, to indicate they hold keyword values. Example:
+  - `(def current-page- :home)`
+- Use <> around Reagent component functions (that will go inside a vector). Example:
+  - `(defn <user-profile> [] ...)
 
 ## Testing Guidelines
 - Clojure tests use `clojure.test` in `test/clj`; run with `lein test`.
@@ -37,3 +55,6 @@
 ## Configuration & Secrets
 - Local config lives in `dev-config.edn` and `test-config.edn`; production config is under `env/prod/resources`.
 - Do not commit secrets; prefer env vars or injected config files.
+
+## Deploy
+- Works using 

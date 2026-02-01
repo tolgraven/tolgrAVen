@@ -14,6 +14,7 @@
     [breaking-point.core :as bp]
     [tolgraven.util :as util]
     [tolgraven.listener]
+    [tolgraven.loader :as l]
     [tolgraven.scroll]
     [tolgraven.doc-fx]
     [tolgraven.effects]
