@@ -6,7 +6,6 @@
     [tolgraven.loader :as l]
     [tolgraven.ui :as ui]
     [tolgraven.image :as img]
-    [tolgraven.blog.views :as blog]
     [tolgraven.util :as util :refer [at]])
   (:require-macros [tolgraven.macros :as m]))
 

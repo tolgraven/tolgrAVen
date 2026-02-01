@@ -2,10 +2,8 @@
   (:require
     [reagent.core :as r]
     [re-frame.core :as rf]
-    [clojure.string :as string]
     [tolgraven.image :as img]
-    [tolgraven.util :as util :refer [at]]
-    [tolgraven.blog.views :as blog-views]
+    [tolgraven.loader :as l]
     [tolgraven.ui :as ui]))
 
 (defn back-btn [] ;tho ideally we push states and pop them... so becomes, yeah

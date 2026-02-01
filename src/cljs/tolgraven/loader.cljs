@@ -35,11 +35,12 @@
   [:div (pr-str args)])
 
 (defn load!
-  "Loads a component asynchronously."
-  [{:keys [module init-evt pre-fn post-fn args] :as spec}]
-  (let [*spec (get modules module)]
+  "Loads a component asynchronously. Any kind of load must always use this fn,
+  because it handles init events, pre- and post-load hooks, etc."
+  [{:keys [module- init-evt pre-fn post-fn args] :as spec}]
+  (let [*spec (get modules module-)]
     (if-not *spec
-      (throw (ex-info "Unknown module" {:k module}))
+      (throw (ex-info "Unknown module" {:k module-}))
       (if (lazy/ready? *spec)
         @*spec
         (do
@@ -52,11 +53,11 @@
 
 (defn <>
   "Loads a component as part of react-built DOM"
-  [{:keys [module view post-fn <loading> <missing>] :as spec}
+  [{:keys [module- view- post-fn <loading> <missing>] :as spec}
    & args]
-  (let [module (or module (first spec)) ; if vector
-        view (or view (second spec))
-        *module-spec (get modules module)]
+  (let [module- (or module- (first spec)) ; if vector
+        view- (or view- (second spec))
+        *module-spec (get modules module-)]
     (letfn [(<missing>' [& args]
               (if <missing>
                 (if (vector? <missing>)
@@ -67,7 +68,7 @@
               (or (if (fn? <loading>) (into [<loading>] args) <loading>)
                   (into [:div] args)))
             (-><inner> [comp-spec]
-              (let [<comp> (some-> comp-spec :view view deref)]
+              (let [<comp> (some-> comp-spec :view view- deref)]
                 (fn []
                   (js/console.log "<inner>:" comp-spec <comp>)
                   (if (fn? <comp>)
@@ -76,7 +77,7 @@
                           (if <comp>
                             (js/console.error
                               "Failed to extract lazy comp:"
-                              #js {:module module, :view view, :<comp> <comp>})
+                              #js {:module module-, :view view-, :<comp> <comp>})
                             (js/console.error "Failed to deref lazy:" spec)))
                         (into [<missing>'] args))))))
             (load-then-show []
@@ -87,8 +88,8 @@
                                   (when (:css sym)
                                     (rf/dispatch [:loader/load-css (:css sym)]))
                                   (when-let [init (:init sym)]
-                                    (when-not (module @(rf/subscribe [:state [:init :backend]]))
-                                      (rf/dispatch-sync [:loader/init-backend ])
+                                    (when-not (get @(rf/subscribe [:state [:scope module- :module]]))
+                                      (rf/dispatch-sync [:loader/init-backend])
                                       (apply init args)))
                                   #js {:default (r/reactify-component (-><inner> sym))})
                        :args args)))]

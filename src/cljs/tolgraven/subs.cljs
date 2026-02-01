@@ -1,13 +1,9 @@
 (ns tolgraven.subs
   (:require [re-frame.core :as rf]
-            [tolgraven.db :as db]
             [tolgraven.util :as util]
-            [clojure.edn :as edn]
             [clojure.walk :as walk]
             [clojure.string :as string]
-            [reitit.frontend.easy :as rfe]
-            [cljs-time.coerce :as ctc]
-            [cljs-time.core :as ct]))
+            [reitit.frontend.easy :as rfe]))
 
 (rf/reg-sub :get ;should this be discontinued? or only used transiently like migrate everything away once got a comp working?
  (fn [db [_ & path]]
@@ -63,12 +59,13 @@
                 util/normalize-firestore-general)))))
 
 (rf/reg-sub :<-store-q
-  :<- [:booted? :firebase]
-  (fn [initialized [_ opts]]
+  (fn [[_ opts]]
+    [(rf/subscribe [:firestore/on-snapshot opts])
+     (rf/subscribe [:booted? :firebase])])
+  (fn [[res initialized] [_ _]]
     (when initialized
-      (some-> (rf/subscribe [:firestore/on-snapshot opts])
-                deref
-                util/normalize-firestore-general))))
+      (some-> res
+              util/normalize-firestore-general))))
 
 ; DONE PROPERLY. but somehow ends up with sub sometimes never returning anything but {} (as always does first run)
 ; WHAT THE FUCK honestly. 

@@ -8,7 +8,7 @@
                      [tolgraven.util :as util]))
   #?(:cljs (:require-macros [tolgraven.macros])))
 
-(defmacro handler-fn "Use in event-handlers instead of (fn [e/_]), returns nil so react doesnt get a false and ignore us"
+(defmacro hafn "Use in event-handlers instead of (fn [e/_]), returns nil so react doesnt get a false and ignore us"
   ([& body]
     `(fn [~'event] ~@body nil)))  ;; force return nil
 

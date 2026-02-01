@@ -1,12 +1,7 @@
 (ns tolgraven.instagram.events
   (:require
-    [reagent.core :as r]
     [re-frame.core :as rf]
-    [ajax.core :as ajax]
-    [tolgraven.util :as util]
-    [tolgraven.cofx :as cofx]
-    [tolgraven.interceptors :as inter]
-    [clojure.string :as string]))
+    [ajax.core :as ajax]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 

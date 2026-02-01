@@ -3,16 +3,12 @@
     [reagent.core :as r]
     [re-frame.core :as rf]
     [clojure.string :as string]
-    ; ["react-player" :as rp :refer (SoundCloud)]
     [reanimated.core :as anim]
     [tolgraven.loader :as l]
     [tolgraven.ui :as ui]
     [tolgraven.image :as img]
     [tolgraven.video :as vid]
-    [tolgraven.cv.views :as cv]
-    [tolgraven.db :as db]
     [tolgraven.macros :as m :include-macros true]
-    [tolgraven.views-common :as view]
     [tolgraven.util :as util :refer [at]]))
 
 (defn ln->br "Ugh. UGH! Why"

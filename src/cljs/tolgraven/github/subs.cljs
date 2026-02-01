@@ -1,8 +1,6 @@
 (ns tolgraven.github.subs
-  (:require [re-frame.core :as rf]
-            [clojure.string :as string]
-            [cljs-time.coerce :as ctc]
-            [cljs-time.core :as ct]))
+  (:require [clojure.string :as string]
+            [re-frame.core :as rf]))
 
 (rf/reg-sub :github/website-url
   (fn [[_ _]]

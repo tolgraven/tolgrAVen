@@ -3,11 +3,9 @@
     [clojure.java.io]
     [hiccup.core :as hiccup]
     [ring.util.http-response :refer [content-type ok]]
-    [ring.util.anti-forgery :refer [anti-forgery-field]]
     [ring.middleware.anti-forgery :refer [*anti-forgery-token*]]
     [ring.util.response]
     [tolgraven.config :refer [env]]
-    [taoensso.timbre :as log]
     [optimus.link :as olink]
     [optimus.html :as ohtml]))
 

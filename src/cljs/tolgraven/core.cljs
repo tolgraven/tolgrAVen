@@ -176,15 +176,14 @@
      [:main.main-content.perspective-top
       [error-page]]
      (if-let [page @(rf/subscribe [:common/page])]
-       (let [page-prev @(rf/subscribe [:common/page :last])]
-         [:main.main-content.perspective-top
-          {:id "main"
-           :class (when-not ext-back? "animate")}
-          [swapper swap-class
-           [ui/safe :page [page]]
-           (when page-prev
-             [ui/safe :page-prev [page-prev]])]])
-       [ui/loading-spinner true :massive])) ; removed since jars now that have hero in original html
+       [:main.main-content.perspective-top
+        {:id    "main"
+         :class (when-not ext-back? "animate")}
+        [swapper swap-class
+         [ui/safe :page [page]]
+         (when-let [page-prev @(rf/subscribe [:common/page :last])]
+           [ui/safe :page-prev [page-prev]])]]
+       [ui/loading-spinner true :massive]))                 ; removed since jars now that have hero in original html
 
    [:div#error-portal]
 
@@ -234,7 +233,7 @@
      [""
       {:name        :home
        :view        #'view/ui-auto
-       :controllers [{:start (fn [{:keys [path]}]
+       :controllers [{:start (fn [{:keys [_]}]
                                (rf/dispatch [:state [:is-personal] false])
                                (rf/dispatch [:page/init-home]))}]}]
      ["about"
@@ -248,35 +247,32 @@
        :controllers [{:start (fn [_]
                                (rf/dispatch [:scroll/to "main" 700]) ; hack because stickied so "already there"...
                                (rf/dispatch [:scroll/to "section-services" 1300]))}]}]
-     ["cv"
-      {:name        :cv
-       :load        'tolgraven.cv.views/page
-       :controllers [{:stop (fn [_]
-                              (rf/dispatch [:state [:fullscreen :cv] false]))}]}]
      ["hire"
       {:name        :hire
        :view        #'view/ui-auto
        :controllers [{:start (fn [_]
                                (rf/dispatch [:scroll/to "bottom" 700]))}]}]
-     ["docs" {:controllers
-              [{:start (fn [_]
-                         (rf/dispatch [:docs/init]))}]}
-      ["" {:name :docs
-           :load 'tolgraven.docs.views/page
-           :controllers
-           [{:start (fn [_])}]}]
+     ["cv"
+      {:name        :cv
+       :module      :cv
+       :view        :page
+       :controllers [{:stop (fn [_]
+                              (rf/dispatch [:state [:fullscreen :cv] false]))}]}]
+     ["docs"
+      ["" {:name   :docs
+           :module :docs
+           :page   :page}]
       ["/codox/:doc"
-       {:name :docs-codox-page
-        :load 'tolgraven.docs.views/page
+       {:name   :docs-codox-page
+        :module :docs
+        :page   :page
         :controllers
         [{:parameters {:path [:doc]}
-          :start (fn [{:keys [path]}]
-                   (rf/dispatch [:docs/get (:doc path)])
-                   (rf/dispatch [:docs/set-page (:doc path)]))}]}]]
+          :start      (fn [{:keys [path]}]
+                        (rf/dispatch [:docs/get (:doc path)])
+                        (rf/dispatch [:docs/set-page (:doc path)]))}]}]]
      
-     ["blog" {:controllers [{:start (fn [_]
-                                      (rf/dispatch [:on-booted :firebase [:blog/init]])
-                                      (rf/dispatch [:blog/set-posts-per-page 3]))}] } ; should also allow 0 = infinite scroll
+     ["blog"
       ["" {:name        :blog
            :module      :blog
            :page        :page
@@ -380,9 +376,6 @@
      ; ; {:data {:controllers [{:start (rf/dispatch [:set [:common/route] ]) ;or just manually place :home so common/route returns it by default...
       ;                       :stop  (fn [_])}]}
       } ]))
-
-(defn load-module! []
-  {})
 
 (defn on-nav [match history]
   (if match ; cant do fallback route in router apparently, but we get nil matches so can use that

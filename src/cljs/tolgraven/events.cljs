@@ -1,6 +1,5 @@
 (ns tolgraven.events
   (:require
-    [reagent.core :as r]
     [re-frame.core :as rf]
     [re-frame.std-interceptors :as interceptor]
     [ajax.core :as ajax]
@@ -19,12 +18,7 @@
     [tolgraven.doc-fx]
     [tolgraven.effects]
     [tolgraven.cofx :as cofx]
-    [clojure.string :as string]
-    [clojure.edn :as edn]
-    [goog.object :as gobj]
-    ; [muuntaja.core :as m]
-    [cljs-time.core :as ct]
-    [cljs-time.coerce :as ctc]))
+    [goog.object :as gobj]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
@@ -102,10 +96,19 @@
       {:dispatch
        [:common/navigate! k (merge p path) (merge q query)]})))
 
-(rf/reg-event-fx :backend/init
-  (fn [{:keys [db]} [_ module & args]]
-    (js/console.warn "Unhandled backend init event - no op" module args)
-    {:db db}))
+(rf/reg-event-fx :loader/on-init
+  (fn [{:keys [db]} [_ module- & args]]
+    (js/console.warn "Unhandled loader init event - no op" module- args)
+    {:db (assoc-in db [:state :init :loader module-] {:inited? true :args args})})) ; although inited would get set in some further down finishing callback event likely
+
+(rf/reg-fx :loader/init!
+  (fn [[spec]]
+    (l/load! spec)))
+
+(rf/reg-event-fx :scope/init ; should be like, a scope is usually a cljs module, possibly backend stuff that might want to be eagerly inited/refreshed before module load finishes, so outside module def
+  (fn [{:keys [db]} [_ scope- & args]]
+    (js/console.warn "Unhandled scope init event - no op" scope- args)
+    {:db (assoc-in db [:state :init :scope scope-] {:inited? true :args args})}))
 
 (rf/reg-event-fx :history/popped
   (fn [{:keys [db]} [_ e]]
