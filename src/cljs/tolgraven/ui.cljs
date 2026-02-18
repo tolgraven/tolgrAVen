@@ -337,8 +337,8 @@
         [img/picture
          (merge img-attr
                 {:class "media image-inset"
-                 :on-click #(r/rswap! zoomed? not)})]]]
-       (when caption [:figcaption caption]))))
+                 :on-click #(r/rswap! zoomed? not)})]]
+       (when caption [:figcaption caption])])))
 
 (defn auto-layout-text-imgs "Take text and images and space out floats appropriately. Pretty dumb but eh"
   [content]
