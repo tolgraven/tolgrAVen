@@ -26,12 +26,14 @@
 - Always confirm that variables (symbols) that are referred to actually exist in the given namespace, do not assume anything just from implicit context.
 
 ### Code symbol naming
-- Use a star *prefix for derefable @symbols (atoms, refs, vars etc). Example:
+All of the below are targets, not facts, so do not rely on them as hard rules, but
+rather as guidelines to help make code more readable and maintainable. If you have a good reason to deviate, do so, but be sure to explain the rationale in comments or PR descriptions. Generally use these for new code, and feel free to update existing code towards this style when you have the chance, but do not feel obligated to refactor large amounts of existing code just to fit these guidelines.
+- Use a star * *prefix for derefable @*symbols (atoms, refs, vars etc). Example:
   - `(defonce *app-state (atom {}))`
   - `(defn get-value [] @*app-state)`
-- Use a !suffix for functions with side effects. Example:
+- Use a ! suffix! for functions with side effects. Example:
   - `(defn save-data! [data] ...)`
-- Use a !prefix for frontend functions causing backend side effects (e.g., dispatching events that trigger HTTP calls). Example:
+- Use a ! !prefix for frontend functions causing backend side effects (e.g., dispatching events that trigger HTTP calls). Example:
   - `(defn !fetch-user-data [user-id] ...)`
 - Use a ? suffix? for predicate functions returning boolean values, and boolean value vars. Example:
   - `(defn valid-input? [input] ...)`
@@ -39,7 +41,8 @@
 - Use a - suffix for keyword variables, to indicate they hold keyword values. Example:
   - `(def current-page- :home)`
 - Use <> around Reagent component functions (that will go inside a vector). Example:
-  - `(defn <user-profile> [] ...)
+  - `(defn <user-profile> [] ...)`
+  - `[<user-profile>]`
 
 ## Testing Guidelines
 - Clojure tests use `clojure.test` in `test/clj`; run with `lein test`.
