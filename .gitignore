@@ -10,10 +10,9 @@ test-config.edn
 profiles.clj
 /.env
 .nrepl-port*
-
+.clj-kondo/.cache/
 /node_modules
 /log
-.clj-kondo
 .lsp
 out/
 resources/public/js/
