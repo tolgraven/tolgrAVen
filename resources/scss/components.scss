@@ -72,6 +72,9 @@
   }
 }
 
+.progressive-picture {
+  animation: fade-in 0.25s ease 0.017s;
+}
 
 .media {
   width: 100%;
@@ -433,6 +436,7 @@ figcaption, .float-with-caption {
 .loading-spinner, .loading-spinner-massive {
   opacity: 0.8;
   transition: transform 0.5s;
+  animation: fade-in 9.25s ease 0.017s;
   position: relative;
   font-size: 150%;
   // text-shadow: 1px 1px 4px white;
@@ -690,7 +694,7 @@ figcaption, .float-with-caption {
 .soundcloud {
   .soundcloud-players { /* EXT IN IFRAME CANT BE STYLED */
     > div {
-      margin-bottom: -2.00em;
+      //margin-bottom: -2.00em;
       background: #fc4c02; //XXX fix real
       height: 120%;
     }
