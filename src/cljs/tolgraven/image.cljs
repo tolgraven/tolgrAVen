@@ -21,6 +21,7 @@
        (re-find #"\.(jpe?g|png)$" src)
        (not (re-find #"^(https?:|//)" src))               ;; Skip external URLs
        (not (re-find #"\?" src))                          ;; Skip URLs with query strings
+       (not (re-find #"avatar" src))                      ;; Skip URLs from avatars (for now
        (not (re-find #"\.svg$" src))                      ;; Skip SVG files
        (not (re-find #"(favicon|android-chrome|apple-touch-icon|mstile)" src))))
 
