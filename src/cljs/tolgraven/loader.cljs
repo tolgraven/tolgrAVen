@@ -37,10 +37,10 @@
 (defn load!
   "Loads a component asynchronously. Any kind of load must always use this fn,
   because it handles init events, pre- and post-load hooks, etc."
-  [{:keys [module- init-evt pre-fn post-fn args] :as spec}]
-  (let [*spec (get modules module-)]
+  [{:keys [module init-evt pre-fn post-fn args] :as spec}]
+  (let [*spec (get modules module)]
     (if-not *spec
-      (throw (ex-info "Unknown module" {:k module-}))
+      (throw (ex-info "Unknown module" {:k module}))
       (if (lazy/ready? *spec)
         @*spec
         (do
@@ -53,10 +53,10 @@
 
 (defn <>
   "Loads a component as part of react-built DOM"
-  [{:keys [module- view- post-fn <loading> <missing>] :as spec}
+  [{:keys [module view post-fn <loading> <missing>] :as spec}
    & args]
-  (let [module- (or module- (first spec)) ; if vector
-        view- (or view- (second spec))
+  (let [module- (or module (first spec)) ; if vector
+        view- (or view (second spec))
         *module-spec (get modules module-)]
     (letfn [(<missing>' [& args]
               (if <missing>
@@ -70,7 +70,6 @@
             (-><inner> [comp-spec]
               (let [<comp> (some-> comp-spec :view view- deref)]
                 (fn []
-                  (js/console.log "<inner>:" comp-spec <comp>)
                   (if (fn? <comp>)
                     (into [<comp>] args)
                     (do (when-not (:no-warn? spec)
