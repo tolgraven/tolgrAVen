@@ -43,7 +43,7 @@
        {:style {:white-space :pre-wrap
                 :display :inline-flex}}
        [:span.first-char char1]
-       (for [letter others] ; causes issues with spacing? nice lil zoom effect though, figure out.
+       (m/for [letter others] ; causes issues with spacing? nice lil zoom effect though, figure out.
          [ui/appear-anon "slide-in faster"
           [:span
            {:style {:min-height height}}
@@ -86,7 +86,7 @@
          {:class (when (and @(rf/subscribe [:search/open?])
                             (not (string/blank? @query)))
                    "search-autocomplete-open")}
-         (for [suggestion (drop 1 suggestions') ; rework as map-indexed so can highhlight and pick by keyboard
+         (m/for [suggestion (drop 1 suggestions') ; rework as map-indexed so can highhlight and pick by keyboard
                :let [{:keys [text html rest match query]} suggestion
                      without-query rest
                      #_(string/replace-first text (re-pattern (str "(?i)" @query)) "")]]
@@ -103,10 +103,9 @@
   (if-let [hits (:hits @(rf/subscribe [:search/results-for-query collection]))]
     [:<>
      (when (seq hits)
-       (for [hit hits
+       (m/for [hit hits
              :let [{:keys [highlights document]} hit
                    {:keys [id text]} document]]
-         ^{:key (str "search-result-" collection "-" id)}
          [ui/appear-merge (str appear-class " fast")
           [:div.search-instant-result
            {:class inner-class}
@@ -126,8 +125,7 @@
        [:h2.blog-post-title title]]
       [l/<> {:module :blog :view :posted-by} id user ts]
       [l/<> {:module :blog :view :tags-list} document]]
-     (for [highlight highlights]
-       ^{:key (str "search-result-highlight-" (:snippet highlight))}
+     (m/for [highlight highlights]
        [ui/md->div (:snippet highlight)])]))
 
 (defn blog-comment-results "Show hits that are blog post comments"
@@ -140,8 +138,7 @@
       [:div.blog-comment-main
        [:h4.blog-comment-title title]
        [l/<> {:module :blog :view :posted-by} id user ts]
-       (for [highlight highlights]
-         ^{:key (str "search-result-highlight-" (:snippet highlight))}
+       (m/for [highlight highlights]
          [:div.blog-comment-text
           [ui/md->div (:snippet highlight)]])]]]))
 
