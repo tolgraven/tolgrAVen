@@ -108,7 +108,7 @@
 
 (rf/reg-event-fx :scope/init ; should be like, a scope is usually a cljs module, possibly backend stuff that might want to be eagerly inited/refreshed before module load finishes, so outside module def
   (fn [{:keys [db]} [_ scope- & args]]
-    (js/console.warn "Unhandled scope init event - no op" scope- args)
+    (js/console.warn "Possibly unhandled scope init event - no op" scope- args)
     {:db (assoc-in db [:state :init :scope scope-] {:inited? true :args args})}))
 
 (rf/reg-event-fx :history/popped
@@ -508,7 +508,7 @@
 
 (rf/reg-event-fx :on-booted ; queue event up to fire once init complete
   (fn [{:keys [db]} [_ id event]]
-    (if (get-in db [:state :booted id])
+    (if (or (nil? id) (get-in db [:state :booted id]))
       {:dispatch event} ; just send it if already booted
       {:db (update-in db [:state :on-booted id] (comp set conj) event)})))
 

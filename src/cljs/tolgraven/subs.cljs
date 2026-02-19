@@ -128,6 +128,11 @@
          (boolean (seq category)))
        (not-every? nil? (map seq (vals loading))))))) ;if no args passed just check if any active load
 
+(rf/reg-sub :scope/inited?
+ :<- [:state [:init]]
+ (fn [init [_ scope-]]
+   (let [scope-' (get-in init [:scope scope-])]
+     (boolean scope-'))))
 
 (rf/reg-sub :diag/messages
  (fn [db [_ _]]
@@ -192,11 +197,12 @@
 
 (rf/reg-sub :href-add-query ;  "Append query to href of current page, or passed k/params"
  :<- [:common/page-id]           
- :<- [:common/route]           
+ :<- [:common/route]
  (fn [[k route] [_ query-map]]
-   (let [params (:path-params route)
-         query (merge (:query-params route) query-map)]
-    (rfe/href k params query))))
+   (when k
+     (let [params (:path-params route)
+           query (merge (:query-params route) query-map)]
+       (rfe/href k params query)))))
 
 
 (rf/reg-sub :href

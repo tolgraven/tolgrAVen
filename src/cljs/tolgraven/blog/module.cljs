@@ -5,8 +5,6 @@
     [tolgraven.blog.subs]
     [tolgraven.blog.views :as view]))
 
-;; Ideas: if first event/sub(?) not registered, auto load module?
-
 (def spec
   {:id :blog
    :view {:page #'view/blog-page

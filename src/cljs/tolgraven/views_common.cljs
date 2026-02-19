@@ -88,22 +88,32 @@
     (when @(rf/subscribe [:state [:menu]])
       [:div.line])
 
-    [ui/loading-spinner (rf/subscribe [:loading]) :still
-     {:style {:position :absolute
-              :left "-2.65em" ; puts it to left of header-logo, only partly visible. looks nice.
-              :top "0%"}}]
-    
+    (when-let [loading @(rf/subscribe [:loading])]
+      [ui/loading-spinner (rf/subscribe [:loading]) :still
+       {:style {:position :absolute
+                :left     "-2.65em"                                   ; puts it to left of header-logo, only partly visible. looks nice.
+                :top      "0%"}}])
     [:div.header-icons
      [:a {:href @(rf/subscribe [:href :blog])}
-     [:button.blog-link-btn.noborder.nomargin
-      {:title "My blog"}
-      [:i.fa.fa-pen-fancy]]]
+      [:button.blog-link-btn.noborder.nomargin
+       {:title "My blog"}
+       [:i.fa.fa-pen-fancy]]]
     [:a {:href @(rf/subscribe [:href-add-query  
                                {:settingsBox (not @(rf/subscribe [:state [:settings :panel-open]]))}])}
      [:button.settings-btn.noborder.nomargin
       [:i.settings-btn {:class "fa fa-cog"}]]]
-    [l/<> {:module :search, :view :button}]
-    [l/<> {:module :user, :view :btn}]
+
+    [l/<> {:module :search
+           :view :button
+           :<before> (fn []
+                       [:button.search-ui-btn.noborder.nomargin
+                        {:name "Search" :title "Search site"}
+                        [img/picture {:src   "svg/search-ico.svg"
+                                      :alt   "Search"
+                                      :style {:width  "1.2em" :height "1.2em"
+                                              :filter "var(--light-to-dark)"}}]])}]
+    [l/<> {:module :user
+           :view :btn}]
     [:label.burger {:for "nav-menu-open"}]]]
 
    [:div.fill-side-top

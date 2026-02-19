@@ -165,13 +165,17 @@
   [:<>
    [<assets>]
 
-   [ui/safe :header [common/header @(rf/subscribe [:content [:header]])]] ;TODO smooth transition to personal
+   [ui/safe :header [common/header @(rf/subscribe [:content [:header]])]]
    [:a {:name "linktotop" :id "linktotop"}]
    
    [ui/zoom-to-modal :fullscreen]
-   [ui/safe :user [l/<> {:module :user, :view :view}]]
+   [ui/safe :user [l/<> {:module :user
+                         :view :view
+                         :defer? true}]]
    [ui/safe :settings [common/settings]]
-   [ui/safe :search [l/<> {:module :search, :view :view}]]
+   [ui/safe :search [l/<> {:module :search
+                           :view :view
+                           :defer? true}]]
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
       [error-page]]
@@ -255,7 +259,7 @@
      ["cv"
       {:name        :cv
        :module      :cv
-       :view        :page
+       :page        :page
        :controllers [{:stop (fn [_]
                               (rf/dispatch [:state [:fullscreen :cv] false]))}]}]
      ["docs"
@@ -394,22 +398,24 @@
                       (update-in match [:data :view] #(if % % <comp>)))
           load-spec {:module  module
                      :view    page
-                     :pre-fn  #(rf/dispatch-sync [:loading/on :page name])
+                     :loaded? (l/ready? module)
+                     :pre-fn  #(rf/dispatch [:loading/on :page name])
                      :post-fn (fn [spec & _]
-                                (rf/dispatch-sync [:common/navigate (->match (some-> spec :view page))])
-                                (rf/dispatch [:loading/off :page name]))}]
-      (when-let [<comp> (or (some-> match :data :view)
-                            (some-> (l/load! load-spec) :view page))]
-        (rf/dispatch-sync [:common/navigate (->match <comp>)]))) ; -sync avoids not having route when components mount
+                                (rf/dispatch [:common/navigate (->match (some-> spec :view page))])
+                                (rf/dispatch [:loading/off :page name]))}
+          <comp> (or (some-> match :data :view)                ; if non-module, original match has view
+                     (some-> (l/load! load-spec) :view page))] ; load! generally will have occured and hence return proper spec
+      (when <comp>
+        (rf/dispatch [:common/navigate (->match <comp>)]))) ; -sync avoids not having route when components mount
     (do
-     (rf/dispatch-sync [:state [:error-page] not-found-page])
+     (rf/dispatch [:state [:error-page] not-found-page])
      (rf/dispatch [:diag/new :error "404" "Not found"]))))
 
 
 (defn ignore-anchor-click?
   [router e el ^js uri]
   ; (js/console.log (.-fragment_ uri))
-  (rf/dispatch-sync [:state [:fragment] (.-fragment_ uri)])
+  (rf/dispatch [:state [:fragment] (.-fragment_ uri)])
   (and #_:identical-uri ; cause pollutes history with duplicates
        #_:fragments-at-other-base-paths
        (rfh/ignore-anchor-click? router e el uri)))
@@ -419,6 +425,7 @@
    :ignore-anchor-click? ignore-anchor-click?})
 
 (defn start-router! []
+  (js/console.log "Starting router with settings:" router-settings)
   (rfe/start! router on-nav router-settings))
 
 

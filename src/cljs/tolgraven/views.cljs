@@ -300,31 +300,29 @@
 
 (defn remote-player
   [url]
-  [:div]
+  [:div "Soundcloud player hey"]
   #_[:> SoundCloud
    {:url url
     :width "100%"
     :height "100%"}])
 
 (defn soundcloud-loading "A dummy to show before initing react-player"
-  [artist song]
+  []
   [:div.soundcloud-player-loading
    [img/picture
     {:src "img/soundcloud-logo.png"
      :alt "SoundCloud"
      :class "center-content"}]
-   [:h3 song]
-   [:h4 artist]])
+   [:br]
+   [:p "Loading tune..."]])
 
 (defn soundcloud-player
   [artist song]
   (let [base-url "https://soundcloud.com/"
         url (str base-url artist "/" song)]
     [ui/seen-anon "slide-in"
-     (if @(rf/subscribe [:booted? :soundcloud])
-       [ui/safe :player
-        [remote-player url]]
-       [soundcloud-loading artist song])]))
+     [ui/safe :player
+      [remote-player url]] ]))
 
 (defn ui-soundcloud "Soundcloud feed, plus selected tunes. Bonus if can do anything fun with it"
   []
@@ -335,32 +333,29 @@
         [soundcloud-player artist tune])]]))
 
 
-(declare sections)
-
 (defn run-init
- [section]
- (let [dep (get-in sections [section :dep])
-       event (or (get-in sections [section :init])
-                 [:backend/init section])] ; initial refresh from service, then component runs its own init on mount once module loaded
+ [section init & [dep]]
+ (let [event (or init [:scope/init section])] ; initial refresh from service, then component runs its own init on mount once module loaded
    (when event
      [ui/lazy-load [:on-booted dep event]])))
 
 
 (def sections
-  {:intro       {:component ui-intro
+  {:intro       {:<comp> ui-intro
                  :content :intro}
-   :services    {:component ui-services
+   :services    {:<comp> ui-services
                  :content :services
                  :init [:state [:services :to-focus?] true]}
-   :moneyshot   {:component ui-moneyshot
+   :moneyshot   {:<comp> ui-moneyshot
                  :content :moneyshot}
-   :story       {:component ui-story
+   :story       {:<comp> ui-story
                  :content :story}
-   :gallery     {:component ui-gallery
+   :gallery     {:<comp> ui-gallery
                  :content :gallery
                  :dep :site
                  :init [:state [:gallery :loaded] true]}
-   :soundcloud  {:component ui-soundcloud
+   :soundcloud  {:<comp> ui-soundcloud
+                 :<loading> soundcloud-loading
                  :dep :site
                  :init [:booted :soundcloud]}
    :strava      {:module :strava
@@ -371,9 +366,9 @@
                  :dep :site}
    :gpt         {:module :gpt}
    :chat        {:module :chat}
-   :interlude   {:component ui-interlude
+   :interlude   {:<comp> ui-interlude
                  :content :interlude}
-   :init        {:component run-init}})
+   :init        {:<comp> run-init}})
 
 ; will want triggering all things to init
 ; when loading page halfway down so scroll pos stays correct
@@ -412,17 +407,19 @@
 
 (defn get-component "Get component, and its init event runner, if any."
   [id section-map]
-  (let [{:keys [module component content args dep init]} section-map
+  (let [{:keys [module <comp> <loading> content args dep init]} section-map
         view (cond
                module (if @(rf/subscribe [:booted? module])
                         (into [l/<> {:module module
-                                     :view   (or component :view)}]
+                                     :view   (or <comp> :view)}]
                               args)
-                        [:div {:id (str (name id) "-will-load")}])
-               :else [component])]
+                        [:div {:id (str (name id) "-will-load")}
+                         (when <loading>
+                           [<loading>])])
+               :else [<comp>])]
     [:<>
      (when init
-       [run-init id])
+       [run-init id init dep])
      (cond-> view
        content (conj @(rf/subscribe [:content [content]]))
        args    (conj args)

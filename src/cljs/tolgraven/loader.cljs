@@ -24,6 +24,7 @@
                                                  :user
                                                  :chat
                                                  :github
+                                                 :cv
                                                  :docs
                                                  :gpt
                                                  :strava
@@ -33,6 +34,10 @@
 (defn <default-missing>
   [& args]
   [:div (pr-str args)])
+
+(defn ready?
+  [module]
+  (lazy/ready? (get modules module)))
 
 (defn load!
   "Loads a component asynchronously. Any kind of load must always use this fn,
@@ -46,54 +51,70 @@
         (do
           (when init-evt (rf/dispatch init-evt))
           (when pre-fn (apply pre-fn args))
+          #_(when-not @(rf/subscribe [:scope/init? module-]) ; doesn't work here obvs, figure out how to get this info here from app-db?
+            (rf/dispatch [:scope/init module- args]) )
           (-> (lazy/load *spec)
               (.then (fn [sym]
-                         (when post-fn
-                           (apply post-fn sym args))))))))))
+                       (rf/dispatch [:scope/init module args])
+                       (when-let [init (:init sym)]             ; here because sub needs to be within a view component
+                         (apply init args))
+                       (when post-fn
+                         (apply post-fn sym args))))))))))
 
 (defn <>
   "Loads a component as part of react-built DOM"
-  [{:keys [module view post-fn <loading> <missing>] :as spec}
-   & args]
-  (let [module- (or module (first spec)) ; if vector
-        view- (or view (second spec))
-        *module-spec (get modules module-)]
-    (letfn [(<missing>' [& args]
-              (if <missing>
-                (if (vector? <missing>)
-                  <missing>
-                  (into [<missing>] args))
-                (into [<default-missing>] args)))
-            (<loading>' []
-              (or (if (fn? <loading>) (into [<loading>] args) <loading>)
-                  (into [:div] args)))
-            (-><inner> [comp-spec]
-              (let [<comp> (some-> comp-spec :view view- deref)]
-                (fn []
-                  (if (fn? <comp>)
-                    (into [<comp>] args)
-                    (do (when-not (:no-warn? spec)
-                          (if <comp>
-                            (js/console.error
-                              "Failed to extract lazy comp:"
-                              #js {:module module-, :view view-, :<comp> <comp>})
-                            (js/console.error "Failed to deref lazy:" spec)))
-                        (into [<missing>'] args))))))
-            (load-then-show []
-              (load! (assoc spec
-                       :post-fn (fn [sym & args]
-                                  (when post-fn
-                                    (apply post-fn sym args))
-                                  (when (:css sym)
-                                    (rf/dispatch [:loader/load-css (:css sym)]))
-                                  (when-let [init (:init sym)]
-                                    (when-not (get @(rf/subscribe [:state [:scope module-]]) :module)
-                                      (rf/dispatch-sync [:loader/init-backend])
-                                      (apply init args)))
-                                  #js {:default (r/reactify-component (-><inner> sym))})
-                       :args args)))]
-      (if (lazy/ready? *module-spec)
-        [(-><inner> @*module-spec)]
-        [:> react/Suspense
-         {:fallback (r/as-element [<loading>'])}
-         (into [:> (react/lazy load-then-show)] args)]))))
+  [{:keys [<before> defer?]}
+   & _]
+  (let [*defer? (r/atom (or defer? <before>))]
+    (fn [{:keys [module view post-fn <loading> <missing> <before>] :as spec}
+         & args]
+      (let [module-      (or module (first spec))                     ; if vector
+            view-        (or view (second spec))
+            *module-spec (get modules module-)]
+        (letfn [(<missing>' [& args]
+                  (if <missing>
+                    (if (vector? <missing>)
+                      <missing>
+                      (into [<missing>] args))
+                    (into [<default-missing>] args)))
+                (<before>' []
+                  (when <before>
+                    [:div.before-loading-container
+                     {:on-click #(rf/dispatch [:scope/init module- args])}
+                     #_{:on-click #(reset! *do-load? true)}
+                     [<before> args]]))
+                (<loading>' []
+                  (or (if (fn? <loading>) (into [<loading>] args) <loading>)
+                      [:div.loading-container>loading-spinner]))
+                (-><inner> [comp-spec]
+                  (let [<comp> (some-> comp-spec :view view- deref)]
+                    (fn []
+                      #_(when-not @(rf/subscribe [:scope/init? module-])
+                          (rf/dispatch [:scope/init module- args]))
+                      (if (fn? <comp>)
+                        (into [<comp>] args)
+                        (do (when-not (:no-warn? spec)
+                              (if <comp>
+                                (js/console.error
+                                 "Failed to extract lazy comp:"
+                                 #js {:module module-, :view view-, :<comp> <comp>})
+                                (js/console.error "Failed to deref lazy:" spec)))
+                            (into [<missing>'] args))))))
+                (load-then-show []
+                  (load! (assoc spec
+                           :post-fn (fn [sym & args]
+                                      (when post-fn
+                                        (apply post-fn sym args))
+                                      (when (:css sym)
+                                        (rf/dispatch [:loader/load-css (:css sym)]))
+                                      #js {:default (r/reactify-component (-><inner> sym))})
+                           :args args)))]
+          (if (and @*defer?
+                   (not @(rf/subscribe [:scope/inited? module-])))
+            (when <before>'
+              [<before>'])
+            (if (lazy/ready? *module-spec)
+              [(-><inner> @*module-spec)]
+              [:> react/Suspense
+               {:fallback (r/as-element [<loading>'])}
+               (into [:> (react/lazy load-then-show)] args)])))))))

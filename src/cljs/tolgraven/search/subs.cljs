@@ -26,11 +26,12 @@
    (get-in db (into [:state :search] path))))
 
 (rf/reg-sub :search/open?
- (fn [db [_ path]]
-   (get-in db [:state :search :open?])))
+ (fn [db [_]]
+   (or (nil? (get-in db [:state :search :open?]))
+       (get-in db [:state :search :open?]))))
 
 (rf/reg-sub :search/results-open?
- (fn [db [_ path]]
+ (fn [db [_]]
    (get-in db [:state :search :results-open?])))
 
 (rf/reg-sub
