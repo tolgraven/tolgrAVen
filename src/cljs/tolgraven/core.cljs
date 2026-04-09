@@ -20,52 +20,9 @@
     [tolgraven.views :as view]
     [tolgraven.views-common :as common]))
 
+(def spec {:assets {:css [""]}}) ; global assets
 
-; (defn swapper "Swap between outgoing and incoming page view"
-;   [class comp-1 comp-2]
-;   (let [swap (rf/subscribe [:state [:swap]])
-;         curr-page (-> (rf/subscribe [:common/route ]) deref :data :name)
-;         prev-page (-> (rf/subscribe [:common/route :last]) deref :data :name)
-;         curr-1 (r/atom curr-page)
-;         curr-2 (r/atom nil)
-;         curr-visible (r/atom curr-page) ; well would have to be a sub tho
-;         curr-hidden (r/atom nil)]
-;     [:div.swapper
-;      [:div.swap-one
-;       {:class (str class " "
-;                    (when (and (= @curr-visible @curr-1)
-;                               (or (not comp-2)
-;                                   (not @swap)
-;                                   (= (:running @swap) @curr-hidden)
-;                                   (= (:finished @swap) @curr-hidden)))
-;                      "swapped-in")
-;                    (when (= (:running @swap) @curr-1)
-;                        class) " "
-;                      (when (= (:running @swap) @curr-1)
-;                        "swapped-out") " "
-;                      (when (= (:finished @swap) @curr-1)
-;                        "removed"))}
-;       comp-1] ;will have to be behind for z then revealed by curr page moving out the way.
-;      (when comp-2
-;        [:div.swapped
-;         {:class (str (when (and (= @curr-visible @curr-2)
-;                                 (or (= (:running @swap) prev-page)
-;                                     (= (:finished @swap) prev-page)))
-;                        "swapped-in")
-;                      (when (= (:running @swap) @curr-2)
-;                        class) " "
-;                      (when (= (:running @swap) @curr-2)
-;                        "swapped-out") " "
-;                      (when (or (= (:finished @swap) @curr-2)
-;                                (not @swap))
-;                        "removed") " ")
-;          :ref #(when (and %
-;                           (not= @curr-hidden (:running @swap))
-;                           (not= @curr-hidden (:finished @swap)))
-;                (rf/dispatch [:swap/trigger prev-page]))} ; trigger anim out and deferred hiding. triggers three(!) times each time but later no effect so.
-;         comp-2])]))
-
-(defn swapper "Swap between outgoing and incoming page view"
+(defn swapper "Swap between outgoing and incoming page view. Deprecated: switch to CSS transition"
   [class comp-in comp-out]
   (let [swap (rf/subscribe [:state [:swap]])
         curr-page (rf/subscribe [:common/route ])
@@ -81,9 +38,9 @@
         [:div.swapper
          [:div.swap-in
           {:class (str class " "
-                       (when (or force?
+                       (when (or (not @swap)
+                                 force?
                                  (not comp-out)
-                                 (not @swap)
                                  (= (:running @swap) prev-page)
                                  (= (:finished @swap) prev-page))
                          "swapped-in"))}
@@ -105,57 +62,6 @@
                        (rf/dispatch [:history/set-referrer [nil 0]]))} ; trigger anim out and deferred hiding. triggers three(!) times each time but later no effect so.
             (when-not (:finished @swap)
               comp-out)])]))))
-#_(defn swapper "Swap between outgoing and incoming page view"
-  [class comp-in comp-out]
-  #_[:div "aj"]
-  (let [swap (rf/subscribe [:state [:swap]])
-        curr-page (-> (rf/subscribe [:common/route ]) deref :data :name)
-        prev-page (-> (rf/subscribe [:common/route :last]) deref :data :name)
-        force? (empty? (seq class))
-        ref-fn #(when (and %
-                          (not= prev-page (:running @swap))
-                          (not= prev-page (:finished @swap)))
-                 (rf/dispatch [:swap/trigger prev-page]))] ; no transition
-    (fn [class comp-in comp-out]
-      [:div.swapper
-     [:div.swap-in
-      {:class (str class " "
-                   (when (or force?
-                             (not comp-out)
-                             (not @swap)
-                             (= (:running @swap) prev-page)
-                             (= (:finished @swap) prev-page))
-                     "swapped-in"))}
-      comp-in] ;will have to be behind for z then revealed by curr page moving out the way.
-     (when comp-out
-       [:div.swapped
-        {:class (str (when (= (:running @swap) prev-page)
-                       class) " "
-                     (when (= (:running @swap) prev-page)
-                       "swapped-out") " "
-                     (when (or (= (:finished @swap) prev-page)
-                               (not @swap)
-                               force?)
-                       "removed") " ")
-         :ref #(when (and %
-                          (not= prev-page (:running @swap))
-                          (not= prev-page (:finished @swap)))
-               (rf/dispatch [:swap/trigger prev-page]))} ; trigger anim out and deferred hiding. triggers three(!) times each time but later no effect so.
-        (when-not (:finished @swap)
-          comp-out)])])))
-;; ^^ this works but obviously should be going back and forth between two "equal" comps
-;; that are therefore not being reloaded on leaving...
-
-(defn <assets> "Load general assets"
-  []
-  [:<>
-   (m/for [css @(rf/subscribe [:loader/css])]
-          [:link {:rel  "stylesheet"
-                  :type "text/css"
-                  :href css}])
-   (m/for [js @(rf/subscribe [:loader/js])]
-          [:script {:type "text/javascript"
-                    :src  js}])])
 
 (defn page "Render active page inbetween header, footer and general stuff." 
   []
@@ -163,19 +69,16 @@
         swap-class (if ext-back? "" "opacity")
         click-evt @(rf/subscribe [:state [:global-clicked]])]
   [:<>
-   [<assets>]
+   [l/<assets> {:css (some-> spec :assets :css)
+                :js  (some-> spec :assets :js)}]
 
    [ui/safe :header [common/header @(rf/subscribe [:content [:header]])]]
    [:a {:name "linktotop" :id "linktotop"}]
    
    [ui/zoom-to-modal :fullscreen]
-   [ui/safe :user [l/<> {:module :user
-                         :view :view
-                         :defer? true}]]
+   [ui/safe :user [l/<> {:module :user, :defer? true}]]
    [ui/safe :settings [common/settings]]
-   [ui/safe :search [l/<> {:module :search
-                           :view :view
-                           :defer? true}]]
+   [ui/safe :search [l/<> {:module :search, :defer? true}]]
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
       [error-page]]
@@ -396,13 +299,14 @@
           ; start (util/wrap-fn (:start controllers))
           ->match   (fn [<comp>]
                       (update-in match [:data :view] #(if % % <comp>)))
-          load-spec {:module  module
-                     :view    page
-                     :loaded? (l/ready? module)
-                     :pre-fn  #(rf/dispatch [:loading/on :page name])
-                     :post-fn (fn [spec & _]
-                                (rf/dispatch [:common/navigate (->match (some-> spec :view page))])
-                                (rf/dispatch [:loading/off :page name]))}
+          load-spec (when-not (some-> match :data :view)
+                      {:module  module
+                       :view    page
+                       :loaded? (l/ready? module)
+                       :pre-fn  #(rf/dispatch [:loading/on :page name])
+                       :post-fn (fn [spec & _]
+                                  (rf/dispatch [:common/navigate (->match (some-> spec :view page))])
+                                  (rf/dispatch [:loading/off :page name]))})
           <comp> (or (some-> match :data :view)                ; if non-module, original match has view
                      (some-> (l/load! load-spec) :view page))] ; load! generally will have occured and hence return proper spec
       (when <comp>
@@ -414,7 +318,6 @@
 
 (defn ignore-anchor-click?
   [router e el ^js uri]
-  ; (js/console.log (.-fragment_ uri))
   (rf/dispatch [:state [:fragment] (.-fragment_ uri)])
   (and #_:identical-uri ; cause pollutes history with duplicates
        #_:fragments-at-other-base-paths
@@ -445,11 +348,9 @@
     (when @root
       (rdomc/unmount @root))
     (reset! root (rdomc/create-root app))
-  ; (rdomc/render @root <page>))
   (rdomc/render @root [#'page])))
 
 (defn mount-components "Called each update when developing" []
-  ; save pos
   (rf/dispatch-sync [:scroll/save-position-dev])
   (rf/clear-subscription-cache!)
   (start-router!) ; restart router on reload?

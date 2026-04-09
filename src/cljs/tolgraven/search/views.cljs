@@ -113,7 +113,6 @@
 
     [ui/loading-spinner true]))
 
-
 ; these should be provided by blog probably? and other respective modules
 ; could generalize a tiny bit but tricky due to css structure
 (defn blog-post-results "Show hits that are blog posts"

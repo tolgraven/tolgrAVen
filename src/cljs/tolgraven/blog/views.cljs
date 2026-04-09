@@ -236,18 +236,16 @@
 (defn add-comment "Post http or do a gql mutation, yada yada"
   [parent-path]
   (let [adding-comment? (rf/subscribe [:comments/adding? parent-path])
-        editing (rf/subscribe [:blog/state [:editing-comment parent-path]]) ;XXX would break when multiple replies to same parent
-        model (rf/subscribe [:form-field [:write-comment parent-path]]) ;should use db tho, no good accidental nav and lose shit
         input-valid? (fn [input]
                        (pos? (count (:text input))))
         preview? (r/atom false)
-        box (fn [k kind & {:keys [style ui-name]}]
+        box (fn [k kind model & {:keys [style ui-name]}]
               (let [id (str "blog-adding-comment-" kind)
                     this (r/atom nil) ]
-                (fn [k kind & {:keys [style ui-name]}]
+                (fn [k kind & {:keys [style ui-name model]}]
                   (let [height (when (= kind :textarea)
                                {:min-height (when @this
-                                              (-> @model :text ;sadly linebreak doesnt count so only expands once text on newline.
+                                              (-> model :text ;sadly linebreak doesnt count so only expands once text on newline.
                                                   (str "-")
                                                   string/split-lines
                                                   count (* 1.15) (+ 2)
@@ -259,7 +257,7 @@
                 :class (str "blog-adding-comment-textbox")
                 :type :textbox
                 :ref #(when % (reset! this %))
-                :value (get @model k)
+                :value (get model k)
                 :name (or ui-name (name k))
                 :placeholder (string/capitalize (or ui-name (name k)))
                 :style (merge style
@@ -267,21 +265,21 @@
                 :on-change (fn [e]
                              (let [new-val (-> e .-target .-value)]
                                (rf/dispatch-sync [:form-field [:write-comment parent-path k] new-val])))
-                :on-blur #(rf/dispatch-sync [:form-field [:write-comment parent-path k] (get @model k) :blur])}]))))
-        submit-btn (fn []
+                :on-blur #(rf/dispatch-sync [:form-field [:write-comment parent-path k] (get model k) :blur])}]))))
+        submit-btn (fn [model editing?]
                      [:button.blog-btn.noborder
-                      {:class    (when (input-valid? @model) "topborder")
-                       :disabled (when-not (input-valid? @model) true)
+                      {:class    (when (input-valid? model) "topborder")
+                       :disabled (when-not (input-valid? model) true)
                        :on-click (fn [_]
-                                   (when (input-valid? @model)
+                                   (when (input-valid? model)
                                      (rf/dispatch [:blog/adding-comment parent-path nil])
-                                     (rf/dispatch [:blog/comment-submit parent-path @model @editing])
+                                     (rf/dispatch [:blog/comment-submit parent-path model editing?])
                                      (rf/dispatch [:form-field [:write-comment parent-path] nil :blur])))}
                       "Submit"])
         valid-bg {:background-color "var(--bg-3-2)"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
      (fn [parent-path] ; needed or recreates to empty when swapped out
        (when @adding-comment?
-         [:div.blog-comment-reply-outer
+         (let [*model (rf/subscribe [:form-field [:write-comment parent-path]])] [:div.blog-comment-reply-outer
           [:div.blog-comment-reply
            [:div.blog-adding-comment
           #_[:button.blog-btn
@@ -297,15 +295,15 @@
              [box :text :textarea :ui-name "Comment"]]])
           
           [comment-post [:new-comment] {:user @(rf/subscribe [:user/active-user])
-                                        :title (get @model :title)
-                                        :text (get @model :text)}]
-          [ui/input-text-styled :model model
+                                        :title (get @*model :title)
+                                        :text (get @*model :text)}]
+          [ui/input-text-styled :model *model
            :on-change (fn [v]
                         (rf/dispatch-sync [:form-field [:write-comment parent-path :text] v]))]
           ; [box :text :textarea :ui-name "Comment" :style {:opacity 0.1
           ;                                                 :z-index 10}]
-          [submit-btn]
-          [add-comment-btn parent-path :cancel]]]]))))
+          [submit-btn @*model @(rf/subscribe [:blog/state [:editing-comment parent-path]])]
+          [add-comment-btn parent-path :cancel]]]])))))
 
      ; :on-key-up (fn [e] (when (= "Alt-Enter-however-written" (.-key e)) (submit)))
 ; not here but whatever: thing from MYH site where heading slots into header
