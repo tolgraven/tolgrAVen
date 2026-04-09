@@ -7,7 +7,7 @@
 
 (def spec
   {:id :strava
-   :css ["https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]
+   :assets {:css ["https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]}
    :view {:view #'view/strava}
    :init #(do (js/console.error "STRAVA YO")
               (rf/dispatch [:strava/init]))})

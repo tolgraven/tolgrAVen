@@ -7,18 +7,6 @@
   (:require-macros
    [tolgraven.macros :as m]))
 
-(rf/reg-event-fx :loader/load-css
-  (fn [{:keys [db]} [_ css-urls]]
-    {:db (assoc-in db [:loader :css] css-urls)}))
-
-(rf/reg-sub :loader/css
-  (fn [db _]
-    (get-in db [:loader :css])))
-
-(rf/reg-sub :loader/js
-  (fn [db _]
-    (get-in db [:loader :js])))
-
 (def modules (merge (m/make-modules "tolgraven" [:blog
                                                  :search
                                                  :user
@@ -61,15 +49,30 @@
                        (when post-fn
                          (apply post-fn sym args))))))))))
 
+(defn <assets>
+  "Inject external assets"
+  [{:keys [css js]}]
+  [:<>
+   (m/for [src css]
+          [:link {:rel  "stylesheet"
+                  :type "text/css"
+                  :href src}])
+   (m/for [src js]
+          [:script {:type "text/javascript"
+                    :src  src}])])
+
 (defn <>
   "Loads a component as part of react-built DOM"
   [{:keys [<before> defer?]}
    & _]
   (let [*defer? (r/atom (or defer? <before>))]
-    (fn [{:keys [module view post-fn <loading> <missing> <before>] :as spec}
+    (fn [{:keys [module view post-fn <loading> <missing> <before> load-sub] :as spec}
          & args]
-      (let [module-      (or module (first spec))                     ; if vector
-            view-        (or view (second spec))
+      (let [module-      (or module
+                             (when (vector? spec) (first spec)))                     ; if vector
+            view-        (or view
+                             (when (vector? spec) (second spec))
+                             :view)
             *module-spec (get modules module-)]
         (letfn [(<missing>' [& args]
                   (if <missing>
@@ -105,8 +108,6 @@
                            :post-fn (fn [sym & args]
                                       (when post-fn
                                         (apply post-fn sym args))
-                                      (when (:css sym)
-                                        (rf/dispatch [:loader/load-css (:css sym)]))
                                       #js {:default (r/reactify-component (-><inner> sym))})
                            :args args)))]
           (if (and @*defer?
@@ -117,4 +118,5 @@
               [(-><inner> @*module-spec)]
               [:> react/Suspense
                {:fallback (r/as-element [<loading>'])}
-               (into [:> (react/lazy load-then-show)] args)])))))))
+               (cond->> (into [:> (react/lazy load-then-show)] args)
+                 (:assets spec) (into [:<> [<assets> (:assets spec)]]))])))))))

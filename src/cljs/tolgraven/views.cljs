@@ -433,15 +433,15 @@
                                 {:args args})])
     [get-component section (get sections section)]))
 
-(macroexpand '(m/defcomp <test-2>
+(macroexpand '(m/defc <test-2>
   "test-comp-2"
   [spec]
   [:div "goodbye" (throw (js/Error. "test2"))]))
-(m/defcomp <test-2>
+(m/defc <test-2>
   "test-comp-2"
   [spec]
   [:div "goodbye" (throw (js/Error. "test2"))])
-(m/defcomp <test>
+(m/defc <test>
   "test-comp"
   [spec]
   [:div "hello" spec [<test-2> spec] ])

@@ -1,9 +1,13 @@
 (ns tolgraven.macros
   #?(:clj (:refer-clojure :exclude [for]))
-  (:require [clojure.string :as string])
+  (:require [clojure.string :as string]
+            [malli.core :as m]
+            [malli.error :as me])
   #?(:cljs (:require [reagent.core :as r]
                      [re-frame.core :as rf]
                      [shadow.lazy]
+                     [malli.core :as m]
+                     [malli.error :as me]
                      [tolgraven.components.error :as error]
                      [tolgraven.util :as util]))
   #?(:cljs (:require-macros [tolgraven.macros])))
@@ -55,7 +59,7 @@
 ;; basic feature flag/disable component entirely support could go in here as well
 ;; prob do some lookups by sub through passing a namespaced id key in spec
 ;; including whether is enabled
-(defmacro defcomp
+(defmacro defc
   "Define a reagent component with a docstring and metadata, with a bunch of
    built-in functionality that doesn't wrap but is part of the component itself.
   Usage:

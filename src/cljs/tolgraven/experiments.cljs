@@ -400,6 +400,6 @@
 
 (def spec
   {:id :test
-   :css ["https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]
+   :assets {:css ["https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]}
    :view {:page #'test-page}})
 
