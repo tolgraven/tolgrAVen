@@ -24,16 +24,19 @@
     (get-in db (into [:options] path))))
 
 (rf/reg-sub :debug
-  (fn [db [_ path]]
-    (get-in db (into [:state :debug] path))))
+  :<- [:state]
+  (fn [state [_ path]]
+    (get state (into [:debug] path))))
 
 (rf/reg-sub :exception
-  (fn [db [_ path]]
-    (get-in db (into [:state :exception] path))))
+  :<- [:state]
+  (fn [exception [_ path]]
+    (get-in exception (into [:exception] path))))
 
 (rf/reg-sub :form-field
-  (fn [db [_ path]]
-    (get-in db (into [:state :form-field] path))))
+  :<- [:state]
+  (fn [state [_ path]]
+    (get-in state (into [:form-field] path))))
 
 (rf/reg-sub :<-store
   :<- [:booted? :firebase]

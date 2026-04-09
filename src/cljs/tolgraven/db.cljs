@@ -3,6 +3,21 @@
             [re-frame.core :as rf]
             [cljs.reader]))
 
+
+;; NEW ARCH STUFF:
+;; * pt-style per-page general subs/puts (global, page, view etc)
+
+; (s/defschema $Scope
+;   "Schema for supported DB path scopes."
+;   (s/enum :global :active-view :page :root :local-storage :session-storage))
+(def state-scopes [:global :view :page :local-storage :session-storage])
+;; TODO possibly hook-in a :remote as well, if logged in, per-user auto-store but on server
+;; use same debounce methods as local/session storage etc.
+
+;; Also might want easy "shortcuts" to persist/restore entire for example :page scope to local storage
+;; or fetch and populate :page scope from remote or ls
+
+
 (def data ; default db. Needs to be cleaned out of content already haha.
   {:state {:menu false
            :is-loading {}
