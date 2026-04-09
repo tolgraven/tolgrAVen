@@ -26,6 +26,7 @@
                  [expound "0.9.0"]
                  [fipp "0.6.29"]
                  [com.bhauman/cljs-test-display "0.1.1"]
+                 [metosin/malli "0.20.0"]
 
                  [clojure.java-time "1.4.3"]
                  ; [com.cognitect/transit-clj "1.0.333"]
@@ -152,7 +153,7 @@
                                  [re-frisk "1.7.1"]
                                  ; [re-frisk-remote "1.5.2"]
                                  [day8.re-frame/re-frame-10x "1.10.1" :exclusions [superstructor/re-highlight]]
-                                 [djblue/portal "0.61.0"]
+                                 ;[djblue/portal "0.61.0"]
                                  ; [day8.re-frame/tracing "0.6.2"]
                                  [ring/ring-devel "1.15.2"]
                                  [ring/ring-mock "0.6.2"]]

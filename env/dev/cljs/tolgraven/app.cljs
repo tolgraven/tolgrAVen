@@ -4,7 +4,7 @@
     [cljs.spec.alpha :as s]
     [expound.alpha :as expound]
     [day8.re-frame-10x :as r10x]
-    [portal.web :as p]
+    ;[portal.web :as p]
     [re-frisk.core :as re-frisk]
     [devtools.core :as devtools]))
 
@@ -32,7 +32,7 @@
   ; can also disable events with {:events? false}
   ; couldn't get re-frisk-remote working for the life of me, hmm
 
-  (add-tap #'p/submit)
+  ;(add-tap #'p/submit)
   (tap> :booted)
-  (p/open))
+  #_(p/open))
 
