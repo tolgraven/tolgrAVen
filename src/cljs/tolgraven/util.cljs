@@ -9,7 +9,7 @@
             [clojure.walk :as walk]))
 
 (defn <-store [& coll-docs]
-  (-> @(rf/subscribe [:firestore/on-snapshot {:path-document coll-docs}])
+  (-> @(rf/subscribe [:store/on-snapshot {:path-document coll-docs}])
       :data
       (walk/keywordize-keys)))
 
@@ -440,4 +440,3 @@
       (when needs-resize
         (set! (.-width canvas) w)
         (set! (.-height canvas) h)))))
-

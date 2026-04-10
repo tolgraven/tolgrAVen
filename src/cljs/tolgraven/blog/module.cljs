@@ -14,4 +14,4 @@
           :new-post #'view/post-blog-page
           :posted-by #'view/posted-by
           :tags-list #'view/tags-list}
-   :init #(rf/dispatch [:on-booted :firebase [:blog/init]])})
+   :init #(rf/dispatch [:on-booted :store [:blog/init]])})

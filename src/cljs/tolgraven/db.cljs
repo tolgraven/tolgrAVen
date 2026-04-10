@@ -263,6 +263,9 @@
    :options {:auto-save-vars true
              :transition {:time 500 :style :slide} ; etc
              :blog {:posts-per-page 3} ; XXX should go in query-params no
+             :store {:provider :supabase}
+             :supabase {:url nil
+                        :anon-key nil}
              :theme {:dark-mode true
                      :colorscheme "default"}
              :firebase {:project :main
