@@ -12,6 +12,16 @@
 
 (def schema-resource "supabase/schema.sql")
 
+(def import-scopes
+  {"auth" #{"auth"}
+   "blog" #{"blog-comments" "blog-post-ids" "blog-posts"}
+   "chat" #{"chat"}
+   "gpt" #{"gpt" "gpt-threads"}
+   "services" #{"imagor" "instagram" "secrets" "strapi" "strava" "typesense"}
+   "users" #{"users"}})
+
+(declare fetch-contract)
+
 (defn database-url []
   (or (System/getenv "SUPABASE_DATABASE_URL")
       (System/getenv "SUPABASE_DB_URL")))
@@ -94,6 +104,26 @@
    (->> export-path
         export->seed
         (import-seed! db))))
+
+(defn import-scope!
+  ([scope export-path] (import-scope! (database-spec) scope export-path))
+  ([db scope export-path]
+   (let [collections (or (get import-scopes scope)
+                         (throw (ex-info "Unknown import scope"
+                                         {:scope scope
+                                          :known-scopes (sort (keys import-scopes))})))
+         current (fetch-contract db)
+         incoming (shape/firebase-export->contract (load-export! export-path))
+         updated (reduce
+                  (fn [contract collection]
+                    (assoc contract collection (get incoming collection)))
+                  current
+                  collections)]
+     (apply-schema! db)
+     (reset-data! db)
+     (import-seed! db (shape/contract->seed updated))
+     {:scope scope
+      :collections (sort collections)})))
 
 (defn fetch-seed
   ([] (fetch-seed (database-spec)))
