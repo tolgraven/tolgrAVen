@@ -1,6 +1,7 @@
 (ns tolgraven.supabase.client
   (:require
    [ajax.core :as ajax]
+   [goog.object :as gobj]
    [reagent.ratom :as ratom]
    [taoensso.timbre :as timbre]
    [tolgraven.supabase.query :as query]
@@ -53,19 +54,27 @@
                      (timbre/error "Supabase fallback query failed"
                                    {:opts opts :error error}))}))
 
+(defn- call-method
+  ([target method]
+   (.call (gobj/get target method) target))
+  ([target method arg1]
+   (.call (gobj/get target method) target arg1))
+  ([target method arg1 arg2]
+   (.call (gobj/get target method) target arg1 arg2)))
+
 (defn- apply-filter [query [field op value]]
   (case op
-    "eq" (.eq query field value)
-    :eq (.eq query field value)
-    := (.eq query field value)
-    "gt" (.gt query field value)
-    :> (.gt query field value)
-    "gte" (.gte query field value)
-    :>= (.gte query field value)
-    "lt" (.lt query field value)
-    :< (.lt query field value)
-    "lte" (.lte query field value)
-    :<= (.lte query field value)
+    "eq" (call-method query "eq" field value)
+    :eq (call-method query "eq" field value)
+    := (call-method query "eq" field value)
+    "gt" (call-method query "gt" field value)
+    :> (call-method query "gt" field value)
+    "gte" (call-method query "gte" field value)
+    :>= (call-method query "gte" field value)
+    "lt" (call-method query "lt" field value)
+    :< (call-method query "lt" field value)
+    "lte" (call-method query "lte" field value)
+    :<= (call-method query "lte" field value)
     query))
 
 (defn- run-select! [client {:keys [seed-key table filters]}]
@@ -109,7 +118,7 @@
 (defn- resubscribe-entry! [{:keys [opts channel] :as entry}]
   (when-let [client @*client]
     (when channel
-      (.removeChannel client channel))
+      (call-method client "removeChannel" channel))
     (if (query/direct-read-query? opts)
       (let [channel-name (channel-key opts)
             callback (fn [_] (refresh-entry! entry))
