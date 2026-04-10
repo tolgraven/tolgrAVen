@@ -77,9 +77,25 @@
                    "8" {:text "Yo"
                         :time 2001
                         :user "anon"}}}]
+   "gpt" [{:id "messages"
+           :data {"1" {:prompt "Hey"
+                       :response "Hello"
+                       :time 3000
+                       :user "u1"}}}]
+   "gpt-threads" [{:id "42"
+                   :data {:user "u1"
+                          :time 3001
+                          :messages [["question" "answer"]]}}]
    "imagor" [{:id "auth"
               :data {:host "https://imagor.test"
                      :api_key "imagor-key"}}]
+   "instagram" [{:id "auth"
+                 :data {:access_token "instagram-token"}}
+                {:id "ids"
+                 :data {:ids ["ig-1" "ig-2"]}}
+                {:id "posts"
+                 :data {"ig-1" {:id "ig-1"
+                                :caption "post"}}}]
    "strapi" [{:id "auth"
               :data {:url "https://cms.test"
                      :read-api-key "strapi-key"}}]
@@ -118,8 +134,16 @@
            (get-in rebuilt-contract ["blog-comments" "c2"])))
     (is (= (get-in firebase-contract ["chat" "messages"])
            (get-in rebuilt-contract ["chat" "messages"])))
+    (is (= (get-in firebase-contract ["gpt" "messages"])
+           (get-in rebuilt-contract ["gpt" "messages"])))
+    (is (= (get-in firebase-contract ["gpt-threads" "42"])
+           (get-in rebuilt-contract ["gpt-threads" "42"])))
     (is (= (get-in firebase-contract ["imagor" "auth"])
            (get-in rebuilt-contract ["imagor" "auth"])))
+    (is (= (get-in firebase-contract ["instagram" "ids"])
+           (get-in rebuilt-contract ["instagram" "ids"])))
+    (is (= (get-in firebase-contract ["instagram" "posts"])
+           (get-in rebuilt-contract ["instagram" "posts"])))
     (is (= (get-in firebase-contract ["strapi" "auth"])
            (get-in rebuilt-contract ["strapi" "auth"])))
     (is (= (get-in firebase-contract ["typesense" "auth"])

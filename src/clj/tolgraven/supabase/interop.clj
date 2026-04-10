@@ -30,7 +30,7 @@
    (fn [acc k v]
      (assoc acc
             k
-            (if (contains? #{:comments :voted :raw :path :config} k)
+            (if (contains? #{:comments :voted :raw :path :config :data} k)
               (->jsonb v)
               v)))
    {}
@@ -62,6 +62,7 @@
                        "blog_posts"
                        "chat_messages"
                        "service_configs"
+                       "store_documents"
                        "site_users"])
          " restart identity cascade"))))
 
@@ -73,7 +74,8 @@
                          [:blog_posts (:blog_posts seed)]
                          [:blog_comments (:blog_comments seed)]
                          [:chat_messages (:chat_messages seed)]
-                         [:service_configs (:service_configs seed)]]]
+                         [:service_configs (:service_configs seed)]
+                         [:store_documents (:store_documents seed)]]]
      (when (seq rows)
        (jdbc/insert-multi! db table (map prepare-row rows))))
    seed))
@@ -101,7 +103,8 @@
     :blog_posts (jdbc/query db ["select * from blog_posts order by id"])
     :blog_comments (jdbc/query db ["select * from blog_comments order by ts, id"])
     :chat_messages (jdbc/query db ["select * from chat_messages order by message_id"])
-    :service_configs (jdbc/query db ["select * from service_configs order by service"])}))
+    :service_configs (jdbc/query db ["select * from service_configs order by service"])
+    :store_documents (jdbc/query db ["select * from store_documents order by collection, doc_id"])}))
 
 (defn fetch-contract
   ([] (fetch-contract (database-spec)))

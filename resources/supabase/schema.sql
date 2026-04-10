@@ -69,6 +69,13 @@ create table if not exists service_configs (
   config jsonb not null default '{}'::jsonb
 );
 
+create table if not exists store_documents (
+  collection text not null,
+  doc_id text not null,
+  data jsonb not null default '{}'::jsonb,
+  primary key (collection, doc_id)
+);
+
 alter table site_users enable row level security;
 alter table blog_posts enable row level security;
 alter table blog_comments enable row level security;
