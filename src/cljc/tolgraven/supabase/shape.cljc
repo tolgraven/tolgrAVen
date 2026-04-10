@@ -12,6 +12,14 @@
    {:collection "strava" :doc-id "auth" :service "strava/auth"}
    {:collection "typesense" :doc-id "auth" :service "typesense/auth"}])
 
+(def ^:private normalized-collections
+  #{"auth" "blog-comments" "blog-post-ids" "blog-posts" "chat" "users"})
+
+(def ^:private service-doc-keys
+  (into #{}
+        (map (juxt :collection :doc-id))
+        service-docs))
+
 (defn- doc-id-str [id]
   (cond
     (keyword? id) (name id)
@@ -233,6 +241,19 @@
         :config data}))
    service-docs))
 
+(defn- generic-doc-rows [contract]
+  (mapcat
+   (fn [[collection docs]]
+     (when-not (normalized-collections collection)
+       (keep
+        (fn [[doc-id data]]
+          (when-not (contains? service-doc-keys [collection doc-id])
+            {:collection collection
+             :doc_id doc-id
+             :data data}))
+        docs)))
+   contract))
+
 (declare contract->seed)
 
 (defn firebase-export->seed [firebase-export]
@@ -245,7 +266,8 @@
    :blog_posts (vec (post-rows contract))
    :blog_comments (vec (comment-rows contract))
    :chat_messages (vec (chat-rows contract))
-   :service_configs (vec (service-config-rows contract))})
+   :service_configs (vec (service-config-rows contract))
+   :store_documents (vec (generic-doc-rows contract))})
 
 (defn- contract-posts [seed]
   (let [comment-rows (map
@@ -343,16 +365,25 @@
          (map (fn [{:keys [doc_id config]}] [doc_id config])))
         (:service_configs seed)))
 
+(defn- contract-generic-docs [seed]
+  (reduce
+   (fn [acc {:keys [collection doc_id data]}]
+     (assoc-in acc [collection doc_id] data))
+   {}
+   (:store_documents seed)))
+
 (defn seed->contract [seed]
-  {"auth" (contract-roles seed)
-   "blog-comments" (contract-comments seed)
-   "blog-post-ids" (contract-post-ids seed)
-   "blog-posts" (contract-posts seed)
-   "chat" (contract-chat seed)
-   "imagor" (contract-services seed "imagor")
-   "instagram" (contract-services seed "instagram")
-   "secrets" (contract-services seed "secrets")
-   "strapi" (contract-services seed "strapi")
-   "strava" (contract-services seed "strava")
-   "typesense" (contract-services seed "typesense")
-   "users" (contract-users seed)})
+  (merge-with merge
+              {"auth" (contract-roles seed)
+               "blog-comments" (contract-comments seed)
+               "blog-post-ids" (contract-post-ids seed)
+               "blog-posts" (contract-posts seed)
+               "chat" (contract-chat seed)
+               "imagor" (contract-services seed "imagor")
+               "instagram" (contract-services seed "instagram")
+               "secrets" (contract-services seed "secrets")
+               "strapi" (contract-services seed "strapi")
+               "strava" (contract-services seed "strava")
+               "typesense" (contract-services seed "typesense")
+               "users" (contract-users seed)}
+              (contract-generic-docs seed)))
