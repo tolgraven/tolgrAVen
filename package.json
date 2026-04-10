@@ -2,6 +2,7 @@
   "name": "tolgraven.se",
   "version": "1.0.0",
   "dependencies": {
+    "@supabase/supabase-js": "^2.103.0",
     "autoprefixer": "^10.4.21",
     "firebase": "^12.3.0",
     "leaflet": "1.9.4",

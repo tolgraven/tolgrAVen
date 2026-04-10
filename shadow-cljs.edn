@@ -72,8 +72,31 @@
   :app
   {:target               :browser
    :node-via-docker      true
-   :modules              {:main {:entries [tolgraven.app]
-                                 :init-fn tolgraven.app/init!}}
+   :module-loader        true
+   :modules              {:main      {:entries [tolgraven.app]
+                                      :init-fn tolgraven.app/init!}
+                          :search    {:entries    [tolgraven.search.module]
+                                      :depends-on #{:main}}
+                          :user      {:entries    [tolgraven.user.module]
+                                      :depends-on #{:main}}
+                          :chat      {:entries    [tolgraven.chat.module]
+                                      :depends-on #{:main :user}}
+                          :github    {:entries    [tolgraven.github.module]
+                                      :depends-on #{:main}}
+                          :docs      {:entries    [tolgraven.docs.module]
+                                      :depends-on #{:main}}
+                          :gpt       {:entries    [tolgraven.gpt.module]
+                                      :depends-on #{:main :user}}
+                          :cv        {:entries    [tolgraven.cv.module]
+                                      :depends-on #{:main}}
+                          :strava    {:entries    [tolgraven.strava.module]
+                                      :depends-on #{:main}}
+                          :instagram {:entries    [tolgraven.instagram.module]
+                                      :depends-on #{:main}}
+                          :test      {:entries    [tolgraven.experiments]
+                                      :depends-on #{:main}}
+                          :blog      {:entries    [tolgraven.blog.module]
+                                      :depends-on #{:main :user}}}
    :output-dir           "resources/public/js/compiled/out"
    :asset-path           "/js/compiled/out"
    :optimizations        :advanced

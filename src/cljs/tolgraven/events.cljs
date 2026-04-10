@@ -16,12 +16,16 @@
     [tolgraven.listener]
     [tolgraven.loader :as l]
     [tolgraven.scroll]
+    [tolgraven.supabase.client :as supabase-client]
     [tolgraven.doc-fx]
     [tolgraven.effects]
     [tolgraven.cofx :as cofx]
     [goog.object :as gobj]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
+
+(defn- store-provider [db]
+  (get-in db [:options :store :provider] :firebase))
 
 
 ; re-frisk occasionally throws 10MB long "trace while storing" errors so def dont try to display that shit.
@@ -331,14 +335,20 @@
    {:db (assoc-in db [:options :theme :colorscheme] (or colorscheme "default"))}))
 
 ; renamed store-> not fire->, should work to hide fire behind stuff so can swap out easier
+(rf/reg-fx :supabase/write
+  (fn [[path data merge-fields]]
+    (supabase-client/write! path data merge-fields)))
+
 (rf/reg-event-fx :store->
   (fn [{:keys [db]} [_ path data merge-fields]]
-    (if (get-in db [:state :booted :firebase])
-      {:firestore/set {:path path :data data
-                       :set-options
-                       (when merge-fields
-                         {:merge true :merge-fields merge-fields})}}
-      {:dispatch [:on-booted :firebase [:store-> path data merge-fields]]})))
+    (if (get-in db [:state :booted :store])
+      (case (store-provider db)
+        :supabase {:supabase/write [path data merge-fields]}
+        {:firestore/set {:path path :data data
+                         :set-options
+                         (when merge-fields
+                           {:merge true :merge-fields merge-fields})}})
+      {:dispatch [:on-booted :store [:store-> path data merge-fields]]})))
 ; other thing could do is combo app-db/fire setter/getter
 ; so <-$ subs topic and tries grab from local, then far
 ; while dispatch will store value in both db and send to fire.
@@ -352,16 +362,23 @@
 ; with util/normalize-firestore. just need to get rid of that from elsewhere then tho
 (rf/reg-event-fx :<-store ; event version of <-store takes an on-success cb event
   (fn [{:keys [db]} [_ path on-success on-failure]]
-    (if (get-in db [:state :booted :firebase])
+    (if (get-in db [:state :booted :store])
       (let [kind (if (even? (count path))
                    :path-document
                    :path-collection)]
-        {:firestore/get (merge {kind path
-                                :expose-objects true
-                                :on-success [:store/on-success on-success]} ;TODO mod firestore lib to accept vectors/wrapping. goddamn
-                               (when on-failure
-                                 {:on-failure on-failure}))})
-      {:dispatch [:on-booted :firebase [:<-store path on-success on-failure]]})))
+        (case (store-provider db)
+          :supabase (do
+                      (supabase-client/read-once!
+                       {kind path}
+                       #(rf/dispatch [:store/on-success on-success %])
+                       #(rf/dispatch (conj (or on-failure [:default-http-error]) %)))
+                      {})
+          {:firestore/get (merge {kind path
+                                  :expose-objects true
+                                  :on-success [:store/on-success on-success]}
+                                 (when on-failure
+                                   {:on-failure on-failure}))}))
+      {:dispatch [:on-booted :store [:<-store path on-success on-failure]]})))
 
 (rf/reg-event-fx :store/on-success ; strip metadata etc
   (fn [_ [_ on-success data]]
@@ -380,6 +397,22 @@
   (fn [{:keys [db]} [_ error]]
     {:dispatch [:diag/new :error "Server error" error]}))
 
+(rf/reg-event-fx :supabase/fetch-settings
+  (fn [_ _]
+    {:dispatch [:http/get {:uri "/api/supabase/settings"}
+                [:supabase/init]
+                [:supabase/error]]}))
+
+(rf/reg-event-fx :supabase/error
+  (fn [_ [_ error]]
+    {:dispatch [:diag/new :error "Supabase init failed" error]}))
+
+(rf/reg-event-fx :supabase/init
+  (fn [{:keys [db]} [_ settings]]
+    (supabase-client/init! settings)
+    {:db (assoc-in db [:options :supabase] settings)
+     :dispatch [:booted :store]}))
+
 (rf/reg-event-fx :fb/init
   (fn [{:keys [db]} _]
     (firebase/init :firebase-app-info      (get-in db [:options :firebase :config])
@@ -389,6 +422,12 @@
                    :default-error-handler  [:fb/error])
     {:dispatch-n [[:booted :firebase]
                   [:fb/fetch-users]]}))
+
+(rf/reg-event-fx :store/init
+  (fn [{:keys [db]} _]
+    (case (store-provider db)
+      :supabase {:dispatch [:supabase/fetch-settings]}
+      {:dispatch [:booted :store]})))
 
 
 (rf/reg-event-fx :<-cms
@@ -614,8 +653,8 @@
                 [:ls/get-path [:form-field] [:state :form-field]] ; restore any active form-fields
                 [:ls/get-path [:cv-visited] [:state :cv :visited]] ; should rather spec which paths to load and then do that (in one op)
                 [:cookie/show-notice]
-                [:on-booted :firebase [:init/cms]]
-                [:on-booted :firebase [:init/imagor]]
+                [:on-booted :store [:init/cms]]
+                [:on-booted :store [:init/imagor]]
                 [::bp/set-breakpoints
                  :breakpoints [:mobile 560
                                :tablet 992

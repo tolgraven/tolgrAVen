@@ -1,9 +1,21 @@
 (ns tolgraven.subs
   (:require [re-frame.core :as rf]
+            [re-frame.db :as rfdb]
             [tolgraven.util :as util]
+            [tolgraven.supabase.client :as supabase-client]
             [clojure.walk :as walk]
             [clojure.string :as string]
             [reitit.frontend.easy :as rfe]))
+
+(defn- store-provider []
+  (get-in @rfdb/app-db [:options :store :provider] :firebase))
+
+(rf/reg-sub-raw
+ :store/on-snapshot
+ (fn [_ [_ opts]]
+   (case (store-provider)
+     :supabase (supabase-client/ensure-query! opts)
+     (rf/subscribe [:firestore/on-snapshot opts]))))
 
 (rf/reg-sub :get ;should this be discontinued? or only used transiently like migrate everything away once got a comp working?
  (fn [db [_ & path]]
@@ -39,32 +51,32 @@
     (get-in state (into [:form-field] path))))
 
 (rf/reg-sub :<-store
-  :<- [:booted? :firebase]
+  :<- [:booted? :store]
   (fn [initialized [_ & coll-docs]]
     (when initialized
       (let [look-in (if (even? (count coll-docs))
                       {:path-document coll-docs}
                       {:path-collection coll-docs})]
-        (some-> (rf/subscribe [:firestore/on-snapshot look-in])
+        (some-> (rf/subscribe [:store/on-snapshot look-in])
                 deref
                 :data
                 (walk/keywordize-keys))))))
 
 (rf/reg-sub :<-store-2 ; newer version which mostly works but not quite everywhere, differing in how keys are handled...
-  :<- [:booted? :firebase]
+  :<- [:booted? :store]
   (fn [initialized [_ & coll-docs]]
     (when initialized
       (let [look-in (if (even? (count coll-docs))
                       {:path-document (vec coll-docs)}
                       {:path-collection (vec coll-docs)})]
-        (some-> (rf/subscribe [:firestore/on-snapshot look-in])
+        (some-> (rf/subscribe [:store/on-snapshot look-in])
                 deref
                 util/normalize-firestore-general)))))
 
 (rf/reg-sub :<-store-q
   (fn [[_ opts]]
-    [(rf/subscribe [:firestore/on-snapshot opts])
-     (rf/subscribe [:booted? :firebase])])
+    [(rf/subscribe [:store/on-snapshot opts])
+     (rf/subscribe [:booted? :store])])
   (fn [[res initialized] [_ _]]
     (when initialized
       (some-> res

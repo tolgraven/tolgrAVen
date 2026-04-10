@@ -359,9 +359,9 @@
                  :dep :site
                  :init [:booted :soundcloud]}
    :strava      {:module :strava
-                 :dep :firebase}
+                 :dep :store}
    :instagram   {:module :instagram
-                 :dep :firebase}
+                 :dep :store}
    :github      {:module :github
                  :dep :site}
    :gpt         {:module :gpt}
@@ -455,5 +455,4 @@
    (for [[i component] (map-indexed vector (layouts :main))]
      ^{:key i}
      [get-section component])])
-
 

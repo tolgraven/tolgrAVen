@@ -16,6 +16,7 @@
     [tolgraven.middleware.formats :as formats]
     [tolgraven.middleware.exception :as exception]
     [tolgraven.services.gpt :as gpt]
+    [tolgraven.supabase.api :as supabase-api]
     [clojure.java.io :as io]
     [clojure.string :as string]
     [clojure.edn :as edn])
@@ -125,6 +126,26 @@
                 (#(m/encode formats/instance "application/transit+json" %))
                 response/ok
                 (response/content-type "application/transit+json")))}]
+
+   ["/supabase/settings"
+    {:get {:summary "Public browser settings for direct Supabase reads"
+           :handler (fn [_]
+                      {:status 200
+                       :body (supabase-api/public-settings)})}}]
+
+   ["/supabase/store/query"
+    {:post {:summary "Query Supabase-backed store data using Firebase-style document and collection paths"
+            :parameters {:body map?}
+            :handler (fn [{{query-map :body} :parameters}]
+                       {:status 200
+                        :body (supabase-api/query-store! query-map)})}}]
+
+   ["/supabase/store/write"
+    {:post {:summary "Write a Firebase-style document path into the Supabase-backed store"
+            :parameters {:body map?}
+            :handler (fn [{{write-map :body} :parameters}]
+                       {:status 200
+                        :body (supabase-api/write-store! write-map)})}}]
    
    ["/math"
     {:swagger {:tags ["math"]}}

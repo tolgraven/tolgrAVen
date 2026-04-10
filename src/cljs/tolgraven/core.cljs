@@ -362,6 +362,7 @@
 (defn init "Called only on page load" []
   (rf/dispatch-sync [:init/app-db])
   (rf/dispatch-sync [:fb/init]) ;sync because number of early fetches depend on this... move back in here though because useless, all public anyways + not like it's secret after sent off ;P was just to test concept
+  (rf/dispatch-sync [:store/init])
   (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
   (ajax/load-interceptors!)
   (mount-components)
@@ -370,4 +371,3 @@
 
 (defn ^:export init!  []
   (defonce _init_ (init))) ;; why still need for thisi don't get it init! is now being called each reload?
-

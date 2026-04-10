@@ -167,6 +167,7 @@
                       (when (:dev env)
                         ["css/tolgraven/main.min.css"]))
    :js-paths (concat [{:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}]
+                     [{:src "/vendor/supabase.js"}]
                      (when-not (:dev env)
                        [{:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"}]))
    :js-raw (when-not (:dev env)
@@ -223,4 +224,3 @@
    :title   {:title error-details}
    :headers {"Content-Type" "text/html; charset=utf-8"}
    :body    (error-page-hiccup (:request error-details) error-details)})
-

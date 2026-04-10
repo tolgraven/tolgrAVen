@@ -21,6 +21,7 @@ resources/public/js/
 /resources/public/img/uploads/
 /pg/
 /trash
+/tmp/
 .google-oath
 resources/docs/codox/
 .shadow-cljs/
