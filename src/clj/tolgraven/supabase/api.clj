@@ -5,7 +5,9 @@
    [tolgraven.supabase.query :as query]))
 
 (defn public-settings []
-  {:url (or (env :supabase-url)
+  {:url (or (env :supabase-public-url)
+            (env :supabase-url)
+            (System/getenv "SUPABASE_PUBLIC_URL")
             (System/getenv "SUPABASE_URL")
             (System/getenv "NEXT_PUBLIC_SUPABASE_URL"))
    :anon-key (or (env :supabase-anon-key)
