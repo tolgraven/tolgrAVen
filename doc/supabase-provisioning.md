@@ -88,12 +88,23 @@ docker run --rm \
 
 ## Coolify shape
 
-Deploy this image as a one-shot job or service on the same Docker network as Supabase.
+Deploy this image as a one-shot job on the same Docker network as Supabase.
+
+Do not run it as a long-lived service:
+
+- no ports
+- one replica
+- no healthcheck
+- no automatic restarts
+- explicit command such as `doctor`, `schema`, or `import`
 
 Expected flow:
 
-1. Run `schema` once for a fresh instance.
-2. Run `import` or `import-scope` to populate data.
-3. Re-run `import-scope` during iteration; it overwrites the target data.
+1. Run `doctor` first to confirm the job sees the expected DB target.
+2. Run `schema` once for a fresh instance.
+3. Run `import` or `import-scope` to populate data.
+4. Re-run `import-scope` during iteration; it overwrites the target data.
 
 The image does not need public Postgres exposure. It only needs internal network reachability to the database container.
+
+If you run the container on the host instead of inside the Coolify stack network, `POSTGRES_HOSTNAME=supabase-db` will usually not resolve. In that case the container is not actually in the same network as Supabase, even if it is on the same machine.
