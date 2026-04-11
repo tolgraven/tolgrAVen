@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as string])
   (:import
+   [java.net URLEncoder]
    [org.postgresql.util PGobject]))
 
 (def table-order
@@ -57,9 +58,43 @@
                      :order "collection.asc,doc_id.asc"
                      :on-conflict "collection,doc_id"}})
 
+(defn- env [k]
+  (System/getenv k))
+
+(defn- encode-query-value [value]
+  (URLEncoder/encode (str value) "UTF-8"))
+
+(defn- jdbc-url-from-components []
+  (let [host (or (env "POSTGRES_HOSTNAME")
+                 (env "POSTGRES_HOST")
+                 (env "PGHOST"))
+        db-name (or (env "POSTGRES_DB")
+                    (env "POSTGRES_DATABASE")
+                    (env "PGDATABASE"))
+        user (or (env "POSTGRES_USER")
+                 (env "PGUSER"))
+        password (or (env "POSTGRES_PASSWORD")
+                     (env "PGPASSWORD"))]
+    (when (and host db-name user password)
+      (let [port (or (env "POSTGRES_PORT")
+                     (env "PGPORT")
+                     "5432")
+            sslmode (or (env "SUPABASE_DB_SSLMODE")
+                        (env "POSTGRES_SSLMODE")
+                        "disable")
+            params {"user" user
+                    "password" password
+                    "sslmode" sslmode}
+            query-string (->> params
+                              (map (fn [[k v]]
+                                     (str k "=" (encode-query-value v))))
+                              (string/join "&"))]
+        (str "jdbc:postgresql://" host ":" port "/" db-name "?" query-string)))))
+
 (defn database-url []
-  (or (System/getenv "SUPABASE_DATABASE_URL")
-      (System/getenv "SUPABASE_DB_URL")))
+  (or (env "SUPABASE_DATABASE_URL")
+      (env "SUPABASE_DB_URL")
+      (jdbc-url-from-components)))
 
 (defn jdbc-available? []
   (boolean (database-url)))
@@ -67,7 +102,12 @@
 (defn database-spec []
   (or (database-url)
       (throw (ex-info "Missing Supabase database URL"
-                      {:env ["SUPABASE_DATABASE_URL" "SUPABASE_DB_URL"]}))))
+                      {:env ["SUPABASE_DATABASE_URL"
+                             "SUPABASE_DB_URL"
+                             "POSTGRES_HOSTNAME"
+                             "POSTGRES_DB"
+                             "POSTGRES_USER"
+                             "POSTGRES_PASSWORD"]}))))
 
 (defn rest-base-url []
   (or (System/getenv "SUPABASE_PUBLIC_URL")
