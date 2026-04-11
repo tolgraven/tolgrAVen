@@ -1,10 +1,11 @@
 (ns tolgraven.supabase-shape-test
   (:require
    [clojure.test :refer :all]
+   [tolgraven.provision.supabase.import :as provision-import]
    [tolgraven.supabase.api :as supabase-api]
    [tolgraven.supabase.interop :as interop]
    [tolgraven.supabase.query :as query]
-   [tolgraven.supabase.shape :as shape]
+   [tolgraven.store.contract :as contract]
    [tolgraven.supabase.store :as store]))
 
 (def sample-export
@@ -106,7 +107,7 @@
 
 (deftest flatten-comment-tree-backfills-parent-info
   (let [post (get-in sample-export ["blog-posts" 0 :data])
-        comments (shape/flatten-comment-tree (:id post) (:comments post))
+        comments (contract/flatten-comment-tree (:id post) (:comments post))
         top (first comments)
         reply (second comments)]
     (is (= "c1" (:id top)))
@@ -119,9 +120,9 @@
     (is (= [1 "c1"] (:path reply)))))
 
 (deftest firebase-contract-roundtrips-through-supabase-seed
-  (let [firebase-contract (shape/firebase-export->contract sample-export)
-        seed (shape/firebase-export->seed sample-export)
-        rebuilt-contract (shape/seed->contract seed)]
+  (let [firebase-contract (contract/firebase-export->contract sample-export)
+        seed (contract/firebase-export->seed sample-export)
+        rebuilt-contract (contract/seed->contract seed)]
     (is (= (get-in firebase-contract ["auth" "roles"])
            (get-in rebuilt-contract ["auth" "roles"])))
     (is (= (get-in firebase-contract ["users" "u1"])
@@ -150,7 +151,7 @@
            (get-in rebuilt-contract ["typesense" "auth"])))))
 
 (deftest query-contract-supports-firebase-style-lookups
-  (let [contract (shape/seed->contract (shape/firebase-export->seed sample-export))]
+  (let [contract (contract/seed->contract (contract/firebase-export->seed sample-export))]
     (is (= {:id "roles"
             :data {:admins ["u1"]
                    :bloggers ["u1" "u2"]}}
@@ -168,11 +169,11 @@
                                            :limit 1})))))
 
 (deftest interop-namespaces-load
-  (is (fn? @#'interop/export->seed))
+  (is (fn? @#'provision-import/export->seed))
   (is (fn? @#'supabase-api/query-store!)))
 
 (deftest store-set-document-replaces-and-merges
-  (let [contract (shape/seed->contract (shape/firebase-export->seed sample-export))
+  (let [contract (contract/seed->contract (contract/firebase-export->seed sample-export))
         replaced (store/set-document contract ["imagor" "auth"] {:host "https://new"} nil)
         merged (store/set-document contract ["users" "u1"] {:karma 10 :comments ["x"]} [:karma])]
     (is (= {:host "https://new"}
