@@ -14,6 +14,8 @@ Use the dedicated provisioning image for first-time schema bootstrap and repeata
 docker build -f Dockerfile.supabase-provision -t tolgraven-supabase-provision .
 ```
 
+Push that image to a registry Coolify can pull from. This job should be deployed as a Docker Compose / Service Stack resource, not as a plain Docker image application.
+
 ## Required environment
 
 Provide one of:
@@ -97,6 +99,50 @@ Do not run it as a long-lived service:
 - no healthcheck
 - no automatic restarts
 - explicit command such as `doctor`, `schema`, or `import`
+
+### Why not a Docker image app?
+
+In current Coolify, the `Connect to Predefined Network` option is available for service stacks / Docker Compose deployments. It is not exposed the same way for a plain Docker image application. If you need this job to reach `supabase-db-<uuid>`, use a Compose-based resource.
+
+### Recommended resource type
+
+Use `Docker Compose Empty` or a Compose-based deployment and paste [supabase-provision.compose.yaml](/Users/tol/CODE/WEB/tolgrAVen/deploy/coolify/supabase-provision.compose.yaml).
+
+Then:
+
+1. Create the resource from that compose file.
+2. Open the stack settings page.
+3. Enable `Connect to Predefined Network`.
+4. Set the destination to the same one used by the Supabase stack.
+5. Set `POSTGRES_HOSTNAME` to the full Coolify-renamed service hostname, for example `supabase-db-e840kco0scs04gkcco44w088`.
+6. Set the remaining env vars in Coolify.
+7. Change the `command` for each run:
+   - `["doctor"]`
+   - `["schema"]`
+   - `["import", "/data/firebase-export.json"]`
+   - `["import-scope", "blog", "/data/firebase-export.json"]`
+
+### Volume for imports
+
+If you want to import a Firebase export from a file, mount it into the Compose stack. One simple pattern is a bind mount:
+
+```yaml
+    volumes:
+      - /data/firebase-export:/data:ro
+```
+
+Then run:
+
+```yaml
+command: ["import", "/data/firebase-export.json"]
+```
+
+### Expected behavior
+
+- `doctor` should print a configured `:database` target with your full `POSTGRES_HOSTNAME`.
+- `schema` should run once and exit `0`.
+- `import` should run once and exit `0`.
+- Because `restart: "no"` and `exclude_from_hc: true` are set, Coolify should not keep restarting the job after it exits.
 
 Expected flow:
 

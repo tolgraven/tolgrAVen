@@ -1,0 +1,16 @@
+services:
+  supabase-provision:
+    image: ${SUPABASE_PROVISION_IMAGE:?ghcr.io/your-org/tolgraven-supabase-provision:latest}
+    command: ["doctor"]
+    restart: "no"
+    exclude_from_hc: true
+    environment:
+      - POSTGRES_HOSTNAME=${POSTGRES_HOSTNAME:?supabase-db-e840kco0scs04gkcco44w088}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:?postgres}
+      - POSTGRES_USER=${POSTGRES_USER:?postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set-in-coolify}
+      - SUPABASE_DB_SSLMODE=${SUPABASE_DB_SSLMODE:-disable}
+      - SUPABASE_PUBLIC_URL=${SUPABASE_PUBLIC_URL:-}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
+      - SUPABASE_INSECURE_TLS=${SUPABASE_INSECURE_TLS:-false}
