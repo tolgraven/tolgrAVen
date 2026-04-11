@@ -96,6 +96,42 @@
       (env "SUPABASE_DB_URL")
       (jdbc-url-from-components)))
 
+(defn database-target-summary []
+  (let [direct-url (or (env "SUPABASE_DATABASE_URL")
+                       (env "SUPABASE_DB_URL"))]
+    (cond
+      direct-url
+      {:source :database-url
+       :configured? true}
+
+      (jdbc-url-from-components)
+      {:source :components
+       :configured? true
+       :host (or (env "POSTGRES_HOSTNAME")
+                 (env "POSTGRES_HOST")
+                 (env "PGHOST"))
+       :port (or (env "POSTGRES_PORT")
+                 (env "PGPORT")
+                 "5432")
+       :database (or (env "POSTGRES_DB")
+                     (env "POSTGRES_DATABASE")
+                     (env "PGDATABASE"))
+       :user (or (env "POSTGRES_USER")
+                 (env "PGUSER"))
+       :sslmode (or (env "SUPABASE_DB_SSLMODE")
+                    (env "POSTGRES_SSLMODE")
+                    "disable")}
+
+      :else
+      {:source :missing
+       :configured? false
+       :expected-env ["SUPABASE_DATABASE_URL"
+                      "SUPABASE_DB_URL"
+                      "POSTGRES_HOSTNAME"
+                      "POSTGRES_DB"
+                      "POSTGRES_USER"
+                      "POSTGRES_PASSWORD"]})))
+
 (defn jdbc-available? []
   (boolean (database-url)))
 

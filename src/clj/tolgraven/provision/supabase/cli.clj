@@ -4,11 +4,13 @@
    [clojure.java.io :as io]
    [clojure.string :as string]
    [taoensso.timbre :as timbre]
+   [tolgraven.platform.supabase :as supabase]
    [tolgraven.provision.supabase.import :as import]
    [tolgraven.provision.supabase.schema :as schema]))
 
 (defn- usage []
   (str "Usage:\n"
+       "  lein run -m tolgraven.provision.supabase.cli doctor\n"
        "  lein run -m tolgraven.provision.supabase.cli schema\n"
        "  lein run -m tolgraven.provision.supabase.cli reset\n"
        "  lein run -m tolgraven.provision.supabase.cli import <firebase-export.json>\n"
@@ -21,6 +23,14 @@
 (defn -main [& args]
   (let [[command arg1 arg2] args]
     (case command
+      "doctor"
+      (println {:database (supabase/database-target-summary)
+                :rest-url-configured? (boolean (or (System/getenv "SUPABASE_PUBLIC_URL")
+                                                   (System/getenv "SUPABASE_URL")
+                                                   (System/getenv "NEXT_PUBLIC_SUPABASE_URL")))
+                :service-key-configured? (boolean (or (System/getenv "SUPABASE_SERVICE_KEY")
+                                                      (System/getenv "SUPABASE_SERVICE_ROLE_KEY")))} )
+
       "schema"
       (do
         (timbre/info "Applying Supabase schema")

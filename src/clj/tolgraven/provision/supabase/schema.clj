@@ -16,7 +16,8 @@
   ([_]
    (if-not (supabase/jdbc-available?)
      (throw (ex-info "Schema apply requires direct Postgres access from inside the Supabase network"
-                     {:hint "Run the bootstrap command from a container or host that can reach the internal Postgres service."}))
+                     {:hint "Run the bootstrap job on the internal Docker network and pass POSTGRES_* or SUPABASE_DB_* env."
+                      :target (supabase/database-target-summary)}))
      (let [sql (-> config/schema-resource io/resource slurp)
            statements (split-sql sql)]
        (doseq [statement statements]
