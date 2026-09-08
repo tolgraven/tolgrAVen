@@ -16,7 +16,8 @@
   position: fixed;
   transform-origin: center;
   transition:
-    inset 400ms ease,
+    left 400ms ease,
+    top 400ms ease,
     height 400ms ease,
     width 400ms ease;
 }
@@ -24,9 +25,10 @@
 .popover--expanded {
   border-width: 0;
   height: 100vh;
-  inset: 0;
+  left: 0;
   max-height: none;
   max-width: none;
+  top: 0;
   width: 100vw;
 }
 

@@ -31,7 +31,7 @@
 
 (defn <popover>
   "Render content in a portal, positioned next to an anchor rectangle."
-  [{:keys [anchor-rect class expanded? height on-click on-pointer-enter
+  [{:keys [anchor-rect aria-label class expanded? height on-click on-pointer-enter
            on-pointer-leave open? width]
     :or {height 300
          width 480}}
@@ -44,6 +44,7 @@
        {:class (str class
                     (when expanded? " popover--expanded"))
         :data-link-preview-popover true
+        :aria-label aria-label
         :on-click (fn [event]
                     (.stopPropagation event)
                     (when on-click (on-click event)))
