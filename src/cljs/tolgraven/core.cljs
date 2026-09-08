@@ -11,6 +11,7 @@
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.history :as rfh]
     [tolgraven.ajax :as ajax]
+    [tolgraven.components.iframe-popover :as iframe-popover]
     [tolgraven.events]
     [tolgraven.loader :as l]
     [tolgraven.macros :as m]
@@ -76,6 +77,7 @@
    [:a {:name "linktotop" :id "linktotop"}]
    
    [ui/zoom-to-modal :fullscreen]
+   [iframe-popover/<iframe-popover>]
    [ui/safe :user [l/<> {:module :user, :defer? true}]]
    [ui/safe :settings [common/settings]]
    [ui/safe :search [l/<> {:module :search, :defer? true}]]
@@ -93,6 +95,7 @@
        [ui/loading-spinner true :massive]))                 ; removed since jars now that have hero in original html
 
    [:div#error-portal]
+   [:div#popover-portal]
 
    [common/footer-full @(rf/subscribe [:content [:footer]])]
    [common/footer @(rf/subscribe [:content [:footer]])]
@@ -370,4 +373,3 @@
 
 (defn ^:export init!  []
   (defonce _init_ (init))) ;; why still need for thisi don't get it init! is now being called each reload?
-
