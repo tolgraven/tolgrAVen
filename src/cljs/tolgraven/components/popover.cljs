@@ -12,8 +12,13 @@
   [{:keys [bottom left right top]} width height]
   (let [viewport-width (.-innerWidth js/window)
         viewport-height (.-innerHeight js/window)
-        preview-width (min width (- viewport-width (* 2 viewport-padding)))
-        preview-height (min height (- viewport-height (* 2 viewport-padding)))
+        scale (min 1
+                   (/ (min width (- viewport-width (* 2 viewport-padding)))
+                      viewport-width)
+                   (/ (min height (- viewport-height (* 2 viewport-padding)))
+                      viewport-height))
+        preview-width (* viewport-width scale)
+        preview-height (* viewport-height scale)
         below? (or (<= (+ bottom anchor-gap preview-height viewport-padding)
                       viewport-height)
                   (< bottom (- viewport-height top)))
@@ -29,8 +34,7 @@
                 (max viewport-padding
                      (- viewport-height preview-height viewport-padding)))]
     {:transform (str "translate3d(" x "px, " y "px, 0) "
-                    "scale(" (/ preview-width viewport-width) ", "
-                    (/ preview-height viewport-height) ")")}))
+                    "scale(" scale ")")}))
 
 (defn <popover>
   "Render content in a portal, positioned next to an anchor rectangle."
