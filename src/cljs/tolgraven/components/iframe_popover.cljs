@@ -8,6 +8,9 @@
 (def ^:private close-delay-ms 180)
 (def ^:private navigation-delay-ms 420)
 
+(defn- reduced-motion? []
+  (.matches (.matchMedia js/window "(prefers-reduced-motion: reduce)")))
+
 (defn external-http-url?
   "True when href resolves to an HTTP(S) URL on a different origin."
   [href base-url]
@@ -94,6 +97,7 @@
         navigate! (fn [url anchor-rect title]
                     (clear-timer! *show-timer)
                     (clear-timer! *hide-timer)
+                    (clear-timer! *navigation-timer)
                     (reset! *preview {:anchor-rect anchor-rect
                                      :title title
                                      :url url})
@@ -101,7 +105,9 @@
                     (reset! *navigation-timer
                            (js/setTimeout
                              #(.assign js/window.location url)
-                             navigation-delay-ms)))
+                             (if (reduced-motion?)
+                               0
+                               navigation-delay-ms))))
         on-pointer-over (fn [event]
                           (when-not (= "touch" (.-pointerType event))
                             (if-let [link (closest-link event)]
@@ -158,10 +164,21 @@
                                      link))))
         on-click (fn [event]
                    (when-let [link (closest-link event)]
-                     (when (= link @*touch-open-link)
-                       (.preventDefault event)
-                       (.stopImmediatePropagation event)
-                       (show-now! link)))
+                     (cond
+                       (= link @*touch-open-link)
+                       (do
+                         (.preventDefault event)
+                         (.stopImmediatePropagation event)
+                         (show-now! link))
+
+                       (and (previewable-link? link)
+                            (= (.-href link) (:url @*preview))
+                            (unmodified-primary-click? event))
+                       (do
+                         (.preventDefault event)
+                         (navigate! (.-href link)
+                                    (rect->map (.getBoundingClientRect link))
+                                    (string/trim (.-textContent link))))))
                    (reset! *touch-open-link nil))
         on-popover-click
         (fn [event]
