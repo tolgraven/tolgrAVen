@@ -23,6 +23,10 @@
     (when (and target (.-closest target))
       (.closest target "a[href]"))))
 
+(defn- closest [target selector]
+  (when (and target (.-closest target))
+    (.closest target selector)))
+
 (defn- direct-link? [link]
   (or (.hasAttribute link "download")
       (= "_blank" (.-target link))
@@ -55,17 +59,18 @@
         *expanded? (r/atom false)
         *show-timer (atom nil)
         *hide-timer (atom nil)
+        *navigation-timer (atom nil)
         clear-timer! (fn [timer]
                        (when @timer
                          (js/clearTimeout @timer)
                          (reset! timer nil)))
         cancel-close! #(clear-timer! *hide-timer)
         close! (fn []
-                 (clear-timer! *show-timer)
-                 (clear-timer! *hide-timer)
-                 (reset! *loaded? false)
-                 (reset! *expanded? false)
-                 (reset! *preview nil))
+                 (when-not @*expanded?
+                   (clear-timer! *show-timer)
+                   (clear-timer! *hide-timer)
+                   (reset! *loaded? false)
+                   (reset! *preview nil)))
         schedule-close! (fn []
                           (clear-timer! *hide-timer)
                           (reset! *hide-timer
@@ -83,63 +88,96 @@
                                       :title (string/trim (.-textContent link))
                                       :url (.-href link)}))
                           open-delay-ms)))
+        navigate! (fn [url anchor-rect title]
+                    (clear-timer! *show-timer)
+                    (clear-timer! *hide-timer)
+                    (reset! *preview {:anchor-rect anchor-rect
+                                     :title title
+                                     :url url})
+                    (reset! *expanded? true)
+                    (reset! *navigation-timer
+                           (js/setTimeout
+                             #(.assign js/window.location url)
+                             navigation-delay-ms)))
         on-pointer-over (fn [event]
                           (if-let [link (closest-link event)]
-                            (when (previewable-link? link)
+                            (when (and (previewable-link? link)
+                                       (not= link
+                                             (closest (.-relatedTarget event)
+                                                      "a[href]")))
                               (show! link))
-                            (when (some-> (.-target event)
-                                          (.closest "[data-link-preview-popover]"))
+                            (when (closest (.-target event)
+                                           "[data-link-preview-popover]")
                               (cancel-close!))))
         on-pointer-out (fn [event]
-                         (when (or (closest-link event)
-                                   (some-> (.-target event)
-                                           (.closest "[data-link-preview-popover]")))
-                           (schedule-close!)))
+                         (let [link (closest-link event)
+                               preview (closest (.-target event)
+                                                "[data-link-preview-popover]")
+                               related (.-relatedTarget event)]
+                           (when (and (or link preview)
+                                      (not (and related
+                                                (or (= link
+                                                       (closest related "a[href]"))
+                                                    (= preview
+                                                       (closest related
+                                                                "[data-link-preview-popover]"))))))
+                             (schedule-close!))))
         on-focus-in (fn [event]
-                      (when-let [link (closest-link event)]
-                        (when (previewable-link? link)
-                          (show! link))))
+                      (if-let [link (closest-link event)]
+                        (if (previewable-link? link)
+                          (show! link)
+                          (when (closest (.-target event)
+                                         "[data-link-preview-popover]")
+                            (cancel-close!)))
+                        (when (closest (.-target event)
+                                       "[data-link-preview-popover]")
+                          (cancel-close!))))
         on-focus-out (fn [event]
-                       (when (closest-link event)
+                       (when (and (or (closest-link event)
+                                      (closest (.-target event)
+                                               "[data-link-preview-popover]"))
+                                  (not (closest (.-relatedTarget event)
+                                                "[data-link-preview-popover]")))
                          (schedule-close!)))
+        on-key-down (fn [event]
+                      (when (and (= "Escape" (.-key event))
+                                 (not @*expanded?))
+                        (close!)))
         on-click (fn [event]
                    (when-let [link (closest-link event)]
                      (when (and (previewable-link? link)
                                 (unmodified-primary-click? event))
                        (.preventDefault event)
-                       (clear-timer! *show-timer)
-                       (reset! *preview
-                               {:anchor-rect
-                                (rect->map (.getBoundingClientRect link))
-                                :title (string/trim (.-textContent link))
-                                :url (.-href link)})
-                       (reset! *expanded? true)
-                       (js/setTimeout
-                         #(.assign js/window.location (.-href link))
-                         navigation-delay-ms))))]
+                       (navigate! (.-href link)
+                                  (rect->map (.getBoundingClientRect link))
+                                  (string/trim (.-textContent link))))))]
     (r/create-class
       {:display-name "External link iframe preview"
        :component-did-mount
-       (fn []
+       (fn [_]
          (.addEventListener js/document "pointerover" on-pointer-over)
          (.addEventListener js/document "pointerout" on-pointer-out)
          (.addEventListener js/document "focusin" on-focus-in)
          (.addEventListener js/document "focusout" on-focus-out)
+         (.addEventListener js/document "keydown" on-key-down)
          (.addEventListener js/document "click" on-click true))
        :component-will-unmount
-       (fn []
+       (fn [_]
          (clear-timer! *show-timer)
          (clear-timer! *hide-timer)
+         (clear-timer! *navigation-timer)
          (.removeEventListener js/document "pointerover" on-pointer-over)
          (.removeEventListener js/document "pointerout" on-pointer-out)
          (.removeEventListener js/document "focusin" on-focus-in)
          (.removeEventListener js/document "focusout" on-focus-out)
+         (.removeEventListener js/document "keydown" on-key-down)
          (.removeEventListener js/document "click" on-click true))
        :reagent-render
        (fn []
          (when-let [{:keys [anchor-rect title url]} @*preview]
            [popover/<popover>
             {:anchor-rect anchor-rect
+             :aria-label (str "Preview of " (if (string/blank? title) url title))
              :class "iframe-popover"
              :expanded? @*expanded?
              :height 320
@@ -159,7 +197,7 @@
                {:aria-label (str "Preview of " (if (string/blank? title) url title))
                 :on-load #(reset! *loaded? true)
                 :referrer-policy "no-referrer"
-                :sandbox "allow-forms allow-popups allow-popups-to-escape-sandbox allow-scripts"
+                :sandbox "allow-scripts"
                 :src url
                 :tab-index -1}]
               (when-not @*loaded?
@@ -167,4 +205,5 @@
                  [:i.fa.fa-spinner.fa-spin]
                  [:span "Loading preview"]])
               [:div.iframe-popover__shield
-               {:aria-hidden true}]]]]))})))
+               {:aria-hidden true
+                :on-click #(navigate! url anchor-rect title)}]]]]))})))
