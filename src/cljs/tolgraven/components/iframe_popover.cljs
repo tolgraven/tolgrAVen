@@ -60,6 +60,7 @@
         *show-timer (atom nil)
         *hide-timer (atom nil)
         *navigation-timer (atom nil)
+        *touch-open-link (atom nil)
         clear-timer! (fn [timer]
                        (when @timer
                          (js/clearTimeout @timer)
@@ -75,19 +76,21 @@
                           (clear-timer! *hide-timer)
                           (reset! *hide-timer
                                   (js/setTimeout close! close-delay-ms)))
+        preview-data (fn [link]
+                       {:anchor-rect
+                        (rect->map (.getBoundingClientRect link))
+                        :title (string/trim (.-textContent link))
+                        :url (.-href link)})
+        show-now! (fn [link]
+                    (clear-timer! *hide-timer)
+                    (clear-timer! *show-timer)
+                    (reset! *loaded? false)
+                    (reset! *preview (preview-data link)))
         show! (fn [link]
                 (clear-timer! *hide-timer)
                 (clear-timer! *show-timer)
                 (reset! *show-timer
-                        (js/setTimeout
-                          #(do
-                             (reset! *loaded? false)
-                             (reset! *preview
-                                     {:anchor-rect
-                                      (rect->map (.getBoundingClientRect link))
-                                      :title (string/trim (.-textContent link))
-                                      :url (.-href link)}))
-                          open-delay-ms)))
+                        (js/setTimeout #(show-now! link) open-delay-ms)))
         navigate! (fn [url anchor-rect title]
                     (clear-timer! *show-timer)
                     (clear-timer! *hide-timer)
@@ -100,28 +103,30 @@
                              #(.assign js/window.location url)
                              navigation-delay-ms)))
         on-pointer-over (fn [event]
-                          (if-let [link (closest-link event)]
-                            (when (and (previewable-link? link)
-                                       (not= link
-                                             (closest (.-relatedTarget event)
-                                                      "a[href]")))
-                              (show! link))
-                            (when (closest (.-target event)
-                                           "[data-link-preview-popover]")
-                              (cancel-close!))))
+                          (when-not (= "touch" (.-pointerType event))
+                            (if-let [link (closest-link event)]
+                              (when (and (previewable-link? link)
+                                         (not= link
+                                               (closest (.-relatedTarget event)
+                                                        "a[href]")))
+                                (show! link))
+                              (when (closest (.-target event)
+                                             "[data-link-preview-popover]")
+                                (cancel-close!)))))
         on-pointer-out (fn [event]
-                         (let [link (closest-link event)
-                               preview (closest (.-target event)
-                                                "[data-link-preview-popover]")
-                               related (.-relatedTarget event)]
-                           (when (and (or link preview)
-                                      (not (and related
-                                                (or (= link
-                                                       (closest related "a[href]"))
-                                                    (= preview
-                                                       (closest related
-                                                                "[data-link-preview-popover]"))))))
-                             (schedule-close!))))
+                         (when-not (= "touch" (.-pointerType event))
+                           (let [link (closest-link event)
+                                 preview (closest (.-target event)
+                                                  "[data-link-preview-popover]")
+                                 related (.-relatedTarget event)]
+                             (when (and (or link preview)
+                                        (not (and related
+                                                  (or (= link
+                                                         (closest related "a[href]"))
+                                                      (= preview
+                                                         (closest related
+                                                                  "[data-link-preview-popover]"))))))
+                               (schedule-close!)))))
         on-focus-in (fn [event]
                       (if-let [link (closest-link event)]
                         (if (previewable-link? link)
@@ -143,14 +148,27 @@
                       (when (and (= "Escape" (.-key event))
                                  (not @*expanded?))
                         (close!)))
+        on-pointer-down (fn [event]
+                         (let [link (closest-link event)]
+                           (reset! *touch-open-link
+                                   (when (and (= "touch" (.-pointerType event))
+                                              (previewable-link? link)
+                                              (not= (.-href link)
+                                                    (:url @*preview)))
+                                     link))))
         on-click (fn [event]
                    (when-let [link (closest-link event)]
-                     (when (and (previewable-link? link)
-                                (unmodified-primary-click? event))
+                     (when (= link @*touch-open-link)
                        (.preventDefault event)
-                       (navigate! (.-href link)
-                                  (rect->map (.getBoundingClientRect link))
-                                  (string/trim (.-textContent link))))))]
+                       (.stopImmediatePropagation event)
+                       (show-now! link)))
+                   (reset! *touch-open-link nil))
+        on-popover-click
+        (fn [event]
+          (when (unmodified-primary-click? event)
+            (.preventDefault event)
+            (when-let [{:keys [anchor-rect title url]} @*preview]
+              (navigate! url anchor-rect title))))]
     (r/create-class
       {:display-name "External link iframe preview"
        :component-did-mount
@@ -160,6 +178,7 @@
          (.addEventListener js/document "focusin" on-focus-in)
          (.addEventListener js/document "focusout" on-focus-out)
          (.addEventListener js/document "keydown" on-key-down)
+         (.addEventListener js/document "pointerdown" on-pointer-down true)
          (.addEventListener js/document "click" on-click true))
        :component-will-unmount
        (fn [_]
@@ -171,6 +190,7 @@
          (.removeEventListener js/document "focusin" on-focus-in)
          (.removeEventListener js/document "focusout" on-focus-out)
          (.removeEventListener js/document "keydown" on-key-down)
+         (.removeEventListener js/document "pointerdown" on-pointer-down true)
          (.removeEventListener js/document "click" on-click true))
        :reagent-render
        (fn []
@@ -181,6 +201,7 @@
              :class "iframe-popover"
              :expanded? @*expanded?
              :height 320
+             :on-click on-popover-click
              :on-pointer-enter cancel-close!
              :on-pointer-leave schedule-close!
              :open? true
@@ -205,5 +226,4 @@
                  [:i.fa.fa-spinner.fa-spin]
                  [:span "Loading preview"]])
               [:div.iframe-popover__shield
-               {:aria-hidden true
-                :on-click #(navigate! url anchor-rect title)}]]]]))})))
+               {:aria-hidden true}]]]]))})))
