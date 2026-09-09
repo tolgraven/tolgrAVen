@@ -13,6 +13,9 @@
         hovered? (r/atom false)]
     (fn [message]
       [:div.chat-message
+       {:data-link-trust (if (= "anon" (:user message))
+                           "untrusted"
+                           "user")}
        [:span.chat-message-time
         {:on-mouse-over #(reset! hovered? true)
          :on-mouse-leave #(reset! hovered? false)}
@@ -44,4 +47,3 @@
      [:p.chat-description
       [:b "Step 1. "] "Open two browser windows." [:br]
       [:b "Step 2. "] "Talk to yourself in real time"] ]))
-

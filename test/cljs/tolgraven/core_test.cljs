@@ -1,9 +1,8 @@
 (ns tolgraven.core-test
-  (:require [cljs.test :refer-macros [is are deftest testing use-fixtures]]
+  (:require [cljs.test :refer-macros [is are deftest testing]]
             [pjstadig.humane-test-output]
-            [reagent.core :as reagent :refer [atom]]
-            [tolgraven.components.iframe-popover :as iframe-popover]
-            [tolgraven.core :as tc]))
+            [tolgraven.components.iframe :as iframe]
+            [tolgraven.routes :as routes]))
 
 (deftest test-home
   (is (= true true)))
@@ -12,7 +11,7 @@
   (testing "only cross-origin HTTP(S) links are previewable"
     (are [expected href]
       (= expected
-         (iframe-popover/external-http-url?
+         (routes/external-http-url?
            href
            "https://tolgraven.se/blog"))
       true "https://example.com/article"
@@ -21,3 +20,10 @@
       false "https://tolgraven.se/about"
       false "#main"
       false "mailto:hello@example.com")))
+
+(deftest iframe-trust-test
+  (testing "only trusted first-party authors opt into iframe capabilities"
+    (is (= "allow-forms allow-scripts"
+           (:trusted iframe/sandbox-by-trust)))
+    (is (= "" (:user iframe/sandbox-by-trust)))
+    (is (= "" (:untrusted iframe/sandbox-by-trust)))))
