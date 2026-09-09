@@ -1,5 +1,6 @@
 (ns tolgraven.search.views
   (:require
+    [tolgraven.link-preview.views :as link-preview]
     [reagent.core :as r]
     [re-frame.core :as rf]
     [clojure.string :as string]
@@ -125,7 +126,7 @@
       [l/<> {:module :blog :view :posted-by} id user ts]
       [l/<> {:module :blog :view :tags-list} document]]
      (m/for [highlight highlights]
-       [ui/md->div (:snippet highlight)])]))
+       [link-preview/<md> (:snippet highlight)])]))
 
 (defn blog-comment-results "Show hits that are blog post comments"
   [highlights document]
@@ -139,7 +140,7 @@
        [l/<> {:module :blog :view :posted-by} id user ts]
        (m/for [highlight highlights]
          [:div.blog-comment-text
-          [ui/md->div (:snippet highlight)]])]]]))
+          [link-preview/<md> (:snippet highlight)]])]]]))
 
 (defn instant-results "Show results while searching"
   [open?]

@@ -2,7 +2,7 @@
   (:require [cljs.test :refer-macros [is are deftest testing]]
             [pjstadig.humane-test-output]
             [tolgraven.components.iframe :as iframe]
-            [tolgraven.components.link-preview :as link-preview]
+            [tolgraven.link-preview.util :as link-preview]
             [tolgraven.routes :as routes]))
 
 (deftest test-home

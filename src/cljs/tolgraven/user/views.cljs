@@ -1,5 +1,6 @@
 (ns tolgraven.user.views
   (:require
+    [tolgraven.link-preview.views :as link-preview]
     [reagent.core :as r]
     [re-frame.core :as rf]
     [tolgraven.image :as img]
@@ -92,7 +93,7 @@
                [:h4.blog-comment-title title]
                [l/<> {:module :blog :view :posted-by} id user ts score]
                [:div.blog-comment-text
-                [ui/md->div text]]]))) ])
+                [link-preview/<md> text]]]))) ])
 
 
 (defn change-password "Change user password" [user]
@@ -251,4 +252,3 @@
              :change-password change-password
              :change-username change-username
              :closing         :none)]) ]) ]))
-

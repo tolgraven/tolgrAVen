@@ -11,7 +11,6 @@
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.history :as rfh]
     [tolgraven.ajax :as ajax]
-    [tolgraven.components.link-preview :as link-preview]
     [tolgraven.events]
     [tolgraven.loader :as l]
     [tolgraven.macros :as m]
@@ -77,7 +76,7 @@
    [:a {:name "linktotop" :id "linktotop"}]
    
    [ui/zoom-to-modal :fullscreen]
-   [link-preview/<link-preview>]
+   [l/<> {:module :link-preview}]
    [ui/safe :user [l/<> {:module :user, :defer? true}]]
    [ui/safe :settings [common/settings]]
    [ui/safe :search [l/<> {:module :search, :defer? true}]]

@@ -8,6 +8,7 @@
    [tolgraven.macros :as m]))
 
 (def modules (merge (m/make-modules "tolgraven" [:blog
+                                                 :link-preview
                                                  :search
                                                  :user
                                                  :chat

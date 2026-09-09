@@ -4,6 +4,7 @@
     [re-frame.core :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
+    [tolgraven.link-preview.views :as link-preview]
     [tolgraven.ui :as ui]
     [tolgraven.util :as util]))
 
@@ -21,7 +22,7 @@
           (when @hovered? (util/unix->ts (:time message)))]]
 
         [:div.chat-message-text
-         [ui/md->div
+         [link-preview/<md>
           (:text message)
           {:id (str "chat-message-" (:time message) "-" (:user message))
            :trust (if (= "anon" (:user message)) :untrusted :user)}]]

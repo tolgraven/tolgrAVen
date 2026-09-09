@@ -4,6 +4,7 @@
     [re-frame.core :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
+    [tolgraven.link-preview.views :as link-preview]
     [tolgraven.util :as util]
     [tolgraven.ui :as ui]))
 
@@ -14,7 +15,7 @@
      {:style {:min-height "7.35rem"}}
      (when title
        [:h3.blog-comment-title title])
-     [ui/md->div text]]))
+     [link-preview/<md> text]]))
 
 (declare add-comment)
 (declare blog-container)
@@ -167,7 +168,7 @@
                 {:style {:filter (when (neg? score)
                                    (str "brightness(calc(1 + "
                                         (max -0.7 (* 0.1 score)) "))"))}}
-                [ui/md->div text
+                [link-preview/<md> text
                  {:trust (link-trust user)}]]]
 
              [:div.blog-comment-actions
@@ -321,7 +322,7 @@
   [:div
     [:h2.blog-post-title title]
     [:br]
-    [ui/md->div text]])
+    [link-preview/<md> text]])
 
 (defn post-blog "Render post-making ui" [] ; XXX move this and similar to own file...
   (let [input @(rf/subscribe [:form-field [:post-blog]])
@@ -402,7 +403,7 @@
            [:i.fa.fa-edit] ])]]]
      ; [a custom sticky mini "how far youve scrolled bar" on right?]
      [:div.blog-post-text
-      [ui/md->div text
+      [link-preview/<md> text
        {:id (str "blog-post-" id)
         :trust (link-trust user)}]]
      [ui/appear-anon (if back? "" "zoom-y")
@@ -454,7 +455,8 @@
         [:div {:style {:padding-top "0.4em"
                        :padding-bottom "var(--space)"
                        :font-size "0.9em"}}
-         [ui/md->div @(rf/subscribe [:blog/post-preview id])]] ]))]]))
+         [link-preview/<md>
+          @(rf/subscribe [:blog/post-preview id])]] ]))]]))
 
 
 (defn blog-tag-view "View posts filed with tag"

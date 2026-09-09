@@ -9,7 +9,7 @@
                      [shadow.lazy]
                      [malli.core :as m]
                      [malli.error :as me]
-                     [tolgraven.components.link-preview :as link-preview]
+                     [tolgraven.component]
                      [tolgraven.components.error :as error]
                      [tolgraven.util :as util]))
   #?(:cljs (:require-macros [tolgraven.macros])))
@@ -91,40 +91,26 @@
              *showing?# (reagent.core/atom nil)
              spec#   ~spec-sym
              links#  (:links spec#)
-             *link-candidates#
-             ;; `:links :text` is mount-stable. Dynamic text should use
-             ;; `<link-container>`, whose candidate key drives remount/cleanup.
-             (when (:text links#)
-               (re-frame.core/subscribe
-                 [:link-preview/candidates
-                  (:text links#)
-                  (.-href js/window.location)]))
-             link-candidates# (some-> *link-candidates# deref)
-             link-observer#
-             (when (seq link-candidates#)
-               (tolgraven.components.link-preview/candidate-observer
-                 (:id links#)))
+             link-feature# (tolgraven.component/feature :links)
+             link-state# (when (and links# link-feature#)
+                           ((:setup link-feature#) links#))
              ~@(when lets [lets])]
          (reagent.core/create-class
           {:display-name ~(str name)
            :component-did-mount
            (fn [this#]
              (reset! *mounted?# true)
-            (when (and (:id links#) (seq link-candidates#))
-              (tolgraven.components.link-preview/register-container!
-                (:id links#)
-                (reagent.dom/dom-node this#)
-                links#
-                link-observer#
-                link-candidates#))
+            (when link-state#
+              ((:mount link-feature#)
+               link-state#
+               (reagent.dom/dom-node this#)))
             (and (fn? (:init spec#))
                   ((:init spec#) this#)))
           :component-will-unmount
           (fn [this#]
             (reset! *mounted?# false)
-            (when (and (:id links#) (seq link-candidates#))
-              (tolgraven.components.link-preview/unregister-container!
-                (:id links#)))
+            (when link-state#
+              ((:unmount link-feature#) link-state#))
             (and (fn? (:exit spec#))
                  ((:exit spec#) this#)))
            :component-did-catch
