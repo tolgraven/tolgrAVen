@@ -21,6 +21,30 @@
 
 (declare unregister-container!)
 
+(defn external-urls
+  "Extract distinct external HTTP(S) URLs from raw markdown, HTML, or text."
+  [text base-url]
+  (->> (re-seq #"(?:https?:)?//[^\s<>\"']+" (or text ""))
+       (map #(string/replace % #"[\]\[(){}.,;:!?]+$" ""))
+       (keep #(try
+                (.-href (js/URL. % base-url))
+                (catch :default _ nil)))
+       (filter #(routes/external-http-url? % base-url))
+       distinct
+       vec))
+
+(rf/reg-sub
+  :link-preview/raw-text
+  (fn [_ [_ text]]
+    (or text "")))
+
+(rf/reg-sub
+  :link-preview/candidates
+  (fn [[_ text]]
+    [(rf/subscribe [:link-preview/raw-text text])])
+  (fn [[text] [_ _ base-url]]
+    (external-urls text base-url)))
+
 (rf/reg-sub
   :link-preview/state
   (fn [db _]
@@ -144,6 +168,21 @@
    :title (string/trim (.-textContent link))
    :trust trust
    :url (.-href link)})
+
+(defn candidate-observer
+  "Create an observer for one candidate-bearing container."
+  [id]
+  (js/IntersectionObserver.
+    (fn [entries observer]
+    (doseq [entry entries
+            :when (.-isIntersecting entry)
+            :let [link (.-target entry)
+                  data (get-in @*containers
+                               [id :candidates-by-element link])]
+            :when data]
+      (rf/dispatch [:link-preview/visible data])
+      (.unobserve observer link)))
+    #js {:rootMargin "25%"}))
 
 (defn- clear-interaction-timer! [kind]
   (when-let [timer (get @*interaction-timers kind)]
@@ -270,48 +309,12 @@
      "pointerdown" pointer-down
      "click" click}))
 
-(defn refresh-container!
-  "Rescan one owning container and refresh only its candidate observer."
-  [id]
-  (when-let [{:keys [element observer options]} (get @*containers id)]
-    (.disconnect observer)
-    (swap! *link-elements
-           #(into {} (remove (fn [[[container-id _] _]]
-                              (= id container-id)) %)))
-    (let [trust (trust-for element (:trust options))
-          links (filter #(and (external-link? %)
-                              (= element
-                                 (closest % "[data-link-container]")))
-                        (array-seq (.querySelectorAll element "a[href]")))
-          candidates
-          (mapv (fn [index link]
-                  (let [data (candidate id index link trust)]
-                    (swap! *link-elements assoc [id index] link)
-                    (.observe observer link)
-                    [link data]))
-                (range)
-                links)]
-      (swap! *containers assoc-in [id :candidates-by-element]
-             (into {} candidates))
-      (rf/dispatch [:link-preview/register id (mapv second candidates)]))))
-
 (defn register-container!
-  "Register one link-owning DOM container. Returns its cleanup function."
-  [id element options]
-  (when element
-    (let [observer
-          (js/IntersectionObserver.
-            (fn [entries observer]
-              (doseq [entry entries
-                      :when (.-isIntersecting entry)
-                      :let [link (.-target entry)
-                            data (get-in @*containers
-                                         [id :candidates-by-element link])]
-                      :when data]
-                (rf/dispatch [:link-preview/visible data])
-                (.unobserve observer link)))
-            #js {:rootMargin "25%"})
-          handlers (container-handlers id)]
+  "Register a candidate-bearing container. Returns its cleanup function."
+  [id element options observer candidate-urls]
+  (when (and element observer (seq candidate-urls))
+    (let [handlers (container-handlers id)
+          expected (set candidate-urls)]
       (swap! *containers assoc id
              {:element element
               :handlers handlers
@@ -320,7 +323,23 @@
       (.setAttribute element "data-link-container" (str id))
       (doseq [[event handler] handlers]
         (.addEventListener element event handler))
-      (refresh-container! id)
+      (let [trust (trust-for element (:trust options))
+            links (filter #(and (external-link? %)
+                                (expected (.-href %))
+                                (= element
+                                   (closest % "[data-link-container]")))
+                          (array-seq (.querySelectorAll element "a[href]")))
+            candidates
+            (mapv (fn [index link]
+                    (let [data (candidate id index link trust)]
+                      (swap! *link-elements assoc [id index] link)
+                      (.observe observer link)
+                      [link data]))
+                  (range)
+                  links)]
+        (swap! *containers assoc-in [id :candidates-by-element]
+               (into {} candidates))
+        (rf/dispatch [:link-preview/register id (mapv second candidates)]))
       #(unregister-container! id))))
 
 (defn unregister-container!
@@ -337,22 +356,18 @@
                               (= id container-id)) %)))
     (rf/dispatch [:link-preview/unregister id])))
 
-(defn <link-container>
-  "Lifecycle boundary for content which may contain external links."
-  [{:keys [id trust]} content]
+(defn- <observed-link-container>
+  [{:keys [candidates id trust]} content]
   (let [*element (atom nil)
-        *cleanup (atom nil)]
+        *cleanup (atom nil)
+        observer (candidate-observer id)]
     (r/create-class
-      {:display-name "Link container"
+      {:display-name "Observed link container"
        :component-did-mount
        (fn [_]
          (reset! *cleanup
-                 (register-container! id @*element {:trust trust})))
-       :component-did-update
-       (fn [this old-argv]
-         (when (not= (last old-argv)
-                     (last (r/argv this)))
-           (refresh-container! id)))
+                 (register-container! id @*element {:trust trust}
+                                      observer candidates)))
        :component-will-unmount
        (fn [_]
          (when @*cleanup (@*cleanup)))
@@ -362,6 +377,20 @@
           {:data-link-trust (when trust (name trust))
            :ref #(reset! *element %)}
           content])})))
+
+(defn <link-container>
+  "Subscribe to raw text candidates and mount observation only when needed."
+  [{:keys [id text trust]} content]
+  (let [base-url (.-href js/window.location)
+        candidates @(rf/subscribe
+                      [:link-preview/candidates text base-url])]
+    (if (seq candidates)
+      (with-meta
+        [<observed-link-container>
+         {:candidates candidates :id id :trust trust}
+         content]
+        {:key (hash [id trust candidates])})
+      [:div.link-preview-container content])))
 
 (defn- default-preview [{:keys [title trust url]} on-load]
   [iframe/<iframe>

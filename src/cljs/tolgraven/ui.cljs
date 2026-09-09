@@ -66,16 +66,21 @@
            [:button {:on-click #(rf/dispatch [:exception [category] nil])}
             "Attempt reload"]]])))})))
 
-(defn md->div [md]
+(defn md->div [md & [options]]
   (let [showing? (r/atom false)
-        container-id (str "markdown-" (random-uuid))]
-    (fn [md]
+        container-id (or (:id options)
+                         (str "markdown-" (random-uuid)))]
+    (fn [md & [options]]
       [link-preview/<link-container>
-       {:id container-id}
+       {:id container-id
+        :text md
+        :trust (:trust options)}
        [:div.md-rendered
         {:style {:opacity (if @showing? 1.0 0.0)}
          :ref #(when % (reset! showing? true))}
-        [code/parse-markdown-components (util/md->normal md)]]])))
+        [code/parse-markdown-components
+         (util/md->normal md)
+         {:allow-raw? (not (#{:user :untrusted} (:trust options)))}]]])))
 
 (defn appear "Animate mount"
   [id kind & components]
