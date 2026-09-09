@@ -36,7 +36,7 @@
   "Extract distinct external HTTP(S) URLs from raw markdown, HTML, or text."
   [text base-url]
   (->> (re-seq #"(?:https?:)?//[^\s<>\"']+" (or text ""))
-       (map (comp gstring/unescapeEntities trim-url-token))
+       (map trim-url-token)
        (keep #(try
                 (.-href (js/URL. % base-url))
                 (catch :default _ nil)))
@@ -329,7 +329,8 @@
   [id element options observer candidate-urls]
   (when (and element observer (seq candidate-urls))
     (let [handlers (container-handlers id)
-          expected (set candidate-urls)]
+          expected (set (mapcat #(vector % (gstring/unescapeEntities %))
+                                candidate-urls))]
       (swap! *containers assoc id
              {:element element
               :handlers handlers

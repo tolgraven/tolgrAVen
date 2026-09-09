@@ -33,7 +33,7 @@
   (testing "raw markdown and text links are normalized and deduplicated"
     (is (= ["https://example.com/a" "https://other.example/b"
             "https://third.example/c" "https://fourth.example/foo_(bar)"
-            "https://fifth.example/?a=1&b=2"]
+            "https://fifth.example/?a=1&amp;b=2"]
            (link-preview/external-urls
              (str "[A](https://example.com/a), https://example.com/a! "
                   "https://other.example/b //third.example/c "
