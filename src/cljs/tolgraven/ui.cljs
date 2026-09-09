@@ -2,7 +2,6 @@
   (:require
    [reagent.core :as r]
    [re-frame.core :as rf]
-   [tolgraven.components.link-preview :as link-preview]
    [tolgraven.util :as util :refer [at]]
    [tolgraven.image :as img]
    [tolgraven.macros :as m :include-macros true]
@@ -67,21 +66,15 @@
             "Attempt reload"]]])))})))
 
 (defn md->div [md & [options]]
-  (let [showing? (r/atom false)
-        container-id (or (:id options)
-                         (str "markdown-" (random-uuid)))]
+  (let [showing? (r/atom false)]
     (fn [md & [options]]
-      [link-preview/<link-container>
-       {:id container-id
-        :text md
-        :trust (:trust options)}
-       [:div.md-rendered
-        {:style {:opacity (if @showing? 1.0 0.0)}
-         :ref #(when % (reset! showing? true))}
-        [code/parse-markdown-components
-         (util/md->normal md)
-         {:allow-images? (= :trusted (:trust options))
-          :allow-raw? (= :trusted (:trust options))}]]])))
+      [:div.md-rendered
+       {:style {:opacity (if @showing? 1.0 0.0)}
+        :ref #(when % (reset! showing? true))}
+       [code/parse-markdown-components
+        (util/md->normal md)
+        {:allow-images? (= :trusted (:trust options))
+         :allow-raw? (= :trusted (:trust options))}]])))
 
 (defn appear "Animate mount"
   [id kind & components]

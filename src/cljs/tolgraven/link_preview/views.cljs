@@ -1,19 +1,20 @@
-(ns tolgraven.components.link-preview
+(ns tolgraven.link-preview.views
   (:require
     [clojure.string :as string]
-    [goog.string :as gstring]
     [re-frame.core :as rf]
     [reagent.core :as r]
+    [tolgraven.component :as component]
     [tolgraven.components.iframe :as iframe]
     [tolgraven.components.popover :as popover]
-    [tolgraven.routes :as routes]))
+    [tolgraven.link-preview.subs]
+    [tolgraven.link-preview.util :as util]
+    [tolgraven.ui :as ui]))
 
 (def ^:private open-delay-ms 300)
 (def ^:private close-delay-ms 180)
 (def ^:private navigation-delay-ms 420)
 (def ^:private return-close-delay-ms 500)
 (def ^:private transition-storage-key "tolgraven.link-preview.transition")
-(def ^:private prefetch-delay-ms {:trusted 250, :user 1500})
 
 (defonce *containers (atom {}))
 (defonce *link-elements (atom {}))
@@ -21,131 +22,6 @@
 (defonce *interaction-timers (atom {}))
 
 (declare unregister-container!)
-
-(defn- trim-url-token [url]
-  (loop [url (string/replace url #"[.,;:!?]+$" "")]
-    (let [closer (last url)
-          opener ({\) \( \] \[ \} \{} closer)]
-      (if (and opener
-               (> (count (filter #{closer} url))
-                  (count (filter #{opener} url))))
-        (recur (subs url 0 (dec (count url))))
-        url))))
-
-(defn- href-variants [url]
-  [url (try
-         (.-href (js/URL. (gstring/unescapeEntities url)))
-         (catch :default _ url))])
-
-(defn external-urls
-  "Extract distinct external HTTP(S) URLs from raw markdown, HTML, or text."
-  [text base-url]
-  (->> (re-seq #"(?:https?:)?//[^\s<>\"']+" (or text ""))
-       (map trim-url-token)
-       (keep #(try
-                (.-href (js/URL. % base-url))
-                (catch :default _ nil)))
-       (filter #(routes/external-http-url? % base-url))
-       distinct
-       vec))
-
-(rf/reg-sub
-  :link-preview/raw-text
-  (fn [_ [_ text]]
-    (or text "")))
-
-(rf/reg-sub
-  :link-preview/candidates
-  (fn [[_ text]]
-    [(rf/subscribe [:link-preview/raw-text text])])
-  (fn [[text] [_ _ base-url]]
-    (external-urls text base-url)))
-
-(rf/reg-sub
-  :link-preview/state
-  (fn [db _]
-    (get-in db [:state :link-preview]
-            {:containers {}
-             :prefetch-queue []})))
-
-(rf/reg-sub
-  :link-preview/containers
-  :<- [:link-preview/state]
-  (fn [state _]
-    (:containers state)))
-
-(rf/reg-sub
-  :link-preview/link-count
-  :<- [:link-preview/containers]
-  (fn [containers _]
-    (reduce + (map :count (vals containers)))))
-
-(rf/reg-event-db
-  :link-preview/register
-  (fn [db [_ id candidates]]
-    (assoc-in db [:state :link-preview :containers id]
-              {:candidates candidates
-               :count (count candidates)})))
-
-(rf/reg-event-db
-  :link-preview/unregister
-  (fn [db [_ id]]
-    (let [state (get-in db [:state :link-preview])
-          active (:active state)]
-      (assoc-in db [:state :link-preview]
-                (cond-> (-> state
-                            (update :containers dissoc id)
-                            (update :prefetch-queue
-                                    #(vec (remove (fn [candidate]
-                                                   (= id (:container-id candidate)))
-                                                 %))))
-                  (= id (:container-id active)) (dissoc :active))))))
-
-(rf/reg-event-db
-  :link-preview/visible
-  (fn [db [_ candidate]]
-    (let [path [:state :link-preview]
-          url (:url candidate)
-          trust (:trust candidate)
-          queued? (get-in db (conj path :prefetch url))]
-      (if (or queued? (not (get prefetch-delay-ms trust)))
-        db
-        (-> db
-            (assoc-in (conj path :prefetch url) :queued)
-            (update-in (conj path :prefetch-queue) (fnil conj []) candidate))))))
-
-(rf/reg-event-db
-  :link-preview/prefetch-next
-  (fn [db _]
-    (update-in db [:state :link-preview :prefetch-queue]
-               #(vec (rest %)))))
-
-(rf/reg-event-db
-  :link-preview/prefetched
-  (fn [db [_ url]]
-    (assoc-in db [:state :link-preview :prefetch url] :prefetched)))
-
-(rf/reg-event-db
-  :link-preview/open
-  (fn [db [_ candidate]]
-    (assoc-in db [:state :link-preview :active]
-              (assoc candidate :status :preview))))
-
-(rf/reg-event-db
-  :link-preview/status
-  (fn [db [_ status]]
-    (assoc-in db [:state :link-preview :active :status] status)))
-
-(rf/reg-event-db
-  :link-preview/restore
-  (fn [db [_ transition]]
-    (assoc-in db [:state :link-preview :active]
-              (assoc transition :status :returning))))
-
-(rf/reg-event-db
-  :link-preview/close
-  (fn [db _]
-    (update-in db [:state :link-preview] dissoc :active)))
 
 (defonce *preview-state (rf/subscribe [:link-preview/state]))
 
@@ -167,8 +43,8 @@
        (not= "_blank" (.-target link))
        (not (.hasAttribute link "data-no-preview"))
        (not (.hasAttribute link "data-popover-direct"))
-       (routes/external-http-url? (.-href link)
-                                  (.-href js/window.location))))
+       (util/external-http-url? (.-href link)
+                                (.-href js/window.location))))
 
 (defn- trust-for [element fallback]
   (or fallback
@@ -334,7 +210,7 @@
   [id element options observer candidate-urls]
   (when (and element observer (seq candidate-urls))
     (let [handlers (container-handlers id)
-          expected (set (mapcat href-variants candidate-urls))]
+          expected (set (mapcat util/href-variants candidate-urls))]
       (swap! *containers assoc id
              {:element element
               :handlers handlers
@@ -376,6 +252,25 @@
                               (= id container-id)) %)))
     (rf/dispatch [:link-preview/unregister id])))
 
+(defn- setup-link-feature [{:keys [id text] :as options}]
+  (let [candidates @(rf/subscribe
+                      [:link-preview/candidates
+                       text
+                       (.-href js/window.location)])]
+    (when (and id (seq candidates))
+      {:candidates candidates
+       :id id
+       :observer (candidate-observer id)
+       :options options})))
+
+(component/register-feature!
+  :links
+  {:setup setup-link-feature
+   :mount (fn [{:keys [candidates id observer options]} element]
+            (register-container! id element options observer candidates))
+   :unmount (fn [{:keys [id]}]
+              (unregister-container! id))})
+
 (defn- <observed-link-container>
   [{:keys [candidates id trust]} content]
   (let [*element (atom nil)
@@ -411,6 +306,17 @@
          content]
         {:key (hash [id trust candidates])})
       [:div.link-preview-container content])))
+
+(defn <md>
+  "Render markdown inside a candidate-aware preview container."
+  [md & [options]]
+  (let [id (or (:id options) (str "markdown-" (random-uuid)))]
+    (fn [md & [options]]
+      [<link-container>
+       {:id id
+        :text md
+        :trust (:trust options)}
+       [ui/md->div md options]])))
 
 (defn- default-preview [{:keys [title trust url]} on-load]
   [iframe/<iframe>
@@ -475,7 +381,7 @@
               (rf/dispatch [:link-preview/prefetch-next])
               (reset! *prefetch-timer
                       (js/setTimeout prefetch-next!
-                                     (get prefetch-delay-ms trust))))
+                                     (get util/prefetch-delay-ms trust))))
             (reset! *prefetch-timer nil)))
         maybe-prefetch! #(when (and (seq (:prefetch-queue @state))
                                     (not @*prefetch-timer))
