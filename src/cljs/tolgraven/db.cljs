@@ -57,7 +57,7 @@
                                 ["Contact me"         [:state [:contact-form :show?] true]]
                                 ["Read my thoughts"   "/blog"]]
                      :bg [{:src "img/foggy-shit-small.jpg" :alt "Purple enthusiast"}
-                          {:src "img/live-session-small.jpg" :alt "Ableton Live"}
+                          {:src "img/showcase/live-session-small.jpg" :alt "Ableton Live"}
                           {:src "img/afterglow-new-web-old-small.jpg" :alt "My actual first web project"}]
                      :logo-bg "img/tolgrav.png"} ; no :src cause goes in :style background-image...
 
@@ -210,7 +210,7 @@
                                   "a-taste-of-what-i-will-sound-like-live"]}
 
              :gallery [{:src "img/joen-mixer.jpg" :alt "My actual first web project"}
-                       {:src "img/live-session-small.jpg" :alt "Ableton Live"}
+                       {:src "img/showcase/live-session-small.jpg" :alt "Ableton Live"}
                        {:src "img/ssiri-balcony-small.jpg" :alt "Some nice people"}
                        {:src "img/video-editing-small.jpg" :alt "Television"}
                        {:src "img/afterglow-new-web-old-small.jpg" :alt "My actual first web project"}]
