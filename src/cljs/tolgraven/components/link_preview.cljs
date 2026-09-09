@@ -32,6 +32,11 @@
         (recur (subs url 0 (dec (count url))))
         url))))
 
+(defn- href-variants [url]
+  [url (try
+         (.-href (js/URL. (gstring/unescapeEntities url)))
+         (catch :default _ url))])
+
 (defn external-urls
   "Extract distinct external HTTP(S) URLs from raw markdown, HTML, or text."
   [text base-url]
@@ -329,8 +334,7 @@
   [id element options observer candidate-urls]
   (when (and element observer (seq candidate-urls))
     (let [handlers (container-handlers id)
-          expected (set (mapcat #(vector % (gstring/unescapeEntities %))
-                                candidate-urls))]
+          expected (set (mapcat href-variants candidate-urls))]
       (swap! *containers assoc id
              {:element element
               :handlers handlers
