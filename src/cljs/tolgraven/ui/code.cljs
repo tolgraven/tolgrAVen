@@ -56,10 +56,10 @@
 
 (defn parse-markdown-components
   "Parse markdown into pure React components using react-markdown"
-  [md-text]
+  [md-text & [{:keys [allow-raw?]
+              :or {allow-raw? true}}]]
   [react-markdown
-   {:children md-text
-    :remarkPlugins #js [remarkGfm]
-    :rehypePlugins #js [rehypeRaw]
-    :components #js {:code (r/reactify-component markdown-code-component)}}])
-
+   (cond-> {:children md-text
+           :remarkPlugins #js [remarkGfm]
+           :components #js {:code (r/reactify-component markdown-code-component)}}
+    allow-raw? (assoc :rehypePlugins #js [rehypeRaw]))])

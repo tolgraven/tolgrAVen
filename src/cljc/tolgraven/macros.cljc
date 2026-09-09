@@ -91,29 +91,38 @@
              *showing?# (reagent.core/atom nil)
              spec#   ~spec-sym
              links#  (:links spec#)
+             *link-candidates#
+             ;; `:links :text` is mount-stable. Dynamic text should use
+             ;; `<link-container>`, whose candidate key drives remount/cleanup.
+             (when (:text links#)
+               (re-frame.core/subscribe
+                 [:link-preview/candidates
+                  (:text links#)
+                  (.-href js/window.location)]))
+             link-candidates# (some-> *link-candidates# deref)
+             link-observer#
+             (when (seq link-candidates#)
+               (tolgraven.components.link-preview/candidate-observer
+                 (:id links#)))
              ~@(when lets [lets])]
          (reagent.core/create-class
           {:display-name ~(str name)
            :component-did-mount
            (fn [this#]
              (reset! *mounted?# true)
-            (when (:id links#)
+            (when (and (:id links#) (seq link-candidates#))
               (tolgraven.components.link-preview/register-container!
                 (:id links#)
                 (reagent.dom/dom-node this#)
-                links#))
+                links#
+                link-observer#
+                link-candidates#))
             (and (fn? (:init spec#))
                   ((:init spec#) this#)))
-          :component-did-update
-          (fn [this# old-argv#]
-            (when (and (:id links#)
-                       (not= old-argv# (reagent.core/argv this#)))
-              (tolgraven.components.link-preview/refresh-container!
-                (:id links#))))
           :component-will-unmount
           (fn [this#]
             (reset! *mounted?# false)
-            (when (:id links#)
+            (when (and (:id links#) (seq link-candidates#))
               (tolgraven.components.link-preview/unregister-container!
                 (:id links#)))
             (and (fn? (:exit spec#))

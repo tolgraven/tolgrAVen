@@ -3,7 +3,6 @@
     [reagent.core :as r]
     [re-frame.core :as rf]
     [clojure.string :as string]
-    [tolgraven.components.link-preview :as link-preview]
     [tolgraven.loader :as l]
     [tolgraven.ui :as ui]
     [tolgraven.util :as util]))
@@ -13,10 +12,7 @@
   (let [user @(rf/subscribe [:user/user (:user message)])
         hovered? (r/atom false)]
     (fn [message]
-      [link-preview/<link-container>
-       {:id (str "chat-message-" (:time message) "-" (:user message))
-        :trust (if (= "anon" (:user message)) :untrusted :user)}
-       [:div.chat-message
+      [:div.chat-message
         [:span.chat-message-time
          {:on-mouse-over #(reset! hovered? true)
           :on-mouse-leave #(reset! hovered? false)}
@@ -24,10 +20,14 @@
          [:span.chat-message-time-exact
           (when @hovered? (util/unix->ts (:time message)))]]
 
-        [:span.chat-message-text (:text message)]
+        [:div.chat-message-text
+         [ui/md->div
+          (:text message)
+          {:id (str "chat-message-" (:time message) "-" (:user message))
+           :trust (if (= "anon" (:user message)) :untrusted :user)}]]
         [:div.chat-message-user.flex
          (or (:name user) "anon")
-         [l/<> {:module :user, :view :avatar} user]]]])))
+         [l/<> {:module :user, :view :avatar} user]]])))
 
 (defn chat "A place to hang out with real-time messaging"
   []
