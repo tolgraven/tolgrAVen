@@ -76,6 +76,7 @@
    [:a {:name "linktotop" :id "linktotop"}]
    
    [ui/zoom-to-modal :fullscreen]
+   [l/<> {:module :link-preview}]
    [ui/safe :user [l/<> {:module :user, :defer? true}]]
    [ui/safe :settings [common/settings]]
    [ui/safe :search [l/<> {:module :search, :defer? true}]]
@@ -370,4 +371,3 @@
 
 (defn ^:export init!  []
   (defonce _init_ (init))) ;; why still need for thisi don't get it init! is now being called each reload?
-

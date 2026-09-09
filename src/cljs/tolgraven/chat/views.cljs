@@ -4,6 +4,7 @@
     [re-frame.core :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
+    [tolgraven.link-preview.views :as link-preview]
     [tolgraven.ui :as ui]
     [tolgraven.util :as util]))
 
@@ -13,17 +14,21 @@
         hovered? (r/atom false)]
     (fn [message]
       [:div.chat-message
-       [:span.chat-message-time
-        {:on-mouse-over #(reset! hovered? true)
-         :on-mouse-leave #(reset! hovered? false)}
-        (util/timestamp (:time message))
-        [:span.chat-message-time-exact
-         (when @hovered? (util/unix->ts (:time message)))]]
+        [:span.chat-message-time
+         {:on-mouse-over #(reset! hovered? true)
+          :on-mouse-leave #(reset! hovered? false)}
+         (util/timestamp (:time message))
+         [:span.chat-message-time-exact
+          (when @hovered? (util/unix->ts (:time message)))]]
 
-       [:span.chat-message-text (:text message)]
-       [:div.chat-message-user.flex
-        (or (:name user) "anon")
-        [l/<> {:module :user, :view :avatar} user]]])))
+        [:div.chat-message-text
+         [link-preview/<md>
+          (:text message)
+          {:id (str "chat-message-" (:time message) "-" (:user message))
+           :trust (if (= "anon" (:user message)) :untrusted :user)}]]
+        [:div.chat-message-user.flex
+         (or (:name user) "anon")
+         [l/<> {:module :user, :view :avatar} user]]])))
 
 (defn chat "A place to hang out with real-time messaging"
   []
@@ -44,4 +49,3 @@
      [:p.chat-description
       [:b "Step 1. "] "Open two browser windows." [:br]
       [:b "Step 2. "] "Talk to yourself in real time"] ]))
-

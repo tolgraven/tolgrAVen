@@ -3,12 +3,13 @@
    [tolgraven.react :as r]))
 
 (defn <portal>
-  "Util component for building portals."
-  [target-id & forms]
-  (if-let [e (js/document.getElementById target-id)]
+  "Render forms into a DOM node or an element id."
+  [target & forms]
+  (if-let [e (if (string? target)
+               (js/document.getElementById target)
+               target)]
     (r/create-portal
      (r/as-element
       (if (= 1 (count forms)) (first forms) (vec (apply concat [:<>] forms))))
      e)
-    (js/console.warn (str "Couldn't resolve portal target " target-id))))
-
+    (js/console.warn (str "Couldn't resolve portal target " target))))

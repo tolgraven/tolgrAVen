@@ -1,0 +1,155 @@
+.popover-layer {
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 190;
+
+  &--expanded {
+    pointer-events: auto;
+  }
+}
+
+.link-preview-container {
+  display: contents;
+}
+
+.popover {
+  --popover-content-scale: 1;
+  background: color-mix(in srgb, var(--bg-1) 92%, transparent);
+  block-size: min(20rem, calc(100vh - 2 * var(--space)));
+  border: var(--line-width-sm) solid var(--line-color);
+  box-shadow: 0 0.75rem 2.5rem rgb(0 0 0 / 35%);
+  inline-size: min(32rem, calc(100vw - 2 * var(--space)));
+  left: 50%;
+  opacity: 1;
+  overflow: hidden;
+  pointer-events: auto;
+  position: fixed;
+  top: 50%;
+  transform: scale(1);
+  transform-origin: top center;
+  translate: -50% -50%;
+  transition:
+    background-color 180ms ease,
+    block-size 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 180ms ease,
+    inline-size 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    left 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 160ms ease,
+    top 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    translate 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-behavior: allow-discrete;
+
+  &__surface {
+    block-size: 100vh;
+    inline-size: 100vw;
+    transform: scale(var(--popover-content-scale));
+    transform-origin: top left;
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+
+  &--expanded {
+    block-size: 100vh;
+    border-color: transparent;
+    inline-size: 100vw;
+    left: 0;
+    top: 0;
+    translate: 0 0;
+
+    .popover__surface {
+      transform: scale(1);
+    }
+  }
+
+  @supports (position-anchor: --active-popover-anchor) {
+    position-anchor: --active-popover-anchor;
+    left: anchor(center);
+    position-try-fallbacks: flip-block, flip-inline;
+    top: anchor(bottom);
+    translate: -50% var(--space);
+
+    &--expanded {
+      left: 0;
+      position-anchor: auto;
+      top: 0;
+      translate: 0 0;
+    }
+  }
+}
+
+@starting-style {
+  .popover {
+    background: color-mix(in srgb, var(--bg-1) 55%, transparent);
+    border-color: transparent;
+    opacity: 0;
+    transform: scale(0.08);
+  }
+}
+
+.link-preview {
+  font-size: clamp(1.75rem, 2.5vw, 2.5rem);
+
+  &__bar {
+    align-items: center;
+    background: var(--bg-2);
+    border-bottom: var(--line-width-sm) solid var(--line-color);
+    display: flex;
+    gap: var(--space);
+    justify-content: space-between;
+    min-block-size: 4.5rem;
+    padding: 0.75rem 1.25rem;
+  }
+
+  &__link {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__hint {
+    color: var(--fg-4);
+    flex: 0 0 auto;
+    font-size: 0.65em;
+  }
+
+  &__viewport {
+    block-size: calc(100vh - 4.5rem);
+    position: relative;
+
+    iframe {
+      block-size: 100%;
+      border: 0;
+      filter: brightness(0.7) contrast(0.9);
+      inline-size: 100%;
+      pointer-events: none;
+    }
+  }
+
+  &__loading,
+  &__shield {
+    inset: 0;
+    position: absolute;
+  }
+
+  &__loading {
+    align-items: center;
+    background: var(--bg-1);
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  &__shield {
+    background: rgb(0 0 0 / 12%);
+    cursor: pointer;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover,
+  .popover__surface {
+    transition-duration: 0ms;
+  }
+}

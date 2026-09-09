@@ -12,11 +12,14 @@
    :modules {:main      {:entries [tolgraven.app]
                          :init-fn tolgraven.app/init!}
              :search    {:entries    [tolgraven.search.module]
-                         :depends-on #{:main}}
+                         :depends-on #{:main :link-preview}}
              :user      {:entries    [tolgraven.user.module]
+                         :depends-on #{:main :link-preview}}
+             :link-preview
+                        {:entries    [tolgraven.link-preview.module]
                          :depends-on #{:main}}
              :chat      {:entries    [tolgraven.chat.module]
-                         :depends-on #{:main :user}}
+                         :depends-on #{:main :user :link-preview}}
              :github    {:entries    [tolgraven.github.module]
                          :depends-on #{:main}}
              :docs      {:entries    [tolgraven.docs.module]
@@ -32,7 +35,7 @@
              :test      {:entries    [tolgraven.experiments]
                          :depends-on #{:main}}
              :blog      {:entries    [tolgraven.blog.module]
-                         :depends-on #{:main :user}}}
+                         :depends-on #{:main :user :link-preview}}}
    :js-options {}
    :output-dir "resources/public/js/compiled/out"
    :asset-path "/js/compiled/out"
