@@ -1,6 +1,7 @@
 (ns tolgraven.components.link-preview
   (:require
     [clojure.string :as string]
+    [goog.string :as gstring]
     [re-frame.core :as rf]
     [reagent.core :as r]
     [tolgraven.components.iframe :as iframe]
@@ -35,7 +36,7 @@
   "Extract distinct external HTTP(S) URLs from raw markdown, HTML, or text."
   [text base-url]
   (->> (re-seq #"(?:https?:)?//[^\s<>\"']+" (or text ""))
-       (map trim-url-token)
+       (map (comp gstring/unescapeEntities trim-url-token))
        (keep #(try
                 (.-href (js/URL. % base-url))
                 (catch :default _ nil)))
@@ -267,13 +268,16 @@
                                (external-link? link)
                                (link-data link))
                       link)))
+        open-link! (fn [link]
+                     (when-let [data (link-data link)]
+                       (open! data link)))
         pointer-over
         (fn [event]
           (when-not (= "touch" (.-pointerType event))
             (when-let [link (link-at event)]
               (when-not (= link (closest (.-relatedTarget event) "a[href]"))
                 (schedule! :open open-delay-ms
-                           #(open! (link-data link) link))))))
+                           #(open-link! link))))))
         pointer-out
         (fn [event]
           (when-not (= "touch" (.-pointerType event))
@@ -284,7 +288,7 @@
         (fn [event]
           (when-let [link (link-at event)]
             (schedule! :open open-delay-ms
-                       #(open! (link-data link) link))))
+                       #(open-link! link))))
         focus-out
         (fn [event]
           (when-let [link (link-at event)]
