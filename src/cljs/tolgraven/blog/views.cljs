@@ -4,7 +4,7 @@
     [re-frame.core :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
-    [tolgraven.util :as util :refer [at]]
+    [tolgraven.util :as util]
     [tolgraven.ui :as ui]))
 
 (defn preview-comment "Live md preview I guess. Prob best just ratom not db thing..."
@@ -72,6 +72,12 @@
             (str s "-" i))
           (str "blog-post-" (first path) "-comment")
           (rest path)))
+
+(defn- link-trust [user]
+  (if (some #{(:id user)}
+           (:admins @(rf/subscribe [:<-store :auth :roles])))
+    :trusted
+    :user))
 
 (defn vote-btn [user active-user path vote]
   (when active-user
@@ -143,6 +149,7 @@
             [:section.blog-comment
              {:class (when @full?
                        "blog-comment-full")
+              :data-link-trust (name (link-trust user))
               :style (when is-preview? {:background-color "var(--bg-2-2)"
                                         :opacity 0.8})
               :ref ref-fn}
@@ -375,7 +382,8 @@
          back? @(rf/subscribe [:history/back-nav-from-external?])]
     [ui/appear-anon (if back? "" "zoom-x")
      [:section.blog-post
-      {:ref #(rf/dispatch [:run-highlighter!])}
+      {:data-link-trust (name (link-trust user))
+       :ref #(rf/dispatch [:run-highlighter!])}
       
      [:div.flex.blog-post-header
       [ui/appear-anon (if back? "" "zoom slower")
@@ -540,4 +548,3 @@
   [ui/with-heading [:blog :heading] [blog-tag-view]])
 (defn blog-post-page []
   [ui/with-heading [:blog :heading] [blog-single-post]])
-
