@@ -9,6 +9,10 @@
   }
 }
 
+.link-preview-container {
+  display: contents;
+}
+
 .popover {
   --popover-content-scale: 1;
   background: color-mix(in srgb, var(--bg-1) 92%, transparent);

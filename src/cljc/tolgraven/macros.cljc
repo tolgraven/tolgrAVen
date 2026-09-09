@@ -4,6 +4,8 @@
             [malli.core :as m]
             [malli.error :as me]
             #?@(:cljs [[reagent.core :as r]
+                       [reagent.dom]
+                       [tolgraven.components.link-preview :as link-preview]
                        [re-frame.core :as rf]
                        [shadow.lazy]
                        [tolgraven.components.error :as error]
@@ -93,17 +95,32 @@
              *mounted?# (reagent.core/atom nil)
              *showing?# (reagent.core/atom nil)
              spec#   ~spec-sym
+             links#  (:links spec#)
              ~@(when lets [lets])]
          (reagent.core/create-class
           {:display-name ~(str name)
            :component-did-mount
            (fn [this#]
              (reset! *mounted?# true)
-             (and (fn? (:init spec#))
+            (when (:id links#)
+              (tolgraven.components.link-preview/register-container!
+                (:id links#)
+                (reagent.dom/dom-node this#)
+                links#))
+            (and (fn? (:init spec#))
                   ((:init spec#) this#)))
+          :component-did-update
+          (fn [this# old-argv#]
+            (when (and (:id links#)
+                       (not= old-argv# (reagent.core/argv this#)))
+              (tolgraven.components.link-preview/refresh-container!
+                (:id links#))))
           :component-will-unmount
           (fn [this#]
             (reset! *mounted?# false)
+            (when (:id links#)
+              (tolgraven.components.link-preview/unregister-container!
+                (:id links#)))
             (and (fn? (:exit spec#))
                  ((:exit spec#) this#)))
            :component-did-catch
@@ -235,4 +252,3 @@
 ;         :display-name                 "error-boundary"
 ;         :get-derived-state-from-error #(reset! *error [%])
 ;         :render                       <boundary-inner>}))))
-
