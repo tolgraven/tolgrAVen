@@ -167,7 +167,8 @@
                 {:style {:filter (when (neg? score)
                                    (str "brightness(calc(1 + "
                                         (max -0.7 (* 0.1 score)) "))"))}}
-                [ui/md->div text]]]
+                [ui/md->div text
+                 {:trust (link-trust user)}]]]
 
              [:div.blog-comment-actions
                (when (= active-user user)
@@ -400,7 +401,10 @@
            {:on-click #(rf/dispatch [:blog/edit-post post])}
            [:i.fa.fa-edit] ])]]]
      ; [a custom sticky mini "how far youve scrolled bar" on right?]
-     [:div.blog-post-text [ui/md->div text]]
+     [:div.blog-post-text
+      [ui/md->div text
+       {:id (str "blog-post-" id)
+        :trust (link-trust user)}]]
      [ui/appear-anon (if back? "" "zoom-y")
       [comments-section post]]]])))
 

@@ -21,11 +21,21 @@
 
 (declare unregister-container!)
 
+(defn- trim-url-token [url]
+  (loop [url (string/replace url #"[.,;:!?]+$" "")]
+    (let [closer (last url)
+          opener ({\) \( \] \[ \} \{} closer)]
+      (if (and opener
+               (> (count (filter #{closer} url))
+                  (count (filter #{opener} url))))
+        (recur (subs url 0 (dec (count url))))
+        url))))
+
 (defn external-urls
   "Extract distinct external HTTP(S) URLs from raw markdown, HTML, or text."
   [text base-url]
   (->> (re-seq #"(?:https?:)?//[^\s<>\"']+" (or text ""))
-       (map #(string/replace % #"[\]\[(){}.,;:!?]+$" ""))
+       (map trim-url-token)
        (keep #(try
                 (.-href (js/URL. % base-url))
                 (catch :default _ nil)))
@@ -254,7 +264,8 @@
                   (let [root (get-in @*containers [id :element])
                         link (closest (.-target event) "a[href]")]
                     (when (and link root (.contains root link)
-                               (external-link? link))
+                               (external-link? link)
+                               (link-data link))
                       link)))
         pointer-over
         (fn [event]

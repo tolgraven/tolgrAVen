@@ -80,7 +80,7 @@
          :ref #(when % (reset! showing? true))}
         [code/parse-markdown-components
          (util/md->normal md)
-         {:allow-raw? (not (#{:user :untrusted} (:trust options)))}]]])))
+         {:allow-raw? (= :trusted (:trust options))}]]])))
 
 (defn appear "Animate mount"
   [id kind & components]

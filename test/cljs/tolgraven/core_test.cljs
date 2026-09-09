@@ -32,10 +32,11 @@
 (deftest external-url-extraction-test
   (testing "raw markdown and text links are normalized and deduplicated"
     (is (= ["https://example.com/a" "https://other.example/b"
-            "https://third.example/c"]
+            "https://third.example/c" "https://fourth.example/foo_(bar)"]
            (link-preview/external-urls
              (str "[A](https://example.com/a), https://example.com/a! "
-                  "https://other.example/b //third.example/c")
+                  "https://other.example/b //third.example/c "
+                  "[nested](https://fourth.example/foo_(bar))")
              "https://tolgraven.se/blog"))))
   (testing "same-origin links are excluded before observers exist"
     (is (empty? (link-preview/external-urls
