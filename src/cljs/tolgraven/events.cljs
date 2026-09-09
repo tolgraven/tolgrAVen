@@ -14,6 +14,8 @@
     [breaking-point.core :as bp]
     [tolgraven.util :as util]
     [tolgraven.listener]
+    [tolgraven.user.events]
+    [tolgraven.user.subs]
     [tolgraven.loader :as l]
     [tolgraven.scroll]
     [tolgraven.doc-fx]
@@ -42,7 +44,8 @@
           same (fn [& path]
                  (= (get-in new-match path)
                     (get-in old-match path)))]
-      (if-not (and (same :data :view)
+      (if-not (and (nil? (get-in db [:state :error-page]))
+                   (same :data :view)
                    (same :path-params)
                    (same :query-params) ; causes some trouble with settingsbox getting stuck?
                    (same :path))
@@ -159,7 +162,7 @@
       {:db (assoc-in db [:state :dispatch-in k id] {:ms ms
                                                     :elapsed 0
                                                     :events events
-                                                    :started now-ct               
+                                                    :started now-ct
                                                     :js-id nil}) ;not yet running
        :dispatch-in/set [k id ms events]})))
 
@@ -690,10 +693,15 @@
                                             (some-> status-text (str " "))
                                             ": " uri)]}))
 
+(rf/reg-fx :http/callback
+  (fn [[handler result]] (handler result)))
+
 (rf/reg-event-fx :http-result-wrapper
- (fn [db [_ handler cleanup res]]
-   {:dispatch-n [(into handler [res])
-                 cleanup]}))
+  (fn [_ [_ handler cleanup result]]
+    {:fx (cond-> []
+           cleanup (conj [:dispatch cleanup])
+           (sequential? handler) (conj [:dispatch (conj (vec handler) result)])
+           (fn? handler) (conj [:http/callback [handler result]]))}))
 
 (rf/reg-event-fx :handle-visibility-change
  (fn [{db :db} [_ hidden-prop-name]]

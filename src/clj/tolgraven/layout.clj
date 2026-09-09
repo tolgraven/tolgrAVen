@@ -222,5 +222,5 @@
   {:status  (:status error-details)
    :title   {:title error-details}
    :headers {"Content-Type" "text/html; charset=utf-8"}
-   :body    (error-page-hiccup (:request error-details) error-details)})
+   :body    (:body (error-page-hiccup (:request error-details) error-details))})
 

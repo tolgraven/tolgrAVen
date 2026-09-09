@@ -1,5 +1,5 @@
 (ns tolgraven.macros
-  #?(:clj (:refer-clojure :exclude [for]))
+  #?(:clj (:refer-clojure :exclude [for tap>]))
   (:require [clojure.string :as string]
             [malli.core :as m]
             [malli.error :as me])
@@ -31,6 +31,13 @@
   [[id xs & ls] <c>]
   `(doall (clojure.core/for [[i# ~id] (map-indexed vector ~xs) ~@ls]
             (with-meta ~<c> {:key i#}))))
+
+(defmacro tap>
+  "Tap a value and return it for use in threading expressions."
+  [x]
+  `(let [val# ~x]
+     (clojure.core/tap> val#)
+     val#))
 
 (defmacro make-modules
   "Use keywords to generate Shadow lazy loadables.
@@ -105,8 +112,8 @@
            (fn [this# error# info#]
              (let [stack# (some-> ^js info# .-componentStack)]
                (reset! *error# {:error error# :stack stack#}))
-             (util/log :error (str "Error " ~(str name))
-                       (ex-message error#))
+             (js/console.log (str "Error " ~(str name))
+                             (ex-message error#))
              (.forceUpdate ^js this#))
            ; :component-did-update (fn [_this# _old-argv#] ; not working, clears error by itself
            ;                         (when @*error# (reset! *error# nil)))

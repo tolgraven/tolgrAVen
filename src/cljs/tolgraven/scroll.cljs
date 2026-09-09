@@ -55,25 +55,17 @@
          {:dispatch-later {:ms 300 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
                            :dispatch [:state [:browser-nav :got-nav] false]} }))))) ; waiting because checks in main-page
 
-(rf/reg-event-fx :scroll/px-dev
- (fn [db [_ delay-ms k px]]
-   (let [px' (get px k px)]
-     (if delay-ms
-       {:dispatch-later {:ms delay-ms
-                         :dispatch [:scroll/px px']}}
-       (when-not (get-in db [:state :scroll :block])
-         {:scroll/px px'})))))
-
 (rf/reg-event-fx :scroll/save-position-dev
   (fn [{:keys [db]} [_]]
-    {:dispatch [:ls/store-val [:scroll-position]
+    {:dispatch [:ls/store-val [:scroll-position :dev-current]
                   (.-scrollY js/window)]}))
 
 (rf/reg-event-fx :scroll/restore-position-dev
   (fn [{:keys [_]} [_ delay-ms]]
-    {:dispatch [:ls/get-path-as-event
-                [:scroll-position :dev-current]
-                [:scroll/px delay-ms]]}))
+    {:dispatch-later {:ms delay-ms
+                      :dispatch [:ls/get-path-as-event
+                                 [:scroll-position :dev-current]
+                                 [:scroll/px]]}}))
 
 (rf/reg-event-fx :scroll/to-top-and-arm-restore ; when follow links etc want to get to top of new page. but if have visited page earlier, offer to restore latest view pos. ACE!!!
   (fn [{:keys [db]} [_ path saved-pos]]
