@@ -1,9 +1,14 @@
 /target
 /lib
 /classes
+/out
+/.m2
+/m2
+/log
 pom.xml
 dev-config.edn
 test-config.edn
+config.edn
 *.jar
 *.class
 /.lein-*
@@ -14,13 +19,28 @@ profiles.clj
 /node_modules
 /log
 .lsp
-out/
-resources/public/js/
+.idea
+.vscode
+.claude
+.firebase
+/resources/public/js/*
 .vscode/
-/resources/public/css/
-/resources/public/img/uploads/
+/resources/public/css/*
+/resources/public/img/uploads/*
 /pg/
 /trash
 .google-oath
 resources/docs/codox/
 .shadow-cljs/
+
+# Private local configuration and recovery material
+.DS_Store
+*.iml
+/.hetzner-dns-zonefile
+/firestore-export/
+/resources/firebase/*SECRETS*
+/resources/firebase/*firebase-adminsdk*.json
+/.local-wip/
+
+# Optional local checkout retained in the recovery snapshot
+/checkouts/codox/
