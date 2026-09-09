@@ -1,6 +1,5 @@
 (ns tolgraven.components.popover
   (:require
-    [reagent.core :as r]
     [tolgraven.components.portal :as portal]))
 
 (def anchor-name "--active-popover-anchor")
