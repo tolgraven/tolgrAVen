@@ -1,9 +1,15 @@
 # Module and route integration
 
-The integration starts from `origin/master` at `38a1c97`, with the local
+The initial integration started from `origin/master` at `38a1c97`, with the local
 `0d38af7` commit cherry-picked as `ba9256a`. Upstream already supplied the
 comment-key and asynchronous-navigation fixes in that local commit; those
 upstream implementations were retained when resolving the cherry-pick.
+
+Before publication, upstream advanced to `7fef599` with the Copilot setup
+workflow. The tested integration was preserved as
+`recovery/integration-pre-refresh-20260910` (`c972c2b`) and rebased cleanly onto
+that newer master. The cherry-picked local commit is now `9697c87`; the earlier
+checkpoint IDs below remain available for recovery.
 
 ## What is integrated
 
