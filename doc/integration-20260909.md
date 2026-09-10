@@ -23,7 +23,7 @@ upstream implementations were retained when resolving the cherry-pick.
 - Correct server error response bodies and direct route requests covered by
   backend tests. API coercion tests call the route handler directly; frontend
   route tests use the application middleware with asset transformation omitted.
-- Local npm tools, lockfile-based installation, Docker exclusions for private
+- Local npm tools, lockfile-based installation, Docker and jar exclusions for private
   files, and deployment restricted to pushes to `master`.
 
 ## Recovery checkpoints — local only
@@ -86,4 +86,10 @@ See README for the exact commands. Backend route checks, browser regression
 tests, development compilation, production compilation, CSS build, and lint
 were exercised during integration. Two compiler warnings remain in the existing
 `clojure.core.rrb-vector` dependency (Vector redefinition/constructor arity).
+The complete `lein uberjar` command produced `target/uberjar/tolgraven.jar`.
+Codox still skips some namespaces that use Shadow-specific npm imports/macros;
+its generated source documentation is incomplete, although the docs page and
+its topic content render. This limitation also affects the upstream Codox setup
+and is a follow-up for the parked Codox tooling work.
+
 This work does not deploy the website or apply the parked Firebase rules.

@@ -1,4 +1,4 @@
-(ns tolgraven.components.media 
+(ns tolgraven.components.media
   (:require
    [re-frame.core :as rf]
    [reagent.core :as r]
@@ -171,4 +171,3 @@
            title]] ;ideally want this also growing (and moving quicker upwards)]
          [ui/inset caption 3]
          [ui/fading]])))
-

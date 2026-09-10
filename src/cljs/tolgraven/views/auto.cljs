@@ -111,5 +111,3 @@
    (for [[i component] (map-indexed vector (layouts :main))]
      ^{:key i}
      [get-section component])])
-
-

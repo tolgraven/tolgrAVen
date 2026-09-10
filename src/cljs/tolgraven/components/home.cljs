@@ -1,4 +1,4 @@
-(ns tolgraven.components.home 
+(ns tolgraven.components.home
   (:require
    [clojure.string :as string]
    [re-frame.core :as rf]
@@ -82,7 +82,7 @@
         (into [:ul {:class (cond (= full-screened? title) "service-fullscreen"
                                  full-screened? "service-minimized")
                     :on-click on-click}
-               [:li 
+               [:li
                 [:i {:class (str "fas " "fa-" icon-name)}]
                 [:h3 title]]]
               (for [line lines] ^{:key (str "service-" title "-" line)}
@@ -94,8 +94,8 @@
     [:div#services>div.categories
      (for [[title icon-name lines] categories ;(if-not full-screened categories (filter #(= (first %) full-screened) categories)) ;XXX change to keys!!
            :let [id (str "service-" title)]] ^{:key id}
-       (into [:ul 
-               [:li 
+       (into [:ul
+               [:li
                 [:i {:class (str "fas " "fa-" icon-name)}]
                 [:h3 title]]]
               (for [line lines] ^{:key (str "service-" title "-" line)}
@@ -127,4 +127,3 @@
     [ui/auto-layout-text-imgs content]
     [:br] [:br]]
    [ui/fading :dir "bottom"]])
-

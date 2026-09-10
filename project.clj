@@ -119,6 +119,11 @@
   :source-paths ["src/clj" "src/cljs" "src/cljc"]
   :test-paths ["test/clj"]
   :resource-paths ["resources"]
+  ;; Git ignores do not affect resource packaging in local jar builds.
+  :jar-exclusions [#"^public/js/tests/"
+                   #"^public/js/compiled/out/cljs-runtime/"
+                   #"(?i)(^|/)firebase/.*(firebase-adminsdk|SECRETS).*"
+                   #"(^|/)(dev-config|test-config)\.edn$"]
   :target-path "target/%s/"
   :main ^:skip-aot tolgraven.core
 

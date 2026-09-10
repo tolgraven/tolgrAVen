@@ -2,14 +2,12 @@
   #?(:clj (:refer-clojure :exclude [for tap>]))
   (:require [clojure.string :as string]
             [malli.core :as m]
-            [malli.error :as me])
-  #?(:cljs (:require [reagent.core :as r]
-                     [re-frame.core :as rf]
-                     [shadow.lazy]
-                     [malli.core :as m]
-                     [malli.error :as me]
-                     [tolgraven.components.error :as error]
-                     [tolgraven.util :as util]))
+            [malli.error :as me]
+            #?@(:cljs [[reagent.core :as r]
+                       [re-frame.core :as rf]
+                       [shadow.lazy]
+                       [tolgraven.components.error :as error]
+                       [tolgraven.util :as util]]))
   #?(:cljs (:require-macros [tolgraven.macros])))
 
 (defmacro hafn "Use in event-handlers instead of (fn [e/_]), returns nil so react doesnt get a false and ignore us"

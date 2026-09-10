@@ -34,7 +34,7 @@
           (concat home/routes
                   [cv/routes docs/routes blog/routes
                    ["log" {:name :log :view #'log-page}]
-                   ["test" 
+                   ["test"
       ["" {:name :test
            :module :test
            :page :page}]

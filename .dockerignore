@@ -24,3 +24,6 @@ config.edn
 firestore-export
 resources/firebase/*SECRETS*
 resources/firebase/*firebase-adminsdk*.json
+
+# Browser JavaScript is rebuilt by the production stage.
+resources/public/js

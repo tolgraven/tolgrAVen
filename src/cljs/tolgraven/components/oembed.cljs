@@ -61,4 +61,3 @@
      [:div.soundcloud-players.parallax-wrapper
       (m/for [tune tunes]
              [soundcloud-player artist tune])]]))
-

@@ -2,7 +2,7 @@
   (:require
    [re-frame.core :as rf]
    [reagent.core :as r]
-   [shadow.lazy :as lazy :rename {loadable l}])
+   [shadow.lazy :as lazy])
   (:require-macros
    [tolgraven.macros :as m]))
 
@@ -16,7 +16,7 @@
                                                  :gpt
                                                  :strava
                                                  :instagram])
-                    {:test (l tolgraven.experiments/spec)}))
+                    {:test (lazy/loadable tolgraven.experiments/spec)}))
 
 (defn <default-missing>
   [& args]

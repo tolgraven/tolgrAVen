@@ -6,4 +6,3 @@
    [:div.center-content
     [:br] [:p "Four, oh four. Nothing to see here, move along."]]
    {:title "Not found" :tint "red"}])
-
