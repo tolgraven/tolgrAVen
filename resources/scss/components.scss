@@ -152,9 +152,6 @@
     padding: 0.75em 0;
     width: 100%;
   }
-  > p {
-    margin: 1em 1em;
-  }
   > pre {
 
     > pre {
@@ -692,22 +689,40 @@ figcaption, .float-with-caption {
 
 
 .soundcloud {
+  background: #fc4c02; //XXX fix real
+  position: relative;
+  height: 50vh;
+
   .soundcloud-players { /* EXT IN IFRAME CANT BE STYLED */
+    background: #fc4c02; //XXX fix real
+    border: var(--line-width-sm) solid #bc6c52;
+
     > div {
-      //margin-bottom: -2.00em;
-      background: #fc4c02; //XXX fix real
-      height: 120%;
+      position: sticky;
+      top: 0;
+
+      > .oembed {
+        background: #fc4c02; //XXX fix real
+        border: var(--line-width-sm) solid #bc6c52;
+        //transform: rotateX(-40deg);
+        transition: transform 0.3s;
+
+        &.hovered {
+          transform: rotateX(0deg);
+        }
+      }
     }
 
     .soundcloud-player-loading {
       // display: flex;
-      height: calc(148px - var(--space)); // same as widget
+      //height: calc(148px - var(--space)); // same as widget
       padding: var(--space);
-      border: var(--line-width) solid #fc4c02; //XXX fix real
+      border: var(--line-width) solid #bc6c52; //XXX fix real
       background-color: var(--orange);
+      color: var(--fg-2);
 
       img {
-        height: 2rem;
+        height: 3rem;
       }
     }
   }

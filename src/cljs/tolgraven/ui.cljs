@@ -224,6 +224,17 @@
                  (rf/dispatch event))
                (observer el))}])))
 
+(defn observe-sticky "Check if sticky element has stuck."
+  [event]
+  (let [observer (util/observer (fn [frac]
+                                  (rf/dispatch [event frac]))
+                                {:threshold [1.0]
+                                 :root js/document.documentElement
+                                 :rootMargin "-1px 0px 0px 0px"})]
+    (fn [event]
+      [:div
+       {:ref (fn [el] (observer el))}])))
+
 (declare close)
 
 (defn zoom-to-modal "E.g. bring up image to semi-fullscreen when clicked.
@@ -271,15 +282,6 @@
        {:style {:transform "translateY(-10%)"}}
        title]]]]
    [:div.fader>div.fade-to-black.bottom]])
-
-(defn with-heading
-  [heading-path component & [override]]
-  [:<>
-   [fading-bg-heading (merge @(rf/subscribe [:content heading-path])
-                                  override)]
-   component])
-
-
 
 (defn button "Pass text and id, plus either link anchor or action..."
   [text id & {:keys [type bg-div-class link action disabled?]
@@ -775,6 +777,14 @@
   [& {:keys [fade-to dir content classes]
       :or {fade-to "fade-to-black" dir "light-from-below"}}]
   [:div.fader [:div {:class (str fade-to " " dir " " classes)}]])
+
+(defn with-heading
+  "Standard heading component with fade and title."
+  [heading-path component & [override]]
+  [:<>
+   [fading-bg-heading (merge @(rf/subscribe [:content heading-path])
+                                override)]
+   component])
 
 
 (defn carousel-idx-btns

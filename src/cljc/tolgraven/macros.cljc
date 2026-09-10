@@ -1,15 +1,13 @@
 (ns tolgraven.macros
-  #?(:clj (:refer-clojure :exclude [for]))
+  #?(:clj (:refer-clojure :exclude [for tap>]))
   (:require [clojure.string :as string]
             [malli.core :as m]
-            [malli.error :as me])
-  #?(:cljs (:require [reagent.core :as r]
-                     [re-frame.core :as rf]
-                     [shadow.lazy]
-                     [malli.core :as m]
-                     [malli.error :as me]
-                     [tolgraven.components.error :as error]
-                     [tolgraven.util :as util]))
+            [malli.error :as me]
+            #?@(:cljs [[reagent.core :as r]
+                       [re-frame.core :as rf]
+                       [shadow.lazy]
+                       [tolgraven.components.error :as error]
+                       [tolgraven.util :as util]]))
   #?(:cljs (:require-macros [tolgraven.macros])))
 
 (defmacro hafn "Use in event-handlers instead of (fn [e/_]), returns nil so react doesnt get a false and ignore us"
@@ -31,6 +29,13 @@
   [[id xs & ls] <c>]
   `(doall (clojure.core/for [[i# ~id] (map-indexed vector ~xs) ~@ls]
             (with-meta ~<c> {:key i#}))))
+
+(defmacro tap>
+  "Tap a value and return it for use in threading expressions."
+  [x]
+  `(let [val# ~x]
+     (clojure.core/tap> val#)
+     val#))
 
 (defmacro make-modules
   "Use keywords to generate Shadow lazy loadables.
@@ -105,8 +110,8 @@
            (fn [this# error# info#]
              (let [stack# (some-> ^js info# .-componentStack)]
                (reset! *error# {:error error# :stack stack#}))
-             (util/log :error (str "Error " ~(str name))
-                       (ex-message error#))
+             (js/console.log (str "Error " ~(str name))
+                             (ex-message error#))
              (.forceUpdate ^js this#))
            ; :component-did-update (fn [_this# _old-argv#] ; not working, clears error by itself
            ;                         (when @*error# (reset! *error# nil)))

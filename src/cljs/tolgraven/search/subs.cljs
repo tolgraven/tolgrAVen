@@ -46,48 +46,30 @@
        (get-in data [query]
                (get-in data [last-query])))))) ;show old results until new are ready! doesn't really help when typing rapidly heh
 
+(defn autocomplete-suggestion
+  "Build a plain-text completion without treating user input as a regular expression."
+  [query {:keys [highlights text_match]}]
+  (when-let [snippet (:snippet (first highlights))]
+    (let [text (-> snippet
+                   (string/replace #"</?mark>" "")
+                   (string/replace #"`[^`]*`" "")
+                   (string/split #"\n")
+                   first)
+          index (string/index-of (string/lower-case text) (string/lower-case query))]
+      (when (some? index)
+        (let [suffix (subs text (+ index (count query)))
+              rest (->> (string/split suffix #" ") (take 5) (string/join " "))]
+          {:match query :query query :rest rest
+           :text (str query rest) :score (or text_match 0)})))))
+
 (rf/reg-sub
  :search/autocomplete-for-current-query
  (fn [[_ collection]]
    [(rf/subscribe [:search/results-for-query collection])
     (rf/subscribe [:search/get-query collection])])
- (fn [[results query] [_ collection]]
-  (when (and (seq results)
-             (< 1 (count query)))
-   (distinct
-    (for [hit (:hits results)
-          :let [{:keys [highlights document text_match]} hit
-                {:keys [id permalink title text user ts]} document
-                {:keys [snippet matched_tokens field]} (first highlights)]]
-      (let [token (first matched_tokens)
-            snippet' (-> snippet
-                         (string/replace-first (str ".*" query) "")
-                         (string/replace #"(```)|(`.*)" "") ; kill the code blocks
-                         ; (string/replace #"\n.*" "") ; kill the code blocks
-                         (string/replace #"(<mark>)|(</mark>)" "")
-                         ; (string/replace #"([^a-zA-Z0-9\s'])|(\..*)" "")
-                         #_(string/replace #"<mark>" "öööö")
-                         #_(string/replace #"</mark>" "åååå"))
-            data (-> (string/split snippet' (re-pattern (str "(" query ")|(" token ")")))
-                     last ; here is where we might end up all wrong
-                     (string/split #" ")
-                     (->>
-                      (take 5) ; thinking it'll be cached and not change but maybe not
-                      (string/join " ")))
-            text (str (-> data
-                          #_(string/replace #"öööö|åååå" "")))
-            trimmed (-> (str "<mark>" token query)
-                        ; (string/replace #"öööö" "<mark>")
-                        ; (string/replace #"åååå" "</mark>")
-                        (string/replace #"([^a-zA-Z0-9\s'])|(\.*)" ""))]
-        
-        {:html trimmed
-         :match token
-         :query query
-         :rest text
-         :text (str query text)
-         ; :text (str query (string/replace (str token text) (re-pattern query) ""))
-         :score text_match}))))))
+ (fn [[results query] _]
+   (when (< 1 (count query))
+     (distinct (keep #(autocomplete-suggestion query %) (:hits results))))))
 
 (rf/reg-sub
  :search/autocomplete-multi

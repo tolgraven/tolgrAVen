@@ -43,9 +43,6 @@
   scroll-padding-top: var(--header-height-current);
 }
 
-:root { color-scheme: light dark; } /* enables native form controls/scrollbars */
-html[data-theme="dark"]  { color-scheme: dark;  }
-
 html, body {
   scroll-padding-top: var(--header-height-current);
 }

@@ -81,6 +81,17 @@
                         response/ok
                         plain-text-header)))}]
 
+   ["/oembed"
+    {:get {:summary "Get oembed data for a URL"
+           :parameters {:query {:url string?}}
+           :handler (fn [{{{:keys [url]} :query} :parameters}]
+                      (let [oembed-url (str "https://noembed.com/embed?url=" (java.net.URLEncoder/encode url "utf-8"))
+                            reply (http/get oembed-url {:as :json
+                                                        :conn-timeout 3000
+                                                        :socket-timeout 5000})]
+                        {:status 200
+                         :body (:body reply)}))}}]
+
    ["/gpt"
     {:post {:summary "Poll OpenAI API"
             :parameters {:body {:messages coll?}}
