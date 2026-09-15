@@ -85,19 +85,25 @@
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport"
-            :content "width=device-width, initial-scale=1, shrink-to-fit=no"}]
+            :content "width=device-width, initial-scale=1"}]
+    [:meta {:name "color-scheme" :content "light dark"}]
     [:title title]
     [:meta {:name "og:title" :content title}]             ; for link previews
     [:meta {:name "description" :content description}]
     [:meta {:name "og:description" :content description}]
     [:meta {:name "og:image" :content title-img}]         ; ideally would get overridden on like, blog-post with cover img...
-    [:meta {:name "theme-color" :content "#1A1C1C"}]    ; for mobile safari status bar
+    [:meta {:name "theme-color" :content "#1A1C1C"
+            :media "(prefers-color-scheme: dark)"}]
     [:meta {:name "theme-color" :content "#edc"
             :media "(prefers-color-scheme: light)"}]    ; for mobile safari status bar
     [:meta {:name "mobile-web-app-capable" :content "yes"}]
     #_[:meta {:name "apple-mobile-web-app-status-bar-style"
             :content "black-translucent"}] ; ought to be theme dependent tho
     [:base {:href "/"}]
+    [:link {:rel "icon" :type "image/png" :sizes "32x32" :href "/favicon-32x32.png"}]
+    [:link {:rel "icon" :type "image/png" :sizes "16x16" :href "/favicon-16x16.png"}]
+    [:link {:rel "apple-touch-icon" :sizes "120x120" :href "/apple-touch-icon.png"}]
+    [:link {:rel "manifest" :href "/site.webmanifest"}]
     
     (for [link link-pre]
       (preconnect link))
@@ -108,19 +114,11 @@
     (for [path css-pre]
       (css-preload path))
     
-    ; inline style to avoid FOUC flash of unstyled content. needs more stuff tho
-    [:style "html {background-color: #121616; color: #edc;}
-             a { color: #edc;}"]   
-
-    (when-not (:dev env)
-      (map (fn [path]
-             [:link {:href path
-                     :rel "stylesheet"
-                     :type "text/css"
-                     :async true
-                     :media "print"
-                     :onload "this.media='all'"}])
-           (olink/bundle-paths request ["styles.css"]))) ; this is where everything ends up for prod but cant remember why?
+    ;; The layout must be styled before first paint, including on a cold/private visit.
+    (for [path (if (:dev env)
+                 ["css/tolgraven/main.min.css"]
+                 (olink/bundle-paths request ["styles.css"]))]
+      [:link {:href path :rel "stylesheet" :type "text/css"}])
     (for [href css-paths]
       (css href))
     
@@ -159,13 +157,11 @@
    :title "tolgrAVen audiovisual"
    :description "tolgrAVen audiovisual by Joen Tolgraven"
    :pre-pre [["media/fog-3d-small.mp4" "video"]]
-   :css-paths (concat ["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
-                       "css/fontawesome.css"
-                       "css/solid.css"
-                       "css/brands.min.css"
-                       "css/opensans.css"]
-                      (when (:dev env)
-                        ["css/tolgraven/main.min.css"]))
+   :css-paths ["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
+               "css/fontawesome.css"
+               "css/solid.css"
+               "css/brands.min.css"
+               "css/opensans.css"]
    :js-paths (concat [{:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}]
                      (when-not (:dev env)
                        [{:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"}]))

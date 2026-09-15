@@ -1,11 +1,11 @@
 
 footer {
   position: relative;
-  padding-bottom: env(safe-area-inset-bottom); /* handle iphone x+, no harm for rest. TODO also adjust top-shortcut */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   margin-top: calc(0px - var(--line-width));
   font-size: 0.85rem;
 
-  border-left: var(--line-width) solid var(--line-color); /* connect bottom to main on left side */
+  border-left: var(--line-width-vert) solid var(--line-color); /* connect bottom to main on left side */
   background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
 
   transition: max-height var(--header-expand-time) ease;
@@ -42,14 +42,14 @@ footer {
   }
   &:before {  
     background: linear-gradient(35deg, var(--bg-1), var(--blue) 335%);
-    width: calc(var(--space-sides) - var(--line-width));
-    left: calc(0px - var(--space-sides));
+    width: var(--space-edges);
+    left: calc(0px - var(--space-edges) - var(--line-width-vert));
   }
   &.adjust-for-fullscreen {
     &:after {
       background: var(--bg-1);
-      right: calc(0px - var(--space-sides));
-      width: calc(var(--space-sides) - 0 * var(--line-width));
+      right: calc(0px - var(--space-edges));
+      width: var(--space-edges);
     }
     // XXX WANT THIS EFFECT. Make it an elem cause out of ::before/::afters lol
     // &:after {
@@ -70,7 +70,7 @@ footer {
 .footer-sticky {
   position: fixed;
   z-index: 101;
-  max-height: var(--footer-height-current);
+  max-height: calc(var(--footer-height-current) + env(safe-area-inset-bottom, 0px));
   left: var(--space-edges);
   bottom: var(--footer-bottom);
   width: calc(100% - 2 * var(--space-edges));
@@ -220,7 +220,7 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
 .to-top {
   position: fixed;
   left:  calc(var(--space-sides) + 0.75 * var(--space));
-  bottom: calc(0.33 * var(--space) + var(--footer-height-current));
+  bottom: calc(0.33 * var(--space) + var(--footer-height-current) + env(safe-area-inset-bottom, 0px));
   color: var(--fg-2);
   font-size: 1.2rem;
   /* z-index: -1; */

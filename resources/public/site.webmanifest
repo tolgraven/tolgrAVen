@@ -1,14 +1,22 @@
 {
-    "name": "",
-    "short_name": "",
+    "id": "/",
+    "name": "tolgrAVen audiovisual",
+    "short_name": "tolgrAVen",
+    "start_url": "/",
+    "scope": "/",
     "icons": [
         {
             "src": "/android-chrome-96x96.png",
             "sizes": "96x96",
             "type": "image/png"
+        },
+        {
+            "src": "/apple-touch-icon.png",
+            "sizes": "120x120",
+            "type": "image/png"
         }
     ],
-    "theme_color": "#ffffff",
-    "background_color": "#ffffff",
+    "theme_color": "#1A1C1C",
+    "background_color": "#131616",
     "display": "standalone"
 }

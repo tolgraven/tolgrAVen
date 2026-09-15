@@ -16,7 +16,7 @@ header {
   background-color: var(--bg-1);
   z-index: 100;
   margin-top: var(--space-top);
-  margin-right: var(--line-width); /* make main right border stay "outside" right edge of header, needed because of particular effect/design... */
+  margin-right: var(--line-width-vert); /* Match the main border, including layouts that hide it. */
   padding: 0 calc(var(--space));
   transition: min-height calc(1.5 * var(--header-expand-time)) ease,
               height calc(0.7 * var(--header-expand-time)),
@@ -53,7 +53,7 @@ header {
   position: fixed;
   left: 0;
   top: 0;
-  width: var(--space-sides);
+  width: var(--space-edges);
   height: calc(var(--header-height-current) +
                var(--line-width));
   background-color: var(--bg-1);
@@ -67,17 +67,20 @@ header {
 
 .fill-side-top {
   position: fixed;
-  overflow-y: hidden;
+  overflow: hidden;
   right: 0;
   top: 0;
-  bottom: var(--header-height-current);
   height: var(--header-height-current);
+  z-index: 100;
+  pointer-events: none;
   transition: height var(--header-expand-time) ease;
 
   div {
     position: sticky;
     background: linear-gradient(-135deg, var(--bg-1) 10%, var(--blue) 335%);
-    width: calc(var(--space-sides) - var(--line-width));
+    /* Cover the outer gutter and continue the main border above scrolling content. */
+    width: max(0px, calc(var(--space-edges) + var(--line-width-vert)));
+    border-left: var(--line-width-vert) solid var(--line-color);
     height: var(--header-height-current);
     transition: height calc(var(--header-expand-time)) ease,
                 opacity calc(0.3 * var(--header-expand-time)) ease;
@@ -91,7 +94,7 @@ header {
     }
     &.adjust-for-fullscreen {
       right: 0;
-      width: calc(var(--space-sides) + var(--line-width));
+      width: max(0px, calc(var(--space-edges) + var(--line-width)));
       border-left: var(--line-width) solid var(--line-color);
     }
   }

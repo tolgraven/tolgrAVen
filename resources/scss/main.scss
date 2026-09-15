@@ -48,6 +48,8 @@ html, body {
 }
 html {
   height: 100%;
+  background-color: var(--bg-1);
+  color: var(--fg-1);
   position: relative;
   overflow-x: hidden; /* gotta be on both or doesnt work on iphone hmm */
   scroll-behavior: smooth; /* makes in-page links scroll to target beautifully in chrome */
@@ -111,6 +113,7 @@ a {
 main { /* dunno purpose of why I choose .main-content... */
   width: 100%;
   min-height: 98vh;
+  min-height: 98svh;
   
   border-top: var(--line-width) solid var(--line-color); /* should make configurable. off looks p nice on main page */
   border-left:  var(--line-width-vert) solid var(--line-color); /* should make configurable. off looks p nice on main page */
