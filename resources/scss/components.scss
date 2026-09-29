@@ -538,8 +538,7 @@ figcaption, .float-with-caption {
 }
 .modal-bg {
   position: fixed;
-  width: 100vw; height: 100vh;
-  top: 0; left: 0;
+  inset: 0;
   background: rgba(30, 30, 45, 0.0);
   z-index: 200;
   transition: background 0.5s;
@@ -556,7 +555,12 @@ figcaption, .float-with-caption {
 .modal-zoom {
   // needs to, _after being created in place_, break out (w absolute or fixed)
   // but for now just do a generic zoom...
-  width: 99vw; height: 99vh;
+  right: 0;
+  bottom: 0;
+  padding: max(0.5rem, env(safe-area-inset-top, 0px))
+           max(0.5rem, env(safe-area-inset-right, 0px))
+           max(0.5rem, env(safe-area-inset-bottom, 0px))
+           max(0.5rem, env(safe-area-inset-left, 0px));
   transform: scale(0.0);
   opacity: 0.5;
   transition: transform 0.5s;
@@ -576,7 +580,7 @@ figcaption, .float-with-caption {
   position: fixed;
   z-index: 100;
   transition: bottom var(--header-expand-time) ease;
-  bottom: calc(var(--footer-height-current) + 0.25rem); /* ;actually, footer, if sticky... */
+  bottom: calc(var(--footer-height-current) + env(safe-area-inset-bottom, 0px) + 0.25rem); /* ;actually, footer, if sticky... */
   right: calc(var(--space-edges) + 0.05rem);
   max-width: 50em;
   max-height: 50%;
@@ -771,7 +775,7 @@ figcaption, .float-with-caption {
 
   &.inited {
     max-height: 80%;
-    bottom: calc(var(--footer-height-current) - var(--line-width));
+    bottom: calc(var(--footer-height-current) + env(safe-area-inset-bottom, 0px) - var(--line-width));
     opacity: 100%;
   }
   &.result {
