@@ -17,7 +17,12 @@ jobs:
     timeout-minutes: 59
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
       - name: Install JavaScript dependencies
         run: npm ci
-      - name: Warm ClojureScript dependencies
-        run: npx shadow-cljs compile app-dev
+      - name: Resolve ClojureScript dependencies
+        run: npx shadow-cljs info
