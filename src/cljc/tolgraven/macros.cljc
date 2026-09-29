@@ -4,6 +4,7 @@
             [malli.core :as m]
             [malli.error :as me]
             #?@(:cljs [[reagent.core :as r]
+                       [tolgraven.component]
                        [re-frame.core :as rf]
                        [shadow.lazy]
                        [tolgraven.components.error :as error]
@@ -93,17 +94,48 @@
              *mounted?# (reagent.core/atom nil)
              *showing?# (reagent.core/atom nil)
              spec#   ~spec-sym
+             *element# (atom nil)
+             *link-state# (atom nil)
+             *link-element# (atom nil)
+             *links# (atom nil)
+             link-feature# (tolgraven.component/feature :links)
+             capture-ref# (memoize
+                           (fn [ref#]
+                             (fn [element#]
+                               (reset! *element# element#)
+                               (cond
+                                 (fn? ref#) (ref# element#)
+                                 ref# (set! (.-current ref#) element#)))))
+             sync-links!# (fn [links#]
+                            (when (and link-feature#
+                                       (or (not= links# @*links#)
+                                           (not= @*element# @*link-element#)))
+                              (when @*link-state#
+                                ((:unmount link-feature#) @*link-state#))
+                              (reset! *links# links#)
+                              (reset! *link-element# @*element#)
+                              (reset! *link-state#
+                                      (when (and links# @*element#)
+                                        ((:setup link-feature#) links#)))
+                              (when @*link-state#
+                                ((:mount link-feature#) @*link-state# @*element#))))
              ~@(when lets [lets])]
          (reagent.core/create-class
           {:display-name ~(str name)
            :component-did-mount
            (fn [this#]
              (reset! *mounted?# true)
-             (and (fn? (:init spec#))
+             (sync-links!# (:links spec#))
+            (and (fn? (:init spec#))
                   ((:init spec#) this#)))
+           :component-did-update
+           (fn [this# _old-argv#]
+             (sync-links!# (:links (second (reagent.core/argv this#)))))
           :component-will-unmount
           (fn [this#]
             (reset! *mounted?# false)
+            (when @*link-state#
+              ((:unmount link-feature#) @*link-state#))
             (and (fn? (:exit spec#))
                  ((:exit spec#) this#)))
            :component-did-catch
@@ -143,7 +175,14 @@
                                                  (:props ~spec-sym)
                                                  {:class classlist#})
                                           base-attrs#)
-                          head#         [tag# merged-attrs#]]
+                          ;; DOM refs replace React's removed findDOMNode API. Preserve
+                          ;; caller refs and avoid adding a wrapper to experimental defc forms.
+                          root-attrs# (if (and link-feature# (:links ~spec-sym)
+                                              (or (keyword? tag#) (string? tag#)))
+                                        (assoc merged-attrs# :ref
+                                               (capture-ref# (:ref merged-attrs#)))
+                                        merged-attrs#)
+                          head#         [tag# root-attrs#]]
                       (into head# (if has-attrs?#
                                     children#
                                     (cons maybe-attrs# children#))))
@@ -235,4 +274,3 @@
 ;         :display-name                 "error-boundary"
 ;         :get-derived-state-from-error #(reset! *error [%])
 ;         :render                       <boundary-inner>}))))
-

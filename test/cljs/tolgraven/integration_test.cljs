@@ -9,6 +9,7 @@
             [tolgraven.search.subs :as search]
             ;; Browser tests bundle all module specs so ready-module initialization is exercised.
             [tolgraven.blog.module]
+            [tolgraven.link-preview.module]
             [tolgraven.cv.module]
             [tolgraven.docs.module]
             [tolgraven.search.module]

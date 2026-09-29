@@ -13,6 +13,8 @@
 
 (def syntax-highlighter (r/adapt-react-class SyntaxHighlighter))
 (def react-markdown (r/adapt-react-class ReactMarkdown))
+(def omit-markdown-component
+  (r/reactify-component (fn [_] nil)))
 
 ; (.registerLanguage SyntaxHighlighter "javascript" js-lang)
 ; (.registerLanguage SyntaxHighlighter "clojure" clj-lang)
@@ -56,10 +58,14 @@
 
 (defn parse-markdown-components
   "Parse markdown into pure React components using react-markdown"
-  [md-text]
+  [md-text & [{:keys [allow-images? allow-raw?]
+              :or {allow-images? false
+                   allow-raw? false}}]]
   [react-markdown
-   {:children md-text
-    :remarkPlugins #js [remarkGfm]
-    :rehypePlugins #js [rehypeRaw]
-    :components #js {:code (r/reactify-component markdown-code-component)}}])
-
+   (cond-> {:children md-text
+           :remarkPlugins #js [remarkGfm]
+           :components (if allow-images?
+                         #js {:code (r/reactify-component markdown-code-component)}
+                         #js {:code (r/reactify-component markdown-code-component)
+                              :img omit-markdown-component})}
+    allow-raw? (assoc :rehypePlugins #js [rehypeRaw]))])
