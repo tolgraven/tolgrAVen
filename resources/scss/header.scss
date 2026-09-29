@@ -94,8 +94,8 @@ header {
     }
     &.adjust-for-fullscreen {
       right: 0;
-      width: max(0px, calc(var(--space-edges) + var(--line-width)));
-      border-left: var(--line-width) solid var(--line-color);
+      width: max(0px, calc(var(--space-edges) + var(--line-width-vert)));
+      border-left: var(--line-width-vert) solid var(--line-color);
     }
   }
 }

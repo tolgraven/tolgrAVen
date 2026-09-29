@@ -33,23 +33,23 @@ development and production configurations, with the asset lookup and configurati
 adapters stubbed. Checks verified one render-blocking main stylesheet, conditional
 theme colors, and icon/manifest links. Manifest image dimensions match the files.
 
-Live Chromium inspection confirmed the 0px-border / 2px-margin mismatch using the
-existing settings control. The available browser rejected local preview URLs, so
-there is no claim of an iPhone/WebKit visual pass or an after screenshot.
+The viewport retains Safari's default safe-area containment. Opting into
+`viewport-fit=cover` would also require moving the header and horizontal framing
+away from the notch; this change does not opt into that edge-to-edge layout.
+Safe-area offsets are kept consistent wherever the browser exposes them: the
+footer, back-to-top link, HUD, contact popup, and image overlay. The fullscreen
+header filler also uses the configured vertical border width.
 
-Before merging, check on an iPhone in a new Private tab:
+Rebased onto the module refactor, retaining its PR validation and master-only
+deployment workflow. Copilot setup uses Java 21; its Shadow command inspects the
+environment, while application compilation uses the project's Leiningen classpath.
+The Firebase redirect-result fix is already included in the new base.
+
+A real iPhone/WebKit check remains useful:
 
 1. Scroll down and back up with the menu closed and open. The upper-right edge
    should remain opaque and align with the main content border.
 2. Check widths on both sides of 400px, both orientations, and both color schemes.
-3. Open an image overlay, expand/collapse Safari's toolbar, and close the overlay.
-4. Launch from the Home Screen and check the footer and back-to-top control above
-   the home indicator, along with the app name and icon.
-
-## Separate startup issue
-
-A fresh production visit also displayed `Cannot read properties of null (reading
-'user')`. The maintained Firebase wrapper's `init-auth` dereferences the result of
-`getRedirectResult` without checking for a null result. That dependency needs a
-separate fix and release; this PR does not suppress its error reporting or change
-authentication behavior.
+3. Open an image overlay and expand/collapse Safari's toolbar.
+4. Launch from the Home Screen and check the footer, HUD and back-to-top control
+   above the home indicator, along with the app name and icon.

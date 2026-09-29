@@ -580,7 +580,7 @@ figcaption, .float-with-caption {
   position: fixed;
   z-index: 100;
   transition: bottom var(--header-expand-time) ease;
-  bottom: calc(var(--footer-height-current) + 0.25rem); /* ;actually, footer, if sticky... */
+  bottom: calc(var(--footer-height-current) + env(safe-area-inset-bottom, 0px) + 0.25rem); /* ;actually, footer, if sticky... */
   right: calc(var(--space-edges) + 0.05rem);
   max-width: 50em;
   max-height: 50%;
@@ -775,7 +775,7 @@ figcaption, .float-with-caption {
 
   &.inited {
     max-height: 80%;
-    bottom: calc(var(--footer-height-current) - var(--line-width));
+    bottom: calc(var(--footer-height-current) + env(safe-area-inset-bottom, 0px) - var(--line-width));
     opacity: 100%;
   }
   &.result {
