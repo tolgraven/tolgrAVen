@@ -51,6 +51,8 @@
                  #_middleware/wrap-formats]}
    ["/" {:get home-page}]
    ["/blog*" {:get home-page}]
+   ["/not-found" {:get home-page}]
+   ["/client-oauth*" {:get home-page}]
    ["/log*" {:get home-page}]
    ["/test*" {:get home-page}]
    ["/docs*" {:get home-page}]

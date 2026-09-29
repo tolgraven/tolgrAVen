@@ -29,6 +29,7 @@
   }
 
   .search-autocomplete-item {
+    display: flex;
     padding: 0.4em 0.8em;
     border-bottom: 0.5px solid var(--bg-4);
     transition: background-color 0.2s ease;

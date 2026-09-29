@@ -31,14 +31,10 @@
 (defn completion
   [query suggestion height]
   (when-not (string/blank? (:match suggestion))
-    (let [words (some-> (str #_(-> (get suggestion :query "")
-                             (string/replace  #"\w" " ")) ; get as many spaces as there were letters
-                             (get suggestion :rest nil))
-                        (string/replace #"\n.*" "")
-                        (string/replace #"^(.{0,40})(.*)" "$1...")
-                        (string/replace query "")
-                        seq)
-          [char1 others] [(first words) (rest words)]]
+    (let [words (-> (or (:rest suggestion) "")
+                    (string/replace #"\n.*" "")
+                    (string/replace #"^(.{50}).+" "$1…"))
+          [char1 & others] (seq words)]
       [:span.styled-input-autocomplete
        {:style {:white-space :pre-wrap
                 :display :inline-flex}}

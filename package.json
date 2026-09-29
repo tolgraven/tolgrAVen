@@ -7,18 +7,17 @@
     "leaflet": "1.9.4",
     "postcss": "^8.5.6",
     "postcss-cli": "11.0.1",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "react-leaflet": "4.0.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-leaflet": "^5.0.0",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^15.6.6",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
-    "sass": "^1.93.2",
-    "shadow-cljs": "^3.2.1"
+    "sass": "^1.93.2"
   },
   "scripts": {
-    "init": "mkdir -p resources/public/css/tolgraven; npm install; npm i -g sass postcss postcss-cli",
+    "init": "mkdir -p resources/public/css/tolgraven && npm ci",
     "sass:dev": "bash -lc 'SASS_PATH=$(find resources/scss -type d | paste -sd: -); export SASS_PATH; sass resources/scss/main.scss:resources/public/css/tolgraven/main.css --watch --poll --embed-source-map --embed-sources'",
     "sass:build": "bash -lc 'SASS_PATH=$(find resources/scss -type d | paste -sd: -); export SASS_PATH; sass resources/scss/main.scss:resources/public/css/tolgraven/main.css --style=compressed --no-error-css'",
     "postcss:dev": "postcss resources/public/css/tolgraven/main.css -o resources/public/css/tolgraven/main.min.css -u autoprefixer --watch --poll --verbose",

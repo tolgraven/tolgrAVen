@@ -3,7 +3,11 @@
  :source-paths ["src/clj" "src/cljs" "src/cljc"]
 
  :builds
- {:app-dev
+ {:app-test {:target :browser-test
+             :test-dir "resources/public/js/tests"
+             :ns-regexp "tolgraven\\..*-test$"}
+
+  :app-dev
   {:lein true
    :jvm-opts ["-Ddev=true"]
    ; :dev-http {4001 "resources/public"}
@@ -40,7 +44,7 @@
                      "re_frame.trace.trace_enabled_QMARK_" true}
    :optimizations   :none
    :language-in     :ecmascript-next
-   :language-out    :ecmascript-next
+   :output-feature-set :es-next
    :pretty-print    true
    :infer-externs   true
    :parallel-build  true
@@ -71,14 +75,36 @@
 
   :app
   {:target               :browser
-   :node-via-docker      true
-   :modules              {:main {:entries [tolgraven.app]
-                                 :init-fn tolgraven.app/init!}}
+   :module-loader true
+   :modules {:main      {:entries [tolgraven.app]
+                         :init-fn tolgraven.app/init!}
+             :search    {:entries    [tolgraven.search.module]
+                         :depends-on #{:main}}
+             :user      {:entries    [tolgraven.user.module]
+                         :depends-on #{:main}}
+             :chat      {:entries    [tolgraven.chat.module]
+                         :depends-on #{:main :user}}
+             :github    {:entries    [tolgraven.github.module]
+                         :depends-on #{:main}}
+             :docs      {:entries    [tolgraven.docs.module]
+                         :depends-on #{:main}}
+             :gpt       {:entries    [tolgraven.gpt.module]
+                         :depends-on #{:main :user}}
+             :cv        {:entries    [tolgraven.cv.module]
+                         :depends-on #{:main}}
+             :strava    {:entries    [tolgraven.strava.module]
+                         :depends-on #{:main}}
+             :instagram {:entries    [tolgraven.instagram.module]
+                         :depends-on #{:main}}
+             :test      {:entries    [tolgraven.experiments]
+                         :depends-on #{:main}}
+             :blog      {:entries    [tolgraven.blog.module]
+                         :depends-on #{:main :user}}}
    :output-dir           "resources/public/js/compiled/out"
    :asset-path           "/js/compiled/out"
    :optimizations        :advanced
    :language-in          :ecmascript-next
-   :language-out         :ecmascript-next
+   :output-feature-set :es-next
    :pretty-print         false
    :infer-externs        true
    :parallel-build       true

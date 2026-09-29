@@ -158,6 +158,7 @@
       [:div.cv-decade-lines
        {:style {:width total-width}}
        (for [decade decades]
+         ^{:key decade}
          [:div.cv-decade-line
           {:style {:left (get-pos decade decade)
                    :bottom 0}}
