@@ -8,7 +8,8 @@
     [tolgraven.components.popover :as popover]
     [tolgraven.link-preview.subs]
     [tolgraven.link-preview.util :as util]
-    [tolgraven.ui :as ui]))
+    [tolgraven.ui :as ui]
+    [tolgraven.util :as dom]))
 
 (def ^:private open-delay-ms 300)
 (def ^:private close-delay-ms 180)
@@ -229,7 +230,7 @@
               :options options})
       (.setAttribute element "data-link-container" (str id))
       (doseq [[event handler] handlers]
-        (.addEventListener element event handler))
+        (dom/on-event element event handler))
       (let [trust (trust-for element (:trust options))
             links (filter #(and (external-link? %)
                                 (expected (.-href %))
@@ -475,14 +476,16 @@
         on-page-show (fn [_]
                        (when @*navigation-timer (js/clearTimeout @*navigation-timer))
                        (reset! *navigation-timer nil)
-                       (restore!))]
+                       (restore!))
+        window-handlers {"pageshow" on-page-show
+                         "keydown" on-key-down
+                         "pointerdown" on-pointer-down}]
     (r/create-class
       {:display-name "Link preview controller"
        :component-did-mount
        (fn [_]
-         (.addEventListener js/window "pageshow" on-page-show)
-         (.addEventListener js/window "keydown" on-key-down)
-         (.addEventListener js/window "pointerdown" on-pointer-down)
+         (doseq [[event handler] window-handlers]
+           (dom/on-window event handler))
          (restore!)
          (maybe-prefetch!))
        :component-did-update
@@ -493,9 +496,8 @@
          (reverse!))
        :component-will-unmount
        (fn [_]
-         (.removeEventListener js/window "pageshow" on-page-show)
-         (.removeEventListener js/window "keydown" on-key-down)
-         (.removeEventListener js/window "pointerdown" on-pointer-down)
+         (doseq [[event handler] window-handlers]
+           (.removeEventListener js/window event handler))
          (close-preview!)
          (doseq [timer [*prefetch-timer *navigation-timer *restore-timer]]
            (when @timer (js/clearTimeout @timer))))
