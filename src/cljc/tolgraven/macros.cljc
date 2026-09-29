@@ -110,8 +110,8 @@
            (fn [this# error# info#]
              (let [stack# (some-> ^js info# .-componentStack)]
                (reset! *error# {:error error# :stack stack#}))
-             (js/console.log (str "Error " ~(str name))
-                             (ex-message error#))
+             (tolgraven.util/log :error (str "Error " ~(str name))
+                                 (ex-message error#))
              (.forceUpdate ^js this#))
            ; :component-did-update (fn [_this# _old-argv#] ; not working, clears error by itself
            ;                         (when @*error# (reset! *error# nil)))

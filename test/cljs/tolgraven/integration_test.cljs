@@ -1,5 +1,6 @@
 (ns tolgraven.integration-test
   (:require [cljs.test :refer-macros [deftest is testing async]]
+            [re-frame.core :as rf]
             [reitit.core :as reitit]
             [tolgraven.routes :as routes]
             [tolgraven.loader :as loader]
@@ -96,6 +97,65 @@
                        (is (= spec (aget results 0) (aget results 1)))))
               (.catch (fn [error] (is false (str error))))
               (.finally done)))))))
+
+(deftest component-loader-forwards-initialization-hooks-and-args
+  (async done
+    (let [id (keyword (str (random-uuid)))
+          *calls (atom [])
+          *events (atom [])
+          *resolve-post (atom nil)
+          posted (js/Promise. (fn [resolve _] (reset! *resolve-post resolve)))
+          component (fn [& _] [:div "Loaded"])
+          module-spec {:view {:view component}
+                       :init (fn [& args] (swap! *calls conj [:init args]))}
+          loadable (reify
+                     lazy/ILoadable (ready? [_] true)
+                     IDeref (-deref [_] module-spec))
+          render (loader/<>)
+          spec {:module id
+                :init-evt [:test/init id]
+                :pre-fn (fn [& args] (swap! *calls conj [:pre args]))
+                :post-fn (fn [loaded & args]
+                           (swap! *calls conj [:post loaded args])
+                           (@*resolve-post nil)
+                           ;; A hook result must not replace the module used to render.
+                           :hook-result)}]
+      (-> (js/Promise.resolve nil)
+          (.then (fn []
+                   (with-redefs [loader/modules {id loadable}
+                                 rf/subscribe (fn ([_] (atom true))
+                                                  ([_ _] (atom true)))
+                                 rf/dispatch #(swap! *events conj %)]
+                     (render spec :first {:second true}))
+                   (is (= [[:test/init id]] @*events))
+                   posted))
+          (.then (fn []
+                   (is (= [[:pre [:first {:second true}]]
+                           [:init [:first {:second true}]]
+                           [:post module-spec [:first {:second true}]]]
+                          @*calls))
+                   (with-redefs [rf/subscribe (fn ([_] (atom true))
+                                                 ([_ _] (atom true)))]
+                     (is (= [component :first {:second true}]
+                            (last (render spec :first {:second true})))))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (swap! loader/*loads dissoc id)
+                      (done)))))))
+
+(deftest deferred-component-preserves-scope-arguments
+  (let [*events (atom [])
+        before (fn [& _] [:button "Load"])
+        render (loader/<>)]
+    (with-redefs [rf/subscribe (fn ([_] (atom false))
+                                 ([_ _] (atom false)))
+                  rf/dispatch #(swap! *events conj %)]
+      (let [[_ attrs content] (render {:module :search :<before> before}
+                                     "blog-posts")]
+        (testing "The placeholder and scope request both receive the component args"
+          (is (= [before "blog-posts"] content))
+          ((:on-click attrs))
+          (is (= [[:scope/init :search '("blog-posts")]] @*events)))))))
 
 (deftest literal-search-completions
   (doseq [query ["C++" "[x]" "a.b" "(fn"]]

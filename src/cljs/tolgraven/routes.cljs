@@ -46,9 +46,16 @@
                       :start (fn [{:keys [path]}]
                                (rf/dispatch [:state [:experiments] (keyword (:tab path))])
                                (rf/dispatch [:exception [:experiments] nil]))}]}]]
-                   ["client-oauth"
+                   ["client-oauth" ; for oauth flows. can capture results and send straight to firebase instead of going past our server
                     {:view #'a404/not-found-page}
-                    ["" {:name :client-oauth}]
+                    ["" {:name :client-oauth
+                         #_:view #_#'successful-oauth-page}]
+                    #_["/:service" ; nope, considering non-universal naming unless can coerce keys to universal api/secret/etc...
+                       {:name :client-api-service
+                        :view #'test-page
+                        :controllers [{:parameters {:path [:service]}
+                                       :start (fn [{:keys [path]}]
+                                                )}]}]
                     ["/twitter"
                      {:name :client-oauth-twitter
                       :controllers

@@ -41,7 +41,7 @@
                                            (js/Promise.resolve @loadable)
                                            (js/Promise.resolve (lazy/load loadable)))
                                          (.then (fn [spec]
-                                                  (rf/dispatch [:scope/init module])
+                                                  (rf/dispatch [:scope/init module args])
                                                   (when-let [init (:init spec)]
                                                     (apply init args))
                                                   spec))
@@ -73,7 +73,8 @@
         *error (r/atom nil)
         *requested (atom nil)]
     (fn [spec & args]
-      (let [{:keys [module view defer? <before> <loading> <missing> post-fn assets]}
+      (let [{:keys [module view defer? <before> <loading> <missing> post-fn assets]
+             :as load-spec}
             (if (vector? spec)
               {:module (first spec) :view (second spec)}
               spec)
@@ -84,7 +85,11 @@
           (reset! *requested module)
           (reset! *loaded nil)
           (reset! *error nil)
-          (-> (load! {:module module})
+          ;; The component handles post-fn below so its return value cannot replace
+          ;; the loaded module spec. Forward the other hooks and initialization args.
+          (-> (load! (-> load-spec
+                        (dissoc :post-fn)
+                        (assoc :args args)))
               (.then (fn [loaded]
                        (when (= module @*requested)
                          (reset! *loaded loaded)
@@ -96,7 +101,7 @@
           deferred?
           (when <before>
             [:div.before-loading-container
-             {:on-click #(rf/dispatch [:scope/init module])}
+             {:on-click #(rf/dispatch [:scope/init module args])}
              (if (vector? <before>) <before> (into [<before>] args))])
 
           @*error

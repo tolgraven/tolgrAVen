@@ -34,6 +34,15 @@
            error "Failed to load embed"
            :else [<comp>])]))))
 
+;; Unfinished React-player alternative; oEmbed remains the active player.
+(defn remote-player
+  [url]
+  [:div "Soundcloud player hey"]
+  #_[:> SoundCloud
+   {:url url
+    :width "100%"
+    :height "100%"}])
+
 (defn soundcloud-loading "A dummy to show before initing react-player"
   [artist song]
   [:div.soundcloud-player-loading

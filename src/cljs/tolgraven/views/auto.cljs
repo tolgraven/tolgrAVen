@@ -103,11 +103,26 @@
                                 {:args args})])
     [get-component section (get sections section)]))
 
+;; Keep these nested error-boundary experiments with the layout they exercise.
+(macroexpand '(m/defc <test-2>
+  "test-comp-2"
+  [spec]
+  [:div "goodbye" (throw (js/Error. "test2"))]))
+(m/defc <test-2>
+  "test-comp-2"
+  [spec]
+  [:div "goodbye" (throw (js/Error. "test2"))])
+(m/defc <test>
+  "test-comp"
+  [spec]
+  [:div "hello" spec [<test-2> spec] ])
+
 (defn auto "Present main page UI. Should come from data structure.
                Should auto lazy load/init all components with such functionality at point,
                apart from the separate lazy loading done before-hand (if loads in middle of page etc)"
   []
   [:<>
+   ; [<test> {:wah "cool"}]
    (for [[i component] (map-indexed vector (layouts :main))]
      ^{:key i}
      [get-section component])])
