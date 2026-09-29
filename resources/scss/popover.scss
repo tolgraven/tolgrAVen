@@ -15,11 +15,14 @@
 
 .popover {
   --popover-content-scale: 1;
+  --popover-width: min(32rem, calc(100vw - 2 * var(--space)));
+  --popover-height: min(20rem, calc(100vh - 2 * var(--space)));
+  --popover-height: min(20rem, calc(100dvh - 2 * var(--space)));
   background: color-mix(in srgb, var(--bg-1) 92%, transparent);
-  block-size: min(20rem, calc(100vh - 2 * var(--space)));
+  block-size: var(--popover-height);
   border: var(--line-width-sm) solid var(--line-color);
   box-shadow: 0 0.75rem 2.5rem rgb(0 0 0 / 35%);
-  inline-size: min(32rem, calc(100vw - 2 * var(--space)));
+  inline-size: var(--popover-width);
   left: 50%;
   opacity: 1;
   overflow: hidden;
@@ -43,6 +46,7 @@
 
   &__surface {
     block-size: 100vh;
+    block-size: 100dvh;
     inline-size: 100vw;
     transform: scale(var(--popover-content-scale));
     transform-origin: top left;
@@ -52,6 +56,7 @@
 
   &--expanded {
     block-size: 100vh;
+    block-size: 100dvh;
     border-color: transparent;
     inline-size: 100vw;
     left: 0;
@@ -65,10 +70,14 @@
 
   @supports (position-anchor: --active-popover-anchor) {
     position-anchor: --active-popover-anchor;
-    left: anchor(center);
-    position-try-fallbacks: flip-block, flip-inline;
-    top: anchor(bottom);
-    translate: -50% var(--space);
+    /* Keep links near a viewport edge from positioning the preview offscreen. */
+    left: clamp(var(--space), calc(anchor(center) - var(--popover-width) / 2),
+                calc(100vw - var(--popover-width) - var(--space)));
+    top: clamp(var(--space), calc(anchor(bottom) + var(--space)),
+               calc(100vh - var(--popover-height) - var(--space)));
+    top: clamp(var(--space), calc(anchor(bottom) + var(--space)),
+               calc(100dvh - var(--popover-height) - var(--space)));
+    translate: 0 0;
 
     &--expanded {
       left: 0;
@@ -102,7 +111,15 @@
     padding: 0.75rem 1.25rem;
   }
 
+  &__close {
+    flex: 0 0 auto;
+    font-size: inherit;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+  }
+
   &__link {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -116,6 +133,7 @@
 
   &__viewport {
     block-size: calc(100vh - 4.5rem);
+    block-size: calc(100dvh - 4.5rem);
     position: relative;
 
     iframe {

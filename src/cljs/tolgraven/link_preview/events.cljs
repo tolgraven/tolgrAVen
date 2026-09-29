@@ -14,10 +14,14 @@
   :link-preview/unregister
   (fn [db [_ id]]
     (let [state (get-in db [:state :link-preview])
-          active (:active state)]
+          active (:active state)
+          removed-urls (into #{} (comp (filter #(= id (:container-id %)))
+                                      (map :url))
+                             (:prefetch-queue state))]
       (assoc-in db [:state :link-preview]
                 (cond-> (-> state
                             (update :containers dissoc id)
+                            (update :prefetch #(apply dissoc % removed-urls))
                             (update :prefetch-queue
                                     #(vec (remove (fn [candidate]
                                                    (= id (:container-id candidate)))
@@ -57,7 +61,9 @@
 (rf/reg-event-db
   :link-preview/status
   (fn [db [_ status]]
-    (assoc-in db [:state :link-preview :active :status] status)))
+    (if (get-in db [:state :link-preview :active])
+      (assoc-in db [:state :link-preview :active :status] status)
+      db)))
 
 (rf/reg-event-db
   :link-preview/restore

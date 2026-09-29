@@ -113,15 +113,23 @@
               @*containers))))
 
 (defn- open! [data link]
+  (clear-interaction-timer! :open)
   (clear-interaction-timer! :close)
   (detach-anchor! (active-link))
   (attach-anchor! link)
   (rf/dispatch [:link-preview/open data]))
 
+(defn- close-preview! []
+  (clear-interaction-timer! :open)
+  (clear-interaction-timer! :close)
+  (detach-anchor! (active-link))
+  (rf/dispatch [:link-preview/close]))
+
 (defn- schedule-close! []
-  (schedule! :close close-delay-ms
-             #(do (detach-anchor! (active-link))
-                  (rf/dispatch [:link-preview/close]))))
+  (clear-interaction-timer! :open)
+  (when-not (#{:navigate :expanded :returning}
+              (get-in @*preview-state [:active :status]))
+    (schedule! :close close-delay-ms close-preview!)))
 
 (defn- unmodified-primary-click? [event]
   (and (zero? (.-button event))
@@ -131,7 +139,7 @@
        (not (.-shiftKey event))))
 
 (defn- reduced-motion? []
-  (.matches (.matchMedia js/window "(prefers-reduced-motion: reduce)")))
+  (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)")))
 
 (defn- active-candidate? [data]
   (let [active (:active @*preview-state)]
@@ -157,6 +165,7 @@
           (when-not (= "touch" (.-pointerType event))
             (when-let [link (link-at event)]
               (when-not (= link (closest (.-relatedTarget event) "a[href]"))
+                (clear-interaction-timer! :close)
                 (schedule! :open open-delay-ms
                            #(open-link! link))))))
         pointer-out
@@ -168,12 +177,14 @@
         focus-in
         (fn [event]
           (when-let [link (link-at event)]
+            (clear-interaction-timer! :close)
             (schedule! :open open-delay-ms
                        #(open-link! link))))
         focus-out
         (fn [event]
           (when-let [link (link-at event)]
-            (when-not (= link (closest (.-relatedTarget event) "a[href]"))
+            (when-not (or (= link (closest (.-relatedTarget event) "a[href]"))
+                          (closest (.-relatedTarget event) "[data-popover]"))
               (schedule-close!))))
         pointer-down
         (fn [event]
@@ -242,6 +253,10 @@
   "Disconnect and remove a link-owning container."
   [id]
   (when-let [{:keys [element handlers observer]} (get @*containers id)]
+    ;; A queued hover callback must never reopen a detached element.
+    (clear-interaction-timer! :open)
+    (when (= id (get-in @*preview-state [:active :container-id]))
+      (close-preview!))
     (.disconnect observer)
     (doseq [[event handler] handlers]
       (.removeEventListener element event handler))
@@ -304,7 +319,7 @@
         [<observed-link-container>
          {:candidates candidates :id id :trust trust}
          content]
-        {:key (hash [id trust candidates])})
+        {:key (hash [id trust text])})
       [:div.link-preview-container content])))
 
 (defn <md>
@@ -331,19 +346,21 @@
     [renderer data on-load]))
 
 (defn- save-transition! [data]
-  (let [data (assoc data :view-state
-                    {:scroll-x (.-scrollX js/window)
-                     :scroll-y (.-scrollY js/window)})]
-    (.setItem js/sessionStorage transition-storage-key
-              (.stringify js/JSON (clj->js data)))))
+  (try
+    (let [data (assoc data :view-state
+                      {:scroll-x (.-scrollX js/window)
+                       :scroll-y (.-scrollY js/window)})]
+      (.setItem js/sessionStorage transition-storage-key
+                (.stringify js/JSON (clj->js data))))
+    (catch :default _ nil))) ; Storage restrictions must not prevent navigation.
 
 (defn- stored-transition []
-  (when-let [stored (.getItem js/sessionStorage transition-storage-key)]
-    (try
+  (try
+    (when-let [stored (.getItem js/sessionStorage transition-storage-key)]
       (let [data (js->clj (.parse js/JSON stored) :keywordize-keys true)]
         (when (= (:origin-page data) (page-key))
-          (update data :trust #(cond-> % (string? %) keyword))))
-      (catch :default _ nil))))
+          (update data :trust #(cond-> % (string? %) keyword)))))
+    (catch :default _ nil)))
 
 (defn- restore-transition! []
   (when-let [data (stored-transition)]
@@ -353,7 +370,9 @@
     data))
 
 (defn- clear-transition! []
-  (.removeItem js/sessionStorage transition-storage-key))
+  (try
+    (.removeItem js/sessionStorage transition-storage-key)
+    (catch :default _ nil)))
 
 (defn <link-preview>
   "Top-level renderer and transition/prefetch controller for link containers."
@@ -367,12 +386,32 @@
         *navigation-timer (atom nil)
         *restore-timer (atom nil)
         *reversing? (atom false)
+        dismiss! (fn []
+                   (doseq [timer [*navigation-timer *restore-timer]]
+                     (when @timer (js/clearTimeout @timer))
+                     (reset! timer nil))
+                   (reset! *reversing? false)
+                   (reset! *initial-transition nil)
+                   (clear-transition!)
+                   (close-preview!))
+        on-key-down (fn [event]
+                      (when (and (= "Escape" (.-key event))
+                                 (or (:active @state) (seq @*interaction-timers)))
+                        (.preventDefault event)
+                        (dismiss!)))
+        on-pointer-down (fn [event]
+                          (when (and (:active @state)
+                                     (not (closest (.-target event) "[data-popover]"))
+                                     (not= (active-link)
+                                           (closest (.-target event) "a[href]")))
+                            (dismiss!)))
         prefetch-next!
         (fn prefetch-next! []
           (if-let [{:keys [trust url]} (first (:prefetch-queue @state))]
             (let [link (.createElement js/document "link")]
               (set! (.-rel link) "prefetch")
               (set! (.-href link) url)
+              (set! (.-referrerPolicy link) "no-referrer")
               (set! (.-onload link) #(.remove link))
               (set! (.-onerror link) #(.remove link))
               (.setAttribute link "as" "document")
@@ -388,6 +427,9 @@
                            (prefetch-next!))
         navigate!
         (fn [data]
+          (clear-interaction-timer! :open)
+          (clear-interaction-timer! :close)
+          (when @*navigation-timer (js/clearTimeout @*navigation-timer))
           (save-transition! data)
           (rf/dispatch [:link-preview/status :expanded])
           (reset! *navigation-timer
@@ -408,7 +450,7 @@
                   (js/requestAnimationFrame
                     (fn []
                       (rf/dispatch [:link-preview/status :preview])
-                      (js/setTimeout
+                      (reset! *restore-timer (js/setTimeout
                         #(do
                            (reset! *reversing? false)
                            (clear-transition!)
@@ -416,7 +458,7 @@
                                          (some-> js/document
                                                  (.querySelector "[data-popover]:hover")))
                              (schedule-close!)))
-                        return-close-delay-ms))))))))
+                        return-close-delay-ms)))))))))
         restore!
         (fn []
           (when (restore-transition!)
@@ -430,12 +472,17 @@
                        (clear-transition!)
                        (rf/dispatch [:link-preview/close]))
                     (* 3 return-close-delay-ms))))
-        on-page-show (fn [_] (restore!))]
+        on-page-show (fn [_]
+                       (when @*navigation-timer (js/clearTimeout @*navigation-timer))
+                       (reset! *navigation-timer nil)
+                       (restore!))]
     (r/create-class
       {:display-name "Link preview controller"
        :component-did-mount
        (fn [_]
          (.addEventListener js/window "pageshow" on-page-show)
+         (.addEventListener js/window "keydown" on-key-down)
+         (.addEventListener js/window "pointerdown" on-pointer-down)
          (restore!)
          (maybe-prefetch!))
        :component-did-update
@@ -447,6 +494,9 @@
        :component-will-unmount
        (fn [_]
          (.removeEventListener js/window "pageshow" on-page-show)
+         (.removeEventListener js/window "keydown" on-key-down)
+         (.removeEventListener js/window "pointerdown" on-pointer-down)
+         (close-preview!)
          (doseq [timer [*prefetch-timer *navigation-timer *restore-timer]]
            (when @timer (js/clearTimeout @timer))))
        :reagent-render
@@ -466,6 +516,15 @@
                                                     "[data-popover-direct]")))
                              (.preventDefault event)
                              (navigate! active)))
+               :on-key-down (fn [event]
+                              (when (and (= (.-target event) (.-currentTarget event))
+                                         (#{"Enter" " "} (.-key event)))
+                                (.preventDefault event)
+                                (navigate! active)))
+               :on-focus #(clear-interaction-timer! :close)
+               :on-blur #(when-not (some-> (.-currentTarget %)
+                                          (.contains (.-relatedTarget %)))
+                           (schedule-close!))
                :on-pointer-enter #(clear-interaction-timer! :close)
                :on-pointer-leave #(when-not @*reversing?
                                     (schedule-close!))
@@ -477,7 +536,12 @@
                  {:data-popover-direct true
                   :href url}
                  (if (string/blank? title) url title)]
-                [:span.link-preview__hint "Click to open"]]
+                [:span.link-preview__hint "Click to open"]
+                [:button.link-preview__close
+                 {:aria-label "Close preview"
+                  :data-popover-direct true
+                  :on-click dismiss!}
+                 "×"]]
                [:div.link-preview__viewport
                 [<preview-content> active #(reset! *loaded-url url)]
                 (when-not (= @*loaded-url url)

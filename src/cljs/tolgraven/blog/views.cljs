@@ -8,6 +8,14 @@
     [tolgraven.util :as util]
     [tolgraven.ui :as ui]))
 
+(defn- link-trust [user]
+  (let [id (if (string? user) user (:id user))]
+    (cond
+      (nil? id) :untrusted
+      (some #{id} (:admins @(rf/subscribe [:<-store :auth :roles]))) :trusted
+      :else :user)))
+
+
 (defn preview-comment "Live md preview I guess. Prob best just ratom not db thing..."
   [model]
   (let [{:keys [user title text]} @model]
@@ -15,7 +23,7 @@
      {:style {:min-height "7.35rem"}}
      (when title
        [:h3.blog-comment-title title])
-     [link-preview/<md> text]]))
+     [link-preview/<md> text {:trust (link-trust user)}]]))
 
 (declare add-comment)
 (declare blog-container)
@@ -74,11 +82,6 @@
           (str "blog-post-" (first path) "-comment")
           (rest path)))
 
-(defn- link-trust [user]
-  (if (some #{(:id user)}
-           (:admins @(rf/subscribe [:<-store :auth :roles])))
-    :trusted
-    :user))
 
 (defn vote-btn [user active-user path vote]
   (when active-user
@@ -322,7 +325,8 @@
   [:div
     [:h2.blog-post-title title]
     [:br]
-    [link-preview/<md> text]])
+    [link-preview/<md> text
+     {:trust (link-trust @(rf/subscribe [:user/active-user]))}]])
 
 (defn post-blog "Render post-making ui" [] ; XXX move this and similar to own file...
   (let [input @(rf/subscribe [:form-field [:post-blog]])
@@ -456,7 +460,8 @@
                        :padding-bottom "var(--space)"
                        :font-size "0.9em"}}
          [link-preview/<md>
-          @(rf/subscribe [:blog/post-preview id])]] ]))]]))
+          @(rf/subscribe [:blog/post-preview id])
+          {:trust (link-trust user)}]] ]))]]))
 
 
 (defn blog-tag-view "View posts filed with tag"

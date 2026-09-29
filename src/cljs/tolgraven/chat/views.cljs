@@ -25,7 +25,7 @@
          [link-preview/<md>
           (:text message)
           {:id (str "chat-message-" (:time message) "-" (:user message))
-           :trust (if (= "anon" (:user message)) :untrusted :user)}]]
+           :trust (if (#{nil "anon"} (:user message)) :untrusted :user)}]]
         [:div.chat-message-user.flex
          (or (:name user) "anon")
          [l/<> {:module :user, :view :avatar} user]]])))

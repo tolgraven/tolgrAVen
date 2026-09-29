@@ -127,7 +127,7 @@
   (try
     (let [url (js/URL. href base-url)
           base (js/URL. base-url)]
-      (and (#{"http:" "https:"} (.-protocol url))
+      (and (contains? #{"http:" "https:"} (.-protocol url))
            (not= (.-origin url) (.-origin base))))
     (catch :default _
       false)))

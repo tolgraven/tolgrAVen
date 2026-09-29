@@ -13,5 +13,6 @@
    {:aria-label label
     :on-load on-load
     :referrer-policy "no-referrer"
+    :tab-index -1
     :sandbox (get sandbox-by-trust trust "")
     :src src}])
