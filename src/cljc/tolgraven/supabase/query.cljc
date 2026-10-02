@@ -1,5 +1,5 @@
 (ns tolgraven.supabase.query
-  #?(:cljs (:require [clojure.string :as string])))
+  (:require [clojure.string :as string]))
 
 (def ^:private direct-read-collections
   #{"blog-comments" "blog-post-ids" "blog-posts" "chat" "users"})
@@ -7,10 +7,30 @@
 (def ^:private private-collections
   #{"auth" "imagor" "instagram" "secrets" "strapi" "strava" "typesense"})
 
+(defn path-part [value]
+  (cond
+    (keyword? value) (name value)
+    (string? value) value
+    (number? value) (str value)
+    :else nil))
+
+(defn normalize-query [opts]
+  (reduce (fn [m k]
+            (if (contains? m k)
+              (update m k #(mapv path-part %))
+              m))
+          opts [:path-document :path-collection]))
+
+(def public-columns
+  {"site_users" "id,seq_id,name,avatar,bg_color,comment_count,karma"
+   "blog_posts" "doc_id,id,permalink,user_id,title,text,tags,score,ts"
+   "blog_comments" "id,seq_id,parent_post,parent_comment,user_id,title,text,score,path,ts"
+   "chat_messages" "message_id,ts,user_id,text"})
+
 (defn- parse-long-safe [value]
   (cond
     (number? value) value
-    (string? value)
+    (and (string? value) (re-matches #"-?\d+" value))
     (try
       #?(:clj (Long/parseLong value)
          :cljs (let [n (js/parseInt value 10)]
@@ -20,8 +40,8 @@
     :else nil))
 
 (defn- path-collection-name [{:keys [path-document path-collection]}]
-  (or (first path-document)
-      (first path-collection)))
+  (path-part (or (first path-document)
+                 (first path-collection))))
 
 (defn direct-read-query? [query-map]
   (contains? direct-read-collections (path-collection-name query-map)))
@@ -32,13 +52,15 @@
 (defn- entry
   ([seed-key table]
    {:seed-key seed-key
-    :table table})
+    :table table
+    :select (get public-columns table "*")})
   ([seed-key table filters]
    (cond-> (entry seed-key table)
      (seq filters) (assoc :filters filters))))
 
-(defn seed-load-plan [{:keys [path-document path-collection] :as query-map}]
-  (let [collection (path-collection-name query-map)
+(defn seed-load-plan [opts]
+  (let [{:keys [path-document path-collection] :as query-map} (normalize-query opts)
+        collection (path-collection-name query-map)
         doc-id (second path-document)
         post-id (some-> doc-id parse-long-safe)]
     (cond
@@ -93,7 +115,7 @@
   (some #(get m %) (kw-or-str k)))
 
 (defn- compare-op [op left right]
-  (case op
+  (case (keyword (path-part op))
     :== (= left right)
     := (= left right)
     :> (> left right)
@@ -115,7 +137,7 @@
 (defn- apply-order-by [docs order-by]
   (reduce
    (fn [acc [field direction]]
-     (let [cmp (if (= direction :desc) #(compare %2 %1) compare)]
+     (let [cmp (if (= (path-part direction) "desc") #(compare %2 %1) compare)]
        (sort-by #(lookup (:data %) field) cmp acc)))
    docs
    (reverse order-by)))
@@ -127,8 +149,9 @@
        (map (fn [[id data]] {:id id :data data}))
        vec))
 
-(defn query-contract [contract {:keys [path-document path-collection where order-by limit]}]
-  (cond
+(defn query-contract [contract opts]
+  (let [{:keys [path-document path-collection where order-by limit]} (normalize-query opts)]
+   (cond
     path-document
     (let [[collection doc-id] path-document]
       (some-> (get-in contract [collection doc-id])
@@ -142,4 +165,4 @@
                  (if limit (vec (take limit docs)) docs))]
       {:docs docs})
 
-    :else nil))
+    :else nil)))

@@ -26,8 +26,11 @@
   (response/header resp "Content-Type" "text/plain; charset=utf-8"))
 
 (defn authenticated? [username password]
-  (= [username password]
-     [(System/getenv "AUTH_USER") (System/getenv "AUTH_PASS")]))
+  (let [expected-user (System/getenv "AUTH_USER")
+        expected-pass (System/getenv "AUTH_PASS")]
+    (and (not (string/blank? expected-user))
+         (not (string/blank? expected-pass))
+         (= [username password] [expected-user expected-pass]))))
 
 ; file upload: 
 (def upload-path "resources/public/img/uploads/")
@@ -148,11 +151,11 @@
     {:post {:summary "Query Supabase-backed store data using Firebase-style document and collection paths"
             :parameters {:body map?}
             :handler (fn [{{query-map :body} :parameters}]
-                       {:status 200
-                        :body (supabase-api/query-store! query-map)})}}]
+                       (supabase-api/query-response query-map))}}]
 
    ["/supabase/store/write"
-    {:post {:summary "Write a Firebase-style document path into the Supabase-backed store"
+    {:middleware [[wrap-basic-authentication authenticated?]]
+     :post {:summary "Administrator-only compatibility write; end-user writes await Supabase Auth migration"
             :parameters {:body map?}
             :handler (fn [{{write-map :body} :parameters}]
                        {:status 200

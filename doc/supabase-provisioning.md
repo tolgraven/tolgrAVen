@@ -154,3 +154,60 @@ Expected flow:
 The image does not need public Postgres exposure. It only needs internal network reachability to the database container.
 
 If you run the container on the host instead of inside the Coolify stack network, `POSTGRES_HOSTNAME=supabase-db` will usually not resolve. In that case the container is not actually in the same network as Supabase, even if it is on the same machine.
+
+
+## Migration checkpoint (2026-10-03)
+
+Work continues on `codex/strapi-supabase-migration`, which incorporates current
+master, including lazy modules, link previews, and the AVIF fixes.
+
+Live instance: https://supabasekong-e840kco0scs04gkcco44w088.bux.tolgraven.se
+Use this origin for `SUPABASE_PUBLIC_URL`, without the Studio `/project/...` path.
+The browser also needs `SUPABASE_ANON_KEY`; the server needs
+`SUPABASE_SERVICE_KEY`. Never send the service key to the browser.
+
+Verified existing data: 11 posts, 75 comments, 7 site profiles, 24 chat messages,
+3 generic store documents, and zero Supabase Auth accounts. Do not repeat the
+full import just to deploy application code: that command replaces table data.
+
+### Access changes applied to the live instance
+
+All seven tables now have RLS enabled. Anonymous and authenticated roles have
+column-level SELECT access to the public post, comment, chat, and profile fields.
+Email, raw import JSON, vote history, service configuration, roles, and generic
+documents are not public. Anonymous SELECT was verified against the live database:
+11 posts, 75 comments, and 7 profiles remain readable; email, service configuration,
+and generic documents are denied. The same grants are included in `schema.sql`.
+No content rows were changed by this access update. Security Advisor reports zero
+errors and zero warnings; its three informational notices are the deliberately
+policy-free private tables (`auth_roles`, `service_configs`, `store_documents`).
+This follows the grants/RLS separation in the [Supabase RLS guide](https://supabase.com/docs/guides/database/postgres/row-level-security).
+
+### Application bridge
+
+- Public fallback queries accept only the known public collections, fetch only
+  those tables/columns, and page through results. Private and unknown collections
+  return 403 before database access.
+- Browser reads normalize keyword paths and use explicit public columns with
+  stable pagination. The seed/result argument order and REST header merging are fixed.
+- The compatibility write endpoint is temporarily protected by the existing
+  server administrator Basic authentication (`AUTH_USER` / `AUTH_PASS`). It is
+  **not** the final end-user write API. Missing administrator credentials deny access.
+- Administrator writes upsert only changed rows; they never reset tables.
+  Row removal, derived post-ID writes, and nested post-comment writes are rejected.
+  Multi-row upserts are not a transaction, and concurrent edits to one row still
+  need a dedicated transactional API before enabling end-user writes.
+- Bootstrap submits the complete SQL script in a transaction so PostgreSQL can
+  parse DO blocks correctly.
+
+### Remaining cutover work
+
+Supabase Auth identities must be linked to the existing Firebase profile IDs
+before replacing login. Firebase authentication is still initialized in the app.
+Replace legacy comment/vote/chat write sequences with authenticated transactional
+operations. Move service integration credentials behind server endpoints before
+removing their existing browser-side store reads. Strapi content migration remains
+separate. This branch is not a completed production cutover.
+
+Validation: `lein test tolgraven.supabase-shape-test` and
+`lein run -m shadow.cljs.devtools.cli compile app`.

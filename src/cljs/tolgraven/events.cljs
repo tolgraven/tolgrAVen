@@ -412,9 +412,12 @@
 
 (rf/reg-event-fx :supabase/init
   (fn [{:keys [db]} [_ settings]]
-    (supabase-client/init! settings)
-    {:db (assoc-in db [:options :supabase] settings)
-     :dispatch [:booted :store]}))
+    (try
+      (supabase-client/init! settings)
+      {:db (assoc-in db [:options :supabase] settings)
+       :dispatch [:booted :store]}
+      (catch :default error
+        {:dispatch [:supabase/error (.-message error)]}))))
 
 (rf/reg-event-fx :fb/init
   (fn [{:keys [db]} _]

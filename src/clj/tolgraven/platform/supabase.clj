@@ -177,10 +177,11 @@
    :insecure? (insecure-rest?)})
 
 (defn request! [method path opts]
-  (let [response (http/request (merge (base-http-opts)
-                                      {:method method
-                                       :url (rest-url path)}
-                                      opts))]
+  (let [response (http/request (-> (merge (base-http-opts)
+                                           {:method method :url (rest-url path)}
+                                           opts)
+                                    (assoc :headers (merge (:headers (base-http-opts))
+                                                           (:headers opts)))))]
     (when-not (<= 200 (:status response) 299)
       (throw (ex-info "Supabase REST request failed"
                       {:method method
@@ -227,12 +228,15 @@
       :query-params {"on_conflict" (:on-conflict (table-config table))}})))
 
 (defn fetch-table-rest [table]
-  (let [{:keys [seed-key order]} (table-config table)
-        response (request! :get
-                           (name table)
-                           {:query-params {"select" "*"
-                                           "order" order}})]
-    [seed-key (:body response)]))
+  (let [{:keys [seed-key order]} (table-config table)]
+    [seed-key
+     (loop [offset 0 rows []]
+       (let [page (:body (request! :get (name table)
+                                  {:query-params {"select" "*" "order" order
+                                                  "offset" offset "limit" 500}}))]
+         (if (seq page)
+           (recur (+ offset (count page)) (into rows page))
+           rows)))]))
 
 (defn fetch-seed []
   (if (jdbc-available?)

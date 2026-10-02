@@ -64,34 +64,37 @@
 
 (defn- apply-filter [query [field op value]]
   (case op
-    "eq" (call-method query "eq" field value)
-    :eq (call-method query "eq" field value)
-    := (call-method query "eq" field value)
-    "gt" (call-method query "gt" field value)
-    :> (call-method query "gt" field value)
-    "gte" (call-method query "gte" field value)
-    :>= (call-method query "gte" field value)
-    "lt" (call-method query "lt" field value)
-    :< (call-method query "lt" field value)
-    "lte" (call-method query "lte" field value)
-    :<= (call-method query "lte" field value)
+    "eq" (call-method query "eq" (name field) value)
+    :eq (call-method query "eq" (name field) value)
+    := (call-method query "eq" (name field) value)
+    "gt" (call-method query "gt" (name field) value)
+    :> (call-method query "gt" (name field) value)
+    "gte" (call-method query "gte" (name field) value)
+    :>= (call-method query "gte" (name field) value)
+    "lt" (call-method query "lt" (name field) value)
+    :< (call-method query "lt" (name field) value)
+    "lte" (call-method query "lte" (name field) value)
+    :<= (call-method query "lte" (name field) value)
     query))
 
-(defn- run-select! [client {:keys [seed-key table filters]}]
-  (let [query (reduce apply-filter
-                      (-> (.from client table)
-                          (.select "*"))
-                      filters)]
-    (.then query
-           (fn [res]
-             (let [{:keys [data error]} (js->clj res :keywordize-keys true)]
-               (when error
-                 (throw (ex-info "Supabase select failed"
-                                 {:table table
-                                  :filters filters
-                                  :error error})))
-               #js {:seedKey (name seed-key)
-                    :rows (clj->js (vec data))})))))
+(defn- run-select! [client {:keys [seed-key table filters select]}]
+  (letfn [(page! [offset rows]
+            (let [q (reduce apply-filter
+                            (-> (.from client table) (.select select))
+                            filters)
+                  ;; Stable ordering is needed across pages; use the first
+                  ;; selected column, which is the row identity in these plans.
+                  q (.order q (first (.split select ",")))]
+              (.then (.range q offset (+ offset 499))
+                     (fn [res]
+                       (let [{:keys [data error]} (js->clj res :keywordize-keys true)]
+                         (when error
+                           (throw (ex-info "Supabase select failed"
+                                           {:table table :error error})))
+                         (if (seq data)
+                           (page! (+ offset (count data)) (into rows data))
+                           #js {:seedKey (name seed-key) :rows (clj->js rows)}))))))]
+    (page! 0 [])))
 
 (defn- fetch-seed! [client opts]
   (let [plan (query/seed-load-plan opts)]
@@ -142,7 +145,7 @@
     (-> (fetch-seed! @*client opts)
         (.then (fn [seed]
                  (->> (js->clj seed :keywordize-keys true)
-                      (seed->result opts)
+                      (#(seed->result % opts))
                       (reset! *state))))
         (.catch (fn [error]
                   (timbre/error "Supabase direct query failed"
@@ -156,7 +159,7 @@
     (-> (fetch-seed! @*client opts)
         (.then (fn [seed]
                  (->> (js->clj seed :keywordize-keys true)
-                      (seed->result opts)
+                      (#(seed->result % opts))
                       (handler))))
         (.catch (fn [error]
                   (let [error' (js-error->map error)]
@@ -173,8 +176,9 @@
       :handler handler
       :error-handler error-handler})))
 
-(defn ensure-query! [opts]
-  (let [k (query-key opts)]
+(defn ensure-query! [options]
+  (let [opts (query/normalize-query options)
+        k (query-key opts)]
     (or (get-in @*queries [k :*state])
         (let [entry {:opts opts
                      :*state (ratom/atom (default-state opts))
@@ -191,7 +195,9 @@
 
 (defn init! [settings]
   (let [{:keys [url anon-key] :as settings'} (normalize-settings settings)]
-    (when (and url anon-key)
+    (when-not (and (seq url) (seq anon-key))
+      (throw (ex-info "Missing Supabase URL or public key" {})))
+    (do
       (reset! *settings settings')
       (reset! *client
               ((.-createClient js/supabase)

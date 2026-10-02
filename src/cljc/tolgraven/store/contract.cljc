@@ -327,7 +327,8 @@
         (map
          (fn [user]
            [(:id user)
-            {:seq-id (:seq_id user)
+            (merge (:raw user)
+                   {:seq-id (:seq_id user)
              :avatar (:avatar user)
              :name (:name user)
              :id (:id user)
@@ -336,7 +337,7 @@
              :comments (vec (:comments user))
              :comment-count (:comment_count user)
              :karma (:karma user)
-             :voted (or (:voted user) {})}]))
+             :voted (or (:voted user) {})})]))
         (:users seed)))
 
 (defn- contract-roles [seed]

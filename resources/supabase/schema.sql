@@ -81,6 +81,25 @@ alter table blog_posts enable row level security;
 alter table blog_comments enable row level security;
 alter table chat_messages enable row level security;
 
+-- Private bridge/configuration tables must never be directly exposed.
+alter table auth_roles enable row level security;
+alter table service_configs enable row level security;
+alter table store_documents enable row level security;
+revoke all on auth_roles, service_configs, store_documents from anon, authenticated;
+
+-- Profile email, vote history, and raw import data are not public fields.
+revoke all on site_users from anon, authenticated;
+grant select (id, seq_id, name, avatar, bg_color, comment_count, karma)
+  on site_users to anon, authenticated;
+revoke all on blog_posts, blog_comments, chat_messages from anon, authenticated;
+grant select (doc_id, id, permalink, user_id, title, text, tags, score, ts)
+  on blog_posts to anon, authenticated;
+grant select (id, seq_id, parent_post, parent_comment, user_id, title, text, score, path, ts)
+  on blog_comments to anon, authenticated;
+grant select (message_id, ts, user_id, text) on chat_messages to anon, authenticated;
+grant all on site_users, auth_roles, blog_posts, blog_comments, chat_messages,
+  service_configs, store_documents to service_role;
+
 drop policy if exists "Public read site_users" on site_users;
 create policy "Public read site_users"
   on site_users for select
