@@ -89,29 +89,32 @@
         :on-mouse-leave #(do-control :pause)
         :on-touch-start #(do-control :play)
         :on-touch-end   #(do-control :pause)}
-       [vid/video-with-picture-poster
-        (merge
-         {:id (str "interlude-bg-" nr)
-          :ref (fn [el]
-                 (when (and el (not @vid-ref)) ;presumably everything torn down on nil anyways so?
-                   (reset! vid-ref el)))
-          :onCanPlay (fn []
-                       (when (and (not @controls)
-                                  @vid-ref)
-                         (reset! controls (util/play-pauser
-                                           @vid-ref
-                                           :time-per-step (/ control-time 3)))
-                         (reset! on-hold true)
-                         (js/setTimeout #(do-control :play)
-                                        8000))) ; should be read from css i guess to correspond with other anim
-          :loop true
-          :muted true}
-         bg)
-        (when-let [poster (-> bg second :poster)]
-          {:src poster
-           :alt "Video poster"
-           :class (str "media media-as-bg " (when (false? @on-hold) "hidden"))
-           :style {:z-index 1}})] ; but if support both img/video already must be defd so ugly splice in or. also single attrs how work w map?
+       (if (re-find #"\.(mp4|mov|webm)$" (or (:src bg) ""))
+         [vid/video-with-picture-poster
+          (merge
+           {:id (str "interlude-bg-" nr)
+            :class "media media-as-bg"
+            :ref (fn [el]
+                   (when (and el (not @vid-ref)) ;presumably everything torn down on nil anyways so?
+                     (reset! vid-ref el)))
+            :onCanPlay (fn []
+                         (when (and (not @controls)
+                                    @vid-ref)
+                           (reset! controls (util/play-pauser
+                                             @vid-ref
+                                             :time-per-step (/ control-time 3)))
+                           (reset! on-hold true)
+                           (js/setTimeout #(do-control :play)
+                                          8000))) ; should be read from css i guess to correspond with other anim
+            :loop true
+            :muted true}
+           bg)
+          (when-let [poster (:poster bg)]
+            {:poster poster
+             :alt "Video poster"
+             :class (str "media media-as-bg " (when (false? @on-hold) "hidden"))
+             :style {:z-index 1}})]
+         [img/media-as-bg (assoc bg :id (str "interlude-bg-" nr))])
        [:div
         {:class "covering-faded widescreen-safe center-content parallax-group"
          :ref #(observer %) ;oh yeah check first el for :video cant work it's rendered at that point lol

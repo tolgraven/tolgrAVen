@@ -2,6 +2,7 @@
   "Helpers for serving modern video formats (VP9, AV1) with automatic fallbacks"
   (:require
    [clojure.string :as string]
+   [reagent.core :as r]
    [tolgraven.image :as img]))
 
 (defn- replace-extension
@@ -72,31 +73,40 @@
        {:src 'media/clip.mp4' :loop true :muted true}
        {:poster 'media/clip.jpg' :alt 'Video preview'}]
 
-   Generates a wrapper div containing:
+   Generates sibling elements in the caller's containing block:
    - An optimized <picture> element as poster (uses WebP/AVIF)
    - The <video> element with modern format sources
 
-   The video should have appropriate event handlers to hide the poster on play."
+   Keeps the native poster as a fallback and hides the overlay on playback."
   [video-attrs {:keys [poster alt] :as poster-attrs}]
-  [:div.video-with-poster-wrapper
-   {:style {:position "relative"}}
-   ;; Optimized poster image using picture element
-   (when poster
-     [img/picture (merge {:src poster
-                         :alt (or alt "Video poster")
-                         :class "video-poster-image"
-                         :style {:position "absolute"
+  (r/with-let [*playing-src (r/atom nil)]
+    (let [src (:src video-attrs)
+          poster (or poster (:poster video-attrs))
+          on-playing (or (:on-playing video-attrs) (:onPlaying video-attrs))]
+      ;; A positioned wrapper collapses around absolute children and moves the
+      ;; background out of its section's containing block.
+      [:<>
+       (when (and poster (not= src @*playing-src))
+         [img/picture
+          (merge {:src poster
+                  :alt (or alt "Video poster")
+                  :class "video-poster-image"}
+                 (select-keys poster-attrs [:class])
+                 {:style (merge {:position "absolute"
                                  :top 0
                                  :left 0
                                  :width "100%"
                                  :height "100%"
                                  :object-fit "cover"
                                  :z-index 1
-                                 :pointer-events "none"}}
-                        (select-keys poster-attrs [:class :style]))])
-   ;; Video element with modern formats
-   [video (assoc (dissoc video-attrs :poster) :style {:position :absolute
-                                                      :object-fit "cover"})]])
+                                 :pointer-events "none"}
+                                (:style poster-attrs))})])
+       [video (-> video-attrs
+                  (dissoc :on-playing)
+                  (assoc :poster poster
+                         :onPlaying (fn [event]
+                                      (reset! *playing-src src)
+                                      (when on-playing (on-playing event)))))]])))
 
 (defn media-as-bg
   "Generate video element optimized for use as background media.
