@@ -1,0 +1,51 @@
+name: Deploy PR to Coolify
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: coolify-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    # Secrets aren't available to PRs from forks
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment:
+      name: pr-preview
+    steps:
+      - name: Trigger Coolify deployment
+        env:
+          COOLIFY_URL: ${{ vars.COOLIFY_URL }}
+          COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          response=$(curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            "${COOLIFY_URL%/}/api/v1/deploy?uuid=${COOLIFY_APP_UUID}&pr=${PR_NUMBER}&force=false")
+          echo "$response"
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- coolify-preview -->';
+            const body = `${marker}\n🚀 Coolify preview deployment triggered for \`${context.payload.pull_request.head.sha.slice(0, 7)}\`.`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
