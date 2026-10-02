@@ -134,7 +134,8 @@
       (wrap-resource "public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
       ; (wrap-file "resources/public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
       wrap-optimus
-      wrap-content-type ; must go after wrap-resource. checks file ext and adds correct content type
+      ;; Ring's default MIME table has WebP but no AVIF entry.
+      (wrap-content-type {:mime-types {"avif" "image/avif"}})
       wrap-gzip-content-aware
       ; (wrap-log "Wrapped gzip")
       wrap-not-modified ; guess this doesnt work cause optimus gens new files tho..
