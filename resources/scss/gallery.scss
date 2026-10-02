@@ -40,7 +40,7 @@
   padding-top: 0;
   padding-bottom: 0;
 }
-.sideways > div, .sideways > img {
+.sideways > div, .sideways > img, .sideways > picture {
   scroll-snap-align: start;
   position: sticky;
   left: 0;
@@ -50,6 +50,20 @@
   border-left: var(--line-width-vert) solid;
   border-radius: 0;
   box-shadow: -0.5rem 0 1rem 0.5rem var(--box-regular-color);
+}
+.sideways > picture {
+  // The picture is the flex item; keep its image at the gallery's height.
+  flex: 0 0 auto;
+  max-width: 100%;
+
+  > img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    max-height: calc(90vh - var(--header-height));
+    object-fit: cover;
+    margin: 0;
+  }
 }
 .sideways > *:first-of-type { /* left first be throwaway item */
   border: 0;
@@ -79,4 +93,3 @@
   /* padding-right: var(--space-lg); */
   /* margin-right: var(--space-lg); */
 }
-
