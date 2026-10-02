@@ -13,12 +13,16 @@ RUN apt-get update && \
     apt-get install -y nodejs && \
     npm install -g shadow-cljs && \
     apt-get clean
+# Store Leiningen dependencies in the persistent BuildKit cache below.
+RUN mkdir -p /root/.lein && \
+    printf '%s\n' '{:user {:local-repo "/root/m2"}}' \
+    > /root/.lein/profiles.clj
 WORKDIR /usr/src/clj
 COPY --from=0 /usr/src/app/ /usr/src/clj
 ARG AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
 ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
 ARG AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
 ENV AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-RUN --mount=type=cache,id=m2,target=/root/.m2,sharing=locked lein uberjar
+RUN --mount=type=cache,id=m2,target=/root/m2,sharing=locked lein uberjar
 EXPOSE 3000
 CMD ["java", "-Dclojure.main.report=stderr", "-Dconf=env/prod/resources/config.edn", "-cp", "target/uberjar/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]
