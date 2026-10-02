@@ -61,7 +61,7 @@ with the changed middleware (six assertions). The updated source and test were
 loaded in a separate JVM using the Docker-built uberjar; the baseline server
 was not altered by that test. No deployment was performed.
 
-## Remaining uncertainty
+## Initial remaining uncertainty
 
 The intermittent "loaded but never displays" symptom was not reproduced in
 Chromium. The affected browser/version and a specific failing image or page
@@ -73,3 +73,60 @@ proved to account for the entire reported symptom.
 The picture component chooses AVIF based on format support and has no error
 handler to retry WebP/original after an AVIF request or decode failure. This is
 an additional resilience gap, not a demonstrated cause of this incident.
+
+## Safari follow-up: Lockdown Mode
+
+The user subsequently identified Safari as the affected browser, with all AVIF
+images failing. Reproduced in Safari **26.6.2** against the user's newly built
+`tolgraven:latest` image, exposed at `http://localhost:3304` with `STAGE=true`.
+This image already includes the `image/avif` MIME fix. Safari's toolbar explicitly
+showed **Lockdown Enabled**, and the homepage still displayed missing images.
+
+A minimal page using the same Docker-served `/img/tolgrav` assets showed:
+
+| Format | Safari decoding | Natural width |
+| --- | --- | --- |
+| AVIF | `error`; `decode()` rejects with `EncodingError` | 0 |
+| WebP | `load`; `decode()` resolves | 320 |
+| PNG | `load`; `decode()` resolves | 320 |
+
+The equivalent `<picture>` selected the AVIF source, failed, and **never retried
+WebP or PNG**. This establishes the application failure mechanism independently
+of layout, asset packaging, TLS, and MIME type.
+
+[WebKit's Lockdown image allowlist](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/platform/graphics/cg/UTIRegistry.mm)
+permits WebP, JPEG, PNG and GIF, and excludes AVIF. Together with the visible
+Lockdown banner and direct decoder results, this explains the Safari failure.
+No security setting was changed during the investigation.
+
+`src/cljs/tolgraven/image.cljs` now removes both modern sources when a selected
+modern image request or decoding emits an error. The browser then loads the
+original JPEG/PNG directly. Failures belong to each original path, so
+changing an image's `src` tries the new image's variants. Existing attributes
+and `on-load` callbacks are retained; the caller's `on-error` is called if the
+original image fails. No browser sniffing or security-mode detection is used.
+
+`test/cljs/tolgraven/image_test.cljs` exercises actual JPEG and PNG image loading
+after a modern-format error, then checks preserved attributes, final error
+notification, and changing `src` on the same mounted component. Tests force a
+failure if the selected modern format loads successfully, and otherwise handle
+the real decoder failure (including Safari Lockdown Mode).
+
+The full Dockerfile build of `tolgraven-avif-fallback` passed, including advanced
+Shadow compilation (only the existing `rrb-vector` dependency warnings).
+The container is exposed at `http://localhost:3306` with `STAGE=true`; AVIF
+responses return HTTP 200 and `image/avif`. That initial build retried WebP before
+the original. The follow-up change goes directly to JPEG/PNG as requested.
+
+The image and media test namespaces compiled together with zero warnings, and
+clj-kondo reported zero errors or warnings for the changed component and its
+test. Safari passed **5 tests / 28 assertions** with Lockdown off on
+`localhost:3303`, and again with **Lockdown Enabled** on `127.0.0.1:3303`.
+No security setting was changed to perform these checks.
+
+The direct JPEG/PNG version also passed a full Dockerfile build, including the
+advanced Shadow release build. Image `tolgraven-avif-original-fallback` runs
+with `STAGE=true` at `http://127.0.0.1:3307`; Safari loaded its production
+homepage with Lockdown Mode enabled, and AVIF responses still have the correct
+HTTP 200 / `image/avif` header. Browser regression tests above verify the
+actual fallback image decoding and selected JPEG/PNG source.

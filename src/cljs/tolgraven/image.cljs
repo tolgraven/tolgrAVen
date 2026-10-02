@@ -1,7 +1,8 @@
 (ns tolgraven.image
   "Helpers for serving modern image formats (WebP, AVIF) with automatic fallbacks"
   (:require
-   [clojure.string :as string]))
+   [clojure.string :as string]
+   [reagent.core :as r]))
 
 (defn- replace-extension
   "Replace file extension. e.g., 'img/foo.jpg' -> 'img/foo.webp'"
@@ -50,17 +51,33 @@
        <img src='img/photo.jpg' alt='My photo' class='hero-img'>
      </picture>
 
-   Browsers automatically select the first format they support."
-  [{:keys [src] :as attrs}]
-  (if (should-use-modern-formats? src)
-    [:picture
-     [:source {:srcSet (replace-extension src "avif")
-               :type "image/avif"}]
-     [:source {:srcSet (replace-extension src "webp")
-               :type "image/webp"}]
-     [:img attrs]]
-    ;; No modern format available, just use img directly
-    [:img attrs]))
+   Browsers select the first supported format. If requesting or decoding that
+   source fails, retry the original JPEG/PNG. Call the caller's on-error only when the
+   original image fails too."
+  [{:keys [src on-error] :as attrs}]
+  (r/with-let [*fallback-sources (r/atom #{})]
+    (if (should-use-modern-formats? src)
+      (let [avif-src (replace-extension src "avif")
+            webp-src (replace-extension src "webp")
+            ;; Keep failures by original path so a new src tries modern formats anew.
+            fallback? (contains? @*fallback-sources src)
+            retry! (fn [event]
+                     (let [image (.-currentTarget event)
+                           current-src (.-currentSrc image)
+                           original-src (.-href (js/URL. src (.-baseURI image)))]
+                       ;; Safari can select AVIF in Lockdown Mode even though
+                       ;; its decoder rejects it. <picture> does not retry itself.
+                       (if (and (not fallback?) (not= current-src original-src))
+                         (swap! *fallback-sources conj src)
+                         (when on-error (on-error event)))))]
+        [:picture
+         (when-not fallback?
+           [:source {:key avif-src :srcSet avif-src :type "image/avif"}])
+         (when-not fallback?
+           [:source {:key webp-src :srcSet webp-src :type "image/webp"}])
+         [:img (assoc attrs :on-error retry!)]])
+      ;; No modern format available, just use img directly.
+      [:img attrs])))
 
 (defn img
   "Smart img component that automatically uses modern formats when available.
