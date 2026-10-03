@@ -65,8 +65,14 @@
           (-> (js/Promise.all (clj->js (map #(run-select! client %) plan)))
               (.then (fn [rows]
                        (when (current?)
+                         (status/recover! :supabase-read)
                          (handler (result (into {} (map (fn [p r] [(:seed-key p) r]) plan (array-seq rows))) opts)))))
-              (.catch #(when (current?) (error-handler {:message "Unable to read Supabase data"})))))))
+              (.catch (fn [_]
+                        (when (current?)
+                          (status/fail! :supabase-read "Supabase content unavailable"
+                                        "A content request failed. Reload the page to retry."
+                                        #(.reload js/location))
+                          (error-handler {:message "Unable to read Supabase data"}))))))))
     (error-handler {:message "Supabase is not initialized"})))
 
 (declare ensure-table! load-table!)

@@ -41,7 +41,9 @@
               (.finally (fn [] (set! content/ensure! original) (swap! loader/*loads dissoc id) (done)))))))))
 
 (deftest bootstrap-rejects-content-outside-the-public-contract
-  (is (false? (content/valid-bundle? {:version 1 :content {:secrets {}}} []))))
+  (is (false? (content/valid-bundle? {:version 1 :content {:secrets {}}} [])))
+  (is (false? (content/valid-bundle? {:version 1 :content {:story nil}} [:story])))
+  (is (false? (content/valid-bundle? {:version 1 :content {:cv {:cv {:timeline 123}}}} [:cv]))))
 
 (deftest failed-content-is-visible-deduplicated-and-retryable
   (async done
