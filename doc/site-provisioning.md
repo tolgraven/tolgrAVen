@@ -162,9 +162,19 @@ The existing scoped deploy helper stopped the old staging runtime, deployed the
 already-built image with the new environment values, checked the HTTP endpoints
 and restored its Git build settings. Exactly one staging runtime remained.
 
-Bux had about 2.8 GiB available RAM and 2.5 GiB swap in use after this cutover.
-Treat this as a measured snapshot, not spare capacity for another full pair of
-Supabase stacks. Use another registered resource server for additional full sites.
+Bux had about 2.8 GiB available RAM after the initial cutover; a later idle
+sample showed about 3.4 GiB available. These are snapshots, not a site-count
+limit. Local image builds avoid server-side compiler peaks, and stopping inactive
+staging environments can make room for additional sites. Each running full
+Supabase stack still has a persistent footprint: the later sample measured about
+1.46 GiB resident for staging Supabase and 456 MiB for its web app. PR-close
+cleanup stops the web preview, not the shared staging Supabase service.
+
+The 3 GiB-per-environment provisioning budget is deliberately conservative, not
+a measurement of idle consumption; a new production/staging pair currently
+requires 6 GiB available to pass it. Check actual workload and idle capacity
+before choosing another server. Swap usage alone is not evidence of current
+pressure; inspect swap-in/out and service latency too.
 
 The repository's existing GitHub workflow still contains the legacy CapRover
 production job and tolgraven's PR-preview webhook. A new site's first deployment
