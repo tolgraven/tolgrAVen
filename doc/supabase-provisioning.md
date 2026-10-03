@@ -477,3 +477,16 @@ disabled and require their provider credentials/configuration before login. Emai
 autoconfirm is disabled; the 8 unverified password accounts require email
 confirmation through a working mail configuration. No email delivery was tested
 or triggered. The application migration branch remains unpushed and undeployed.
+
+### Memory on a shared Coolify server
+
+The web image limits each runtime JVM to a 512 MiB heap, 128 MiB of direct buffers,
+and 128 MiB of compiled code. Configure a 1 GiB container memory limit and a
+1536 MiB combined memory and swap limit in Coolify, leaving room for metaspace,
+threads and native libraries. Runtime JVM limits do not limit Docker builds.
+The Dockerfile separately limits the Leiningen/compiler JVM heap to 1536 MiB.
+Avoid overlapping builds on the same small host; both production and staging
+can otherwise build a preview of the same pull request.
+
+On bux, `/swapfile` supplies 4 GiB of swap and is persisted in `/etc/fstab`.
+Swap absorbs brief peaks; it does not replace JVM and container memory bounds.

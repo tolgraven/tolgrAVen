@@ -23,6 +23,8 @@ ARG AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
 ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
 ARG AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
 ENV AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-RUN --mount=type=cache,id=m2,target=/root/m2,sharing=locked lein uberjar
+RUN --mount=type=cache,id=m2,target=/root/m2,sharing=locked \
+    JAVA_TOOL_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m" lein uberjar
 EXPOSE 3000
-CMD ["java", "-Dclojure.main.report=stderr", "-Dconf=env/prod/resources/config.edn", "-cp", "target/uberjar/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]
+# Bound each web JVM independently of the memory of its shared Docker host.
+CMD ["java", "-Xms64m", "-Xmx512m", "-XX:MaxDirectMemorySize=128m", "-XX:ReservedCodeCacheSize=128m", "-XX:+ExitOnOutOfMemoryError", "-Dclojure.main.report=stderr", "-Dconf=env/prod/resources/config.edn", "-cp", "target/uberjar/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]
