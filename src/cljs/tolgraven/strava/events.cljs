@@ -2,50 +2,23 @@
   (:require
     [clojure.walk :as walk]
     [re-frame.core :as rf]
-    [goog.crypt.base64 :as b64]
     [cljs-time.core :as ct]
     [cljs-time.format :as ctf]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
-(rf/reg-event-fx :strava/init ;so, currently makes assumption app is authed and some stuff is in firebase...
-  (fn [{:keys [db]} [_ ]]
-    (when-not (get-in db [:strava])
-      {:dispatch
-       [:<-store [:strava] [:strava/store-client]]})))
+(rf/reg-event-fx :strava/init
+  (fn [_ _]
+    {:dispatch [:http/get {:uri "/api/integrations/settings"}
+                [:strava/store-client] [:strava/on-error]]}))
+
+(rf/reg-event-fx :strava/store-client
+  (fn [{:keys [db]} [_ data]]
+    {:db (assoc db :strava {:auth (:strava data)}) :dispatch [:strava/fetch]}))
 
 (rf/reg-event-fx :strava/state
   (fn [{:keys [db]} [_ path value]]
     {:db (assoc-in db (into [:state :strava] path) value)}))
-
-(rf/reg-event-fx :strava/store-client   [(rf/inject-cofx :now)]
-  (fn [{:keys [db now]} [_ data]]
-    (let [expired? (neg? (- (-> data :auth :expires_at) (/ now 1000)))]
-      {:db (assoc-in db [:strava] data)
-       :dispatch-n [(when-not expired?
-                      [:strava/fetch]) ;XXX wont work if need refresh.
-                    (when expired? ;can actually refresh each time also, get same access token back then
-                      [:strava/refresh (-> data :auth :refresh_token)])]})))
-
-(rf/reg-event-fx :strava/store-session
-  (fn [{:keys [db]} [_ response]]
-    (let [data (walk/keywordize-keys response)]
-      {:db (update-in db [:strava :auth] merge data)
-       :dispatch-n [[:store-> [:strava :auth]
-                     (merge (get-in db [:strava :auth]) data)]
-                    [:strava/fetch]]}))) ;bit ugly making one doomed request and then yada etc but eh
-
-(rf/reg-event-fx :strava/refresh
-  (fn [{:keys [db]} [_ refresh-token]]
-    (let [info (get-in db [:strava :auth])]
-      {:dispatch
-       [:http/post {:uri "https://www.strava.com/api/v3/oauth/token"
-                    :url-params {:client_id (:client_id info)
-                                 :client_secret (:client_secret info)
-                                 :grant_type "refresh_token"
-                                 :refresh_token refresh-token}}
-        [:strava/store-session]]})))
-
 
 (rf/reg-event-fx :strava/save
   (fn [{:keys [db]} [_ path content]]
@@ -58,12 +31,9 @@
                 [:strava/save save-to] ]}))
 
 (rf/reg-event-fx :strava/get-and-dispatch
-  (fn [{:keys [db]} [_ path event]]
-    (let [uri "https://www.strava.com/api/v3/"]
-      {:dispatch [:http/get {:uri (str uri path)
-                             :headers {"Authorization" (str "Bearer " (-> db :strava :auth :access_token))}}
-                  event
-                  [:strava/on-error]]})))
+  (fn [_ [_ path event]]
+    {:dispatch [:http/get {:uri "/api/integrations/strava" :url-params {:path path}}
+                event [:strava/on-error]]}))
 
 (rf/reg-event-fx :strava/on-error ;TODO parse error and refresh token if that's the issue
   (fn [{:keys [db]} [_ error]]
@@ -144,17 +114,9 @@
                 [:content (into [:intervals] save-to)] ]}))
 
 (rf/reg-event-fx :intervals/get-and-dispatch
-  (fn [{:keys [db]} [_ path event]]
-    (let [id (get-in db [:strava :auth :intervals_athlete_id])
-          uri (str "https://intervals.icu/api/v1/athlete/" id "/")
-          api-key (-> db :strava :auth :intervals_api_key)]
-      {:dispatch [:http/get {:uri (str uri path)
-                             :headers {"Authorization"
-                                       (str "Basic "
-                                            (b64/encodeString
-                                             (str "API_KEY:" api-key)))}}
-                  event
-                  [:strava/on-error]]})))
+  (fn [_ [_ path event]]
+    {:dispatch [:http/get {:uri "/api/integrations/intervals" :url-params {:path path}}
+                event [:strava/on-error]]}))
 
 (rf/reg-event-fx :intervals/fetch-summary
   (fn [{:keys [db]} [_ ]]

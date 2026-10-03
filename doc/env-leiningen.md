@@ -2,8 +2,8 @@
 ## env
 
 ### Private Maven Repo
-For forks (like re-frame-firebase) where haven't been able to get stuff merged,
-and using `checkouts` locally (in git as submodule), for server builds we use a private repo from an s3 bucket.
+Historical private Maven publishing setup. The Firebase fork and its submodule
+were removed during the Supabase migration; normal builds no longer need them.
 
 This involves the setup in `project.clj` as well as some stuff in `profiles.clj`:
 ```clojure

@@ -3,23 +3,18 @@
    [re-frame.core :as rf]
    [clojure.walk :as walk]))
 
-(rf/reg-sub :fb/get-user
- :<- [:user/active-user]
- (fn [user _]
-   user))
+(rf/reg-sub :user/users :<- [:<-store-2 :users]
+  (fn [users _] users))
 
-(rf/reg-sub :user/users
- :<- [:<-store :fb/users]
- (fn [users [_ path]]
-   users))
+(rf/reg-sub :user/user
+  (fn [[_ id]] (rf/subscribe (if (and id (not (coll? id))) [:<-store :users id] [:nil])))
+  (fn [user _] user))
 
-(rf/reg-sub :user/user ;find user
- (fn [[_ user-id]]
-   (if (and user-id (not (coll? user-id)))
-     (rf/subscribe [:<-store :fb/users user-id])
-     (rf/subscribe [:nil]))) ; avoid nil input error haha
- (fn [user [_ user-id]]
-   user)) ; here would merge in karma and whatnot
+(rf/reg-sub :user/has-role? :<- [:user/active-user]
+  (fn [user [_ role]] (boolean (some #{(name role)} (:roles user)))))
+
+(rf/reg-sub :user/trusted? :<- [:option [:supabase :trusted-author-ids]]
+  (fn [ids [_ id]] (boolean (some #{id} ids))))
 
 (rf/reg-sub :user/default-avatar
  :<- [:get :content :common :user-avatar-fallback]
@@ -30,7 +25,10 @@
 (rf/reg-sub :user/active-user
  :<- [:state [:active-user]]
  (fn [user [_ _]]
-   user))
+   (when user
+     ;; Public counters/profile fields stay live while private roles and vote
+     ;; history remain the result of the verified owner endpoint.
+     (merge user @(rf/subscribe [:user/user (:id user)])))))
 
 (rf/reg-sub :user/active-section
  :<- [:state [:user-section]]
@@ -68,14 +66,6 @@
   (->> (or (:email login-field) "")
        (re-find #"\w+@\w+\.\w+")
        boolean)))
-
-(rf/reg-sub :login/user-with-email? ; do fb lookup
-(fn [[_ email]]
-  (if email
-    (rf/subscribe [:<-store :users :email]) ; XXX wont work, fix once have ze data structure
-    (rf/subscribe [:nil])))
-(fn [user [_ email]]
-  (boolean user)))
 
 (rf/reg-sub :user/error ; login-error, rename...
  :<- [:diag/unhandled]

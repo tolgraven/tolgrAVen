@@ -65,14 +65,13 @@
 
 (defn threads "A place to hang out with real-time messaging"
   []
-  (let [ids @(rf/subscribe [:gpt/thread-ids])
-        new-id @(rf/subscribe [:gpt/new-thread-id])]
+  (let [ids @(rf/subscribe [:gpt/thread-ids])]
     [:section.gpt.noborder.covering-2
      [:div.gpt-messages
       {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))}
       (for [id ids] ^{:key (str "gpt-thread-" id)}
         [thread id])]
       [:button
-       {:on-click #(rf/dispatch [:gpt/new-thread ids new-id])}
+       {:on-click #(rf/dispatch [:gpt/new-thread])}
        "New thread"]]))
 

@@ -5,9 +5,14 @@
     [clojure.string :as string]))
 
 
-(rf/reg-sub :blog ; should prob go straight to posts and comments same
- (fn [db [_ path] ]
-   (get-in db (into [:blog] path))))
+(rf/reg-sub :blog
+  (fn [[_ path]]
+    (case (first path)
+      :posts (rf/subscribe [:<-store-2 :blog-posts])
+      :comments (rf/subscribe [:<-store-2 :blog-comments])
+      (rf/subscribe [:get :blog])))
+  (fn [data [_ path]]
+    (get-in data (if (#{:posts :comments} (first path)) (rest path) path))))
 
 (rf/reg-sub :blog/post-feed ; would likely return a reasonable amount of posts, then paged for more.
  :<- [:blog [:posts]]
@@ -27,12 +32,6 @@
         (map js/Number)
         sort
         reverse)))
-
-(rf/reg-sub :blog/get-new-post-id ; send this inced to post event... ditch the silly counters already lol
- (fn [[_ _]]
-   (rf/subscribe [:blog/post-ids]))
- (fn [ids [_ path]]
-   (inc (apply max ids))))
 
 (rf/reg-sub :blog/post
   (fn [[_ post-id]]
@@ -161,12 +160,8 @@
 ;; XXX make subcollections for comments.
 ;; those can be grouped and searched so can stick to nested, no flat extra bs?
 (rf/reg-sub :comments/for-user
- (fn [[_ user-id]]
-   [(rf/subscribe [:comments/all])
-    (rf/subscribe [:user/user user-id])])
- (fn [[comments user] [_ user-id]]
-   (vals (select-keys comments
-                      (map keyword (:comments user))))))
+  (fn [[_ user-id]] (rf/subscribe [:comments/all]))
+  (fn [comments [_ user-id]] (filter #(= user-id (:user %)) (vals comments))))
 
 (rf/reg-sub :comments/for-user-q
  (fn [[_ user-id]]
@@ -235,7 +230,5 @@
 
 (rf/reg-sub :blog/vote
   (fn [db [_ path]]
-    (if (= :supabase (get-in db [:options :store :provider]))
-      (case (get-in db [:state :active-user :comment-votes (keyword (str (last path)))] 0)
-        1 :up -1 :down nil)
-      (get-in db [:state :blog :voted path]))))
+    (case (get-in db [:state :active-user :comment-votes (keyword (str (last path)))] 0)
+      1 :up -1 :down nil)))

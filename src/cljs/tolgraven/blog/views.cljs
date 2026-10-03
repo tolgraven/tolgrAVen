@@ -12,7 +12,7 @@
   (let [id (if (string? user) user (:id user))]
     (cond
       (nil? id) :untrusted
-      (some #{id} (:admins @(rf/subscribe [:<-store :auth :roles]))) :trusted
+      @(rf/subscribe [:user/trusted? id]) :trusted
       :else :user)))
 
 
@@ -41,7 +41,7 @@
         ts (util/timestamp ts)]
     [:span.blog-info
      username
-    (when (some #{(:id user)} (:admins @(rf/subscribe [:<-store :auth :roles])))
+    (when @(rf/subscribe [:user/trusted? (:id user)])
       [:span {:style {:font-size "80%"}}
        "admin"])
      [:span ts]
@@ -334,8 +334,7 @@
 (defn post-blog "Render post-making ui" [] ; XXX move this and similar to own file...
   (let [input @(rf/subscribe [:form-field [:post-blog]])
         user @(rf/subscribe [:user/active-user])
-        editing @(rf/subscribe [:blog/state [:editing]])
-        new-id @(rf/subscribe [:blog/get-new-post-id])]
+        editing @(rf/subscribe [:blog/state [:editing]])]
     [:section.blog.blog-new-post
      [:h2 "Write blog post"]
      [:br]
@@ -355,7 +354,7 @@
       :width "100%"
       :path [:form-field [:post-blog :text]]]
      
-     [ui/button "Save draft" :save-blog-draft] ;should save to firebase etc. Really just have an :unpublished true flag yeah.
+     [ui/button "Save draft" :save-blog-draft]
      [ui/button "Highlight code" :highlight-blog-code
       :action #(rf/dispatch [:run-highlighter!])]
      
@@ -367,9 +366,8 @@
       [ui/button "Submit" :post-new-blog
        :action #(do (rf/dispatch [:blog/submit
                                   (merge {:user user} input)
-                                  editing
-                                  new-id])
-                    (rf/dispatch [:common/navigate! :blog]))]
+                                  editing])
+                    nil)]
       [:button {:on-click #(rf/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
        [:label "Cancel"]]]]))
 
@@ -531,9 +529,8 @@
      section
      [:h1.center-content [ui/loading-spinner true]])
    [:div.flex.center-content
-    (when (some #{(:id @(rf/subscribe [:user/active-user]))}
-                (:bloggers @(rf/subscribe [:<-store :auth :roles])))
-      [:a {:href @(rf/subscribe [:href :post-blog])
+    (when (or @(rf/subscribe [:user/has-role? :bloggers]) @(rf/subscribe [:user/has-role? :admins]))
+      [:a {:href @(rf/subscribe [:href :new-post])
            :title "Post blog"}
        [:button.noborder [:i.fa.fa-feather-alt]]])
     

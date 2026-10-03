@@ -32,8 +32,7 @@
 
 (defn chat "A place to hang out with real-time messaging"
   []
-  (let [content @(rf/subscribe [:chat/content])
-        latest-id @(rf/subscribe [:chat/latest-seq-id])]
+  (let [content @(rf/subscribe [:chat/content])]
     [:section.chat.noborder.covering-2
      [:div.chat-messages
       {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))}
@@ -43,9 +42,9 @@
       [ui/input-text
        :path [:form-field [:chat]]
        :placeholder "Message"
-       :on-enter #(rf/dispatch [:chat/post latest-id])]
+       :on-enter #(rf/dispatch [:chat/post])]
       [:button {:disabled @(rf/subscribe [:state [:supabase-writes :chat]])
-                :on-click #(rf/dispatch [:chat/post latest-id])}
+                :on-click #(rf/dispatch [:chat/post])}
        [:i.fa.fa-arrow-right]]]
      [:p.chat-description
       [:b "Step 1. "] "Open two browser windows." [:br]

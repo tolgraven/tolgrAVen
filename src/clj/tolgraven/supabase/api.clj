@@ -3,20 +3,24 @@
    [tolgraven.config :refer [env]]
    [tolgraven.platform.supabase :as platform]
    [tolgraven.store.contract :as contract]
-   [tolgraven.supabase.interop :as interop]
+   [clj-http.client :as http]
    [tolgraven.supabase.query :as query]))
 
 (defn public-settings []
-  {:url (or (env :supabase-public-url)
-            (env :supabase-url)
-            (System/getenv "SUPABASE_PUBLIC_URL")
-            (System/getenv "SUPABASE_URL")
-            (System/getenv "NEXT_PUBLIC_SUPABASE_URL"))
-   :anon-key (or (env :supabase-publishable-key)
-                 (System/getenv "SUPABASE_PUBLISHABLE_KEY")
-                 (env :supabase-anon-key)
-                 (System/getenv "SUPABASE_ANON_KEY")
-                 (System/getenv "NEXT_PUBLIC_SUPABASE_ANON_KEY"))})
+  (let [settings {:url (or (env :supabase-public-url) (env :supabase-url)
+                           (System/getenv "SUPABASE_PUBLIC_URL") (System/getenv "SUPABASE_URL")
+                           (System/getenv "NEXT_PUBLIC_SUPABASE_URL"))
+                  :anon-key (or (env :supabase-publishable-key) (System/getenv "SUPABASE_PUBLISHABLE_KEY")
+                                (env :supabase-anon-key) (System/getenv "SUPABASE_ANON_KEY")
+                                (System/getenv "NEXT_PUBLIC_SUPABASE_ANON_KEY"))}]
+    (assoc settings
+           :trusted-author-ids
+           (mapv :user_id (:body (platform/request! :get "auth_roles"
+                                   {:query-params {"role" "eq.admins" "select" "user_id"}})))
+           :providers
+           (:external (:body (http/get (str (:url settings) "/auth/v1/settings")
+                               {:headers {"apikey" (:anon-key settings)} :as :json
+                                :throw-exceptions false :conn-timeout 3000 :socket-timeout 5000}))))))
 
 (defn public-query? [opts]
   (let [{:keys [path-document path-collection]} (query/normalize-query opts)
@@ -24,7 +28,7 @@
     (and (not (and path-document path-collection))
          (= (count path) (if path-document 2 1))
          (every? #(and (string? %) (seq %)) path)
-         (query/direct-read-query? opts))))
+         (query/public-read-query? opts))))
 
 (defn query-store! [opts]
   (when-not (public-query? opts)
@@ -55,6 +59,3 @@
   (if (public-query? opts)
     {:status 200 :body (query-store! opts)}
     {:status 403 :body {:error "This collection is not publicly readable"}}))
-
-(defn write-store! [{:keys [path data merge-fields]}]
-  (interop/write-document! path data merge-fields))

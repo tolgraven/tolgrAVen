@@ -2,7 +2,7 @@
 .local-wip
 checkouts/codox
 node_modules
-functions/node_modules
+functions
 target
 .m2
 .shadow-cljs

@@ -28,9 +28,8 @@
 
 (defn send-request
   [request]
-  (timbre/debug request)
   (client/post (str base-url "chat/completions")
-               request))
+               (assoc request :conn-timeout 3000 :socket-timeout 60000)))
 
 (defn get-response
   [response]

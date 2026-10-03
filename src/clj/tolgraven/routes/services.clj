@@ -7,8 +7,6 @@
     [reitit.ring.middleware.muuntaja :as muuntaja]
     [reitit.ring.middleware.multipart :as multipart]
     [reitit.ring.middleware.parameters :as parameters]
-    [ring.middleware.basic-authentication :refer [wrap-basic-authentication]]
-    [muuntaja.core :as m]
     [clj-http.client :as http]
     [ring.util.http-response :as response]
     [taoensso.timbre :as timbre]
@@ -19,35 +17,13 @@
     [tolgraven.supabase.api :as supabase-api]
     [tolgraven.supabase.auth :as supabase-auth]
     [tolgraven.supabase.operations :as supabase-operations]
+    [tolgraven.supabase.storage :as storage]
+    [tolgraven.supabase.integrations :as integrations]
     [clojure.java.io :as io]
-    [clojure.string :as string]
-    [clojure.edn :as edn])
-  (:import [java.io File FileInputStream FileOutputStream]))
+    [clojure.string :as string]))
 
 (defn plain-text-header [resp]
   (response/header resp "Content-Type" "text/plain; charset=utf-8"))
-
-(defn authenticated? [username password]
-  (let [expected-user (System/getenv "AUTH_USER")
-        expected-pass (System/getenv "AUTH_PASS")]
-    (and (not (string/blank? expected-user))
-         (not (string/blank? expected-pass))
-         (= [username password] [expected-user expected-pass]))))
-
-; file upload: 
-(def upload-path "resources/public/img/uploads/")
-
-(defn file-path [path & [filename]]
-  (java.net.URLDecoder/decode
-    (str path File/separator filename)
-    "utf-8"))
-
-(defn upload-file "uploads a file to the target folder"
-  [path {:keys [tempfile size filename]}]
-  (with-open [in (io/input-stream tempfile)
-              out (io/output-stream (file-path path filename))]
-    (io/copy in out)))
-
 
 (defn service-routes []
   ["/api"
@@ -103,9 +79,7 @@
             :parameters {:body {:messages coll?}}
             ; :responses {200 {:body {:reply string?}}}
             :handler (fn [{{{:keys [messages]} :body} :parameters :as params}]
-                       (let [reply (gpt/chat messages)]
-                         {:status 200
-                          :body reply}))}}]
+                       (supabase-auth/response! params (fn [_] (gpt/chat messages))))}}]
 
    ["/send-contact-email"
     {:post {:summary "Send email to self and contact"
@@ -128,20 +102,16 @@
                 {:status 200
                  :body reply}))}}]
 
-   ["/firebase-settings" ;XXX obviously needs to be behind basic auth. well no proper auth because otherwise same issue of giving client info. whole lot better than having in code tho...
-    ; OBVIOUSLY NOT IN THIS INSTANCE ALSO ALL KEYS GOING TO CLIENT WILL ALWAYS BE THEIRS.
-    ; this is why stuff is scoped :P
-    ; anyways leave this in the concept of sending env stuff, but especially modded edn stuff, to client surely useful later.
-    {;:middleware [#(wrap-basic-authentication % authenticated?)] ; not enough need to hook it up
-     :get (fn [_]
-            (-> "firebase/firebase-project.edn"
-                io/resource
-                slurp
-                edn/read-string
-                (merge {:apiKey (System/getenv "FIREBASE_API_KEY")})
-                (#(m/encode formats/instance "application/transit+json" %))
-                response/ok
-                (response/content-type "application/transit+json")))}]
+   ["/integrations/settings" {:get (fn [_] (integrations/response! integrations/settings!))}]
+   ["/integrations/strava" {:get (fn [request] (integrations/response! #(integrations/strava! (get-in request [:query-params "path"]))))}]
+   ["/integrations/intervals" {:get (fn [request] (integrations/response! #(integrations/intervals! (get-in request [:query-params "path"]))))}]
+   ["/integrations/instagram" {:get (fn [_] (integrations/response! integrations/instagram!))}]
+   ["/integrations/search" {:get (fn [request] (integrations/response! #(integrations/search! (get-in request [:query-params "collection"]) (:query-params request))))}]
+   ["/integrations/strapi" {:get (fn [request] (integrations/response! #(integrations/strapi! (get-in request [:query-params "path"]))))}]
+   ["/integrations/image" {:get (fn [request]
+                                (try (integrations/image-response! (get-in request [:query-params "url"])
+                                                                   (get-in request [:query-params "transforms"]))
+                                     (catch Exception _ {:status 400 :body {:error "Invalid image request"}})))}]
 
    ["/supabase/settings"
     {:get {:summary "Public browser settings for direct Supabase reads"
@@ -158,6 +128,13 @@
            :handler (fn [request]
                       (supabase-auth/response!
                        request #(supabase-auth/save-profile! % (get-in request [:parameters :body]))))}}]
+
+   ["/supabase/avatar"
+    {:post {:summary "Upload an avatar to Supabase Storage as the signed-in user"
+            :parameters {:multipart {:file multipart/temp-file-part}}
+            :handler (fn [request]
+                       (supabase-auth/response! request
+                         #(storage/save-avatar! % (get-in request [:parameters :multipart :file]))))}}]
 
    ["/supabase/chat"
     {:post {:summary "Post a chat message as the signed-in user"
@@ -186,19 +163,25 @@
                         request #(supabase-operations/set-comment-vote! % (get-in request [:parameters :body]))))}}]
 
    ["/supabase/store/query"
-    {:post {:summary "Query Supabase-backed store data using Firebase-style document and collection paths"
+    {:post {:summary "Query Supabase-backed store data using document and collection paths"
             :parameters {:body map?}
             :handler (fn [{{query-map :body} :parameters}]
                        (supabase-api/query-response query-map))}}]
 
-   ["/supabase/store/write"
-    {:middleware [[wrap-basic-authentication authenticated?]]
-     :post {:summary "Administrator-only compatibility write"
+   ["/supabase/posts"
+    {:post {:summary "Publish or edit a post as an authorized author"
             :parameters {:body map?}
-            :handler (fn [{{write-map :body} :parameters}]
-                       {:status 200
-                        :body (supabase-api/write-store! write-map)})}}]
-   
+            :handler (fn [request]
+                       (supabase-auth/response! request
+                         #(supabase-operations/save-post! % (get-in request [:parameters :body]))))}}]
+
+   ["/supabase/documents"
+    {:post {:summary "Save a private document owned by the signed-in user"
+            :parameters {:body map?}
+            :handler (fn [request]
+                       (supabase-auth/response! request
+                         #(supabase-operations/save-document! % (get-in request [:parameters :body]))))}}]
+
    ["/math"
     {:swagger {:tags ["math"]}}
 
@@ -218,16 +201,6 @@
 
    ["/files"
     {:swagger {:tags ["files"]}}
-
-    ["/upload"
-     {:post {:summary "upload a file"
-             :parameters {:multipart {:file multipart/temp-file-part}}
-             :responses {200 {:body {:name string?, :size int?}}}
-             :handler (fn [{{{:keys [file]} :multipart} :parameters}]
-                        (upload-file upload-path file)
-                        {:status 200
-                         :body {:name (:filename file)
-                                :size (:size file)}})}}]
 
     ["/download"
      {:get {:summary "downloads a file"

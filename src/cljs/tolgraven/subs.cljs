@@ -7,15 +7,8 @@
             [clojure.string :as string]
             [reitit.frontend.easy :as rfe]))
 
-(defn- store-provider []
-  (get-in @rfdb/app-db [:options :store :provider] :firebase))
-
-(rf/reg-sub-raw
- :store/on-snapshot
- (fn [_ [_ opts]]
-   (case (store-provider)
-     :supabase (supabase-client/ensure-query! opts)
-     (rf/subscribe [:firestore/on-snapshot opts]))))
+(rf/reg-sub-raw :store/on-snapshot
+  (fn [_ [_ opts]] (supabase-client/ensure-query! opts)))
 
 (rf/reg-sub :get ;should this be discontinued? or only used transiently like migrate everything away once got a comp working?
  (fn [db [_ & path]]
@@ -71,7 +64,7 @@
                       {:path-collection (vec coll-docs)})]
         (some-> (rf/subscribe [:store/on-snapshot look-in])
                 deref
-                util/normalize-firestore-general)))))
+                util/normalize-store-result)))))
 
 (rf/reg-sub :<-store-q
   (fn [[_ opts]]
@@ -80,22 +73,7 @@
   (fn [[res initialized] [_ _]]
     (when initialized
       (some-> res
-              util/normalize-firestore-general))))
-
-; DONE PROPERLY. but somehow ends up with sub sometimes never returning anything but {} (as always does first run)
-; WHAT THE FUCK honestly. 
-; (rf/reg-sub :<-store-q
-;   (fn [[_ opts]]
-;     ; (util/log (str "firebase init: " (.-length js/firebase.app)))
-;     [(rf/subscribe [:booted? :firebase])
-;      (rf/subscribe (if (pos? (.-length js/firebase.app))
-;                      [:firestore/on-snapshot opts]
-;                      [:nil]))])
-;   (fn [[initialized snapshot] [_ opts]]
-;     (when initialized
-;       (some-> snapshot
-;               util/normalize-firestore-general))))
-               
+              util/normalize-store-result))))
 
 (rf/reg-sub :header-text
  :<- [:state [:is-personal]]
@@ -236,24 +214,10 @@
                         #"/(\w.*)?(\?.*)?"
                         (str "/" "$1" "$2" k)))))))
 
-(defn imagor-hasher
-  [imagor-key url]
-  nil) ;implement
-
-(rf/reg-sub :href-external-img ; "Like href, but for external images" <- gen by copilot lol
- :<- [:imagor :auth]    ; uses imagor to fetch and optionally mod ext images (avatars, instagram etc)
- (fn [imagor [_ url & transforms]]
-  (let [host (:host imagor)
-        prefix (or (imagor-hasher (:key imagor) url) "unsafe")]
-    (str host "/" prefix "/"
-         (some-> (string/join "/" transforms)
-                 (str "/"))
-         url))))
-
-(rf/reg-sub :imagor
- (fn [db [_ k]]
-  (get-in db [:state :imagor k])))
-
+(rf/reg-sub :href-external-img
+  (fn [_ [_ url & transforms]]
+    (str "/api/integrations/image?url=" (js/encodeURIComponent url)
+         "&transforms=" (js/encodeURIComponent (string/join "/" transforms)))))
 
 (rf/reg-sub :fullscreen/get
  :<- [:state [:fullscreen]]           

@@ -166,8 +166,8 @@ Use this origin for `SUPABASE_PUBLIC_URL`, without the Studio `/project/...` pat
 The browser also needs `SUPABASE_ANON_KEY`; the server needs
 `SUPABASE_SERVICE_KEY`. Never send the service key to the browser.
 
-Verified existing data: 11 posts, 75 comments, 7 site profiles, 24 chat messages,
-3 generic store documents, and zero Supabase Auth accounts. Do not repeat the
+Verified current data: 11 posts, 75 comments, 14 site profiles, 24 chat messages,
+3 archived generic store documents, and 14 imported Supabase Auth accounts. Do not repeat the
 full import just to deploy application code: that command replaces table data.
 
 ### Access changes applied to the live instance
@@ -176,7 +176,7 @@ The seven imported tables have RLS enabled; the new private vote ledger does too
 column-level SELECT access to the public post, comment, chat, and profile fields.
 Email, raw import JSON, vote history, service configuration, roles, and generic
 documents are not public. Anonymous SELECT was verified against the live database:
-11 posts, 75 comments, and 7 profiles remain readable; email, service configuration,
+11 posts, 75 comments, and 14 profiles remain readable; email, service configuration,
 and generic documents are denied. The same grants are included in `schema.sql`.
 No content rows were changed by this access update. Security Advisor reports zero
 errors and zero warnings; its four informational notices are the deliberately
@@ -184,37 +184,82 @@ policy-free private tables (`auth_roles`, `service_configs`, `store_documents`,
 `comment_votes`).
 This follows the grants/RLS separation in the [Supabase RLS guide](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
-### Application bridge
+### Supabase runtime cutover
 
-- Public fallback queries accept only the known public collections, fetch only
-  those tables/columns, and page through results. Private and unknown collections
-  return 403 before database access.
-- Browser reads normalize keyword paths and use explicit public columns with
-  stable pagination. The seed/result argument order and REST header merging are fixed.
-- The compatibility write endpoint is temporarily protected by the existing
-  server administrator Basic authentication (`AUTH_USER` / `AUTH_PASS`). It is
-  **not** the final end-user write API. Missing administrator credentials deny access.
-- Administrator writes upsert only changed rows; they never reset tables.
-  Row removal, derived post-ID writes, and nested post-comment writes are rejected.
-  Multi-row upserts are not a transaction, and concurrent edits to one row still
-  need a dedicated transactional API before enabling end-user writes.
-- Bootstrap submits the complete SQL script in a transaction so PostgreSQL can
-  parse DO blocks correctly.
+Supabase is the only runtime store and authentication provider. Re-frame app-db
+continues to hold transient UI state; persistent rows live in Supabase. Firebase
+JavaScript/Maven dependencies, initialization, settings, events, exporter,
+`.gitmodules`, and the forked `checkouts/re-frame-firebase` gitlink are removed.
+Private recovery files and the offline export/import formats remain available.
 
-### Remaining cutover work
+Public reads share one cache and one Realtime channel per table. Queries derive
+filtered, sorted, and limited results from that cache. INSERT/UPDATE/DELETE events
+change rows in place; writes no longer trigger blanket refreshes. A snapshot runs
+when a subscription joins or rejoins, catches changes missed offline, and replays
+events buffered during paginated loading. Unused queries release their channels.
+Private document caches are cleared on account/linkage changes, and late responses
+from an old owner cannot reinstall them. RLS restricts private rows to the trusted
+`app_metadata.site_user_id` (or native Auth UUID); user metadata is never authority.
 
-Create/confirm Supabase Auth accounts and link existing owners to the imported
-Firebase profile IDs, then verify login in the deployed application. Firebase
-authentication is initialized only when the Firebase provider is selected.
-Chat, comment creation/editing, and voting now use dedicated authenticated
-transactional operations. Blog authoring still uses the administrator compatibility
-bridge. Move service integration credentials behind server endpoints before
-removing their existing browser-side store reads. Strapi content migration remains
-separate. This branch is not a completed production cutover.
+The old administrator Basic-auth write endpoint is removed. Every runtime write
+verifies the bearer session with Auth and derives its actor on the server:
 
-Validation: `lein test tolgraven.supabase-shape-test` and
-`lein run -m shadow.cljs.devtools.cli compile app`.
+| Endpoint | Behavior |
+| --- | --- |
+| `GET/PUT /api/supabase/profile` | Own profile and private vote history/roles; field-scoped edits. |
+| `POST /api/supabase/posts` | Blogger/admin publishing, generated IDs/timestamps/permalinks, owner/admin edits. |
+| `POST /api/supabase/chat` | Server-generated messages by the signed-in author. |
+| `POST/PUT /api/supabase/comments` | Transactional comment/reply creation and owned edits. |
+| `POST /api/supabase/votes` | Atomic vote deltas and karma, preserving imported baselines. |
+| `POST /api/supabase/documents` | Owner-only GPT documents/threads; protected configuration is rejected. |
+| `POST /api/supabase/avatar` | Validate/re-encode an image and upload an owned PNG to Supabase Storage. |
+| `GET /api/integrations/search` | Native Supabase full-text/prefix search of public posts and comments. |
 
+The `user_documents` table is private, RLS-enabled, and published to Realtime.
+Only explicitly owned legacy threads are copied from the archive. The new public
+`avatars` bucket permits public image reads; browser writes remain denied, and
+only the verified server upload endpoint chooses filenames. The endpoint accepts
+images up to 5 MB and 4096 pixels per dimension.
+
+Integration tokens are read from private `service_configs` on the server. Strava
+refreshes tokens there; Intervals and Instagram are proxied. Imported Instagram
+posts remain a fallback when the upstream token/endpoint fails. Imagor signing and
+the Strapi read token stay on the server. Search uses native indexed Supabase rows
+and no longer needs Typesense configuration.
+
+### Validation and remaining deployment work
+
+The additive operations in `resources/supabase/operations.sql` were applied live
+inside a transaction. Publishing, search, document ownership, and RLS checks in
+`test/sql/supabase_cutover_test.sql` passed locally and live with rollback. Live
+public Realtime INSERT/UPDATE/DELETE delivery was verified with one temporary
+profile, which was deleted; stream payloads excluded email, vote history, and raw
+import data. Existing content/profile checksums and all 14 Auth accounts were
+preserved. The Auth import SQL regression suite also passed locally.
+
+Backend checks passed 43 tests / 276 assertions. Client stream checks passed
+6 tests / 27 assertions; the complete browser suite passed 26 tests / 159 assertions.
+Optimized production compilation passed with two existing dependency warnings.
+Use the production profile for release builds:
+
+```sh
+lein with-profile +test test
+lein with-profile +test run -m shadow.cljs.devtools.cli compile supabase-test
+lein with-profile +test run -m shadow.cljs.devtools.cli compile app-test
+python3 scripts/serve-browser-tests.py
+lein with-profile -dev,+prod run -m shadow.cljs.devtools.cli release app
+psql -v ON_ERROR_STOP=1 -f test/sql/supabase_operations_test.sql
+psql -v ON_ERROR_STOP=1 -f test/sql/supabase_cutover_test.sql
+```
+
+This branch has not been deployed. Set the public origin/anon key and server-only
+service key on the application before deployment. Full app-level live mutation
+validation needs access to that server key. Automatic approval review declined an
+extra Auth fixture without explicit fixture approval, so live password login and
+private-stream validation remain pending. No fixture Auth account was created.
+Google/email are enabled on this instance; GitHub/Facebook remain disabled until
+configured in self-hosted Auth. Imported unverified email/password accounts keep
+their original verification state. Strapi content migration remains separate.
 
 ## Supabase login and profile linkage
 
@@ -280,7 +325,8 @@ verified owner. Profile locks use a stable order; comment score locks allow
 concurrent replies while serializing vote changes.
 
 The UI keeps drafts on failed requests, blocks duplicate in-flight submissions,
-refreshes queries/profiles after successful writes, and clears pending state when
+applies public changes from Realtime, fetches private vote/profile details after
+successful writes, and clears pending state when
 accounts change. Chat accepts both imported numeric IDs and new UUID IDs. Comment
 editing compares profile IDs and now opens the existing text in the form.
 

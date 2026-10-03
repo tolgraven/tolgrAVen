@@ -1,10 +1,14 @@
 (ns tolgraven.integration-test
   (:require [cljs.test :refer-macros [deftest is testing async]]
             [re-frame.core :as rf]
+            [re-frame.db :as rfdb]
+            [reagent.ratom :as ratom]
+            [tolgraven.supabase.client :as supabase]
             [reitit.core :as reitit]
             [tolgraven.routes :as routes]
             [tolgraven.loader :as loader]
             [tolgraven.events]
+            [tolgraven.subs]
             [shadow.lazy :as lazy]
             [tolgraven.search.subs :as search]
             ;; Browser tests bundle all module specs so ready-module initialization is exercised.
@@ -166,3 +170,22 @@
       (is (= (str query " next") (:text result)))))
   (is (nil? (search/autocomplete-suggestion "missing" {:highlights [{:snippet "Other text"}]})))
   (is (nil? (search/autocomplete-suggestion "query" {}))))
+
+(deftest active-profile-merges-live-public-fields-with-private-details
+  (let [before @rfdb/app-db
+        public (ratom/atom {:id "u" :data {:id "u" :name "Before" :karma 9}})]
+    (try
+      (rf/clear-subscription-cache!)
+      (swap! rfdb/app-db assoc-in [:state :booted :store] true)
+      (swap! rfdb/app-db assoc-in [:state :active-user]
+             {:id "u" :name "Private snapshot" :karma 1 :roles ["admins"] :comment-votes {:c 1}})
+      (with-redefs [supabase/ensure-query! (fn [_] (ratom/make-reaction #(deref public)))]
+        (let [active (rf/subscribe [:user/active-user])]
+          (is (= 9 (:karma @active)))
+          (is (= ["admins"] (:roles @active)))
+          (reset! public {:id "u" :data {:id "u" :name "After" :karma 10}})
+          (ratom/flush!)
+          (is (= "After" (:name @active)))
+          (is (= 10 (:karma @active)))
+          (is (= {:c 1} (:comment-votes @active)))))
+      (finally (rf/clear-subscription-cache!) (reset! rfdb/app-db before)))))

@@ -249,13 +249,13 @@
 
 
 (deftest public-http-write-is-denied-before-database-access
-  (with-redefs [supabase-api/write-store! (fn [& _] (throw (Exception. "Unauthorized write")))]
+  (with-redefs [platform/request! (fn [& _] (throw (Exception. "Unexpected database access")))]
     (let [handler (ring/ring-handler (ring/router (services/service-routes)))
           response (handler {:request-method :post
                              :uri "/api/supabase/store/write"
                              :headers {"content-type" "application/json"}
                              :body (java.io.ByteArrayInputStream. (.getBytes "{}" "UTF-8"))})]
-      (is (= 401 (:status response))))))
+      (is (nil? response)))))
 
 (deftest profile-updates-preserve-imported-custom-fields
   (let [seed (contract/firebase-export->seed sample-export)

@@ -14,7 +14,8 @@
 (deftest missing-sessions-cannot-invoke-write-rpcs
   (with-redefs [platform/request! (fn [& _] (throw (Exception. "Unexpected database access")))]
     (doseq [operation [operations/post-chat! operations/create-comment!
-                      operations/edit-comment! operations/set-comment-vote!]]
+                      operations/edit-comment! operations/set-comment-vote!
+                      operations/save-post! operations/save-document!]]
       (is (= 401 (:status (auth/response! {} #(operation % {:text "hello"}))))))))
 
 (deftest client-controlled-author-and-protected-fields-are-rejected
@@ -22,6 +23,10 @@
     (doseq [[operation body]
             [[operations/post-chat! {:text "hello" :user "victim"}]
              [operations/post-chat! {:text "hello" :ts 1}]
+             [operations/save-post! {:title "Title" :text "Text" :user "victim"}]
+             [operations/save-post! {:title "Title" :text "Text" :post-id "1"}]
+             [operations/save-document! {:path ["secrets" "auth"] :data {}}]
+             [operations/save-document! {:path ["gpt-threads" "x"] :data []}]
              [operations/create-comment! {:post-id 1 :text "hello" :score 100}]
              [operations/create-comment! {:post-id 1 :text "hello" :path [2]}]
              [operations/edit-comment! {:comment-id "c" :text "hello" :user_id "victim"}]
@@ -73,6 +78,7 @@
                     (swap! calls conj [table options])
                     {:body (case table
                              "site_users" [{:id "legacy-1" :voted {(keyword "[24 105 108]") "up"}}]
+                             "auth_roles" []
                              "comment_votes" (if (zero? (get-in options [:query-params "offset"]))
                                                [{:comment_id "108" :vote 0}] []))})]
       (is (= {"108" 0} (:comment-votes (auth/profile! actor))))
@@ -85,7 +91,10 @@
       (doseq [[method path body] [[:post "/api/supabase/chat" {:text "message"}]
                                  [:post "/api/supabase/comments" {:post-id 1 :text "comment"}]
                                  [:put "/api/supabase/comments" {:comment-id "c" :text "edit"}]
-                                 [:post "/api/supabase/votes" {:comment-id "c" :vote "up"}]]]
+                                 [:post "/api/supabase/votes" {:comment-id "c" :vote "up"}]
+                                 [:post "/api/supabase/posts" {:title "T" :text "Body"}]
+                                 [:post "/api/supabase/documents" {:path ["gpt-threads" "thread"] :data {}}]
+                                 [:post "/api/gpt" {:messages ["Hello"]}]]]
         (is (= 401 (:status (handler (-> (mock/request method path) (mock/json-body body))))))))
     (let [seen (atom nil)]
       (with-redefs [auth/current-user! (fn [request]
@@ -105,3 +114,13 @@
                                          (mock/header "authorization" "Bearer verified")
                                          (mock/json-body {:text "message" :user "victim"}))))))
         (is (nil? @seen))))))
+
+(deftest private-documents-and-publishing-use-the-verified-profile
+  (let [calls (atom [])]
+    (with-redefs [auth/ensure-profile! (fn [user] (is (= actor user)) "legacy-1")
+                  platform/request! (fn [method path opts] (swap! calls conj [method path opts]) {:body {}})]
+      (operations/save-document! actor {:path ["gpt-threads" "thread"] :data {:user "victim" :messages []} :merge-fields [:messages]})
+      (operations/save-post! actor {:title "Title" :text "Body"})
+      (is (= {:p_actor "legacy-1" :p_collection "gpt-threads" :p_doc_id "thread" :p_data {:messages []} :p_merge true}
+             (get-in @calls [0 2 :form-params])))
+      (is (= "legacy-1" (get-in @calls [1 2 :form-params :p_actor]))))))

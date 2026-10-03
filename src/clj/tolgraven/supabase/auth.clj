@@ -62,14 +62,26 @@
                (reduce (fn [result row] (assoc result (:comment_id row) (:vote row))) votes rows))
         votes))))
 
+(defn ensure-profile! [user]
+  (let [id (profile-id user)]
+    (platform/request! :post "site_users"
+      {:headers {"Prefer" "resolution=ignore-duplicates,return=minimal"}
+       :content-type :json :query-params {"on_conflict" "id"}
+       :form-params {:id id :name (or (get-in user [:user_metadata :name])
+                                     (get-in user [:user_metadata :full_name]) "")
+                     :avatar (get-in user [:user_metadata :avatar_url]) :email (:email user)}})
+    id))
+
 (defn profile! [user]
-  (let [id (profile-id user)
+  (let [id (ensure-profile! user)
         row (first (:body (platform/request! :get "site_users"
                            {:query-params {"id" (str "eq." id) "select" "*" "limit" 1}})))]
     (assoc (if row
              (get-in (contract/seed->contract {:users [row]}) ["users" id])
              {:id id :name "" :avatar nil :bg-color nil :comment-count 0 :karma 0})
-           :comment-votes (comment-votes! id (:voted row)))))
+           :comment-votes (comment-votes! id (:voted row))
+           :roles (mapv :role (:body (platform/request! :get "auth_roles"
+                                    {:query-params {"user_id" (str "eq." id) "select" "role"}}))))))
 
 (def profile-fields {:name :name :avatar :avatar :bg-color :bg_color})
 

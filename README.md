@@ -10,11 +10,9 @@ You will need [Leiningen][1] 2.0 or above installed.
 
 ## Setup and development
 
-Use Java 21 or newer, Leiningen, and Node.js 22. Initialize the pinned Firebase
-checkout before building, then install the lockfile and build CSS:
+Use Java 21 or newer, Leiningen, and Node.js 22. Install the lockfile and build CSS:
 
 ```sh
-git submodule update --init --recursive
 npm ci
 npm run build
 lein repl
@@ -25,16 +23,24 @@ second terminal to watch CSS. In the Clojure REPL, `(cljs-repl)` selects the
 `:app-dev` browser runtime. `(restart-handler)` reloads the Ring handler after
 reloading changed backend namespaces.
 
+Set `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY` and server-only
+`SUPABASE_SERVICE_KEY` in the application environment. Apply the schema and native
+operations before starting; see [Supabase provisioning](doc/supabase-provisioning.md).
+Firebase is no longer a runtime or build dependency. Local migration exports and
+credentials remain ignored and are not needed to run the site.
+
 ## Validation
 
 ```sh
-lein test
+lein with-profile +test test
+lein with-profile +test run -m shadow.cljs.devtools.cli compile supabase-test
 lein with-profile +test run -m shadow.cljs.devtools.cli compile app-test
-python3 -m http.server 4002 --bind 127.0.0.1 --directory resources/public/js/tests
+python3 scripts/serve-browser-tests.py
 ```
 
 Open http://localhost:4002 to run the browser tests. They cover the split route
-tree, asynchronous navigation, module initialization, and search completions.
+tree, asynchronous navigation, module initialization, search completions, and
+Supabase cache/stream behavior. The server also provides the image fixtures.
 After recompiling, use a hard reload to avoid a cached test bundle.
 
 Compile production JavaScript without replacing a running development build:

@@ -70,3 +70,23 @@
     (rpc! "tolgraven_set_comment_vote"
           {:p_actor (auth/profile-id user) :p_comment_id comment-id :p_vote vote
            :p_legacy_vote (get (:comment-votes (auth/profile! user)) comment-id 0)})))
+
+
+(defn save-post! [user data]
+  (fields! data [:title :text] [:post-id :tags])
+  (when-not (or (nil? (:post-id data)) (pos-int? (:post-id data)))
+    (fail! 400 "Invalid post ID"))
+  (rpc! "tolgraven_save_post"
+        {:p_actor (auth/ensure-profile! user) :p_post_id (:post-id data)
+         :p_title (text! (:title data) 200) :p_text (text! (:text data) 200000)
+         :p_tags (when (some? (:tags data)) (text! (:tags data) 2000))}))
+
+(defn save-document! [user {:keys [path data merge-fields] :as request}]
+  (fields! request [:path :data] [:merge-fields])
+  (when-not (and (= 2 (count path)) (string? (first path)) (#{"gpt" "gpt-threads"} (first path))
+                 (map? data) (or (nil? merge-fields) (sequential? merge-fields)))
+    (fail! 400 "Invalid private document"))
+  (rpc! "tolgraven_save_document"
+        {:p_actor (auth/ensure-profile! user) :p_collection (name (first path))
+         :p_doc_id (id! (str (second path))) :p_data (dissoc data :user)
+         :p_merge (some? merge-fields)}))

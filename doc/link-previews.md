@@ -45,7 +45,7 @@ embedding through their own frame policy; the direct link remains available.
 
 ## Reproduce the isolated browser fixture
 
-The fixture renders real components and styles without initializing Firebase.
+The fixture renders real components and styles without initializing backend services.
 Serve from a loopback address only. It uses `localhost` and `127.0.0.1` on the same
 port as distinct origins for the iframe and navigation target.
 

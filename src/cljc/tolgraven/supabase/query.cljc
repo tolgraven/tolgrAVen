@@ -4,6 +4,8 @@
 (def ^:private direct-read-collections
   #{"blog-comments" "blog-post-ids" "blog-posts" "chat" "users"})
 
+(def ^:private user-document-collections #{"gpt" "gpt-threads"})
+
 (def ^:private private-collections
   #{"auth" "imagor" "instagram" "secrets" "strapi" "strava" "typesense"})
 
@@ -25,7 +27,8 @@
   {"site_users" "id,seq_id,name,avatar,bg_color,comment_count,karma"
    "blog_posts" "doc_id,id,permalink,user_id,title,text,tags,score,ts"
    "blog_comments" "id,seq_id,parent_post,parent_comment,user_id,title,text,score,path,ts"
-   "chat_messages" "message_id,ts,user_id,text"})
+   "chat_messages" "message_id,ts,user_id,text"
+   "user_documents" "owner_id,collection,doc_id,data,updated_at"})
 
 (defn- parse-long-safe [value]
   (cond
@@ -43,8 +46,14 @@
   (path-part (or (first path-document)
                  (first path-collection))))
 
-(defn direct-read-query? [query-map]
+(defn public-read-query? [query-map]
   (contains? direct-read-collections (path-collection-name query-map)))
+
+(defn user-document-query? [query-map]
+  (contains? user-document-collections (path-collection-name query-map)))
+
+(defn direct-read-query? [query-map]
+  (or (public-read-query? query-map) (user-document-query? query-map)))
 
 (defn private-query? [query-map]
   (contains? private-collections (path-collection-name query-map)))
@@ -87,6 +96,11 @@
       [(if path-document
          (entry :users "site_users" [[:id "eq" (str doc-id)]])
          (entry :users "site_users"))]
+
+      (contains? user-document-collections collection)
+      [(entry :store_documents "user_documents"
+              (cond-> [[:collection "eq" collection]]
+                path-document (conj [:doc_id "eq" (str doc-id)])))]
 
       (= collection "auth")
       [(entry :roles "auth_roles")]

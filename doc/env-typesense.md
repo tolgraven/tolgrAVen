@@ -1,3 +1,6 @@
+> Historical setup: site search now uses Supabase full-text/prefix indexes.
+> The application no longer reads Typesense keys in the browser.
+
 # TYPESENSE
 ## env
     
