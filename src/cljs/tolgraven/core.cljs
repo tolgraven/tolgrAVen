@@ -69,8 +69,8 @@
    [l/<assets> {:css (some-> spec :assets :css)
                 :js  (some-> spec :assets :js)}]
 
-   [service-status/<notices>]
    [ui/safe :header [common/header @(rf/subscribe [:content [:header]])]]
+   [service-status/<notices>]
    [:a {:name "linktotop" :id "linktotop"}]
    
    [ui/zoom-to-modal :fullscreen]

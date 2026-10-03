@@ -22,7 +22,8 @@
 
 (defn <notices> []
   [:aside {:aria-label "Service notifications" :aria-live "polite"
-           :style {:position "sticky" :top 0 :z-index 10000}}
+           :style {:position "sticky" :top "var(--header-height-current, 5rem)" :z-index 90
+                   :max-height "40vh" :overflow-y "auto"}}
    (for [[id {:keys [title message retry!]}] @*failures]
      ^{:key (pr-str id)}
      [:div {:role "alert" :style {:padding "1rem" :background "#392a24" :color "#fff"}}
