@@ -62,3 +62,13 @@ Copyright © 2020-2026 Joen Tolgraven
 
 <img width="1033" height="1014" alt="image" src="https://github.com/user-attachments/assets/df07bdb0-0af1-4dab-a920-652882f08323" />
 
+
+## PR staging deployments
+
+The GitHub workflow validates CSS and then forwards PR opening, reopening, and
+commit updates to Coolify's staging GitHub webhook. Set the repository Actions
+secret `COOLIFY_WEBHOOK_SECRET` to the staging application's **GitHub Webhook
+Secret** under Coolify **Configuration → Webhooks**. Enable **Preview Deployments**
+for that application, with repository `tolgraven/tolgrAVen` and base branch `master`.
+The workflow signs the original PR payload and checks that Coolify queues it.
+Repository PRs deploy automatically; fork PRs run validation without the staging job.
