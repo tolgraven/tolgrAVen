@@ -6,6 +6,8 @@
     [reagent.core :as r]
     [reagent.dom.client :as rdomc]
     [tolgraven.ajax :as ajax]
+    [tolgraven.content.client :as content]
+    [tolgraven.service-status :as service-status]
     [tolgraven.events]
     [tolgraven.loader :as l]
     [tolgraven.macros :as m]
@@ -68,6 +70,7 @@
                 :js  (some-> spec :assets :js)}]
 
    [ui/safe :header [common/header @(rf/subscribe [:content [:header]])]]
+   [service-status/<notices>]
    [:a {:name "linktotop" :id "linktotop"}]
    
    [ui/zoom-to-modal :fullscreen]
@@ -137,9 +140,26 @@
   (rf/dispatch-sync [:store/init])
   (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
   (ajax/load-interceptors!)
-  (mount-components)
-  (js/setTimeout #(rf/dispatch [:init/init]) ; listeners and stuff that might depend on being mounted
-                 16))
+  (letfn [(start! []
+            (-> (content/bootstrap!)
+                (.then (fn []
+                         (.removeAttribute (.getElementById js/document "app") "role")
+                         (mount-components)
+                         (js/setTimeout #(rf/dispatch [:init/init]) 16)))
+                (.catch (fn [_]
+                          ;; Keep the server skeleton visible until a complete
+                          ;; content snapshot is ready, with a usable retry.
+                          (let [element (.getElementById js/document "app")
+                                message (.createElement js/document "p")
+                                button (.createElement js/document "button")]
+                            (set! (.-textContent element) "")
+                            (.setAttribute element "role" "alert")
+                            (set! (.-textContent message) "Strapi content could not be loaded. Check your connection and retry. The failure has been recorded in the webpage log.")
+                            (set! (.-textContent button) "Retry")
+                            (set! (.-onclick button) start!)
+                            (.appendChild element message)
+                            (.appendChild element button))))))]
+    (start!)))
 
 (defn ^:export init!  []
   (defonce _init_ (init))) ;; why still need for thisi don't get it init! is now being called each reload?

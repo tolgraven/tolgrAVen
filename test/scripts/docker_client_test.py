@@ -52,5 +52,30 @@ class DeployScopeTest(unittest.TestCase):
                 m.require_tolgraven_checkout()
 
 
+class CleanupSafetyTest(unittest.TestCase):
+    def image(self, identity, age, *tags):
+        return {'Id': identity, 'Created': age, 'RepoTags': list(tags)}
+
+    def test_preserves_containers_rollback_prefab_cms_and_unrelated_tags(self):
+        repo = m.REGISTRY + '/tolgraven/'
+        images = [self.image('latest', '9', repo+'site:new'),
+                  self.image('previous', '8', repo+'site:previous'),
+                  self.image('old', '7', repo+'site:old', 'another-project:saved'),
+                  self.image('used', '1', repo+'site:used'),
+                  self.image('prefab', '5', repo+'builder:current'),
+                  self.image('old-prefab', '4', 'tolgraven-builder:local'),
+                  self.image('cms', '5', repo+'strapi:v2'),
+                  self.image('old-cms', '3', repo+'strapi:v1')]
+        self.assertEqual(set(m.image_cleanup_plan(images, {'used'}, 'prefab', 'latest')),
+                         {repo+'site:old', 'tolgraven-builder:local', repo+'strapi:v1'})
+
+    def test_missing_current_prefab_retains_builders_and_explicit_current(self):
+        repo = m.REGISTRY + '/tolgraven/'
+        images = [self.image('one', '9', repo+'site:one'), self.image('two', '8', repo+'site:two'),
+                  self.image('current', '1', repo+'site:current'),
+                  self.image('builder', '1', repo+'builder:only')]
+        self.assertEqual([], m.image_cleanup_plan(images, set(), current_id='current'))
+
+
 if __name__ == '__main__':
     unittest.main()

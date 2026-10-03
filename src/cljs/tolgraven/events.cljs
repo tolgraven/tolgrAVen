@@ -18,6 +18,7 @@
     [tolgraven.loader :as l]
     [tolgraven.scroll]
     [tolgraven.supabase.client :as supabase-client]
+    [tolgraven.service-status :as service-status]
     [tolgraven.doc-fx]
     [tolgraven.effects]
     [tolgraven.cofx :as cofx]
@@ -354,13 +355,16 @@
 
 (rf/reg-event-fx :supabase/fetch-settings
   (fn [_ _]
-    {:dispatch [:http/get {:uri "/api/supabase/settings"}
+    {:dispatch [:http/get {:uri "/api/supabase/settings" :timeout 15000}
                 [:supabase/init]
                 [:supabase/error]]}))
 
 (rf/reg-event-fx :supabase/error
-  (fn [_ [_ error]]
-    {:dispatch [:diag/new :error "Supabase init failed" error]}))
+  (fn [_ [_ _error]]
+    (service-status/fail! :supabase-init "Supabase could not initialize"
+                          "Account and database content are unavailable. Check your connection and retry."
+                          #(rf/dispatch [:supabase/fetch-settings]))
+    {}))
 
 (rf/reg-fx :supabase/request
   (fn [{:keys [method uri data on-success on-error]}]
@@ -402,6 +406,7 @@
       (supabase-client/init! settings
                              #(rf/dispatch [:supabase/profile %])
                              #(rf/dispatch [:supabase/auth-error %]))
+      (service-status/recover! :supabase-init)
       {:db (assoc-in db [:options :supabase] settings)
        :dispatch [:booted :store]}
       (catch :default error

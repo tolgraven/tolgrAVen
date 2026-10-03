@@ -14,6 +14,7 @@
     [tolgraven.middleware.formats :as formats]
     [tolgraven.middleware.exception :as exception]
     [tolgraven.services.gpt :as gpt]
+    [tolgraven.content.service :as content]
     [tolgraven.supabase.api :as supabase-api]
     [tolgraven.supabase.auth :as supabase-auth]
     [tolgraven.supabase.operations :as supabase-operations]
@@ -101,6 +102,11 @@
                 (timbre/debug "reply is " reply)
                 {:status 200
                  :body reply}))}}]
+
+   ["/content/bootstrap" {:get (fn [_] (content/response nil))}]
+   ["/content" {:get (fn [request]
+                       (content/response (some-> (get-in request [:query-params "keys"])
+                                                  (string/split #","))))}]
 
    ["/integrations/settings" {:get (fn [_] (integrations/response! integrations/settings!))}]
    ["/integrations/strava" {:get (fn [request] (integrations/response! #(integrations/strava! (get-in request [:query-params "path"]))))}]

@@ -1,6 +1,7 @@
 (ns tolgraven.loader
   (:require
    [re-frame.core :as rf]
+   [tolgraven.content.client :as content]
    [reagent.core :as r]
    [shadow.lazy :as lazy])
   (:require-macros
@@ -42,10 +43,12 @@
                                            (js/Promise.resolve @loadable)
                                            (js/Promise.resolve (lazy/load loadable)))
                                          (.then (fn [spec]
-                                                  (rf/dispatch [:scope/init module args])
-                                                  (when-let [init (:init spec)]
-                                                    (apply init args))
-                                                  spec))
+                                                  (-> (content/ensure! (:content spec))
+                                                      (.then (fn []
+                                                               (rf/dispatch [:scope/init module args])
+                                                               (when-let [init (:init spec)]
+                                                                 (apply init args))
+                                                               spec)))))
                                          (.catch (fn [error]
                                                    (swap! *loads dissoc module)
                                                    (throw error))))]

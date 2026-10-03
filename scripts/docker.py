@@ -97,6 +97,53 @@ def publish(image):
     print(f'Published {image} through bux to Hetzner S3.', flush=True)
 
 
+def image_kind(reference):
+    repository = reference.rsplit(':', 1)[0]
+    for registry in (REGISTRY, SERVER_REGISTRY):
+        for kind in ('site', 'strapi', 'builder'):
+            if repository == f'{registry}/tolgraven/{kind}':
+                return kind
+    return {'tolgraven-builder': 'builder', 'tolgraven-fallback-check': 'legacy'}.get(repository)
+
+
+def image_cleanup_plan(images, in_use, prefab_id=None, current_id=None):
+    """Remove managed tags only; retain rollback, CMS, prefab and container images."""
+    protected = set(in_use) | {prefab_id, current_id}
+    newest = sorted(images, key=lambda image: image['Created'], reverse=True)
+    for kind, count in (('site', 2), ('strapi', 1)):
+        candidates = [image['Id'] for image in newest
+                      if any(image_kind(tag) == kind for tag in (image.get('RepoTags') or []))]
+        protected.update(candidates[:count])
+    if prefab_id is None:
+        # Without a known replacement, never discard a dependency prefab.
+        protected.update(image['Id'] for image in images
+                         if any(image_kind(tag) == 'builder' for tag in (image.get('RepoTags') or [])))
+    return [tag for image in images if image['Id'] not in protected
+            for tag in (image.get('RepoTags') or []) if image_kind(tag)]
+
+
+def prune_images(current=None):
+    ids = list(dict.fromkeys(run('docker', 'image', 'ls', '--quiet', '--no-trunc', capture=True).split()))
+    if not ids:
+        return
+    images = json.loads(run('docker', 'image', 'inspect', *ids, capture=True))
+    containers = run('docker', 'ps', '-aq', capture=True).split()
+    in_use = set(run('docker', 'inspect', '--format', '{{.Image}}', *containers,
+                     capture=True).split()) if containers else set()
+    if current is None:
+        saved = ROOT / '.local-wip/docker/last-image'
+        current = saved.read_text().strip() if saved.exists() else None
+    by_tag = {tag: image['Id'] for image in images for tag in (image.get('RepoTags') or [])}
+    obsolete = image_cleanup_plan(images, in_use, by_tag.get(builder_tag()), by_tag.get(current))
+    if obsolete:
+        # No --force: Docker also protects a container created after our snapshot.
+        result = subprocess.run(['docker', 'image', 'rm', *obsolete], cwd=ROOT)
+        if result.returncode:
+            print('Some image tags were retained; Docker may have found a new container reference.', flush=True)
+    else:
+        print('No obsolete local tolgraven image tags.', flush=True)
+
+
 def require_tolgraven_checkout():
     # A fork retains this Makefile, but must never deploy over tolgraven's staging app.
     origin = run('git', 'remote', 'get-url', 'origin', capture=True).strip()
@@ -108,18 +155,24 @@ def require_tolgraven_checkout():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['registry', 'prefab', 'build', 'push', 'deploy'])
+    parser.add_argument('action', choices=['registry', 'prefab', 'build', 'push', 'deploy', 'clean'])
     args = parser.parse_args()
     if args.action == 'deploy':
         require_tolgraven_checkout()
     if args.action == 'registry':
         registry_check()
+    elif args.action == 'clean':
+        prune_images()
+        run('docker', 'image', 'prune', '--force')
+        run('docker', 'buildx', 'prune', '--force', '--max-used-space', '4GB')
     elif args.action == 'prefab':
         print(prefab(publish=True))
+        prune_images()
     else:
         image = build()
         if args.action in ('push', 'deploy'):
             publish(image)
+        prune_images(current=image)
         if args.action == 'deploy':
             host = os.environ.get('COOLIFY_SSH_HOST', 'bux')
             preview = os.environ.get('COOLIFY_PR', '0')

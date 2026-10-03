@@ -2,6 +2,8 @@
   (:require [cljs.test :refer-macros [deftest is async]]
             [ajax.core :as ajax]
             [reagent.ratom :as ratom]
+            [re-frame.core :as rf]
+            [tolgraven.service-status :as status]
             [tolgraven.supabase.client :as client]
             [tolgraven.supabase.realtime :as realtime]))
 
@@ -215,3 +217,69 @@
                    (is (empty? @responses))))
           (.catch (fn [error] (is false (str error))))
           (.finally (fn [] (set! ajax/GET original-get) (done)))))))
+
+(deftest stream-failure-reports-and-still-loads-http-content
+  (async done
+    (let [mock (mock-client) failures @status/*failures]
+      (reset-client! mock)
+      (reset! status/*failures {})
+      (reset! (:rows mock) {"site_users" [{:id "u" :name "Available over HTTP"}]})
+      (let [all (client/ensure-query! {:path-collection [:users]})]
+        (status! mock "store-site_users" "CHANNEL_ERROR")
+        (-> (tick!)
+            (.then (fn []
+                     (is (contains? @status/*failures [:supabase-stream "site_users"]))
+                     (is (= "Available over HTTP" (get-in @all [:docs 0 :data :name])))
+                     (status! mock "store-site_users" "SUBSCRIBED")
+                     (tick!)))
+            (.then (fn [] (is (empty? @status/*failures))))
+            (.catch #(is false (str %)))
+            (.finally (fn [] (ratom/dispose! all) (reset! status/*failures failures) (done))))))))
+
+(deftest snapshot-error-notifies-retains-data-and-clears-after-recovery
+  (async done
+    (let [mock (mock-client) failures @status/*failures]
+      (reset-client! mock)
+      (reset! status/*failures {})
+      (reset! (:rows mock) {"site_users" [{:id "u" :name "Last good value"}]})
+      (let [all (client/ensure-query! {:path-collection [:users]})]
+        (status! mock "store-site_users" "SUBSCRIBED")
+        (-> (tick!)
+            (.then (fn []
+                     (reset! (:deferred mock) (js/Promise.resolve #js {:error #js {:message "private upstream details"}}))
+                     (status! mock "store-site_users" "SUBSCRIBED")
+                     (tick!)))
+            (.then (fn []
+                     (is (contains? @status/*failures [:supabase-load "site_users"]))
+                     (is (= "Last good value" (get-in @all [:docs 0 :data :name])))
+                     (reset! (:deferred mock) nil)
+                     (status! mock "store-site_users" "SUBSCRIBED")
+                     (tick!)))
+            (.then (fn [] (is (empty? @status/*failures))))
+            (.catch #(is false (str %)))
+            (.finally (fn [] (ratom/dispose! all) (reset! status/*failures failures) (done))))))))
+
+(deftest stalled-service-request-rejects-within-deadline
+  (async done
+    (-> (status/within! (js/Promise. (fn [_ _])) 10)
+        (.then (fn [_] (is false "A hung request must reject")))
+        (.catch (fn [error] (is (= "Service request timed out" (.-message error)))))
+        (.finally done))))
+
+(deftest auth-session-initialization-error-is-visible
+  (async done
+    (let [mock (mock-client) failures @status/*failures
+          before (.-supabase js/globalThis)]
+      (reset-client! mock)
+      (reset! status/*failures {})
+      (aset (.-auth (:sdk mock)) "getSession"
+            #(js/Promise.resolve #js {:error #js {:message "Do not expose raw details"}}))
+      (set! (.-supabase js/globalThis) #js {:createClient (fn [& _] (:sdk mock))})
+      (client/init! {:url "https://example.invalid" :anon-key "public"} (fn [_]) (fn [_]))
+      (-> (tick!)
+          (.then (fn []
+                   (is (= "Supabase session unavailable" (get-in @status/*failures [:supabase-session :title])))
+                   (is (not (.includes (pr-str @status/*failures) "Do not expose raw details")))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (set! (.-supabase js/globalThis) before)
+                      (reset! status/*failures failures) (done)))))))

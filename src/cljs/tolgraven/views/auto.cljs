@@ -1,5 +1,7 @@
 (ns tolgraven.views.auto
   (:require [re-frame.core :as rf]
+            [tolgraven.content.client :as content-client]
+            [tolgraven.content.contract :as content-contract]
             [tolgraven.components.home :as home]
             [tolgraven.components.media :as media]
             [tolgraven.components.oembed :as oembed]
@@ -31,6 +33,7 @@
                  :dep :site
                  :init [:state [:gallery :loaded] true]}
    :soundcloud  {:<comp> oembed/soundcloud
+                 :content-deps [:soundcloud]
                  :dep :site
                  :init [:booted :soundcloud]}
    :strava      {:module :strava
@@ -82,18 +85,21 @@
 
 (defn get-component "Get component, and its init event runner, if any."
   [id section-map]
-  (let [{:keys [module <comp> <loading> content args dep init]} section-map
+  (let [{:keys [module <comp> <loading> content content-deps args dep init]} section-map
         view (if module
                [l/<> {:module module :view (or <comp> :view)
                       :defer? true :<loading> <loading>}]
                [<comp>])]
     [:<>
+     [content-client/<prefetch> (or content-deps (if content [content] (get content-contract/module-content module [])))]
      (when (or init module)
        [run-init id init dep])
-     (cond-> view
-       content (conj @(rf/subscribe [:content [content]]))
-       args    (conj args)
-       true    vec)]))
+     (if (and content (nil? @(rf/subscribe [:content [content]])))
+       [:div.loading-container [:div.loading-spinner]]
+       (cond-> view
+         content (conj @(rf/subscribe [:content [content]]))
+         args    (conj args)
+         true    vec))]))
 
 (defn get-section "Get a section, from either a vector (with args) or a straight keyword"
   [section]
