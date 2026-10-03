@@ -490,3 +490,24 @@ can otherwise build a preview of the same pull request.
 
 On bux, `/swapfile` supplies 4 GiB of swap and is persisted in `/etc/fstab`.
 Swap absorbs brief peaks; it does not replace JVM and container memory bounds.
+
+### One production and one staging runtime
+
+Coolify production previews are disabled. Both site applications use consistent
+container names, which stop the current container before its replacement starts.
+Build concurrency on bux is limited to one.
+
+Different pull requests otherwise create independent staging previews. The
+`tolgraven-runtime-policy` systemd service on bux runs
+`scripts/coolify-site-runtime-policy.py` every two seconds to stop superseded
+site runtimes and disable their Docker restart policies. It keeps the newest
+created production and staging containers and stops any production previews.
+Its scope is restricted to the two application UUIDs in the script; Supabase,
+other applications and build helpers are excluded. The guard can take up to two
+seconds to detect a different PR preview, plus its shutdown grace period.
+
+Installed paths are `/usr/local/lib/tolgraven/coolify-site-runtime-policy.py`
+and `/etc/systemd/system/tolgraven-runtime-policy.service`. Check with
+`systemctl status tolgraven-runtime-policy` and
+`journalctl -u tolgraven-runtime-policy`. Update the UUIDs if the Coolify
+applications are recreated.
