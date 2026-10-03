@@ -103,3 +103,17 @@ clears its notice. Raw upstream error bodies and credentials are never included.
 The browser regression suite covers 38 tests / 207 assertions, including visible
 notices and retry recovery. Live CV/blog rendering and the previous deployment's
 single-runtime/configuration cleanup were verified after browser access recovered.
+
+
+## Local Docker cleanup
+
+Successful `make docker-build`, `make docker-push`, `make docker` and prefab
+publishing prune obsolete local tolgraven image tags automatically. Keep the
+latest two application images, the newest CMS image, the current dependency
+prefab, the last explicitly built image and every image referenced by a running
+or stopped container. Unrelated project tags are not removed. Cleanup never
+forces deletion and does not remove volumes or S3 registry images.
+
+`make docker-clean` also removes dangling images and asks BuildKit to reduce
+unused build cache toward 4 GB, retaining active cache. Automatic build cleanup
+keeps the build cache intact so subsequent local builds remain fast.
