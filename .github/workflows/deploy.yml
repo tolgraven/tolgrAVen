@@ -28,7 +28,8 @@ jobs:
     needs: validate-css
     runs-on: ubuntu-latest
 
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    # Legacy CapRover is opt-in; its old Firebase-only runtime is not the Coolify target.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.CAPROVER_DEPLOY_ENABLED == 'true'
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

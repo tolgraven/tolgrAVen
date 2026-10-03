@@ -122,7 +122,7 @@ def main():
             publish(image)
         if args.action == 'deploy':
             host = os.environ.get('COOLIFY_SSH_HOST', 'bux')
-            preview = os.environ.get('COOLIFY_PR', '45')
+            preview = os.environ.get('COOLIFY_PR', '0')
             # Bux reaches the same repository through its private loopback endpoint.
             server_image = f'{SERVER_REGISTRY}/tolgraven/site:{image.rsplit(":", 1)[1]}'
             command = shlex.join(['python3', '/usr/local/lib/tolgraven/deploy-image.py', server_image, '--pr', preview])

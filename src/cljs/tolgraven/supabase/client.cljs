@@ -154,23 +154,27 @@
 
 (defn authenticated-request! [method uri data on-success on-error]
   (if-let [client @*client]
-    (-> (call-method (gobj/get client "auth") "getSession")
-        (.then (fn [result]
-                 (if-let [token (some-> result (gobj/get "data") (gobj/get "session") (gobj/get "access_token"))]
-                   (let [user-id (session-user-id (some-> result (gobj/get "data") (gobj/get "session")))
-                         current? #(= user-id (session-user-id @*session))]
-                     (when (and (identical? client @*client) (current?))
-                       ((case method :get ajax/GET :put ajax/PUT :post ajax/POST)
-                      uri {:params (when-not (instance? js/FormData data) data)
-                           :body (when (instance? js/FormData data) data)
-                           :headers {"Authorization" (str "Bearer " token)}
-                           :timeout 60000
-                           :format (when-not (instance? js/FormData data) (ajax/json-request-format))
-                           :response-format (ajax/json-response-format {:keywords? true})
-                           :handler #(when (current?) (on-success %))
-                           :error-handler #(when (current?) (on-error %))})))
-                   (on-error {:message "Sign in to continue"}))))
-        (.catch #(on-error {:message (.-message %)})))
+    (let [owner (session-key @*session)
+          current? #(and (identical? client @*client)
+                         (= owner (session-key @*session)))
+          fail! #(when (current?) (on-error %))]
+      (-> (call-method (gobj/get client "auth") "getSession")
+          (.then (fn [result]
+                   (let [session (some-> result (gobj/get "data") (gobj/get "session"))
+                         token (some-> session (gobj/get "access_token"))]
+                     (when (and (current?) (= owner (session-key session)))
+                       (if token
+                         ((case method :get ajax/GET :put ajax/PUT :post ajax/POST)
+                          uri {:params (when-not (instance? js/FormData data) data)
+                               :body (when (instance? js/FormData data) data)
+                               :headers {"Authorization" (str "Bearer " token)}
+                               :timeout 60000
+                               :format (when-not (instance? js/FormData data) (ajax/json-request-format))
+                               :response-format (ajax/json-response-format {:keywords? true})
+                               :handler #(when (current?) (on-success %))
+                               :error-handler fail!})
+                         (fail! {:message "Sign in to continue"}))))))
+          (.catch #(fail! {:message (.-message %)}))))
     (on-error {:message "Supabase is not initialized"})))
 
 (defn sign-in! [method email password on-error]

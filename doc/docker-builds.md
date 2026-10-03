@@ -4,7 +4,7 @@ Run commands in the migration worktree (or any checkout containing this setup).
 Bux and the local Mac use ARM64; the default platform is `linux/arm64`.
 
 ```sh
-make docker           # build locally, push changed layers to S3, deploy PR 45
+make docker           # build locally, push changed layers to S3, deploy the normal staging app
 make docker-build     # build only
 make docker-push      # build and publish, leave the live app alone
 make docker-prefab    # build/publish the reusable tools and dependencies
@@ -97,7 +97,7 @@ through SSH. The helper is scoped to staging UUID
    A terminal failure restores the newest previous staging runtime instead.
 
 Set `COOLIFY_PR=0` for the normal staging app or another existing preview number
-for a different preview. Default is PR 45. `COOLIFY_SSH_HOST` can select another
+for a different preview. Default is the normal staging app (`0`), so merged previews are never resurrected. `COOLIFY_SSH_HOST` can select another
 SSH alias for bux; it must still reach the same server. The helper deliberately
 hard-codes the staging UUID and image repository to prevent accidental production
 operations. This replacement causes a brief staging interruption.

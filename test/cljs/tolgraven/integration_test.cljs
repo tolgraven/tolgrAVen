@@ -15,6 +15,7 @@
             [tolgraven.search.subs :as search]
             ;; Browser tests bundle all module specs so ready-module initialization is exercised.
             [tolgraven.blog.module]
+            [tolgraven.blog.views :as blog-views]
             [tolgraven.link-preview.module]
             [tolgraven.cv.module]
             [tolgraven.docs.module]
@@ -245,3 +246,12 @@
       (finally
         (rf/clear-subscription-cache!)
         (reset! rfdb/app-db before)))))
+
+(deftest active-vote-remains-clickable-unless-write-is-pending
+  (let [pending (ratom/atom false)]
+    (with-redefs [rf/subscribe (fn
+                                ([[event]] (if (= :blog/vote event) (ratom/atom :up) pending))
+                                ([_ _] pending))]
+      (is (false? (:disabled (second (blog-views/vote-btn "author" "voter" [1 "c"] :up)))))
+      (reset! pending true)
+      (is (true? (:disabled (second (blog-views/vote-btn "author" "voter" [1 "c"] :up))))))))

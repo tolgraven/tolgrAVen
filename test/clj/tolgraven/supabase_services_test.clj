@@ -130,3 +130,27 @@
                :body {:error "Supabase browser configuration is missing"
                       :missing ["SUPABASE_PUBLIC_URL" "SUPABASE_ANON_KEY"]}}
               (api/settings-response))))))
+
+(deftest rest-requests-have-bounded-overridable-timeouts
+  (with-redefs [platform/service-key (constantly "private")
+                platform/rest-url (constantly "https://database.test/rest/v1/table")
+                http/request (fn [opts] {:status 200 :body opts})]
+    (let [defaults (:body (platform/request! :get "table" {}))
+          overridden (:body (platform/request! :get "table" {:socket-timeout 9000}))]
+      (is (= 3000 (:conn-timeout defaults)))
+      (is (= 15000 (:socket-timeout defaults)))
+      (is (= 9000 (:socket-timeout overridden))))))
+
+(deftest image-signing-requires-allowlisted-sources-and-protected-loader
+  (let [settings {:host "https://images.test" :key "private"
+                  :allowed-source-hosts ["media.test"] :loader-network-protected true}]
+    (with-redefs [integrations/config! (constantly settings)]
+      (is (= 302 (:status (integrations/image-response! "https://media.test/photo.jpg" "fit-in/640x480"))))
+      (doseq [url ["http://media.test/a" "https://127.0.0.1/a" "https://169.254.169.254/a"
+                   "https://media.test.evil/a" "https://media.test@internal/a"
+                   "https://media.test:8443/a" "https://media.test/a#fragment" "invalid %"]]
+        (is (= 400 (:status (integrations/response! #(integrations/image-response! url ""))))))
+      (doseq [transforms ["filters:watermark(http://internal/a,0,0,0)" "99999x99999" "../"]]
+        (is (= 400 (:status (integrations/response! #(integrations/image-response! "https://media.test/a" transforms)))))))
+    (with-redefs [integrations/config! (constantly (dissoc settings :loader-network-protected))]
+      (is (= 503 (:status (integrations/response! #(integrations/image-response! "https://media.test/a" ""))))))))

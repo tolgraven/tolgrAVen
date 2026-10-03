@@ -178,6 +178,8 @@
   {:headers {"apikey" (service-key)
              "Authorization" (str "Bearer " (service-key))}
    :throw-exceptions false
+   :conn-timeout 3000
+   :socket-timeout 15000
    :as :json
    :coerce :always
    :insecure? (insecure-rest?)})

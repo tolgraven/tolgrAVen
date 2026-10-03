@@ -92,9 +92,7 @@
        {:class (if (= vote voted)
                  "noborder"
                  (case vote :up "topborder" :down "bottomborder"))
-        :disabled (or @(rf/subscribe [:state [:supabase-writes [:vote (str (last path))]]])
-                      (and (not= :supabase (:provider @(rf/subscribe [:option [:store]])))
-                           (= vote voted)))
+        :disabled @(rf/subscribe [:state [:supabase-writes [:vote (str (last path))]]])
         :on-click #(rf/dispatch [:blog/comment-vote 
                                  user active-user path vote])}
        (case vote :up "+" :down "-")])))

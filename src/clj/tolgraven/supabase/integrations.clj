@@ -103,15 +103,26 @@
                {:headers {"Authorization" (str "Bearer " read-api-key)}})))
 
 (defn image-response! [url transforms]
-  (let [uri (when (string? url) (URI. url))]
-    (when-not (and uri (#{"http" "https"} (.getScheme uri)) (.getHost uri))
-      (throw (ex-info "Invalid image URL" {:status 400})))
-    (path! (or transforms "") #"[A-Za-z0-9_:/.,()-]*")
-    (let [{:keys [host key]} (config! "imagor/auth")
-          path (str (when (seq transforms) (str transforms "/")) url)
-          prefix (if (seq key)
-                   (let [mac (doto (Mac/getInstance "HmacSHA1")
-                               (.init (SecretKeySpec. (.getBytes key "UTF-8") "HmacSHA1")))]
-                     (.encodeToString (.withoutPadding (Base64/getUrlEncoder))
-                                      (.doFinal mac (.getBytes path "UTF-8")))) "unsafe")]
-      {:status 302 :headers {"Location" (if (seq host) (str host "/" prefix "/" path) url)} :body ""})))
+  (let [uri (try (when (string? url) (URI. url)) (catch Exception _ nil))
+        {:keys [host key allowed-source-hosts loader-network-protected]} (config! "imagor/auth")]
+    ;; Signing arbitrary sources grants access to the proxy's network. Require
+    ;; an exact host allowlist and a loader configured to block private addresses
+    ;; at connection time, including redirect targets and DNS re-resolution.
+    (when-not (and uri (= "https" (.getScheme uri)) (.getHost uri)
+                   (nil? (.getUserInfo uri)) (nil? (.getFragment uri))
+                   (#{-1 443} (.getPort uri))
+                   (some #{(string/lower-case (.getHost uri))} allowed-source-hosts))
+      (throw (ex-info "Image source is not allowed" {:status 400})))
+    ;; Only the transforms currently needed by the UI; no filters accepting
+    ;; secondary URLs (watermark, background, etc.) or arbitrary dimensions.
+    (when-not (re-matches #"(?:fit-in/)?[1-9][0-9]{0,3}x[1-9][0-9]{0,3}|" (or transforms ""))
+      (throw (ex-info "Image transform is not allowed" {:status 400})))
+    (when-not (and (true? loader-network-protected) (seq host) (seq key))
+      (throw (ex-info "Image proxy not configured safely" {:status 503})))
+    (let [path (str (when (seq transforms) (str transforms "/")) url)
+          mac (doto (Mac/getInstance "HmacSHA1")
+                (.init (SecretKeySpec. (.getBytes key "UTF-8") "HmacSHA1")))
+          signature (.encodeToString (.withoutPadding (Base64/getUrlEncoder))
+                                      (.doFinal mac (.getBytes path "UTF-8")))]
+      {:status 302 :headers {"Location" (str (string/replace host #"/+$" "") "/" signature "/" path)}
+       :body ""})))

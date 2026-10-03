@@ -137,7 +137,7 @@ def deploy(image, pr):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('image')
-    parser.add_argument('--pr', type=int, default=45)
+    parser.add_argument('--pr', type=int, default=0)
     args = parser.parse_args()
     if args.pr < 0:
         parser.error('--pr must be zero or a positive preview number')

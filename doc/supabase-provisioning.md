@@ -517,3 +517,23 @@ and `/etc/systemd/system/tolgraven-runtime-policy.service`. Check with
 `systemctl status tolgraven-runtime-policy` and
 `journalctl -u tolgraven-runtime-policy`. Update the UUIDs if the Coolify
 applications are recreated.
+
+### Import safety and image proxy configuration
+
+Full imports require direct Postgres access and atomically replace legacy data,
+then replay the private-document migration and post-ID sequence initialization.
+Scoped imports upsert changed rows and refuse removal of existing rows: they never
+truncate private documents, votes, or unrelated collections. Use dedicated,
+reviewed SQL for intentional deletions.
+
+The optional image signer is disabled until `imagor/auth` contains an exact
+`allowed-source-hosts` array, a signing `key`, an HTTPS proxy `host`, and
+`loader-network-protected: true`. Set that last flag only after configuring
+Imagor with `HTTP_LOADER_BLOCK_LOOPBACK_NETWORKS=1`,
+`HTTP_LOADER_BLOCK_PRIVATE_NETWORKS=1`,
+`HTTP_LOADER_BLOCK_LINK_LOCAL_NETWORKS=1`, `HTTP_LOADER_HTTPS_ONLY=1`, and
+`HTTP_LOADER_ALLOWED_SOURCES` matching the approved hosts. These controls must
+apply to redirects and DNS resolution at fetch time; signing-side host validation
+alone is insufficient. The endpoint accepts only dimensions and optional `fit-in`;
+URL-bearing filters are prohibited. Instagram renders original CDN URLs directly.
+See https://docs.imagor.net/loader-http/ for loader configuration.

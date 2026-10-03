@@ -185,3 +185,33 @@
           (.then (fn [] (is (empty? @*results))))
           (.catch #(is false (str %)))
           (.finally done)))))
+
+(deftest authenticated-responses-cannot-cross-profile-link-changes
+  (async done
+    (let [mock (mock-client) callbacks (atom nil) responses (atom [])
+          original-get ajax/GET
+          session (fn [profile] #js {:access_token "token" :user #js {:id "same-account" :app_metadata #js {:site_user_id profile}}})]
+      (reset-client! mock)
+      (reset! client/*session (session "old-profile"))
+      (set! ajax/GET (fn [_ opts] (reset! callbacks opts)))
+      (client/authenticated-request! :get "/api/profile" nil
+                                     #(swap! responses conj [:success %])
+                                     #(swap! responses conj [:error %]))
+      (-> (tick!)
+          (.then (fn []
+                   (is (some? @callbacks))
+                   ;; A token refresh for the same owner still accepts its reply.
+                   (reset! client/*session (session "old-profile"))
+                   ((:handler @callbacks) :fresh)
+                   (is (= [[:success :fresh]] @responses))
+                   (reset! responses [])
+                   (reset! client/*session (session "new-profile"))
+                   ((:handler @callbacks) :stale)
+                   ((:error-handler @callbacks) :stale)
+                   (is (empty? @responses))
+                   (reset! client/*session (session "old-profile"))
+                   (reset! client/*client (:sdk (mock-client)))
+                   ((:handler @callbacks) :stale-client)
+                   (is (empty? @responses))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn [] (set! ajax/GET original-get) (done)))))))

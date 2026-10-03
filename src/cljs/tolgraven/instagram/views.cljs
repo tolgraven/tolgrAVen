@@ -44,8 +44,8 @@
                                                   "transparent-border")
                                          :alt (or (:caption post) "Instagram post")
                                          :src (or @fallback ; would cause all to show fallback if one errors
-                                                  url       ; imagor not working with instagram... set up own thing
-                                                  (:media_url post)
+                                                  (:media_url post) ; signed CDN URLs work without an image proxy
+                                                  url
                                                   fallback-url)
                                          :on-error (fn [_]
                                                      (rf/dispatch [:instagram/fetch-from-insta [(:id post)]])
