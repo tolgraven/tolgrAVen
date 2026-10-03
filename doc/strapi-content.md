@@ -64,3 +64,27 @@ Build the CMS locally with its `Dockerfile.prod` and publish to the existing Bux
 registry. Its dependencies are cached in Docker layers; this does not change the
 web app prefab. Change the manifest image reference and rerun prepare/start when
 publishing another CMS image. Back up both CMS volumes before migrations.
+
+## Validated rollout (2026-10-04)
+
+PR #45 was squash-merged as `3363e6f`; its preview and staging Supabase stopped
+after merge. The content integration is on `codex/strapi-content-pipeline`.
+The normal staging site is https://o84wgo08wcs048ss8sokgkgw.bux.tolgraven.se,
+using image `tolgraven/site:d0db872ca1f6-20261003221346`. Both CMS services are
+healthy and use `tolgraven/strapi:content-v2`. Production CMS settings are wired,
+but this content integration has only been deployed to the staging web app.
+
+Live checks confirmed all 16 sections through the backend, CV-only selection,
+400 for unknown sections, correct staging Supabase public settings, and rendered
+homepage content. Local validation passed 56 backend tests (331 assertions),
+32 browser tests (186 assertions), 42 deployment tests, CMS contract round trips,
+TypeScript checking, and optimized Docker builds. A CMS admin edit survived a
+local restart before restoring the seeded value.
+
+The live CMS containers used approximately 218 and 220 MiB at idle. These are
+observations, not peak capacity guarantees; each retains its 768 MiB limit.
+Strapi was upgraded to 5.56.0 and compatible dependency fixes applied. Its audit
+still reports upstream transitive advisories (40 high, 9 moderate, 1 low; zero
+critical at validation time). The CMS repository has no configured Git remote,
+so its `codex/coolify-content-api` commits are local; the deployed image is
+persisted in the S3-backed registry.
