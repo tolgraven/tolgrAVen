@@ -7,11 +7,13 @@
    [tolgraven.platform.supabase :as supabase]
    [tolgraven.provision.supabase.import :as import]
    [tolgraven.provision.supabase.schema :as schema]
-   [tolgraven.provision.supabase.auth :as auth]))
+   [tolgraven.provision.supabase.auth :as auth]
+   [tolgraven.provision.supabase.auth-import :as auth-import]))
 
 (defn- usage []
   (str "Usage:\n"
        "  lein run -m tolgraven.provision.supabase.cli doctor\n"
+       "  lein run -m tolgraven.provision.supabase.cli dump-auth-import <auth-export.json> <auth-config.json> <private.sql>\n"
        "  lein run -m tolgraven.provision.supabase.cli schema\n"
        "  lein run -m tolgraven.provision.supabase.cli link-user <account-uuid> <profile-id>\n"
        "  lein run -m tolgraven.provision.supabase.cli reset\n"
@@ -23,8 +25,13 @@
   (spit path (json/write-str value :escape-slash false)))
 
 (defn -main [& args]
-  (let [[command arg1 arg2] args]
+  (let [[command arg1 arg2 arg3] args]
     (case command
+      "dump-auth-import"
+      (if-not (and arg1 arg2 arg3)
+        (throw (ex-info "dump-auth-import requires export, hash config and a new output path" {}))
+        (println (auth-import/write-import-sql! arg1 arg2 arg3)))
+
       "doctor"
       (println {:database (supabase/database-target-summary)
                 :rest-url-configured? (boolean (or (System/getenv "SUPABASE_PUBLIC_URL")

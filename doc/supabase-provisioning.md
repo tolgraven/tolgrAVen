@@ -247,8 +247,9 @@ command. Refresh the page after linking to reload the profile.
 
 Verified locally: session rejection, server token validation, ignoring forged
 user metadata, ownership-scoped profile writes, protected profile fields, and
-linkage preconditions. Live signup/login has not been exercised; the inspected
-instance still requires actual Auth accounts and provider/SMTP setup. Chat,
+linkage preconditions. Live signup/login has not been exercised. Firebase Auth accounts are now
+imported as described below; provider and SMTP configuration still determine
+which login and email confirmation flows are available. Chat,
 comment and vote writes use the authenticated endpoints described below;
 generic blog authoring remains behind the administrator compatibility endpoint.
 
@@ -304,9 +305,9 @@ The operations and ledger/index are installed on the supplied live Supabase
 instance. `test/sql/supabase_operations_test.sql` passed locally and live; all
 fixtures and test changes rolled back. It checks ownership, canonical reply paths,
 counters, vote retries/reversal/removal, legacy score baselines, forced transaction
-failure, private history access and RPC permissions. The live inventory remains
-11 posts, 75 comments, 7 profiles and 24 chat messages; zero Auth accounts, native
-votes or test profiles remain. Refreshed Security Advisor reports zero errors and
+failure, private history access and RPC permissions. Before the Auth import below, the live inventory was
+11 posts, 75 comments, 7 profiles and 24 chat messages, with zero Auth accounts,
+native votes or test profiles. Refreshed Security Advisor reports zero errors and
 zero warnings, with four intentional private-table informational notices.
 
 A disposable local Postgres instance also passed 108 concurrent calls covering
@@ -328,3 +329,82 @@ The handler tests need a nonempty local `test-config.edn` (for example `{:test t
 the tracked test resource currently contains only `{}`. Frontend compilation
 retains the two pre-existing `rrb-vector` dependency warnings. Application
 changes have not been pushed or deployed; real account login remains unverified.
+
+
+## Firebase Auth account import (2026-10-03)
+
+The supplied live instance now has **14 Auth accounts and 14 identities**:
+8 email/password, 4 Google, 1 GitHub and 1 Facebook. All 8 Firebase passwords were
+preserved in Supabase's native `$fbscrypt$` format, with the original salt, signer
+key, separator and cost parameters. The installed Auth version is v2.174.0 and
+supports this format. No plaintext passwords, invitations or reset emails were
+used. The 2 verified emails remain verified; the 8 password accounts remain
+unverified. All source accounts were enabled. Four OAuth accounts have no email;
+their provider subjects are preserved without invented emails or anonymous flags.
+
+Each Auth UUID is deterministic from the Firebase project and UID. Trusted
+`app_metadata.site_user_id` points to the Firebase UID, keeping existing content
+ownership and roles. All 7 original profile rows were compared in full and remain
+unchanged; 7 missing profiles were added. Current totals are 14 profiles, 11 posts,
+75 comments and 24 chat messages. Verification compared every imported password,
+account metadata, verification flag, ban, creation/sign-in timestamp, provider
+subject and identity metadata against the export.
+
+### Repeatable provisioning tool
+
+Keep the Auth export, hash configuration and generated SQL in a private, ignored
+directory. The Auth export must contain `projectId`, optional `exportedAt` (ISO
+8601), and `users` in Firebase's JSON export shape (`localId`, `providerUserInfo`,
+`passwordHash`, `salt`, etc.). The ordinary Firebase CLI export contains `users`;
+add its source `projectId` before running this tool. If the configuration uses a
+numeric project resource, also provide `projectNumber` obtained from
+`gcloud projects describe <project-id> --format=value(projectNumber)`. This is a separate export
+from Firestore. A Firebase credential with `firebaseauth.configs.getHashConfig`
+is required to obtain actual hashes; redacted hashes are rejected.
+
+Hash configuration can be the full Identity Toolkit project configuration or
+an object with `algorithm`, `signerKey`, `saltSeparator`, `rounds` and `memoryCost`.
+Both standard and URL-safe base64 export encodings are normalized. Only Firebase
+SCRYPT and the providers above are supported. Missing provider subjects, duplicate
+UIDs/emails/identities, MFA and tenant accounts require explicit resolution.
+
+```sh
+lein run -m tolgraven.provision.supabase.cli dump-auth-import \
+  /private/firebase-auth-export.json /private/firebase-auth-config.json \
+  /private/supabase-auth-import.sql
+psql -v ON_ERROR_STOP=1 -f /private/supabase-auth-import.sql
+```
+
+The generator creates a new SQL file with mode `0600` and refuses to overwrite an
+existing path. The generated SQL contains password material; do not commit it,
+print it or retain it in shared query snippets. Apply it as a trusted database
+administrator. It uses one transaction, temporary staging, target table locks,
+and ownership checks. UUID, email or provider collisions abort the entire import.
+Reruns leave existing accounts, passwords, verification, bans and profiles intact;
+identities are inserted only if absent. An account with a changed administrator
+profile link is rejected. This command does not reset application tables.
+
+### Validation and remaining setup
+
+The live import first passed in a rolled-back transaction against the actual
+Auth schema. Backend checks passed: 29 tests, 192 assertions. The disposable local
+Postgres checks cover identity insertion, OAuth without email, profile preservation,
+reruns after password/verification/ban changes, ownership collisions and rollback:
+
+```sh
+lein with-profile +test test tolgraven.supabase-shape-test tolgraven.supabase-auth-test tolgraven.supabase-auth-import-test tolgraven.supabase-operations-test tolgraven.handler-test
+python3 test/sql/supabase_auth_import_test.py -h /tmp -p 55432 -U postgres -d postgres
+```
+
+The SQL integration test requires a disposable database with the application and
+Supabase Auth schemas. It refuses existing fixture IDs and removes its fixtures.
+Local checks using the installed Auth version's crypto implementation passed the
+upstream correct/wrong-password fixture and parsed all 8 imported hashes. A real
+user login has not been exercised. Automatic approval review rejected an extra
+live test account, so password fixture verification remained local.
+
+The live Auth settings enable Google and email login. GitHub and Facebook are
+disabled and require their provider credentials/configuration before login. Email
+autoconfirm is disabled; the 8 unverified password accounts require email
+confirmation through a working mail configuration. No email delivery was tested
+or triggered. The application migration branch remains unpushed and undeployed.
