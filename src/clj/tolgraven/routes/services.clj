@@ -17,6 +17,7 @@
     [tolgraven.middleware.exception :as exception]
     [tolgraven.services.gpt :as gpt]
     [tolgraven.supabase.api :as supabase-api]
+    [tolgraven.supabase.auth :as supabase-auth]
     [clojure.java.io :as io]
     [clojure.string :as string]
     [clojure.edn :as edn])
@@ -146,6 +147,16 @@
            :handler (fn [_]
                       {:status 200
                        :body (supabase-api/public-settings)})}}]
+
+   ["/supabase/profile"
+    {:get {:summary "Read the signed-in user's linked profile"
+           :handler (fn [request]
+                      (supabase-auth/response! request supabase-auth/profile!))}
+     :put {:summary "Update the signed-in user's editable profile fields"
+           :parameters {:body map?}
+           :handler (fn [request]
+                      (supabase-auth/response!
+                       request #(supabase-auth/save-profile! % (get-in request [:parameters :body]))))}}]
 
    ["/supabase/store/query"
     {:post {:summary "Query Supabase-backed store data using Firebase-style document and collection paths"

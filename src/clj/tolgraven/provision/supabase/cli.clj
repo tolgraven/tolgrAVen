@@ -6,12 +6,14 @@
    [taoensso.timbre :as timbre]
    [tolgraven.platform.supabase :as supabase]
    [tolgraven.provision.supabase.import :as import]
-   [tolgraven.provision.supabase.schema :as schema]))
+   [tolgraven.provision.supabase.schema :as schema]
+   [tolgraven.provision.supabase.auth :as auth]))
 
 (defn- usage []
   (str "Usage:\n"
        "  lein run -m tolgraven.provision.supabase.cli doctor\n"
        "  lein run -m tolgraven.provision.supabase.cli schema\n"
+       "  lein run -m tolgraven.provision.supabase.cli link-user <account-uuid> <profile-id>\n"
        "  lein run -m tolgraven.provision.supabase.cli reset\n"
        "  lein run -m tolgraven.provision.supabase.cli import <firebase-export.json>\n"
        "  lein run -m tolgraven.provision.supabase.cli import-scope <scope> <firebase-export.json>\n"
@@ -34,7 +36,12 @@
       "schema"
       (do
         (timbre/info "Applying Supabase schema")
-        (println (:statements (schema/apply-schema!))))
+        (println (schema/apply-schema!)))
+
+      "link-user"
+      (if-not (and arg1 arg2)
+        (throw (ex-info "link-user requires an account UUID and profile ID" {}))
+        (println (auth/link-user! arg1 arg2)))
 
       "reset"
       (do

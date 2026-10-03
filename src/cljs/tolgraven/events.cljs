@@ -410,10 +410,26 @@
   (fn [_ [_ error]]
     {:dispatch [:diag/new :error "Supabase init failed" error]}))
 
+(rf/reg-event-db :supabase/profile
+  (fn [db [_ profile]]
+    (cond-> (assoc-in db [:state :active-user] profile)
+      profile (assoc-in [:state :user] (:id profile))
+      (nil? profile) (update :state dissoc :user)
+      (and (seq (get-in db [:state :user-section]))
+           (not= :closed (last (get-in db [:state :user-section]))))
+      (assoc-in [:state :user-section] [(if profile :admin :login)]))))
+
+(rf/reg-event-fx :supabase/auth-error
+  (fn [_ [_ error]]
+    {:dispatch [:diag/new :error "Sign in"
+                (or (get-in error [:response :error]) (:message error) "Authentication failed")]}))
+
 (rf/reg-event-fx :supabase/init
   (fn [{:keys [db]} [_ settings]]
     (try
-      (supabase-client/init! settings)
+      (supabase-client/init! settings
+                             #(rf/dispatch [:supabase/profile %])
+                             #(rf/dispatch [:supabase/auth-error %]))
       {:db (assoc-in db [:options :supabase] settings)
        :dispatch [:booted :store]}
       (catch :default error
@@ -433,7 +449,7 @@
   (fn [{:keys [db]} _]
     (case (store-provider db)
       :supabase {:dispatch [:supabase/fetch-settings]}
-      {:dispatch [:booted :store]})))
+      {:dispatch-n [[:fb/init] [:booted :store]]})))
 
 
 (rf/reg-event-fx :<-cms

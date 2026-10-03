@@ -4,6 +4,7 @@
    [re-frame.std-interceptors :refer [path]]
    ; [day8.re-frame.tracing :refer-macros [fn-traced]]
    [tolgraven.util :as util]
+   [tolgraven.supabase.client :as supabase]
    [clojure.walk :as walk]
    [ajax.core :as ajax]))
 
@@ -55,23 +56,39 @@
     (assoc-in db [:fb/users] response)))
 
 
-(rf/reg-event-fx :fb/create-user [debug]
- (fn [_ [_ email password]]
-  {:firebase/email-create-user {:email email :password password}}))
+(defn- supabase? [db]
+  (= :supabase (get-in db [:options :store :provider])))
 
-(rf/reg-event-fx :fb/sign-in ;; Simple sign-in event. Just trampoline down to the re-frame-firebase fx handler.
- (fn [_ [_ method & [email password]]]
-   (case method
-     :google    {:firebase/google-sign-in   {:sign-in-method :redirect}} ;TODO use redir instead but save entire state to localstore inbetween.
-     :facebook  {:firebase/facebook-sign-in {:sign-in-method :redirect}} ;TODO use redir instead but save entire state to localstore inbetween.
-     :github    {:firebase/github-sign-in   {:sign-in-method :redirect}} ;TODO use redir instead but save entire state to localstore inbetween.
-     :email  {:firebase/email-sign-in {:email email :password password}})))
+(defn- auth-error! [error]
+  (rf/dispatch [:supabase/auth-error error]))
 
-(rf/reg-event-fx :fb/sign-out ;;; Ditto for sign-out
- (fn [_ _]
-   {:firebase/sign-out nil
-    :dispatch [:user/logout]}))
+(rf/reg-event-fx :fb/create-user
+  (fn [{:keys [db]} [_ email password]]
+    (if (supabase? db)
+      (do (supabase/sign-up! email password
+                            #(when-not %
+                               (rf/dispatch [:diag/new :info "Sign in"
+                                             "Check your email to confirm your account."]))
+                            auth-error!)
+          {})
+      {:firebase/email-create-user {:email email :password password}})))
 
+;; Keep the event names consumed by the existing login UI during the migration.
+(rf/reg-event-fx :fb/sign-in
+  (fn [{:keys [db]} [_ method email password]]
+    (if (supabase? db)
+      (do (supabase/sign-in! method email password auth-error!) {})
+      (case method
+        :google {:firebase/google-sign-in {:sign-in-method :redirect}}
+        :facebook {:firebase/facebook-sign-in {:sign-in-method :redirect}}
+        :github {:firebase/github-sign-in {:sign-in-method :redirect}}
+        :email {:firebase/email-sign-in {:email email :password password}}))))
+
+(rf/reg-event-fx :fb/sign-out
+  (fn [{:keys [db]} _]
+    (if (supabase? db)
+      (do (supabase/sign-out! auth-error!) {})
+      {:firebase/sign-out nil :dispatch [:user/logout]})))
 
 (defn- get-user
   [user users]
@@ -102,11 +119,11 @@
    :dispatch [:user/request-close-ui]}))
 
 
-(rf/reg-event-fx :user/request-register [(path [:state])]
- (fn [{:keys [db]} [_ info]]
-   (let [{:keys [email password]} (-> db :form-field :login) ]
-   {:dispatch-n [[:fb/create-user email password]
-                 [:user/active-section :admin :force]]})))
+(rf/reg-event-fx :user/request-register
+  (fn [{:keys [db]} _]
+    (let [{:keys [email password]} (get-in db [:state :form-field :login])]
+      ;; Enter the account page only after Auth supplies a verified session.
+      {:dispatch [:fb/create-user email password]})))
 
 (rf/reg-event-fx :user/request-page ; go to userbox page, opening if not already
  (fn [{:keys [db]} [_ ]]
@@ -175,9 +192,14 @@
    {:dispatch [:user/set-field (get-in db [:state :user])
                :avatar (str "img/uploads/" filename)]}))
 
-(rf/reg-event-fx :user/set-field [debug]
- (fn [{:keys [db]} [_ user field value]]
-   {:db (assoc-in db [:fb/users user field] value)
-    :dispatch [:store-> [:users user]
-                        {field value}
-                        [field]]}))
+(rf/reg-event-fx :user/set-field
+  (fn [{:keys [db]} [_ user field value]]
+    (if (supabase? db)
+      (do
+        (supabase/authenticated-request!
+         :put "/api/supabase/profile" {field value}
+         #(do (rf/dispatch [:supabase/profile %]) (supabase/refresh-all!))
+         auth-error!)
+        {})
+      {:db (assoc-in db [:fb/users user field] value)
+       :dispatch [:store-> [:users user] {field value} [field]]})))

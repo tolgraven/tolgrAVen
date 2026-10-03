@@ -203,7 +203,7 @@ This follows the grants/RLS separation in the [Supabase RLS guide](https://supab
 ### Remaining cutover work
 
 Supabase Auth identities must be linked to the existing Firebase profile IDs
-before replacing login. Firebase authentication is still initialized in the app.
+before replacing login. Firebase authentication is now initialized only when the Firebase provider is selected.
 Replace legacy comment/vote/chat write sequences with authenticated transactional
 operations. Move service integration credentials behind server endpoints before
 removing their existing browser-side store reads. Strapi content migration remains
@@ -211,3 +211,40 @@ separate. This branch is not a completed production cutover.
 
 Validation: `lein test tolgraven.supabase-shape-test` and
 `lein run -m shadow.cljs.devtools.cli compile app`.
+
+
+## Supabase login and profile linkage
+
+The Supabase provider now uses Supabase Auth for email/password login, sign-up,
+OAuth, restored sessions, token refresh, and sign-out. Configure enabled OAuth
+providers, the app site URL, and allowed redirect URLs in the self-hosted Auth
+configuration before trying those flows. The callback returns to the app origin.
+Email confirmation requires working SMTP. No accounts are created or messages
+sent by deploying this code.
+
+The server validates each profile request through `/auth/v1/user`. It does not
+trust a decoded client JWT or `user_metadata`. Profile updates accept only name,
+avatar, and background colour; the server chooses the profile ID. The browser
+keeps tokens in the Supabase session, outside re-frame app-db.
+
+New accounts use their Supabase UUID as the profile ID. For an existing Firebase
+profile, first create/confirm the matching Supabase account, then run from the
+trusted provisioning environment:
+
+```sh
+lein run -m tolgraven.provision.supabase.cli link-user <supabase-account-uuid> <firebase-profile-id>
+```
+
+This requires `SUPABASE_PUBLIC_URL` and `SUPABASE_SERVICE_KEY`, checks that the
+account's confirmed email matches the imported profile, and sets the
+administrator-controlled `app_metadata.site_user_id` claim. It preserves other
+metadata and refuses to replace a different existing link. Existing post/comment
+ownership therefore keeps the old profile ID. Passwords are not imported by this
+command. Refresh the page after linking to reload the profile.
+
+Verified locally: session rejection, server token validation, ignoring forged
+user metadata, ownership-scoped profile writes, protected profile fields, and
+linkage preconditions. Live signup/login has not been exercised; the inspected
+instance still requires actual Auth accounts and provider/SMTP setup. Generic
+blog/comment/chat writes remain behind the administrator compatibility endpoint
+until their dedicated authenticated operations are migrated.

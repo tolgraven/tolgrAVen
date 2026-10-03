@@ -10,6 +10,9 @@
 (defonce *client (atom nil))
 (defonce *settings (atom nil))
 (defonce *queries (atom {}))
+(defonce *session (atom nil))
+(defonce *auth-listener (atom nil))
+
 
 (def ^:private empty-seed
   {:roles []
@@ -193,18 +196,89 @@
   (doseq [[k entry] @*queries]
     (refresh-entry! (or entry (get @*queries k)))))
 
-(defn init! [settings]
+(defn- session-user-id [session]
+  (some-> session (gobj/get "user") (gobj/get "id")))
+
+(defn authenticated-request! [method uri data on-success on-error]
+  (if-let [client @*client]
+    (-> (call-method (gobj/get client "auth") "getSession")
+        (.then (fn [result]
+                 (if-let [token (some-> result (gobj/get "data") (gobj/get "session") (gobj/get "access_token"))]
+                   (let [user-id (session-user-id (some-> result (gobj/get "data") (gobj/get "session")))
+                         current? #(= user-id (session-user-id @*session))]
+                     ((case method :get ajax/GET :put ajax/PUT)
+                    uri {:params data
+                         :headers {"Authorization" (str "Bearer " token)}
+                         :format (ajax/json-request-format)
+                         :response-format (ajax/json-response-format {:keywords? true})
+                         :handler #(when (current?) (on-success %))
+                         :error-handler #(when (current?) (on-error %))}))
+                   (on-error {:message "Sign in to continue"}))))
+        (.catch #(on-error {:message (.-message %)})))
+    (on-error {:message "Supabase is not initialized"})))
+
+(defn sign-in! [method email password on-error]
+  (if-let [auth (some-> @*client (gobj/get "auth"))]
+    (-> (if (= method :email)
+          (call-method auth "signInWithPassword" #js {:email email :password password})
+          (call-method auth "signInWithOAuth" #js {:provider (name method)
+                                     :options #js {:redirectTo (.-origin js/location)}}))
+        (.then #(when-let [error (.-error %)]
+                  (on-error {:message (.-message error)})))
+        (.catch #(on-error {:message (.-message %)})))
+    (on-error {:message "Supabase is not initialized"})))
+
+(defn sign-up! [email password on-success on-error]
+  (if-let [auth (some-> @*client (gobj/get "auth"))]
+    (-> (call-method auth "signUp" #js {:email email :password password})
+        (.then #(if-let [error (.-error %)]
+                  (on-error {:message (.-message error)})
+                  (on-success (some? (some-> % (gobj/get "data") (gobj/get "session"))))))
+        (.catch #(on-error {:message (.-message %)})))
+    (on-error {:message "Supabase is not initialized"})))
+
+(defn sign-out! [on-error]
+  (when-let [auth (some-> @*client (gobj/get "auth"))]
+    (-> (call-method auth "signOut")
+        (.then #(when-let [error (.-error %)]
+                  (on-error {:message (.-message error)})))
+        (.catch #(on-error {:message (.-message %)})))))
+
+(defn init! [settings on-profile on-error]
   (let [{:keys [url anon-key] :as settings'} (normalize-settings settings)]
     (when-not (and (seq url) (seq anon-key))
       (throw (ex-info "Missing Supabase URL or public key" {})))
     (do
+      (when-let [listener @*auth-listener] (.unsubscribe listener))
+      (when-let [client @*client] (call-method client "removeAllChannels"))
       (reset! *settings settings')
       (reset! *client
               ((.-createClient js/supabase)
                url
                anon-key
-               #js {:auth #js {:persistSession false
-                               :autoRefreshToken false}}))
+               #js {:auth #js {:persistSession true
+                               :autoRefreshToken true}}))
+      (reset! *auth-listener
+              (-> (call-method
+                 (gobj/get @*client "auth") "onAuthStateChange"
+                 (fn [_ session]
+                   (when (not= (session-user-id session) (session-user-id @*session))
+                     (on-profile nil))
+                   (reset! *session session)
+                   ;; Supabase invokes this synchronously under its auth lock.
+                   ;; Defer calls back into getSession until that lock is released.
+                   (js/setTimeout
+                    (fn []
+                      (when (identical? session @*session)
+                        (if session
+                          (authenticated-request!
+                           :get "/api/supabase/profile" nil
+                           #(when (identical? session @*session) (on-profile %))
+                           #(when (identical? session @*session) (on-error %)))
+                          (on-profile nil))))
+                    0)))
+                  (gobj/get "data")
+                  (gobj/get "subscription")))
       (swap! *queries
              (fn [entries]
                (into {}
