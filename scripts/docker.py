@@ -97,10 +97,21 @@ def publish(image):
     print(f'Published {image} through bux to Hetzner S3.', flush=True)
 
 
+def require_tolgraven_checkout():
+    # A fork retains this Makefile, but must never deploy over tolgraven's staging app.
+    origin = run('git', 'remote', 'get-url', 'origin', capture=True).strip()
+    normalized = origin.removesuffix('.git').replace('git@github.com:', 'https://github.com/')
+    if normalized.lower().rstrip('/') != 'https://github.com/tolgraven/tolgraven':
+        raise SystemExit('make docker is scoped to tolgraven staging. For another site, use '
+                         'scripts/provision-site.py deploy with that site manifest.')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['registry', 'prefab', 'build', 'push', 'deploy'])
     args = parser.parse_args()
+    if args.action == 'deploy':
+        require_tolgraven_checkout()
     if args.action == 'registry':
         registry_check()
     elif args.action == 'prefab':

@@ -1,0 +1,21 @@
+{
+  "name": "new-site",
+  "server_uuid": "yo0gcoww48ggcgc8go4kkoko",
+  "destination_uuid": "bckkog40404cgw8kc8c0gskk",
+  "ssh_host": "bux",
+  "coolify_ssh_host": "bux",
+  "repository": "https://github.com/tolgraven/tolgrAVen",
+  "builder_image": "127.0.0.1:5005/tolgraven/builder:java21-node22-v1",
+  "environments": {
+    "production": {
+      "web_url": "https://new-site.example.com",
+      "supabase_url": "https://supabase.new-site.example.com",
+      "branch": "codex/strapi-supabase-migration"
+    },
+    "staging": {
+      "web_url": "https://staging.new-site.example.com",
+      "supabase_url": "https://supabase-staging.new-site.example.com",
+      "branch": "codex/strapi-supabase-migration"
+    }
+  }
+}

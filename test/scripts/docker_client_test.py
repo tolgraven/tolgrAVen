@@ -45,5 +45,12 @@ class PrefabReuse(unittest.TestCase):
                 m.remote_config_digest('registry/prefab:hash')
 
 
+class DeployScopeTest(unittest.TestCase):
+    def test_fork_cannot_deploy_over_tolgraven(self):
+        with patch.object(m, 'run', return_value='https://github.com/example/new-site.git'):
+            with self.assertRaisesRegex(SystemExit, 'scoped to tolgraven'):
+                m.require_tolgraven_checkout()
+
+
 if __name__ == '__main__':
     unittest.main()

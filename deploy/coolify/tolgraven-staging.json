@@ -1,0 +1,18 @@
+{
+  "name": "tolgraven",
+  "project_uuid": "ikksg8o04o0w8884cos0swwg",
+  "server_uuid": "yo0gcoww48ggcgc8go4kkoko",
+  "destination_uuid": "bckkog40404cgw8kc8c0gskk",
+  "ssh_host": "bux",
+  "repository": "https://github.com/tolgraven/tolgrAVen",
+  "builder_image": "127.0.0.1:5005/tolgraven/builder:java21-node22-v1",
+  "environments": {
+    "staging": {
+      "application_uuid": "o84wgo08wcs048ss8sokgkgw",
+      "pull_request_id": 45,
+      "web_url": "https://45.o84wgo08wcs048ss8sokgkgw.bux.tolgraven.se",
+      "supabase_url": "https://supabase-staging.bux.tolgraven.se",
+      "branch": "codex/strapi-supabase-migration"
+    }
+  }
+}

@@ -1,5 +1,9 @@
 # Supabase Provisioning
 
+For complete site projects with isolated production/staging stacks, use
+[site-provisioning.md](site-provisioning.md). The one-shot image below remains
+useful for explicit schema/import jobs.
+
 Use the dedicated provisioning image for first-time schema bootstrap and repeatable data imports.
 
 ## Why a separate image
