@@ -18,6 +18,7 @@
     [tolgraven.services.gpt :as gpt]
     [tolgraven.supabase.api :as supabase-api]
     [tolgraven.supabase.auth :as supabase-auth]
+    [tolgraven.supabase.operations :as supabase-operations]
     [clojure.java.io :as io]
     [clojure.string :as string]
     [clojure.edn :as edn])
@@ -158,6 +159,32 @@
                       (supabase-auth/response!
                        request #(supabase-auth/save-profile! % (get-in request [:parameters :body]))))}}]
 
+   ["/supabase/chat"
+    {:post {:summary "Post a chat message as the signed-in user"
+            :parameters {:body map?}
+            :handler (fn [request]
+                       (supabase-auth/response!
+                        request #(supabase-operations/post-chat! % (get-in request [:parameters :body]))))}}]
+
+   ["/supabase/comments"
+    {:post {:summary "Create a comment or reply as the signed-in user"
+            :parameters {:body map?}
+            :handler (fn [request]
+                       (supabase-auth/response!
+                        request #(supabase-operations/create-comment! % (get-in request [:parameters :body]))))}
+     :put {:summary "Edit an owned comment"
+           :parameters {:body map?}
+           :handler (fn [request]
+                      (supabase-auth/response!
+                       request #(supabase-operations/edit-comment! % (get-in request [:parameters :body]))))}}]
+
+   ["/supabase/votes"
+    {:post {:summary "Set or remove the signed-in user's comment vote atomically"
+            :parameters {:body map?}
+            :handler (fn [request]
+                       (supabase-auth/response!
+                        request #(supabase-operations/set-comment-vote! % (get-in request [:parameters :body]))))}}]
+
    ["/supabase/store/query"
     {:post {:summary "Query Supabase-backed store data using Firebase-style document and collection paths"
             :parameters {:body map?}
@@ -166,7 +193,7 @@
 
    ["/supabase/store/write"
     {:middleware [[wrap-basic-authentication authenticated?]]
-     :post {:summary "Administrator-only compatibility write; end-user writes await Supabase Auth migration"
+     :post {:summary "Administrator-only compatibility write"
             :parameters {:body map?}
             :handler (fn [{{write-map :body} :parameters}]
                        {:status 200

@@ -24,7 +24,7 @@
         [:div.chat-message-text
          [link-preview/<md>
           (:text message)
-          {:id (str "chat-message-" (:time message) "-" (:user message))
+          {:id (str "chat-message-" (:id message))
            :trust (if (#{nil "anon"} (:user message)) :untrusted :user)}]]
         [:div.chat-message-user.flex
          (or (:name user) "anon")
@@ -37,14 +37,15 @@
     [:section.chat.noborder.covering-2
      [:div.chat-messages
       {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))}
-      (for [message content] ^{:key (str "chat-message-" (:time message) "-" (:user message))}
+      (for [message content] ^{:key (str "chat-message-" (:id message))}
         [chat-message message])]
      [:div.chat-input.flex
       [ui/input-text
        :path [:form-field [:chat]]
        :placeholder "Message"
        :on-enter #(rf/dispatch [:chat/post latest-id])]
-      [:button {:on-click #(rf/dispatch [:chat/post latest-id])}
+      [:button {:disabled @(rf/subscribe [:state [:supabase-writes :chat]])
+                :on-click #(rf/dispatch [:chat/post latest-id])}
        [:i.fa.fa-arrow-right]]]
      [:p.chat-description
       [:b "Step 1. "] "Open two browser windows." [:br]

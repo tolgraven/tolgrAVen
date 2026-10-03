@@ -232,3 +232,10 @@
  :<- [:blog/state [:adding-comment]] 
  (fn [adding [_ path]]
    (get adding path))) ; entire path is the key, hence get not get-in
+
+(rf/reg-sub :blog/vote
+  (fn [db [_ path]]
+    (if (= :supabase (get-in db [:options :store :provider]))
+      (case (get-in db [:state :active-user :comment-votes (keyword (str (last path)))] 0)
+        1 :up -1 :down nil)
+      (get-in db [:state :blog :voted path]))))

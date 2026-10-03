@@ -119,13 +119,58 @@
 ; vs
 ; update-in db [:blog-posts] merge {1 thing}
 
+(rf/reg-event-fx :blog/edit-comment
+  (fn [_ [_ path comment]]
+    (let [parent-path (vec (butlast path))]
+      {:dispatch-n [[:form-field [:write-comment parent-path] (select-keys comment [:text :title]) :blur]
+                    [:blog/state [:editing-comment parent-path] comment]
+                    [:blog/adding-comment parent-path true]]})))
+
+(rf/reg-event-fx :blog/cancel-comment
+  (fn [_ [_ path]]
+    {:dispatch-n [[:blog/adding-comment path false]
+                  [:blog/state [:editing-comment path] nil]
+                  [:form-field [:write-comment path] nil :blur]]}))
+
 (rf/reg-event-fx :blog/comment-submit [debug]
- (fn [{:keys [db]} [_ path input editing]]
-   {:dispatch-n [(if editing
-                   [:blog/comment path (merge editing input)]
-                   [:blog/comment-new path input])
-                 [:form-field [:write-comment path] nil :blur]
-                 [:blog/state [:editing-comment path] nil]]}))
+  (fn [{:keys [db]} [_ path input editing]]
+    (if (= :supabase (get-in db [:options :store :provider]))
+      (when-not (get-in db [:state :supabase-writes [:comment path]])
+        {:db (assoc-in db [:state :supabase-writes [:comment path]] true)
+         :supabase/request
+         {:method (if editing :put :post) :uri "/api/supabase/comments"
+          :data (merge (select-keys input [:text :title])
+                       (if editing
+                         {:comment-id (str (:id editing))}
+                         {:post-id (first path) :parent-id (when (< 1 (count path)) (str (last path)))}))
+          :on-success [:blog/comment-saved path input]
+          :on-error [:blog/write-failed [:comment path]]}})
+      {:dispatch-n [(if editing
+                      [:blog/comment path (merge editing input)]
+                      [:blog/comment-new path input])
+                    [:form-field [:write-comment path] nil :blur]
+                    [:blog/state [:editing-comment path] nil]
+                    [:blog/adding-comment path nil]]})))
+
+(rf/reg-event-fx :blog/comment-saved
+  (fn [{:keys [db]} [_ path submitted _]]
+    {:db (update-in db [:state :supabase-writes] dissoc [:comment path])
+     :dispatch-n (cond-> [[:blog/refresh-content] [:supabase/write-complete]
+                         [:blog/expand-comment-thread path true]]
+                   (= submitted (get-in db [:state :form-field :write-comment path]))
+                   (into [[:form-field [:write-comment path] nil :blur]
+                          [:blog/state [:editing-comment path] nil]
+                          [:blog/adding-comment path nil]]))}))
+
+(rf/reg-event-fx :blog/write-failed
+  (fn [{:keys [db]} [_ operation error]]
+    {:db (update-in db [:state :supabase-writes] dissoc operation)
+     :dispatch [:supabase/write-error error]}))
+
+(rf/reg-event-fx :blog/refresh-content
+  (fn [_ _]
+    {:dispatch-n [[:<-store [:blog-posts] [:blog/set-content :posts]]
+                  [:<-store [:blog-comments] [:blog/set-content :comments]]]}))
 
 (rf/reg-event-fx :blog/comment [debug]
  (fn [{:keys [db]} [_ path comment]]
@@ -133,8 +178,8 @@
          user-id (-> comment :user keyword)
          full-path (assemble-path [:blog :posts (keyword (str (first path)))]
                                   (concat (rest path) [id]))
-         user-comments (concat (get-in db [:fb/users user-id :comments])
-                               [id])] ; append to list of user comment ids
+         user-comments (distinct (concat (get-in db [:fb/users user-id :comments])
+                                         [id]))] ; append to list of user comment ids
        {:db (-> db
                 (assoc-in full-path comment) ;XXX should only store id
                 (assoc-in [:blog :comments id] comment) ;main comments store, should it be (keyword id)?
@@ -179,7 +224,28 @@
                      [:blog/expand-comment-thread path true]]})))
 
 
-(rf/reg-event-fx :blog/comment-vote [debug] ;TODO def sub firestore on-snapshot just because (plus for general comments as well)
+(rf/reg-event-fx :blog/comment-vote [debug]
+  (fn [{:keys [db]} [_ user active-user path vote]]
+    (if (= :supabase (get-in db [:options :store :provider]))
+      (let [id (str (last path))
+            current (get-in db [:state :active-user :comment-votes (keyword id)] 0)
+            requested (case vote :up 1 :down -1)]
+        (when-not (get-in db [:state :supabase-writes [:vote id]])
+          {:db (assoc-in db [:state :supabase-writes [:vote id]] true)
+           :supabase/request {:method :post :uri "/api/supabase/votes"
+                              :data {:comment-id id :vote (if (= current requested) "none" (name vote))}
+                              :on-success [:blog/vote-saved id]
+                              :on-error [:blog/write-failed [:vote id]]}}))
+      {:dispatch [:blog/firebase-comment-vote user active-user path vote]})))
+
+(rf/reg-event-fx :blog/vote-saved
+  (fn [{:keys [db]} [_ id result]]
+    {:db (-> db
+             (update-in [:state :supabase-writes] dissoc [:vote id])
+             (assoc-in [:state :active-user :comment-votes (keyword id)] (:vote result)))
+     :dispatch-n [[:blog/refresh-content] [:supabase/write-complete]]}))
+
+(rf/reg-event-fx :blog/firebase-comment-vote [debug] ;TODO def sub firestore on-snapshot just because (plus for general comments as well)
  (fn [{:keys [db]} [_ user active-user path vote]]   ; other cool stuff could be typing indicator yeah?
    (let [diff (case vote :up 1 :down -1)
          state-path [:state :blog :voted path]
@@ -209,9 +275,6 @@
         [:users (:id user)]
         {:karma (+ (:karma user) diff)}
         [:karma]]]})))
-       ; [:store-> ; store score in own collection. SHOULD get merged into (own) user obj so no crazy lookups or sep args here
-       ;  [:karma (:id user)]
-       ;  {:karma (+ (:karma user) diff)}]]})))
 
 ; for comment scroll lazy load:
 ; pull comments one by one, chunked so maybe like first five

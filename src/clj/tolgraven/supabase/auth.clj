@@ -1,6 +1,7 @@
 (ns tolgraven.supabase.auth
   (:require [clj-http.client :as http]
             [clojure.string :as string]
+            [clojure.edn :as edn]
             [tolgraven.platform.supabase :as platform]
             [tolgraven.store.contract :as contract]))
 
@@ -35,13 +36,40 @@
       (fail! 403 "Invalid profile linkage"))
     id))
 
+(defn legacy-comment-votes [voted]
+  (reduce-kv
+   (fn [votes path direction]
+     (try
+       (let [path (edn/read-string (if (keyword? path) (name path) path))
+             direction (case direction (:up "up") 1 (:down "down") -1 0)]
+         (if (and (vector? path) (< 1 (count path))
+                  (or (string? (last path)) (integer? (last path))))
+           (assoc votes (str (last path)) direction)
+           votes))
+       (catch Exception _ votes)))
+   {} (or voted {})))
+
+(defn- comment-votes! [id legacy-votes]
+  ;; Private history is returned only to its verified owner. Page it independently
+  ;; of public profile queries, which cannot select the ledger or imported votes.
+  (loop [offset 0 votes (legacy-comment-votes legacy-votes)]
+    (let [rows (:body (platform/request! :get "comment_votes"
+                       {:query-params {"user_id" (str "eq." id)
+                                       "select" "comment_id,vote" "order" "comment_id.asc"
+                                       "offset" offset "limit" 500}}))]
+      (if (seq rows)
+        (recur (+ offset (count rows))
+               (reduce (fn [result row] (assoc result (:comment_id row) (:vote row))) votes rows))
+        votes))))
+
 (defn profile! [user]
   (let [id (profile-id user)
         row (first (:body (platform/request! :get "site_users"
                            {:query-params {"id" (str "eq." id) "select" "*" "limit" 1}})))]
-    (if row
-      (get-in (contract/seed->contract {:users [row]}) ["users" id])
-      {:id id :name "" :avatar nil :bg-color nil :comment-count 0 :karma 0})))
+    (assoc (if row
+             (get-in (contract/seed->contract {:users [row]}) ["users" id])
+             {:id id :name "" :avatar nil :bg-color nil :comment-count 0 :karma 0})
+           :comment-votes (comment-votes! id (:voted row)))))
 
 (def profile-fields {:name :name :avatar :avatar :bg-color :bg_color})
 

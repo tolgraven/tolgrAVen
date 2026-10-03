@@ -65,11 +65,13 @@
                   attrs [:i.fa.fa-reply]])
       :cancel  (when adding-comment?
                  [:button.blog-btn.bottomborder
-                  attrs "Cancel"]))))
+                  {:on-click #(rf/dispatch [:blog/cancel-comment parent-path])}
+                  "Cancel"]))))
 
 (defn edit-comment
-  [path]
+  [path comment]
   [:button.blog-btn.blog-comment-edit-btn.noborder
+   {:on-click #(rf/dispatch [:blog/edit-comment path comment])}
    [:i.fa.fa-edit]]) ;put by reply yo
 
 (defn delete-comment ;well that's when seq-id breaks down anyways lol
@@ -85,12 +87,14 @@
 
 (defn vote-btn [user active-user path vote]
   (when active-user
-    (let [voted @(rf/subscribe [:blog/state [:voted path]])] ; obviously needs to be firestore sub. but also local debounce
+    (let [voted @(rf/subscribe [:blog/vote path])]
       [:button.blog-btn.blog-comment-vote-btn
        {:class (if (= vote voted)
                  "noborder"
                  (case vote :up "topborder" :down "bottomborder"))
-        :disabled (when (= vote voted) true)
+        :disabled (or @(rf/subscribe [:state [:supabase-writes [:vote (str (last path))]]])
+                      (and (not= :supabase (:provider @(rf/subscribe [:option [:store]])))
+                           (= vote voted)))
         :on-click #(rf/dispatch [:blog/comment-vote 
                                  user active-user path vote])}
        (case vote :up "+" :down "-")])))
@@ -164,7 +168,7 @@
               [:div.blog-comment-main
                [:h4.blog-comment-title title]
                [posted-by id user ts score]
-               (when (not= active-user user)
+               (when (not= (:id active-user) (:id user))
                  [:span.blog-comment-vote [vote-btn user active-user path :up]
                                           [vote-btn user active-user path :down]])
                [:div.blog-comment-text
@@ -175,8 +179,8 @@
                  {:trust (link-trust user)}]]]
 
              [:div.blog-comment-actions
-               (when (= active-user user)
-                 [edit-comment (conj path id)])
+               (when (and active-user (= (:id active-user) (:id user)))
+                 [edit-comment path post])
                (when active-user
                  [add-comment-btn path :reply])]]
              
@@ -281,12 +285,11 @@
         submit-btn (fn [model editing?]
                      [:button.blog-btn.noborder
                       {:class    (when (input-valid? model) "topborder")
-                       :disabled (when-not (input-valid? model) true)
+                       :disabled (or (not (input-valid? model))
+                                     @(rf/subscribe [:state [:supabase-writes [:comment parent-path]]]))
                        :on-click (fn [_]
                                    (when (input-valid? model)
-                                     (rf/dispatch [:blog/adding-comment parent-path nil])
-                                     (rf/dispatch [:blog/comment-submit parent-path model editing?])
-                                     (rf/dispatch [:form-field [:write-comment parent-path] nil :blur])))}
+                                     (rf/dispatch [:blog/comment-submit parent-path model editing?])))}
                       "Submit"])
         valid-bg {:background-color "var(--bg-3-2)"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
      (fn [parent-path] ; needed or recreates to empty when swapped out

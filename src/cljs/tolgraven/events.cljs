@@ -410,9 +410,33 @@
   (fn [_ [_ error]]
     {:dispatch [:diag/new :error "Supabase init failed" error]}))
 
+(rf/reg-fx :supabase/request
+  (fn [{:keys [method uri data on-success on-error]}]
+    (supabase-client/authenticated-request!
+     method uri data
+     #(rf/dispatch (conj on-success %))
+     #(rf/dispatch (conj on-error %)))))
+
+(rf/reg-fx :supabase/refresh
+  (fn [_] (supabase-client/refresh-all!)))
+
+(rf/reg-event-fx :supabase/write-complete
+  (fn [_ _]
+    {:supabase/refresh true
+     :supabase/request {:method :get :uri "/api/supabase/profile"
+                        :on-success [:supabase/profile]
+                        :on-error [:supabase/auth-error]}}))
+
+(rf/reg-event-fx :supabase/write-error
+  (fn [_ [_ error]]
+    {:dispatch [:diag/new :error "Unable to save"
+                (or (get-in error [:response :error]) (:message error) "Request failed")]}))
+
 (rf/reg-event-db :supabase/profile
   (fn [db [_ profile]]
     (cond-> (assoc-in db [:state :active-user] profile)
+      (not= (:id profile) (get-in db [:state :active-user :id]))
+      (assoc-in [:state :supabase-writes] {})
       profile (assoc-in [:state :user] (:id profile))
       (nil? profile) (update :state dissoc :user)
       (and (seq (get-in db [:state :user-section]))

@@ -206,13 +206,13 @@
                  (if-let [token (some-> result (gobj/get "data") (gobj/get "session") (gobj/get "access_token"))]
                    (let [user-id (session-user-id (some-> result (gobj/get "data") (gobj/get "session")))
                          current? #(= user-id (session-user-id @*session))]
-                     ((case method :get ajax/GET :put ajax/PUT)
-                    uri {:params data
-                         :headers {"Authorization" (str "Bearer " token)}
-                         :format (ajax/json-request-format)
-                         :response-format (ajax/json-response-format {:keywords? true})
-                         :handler #(when (current?) (on-success %))
-                         :error-handler #(when (current?) (on-error %))}))
+                     ((case method :get ajax/GET :put ajax/PUT :post ajax/POST)
+                      uri {:params data
+                           :headers {"Authorization" (str "Bearer " token)}
+                           :format (ajax/json-request-format)
+                           :response-format (ajax/json-response-format {:keywords? true})
+                           :handler #(when (current?) (on-success %))
+                           :error-handler #(when (current?) (on-error %))}))
                    (on-error {:message "Sign in to continue"}))))
         (.catch #(on-error {:message (.-message %)})))
     (on-error {:message "Supabase is not initialized"})))

@@ -172,15 +172,16 @@ full import just to deploy application code: that command replaces table data.
 
 ### Access changes applied to the live instance
 
-All seven tables now have RLS enabled. Anonymous and authenticated roles have
+The seven imported tables have RLS enabled; the new private vote ledger does too. Anonymous and authenticated roles have
 column-level SELECT access to the public post, comment, chat, and profile fields.
 Email, raw import JSON, vote history, service configuration, roles, and generic
 documents are not public. Anonymous SELECT was verified against the live database:
 11 posts, 75 comments, and 7 profiles remain readable; email, service configuration,
 and generic documents are denied. The same grants are included in `schema.sql`.
 No content rows were changed by this access update. Security Advisor reports zero
-errors and zero warnings; its three informational notices are the deliberately
-policy-free private tables (`auth_roles`, `service_configs`, `store_documents`).
+errors and zero warnings; its four informational notices are the deliberately
+policy-free private tables (`auth_roles`, `service_configs`, `store_documents`,
+`comment_votes`).
 This follows the grants/RLS separation in the [Supabase RLS guide](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
 ### Application bridge
@@ -202,10 +203,12 @@ This follows the grants/RLS separation in the [Supabase RLS guide](https://supab
 
 ### Remaining cutover work
 
-Supabase Auth identities must be linked to the existing Firebase profile IDs
-before replacing login. Firebase authentication is now initialized only when the Firebase provider is selected.
-Replace legacy comment/vote/chat write sequences with authenticated transactional
-operations. Move service integration credentials behind server endpoints before
+Create/confirm Supabase Auth accounts and link existing owners to the imported
+Firebase profile IDs, then verify login in the deployed application. Firebase
+authentication is initialized only when the Firebase provider is selected.
+Chat, comment creation/editing, and voting now use dedicated authenticated
+transactional operations. Blog authoring still uses the administrator compatibility
+bridge. Move service integration credentials behind server endpoints before
 removing their existing browser-side store reads. Strapi content migration remains
 separate. This branch is not a completed production cutover.
 
@@ -245,6 +248,83 @@ command. Refresh the page after linking to reload the profile.
 Verified locally: session rejection, server token validation, ignoring forged
 user metadata, ownership-scoped profile writes, protected profile fields, and
 linkage preconditions. Live signup/login has not been exercised; the inspected
-instance still requires actual Auth accounts and provider/SMTP setup. Generic
-blog/comment/chat writes remain behind the administrator compatibility endpoint
-until their dedicated authenticated operations are migrated.
+instance still requires actual Auth accounts and provider/SMTP setup. Chat,
+comment and vote writes use the authenticated endpoints described below;
+generic blog authoring remains behind the administrator compatibility endpoint.
+
+
+## Authenticated chat, comments and votes
+
+The browser sends its Supabase access token to the application server:
+
+| Endpoint | Body | Behavior |
+| --- | --- | --- |
+| `POST /api/supabase/chat` | `text` | Generate a message ID and timestamp; save as the verified profile. |
+| `POST /api/supabase/comments` | `post-id`, `text`, optional `parent-id`, `title` | Validate the post/reply relationship; create the comment and update the author's list/count together. |
+| `PUT /api/supabase/comments` | `comment-id`, `text`, optional `title` | Edit only an owned comment's text/title. |
+| `POST /api/supabase/votes` | `comment-id`, `vote` (`up`, `down`, `none`) | Set the user's desired vote and adjust score/author karma by the delta. |
+
+Each endpoint verifies the token through Auth and derives the actor from the
+server-managed profile link. Client author IDs, timestamps, scores, counters,
+paths and karma are rejected. Each mutation is a single Postgres RPC transaction.
+RPCs use invoker permissions and an empty search path. Only `service_role` can
+execute them; browsers cannot submit a forged actor directly to the Data API.
+
+`comment_votes` is a private RLS-enabled ledger. Existing vote history such as
+`[24 105 108] -> up` supplies the initial baseline without resetting imported
+scores or karma. Zero-vote ledger entries override that baseline after removal.
+Repeated requests to set the same vote do not change the score. Profile reads
+merge imported history with the ledger and return `comment-votes` only to its
+verified owner. Profile locks use a stable order; comment score locks allow
+concurrent replies while serializing vote changes.
+
+The UI keeps drafts on failed requests, blocks duplicate in-flight submissions,
+refreshes queries/profiles after successful writes, and clears pending state when
+accounts change. Chat accepts both imported numeric IDs and new UUID IDs. Comment
+editing compares profile IDs and now opens the existing text in the form.
+
+### Install the additive operations on an existing instance
+
+`schema` bootstrap now includes `resources/supabase/operations.sql`. For an
+already provisioned database, apply that file inside a transaction from the
+trusted database environment, without an import/reset:
+
+```sh
+psql -v ON_ERROR_STOP=1 --single-transaction -f resources/supabase/operations.sql
+```
+
+Then deploy the application branch with the URL, anon key and server service key
+configured as above. Do not run full or scoped Firebase imports after native
+writes: those commands replace table data and cascade-delete the native vote
+ledger. A future import needs a deliberate merge strategy for native data.
+
+### Verification (2026-10-03)
+
+The operations and ledger/index are installed on the supplied live Supabase
+instance. `test/sql/supabase_operations_test.sql` passed locally and live; all
+fixtures and test changes rolled back. It checks ownership, canonical reply paths,
+counters, vote retries/reversal/removal, legacy score baselines, forced transaction
+failure, private history access and RPC permissions. The live inventory remains
+11 posts, 75 comments, 7 profiles and 24 chat messages; zero Auth accounts, native
+votes or test profiles remain. Refreshed Security Advisor reports zero errors and
+zero warnings, with four intentional private-table informational notices.
+
+A disposable local Postgres instance also passed 108 concurrent calls covering
+repeated votes, 20 distinct voters, reciprocal votes between authors, and
+simultaneous replies/votes. Scores, karma and comment counters matched the expected
+values, with no lost increments or deadlocks.
+
+Application checks passed: 24 tests with 147 assertions, plus frontend compilation.
+
+Commands:
+
+```sh
+lein with-profile +test test tolgraven.supabase-shape-test tolgraven.supabase-auth-test tolgraven.supabase-operations-test tolgraven.handler-test
+lein run -m shadow.cljs.devtools.cli compile app
+psql -v ON_ERROR_STOP=1 -f test/sql/supabase_operations_test.sql
+```
+
+The handler tests need a nonempty local `test-config.edn` (for example `{:test true}`);
+the tracked test resource currently contains only `{}`. Frontend compilation
+retains the two pre-existing `rrb-vector` dependency warnings. Application
+changes have not been pushed or deployed; real account login remains unverified.
