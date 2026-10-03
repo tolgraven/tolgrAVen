@@ -70,6 +70,8 @@ def deploy(image, pr):
                 '{throw new Exception("Requested staging preview does not exist");} '
                 'echo json_encode(["fields"=>$a->only($data["fields"]), '
                 '"auto"=>$a->settings->is_auto_deploy_enabled]);', {'fields': FIELDS, 'pr': pr})
+    # Wake the retained staging database before interrupting the old web runtime.
+    run('python3', '/usr/local/lib/tolgraven/staging_supabase.py', 'ensure')
     previous = staging_containers()
     # Keep rollback metadata, not environment variables/secrets.
     state['previous'] = [{'Id': c['Id'], 'Created': c['Created'],

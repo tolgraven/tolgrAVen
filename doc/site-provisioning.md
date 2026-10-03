@@ -168,7 +168,8 @@ limit. Local image builds avoid server-side compiler peaks, and stopping inactiv
 staging environments can make room for additional sites. Each running full
 Supabase stack still has a persistent footprint: the later sample measured about
 1.46 GiB resident for staging Supabase and 456 MiB for its web app. PR-close
-cleanup stops the web preview, not the shared staging Supabase service.
+cleanup stops the web preview; the on-demand lifecycle policy now also stops
+staging Supabase after the idle grace period (see below).
 
 The 3 GiB-per-environment provisioning budget is deliberately conservative, not
 a measurement of idle consumption; a new production/staging pair currently
@@ -187,3 +188,40 @@ command is `python3 scripts/provision-site.py deploy <site.json>`. `docker-build
 and `docker-push` do not change a Coolify application. Do not reuse the shared
 builder alias for a different architecture/toolchain; use a matching dependency
 hash tag or the self-contained builder for that server.
+
+## Runtime keys and frontend verification
+
+Provisioning copies `SERVICE_URL_SUPABASEKONG`, `SERVICE_SUPABASEANON_KEY` and
+`SERVICE_SUPABASESERVICE_KEY` from each environment's own Coolify Supabase
+service into its web app as `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY` and
+`SUPABASE_SERVICE_KEY`. Both normal and PR-preview scopes are updated atomically,
+with runtime enabled and build-time disabled. Repeated wiring updates existing
+keys and removes duplicate managed preview keys. Conflicting aliases or a
+service URL that differs from the manifest fail the operation.
+
+`verify` checks the deployed `/api/supabase/settings` URL and public anon key
+against that same instance, and rejects any service-key exposure. The frontend
+loads these runtime settings before creating its Supabase client; no privileged
+key is embedded in browser assets. A deployment refuses mismatched saved keys.
+Staging also gets `SUPABASE_WAIT_FOR_READY=true`; production does not wait.
+
+## On-demand staging on bux
+
+The installed tolgraven runtime policy now manages the existing staging Supabase
+service `fqaammdsestcbglokp8ewao0`, in addition to limiting web runtimes. It wakes
+the stack when a staging deployment is queued/in progress or a staging web
+container is running. After 60 seconds with neither, it runs Compose `stop`.
+Volumes, accounts, data, configuration and networks are retained. Production
+Supabase is outside this policy's fixed UUID scope.
+
+`make docker` explicitly wakes Supabase and verifies Auth and REST before the
+web cutover. A short startup lease protects the gap before queue submission;
+a manual deployment recovery record keeps it awake until that deployment is
+resolved. Failed Coolify observations never count as idle. On a normal Git or
+Coolify rollout, the watcher wakes Supabase and the image entrypoint waits for
+Auth and REST before starting Java (up to five minutes). The staging healthcheck
+allows this cold start. Reopening a PR therefore also resumes its database.
+
+The automatic suspension policy is currently installed for tolgraven on bux.
+Newly provisioned sites get runtime wiring/readiness gating, but must have their
+own scoped lifecycle policy installed before claiming automatic suspension.

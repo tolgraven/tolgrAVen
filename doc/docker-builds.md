@@ -113,6 +113,9 @@ one; ordinary cross-PR Git deployments still use that service's reconciliation.
 # Use an existing bcrypt htpasswd file; keep it out of Git.
 REGISTRY_HTPASSWD_FILE=/secure/registry.htpasswd bash scripts/setup-build-registry.sh
 sudo install -D -m 755 scripts/deploy-image.py /usr/local/lib/tolgraven/deploy-image.py
+sudo install -D -m 755 scripts/staging_supabase.py /usr/local/lib/tolgraven/staging_supabase.py
+sudo install -D -m 755 scripts/coolify-site-runtime-policy.py /usr/local/lib/tolgraven/coolify-site-runtime-policy.py
+sudo systemctl restart tolgraven-runtime-policy
 ```
 
 The public route template is `deploy/coolify/registry-proxy.yaml`. The setup script
@@ -177,5 +180,7 @@ PR is merged and when it is closed without merging. Cleanup bypasses CSS
 validation and shares the PR-specific concurrency group with deployment, so a
 close event supersedes an in-flight workflow for that PR. Coolify's native
 cleanup cancels that preview's deployments and removes its runtime and preview
-record. The separate staging Supabase service and production application remain
-running. Reopening the PR creates its preview again.
+record. Once no staging web runtime or deployment remains for 60 seconds,
+the runtime policy also stops staging Supabase, preserving its volumes and data.
+Production remains running. Reopening the PR wakes Supabase and recreates its
+preview; the web app waits for Auth and REST readiness before serving requests.

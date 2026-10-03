@@ -506,8 +506,10 @@ Different pull requests otherwise create independent staging previews. The
 `scripts/coolify-site-runtime-policy.py` every two seconds to stop superseded
 site runtimes and disable their Docker restart policies. It keeps the newest
 created production and staging containers and stops any production previews.
-Its scope is restricted to the two application UUIDs in the script; Supabase,
-other applications and build helpers are excluded. The guard can take up to two
+Web cleanup is restricted to the two application UUIDs in the script. The
+separately scoped `staging_supabase.py` module suspends/resumes tolgraven staging
+Supabase when needed; production Supabase, other applications and build helpers
+are excluded. See `doc/site-provisioning.md` for lifecycle and readiness details. The guard can take up to two
 seconds to detect a different PR preview, plus its shutdown grace period.
 
 Installed paths are `/usr/local/lib/tolgraven/coolify-site-runtime-policy.py`

@@ -26,9 +26,44 @@ function setEnv($resource, $key, $value, $preview = false, $build = false) {
     if ($resource instanceof App\Models\Application) {
         $fields += ['is_buildtime' => $build, 'is_runtime' => !$build];
     }
-    $resource->environment_variables()->updateOrCreate(
-        ['key' => $key, 'is_preview' => $preview], $fields);
+    $relation = $resource instanceof App\Models\Application && $preview
+        ? $resource->environment_variables_preview() : $resource->environment_variables();
+    $record = $relation->updateOrCreate(['key' => $key, 'is_preview' => $preview], $fields);
+    // Older provisioning used the normal-only relation for previews and could
+    // create duplicate preview keys on retries. Keep one authoritative record.
+    $relation->where('key', $key)->where('is_preview', $preview)->where('id', '!=', $record->id)->delete();
 }
+
+function webSupabaseEnv($service, $config, $name) {
+    $url = rtrim(envValue($service, 'SERVICE_URL_SUPABASEKONG'), '/');
+    requireThat($url === rtrim($config['supabase_url'], '/'), 'Supabase service URL differs from the environment manifest');
+    return [
+        'SUPABASE_PUBLIC_URL' => $url,
+        'SUPABASE_ANON_KEY' => envValue($service, 'SERVICE_SUPABASEANON_KEY'),
+        'SUPABASE_SERVICE_KEY' => envValue($service, 'SERVICE_SUPABASESERVICE_KEY'),
+        'SUPABASE_WAIT_FOR_READY' => $name === 'staging' ? 'true' : 'false',
+    ];
+}
+function verifyWebSupabaseEnv($application, $values) {
+    // A stale higher-priority alias could silently override a freshly copied key.
+    $aliases = ['SUPABASE_PUBLISHABLE_KEY' => 'SUPABASE_ANON_KEY',
+        'NEXT_PUBLIC_SUPABASE_ANON_KEY' => 'SUPABASE_ANON_KEY',
+        'SUPABASE_URL' => 'SUPABASE_PUBLIC_URL', 'NEXT_PUBLIC_SUPABASE_URL' => 'SUPABASE_PUBLIC_URL',
+        'SUPABASE_SERVICE_ROLE_KEY' => 'SUPABASE_SERVICE_KEY'];
+    foreach ([false, true] as $preview) {
+        foreach ($values as $key => $value) {
+            $env = ($preview ? $application->environment_variables_preview() : $application->environment_variables())->where('key', $key)->first();
+            requireThat($env && hash_equals($value, (string) $env->value), "Web runtime variable mismatch: $key");
+            requireThat($env->is_runtime && !$env->is_buildtime, "Web variable must be runtime-only: $key");
+        }
+        foreach ($aliases as $alias => $canonical) {
+            $env = ($preview ? $application->environment_variables_preview() : $application->environment_variables())->where('key', $alias)->first();
+            requireThat(!$env || hash_equals($values[$canonical], (string) $env->value), "Conflicting Supabase variable alias: $alias");
+        }
+    }
+}
+
+if (defined('PROVISION_SITE_FUNCTIONS_ONLY')) return;
 
 try {
     $spec = $input['spec'];
@@ -136,18 +171,22 @@ try {
             ])->get($config['supabase_url'].'/auth/v1/health');
             requireThat($health->successful(), 'Supabase Auth check failed');
         }
+        if (in_array($action, ['wire', 'verify', 'deploy'])) $runtimeEnv = webSupabaseEnv($service, $config, $name);
+        if (in_array($action, ['verify', 'deploy'])) verifyWebSupabaseEnv($application, $runtimeEnv);
         if ($action === 'verify') {
             $settings = Illuminate\Support\Facades\Http::timeout(15)->get($config['web_url'].'/api/supabase/settings');
             requireThat($settings->successful(), 'Web Supabase settings check failed');
-            requireThat(str_contains($settings->body(), $config['supabase_url']), 'Web app still points to a different Supabase instance');
+            requireThat($settings->json('url') === $runtimeEnv['SUPABASE_PUBLIC_URL'], 'Web app still points to a different Supabase instance');
+            requireThat(hash_equals($runtimeEnv['SUPABASE_ANON_KEY'], (string) $settings->json('anon-key')), 'Web frontend key does not match its Supabase instance');
+            requireThat(!str_contains($settings->body(), $runtimeEnv['SUPABASE_SERVICE_KEY']), 'Server-only Supabase key leaked into frontend settings');
             requireThat(Illuminate\Support\Facades\Http::timeout(15)->get($config['web_url'])->successful(), 'Web homepage check failed');
         }
         if ($action === 'wire') {
+            if ($name === 'staging') { $application->health_check_start_period = 360; $application->save(); }
             foreach ([false, true] as $preview) {
-                setEnv($application, 'SUPABASE_PUBLIC_URL', $config['supabase_url'], $preview);
-                setEnv($application, 'SUPABASE_ANON_KEY', envValue($service, 'SERVICE_SUPABASEANON_KEY'), $preview);
-                setEnv($application, 'SUPABASE_SERVICE_KEY', envValue($service, 'SERVICE_SUPABASESERVICE_KEY'), $preview);
+                foreach ($runtimeEnv as $key => $value) setEnv($application, $key, $value, $preview);
             }
+            verifyWebSupabaseEnv($application, $runtimeEnv);
         }
         $entry = ['environment_uuid' => $environment->uuid, 'application_uuid' => $application->uuid,
             'supabase_uuid' => $service->uuid, 'supabase_url' => $config['supabase_url'],

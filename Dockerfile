@@ -43,5 +43,7 @@ COPY --from=build /usr/src/app/target/uberjar/tolgraven.jar /app/tolgraven.jar
 COPY --from=build /usr/src/app/env/prod/resources/config.edn /app/env/prod/resources/config.edn
 ARG VCS_REF=unknown
 LABEL org.opencontainers.image.revision=$VCS_REF
+COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 EXPOSE 3000
 CMD ["java", "-Xms64m", "-Xmx512m", "-XX:MaxDirectMemorySize=128m", "-XX:ReservedCodeCacheSize=128m", "-XX:+ExitOnOutOfMemoryError", "-Dclojure.main.report=stderr", "-Dconf=env/prod/resources/config.edn", "-cp", "/app/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]

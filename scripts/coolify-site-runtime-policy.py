@@ -2,12 +2,15 @@
 """Keep one production and one staging site runtime on bux.
 
 Install as the accompanying systemd service. Only the two listed Coolify
-application UUIDs are in scope; build helpers and other services are excluded.
+application UUIDs are in scope. The separately scoped staging_supabase module
+also suspends/resumes the staging database stack; production services are excluded.
 """
 import json
 import re
 import subprocess
 import time
+
+import staging_supabase
 
 PRODUCTION = "bsok8o8csgso8c00g00k0csg"
 STAGING = "o84wgo08wcs048ss8sokgkgw"
@@ -54,9 +57,13 @@ def reconcile():
 
 
 if __name__ == "__main__":
+    last_supabase_check = 0
     while True:
         try:
             reconcile()
-        except (subprocess.SubprocessError, ValueError, OSError) as error:
+            if time.monotonic() - last_supabase_check >= 10:
+                staging_supabase.reconcile()
+                last_supabase_check = time.monotonic()
+        except (subprocess.SubprocessError, ValueError, OSError, RuntimeError) as error:
             print("Runtime policy retry:", type(error).__name__, flush=True)
         time.sleep(2)
