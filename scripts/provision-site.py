@@ -33,7 +33,7 @@ def validate(spec):
         raise ValueError('environments must contain production and/or staging')
     urls = set()
     for config in environments.values():
-        for key in ('web_url', 'supabase_url'):
+        for key in ('web_url', 'supabase_url') + (('cms_url',) if config.get('cms_url') else ()):
             url = urlparse(config[key])
             if (url.scheme != 'https' or not url.hostname or url.port or url.username or url.password
                     or url.path not in ('', '/') or url.query or url.fragment):
@@ -47,6 +47,11 @@ def validate(spec):
             raise ValueError('Invalid Git branch')
         if any(not isinstance(value, str) for value in config.get('supabase_env', {}).values()):
             raise ValueError('supabase_env values must be strings')
+        if config.get('cms_url'):
+            if not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', config.get('cms_admin_email', '')):
+                raise ValueError('cms_admin_email is required for a CMS environment')
+            if not isinstance(config.get('cms_seed_content', False), bool):
+                raise ValueError('cms_seed_content must be an explicit boolean')
         if config.get('application_uuid') and not spec.get('project_uuid'):
             raise ValueError('An existing application requires an explicit project_uuid')
     return spec
@@ -76,6 +81,8 @@ def remote(spec, action):
 def capacity_budget(state, running):
     required = 0
     for env in state['environments'].values():
+        if env.get('cms_container') and env['cms_container'] not in running:
+            required += 768
         if env['database_container'] not in running:
             required += 3072  # Full Supabase stack plus its web app, before starting either.
         elif not any(re.fullmatch(re.escape(env['application_uuid']) + r'(?:-\d+|-pr-\d+)?', name)
@@ -130,11 +137,32 @@ def schema(spec, state):
         print(f'{name}: schema, RPCs and RLS verified ({result} tables)', flush=True)
 
 
+def provision_cms(spec, state, action):
+    for name, config in spec['environments'].items():
+        if not config.get('cms_url'):
+            continue
+        env = state['environments'][name]
+        data = {'action': action, 'name': f"{spec['name']}-{name}-cms",
+                'server_uuid': spec['server_uuid'], 'destination_uuid': spec['destination_uuid'],
+                'environment_uuid': env['environment_uuid'], 'application_uuid': env['application_uuid'],
+                'url': config['cms_url'], 'admin_email': config['cms_admin_email'],
+                'seed': config.get('cms_seed_content', False),
+                'image': spec.get('cms_image', '127.0.0.1:5005/tolgraven/strapi:content-v2')}
+        payload = base64.b64encode(json.dumps(data).encode()).decode()
+        source = "<?php $input=json_decode(base64_decode('" + payload + "'),true); ?>\n"
+        source += (ROOT / 'scripts/provision-strapi.php').read_text()
+        result = json.loads(ssh(spec, ['docker', 'exec', '-i', 'coolify', 'php'], source,
+                                host=spec.get('coolify_ssh_host', spec['ssh_host'])))
+        env.update(cms_uuid=result['uuid'], cms_container='cms-' + result['uuid'])
+    return state
+
+
 def plan(spec):
     return {'project': spec.get('project_uuid', spec['name']), 'server': spec['server_uuid'],
             'data': 'empty: schema and policies only; no production data or users are copied',
             'environments': {name: {'web': config['web_url'], 'supabase': config['supabase_url'],
-                                    'git_branch': config['branch'], 'separate_database_and_storage': True}
+                                    'git_branch': config['branch'], 'separate_database_and_storage': True,
+                                    'cms': config.get('cms_url'), 'cms_seed': config.get('cms_seed_content', False)}
                              for name, config in spec['environments'].items()}}
 
 
@@ -157,21 +185,25 @@ def main():
         return
     if args.action == 'up':
         state = remote(spec, 'prepare')
+        provision_cms(spec, state, 'prepare')
         print(json.dumps(state, indent=2), flush=True)
         check_capacity(spec, state)
         remote(spec, 'start')
+        provision_cms(spec, state, 'start')
         schema(spec, state)
         print('Waiting for Supabase HTTPS, REST and Auth readiness...', flush=True)
         deadline = time.monotonic() + 600
         while True:
             try:
                 remote(spec, 'ready')
+                provision_cms(spec, state, 'verify')
                 break
             except RuntimeError:
                 if time.monotonic() >= deadline:
                     raise
                 time.sleep(5)
         remote(spec, 'wire')
+        provision_cms(spec, state, 'wire')
         result = remote(spec, 'deploy')
         print(json.dumps(result, indent=2), flush=True)
         pending = {name: item['deployment']['deployment_uuid'] for name, item in result['environments'].items()}

@@ -1,0 +1,12 @@
+{
+  "ssh_host": "bux",
+  "name": "tolgraven-production-cms",
+  "server_uuid": "yo0gcoww48ggcgc8go4kkoko",
+  "destination_uuid": "bckkog40404cgw8kc8c0gskk",
+  "environment_uuid": "cwowow4w8g04c4sw0o4c4000",
+  "application_uuid": "bsok8o8csgso8c00g00k0csg",
+  "url": "https://cms.bux.tolgraven.se",
+  "image": "127.0.0.1:5005/tolgraven/strapi:content-v2",
+  "admin_email": "joen.tolgraven@gmail.com",
+  "seed": true
+}

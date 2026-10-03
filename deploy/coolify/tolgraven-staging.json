@@ -9,10 +9,10 @@
   "environments": {
     "staging": {
       "application_uuid": "o84wgo08wcs048ss8sokgkgw",
-      "pull_request_id": 45,
-      "web_url": "https://45.o84wgo08wcs048ss8sokgkgw.bux.tolgraven.se",
+      "pull_request_id": 0,
+      "web_url": "https://o84wgo08wcs048ss8sokgkgw.bux.tolgraven.se",
       "supabase_url": "https://supabase-staging.bux.tolgraven.se",
-      "branch": "codex/strapi-supabase-migration"
+      "branch": "master"
     }
   }
 }

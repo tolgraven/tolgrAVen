@@ -6,6 +6,7 @@
     [reagent.core :as r]
     [reagent.dom.client :as rdomc]
     [tolgraven.ajax :as ajax]
+    [tolgraven.content.client :as content]
     [tolgraven.events]
     [tolgraven.loader :as l]
     [tolgraven.macros :as m]
@@ -137,9 +138,24 @@
   (rf/dispatch-sync [:store/init])
   (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
   (ajax/load-interceptors!)
-  (mount-components)
-  (js/setTimeout #(rf/dispatch [:init/init]) ; listeners and stuff that might depend on being mounted
-                 16))
+  (letfn [(start! []
+            (-> (content/bootstrap!)
+                (.then (fn []
+                         (mount-components)
+                         (js/setTimeout #(rf/dispatch [:init/init]) 16)))
+                (.catch (fn [_]
+                          ;; Keep the server skeleton visible until a complete
+                          ;; content snapshot is ready, with a usable retry.
+                          (let [element (.getElementById js/document "app")
+                                message (.createElement js/document "p")
+                                button (.createElement js/document "button")]
+                            (set! (.-textContent element) "")
+                            (set! (.-textContent message) "Content could not be loaded.")
+                            (set! (.-textContent button) "Retry")
+                            (set! (.-onclick button) start!)
+                            (.appendChild element message)
+                            (.appendChild element button))))))]
+    (start!)))
 
 (defn ^:export init!  []
   (defonce _init_ (init))) ;; why still need for thisi don't get it init! is now being called each reload?

@@ -6,6 +6,7 @@
     [ring.middleware.anti-forgery :refer [*anti-forgery-token*]]
     [ring.util.response]
     [tolgraven.config :refer [env]]
+    [tolgraven.content.service :as content]
     [optimus.link :as olink]
     [optimus.html :as ohtml]))
 
@@ -135,7 +136,8 @@
    [:body {:class "container themable framing-shadow sticky-footer-container"}
     
     [:div#app loading-content]
-    
+    (when-let [bundle (:site-content request)]
+      [:script#site-content-bootstrap {:type "application/json"} (content/hydration-json bundle)])
     (ohtml/link-to-js-bundles request ["main.js"]) ]])
 
 (defn render-hiccup
@@ -151,7 +153,13 @@
   [request]
   (render-hiccup
    home
-   request
+   (if-let [mode (System/getenv "CONTENT_BOOTSTRAP_MODE")]
+     (if (#{"route" "full"} mode)
+       (let [route (keyword (or (second (clojure.string/split (:uri request) #"/")) "home"))
+             bundle (if (= mode "route") (assoc (content/for-route! route) :deferred? true) (content/bundle!))]
+         (assoc request :site-content bundle))
+       request)
+     request)
    :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"]
                                     "img/foggy-shit-small.jpg") ; uh obviously not for any page though, like blog and whatnot...
    :title "tolgrAVen audiovisual"

@@ -10,12 +10,19 @@
     "production": {
       "web_url": "https://new-site.example.com",
       "supabase_url": "https://supabase.new-site.example.com",
-      "branch": "codex/strapi-supabase-migration"
+      "branch": "codex/strapi-content-pipeline",
+      "cms_url": "https://cms.example.com",
+      "cms_admin_email": "owner@example.com",
+      "cms_seed_content": true
     },
     "staging": {
       "web_url": "https://staging.new-site.example.com",
       "supabase_url": "https://supabase-staging.new-site.example.com",
-      "branch": "codex/strapi-supabase-migration"
+      "branch": "codex/strapi-content-pipeline",
+      "cms_url": "https://cms-staging.example.com",
+      "cms_admin_email": "owner@example.com",
+      "cms_seed_content": true
     }
-  }
+  },
+  "cms_image": "127.0.0.1:5005/tolgraven/strapi:content-v2"
 }

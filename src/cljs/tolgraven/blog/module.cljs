@@ -1,12 +1,14 @@
 (ns tolgraven.blog.module
   (:require
+    [tolgraven.content.contract :as content-contract]
     [re-frame.core :as rf]
     [tolgraven.blog.events]
     [tolgraven.blog.subs]
     [tolgraven.blog.views :as view]))
 
 (def spec
-  {:id :blog
+  {:content (get content-contract/module-content :blog [])
+   :id :blog
    :view {:page #'view/blog-page
           :post #'view/blog-post-page
           :archive #'view/blog-archive-page
