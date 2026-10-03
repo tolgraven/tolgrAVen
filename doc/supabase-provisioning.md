@@ -254,9 +254,15 @@ psql -v ON_ERROR_STOP=1 -f test/sql/supabase_cutover_test.sql
 
 This branch has not been deployed. Set the public origin/anon key and server-only
 service key on the application before deployment. Full app-level live mutation
-validation needs access to that server key. Automatic approval review declined an
-extra Auth fixture without explicit fixture approval, so live password login and
-private-stream validation remain pending. No fixture Auth account was created.
+validation needs access to that server key. After explicit user approval, a
+temporary Auth fixture passed live correct/wrong-password checks using the
+Firebase-compatible password fixture. Its private Realtime stream delivered
+INSERT/UPDATE/DELETE, owner reads excluded another owner, and anonymous reads,
+browser writes, and privileged RPC calls were denied. Global sign-out revoked
+its sessions before deletion. Follow-up checks rejected login, access-token user
+lookup, and refresh for the deleted fixture. Cleanup left 14 Auth accounts and
+14 identities, 14 profiles, and zero fixture profiles, identities, sessions or
+private documents.
 Google/email are enabled on this instance; GitHub/Facebook remain disabled until
 configured in self-hosted Auth. Imported unverified email/password accounts keep
 their original verification state. Strapi content migration remains separate.
@@ -445,9 +451,12 @@ python3 test/sql/supabase_auth_import_test.py -h /tmp -p 55432 -U postgres -d po
 The SQL integration test requires a disposable database with the application and
 Supabase Auth schemas. It refuses existing fixture IDs and removes its fixtures.
 Local checks using the installed Auth version's crypto implementation passed the
-upstream correct/wrong-password fixture and parsed all 8 imported hashes. A real
-user login has not been exercised. Automatic approval review rejected an extra
-live test account, so password fixture verification remained local.
+upstream correct/wrong-password fixture and parsed all 8 imported hashes. With
+explicit user approval, the live Auth service also accepted the correct password
+and rejected a wrong password for a temporary Firebase-compatible fixture. Its
+sessions were revoked and its account, identity, profile and private test data
+were removed, with cleanup verified. A real imported user login has not been
+exercised.
 
 The live Auth settings enable Google and email login. GitHub and Facebook are
 disabled and require their provider credentials/configuration before login. Email
