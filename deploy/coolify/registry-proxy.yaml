@@ -1,0 +1,54 @@
+{
+  "http": {
+    "routers": {
+      "tolgraven-registry": {
+        "entryPoints": [
+          "https"
+        ],
+        "rule": "Host(`registry.bux.tolgraven.se`)",
+        "service": "tolgraven-registry",
+        "middlewares": [
+          "tolgraven-registry-auth"
+        ],
+        "tls": {
+          "certResolver": "letsencrypt"
+        }
+      },
+      "tolgraven-registry-http": {
+        "entryPoints": [
+          "http"
+        ],
+        "rule": "Host(`registry.bux.tolgraven.se`)",
+        "service": "tolgraven-registry",
+        "middlewares": [
+          "tolgraven-registry-https"
+        ]
+      }
+    },
+    "services": {
+      "tolgraven-registry": {
+        "loadBalancer": {
+          "servers": [
+            {
+              "url": "http://tolgraven-build-registry:5000"
+            }
+          ]
+        }
+      }
+    },
+    "middlewares": {
+      "tolgraven-registry-auth": {
+        "basicAuth": {
+          "removeHeader": true,
+          "usersFile": "/traefik/auth/tolgraven-registry.htpasswd"
+        }
+      },
+      "tolgraven-registry-https": {
+        "redirectScheme": {
+          "scheme": "https",
+          "permanent": true
+        }
+      }
+    }
+  }
+}

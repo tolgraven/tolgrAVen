@@ -8,7 +8,7 @@ make docker           # build locally, push changed layers to S3, deploy PR 45
 make docker-build     # build only
 make docker-push      # build and publish, leave the live app alone
 make docker-prefab    # build/publish the reusable tools and dependencies
-make docker-registry  # start the local S3-backed registry if needed
+make docker-registry  # check the HTTPS registry on bux
 ```
 
 `make docker` is an explicit manual deployment. It includes uncommitted application
@@ -18,36 +18,49 @@ applicable, and a timestamp. The last image reference is stored in ignored
 
 ## Registry and S3
 
-Docker requires a registry API, not a plain S3 URL. A Distribution registry on
-both the Mac and bux listens at `127.0.0.1:5005`. Both use the same private storage
-prefix, `s3://tolgraven/docker-registry/`, at
-`https://hel1.your-objectstorage.com`. Images uploaded locally are therefore
-available to the server without transferring them through an SSH tunnel. Only
-missing layers upload. No registry port is exposed on a public interface.
+One Distribution registry runs on **bux only**, backed by the private storage
+prefix `s3://tolgraven/docker-registry/` at
+`https://hel1.your-objectstorage.com`. The Mac pushes and pulls through
+`registry.bux.tolgraven.se` over HTTPS with Docker authentication. Coolify uses
+`127.0.0.1:5005` on bux for the same repository. Only missing layers upload.
+There is no registry container or S3 credential requirement on the Mac.
 
-The local registry reads the existing AWS CLI `hetzner` profile. The server setup
-script reads the existing `hetzner` S3 storage record inside Coolify. Credentials
-are supplied to the registry at runtime, never Docker build arguments. Registry
-objects are private; the public Maven repository under `m2/releases/` is separate.
-Users with access to the local Docker socket can inspect registry credentials,
-as with other Docker services holding credentials. Removing the registry
-container does not delete its S3 image data.
+Traefik provides TLS and bcrypt HTTP basic authentication for public access;
+anonymous requests receive HTTP 401. The raw registry port is bound to loopback.
+The registry also joins the private Coolify proxy network. S3 objects remain
+private, separate from the public Maven repository under `m2/releases/`.
 
-Required locally: Docker/BuildKit, Python 3, make, AWS CLI with the Hetzner profile,
-and working `ssh bux` authentication. The existing SSH agent may require approval.
+The server setup script reuses the existing `hetzner` S3 record inside Coolify.
+Credentials are supplied to the registry at runtime, never Docker build arguments.
+Removing the registry container does not delete its S3 image data.
+
+Required locally: Docker/BuildKit, Python 3, make, a registry login, and working
+`ssh bux` authentication. This Mac's Docker login is already configured through
+Docker's credential store. Other machines need their own authorized credentials:
+
+```sh
+docker login registry.bux.tolgraven.se
+```
+
 No additional Coolify API token or SSH key is created.
 
 ## Prefab builder
 
 `Dockerfile.builder` combines pinned Node 22, Temurin Java 21, and Leiningen images,
 then installs exactly `package-lock.json` and downloads production Maven artifacts.
-The prefab includes npm's local Sass, PostCSS, and Shadow CLI tools. Sass/PostCSS
+The prefab includes the complete project `node_modules` directory, including
+Sass, PostCSS, and Shadow CLI tools. Sass/PostCSS
 symlinks support the existing login-shell Sass command without global npm installs.
 
 `make docker-prefab` publishes a dependency-hash tag and the compatibility alias
-`127.0.0.1:5005/tolgraven/builder:java21-node22-v1`. Refresh it when changing
+`registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v1` (the server uses
+the same alias through its loopback endpoint). Refresh it when changing
 `project.clj`, either package manifest, or the builder Dockerfile. Local builds
-check the dependency hash automatically. A stale server prefab still supports
+check the dependency hash automatically and pull an existing hash before
+considering a build. `make docker-prefab` skips rebuilding and pushing when the
+published image and alias already match. Do not refresh it for ordinary source
+edits. This dependency-update rule is also recorded in `AGENTS.md`.
+A stale server prefab still supports
 changed dependencies, but needs to fetch them again during that build.
 
 Coolify staging has `BUILDER_IMAGE` set to the compatibility alias as a build-only
@@ -97,9 +110,16 @@ one; ordinary cross-PR Git deployments still use that service's reconciliation.
 
 ```sh
 # On bux, after copying the scripts from this checkout:
-bash scripts/setup-build-registry.sh
+# Use an existing bcrypt htpasswd file; keep it out of Git.
+REGISTRY_HTPASSWD_FILE=/secure/registry.htpasswd bash scripts/setup-build-registry.sh
 sudo install -D -m 755 scripts/deploy-image.py /usr/local/lib/tolgraven/deploy-image.py
 ```
+
+The public route template is `deploy/coolify/registry-proxy.yaml`. The setup script
+installs its authentication file under `/data/coolify/proxy/auth/` and its route
+under `/data/coolify/proxy/dynamic/`. The existing `letsencrypt` resolver issues
+its certificate. The route contains no credentials; the htpasswd file stays on
+bux. Without `REGISTRY_HTPASSWD_FILE`, setup preserves any existing public route.
 
 The helper uses the installed Coolify 4.x PHP application/queue API through its
 container; verify compatibility after a Coolify upgrade. It does not edit Coolify

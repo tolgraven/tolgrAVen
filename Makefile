@@ -5,7 +5,7 @@ help:
 	@echo 'make docker-build   Build locally only'
 	@echo 'make docker-push    Build and publish without deploying'
 	@echo 'make docker-prefab  Build/publish the cached Leiningen + Node + dependencies image'
-	@echo 'make docker-registry Start the private loopback S3 registry locally'
+	@echo 'make docker-registry Check the authenticated registry on bux'
 
 docker:
 	python3 scripts/docker.py deploy

@@ -15,6 +15,12 @@
 - `npm run build`: produce compressed CSS assets for production.
 - `npm run init`: bootstrap CSS output dir and global tool installs.
 
+## Docker dependency updates
+- The prefab builder includes `node_modules` and Maven artifacts; reuse it for normal source changes.
+- When changing `package.json`, `package-lock.json`, `project.clj` dependencies, or `Dockerfile.builder`, run and verify `make docker-prefab` to publish the refreshed dependency-hash image and the staging compatibility tag.
+- Keep the fallback `prefab` stage in `Dockerfile` aligned with `Dockerfile.builder`. Do not refresh the prefab for unrelated application-source edits.
+- See `doc/docker-builds.md` for registry setup and deployment recovery.
+
 ## Coding Style & Naming Conventions
 - Clojure/ClojureScript: follow standard idioms (2-space indentation, align threading macros), use kebab-case for vars/functions, and keep namespaces aligned with file paths.
 - Re-frame: do not use ns-scoped keywords, but rather simple ns based on module name.

@@ -43,3 +43,7 @@ resources/docs/codox
 profiles.clj
 .env.*
 .aws
+
+# Repository instructions and deployment configuration are not application inputs.
+AGENTS.md
+deploy
