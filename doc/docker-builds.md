@@ -157,3 +157,9 @@ The end-to-end `make docker` run with a warm local build cache completed in
 The deployed homepage and public settings endpoint both returned HTTP 200, and
 production remained available. These timings are measurements of this run,
 not a guarantee for source changes or the initial prefab build/upload.
+
+Coolify writes a release-specific `docker-compose.yaml` into the checkout before
+building. Docker's context excludes that generated manifest (and the ignore file
+itself), so deployment metadata and documentation/tooling-only changes do not
+invalidate `COPY . .` and force a new application compilation. Application source
+changes still compile normally.

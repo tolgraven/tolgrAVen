@@ -30,6 +30,9 @@ resources/public/js
 
 # Build artifacts and tools are not application inputs.
 Dockerfile*
+.dockerignore
+docker-compose*.yml
+docker-compose*.yaml
 Makefile
 doc
 .github
