@@ -116,8 +116,7 @@
    ["/supabase/settings"
     {:get {:summary "Public browser settings for direct Supabase reads"
            :handler (fn [_]
-                      {:status 200
-                       :body (supabase-api/public-settings)})}}]
+                      (supabase-api/settings-response))}}]
 
    ["/supabase/profile"
     {:get {:summary "Read the signed-in user's linked profile"

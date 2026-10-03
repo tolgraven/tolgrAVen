@@ -5,6 +5,7 @@
             [clojure.java.io :as io]
             [tolgraven.platform.supabase :as platform]
             [tolgraven.supabase.auth :as auth]
+            [tolgraven.supabase.api :as api]
             [tolgraven.supabase.storage :as storage]
             [tolgraven.supabase.integrations :as integrations])
   (:import [javax.imageio ImageIO]
@@ -95,3 +96,37 @@
                                     "SUPABASE_PUBLIC_URL" "https://environment.example"}}
       #(do (is (= "environment-secret" (platform/service-key)))
            (is (= "https://environment.example" (platform/rest-base-url)))))))
+
+
+(deftest public-browser-bootstrap-survives-optional-service-failures
+  (with-redefs [config/env {:supabase-public-url "https://public.example"
+                           :supabase-anon-key "public-key"}
+                platform/request! (fn [& _]
+                                    (throw (ex-info "Missing Supabase service key" {})))
+                http/get (fn [& _] (throw (ex-info "Auth unavailable" {})))]
+    (is (= {:status 200
+            :body {:url "https://public.example" :anon-key "public-key"
+                   :trusted-author-ids [] :providers {}}}
+           (api/settings-response)))))
+
+(deftest public-settings-return-only-public-metadata
+  (with-redefs [config/env {:supabase-public-url "https://public.example"
+                           :supabase-anon-key "public-key"
+                           :service-supabaseservice-key "private-service-key"}
+                platform/request! (fn [& _] {:body [{:user_id "admin"}]})
+                http/get (fn [& _] {:body {:external {:github true}}})]
+    (is (= {:url "https://public.example" :anon-key "public-key"
+            :trusted-author-ids ["admin"] :providers {:github true}}
+           (api/public-settings)))
+    (is (not (.contains (pr-str (api/settings-response)) "private-service-key")))))
+
+
+(deftest missing-browser-settings-report-safe-actionable-configuration
+  (with-redefs [config/env {}
+                platform/request! (fn [& _] (throw (AssertionError. "Unexpected server request")))
+                http/get (fn [& _] (throw (AssertionError. "Unexpected Auth request")))]
+    (with-redefs-fn {#'api/environment-value (constantly nil)}
+      #(is (= {:status 503
+               :body {:error "Supabase browser configuration is missing"
+                      :missing ["SUPABASE_PUBLIC_URL" "SUPABASE_ANON_KEY"]}}
+              (api/settings-response))))))
