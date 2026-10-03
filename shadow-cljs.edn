@@ -3,7 +3,12 @@
  :source-paths ["src/clj" "src/cljs" "src/cljc"]
 
  :builds
- {:app-test {:target :browser-test
+ {:supabase-test {:target :node-test
+                  :output-to "target/supabase-tests.js"
+                  :ns-regexp "tolgraven\\.supabase-.*-test$"
+                  :autorun true}
+
+  :app-test {:target :browser-test
              :test-dir "resources/public/js/tests"
              :ns-regexp "tolgraven\\..*-test$"}
 

@@ -1,14 +1,21 @@
 (ns tolgraven.integration-test
   (:require [cljs.test :refer-macros [deftest is testing async]]
             [re-frame.core :as rf]
+            [re-frame.db :as rfdb]
+            [reagent.ratom :as ratom]
+            [tolgraven.supabase.client :as supabase]
+            [tolgraven.supabase.query :as supabase-query]
+            [tolgraven.store.contract :as store-contract]
             [reitit.core :as reitit]
             [tolgraven.routes :as routes]
             [tolgraven.loader :as loader]
             [tolgraven.events]
+            [tolgraven.subs]
             [shadow.lazy :as lazy]
             [tolgraven.search.subs :as search]
             ;; Browser tests bundle all module specs so ready-module initialization is exercised.
             [tolgraven.blog.module]
+            [tolgraven.blog.views :as blog-views]
             [tolgraven.link-preview.module]
             [tolgraven.cv.module]
             [tolgraven.docs.module]
@@ -166,3 +173,85 @@
       (is (= (str query " next") (:text result)))))
   (is (nil? (search/autocomplete-suggestion "missing" {:highlights [{:snippet "Other text"}]})))
   (is (nil? (search/autocomplete-suggestion "query" {}))))
+
+(deftest active-profile-merges-live-public-fields-with-private-details
+  (let [before @rfdb/app-db
+        public (ratom/atom {:id "u" :data {:id "u" :name "Before" :karma 9}})]
+    (try
+      (rf/clear-subscription-cache!)
+      (swap! rfdb/app-db assoc-in [:state :booted :store] true)
+      (swap! rfdb/app-db assoc-in [:state :active-user]
+             {:id "u" :name "Private snapshot" :karma 1 :roles ["admins"] :comment-votes {:c 1}})
+      (with-redefs [supabase/ensure-query! (fn [_] (ratom/make-reaction #(deref public)))]
+        (let [active (rf/subscribe [:user/active-user])]
+          (is (= 9 (:karma @active)))
+          (is (= ["admins"] (:roles @active)))
+          (reset! public {:id "u" :data {:id "u" :name "After" :karma 10}})
+          (ratom/flush!)
+          (is (= "After" (:name @active)))
+          (is (= 10 (:karma @active)))
+          (is (= {:c 1} (:comment-votes @active)))))
+      (finally (rf/clear-subscription-cache!) (reset! rfdb/app-db before)))))
+
+
+(deftest streamed-blog-posts-and-comment-threads
+  (let [before @rfdb/app-db
+        post (fn [id] {:id id :doc_id (str id) :title (str "Post " id)
+                       :text "Post body" :tags "test" :ts id})
+        *seed (ratom/atom
+                {:blog_posts (mapv post [1 24 28])
+                 :blog_comments [{:id "root" :parent_post 24 :text "Root comment" :ts 1}
+                                 {:id "reply" :parent_post 24 :parent_comment "root"
+                                  :text "Nested reply" :ts 2}
+                                 {:id "other" :parent_post 28 :text "Other post" :ts 3}]})]
+    (try
+      (rf/clear-subscription-cache!)
+      (swap! rfdb/app-db assoc-in [:state :booted :store] true)
+      (with-redefs [supabase/ensure-query!
+                    (fn [opts]
+                      (ratom/make-reaction
+                        #(supabase-query/query-contract
+                           (store-contract/seed->contract @*seed) opts)))]
+        (let [ids (rf/subscribe [:blog/post-ids])
+              first-page (rf/subscribe [:blog/ids-for-page 0 2])
+              second-page (rf/subscribe [:blog/ids-for-page 1 2])
+              current-post (rf/subscribe [:blog/post 24])
+              roots (rf/subscribe [:comments/for-q-flat 24])
+              replies (rf/subscribe [:comments/for-q-flat 24 "root"])]
+          (testing "Native numeric Supabase IDs drive paging and permalink lookup"
+            (is (= [28 24 1] @ids))
+            (is (= [28 24] @first-page))
+            (is (= [1] @second-page))
+            (is (= 3 @(rf/subscribe [:blog/count])))
+            (is (= "Post 24" (:title @current-post)))
+            (is (= 28 @(rf/subscribe [:blog/adjacent-post-id :prev 24])))
+            (is (= 1 @(rf/subscribe [:blog/adjacent-post-id :next 24]))))
+          (testing "Root comments and replies stay in their own post and thread"
+            (is (= #{:root} (set (keys @roots))))
+            (is (= "Root comment" (get-in @roots [:root :text])))
+            (is (= #{:reply} (set (keys @replies))))
+            (is (= "Nested reply" (get-in @replies [:reply :text]))))
+          (testing "Streamed inserts and deletes update the same subscriptions"
+            (swap! *seed update :blog_posts conj (post 29))
+            (swap! *seed update :blog_comments conj
+                   {:id "new-reply" :parent_post 24 :parent_comment "root"
+                    :text "Live reply" :ts 4})
+            (ratom/flush!)
+            (is (= [29 28 24 1] @ids))
+            (is (= [29 28] @first-page))
+            (is (= #{:reply :new-reply} (set (keys @replies))))
+            (swap! *seed update :blog_posts #(filterv (fn [p] (not= 29 (:id p))) %))
+            (ratom/flush!)
+            (is (= [28 24 1] @ids)))))
+      (finally
+        (rf/clear-subscription-cache!)
+        (reset! rfdb/app-db before)))))
+
+(deftest active-vote-remains-clickable-unless-write-is-pending
+  (let [pending (ratom/atom false)]
+    (with-redefs [rf/subscribe (fn
+                                ([[event]] (if (= :blog/vote event) (ratom/atom :up) pending))
+                                ([_ _] pending))]
+      (is (false? (:disabled (second (blog-views/vote-btn "author" "voter" [1 "c"] :up)))))
+      (reset! pending true)
+      (is (true? (:disabled (second (blog-views/vote-btn "author" "voter" [1 "c"] :up))))))))

@@ -9,31 +9,14 @@
             [clojure.walk :as walk]))
 
 (defn <-store [& coll-docs]
-  (-> @(rf/subscribe [:firestore/on-snapshot {:path-document coll-docs}])
+  (-> @(rf/subscribe [:store/on-snapshot {:path-document coll-docs}])
       :data
       (walk/keywordize-keys)))
 
-(defn normalize-firestore "Reformat data for our app-db storage. Only works for documents? And only blog-posts lol wth"
-  [response]
-  (let [ks (reduce (fn [ks v]
-                     (conj ks (get-in v [:data "id"])))
-                   []
-                   (:docs response))]
-    (zipmap ks
-            (walk/keywordize-keys  
-             (map :data (:docs response))))))
-
-(defn normalize-firestore-general "Reformat data for our app-db storage. Fix so compat w blog-posts..."
-  [response]
-  (let [docs (as-> (or (:docs response) response) $
-                   (if (vector? $) $ [$]))
-        ks (reduce (fn [ks v]
-                     (conj ks (-> v :id keyword)))
-                   []
-                   docs)]
-    (zipmap ks
-            (walk/keywordize-keys  
-             (map :data docs)))))
+(defn normalize-store-result [response]
+  (let [docs (if (contains? response :docs) (:docs response) (when response [response]))]
+    (into {} (keep (fn [{:keys [id data]}]
+                     (when id [(keyword (str id)) (walk/keywordize-keys data)]))) docs)))
 
 (defn wrap-fn "Wraps a function so gets called as part of outer fn"
   [f wrapped]
@@ -440,4 +423,3 @@
       (when needs-resize
         (set! (.-width canvas) w)
         (set! (.-height canvas) h)))))
-

@@ -99,8 +99,6 @@
                  [akiroz.re-frame/storage "0.1.4"] ;localstorage.
                  [day8.re-frame/async-flow-fx "0.4.0"]
                  ; [com.smxemail/re-frame-document-fx "0.0.1-SNAPSHOT"] ;https://github.com/SMX-LTD/re-frame-document-fx
-                 [com.degel/re-frame-firebase "0.10.0-SNAPSHOT" :exclusions [args4j]]
-                 ; [com.degel/re-frame-firebase "0.8.0" :exclusions [args4j cljsjs/firebase]]
                  [reagent "2.0.1"]
                  [reanimated "0.6.1"]
                  [com.smxemail/re-frame-cookie-fx "0.0.2"  :exclusions [args4j]]

@@ -1,0 +1,13 @@
+[Unit]
+Description=Keep one production and one staging tolgrAVen runtime
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/tolgraven/coolify-site-runtime-policy.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

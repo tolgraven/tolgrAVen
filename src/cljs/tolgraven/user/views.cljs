@@ -36,9 +36,11 @@
 
 (defn sign-in "Sign in or go to reg page" []
   (let [disabled? (not @(rf/subscribe [:login/valid-input?]))
+        providers @(rf/subscribe [:option [:supabase :providers]])
         with (fn [provider]
-               [:button {:on-click #(rf/dispatch [:fb/sign-in provider])}
-                [:i.fab {:class (str "fa-" (name provider))}]])]
+               (when (get providers provider)
+                 [:button {:on-click #(rf/dispatch [:user/sign-in provider])}
+                  [:i.fab {:class (str "fa-" (name provider))}]]))]
     [:div.user-inner.noborder
      [:h2 "Please log in"]
      [sign-in-input]
@@ -147,7 +149,7 @@
    [user-avatar (merge user-map {:no-zoom true})] ])
 
 (defn admin "User admin page" [user]
-  (let [roles @(rf/subscribe [:<-store :auth :roles])
+  (let [admin? @(rf/subscribe [:user/has-role? :admins])
         section-btn (fn [text k section]
                       [ui/button text k
                                  :action #(rf/dispatch [:user/active-section section])])]
@@ -158,7 +160,7 @@
        [:div.user-info
         [:h3 {:style {:display :inline}}
          (:name user)]
-        (when (some #{(:id user)} (:admins roles)) ; some way to sep / hl this...
+        (when admin? ; some way to sep / hl this...
            [:span {:style {:font-size "80%"}}
             "admin"])
         [:span [:em (:email user)]]
@@ -172,10 +174,10 @@
       {:style {:position :relative}}
       [:span "Change "]
       [section-btn "Username"  :username :change-username]
-      [section-btn "Password"  :password :change-password] ; firebase has its own so should just put a link for reset-password email
+      [section-btn "Password"  :password :change-password]
       
      [:button.border
-      {:on-click #(rf/dispatch [:fb/sign-out])
+      {:on-click #(rf/dispatch [:user/sign-out])
        :style {:position "relative" :right 0}}
       "Log out"]]]))
 

@@ -46,7 +46,7 @@
                       :start (fn [{:keys [path]}]
                                (rf/dispatch [:state [:experiments] (keyword (:tab path))])
                                (rf/dispatch [:exception [:experiments] nil]))}]}]]
-                   ["client-oauth" ; for oauth flows. can capture results and send straight to firebase instead of going past our server
+                   ["client-oauth" ; for client OAuth callbacks
                     {:view #'a404/not-found-page}
                     ["" {:name :client-oauth
                          #_:view #_#'successful-oauth-page}]

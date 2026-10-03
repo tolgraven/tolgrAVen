@@ -4,7 +4,6 @@
     [re-frame.std-interceptors :as interceptor]
     [ajax.core :as ajax]
     [day8.re-frame.http-fx]
-    [com.degel.re-frame-firebase :as firebase]
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
     [day8.re-frame.async-flow-fx :as async-flow-fx]
     [akiroz.re-frame.storage :as localstore]
@@ -18,13 +17,13 @@
     [tolgraven.user.subs]
     [tolgraven.loader :as l]
     [tolgraven.scroll]
+    [tolgraven.supabase.client :as supabase-client]
     [tolgraven.doc-fx]
     [tolgraven.effects]
     [tolgraven.cofx :as cofx]
     [goog.object :as gobj]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
-
 
 ; re-frisk occasionally throws 10MB long "trace while storing" errors so def dont try to display that shit.
 ; (rf/set-loggers!  {:warn  (fn [& args]
@@ -333,85 +332,88 @@
  (fn [db [_ colorscheme]]
    {:db (assoc-in db [:options :theme :colorscheme] (or colorscheme "default"))}))
 
-; renamed store-> not fire->, should work to hide fire behind stuff so can swap out easier
+(rf/reg-fx :supabase/write
+  (fn [[path data merge-fields]]
+    (supabase-client/write! path data merge-fields)))
+
 (rf/reg-event-fx :store->
   (fn [{:keys [db]} [_ path data merge-fields]]
-    (if (get-in db [:state :booted :firebase])
-      {:firestore/set {:path path :data data
-                       :set-options
-                       (when merge-fields
-                         {:merge true :merge-fields merge-fields})}}
-      {:dispatch [:on-booted :firebase [:store-> path data merge-fields]]})))
-; other thing could do is combo app-db/fire setter/getter
-; so <-$ subs topic and tries grab from local, then far
-; while dispatch will store value in both db and send to fire.
-; in one op.
-; that would be for eg if thousands of objects so makes much more sense to
-; also batch-fetch early in page boot.
-; but then in component still always have latest value.
-; if that actually (easily) possible hmm
+    (if (get-in db [:state :booted :store])
+      {:supabase/write [path data merge-fields]}
+      {:dispatch [:on-booted :store [:store-> path data merge-fields]]})))
 
-; TODO surely should wrap on-success to strip metadata etc and just store keywordized :data directly here
-; with util/normalize-firestore. just need to get rid of that from elsewhere then tho
-(rf/reg-event-fx :<-store ; event version of <-store takes an on-success cb event
+(rf/reg-event-fx :<-store
   (fn [{:keys [db]} [_ path on-success on-failure]]
-    (if (get-in db [:state :booted :firebase])
-      (let [kind (if (even? (count path))
-                   :path-document
-                   :path-collection)]
-        {:firestore/get (merge {kind path
-                                :expose-objects true
-                                :on-success [:store/on-success on-success]} ;TODO mod firestore lib to accept vectors/wrapping. goddamn
-                               (when on-failure
-                                 {:on-failure on-failure}))})
-      {:dispatch [:on-booted :firebase [:<-store path on-success on-failure]]})))
+    (if (get-in db [:state :booted :store])
+      (do (supabase-client/read-once!
+            {(if (even? (count path)) :path-document :path-collection) path}
+            #(rf/dispatch (conj on-success (util/normalize-store-result %)))
+            #(rf/dispatch (conj (or on-failure [:default-http-error]) %)))
+          {})
+      {:dispatch [:on-booted :store [:<-store path on-success on-failure]]})))
 
-(rf/reg-event-fx :store/on-success ; strip metadata etc
-  (fn [_ [_ on-success data]]
-    {:dispatch (conj on-success (util/normalize-firestore-general data))}))
+(rf/reg-event-fx :supabase/fetch-settings
+  (fn [_ _]
+    {:dispatch [:http/get {:uri "/api/supabase/settings"}
+                [:supabase/init]
+                [:supabase/error]]}))
 
-(rf/reg-event-fx :store/on-success-wrapper
-  (fn [_ [_ ]]))
+(rf/reg-event-fx :supabase/error
+  (fn [_ [_ error]]
+    {:dispatch [:diag/new :error "Supabase init failed" error]}))
 
-(rf/reg-event-fx :fb/fetch-settings
-  (fn [{:keys [db]} _]
-    {:dispatch [:http/get-internal {:uri "/api/firebase-settings"}
-                [:fb/init]
-                [:fb/error]]}))
+(rf/reg-fx :supabase/request
+  (fn [{:keys [method uri data on-success on-error]}]
+    (supabase-client/authenticated-request!
+     method uri data
+     #(rf/dispatch (conj on-success %))
+     #(rf/dispatch (conj on-error %)))))
 
-(rf/reg-event-fx :fb/error
-  (fn [{:keys [db]} [_ error]]
-    {:dispatch [:diag/new :error "Server error" error]}))
+(rf/reg-event-fx :supabase/profile-fetch
+  (fn [_ _]
+    {:supabase/request {:method :get :uri "/api/supabase/profile"
+                        :on-success [:supabase/profile]
+                        :on-error [:supabase/auth-error]}}))
 
-(rf/reg-event-fx :fb/init
-  (fn [{:keys [db]} _]
-    (firebase/init :firebase-app-info      (get-in db [:options :firebase :config])
-                   :firestore-settings     (get-in db [:options :firebase :settings]) ; Shouldn't be used on later versions. See: https://firebase.google.com/docs/reference/js/firebase.firestore.Settings
-                   :get-user-sub           [:fb/get-user]
-                   :set-user-event         [:fb/set-user]
-                   :default-error-handler  [:fb/error])
-    {:dispatch-n [[:booted :firebase]
-                  [:fb/fetch-users]]}))
+(rf/reg-event-fx :supabase/write-error
+  (fn [_ [_ error]]
+    {:dispatch [:diag/new :error "Unable to save"
+                (or (get-in error [:response :error]) (:message error) "Request failed")]}))
 
+(rf/reg-event-db :supabase/profile
+  (fn [db [_ profile]]
+    (cond-> (assoc-in db [:state :active-user] profile)
+      (not= (:id profile) (get-in db [:state :active-user :id]))
+      (assoc-in [:state :supabase-writes] {})
+      profile (assoc-in [:state :user] (:id profile))
+      (nil? profile) (update :state dissoc :user)
+      (and (seq (get-in db [:state :user-section]))
+           (not= :closed (last (get-in db [:state :user-section]))))
+      (assoc-in [:state :user-section] [(if profile :admin :login)]))))
+
+(rf/reg-event-fx :supabase/auth-error
+  (fn [_ [_ error]]
+    {:dispatch [:diag/new :error "Sign in"
+                (or (get-in error [:response :error]) (:message error) "Authentication failed")]}))
+
+(rf/reg-event-fx :supabase/init
+  (fn [{:keys [db]} [_ settings]]
+    (try
+      (supabase-client/init! settings
+                             #(rf/dispatch [:supabase/profile %])
+                             #(rf/dispatch [:supabase/auth-error %]))
+      {:db (assoc-in db [:options :supabase] settings)
+       :dispatch [:booted :store]}
+      (catch :default error
+        {:dispatch [:supabase/error (.-message error)]}))))
+
+(rf/reg-event-fx :store/init
+  (fn [_ _] {:dispatch [:supabase/fetch-settings]}))
 
 (rf/reg-event-fx :<-cms
-  (fn [{:keys [db]} [_ path stuff]]
-    (let [{:keys [url read-api-key]} (get-in db [:strapi :auth])]
-      {:dispatch
-       (if url
-         [:http/get {:uri (str url path)
-                     :headers {:Authorization (str "bearer " read-api-key)}}
-          [:content [:cms]]]
-         [:on-booted :cms [:<-cms path stuff]]) })))
-
-(rf/reg-event-fx :init/cms
-  (fn [{:keys [db]} [_ data]]
-    {:dispatch [:<-store [:strapi :auth] [:state [:strapi]]]}))
-
-(rf/reg-event-fx :init/imagor
-                 (fn [{:keys [db]} [_ _]]
-                   (when-not (get db :imagor)
-                     {:dispatch [:<-store [:imagor :auth] [:state [:imagor]]]})))
+  (fn [_ [_ path]]
+    {:dispatch [:http/get {:uri "/api/integrations/strapi" :url-params {:path path}}
+                [:content [:cms]] [:supabase/write-error]]}))
 
 (rf/reg-event-fx :page/init-home ;[debug] ; really should do the fetch from wherever it is content eventually comes from...
  (fn [{:keys [db]} _]
@@ -496,11 +498,6 @@
   (fn [{:keys [db]} [_ state]]
     {:dispatch [:diag/new :debug "ID-counters" (str "Restored to " state)]
      :id-counters/set! state}))
-
-(rf/reg-event-fx :id-counters/fetch ; obviously needs to be a sub-sub and put in views only, since otherwise concurrent usage would cause clashes hehe. tho better to have server gen these anyways.
-  (fn [{:keys [db]} [_ _]]
-    {:firebase/read-once {:path [:id-counters]
-                          :on-success [:id-counters/handle]}}))
 
 (rf/reg-event-db :loading/on ;; TODO should queue up a (cancelable) timeout event that will trigger unless category confirmed loading finished
  (fn [db [_ category id]]
@@ -613,12 +610,9 @@
                 ; [:listener/global-click]
                 [:listener/visibility-change]
                 [:listener/before-unload-save-scroll]
-                ; [:on-booted :firebase [:id-counters/fetch]]
                 [:ls/get-path [:form-field] [:state :form-field]] ; restore any active form-fields
                 [:ls/get-path [:cv-visited] [:state :cv :visited]] ; should rather spec which paths to load and then do that (in one op)
                 [:cookie/show-notice]
-                [:on-booted :firebase [:init/cms]]
-                [:on-booted :firebase [:init/imagor]]
                 [::bp/set-breakpoints
                  :breakpoints [:mobile 560
                                :tablet 992

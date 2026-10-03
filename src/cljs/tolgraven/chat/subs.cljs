@@ -1,19 +1,10 @@
 (ns tolgraven.chat.subs
-  (:require
-    [re-frame.core :as rf]))
+  (:require [re-frame.core :as rf]))
 
 (rf/reg-sub :chat/content
-  :<- [:<-store :chat :messages]         
+  :<- [:<-store :chat :messages]
   (fn [content]
     (->> content
-         (reduce-kv (fn [m k v]
-                      (let [id (-> k name str js/parseInt)]
-                        (assoc m id (assoc v :id id))))
-                          {})
-         (into (sorted-map))
-         vals)))
-
-(rf/reg-sub :chat/latest-seq-id
-  :<- [:chat/content]         
-  (fn [messages]
-    (apply max (map :id messages))))
+         (map (fn [[id message]]
+                (assoc message :id (if (keyword? id) (name id) (str id)))))
+         (sort-by (juxt :time :id)))))

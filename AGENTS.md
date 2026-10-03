@@ -5,7 +5,7 @@
 - `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/tolgraven`.
 - `test/clj`, `test/cljs`: backend and frontend tests.
 - `env/`: environment-specific source/resources (dev/test/prod).
-- `functions/`: Firebase Cloud Functions (Node/ESLint).
+- `resources/supabase/`: schema, native operations and account import SQL.
 - `scripts/`: media conversion helpers (images/videos).
 - `doc/`: project documentation.
 
@@ -14,8 +14,12 @@
 - `npm run dev`: watch SCSS and PostCSS outputs for local development.
 - `npm run build`: produce compressed CSS assets for production.
 - `npm run init`: bootstrap CSS output dir and global tool installs.
-- `npm --prefix functions run lint`: lint Firebase functions with ESLint.
-- `npm --prefix functions run serve`: run functions emulator locally.
+
+## Docker dependency updates
+- The prefab builder includes `node_modules` and Maven artifacts; reuse it for normal source changes.
+- When changing `package.json`, `package-lock.json`, `project.clj` dependencies, or `Dockerfile.builder`, run and verify `make docker-prefab` to publish the refreshed dependency-hash image and the staging compatibility tag.
+- Keep the fallback `prefab` stage in `Dockerfile` aligned with `Dockerfile.builder`. Do not refresh the prefab for unrelated application-source edits.
+- See `doc/docker-builds.md` for registry setup and deployment recovery.
 
 ## Coding Style & Naming Conventions
 - Clojure/ClojureScript: follow standard idioms (2-space indentation, align threading macros), use kebab-case for vars/functions, and keep namespaces aligned with file paths.
@@ -53,7 +57,7 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 ## Commit & Pull Request Guidelines
 - Commit messages follow `scope: summary` (examples in git history: `scss: fix theme var helper broken`). Can also use `scope: subscope: summary`. Keep summaries short and imperative.
 - PRs should include: a clear description, related issue links, and screenshots/gifs for UI changes.
-- Note any config changes (e.g., `env/*` or Firebase rules) in the PR description.
+- Note any config changes (e.g., `env/*` or Supabase schema) in the PR description.
 
 ## Configuration & Secrets
 - Local config lives in `dev-config.edn` and `test-config.edn`; production config is under `env/prod/resources`.

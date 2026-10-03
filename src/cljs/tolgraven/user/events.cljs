@@ -4,86 +4,34 @@
    [re-frame.std-interceptors :refer [path]]
    ; [day8.re-frame.tracing :refer-macros [fn-traced]]
    [tolgraven.util :as util]
+   [tolgraven.supabase.client :as supabase]
    [clojure.walk :as walk]
    [ajax.core :as ajax]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
 
-(rf/reg-event-fx :fb/setup-new-user [debug
-                                     (rf/inject-cofx :user/gen-color)
-                                     (rf/inject-cofx :gen-id [:user])]
- (fn [{:keys [db bg-color id]} [_ user]]
-   (let [defaults {:name (or (:display-name user) (:email user))
-                   :email (:email user)
-                   :avatar (:photo-url user)
-                   :bg-color bg-color
-                   :id (:uid user)
-                   :comment-count 0
-                   :karma 0
-                   :seq-id (-> id :id :user)} ;well not proper it runs each time...
-         merged (merge defaults user)]
-     {:db (assoc-in db [:state :active-user] merged)
-      :dispatch [:store-> [:users (:uid user)] merged]})))
+(defn- auth-error! [error]
+  (rf/dispatch [:supabase/auth-error error]))
 
-(rf/reg-event-fx :fb/set-user [debug]
-  (fn [{:keys [db]} [_ fb-user]]
-    (when (and fb-user (some? (:uid fb-user))) ; sometimes called with empty map...
-     {:db (assoc-in db [:state :firebase :user] fb-user)
-      :dispatch-n [[:<-store [:users (:uid fb-user)]
-                    [:fb/handle-login]]]})))
+(rf/reg-event-fx :user/create-account
+  (fn [_ [_ email password]]
+    (supabase/sign-up! email password
+      #(when-not % (rf/dispatch [:diag/new :info "Sign in" "Check your email to confirm your account."]))
+      auth-error!)
+    {}))
 
-(rf/reg-event-fx :fb/handle-login [debug]
-  (fn [{:keys [db]} [_ user]]
-   (when-let [user (first (vals user))]
-     {:db (assoc-in db [:state :active-user] user)
-      :dispatch-n [(when (not (:seq-id user)) ; not "registered", lacks our keys(s)
-                     [:fb/setup-new-user user])
-                   (if (or (get-in db [:options :user :auto-open?])
-                           (not (:seq-id user))) ; not "registered", lacks our keys(s)
-                     [:user/request-page :admin]
-                     [:user/attempt-page :admin])
-                   [:user/login (:id user)]]})))
-                   
-(rf/reg-event-fx :fb/fetch-users ; try find and fix bug in re-frame-firebase that causes this
-  (fn [{:keys [db]} [_ user]]
-    {:dispatch
-      [:<-store [:users] [:fb/store-users]]}))
+(rf/reg-event-fx :user/sign-in
+  (fn [_ [_ method email password]]
+    (supabase/sign-in! method email password auth-error!) {}))
 
-(rf/reg-event-db :fb/store-users [debug]
-  (fn [db [_ response]]
-    (assoc-in db [:fb/users] response)))
+(rf/reg-event-fx :user/sign-out
+  (fn [_ _] (supabase/sign-out! auth-error!) {}))
 
-
-(rf/reg-event-fx :fb/create-user [debug]
- (fn [_ [_ email password]]
-  {:firebase/email-create-user {:email email :password password}}))
-
-(rf/reg-event-fx :fb/sign-in ;; Simple sign-in event. Just trampoline down to the re-frame-firebase fx handler.
- (fn [_ [_ method & [email password]]]
-   (case method
-     :google    {:firebase/google-sign-in   {:sign-in-method :redirect}} ;TODO use redir instead but save entire state to localstore inbetween.
-     :facebook  {:firebase/facebook-sign-in {:sign-in-method :redirect}} ;TODO use redir instead but save entire state to localstore inbetween.
-     :github    {:firebase/github-sign-in   {:sign-in-method :redirect}} ;TODO use redir instead but save entire state to localstore inbetween.
-     :email  {:firebase/email-sign-in {:email email :password password}})))
-
-(rf/reg-event-fx :fb/sign-out ;;; Ditto for sign-out
- (fn [_ _]
-   {:firebase/sign-out nil
-    :dispatch [:user/logout]}))
-
-
-(defn- get-user
-  [user users]
-  (first (filter #(= (:name %) user) users)))
-
-(rf/reg-event-fx
- :user/request-login ; will evt just http-post, on-success will handle rest incl login
- (fn [{:keys [db]} [_ info]]
-   (let [login (-> db :state :form-field :login)
-         user (get-user (:user login) (-> db :users))]
-     {:dispatch [:fb/sign-in :email (:email login) (:password login)]})))
-
+(rf/reg-event-fx :user/request-login
+  (fn [{:keys [db]} _]
+    (let [{:keys [email password]} (get-in db [:state :form-field :login])]
+      {:dispatch [:user/sign-in :email email password]})))
 
 (rf/reg-event-fx :user/login [debug]
 (fn [{:keys [db]} [_ user-id]]
@@ -98,15 +46,15 @@
 (fn [{:keys [db]} [_ user]]
   {:db (-> db (update-in [:state] dissoc :user)
               (update-in [:state] dissoc :active-user)
-              (update-in [:state :firebase] dissoc :user))
+)
    :dispatch [:user/request-close-ui]}))
 
 
-(rf/reg-event-fx :user/request-register [(path [:state])]
- (fn [{:keys [db]} [_ info]]
-   (let [{:keys [email password]} (-> db :form-field :login) ]
-   {:dispatch-n [[:fb/create-user email password]
-                 [:user/active-section :admin :force]]})))
+(rf/reg-event-fx :user/request-register
+  (fn [{:keys [db]} _]
+    (let [{:keys [email password]} (get-in db [:state :form-field :login])]
+      ;; Enter the account page only after Auth supplies a verified session.
+      {:dispatch [:user/create-account email password]})))
 
 (rf/reg-event-fx :user/request-page ; go to userbox page, opening if not already
  (fn [{:keys [db]} [_ ]]
@@ -155,29 +103,27 @@
  (fn [{:keys [db]} [_ page]]
    {:dispatch [:href/update-current {:query {:userBox "true"}}] }))
 
-; (.-content (js/document.querySelector "meta[name=\"csrf-token\"]"))
-; (.-csrfToken js/window)
-(rf/reg-event-fx :user/upload-avatar ; save new avatar upload. So upload to server, get filename, use it to update user in db and store
- (fn [{:keys [db]} [_ file]] ;also inject active-user here, use for filename
-   (let [filename (str "avatar-" (get-in db [:state :user]) ".png")]
-     {:dispatch
-      [:http/post {:uri "api/files/upload" ;could also upload to firebase. not sure if implemented in re-frame-firebase tho
-                   ; :headers {"X-CSRF-Token" (.-csrfToken js/window)}
-                   ; :format (ajax/text-request-format)
-                   :body (doto
-                           (js/FormData.)
-                           (.append "id" "10")
-                           (.append "file" file filename)) ;but would want (need! for extension lol) to extract the thing yo
-                   :on-success [:user/save-avatar filename]}] })))
+(rf/reg-event-fx :user/upload-avatar
+  (fn [_ [_ file]]
+    (supabase/authenticated-request! :post "/api/supabase/avatar"
+      (doto (js/FormData.) (.append "file" file))
+      #(rf/dispatch [:supabase/profile %]) auth-error!)
+    {}))
 
-(rf/reg-event-fx :user/save-avatar [debug]
- (fn [{:keys [db]} [_ filename]]
-   {:dispatch [:user/set-field (get-in db [:state :user])
-               :avatar (str "img/uploads/" filename)]}))
+(rf/reg-event-fx :user/set-field
+  (fn [_ [_ _ field value]]
+    (supabase/authenticated-request! :put "/api/supabase/profile" {field value}
+      #(rf/dispatch [:supabase/profile %]) auth-error!)
+    {}))
 
-(rf/reg-event-fx :user/set-field [debug]
- (fn [{:keys [db]} [_ user field value]]
-   {:db (assoc-in db [:fb/users user field] value)
-    :dispatch [:store-> [:users user]
-                        {field value}
-                        [field]]}))
+(rf/reg-event-fx :user/request-change-password
+  (fn [{:keys [db]} _]
+    (let [{:keys [current new]} (get-in db [:state :form-field :change-password])]
+      (supabase/change-password! current new
+        #(rf/dispatch [:user/password-changed]) auth-error!)
+      {})))
+
+(rf/reg-event-fx :user/password-changed
+  (fn [{:keys [db]} _]
+    {:db (update-in db [:state :form-field] dissoc :change-password)
+     :dispatch [:diag/new :info "Password changed" "Your new password is saved."]}))

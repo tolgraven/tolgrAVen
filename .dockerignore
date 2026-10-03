@@ -2,7 +2,7 @@
 .local-wip
 checkouts/codox
 node_modules
-functions/node_modules
+functions
 target
 .m2
 .shadow-cljs
@@ -27,3 +27,26 @@ resources/firebase/*firebase-adminsdk*.json
 
 # Browser JavaScript is rebuilt by the production stage.
 resources/public/js
+
+# Build artifacts and tools are not application inputs.
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+docker-compose*.yaml
+Makefile
+doc
+.github
+.agents
+.codex
+scripts
+test
+resources/docs/codox
+
+# Host-only credentials must not enter builder layers.
+profiles.clj
+.env.*
+.aws
+
+# Repository instructions and deployment configuration are not application inputs.
+AGENTS.md
+deploy

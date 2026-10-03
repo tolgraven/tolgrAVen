@@ -12,7 +12,7 @@
   (let [id (if (string? user) user (:id user))]
     (cond
       (nil? id) :untrusted
-      (some #{id} (:admins @(rf/subscribe [:<-store :auth :roles]))) :trusted
+      @(rf/subscribe [:user/trusted? id]) :trusted
       :else :user)))
 
 
@@ -41,7 +41,7 @@
         ts (util/timestamp ts)]
     [:span.blog-info
      username
-    (when (some #{(:id user)} (:admins @(rf/subscribe [:<-store :auth :roles])))
+    (when @(rf/subscribe [:user/trusted? (:id user)])
       [:span {:style {:font-size "80%"}}
        "admin"])
      [:span ts]
@@ -65,11 +65,13 @@
                   attrs [:i.fa.fa-reply]])
       :cancel  (when adding-comment?
                  [:button.blog-btn.bottomborder
-                  attrs "Cancel"]))))
+                  {:on-click #(rf/dispatch [:blog/cancel-comment parent-path])}
+                  "Cancel"]))))
 
 (defn edit-comment
-  [path]
+  [path comment]
   [:button.blog-btn.blog-comment-edit-btn.noborder
+   {:on-click #(rf/dispatch [:blog/edit-comment path comment])}
    [:i.fa.fa-edit]]) ;put by reply yo
 
 (defn delete-comment ;well that's when seq-id breaks down anyways lol
@@ -85,12 +87,12 @@
 
 (defn vote-btn [user active-user path vote]
   (when active-user
-    (let [voted @(rf/subscribe [:blog/state [:voted path]])] ; obviously needs to be firestore sub. but also local debounce
+    (let [voted @(rf/subscribe [:blog/vote path])]
       [:button.blog-btn.blog-comment-vote-btn
        {:class (if (= vote voted)
                  "noborder"
                  (case vote :up "topborder" :down "bottomborder"))
-        :disabled (when (= vote voted) true)
+        :disabled @(rf/subscribe [:state [:supabase-writes [:vote (str (last path))]]])
         :on-click #(rf/dispatch [:blog/comment-vote 
                                  user active-user path vote])}
        (case vote :up "+" :down "-")])))
@@ -164,7 +166,7 @@
               [:div.blog-comment-main
                [:h4.blog-comment-title title]
                [posted-by id user ts score]
-               (when (not= active-user user)
+               (when (not= (:id active-user) (:id user))
                  [:span.blog-comment-vote [vote-btn user active-user path :up]
                                           [vote-btn user active-user path :down]])
                [:div.blog-comment-text
@@ -175,8 +177,8 @@
                  {:trust (link-trust user)}]]]
 
              [:div.blog-comment-actions
-               (when (= active-user user)
-                 [edit-comment (conj path id)])
+               (when (and active-user (= (:id active-user) (:id user)))
+                 [edit-comment path post])
                (when active-user
                  [add-comment-btn path :reply])]]
              
@@ -281,12 +283,11 @@
         submit-btn (fn [model editing?]
                      [:button.blog-btn.noborder
                       {:class    (when (input-valid? model) "topborder")
-                       :disabled (when-not (input-valid? model) true)
+                       :disabled (or (not (input-valid? model))
+                                     @(rf/subscribe [:state [:supabase-writes [:comment parent-path]]]))
                        :on-click (fn [_]
                                    (when (input-valid? model)
-                                     (rf/dispatch [:blog/adding-comment parent-path nil])
-                                     (rf/dispatch [:blog/comment-submit parent-path model editing?])
-                                     (rf/dispatch [:form-field [:write-comment parent-path] nil :blur])))}
+                                     (rf/dispatch [:blog/comment-submit parent-path model editing?])))}
                       "Submit"])
         valid-bg {:background-color "var(--bg-3-2)"}] ; tho stashing half-written in localstorage is p awesome when done. so db evt}]] ; tho stashing half-written in localstorage is p awesome when done. so db evt
      (fn [parent-path] ; needed or recreates to empty when swapped out
@@ -331,8 +332,7 @@
 (defn post-blog "Render post-making ui" [] ; XXX move this and similar to own file...
   (let [input @(rf/subscribe [:form-field [:post-blog]])
         user @(rf/subscribe [:user/active-user])
-        editing @(rf/subscribe [:blog/state [:editing]])
-        new-id @(rf/subscribe [:blog/get-new-post-id])]
+        editing @(rf/subscribe [:blog/state [:editing]])]
     [:section.blog.blog-new-post
      [:h2 "Write blog post"]
      [:br]
@@ -352,7 +352,7 @@
       :width "100%"
       :path [:form-field [:post-blog :text]]]
      
-     [ui/button "Save draft" :save-blog-draft] ;should save to firebase etc. Really just have an :unpublished true flag yeah.
+     [ui/button "Save draft" :save-blog-draft]
      [ui/button "Highlight code" :highlight-blog-code
       :action #(rf/dispatch [:run-highlighter!])]
      
@@ -364,9 +364,8 @@
       [ui/button "Submit" :post-new-blog
        :action #(do (rf/dispatch [:blog/submit
                                   (merge {:user user} input)
-                                  editing
-                                  new-id])
-                    (rf/dispatch [:common/navigate! :blog]))]
+                                  editing])
+                    nil)]
       [:button {:on-click #(rf/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
        [:label "Cancel"]]]]))
 
@@ -528,9 +527,8 @@
      section
      [:h1.center-content [ui/loading-spinner true]])
    [:div.flex.center-content
-    (when (some #{(:id @(rf/subscribe [:user/active-user]))}
-                (:bloggers @(rf/subscribe [:<-store :auth :roles])))
-      [:a {:href @(rf/subscribe [:href :post-blog])
+    (when (or @(rf/subscribe [:user/has-role? :bloggers]) @(rf/subscribe [:user/has-role? :admins]))
+      [:a {:href @(rf/subscribe [:href :new-post])
            :title "Post blog"}
        [:button.noborder [:i.fa.fa-feather-alt]]])
     

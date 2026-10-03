@@ -1,67 +1,46 @@
 (ns tolgraven.gpt.events
-  (:require
-   [re-frame.core :as rf]
-    [tolgraven.interceptors :as inter :refer [debug]]
-   [tolgraven.util :as util]))
+  (:require [re-frame.core :as rf]
+            [clojure.string :as string]))
 
-(rf/reg-event-fx :gpt/single [(rf/inject-cofx :now)]
-  (fn [{:keys [db now]} [_ id]]
-    (let [text (get-in db [:state :form-field :gpt])
-          id (inc id)]
-      {:db (update-in db [:state :form-field] dissoc :gpt)
-       :dispatch-n
-       [[:store-> [:gpt :messages]
-         {id
-          {:time now
-           :prompt text
-           :user (get-in db [:state :user] "anon")} }
-         [id]]
-        [:http/post {:uri "/api/gpt"
-                     :params {:prompt text}}
-         [:gpt/on-response id]]]})))
+(rf/reg-event-fx :gpt/new-thread [(rf/inject-cofx :now)]
+  (fn [{:keys [now]} _]
+    {:supabase/request {:method :post :uri "/api/supabase/documents"
+                        :data {:path ["gpt-threads" (str (random-uuid))]
+                               :data {:time now :messages []}}
+                        :on-success [:gpt/thread-created]
+                        :on-error [:supabase/auth-error]}}))
 
-(rf/reg-event-fx :gpt/on-response-single
-  (fn [{:keys [db]} [_ id response]]
-    (let [text (-> response :choices first :message :content)]
-      {:dispatch-n
-       [[:store-> [:gpt :messages]
-         {id {:response text}}
-         [:response]] ]})))
+(rf/reg-event-fx :gpt/thread-created (fn [_ _] {}))
 
-
-;; fetch a convo to initiate
-;; then can use post to continue it
-;; at some point should ask gpt to summarize conversation so it can keep going at 4k window
-;; probably assign a weight on how early and how much
-(rf/reg-event-fx :gpt/new-thread [(rf/inject-cofx :now)
-                                  debug]
-  (fn [{:keys [db now]} [_ ids id]]
-    {:dispatch-n
-     [[:store-> [:gpt-threads (str id)]
-       {:time now
-        :user (get-in db [:state :user] "anon")}
-       [(str id)]]]}))
-
-(rf/reg-event-fx :gpt/post-in-thread [(rf/inject-cofx :now)
-                                      debug]
-  (fn [{:keys [db now]} [_ id history]]
+(rf/reg-event-fx :gpt/post-in-thread
+  (fn [{:keys [db]} [_ id history]]
     (let [text (get-in db [:state :form-field :gpt-thread id])]
-      {:db (update-in db [:state :form-field :gpt-thread] dissoc id)
-       :dispatch-n
-       [[:store-> [:gpt-threads (str id)]
-         {:time now
-          :messages (conj history text)
-          :user (get-in db [:state :user] "anon")}
-         [:messages]]
-        [:http/post {:uri "/api/gpt"
-                     :params {:messages (conj history text)}
-                     :timeout 60000}
-         [:gpt/on-response-thread id (conj history text)]]]})))
+      (when (and (not (string/blank? text))
+                 (not (get-in db [:state :supabase-writes :gpt id])))
+        {:db (assoc-in db [:state :supabase-writes :gpt id] true)
+         :supabase/request {:method :post :uri "/api/gpt"
+                            :data {:messages (conj (vec history) text)}
+                            :on-success [:gpt/on-response-thread id history text]
+                            :on-error [:gpt/write-error id]}}))))
 
-(rf/reg-event-fx :gpt/on-response-thread [debug]
-  (fn [{:keys [db]} [_ id history response]]
-    (let [message (-> response :choices first :message :content)]
-      {:dispatch-n
-       [[:store-> [:gpt-threads (str id)]
-         {:messages (conj (vec history) message)}
-         [:messages]] ]})))
+(rf/reg-event-fx :gpt/on-response-thread [(rf/inject-cofx :now)]
+  (fn [{:keys [now]} [_ id history text response]]
+    (if-let [message (get-in response [:choices 0 :message :content])]
+      {:supabase/request {:method :post :uri "/api/supabase/documents"
+                          :data {:path ["gpt-threads" (str id)]
+                                 :data {:time now :messages (conj (vec history) text message)}
+                                 :merge-fields [:messages :time]}
+                          :on-success [:gpt/thread-saved id text]
+                          :on-error [:gpt/write-error id]}}
+      {:dispatch [:gpt/write-error id {:message "No response returned"}]})))
+
+(rf/reg-event-db :gpt/thread-saved
+  (fn [db [_ id text _]]
+    (cond-> (assoc-in db [:state :supabase-writes :gpt id] false)
+      (= text (get-in db [:state :form-field :gpt-thread id]))
+      (update-in [:state :form-field :gpt-thread] dissoc id))))
+
+(rf/reg-event-fx :gpt/write-error
+  (fn [{:keys [db]} [_ id error]]
+    {:db (assoc-in db [:state :supabase-writes :gpt id] false)
+     :dispatch [:supabase/write-error error]}))
