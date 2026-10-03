@@ -23,13 +23,11 @@
             reverse)))
 
 (rf/reg-sub :blog/post-ids
- (fn [[_ _]]
-   (rf/subscribe [:<-store-2 :blog-post-ids :id]))
- (fn [ids [_ path]]
-   (->> (:id ids)
-        keys
-        (map name)
-        (map js/Number)
+ :<- [:blog [:posts]]
+ (fn [posts _]
+   (->> posts
+        vals
+        (keep :id)
         sort
         reverse)))
 
