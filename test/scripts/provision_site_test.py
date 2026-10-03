@@ -48,6 +48,14 @@ class ManifestSafetyTest(unittest.TestCase):
             provision.remote(self.manifest, 'status')
             self.assertEqual(remote.call_args.kwargs['host'], 'controller')
 
+    def test_capacity_counts_new_stacks_and_existing_runtimes(self):
+        state = {'environments': {'production': {'database_container': 'supabase-db-prod', 'application_uuid': 'webprod'},
+                                  'staging': {'database_container': 'supabase-db-stage', 'application_uuid': 'webstage'}}}
+        self.assertEqual(provision.capacity_budget(state, []), 6144)
+        self.assertEqual(provision.capacity_budget(state, ['supabase-db-prod', 'webprod-123']), 3072)
+        self.assertEqual(provision.capacity_budget(state, ['supabase-db-prod', 'webprod-123', 'supabase-db-stage']), 1024)
+        self.assertEqual(provision.capacity_budget(state, ['supabase-db-prod', 'webprod-123', 'supabase-db-stage', 'webstage-pr-45']), 0)
+
     def test_php_input_is_encoded_not_interpolated(self):
         self.manifest['name'] = "x');system('evil');"
         rendered = provision.php_script(self.manifest, 'status')

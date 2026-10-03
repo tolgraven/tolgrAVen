@@ -91,6 +91,11 @@ from tolgraven. Registry S3 storage is shared infrastructure, not site media.
 
 ## Capacity and template behavior
 
+Before starting, the command checks actual available RAM on the resource host.
+It budgets 3 GiB per new full environment, or 1 GiB for a web app whose database
+already runs. A capacity failure leaves the prepared resources stopped; it does
+not treat swap as free RAM. This is a startup budget, not a workload guarantee.
+
 Supabase's full stack is substantial. Check `free -h`, `docker stats --no-stream`
 and disk space before adding two new instances to bux. Select another registered
 Coolify resource server when needed. This command provisions resources on an

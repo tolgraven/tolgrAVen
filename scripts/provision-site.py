@@ -73,6 +73,31 @@ def remote(spec, action):
                           host=spec.get('coolify_ssh_host', spec['ssh_host'])))
 
 
+def capacity_budget(state, running):
+    required = 0
+    for env in state['environments'].values():
+        if env['database_container'] not in running:
+            required += 3072  # Full Supabase stack plus its web app, before starting either.
+        elif not any(re.fullmatch(re.escape(env['application_uuid']) + r'(?:-\d+|-pr-\d+)?', name)
+                     for name in running):
+            required += 1024  # Supabase exists, but its web app still needs to start.
+    return required
+
+
+def check_capacity(spec, state):
+    probe = ("import json,subprocess; "
+             "m=dict(line.split(':',1) for line in open('/proc/meminfo')); "
+             "print(json.dumps({'available_mib':int(m['MemAvailable'].split()[0])//1024,"
+             "'running':subprocess.check_output(['docker','ps','--format','{{.Names}}'],text=True).splitlines()}))")
+    info = json.loads(ssh(spec, ['python3', '-c', probe]))
+    required = capacity_budget(state, info['running'])
+    if info['available_mib'] < required:
+        raise RuntimeError(f"Resource server has {info['available_mib']} MiB available; "
+                           f"this start needs a {required} MiB budget. Select another server "
+                           "or free capacity. Prepared resources remain stopped.")
+    print(f"Capacity check: {info['available_mib']} MiB available, {required} MiB startup budget", flush=True)
+
+
 def sql(spec, database, query):
     if not re.fullmatch(r'supabase-db-[a-z0-9]+', database):
         raise ValueError('Invalid database container name')
@@ -133,6 +158,7 @@ def main():
     if args.action == 'up':
         state = remote(spec, 'prepare')
         print(json.dumps(state, indent=2), flush=True)
+        check_capacity(spec, state)
         remote(spec, 'start')
         schema(spec, state)
         print('Waiting for Supabase HTTPS, REST and Auth readiness...', flush=True)
@@ -167,6 +193,10 @@ def main():
         else:
             raise RuntimeError('Deployment still running; use status before retrying')
         result = remote(spec, 'verify')
+    elif args.action == 'start':
+        state = remote(spec, 'status')
+        check_capacity(spec, state)
+        result = remote(spec, 'start')
     elif args.action == 'schema':
         state = remote(spec, 'status')
         schema(spec, state)
