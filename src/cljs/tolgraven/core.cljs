@@ -7,6 +7,7 @@
     [reagent.dom.client :as rdomc]
     [tolgraven.ajax :as ajax]
     [tolgraven.content.client :as content]
+    [tolgraven.service-status :as service-status]
     [tolgraven.events]
     [tolgraven.loader :as l]
     [tolgraven.macros :as m]
@@ -68,6 +69,7 @@
    [l/<assets> {:css (some-> spec :assets :css)
                 :js  (some-> spec :assets :js)}]
 
+   [service-status/<notices>]
    [ui/safe :header [common/header @(rf/subscribe [:content [:header]])]]
    [:a {:name "linktotop" :id "linktotop"}]
    
@@ -141,6 +143,7 @@
   (letfn [(start! []
             (-> (content/bootstrap!)
                 (.then (fn []
+                         (.removeAttribute (.getElementById js/document "app") "role")
                          (mount-components)
                          (js/setTimeout #(rf/dispatch [:init/init]) 16)))
                 (.catch (fn [_]
@@ -150,7 +153,8 @@
                                 message (.createElement js/document "p")
                                 button (.createElement js/document "button")]
                             (set! (.-textContent element) "")
-                            (set! (.-textContent message) "Content could not be loaded.")
+                            (.setAttribute element "role" "alert")
+                            (set! (.-textContent message) "Strapi content could not be loaded. Check your connection and retry. The failure has been recorded in the webpage log.")
                             (set! (.-textContent button) "Retry")
                             (set! (.-onclick button) start!)
                             (.appendChild element message)

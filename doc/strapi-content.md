@@ -88,3 +88,18 @@ still reports upstream transitive advisories (40 high, 9 moderate, 1 low; zero
 critical at validation time). The CMS repository has no configured Git remote,
 so its `codex/coolify-content-api` commits are local; the deployed image is
 persisted in the S3-backed registry.
+
+## Service failures
+
+Supabase initialization, session restoration, snapshot reads and live-update
+failures now produce webpage diagnostics and persistent service notices. Snapshot
+failures retry automatically and preserve previously loaded data. A disconnected
+or stalled live channel falls back to an HTTP snapshot; it no longer gates all
+initial content. Settings, session and snapshot requests have bounded waits.
+Strapi bootstrap and deferred/prefetched content failures are logged and expose
+retry controls. A malformed embedded snapshot can recover through a fresh fetch.
+Repeated failures during one outage do not flood the log; successful recovery
+clears its notice. Raw upstream error bodies and credentials are never included.
+The browser regression suite covers 38 tests / 205 assertions, including visible
+notices and retry recovery. Live CV/blog rendering and the previous deployment's
+single-runtime/configuration cleanup were verified after browser access recovered.

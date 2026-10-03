@@ -1,8 +1,8 @@
 (ns tolgraven.supabase.client
   (:require [ajax.core :as ajax]
+            [tolgraven.service-status :as status]
             [goog.object :as gobj]
             [reagent.ratom :as ratom]
-            [taoensso.timbre :as timbre]
             [tolgraven.supabase.query :as query]
             [tolgraven.supabase.shape :as shape]
             [tolgraven.supabase.realtime :as realtime]))
@@ -36,13 +36,13 @@
             (let [q (reduce (fn [q [field op value]] (call-method q op (name field) value))
                             (-> (.from client table) (.select select)) filters)
                   q (reduce #(.order %1 (name %2)) q (:key (realtime/tables table)))]
-              (.then (.range q offset (+ offset 499))
+              (.then (status/within! (.range q offset (+ offset 499)) 15000)
                      (fn [res]
                        (let [{:keys [data error]} (js->clj res :keywordize-keys true)]
                          (when error (throw (ex-info "Supabase select failed" {:table table})))
                          (let [rows (into rows data)]
                            (if (= 500 (count data)) (page! (+ offset 500) rows) rows)))))))]
-    (page! 0 [])))
+    (-> (js/Promise.resolve) (.then (fn [] (page! 0 []))))))
 
 (defn- result [seed opts]
   (query/query-contract (shape/seed->contract seed) opts))
@@ -88,11 +88,17 @@
                    ;; replayed over the snapshot so it cannot discard live writes.
                    (swap! *seed realtime/install-snapshot table rows @*buffer)
                    (swap! *loaded conj table)
+                   (status/recover! [:supabase-load table])
                    (reset! *buffer [])
                    (reset! *loading false))))
         (.catch (fn [_]
                   (when (and (current-entry? entry) (= request @*request))
-                    (timbre/error "Supabase snapshot failed" {:table table})
+                    (status/fail! [:supabase-load table] "Supabase content unavailable"
+                                  (str "Could not load " (get {"site_users" "profiles" "blog_posts" "blog posts"
+                                                            "blog_comments" "comments" "chat_messages" "chat messages"
+                                                            "user_documents" "your documents"} table "content")
+                                       ". Retrying automatically; existing content is retained.")
+                                  #(when (current-entry? entry) (load-table! entry)))
                     (reset! *retry (js/setTimeout #(when (current-entry? entry) (load-table! entry)) 2000))))))))
 
 (defn- ensure-table! [table]
@@ -101,8 +107,17 @@
     (let [client @*client
           channel (.channel client (str "store-" table))
           entry {:table table :client client :channel channel
-                 :*buffer (atom []) :*loading (atom true) :*request (atom 0) :*retry (atom nil)}]
+                 :*buffer (atom []) :*loading (atom true) :*request (atom 0) :*retry (atom nil)
+                 :*connect-timer (atom nil)}]
       (swap! *tables assoc table entry)
+      (reset! (:*connect-timer entry)
+              (js/setTimeout
+               (fn []
+                 (when (current-entry? entry)
+                   (status/fail! [:supabase-stream table] "Supabase connection timed out"
+                                 "Live updates are unavailable. Trying to load current content separately."
+                                 #(when (current-entry? entry) (load-table! entry)))
+                   (load-table! entry))) 10000))
       (-> channel
           (.on "postgres_changes" (clj->js (cond-> {:event "*" :schema "public" :table table}
                                                    (= table "user_documents")
@@ -117,16 +132,25 @@
                        (swap! *seed realtime/apply-change change))))))
           (.subscribe (fn [status _]
                         (when (current-entry? entry)
+                          (when (#{"SUBSCRIBED" "CHANNEL_ERROR" "TIMED_OUT" "CLOSED"} status)
+                            (js/clearTimeout @(:*connect-timer entry)))
                           (case status
-                            "SUBSCRIBED" (load-table! entry)
-                            ("CHANNEL_ERROR" "TIMED_OUT")
-                            (timbre/warn "Supabase stream disconnected; waiting for rejoin" {:table table})
+                            "SUBSCRIBED" (do (status/recover! [:supabase-stream table]) (load-table! entry))
+                            ("CHANNEL_ERROR" "TIMED_OUT" "CLOSED")
+                            (do (status/fail! [:supabase-stream table] "Supabase live updates disconnected"
+                                             "Live updates are reconnecting. You can retry loading the current content."
+                                             #(when (current-entry? entry) (load-table! entry)))
+                                ;; A failed WebSocket must not prevent the initial HTTP read.
+                                (load-table! entry))
                             nil))))))))
 
 (defn- remove-table! [table]
-  (when-let [{:keys [client channel *retry]} (get @*tables table)]
+  (when-let [{:keys [client channel *retry *connect-timer]} (get @*tables table)]
     (swap! *tables dissoc table)
+    (status/recover! [:supabase-load table])
+    (status/recover! [:supabase-stream table])
     (when @*retry (js/clearTimeout @*retry))
+    (when (and *connect-timer @*connect-timer) (js/clearTimeout @*connect-timer))
     (call-method client "removeChannel" channel)))
 
 (defn ensure-query! [options]
@@ -158,8 +182,9 @@
           current? #(and (identical? client @*client)
                          (= owner (session-key @*session)))
           fail! #(when (current?) (on-error %))]
-      (-> (call-method (gobj/get client "auth") "getSession")
+      (-> (status/within! (call-method (gobj/get client "auth") "getSession") 15000)
           (.then (fn [result]
+                   (when (gobj/get result "error") (throw (js/Error. "Unable to restore your Supabase session")))
                    (let [session (some-> result (gobj/get "data") (gobj/get "session"))
                          token (some-> session (gobj/get "access_token"))]
                      (when (and (current?) (= owner (session-key session)))
@@ -242,6 +267,7 @@
     (reset! *auth-listener
             (-> (call-method (gobj/get @*client "auth") "onAuthStateChange"
                   (fn [_ session]
+                    (status/recover! :supabase-session)
                     (when (not= (session-key session) (session-key @*session))
                       (on-profile nil)
                       (remove-table! "user_documents")
@@ -260,11 +286,22 @@
                              #(when (identical? session @*session) (on-error %)))
                            (on-profile nil)))) 0)))
                 (gobj/get "data") (gobj/get "subscription")))
+    (let [client @*client]
+      (-> (status/within! (call-method (gobj/get client "auth") "getSession") 15000)
+          (.then (fn [result]
+                   (when (gobj/get result "error") (throw (js/Error. "Session initialization failed")))
+                   (when (identical? client @*client) (status/recover! :supabase-session))))
+          (.catch (fn [_]
+                    (when (identical? client @*client)
+                      (status/fail! :supabase-session "Supabase session unavailable"
+                                    "Your account session could not be restored. Reload to retry."
+                                    #(.reload js/location)))))))
     (doseq [entry (vals @*queries), table (query/realtime-tables (:opts entry))]
       (ensure-table! table))))
 
 (defn write! [path data merge-fields]
   (authenticated-request!
    :post "/api/supabase/documents" {:path path :data data :merge-fields merge-fields}
-   (fn [_] nil)
-   #(timbre/error "Supabase document write failed" {:message (:message %)})))
+   (fn [_] (status/recover! :supabase-write))
+   #(status/fail! :supabase-write "Supabase save failed"
+                  "Your changes could not be saved. Please try saving again." nil)))
