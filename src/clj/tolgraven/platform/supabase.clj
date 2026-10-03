@@ -3,7 +3,8 @@
    [clj-http.client :as http]
    [clojure.data.json :as json]
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as string])
+   [clojure.string :as string]
+   [tolgraven.config :as config])
   (:import
    [java.net URLEncoder]
    [org.postgresql.util PGobject]))
@@ -146,15 +147,20 @@
                              "POSTGRES_PASSWORD"]}))))
 
 (defn rest-base-url []
-  (or (System/getenv "SUPABASE_PUBLIC_URL")
-      (System/getenv "SUPABASE_URL")
-      (System/getenv "NEXT_PUBLIC_SUPABASE_URL")
+  (or (env "SUPABASE_PUBLIC_URL")
+      (env "SUPABASE_URL")
+      (env "NEXT_PUBLIC_SUPABASE_URL")
+      (get config/env :supabase-public-url)
+      (get config/env :supabase-url)
       (throw (ex-info "Missing Supabase public URL"
                       {:env ["SUPABASE_PUBLIC_URL" "SUPABASE_URL" "NEXT_PUBLIC_SUPABASE_URL"]}))))
 
 (defn service-key []
-  (or (System/getenv "SUPABASE_SERVICE_KEY")
-      (System/getenv "SUPABASE_SERVICE_ROLE_KEY")
+  (or (env "SUPABASE_SERVICE_KEY")
+      (env "SUPABASE_SERVICE_ROLE_KEY")
+      (get config/env :supabase-service-key)
+      (get config/env :supabase-service-role-key)
+      (get config/env :service-supabaseservice-key)
       (throw (ex-info "Missing Supabase service key"
                       {:env ["SUPABASE_SERVICE_KEY" "SUPABASE_SERVICE_ROLE_KEY"]}))))
 

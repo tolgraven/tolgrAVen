@@ -237,7 +237,7 @@ profile, which was deleted; stream payloads excluded email, vote history, and ra
 import data. Existing content/profile checksums and all 14 Auth accounts were
 preserved. The Auth import SQL regression suite also passed locally.
 
-Backend checks passed 43 tests / 276 assertions. Client stream checks passed
+Backend checks passed 44 tests / 280 assertions. Client stream checks passed
 6 tests / 27 assertions; the complete browser suite passed 26 tests / 159 assertions.
 Optimized production compilation passed with two existing dependency warnings.
 Use the production profile for release builds:
@@ -253,8 +253,11 @@ psql -v ON_ERROR_STOP=1 -f test/sql/supabase_cutover_test.sql
 ```
 
 This branch has not been deployed. Set the public origin/anon key and server-only
-service key on the application before deployment. Full app-level live mutation
-validation needs access to that server key. After explicit user approval, a
+service key on the application before deployment. The server also accepts
+`:service-supabaseservice-key` in ignored `dev-config.edn`; standard
+`SUPABASE_SERVICE_KEY` / `SUPABASE_SERVICE_ROLE_KEY` environment variables take
+precedence. Local public settings are `:supabase-public-url` and
+`:supabase-anon-key`. After explicit user approval, a
 temporary Auth fixture passed live correct/wrong-password checks using the
 Firebase-compatible password fixture. Its private Realtime stream delivered
 INSERT/UPDATE/DELETE, owner reads excluded another owner, and anonymous reads,
@@ -263,6 +266,17 @@ its sessions before deletion. Follow-up checks rejected login, access-token user
 lookup, and refresh for the deleted fixture. Cleanup left 14 Auth accounts and
 14 identities, 14 profiles, and zero fixture profiles, identities, sessions or
 private documents.
+The real application service routes were exercised against the live Auth, REST,
+RPC and Storage APIs using the supplied server key. All 38 checks passed,
+including verified profile edits; role-protected publishing and editing;
+comments/replies; repeated, reversed and removed votes; chat; private document
+creation/merge; native search; and owned avatar upload/public retrieval. Forged
+actors and protected-field edits were rejected, and public settings excluded the
+service key. Each fixture session was signed out globally before account deletion.
+Cleanup verification returned 14 accounts, 14 profiles, 11 posts, 75 comments,
+24 chat messages, and zero test profiles, avatars or private documents. These were
+local application route checks against the live instance; deployment remains pending.
+
 Google/email are enabled on this instance; GitHub/Facebook remain disabled until
 configured in self-hosted Auth. Imported unverified email/password accounts keep
 their original verification state. Strapi content migration remains separate.

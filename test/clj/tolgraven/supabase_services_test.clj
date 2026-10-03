@@ -1,5 +1,6 @@
 (ns tolgraven.supabase-services-test
-  (:require [clojure.test :refer :all]
+  (:require [tolgraven.config :as config]
+            [clojure.test :refer :all]
             [clj-http.client :as http]
             [clojure.java.io :as io]
             [tolgraven.platform.supabase :as platform]
@@ -83,3 +84,14 @@
       (spit file "Not an image")
       (is (= 400 (:auth/status (ex-data (try (storage/png-bytes! {:tempfile file :size (.length file)}) (catch Exception e e))))))
       (finally (.delete file)))))
+
+(deftest server-configuration-supports-local-key-and-environment-precedence
+  (with-redefs [config/env {:service-supabaseservice-key "local-secret"
+                           :supabase-public-url "https://local.example"}]
+    (with-redefs-fn {#'platform/env (constantly nil)}
+      #(do (is (= "local-secret" (platform/service-key)))
+           (is (= "https://local.example" (platform/rest-base-url)))))
+    (with-redefs-fn {#'platform/env {"SUPABASE_SERVICE_KEY" "environment-secret"
+                                    "SUPABASE_PUBLIC_URL" "https://environment.example"}}
+      #(do (is (= "environment-secret" (platform/service-key)))
+           (is (= "https://environment.example" (platform/rest-base-url)))))))
