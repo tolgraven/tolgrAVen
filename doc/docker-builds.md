@@ -163,3 +163,8 @@ building. Docker's context excludes that generated manifest (and the ignore file
 itself), so deployment metadata and documentation/tooling-only changes do not
 invalidate `COPY . .` and force a new application compilation. Application source
 changes still compile normally.
+
+Cache validation on the Mac (2026-10-03): the first local image build after the
+context change took 54.82 seconds. Two subsequent builds with different generated
+Compose image references took 2.17 and 0.85 seconds; the `lein uberjar` layer was
+cached in both. These are local image-build times, excluding push and deployment.
