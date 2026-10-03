@@ -168,3 +168,14 @@ Cache validation on the Mac (2026-10-03): the first local image build after the
 context change took 54.82 seconds. Two subsequent builds with different generated
 Compose image references took 2.17 and 0.85 seconds; the `lein uberjar` layer was
 cached in both. These are local image-build times, excluding push and deployment.
+
+## PR preview cleanup
+
+The GitHub deployment workflow forwards `pull_request.closed` to Coolify using
+the same signed webhook as preview creation. GitHub emits this event both when a
+PR is merged and when it is closed without merging. Cleanup bypasses CSS
+validation and shares the PR-specific concurrency group with deployment, so a
+close event supersedes an in-flight workflow for that PR. Coolify's native
+cleanup cancels that preview's deployments and removes its runtime and preview
+record. The separate staging Supabase service and production application remain
+running. Reopening the PR creates its preview again.
