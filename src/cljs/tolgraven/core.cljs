@@ -2,11 +2,16 @@
   (:require
     [goog.events]
     [re-frame.core :as rf]
+    [re-frame.db :as rfdb]
+    [tolgraven.component.data :as component-data]
+    [tolgraven.component.storage :as storage]
+    [tolgraven.main.module :as main-module]
     [react :as react]
     [reagent.core :as r]
     [reagent.dom.client :as rdomc]
     [tolgraven.ajax :as ajax]
     [tolgraven.content.client :as content]
+    [tolgraven.component.restore :as restore]
     [tolgraven.service-status :as service-status]
     [tolgraven.events]
     [tolgraven.loader :as l]
@@ -17,7 +22,7 @@
     [tolgraven.util :as util]
     [tolgraven.views-common :as common]))
 
-(def spec {:assets {}}) ; global assets
+(def spec main-module/spec)
 
 (defn swapper "Swap between outgoing and incoming page view. Deprecated: switch to CSS transition"
   [class comp-in comp-out]
@@ -62,7 +67,7 @@
 
 (defn page "Render active page inbetween header, footer and general stuff." 
   []
-  (let [ext-back? @(rf/subscribe [:history/back-nav-from-external?])
+  (let [ext-back? (or (restore/skip-enter?) @(rf/subscribe [:history/back-nav-from-external?]))
         swap-class (if ext-back? "" "opacity")
         click-evt @(rf/subscribe [:state [:global-clicked]])]
   [:<>
@@ -122,9 +127,13 @@
     [#'page]))
 
 (defn render []
-  (when-not @root
-    (reset! root (rdomc/create-root (.getElementById js/document "app"))))
-  (rdomc/render @root [#'page]))
+  (if @root
+    (rdomc/render @root [#'page])
+    (let [element (.getElementById js/document "app")]
+      (if (:hydrate? @restore/*context)
+        (reset! root (rdomc/hydrate-root element [#'page]))
+        (do (reset! root (rdomc/create-root element))
+            (rdomc/render @root [#'page]))))))
 
 (defn mount-components "Called each update when developing" []
   (rf/dispatch-sync [:scroll/save-position-dev])
@@ -132,20 +141,28 @@
   (routes/start!) ; restart router on reload?
   (rf/dispatch [:reloaded])
   (util/log "Mounting root component")
-  (render)
-  (rf/dispatch [:scroll/restore-position-dev 150]))
+  (-> (if (restore/skip-enter?)
+        ;; Preserve existing server DOM until the selected route/module is ready.
+        (component-data/wait-for! rfdb/app-db
+          #(hash-map :ready? (some? (get-in @rfdb/app-db [:common/route :data :view]))) 15000)
+        (js/Promise.resolve nil))
+      (.then (fn [_] (render) (rf/dispatch [:scroll/restore-position-dev 150])))))
 
 (defn init "Called only on page load" []
+  (restore/begin! {:back? (restore/back-navigation?)
+                   :hydrate? (= "true" (.getAttribute (.getElementById js/document "app") "data-hydrate"))})
   (rf/dispatch-sync [:init/app-db])
   (rf/dispatch-sync [:store/init])
   (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
   (ajax/load-interceptors!)
   (letfn [(start! []
-            (-> (content/bootstrap!)
+            (-> (storage/ready!)
+                (.then (fn [_] (content/bootstrap!)))
+                (.then (fn [_] (component-data/ensure-all! (:depends spec))))
                 (.then (fn []
                          (.removeAttribute (.getElementById js/document "app") "role")
-                         (mount-components)
-                         (js/setTimeout #(rf/dispatch [:init/init]) 16)))
+                         (-> (mount-components)
+                             (.then (fn [_] (js/setTimeout #(rf/dispatch [:init/init]) 16))))))
                 (.catch (fn [_]
                           ;; Keep the server skeleton visible until a complete
                           ;; content snapshot is ready, with a usable retry.
@@ -154,7 +171,7 @@
                                 button (.createElement js/document "button")]
                             (set! (.-textContent element) "")
                             (.setAttribute element "role" "alert")
-                            (set! (.-textContent message) "Strapi content could not be loaded. Check your connection and retry. The failure has been recorded in the webpage log.")
+                            (set! (.-textContent message) "The page could not initialize. Check your connection and retry. The failure has been recorded in the webpage log.")
                             (set! (.-textContent button) "Retry")
                             (set! (.-onclick button) start!)
                             (.appendChild element message)

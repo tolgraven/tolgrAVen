@@ -1,6 +1,9 @@
 (ns tolgraven.subs
   (:require [re-frame.core :as rf]
             [re-frame.db :as rfdb]
+            [reagent.ratom :as ratom]
+            [tolgraven.content.client :as content]
+            [tolgraven.content.contract :as content-contract]
             [tolgraven.util :as util]
             [tolgraven.supabase.client :as supabase-client]
             [clojure.walk :as walk]
@@ -16,9 +19,13 @@
 
 (rf/reg-sub :nil (fn [_ _])) ; hah why ; from :text-color using it: "eh, worth? assuming this is a wrong-sub with no db input and we do have a lot of subs for this so"
 
-(rf/reg-sub :content ; TODO break up to smaller chunks...
- (fn [db [_ path]]
-   (get-in db (into [:content] path))))
+(rf/reg-sub-raw :content
+  (fn [db [_ path]]
+    ;; Re-frame owns/disposes this reaction with its last consumer. Only the
+    ;; request is a side effect; the data remains ordinary cached app-db content.
+    (let [ks (if (seq path) [(first path)] content-contract/sections)]
+      (content/prefetch! ks)
+      (ratom/make-reaction #(get-in @db (into [:content] path))))))
 
 (rf/reg-sub :state
   (fn [db [_ path]] ;change to path?

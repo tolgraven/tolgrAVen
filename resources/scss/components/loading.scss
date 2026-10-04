@@ -1,0 +1,15 @@
+.component-spinner { display: inline-flex; align-items: center; justify-content: center; padding: 1rem; }
+.component-spinner__wheel { width: 1.5rem; height: 1.5rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: component-spin .7s linear infinite; }
+.component-skeleton { display: inline-block; background-color: color-mix(in srgb, currentColor 18%, transparent); border-radius: .25rem; animation: component-pulse 1.4s ease-in-out infinite alternate; }
+.component-skeleton--text { width: 12ch; height: 1em; }
+.component-skeleton--heading { display: block; width: 65%; height: 1.2em; }
+.component-skeleton--box { display: block; width: 100%; min-height: 8rem; }
+.component-skeleton--avatar { width: 3rem; height: 3rem; border-radius: 50%; }
+.component-skeleton-lines { display: grid; gap: .5rem; }
+.component-skeleton-lines > .component-skeleton { width: 100%; }
+.component-skeleton-lines > :last-child { width: 75%; }
+@keyframes component-spin { to { transform: rotate(360deg); } }
+@keyframes component-pulse { to { opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .component-spinner__wheel, .component-skeleton { animation: none; } }
+
+.component-spinner .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

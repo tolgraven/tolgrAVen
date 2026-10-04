@@ -8,6 +8,7 @@
 
 (def spec
   {:content (get content-contract/module-content :blog [])
+   :depends (get content-contract/module-dependencies :blog [])
    :id :blog
    :view {:page #'view/blog-page
           :post #'view/blog-post-page

@@ -7,9 +7,13 @@
 ;; Available to the backend before any JavaScript module is loaded. Module specs
 ;; reference this same manifest, so SSR and browser initialization cannot drift.
 (def module-content
-  {:blog [:blog :common] :cv [:cv] :docs [:docs] :strava [:strava]
+  {:main [:document :header :common :footer :post-footer]
+   :blog [:blog :common] :cv [:cv] :docs [:docs] :strava [:strava]
    :user [:common] :instagram [] :chat [] :github [] :gpt []
    :search [] :link-preview [] :test []})
+(def module-dependencies
+  (into {} (map (fn [[id keys]] [id (if (seq keys) [{:source :strapi :keys keys}] [])]) module-content)))
+
 (def shell-content [:document :header :common :footer :post-footer])
 (def route-content
   {:home [:intro :services :moneyshot :story :strava :interlude :soundcloud :gallery]

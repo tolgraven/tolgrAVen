@@ -5,9 +5,15 @@
             [re-frame.db :as rfdb]
             [reagent.core :as r]
             [tolgraven.content.contract :as contract]
-            [tolgraven.service-status :as status]))
+            [tolgraven.service-status :as status]
+            [tolgraven.component.storage :as storage]
+            [tolgraven.component.restore :as restore]))
+
+(def cache-options {:scope :public :version contract/version :ttl-ms 1800000})
 
 (defonce *pending (atom {}))
+(defonce *queued (atom {}))
+(defonce *tick (atom nil))
 
 (rf/reg-event-db :content/install
   (fn [db [_ bundle]]
@@ -47,22 +53,41 @@
                              (reject (js/Error. "Invalid content response"))))
                 :error-handler (fn [_] (reject (js/Error. "Content is temporarily unavailable")))}))))
 
-(defn ensure! [requested]
-  (let [ks (vec (distinct requested))
-        missing (filterv #(and (not (contains? (:content @rfdb/app-db) %))
-                               (not (contains? @*pending %))) ks)]
-    (when (seq missing)
-      (let [promise (-> (request! missing)
-                        (.catch (fn [error]
-                                  (status/fail! [:strapi (vec (sort missing))] "Strapi content unavailable"
-                                                "Some site content could not be loaded. Previously loaded content is retained."
-                                                #(prefetch! missing))
-                                  (throw error)))
-                        (.finally #(swap! *pending (fn [pending] (apply dissoc pending missing)))))]
-        (swap! *pending into (map (fn [k] [k promise]) missing))))
-  (js/Promise.all (clj->js (distinct (keep @*pending requested))))))
+(defn drain!
+  "One network request for all sections requested during this tick."
+  []
+  (reset! *tick nil)
+  (let [batch @*queued ks (vec (sort (keys batch)))]
+    (reset! *queued {})
+    (when (seq ks)
+      (-> (js/Promise.resolve nil)
+          (.then (fn [_] (request! ks)))
+          (.then (fn [bundle]
+                   (swap! *pending #(apply dissoc % ks))
+                   (storage/schedule!)
+                   (doseq [[_ {:keys [resolve]}] batch] (resolve bundle)))
+                 (fn [error]
+                   (swap! *pending #(apply dissoc % ks))
+                   (status/fail! [:strapi ks] "Strapi content unavailable"
+                                 "Some site content could not be loaded. Previously loaded content is retained."
+                                 #(prefetch! ks))
+                   (doseq [[_ {:keys [reject]}] batch] (reject error))))))))
 
-(defn bootstrap! []
+(defn ensure! [requested]
+  (doseq [k (distinct requested)
+          :when (and (not (contains? (:content @rfdb/app-db) k))
+                     (not (contains? @*pending k)))]
+    (let [promise (js/Promise. (fn [resolve reject]
+                                (swap! *queued assoc k {:resolve resolve :reject reject})))]
+      (swap! *pending assoc k promise)))
+  (when (and (seq @*queued) (nil? @*tick))
+    (reset! *tick (js/setTimeout drain! 0)))
+  (js/Promise.all (into-array (distinct (keep @*pending requested)))))
+
+(rf/reg-fx :content/load #(prefetch! %))
+(rf/reg-event-fx :content/load (fn [_ [_ ks]] {:content/load ks}))
+
+(defn- bootstrap-ready! []
   (try
     (let [element (.getElementById js/document "site-content-bootstrap")
           embedded (when element (js->clj (js/JSON.parse (.-textContent element)) :keywordize-keys true))]
@@ -70,10 +95,19 @@
         (when-not (valid-bundle? embedded (keys (:content embedded)))
           (throw (js/Error. "Invalid embedded content")))
         (rf/dispatch-sync [:content/install embedded]))
+      ;; Server content wins; fill only missing sections on an external back.
+      (when (:back? @restore/*context)
+        (when-let [saved (storage/read! :public-content cache-options)]
+          (when (valid-bundle? (:value saved) (keys (:content (:value saved))))
+            (rf/dispatch-sync [:content/install
+                               (update (:value saved) :content
+                                       #(apply dissoc % (keys (:content @rfdb/app-db))))]))))
+      (storage/track! :public-content
+                      #(hash-map :version contract/version :content (:content @rfdb/app-db)) cache-options)
       ;; The default loads all content. An SSR response can opt into a partial
       ;; bootstrap; module initialization/prefetch then fill only missing sections.
       (-> (ensure! (if (:deferred? embedded) (keys (:content embedded)) contract/sections))
-          (.then (fn [result] (status/recover! :strapi-bootstrap) result))))
+          (.then (fn [result] (status/recover! :strapi-bootstrap) (storage/schedule!) result))))
     (catch :default error
       ;; A retry fetches a fresh bundle instead of parsing the same broken snapshot.
       (when-let [element (.getElementById js/document "site-content-bootstrap")] (.remove element))
@@ -81,6 +115,9 @@
                     "The initial content response was invalid. Reload the page to try again."
                     #(.reload js/location))
       (js/Promise.reject error))))
+
+(defn bootstrap! []
+  (-> (storage/ready!) (.then (fn [_] (bootstrap-ready!)))))
 
 (defn prefetch! [ks]
   (-> (ensure! ks) (.catch (fn [_] nil)))) ; optional; initialization can retry

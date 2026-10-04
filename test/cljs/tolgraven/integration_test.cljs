@@ -3,6 +3,9 @@
             [re-frame.core :as rf]
             [re-frame.db :as rfdb]
             [reagent.ratom :as ratom]
+            [reagent.core :as r]
+            [reagent.dom.client :as dom]
+            [react-dom :as react-dom]
             [tolgraven.supabase.client :as supabase]
             [tolgraven.supabase.query :as supabase-query]
             [tolgraven.store.contract :as store-contract]
@@ -248,10 +251,16 @@
         (reset! rfdb/app-db before)))))
 
 (deftest active-vote-remains-clickable-unless-write-is-pending
-  (let [pending (ratom/atom false)]
+  (let [pending (ratom/atom false)
+        element (.createElement js/document "div")
+        root (dom/create-root element)]
     (with-redefs [rf/subscribe (fn
                                 ([[event]] (if (= :blog/vote event) (ratom/atom :up) pending))
                                 ([_ _] pending))]
-      (is (false? (:disabled (second (blog-views/vote-btn "author" "voter" [1 "c"] :up)))))
-      (reset! pending true)
-      (is (true? (:disabled (second (blog-views/vote-btn "author" "voter" [1 "c"] :up))))))))
+      (try
+        (react-dom/flushSync #(dom/render root [blog-views/vote-btn "author" "voter" [1 "c"] :up]))
+        (is (false? (.-disabled (.querySelector element "button"))))
+        (reset! pending true)
+        (react-dom/flushSync #(r/flush))
+        (is (true? (.-disabled (.querySelector element "button"))))
+        (finally (react-dom/flushSync #(dom/unmount root)))))))

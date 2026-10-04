@@ -4,6 +4,8 @@
     [re-frame.core :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.content.contract :as content-contract]
     [tolgraven.link-preview.views :as link-preview]
     [tolgraven.util :as util]
     [tolgraven.ui :as ui]))
@@ -16,7 +18,9 @@
       :else :user)))
 
 
-(defn preview-comment "Live md preview I guess. Prob best just ratom not db thing..."
+;; These components receive domain data, not a defc spec. Preserve the public
+;; names/signatures exported by blog.module; select boundaries only where useful.
+(defc preview-comment "Live md preview I guess. Prob best just ratom not db thing..."
   [model]
   (let [{:keys [user title text]} @model]
     [:div.blog-comment-preview
@@ -28,7 +32,7 @@
 (declare add-comment)
 (declare blog-container)
 
-(defn posted-by "Get details of blog/comment..."
+(defc posted-by "Get details of blog/comment..."
   [id user ts score]
   (let [user (if (string? user) ; user-id, not user-map
                @(rf/subscribe [:user/user user])
@@ -50,7 +54,7 @@
                     (neg? score) "")
         score])])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
 
-(defn add-comment-btn "Seemed like a good idea to swap button for input field when pressed but yeah, no..."
+(defc add-comment-btn "Seemed like a good idea to swap button for input field when pressed but yeah, no..."
   [parent-path kind]
   (let [adding-comment? @(rf/subscribe [:comments/adding? parent-path])
         attrs {:on-click
@@ -68,7 +72,7 @@
                   {:on-click #(rf/dispatch [:blog/cancel-comment parent-path])}
                   "Cancel"]))))
 
-(defn edit-comment
+(defc edit-comment
   [path comment]
   [:button.blog-btn.blog-comment-edit-btn.noborder
    {:on-click #(rf/dispatch [:blog/edit-comment path comment])}
@@ -85,7 +89,7 @@
           (rest path)))
 
 
-(defn vote-btn [user active-user path vote]
+(defc vote-btn [user active-user path vote]
   (when active-user
     (let [voted @(rf/subscribe [:blog/vote path])]
       [:button.blog-btn.blog-comment-vote-btn
@@ -97,26 +101,25 @@
                                  user active-user path vote])}
        (case vote :up "+" :down "-")])))
 
-(defn collapsed-reply-view
+(defc collapsed-reply-view
   [path parent-id comments]
-  (let [inited? (r/atom false)]
-    (fn [path parent-id comments]
-      [:div.blog-comment-reply.flex
-       {:style {:cursor "zoom-in"
-                :transition "max-height 1s ease"
-                :max-height (if @inited? "3rem" 0)}
-        :ref #(when % (reset! inited? true))
-        :on-click (fn [e]
-                    (rf/dispatch [:blog/expand-comment-thread path true])
-                    (doseq [[k post] comments]
-                      (rf/dispatch [:blog/expand-comment-thread
-                                    (conj path (:id post))
-                                    true])))}
-       [:div.blog-comment-border]
-       [:section.blog-comment.blog-comment-collapsed-placeholder
-        (util/pluralize (count comments) " hidden reply")]])))
+  :let [*inited? (r/atom false)]
+  [:div.blog-comment-reply.flex
+   {:style {:cursor "zoom-in"
+            :transition "max-height 1s ease"
+            :max-height (if @*inited? "3rem" 0)}
+    :ref #(when % (reset! *inited? true))
+    :on-click (fn [e]
+                (rf/dispatch [:blog/expand-comment-thread path true])
+                (doseq [[k post] comments]
+                  (rf/dispatch [:blog/expand-comment-thread
+                                (conj path (:id post))
+                                true])))}
+   [:div.blog-comment-border]
+   [:section.blog-comment.blog-comment-collapsed-placeholder
+    (util/pluralize (count comments) " hidden reply")]])
 
-(defn comment-post "A comment, and any children, rendered by recursion, deferring doing much if optional arg visible? is false"
+(defc ^{:features [:error-boundary]} comment-post "A comment, and any children, rendered by recursion, deferring doing much if optional arg visible? is false"
   [path {:keys [id seq-id ts user title text score] :as post} & [visible?]]
   (let [showing? (r/atom false) ; start false to avoid even temp initing what's not visible. Bit confusing since will usually be immediately reset to true.
         lines (string/split-lines text)
@@ -219,7 +222,7 @@
                 [collapsed-reply-view path id @comments])])])))))
 
 
-(defn comments-section "Comments section!"
+(defc comments-section "Comments section!"
   [{:keys [id] :as blog-post}]
   (let [comments (vals @(rf/subscribe [:comments/for-q-flat id]))
         expanded? @(rf/subscribe [:blog/state [:comments-expanded id]])
@@ -247,7 +250,7 @@
      [add-comment [id]]]))
 
 
-(defn add-comment "Post http or do a gql mutation, yada yada"
+(defc ^{:features [:error-boundary]} add-comment "Post http or do a gql mutation, yada yada"
   [parent-path]
   (let [adding-comment? (rf/subscribe [:comments/adding? parent-path])
         input-valid? (fn [input]
@@ -321,7 +324,7 @@
      ; :on-key-up (fn [e] (when (= "Alt-Enter-however-written" (.-key e)) (submit)))
 ; not here but whatever: thing from MYH site where heading slots into header
 
-(defn preview-blog "Render new post preview"
+(defc preview-blog "Render new post preview"
   [{:keys [title text]}]
   [:div
     [:h2.blog-post-title title]
@@ -329,7 +332,7 @@
     [link-preview/<md> text
      {:trust (link-trust @(rf/subscribe [:user/active-user]))}]])
 
-(defn post-blog "Render post-making ui" [] ; XXX move this and similar to own file...
+(defc ^{:features [:error-boundary]} post-blog "Render post-making ui" [] ; XXX move this and similar to own file...
   (let [input @(rf/subscribe [:form-field [:post-blog]])
         user @(rf/subscribe [:user/active-user])
         editing @(rf/subscribe [:blog/state [:editing]])]
@@ -369,7 +372,7 @@
       [:button {:on-click #(rf/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
        [:label "Cancel"]]]]))
 
-(defn tags-list [{:keys [id tags] :as post}]
+(defc tags-list [{:keys [id tags] :as post}]
   (when (pos? (count tags))
     [:div.blog-post-tags
      (doall (for [tag (string/split tags " ")]
@@ -379,7 +382,7 @@
                       tag]]))]))
 
 
-(defn blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
+(defc ^{:features [:error-boundary]} blog-post "Towards a bloggy blag. Think float insets and stuff and, well md mostly heh"
   [{:keys [id ts user title text permalink comments] :as post}]
   (if-not text
    [ui/loading-spinner true :massive] ; ideally some placeholder flashing textish
@@ -412,7 +415,7 @@
      [ui/appear-anon (if back? "" "zoom-y")
       [comments-section post]]]])))
 
-(defn blog-single-post []
+(defc blog-single-post []
   (let [post @(rf/subscribe [:blog/post
                              @(rf/subscribe [:blog/state [:current-post-id]])])]
    [blog-container
@@ -437,7 +440,7 @@
             [:a {:href @(rf/subscribe [:blog/permalink-for-path  (or (:permalink post) (:id post))])}
             [:span (:title post) " " [:i.fa.fa-chevron-right]]]))]) ]]))
 
-(defn blog-archive "List of all posts with headlines etc. Maybe for a sidebar." []
+(defc blog-archive "List of all posts with headlines etc. Maybe for a sidebar." []
   (let [posts @(rf/subscribe [:blog/post-feed])]
     [blog-container
      [:div.blog-archive
@@ -463,7 +466,7 @@
           {:trust (link-trust user)}]] ]))]]))
 
 
-(defn blog-tag-view "View posts filed with tag"
+(defc blog-tag-view "View posts filed with tag"
   []
   (when-let [tag @(rf/subscribe [:blog/state [:viewing-tag]])]
     [blog-container
@@ -475,7 +478,7 @@
         ^{:key (str "blog-with-tag-" (:id post))}
         [blog-post post])]]))
 
-(defn blog-tag-cloud "Tin"
+(defc blog-tag-cloud "Tin"
   []
   (let [tags @(rf/subscribe [:blog/all-tags])]
     [:div.blog-post-tags.flex.center-content
@@ -490,7 +493,7 @@
 (defn blog-intros-view "Headline and a paragraph, many on each page."
   [])
 
-(defn blog-nav "Blog navigation buttons"
+(defc blog-nav "Blog navigation buttons"
   [total-posts current-idx posts-per-page]
   (let [nav-btn (fn [nav label & [attrs]]
                   [:a {:href @(rf/subscribe [:href :blog-page {:nr nav}])}
@@ -507,7 +510,7 @@
     [:div.blog-nav.center-content
       back-btn nav-idxs fwd-btn]))
 
-(defn blog-feed "all the blogs. Should be called" []
+(defc blog-feed "all the blogs. Should be called" []
   (when-let [total @(rf/subscribe [:blog/count])]
    (let [user @(rf/subscribe [:user/active-user])
         per-page (min total @(rf/subscribe [:blog/posts-per-page]))
@@ -520,7 +523,7 @@
 
        [blog-nav total idx per-page]]))))
 
-(defn blog-container
+(defc blog-container
   [section]
   [:section.blog.fullwide.noborder ;then chuck flip-move on eeet. or just same slide nav thing
    (if section
@@ -547,13 +550,13 @@
     [:i.fab.fa-github]]]])
 
 
-(defn blog-page []
+(defc ^{:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)} blog-page []
   [ui/with-heading [:blog :heading] [blog-container [blog-feed]]])
-(defn post-blog-page [] ; how nicely set is-personal for this but also unset etc yada
+(defc ^{:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)} post-blog-page [] ; how nicely set is-personal for this but also unset etc yada
   [ui/with-heading [:blog :heading] [post-blog]])
-(defn blog-archive-page []
+(defc ^{:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)} blog-archive-page []
   [ui/with-heading [:blog :heading] [blog-archive]])
-(defn blog-tag-page []
+(defc ^{:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)} blog-tag-page []
   [ui/with-heading [:blog :heading] [blog-tag-view]])
-(defn blog-post-page []
+(defc ^{:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)} blog-post-page []
   [ui/with-heading [:blog :heading] [blog-single-post]])

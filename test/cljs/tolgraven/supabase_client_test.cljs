@@ -52,6 +52,7 @@
   (reset! client/*client (:sdk mock)))
 
 (defn status! [mock name status]
+  (client/drain-queries!)
   (@(:status (get @(:channels mock) name)) status nil))
 (defn change! [mock name change]
   (@(:change (get @(:channels mock) name)) (clj->js change)))
@@ -63,6 +64,8 @@
       (reset! (:rows mock) {"site_users" [{:id "u" :name "Before" :email "private"}]})
       (let [all (client/ensure-query! {:path-collection [:users]})
             one (client/ensure-query! {:path-document [:users :u]})]
+        (is (empty? @(:channels mock)) "Streams join the next batch")
+        (client/drain-queries!)
         (is (= 1 (count @(:channels mock))))
         (is (empty? @(:selects mock)))
         (status! mock "store-site_users" "SUBSCRIBED")
@@ -283,3 +286,28 @@
           (.catch #(is false (str %)))
           (.finally (fn [] (set! (.-supabase js/globalThis) before)
                       (reset! status/*failures failures) (done)))))))
+
+(deftest preload-populates-subscription-cache-without-live-channels
+  (async done
+    (let [mock (mock-client) opts {:path-document [:users :u]}]
+      (reset-client! mock)
+      (reset! (:rows mock) {"site_users" [{:id "u" :name "Preloaded"}]})
+      (let [a (client/preload-query! opts) b (client/preload-query! opts)]
+        (is (identical? a b))
+        (is (empty? @(:selects mock)))
+        (-> a
+            (.then (fn [value]
+                     (is (= "Preloaded" (get-in value [:data :name])))
+                     (is (= 1 (count @(:selects mock))))
+                     (is (empty? @(:channels mock)))
+                     (let [subscription (client/ensure-query! opts)]
+                       (is (= "Preloaded" (get-in @subscription [:data :name])))
+                       (ratom/dispose! subscription))
+                     (tick!)))
+            (.then (fn [_]
+                     (is (empty? @(:channels mock)) "Disposed before the tick, so no channel starts")
+                     (is (:ready? (client/cached-query opts)))
+                     (client/preload-query! opts)))
+            (.then (fn [_] (is (= 1 (count @(:selects mock))) "Cache survives reader cleanup")))
+            (.catch #(is false (str %)))
+            (.finally done))))))
