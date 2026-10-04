@@ -56,6 +56,22 @@
 (defc <child-error> {:features [:error-boundary]} [spec *broken?] [:div [<throws> *broken?]])
 (defc <nested> {:features [:error-boundary]} [spec *broken?] [:article [:p "Healthy parent"] [<own-error> {} *broken?]])
 
+(deftest exported-defc-vars-and-page-navigation-recovery
+  (with-redefs [util/log (fn [& _])]
+    (with-root
+      (fn [root element]
+        (render! root [ui/safe :page [<throws> (r/atom true)] "/blog"])
+        (is (some? (.querySelector element "[role=alert]")))
+        ;; Changing children on the same route must not retry on every render.
+        (render! root [ui/safe :page [(component/resolve-view #'<empty-args>)] "/blog"])
+        (is (some? (.querySelector element "[role=alert]")))
+        ;; A new route owns a new boundary, even if the exported page is a defc Var.
+        (render! root [ui/safe :page [(component/resolve-view #'<empty-args>)] "/services"])
+        (is (nil? (.querySelector element "[role=alert]")))
+        (is (= "No arguments" (.-textContent element)))
+        (render! root [ui/safe :page [(component/resolve-view #'<destructured>) {:title "Post route"}] "/blog/post/2"])
+        (is (= "Post route" (.-textContent element)))))))
+
 (deftest local-state-props-fragments-and-argument-forwarding
   (with-root
     (fn [root element]

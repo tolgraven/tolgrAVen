@@ -11,6 +11,7 @@
    [shadow.cljs.devtools.api :as shadow]
    [shadow.cljs.devtools.server :as server]
    [tolgraven.handler :as handler]
+   [tolgraven.ssr :as ssr]
    [tolgraven.core]))
 
 
@@ -19,6 +20,7 @@
    (cljs-repl :app-dev))
   ([build-id]
    (server/start!)
+   (when (and (ssr/enabled?) (not= :ssr build-id)) (shadow/watch :ssr))
    (shadow/watch build-id)
    (shadow/nrepl-select build-id)))
 

@@ -1,13 +1,18 @@
 (ns tolgraven.blog.subs
   (:require
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
+    [reagent.ratom :as ratom]
     [tolgraven.blog.model :as model]
+    [tolgraven.blog.comments :as comments]
+    [tolgraven.blog.data :as data]
+    [tolgraven.supabase.scoped :as scoped]
+    [tolgraven.util :as util]
     [clojure.string :as string]))
 
 (rf/reg-sub :blog
   (fn [[_ path]]
     (case (first path)
-      :posts (rf/subscribe [:<-store-2 :blog-posts])
+      :posts (rf/subscribe [:<-store-q data/summaries-query])
       :comments (rf/subscribe [:<-store-2 :blog-comments])
       (rf/subscribe [:get :blog])))
   (fn [data [_ path]]
@@ -30,13 +35,19 @@
          sort
          reverse)))
 
-(rf/reg-sub :blog/post
+(rf/reg-sub :blog/post-records
   (fn [[_ post-id]]
-    (rf/subscribe [:<-store-q {:path-collection [:blog-posts]
-                               :where [[:id :== post-id]]
-                               :doc-changes true}]))
-  (fn [post [_ post-id]]
-    (get post (keyword (str post-id)))))
+    (rf/subscribe [:<-store-q (data/post-query post-id)]))
+  (fn [posts _] posts))
+
+(rf/reg-sub :blog/post
+  (fn [[_ post-id]] (rf/subscribe [:blog/post-records post-id]))
+  (fn [posts [_ post-id]]
+    (some #(when (= post-id (:id %)) %) (vals posts))))
+
+(rf/reg-sub :blog/post-summary
+  :<- [:blog [:posts]]
+  (fn [posts [_ id]] (some #(when (= id (:id %)) %) (vals posts))))
 
 (rf/reg-sub :blog/permalink-for-path
   (fn [[_ path]]
@@ -130,6 +141,7 @@
 (rf/reg-sub :comments/for-user-q
   (fn [[_ user-id]]
     (rf/subscribe [:<-store-q {:path-collection [:blog-comments]
+                              :scoped? true
                               :where [[:user :== user-id]]
                               :order-by [[:ts :desc]]
                               :doc-changes true}]))
@@ -153,13 +165,42 @@
   (fn [[_ blog-id]] (rf/subscribe [:blog/post blog-id]))
   (fn [post _] (:comments post)))
 
-(rf/reg-sub :comments/for-q-flat
+(rf/reg-sub :comments/limit
+  :<- [:blog/state [:comment-limit]]
+  (fn [limits [_ id]] (data/comment-limit limits id)))
+
+(rf/reg-sub-raw :comments/root-page
+  (fn [_ [_ id]]
+    (ratom/make-reaction
+     (fn []
+       (let [amount @(rf/subscribe [:comments/limit id])
+             value @(rf/subscribe [:<-store-q (comments/root-query id amount)])
+             [cached-amount cached] (when-not value
+                                      (some (fn [size]
+                                              (when-let [result @(rf/subscribe [:store/scoped (scoped/query-key (comments/root-query id size))])]
+                                                [size (util/normalize-store-result result)]))
+                                            (reverse (range comments/page-size amount comments/page-size))))
+             rows (->> (vals (or value cached)) (sort-by (juxt :ts :id)) reverse)
+             ids (set (map :id (take (if value amount (or cached-amount 0)) rows)))]
+         {:records (when (or value cached) (into {} (filter (fn [[_ row]] (ids (:id row)))) (or value cached)))
+          :loading? (nil? value) :more? (or (nil? value) (> (count rows) amount))})))))
+
+(rf/reg-sub :comments/thread-records
   (fn [[_ blog-id parent-id]]
-    (rf/subscribe [:<-store-q {:path-collection [:blog-comments]
-                              :where [[:parent-post :== blog-id]
-                                      [:parent-comment :== parent-id]]
-                              :order-by [[:ts :desc]]
-                              :doc-changes true}]))
+    (if parent-id
+      (rf/subscribe [:<-store-q (comments/thread-query blog-id parent-id)])
+      (rf/subscribe [:comments/root-page blog-id])))
+  (fn [value [_ _ parent-id]] (if parent-id value (:records value))))
+
+;; Folded threads retain their cached children for the exit transition without
+;; owning a remote reader. Each child removes its DOM after delayed visibility.
+(rf/reg-sub :comments/cached-thread
+  (fn [[_ post-id parent-id]]
+    (rf/subscribe [:store/scoped (scoped/query-key (comments/thread-query post-id parent-id))]))
+  (fn [result _] (some-> result util/normalize-store-result)))
+
+(rf/reg-sub :comments/for-q-flat
+  (fn [[_ blog-id parent-id]] (rf/subscribe [:comments/thread-records blog-id parent-id]))
   (fn [comments _] (when (seq comments) comments)))
 
 ;; Reserved for direct comment lookup; keep the unfinished subscription visible.
@@ -181,3 +222,17 @@
   (fn [db [_ path]]
     (case (get-in db [:state :active-user :comment-votes (keyword (str (last path)))] 0)
       1 :up -1 :down nil)))
+
+(rf/reg-sub-raw :blog/page-ready?
+  (fn [_ [_ selection]]
+    (ratom/make-reaction
+     #(-> @(rf/subscribe [:store/plan data/plan
+                          (assoc selection
+                                 :size @(rf/subscribe [:blog/posts-per-page])
+                                 :comment-limits @(rf/subscribe [:blog/state [:comment-limit]])
+                                 :thread-expanded @(rf/subscribe [:blog/state [:comment-thread-expanded]]))])
+          :ready?))))
+
+(rf/reg-sub :blog/post-loaded?
+  (fn [[_ id]] (rf/subscribe [:blog/post-records id]))
+  (fn [records _] (some? records)))

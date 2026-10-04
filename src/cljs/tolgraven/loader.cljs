@@ -1,16 +1,19 @@
 (ns tolgraven.loader
   (:require
-   [re-frame.core :as rf]
+   [tolgraven.react :as rf]
+   [tolgraven.render-context :as context]
    [tolgraven.content.client :as content]
    [tolgraven.content.contract :as content-contract]
    [tolgraven.component :as component]
    [tolgraven.component.data :as data]
+   [tolgraven.components.error :as error]
+   [tolgraven.service-status :as status]
    [reagent.core :as r]
    [shadow.lazy :as lazy])
   (:require-macros
    [tolgraven.macros :as m]))
 
-(def modules (merge (m/make-modules "tolgraven" [:blog
+(def modules (m/browser-only (merge (m/make-modules "tolgraven" [:blog
                                                  :link-preview
                                                  :search
                                                  :user
@@ -21,7 +24,7 @@
                                                  :gpt
                                                  :strava
                                                  :instagram])
-                    {:test (lazy/loadable tolgraven.experiments/spec)}))
+                    {:test (lazy/loadable tolgraven.experiments/spec)})))
 
 (defn <default-missing>
   [& args]
@@ -32,6 +35,21 @@
 (defn ready? [module]
   (when-let [loadable (get modules module)]
     (lazy/ready? loadable)))
+
+(defn ready-spec
+  "Return bundled/cached code only when its module and view data are available.
+   Promise-based initialization still runs, but an already-ready view need not
+   disappear behind a spinner while that promise's callbacks are scheduled."
+  [module view args]
+  (when-let [loadable (get modules module)]
+    (when (lazy/ready? loadable)
+      (let [spec @loadable
+            definition (component/component-spec (get-in spec [:view (or view :view)]))
+            resources (concat (:depends spec)
+                              (get content-contract/module-dependencies module)
+                              (when (seq (:content spec)) [{:source :strapi :keys (:content spec)}])
+                              (when definition (component/dependencies definition args)))]
+        (when (= :ready (data/state resources)) spec)))))
 
 (defn- prepare-data! [resources]
   ;; A new module load/navigation is an explicit retry opportunity. Rendering
@@ -48,7 +66,7 @@
 (defn load!
   "Return a promise for an initialized module. Concurrent callers share one load.
    Hooks run per caller; module initialization runs once, including bundled modules."
-  [{:keys [module view init-evt pre-fn post-fn args]}]
+  [{:keys [module view init-evt pre-fn post-fn args route]}]
   (if-let [loadable (get modules module)]
     (do
       (when init-evt (rf/dispatch init-evt))
@@ -80,7 +98,11 @@
         (.then loaded (fn [spec]
                         ;; Per-call component dependencies may depend on route args,
                         ;; even when the module itself is already initialized.
-                        (-> (prepare-view! spec view args)
+                        (-> (js/Promise.all
+                             #js [(prepare-view! spec view args)
+                                  (when (and route (:route-depends spec)
+                                             (not= (:path route) (:path @context/*snapshot)))
+                                    (prepare-data! ((:route-depends spec) route)))])
                             (.then (fn [_] (if post-fn (apply post-fn spec args) spec))))))))
     (js/Promise.reject (ex-info "Unknown module" {:module module}))))
 
@@ -96,7 +118,7 @@
           [:script {:type "text/javascript"
                     :src  src}])])
 
-(defn <>
+(defn- <browser-module>
   "Render a module component after loading and initialization, optionally on demand."
   [& _]
   (let [*loaded (r/atom nil)
@@ -110,10 +132,11 @@
               spec)
             view (or view :view)
             requested? @(rf/subscribe [:scope/inited? module])
-            deferred? (and (or defer? <before>) (not requested?))]
+            deferred? (and (or defer? <before>)
+                           (or (not requested?) (not @context/*interactive?)))]
         (when (and (not deferred?) (not= module @*requested))
           (reset! *requested module)
-          (reset! *loaded nil)
+          (reset! *loaded (ready-spec module view args))
           (reset! *error nil)
           ;; The component handles post-fn below so its return value cannot replace
           ;; the loaded module spec. Forward the other hooks and initialization args.
@@ -123,10 +146,14 @@
               (.then (fn [loaded]
                        (when (= module @*requested)
                          (reset! *loaded loaded)
+                         (status/recover! [:module module])
                          (when post-fn (apply post-fn loaded args)))))
               (.catch (fn [error]
                         (when (= module @*requested)
-                          (reset! *error error))))))
+                          (reset! *error error)
+                          (status/fail! [:module module] "Section unavailable"
+                                        "This section could not be loaded. Retry to load it again."
+                                        #(do (reset! *requested nil) (reset! *error nil))))))))
         (cond
           deferred?
           (when <before>
@@ -134,19 +161,19 @@
              {:on-click #(rf/dispatch [:scope/init module args])}
              (if (vector? <before>) <before> (into [<before>] args))])
 
-          @*error
-          [:div.module-error
-           [:p "This section could not be loaded."]
-           [:button {:on-click #(do (reset! *requested nil)
-                                    (reset! *error nil))}
-            "Retry"]]
+          (and @*error (nil? @*loaded))
+          [error/<failure> "module" (name module)
+           {:title "This section could not be loaded"
+            :message "Check your connection and try loading this section again."
+            :error @*error}
+           #(do (reset! *requested nil) (reset! *error nil))]
 
           @*loaded
           (let [component (get-in @*loaded [:view view])]
             [:<>
              [<assets> (merge-with into (:assets @*loaded) assets)]
              (if component
-               (into [component] args)
+               (into [(component/resolve-view component)] args)
                (if <missing>
                  (if (vector? <missing>) <missing> (into [<missing>] args))
                  [<default-missing> module view]))])
@@ -155,3 +182,17 @@
           (if <loading>
             (if (vector? <loading>) <loading> (into [<loading>] args))
             [:div.loading-container [:div.loading-spinner]]))))))
+
+(defn <>
+  "Use the same module view in Node, without starting browser initialization."
+  [& initial]
+  (if context/*server?*
+    (fn [spec & args]
+      (let [{:keys [module view defer? <before>]} (if (vector? spec)
+                                                 {:module (first spec) :view (second spec)} spec)]
+        (cond
+          (or defer? <before>) (when <before> [:div.before-loading-container
+                                             (if (vector? <before>) <before> (into [<before>] args))])
+          :else (when-let [view (get-in context/*modules* [module :view (or view :view)])]
+                  (into [(component/resolve-view view)] args)))))
+    (apply <browser-module> initial)))

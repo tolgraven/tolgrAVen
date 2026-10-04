@@ -28,3 +28,6 @@
 (defn page-ids [ids index size]
   (when (and (int? index) (<= 0 index) (int? size) (pos? size))
     (->> ids (drop (* index size)) (take size) vec)))
+
+(defn page-count [total size]
+  (let [size (page-size size)] (quot (+ total (dec size)) size)))

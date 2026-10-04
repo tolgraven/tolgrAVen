@@ -1,7 +1,7 @@
 (ns tolgraven.content.client
   (:require [ajax.core :as ajax]
             [clojure.string :as string]
-            [re-frame.core :as rf]
+            [tolgraven.react :as rf]
             [re-frame.db :as rfdb]
             [reagent.core :as r]
             [tolgraven.content.contract :as contract]
@@ -106,7 +106,12 @@
                       #(hash-map :version contract/version :content (:content @rfdb/app-db)) cache-options)
       ;; The default loads all content. An SSR response can opt into a partial
       ;; bootstrap; module initialization/prefetch then fill only missing sections.
-      (-> (ensure! (if (:deferred? embedded) (keys (:content embedded)) contract/sections))
+      (-> (ensure! (cond
+                     (:deferred? embedded) (keys (:content embedded))
+                     (:back? @restore/*context)
+                     (let [route (or (second (string/split (.-pathname js/location) #"/")) "home")]
+                       (contract/keys-for-route (if (#{"" "about" "services" "hire"} route) :home (keyword route))))
+                     :else contract/sections))
           (.then (fn [result] (status/recover! :strapi-bootstrap) (storage/schedule!) result))))
     (catch :default error
       ;; A retry fetches a fresh bundle instead of parsing the same broken snapshot.

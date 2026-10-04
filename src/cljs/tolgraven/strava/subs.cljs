@@ -1,6 +1,6 @@
 (ns tolgraven.strava.subs
   (:require
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [cljs-time.core :as ct]
     [cljs-time.format :as ctf]
     [cljs-time.coerce :as ctc]

@@ -1,5 +1,6 @@
 (ns tolgraven.component
   (:require [clojure.string :as string]
+            [tolgraven.render-context :as context]
             [reagent.core :as r]
             [react :as react]
             [tolgraven.component.motion :as motion]
@@ -18,6 +19,12 @@
 (def path-of state-store/path-of)
 (def dump-state! state-store/dump!)
 (defn dump-content! [] (storage/flush! :content))
+
+(defn resolve-view
+  "Resolve exported Vars at render time; Reagent 2 defc values are descriptors,
+   not callable functions. Keep module Vars for development hot reloading."
+  [view]
+  (if (var? view) @view view))
 
 (defonce *features (atom {}))
 
@@ -230,12 +237,14 @@
   (let [resources (dependencies definition args)]
     ;; Deliberately before mount: requests are shared and not owned by a React
     ;; instance, so speculative/abandoned renders neither duplicate nor leak them.
-    (data/prefetch! resources)
+    (when-not context/*server?* (data/prefetch! resources))
     (case (data/state resources)
       :ready form
-      :error [:section.component-failed {:role "alert"}
-              [:p "This component's data could not be loaded."]
-              [:button {:on-click #(-> (data/retry! resources) (.catch (fn [_] nil)))} "Retry data"]]
+      :error [error/<failure> (:ns definition) (:name definition)
+              {:title "This component's data could not be loaded"
+               :message "Check your connection and try loading this content again."
+               :error (data/failure resources)}
+              #(data/retry-background! resources)]
       (let [view (get-in definition [:options :loading])]
         (cond (fn? view) (apply view args) view view :else [loading/<spinner>])))))
 

@@ -1,7 +1,7 @@
 (ns tolgraven.chat.views
   (:require
     [reagent.core :as r]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
     [tolgraven.link-preview.views :as link-preview]

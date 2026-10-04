@@ -1,7 +1,7 @@
 (ns tolgraven.instagram.module
   (:require
     [tolgraven.content.contract :as content-contract]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [tolgraven.instagram.events]
     [tolgraven.instagram.subs]
     [tolgraven.instagram.views :as view]))

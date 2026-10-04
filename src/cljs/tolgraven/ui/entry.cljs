@@ -3,7 +3,7 @@
    [clojure.string :as string]
    [tolgraven.ui :as ui]
    [reagent.core :as r]
-   [re-frame.core :as rf]))
+   [tolgraven.react :as rf]))
 
 (def char-width 0.61225)
 

@@ -103,14 +103,14 @@
     padding-top: 0;
   }
 }
-#headshot {
+#headshot, #story-image-headshot {
   width: 20%;
 }
 #byline > img {
   border-radius: 0.5em;
   border: 1px solid;
 }
-#multimeter {
+#multimeter, #story-image-multimeter {
   width: 30%;
   min-width: 150px;
 }
@@ -286,4 +286,21 @@
   .media-as-bg {
     filter: var(--dark-to-light);
   }
+}
+
+// Ready content restored from SSR/history keeps the settled hero appearance.
+main[data-restored] {
+  #logo-top { animation: none; }
+  #intro h1::after {
+    animation: none;
+    width: var(--line-percent);
+    transform: skew(-30deg);
+  }
+}
+
+// A hydrated hero remains settled while its retained page fades out.
+#intro[data-restored] h1::after {
+  animation: none;
+  width: var(--line-percent);
+  transform: skew(-30deg);
 }

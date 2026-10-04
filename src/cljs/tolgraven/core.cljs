@@ -1,16 +1,20 @@
 (ns tolgraven.core
   (:require
     [goog.events]
-    [re-frame.core :as rf]
-    [re-frame.db :as rfdb]
+    [tolgraven.react :as rf]
     [tolgraven.component.data :as component-data]
+    [tolgraven.component :as component]
     [tolgraven.component.storage :as storage]
+    [tolgraven.blog.cache :as blog-cache]
     [tolgraven.main.module :as main-module]
     [react :as react]
     [reagent.core :as r]
     [reagent.dom.client :as rdomc]
     [tolgraven.ajax :as ajax]
     [tolgraven.content.client :as content]
+    [tolgraven.ssr.client :as ssr]
+    [tolgraven.components.oembed :as oembed]
+    [tolgraven.components.init :as init-view]
     [tolgraven.component.restore :as restore]
     [tolgraven.service-status :as service-status]
     [tolgraven.events]
@@ -20,105 +24,19 @@
     [tolgraven.subs]
     [tolgraven.ui :as ui]
     [tolgraven.util :as util]
-    [tolgraven.views-common :as common]))
+    [tolgraven.views-common :as common]
+    [tolgraven.views.page :as page-view]))
 
 (def spec main-module/spec)
 
-(defn swapper "Swap between outgoing and incoming page view. Deprecated: switch to CSS transition"
-  [class comp-in comp-out]
-  (let [swap (rf/subscribe [:state [:swap]])
-        curr-page (rf/subscribe [:common/route ])
-        prev-page (rf/subscribe [:common/route :last])
-        force? (empty? (seq class))
-        ref-fn #(when (and %
-                           (not= (get-in @prev-page [:data :name])
-                                 (:running @swap))
-                           (not= (get-in @prev-page [:data :name]) (:finished @swap)))
-                 (rf/dispatch [:swap/trigger prev-page]))] ; no transition
-    (fn [class comp-in comp-out]
-      (let [prev-page (get-in @prev-page [:data :name])]
-        [:div.swapper
-         [:div.swap-in
-          {:class (str class " "
-                       (when (or (not @swap)
-                                 force?
-                                 (not comp-out)
-                                 (= (:running @swap) prev-page)
-                                 (= (:finished @swap) prev-page))
-                         "swapped-in"))}
-          comp-in] ;will have to be behind for z then revealed by curr page moving out the way.
-         (when comp-out
-           [:div.swapped
-            {:class (str (when (= (:running @swap) prev-page)
-                           class) " "
-                         (when (= (:running @swap) prev-page)
-                           "swapped-out") " "
-                         (when (or (= (:finished @swap) prev-page)
-                                   (not @swap)
-                                   force?)
-                           "removed") " ")
-             :ref #(do (when (and %
-                                  (not= prev-page (:running @swap))
-                                  (not= prev-page (:finished @swap)))
-                         (rf/dispatch [:swap/trigger prev-page]))
-                       (rf/dispatch [:history/set-referrer [nil 0]]))} ; trigger anim out and deferred hiding. triggers three(!) times each time but later no effect so.
-            (when-not (:finished @swap)
-              comp-out)])]))))
-
-(defn page "Render active page inbetween header, footer and general stuff." 
-  []
-  (let [ext-back? (or (restore/skip-enter?) @(rf/subscribe [:history/back-nav-from-external?]))
-        swap-class (if ext-back? "" "opacity")
-        click-evt @(rf/subscribe [:state [:global-clicked]])]
-  [:<>
-   [l/<assets> {:css (some-> spec :assets :css)
-                :js  (some-> spec :assets :js)}]
-
-   [ui/safe :header [common/header @(rf/subscribe [:content [:header]])]]
-   [service-status/<notices>]
-   [:a {:name "linktotop" :id "linktotop"}]
-   
-   [ui/zoom-to-modal :fullscreen]
-   [l/<> {:module :link-preview}]
-   [ui/safe :user [l/<> {:module :user, :defer? true}]]
-   [ui/safe :settings [common/settings]]
-   [ui/safe :search [l/<> {:module :search, :defer? true}]]
-   (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
-     [:main.main-content.perspective-top
-      [error-page]]
-     (if-let [page @(rf/subscribe [:common/page])]
-       [:main.main-content.perspective-top
-        {:id    "main"
-         :class (when-not ext-back? "animate")}
-        [swapper swap-class
-         [ui/safe :page [page]]
-         (when-let [page-prev @(rf/subscribe [:common/page :last])]
-           [ui/safe :page-prev [page-prev]])]]
-       [ui/loading-spinner true :massive]))                 ; removed since jars now that have hero in original html
-
-   [:div#error-portal]
-
-   [common/footer-full @(rf/subscribe [:content [:footer]])]
-   [common/footer @(rf/subscribe [:content [:footer]])]
-   [ui/safe :hud [ui/hud (rf/subscribe [:hud])]]
-   [common/to-top]
-   ; [[:div.ripple-on-click
-   ;    {:class (when click-evt "ripple")
-   ;     :style {:left (str "calc(" (if click-evt
-   ;                                  (.-pageX click-evt)
-   ;                                  0)
-   ;                        "px - " 7 "em)")
-   ;             :top (str "calc(" (if click-evt
-   ;                                 (.-pageY click-evt)
-   ;                                 0)
-   ;                       "px - " 5 "em)")}}]common/scrollbar {}]
-   
-   [:a {:name "bottom" :id "bottom"}]]))
+(def page page-view/page)
+(def swapper page-view/swapper)
 
 ;; -------------------------
 ;; Initialize app
 
 (defonce root (atom nil))
+(defonce *init-root (atom nil))
 (defonce <page>
   (if false #_:biggus-debuggus
     (r/create-element react/StrictMode
@@ -126,56 +44,71 @@
                       (r/as-element [page]))
     [#'page]))
 
+(defn <root-page> []
+  [ssr/<hydrate> [page]])
+
 (defn render []
   (if @root
-    (rdomc/render @root [#'page])
+    (rdomc/render @root [#'<root-page>])
     (let [element (.getElementById js/document "app")]
       (if (:hydrate? @restore/*context)
-        (reset! root (rdomc/hydrate-root element [#'page]))
+        (reset! root (rdomc/hydrate-root element [#'<root-page>]
+                       {:on-recoverable-error
+                        (fn [error _]
+                          (js/console.error "Hydration recovery" error)
+                          (service-status/fail! :hydration "Page restoration failed"
+                                               "The page was rebuilt in your browser. Reload if anything is missing."
+                                               #(.reload js/location)))}))
         (do (reset! root (rdomc/create-root element))
-            (rdomc/render @root [#'page]))))))
+            (rdomc/render @root [#'<root-page>]))))))
 
 (defn mount-components "Called each update when developing" []
-  (rf/dispatch-sync [:scroll/save-position-dev])
-  (rf/clear-subscription-cache!)
-  (routes/start!) ; restart router on reload?
-  (rf/dispatch [:reloaded])
-  (util/log "Mounting root component")
-  (-> (if (restore/skip-enter?)
-        ;; Preserve existing server DOM until the selected route/module is ready.
-        (component-data/wait-for! rfdb/app-db
-          #(hash-map :ready? (some? (get-in @rfdb/app-db [:common/route :data :view]))) 15000)
-        (js/Promise.resolve nil))
-      (.then (fn [_] (render) (rf/dispatch [:scroll/restore-position-dev 150])))))
+  (let [hot-reload? (some? @root)]
+    ;; A first load keeps the browser's position through hydration. This save/
+    ;; restore pair is only for replacing an already mounted development root.
+    (when hot-reload? (rf/dispatch-sync [:scroll/save-position-dev]))
+    (rf/clear-subscription-cache!)
+    (routes/start!) ; restart router on reload?
+    (rf/dispatch [:reloaded])
+    (util/log "Mounting root component")
+    (-> (if (restore/skip-enter?)
+          ;; Preserve existing server DOM until the selected route/module is ready.
+          (js/Promise.all
+           #js [(l/load! {:module :user})
+                (l/load! {:module :link-preview})
+                (component-data/ensure! {:source :subscription :query [:common/page-ready?] :ttl-ms 1})])
+          (js/Promise.resolve nil))
+        (.then (fn [_]
+                 (render)
+                 (when hot-reload? (rf/dispatch [:scroll/restore-position-dev 150])))))))
 
 (defn init "Called only on page load" []
-  (restore/begin! {:back? (restore/back-navigation?)
+  (restore/begin! {:back? (or (restore/back-navigation?)
+                               (= "true" (.getAttribute (.getElementById js/document "app") "data-restore")))
                    :hydrate? (= "true" (.getAttribute (.getElementById js/document "app") "data-hydrate"))})
   (rf/dispatch-sync [:init/app-db])
-  (rf/dispatch-sync [:store/init])
   (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
   (ajax/load-interceptors!)
   (letfn [(start! []
+            (rf/dispatch-sync [:state [:page-init] {:status :loading}])
+            (service-status/recover! :page-init)
             (-> (storage/ready!)
+                (.then (fn [_] (ssr/install!) (blog-cache/restore!)))
                 (.then (fn [_] (content/bootstrap!)))
                 (.then (fn [_] (component-data/ensure-all! (:depends spec))))
                 (.then (fn []
-                         (.removeAttribute (.getElementById js/document "app") "role")
                          (-> (mount-components)
-                             (.then (fn [_] (js/setTimeout #(rf/dispatch [:init/init]) 16))))))
+                             (.then (fn [_]
+                                      (rf/dispatch [:state [:page-init] {:status :ready}])
+                                      (js/setTimeout #(rf/dispatch [:init/init]) 16))))))
                 (.catch (fn [_]
-                          ;; Keep the server skeleton visible until a complete
-                          ;; content snapshot is ready, with a usable retry.
-                          (let [element (.getElementById js/document "app")
-                                message (.createElement js/document "p")
-                                button (.createElement js/document "button")]
-                            (set! (.-textContent element) "")
-                            (.setAttribute element "role" "alert")
-                            (set! (.-textContent message) "The page could not initialize. Check your connection and retry. The failure has been recorded in the webpage log.")
-                            (set! (.-textContent button) "Retry")
-                            (set! (.-onclick button) start!)
-                            (.appendChild element message)
-                            (.appendChild element button))))))]
+                          (service-status/fail! :page-init "Page initialization failed"
+                                                "The page could not initialize. Existing server content is retained."
+                                                start!)
+                          (rf/dispatch [:state [:page-init] {:status :failed}])))))]
+    (when-let [element (.getElementById js/document "page-init-status")]
+      (when-not @*init-root (reset! *init-root (rdomc/create-root element)))
+      (rdomc/render @*init-root [init-view/<fallback> start!]))
     (start!)))
 
 (defn ^:export init!  []

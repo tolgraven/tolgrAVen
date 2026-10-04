@@ -1,11 +1,12 @@
 (ns tolgraven.ui
   (:require
    [reagent.core :as r]
-   [re-frame.core :as rf]
+   [tolgraven.react :as rf]
    [tolgraven.util :as util :refer [at]]
    [tolgraven.image :as img]
    [tolgraven.macros :as m :include-macros true]
    [tolgraven.component :as component]
+   [tolgraven.components.heading :as heading]
    [tolgraven.component.restore :as restore]
    [clojure.string :as string]
    [clojure.pprint :as pprint]
@@ -39,11 +40,12 @@
 (defn safe
   "Compatibility boundary for existing [safe category component] call sites.
    Keep the category in diagnostics while sharing defc's recovery machinery."
-  [category form]
-  [component/<boundary> "tolgraven.ui" (name category) form])
+  [category form & [reset-key]]
+  (with-meta [component/<boundary> "tolgraven.ui" (name category) form]
+    {:key reset-key}))
 
 (defn md->div [md & [options]]
-  (let [showing? (r/atom false)]
+  (let [showing? (r/atom (boolean (restore/skip-enter?)))]
     (fn [md & [options]]
       [:div.md-rendered
        {:style {:opacity (if @showing? 1.0 0.0)}
@@ -123,7 +125,7 @@
 
 (defn seen-anon "Animate on coming into view"
   [kind & components]
-  (let [seen (r/atom false)
+  (let [seen (r/atom (boolean (restore/skip-enter?)))
         on-change (fn [frac]
                     (cond
                        (and (>= frac 0.50) (not @seen))
@@ -139,7 +141,7 @@
 
 (defn seen-merge "Animate on coming into view. Attempts to merge existing stuff to avoid wrapping"
   [kind component]
-  (let [seen (r/atom false)
+  (let [seen (r/atom (boolean (restore/skip-enter?)))
         on-change (fn [frac]
                     (cond
                        (and (>= frac 0.50) (not @seen))
@@ -248,20 +250,8 @@
      caption]))
 
 
-(defn fading-bg-heading [{:keys [title target bg tint] :as content}]
-  [:<>
-   [:div.fading-bg-heading
-    {:class "section-with-media-bg-wrapper covering stick-up fullwidth"
-     :on-click (when target #(rf/dispatch [:common/navigate! target]))}
-    [:div.fader
-     [img/media-as-bg bg]
-     [:section.covering-faded.noborder
-      {:style (when tint {:background (str "var(--" tint ")")
-                          :filter "saturate(1.7) brightness(0.9)"})}
-      [:h1.h-responsive
-       {:style {:transform "translateY(-10%)"}}
-       title]]]]
-   [:div.fader>div.fade-to-black.bottom]])
+(defn fading-bg-heading [content]
+  [heading/<banner> content #(rf/dispatch [:common/navigate! %])])
 
 (defn button "Pass text and id, plus either link anchor or action..."
   [text id & {:keys [type bg-div-class link action disabled?]
@@ -331,7 +321,7 @@
                      [:br]])
          chunk-size (int (/ (count text-part)
                             (count (:images content))))
-         result (->> (util/interleave-all (map #(into [float-img] %)
+         result (->> (util/interleave-all (map (fn [[id & args]] (into [float-img (str "story-image-" id)] args))
                                                (:images content))
                                           (map #(into [:div] %)
                                                (partition chunk-size chunk-size
@@ -681,7 +671,8 @@
  (let [msg-fn (fn [{:keys [level title message time actions buttons id]}]
                 ^{:key (str "hud-message-" id)}
                 [:div.hud-message
-                  {:class (name level)
+                  {:role (if (= :error level) "alert" "status")
+                   :class (name level)
                    :style {:position :relative}
                    :ref #(when % (util/run-highlighter! "pre" %)) ;this works but dispatch not??
                    :on-click #(doall (for [action (or actions
@@ -702,7 +693,7 @@
                                                      (keyword? id) name)
                                     "-button-" (:id button))}
                        [:button.hud-message-button
-                        {:on-click #(rf/dispatch action)}
+                        {:on-click (fn [event] (.stopPropagation event) (rf/dispatch action))}
                         text])])])]
   [:div.hud.hidden
    {:class (when (seq @to-show) "visible")}

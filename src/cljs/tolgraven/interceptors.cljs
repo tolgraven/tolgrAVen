@@ -1,6 +1,6 @@
 (ns tolgraven.interceptors
   (:require
-   [re-frame.core :as rf]
+   [tolgraven.react :as rf]
    [re-frame.std-interceptors :as rf-std]
    ; [differ.core :as differ]
    [tolgraven.util :as util]))

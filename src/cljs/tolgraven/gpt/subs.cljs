@@ -1,6 +1,6 @@
 (ns tolgraven.gpt.subs
   (:require
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [clojure.string :as string]))
 
 (rf/reg-sub :gpt/thread

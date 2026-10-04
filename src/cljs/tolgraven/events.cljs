@@ -1,12 +1,15 @@
 (ns tolgraven.events
-  (:require
-    [re-frame.core :as rf]
+  (:require [tolgraven.render-context :as render-context]
+
+    [tolgraven.react :as rf]
     [re-frame.std-interceptors :as interceptor]
     [ajax.core :as ajax]
     [day8.re-frame.http-fx]
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
     [day8.re-frame.async-flow-fx :as async-flow-fx]
     [akiroz.re-frame.storage :as localstore]
+    [tolgraven.component.storage :as storage]
+    [re-frame.db :as rfdb]
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
     [re-pollsive.core :as poll]
@@ -36,11 +39,12 @@
 (rf/reg-event-fx :common/navigate   [debug
                                      (rf/inject-cofx :scroll-position)
                                      (rf/inject-cofx :gen-id [:navigations])]
-  (fn [{:as cofx :keys [db scroll-position counters]} [_ match]]
-    (let [navigation-count (-> counters :id :navigations)
+  (fn [{:as cofx :keys [db scroll-position id]} [_ match]]
+    (let [navigation-count (get-in id [:id :navigations])
           old-match (:common/route db)
           new-match (assoc match :controllers
-                           (rfc/apply-controllers (:controllers old-match) match))
+                           (when @render-context/*interactive?
+                             (rfc/apply-controllers (:controllers old-match) match)))
           same (fn [& path]
                  (= (get-in new-match path)
                     (get-in old-match path)))]
@@ -54,7 +58,7 @@
                    (assoc :common/route new-match)
                    (assoc :common/route-last old-match)
                    (update-in [:state] dissoc :error-page)  ; reset 404 page in case was triggered
-                   ; (update-in [:state] dissoc :swap)  ; cant reset swap since in middle of running...
+                   (update-in [:state] dissoc :swap)
                    (update-in [:state :exception] dissoc :page)
                    (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
            :dispatch-n
@@ -111,7 +115,6 @@
 
 (rf/reg-event-fx :scope/init ; should be like, a scope is usually a cljs module, possibly backend stuff that might want to be eagerly inited/refreshed before module load finishes, so outside module def
   (fn [{:keys [db]} [_ scope- & args]]
-    (js/console.warn "Possibly unhandled scope init event - no op" scope- args)
     {:db (assoc-in db [:state :init :scope scope-] {:inited? true :args args})}))
 
 (rf/reg-event-fx :history/popped
@@ -142,8 +145,9 @@
 
 (rf/reg-event-fx :swap/finish
   (fn [{:keys [db]} [_ item]]
-    {:db (-> db (assoc-in [:state :swap :finished] item)
-                (update-in [:state :swap] dissoc :running)) }))
+    (when (= item (get-in db [:state :swap :running]))
+      {:db (-> db (assoc-in [:state :swap :finished] item)
+                  (update-in [:state :swap] dissoc :running))})))
 
 
 (rf/reg-event-fx :dispatch-in/ms     debug
@@ -288,13 +292,9 @@
 (rf/reg-event-db :state   (assoc-in-factory [:state]))
 (rf/reg-event-db :option  (assoc-in-factory [:option]))
 
-(rf/reg-event-fx :debug ;[debug]
-  (fn [{:keys [db]} [_ path value]]
-    (case path
-      [:layers] (-> (js/document.querySelector "main") ; should be fx no?
-                    .-classList
-                    (.toggle "debug-layers")))
-    {:db (assoc-in db (into [:state :debug] path) value)}))
+(rf/reg-event-db :debug
+  (fn [db [_ path value]]
+    (assoc-in db (into [:state :debug] path) value)))
 
 (rf/reg-event-db :exception (assoc-in-factory [:state :exception]))
 
@@ -326,11 +326,11 @@
     (util/set-attr! id attr value)))
 
 (rf/reg-event-fx :theme/dark-mode
- (fn [db [_ on?]]
+ (fn [{:keys [db]} [_ on?]]
    {:db (assoc-in db [:options :theme :dark-mode] on?)}))
 
 (rf/reg-event-fx :theme/colorscheme
- (fn [db [_ colorscheme]]
+ (fn [{:keys [db]} [_ colorscheme]]
    {:db (assoc-in db [:options :theme :colorscheme] (or colorscheme "default"))}))
 
 (rf/reg-fx :supabase/write
@@ -343,28 +343,32 @@
       {:supabase/write [path data merge-fields]}
       {:dispatch [:on-booted :store [:store-> path data merge-fields]]})))
 
+(rf/reg-fx :supabase/load-query
+  (fn [[opts on-success on-failure]]
+    (-> (supabase-client/preload-query! opts)
+        (.then #(when on-success (rf/dispatch (conj on-success (util/normalize-store-result %)))))
+        (.catch #(rf/dispatch (conj (or on-failure [:default-http-error]) %))))))
+
 (rf/reg-event-fx :<-store
   (fn [{:keys [db]} [_ path on-success on-failure]]
     (if (get-in db [:state :booted :store])
-      (do (supabase-client/read-once!
-            {(if (even? (count path)) :path-document :path-collection) path}
-            #(rf/dispatch (conj on-success (util/normalize-store-result %)))
-            #(rf/dispatch (conj (or on-failure [:default-http-error]) %)))
-          {})
+      {:supabase/load-query [{(if (even? (count path)) :path-document :path-collection) path}
+                             on-success on-failure]}
       {:dispatch [:on-booted :store [:<-store path on-success on-failure]]})))
 
 (rf/reg-event-fx :supabase/fetch-settings
   (fn [_ _]
-    {:dispatch [:http/get {:uri "/api/supabase/settings" :timeout 15000}
+    {:dispatch [:http/get {:uri "/api/supabase/settings" :timeout 15000 :background? true}
                 [:supabase/init]
                 [:supabase/error]]}))
 
-(rf/reg-event-fx :supabase/error
-  (fn [_ [_ _error]]
+(rf/reg-fx :supabase/report-init-error
+  (fn [_]
     (service-status/fail! :supabase-init "Supabase could not initialize"
                           "Account and database content are unavailable. Check your connection and retry."
-                          #(rf/dispatch [:supabase/fetch-settings]))
-    {}))
+                          #(rf/dispatch [:supabase/fetch-settings]))))
+(rf/reg-event-fx :supabase/error
+  (fn [_ _] {:supabase/report-init-error true}))
 
 (rf/reg-fx :supabase/request
   (fn [{:keys [method uri data on-success on-error]}]
@@ -400,17 +404,24 @@
     {:dispatch [:diag/new :error "Sign in"
                 (or (get-in error [:response :error]) (:message error) "Authentication failed")]}))
 
-(rf/reg-event-fx :supabase/init
-  (fn [{:keys [db]} [_ settings]]
+(rf/reg-fx :supabase/initialize
+  (fn [settings]
     (try
       (supabase-client/init! settings
-                             #(rf/dispatch [:supabase/profile %])
-                             #(rf/dispatch [:supabase/auth-error %]))
+                            #(rf/dispatch [:supabase/profile %])
+                            #(rf/dispatch [:supabase/auth-error %]))
       (service-status/recover! :supabase-init)
-      {:db (assoc-in db [:options :supabase] settings)
-       :dispatch [:booted :store]}
+      (rf/dispatch [:supabase/initialized settings])
       (catch :default error
-        {:dispatch [:supabase/error (.-message error)]}))))
+        (rf/dispatch [:supabase/error (.-message error)])))))
+
+(rf/reg-event-fx :supabase/init
+  (fn [_ [_ settings]] {:supabase/initialize settings}))
+
+(rf/reg-event-fx :supabase/initialized
+  (fn [{:keys [db]} [_ settings]]
+    {:db (assoc-in db [:options :supabase] settings)
+     :dispatch [:booted :store]}))
 
 (rf/reg-event-fx :store/init
   (fn [_ _] {:dispatch [:supabase/fetch-settings]}))
@@ -545,17 +556,31 @@
  (fn [{:keys [ls]} [_ ls-path]]
    {:ls (update-in ls (butlast ls-path) dissoc (last ls-path))})) ; investigate why won't take.
 
-(rf/reg-event-fx :ls/get-path   [(rf/inject-cofx :ls)]
- (fn [{:keys [db ls]} [_ ls-path db-path]] ;map of keys to paths I guess?
-   (let [value (get-in ls ls-path)]
-     {:db (update-in db db-path (or (and (seqable? value) merge)
-                                    assoc)
-                     value)})))
+(defn- remove-saved-path [saved [key & more]]
+  (if more
+    (let [child (remove-saved-path (get saved key) more)]
+      (if (seq child) (assoc saved key child) (dissoc saved key)))
+    (dissoc saved key)))
 
-(rf/reg-event-fx :ls/get-path-as-event   [(rf/inject-cofx :ls)]
- (fn [{:keys [_ ls]} [_ ls-path event]]
-   (let [value (get-in ls ls-path)]
-     {:dispatch (conj event value)})))
+(rf/reg-cofx :ls/restored
+  (fn [{:keys [event] :as cofx} _]
+    (assoc cofx :ls/restored (storage/read! [:state (nth event 2)] {:scope :public}))))
+
+(rf/reg-fx :ls/track
+  (fn [path]
+    (storage/track! [:state path] #(get-in @rfdb/app-db path storage/missing) {:scope :public})))
+
+(rf/reg-event-fx :ls/get-path [(rf/inject-cofx :ls) (rf/inject-cofx :ls/restored)]
+  (fn [{:keys [db ls] :ls/keys [restored]} [_ ls-path db-path]]
+    (let [value (if restored (:value restored) (get-in ls ls-path))]
+      (cond-> {:ls (remove-saved-path ls ls-path) :ls/track db-path}
+        (some? value) (assoc :db (update-in db db-path
+                                  #(if (and (map? %) (map? value)) (merge % value) value)))))))
+
+(rf/reg-event-fx :ls/get-path-as-event [(rf/inject-cofx :ls)]
+  (fn [{:keys [ls]} [_ ls-path event]]
+    {:ls (remove-saved-path ls ls-path)
+     :dispatch (conj event (get-in ls ls-path))}))
 
 (rf/reg-event-fx :cookie/show-notice   [(rf/inject-cofx :ls)]
  (fn [{:keys [db ls]} [_ ]] ;map of keys to paths I guess?
@@ -652,9 +677,9 @@
   (fn http-fn [{:keys [db]} [_ opts & [on-success on-error]]]
     (let [id (get opts :loading-id (random-uuid))
           loading-key (get opts :loading kind)
-          cleanup [:loading/off loading-key id]] ; set something to indicate request is underway
-      {:dispatch [:loading/on loading-key id]   ;; tho want this per-request so figure out. by passing path frag maybe... slightly better now at least
-       :http-xhrio
+          background? (:background? opts)
+          cleanup (when-not background? [:loading/off loading-key id])] ; set something to indicate request is underway
+      (cond-> {:http-xhrio
        (merge
         {:method          kind
          :timeout         8000                                           ;; optional see API docs
@@ -664,7 +689,8 @@
          :on-failure      [:http-result-wrapper
                            (or on-error   [:default-http-error]) cleanup]}
         extra-defaults
-        opts)})))
+        (dissoc opts :background?))}
+        (not background?) (assoc :dispatch [:loading/on loading-key id])))))
 
 (rf/reg-event-fx :http/get-internal
   (get-http-fn :get))
@@ -813,3 +839,11 @@
     :event                    [:events/log "POLL (every 6 seconds)"]
     :poll-when                [:subs/poll?]
     :dispatch-event-on-start? false} ]]}))
+
+(rf/reg-event-db :page/hydrated
+  (fn [db _]
+    (let [db (assoc-in db [:state :ssr :hydrating?] false)]
+      (if-let [match (:common/route db)]
+        (assoc-in db [:common/route :controllers]
+                  (rfc/apply-controllers (:controllers match) match))
+        db))))

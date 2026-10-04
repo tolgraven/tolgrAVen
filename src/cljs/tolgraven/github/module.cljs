@@ -1,7 +1,7 @@
 (ns tolgraven.github.module
   (:require
     [tolgraven.content.contract :as content-contract]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [tolgraven.github.events]
     [tolgraven.github.subs]
     [tolgraven.github.views :as view]))

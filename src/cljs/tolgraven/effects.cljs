@@ -1,6 +1,6 @@
 (ns tolgraven.effects
   (:require
-   [re-frame.core :as rf]
+   [tolgraven.react :as rf]
    [re-frame.registrar :as rfr]
    [re-frame.router :as router]
    [re-frame.interop :refer [set-timeout!]]))

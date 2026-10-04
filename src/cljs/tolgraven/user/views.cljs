@@ -2,7 +2,9 @@
   (:require
     [tolgraven.link-preview.views :as link-preview]
     [reagent.core :as r]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
+    [tolgraven.component]
+    [tolgraven.macros :refer-macros [defc]]
     [tolgraven.image :as img]
     [tolgraven.loader :as l]
     [tolgraven.ui :as ui]))
@@ -182,33 +184,30 @@
       "Log out"]]]))
 
 
-(defn user-avatar "Display a user avatar, with common fallbacks. Should probably display fallback while loading (often ext, slower) real"
+(defn user-avatar
+  "Render one avatar. Reserve its space while the profile is pending; use the
+   default only for a resolved profile without an avatar or a failed image."
   [user-map & [extra-class]]
-  (let [fallback @(rf/subscribe [:user/default-avatar])
-        error? (r/atom false)
-        loaded? (r/atom false)]
-    (fn [user-map & [extra-class]]
-      (let [src (if @error? fallback (or (:avatar user-map) fallback))]
-        [:div.user-avatar-container ; wrapping in div causes stretch bs not to occur, somehow makes img respect its given w/h
-         (when-not @loaded?
-           [img/picture
-            {:src fallback
-             :alt "User avatar"
-             :class (str "user-avatar " extra-class)
-             :style {:position "absolute"}}])
-         [img/picture
-          {:class (str "user-avatar " extra-class)
-           :src src
-           :on-error #(reset! error? true)
-           :on-load #(reset! loaded? true)
-           :alt (str (:name user-map) " profile picture")
-           :on-click (when (and (:avatar user-map)
-                                (not (:no-zoom user-map)))
-                       #(rf/dispatch [:modal-zoom :fullscreen :open
-                                      [img/picture {:src src :alt "Profile picture"}]]))
-           :style (when (and (:avatar user-map)
-                             (not (:no-zoom user-map)))
-                    {:cursor "pointer"})} ]]))))
+  (r/with-let [*failed-sources (r/atom #{})]
+    (let [fallback @(rf/subscribe [:user/default-avatar])
+          avatar (:avatar user-map)
+          src (when user-map
+                (if (contains? @*failed-sources avatar) fallback (or avatar fallback)))
+          zoom? (and avatar (= src avatar) (not (:no-zoom user-map)))]
+      [:div.user-avatar-container
+       ;; A fallback overlay flashes during hydration even when SSR already
+       ;; knows the author. Keep a single image and let the browser load it.
+       [img/picture
+        {:class (str "user-avatar " extra-class)
+         :src src
+         :on-error (fn [_] (when avatar (swap! *failed-sources conj avatar)))
+         :alt (if user-map (str (:name user-map) " profile picture") "")
+         :on-click (when zoom?
+                     #(rf/dispatch [:modal-zoom :fullscreen :open
+                                    [img/picture {:src src :alt "Profile picture"}]]))
+         :style (cond-> {}
+                  (nil? src) (assoc :visibility "hidden")
+                  zoom? (assoc :cursor "pointer"))}]])))
 
 (defn user-btn [model]
   [:a {:href @(rf/subscribe [:href-add-query
@@ -229,28 +228,29 @@
    (when (not= component :none)
      [component user])])
 
-(defn user-section
-  []
-  (let [active-section @(rf/subscribe [:user/active-section])
+(defc <user-panel>
+  {:features [[:appear nil] [:exit {:timeout-ms 1000}]]}
+  [{:keys [section user] :as spec}]
+  [:div.user-section-wrapper.stick-up.hi-z
+   [:div.user-section
+    [user-box user
+     (case section
+       :login sign-in
+       :register register
+       :admin admin
+       :comments comments
+       :change-avatar change-avatar
+       :change-password change-password
+       :change-username change-username
+       :none)]]])
+
+(defc <user-section> {:features [:presence]} []
+  (let [sections @(rf/subscribe [:user/active-section])
         user @(rf/subscribe [:user/active-user])]
-    [:div.user-section-wrapper.stick-up.hi-z
-     {:class (when (and (some? active-section)
-                        (not (some #{:closing :closed} active-section)))
-               "active")}
-     (when (and (seq active-section)
-                (not (some #{:closed} active-section)))
-       [:div.user-section
-        (let [active-section (case (last active-section)
-                               :closing (or (last (butlast active-section))
-                                            :login) ;patch through underlying
-                               (last active-section))]
-          [user-box user
-           (case active-section ;get last in list. guess should hook up to proper router though.
-             :login        sign-in
-             :register     register
-             :admin        admin
-             :comments     comments
-             :change-avatar change-avatar
-             :change-password change-password
-             :change-username change-username
-             :closing         :none)]) ]) ]))
+    [:<>
+     (when (and (seq sections) (not (some #{:closed} sections)))
+       ;; Presence retains these inputs while closing, so the outgoing panel
+       ;; keeps its contents without a second app-db transition or timer event.
+       ^{:key :user-panel} [<user-panel> {:section (last sections) :user user}])]))
+
+(def user-section <user-section>)

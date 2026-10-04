@@ -1,6 +1,6 @@
 (ns tolgraven.user.events
   (:require
-   [re-frame.core :as rf]
+   [tolgraven.react :as rf]
    [re-frame.std-interceptors :refer [path]]
    ; [day8.re-frame.tracing :refer-macros [fn-traced]]
    [tolgraven.util :as util]
@@ -67,9 +67,10 @@
  (fn [{:keys [db]} [_ ]]
    (let [user (get-in db [:state :active-user])
          user-section (get-in db [:state :user-section])]
-     {:dispatch (if user
-                  [:user/active-section :admin]
-                  [:user/active-section :login])})))
+     (when (and (seq user-section) (not (some #{:closed} user-section)))
+       {:dispatch (if user
+                    [:user/active-section :admin]
+                    [:user/active-section :login])}))))
 
 (rf/reg-event-db :user/active-section
  (fn [db [_ v force?]]
@@ -81,19 +82,13 @@
  (fn [db [_ _]]
    (update-in db [:state :user-section] pop)))
 
-(rf/reg-event-fx :user/close-ui ;needs to defer changing :user-section to false
- (fn [{:keys [db]} [_ ]]
-   {:dispatch [:user/active-section :closing]
-    :dispatch-later {:ms 1000,
-                     :dispatch [:user/active-section :closed]}}))
+(rf/reg-event-db :user/close-ui
+  (fn [db _] (assoc-in db [:state :user-section] [:closed])))
 
-(rf/reg-event-fx :user/open-ui ;needs to defer changing :user-section to false
- (fn [{:keys [db]} [_ page]]
-   {:dispatch [:user/active-section :closing]
-    :dispatch-later {:ms 5,
-                     :dispatch (if page
-                                 [:user/active-section page :force]
-                                 [:user/request-page])}}))
+(rf/reg-event-db :user/open-ui
+  (fn [db [_ page]]
+    (assoc-in db [:state :user-section]
+              [(or page (if (get-in db [:state :active-user]) :admin :login))])))
 
 (rf/reg-event-fx :user/request-close-ui ;just updates query like
  (fn [{:keys [db]} [_ ]]

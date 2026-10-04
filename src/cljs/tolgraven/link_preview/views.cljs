@@ -1,11 +1,14 @@
 (ns tolgraven.link-preview.views
   (:require
     [clojure.string :as string]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [reagent.core :as r]
     [tolgraven.component :as component]
+    [tolgraven.render-context :as context]
     [tolgraven.components.iframe :as iframe]
     [tolgraven.components.popover :as popover]
+    [tolgraven.components.portal :as portal]
+    [tolgraven.component.motion :as motion]
     [tolgraven.link-preview.subs]
     [tolgraven.link-preview.util :as util]
     [tolgraven.ui :as ui]
@@ -21,6 +24,7 @@
 (defonce *link-elements (atom {}))
 (defonce *preview-providers (atom {}))
 (defonce *interaction-timers (atom {}))
+(defonce *anchor-selector (r/atom nil))
 
 (declare unregister-container!)
 
@@ -65,7 +69,8 @@
 (defn candidate-observer
   "Create an observer for one candidate-bearing container."
   [id]
-  (js/IntersectionObserver.
+  (when (exists? js/IntersectionObserver)
+    (js/IntersectionObserver.
     (fn [entries observer]
     (doseq [entry entries
             :when (.-isIntersecting entry)
@@ -75,7 +80,7 @@
             :when data]
       (rf/dispatch [:link-preview/visible data])
       (.unobserve observer link)))
-    #js {:rootMargin "25%"}))
+    #js {:rootMargin "25%"})))
 
 (defn- clear-interaction-timer! [kind]
   (when-let [timer (get @*interaction-timers kind)]
@@ -90,12 +95,22 @@
                 (f))
            delay)))
 
-(defn- attach-anchor! [link]
-  (.setProperty (.-style link) "anchor-name" popover/anchor-name))
+(defn- element-selector
+  "Locate a generated Markdown anchor without mutating its React-owned props."
+  [element]
+  (loop [element element parts ()]
+    (if (and element (not= element js/document.documentElement))
+      (let [siblings (some-> element .-parentElement .-children array-seq)
+            index (first (keep-indexed #(when (identical? %2 element) (inc %1)) siblings))]
+        (when index
+          (recur (.-parentElement element) (conj parts (str ":nth-child(" index ")")))))
+      (when element (string/join " > " (cons "html" parts))))))
 
-(defn- detach-anchor! [link]
-  (when link
-    (.removeProperty (.-style link) "anchor-name")))
+(defn- attach-anchor! [link]
+  (reset! *anchor-selector (element-selector link)))
+
+(defn- detach-anchor! [_]
+  (reset! *anchor-selector nil))
 
 (defn- active-link []
   (let [{:keys [candidate-id container-id]}
@@ -228,7 +243,6 @@
               :handlers handlers
               :observer observer
               :options options})
-      (.setAttribute element "data-link-container" (str id))
       (doseq [[event handler] handlers]
         (dom/on-event element event handler))
       (let [trust (trust-for element (:trust options))
@@ -261,7 +275,6 @@
     (.disconnect observer)
     (doseq [[event handler] handlers]
       (.removeEventListener element event handler))
-    (.removeAttribute element "data-link-container")
     (swap! *containers dissoc id)
     (swap! *link-elements
            #(into {} (remove (fn [[[container-id _] _]]
@@ -281,7 +294,15 @@
 
 (component/register-feature!
   :links
-  {:setup setup-link-feature
+  {:transform (fn [form spec config]
+                (if (and (or (:links spec) config) (motion/dom-root? form))
+                  (let [attrs? (map? (second form))]
+                    (with-meta
+                      (into [(first form) (assoc (if attrs? (second form) {}) :data-link-container true)]
+                            (if attrs? (nnext form) (next form)))
+                      (meta form)))
+                  form))
+   :setup setup-link-feature
    :mount (fn [{:keys [candidates id observer options]} element]
             (register-container! id element options observer candidates))
    :unmount (fn [{:keys [id]}]
@@ -305,14 +326,16 @@
        :reagent-render
        (fn [_ content]
          [:div.link-preview-container
-          {:data-link-trust (when trust (name trust))
+          {:data-link-container true
+           :data-link-trust (when trust (name trust))
            :ref #(reset! *element %)}
           content])})))
 
 (defn <link-container>
   "Subscribe to raw text candidates and mount observation only when needed."
   [{:keys [id text trust]} content]
-  (let [base-url (.-href js/window.location)
+  (let [base-url (if (exists? js/window) (.-href js/window.location)
+                      (str "https://tolgraven.se" (:path @context/*snapshot)))
         candidates @(rf/subscribe
                       [:link-preview/candidates text base-url])]
     (if (seq candidates)
@@ -384,6 +407,7 @@
                                       (assoc :status :returning)))
         *loaded-url (r/atom nil)
         *prefetch-timer (atom nil)
+        *prefetches (r/atom #{})
         *navigation-timer (atom nil)
         *restore-timer (atom nil)
         *reversing? (atom false)
@@ -409,14 +433,9 @@
         prefetch-next!
         (fn prefetch-next! []
           (if-let [{:keys [trust url]} (first (:prefetch-queue @state))]
-            (let [link (.createElement js/document "link")]
-              (set! (.-rel link) "prefetch")
-              (set! (.-href link) url)
-              (set! (.-referrerPolicy link) "no-referrer")
-              (set! (.-onload link) #(.remove link))
-              (set! (.-onerror link) #(.remove link))
-              (.setAttribute link "as" "document")
-              (.appendChild js/document.head link)
+            (do
+              ;; React owns prefetch links and removes them on completion/unmount.
+              (swap! *prefetches conj url)
               (rf/dispatch [:link-preview/prefetched url])
               (rf/dispatch [:link-preview/prefetch-next])
               (reset! *prefetch-timer
@@ -506,7 +525,20 @@
          (let [active (or (:active @state) @*initial-transition)
                {:keys [status title url]} active
                expanded? (#{:expanded :returning} status)]
-           (when active
+           [:<>
+            (when (and (exists? js/document) @*anchor-selector)
+              [portal/<portal> js/document.head
+               [:style (str @*anchor-selector " { anchor-name: " popover/anchor-name "; }")]])
+            (when (and (exists? js/document) (seq @*prefetches))
+              [portal/<portal> js/document.head
+               (into [:<>]
+                     (for [url @*prefetches]
+                       ^{:key url}
+                       [:link {:rel "prefetch" :href url :as "document"
+                               :referrer-policy "no-referrer"
+                               :on-load #(swap! *prefetches disj url)
+                               :on-error #(swap! *prefetches disj url)}]))])
+            (when active
              [popover/<popover>
               {:aria-label (str "Preview of "
                                 (if (string/blank? title) url title))
@@ -550,4 +582,4 @@
                   [:div.link-preview__loading
                    [:i.fa.fa-spinner.fa-spin]
                    [:span "Loading preview"]])
-                [:div.link-preview__shield {:aria-hidden true}]]]])))})))
+                [:div.link-preview__shield {:aria-hidden true}]]]])]))})))

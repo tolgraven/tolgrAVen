@@ -1,7 +1,7 @@
 (ns tolgraven.doc-fx
   (:require
     [reagent.core :as r]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [clojure.string :as string]
     [tolgraven.util :as util]))
 
@@ -134,3 +134,9 @@
  (fn [elem]
    (util/run-highlighter! "pre" elem)))
 
+
+(rf/reg-event-fx :settings/read-css-vars
+  [(rf/inject-cofx :css-vars ["line-width" "line-width-vert" "section-rounded"
+                             "space" "space-lg" "space-top"])]
+  (fn [{:keys [db css-vars]} _]
+    {:db (update-in db [:state :css-var] merge css-vars)}))

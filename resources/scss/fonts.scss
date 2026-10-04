@@ -7,3 +7,13 @@
   font-family: 'Open Sans';
   src:  url('../../webfonts/OpenSans-Regular.ttf') format('ttf');
 }
+
+// Match Open Sans v29's vertical metrics while its font file is in flight.
+// This keeps SSR headings from resizing when the real glyphs arrive.
+@font-face {
+  font-family: 'Open Sans Fallback';
+  src: local('Arial');
+  ascent-override: 106.884765625%;
+  descent-override: 29.296875%;
+  line-gap-override: 0%;
+}

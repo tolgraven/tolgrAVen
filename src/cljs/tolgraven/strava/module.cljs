@@ -1,7 +1,7 @@
 (ns tolgraven.strava.module
   (:require
     [tolgraven.content.contract :as content-contract]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [tolgraven.strava.events]
     [tolgraven.strava.subs]
     [tolgraven.strava.views :as view]))

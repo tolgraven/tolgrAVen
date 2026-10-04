@@ -1,11 +1,12 @@
 (ns tolgraven.macros
   #?(:clj (:refer-clojure :exclude [for tap>]))
-  (:require [clojure.string :as string]
+  (:require #?(:clj [cljs.env :as cljs-env])
+            [clojure.string :as string]
             [malli.core :as m]
             [malli.error :as me]
             #?@(:cljs [[reagent.core :as r]
                        [tolgraven.component]
-                       [re-frame.core :as rf]
+                       [tolgraven.react :as rf]
                        [shadow.lazy]
                        [tolgraven.components.error :as error]
                        [tolgraven.util :as util]]))
@@ -37,6 +38,11 @@
   `(let [val# ~x]
      (clojure.core/tap> val#)
      val#))
+
+(defmacro browser-only
+  "Exclude browser module references from the SSR compilation graph."
+  [form]
+  (when-not (get-in @cljs-env/*compiler* [:options :external-config :tolgraven/ssr]) form))
 
 (defmacro make-modules
   "Use keywords to generate Shadow lazy loadables.

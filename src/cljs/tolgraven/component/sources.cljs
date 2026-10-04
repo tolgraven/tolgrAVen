@@ -3,9 +3,10 @@
   (:require [ajax.core :as ajax]
             [goog.object :as gobj]
             [re-frame.db :as rfdb]
+            [reagent.ratom :as ratom]
             [tolgraven.component.data :as data]
             [tolgraven.component.storage :as storage]
-            [re-frame.core :as rf]
+            [tolgraven.react :as rf]
             [tolgraven.content.client :as content]
             [tolgraven.content.contract :as contract]
             [tolgraven.supabase.client :as supabase]))
@@ -75,3 +76,14 @@
                           (when-not (= generation @*auth-generation)
                             (throw (js/Error. "Supabase session changed")))
                           (supabase/preload-query! query))))))})
+
+;; Promise interop ends at this adapter. Page declarations describe subscriptions,
+;; not transport requests. Dispose only our reaction, never a shared subscription.
+(data/register-source!
+ :subscription
+ {:load! (fn [{:keys [query timeout-ms]}]
+           (let [*value (ratom/make-reaction #(deref (rf/subscribe query)) :auto-run true)]
+             (-> (data/wait-for! *value
+                                #(let [value @*value] {:ready? (true? value) :value value})
+                                (or timeout-ms 15000))
+                 (.finally #(ratom/dispose! *value)))))})

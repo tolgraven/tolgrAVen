@@ -1,7 +1,7 @@
 (ns tolgraven.gpt.views
   (:require
     [reagent.core :as r]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
     [tolgraven.ui :as ui]

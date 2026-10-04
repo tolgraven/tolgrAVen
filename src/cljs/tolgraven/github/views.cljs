@@ -1,7 +1,7 @@
 (ns tolgraven.github.views
   (:require
    [reagent.core :as r]
-   [re-frame.core :as rf]
+   [tolgraven.react :as rf]
    [clojure.string :as string]
    [tolgraven.ui :as ui]
    [tolgraven.image :as img]

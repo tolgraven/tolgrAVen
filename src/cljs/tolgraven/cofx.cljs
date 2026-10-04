@@ -1,7 +1,7 @@
 (ns tolgraven.cofx
   (:require
     [reagent.core :as r]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [tolgraven.util :as util]
     [cljs-time.core :as ct]
     [cljs-time.coerce :as ctc]))
@@ -54,3 +54,7 @@
    ;       ; prob want to support per-element scroll restoration later...
    ;       ; that'd be a whole other thing to support in generic navigate fn tho
    ;       ]
+
+(rf/reg-cofx :css-vars
+  (fn [cofx names]
+    (assoc cofx :css-vars (into {} (map (fn [name] [name (util/<-css-var name)])) names))))

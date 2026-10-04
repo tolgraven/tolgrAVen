@@ -5,7 +5,7 @@
             [reagent.dom.client :as dom]
             [re-frame.db :as rfdb]
             [re-frame.core :as rf]
-            [re-frame.subs :as subs]
+            [re-frame.tooling :as tooling]
             [tolgraven.component :as component]
             [tolgraven.component.data :as data]
             [tolgraven.component.storage :as storage]
@@ -167,10 +167,10 @@
                    (render! root [:p "Away"])
                    (tick!))) ; Reagent 2 disposes reactions on a microtask for StrictMode.
           (.then (fn [_]
-                   (is (not-any? (fn [[[query _] _]]
+                   (is (not-any? (fn [query]
                                    (and (#{:component-state/scoped-value :component-state/entry} (first query))
                                         (= :persist-test (nth (second query) 2 nil))))
-                                 @subs/query->reaction)
+                                 (tooling/live-query-vs))
                        "Unmount releases both re-frame subscriptions, not their cached values")
                    (render! root [:div ^{:key "first"} [<counter>] ^{:key "second"} [<counter>]])
                    (is (= ["1" "0"] (mapv #(.-textContent %) (array-seq (.querySelectorAll element "button")))))))
@@ -231,10 +231,10 @@
                    (render! root [:p "Away"])
                    (tick!)))
           (.then (fn [_]
-                   (is (not-any? (fn [[[query _] _]]
+                   (is (not-any? (fn [query]
                                    (and (= :component-state/scoped-value (first query))
                                         (= "<scoped-toggle>" (nth (second query) 2 nil))))
-                                 @subs/query->reaction))
+                                 (tooling/live-query-vs)))
                    (is (true? (get-in @rfdb/app-db (into base [:opts :setting]))))
                    (render! root [:div [<scoped-toggle>] [<scoped-toggle>]])
                    (is (= ["true" "true"] (mapv #(.-textContent %) (array-seq (.querySelectorAll element "button")))))))
@@ -427,11 +427,50 @@
                      (render! root [:p "Away"])
                      (tick!)))
             (.then (fn [_]
-                     (is (not-any? (fn [[[query _] _]]
+                     (is (not-any? (fn [query]
                                      (and (= :component-state/scoped-value (first query))
                                           (some #{(second query)} (map component/path-of @*scope-handles))))
-                                   @subs/query->reaction))
+                                   (tooling/live-query-vs)))
                      (render! root [<scope-controls>])
                      (is (= "[8 42 23 34]" (.-textContent element)) "Unmount retains state for every scope")))
             (.catch #(is false (str %)))
             (.finally (fn [] (reset! *scope-handles nil) (close!) (done))))))))
+
+(deftest restored-snapshots-are-consumed-and-republished-on-navigation
+  (async done
+    (let [account (random-uuid) previous @storage/*identity
+          options {:scope :user} id [:state [:component :consume-test]]
+          *disk (atom nil) write-before storage/write-disk!]
+      (reset! storage/*identity account)
+      (set! storage/write-disk! (fn [key value]
+                                 (when (= key (storage/storage-key id options)) (reset! *disk value))))
+      (-> (storage/ready! options)
+          (.then (fn [_]
+                   (storage/write! id {:expanded false :comments [1 2]} options)
+                   (storage/track! id #(hash-map :expanded false :comments [1 2]) options)
+                   (storage/drain!)
+                   (is (not= "{}" @*disk))
+                   (is (= {:expanded false :comments [1 2]} (:value (storage/read! id options))))
+                   (storage/drain!)
+                   (is (= "{}" @*disk) "Restoration consumes the disk snapshot")
+                   (is (some? (storage/read! id options)) "Other components still read shared memory")
+                   (storage/flush!)
+                   (storage/drain!)
+                   (is (= "{}" @*disk) "Unchanged restoration does not immediately write itself back")
+                   (storage/flush! :navigation)
+                   (storage/drain!)
+                   (is (not= "{}" @*disk) "Pagehide republishes current tracked values")
+                   (storage/remove! id options)
+                   (swap! storage/*tracked dissoc id)
+                   (storage/flush! :navigation)
+                   (storage/drain!)
+                   (is (= "{}" @*disk) "Removed snapshots stay removed")))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (set! storage/write-disk! write-before)
+                      (swap! storage/*tracked dissoc id)
+                      (doseq [*store [storage/*buckets storage/*reads storage/*consumed]] (swap! *store dissoc account))
+                      (swap! storage/*ready disj account)
+                      (swap! storage/*dirty disj account)
+                      (reset! storage/*identity previous)
+                      (done)))))))

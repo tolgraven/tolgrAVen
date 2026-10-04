@@ -1,6 +1,6 @@
 (ns tolgraven.experiments
   (:require [reagent.core :as r]
-            [re-frame.core :as rf]
+            [tolgraven.react :as rf]
             [tolgraven.loader :as l]
             [tolgraven.ui :as ui]
             [react-leaflet]
@@ -46,9 +46,8 @@
        "more"]
 
       [:label [:input {:type "checkbox"
-                       :on-click #(-> (js/document.querySelector "main")
-                                      .-classList
-                                      (.toggle "debug-on"))}]
+                       :checked (boolean @(rf/subscribe [:state [:debug :parallax]]))
+                       :on-change #(rf/dispatch [:debug [:parallax] (.. % -target -checked)])}]
        "Debug"]])
 
    [:div.parallax

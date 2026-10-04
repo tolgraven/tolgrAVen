@@ -1,13 +1,15 @@
 (ns tolgraven.supabase.client
   (:require [ajax.core :as ajax]
-            [re-frame.core :as rf]
+            [tolgraven.react :as rf]
             [re-frame.db :as rfdb]
             [tolgraven.service-status :as status]
             [goog.object :as gobj]
             [reagent.ratom :as ratom]
             [tolgraven.supabase.query :as query]
             [tolgraven.supabase.shape :as shape]
-            [tolgraven.supabase.realtime :as realtime]))
+            [tolgraven.supabase.realtime :as realtime]
+            [tolgraven.supabase.scoped :as scoped]
+            [tolgraven.supabase.connection :as connection]))
 
 (defonce *client (atom nil))
 (defonce *settings (atom nil))
@@ -33,21 +35,31 @@
 (defn- session-key [session]
   [(session-user-id session) (session-owner-id session)])
 
-(defn- run-select! [client {:keys [table select filters]}]
+(defn- run-select! [client {:keys [table select filters limit order-by]}]
   (letfn [(page! [offset rows]
-            (let [q (reduce (fn [q [field op value]] (call-method q op (name field) value))
+            (let [q (reduce (fn [q [field op value]] (call-method q op (name field) (if (= op "in") (into-array value) value)))
                             (-> (.from client table) (.select select)) filters)
-                  q (reduce #(.order %1 (name %2)) q (:key (realtime/tables table)))]
-              (.then (status/within! (.range q offset (+ offset 499)) 15000)
+                  q (if (seq order-by)
+                      (reduce (fn [q [field direction]] (.order q (name field) #js {:ascending (= :asc direction)})) q order-by)
+                      (reduce #(.order %1 (name %2)) q (:key (realtime/tables table))))
+                  size (if limit (min 500 (- limit offset)) 500)]
+              (.then (status/within! (.range q offset (+ offset (dec size))) 15000)
                      (fn [res]
                        (let [{:keys [data error]} (js->clj res :keywordize-keys true)]
                          (when error (throw (ex-info "Supabase select failed" {:table table})))
                          (let [rows (into rows data)]
-                           (if (= 500 (count data)) (page! (+ offset 500) rows) rows)))))))]
+                           (if (and (= size (count data)) (or (nil? limit) (< (+ offset size) limit)))
+                             (page! (+ offset size) rows) rows)))))))]
     (-> (js/Promise.resolve) (.then (fn [] (page! 0 []))))))
 
 (defn- result [seed opts]
   (query/query-contract (shape/seed->contract seed) opts))
+
+(defn- with-reply-counts! [client opts value]
+  (if-let [plan (query/reply-count-plan opts value)]
+    (-> (run-select! client plan)
+        (.then #(query/with-reply-counts opts value %)))
+    (js/Promise.resolve value)))
 
 (defn read-once! [opts handler error-handler]
   (if-let [client @*client]
@@ -64,11 +76,14 @@
 
         :else
         (let [plan (query/seed-load-plan opts)]
-          (-> (js/Promise.all (clj->js (map #(run-select! client %) plan)))
+          (-> (js/Promise.all (into-array (map #(run-select! client %) plan)))
               (.then (fn [rows]
+                       (let [value (result (into {} (map (fn [p r] [(:seed-key p) r]) plan (array-seq rows))) opts)]
+                         (if (:reply-counts? opts) (with-reply-counts! client opts value) value))))
+              (.then (fn [value]
                        (when (current?)
                          (status/recover! :supabase-read)
-                         (handler (result (into {} (map (fn [p r] [(:seed-key p) r]) plan (array-seq rows))) opts)))))
+                         (handler value))))
               (.catch (fn [_]
                         (when (current?)
                           (status/fail! :supabase-read "Supabase content unavailable"
@@ -85,17 +100,47 @@
 (rf/reg-event-db :store/cache-query
   (fn [db [_ key value]] (assoc-in db [:store :query-cache key] value)))
 (rf/reg-event-db :store/cache-seed
-  (fn [db [_ seed loaded]] (assoc-in db [:store :snapshot] {:seed seed :loaded loaded})))
-(add-watch *seed ::app-db-cache
-           (fn [_ _ _ seed] (rf/dispatch [:store/cache-seed seed @*loaded])))
-(add-watch *loaded ::app-db-cache
-           (fn [_ _ _ loaded] (rf/dispatch [:store/cache-seed @*seed loaded])))
+  (fn [db [_ snapshot]]
+    (cond-> (assoc-in db [:store :snapshot] snapshot)
+      (contains? (:loaded snapshot) "site_users")
+      (assoc-in [:store :public "users"] (into {} (map (fn [[id user]] [id (select-keys user [:id :name :avatar :bg-color :comment-count :karma :seq-id])]))
+                      (get (shape/seed->contract (:seed snapshot)) "users"))))))
+(defn- publish-cache! [& _]
+  (rf/dispatch [:store/cache-seed {:seed @*seed :loaded @*loaded
+                                  :owner (session-key @*session) :generation @*client-generation}]))
+(add-watch *seed ::app-db-cache publish-cache!)
+(add-watch *loaded ::app-db-cache publish-cache!)
+(add-watch *session ::app-db-cache publish-cache!)
+
+(rf/reg-sub :store/query-value
+  (fn [db [_ opts owner generation signed-in?]]
+    (let [{:keys [seed loaded] :as snapshot} (get-in db [:store :snapshot])
+          tables (query/realtime-tables opts)
+          cached (get-in db [:store :query-cache (query-key opts)])
+          private? (query/user-document-query? opts)]
+      (cond
+        (and (seq tables) (every? (or loaded #{}) tables)
+             (= generation (:generation snapshot))
+             (or (not private?) (and signed-in? (= owner (:owner snapshot)))))
+        (result seed opts)
+
+        ;; Readers refresh on acquisition. Keep cached content visible while
+        ;; waiting; expiry governs preloading, not the pure subscription.
+        (and (= owner (:owner cached)) (= generation (:generation cached)))
+        (:value cached)
+
+        (not private?)
+        (query/query-contract (get-in db [:store :public]) opts)
+
+        :else nil))))
 
 (defn cached-query [opts]
   (let [opts (query/normalize-query opts)
         tables (query/realtime-tables opts)
         entry (get-in @rfdb/app-db [:store :query-cache (query-key opts)])]
     (cond
+      (and (query/scoped-query? opts) (get-in @rfdb/app-db [:store :scoped (query-key opts)]))
+      {:ready? true :value (get-in @rfdb/app-db [:store :scoped (query-key opts)])}
       (and (seq tables) (every? @*loaded tables)
            (or (not (query/user-document-query? opts)) @*session))
       {:ready? true :value (result @*seed opts)}
@@ -121,6 +166,8 @@
                                (read-once! opts
                                  (fn [value]
                                    (when (and (identical? client @*client) (= owner (session-key @*session)))
+                                     (when (query/scoped-query? opts)
+                                       (rf/dispatch-sync [:store/scoped key value]))
                                      (rf/dispatch-sync [:store/cache-query key
                                                         {:value value :owner owner :generation @*client-generation
                                                          :expires-at (+ (.now js/Date) 60000)}]))
@@ -168,19 +215,17 @@
   (when (and @*client (not (get @*tables table))
              (or (not= table "user_documents") (session-user-id @*session)))
     (let [client @*client
-          channel (.channel client (str "store-" table))
+          ^js channel (.channel client (str "store-" table))
           entry {:table table :client client :channel channel
                  :*buffer (atom []) :*loading (atom true) :*request (atom 0) :*retry (atom nil)
-                 :*connect-timer (atom nil)}]
+                 :*connection (atom nil)}]
       (swap! *tables assoc table entry)
-      (reset! (:*connect-timer entry)
-              (js/setTimeout
-               (fn []
-                 (when (current-entry? entry)
-                   (status/fail! [:supabase-stream table] "Supabase connection timed out"
-                                 "Live updates are unavailable. Trying to load current content separately."
-                                 #(when (current-entry? entry) (load-table! entry)))
-                   (load-table! entry))) 10000))
+      (reset! (:*connection entry)
+              (connection/watch!
+               {:id [:supabase-stream table] :title "Supabase live updates unavailable"
+                :current? #(current-entry? entry)
+                :retry! #(when (current-entry? entry) (load-table! entry))
+                :failed! #(when (current-entry? entry) (load-table! entry))}))
       (-> channel
           (.on "postgres_changes" (clj->js (cond-> {:event "*" :schema "public" :table table}
                                                    (= table "user_documents")
@@ -195,25 +240,18 @@
                        (swap! *seed realtime/apply-change change))))))
           (.subscribe (fn [status _]
                         (when (current-entry? entry)
-                          (when (#{"SUBSCRIBED" "CHANNEL_ERROR" "TIMED_OUT" "CLOSED"} status)
-                            (js/clearTimeout @(:*connect-timer entry)))
-                          (case status
-                            "SUBSCRIBED" (do (status/recover! [:supabase-stream table]) (load-table! entry))
-                            ("CHANNEL_ERROR" "TIMED_OUT" "CLOSED")
-                            (do (status/fail! [:supabase-stream table] "Supabase live updates disconnected"
-                                             "Live updates are reconnecting. You can retry loading the current content."
-                                             #(when (current-entry? entry) (load-table! entry)))
-                                ;; A failed WebSocket must not prevent the initial HTTP read.
-                                (load-table! entry))
-                            nil))))))))
+                          ((:status! @(:*connection entry)) status)
+                          (when (#{"SUBSCRIBED" "CHANNEL_ERROR" "CLOSED"} status)
+                            ;; HTTP remains useful during a silent initial retry.
+                            (load-table! entry)))))))))
 
 (defn- remove-table! [table]
-  (when-let [{:keys [client channel *retry *connect-timer]} (get @*tables table)]
+  (when-let [{:keys [client channel *retry *connection]} (get @*tables table)]
     (swap! *tables dissoc table)
     (status/recover! [:supabase-load table])
     (status/recover! [:supabase-stream table])
     (when @*retry (js/clearTimeout @*retry))
-    (when (and *connect-timer @*connect-timer) (js/clearTimeout @*connect-timer))
+    (when (and *connection @*connection) ((:close! @*connection)))
     (call-method client "removeChannel" channel)))
 
 (defonce *query-tick (atom nil))
@@ -226,19 +264,19 @@
   (when-not @*query-tick (reset! *query-tick (js/setTimeout drain-queries! 0))))
 
 (defn ensure-query! [options]
-  (let [opts (query/normalize-query options)
+  (if (query/scoped-query? options)
+    (scoped/ensure-query! options)
+    (let [opts (query/normalize-query options)
         key (pr-str opts)
         tables (query/realtime-tables opts)]
     (when-not (query/direct-read-query? opts)
       (throw (ex-info "Private configuration is server-only" {})))
     (or (get-in @*queries [key :*state])
         (let [state (ratom/make-reaction
-                      #(if (and (every? @*loaded tables)
-                                (or (not (query/user-document-query? opts)) @*session))
-                         (result @*seed opts)
-                         (if-let [cached (:value (cached-query opts))]
-                           cached
-                           (when-not (:path-document opts) {:docs []})))
+                      ;; Transport atoms coordinate requests; all content delivered
+                      ;; to consumers comes from event-populated app-db subscriptions.
+                      #(deref (rf/subscribe [:store/query-value opts (session-key @*session)
+                                            @*client-generation (some? @*session)]))
                       :on-dispose
                       (fn []
                         (swap! *queries dissoc key)
@@ -249,7 +287,7 @@
           ;; A component can disappear before the next tick; do not create
           ;; channels for readers that no longer exist.
           (queue-queries!)
-          state))))
+          state)))))
 
 (defn authenticated-request! [method uri data on-success on-error]
   (if-let [client @*client]
@@ -326,6 +364,10 @@
         (.then #(when-let [error (.-error %)]
                   (on-error {:message (.-message error)})))
         (.catch #(on-error {:message (.-message %)})))))
+
+(add-watch *client ::scoped
+  (fn [_ _ old client]
+    (when-not (identical? old client) (scoped/connect! client read-once!))))
 
 (defn init! [{:keys [url anon-key anonKey] :as settings} on-profile on-error]
   (let [anon-key (or anon-key anonKey)]

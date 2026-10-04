@@ -1,16 +1,16 @@
 (ns tolgraven.blog.events
-  (:require
-    [re-frame.core :as rf]
+  (:require [tolgraven.blog.comments :as comments]
+    [tolgraven.react :as rf]
     [re-frame.std-interceptors :refer [path]]
     [tolgraven.blog.model :as model]
+    [tolgraven.component.storage :as storage]
     [tolgraven.interceptors :refer [debug]]))
 
 
 (rf/reg-event-fx :blog/init
   (fn [{:keys [db]} _]
     (when-not (get-in db [:state :booted :blog])
-      {:dispatch-n [[:ls/get-path [:blog] [:state :blog]]
-                    [:blog/set-posts-per-page 3]
+      {:dispatch-n [[:blog/set-posts-per-page 3]
                     [:booted :blog]]})))
 
 (rf/reg-event-fx :blog/init-posting
@@ -123,9 +123,12 @@
              (assoc-in [:state :active-user :comment-votes (keyword id)] (:vote result)))
      :dispatch-n [[:supabase/profile-fetch]]}))
 
+(rf/reg-fx :blog/cache-state (fn [_] (storage/schedule!)))
+(rf/reg-event-fx :blog/cache-state-changed (fn [_ _] {:blog/cache-state true}))
+
 (defn- persist-comment-state [db key comment-path value]
   {:db (assoc-in db [:state :blog key comment-path] value)
-   :dispatch [:ls/store-val [:blog key comment-path] value]})
+   :dispatch [:blog/cache-state-changed]})
 
 (rf/reg-event-fx :blog/expand-comment-thread
   (fn [{:keys [db]} [_ comment-path expanded?]]
@@ -134,3 +137,8 @@
 (rf/reg-event-fx :blog/adding-comment
   (fn [{:keys [db]} [_ parent-path adding?]]
     (persist-comment-state db :adding-comment parent-path adding?)))
+
+(rf/reg-event-fx :blog/load-more-comments
+  (fn [{:keys [db]} [_ id]]
+    {:db (update-in db [:state :blog :comment-limit id] (fnil + comments/page-size) comments/page-size)
+     :dispatch [:blog/cache-state-changed]}))

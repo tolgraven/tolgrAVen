@@ -2,7 +2,11 @@
   "Root-merged motion and parent-owned exit retention. No wrapper components."
   (:require [clojure.string :as string]
             [react :as react]
+            [tolgraven.react :as rf]
             [tolgraven.component.restore :as restore]))
+
+(rf/reg-event-db :component-motion/seen
+  (fn [db [_ key]] (assoc-in db [:state :motion-seen key] true)))
 
 ;; Internal argument, never confused with a caller's spec or domain-data map.
 (defrecord Presence [phase token finish!])
@@ -90,7 +94,9 @@
   [form options presence]
   (let [appear (:appear options) seen (:seen options) exit (:exit options)
         appearance (config (or seen appear)) exit-options (config exit)
-        [skip-enter?] (react/useState #(boolean (restore/skip-enter?)))
+        remember-key (:remember-key appearance)
+        remembered? (when remember-key @(rf/subscribe [:state [:motion-seen remember-key]]))
+        [skip-enter?] (react/useState #(boolean (or remembered? (restore/skip-enter?))))
         [visible? set-visible!] (react/useState skip-enter?)
         [reduced? set-reduced!] (react/useState reduced-motion?)
         *element (react/useRef nil)
@@ -102,6 +108,11 @@
         threshold (or (:threshold appearance) 0.5)
         once? (boolean (:once? appearance))
         root-margin (or (:root-margin appearance) "0px")]
+    (react/useEffect
+     (fn []
+       (when (and remember-key visible? (not remembered?))
+         (rf/dispatch [:component-motion/seen remember-key]))
+       js/undefined) #js [remember-key visible? remembered?])
     (react/useEffect
      (fn []
        (if-not (and (exists? js/window) (.-matchMedia js/window))
@@ -210,8 +221,8 @@
                   next removed)]
     (when (not= (count keys) (count (set keys)))
       (throw (js/Error. "Presence children require unique keys.")))
-    (when-not (dom-root? form)
-      (throw (js/Error. "The :presence feature needs a native parent root.")))
+    (when-not (or (dom-root? form) (= :<> (first form)))
+      (throw (js/Error. "The :presence feature needs a native parent root or fragment.")))
     (react/useLayoutEffect
      (fn []
        (set! (.-current *committed) retained)

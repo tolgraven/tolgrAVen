@@ -22,6 +22,10 @@ docker-push:
 docker-prefab:
 	python3 scripts/docker.py prefab
 
+.PHONY: ssr
+ssr:
+	lein with-profile prod run -m shadow.cljs.devtools.cli release ssr
+
 docker-registry:
 	python3 scripts/docker.py registry
 

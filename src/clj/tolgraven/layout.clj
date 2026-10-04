@@ -1,12 +1,16 @@
 (ns tolgraven.layout
   (:require
     [clojure.java.io]
+    [clojure.data.json :as json]
     [hiccup.core :as hiccup]
+    [hiccup.util :as hu]
     [ring.util.http-response :refer [content-type ok]]
     [ring.middleware.anti-forgery :refer [*anti-forgery-token*]]
     [ring.util.response]
     [tolgraven.config :refer [env]]
     [tolgraven.content.service :as content]
+    [tolgraven.ssr :as ssr]
+    [clojure.tools.logging :as log]
     [optimus.link :as olink]
     [optimus.html :as ohtml]))
 
@@ -17,7 +21,9 @@
 ; :as document, script, style, font, image
 
 (defn- js [js] [:script (merge {:type "text/javascript" :async true} js)])
-(defn- css [href] [:link {:href href :rel "stylesheet" :type "text/css" :media "print" :onload "this.media='all'"}])
+(defn- css [href]
+  [:link (cond-> {:href href :rel "stylesheet" :type "text/css"}
+           (not= href "css/opensans.css") (assoc :media "print" :onload "this.media='all'"))])
 (defn- js-preload  [path] [:link {:rel "preload" :as "script" :href path}])
 (defn- img-preload [path] [:link {:rel "preload" :as "image" :href path}])
 (defn- css-preload [path] [:link {:rel "preload" :as "style" :type "text/css" :href path}])
@@ -88,7 +94,7 @@
     [:meta {:name "viewport"
             :content "width=device-width, initial-scale=1"}]
     [:meta {:name "color-scheme" :content "light dark"}]
-    [:title title]
+    [:title (hu/escape-html (or title ""))]
     [:meta {:name "og:title" :content title}]             ; for link previews
     [:meta {:name "description" :content description}]
     [:meta {:name "og:description" :content description}]
@@ -115,6 +121,8 @@
     (for [path css-pre]
       (css-preload path))
     
+    [:link {:rel "preload" :as "font" :type "font/woff2" :crossorigin "anonymous"
+            :href "/webfonts/OpenSans-v29-latin.woff2"}]
     ;; The layout must be styled before first paint, including on a cold/private visit.
     (for [path (if (:dev env)
                  ["css/tolgraven/main.min.css"]
@@ -135,7 +143,13 @@
     
    [:body {:class "container themable framing-shadow sticky-footer-container"}
     
-    [:div#app loading-content]
+    [:div#app (cond-> {} (:ssr request) (assoc :data-hydrate "true")
+                         (:restore? request) (assoc :data-restore "true")) loading-content]
+    ;; A separate React root can report bootstrap failures without replacing
+    ;; server HTML that has not yet been hydrated.
+    [:div#page-init-status]
+    (when-let [snapshot (get-in request [:ssr :snapshot])]
+      [:script#ssr-bootstrap {:type "application/json"} (content/hydration-json snapshot)])
     (when-let [bundle (:site-content request)]
       [:script#site-content-bootstrap {:type "application/json"} (content/hydration-json bundle)])
     (ohtml/link-to-js-bundles request ["main.js"]) ]])
@@ -149,23 +163,51 @@
 
 (def render-hiccup-memo) ; well no because of anti forgery token, requests differing etc
 
+(defn returning-page? [request]
+  (try
+    (when-let [value (some-> (get-in request [:cookies "tolgraven-return" :value])
+                             (java.net.URLDecoder/decode "UTF-8"))]
+      (or (= (:uri request) value) ; compatibility with the original single path
+          (let [paths (json/read-str value)]
+            (and (vector? paths) (<= (count paths) 16)
+                 (boolean (some #{(:uri request)} paths))))))
+    (catch Exception _ false)))
+
 (defn render-home
   [request]
-  (render-hiccup
+  (let [returning? (returning-page? request)
+        ssr (when (and (not returning?) (ssr/enabled?) (ssr/route (:uri request)))
+              (try (ssr/page! (:uri request) (:query-params request))
+                   (catch Exception error
+                     (log/error "Page SSR unavailable; returning a retryable public error")
+                     {:error? true
+                      :status (if (= 404 (:status (ex-data error))) 404 503)})))
+        request (cond-> request
+                  returning? (assoc :restore? true)
+                  (:snapshot ssr) (assoc :ssr ssr
+                                        :site-content {:version 1 :deferred? true
+                                                       :content (get-in ssr [:snapshot :content])}))]
+  (cond-> (render-hiccup
    home
-   (if-let [mode (System/getenv "CONTENT_BOOTSTRAP_MODE")]
+   (if (or (:ssr request) returning?) request (if-let [mode (System/getenv "CONTENT_BOOTSTRAP_MODE")]
      (if (#{"route" "full"} mode)
        (let [route (keyword (or (second (clojure.string/split (:uri request) #"/")) "home"))
              bundle (if (= mode "route") (assoc (content/for-route! route) :deferred? true) (content/bundle!))]
          (assoc request :site-content bundle))
        request)
-     request)
-   :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"]
-                                    "img/foggy-shit-small.jpg") ; uh obviously not for any page though, like blog and whatnot...
-   :title "tolgrAVen audiovisual"
-   :description "tolgrAVen audiovisual by Joen Tolgraven"
+     request))
+   :loading-content (when-not returning? (or (:html ssr)
+                        (when (:error? ssr)
+                          [:main.main-content [:p {:role "alert"} "Page content could not load. Please retry."]
+                           [:a {:href (:uri request)} "Retry"]])
+                        (basic-skeleton "tolgrAVen" ["audio" "visual"] "img/foggy-shit-small.jpg")))
+   :title (or (when (= 1 (count (get-in ssr [:snapshot :posts])))
+                (:title (first (get-in ssr [:snapshot :posts]))))
+              (get-in ssr [:snapshot :content :document :title]) "tolgrAVen audiovisual")
+   :description (or (get-in ssr [:snapshot :content :document :description])
+                    "tolgrAVen audiovisual by Joen Tolgraven")
    :pre-pre [["media/fog-3d-small.mp4" "video"]]
-   :css-paths ["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
+   :css-paths [
                "css/fontawesome.css"
                "css/solid.css"
                "css/brands.min.css"
@@ -188,7 +230,10 @@
                 "https://www.googletagmanager.com"
                 "https://region1.google-analytics.com"])
    :title-img "img/logo/tolgraven-logo.png"
-   :anti-forgery (force *anti-forgery-token*)))
+   :anti-forgery (force *anti-forgery-token*))
+    (:error? ssr) (assoc :status (:status ssr))
+    (get-in ssr [:snapshot :missing?]) (assoc :status 404)
+    (or ssr returning?) (assoc-in [:headers "Cache-Control"] "no-store"))))
 
 (defn error-page-hiccup
   [request error-details]
@@ -227,5 +272,3 @@
    :headers {"Content-Type" "text/html; charset=utf-8"}
 
    :body    (:body (error-page-hiccup (:request error-details) error-details))})
-
-

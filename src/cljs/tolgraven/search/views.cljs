@@ -2,7 +2,7 @@
   (:require
     [tolgraven.link-preview.views :as link-preview]
     [reagent.core :as r]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
     [tolgraven.ui :as ui]

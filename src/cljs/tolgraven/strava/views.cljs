@@ -1,9 +1,9 @@
 (ns tolgraven.strava.views
   (:require
     [reagent.core :as r]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [clojure.string :as string]
-    [reanimated.core :as anim]
+    [tolgraven.components.timer :as anim]
     [tolgraven.loader :as l]
     [tolgraven.ui :as ui]
     [tolgraven.image :as img]

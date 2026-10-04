@@ -1,6 +1,7 @@
 (ns tolgraven.handler
   (:require
     [tolgraven.middleware :as middleware]
+    [tolgraven.concurrent :as concurrent]
     [tolgraven.layout :refer [error-page]]
     [tolgraven.routes.home :refer [home-routes]]
     [tolgraven.routes.services :refer [service-routes]]
@@ -35,4 +36,4 @@
            :not-acceptable      (get-error 406 "Not acceptable") })))))
 
 (defn app []
-  (middleware/wrap-base #'app-routes))
+  (concurrent/wrap-async (middleware/wrap-base #'app-routes)))

@@ -1,20 +1,18 @@
 (ns tolgraven.blog.views
   (:require
     [reagent.core :as r]
-    [react :as react]
+    [tolgraven.components.timer :as timer]
     [tolgraven.blog.model :as model]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.content.contract :as content-contract]
+    [tolgraven.component :as component]
     [tolgraven.component.loading :as loading]
     [tolgraven.link-preview.views :as link-preview]
     [tolgraven.util :as util]
     [tolgraven.ui :as ui]))
-
-(defn- user-details [user]
-  (if (string? user) @(rf/subscribe [:user/user user]) user))
 
 (defn- link-trust [user]
   (let [id (if (string? user) user (:id user))]
@@ -42,12 +40,12 @@
 (defc <posted-by> "Render author, timestamp, and optional score."
   {:features [[:appear nil]]}
   [{:keys [id user ts score] :or {score 0} :as spec}]
-  (let [user (user-details user)
+  (let [user @(rf/subscribe [:user/user user])
         username [:em.blog-user
                   (if-let [username (:name user)]
                     username
                     "anon")]
-        ts (util/timestamp ts)]
+        ts @(rf/subscribe [:timestamp ts])]
     [:span.blog-info
      username
     (when @(rf/subscribe [:user/trusted? (:id user)])
@@ -107,22 +105,17 @@
        (case vote :up "+" :down "-")])))
 
 (defc <collapsed-reply-view>
-  [{:keys [path comments] :as spec}]
+  [{:keys [path comments reply-count] :as spec}]
   :let [*inited? (r/atom false)]
   [:div.blog-comment-reply.flex
    {:style {:cursor "zoom-in"
             :transition "max-height 1s ease"
             :max-height (if @*inited? "3rem" 0)}
     :ref #(when % (reset! *inited? true))
-    :on-click (fn [_]
-                (rf/dispatch [:blog/expand-comment-thread path true])
-                (doseq [post (vals comments)]
-                  (rf/dispatch [:blog/expand-comment-thread
-                                (conj path (:id post))
-                                true])))}
+    :on-click #(rf/dispatch [:blog/expand-comment-thread path true])}
    [:div.blog-comment-border]
    [:section.blog-comment.blog-comment-collapsed-placeholder
-    (util/pluralize (count comments) " hidden reply")]])
+    (util/pluralize (or reply-count (count comments)) " hidden reply")]])
 
 (defc <comment-frame> {:features [[:appear nil]]} [{:keys [children] :as spec}]
   (into [:div.flex.blog-comment-around] children))
@@ -130,48 +123,37 @@
 (defc <comment-fade> {:features [:props [:appear "opacity"]]} [spec]
   [:div.fade-to-black.bottom {:style {:z-index "0"}}])
 
-(defn- use-delayed-visible? [visible? delay-ms]
-  (let [[retained? set-retained!] (react/useState visible?)]
-    (react/useEffect
-      (fn []
-        (if visible?
-          (do (set-retained! true) js/undefined)
-          (let [timer (js/setTimeout #(set-retained! false) delay-ms)]
-            ;; Rapid re-expansion and unmount both cancel the pending hide.
-            #(js/clearTimeout timer))))
-      #js [visible? delay-ms])
-    (or visible? retained?)))
-
 (defc <comment-post> "Render a comment and its replies; defer hidden threads until needed."
   {:features [:error-boundary]}
   [{:keys [path visible?] {:keys [id ts user title text score] :as post} :comment :as spec}]
   :let [*full? (r/atom nil) ; nil: not measured, false: truncated, true: expanded
-        *show-expand? (r/atom false)
-        *hover-timer (atom nil)
         capture-height! (fn [element]
-                          (when (and element (> (util/px-to-rem (.-clientHeight element)) 24))
+                          (when (and element (> (util/element-height-rem element) 24))
                             (reset! *full? false)))]
-  (react/useEffect (fn [] #(js/clearTimeout @*hover-timer)) #js [])
-  (let [showing? (use-delayed-visible? (or (nil? visible?) @visible?) 1000)
+  (let [[show-expand? show-expand! hide-expand!] (timer/use-delayed-hide 2000)
+        showing? (timer/use-delayed-visible? (or (nil? visible?) @visible?) 1000)
         is-preview? (= [:new-comment] path)
+        *expanded? (rf/subscribe [:comments/thread-expanded? path])
         *comments (when-not is-preview?
-                    (rf/subscribe [:comments/for-q-flat (first path)
-                                   (when (<= 2 (count path)) (last path))]))]
+                    (rf/subscribe [(if (and showing? @*expanded?
+                                           (or (nil? (:reply-count post)) (pos? (:reply-count post))))
+                                     :comments/for-q-flat :comments/cached-thread)
+                                   (first path) (last path)]))]
     (when showing?
       (let [active-user @(rf/subscribe [:user/active-user])
-            user (user-details user)
+            user @(rf/subscribe [:user/user user])
             score (or score 0)
             *comments (or *comments (r/atom nil))
-            *expanded? (rf/subscribe [:comments/thread-expanded? path])]
+            replies? (or (seq @*comments) (pos? (:reply-count post 0)))]
           [:<>
-           [<comment-frame> {:appear (:appear spec) :children [
+           [<comment-frame> {:appear {:class (:appear spec) :remember-key [:blog/comment path]} :children [
             [:div.blog-comment-border
-             {:style {:cursor (if (and @*expanded? @*comments)
+             {:style {:cursor (if (and @*expanded? replies?)
                                 "zoom-out"
-                                (when @*comments "zoom-in"))
+                                (when replies? "zoom-in"))
                       :background-color (:bg-color user)
                       :opacity (if is-preview? 0.5 1.0)}
-              :on-click #(when @*comments
+              :on-click #(when replies?
                            (rf/dispatch [:blog/expand-comment-thread path
                                          (not @*expanded?)]))}]
             [:section.blog-comment
@@ -208,12 +190,9 @@
               (when (false? @*full?)
                 [:<>
                  [<comment-fade>
-                  {:props {:on-mouse-over #(do (js/clearTimeout @*hover-timer)
-                                                (reset! *show-expand? true))
-                           :on-mouse-leave #(do (js/clearTimeout @*hover-timer)
-                                                (reset! *hover-timer
-                                                  (js/setTimeout (fn [] (reset! *show-expand? false)) 2000)))}}]
-                 (when @*show-expand?
+                  {:props {:on-mouse-over show-expand!
+                           :on-mouse-leave hide-expand!}}]
+                 (when show-expand?
                    [:button.blog-comment-view-full-btn
                     {:on-click #(reset! *full? true)}
                     [:i.fa.fa-angle-down]])])
@@ -226,7 +205,7 @@
                       @(rf/subscribe [:comments/adding? path]))
              [<add-comment> {:parent-path path}])
 
-           (when @*comments ;replies
+           (when replies? ;replies
              [:div.blog-comment-reply-outer
               [:div.blog-comment-reply
                {:class (when-not @*expanded?
@@ -236,31 +215,24 @@
                         [<comment-post> {:path (conj path (:id post)) :comment post
                                          :visible? *expanded? :appear "slide-behind"}] ))]
               (when-not @*expanded?
-                [<collapsed-reply-view> {:path path :comments @*comments}])])]))))
+                [<collapsed-reply-view> {:path path :comments @*comments :reply-count (:reply-count post)}])])]))))
 
 (defc <comments-section> "Comments section!"
   {:features [[:appear "zoom-y"]]}
   [{{:keys [id] :as post} :post :as spec}]
-  (let [comments (vals @(rf/subscribe [:comments/for-q-flat id]))
-        expanded? @(rf/subscribe [:blog/state [:comments-expanded id]])
-        amount-show-collapsed 4
-        amount-str (util/pluralize (count comments) "comment")]
+  (let [{:keys [records loading? more?]} @(rf/subscribe [:comments/root-page id])
+        comments (->> (vals records) (sort-by (juxt :ts :id)) reverse)]
     [:section.blog-comments
-     (if (<= (count comments) amount-show-collapsed) ;only show a few comments unless expanded
-       [:h6.bottomborder amount-str]
-       [:button.blog-btn.blog-collapse-btn.nomargin.bottomborder
-        {:on-click #(rf/dispatch [:blog/state [:comments-expanded id] (not expanded?)])}
-        (if-not expanded? (str "Show all " amount-str) "Collapse")])
-
+     [:h6.bottomborder (str (util/pluralize (count comments) "comment") (when more? "+"))]
      (when (seq comments)
        [:div.blog-comments-inner
-        {:class (when-not expanded? "collapsed")}
-        (doall (for [comment (if expanded?
-                               comments
-                               (take amount-show-collapsed comments))
-                     :let [path [(:id post) (:id comment)]]]
+        (doall (for [comment comments :let [path [id (:id comment)]]]
                  ^{:key (get-id-str path)}
                  [<comment-post> {:path path :comment comment}]))])
+     (when more?
+       [:button.blog-btn.blog-load-more
+        {:disabled loading? :on-click #(rf/dispatch [:blog/load-more-comments id])}
+        (if loading? "Loading comments…" "Load more comments")])
 
      (when @(rf/subscribe [:user/active-user])
        [<add-comment-btn> {:parent-path [id] :kind :comment}])
@@ -387,14 +359,15 @@
       [:button {:on-click #(rf/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
        [:label "Cancel"]]]]))
 
+(defc <tag-link> [{:keys [tag]}]
+  [:span [:a.blog-tag-link {:href @(rf/subscribe [:href :blog-tag {:tag tag}])} tag]])
+
 (defc <tags-list> [{{:keys [id tags]} :post :as spec}]
   (when-let [tags (seq (model/tags tags))]
     [:div.blog-post-tags
      (for [tag (sort tags)]
        ^{:key (str "blog-post-" id "-category-" tag)}
-       [:span
-        [:a.blog-tag-link {:href @(rf/subscribe [:href :blog-tag {:tag tag}])}
-         tag]])]))
+       [<tag-link> {:tag tag}])]))
 
 (defc <post-header> {:features [[:appear "zoom slower"]]} [{:keys [children] :as spec}]
   (into [:div.flex.blog-post-header] children))
@@ -402,17 +375,18 @@
 (defc <post-content> "Render a loaded post with metadata and comments."
   {:features [:error-boundary [:appear "zoom-x"]]}
   [{{:keys [id ts user title text permalink comments] :as post} :post :as spec}]
-  (let [user (user-details user)]
+  (let [user @(rf/subscribe [:user/user user])]
      [:section.blog-post
-      {:data-link-trust (name (link-trust user))
-       :ref #(rf/dispatch [:run-highlighter!])}
+      {:data-link-trust (name (link-trust user))}
 
-     [<post-header> {:children [
+     [<post-header> {:appear {:class "zoom slower" :remember-key [:blog/post-header id]}
+                    :children [
        [l/<> {:module :user, :view :avatar} user "blog-user-avatar"]
       [:div.blog-post-header-main
        [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
          [:h1.blog-post-title title ]]
-       [<posted-by> {:id id :user user :ts ts :appear "slide-in"}]
+       [<posted-by> {:id id :user user :ts ts
+                     :appear {:class "slide-in" :remember-key [:blog/posted-by id]}}]
        [:div.flex
         [<tags-list> {:post post}]
         (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
@@ -424,16 +398,21 @@
       [link-preview/<md> text
        {:id (str "blog-post-" id)
         :trust (link-trust user)}]]
-     [<comments-section> {:post post}]]))
+     [<comments-section> {:post post :appear {:class "zoom-y" :remember-key [:blog/comments id]}}]]))
 
-(defc <blog-post> [{:keys [post] :as spec}]
-  (if (:text post)
-    [<post-content> spec]
-    [loading/<spinner>]))
+(defc <blog-post> [{:keys [id post] :as spec}]
+  (cond
+    (:text post) [<post-content> (assoc spec :appear {:class "zoom-x" :remember-key [:blog/post (:id post)]})]
+    (and id @(rf/subscribe [:blog/post-loaded? id])) [:p {:role "status"} "Post not found."]
+    :else [loading/<spinner>]))
+
+(defc <post-by-id> [{:keys [id]}]
+  ;; Own the subscription in a render context, never inside a lazy parent for.
+  [<blog-post> {:id id :post @(rf/subscribe [:blog/post id])}])
 
 (defc <adjacent-post-link> [{:keys [direction post-id] :as spec}]
   (when-let [id @(rf/subscribe [:blog/adjacent-post-id direction post-id])]
-    (let [{:keys [title permalink]} @(rf/subscribe [:blog/post id])]
+    (let [{:keys [title permalink]} @(rf/subscribe [:blog/post-summary id])]
       [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
        [:span
         (when (= direction :prev) [:<> [:i.fa.fa-chevron-left] " "])
@@ -448,7 +427,7 @@
       [:<>
        ;; Future navigation experiment: keep the previous post blurred while
        ;; loading its replacement, or animate a skeleton into the new text.
-       [<blog-post> {:post post}]
+       [<blog-post> {:id id :post post}]
        (when (:id post)
          [:div.blog-prev-next-links
           {:ref #(rf/dispatch [:common/set-title (when % (:title post))])}
@@ -487,7 +466,7 @@
         "Posts tagged " [:span.blog-post-tags [:span tag]]]
        (for [post @(rf/subscribe [:blog/posts-with-tag tag])]
          ^{:key (str "blog-with-tag-" (:id post))}
-         [<blog-post> {:post post}])]}]))
+         [<post-by-id> {:id (:id post)}])]}]))
 
 (defc <blog-tag-cloud> "Render all blog tags." []
   [:div.blog-post-tags.flex.center-content
@@ -495,9 +474,7 @@
    [:div.flex.center-content
     (for [tag (sort @(rf/subscribe [:blog/all-tags]))]
       ^{:key (str "blog-tag-" tag)}
-      [:span
-       [:a.blog-tag-link {:href @(rf/subscribe [:href :blog-tag {:tag tag}])}
-        tag]])]])
+      [<tag-link> {:tag tag}])]])
 
 (defc <blog-intros-view> "Headline and a paragraph, many on each page."
   []
@@ -509,7 +486,7 @@
 
 (defc <blog-nav> "Blog navigation buttons"
   [{:keys [total-posts current-idx posts-per-page] :as spec}]
-  (let [page-count (js/Math.ceil (/ total-posts (model/page-size posts-per-page)))
+  (let [page-count (model/page-count total-posts posts-per-page)
         previous @(rf/subscribe [:blog/page-index-for-nav-action :prev])
         next-page @(rf/subscribe [:blog/page-index-for-nav-action :next])]
     [:div.blog-nav.center-content
@@ -528,7 +505,7 @@
       [:<>
        (for [id @(rf/subscribe [:blog/ids-for-page index size])]
          ^{:key (str "blog-post-" id)}
-         [<blog-post> {:post @(rf/subscribe [:blog/post id])}])
+         [<post-by-id> {:id id}])
        [<blog-nav> {:total-posts total :current-idx index :posts-per-page size}]])))
 
 (defc <blog-container>
