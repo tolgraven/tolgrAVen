@@ -46,6 +46,13 @@
 
 (defn for-route! [route] (bundle! (contract/keys-for-route route)))
 
+(defn fresh-bundle!
+  "A fresh public snapshot for render-cache validation; ordinary browser reads
+   retain their section cache. A failed CMS read must not validate stale HTML."
+  [requested]
+  {:version contract/version
+   :content (contract/normalize-content (load-content! (contract/validate-keys requested)))})
+
 (defn response [requested]
   (try {:status 200 :headers {"Cache-Control" "public, max-age=30"} :body (bundle! requested)}
        ;; No upstream exceptions or credentials in browser errors.

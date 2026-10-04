@@ -2,7 +2,7 @@
   (:require [reagent.core :as r]
             [clojure.string :as string]
             [tolgraven.content.contract :as content]
-            [re-frame.core :as rf]
+            [re-frame.core-instrumented :as rf]
             [re-frame.db :as rfdb]
             [tolgraven.component.restore :as restore]
             [tolgraven.component.storage :as storage]))

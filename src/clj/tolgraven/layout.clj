@@ -2,11 +2,14 @@
   (:require
     [clojure.java.io]
     [hiccup.core :as hiccup]
+    [hiccup.util :as hu]
     [ring.util.http-response :refer [content-type ok]]
     [ring.middleware.anti-forgery :refer [*anti-forgery-token*]]
     [ring.util.response]
     [tolgraven.config :refer [env]]
     [tolgraven.content.service :as content]
+    [tolgraven.blog.ssr :as blog-ssr]
+    [clojure.tools.logging :as log]
     [optimus.link :as olink]
     [optimus.html :as ohtml]))
 
@@ -88,7 +91,7 @@
     [:meta {:name "viewport"
             :content "width=device-width, initial-scale=1"}]
     [:meta {:name "color-scheme" :content "light dark"}]
-    [:title title]
+    [:title (hu/escape-html (or title ""))]
     [:meta {:name "og:title" :content title}]             ; for link previews
     [:meta {:name "description" :content description}]
     [:meta {:name "og:description" :content description}]
@@ -135,7 +138,9 @@
     
    [:body {:class "container themable framing-shadow sticky-footer-container"}
     
-    [:div#app loading-content]
+    [:div#app (when (:blog-ssr request) {:data-hydrate "true"}) loading-content]
+    (when-let [snapshot (get-in request [:blog-ssr :snapshot])]
+      [:script#blog-ssr-bootstrap {:type "application/json"} (content/hydration-json snapshot)])
     (when-let [bundle (:site-content request)]
       [:script#site-content-bootstrap {:type "application/json"} (content/hydration-json bundle)])
     (ohtml/link-to-js-bundles request ["main.js"]) ]])
@@ -151,18 +156,31 @@
 
 (defn render-home
   [request]
-  (render-hiccup
+  (let [ssr (when (and (blog-ssr/enabled?) (blog-ssr/route (:uri request)))
+              (try (blog-ssr/page! (:uri request))
+                   (catch Exception _
+                     (log/error "Blog SSR unavailable; returning a retryable public error")
+                     {:error? true})))
+        request (cond-> request
+                  (:snapshot ssr) (assoc :blog-ssr ssr
+                                        :site-content {:version 1 :deferred? true
+                                                       :content (get-in ssr [:snapshot :content])}))]
+  (cond-> (render-hiccup
    home
-   (if-let [mode (System/getenv "CONTENT_BOOTSTRAP_MODE")]
+   (if (:blog-ssr request) request (if-let [mode (System/getenv "CONTENT_BOOTSTRAP_MODE")]
      (if (#{"route" "full"} mode)
        (let [route (keyword (or (second (clojure.string/split (:uri request) #"/")) "home"))
              bundle (if (= mode "route") (assoc (content/for-route! route) :deferred? true) (content/bundle!))]
          (assoc request :site-content bundle))
        request)
-     request)
-   :loading-content (basic-skeleton "tolgrAVen" ["audio" "visual"]
-                                    "img/foggy-shit-small.jpg") ; uh obviously not for any page though, like blog and whatnot...
-   :title "tolgrAVen audiovisual"
+     request))
+   :loading-content (or (:html ssr)
+                        (when (:error? ssr)
+                          [:main.main-content [:p {:role "alert"} "Blog content could not load. Please retry."]
+                           [:a {:href (:uri request)} "Retry"]])
+                        (basic-skeleton "tolgrAVen" ["audio" "visual"] "img/foggy-shit-small.jpg"))
+   :title (or (when (= 1 (count (get-in ssr [:snapshot :posts])))
+                (:title (first (get-in ssr [:snapshot :posts])))) "tolgrAVen audiovisual")
    :description "tolgrAVen audiovisual by Joen Tolgraven"
    :pre-pre [["media/fog-3d-small.mp4" "video"]]
    :css-paths ["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
@@ -188,7 +206,10 @@
                 "https://www.googletagmanager.com"
                 "https://region1.google-analytics.com"])
    :title-img "img/logo/tolgraven-logo.png"
-   :anti-forgery (force *anti-forgery-token*)))
+   :anti-forgery (force *anti-forgery-token*))
+    (:error? ssr) (assoc :status 503)
+    (get-in ssr [:snapshot :missing?]) (assoc :status 404)
+    ssr (assoc-in [:headers "Cache-Control"] "no-store"))))
 
 (defn error-page-hiccup
   [request error-details]
@@ -227,5 +248,3 @@
    :headers {"Content-Type" "text/html; charset=utf-8"}
 
    :body    (:body (error-page-hiccup (:request error-details) error-details))})
-
-

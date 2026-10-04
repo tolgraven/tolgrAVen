@@ -1,6 +1,6 @@
 (ns tolgraven.blog.events
   (:require
-    [re-frame.core :as rf]
+    [re-frame.core-instrumented :as rf]
     [re-frame.std-interceptors :refer [path]]
     [tolgraven.blog.model :as model]
     [tolgraven.interceptors :refer [debug]]))

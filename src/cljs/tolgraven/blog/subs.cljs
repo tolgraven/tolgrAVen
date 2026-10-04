@@ -1,13 +1,14 @@
 (ns tolgraven.blog.subs
   (:require
-    [re-frame.core :as rf]
+    [re-frame.core-instrumented :as rf]
     [tolgraven.blog.model :as model]
     [clojure.string :as string]))
 
 (rf/reg-sub :blog
   (fn [[_ path]]
     (case (first path)
-      :posts (rf/subscribe [:<-store-2 :blog-posts])
+      :posts (rf/subscribe [:<-store-q {:path-collection [:blog-posts]
+                                        :scoped? true :summary? true}])
       :comments (rf/subscribe [:<-store-2 :blog-comments])
       (rf/subscribe [:get :blog])))
   (fn [data [_ path]]
@@ -33,10 +34,15 @@
 (rf/reg-sub :blog/post
   (fn [[_ post-id]]
     (rf/subscribe [:<-store-q {:path-collection [:blog-posts]
+                               :scoped? true
                                :where [[:id :== post-id]]
                                :doc-changes true}]))
-  (fn [post [_ post-id]]
-    (get post (keyword (str post-id)))))
+  (fn [posts [_ post-id]]
+    (some #(when (= post-id (:id %)) %) (vals posts))))
+
+(rf/reg-sub :blog/post-summary
+  :<- [:blog [:posts]]
+  (fn [posts [_ id]] (some #(when (= id (:id %)) %) (vals posts))))
 
 (rf/reg-sub :blog/permalink-for-path
   (fn [[_ path]]
@@ -130,6 +136,7 @@
 (rf/reg-sub :comments/for-user-q
   (fn [[_ user-id]]
     (rf/subscribe [:<-store-q {:path-collection [:blog-comments]
+                              :scoped? true
                               :where [[:user :== user-id]]
                               :order-by [[:ts :desc]]
                               :doc-changes true}]))
@@ -156,6 +163,7 @@
 (rf/reg-sub :comments/for-q-flat
   (fn [[_ blog-id parent-id]]
     (rf/subscribe [:<-store-q {:path-collection [:blog-comments]
+                              :scoped? true
                               :where [[:parent-post :== blog-id]
                                       [:parent-comment :== parent-id]]
                               :order-by [[:ts :desc]]

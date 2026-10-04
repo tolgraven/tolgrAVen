@@ -11,6 +11,7 @@
     [reagent.dom.client :as rdomc]
     [tolgraven.ajax :as ajax]
     [tolgraven.content.client :as content]
+    [tolgraven.blog.ssr-client :as blog-ssr]
     [tolgraven.component.restore :as restore]
     [tolgraven.service-status :as service-status]
     [tolgraven.events]
@@ -126,14 +127,23 @@
                       (r/as-element [page]))
     [#'page]))
 
+(defn <root-page> []
+  (if (blog-ssr/active?) [blog-ssr/<page>] [page]))
+
 (defn render []
   (if @root
-    (rdomc/render @root [#'page])
+    (rdomc/render @root [#'<root-page>])
     (let [element (.getElementById js/document "app")]
       (if (:hydrate? @restore/*context)
-        (reset! root (rdomc/hydrate-root element [#'page]))
+        (reset! root (rdomc/hydrate-root element [#'<root-page>]
+                       {:on-recoverable-error
+                        (fn [error _]
+                          (js/console.error "Hydration recovery" error)
+                          (service-status/fail! :hydration "Page restoration failed"
+                                               "The page was rebuilt in your browser. Reload if anything is missing."
+                                               #(.reload js/location)))}))
         (do (reset! root (rdomc/create-root element))
-            (rdomc/render @root [#'page]))))))
+            (rdomc/render @root [#'<root-page>]))))))
 
 (defn mount-components "Called each update when developing" []
   (rf/dispatch-sync [:scroll/save-position-dev])
@@ -156,7 +166,10 @@
   (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
   (ajax/load-interceptors!)
   (letfn [(start! []
+            (when-let [error (.getElementById js/document "page-init-error")] (.remove error))
+            (service-status/recover! :page-init)
             (-> (storage/ready!)
+                (.then (fn [_] (blog-ssr/install!)))
                 (.then (fn [_] (content/bootstrap!)))
                 (.then (fn [_] (component-data/ensure-all! (:depends spec))))
                 (.then (fn []
@@ -167,15 +180,23 @@
                           ;; Keep the server skeleton visible until a complete
                           ;; content snapshot is ready, with a usable retry.
                           (let [element (.getElementById js/document "app")
+                                error (.createElement js/document "div")
                                 message (.createElement js/document "p")
                                 button (.createElement js/document "button")]
-                            (set! (.-textContent element) "")
-                            (.setAttribute element "role" "alert")
+                            (service-status/fail! :page-init "Page initialization failed"
+                                                  "The page could not initialize. Existing server content is retained."
+                                                  start!)
+                            (when-not (= "true" (.getAttribute element "data-hydrate"))
+                              (set! (.-textContent element) ""))
+                            (set! (.-id error) "page-init-error")
+                            (.setAttribute error "role" "alert")
                             (set! (.-textContent message) "The page could not initialize. Check your connection and retry. The failure has been recorded in the webpage log.")
                             (set! (.-textContent button) "Retry")
                             (set! (.-onclick button) start!)
-                            (.appendChild element message)
-                            (.appendChild element button))))))]
+                            (.appendChild error message)
+                            (.appendChild error button)
+                            ;; Keep retry UI outside React's hydration container.
+                            (.insertAdjacentElement element "afterend" error))))))]
     (start!)))
 
 (defn ^:export init!  []

@@ -7,7 +7,8 @@
             [reagent.ratom :as ratom]
             [tolgraven.supabase.query :as query]
             [tolgraven.supabase.shape :as shape]
-            [tolgraven.supabase.realtime :as realtime]))
+            [tolgraven.supabase.realtime :as realtime]
+            [tolgraven.supabase.scoped :as scoped]))
 
 (defonce *client (atom nil))
 (defonce *settings (atom nil))
@@ -226,7 +227,9 @@
   (when-not @*query-tick (reset! *query-tick (js/setTimeout drain-queries! 0))))
 
 (defn ensure-query! [options]
-  (let [opts (query/normalize-query options)
+  (if (query/scoped-blog-query? options)
+    (scoped/ensure-query! options)
+    (let [opts (query/normalize-query options)
         key (pr-str opts)
         tables (query/realtime-tables opts)]
     (when-not (query/direct-read-query? opts)
@@ -249,7 +252,7 @@
           ;; A component can disappear before the next tick; do not create
           ;; channels for readers that no longer exist.
           (queue-queries!)
-          state))))
+          state)))))
 
 (defn authenticated-request! [method uri data on-success on-error]
   (if-let [client @*client]
@@ -326,6 +329,10 @@
         (.then #(when-let [error (.-error %)]
                   (on-error {:message (.-message error)})))
         (.catch #(on-error {:message (.-message %)})))))
+
+(add-watch *client ::scoped
+  (fn [_ _ old client]
+    (when-not (identical? old client) (scoped/connect! client read-once!))))
 
 (defn init! [{:keys [url anon-key anonKey] :as settings} on-profile on-error]
   (let [anon-key (or anon-key anonKey)]

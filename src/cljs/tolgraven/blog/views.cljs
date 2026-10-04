@@ -3,7 +3,7 @@
     [reagent.core :as r]
     [react :as react]
     [tolgraven.blog.model :as model]
-    [re-frame.core :as rf]
+    [re-frame.core-instrumented :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
     [tolgraven.macros :refer-macros [defc]]
@@ -433,7 +433,7 @@
 
 (defc <adjacent-post-link> [{:keys [direction post-id] :as spec}]
   (when-let [id @(rf/subscribe [:blog/adjacent-post-id direction post-id])]
-    (let [{:keys [title permalink]} @(rf/subscribe [:blog/post id])]
+    (let [{:keys [title permalink]} @(rf/subscribe [:blog/post-summary id])]
       [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
        [:span
         (when (= direction :prev) [:<> [:i.fa.fa-chevron-left] " "])
@@ -487,7 +487,7 @@
         "Posts tagged " [:span.blog-post-tags [:span tag]]]
        (for [post @(rf/subscribe [:blog/posts-with-tag tag])]
          ^{:key (str "blog-with-tag-" (:id post))}
-         [<blog-post> {:post post}])]}]))
+         [<blog-post> {:post @(rf/subscribe [:blog/post (:id post)])}])]}]))
 
 (defc <blog-tag-cloud> "Render all blog tags." []
   [:div.blog-post-tags.flex.center-content

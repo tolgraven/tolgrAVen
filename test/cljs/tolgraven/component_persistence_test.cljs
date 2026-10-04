@@ -5,7 +5,7 @@
             [reagent.dom.client :as dom]
             [re-frame.db :as rfdb]
             [re-frame.core :as rf]
-            [re-frame.subs :as subs]
+            [re-frame.tooling :as tooling]
             [tolgraven.component :as component]
             [tolgraven.component.data :as data]
             [tolgraven.component.storage :as storage]
@@ -167,10 +167,10 @@
                    (render! root [:p "Away"])
                    (tick!))) ; Reagent 2 disposes reactions on a microtask for StrictMode.
           (.then (fn [_]
-                   (is (not-any? (fn [[[query _] _]]
+                   (is (not-any? (fn [query]
                                    (and (#{:component-state/scoped-value :component-state/entry} (first query))
                                         (= :persist-test (nth (second query) 2 nil))))
-                                 @subs/query->reaction)
+                                 (tooling/live-query-vs))
                        "Unmount releases both re-frame subscriptions, not their cached values")
                    (render! root [:div ^{:key "first"} [<counter>] ^{:key "second"} [<counter>]])
                    (is (= ["1" "0"] (mapv #(.-textContent %) (array-seq (.querySelectorAll element "button")))))))
@@ -231,10 +231,10 @@
                    (render! root [:p "Away"])
                    (tick!)))
           (.then (fn [_]
-                   (is (not-any? (fn [[[query _] _]]
+                   (is (not-any? (fn [query]
                                    (and (= :component-state/scoped-value (first query))
                                         (= "<scoped-toggle>" (nth (second query) 2 nil))))
-                                 @subs/query->reaction))
+                                 (tooling/live-query-vs)))
                    (is (true? (get-in @rfdb/app-db (into base [:opts :setting]))))
                    (render! root [:div [<scoped-toggle>] [<scoped-toggle>]])
                    (is (= ["true" "true"] (mapv #(.-textContent %) (array-seq (.querySelectorAll element "button")))))))
@@ -427,10 +427,10 @@
                      (render! root [:p "Away"])
                      (tick!)))
             (.then (fn [_]
-                     (is (not-any? (fn [[[query _] _]]
+                     (is (not-any? (fn [query]
                                      (and (= :component-state/scoped-value (first query))
                                           (some #{(second query)} (map component/path-of @*scope-handles))))
-                                   @subs/query->reaction))
+                                   (tooling/live-query-vs)))
                      (render! root [<scope-controls>])
                      (is (= "[8 42 23 34]" (.-textContent element)) "Unmount retains state for every scope")))
             (.catch #(is false (str %)))

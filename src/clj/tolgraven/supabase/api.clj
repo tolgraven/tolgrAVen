@@ -76,7 +76,7 @@
                                                   "order" (:order (platform/table-config (keyword table)))
                                                   "offset" offset "limit" 500}
                                                  (map (fn [[field op value]]
-                                                        [(name field) (str op "." value)]))
+                                                        [(name field) (str op "." (if (nil? value) "null" value))]))
                                                  filters)}))]
                                (if (seq page)
                                  (recur (+ offset (count page)) (into rows page))

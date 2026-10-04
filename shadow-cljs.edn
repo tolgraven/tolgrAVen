@@ -3,7 +3,16 @@
  :source-paths ["src/clj" "src/cljs" "src/cljc"]
 
  :builds
- {:supabase-test {:target :node-test
+ {:blog-ssr {:target :node-script
+             :main tolgraven.blog.ssr-worker/main
+             :output-to "target/ssr/blog.js"
+             :js-options {:js-provider :shadow :keep-native-requires true
+                          ;; Use DOM-free worker exports for Markdown's entity
+                          ;; decoder; React's browser server renderer supports
+                          ;; renderToString in Node without native npm modules.
+                          :export-conditions ["worker" "browser" "require" "default"]}}
+
+  :supabase-test {:target :node-test
                   :output-to "target/supabase-tests.js"
                   :ns-regexp "tolgraven\\.supabase-.*-test$"
                   :autorun true}

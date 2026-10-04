@@ -87,7 +87,7 @@
                  
                  [differ "0.3.3"] ; diff with patch to apply
 
-                 [re-frame "1.4.3"]
+                 [re-frame "1.4.7"]
                  ; [kee-frame "0.4.0" :exclusions [args4j]]
                  [day8.re-frame/http-fx "0.2.4"]
                  [superstructor/re-frame-fetch-fx "0.4.0"]

@@ -67,12 +67,39 @@
    (cond-> (entry seed-key table)
      (seq filters) (assoc :filters filters))))
 
+(defn scoped-blog-query? [opts]
+  (and (:scoped? opts)
+       (#{"blog-posts" "blog-comments"} (path-collection-name opts))))
+
+(defn- scoped-plan [opts collection doc-id]
+  (let [posts? (= collection "blog-posts")
+        table (if posts? "blog_posts" "blog_comments")
+        fields (if posts?
+                 {:id :id :user :user_id :ts :ts :permalink :permalink}
+                 {:id :id :user :user_id :ts :ts
+                  :parent-post :parent_post :parent-comment :parent_comment})
+        filters (mapv (fn [[field op value]]
+                        (let [column (fields (keyword (path-part field)))
+                              operator ({:== "eq" := "eq" :> "gt" :>= "gte" :< "lt" :<= "lte"}
+                                        (keyword (path-part op)))]
+                          (when-not (and column operator)
+                            (throw (ex-info "Unsupported scoped blog predicate" {:field field :op op})))
+                          [column (if (and (= operator "eq") (nil? value)) "is" operator) value]))
+                      (:where opts))]
+    [(cond-> (entry (keyword table) table
+                   (cond-> filters doc-id (conj [(if posts? :doc_id :id) "eq" doc-id])))
+       (and posts? (:summary? opts))
+       (assoc :select "doc_id,id,permalink,user_id,title,tags,score,ts"))]))
+
 (defn seed-load-plan [opts]
   (let [{:keys [path-document path-collection] :as query-map} (normalize-query opts)
         collection (path-collection-name query-map)
         doc-id (second path-document)
         post-id (some-> doc-id parse-long-safe)]
     (cond
+      (scoped-blog-query? query-map)
+      (scoped-plan query-map collection doc-id)
+
       (= collection "blog-posts")
       (cond-> [(if path-document
                  (entry :blog_posts "blog_posts" [[:doc_id "eq" (str doc-id)]])
