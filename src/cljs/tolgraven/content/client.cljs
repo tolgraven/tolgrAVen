@@ -1,7 +1,7 @@
 (ns tolgraven.content.client
   (:require [ajax.core :as ajax]
             [clojure.string :as string]
-            [re-frame.core :as rf]
+            [tolgraven.react :as rf]
             [re-frame.db :as rfdb]
             [reagent.core :as r]
             [tolgraven.content.contract :as contract]

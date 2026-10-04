@@ -1,7 +1,7 @@
 (ns tolgraven.search.module
   (:require
     [tolgraven.content.contract :as content-contract]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [tolgraven.search.events]
     [tolgraven.search.subs]
     [tolgraven.search.views :as view]))

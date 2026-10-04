@@ -13,6 +13,8 @@
 (defonce *buckets (atom {}))
 (defonce *reads (atom {}))
 (defonce *dirty (atom #{}))
+;; Consumed snapshots remain readable in memory, but are excluded from disk.
+(defonce *consumed (atom {}))
 (defonce *ready (atom #{}))
 (defonce *deleted-paths (atom {}))
 (defn- prefix? [parent child]
@@ -62,7 +64,10 @@
                                ;; Writes/removals queued before this read win.
                                (swap! *buckets update account
                                       #(merge (into {} (remove (fn [[id _]] (affected? id (get @*deleted-paths account)))) saved) %))
-                               (when (some #(affected? % (get @*deleted-paths account)) (keys saved))
+                               (when (or (some #(affected? % (get @*deleted-paths account)) (keys saved))
+                                         (some (fn [[_ snapshot]]
+                                                 (or (not= 1 (:version snapshot))
+                                                     (<= (:expires-at snapshot 0) (.now js/Date)))) saved))
                                  (swap! *dirty conj account)
                                  (schedule-write!))
                                (swap! *deleted-paths dissoc account)
@@ -74,7 +79,12 @@
 
 (defn read! [id options]
   (ready! options)
-  (let [snapshot (get-in @*buckets [(owner options) id])]
+  (let [account (owner options)
+        snapshot (get-in @*buckets [account id])]
+    (when (and snapshot (not (contains? (get @*consumed account) id)))
+      (swap! *consumed update account (fnil conj #{}) id)
+      (swap! *dirty conj account)
+      (schedule-write!))
     (when (and (= 1 (:version snapshot))
                (= (or (:version options) 1) (:schema snapshot))
                (> (:expires-at snapshot 0) (.now js/Date))
@@ -89,6 +99,7 @@
       ;; Repeated dumps do not serialize or extend expiry for unchanged data.
       (when-not (and (= schema (:schema previous)) (= value (:value previous))
                      (> (:expires-at previous 0) (.now js/Date)))
+        (swap! *consumed update account disj id)
         (swap! *buckets assoc-in [account id]
                {:version 1 :schema schema
                 :expires-at (+ (.now js/Date) (or (:ttl-ms options) 1800000)) :value value})
@@ -114,7 +125,8 @@
     (swap! *dirty #(apply disj % accounts))
     (doseq [account accounts]
       (try
-        (let [bucket (into {} (filter (fn [[_ v]] (> (:expires-at v 0) (.now js/Date))))
+        (let [bucket (into {} (filter (fn [[id v]] (and (not (contains? (get @*consumed account) id))
+                                                        (> (:expires-at v 0) (.now js/Date)))))
                            (get @*buckets account))
               text (pr-str bucket)]
           (when (> (count text) max-bytes) (throw (js/Error. "Snapshot too large")))
@@ -138,14 +150,18 @@
    (when @*pending (js/clearTimeout @*pending) (reset! *pending nil))
    (doseq [[id {:keys [read options owner]}] @*tracked
            :when (and (= owner (tolgraven.component.storage/owner options))
-                      (or (= :all kind)
+                      (or (#{:all :navigation} kind)
                           (and (= :state kind) (vector? id) (= :state (first id)))
                           (and (= :content kind) (or (= id :public-content)
                                                    (and (vector? id) (= :resource (first id)))))))]
      ;; A previous debounce can expire while a newly mounted instance is still
      ;; restoring. Do not snapshot its defaults over the pending disk read.
      (if (contains? @*ready owner)
-       (write-tracked! id read options)
+       (do
+         (when (and (= :navigation kind) (contains? (get @*consumed owner) id))
+           (swap! *consumed update owner disj id)
+           (swap! *dirty conj owner))
+         (write-tracked! id read options))
        (-> (ready! options)
            (.then (fn [_]
                     (when (= owner (tolgraven.component.storage/owner options))
@@ -163,7 +179,7 @@
     (ready! {:scope :user})))
 (defonce listeners
   (when (exists? js/window)
-    (let [save! #(do (flush!) (drain!))]
+    (let [save! #(do (flush! :navigation) (drain!))]
       (.addEventListener js/window "pagehide" (fn [_] (save!)))
       (.addEventListener js/document "visibilitychange"
                          (fn [_] (when (= "hidden" (.-visibilityState js/document)) (save!)))))))

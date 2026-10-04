@@ -1,30 +1,29 @@
 (ns tolgraven.docs.views
   (:require
    [reagent.core :as r]
-   [re-frame.core :as rf]
+   [tolgraven.react :as rf]
    [clojure.string :as string]
    [tolgraven.ui :as ui]))
+
+(defn page-links
+  "Rewrite generated Codox filenames before rendering. External URLs, root
+   URLs and fragment-only links retain their original targets."
+  [html]
+  (string/replace html #"(href=[\"'])([^\"']+)([\"'])"
+    (fn [[original before href after]]
+      (if-let [[_ doc suffix] (re-matches #"(?:\./)?([A-Za-z0-9_.-]+)\.html([?#].*)?" href)]
+        (str before "/docs/codox/" doc suffix after)
+        original))))
 
 (defn doc-page "Display a codox page"
   []
   (let [html @(rf/subscribe [:docs/page-html])]
-   [:div.docs
+    [:div.docs
      (if html
-      [:div.codox
-      {:ref (fn [el]
-              (doseq [el (.querySelectorAll js/document ".codox a")
-                      :let [is-github? (string/index-of (.-href el) "github")]]
-                (set! (.-href el) ; XXX gotta keep it from doing this to github links!
-                      (str (when-not is-github?
-                             "/docs/codox/")
-                           (if-not is-github?
-                             (-> (.-href el)
-                               (string/replace  #"http(s)?://.*/" "")
-                               (string/replace  #"\.html" ""))
-                             (.-href el)))))
-              (rf/dispatch [:run-highlighter! el]))
-       :dangerouslySetInnerHTML (r/unsafe-html html)}]
-      [ui/loading-spinner (not html) :massive])]))
+       ;; This is generated, trusted documentation HTML, an opaque React leaf.
+       ;; Transform its content before rendering, never walk and rewrite live DOM.
+       [:div.codox {:dangerouslySetInnerHTML (r/unsafe-html (page-links html))}]
+       [ui/loading-spinner true :massive])]))
 
 (defn page []
   [ui/with-heading [:docs :heading]

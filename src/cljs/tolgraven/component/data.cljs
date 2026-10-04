@@ -1,7 +1,7 @@
 (ns tolgraven.component.data
   "Shared, mount-independent resource loading. Adapters are registered separately."
   (:require [reagent.core :as r]
-            [re-frame.core :as rf]
+            [tolgraven.react :as rf]
             [re-frame.db :as rfdb]
             [tolgraven.service-status :as status]
             [tolgraven.component.storage :as storage]

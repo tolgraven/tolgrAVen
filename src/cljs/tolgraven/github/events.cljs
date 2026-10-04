@@ -1,7 +1,7 @@
 (ns tolgraven.github.events
   (:require
     [reagent.core :as r]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [clojure.string :as string]))
 
 

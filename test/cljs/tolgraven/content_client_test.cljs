@@ -146,3 +146,15 @@
           (.finally (fn [] (set! content/request! original) (reset! rfdb/app-db before)
                       (reset! restore/*context context) (reset! storage/*tracked tracked)
                       (storage/remove! :public-content content/cache-options) (done)))))))
+
+(deftest content-subscription-only-prefetches-declared-cms-sections
+  (let [before @rfdb/app-db *requests (atom [])]
+    (rf/clear-subscription-cache!)
+    (reset! rfdb/app-db {:content {:github {:repo []}}})
+    (try
+      (with-redefs [rf/dispatch #(swap! *requests conj %)]
+        (is (= {:repo []} @(rf/subscribe [:content [:github]])))
+        (is (nil? @(rf/subscribe [:content [:instagram]])))
+        (is (nil? @(rf/subscribe [:content [:story]])))
+        (is (= [[:content/load [:story]]] @*requests)))
+      (finally (rf/clear-subscription-cache!) (reset! rfdb/app-db before)))))

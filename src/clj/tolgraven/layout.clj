@@ -20,7 +20,9 @@
 ; :as document, script, style, font, image
 
 (defn- js [js] [:script (merge {:type "text/javascript" :async true} js)])
-(defn- css [href] [:link {:href href :rel "stylesheet" :type "text/css" :media "print" :onload "this.media='all'"}])
+(defn- css [href]
+  [:link (cond-> {:href href :rel "stylesheet" :type "text/css"}
+           (not= href "css/opensans.css") (assoc :media "print" :onload "this.media='all'"))])
 (defn- js-preload  [path] [:link {:rel "preload" :as "script" :href path}])
 (defn- img-preload [path] [:link {:rel "preload" :as "image" :href path}])
 (defn- css-preload [path] [:link {:rel "preload" :as "style" :type "text/css" :href path}])
@@ -118,6 +120,8 @@
     (for [path css-pre]
       (css-preload path))
     
+    [:link {:rel "preload" :as "font" :type "font/woff2" :crossorigin "anonymous"
+            :href "/webfonts/OpenSans-v29-latin.woff2"}]
     ;; The layout must be styled before first paint, including on a cold/private visit.
     (for [path (if (:dev env)
                  ["css/tolgraven/main.min.css"]
@@ -139,6 +143,9 @@
    [:body {:class "container themable framing-shadow sticky-footer-container"}
     
     [:div#app (when (:ssr request) {:data-hydrate "true"}) loading-content]
+    ;; A separate React root can report bootstrap failures without replacing
+    ;; server HTML that has not yet been hydrated.
+    [:div#page-init-status]
     (when-let [snapshot (get-in request [:ssr :snapshot])]
       [:script#ssr-bootstrap {:type "application/json"} (content/hydration-json snapshot)])
     (when-let [bundle (:site-content request)]
@@ -157,7 +164,7 @@
 (defn render-home
   [request]
   (let [ssr (when (and (ssr/enabled?) (ssr/route (:uri request)))
-              (try (ssr/page! (:uri request))
+              (try (ssr/page! (:uri request) (:query-params request))
                    (catch Exception _
                      (log/error "Page SSR unavailable; returning a retryable public error")
                      {:error? true})))
@@ -185,7 +192,7 @@
    :description (or (get-in ssr [:snapshot :content :document :description])
                     "tolgrAVen audiovisual by Joen Tolgraven")
    :pre-pre [["media/fog-3d-small.mp4" "video"]]
-   :css-paths ["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
+   :css-paths [
                "css/fontawesome.css"
                "css/solid.css"
                "css/brands.min.css"

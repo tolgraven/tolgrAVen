@@ -1,6 +1,6 @@
 (ns tolgraven.db
   (:require [reagent.core :as r]
-            [re-frame.core :as rf]
+            [tolgraven.react :as rf]
             [cljs.reader]))
 
 
@@ -20,6 +20,7 @@
 
 (def data ; default db. Needs to be cleaned out of content already haha.
   {:state {:menu false
+           :user-section [:closed]
            :is-loading {}
            :theme-force-dark true
            :is-personal false

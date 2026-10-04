@@ -1,5 +1,5 @@
 (ns tolgraven.gpt.events
-  (:require [re-frame.core :as rf]
+  (:require [tolgraven.react :as rf]
             [clojure.string :as string]))
 
 (rf/reg-event-fx :gpt/new-thread [(rf/inject-cofx :now)]

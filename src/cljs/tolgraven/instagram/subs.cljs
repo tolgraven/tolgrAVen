@@ -1,6 +1,6 @@
 (ns tolgraven.instagram.subs
   (:require
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [cljs-time.coerce :as ctc]
     [cljs-time.core :as ct]))
 

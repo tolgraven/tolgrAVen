@@ -9,24 +9,24 @@
   "Generic anchored content which can transition into a full-viewport surface."
   [_ _]
   (let [*element (atom nil)
+        *scale (r/atom nil)
         measure! (fn []
                    (when-let [element @*element]
                      ;; Fill the preview width and crop the page vertically. Fitting
                      ;; both axes makes portrait previews tiny and leaves a blank strip.
-                     (.setProperty (.-style element) "--popover-content-scale"
-                                   (/ (.-clientWidth element) (.-innerWidth js/window)))))
-        observer (js/ResizeObserver. measure!)
+                     (reset! *scale (/ (.-clientWidth element) (.-innerWidth js/window)))))
+        observer (when (exists? js/ResizeObserver) (js/ResizeObserver. measure!))
         set-element! (fn [element]
-                       (.disconnect observer)
+                       (when observer (.disconnect observer))
                        (reset! *element element)
                        (when element
-                         (.observe observer element)
+                         (when observer (.observe observer element))
                          (measure!)))]
     (r/create-class
       {:display-name "Popover"
        :component-did-mount (fn [_] (.addEventListener js/window "resize" measure!))
        :component-will-unmount (fn [_]
-                                 (.disconnect observer)
+                                 (when observer (.disconnect observer))
                                  (.removeEventListener js/window "resize" measure!))
        :reagent-render
        (fn [{:keys [aria-label class expanded? on-click on-pointer-enter
@@ -40,6 +40,7 @@
               {:aria-label aria-label
                :class (str class (when expanded? " popover--expanded"))
                :data-popover true
+               :style (when @*scale {"--popover-content-scale" @*scale})
                :tab-index 0
                :on-key-down on-key-down
                :on-focus on-focus

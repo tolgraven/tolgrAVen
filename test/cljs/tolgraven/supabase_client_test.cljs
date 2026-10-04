@@ -3,6 +3,7 @@
             [ajax.core :as ajax]
             [reagent.ratom :as ratom]
             [re-frame.core :as rf]
+            [re-frame.db :as rfdb]
             [tolgraven.service-status :as status]
             [tolgraven.supabase.client :as client]
             [tolgraven.supabase.realtime :as realtime]))
@@ -43,6 +44,7 @@
 
 (defn reset-client! [mock]
   (doseq [entry (vals @client/*tables)]
+    (when-let [monitor (some-> entry :*connection deref)] ((:close! monitor)))
     (when @(:*retry entry) (js/clearTimeout @(:*retry entry))))
   (reset! client/*queries {})
   (reset! client/*tables {})
@@ -74,11 +76,16 @@
                      (is (= "Before" (get-in @one [:data :name])))
                      (is (nil? (get-in @one [:data :email])))
                      (change! mock "store-site_users" {:table "site_users" :eventType "UPDATE" :new {:id "u" :name "After"}})
+                     (tick!)))
+            (.then (fn []
                      (ratom/flush!)
+                     (is (= "After" (get-in @rfdb/app-db [:store :snapshot :seed :users 0 :name])))
                      (is (= "After" (get-in @one [:data :name])))
                      (is (= 1 (count (:docs @all))))
                      (is (= 1 (count @(:selects mock))))
                      (change! mock "store-site_users" {:table "site_users" :eventType "DELETE" :old {:id "u"}})
+                     (tick!)))
+            (.then (fn []
                      (ratom/flush!)
                      (is (nil? @one))
                      (is (= [] (:docs @all)))
@@ -163,10 +170,12 @@
                      (status! mock "store-user_documents" "SUBSCRIBED")
                      (swap! client/*seed assoc :store_documents [{:owner_id "a" :collection "gpt-threads" :doc_id "t" :data {:messages ["secret"]}}])
                      (swap! client/*loaded conj "user_documents")
+                     (tick!)))
+            (.then (fn []
                      (is (= 1 (count (:docs @private))))
                      (@(:auth-change mock) "SIGNED_OUT" nil)
                      (ratom/flush!)
-                     (is (= [] (:docs @private)))
+                     (is (empty? (:docs @private)) "Auth change immediately hides private data")
                      (is (= [] (:store_documents @client/*seed)))
                      (@*resolve #js {:data #js [#js {:owner_id "a" :collection "gpt-threads" :doc_id "t" :data #js {:messages #js ["late secret"]}}]})
                      (tick!)))
@@ -228,7 +237,7 @@
       (reset! status/*failures {})
       (reset! (:rows mock) {"site_users" [{:id "u" :name "Available over HTTP"}]})
       (let [all (client/ensure-query! {:path-collection [:users]})]
-        (status! mock "store-site_users" "CHANNEL_ERROR")
+        (status! mock "store-site_users" "TIMED_OUT")
         (-> (tick!)
             (.then (fn []
                      (is (contains? @status/*failures [:supabase-stream "site_users"]))
@@ -275,7 +284,7 @@
           before (.-supabase js/globalThis)]
       (reset-client! mock)
       (reset! status/*failures {})
-      (aset (.-auth (:sdk mock)) "getSession"
+      (aset (.-auth ^js (:sdk mock)) "getSession"
             #(js/Promise.resolve #js {:error #js {:message "Do not expose raw details"}}))
       (set! (.-supabase js/globalThis) #js {:createClient (fn [& _] (:sdk mock))})
       (client/init! {:url "https://example.invalid" :anon-key "public"} (fn [_]) (fn [_]))

@@ -1,6 +1,6 @@
 (ns tolgraven.github.subs
   (:require [clojure.string :as string]
-            [re-frame.core :as rf]))
+            [tolgraven.react :as rf]))
 
 (rf/reg-sub :github/website-url
   (fn [[_ _]]

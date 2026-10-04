@@ -1,10 +1,12 @@
 (ns tolgraven.react 
-  (:refer-clojure :exclude [atom]) 
+  (:refer-clojure :exclude [atom])
+  (:require-macros [tolgraven.react])
   (:require
    [react-dom :as react-dom]
    [react :as react]
    [reagent.core :as r]
-   [reagent.ratom]))
+   [reagent.ratom]
+   [re-frame.core :as rf]))
 
 (def adapt-react-class         reagent.core/adapt-react-class)
 (def argv                      reagent.core/argv)
@@ -21,3 +23,22 @@
 (def create-portal             react-dom/createPortal)
 (def suspense                  (adapt-react-class react/Suspense))
 
+
+;; First-class API values remain available (e.g. passing dispatch to a helper).
+;; Calls use the macros above and retain source metadata in debug builds.
+(defn dispatch [& args] (apply rf/dispatch args))
+(defn dispatch-sync [& args] (apply rf/dispatch-sync args))
+(defn subscribe [& args] (apply rf/subscribe args))
+(defn reg-event-db [& args] (apply rf/reg-event-db args))
+(defn reg-event-fx [& args] (apply rf/reg-event-fx args))
+(defn reg-sub [& args] (apply rf/reg-sub args))
+(defn reg-sub-raw [& args] (apply rf/reg-sub-raw args))
+(defn reg-fx [& args] (apply rf/reg-fx args))
+(defn reg-cofx [& args] (apply rf/reg-cofx args))
+(def ->interceptor rf/->interceptor)
+(def clear-subscription-cache! rf/clear-subscription-cache!)
+(def debug rf/debug)
+(def get-coeffect rf/get-coeffect)
+(def get-effect rf/get-effect)
+(def inject-cofx rf/inject-cofx)
+(def set-loggers! rf/set-loggers!)

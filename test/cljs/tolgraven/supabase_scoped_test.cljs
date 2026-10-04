@@ -3,6 +3,8 @@
             [reagent.ratom :as ratom]
             [re-frame.db :as db]
             [tolgraven.supabase.scoped :as scoped]
+            [tolgraven.supabase.connection :as connection]
+            [tolgraven.service-status :as status]
             [tolgraven.supabase-client-test :as mocks]))
 
 (deftest readers-coalesce-refreshes-and-release-streams-without-evicting-content
@@ -40,3 +42,35 @@
             (.finally (fn [] (ratom/dispose! reader)
                         (scoped/connect! (:client old) (:read! old))
                         (reset! db/app-db before) (done))))))))
+
+(deftest connection-negotiation-is-quiet-until-failure-or-a-live-loss
+  (let [id [:test-connection (random-uuid)]
+        monitor (connection/watch! {:id id :title "Test connection"})
+        state! (:status! monitor)]
+    (try
+      (doseq [state ["CONNECTING" "CHANNEL_ERROR" "CLOSED"]] (state! state))
+      (is (not (contains? @status/*failures id)) "Initial transient negotiation is silent")
+      (state! "SUBSCRIBED")
+      (is (not (contains? @status/*failures id)))
+      (state! "CLOSED")
+      (is (contains? @status/*failures id) "Losing an established connection is visible")
+      (state! "SUBSCRIBED")
+      (is (not (contains? @status/*failures id)) "Reconnection clears the outage")
+      ((:close! monitor))
+      (state! "TIMED_OUT")
+      (is (not (contains? @status/*failures id)) "Intentional disposal ignores late callbacks")
+      (finally ((:close! monitor))))))
+
+(deftest initial-connection-failure-is-bounded-and-disposal-cancels-the-deadline
+  (async done
+    (let [failed-id [:test-deadline (random-uuid)] closed-id [:test-closed (random-uuid)]
+          failed (connection/watch! {:id failed-id :title "Test connection" :timeout-ms 10})
+          closed (connection/watch! {:id closed-id :title "Test closed" :timeout-ms 10})]
+      ((:close! closed))
+      (is (not (contains? @status/*failures failed-id)))
+      (js/setTimeout
+       (fn []
+         (is (contains? @status/*failures failed-id) "A connection that never joins reports failure")
+         (is (not (contains? @status/*failures closed-id)))
+         ((:close! failed))
+         (done)) 30))))

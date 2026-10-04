@@ -1,6 +1,6 @@
 (ns tolgraven.link-preview.subs
   (:require
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [tolgraven.link-preview.util :as util]))
 
 (rf/reg-sub

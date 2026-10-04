@@ -1,6 +1,6 @@
 (ns tolgraven.components.media
   (:require
-   [re-frame.core :as rf]
+   [tolgraven.react :as rf]
    [reagent.core :as r]
    [tolgraven.image :as img]
    [tolgraven.ui :as ui]

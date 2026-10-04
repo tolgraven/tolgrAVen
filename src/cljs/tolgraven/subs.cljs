@@ -1,17 +1,22 @@
 (ns tolgraven.subs
-  (:require [re-frame.core :as rf]
+  (:require [tolgraven.react :as rf]
+            [tolgraven.render-context :as context]
             [re-frame.db :as rfdb]
             [reagent.ratom :as ratom]
             [tolgraven.content.client :as content]
             [tolgraven.content.contract :as content-contract]
             [tolgraven.util :as util]
             [tolgraven.supabase.client :as supabase-client]
+            [tolgraven.supabase.query :as query]
             [clojure.walk :as walk]
             [clojure.string :as string]
             [reitit.frontend.easy :as rfe]))
 
 (rf/reg-sub-raw :store/on-snapshot
-  (fn [_ [_ opts]] (supabase-client/ensure-query! opts)))
+  (fn [db [_ opts]]
+    (if context/*server?*
+      (ratom/make-reaction #(query/query-contract (get-in @db [:store :public]) opts))
+      (supabase-client/ensure-query! opts))))
 
 (rf/reg-sub :get ;should this be discontinued? or only used transiently like migrate everything away once got a comp working?
  (fn [db [_ & path]]
@@ -23,8 +28,12 @@
   (fn [db [_ path]]
     ;; Re-frame owns/disposes this reaction with its last consumer. Only the
     ;; request is a side effect; the data remains ordinary cached app-db content.
-    (let [ks (if (seq path) [(first path)] content-contract/sections)]
-      (content/prefetch! ks)
+    (let [ks (if (seq path)
+               (filterv (set content-contract/sections) [(first path)])
+               content-contract/sections)]
+      ;; Runtime API data (GitHub, Instagram, etc.) shares :content but is not
+      ;; CMS content. Its own module owns loading and error reporting.
+      (when (and (seq ks) (not context/*server?*)) (rf/dispatch [:content/load ks]))
       (ratom/make-reaction #(get-in @db (into [:content] path))))))
 
 (rf/reg-sub :state
@@ -38,7 +47,7 @@
 (rf/reg-sub :debug
   :<- [:state]
   (fn [state [_ path]]
-    (get state (into [:debug] path))))
+    (get-in state (into [:debug] path))))
 
 (rf/reg-sub :exception
   :<- [:state]
@@ -50,35 +59,30 @@
   (fn [state [_ path]]
     (get-in state (into [:form-field] path))))
 
-(rf/reg-sub :<-store
-  :<- [:booted? :store]
-  (fn [initialized [_ & coll-docs]]
-    (when initialized
-      (let [look-in (if (even? (count coll-docs))
-                      {:path-document coll-docs}
-                      {:path-collection coll-docs})]
-        (some-> (rf/subscribe [:store/on-snapshot look-in])
-                deref
-                :data
-                (walk/keywordize-keys))))))
+(defn- store-inputs [[_ & coll-docs]]
+  [(rf/subscribe [:store/on-snapshot
+                  {(if (even? (count coll-docs)) :path-document :path-collection)
+                   (vec coll-docs)}])
+   (rf/subscribe [:booted? :store])])
 
-(rf/reg-sub :<-store-2 ; newer version which mostly works but not quite everywhere, differing in how keys are handled...
-  :<- [:booted? :store]
-  (fn [initialized [_ & coll-docs]]
-    (when initialized
-      (let [look-in (if (even? (count coll-docs))
-                      {:path-document (vec coll-docs)}
-                      {:path-collection (vec coll-docs)})]
-        (some-> (rf/subscribe [:store/on-snapshot look-in])
-                deref
-                util/normalize-store-result)))))
+(rf/reg-sub :<-store
+  store-inputs
+  (fn [[response initialized] _]
+    (when (or initialized (some? response))
+      (some-> response :data walk/keywordize-keys))))
+
+(rf/reg-sub :<-store-2
+  store-inputs
+  (fn [[response initialized] _]
+    (when (or initialized (some? response))
+      (some-> response util/normalize-store-result))))
 
 (rf/reg-sub :<-store-q
   (fn [[_ opts]]
     [(rf/subscribe [:store/on-snapshot opts])
      (rf/subscribe [:booted? :store])])
   (fn [[res initialized] [_ _]]
-    (when initialized
+    (when (or initialized (some? res))
       (some-> res
               util/normalize-store-result))))
 
@@ -109,9 +113,9 @@
     (prn carousel id)
     (get-in carousel [id :index] 0)))
 
-(rf/reg-sub :get-css-var ; is obviously problematic (not pure, doesnt actually auto update(?)) so figure out way around
- (fn [db [_ var-name]]
-   (util/<-css-var var-name)))
+(rf/reg-sub :get-css-var
+  (fn [db [_ var-name]]
+    (get-in db [:state :css-var var-name])))
 
 (rf/reg-sub :menu
  (fn [db [_ _]]
@@ -202,7 +206,7 @@
    (when k
      (let [params (:path-params route)
            query (merge (:query-params route) query-map)]
-       (rfe/href k params query)))))
+       (context/href rfe/href k params query)))))
 
 
 (rf/reg-sub :href
@@ -214,7 +218,7 @@
                  k
                  page-id)
           query (merge (:query-params route) query)
-          uri (rfe/href path params query)]
+          uri (context/href rfe/href path params query)]
       (if (keyword? k)
         uri
         (string/replace (or uri "")
@@ -252,3 +256,12 @@
 ;  :<- [:option [:theme]]           
 ;  (fn [theme [_ _]]
 ;   (get theme :colorscheme "default")))
+
+(rf/reg-sub :common/page-ready?
+  :<- [:common/page]
+  (fn [page _] (some? page)))
+
+(rf/reg-sub :timestamp
+  :<- [:state [:ssr]]
+  (fn [ssr [_ ts]]
+    (or (when (:hydrating? ssr) (get-in ssr [:dates ts])) (util/timestamp ts))))

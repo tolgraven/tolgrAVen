@@ -1,7 +1,7 @@
 (ns tolgraven.listener
   (:require
     [clojure.string :as string]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [tolgraven.util :as util]
     [cljs-time.core :as ct]))
 

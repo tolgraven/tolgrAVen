@@ -1,6 +1,6 @@
 (ns tolgraven.link-preview.events
   (:require
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [tolgraven.link-preview.util :as util]))
 
 (rf/reg-event-db

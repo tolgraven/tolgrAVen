@@ -3,6 +3,8 @@
             [clojure.data.json :as json]
             [clojure.string :as string]
             [tolgraven.ssr :as ssr]
+            [tolgraven.page-router :as pages]
+            [tolgraven.page :as page]
             [tolgraven.layout :as layout]
             [tolgraven.config :as config]
             [optimus.html :as optimus-html]
@@ -38,7 +40,7 @@
       (is (thrown? Exception (ssr/page! "/blog"))))
     (reset! ssr/*cache {})))
 
-(deftest post-snapshot-reads-one-post-and-no-comments-or-private-columns
+(deftest post-snapshot-reads-only-selected-post-threads-and-public-columns
   (let [*calls (atom [])]
     (with-redefs [content/fresh-bundle! (fn [_] {:content {:header {:text ["Test" []]}}})
                   supabase/request! (fn [_ table {:keys [query-params]}]
@@ -47,10 +49,16 @@
                                                "blog_posts" [{:id 42 :user_id "u1" :title "Hi"
                                                               :text "Body" :ts 0 :tags "one two"
                                                               :secret "never serialize"}]
-                                               "site_users" [{:id "u1" :name "Name" :email "private"}])})]
+                                               "blog_comments" [{:id "c1" :parent_post 42 :user_id "u1" :text "SSR comment" :ts 0 :secret "private"}]
+                                               "site_users" [{:id "u1" :name "Name" :email "private"}]
+                                               "auth_roles" [])})]
       (let [snapshot (ssr/snapshot! "/blog/post/hi-42" {:post-id 42})]
         (is (= "eq.42" (get-in @*calls [0 1 "id"])))
-        (is (= ["blog_posts" "site_users"] (mapv first @*calls)))
+        (is (= ["blog_posts" "blog_posts" "blog_comments" "site_users" "auth_roles"] (mapv first @*calls)))
+        (is (= "eq.42" (get-in @*calls [2 1 "parent_post"])))
+        (is (= "SSR comment" (get-in snapshot [:comments 0 :text])))
+        (is (not (string/includes? (get-in @*calls [1 1 "select"]) "text"))
+            "Pagination and tags use only summaries, never every post body")
         (is (= {:id "u1" :name "Name"} (get-in snapshot [:posts 0 :author])))
         (is (not (string/includes? (pr-str snapshot) "secret")))
         (is (= "1970-01-01" (get-in snapshot [:posts 0 :date])))))))
@@ -73,7 +81,7 @@
 (deftest layout-escapes-post-titles-and-embeds-the-matching-public-snapshot
   (with-redefs [config/env {:dev true}
                 ssr/enabled? (constantly true)
-                ssr/page! (fn [_] {:html "<article>Safe rendered content</article>"
+                ssr/page! (fn [& _] {:html "<article>Safe rendered content</article>"
                                    :snapshot {:posts [{:title "</title><script>bad()</script>"}]
                                               :content {}}})
                 optimus-html/link-to-js-bundles (fn [& _] "")]
@@ -104,3 +112,31 @@
       (is (= "Edited in Strapi" (:html (ssr/page! "/"))))
       (is (nil? (ssr/route "/user/private"))))
     (reset! ssr/*cache {})))
+
+(deftest registered-pages-share-the-render-cache-without-page-type-branches
+  (let [*renders (atom 0) *value (atom "First")
+        spec {:ssr true :module :example :data-source ::example}]
+    (defmethod ssr/page-data! ::example [_ uri selection]
+      {:content {} :app-db-edn (pr-str {:example {:value @*value}})})
+    (reset! ssr/*cache {})
+    (try
+      (with-redefs [pages/match (fn [_] {:data spec :path-params {}})
+                    ssr/render! (fn [snapshot] (swap! *renders inc) (:app-db-edn snapshot))]
+        (is (= {} (ssr/route "/example")))
+        (is (= :miss (:cache (ssr/page! "/example"))))
+        (is (= :hit (:cache (ssr/page! "/example"))))
+        (is (= 1 @*renders))
+        (reset! *value "Changed")
+        (is (= :miss (:cache (ssr/page! "/example"))))
+        (is (= 2 @*renders)))
+      (finally (remove-method ssr/page-data! ::example) (reset! ssr/*cache {})))))
+
+(deftest additional-module-routes-declare-ssr-and-bound-their-inputs
+  (is (= {} (ssr/route "/cv")))
+  (is (= {:doc "index"} (ssr/route "/docs")))
+  (is (= {:doc "tolgraven.core"} (ssr/route "/docs/codox/tolgraven.core")))
+  (is (nil? (ssr/route "/docs/codox/.."))))
+
+(deftest page-selection-does-not-depend-on-server-rendering
+  (let [match (pages/match "/blog/post/hi-42")]
+    (is (= {:post-id 42} (page/selection (assoc-in match [:data :ssr] false))))))

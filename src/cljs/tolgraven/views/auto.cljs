@@ -1,5 +1,5 @@
 (ns tolgraven.views.auto
-  (:require [re-frame.core :as rf]
+  (:require [tolgraven.react :as rf]
             [tolgraven.component :as component]
             [tolgraven.content.contract :as content-contract]
             [tolgraven.ssr.contract :as ssr-contract]

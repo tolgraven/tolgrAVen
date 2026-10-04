@@ -1,7 +1,7 @@
 (ns tolgraven.docs.events
   (:require
     [reagent.core :as r]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [clojure.string :as string]
     [clojure.walk :as walk]
     [ajax.core :as ajax]

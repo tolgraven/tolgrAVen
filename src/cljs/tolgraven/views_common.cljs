@@ -1,7 +1,9 @@
 (ns tolgraven.views-common
   (:require
     [reagent.core :as r]
-    [re-frame.core :as rf]
+    [react :as react]
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.react :as rf]
     [reitit.frontend.easy :as rfe]
     [clojure.string :as string]
     [markdown.core :refer [md->html]]
@@ -44,9 +46,9 @@
                     (doall
                      (for [[title url page] links
                            :let [id (str "menu-link-" (string/lower-case title))]]  ^{:key id}
-                          [:li [:a {:href @(rf/subscribe [:href page])
+                          [:li [:a {:href @(rf/subscribe [:href (keyword page)])
                                     :name title :id id
-                                    :class (when (= page
+                                    :class (when (= (keyword page)
                                                     @(rf/subscribe [:common/page-id]))
                                              "is-active")}
                                 (string/upper-case title)]])))]
@@ -295,8 +297,9 @@
           {:on-mouse-down (fn [e] (println "etc"))})
    [:div.scrollbar-thumb]])
 
-(defn settings "Settings panel for theme and stuff"
+(defc settings "Settings panel for theme and stuff"
   []
+  (react/useEffect (fn [] (rf/dispatch [:settings/read-css-vars]) js/undefined) #js [])
   (let [open? @(rf/subscribe [:state [:settings :panel-open]])
         vars {:line-width         {:unit "px"   :min 0     :max 15}
               :line-width-vert    {:unit "px"   :min 0     :max 15}
@@ -321,7 +324,8 @@
           {:id (str (name k) "-input")
            :type :number
            :min min :max max :step step
-           :default-value (str (js/parseFloat @(rf/subscribe [:get-css-var (name k)])))
+           :value (if-let [value @(rf/subscribe [:get-css-var (name k)])]
+                    (str (js/parseFloat value)) "")
            :on-change #(rf/dispatch [:->css-var! (name k) (-> % .-target .-value (str unit))])}]
          [:label {:for (str (name k) "-input")}
           (-> (name k)
@@ -332,4 +336,3 @@
      #_[:palette in general?
      #_[:other css vars...]
      #_[:idea to let customize as much as possible and eventually turn into a kinda interactive site-builder]]]))
-

@@ -435,3 +435,42 @@
                      (is (= "[8 42 23 34]" (.-textContent element)) "Unmount retains state for every scope")))
             (.catch #(is false (str %)))
             (.finally (fn [] (reset! *scope-handles nil) (close!) (done))))))))
+
+(deftest restored-snapshots-are-consumed-and-republished-on-navigation
+  (async done
+    (let [account (random-uuid) previous @storage/*identity
+          options {:scope :user} id [:state [:component :consume-test]]
+          *disk (atom nil) write-before storage/write-disk!]
+      (reset! storage/*identity account)
+      (set! storage/write-disk! (fn [key value]
+                                 (when (= key (storage/storage-key id options)) (reset! *disk value))))
+      (-> (storage/ready! options)
+          (.then (fn [_]
+                   (storage/write! id {:expanded false :comments [1 2]} options)
+                   (storage/track! id #(hash-map :expanded false :comments [1 2]) options)
+                   (storage/drain!)
+                   (is (not= "{}" @*disk))
+                   (is (= {:expanded false :comments [1 2]} (:value (storage/read! id options))))
+                   (storage/drain!)
+                   (is (= "{}" @*disk) "Restoration consumes the disk snapshot")
+                   (is (some? (storage/read! id options)) "Other components still read shared memory")
+                   (storage/flush!)
+                   (storage/drain!)
+                   (is (= "{}" @*disk) "Unchanged restoration does not immediately write itself back")
+                   (storage/flush! :navigation)
+                   (storage/drain!)
+                   (is (not= "{}" @*disk) "Pagehide republishes current tracked values")
+                   (storage/remove! id options)
+                   (swap! storage/*tracked dissoc id)
+                   (storage/flush! :navigation)
+                   (storage/drain!)
+                   (is (= "{}" @*disk) "Removed snapshots stay removed")))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (set! storage/write-disk! write-before)
+                      (swap! storage/*tracked dissoc id)
+                      (doseq [*store [storage/*buckets storage/*reads storage/*consumed]] (swap! *store dissoc account))
+                      (swap! storage/*ready disj account)
+                      (swap! storage/*dirty disj account)
+                      (reset! storage/*identity previous)
+                      (done)))))))

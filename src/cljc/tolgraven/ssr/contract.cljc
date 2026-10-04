@@ -1,7 +1,12 @@
 (ns tolgraven.ssr.contract
-  (:require [tolgraven.content.contract :as content]))
+  (:require #?(:clj [clojure.edn :as edn] :cljs [cljs.reader :as edn])
+            [tolgraven.content.contract :as content]
+            [tolgraven.main.pages :as main-pages]
+            [reitit.core :as reitit]))
 
-(def landing-paths #{"/" "/about" "/services" "/hire"})
+(def landing-paths
+  (into #{} (comp (filter #(= :landing (:kind (second %)))) (map first))
+        (reitit/routes (reitit/router main-pages/spec))))
 
 ;; The ordinary client layout and SSR use the same ordering. :init entries are
 ;; browser lifecycle instructions, not extra server-rendered DOM.
@@ -18,3 +23,26 @@
 
 (defn page-spec [uri]
   (when (landing-paths uri) landing-spec))
+
+(declare merge-state)
+
+(defn- records [rows]
+  (into {} (keep (fn [row] (when (:id row) [(str (:id row)) (dissoc row :author :date)]))) rows))
+
+(defn snapshot-state [snapshot]
+  (let [rows (concat (:posts snapshot) (:comments snapshot))
+        public {"users" (records (keep :author rows))
+                "blog-posts" (merge (records (:summaries snapshot)) (records (:posts snapshot)))
+                "blog-comments" (records (:comments snapshot))}
+        state {:store {:public public}
+               :state {:ssr {:hydrating? true
+                             :dates (into {} (keep (fn [{:keys [ts date]}] (when date [ts date]))) rows)}}}
+        encoded-state (if-let [encoded (:app-db-edn snapshot)]
+                        (let [value (edn/read-string encoded)]
+                          (when-not (map? value) (throw (ex-info "Invalid public page state" {})))
+                          value)
+                        {})]
+    (merge-state state encoded-state)))
+
+(defn merge-state [db incoming]
+  (merge-with (fn [old new] (if (and (map? old) (map? new)) (merge-state old new) new)) db incoming))

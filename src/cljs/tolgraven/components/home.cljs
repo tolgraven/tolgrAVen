@@ -1,9 +1,10 @@
 (ns tolgraven.components.home
   (:require
    [clojure.string :as string]
-   [re-frame.core :as rf]
+   [tolgraven.react :as rf]
    [reagent.core :as r]
-   [reanimated.core :as anim]
+   [tolgraven.components.timer :as anim]
+   [tolgraven.component.restore :as restore]
    [tolgraven.components.media :as media]
    [tolgraven.image :as img]
    [tolgraven.ui :as ui]))
@@ -14,7 +15,8 @@
         [:p line]))
 
 (defn intro [{:keys [title text buttons logo-bg bg]}]
-  (let [showing-title (r/atom 0)
+  (let [restored? (restore/skip-enter?)
+        showing-title (r/atom (if restored? (count title) 0))
         updater-2 (fn update-2 []
                     (let [frac (/ (count title)
                                   (swap! showing-title inc))
@@ -26,13 +28,13 @@
                     (when-not (= @showing-title (count title))
                       (js/setTimeout update-2 time-next))))]
     (fn [{:keys [title text buttons logo-bg bg]}]
-      [:section#intro
+      [:section#intro {:data-restored (when restored? true)}
        [media/bg-logo logo-bg]
        [img/media-as-bg (merge (first bg) {:id "top-banner"})]
 
        [:div.h1-wrapper.center-content
         [:h1.h-responsive.h-intro
-         [anim/timeout updater-2 2000]
+         (when-not restored? [anim/timeout updater-2 2000])
          (if (< @showing-title 1)
            "•"
            (map-indexed

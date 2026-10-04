@@ -1,64 +1,70 @@
 # Page SSR and re-frame 1.4.7
 
 Set `SSR_ENABLED=true` to enable server rendering for `/`, `/about`, `/services`,
-`/hire`, `/blog`, `/blog/page/:nr`, and numeric-ID permalinks such as
+`/hire`, `/cv`, `/docs`, `/docs/codox/:doc`, `/blog`, `/blog/page/:nr`, and numeric-ID permalinks such as
 `/blog/post/title-42`. `BLOG_SSR_ENABLED` remains a compatibility fallback.
 `SSR_WORKER` defaults to `target/ssr/site.js` locally and `/app/ssr/site.js` in
 Docker (`BLOG_SSR_WORKER` is also accepted). Run `make ssr` for the local worker.
-Other routes, including CV, docs, archive, and tags, currently render in the
-browser. No Coolify flag is changed by this branch.
+Other routes, including blog archive and tags, currently render in the browser. No Coolify flag is changed by this branch.
 
-The generic `ssr` Shadow target renders a shared page shell with route-specific
-bodies. `ssr/contract.cljc` declares the landing layout and its CMS dependencies;
-the ordinary client layout and main module reference the same declaration.
-All four landing URLs use the complete landing bundle because their client
-routes scroll within that page. They do not read Supabase during server rendering.
+Each module owns a `pages.cljc` namespace exposing `spec`, a native Reitit
+route tree containing its pages, names, exported view keys, and opt-in `:ssr`
+policy. It can declare multiple pages, nested routes, and inherited route data.
+These lightweight namespaces do not require their module's views, events, or
+subscriptions. Browser controllers use reader conditionals; the same declarations
+are readable by the Clojure backend. Module specs expose their local `pages/spec`.
+
+The browser router and server page router compose those route trees directly
+using Reitit. There is no global page registry or second list of page definitions.
+To opt a supported page out, remove its `:ssr` entry. Adding a new page requires
+an ordinary view and a public data plan; toggling SSR does not create another
+component definition.
 
 ## Rendering and hydration
 
-Ring fetches only the requested public posts (three per listing page, plus one
-lookahead), relevant author names, and fresh CMS shell content. It sends that
-allowlisted snapshot to a persistent Node renderer compiled with Shadow. The
-renderer calls Reagent `render-to-string`. The browser uses the same pure
-`ssr/views.cljs` shell and blog/landing body views and exact snapshot with `hydrate-root`.
+Both environments render `views/page.cljs`, the ordinary application shell.
+The blog uses `blog/views.cljs`; the landing page uses `views/auto.cljs` and its
+existing home/media components. There are no SSR-only copies of the header,
+footer, post markup, Markdown configuration, pagination or landing sections.
 
-No server request uses the browser's global re-frame app-db, subscription cache,
-effects, or Supabase auth session. Dates are formatted on the backend in UTC.
-The snapshot contains no clock-dependent output or random component IDs.
-CMS image IDs are prefixed: a bare server-rendered ID such as `cljs` creates a
-named window property and can hijack Closure namespace initialization.
-Markdown uses the same ReactMarkdown/GFM configuration on both sides, with raw
-HTML disabled and the default safe URL transform. Bootstrap JSON escapes script
-terminators. Server credentials never enter that JSON.
+Ring fetches the requested post bodies (three per listing page, plus one
+lookahead), lightweight summaries for pagination/tags/adjacent links, public
+author profiles, selected posts' comment threads, and fresh CMS content. Subsequent
+SPA comment reads use the ordinary filtered subscriptions.
+All four landing URLs load the complete landing content because their existing
+controllers scroll within that page. Landing SSR does not read Supabase.
 
-Comments are enabled by a client effect after hydration and use the existing
-blog comment components. Post bodies remain in their original DOM nodes.
-The server snapshot also seeds the exact scoped post cache. A partial snapshot
-never marks a complete table loaded. Navigation to a different blog page discards the initial SSR
-root and resumes the normal application; it cannot reuse that snapshot for a
-different post or a later navigation back.
+A persistent Node worker renders synchronously with Reagent `render-to-string`.
+Each request initializes an isolated public app-db, renders using ordinary
+subscriptions, then clears the subscription cache, app-db and restoration context
+in `finally`. Browser effects are disabled during server rendering; accidental
+browser HTTP construction throws instead of starting an untracked request.
+Only required SSR modules enter the Node compilation graph; browser-only modules
+such as Leaflet remain in their existing lazy bundles.
 
-The first browser render exactly matches the public server shell. After commit,
-the existing interactive header, footer, settings, user, search and notification
-components replace shell slots while main content retains its DOM nodes.
-The landing hero, services, story, gallery and media are in server HTML. Hero
-entrances and typing animations are skipped. Services and contact actions attach
-during hydration. Video backgrounds use native controls and defer downloading.
-External modules (Strava, SoundCloud, Instagram, GitHub, GPT and chat) mount as
-viewport islands within 800px of the viewport; observers disconnect on entry or
-unmount. Their reserved space prevents an empty placeholder collapsing to zero.
-Navigating between landing aliases retains the hydrated content; leaving it
-resumes the normal application. Post editing and link previews remain in normal
-blog views; archive/tag SSR is still future work.
+The browser installs the same content and scoped post/summary/comment caches, preloads
+the visible shell modules, then hydrates the ordinary page. Public author data is
+held stable through hydration. The comments section, the first four root comments and their initially expanded
+replies render on the server. Comment reads are bounded to the selected posts;
+folded content stays unmounted. Supabase connections and browser controllers
+begin after commit. Existing DOM nodes remain in place. Main-module
+viewport loading, media interactions, editing, search, user/settings panels,
+Markdown and link previews use their existing implementations.
+
+Restoration skips loading placeholders for ready resources and entrance/typing
+animations. Genuinely missing resources retain the normal loading/error states.
+CMS image IDs are prefixed: a bare `cljs` ID can hijack the compiler's global
+namespace through the browser's named-element properties. Bootstrap JSON escapes
+script terminators; server credentials never enter the snapshot.
 
 Initialization failures retain server-rendered articles and display a retry
 message. A Supabase/CMS/renderer failure on the server returns a visible retryable
-503; missing posts return 404. Runtime comment failures use the webpage notices.
+503; missing posts return 404. Runtime comment failures use the HUD.
 
 ## Cache correctness and limits
 
 The backend caches the rendered fragment together with its exact public snapshot,
-keyed by path. Every request still reads fresh CMS content and, for blog routes,
+keyed by path and query parameters. Every request still reads fresh CMS content and, for blog routes,
 the required Supabase rows before reusing HTML. This deliberately saves rendering, not database reads: the
 schema does not provide a reliable revision covering edits, author names,
 deletions, and listing membership. A timestamp-only or blind path TTL would serve
@@ -90,10 +96,12 @@ or replaced clients cannot overwrite current content.
 
 ## Using the re-frame upgrade
 
-re-frame is now 1.4.7. Blog views/events/subscriptions and the component state
-helpers use `re-frame.core-instrumented`, preserving call-site file/line data in
-development without production metadata overhead. Function-valued APIs elsewhere
-continue to use `re-frame.core`.
+re-frame is now 1.4.7. Application code uses the existing `tolgraven.react`
+shim for re-frame operations. Its macros forward the original call site to
+`re-frame.core-instrumented`, preserving file/line metadata when `goog.DEBUG`
+is true. Release builds compile to the regular API without metadata allocation.
+First-class function values remain available through the same shim. See
+`doc/re-frame-pair.md` for live inspection with the installed skill.
 
 Tests use `re-frame.tooling/live-query-vs` to check subscription disposal instead
 of depending on the internal cache representation. `dispatch-and-settle` verifies
@@ -130,7 +138,7 @@ lein with-profile prod run -m shadow.cljs.devtools.cli release app
 
 Open the browser suite at port 4002 after generating the SSR fixture. It checks
 real Node-rendered HTML against client hydration, DOM identity, absence of
-loading/mount transitions, and post-hydration comment insertion. Landing tests preserve the hero, image,
+loading/mount transitions, and comment node preservation through hydration. Landing tests preserve the hero, image,
 story, gallery and main nodes while enhancing the shell, and exercise the contact
 action. Regression tests cover exported Reagent 2 defc Vars, error-boundary reset
 on route changes, and asynchronous per-post updates. The fixture generator also
@@ -141,3 +149,46 @@ References: [Reagent server rendering](https://reagent-project.github.io/docs/ma
 [React hydration requirements](https://react.dev/reference/react-dom/client/hydrateRoot),
 [Shadow Node targets](https://shadow-cljs.github.io/docs/UsersGuide.html#target-node-library),
 [re-frame 2026 releases](https://day8.github.io/re-frame/releases/2026/).
+
+Cached comments and display state restore through the shared component-storage
+envelope before mounting. Only public scoped post/comment/profile queries are
+eligible; fresh SSR entries take precedence. Root expansion, thread folding and
+motion identities survive return navigation. SSR comments are present in the initial markup and matching client query caches;
+hydration does not gate the comments section on an interactive flag. Previously
+shown posts/comment frames use stable motion keys; explicitly folded threads
+remain unmounted.
+
+Reading a valid snapshot consumes its disk entry on the shared write tick. Its
+in-memory copy remains available to other consumers without further disk reads.
+Unchanged debounce flushes do not recreate consumed entries; navigation/pagehide
+publishes current tracked values again. Explicit app-db deletions still update
+or remove the corresponding snapshots. Expired envelopes are compacted on read.
+Legacy blog display settings migrate once into the same queue, and legacy
+settings reads remove the consumed path and empty parents.
+
+The user panel uses `defc` presence and exit handling. Closing sets app-db to
+closed immediately. The component retains its last inputs during its CSS exit,
+then removes the original wrapper; reopening cancels removal. Event handlers
+contain no delayed close/open transitions.
+
+Service failures use the HUD, without duplicate banners above page content.
+Initial WebSocket negotiation is silent, including transient socket replacement
+during authentication. An explicit timeout or failure to join within ten seconds
+reports an error; losing an established connection reports immediately. Successful
+reconnection clears the notice, and intentionally disposing a reader never raises
+a disconnection error. HTTP content remains usable while live updates reconnect.
+
+Client navigation does not request SSR output. The loader accepts a module's
+declarative `:route-depends`; blog readiness acquires the same re-frame
+subscriptions as the views for summaries, visible post bodies and root comment
+threads before committing navigation. A generic subscription adapter waits for
+readiness and releases its own reaction, retaining app-db content. Main-page CMS
+requirements likewise resolve before the page swap. The keyed swapper retains
+the outgoing page instance for its fade, and stale completion events cannot
+finish a different transition. Supabase settings initialization runs in the
+background without the global loading spinner.
+
+The shell uses one Open Sans stylesheet, with the existing v29 Latin font served
+locally and preloaded. The fallback font uses matching vertical metrics so the
+landing title keeps its line-box height before the font arrives. A restored hero
+retains its settled decoration while its page fades out.

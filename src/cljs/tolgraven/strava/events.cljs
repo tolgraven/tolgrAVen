@@ -1,7 +1,7 @@
 (ns tolgraven.strava.events
   (:require
     [clojure.walk :as walk]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [cljs-time.core :as ct]
     [cljs-time.format :as ctf]))
 

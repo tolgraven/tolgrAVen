@@ -1,5 +1,5 @@
 (ns tolgraven.instagram.events
-  (:require [re-frame.core :as rf]))
+  (:require [tolgraven.react :as rf]))
 
 (rf/reg-event-fx :instagram/init
   (fn [_ _]

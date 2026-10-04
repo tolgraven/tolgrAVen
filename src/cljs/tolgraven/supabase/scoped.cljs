@@ -1,9 +1,10 @@
 (ns tolgraven.supabase.scoped
   "Public blog readers: retain results in app-db, hold live channels only while
    subscribed, and coalesce invalidations before issuing filtered HTTP reads."
-  (:require [re-frame.core-instrumented :as rf]
+  (:require [tolgraven.react :as rf]
             [reagent.ratom :as ratom]
             [tolgraven.supabase.query :as query]
+            [tolgraven.supabase.connection :as connection]
             [tolgraven.service-status :as status]))
 
 (defonce *readers (atom {}))
@@ -51,8 +52,9 @@
   (queue!))
 
 (defn- close-channel! [table]
-  (when-let [{:keys [client channel]} (get @*channels table)]
+  (when-let [{:keys [client channel monitor]} (get @*channels table)]
     (swap! *channels dissoc table)
+    (when monitor ((:close! monitor)))
     (.removeChannel ^js client channel)
     (status/recover! [:supabase-scoped-stream table])))
 
@@ -62,8 +64,13 @@
     (let [tables (set (mapcat #(query/realtime-tables (:opts %)) (vals @*readers)))]
       (doseq [table (keys @*channels) :when (not (tables table))] (close-channel! table))
       (doseq [table tables :when (not (get @*channels table))]
-        (let [channel (.channel client (str "blog-scoped-" table))]
-          (swap! *channels assoc table {:client client :channel channel})
+        (let [^js channel (.channel client (str "blog-scoped-" table))
+              current? #(and (identical? transport @*transport)
+                             (identical? channel (get-in @*channels [table :channel])))
+              monitor (connection/watch!
+                       {:id [:supabase-scoped-stream table] :title "Blog live updates unavailable"
+                        :current? current? :retry! #(invalidate! table)})]
+          (swap! *channels assoc table {:client client :channel channel :monitor monitor})
           ;; One invalidation stream per table; snapshots remain query-scoped.
           ;; DELETE can contain only the PK, so it must invalidate all readers.
           (-> channel
@@ -73,14 +80,8 @@
                (fn [state]
                  (when (and (identical? transport @*transport)
                             (identical? channel (get-in @*channels [table :channel])))
-                   (case state
-                     "SUBSCRIBED" (do (status/recover! [:supabase-scoped-stream table])
-                                      (invalidate! table))
-                     ("CHANNEL_ERROR" "TIMED_OUT" "CLOSED")
-                     (status/fail! [:supabase-scoped-stream table] "Blog live updates disconnected"
-                                   "Current content remains available. Retry to refresh it."
-                                   #(invalidate! table))
-                     nil)))))))
+                   ((:status! monitor) state)
+                   (when (= "SUBSCRIBED" state) (invalidate! table))))))))
       ;; HTTP doesn't wait for WebSocket readiness. A SUBSCRIBED invalidation
       ;; repairs the small connection window without discarding live writes.
       (doseq [[key {:keys [*dirty] :as entry}] @*readers :when @*dirty]
@@ -102,8 +103,8 @@
   (let [key (query-key opts)]
     (or (get-in @*readers [key :*state])
         (let [state (ratom/make-reaction
-                     #(or @(rf/subscribe [:store/scoped key])
-                          (when-not (:path-document opts) {:docs []}))
+                     ;; nil means pending; {:docs []} is a completed empty result.
+                     #(deref (rf/subscribe [:store/scoped key]))
                      :on-dispose
                      (fn []
                        (when-let [entry (get @*readers key)]

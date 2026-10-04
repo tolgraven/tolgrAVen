@@ -1,6 +1,6 @@
 (ns tolgraven.search.subs
   (:require
-   [re-frame.core :as rf]
+   [tolgraven.react :as rf]
    [tolgraven.ui :as ui]
    [clojure.string :as string]
    [clojure.walk :as walk]))

@@ -4,6 +4,9 @@
 
  :builds
  {:ssr {:target :node-script
+             :build-hooks [(tolgraven.build.compat/rrb-vector)]
+             :compiler-options {:external-config {:tolgraven/ssr true}}
+             :prepend-js "globalThis.XMLHttpRequest = class { constructor() { throw new Error('SSR views must use supplied request data, not browser HTTP'); } };"
              :main tolgraven.ssr.worker/main
              :output-to "target/ssr/site.js"
              :js-options {:js-provider :shadow :keep-native-requires true
@@ -13,11 +16,13 @@
                           :export-conditions ["worker" "browser" "require" "default"]}}
 
   :supabase-test {:target :node-test
+             :build-hooks [(tolgraven.build.compat/rrb-vector)]
                   :output-to "target/supabase-tests.js"
                   :ns-regexp "tolgraven\\.supabase-.*-test$"
                   :autorun true}
 
   :app-test {:target :browser-test
+             :build-hooks [(tolgraven.build.compat/rrb-vector)]
              :test-dir "resources/public/js/tests"
              :ns-regexp "tolgraven\\..*-test$"}
 
@@ -26,6 +31,7 @@
    :jvm-opts ["-Ddev=true"]
    ; :dev-http {4001 "resources/public"}
    :target :browser
+             :build-hooks [(tolgraven.build.compat/rrb-vector)]
    :module-loader true
    :modules {:main      {:entries [tolgraven.app]
                          :init-fn tolgraven.app/init!}
@@ -91,7 +97,8 @@
               :after-load  tolgraven.core/mount-components}}
 
   :app
-  {:target               :browser
+  {:build-hooks [(tolgraven.build.compat/rrb-vector)]
+   :target               :browser
    :module-loader true
    :modules {:main      {:entries [tolgraven.app]
                          :init-fn tolgraven.app/init!}

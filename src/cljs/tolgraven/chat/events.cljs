@@ -1,6 +1,6 @@
 (ns tolgraven.chat.events
   (:require
-   [re-frame.core :as rf]
+   [tolgraven.react :as rf]
    [clojure.string :as string]))
 
 (rf/reg-event-fx :chat/post

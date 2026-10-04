@@ -10,8 +10,19 @@
             [tolgraven.supabase.query :as supabase-query]
             [tolgraven.store.contract :as store-contract]
             [reitit.core :as reitit]
+            [reitit.frontend.easy :as rfe]
             [tolgraven.routes :as routes]
             [tolgraven.loader :as loader]
+            [tolgraven.views-common :as common]
+            [tolgraven.views.page :as page]
+            [tolgraven.component.data :as data]
+            [tolgraven.component.sources]
+            [tolgraven.docs.views :as docs-view]
+            [tolgraven.ui.code :as code]
+            [tolgraven.components.init :as init-view]
+            [tolgraven.react :as shim]
+            [re-frame.registrar :as registrar]
+            [tolgraven.ssr.client :as ssr]
             [tolgraven.events]
             [tolgraven.subs]
             [shadow.lazy :as lazy]
@@ -75,6 +86,22 @@
             (done)))
         0))))
 
+(deftest hydrated-route-does-not-enable-page-spinner
+  (async done
+    (let [before @ssr/*snapshot
+          *events (atom [])
+          *loads (atom 0)]
+      (reset! ssr/*snapshot {:path "/blog" :kind :blog})
+      (try
+        (routes/navigate! (atom 0) #(swap! *events conj %)
+                          (fn [_] (swap! *loads inc)
+                            (js/Promise.resolve {:view {:page (fn [] [:div])}}))
+                          {:path "/blog" :data {:name :blog :module :blog :page :page}})
+        (is (= 1 @*loads) "Hydration still initializes the module")
+        (is (not-any? #(= :loading/on (first %)) @*events))
+        (finally (reset! ssr/*snapshot before)))
+      (js/setTimeout done 0))))
+
 (deftest module-load-failure-clears-loading
   (async done
     (let [*events (atom [])]
@@ -110,6 +137,22 @@
               (.catch (fn [error] (is false (str error))))
               (.finally done)))))))
 
+(deftest ready-module-waits-for-declared-data
+  (let [id (keyword (str (random-uuid)))
+        before @rfdb/app-db
+        spec {:depends [{:source :app-db :path [id]}]
+              :view {:view (fn [] [:div "Ready"])}}
+        loadable (reify
+                   lazy/ILoadable (ready? [_] true)
+                   IDeref (-deref [_] spec))]
+    (try
+      (with-redefs [loader/modules {id loadable}]
+        (is (nil? (loader/ready-spec id :view [])))
+        (swap! rfdb/app-db assoc id false)
+        (is (= spec (loader/ready-spec id :view []))
+            "A present false value is loaded data, not a loading state"))
+      (finally (reset! rfdb/app-db before)))))
+
 (deftest component-loader-forwards-initialization-hooks-and-args
   (async done
     (let [id (keyword (str (random-uuid)))
@@ -138,7 +181,9 @@
                                  rf/subscribe (fn ([_] (atom true))
                                                   ([_ _] (atom true)))
                                  rf/dispatch #(swap! *events conj %)]
-                     (render spec :first {:second true}))
+                     (is (= [component :first {:second true}]
+                            (last (render spec :first {:second true})))
+                         "Ready modules render on the first pass, before promise callbacks"))
                    (is (= [[:test/init id]] @*events))
                    posted))
           (.then (fn []
@@ -311,3 +356,135 @@
         (react-dom/flushSync #(r/flush))
         (is (= "Live edit" (.-textContent element)))
         (finally (react-dom/flushSync #(dom/unmount root)) (.remove element))))))
+
+(deftest header-routes-survive-json-roundtrip-on-direct-blog-load
+  (let [before @rfdb/app-db
+        element (.createElement js/document "div") root (dom/create-root element)
+        menu {:work [["Services" "/services" "services"]
+                     ["Story" "/about" "about"]
+                     ["Hire me" "/hire" "hire"]]
+              :personal [["Blog" "/blog" "blog"]]}]
+    (try
+      (rf/clear-subscription-cache!)
+      (swap! rfdb/app-db assoc :common/route (reitit/match-by-path routes/router "/blog"))
+      (with-redefs [rfe/href (fn
+                              ([route] (:path (reitit/match-by-name routes/router route)))
+                              ([route _params _query]
+                               (:path (reitit/match-by-name routes/router route))))]
+        (react-dom/flushSync #(.render root (r/as-element [common/header-nav menu])))
+        (is (= ["/services" "/about" "/hire" "/blog"]
+               (mapv #(.getAttribute % "href") (array-seq (.querySelectorAll element "a"))))))
+      (finally (react-dom/flushSync #(dom/unmount root))
+               (rf/clear-subscription-cache!) (reset! rfdb/app-db before)))))
+
+
+(deftest shim-keeps-registration-call-site-in-debug-builds
+  (shim/reg-event-db :test/instrumented-shim (fn [db _] db))
+  (try
+    (let [source (meta (registrar/get-handler :event :test/instrumented-shim))]
+      (is (re-find #"integration_test.cljs" (:file source)))
+      (is (pos? (:line source))))
+    (finally (rf/clear-event :test/instrumented-shim))))
+
+(deftest bootstrap-fallback-follows-state-and-retries-without-owning-page-dom
+  (let [before @rfdb/app-db
+        element (.createElement js/document "div")
+        retained (.createElement js/document "article")
+        root (dom/create-root element)
+        *retries (atom 0)
+        retry! #(do (swap! *retries inc)
+                    (rf/dispatch-sync [:state [:page-init] {:status :loading}]))]
+    (.appendChild (.-body js/document) retained)
+    (.appendChild (.-body js/document) element)
+    (try
+      (react-dom/flushSync #(do
+                             (rf/dispatch-sync [:state [:page-init] {:status :failed}])
+                             (dom/render root [init-view/<fallback> retry!])))
+      (is (some? (.querySelector element "[role=alert]")))
+      (react-dom/flushSync #(.click (.querySelector element "button")))
+      (r/flush)
+      (is (= 1 @*retries))
+      (is (nil? (.querySelector element "[role=alert]")))
+      (is (.-isConnected retained) "Retry preserves the separate page root")
+      (finally
+        (dom/unmount root) (.remove element) (.remove retained)
+        (rf/clear-subscription-cache!) (reset! rfdb/app-db before)))))
+
+
+(deftest page-swap-retains-outgoing-dom-instead-of-remounting-it
+  (let [before @rfdb/app-db element (.createElement js/document "div")
+        root (dom/create-root element)
+        a {:path "/"} b {:path "/blog"}
+        *form (r/atom [page/swapper "opacity" [:div#kept-page "Home"] nil a nil])]
+    (.appendChild (.-body js/document) element)
+    (try
+      (swap! rfdb/app-db assoc :common/route a :common/route-last nil)
+      (react-dom/flushSync #(dom/render root [(fn [] @*form)]))
+      (let [original (.querySelector element "#kept-page")]
+        (swap! rfdb/app-db assoc :common/route b :common/route-last a)
+        (reset! *form [page/swapper "opacity" [:div#incoming-page "Blog"] [:div#kept-page "Home"] b a])
+        (r/flush)
+        (is (identical? original (.querySelector element "#kept-page")))
+        (is (some? (.querySelector element ".swapped #kept-page")))
+        (is (some? (.querySelector element ".swap-in #incoming-page"))))
+      (finally (dom/unmount root) (.remove element) (reset! rfdb/app-db before)))))
+
+(deftest background-initialization-does-not-dispatch-loading-events
+  (let [handler (tolgraven.events/get-http-fn :get)
+        effects (handler {:db {}} [:http/get {:uri "/api/supabase/settings" :background? true}])]
+    (is (not (contains? effects :dispatch)))
+    (is (nil? (get-in effects [:http-xhrio :on-success 2])))
+    (is (not (contains? (:http-xhrio effects) :background?)))))
+
+(deftest subscription-preload-releases-only-its-own-reaction
+  (async done
+    (let [*ready (r/atom false) *disposed (atom 0)
+          _ (rf/reg-sub-raw :test/preload-ready
+              (fn [_ _] (ratom/make-reaction #(deref *ready)
+                                           :on-dispose #(swap! *disposed inc))))
+          consumer (ratom/make-reaction #(deref (rf/subscribe [:test/preload-ready])) :auto-run true)
+          _ @consumer
+          load! (:load! (get @data/*sources :subscription))]
+      (-> (load! {:query [:test/preload-ready] :timeout-ms 100})
+          (.then (fn [ready]
+                   (is (true? ready))
+                   (is (zero? @*disposed) "The mounted consumer still owns the shared subscription")
+                   (is (true? @consumer))
+                   (ratom/dispose! consumer)
+                   (is (= 1 @*disposed) "Last owner releases the subscription")))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (ratom/dispose! consumer) (done))))
+      (reset! *ready true))))
+
+(deftest codox-links-are-rewritten-before-rendering
+  (is (= "<a href=\"/docs/codox/tolgraven.core#init\">Init</a>"
+         (docs-view/page-links "<a href=\"tolgraven.core.html#init\">Init</a>")))
+  (doseq [url ["https://example.com/page.html" "#heading" "/blog" "mailto:test@example.com"]]
+    (let [html (str "<a href=\"" url "\">Link</a>")]
+      (is (= html (docs-view/page-links html))))))
+
+(deftest markdown-code-uses-reagent-props-without-js-conversion
+  (is (= [:code "inline"] (code/markdown-code-component {:children "inline"}))))
+
+(deftest debug-and-theme-events-preserve-app-db
+  (let [before @rfdb/app-db]
+    (try
+      (reset! rfdb/app-db {:sentinel :retained})
+      (rf/dispatch-sync [:debug [:layers] true])
+      (rf/dispatch-sync [:theme/dark-mode true])
+      (rf/dispatch-sync [:theme/colorscheme "test"])
+      (is (= {:sentinel :retained
+              :state {:debug {:layers true}}
+              :options {:theme {:dark-mode true :colorscheme "test"}}}
+             @rfdb/app-db))
+      (finally (reset! rfdb/app-db before)))))
+
+(deftest markdown-code-renders-through-the-react-adapter
+  (let [element (.createElement js/document "div") root (dom/create-root element)]
+    (try
+      (react-dom/flushSync
+       #(dom/render root [code/parse-markdown-components "Inline `hello`\n\n```clojure\n(+ 1 2)\n```\n"]))
+      (is (.includes (.-textContent element) "hello"))
+      (is (.includes (.-textContent element) "(+ 1 2)"))
+      (is (some? (.querySelector element "pre code")))
+      (finally (react-dom/flushSync #(dom/unmount root))))))

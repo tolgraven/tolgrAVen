@@ -1,6 +1,7 @@
 (ns tolgraven.blog.subs
   (:require
-    [re-frame.core-instrumented :as rf]
+    [tolgraven.react :as rf]
+    [reagent.ratom :as ratom]
     [tolgraven.blog.model :as model]
     [clojure.string :as string]))
 
@@ -31,12 +32,16 @@
          sort
          reverse)))
 
-(rf/reg-sub :blog/post
+(rf/reg-sub :blog/post-records
   (fn [[_ post-id]]
     (rf/subscribe [:<-store-q {:path-collection [:blog-posts]
                                :scoped? true
                                :where [[:id :== post-id]]
                                :doc-changes true}]))
+  (fn [posts _] posts))
+
+(rf/reg-sub :blog/post
+  (fn [[_ post-id]] (rf/subscribe [:blog/post-records post-id]))
   (fn [posts [_ post-id]]
     (some #(when (= post-id (:id %)) %) (vals posts))))
 
@@ -160,7 +165,7 @@
   (fn [[_ blog-id]] (rf/subscribe [:blog/post blog-id]))
   (fn [post _] (:comments post)))
 
-(rf/reg-sub :comments/for-q-flat
+(rf/reg-sub :comments/thread-records
   (fn [[_ blog-id parent-id]]
     (rf/subscribe [:<-store-q {:path-collection [:blog-comments]
                               :scoped? true
@@ -168,6 +173,10 @@
                                       [:parent-comment :== parent-id]]
                               :order-by [[:ts :desc]]
                               :doc-changes true}]))
+  (fn [comments _] comments))
+
+(rf/reg-sub :comments/for-q-flat
+  (fn [[_ blog-id parent-id]] (rf/subscribe [:comments/thread-records blog-id parent-id]))
   (fn [comments _] (when (seq comments) comments)))
 
 ;; Reserved for direct comment lookup; keep the unfinished subscription visible.
@@ -189,3 +198,21 @@
   (fn [db [_ path]]
     (case (get-in db [:state :active-user :comment-votes (keyword (str (last path)))] 0)
       1 :up -1 :down nil)))
+
+(rf/reg-sub-raw :blog/page-ready?
+  (fn [_ [_ {:keys [page post-id]}]]
+    (ratom/make-reaction
+     (fn []
+       (let [posts @(rf/subscribe [:blog [:posts]])
+             size @(rf/subscribe [:blog/posts-per-page])
+             ids (if post-id [post-id]
+                     @(rf/subscribe [:blog/ids-for-page (dec (or page 1)) size]))
+             ;; Realize every input so bodies and comment threads start together.
+             ready (mapv (fn [id]
+                           [(some? @(rf/subscribe [:blog/post-records id]))
+                            (some? @(rf/subscribe [:comments/thread-records id]))]) ids)]
+         (and (or post-id (some? posts)) (every? true? (mapcat identity ready))))))))
+
+(rf/reg-sub :blog/post-loaded?
+  (fn [[_ id]] (rf/subscribe [:blog/post-records id]))
+  (fn [records _] (some? records)))

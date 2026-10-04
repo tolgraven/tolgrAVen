@@ -57,6 +57,8 @@
  * * * * * * * * * * * * * * */
 .swapper {
   position: relative;
+  // Keep the fading page's negative z-index above the main/background layer.
+  isolation: isolate;
 }
 .swapped {
   position: absolute;
@@ -86,8 +88,8 @@
     transform: translateX(-150%);
   }
 
-  &.swapped-out { // bc we cant animate display: none so would need a yet additional class to fully hide right? nuke from dom seems wiser tho...
-    display: none;
+  &.swapped-out {
+    opacity: 0; // Keep the outgoing page through its fade; .removed hides it afterward.
   }
 }
 
@@ -544,4 +546,3 @@ button:hover .blur-bg, button:active .blur-bg,
     // transform: scale(1, 1);
   }
 }
-

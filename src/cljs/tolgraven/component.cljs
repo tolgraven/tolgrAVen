@@ -1,5 +1,6 @@
 (ns tolgraven.component
   (:require [clojure.string :as string]
+            [tolgraven.render-context :as context]
             [reagent.core :as r]
             [react :as react]
             [tolgraven.component.motion :as motion]
@@ -236,7 +237,7 @@
   (let [resources (dependencies definition args)]
     ;; Deliberately before mount: requests are shared and not owned by a React
     ;; instance, so speculative/abandoned renders neither duplicate nor leak them.
-    (data/prefetch! resources)
+    (when-not context/*server?* (data/prefetch! resources))
     (case (data/state resources)
       :ready form
       :error [:section.component-failed {:role "alert"}

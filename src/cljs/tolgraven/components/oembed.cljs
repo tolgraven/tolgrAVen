@@ -2,7 +2,7 @@
   (:require
     [clojure.string :as string]
     [reagent.core :as r]
-    [re-frame.core :as rf]
+    [tolgraven.react :as rf]
     [tolgraven.image :as img]
     [tolgraven.macros :as m]
     [tolgraven.ui :as ui]))

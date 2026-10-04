@@ -1,5 +1,7 @@
 (ns tolgraven.re-frame-upgrade-test
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [clojure.core.rrb-vector :as rrb]
+            [clojure.core.rrb-vector.rrbt :as rrbt]
+            [cljs.test :refer-macros [deftest is async]]
             [re-frame.core-instrumented :as rf]
             [re-frame.tooling :as tooling]
             [re-frame.db :as db]
@@ -34,3 +36,12 @@
             [:blog/state [:editing] post]
             [:common/navigate! :new-post]] @*effects))
     (is (= before @db/app-db))))
+
+(deftest rrb-positional-constructor-uses-its-own-vector-type
+  (let [^js source (rrb/vec (range 80))
+        rebuilt (rrbt/->Vector (.-cnt source) (.-shift source) (.-root source)
+                              (.-tail source) nil nil)]
+    (is (instance? rrbt/Vector rebuilt))
+    (is (= (vec (range 80)) rebuilt))
+    (is (= (vec (range 15 70)) (rrb/subvec rebuilt 15 70)))
+    (is (= 160 (count (rrb/catvec rebuilt rebuilt))))))

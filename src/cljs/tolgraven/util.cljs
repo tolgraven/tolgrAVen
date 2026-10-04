@@ -1,5 +1,5 @@
 (ns tolgraven.util
-  (:require [re-frame.core :as rf]
+  (:require [tolgraven.react :as rf]
             [reitit.frontend.easy :as rfe]
             [cljs-time.core :as ct]
             [cljs-time.format :as ctf]
@@ -123,9 +123,7 @@
                       js/getComputedStyle
                       ; here where'd need to force calc?
                       (.getPropertyValue (format-css-var var-name)))]
-          (cond-> v
-            (string? v) string/trim
-            (object? v) js->clj))
+          (string/trim v))
      (catch js/Error e "")))); else have some dummy div we literally apply stupid css to with the calced fucker...  goddamn. fix some other time then.
 
 (defn ->css-var "Set value of CSS variable.
@@ -333,6 +331,9 @@
        js/parseFloat
        (/ (js/parseFloat px-val))))
 
+(defn element-height-rem [element]
+  (px-to-rem (.-clientHeight element)))
+
 (defn em->px "Convert em to pixels, passing element for sizing"
   [el em-val]
   (-> (js/getComputedStyle (ensure-elem el))
@@ -377,17 +378,17 @@
 
 (defn when-seen "Dispatch event when observer hit, then end"
   [on-view & [repeating?]]
-  (let [observer (js/IntersectionObserver.
+  (let [observer (when (exists? js/IntersectionObserver)
+                   (js/IntersectionObserver.
                   (fn [[entry & _] observer]
                     (when (<= 0.5 (.-intersectionRatio entry)) ; fires a 0 on load for some reason...
                       (on-view)
                       (when-not repeating?
                         (.disconnect observer))))
-                  (clj->js {:threshold [0.5]}))]
+                  (clj->js {:threshold [0.5]})))]
     (fn [el]
-      (if el
-        (.observe observer el)
-        (.disconnect observer)))))
+      (when observer
+        (if el (.observe observer el) (.disconnect observer))))))
 
 (defn observer [on-view-change & [opt-map]] ;what's with the weird scrolling bug?
   (let [in-view (atom 0.0)
@@ -399,11 +400,11 @@
                         (on-view-change (reset! in-view frac)))))
         opts (merge {:threshold [0 0.2 0.4 0.6 0.8 1.0]}
                     opt-map)
-        observer (js/IntersectionObserver. on-change (clj->js opts))]
+        observer (when (exists? js/IntersectionObserver)
+                   (js/IntersectionObserver. on-change (clj->js opts)))]
     (fn [el]
-      (if el
-        (.observe observer el)
-        (.disconnect observer))))) ;prob needs tearing down for reload or?
+      (when observer
+        (if el (.observe observer el) (.disconnect observer)))))) ;prob needs tearing down for reload or?
 
 (defn xy-in-rect [e dimension rect]
  (let [m {:x (- (.-clientX e) (.-left rect)) ;XXX shouldnt do unneccessary work tho

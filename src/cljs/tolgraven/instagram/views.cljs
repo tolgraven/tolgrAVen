@@ -1,7 +1,7 @@
 (ns tolgraven.instagram.views
   (:require
    [reagent.core :as r]
-   [re-frame.core :as rf]
+   [tolgraven.react :as rf]
    [clojure.string :as string]
    [tolgraven.ui :as ui]
    [tolgraven.image :as img]
@@ -48,7 +48,8 @@
                                                   url
                                                   fallback-url)
                                          :on-error (fn [_]
-                                                     (rf/dispatch [:instagram/fetch-from-insta [(:id post)]])
+                                                     ;; The server-owned feed replaces the removed per-post API.
+                                                     ;; Preserve the fallback without dispatching its obsolete event.
                                                      (reset! fallback fallback-url)
                                                      #_(if-not @fallback
                                                          (rf/dispatch [:instagram/fetch-from-insta [(:id post)]]) ; dispatch on failed fetch due to url expiry
