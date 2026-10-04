@@ -39,9 +39,13 @@
      val#))
 
 (defmacro browser-only
-  "Exclude browser module references from the SSR compilation graph."
+  "Emit module references only with a Shadow browser module graph.
+   SSR and standalone documentation analysis cannot resolve lazy loadables."
   [form]
-  (when-not (get-in @cljs-env/*compiler* [:options :external-config :tolgraven/ssr]) form))
+  (let [compiler @cljs-env/*compiler*]
+    (when (and (seq (:shadow.build/ns->mod compiler))
+               (not (get-in compiler [:options :external-config :tolgraven/ssr])))
+      form)))
 
 (defmacro make-modules
   "Use keywords to generate Shadow lazy loadables.

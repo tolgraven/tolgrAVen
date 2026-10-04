@@ -4,13 +4,13 @@
     [tolgraven.macros :refer-macros [defc]]
     [reagent.core :as r]
     [tolgraven.react :as rf]
-    ["react-syntax-highlighter" :default SyntaxHighlighter]
+    ["react-syntax-highlighter$default" :as SyntaxHighlighter]
     ["react-syntax-highlighter/dist/esm/styles/hljs" :refer [darcula gruvboxDark]]
    ; ["react-syntax-highlighter/dist/esm/languages/hljs/clojure" :as clj-lang]
    ; ["react-syntax-highlighter/dist/esm/languages/hljs/javascript" :as js-lang]
-    ["react-markdown" :default ReactMarkdown]
-    ["remark-gfm" :default remarkGfm]
-    ["rehype-raw" :default rehypeRaw]))
+    ["react-markdown$default" :as ReactMarkdown]
+    ["remark-gfm$default" :as remarkGfm]
+    ["rehype-raw$default" :as rehypeRaw]))
 
 
 (def syntax-highlighter (r/adapt-react-class SyntaxHighlighter))

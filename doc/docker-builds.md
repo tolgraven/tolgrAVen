@@ -72,7 +72,32 @@ with `Dockerfile.builder` when changing toolchain setup.
 
 Application builds reuse prefab npm/Maven dependencies and a BuildKit cache for
 Shadow release analysis. Application source changes no longer reinstall Node,
-Leiningen, or npm packages. The final image contains the JRE and application jar,
+Leiningen, or npm packages.
+BuildKit runs three independent branches concurrently: the frontend builds CSS
+and releases both Shadow targets (`app` and `ssr`) in one invocation; the backend
+resolves Clojure dependencies and AOT-compiles; a third stage generates Codox
+documentation. The packaging stage waits for all three, copies the completed
+browser assets, and
+creates the uberjar without repeating prep tasks or cleaning compiled classes.
+Separate stage filesystems prevent target-directory and Maven download races.
+Codox analyzes source without a Shadow module graph: `browser-only` therefore
+omits lazy-loadable declarations for documentation analysis as well as SSR.
+The npm imports use the supported `$default`/`:as` form, which Codox can parse,
+and the namespace filter matches `tolgraven.*` names rather than file extensions.
+The prefab still supplies most dependencies, so ordinary builds gain primarily
+from overlapping compilation rather than downloading dependencies.
+
+The Shadow JVM defaults to a 1536 MB heap (`BUILD_JAVA_OPTIONS`), while the
+concurrent backend JVM defaults to 768 MB (`BUILD_CLJ_JAVA_OPTIONS`) and Codox to
+512 MB (`BUILD_DOCS_JAVA_OPTIONS`). These are
+build arguments; actual peak memory also includes Lein launchers, native memory
+and CSS tooling. Parallel compilation trades additional peak memory for elapsed
+time; adjust the build arguments to the builder's capacity. Parallel stages do
+not change npm or Maven dependencies. The corrected Codox configuration changes
+`project.clj`, which is part of the prefab hash; local build tooling will select
+the new hash even though its dependency contents are unchanged.
+
+The final image contains the JRE and application jar,
 not source checkout, node_modules, Maven cache, or compiler tools. Runtime JVM
 memory bounds are preserved.
 

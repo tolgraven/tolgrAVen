@@ -136,7 +136,7 @@
   {:language :clojurescript
    :output-path "resources/docs/codox"
    :metadata {:doc/format :markdown}
-   :namespaces [#"^(?!.*(code|ui)\.cljs$).*\.cljs$"] ; TODO ignore macro ns?
+   :namespaces [#"^tolgraven\."]
    :source-uri "https://github.com/tolgraven/tolgraven/blob/master/{filepath}#L{line}"}
 
   :profiles
