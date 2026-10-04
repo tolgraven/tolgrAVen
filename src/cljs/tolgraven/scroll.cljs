@@ -45,9 +45,8 @@
           restore? (or first-nav? browser-nav?)
           saved-pos (get-in db [:state :scroll-position path])]
       (merge
-       {:dispatch-n [[:scroll/and-block (if restore? ; used back/fwd, since clicking a link should equal there or top...
-                                          saved-pos
-                                          "main")] ; should only scroll to main if in-page nav without browser nav. Currently sometimes does main anyways
+       {:dispatch-n [(when (or (not restore?) (number? saved-pos))
+                       [:scroll/and-block (if restore? saved-pos "main")])
                      [:hide-header-footer false false]
                      (when-not restore?
                        [:scroll/past-top false])]} ; ensure little square in corner goes away since scroll to "main" = side line not extending up to make it luk gud

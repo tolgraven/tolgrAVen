@@ -279,3 +279,12 @@ other tabs when saving; older paths can eventually be evicted and receive normal
 the initial fold/window defaults, ensuring cached display settings cannot cause a
 hydration mismatch. No schema or deployment configuration changes
 are required for this behavior.
+
+Initial route resolution retains the browser's scroll position through hydration.
+The navigation handler reads the actual injected `:id` counter; an empty initial
+scroll snapshot does not trigger scroll-to-main. Development scroll save/restore
+runs only when a root is already mounted. Frame-by-frame first-load verification
+on `/blog/post/A-new-era-28` retained a 79.195px header at y=35.195px and main content
+at y=193.820px through hydration, with scrollY=0. The prior startup scroll-to-main
+moved both by 1.5px. Normal SPA navigation and saved browser-back positions retain
+their existing scroll behavior.

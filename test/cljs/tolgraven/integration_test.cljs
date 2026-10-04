@@ -491,3 +491,30 @@
       (is (.includes (.-textContent element) "(+ 1 2)"))
       (is (some? (.querySelector element "pre code")))
       (finally (react-dom/flushSync #(dom/unmount root))))))
+
+(defn- event-effects [id coeffects event]
+  ;; Exercise the registered handler without running navigation/timer effects.
+  (let [handler (-> (registrar/get-handler :event id) last :before)]
+    (:effects (handler {:coeffects (assoc coeffects :event event)}))))
+
+(deftest first-navigation-keeps-ssr-position-and-later-navigation-still-scrolls
+  (let [match {:path "/blog/post/A-new-era-28" :data {:name :blog-post :view identity}}
+        effects (event-effects :common/navigate
+                               {:db {} :scroll-position 0 :id {:id {:navigations 0}}}
+                               [:common/navigate match])
+        scroll-event (some #(when (= :scroll/on-navigate (first (get-in % [1 :dispatch])))
+                             (get-in % [1 :dispatch])) (:dispatch-n effects))]
+    (is (= [:scroll/on-navigate (:path match) 0] scroll-event)
+        "The injected ID counter marks the initial route as the first navigation")
+    (let [initial (event-effects :scroll/on-navigate {:db {}} scroll-event)
+          subsequent (event-effects :scroll/on-navigate {:db {}} [:scroll/on-navigate (:path match) 1])
+          returning (event-effects :scroll/on-navigate
+                                   {:db {:state {:browser-nav {:got-nav true}
+                                                 :scroll-position {(:path match) 250}}}}
+                                   [:scroll/on-navigate (:path match) 2])]
+      (is (not-any? #(= :scroll/and-block (first %)) (:dispatch-n initial))
+          "Hydration does not scroll an already visible page")
+      (is (some #{[:scroll/and-block "main"]} (:dispatch-n subsequent))
+          "Ordinary SPA navigation keeps its scroll-to-content behavior")
+      (is (some #{[:scroll/and-block 250]} (:dispatch-n returning))
+          "Browser back navigation still restores a saved position"))))

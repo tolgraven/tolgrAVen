@@ -63,19 +63,24 @@
             (rdomc/render @root [#'<root-page>]))))))
 
 (defn mount-components "Called each update when developing" []
-  (rf/dispatch-sync [:scroll/save-position-dev])
-  (rf/clear-subscription-cache!)
-  (routes/start!) ; restart router on reload?
-  (rf/dispatch [:reloaded])
-  (util/log "Mounting root component")
-  (-> (if (restore/skip-enter?)
-        ;; Preserve existing server DOM until the selected route/module is ready.
-        (js/Promise.all
-         #js [(l/load! {:module :user})
-              (l/load! {:module :link-preview})
-              (component-data/ensure! {:source :subscription :query [:common/page-ready?] :ttl-ms 1})])
-        (js/Promise.resolve nil))
-      (.then (fn [_] (render) (rf/dispatch [:scroll/restore-position-dev 150])))))
+  (let [hot-reload? (some? @root)]
+    ;; A first load keeps the browser's position through hydration. This save/
+    ;; restore pair is only for replacing an already mounted development root.
+    (when hot-reload? (rf/dispatch-sync [:scroll/save-position-dev]))
+    (rf/clear-subscription-cache!)
+    (routes/start!) ; restart router on reload?
+    (rf/dispatch [:reloaded])
+    (util/log "Mounting root component")
+    (-> (if (restore/skip-enter?)
+          ;; Preserve existing server DOM until the selected route/module is ready.
+          (js/Promise.all
+           #js [(l/load! {:module :user})
+                (l/load! {:module :link-preview})
+                (component-data/ensure! {:source :subscription :query [:common/page-ready?] :ttl-ms 1})])
+          (js/Promise.resolve nil))
+        (.then (fn [_]
+                 (render)
+                 (when hot-reload? (rf/dispatch [:scroll/restore-position-dev 150])))))))
 
 (defn init "Called only on page load" []
   (restore/begin! {:back? (or (restore/back-navigation?)

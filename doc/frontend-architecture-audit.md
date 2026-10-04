@@ -80,7 +80,7 @@ experiments remain isolated browser-library integrations.
 
 ## Validation for this pass
 
-- Browser regression suite: 116 tests, 603 assertions, all passing. Includes real
+- Browser regression suite: 117 tests, 607 assertions, all passing. Includes real
   Node-rendered blog, landing, CV, docs and missing-permalink hydration; shared
   subscription disposal; streaming app-db updates; stale private-response rejection;
   restoration/explicit deletion; error recovery; and preview interactions.

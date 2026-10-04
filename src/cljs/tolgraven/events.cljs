@@ -39,8 +39,8 @@
 (rf/reg-event-fx :common/navigate   [debug
                                      (rf/inject-cofx :scroll-position)
                                      (rf/inject-cofx :gen-id [:navigations])]
-  (fn [{:as cofx :keys [db scroll-position counters]} [_ match]]
-    (let [navigation-count (-> counters :id :navigations)
+  (fn [{:as cofx :keys [db scroll-position id]} [_ match]]
+    (let [navigation-count (get-in id [:id :navigations])
           old-match (:common/route db)
           new-match (assoc match :controllers
                            (when @render-context/*interactive?
