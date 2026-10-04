@@ -39,20 +39,18 @@
    (util/scroll-to-px px)))
 
 (rf/reg-event-fx :scroll/on-navigate [debug]
-  (fn [{:keys [db]} [_ path nav-count]]        ; TODO !! on iphone (also mac safari?) cancel transition on browser nav! fugly
+  (fn [{:keys [db]} [_ path nav-count completion]]
     (let [first-nav? (zero? nav-count)
           browser-nav? (get-in db [:state :browser-nav :got-nav])
           restore? (or first-nav? browser-nav?)
           saved-pos (get-in db [:state :scroll-position path])]
-      (merge
-       {:dispatch-n [(when (or (not restore?) (number? saved-pos))
-                       [:scroll/and-block (if restore? saved-pos "main")])
-                     [:hide-header-footer false false]
-                     (when-not restore?
-                       [:scroll/past-top false])]} ; ensure little square in corner goes away since scroll to "main" = side line not extending up to make it luk gud
-       (when browser-nav?
-         {:dispatch-later {:ms 300 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
-                           :dispatch [:state [:browser-nav :got-nav] false]} }))))) ; waiting because checks in main-page
+      {:db (cond-> db browser-nav? (assoc-in [:state :browser-nav :got-nav] false))
+       :dispatch-n [[:hide-header-footer false false]
+                    (when-not restore? [:scroll/past-top false])
+                    [:page/ready (when (or (not restore?) (number? saved-pos))
+                                   (if restore? saved-pos "main"))
+                     completion]]})))
+
 
 (rf/reg-event-fx :scroll/save-position-dev
   (fn [{:keys [db]} [_]]

@@ -16,7 +16,7 @@
     [tolgraven.routes :as routes]
     [tolgraven.loader :as loader]
     [tolgraven.views-common :as common]
-    [tolgraven.views.page :as page]
+    [tolgraven.page-transition :as page-transition]
     [tolgraven.component.data :as data]
     [tolgraven.component.sources]
     [tolgraven.docs.views :as docs-view]
@@ -82,7 +82,7 @@
       (@*resolve {:view {:page (fn [] [:div "Old page"])}})
       (js/setTimeout
         (fn []
-          (let [navigations (filter #(= :common/navigate (first %)) @*events)]
+          (let [navigations (filter #(= :page/navigate (first %)) @*events)]
             (is (= [current-match] (mapv second navigations)))
             (is (some #(= [:loading/off :page 1] %) @*events))
             (done)))
@@ -430,24 +430,6 @@
         (rf/clear-subscription-cache!) (reset! rfdb/app-db before)))))
 
 
-(deftest page-swap-retains-outgoing-dom-instead-of-remounting-it
-  (let [before @rfdb/app-db element (.createElement js/document "div")
-        root (dom/create-root element)
-        a {:path "/"} b {:path "/blog"}
-        *form (r/atom [page/<swapper> "opacity" [:div#kept-page "Home"] nil a nil])]
-    (.appendChild (.-body js/document) element)
-    (try
-      (swap! rfdb/app-db assoc :common/route a :common/route-last nil)
-      (react-dom/flushSync #(dom/render root [(fn [] @*form)]))
-      (let [original (.querySelector element "#kept-page")]
-        (swap! rfdb/app-db assoc :common/route b :common/route-last a)
-        (reset! *form [page/<swapper> "opacity" [:div#incoming-page "Blog"] [:div#kept-page "Home"] b a])
-        (r/flush)
-        (is (identical? original (.querySelector element "#kept-page")))
-        (is (some? (.querySelector element ".swapped #kept-page")))
-        (is (some? (.querySelector element ".swap-in #incoming-page"))))
-      (finally (dom/unmount root) (.remove element) (reset! rfdb/app-db before)))))
-
 (deftest background-initialization-does-not-dispatch-loading-events
   (let [handler (tolgraven.events/get-http-fn :get)
         effects (handler {:db {}} [:http/get {:uri "/api/supabase/settings" :background? true}])]
@@ -518,9 +500,8 @@
         effects (event-effects :common/navigate
                                {:db {} :scroll-position 0 :id {:id {:navigations 0}}}
                                [:common/navigate match])
-        scroll-event (some #(when (= :scroll/on-navigate (first (get-in % [1 :dispatch])))
-                             (get-in % [1 :dispatch])) (:dispatch-n effects))]
-    (is (= [:scroll/on-navigate (:path match) 0] scroll-event)
+        scroll-event (some #(when (= :scroll/on-navigate (first %)) %) (:dispatch-n effects))]
+    (is (= [:scroll/on-navigate (:path match) 0 nil] scroll-event)
         "The injected ID counter marks the initial route as the first navigation")
     (let [initial (event-effects :scroll/on-navigate {:db {}} scroll-event)
           subsequent (event-effects :scroll/on-navigate {:db {}} [:scroll/on-navigate (:path match) 1])
@@ -528,9 +509,83 @@
                                    {:db {:state {:browser-nav {:got-nav true}
                                                  :scroll-position {(:path match) 250}}}}
                                    [:scroll/on-navigate (:path match) 2])]
-      (is (not-any? #(= :scroll/and-block (first %)) (:dispatch-n initial))
+      (is (some #{[:page/ready nil nil]} (:dispatch-n initial))
           "Hydration does not scroll an already visible page")
-      (is (some #{[:scroll/and-block "main"]} (:dispatch-n subsequent))
+      (is (some #{[:page/ready "main" nil]} (:dispatch-n subsequent))
           "Ordinary SPA navigation keeps its scroll-to-content behavior")
-      (is (some #{[:scroll/and-block 250]} (:dispatch-n returning))
+      (is (some #{[:page/ready 250 nil]} (:dispatch-n returning))
           "Browser back navigation still restores a saved position"))))
+
+
+(deftest landing-navigation-preloads-the-actual-page-content
+  (let [home (first (routes/landing-dependencies {:data {:name :home}}))
+        about (first (routes/landing-dependencies {:data {:name :about}}))]
+    (is (= :strapi (:source home)))
+    (is (every? (set (:keys home)) [:header :footer :intro :services :gallery]))
+    (is (contains? (set (:keys about)) :story))
+    (is (not (contains? (set (:keys about)) :intro)))))
+
+(deftest page-transition-skips-hydration-and-query-only-changes
+  (let [a {:path "/blog"} b {:path "/"}]
+    (is (false? (second (:page/transition (event-effects :page/navigate {:db {}} [:page/navigate a])))))
+    (is (false? (second (:page/transition
+                        (event-effects :page/navigate {:db {:common/route a}}
+                                       [:page/navigate (assoc a :query-params {:userBox "true"})])))))
+    (is (true? (second (:page/transition
+                       (event-effects :page/navigate {:db {:common/route a}} [:page/navigate b])))))))
+
+(deftest obsolete-transition-completion-cannot-scroll-a-new-page
+  (let [*completed (atom 0) *flushed (atom 0)]
+    (with-redefs [r/after-render (fn [f] (f))
+                  r/flush #(swap! *flushed inc)]
+      (page-transition/ready! 999999 {:current? (constantly false)
+                                     :resolve! #(swap! *completed inc)}))
+    (is (= 1 @*completed) "Release the skipped native transition")
+    (is (zero? @*flushed) "Do not commit or reposition an obsolete page")))
+
+
+(deftest store-startup-is-shared-by-return-preload-and-hydration
+  (doseq [status [:loading :ready]]
+    (is (nil? (:dispatch (event-effects :store/init {:db {:state {:supabase-init status}}} [:store/init])))))
+  (is (= [:supabase/fetch-settings]
+         (:dispatch (event-effects :store/init {:db {:state {:supabase-init :failed}}} [:store/init])))))
+
+(deftest native-page-transition-commits-only-the-new-react-tree
+  (async done
+    (let [before @rfdb/app-db element (.createElement js/document "div")
+          root (dom/create-root element)
+          old {:path "/transition-old" :data {:view (fn [] [:div#old-transition-page "Old"])} }
+          next {:path "/transition-new" :data {:view (fn [] [:div#new-transition-page "New"])} }
+          fixture (fn []
+                    (let [route @(rf/subscribe [:common/route])]
+                      [:main#main {:style {:min-height "100vh"}}
+                       [:h1 "Shared heading"]
+                       [(get-in route [:data :view])]]))]
+      (.appendChild (.-body js/document) element)
+      (reset! rfdb/app-db {:common/route old})
+      (react-dom/flushSync #(dom/render root [fixture]))
+      (-> (page-transition/navigate! next true)
+          (.then (fn [_]
+                   (is (nil? (.querySelector element "#old-transition-page")))
+                   (is (some? (.querySelector element "#new-transition-page")))
+                   (is (= 1 (.-length (.querySelectorAll element "main"))))
+                   (is (= "Shared heading" (.-textContent (.querySelector element "h1"))))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (dom/unmount root) (.remove element)
+                      (rf/clear-subscription-cache!) (reset! rfdb/app-db before)
+                      (done)))))))
+
+
+(deftest route-change-with-a-query-change-still-positions-the-new-page
+  (let [old {:path "/blog" :query-params {:userBox "false"} :data {:view identity}}
+        next {:path "/" :data {:view identity}}
+        effects (event-effects :common/navigate
+                               {:db {:common/route old} :scroll-position 700 :id {:id {:navigations 1}}}
+                               [:common/navigate next])]
+    (is (some #{[:scroll/on-navigate "/" 1 nil]} (:dispatch-n effects))))
+  (let [effects (event-effects :scroll/on-navigate
+                               {:db {:state {:browser-nav {:got-nav true}}}}
+                               [:scroll/on-navigate "/" 2])]
+    (is (false? (get-in effects [:db :state :browser-nav :got-nav]))
+        "A later link click must not inherit this navigation's Back flag")))

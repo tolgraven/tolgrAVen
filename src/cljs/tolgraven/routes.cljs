@@ -1,6 +1,7 @@
 (ns tolgraven.routes
   (:require
     [tolgraven.component.registry]
+    [tolgraven.page-transition]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.ssr.client :as ssr] [tolgraven.react :as rf]
     [reitit.frontend :as reitit]
@@ -12,8 +13,8 @@
     [tolgraven.docs.pages :as docs]
     [tolgraven.loader :as l]
     [tolgraven.component.data :as data]
+    [tolgraven.content.contract :as content]
     [tolgraven.components.error :as error-view]
-    [tolgraven.main.module :as main]
     [tolgraven.component.restore :as restore]
     [tolgraven.ui :as ui]
     [tolgraven.main.pages :as home]
@@ -84,6 +85,9 @@
 ;; A late module response must never navigate back over a newer URL.
 (defonce *navigation (atom 0))
 
+(defn landing-dependencies [match]
+  [{:source :strapi :keys (content/keys-for-route (get-in match [:data :name]))}])
+
 (defn navigate!
   "Resolve a route with injectable loading and dispatch for isolated regression tests."
   [*navigation dispatch! load! match]
@@ -92,7 +96,7 @@
         {:keys [module page view name]} (:data match)
         retry! (fn []
                  (when (= :landing (:kind (:data match)))
-                   (data/invalidate! (set (:depends main/spec))))
+                   (data/invalidate! (set (landing-dependencies match))))
                  (navigate! *navigation dispatch! load! match))
         fail! (fn [error]
                 (when (= navigation @*navigation)
@@ -106,7 +110,7 @@
         navigate! (fn [component]
                     (when (= navigation @*navigation)
                       (if component
-                        (dispatch! [:common/navigate
+                        (dispatch! [:page/navigate
                                       (assoc-in match [:data :view] component)])
                         (dispatch! [:state [:error-page] a404/<not-found-page>]))))]
     (cond
@@ -115,7 +119,7 @@
           (dispatch! [:diag/new :error "404" "Not found"]))
 
       view (if (= :landing (:kind (:data match)))
-             (-> (data/ensure-all! (:depends main/spec))
+             (-> (data/ensure-all! (landing-dependencies match))
                  (.then #(navigate! view))
                  (.catch fail!))
              (navigate! view))

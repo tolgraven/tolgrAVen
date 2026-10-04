@@ -31,7 +31,6 @@
 (def spec main-module/spec)
 
 (def page page-view/<page>)
-(def swapper page-view/<swapper>)
 
 ;; -------------------------
 ;; Initialize app
@@ -69,6 +68,9 @@
     ;; restore pair is only for replacing an already mounted development root.
     (when hot-reload? (rf/dispatch-sync [:scroll/save-position-dev]))
     (rf/clear-subscription-cache!)
+    ;; A history return may lack a post snapshot. Start its managed data source
+    ;; before waiting for page dependencies, rather than only after mounting.
+    (when-not (:hydrate? @restore/*context) (rf/dispatch [:store/init]))
     (routes/start!) ; restart router on reload?
     (rf/dispatch [:reloaded])
     (util/log "Mounting root component")

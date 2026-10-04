@@ -246,9 +246,14 @@ declarative `:route-depends`; blog readiness acquires the same re-frame
 subscriptions as the views for summaries, visible post bodies and root comment
 threads before committing navigation. A generic subscription adapter waits for
 readiness and releases its own reaction, retaining app-db content. Main-page CMS
-requirements likewise resolve before the page swap. The keyed swapper retains
-the outgoing page instance for its fade, and stale completion events cannot
-finish a different transition. Supabase settings initialization runs in the
+requirements, including the hero and landing sections, likewise resolve as one
+batched dependency before navigation. CSS View Transitions capture the outgoing
+page while React mounts only the incoming page. The lifecycle adapter waits for
+queued controller events and the React commit, restores the scroll position
+instantly, and decodes visible images before releasing the new capture. No
+outgoing component can start reading the new route during its fade. First loads,
+query changes, and reduced motion skip the transition; unsupported browsers
+commit normally. Obsolete navigation callbacks cannot scroll a newer page. Supabase settings initialization runs in the
 background without the global loading spinner.
 
 The shell uses one Open Sans stylesheet, with the existing v29 Latin font served
