@@ -12,9 +12,10 @@
             [tolgraven.component.sources]))
 
 (def state state-store/state)
-(def <csub state-store/<csub)
-(def >creset state-store/>creset)
-(def >cupdate state-store/>cupdate)
+(def <sub state-store/<sub)
+(def >reset state-store/>reset)
+(def >update state-store/>update)
+(def path-of state-store/path-of)
 (def dump-state! state-store/dump!)
 (defn dump-content! [] (storage/flush! :content))
 

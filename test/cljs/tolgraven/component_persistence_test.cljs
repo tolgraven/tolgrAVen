@@ -168,7 +168,7 @@
                    (tick!))) ; Reagent 2 disposes reactions on a microtask for StrictMode.
           (.then (fn [_]
                    (is (not-any? (fn [[[query _] _]]
-                                   (and (#{:component-state/value :component-state/entry} (first query))
+                                   (and (#{:component-state/scoped-value :component-state/entry} (first query))
                                         (= :persist-test (nth (second query) 2 nil))))
                                  @subs/query->reaction)
                        "Unmount releases both re-frame subscriptions, not their cached values")
@@ -209,12 +209,12 @@
 
 ;; No :state declaration or helper imports: defc recognizes the scoped helpers.
 (defc <scoped-toggle> []
-  :let [[*setting path] (<csub [:opts :setting] {:initial false})]
-  [:button {:on-click #(>cupdate path not)} (str @*setting)])
+  :let [*setting (<sub :comp [:opts :setting] {:initial false})]
+  [:button {:on-click #(>update *setting not)} (str @*setting)])
 (defc <keyed-setting> {:state {:key identity :persist true}} [id]
-  :let [[*setting & [path]] (<csub [:opts :setting] {:initial 0})]
+  :let [*setting (<sub :comp [:opts :setting] {:initial 0})]
   [:button {:data-id id
-            :on-click #(do (>cupdate path + 2) (>cupdate path + 3))}
+            :on-click #(do (>update *setting + 2) (>update *setting + 3))}
    (str @*setting)])
 
 (deftest scoped-let-subscriptions-expand-paths-and-release-readers
@@ -256,7 +256,7 @@
           (.then (fn [_]
                    (react-dom/flushSync #(r/flush))
                    (is (= "5" (.-textContent element)) "Queued updates do not overwrite each other")
-                   (component/>creset resolved 12)
+                   (component/>reset resolved 12)
                    (tick!)))
           (.then (fn [_]
                    (react-dom/flushSync #(r/flush))
@@ -266,7 +266,7 @@
           (.finally (fn [] (close!) (done)))))))
 
 (defc <cold-setting> {:state {:persist {:scope :user}}} []
-  :let [[*setting] (<csub [:opts :setting] {:initial false})]
+  :let [*setting (<sub :comp [:opts :setting] {:initial false})]
   [:p (str @*setting)])
 
 (deftest cold-storage-restores-over-leaf-defaults
@@ -319,8 +319,8 @@
   {:features [:error-boundary] :depends []
    :state {:key (fn [_] (throw (js/Error. "Metadata must take precedence")))}}
   [manual-key]
-  :let [[*value path] (<csub [] {:initial 0})]
-  [:button {:on-click #(>cupdate path inc)} (str @*value)])
+  :let [*value (<sub :comp [] {:initial 0})]
+  [:button {:on-click #(>update *value inc)} (str @*value)])
 
 (deftest react-metadata-key-wins-through-data-and-boundary-wrappers
   (async done
@@ -386,3 +386,52 @@
                       (swap! storage/*ready disj owner) (swap! storage/*dirty disj owner)
                       (swap! storage/*deleted-paths dissoc owner)
                       (reset! storage/*identity old-owner) (done)))))))
+
+(defonce *scope-handles (atom nil))
+(defc <scope-controls> {:module :blog} []
+  :let [*comp (<sub :comp [:count] {:initial 0})
+        *module (<sub :module [:handle-test] {:initial 10})
+        *page (<sub :page [:handle-test] {:page :test-page :initial 20})
+        *global (<sub :global [:handle-test] {:initial 30})]
+  (reset! *scope-handles [*comp *module *page *global])
+  [:button {:on-click #(doseq [*value [*comp *module *page *global]]
+                        (>update *value inc)
+                        (>update (component/path-of *value) + 2))}
+   (pr-str [@*comp @*module @*page @*global])])
+
+(deftest state-handles-deref-values-and-route-writes-across-scopes
+  (async done
+    (let [{:keys [root element close!]} (fixture)]
+      (render! root [<scope-controls>])
+      (let [[*comp *module *page *global] @*scope-handles]
+        (is (= [0 10 20 30] (mapv deref @*scope-handles)))
+        (is (= [:component "tolgraven.component-persistence-test" "<scope-controls>" :count]
+               (component/path-of *comp)))
+        (is (= [:module :blog :handle-test] (component/path-of *module)))
+        (is (= [:page :test-page :handle-test] (component/path-of *page)))
+        (is (= [:state :handle-test] (component/path-of *global)))
+        (reset! *comp 4)
+        (swap! *comp inc)
+        (is (= 5 @*comp) "Native atom operations route through re-frame too")
+        (.click (.querySelector element "button"))
+        (-> (tick!)
+            (.then (fn [_]
+                     (react-dom/flushSync #(r/flush))
+                     (is (= "[8 13 23 33]" (.-textContent element)))
+                     (component/>update [:global :handle-test] inc)
+                     (component/>reset [:module :blog :handle-test] 42)
+                     (tick!)))
+            (.then (fn [_]
+                     (react-dom/flushSync #(r/flush))
+                     (is (= "[8 42 23 34]" (.-textContent element)))
+                     (render! root [:p "Away"])
+                     (tick!)))
+            (.then (fn [_]
+                     (is (not-any? (fn [[[query _] _]]
+                                     (and (= :component-state/scoped-value (first query))
+                                          (some #{(second query)} (map component/path-of @*scope-handles))))
+                                   @subs/query->reaction))
+                     (render! root [<scope-controls>])
+                     (is (= "[8 42 23 34]" (.-textContent element)) "Unmount retains state for every scope")))
+            (.catch #(is false (str %)))
+            (.finally (fn [] (reset! *scope-handles nil) (close!) (done))))))))

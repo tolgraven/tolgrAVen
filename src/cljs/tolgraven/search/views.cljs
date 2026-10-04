@@ -119,8 +119,8 @@
      [:div.blog-post-header-main
       [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
        [:h2.blog-post-title title]]
-      [l/<> {:module :blog :view :posted-by} id user ts]
-      [l/<> {:module :blog :view :tags-list} document]]
+      [l/<> {:module :blog :view :posted-by} {:id id :user user :ts ts}]
+      [l/<> {:module :blog :view :tags-list} {:post document}]]
      (m/for [highlight highlights]
        [link-preview/<md> (:snippet highlight)])]))
 
@@ -133,7 +133,7 @@
       [l/<> {:module :user, :view :avatar} @(rf/subscribe [:user/user user])]
       [:div.blog-comment-main
        [:h4.blog-comment-title title]
-       [l/<> {:module :blog :view :posted-by} id user ts]
+       [l/<> {:module :blog :view :posted-by} {:id id :user user :ts ts}]
        (m/for [highlight highlights]
          [:div.blog-comment-text
           [link-preview/<md> (:snippet highlight)]])]]]))

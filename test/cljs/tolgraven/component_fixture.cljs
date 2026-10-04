@@ -17,6 +17,7 @@
                         :text "This **markdown** is rendered by the migrated blog component."
                         :user "author" :ts 0 :tags "clojure components"}))
 (defonce *version (r/atom 1))
+(defonce *replies-expanded? (r/atom true))
 
 (defc <counter> {:features [:props]} [spec]
   :let [*clicks (r/atom 0)]
@@ -48,8 +49,8 @@
 
 (defonce *show-persistent? (r/atom true))
 (defc <persistent-counter> {:state {:id :fixture-counter :persist true}} []
-  :let [[*count path] (<csub [:opts :count] {:initial 0})]
-  [:button {:on-click #(>cupdate path inc)} (str "Persistent count: " @*count)])
+  :let [*count (<sub :comp [:opts :count] {:initial 0})]
+  [:button {:on-click #(>update *count inc)} (str "Persistent count: " @*count)])
 
 (defn <fixture> []
   [:main {:style {:max-width "62rem" :margin "2rem auto" :padding "1rem"}}
@@ -72,6 +73,7 @@
    [:p "Local fixture using the migrated blog post, metadata, tags and comments components."]
    [:nav {:aria-label "Fixture controls" :style {:display "flex" :gap "1rem" :flex-wrap "wrap"}}
     [<counter> {:props {:class "fixture-counter"}}]
+    [:button {:on-click #(swap! *replies-expanded? not)} "Toggle comment replies"]
     [:button {:on-click #(swap! *post assoc :title #js {:invalid "React child"})}
      "Break blog post"]
     [:button {:on-click #(swap! *post assoc :title "Blog content repaired")}
@@ -80,7 +82,7 @@
                             (swap! *post assoc :text (str "Updated **markdown**, revision " @*version)))}
      "Update content"]]
    [:p "After breaking the post, repair the data and choose Attempt reload. The sibling counter keeps its state."]
-   [blog/blog-post @*post]
+   [blog/<blog-post> {:post @*post}]
    [:section
     [:h2 "Data before DOM"]
     [:p (str "Resource: " (name (data/state resources)) "; bodies created: " @*created)]
@@ -94,8 +96,17 @@
   ;; Fixture-only subscriptions make rendering deterministic without connecting
   ;; to production or changing the real application's event/sub definitions.
   (doseq [event [:user/active-user :user/trusted? :history/back-nav-from-external?
-                 :comments/for-q-flat :comments/adding? :blog/state]]
+                 :comments/adding? :blog/state]]
     (rf/reg-sub event (fn [_ _] nil)))
+  (rf/reg-sub :comments/for-q-flat
+    (fn [_ [_ _ parent]]
+      (case parent
+        nil {:root {:id "root" :user "author" :ts 1 :score 0
+                    :title "Fixture comment" :text "A comment with a nested reply."}}
+        "root" {:reply {:id "reply" :user "author" :ts 2 :score 0
+                        :title "Fixture reply" :text "Reply survives rapid re-expansion."}}
+        nil)))
+  (rf/reg-sub :comments/thread-expanded? (fn [_ _] @*replies-expanded?))
   (rf/reg-sub :user/user (fn [_ _] {:id "author" :name "Local fixture author"}))
   (rf/reg-sub :href (fn [_ _] "#fixture"))
   (rf/reg-sub :blog/permalink-for-path (fn [_ _] "#fixture-post"))

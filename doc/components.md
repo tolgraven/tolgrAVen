@@ -14,7 +14,10 @@ Reagent 2 components, use `[<component> args]`, not `(<component> args)`.
   [:button {:on-click #(swap! *count inc)} label ": " @*count])
 ```
 
-The macro accepts name metadata, an optional docstring and attribute map, one
+Put component configuration (`:features`, `:depends`, `:state`, etc.) in the
+declaration map after the optional docstring, rather than on the component symbol.
+Hiccup metadata such as `^{:key ...}` still identifies instances.
+The macro accepts an optional docstring and declaration map, one
 argument vector (including destructuring and variadic arguments), and optional
 `:let [bindings]` for per-instance state. Existing form-2 bodies also work.
 Bindings survive argument updates; rendering receives current arguments.
@@ -379,47 +382,72 @@ readers, rather than combining unrelated SQL reads into an invented batch API.
 
 ## Scoped subscription and write shortcuts
 
-`defc` recognizes `<csub`, `>creset`, and `>cupdate`, makes these helper names
-available locally, and enables only the instance-state support they need. No
-`:state` declaration is required unless configuring keys, defaults, or persistence.
+`defc` makes `<sub`, `>reset`, and `>update` available locally. No `:state`
+declaration is needed unless configuring component keys, defaults, or persistence.
 
 ```clojure
 (defc <setting> []
-  :let [[*setting path] (<csub [:opts :setting] {:initial false})]
-  [:button {:on-click #(>cupdate path not)} (str @*setting)])
+  :let [*setting (<sub :comp [:opts :setting] {:initial false})]
+  [:button {:on-click #(>update *setting not)} (str @*setting)])
 ```
 
-`<csub` returns `[re-frame-subscription absolute-path]`. Use `[*setting]` when only
-reading; ordinary destructuring `[*setting & [path]]` works too. Bindings in
-`:let` are initialized once per component instance, so use a React key to remount
-when changing that instance's logical identity. Helper calls in the render body
-resolve against current arguments instead.
+`<sub` returns a reactive writable handle backed by a re-frame subscription.
+`@*setting` always reads the value. The handle carries its resolved path in metadata,
+so write helpers accept it directly without dereferencing it or requiring a tuple.
+`(component/path-of *setting)` returns the resolved vector when needed.
 
-The relative path expands to
-`[:component "your.namespace" "<setting>" instance-key :opts :setting]`.
-The key comes from Hiccup `^{:key ...}`, then `:state :key`; it is omitted when
-neither is present, so unkeyed instances share their component state.
-Page/account scopes add their isolation segments before the relative path. The
-returned path captures this context and is safe to use later from event callbacks.
-Keep the returned vector (including its metadata) when passing it to write helpers.
+| Scope | Expanded path |
+| --- | --- |
+| `:comp` (or `:component`) | `[:component "namespace" "component-name" optional-key ...path]` |
+| `:module` | `[:module module-id ...path]` |
+| `:page` | `[:page page-key ...path]` |
+| `:global` (or `:shared`) | `[:state ...path]` |
 
-- `(>creset path value)` queues replacement, like `reset!`.
-- `(>cupdate path f & args)` queues an atomic update, like `swap!`.
-- `(<csub relative-path {:initial value})` initializes only a missing leaf.
-- `:state {:initial {...} :persist true}` provides/restores the whole instance;
-  nested subscriptions share its single persistence registration.
+Module identity comes from `:module` in the call options or component declaration,
+then the component namespace's registered module, falling back to `:main`.
+Outside a component, module subscriptions require `{:module :blog}` (for example).
+Page identity defaults to the current pathname and query; `{:page page-key}` overrides it.
 
-Updates compute from the current app-db value inside the event handler, so several
-updates queued in one tick compose correctly. Read/write account guards prevent
-old account callbacks from mutating another session. Outside the macro the same
-helpers are available as `component/<csub`, `component/>creset`, and
-`component/>cupdate`; relative paths require an active component context, while
-returned absolute paths work in callbacks without it.
+Component instance identity comes from Hiccup `^{:key ...}`, then `:state :key`;
+without either, instances share state. Bindings in `:let` initialize once per
+instance: use a React key to remount when logical identity changes. Calls in the
+render body resolve current arguments instead. Captured handles and resolved paths
+retain their routing context in callbacks after render has finished.
+
+- `(>reset handle-or-path value)` queues replacement, like `reset!`.
+- `(>update handle-or-path f & args)` queues an atomic update, like `swap!`.
+- `(<sub :comp path {:initial value})` initializes only a missing leaf.
+- Native `reset!` and `swap!` on a handle perform synchronous re-frame writes.
+- Component `:state {:initial {...} :persist true}` restores/persists the whole
+  component root; nested subscriptions share that registration.
+- Other scopes opt in with `{:persist true}` on `<sub`, persisting only that path.
+
+Updates compute from current app-db inside the event handler, so queued updates
+compose correctly. Account guards prevent old private handles from mutating another
+session. Preserve metadata when passing resolved paths to write helpers. Raw
+absolute vectors beginning with `:component`, `:module`, `:page`, or `:state` are
+also accepted, as are `[:global ...]` / `[:shared ...]`. Relative component vectors
+and `[:comp ...]` require active component context; use a handle in callbacks.
+Outside the macro, use `component/<sub`, `component/>reset`, and `component/>update`.
+
+Blog views with inputs take one spec map, for example
+`[<blog-post> {:post post}]`, `[<comment-post> {:path path :comment comment :visible? *visible?}]`,
+and `[<posted-by> {:id id :user user :ts ts :score score}]`. Domain records stay
+nested under `:post` or `:comment`; component options can coexist in the same spec.
+Destructuring with `:as spec` identifies a spec argument to `defc` automatically.
 
 Explicit app-db deletions invalidate affected local snapshots immediately in
 memory and queue the disk update. Nested state deletions keep the surviving
 siblings; deleting a whole state subtree removes its snapshot. This also covers
-`>cupdate` with `dissoc` and deletions from other re-frame events. A deletion is
+`>update` with `dissoc` and deletions from other re-frame events. A deletion is
 distinct from storing `nil` or `false`, both of which remain valid values. Pending
 cold reads and later autosaves cannot resurrect the deleted snapshot. Unmounting
 alone still preserves app-db and persisted data.
+
+Blog component vars use `<name>` consistently, including the functions exported
+by `blog.module`. Public loader view keywords remain unchanged. Blog appearance
+uses `defc` features on native roots: post, header, metadata, comments, reply frame,
+and fade overlay. No `ui/appear-anon` wrappers are needed. The header zoom applies
+to its existing row (including the avatar); shared form controls and page headings
+remain provided by `ui`. The post loading branch uses `loading/<spinner>` and only
+mounts the animated post body once its content is available.

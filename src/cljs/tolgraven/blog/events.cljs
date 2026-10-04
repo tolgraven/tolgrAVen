@@ -2,55 +2,49 @@
   (:require
     [re-frame.core :as rf]
     [re-frame.std-interceptors :refer [path]]
-    [clojure.string :as string]
+    [tolgraven.blog.model :as model]
     [tolgraven.interceptors :refer [debug]]))
 
 
-(rf/reg-event-fx :blog/init []
+(rf/reg-event-fx :blog/init
   (fn [{:keys [db]} _]
     (when-not (get-in db [:state :booted :blog])
-     {:dispatch-n [[:ls/get-path [:blog] [:state :blog]] ; get state of thangs
-                   [:blog/set-posts-per-page 3]
-                   [:booted :blog]]}))) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
+      {:dispatch-n [[:ls/get-path [:blog] [:state :blog]]
+                    [:blog/set-posts-per-page 3]
+                    [:booted :blog]]})))
 
-(rf/reg-event-fx :blog/init-posting []
-  (fn [{:keys [db]} _]
-    {:dispatch-n [[:user/close-ui]]})) ; and then kill for main etc... but better if tag pages according to how they should modify css]}))
+(rf/reg-event-fx :blog/init-posting
+  (fn [_ _] {:dispatch [:user/close-ui]}))
 
-(rf/reg-event-fx :blog/edit-post []
-  (fn [{:keys [db]} [_ post]] ; seems gross somehow, passing full data from view. but that's where we have easy access to it so... any case would just be pass id, ask to fetch rest of contents somewhere, whe
-    {:dispatch-n [[:form-field [:post-blog] post :blur] ;well only text tags id but who's counting
+(rf/reg-event-fx :blog/edit-post
+  (fn [_ [_ post]]
+    {:dispatch-n [[:form-field [:post-blog] post :blur]
                   [:blog/state [:editing] post]
                   [:common/navigate! :new-post]]}))
 
 (rf/reg-event-fx :blog/cancel-edit
-  (fn [{:keys [db]} [_ _]]
-    {:dispatch-n [[:form-field [:post-blog] nil :blur] ;well only text tags id but who's counting
+  (fn [_ _]
+    {:dispatch-n [[:form-field [:post-blog] nil :blur]
                   [:blog/state [:editing] nil]]}))
 
-(rf/reg-event-db :blog/state [;debug
-                              (path [:state :blog])]
- (fn [blog [_ path v]]
-   (assoc-in blog path v)))
+(rf/reg-event-db :blog/state
+  [(path [:state :blog])]
+  (fn [blog [_ state-path value]] (assoc-in blog state-path value)))
 
 (rf/reg-event-db :blog/set-posts-per-page
   [(path [:options :blog])]
- (fn [blog [_ n]]
-   (assoc blog :posts-per-page n)))
+  (fn [options [_ size]] (assoc options :posts-per-page (model/page-size size))))
 
 (rf/reg-event-fx :blog/nav-action
-  [(path [:state :blog :page])]
- (fn [{:keys [db]} [_ nav]]
-   (let [nr (case nav
-              :prev (dec (inc db)) :next (inc (inc db)) ;just to clarify we're matching the offset version..
-              nav)]
-     {:dispatch [:blog/nav-page nr]}))) ;not very clean but would get messy otherwise..
+  (fn [{:keys [db]} [_ action]]
+    (let [stored (get-in db [:state :blog :page])
+          index (if (and (int? stored) (<= 0 stored)) stored 0)
+          number (case action :prev index :next (+ index 2) action)]
+      {:dispatch [:blog/nav-page number]})))
 
-(rf/reg-event-fx :blog/nav-page ; TODO should also (deferred) fetch content for next/prev/last and any by id directly clickable pages
+(rf/reg-event-db :blog/nav-page
   [(path [:state :blog :page])]
- (fn [{:keys [db]} [_ nr]]
-   {:db (dec (js/parseInt nr))})) ;problem tho, shouldn't try when back-nav etc...
-
+  (fn [_ [_ number]] (model/page-index number)))
 
 (rf/reg-event-fx :blog/submit
   (fn [{:keys [db]} [_ input editing]]
@@ -129,15 +123,14 @@
              (assoc-in [:state :active-user :comment-votes (keyword id)] (:vote result)))
      :dispatch-n [[:supabase/profile-fetch]]}))
 
+(defn- persist-comment-state [db key comment-path value]
+  {:db (assoc-in db [:state :blog key comment-path] value)
+   :dispatch [:ls/store-val [:blog key comment-path] value]})
+
 (rf/reg-event-fx :blog/expand-comment-thread
- (fn [{:keys [db]} [_ path expand?]]
-   (let [] 
-     {:db (assoc-in db [:state :blog :comment-thread-expanded path] expand?)
-      :dispatch [:ls/store-val [:blog :comment-thread-expanded path] expand?]})))
+  (fn [{:keys [db]} [_ comment-path expanded?]]
+    (persist-comment-state db :comment-thread-expanded comment-path expanded?)))
 
 (rf/reg-event-fx :blog/adding-comment
- (fn [{:keys [db]} [_ parent-path adding?]]
-   (let [] 
-     {:db (assoc-in db [:state :blog :adding-comment parent-path] adding?)
-      :dispatch [:ls/store-val [:blog :adding-comment parent-path] adding?]})))
-
+  (fn [{:keys [db]} [_ parent-path adding?]]
+    (persist-comment-state db :adding-comment parent-path adding?)))
