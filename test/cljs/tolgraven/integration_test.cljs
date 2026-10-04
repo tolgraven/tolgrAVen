@@ -18,6 +18,7 @@
     [tolgraven.views-common :as common]
     [tolgraven.page-transition :as page-transition]
     [tolgraven.component.data :as data]
+    [tolgraven.component.loading :as loading]
     [tolgraven.component.sources]
     [tolgraven.docs.views :as docs-view]
     [tolgraven.ui.code :as code]
@@ -339,28 +340,65 @@
 
 (deftest blog-feed-keeps-post-subscriptions-reactive-after-initial-loading
   (let [element (.createElement js/document "div") root (dom/create-root element)
-        *post (r/atom nil)]
+        *post (r/atom [{:id 42}])]
     (.appendChild (.-body js/document) element)
     (with-redefs [rf/subscribe (fn ([query]
                                 (case (first query)
                                   :blog/count (r/atom 1)
                                   :blog/posts-per-page (r/atom 3)
                                   :blog/nav-page (r/atom 0)
-                                  :blog/ids-for-page (r/atom [42])
-                                  :blog/post *post))
+                                  :blog/posts-for-page *post))
                                 ([query _] (rf/subscribe query)))
                   blog-views/<blog-post> (fn [{:keys [post]}] [:p (or (:text post) "Loading")])
                   blog-views/<blog-nav> (fn [_] nil)]
       (try
         (react-dom/flushSync #(dom/render root [blog-views/<blog-feed>]))
         (is (= "Loading" (.-textContent element)))
-        (reset! *post {:id 42 :text "Loaded asynchronously"})
+        (reset! *post [{:id 42 :text "Loaded asynchronously"}])
         (react-dom/flushSync #(r/flush))
         (is (= "Loaded asynchronously" (.-textContent element)))
-        (reset! *post {:id 42 :text "Live edit"})
+        (reset! *post [{:id 42 :text "Live edit"}])
         (react-dom/flushSync #(r/flush))
         (is (= "Live edit" (.-textContent element)))
         (finally (react-dom/flushSync #(dom/unmount root)) (.remove element))))))
+
+(deftest tag-view-mounts-before-content-and-updates-reactively
+  (let [element (.createElement js/document "div") root (dom/create-root element)
+        *posts (r/atom nil)]
+    (with-redefs [rf/subscribe (fn ([query]
+                                 (case (first query)
+                                   :blog/state (r/atom "cljs")
+                                   :blog/posts-with-tag *posts))
+                                ([query _] (rf/subscribe query)))
+                  blog-views/<blog-container> (fn [{:keys [section]}] section)
+                  blog-views/<blog-post> (fn [{:keys [post]}] [:p (:text post)])
+                  loading/<query-fallback> (fn [_] [:p "Pending"])]
+      (try
+        (react-dom/flushSync #(dom/render root [blog-views/<blog-tag-view>]))
+        (is (= "Posts tagged cljsPending" (.-textContent element)))
+        (reset! *posts [{:id 42 :text "Filtered content"}])
+        (react-dom/flushSync #(r/flush))
+        (is (= "Posts tagged cljsFiltered content" (.-textContent element)))
+        (reset! *posts [])
+        (react-dom/flushSync #(r/flush))
+        (is (= "Posts tagged cljs" (.-textContent element))
+            "A completed empty tag is not a pending read")
+        (finally (react-dom/flushSync #(dom/unmount root)))))))
+
+(deftest managed-query-failures-replace-pending-spinner
+  (let [element (.createElement js/document "div") root (dom/create-root element)
+        *failure (r/atom nil)]
+    (with-redefs [rf/subscribe (fn ([_] *failure) ([_ _] *failure))]
+      (try
+        (react-dom/flushSync #(dom/render root [loading/<query-fallback>
+                                               {:path-collection [:blog-posts] :scoped? true}]))
+        (is (some? (.querySelector element "[role=status]")))
+        (reset! *failure {:title "Content unavailable" :message "Please try again"})
+        (react-dom/flushSync #(r/flush))
+        (is (nil? (.querySelector element "[role=status]")))
+        (is (.includes (.-textContent element) "Please try again"))
+        (is (some? (.querySelector element "button")) "Failure retains a retry control")
+        (finally (react-dom/flushSync #(dom/unmount root)))))))
 
 (deftest header-routes-survive-json-roundtrip-on-direct-blog-load
   (let [before @rfdb/app-db

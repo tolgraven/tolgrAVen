@@ -35,15 +35,22 @@
 (defn- session-key [session]
   [(session-user-id session) (session-owner-id session)])
 
-(defn- run-select! [client {:keys [table select filters limit order-by]}]
+(defn- run-select! [client {:keys [table select filters limit order-by] :as plan}]
   (letfn [(page! [offset rows]
-            (let [q (reduce (fn [q [field op value]] (call-method q op (name field) (if (= op "in") (into-array value) value)))
+            (let [q (reduce (fn [q [field op value]]
+                              ;; The SDK's .match method means equality on a map;
+                              ;; PostgREST's regex operator belongs in .filter.
+                              (if (= op "match")
+                                (.filter q (name field) op value)
+                                (call-method q op (name field)
+                                             (if (= op "in") (into-array value) value))))
                             (-> (.from client table) (.select select)) filters)
                   q (if (seq order-by)
                       (reduce (fn [q [field direction]] (.order q (name field) #js {:ascending (= :asc direction)})) q order-by)
                       (reduce #(.order %1 (name %2)) q (:key (realtime/tables table))))
-                  size (if limit (min 500 (- limit offset)) 500)]
-              (.then (status/within! (.range q offset (+ offset (dec size))) 15000)
+                  size (if limit (min 500 (- limit offset)) 500)
+                  start (+ (or (:offset plan) 0) offset)]
+              (.then (status/within! (.range q start (+ start (dec size))) 15000)
                      (fn [res]
                        (let [{:keys [data error]} (js->clj res :keywordize-keys true)]
                          (when error (throw (ex-info "Supabase select failed" {:table table})))
@@ -78,7 +85,8 @@
         (let [plan (query/seed-load-plan opts)]
           (-> (js/Promise.all (into-array (map #(run-select! client %) plan)))
               (.then (fn [rows]
-                       (let [value (result (into {} (map (fn [p r] [(:seed-key p) r]) plan (array-seq rows))) opts)]
+                       ;; The transport already applied the page offset.
+                       (let [value (result (into {} (map (fn [p r] [(:seed-key p) r]) plan (array-seq rows))) (dissoc opts :offset))]
                          (if (:reply-counts? opts) (with-reply-counts! client opts value) value))))
               (.then (fn [value]
                        (when (current?)

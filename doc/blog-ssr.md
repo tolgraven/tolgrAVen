@@ -241,13 +241,18 @@ reports an error; losing an established connection reports immediately. Successf
 reconnection clears the notice, and intentionally disposing a reader never raises
 a disconnection error. HTTP content remains usable while live updates reconnect.
 
-Client navigation does not request SSR output. The loader accepts a module's
-declarative `:route-depends`; blog readiness acquires the same re-frame
-subscriptions as the views for summaries, visible post bodies and root comment
-threads before committing navigation. A generic subscription adapter waits for
-readiness and releases its own reaction, retaining app-db content. Main-page CMS
-requirements, including the hero and landing sections, likewise resolve as one
-batched dependency before navigation. CSS View Transitions capture the outgoing
+Client navigation does not request SSR output. Blog navigation commits once the
+module is ready, without waiting for post bodies, comments or authors. The page
+mounts immediately; managed subscriptions load its content and component
+appearance handles arrival. Feed pages request a bounded range of full posts,
+while tag subscriptions filter complete tag tokens in Supabase. The lightweight
+summary index still supplies pagination, the tag cloud and adjacent-post links.
+Bulk results also seed individual-post readers, so navigating to a post already
+shown in the feed can reuse its content. SSR uses the same shared queries and
+seeds those caches before hydration. Pending reads show the common spinner;
+failed reads show the shared component fallback and Retry, alongside the HUD.
+Main-page CMS requirements, including the hero and landing sections, resolve as
+one batched dependency before navigation. CSS View Transitions capture the outgoing
 page while React mounts only the incoming page. The lifecycle adapter waits for
 queued controller events and the React commit, restores the scroll position
 instantly, and decodes visible images before releasing the new capture. No

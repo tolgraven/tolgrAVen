@@ -9,6 +9,14 @@
 (defn post-query [id]
   {:path-collection [:blog-posts] :scoped? true :where [[:id :== id]] :doc-changes true})
 
+(defn page-query [index size]
+  {:path-collection [:blog-posts] :scoped? true :doc-changes true
+   :order-by [[:id :desc]] :offset (* index size) :limit size})
+
+(defn tag-query [tag]
+  {:path-collection [:blog-posts] :scoped? true :doc-changes true
+   :where [[:tags :tag tag]] :order-by [[:id :desc]]})
+
 (defn selected-ids [{:keys [post-id page summaries size]}]
   (if post-id [post-id]
     (->> summaries (map :id) (sort >)
@@ -25,7 +33,9 @@
 
 (def plan
   [{:id :summaries :queries (fn [_] [summaries-query])}
-   {:id :posts :depends (fn [values] (if (:post-id values) [] [:summaries])) :queries #(mapv post-query (selected-ids %))}
+   {:id :posts :queries (fn [{:keys [post-id page size]}]
+                         [(if post-id (post-query post-id)
+                              (page-query (dec (or page 1)) (or size page-size)))])}
    {:id :roots :depends [:posts]
     :queries (fn [{:keys [posts comment-limits]}]
                (mapv #(comments/root-query (:id %) (comment-limit comment-limits (:id %))) posts))}

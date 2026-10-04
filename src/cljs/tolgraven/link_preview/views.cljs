@@ -345,7 +345,11 @@
          {:candidates candidates :id id :trust trust}
          content]
         {:key (hash [id trust text])})
-      [:div.link-preview-container content])))
+      ;; Observation can differ by origin; the rendered attributes must still
+      ;; match between SSR and the first browser render.
+      [:div.link-preview-container
+       {:data-link-container true :data-link-trust (when trust (name trust))}
+       content])))
 
 (defc <md>
   "Render markdown inside a candidate-aware preview container."

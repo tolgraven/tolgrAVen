@@ -1,10 +1,22 @@
 (ns tolgraven.component.loading
-  (:require [reagent.core :as r]))
+  (:require [reagent.core :as r]
+            [tolgraven.react :as rf]
+            [tolgraven.supabase.query :as query]
+            [tolgraven.components.error :as error]))
 
 (r/defc <spinner> []
   [:span.component-spinner {:role "status" :aria-label "Loading content"}
    [:span.component-spinner__wheel {:aria-hidden true}]
    [:span.sr-only "Loading content…"]])
+(r/defc <query-fallback>
+  "Use the shared component fallback after a real managed-query failure."
+  [opts]
+  (if-let [failure @(rf/subscribe [:store/query-error opts])]
+    [error/<failure> "content" "query" failure
+     #(rf/dispatch [:service-status/retry
+                    [:supabase-scoped (pr-str (query/normalize-query opts))]])]
+    [<spinner>]))
+
 (defn- element [tag kind options]
   [tag (-> options
            (update :class #(str "component-skeleton component-skeleton--" kind " " %))

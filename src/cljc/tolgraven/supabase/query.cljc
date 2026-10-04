@@ -69,8 +69,9 @@
 
 (def schemas
   {"blog-posts" {:table "blog_posts" :seed-key :blog_posts :document-key :doc_id
-                 :fields {:id :id :user :user_id :ts :ts :permalink :permalink}
-                 :summary "doc_id,id,permalink,user_id,title,tags,score,ts" :batch-field :id}
+                 :fields {:id :id :user :user_id :ts :ts :permalink :permalink :tags :tags}
+                 :summary "doc_id,id,permalink,user_id,title,tags,score,ts" :batch-field :id
+                 :cache-document-field :id}
    "blog-comments" {:table "blog_comments" :seed-key :blog_comments :document-key :id
                     :fields {:id :id :user :user_id :ts :ts :parent-post :parent_post :parent-comment :parent_comment}
                     :batch-field :parent-comment
@@ -81,19 +82,24 @@
 (defn scoped-query? [opts]
   (and (:scoped? opts) (contains? schemas (path-collection-name opts))))
 
+(defn tag-pattern [tag]
+  (str "(^|\\s)" (string/replace (str tag) #"[\\.\[\]{}()*+?^$|]" #(str "\\" %)) "(\\s|$)"))
+
 (defn- scoped-plan [opts collection doc-id]
   (let [{:keys [table seed-key document-key fields summary]} (schemas collection)
         column! (fn [field]
                   (or (fields (keyword (path-part field)))
                       (throw (ex-info "Unsupported scoped field" {:field field}))))
         filters (mapv (fn [[field op value]]
-                        (let [operator ({:== "eq" := "eq" :> "gt" :>= "gte" :< "lt" :<= "lte" :in "in"}
+                        (let [operator ({:== "eq" := "eq" :> "gt" :>= "gte" :< "lt" :<= "lte" :in "in" :tag "match"}
                                         (keyword (path-part op)))]
                           (when-not operator (throw (ex-info "Unsupported scoped predicate" {:op op})))
-                          [(column! field) (if (and (= operator "eq") (nil? value)) "is" operator) value]))
+                          [(column! field) (if (and (= operator "eq") (nil? value)) "is" operator)
+                           (if (= operator "match") (tag-pattern value) value)]))
                       (:where opts))]
     [(cond-> (entry seed-key table (cond-> filters doc-id (conj [document-key "eq" doc-id])))
        (:limit opts) (assoc :limit (:limit opts))
+       (:offset opts) (assoc :offset (:offset opts))
        (seq (:order-by opts)) (assoc :order-by (mapv (fn [[field direction]] [(column! field) direction]) (:order-by opts)))
        (and summary (:summary? opts)) (assoc :select summary))]))
 
@@ -193,6 +199,7 @@
 
 (defn- compare-op [op left right]
   (case (keyword (path-part op))
+    :tag (boolean (some #{right} (if (string? left) (string/split left #"\s+") left)))
     :in (boolean (some #{left} right))
     :== (= left right)
     := (= left right)
@@ -228,7 +235,7 @@
        vec))
 
 (defn query-contract [contract opts]
-  (let [{:keys [path-document path-collection where order-by limit]} (normalize-query opts)]
+  (let [{:keys [path-document path-collection where order-by limit offset]} (normalize-query opts)]
    (cond
     path-document
     (let [[collection doc-id] path-document]
@@ -240,7 +247,22 @@
           docs (as-> (contract-docs contract collection) docs
                  (if (seq where) (apply-where docs where) docs)
                  (if (seq order-by) (vec (apply-order-by docs order-by)) docs)
+                 (if offset (vec (drop offset docs)) docs)
                  (if limit (vec (take limit docs)) docs))]
       {:docs docs})
 
     :else nil)))
+
+
+(defn document-caches
+  "Full collection results seed document readers declared by the shared schema."
+  [opts value]
+  (let [collection (path-collection-name opts)
+        field (:cache-document-field (schemas collection))]
+    (when (and field (not (:summary? opts)))
+      (into {} (keep (fn [{:keys [data] :as doc}]
+                       (when-some [id (get data field)]
+                         [(pr-str (normalize-query
+                                   {:path-collection [collection] :scoped? true
+                                    :where [[field :== id]] :doc-changes true}))
+                          {:docs [doc]}]))) (:docs value)))))

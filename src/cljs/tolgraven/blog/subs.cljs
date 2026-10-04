@@ -74,9 +74,12 @@
   (fn [post _] (set (model/tags (:tags post)))))
 
 (rf/reg-sub :blog/posts-with-tag
-  :<- [:blog/post-feed]
-  (fn [posts [_ tag]]
-    (filter #(contains? (set (model/tags (:tags %))) tag) posts)))
+  (fn [[_ tag]] (rf/subscribe [:<-store-q (data/tag-query tag)]))
+  (fn [posts _] (when (some? posts) (sort-by :id > (vals posts)))))
+
+(rf/reg-sub :blog/posts-for-page
+  (fn [[_ index size]] (rf/subscribe [:<-store-q (data/page-query index size)]))
+  (fn [posts _] (when (some? posts) (sort-by :id > (vals posts)))))
 
 (rf/reg-sub :blog/all-tags
   :<- [:blog/post-feed]

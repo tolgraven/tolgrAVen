@@ -63,6 +63,11 @@
         (when (and (:missing? snapshot) (:post-id snapshot))
           (let [opts (data/post-query (:post-id snapshot))]
             (rf/dispatch-sync [:store/scoped (scoped/query-key opts) {:docs []}])))
+        (when (and (:page snapshot) (not (:post-id snapshot)))
+          (rf/dispatch-sync [:store/scoped
+                             (scoped/query-key (data/page-query (dec (:page snapshot)) data/page-size))
+                             {:docs (mapv #(hash-map :id (str (:id %)) :data (dissoc % :author :date))
+                                          (:posts snapshot))}]))
         ;; Exact query cache only: a single post never marks a whole table loaded.
         (doseq [post (:posts snapshot)]
           (let [opts (data/post-query (:id post))]

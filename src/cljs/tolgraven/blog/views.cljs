@@ -3,6 +3,7 @@
     [reagent.core :as r]
     [tolgraven.components.timer :as timer]
     [tolgraven.blog.model :as model]
+    [tolgraven.blog.data :as data]
     [tolgraven.react :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
@@ -404,7 +405,7 @@
   (cond
     (:text post) [<post-content> (assoc spec :appear {:class "zoom-x" :remember-key [:blog/post (:id post)]})]
     (and id @(rf/subscribe [:blog/post-loaded? id])) [:p {:role "status"} "Post not found."]
-    :else [loading/<spinner>]))
+    :else [loading/<query-fallback> (data/post-query id)]))
 
 (defc <post-by-id> [{:keys [id]}]
   ;; Own the subscription in a render context, never inside a lazy parent for.
@@ -464,9 +465,11 @@
       [:div.blog-posts-with-tag
        [:h2 {:style {:text-align :center}}
         "Posts tagged " [:span.blog-post-tags [:span tag]]]
-       (for [post @(rf/subscribe [:blog/posts-with-tag tag])]
-         ^{:key (str "blog-with-tag-" (:id post))}
-         [<post-by-id> {:id (:id post)}])]}]))
+       (if-some [posts @(rf/subscribe [:blog/posts-with-tag tag])]
+         (for [post posts]
+           ^{:key (str "blog-with-tag-" (:id post))}
+           [<blog-post> {:id (:id post) :post post}])
+         [loading/<query-fallback> (data/tag-query tag)])]}]))
 
 (defc <blog-tag-cloud> "Render all blog tags." []
   [:div.blog-post-tags.flex.center-content
@@ -497,16 +500,19 @@
                    :props (when (= number (inc current-idx)) {:class "current"})}])
      (when next-page [<nav-btn> {:nav next-page :label [:i.fa.fa-chevron-right]}])]))
 
-(defc <blog-feed> "Render the current page of posts." []
+(defc <blog-feed> "Render the current database page of posts." []
   (let [total @(rf/subscribe [:blog/count])
         size @(rf/subscribe [:blog/posts-per-page])
-        index @(rf/subscribe [:blog/nav-page])]
-    (when (pos? total)
-      [:<>
-       (for [id @(rf/subscribe [:blog/ids-for-page index size])]
-         ^{:key (str "blog-post-" id)}
-         [<post-by-id> {:id id}])
-       [<blog-nav> {:total-posts total :current-idx index :posts-per-page size}]])))
+        index @(rf/subscribe [:blog/nav-page])
+        posts @(rf/subscribe [:blog/posts-for-page index size])]
+    [:<>
+     (if (some? posts)
+       (for [post posts]
+         ^{:key (str "blog-post-" (:id post))}
+         [<blog-post> {:id (:id post) :post post}])
+       [loading/<query-fallback> (data/page-query index size)])
+     (when (pos? total)
+       [<blog-nav> {:total-posts total :current-idx index :posts-per-page size}])]))
 
 (defc <blog-container>
   [{:keys [section] :as spec}]
