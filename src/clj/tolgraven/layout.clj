@@ -1,6 +1,7 @@
 (ns tolgraven.layout
   (:require
     [clojure.java.io]
+    [clojure.data.json :as json]
     [hiccup.core :as hiccup]
     [hiccup.util :as hu]
     [ring.util.http-response :refer [content-type ok]]
@@ -142,7 +143,8 @@
     
    [:body {:class "container themable framing-shadow sticky-footer-container"}
     
-    [:div#app (when (:ssr request) {:data-hydrate "true"}) loading-content]
+    [:div#app (cond-> {} (:ssr request) (assoc :data-hydrate "true")
+                         (:restore? request) (assoc :data-restore "true")) loading-content]
     ;; A separate React root can report bootstrap failures without replacing
     ;; server HTML that has not yet been hydrated.
     [:div#page-init-status]
@@ -161,31 +163,43 @@
 
 (def render-hiccup-memo) ; well no because of anti forgery token, requests differing etc
 
+(defn returning-page? [request]
+  (try
+    (when-let [value (some-> (get-in request [:cookies "tolgraven-return" :value])
+                             (java.net.URLDecoder/decode "UTF-8"))]
+      (or (= (:uri request) value) ; compatibility with the original single path
+          (let [paths (json/read-str value)]
+            (and (vector? paths) (<= (count paths) 16)
+                 (boolean (some #{(:uri request)} paths))))))
+    (catch Exception _ false)))
+
 (defn render-home
   [request]
-  (let [ssr (when (and (ssr/enabled?) (ssr/route (:uri request)))
+  (let [returning? (returning-page? request)
+        ssr (when (and (not returning?) (ssr/enabled?) (ssr/route (:uri request)))
               (try (ssr/page! (:uri request) (:query-params request))
                    (catch Exception _
                      (log/error "Page SSR unavailable; returning a retryable public error")
                      {:error? true})))
         request (cond-> request
+                  returning? (assoc :restore? true)
                   (:snapshot ssr) (assoc :ssr ssr
                                         :site-content {:version 1 :deferred? true
                                                        :content (get-in ssr [:snapshot :content])}))]
   (cond-> (render-hiccup
    home
-   (if (:ssr request) request (if-let [mode (System/getenv "CONTENT_BOOTSTRAP_MODE")]
+   (if (or (:ssr request) returning?) request (if-let [mode (System/getenv "CONTENT_BOOTSTRAP_MODE")]
      (if (#{"route" "full"} mode)
        (let [route (keyword (or (second (clojure.string/split (:uri request) #"/")) "home"))
              bundle (if (= mode "route") (assoc (content/for-route! route) :deferred? true) (content/bundle!))]
          (assoc request :site-content bundle))
        request)
      request))
-   :loading-content (or (:html ssr)
+   :loading-content (when-not returning? (or (:html ssr)
                         (when (:error? ssr)
                           [:main.main-content [:p {:role "alert"} "Page content could not load. Please retry."]
                            [:a {:href (:uri request)} "Retry"]])
-                        (basic-skeleton "tolgrAVen" ["audio" "visual"] "img/foggy-shit-small.jpg"))
+                        (basic-skeleton "tolgrAVen" ["audio" "visual"] "img/foggy-shit-small.jpg")))
    :title (or (when (= 1 (count (get-in ssr [:snapshot :posts])))
                 (:title (first (get-in ssr [:snapshot :posts]))))
               (get-in ssr [:snapshot :content :document :title]) "tolgrAVen audiovisual")
@@ -218,7 +232,7 @@
    :anti-forgery (force *anti-forgery-token*))
     (:error? ssr) (assoc :status 503)
     (get-in ssr [:snapshot :missing?]) (assoc :status 404)
-    ssr (assoc-in [:headers "Cache-Control"] "no-store"))))
+    (or ssr returning?) (assoc-in [:headers "Cache-Control"] "no-store"))))
 
 (defn error-page-hiccup
   [request error-details]

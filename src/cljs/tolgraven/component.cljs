@@ -240,9 +240,11 @@
     (when-not context/*server?* (data/prefetch! resources))
     (case (data/state resources)
       :ready form
-      :error [:section.component-failed {:role "alert"}
-              [:p "This component's data could not be loaded."]
-              [:button {:on-click #(-> (data/retry! resources) (.catch (fn [_] nil)))} "Retry data"]]
+      :error [error/<failure> (:ns definition) (:name definition)
+              {:title "This component's data could not be loaded"
+               :message "Check your connection and try loading this content again."
+               :error (data/failure resources)}
+              #(data/retry-background! resources)]
       (let [view (get-in definition [:options :loading])]
         (cond (fn? view) (apply view args) view view :else [loading/<spinner>])))))
 

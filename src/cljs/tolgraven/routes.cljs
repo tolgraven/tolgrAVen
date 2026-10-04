@@ -9,6 +9,7 @@
             [tolgraven.docs.pages :as docs]
             [tolgraven.loader :as l]
             [tolgraven.component.data :as data]
+            [tolgraven.components.error :as error-view]
             [tolgraven.main.module :as main]
             [tolgraven.component.restore :as restore]
             [tolgraven.ui :as ui]
@@ -86,6 +87,19 @@
   (when-let [path (:path match)] (restore/navigate! path))
   (let [navigation (swap! *navigation inc)
         {:keys [module page view name]} (:data match)
+        retry! (fn []
+                 (when (= :landing (:kind (:data match)))
+                   (data/invalidate! (set (:depends main/spec))))
+                 (navigate! *navigation dispatch! load! match))
+        fail! (fn [error]
+                (when (= navigation @*navigation)
+                  (dispatch! [:diag/new :error "Page failed to load" (str name)])
+                  (dispatch! [:state [:error-page]
+                              (fn [] [error-view/<failure> "page" (str name)
+                                      {:title "This page could not be loaded"
+                                       :message "Check your connection and try loading this page again."
+                                       :error error}
+                                      retry!])])))
         navigate! (fn [component]
                     (when (= navigation @*navigation)
                       (if component
@@ -100,7 +114,7 @@
       view (if (= :landing (:kind (:data match)))
              (-> (data/ensure-all! (:depends main/spec))
                  (.then #(navigate! view))
-                 (.catch #(dispatch! [:diag/new :error "Page content unavailable" "Please try navigating again."])))
+                 (.catch fail!))
              (navigate! view))
 
       module
@@ -112,11 +126,7 @@
           (dispatch! [:loading/on :page navigation]))
         (-> (load! {:module module :view page :route match})
             (.then #(navigate! (get-in % [:view page])))
-            (.catch (fn [error]
-                      (when (= navigation @*navigation)
-                        (dispatch! [:diag/new :error "Page failed to load" (str name)])
-                        (navigate! nil))
-                      (js/console.error "Module load failed" module error)))
+            (.catch fail!)
             (.finally #(dispatch! [:loading/off :page navigation]))))
 
       :else (navigate! nil))))

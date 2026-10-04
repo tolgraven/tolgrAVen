@@ -7,6 +7,7 @@
 
 (def missing (js-obj))
 (def prefix "tolgraven.component.v2:")
+(defonce *public-saved? (atom false))
 (defonce *identity (r/atom nil))
 (defonce *tracked (atom {}))
 (defonce *pending (atom nil))
@@ -41,7 +42,7 @@
   (status/fail! :component-storage "Local data could not be saved"
                 "Browser storage is unavailable or full. Your current page still works." nil))
 
-(declare schedule-write!)
+(declare schedule-write! mark-return!)
 
 (defn ready!
   "Queue one disk read per owner per document, shared by every caller. Startup
@@ -132,8 +133,19 @@
           (when (> (count text) max-bytes) (throw (js/Error. "Snapshot too large")))
           (reader/read-string text)
           (write-disk! (str prefix (pr-str account)) text)
+          (when (= account :public)
+            (reset! *public-saved? (contains? bucket :public-content))
+            ;; Set the hint on a completed save too: reload requests can begin
+            ;; before pagehide. Consuming a snapshot leaves the hint in place;
+            ;; pagehide republishes it before the new document reads storage.
+            (when @*public-saved?
+              (try (mark-return! true) (catch :default _ nil))))
           (status/recover! :component-storage))
-        (catch :default _ (warn!))))))
+        (catch :default _
+          (when (= account :public)
+            (reset! *public-saved? false)
+            (try (mark-return! false) (catch :default _ nil)))
+          (warn!))))))
 (defn schedule-write! []
   (when-not @*write-tick
     (reset! *write-tick
@@ -177,12 +189,38 @@
     (swap! *tracked #(into {} (filter (fn [[_ entry]] (= :public (:scope (:options entry))))) %))
     (reset! *identity identity)
     (ready! {:scope :user})))
+(defn mark-return! [saved?]
+  ;; A hint only: no content or view state is sent to the server. Keep a bounded
+  ;; recent-path list so returning through several documents also avoids SSR.
+  (let [previous (try
+                   (when-let [[_ value] (re-find #"(?:^|;\s*)tolgraven-return=([^;]*)" (.-cookie js/document))]
+                     (let [decoded (js/decodeURIComponent value)]
+                       (if (= "/" (first decoded)) [decoded]
+                         (let [paths (js->clj (js/JSON.parse decoded))]
+                           (when (vector? paths) (filterv string? paths))))))
+                   (catch :default _ nil))
+        paths (take 16 (distinct (cons (.-pathname js/location) previous)))
+        ;; Keep the cookie well below browser limits, including URI encoding.
+        value (loop [paths (vec paths)]
+                (let [encoded (js/encodeURIComponent (js/JSON.stringify (clj->js paths)))]
+                  (if (and (> (count encoded) 3000) (seq paths))
+                    (recur (pop paths)) encoded)))]
+    (set! (.-cookie js/document)
+          (str "tolgraven-return=" value
+               "; Max-Age=" (if saved? 1800 0) "; Path=/; SameSite=Lax"))))
+
+(defn save-navigation! []
+  (flush! :navigation)
+  (drain!)
+  ;; Only mark a return after the consolidated public write succeeds.
+  (try (mark-return! @*public-saved?) (catch :default _ nil)))
+
 (defonce listeners
   (when (exists? js/window)
-    (let [save! #(do (flush! :navigation) (drain!))]
-      (.addEventListener js/window "pagehide" (fn [_] (save!)))
-      (.addEventListener js/document "visibilitychange"
-                         (fn [_] (when (= "hidden" (.-visibilityState js/document)) (save!)))))))
+    (.addEventListener js/window "pagehide" (fn [_] (save-navigation!)))
+    (.addEventListener js/document "visibilitychange"
+                       (fn [_] (when (= "hidden" (.-visibilityState js/document))
+                                 (save-navigation!))))))
 
 (defn- removed-paths
   "Walk only changed map branches; unchanged subtrees retain their identity."

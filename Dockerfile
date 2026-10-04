@@ -45,7 +45,6 @@ WORKDIR /app
 RUN mkdir -p resources/public
 COPY --from=ssr-node /usr/local/bin/node /usr/local/bin/node
 COPY --from=build /usr/src/app/target/ssr/site.js /app/ssr/site.js
-ENV SSR_WORKER=/app/ssr/site.js
 COPY --from=build /usr/src/app/target/uberjar/tolgraven.jar /app/tolgraven.jar
 COPY --from=build /usr/src/app/env/prod/resources/config.edn /app/env/prod/resources/config.edn
 ARG VCS_REF=unknown

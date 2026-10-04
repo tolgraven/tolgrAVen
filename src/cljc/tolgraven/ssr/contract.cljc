@@ -1,6 +1,7 @@
 (ns tolgraven.ssr.contract
   (:require #?(:clj [clojure.edn :as edn] :cljs [cljs.reader :as edn])
             [tolgraven.content.contract :as content]
+            [tolgraven.supabase.query :as query]
             [tolgraven.main.pages :as main-pages]
             [reitit.core :as reitit]))
 
@@ -34,9 +35,18 @@
         public {"users" (records (keep :author rows))
                 "blog-posts" (merge (records (:summaries snapshot)) (records (:posts snapshot)))
                 "blog-comments" (records (:comments snapshot))}
-        state {:store {:public public}
-               :state {:ssr {:hydrating? true
-                             :dates (into {} (keep (fn [{:keys [ts date]}] (when date [ts date]))) rows)}}}
+        state (cond-> {:store {:public public
+                                      :scoped (into {} (map (fn [[id profile]]
+                                                            [(pr-str (query/normalize-query (query/profile-query id)))
+                                                             {:docs [{:id id :data profile}]}]))
+                                                    (get public "users"))}
+                       :state {:ssr {:hydrating? true
+                                     :dates (into {} (keep (fn [{:keys [ts date]}] (when date [ts date]))) rows)}}}
+                (#{:blog "blog"} (:kind snapshot))
+                ;; A fresh SSR page owns its initial display state. If the saved
+                ;; path hint did not match, older folds/window sizes must not
+                ;; change the markup while hydrating that public snapshot.
+                (assoc-in [:state :blog] {:comment-limit {} :comment-thread-expanded {}}))
         encoded-state (if-let [encoded (:app-db-edn snapshot)]
                         (let [value (edn/read-string encoded)]
                           (when-not (map? value) (throw (ex-info "Invalid public page state" {})))

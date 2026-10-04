@@ -1,12 +1,13 @@
 (ns tolgraven.user.subs
   (:require
    [tolgraven.react :as rf]
+   [tolgraven.supabase.query :as query]
    [clojure.walk :as walk]))
 
 (rf/reg-sub :user/user
   (fn [[_ user]]
-    (rf/subscribe (if (and user (not (coll? user))) [:<-store :users user] [:nil])))
-  (fn [record [_ user]] (if (map? user) user record)))
+    (rf/subscribe (if (and user (not (coll? user))) [:<-store-q (query/profile-query user)] [:nil])))
+  (fn [records [_ user]] (if (map? user) user (first (vals records)))))
 
 (rf/reg-sub :user/has-role? :<- [:user/active-user]
   (fn [user [_ role]] (boolean (some #{(name role)} (:roles user)))))

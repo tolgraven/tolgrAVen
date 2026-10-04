@@ -105,22 +105,17 @@
        (case vote :up "+" :down "-")])))
 
 (defc <collapsed-reply-view>
-  [{:keys [path comments] :as spec}]
+  [{:keys [path comments reply-count] :as spec}]
   :let [*inited? (r/atom false)]
   [:div.blog-comment-reply.flex
    {:style {:cursor "zoom-in"
             :transition "max-height 1s ease"
             :max-height (if @*inited? "3rem" 0)}
     :ref #(when % (reset! *inited? true))
-    :on-click (fn [_]
-                (rf/dispatch [:blog/expand-comment-thread path true])
-                (doseq [post (vals comments)]
-                  (rf/dispatch [:blog/expand-comment-thread
-                                (conj path (:id post))
-                                true])))}
+    :on-click #(rf/dispatch [:blog/expand-comment-thread path true])}
    [:div.blog-comment-border]
    [:section.blog-comment.blog-comment-collapsed-placeholder
-    (util/pluralize (count comments) " hidden reply")]])
+    (util/pluralize (or reply-count (count comments)) " hidden reply")]])
 
 (defc <comment-frame> {:features [[:appear nil]]} [{:keys [children] :as spec}]
   (into [:div.flex.blog-comment-around] children))
@@ -138,24 +133,27 @@
   (let [[show-expand? show-expand! hide-expand!] (timer/use-delayed-hide 2000)
         showing? (timer/use-delayed-visible? (or (nil? visible?) @visible?) 1000)
         is-preview? (= [:new-comment] path)
+        *expanded? (rf/subscribe [:comments/thread-expanded? path])
         *comments (when-not is-preview?
-                    (rf/subscribe [:comments/for-q-flat (first path)
-                                   (when (<= 2 (count path)) (last path))]))]
+                    (rf/subscribe [(if (and showing? @*expanded?
+                                           (or (nil? (:reply-count post)) (pos? (:reply-count post))))
+                                     :comments/for-q-flat :comments/cached-thread)
+                                   (first path) (last path)]))]
     (when showing?
       (let [active-user @(rf/subscribe [:user/active-user])
             user @(rf/subscribe [:user/user user])
             score (or score 0)
             *comments (or *comments (r/atom nil))
-            *expanded? (rf/subscribe [:comments/thread-expanded? path])]
+            replies? (or (seq @*comments) (pos? (:reply-count post 0)))]
           [:<>
            [<comment-frame> {:appear {:class (:appear spec) :remember-key [:blog/comment path]} :children [
             [:div.blog-comment-border
-             {:style {:cursor (if (and @*expanded? @*comments)
+             {:style {:cursor (if (and @*expanded? replies?)
                                 "zoom-out"
-                                (when @*comments "zoom-in"))
+                                (when replies? "zoom-in"))
                       :background-color (:bg-color user)
                       :opacity (if is-preview? 0.5 1.0)}
-              :on-click #(when @*comments
+              :on-click #(when replies?
                            (rf/dispatch [:blog/expand-comment-thread path
                                          (not @*expanded?)]))}]
             [:section.blog-comment
@@ -207,7 +205,7 @@
                       @(rf/subscribe [:comments/adding? path]))
              [<add-comment> {:parent-path path}])
 
-           (when @*comments ;replies
+           (when replies? ;replies
              [:div.blog-comment-reply-outer
               [:div.blog-comment-reply
                {:class (when-not @*expanded?
@@ -217,31 +215,24 @@
                         [<comment-post> {:path (conj path (:id post)) :comment post
                                          :visible? *expanded? :appear "slide-behind"}] ))]
               (when-not @*expanded?
-                [<collapsed-reply-view> {:path path :comments @*comments}])])]))))
+                [<collapsed-reply-view> {:path path :comments @*comments :reply-count (:reply-count post)}])])]))))
 
 (defc <comments-section> "Comments section!"
   {:features [[:appear "zoom-y"]]}
   [{{:keys [id] :as post} :post :as spec}]
-  (let [comments (vals @(rf/subscribe [:comments/for-q-flat id]))
-        expanded? @(rf/subscribe [:blog/state [:comments-expanded id]])
-        amount-show-collapsed 4
-        amount-str (util/pluralize (count comments) "comment")]
+  (let [{:keys [records loading? more?]} @(rf/subscribe [:comments/root-page id])
+        comments (->> (vals records) (sort-by (juxt :ts :id)) reverse)]
     [:section.blog-comments
-     (if (<= (count comments) amount-show-collapsed) ;only show a few comments unless expanded
-       [:h6.bottomborder amount-str]
-       [:button.blog-btn.blog-collapse-btn.nomargin.bottomborder
-        {:on-click #(rf/dispatch [:blog/state [:comments-expanded id] (not expanded?)])}
-        (if-not expanded? (str "Show all " amount-str) "Collapse")])
-
+     [:h6.bottomborder (str (util/pluralize (count comments) "comment") (when more? "+"))]
      (when (seq comments)
        [:div.blog-comments-inner
-        {:class (when-not expanded? "collapsed")}
-        (doall (for [comment (if expanded?
-                               comments
-                               (take amount-show-collapsed comments))
-                     :let [path [(:id post) (:id comment)]]]
+        (doall (for [comment comments :let [path [id (:id comment)]]]
                  ^{:key (get-id-str path)}
                  [<comment-post> {:path path :comment comment}]))])
+     (when more?
+       [:button.blog-btn.blog-load-more
+        {:disabled loading? :on-click #(rf/dispatch [:blog/load-more-comments id])}
+        (if loading? "Loading comments…" "Load more comments")])
 
      (when @(rf/subscribe [:user/active-user])
        [<add-comment-btn> {:parent-path [id] :kind :comment}])

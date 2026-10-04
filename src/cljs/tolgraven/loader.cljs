@@ -6,6 +6,8 @@
    [tolgraven.content.contract :as content-contract]
    [tolgraven.component :as component]
    [tolgraven.component.data :as data]
+   [tolgraven.components.error :as error]
+   [tolgraven.service-status :as status]
    [reagent.core :as r]
    [shadow.lazy :as lazy])
   (:require-macros
@@ -144,10 +146,14 @@
               (.then (fn [loaded]
                        (when (= module @*requested)
                          (reset! *loaded loaded)
+                         (status/recover! [:module module])
                          (when post-fn (apply post-fn loaded args)))))
               (.catch (fn [error]
                         (when (= module @*requested)
-                          (reset! *error error))))))
+                          (reset! *error error)
+                          (status/fail! [:module module] "Section unavailable"
+                                        "This section could not be loaded. Retry to load it again."
+                                        #(do (reset! *requested nil) (reset! *error nil))))))))
         (cond
           deferred?
           (when <before>
@@ -155,12 +161,12 @@
              {:on-click #(rf/dispatch [:scope/init module args])}
              (if (vector? <before>) <before> (into [<before>] args))])
 
-          @*error
-          [:div.module-error
-           [:p "This section could not be loaded."]
-           [:button {:on-click #(do (reset! *requested nil)
-                                    (reset! *error nil))}
-            "Retry"]]
+          (and @*error (nil? @*loaded))
+          [error/<failure> "module" (name module)
+           {:title "This section could not be loaded"
+            :message "Check your connection and try loading this section again."
+            :error @*error}
+           #(do (reset! *requested nil) (reset! *error nil))]
 
           @*loaded
           (let [component (get-in @*loaded [:view view])]

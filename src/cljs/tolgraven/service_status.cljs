@@ -9,7 +9,7 @@
   ;; One log/notification per outage, not one per automatic retry.
   (when-not (contains? @*failures id)
     (rf/dispatch [:diag/new :error title message
-                  (cond-> {:custom-id [:service-status id]}
+                  (cond-> {:custom-id [:service-status id] :sticky? true}
                     retry! (assoc :buttons [{:id :retry :text "Retry"
                                              :action [:service-status/retry id]}]))]))
   (swap! *failures assoc id {:title title :message message :retry! retry!}))

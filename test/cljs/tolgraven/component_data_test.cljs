@@ -86,7 +86,8 @@
 (deftest failures-are-visible-retryable-and-late-responses-cannot-install
   (async done
     (let [before @rfdb/app-db *calls (atom 0) *late (atom nil)
-          resource {:source :fixture :id :failure :into [:fixture :value] :timeout-ms 25}]
+          resource {:source :fixture :id :failure :into [:fixture :value] :timeout-ms 25}
+          element (.createElement js/document "div") root (dom/create-root element)]
       (data/register-source! :fixture
                             {:load! (fn [_]
                                       (if (= 1 (swap! *calls inc))
@@ -97,16 +98,26 @@
           (.catch (fn [_]
                     (is (= :error (data/state [resource])))
                     (is (some #(= :component-data (first %)) (keys @status/*failures)))
-                    (data/retry! [resource])))
+                    (react-dom/flushSync
+                     #(dom/render root [component/<data-body>
+                                        {:ns "fixture" :name "dependent" :options {:depends [resource]}}
+                                        [] [:p "Recovered content"]]))
+                    (is (some? (.querySelector element ".component-failed[role=alert]")))
+                    (is (.includes (.-textContent element) "data could not be loaded"))
+                    (react-dom/flushSync #(.click (.querySelector element "button")))
+                    (tick!)))
           (.then (fn [_]
                    (@*late "stale")
                    (tick!)))
           (.then (fn [_]
                    (is (= "fresh" (get-in @rfdb/app-db [:fixture :value])))
                    (is (= :ready (data/state [resource])))
-                   (is (= 2 @*calls))))
+                   (is (= 2 @*calls))
+                   (flush!)
+                   (is (nil? (.querySelector element ".component-failed")))
+                   (is (= "Recovered content" (.-textContent element)))))
           (.catch #(is false (str %)))
-          (.finally (fn [] (clean!) (reset! rfdb/app-db before) (done)))))))
+          (.finally (fn [] (dom/unmount root) (clean!) (reset! rfdb/app-db before) (done)))))))
 
 (deftest supabase-adapter-does-not-install-old-account-data
   (async done
@@ -164,7 +175,7 @@
                    (flush!)
                    (is (.includes (.-textContent container) "could not be loaded"))
                    (let [button (.querySelector container "button")]
-                     (is (= "Retry data" (.-textContent button)))
+                     (is (= "Attempt reload" (.-textContent button)))
                      (.click button))
                    (tick!)))
           (.then (fn [_]

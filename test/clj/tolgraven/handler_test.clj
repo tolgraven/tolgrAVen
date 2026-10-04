@@ -19,7 +19,7 @@
                  #'tolgraven.handler/app-routes)
     (try
       ;; Route tests do not need to transform every media asset or redirect to TLS.
-      (with-redefs [config/env (assoc config/env :test true)
+      (with-redefs [config/env (assoc config/env :test true :ssr {:enabled false})
                     middleware/wrap-optimus identity]
         (f))
       (finally (mount/stop #'tolgraven.handler/app-routes

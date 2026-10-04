@@ -31,6 +31,7 @@
         (merge {:handler (handler/app)}
                {:port (env :port)
                 :http2? true
+                :async? true
                 :websocket? true
                 :buffer-size 64368})))
   :stop

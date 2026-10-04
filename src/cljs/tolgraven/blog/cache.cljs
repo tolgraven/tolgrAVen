@@ -9,7 +9,9 @@
             [tolgraven.supabase.query :as query]))
 
 (def options {:scope :public :ttl-ms 1800000})
-(def state-paths [[:state :blog :comments-expanded]
+(def state-paths [[:store :public]
+                 [:state :blog :comment-limit]
+                 [:state :blog :comments-expanded]
                   [:state :blog :comment-thread-expanded]
                   [:state :blog :adding-comment]
                   [:state :motion-seen]])

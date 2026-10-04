@@ -3,6 +3,7 @@
             [reagent.ratom :as ratom]
             [re-frame.db :as db]
             [tolgraven.supabase.scoped :as scoped]
+            [tolgraven.supabase.query :as query]
             [tolgraven.supabase.connection :as connection]
             [tolgraven.service-status :as status]
             [tolgraven.supabase-client-test :as mocks]))
@@ -74,3 +75,50 @@
          (is (not (contains? @status/*failures closed-id)))
          ((:close! failed))
          (done)) 30))))
+
+(deftest different-reply-readers-share-a-bulk-query
+  (async done
+    (let [mock (mocks/mock-client) before @db/app-db old @scoped/*transport
+          reads (atom []) callbacks (atom [])
+          opts (fn [parent] {:scoped? true :path-collection [:blog-comments]
+                            :where [[:parent-post :== 42] [:parent-comment :== parent]]})]
+      (scoped/connect! (:sdk mock) (fn [query success _] (swap! reads conj query) (swap! callbacks conj success)))
+      (let [a (scoped/ensure-query! (opts "a")) b (scoped/ensure-query! (opts "b"))]
+        @a @b
+        (scoped/drain!)
+        (is (= 1 (count @reads)))
+        (is (= #{"a" "b"} (set (last (last (:where (first @reads)))))))
+        ((first @callbacks) {:docs [{:id "a1" :data {:id "a1" :parent-post 42 :parent-comment "a"}}
+                                   {:id "b1" :data {:id "b1" :parent-post 42 :parent-comment "b"}}]})
+        (-> (mocks/tick!)
+            (.then (fn [_]
+                     (is (= ["a1"] (mapv :id (:docs @a))))
+                     (is (= ["b1"] (mapv :id (:docs @b))))
+                     (is (identical? a (scoped/ensure-query! (opts "a"))))))
+            (.catch #(is false (str %)))
+            (.finally (fn [] (ratom/dispose! a) (ratom/dispose! b)
+                        (scoped/connect! (:client old) (:read! old))
+                        (reset! db/app-db before) (done))))))))
+
+(deftest profile-readers-use-one-filtered-batch-and-retain-distinct-results
+  (async done
+    (let [mock (mocks/mock-client) before @db/app-db old @scoped/*transport
+          reads (atom []) callback (atom nil)]
+      (scoped/connect! (:sdk mock) (fn [query success _] (swap! reads conj query) (reset! callback success)))
+      (let [a (scoped/ensure-query! (query/profile-query "a"))
+            b (scoped/ensure-query! (query/profile-query "b"))]
+        @a @b
+        (scoped/drain!)
+        (is (= 1 (count @reads)))
+        (is (= :in (second (first (:where (first @reads))))))
+        (@callback {:docs [{:id "a" :data {:id "a" :name "Alice"}}
+                          {:id "b" :data {:id "b" :name "Bob"}}]})
+        (-> (mocks/tick!)
+            (.then (fn [_]
+                     (is (= "Alice" (get-in @a [:docs 0 :data :name])))
+                     (is (= "Bob" (get-in @b [:docs 0 :data :name])))
+                     (is (identical? a (scoped/ensure-query! (query/profile-query "a"))))))
+            (.catch #(is false (str %)))
+            (.finally (fn [] (ratom/dispose! a) (ratom/dispose! b)
+                        (scoped/connect! (:client old) (:read! old))
+                        (reset! db/app-db before) (done))))))))

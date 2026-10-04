@@ -4,7 +4,8 @@
 
  :builds
  {:ssr {:target :node-script
-             :build-hooks [(tolgraven.build.compat/rrb-vector)]
+             :build-hooks [(tolgraven.build.compat/rrb-vector) (tolgraven.build.ssr/revision)]
+             :devtools {:enabled false}
              :compiler-options {:external-config {:tolgraven/ssr true}}
              :prepend-js "globalThis.XMLHttpRequest = class { constructor() { throw new Error('SSR views must use supplied request data, not browser HTTP'); } };"
              :main tolgraven.ssr.worker/main

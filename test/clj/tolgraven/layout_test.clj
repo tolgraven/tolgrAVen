@@ -9,7 +9,7 @@
   (doseq [[dev? stylesheet] [[true "css/tolgraven/main.min.css"]
                              [false "/bundles/styles.hash.css"]]]
     (testing (if dev? "development" "production")
-      (with-redefs [config/env {:dev dev?}
+      (with-redefs [config/env {:dev dev? :ssr {:enabled false}}
                     olink/bundle-paths (fn [_ bundles]
                                         (is (= ["styles.css"] bundles))
                                         [stylesheet])

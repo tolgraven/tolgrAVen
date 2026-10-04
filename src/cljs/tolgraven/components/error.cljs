@@ -7,18 +7,19 @@
    [tolgraven.ui.code :as code]))
 
 (defn <failure>
-  "Always-visible boundary fallback. Retry is owned by the React boundary.
-   Native details work even when the surrounding page has no portal target."
-  [ns-name comp-name {:keys [error stack]} retry!]
+  "Shared fallback for rendering, dependencies, modules and initialization.
+   The owner supplies retry; this component never starts requests itself."
+  [ns-name comp-name {:keys [error stack title message]} retry!]
   [:section.component-failed {:role "alert"}
-   [:h2 "This component could not be displayed"]
-   [:p "The rest of the page is still available. You can try loading this component again."]
-   [:button {:type "button" :on-click retry!} "Attempt reload"]
-   [:details
-    [:summary "Error details"]
-    [:p (str ns-name "/" comp-name)]
-    [:pre (or (ex-message error) (str error))]
-    (when (seq stack) [:pre stack])]])
+   [:h2 (or title "This component could not be displayed")]
+   [:p (or message "The rest of the page is still available. You can try loading this component again.")]
+   (when retry! [:button {:type "button" :on-click (fn [_] (retry!))} "Attempt reload"])
+   (when error
+     [:details
+      [:summary "Error details"]
+      [:p (str ns-name "/" comp-name)]
+      [:pre (or (ex-message error) (str error))]
+      (when (seq stack) [:pre stack])])])
 
 (defn <error-full>
   "Full error display compojnent, goes in a portal."

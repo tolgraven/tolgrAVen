@@ -78,7 +78,8 @@
       (.then (fn [_] (render) (rf/dispatch [:scroll/restore-position-dev 150])))))
 
 (defn init "Called only on page load" []
-  (restore/begin! {:back? (restore/back-navigation?)
+  (restore/begin! {:back? (or (restore/back-navigation?)
+                               (= "true" (.getAttribute (.getElementById js/document "app") "data-restore")))
                    :hydrate? (= "true" (.getAttribute (.getElementById js/document "app") "data-hydrate"))})
   (rf/dispatch-sync [:init/app-db])
   (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])

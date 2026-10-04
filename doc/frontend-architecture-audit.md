@@ -80,11 +80,11 @@ experiments remain isolated browser-library integrations.
 
 ## Validation for this pass
 
-- Browser regression suite: 111 tests, 566 assertions, all passing. Includes real
+- Browser regression suite: 116 tests, 603 assertions, all passing. Includes real
   Node-rendered blog, landing, CV, docs and missing-permalink hydration; shared
   subscription disposal; streaming app-db updates; stale private-response rejection;
   restoration/explicit deletion; error recovery; and preview interactions.
-- Backend suite: 66 tests, 389 assertions, all passing.
+- Backend suite: 74 tests, 425 assertions, all passing.
 - Browser release, SSR release and the running development build: zero CLJS
   compiler warnings. The rrb-vector hook also applies to the production target.
 - CSS build passes. Dependency prefab hash matches the published registry image.
@@ -94,3 +94,33 @@ experiments remain isolated browser-library integrations.
 - The browser's mail handler extension rewrites mailto links before hydration,
   producing an attribute-only React warning. The isolated hydration fixtures pass
   without recovery; this external DOM modification is not suppressed by the app.
+
+## Shared plans, comment windows and concurrent SSR
+
+The follow-up replaces SSR-specific blog REST predicates with the module-owned
+CLJC read graph and shared Supabase schema/query compiler. JVM and browser adapters
+share batching, normalization, projections, filters and reply-count rules. Browser
+route preloading resolves the graph through managed subscriptions; components use
+the same query constructors. Profiles now batch by ID rather than using a full
+public-user table snapshot.
+
+Initial comment windows contain ten roots and immediate replies; deeper bodies
+load only on expansion. A larger window retains its current nodes while loading.
+Window size, folds and exact public query caches persist through the shared storage
+queue. Bounded recent-path cookie hints select client restoration on saved returns;
+fresh SSR owns initial display defaults to prevent hydration mismatch.
+
+The production HTTP adapter uses async Ring with Java 21 virtual-thread tasks.
+Independent upstream reads overlap under a shared concurrency limit. A two-process
+Node pool renders different pages concurrently; identical in-flight requests share
+source acquisition and rendering. Tests cover both concurrency and binding retention,
+as well as bulk profile dispatch and bounded comment reads. A separate local async
+Undertow server served and hydrated real Supabase content successfully. Dark Reader
+can add style attributes before hydration in the extension-enabled browser; isolated
+hydration fixtures continue to pass without recovery.
+
+Render boundaries, dependency loads, lazy modules, SPA page loads and page
+initialization share the same component fallback with retry. HUD alerts remain;
+separate service banners are not rendered. Cached content survives background
+connection failures. Browser tests exercise data-failure retry and distinguish
+failed page loads from genuine missing routes.

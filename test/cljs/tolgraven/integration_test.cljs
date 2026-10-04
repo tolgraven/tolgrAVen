@@ -112,7 +112,10 @@
         (fn []
           (is (some #(= [:loading/off :page 1] %) @*events))
           (is (some #(= :diag/new (first %)) @*events))
-          (is (some #(= [:error-page] (second %)) @*events))
+          (let [fallback (some #(when (= [:error-page] (second %)) (nth % 2)) @*events)
+                form (fallback)]
+            (is (= "This page could not be loaded" (:title (nth form 3))))
+            (is (fn? (last form)) "Page failures offer retry instead of a misleading 404"))
           (done))
         0))))
 

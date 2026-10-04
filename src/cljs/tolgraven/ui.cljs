@@ -671,7 +671,8 @@
  (let [msg-fn (fn [{:keys [level title message time actions buttons id]}]
                 ^{:key (str "hud-message-" id)}
                 [:div.hud-message
-                  {:class (name level)
+                  {:role (if (= :error level) "alert" "status")
+                   :class (name level)
                    :style {:position :relative}
                    :ref #(when % (util/run-highlighter! "pre" %)) ;this works but dispatch not??
                    :on-click #(doall (for [action (or actions
@@ -692,7 +693,7 @@
                                                      (keyword? id) name)
                                     "-button-" (:id button))}
                        [:button.hud-message-button
-                        {:on-click #(rf/dispatch action)}
+                        {:on-click (fn [event] (.stopPropagation event) (rf/dispatch action))}
                         text])])])]
   [:div.hud.hidden
    {:class (when (seq @to-show) "visible")}

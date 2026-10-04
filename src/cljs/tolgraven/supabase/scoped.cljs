@@ -1,5 +1,5 @@
 (ns tolgraven.supabase.scoped
-  "Public blog readers: retain results in app-db, hold live channels only while
+  "Public scoped readers: retain results in app-db, hold live channels only while
    subscribed, and coalesce invalidations before issuing filtered HTTP reads."
   (:require [tolgraven.react :as rf]
             [reagent.ratom :as ratom]
@@ -19,31 +19,41 @@
 
 (declare queue! load! drain!)
 
+(rf/reg-event-db :store/scoped-batch
+  (fn [db [_ values]] (update-in db [:store :scoped] merge values)))
+
 (defn- active? [key entry transport]
   (and (identical? entry (get @*readers key))
        (identical? transport @*transport)))
 
-(defn- load! [key {:keys [opts *loading *dirty *retry] :as entry}]
+(defn- load! [entries]
   (when-let [{:keys [read!] :as transport} @*transport]
-    (if @*loading (reset! *dirty true)
-      (do
-        (reset! *loading true)
-        (reset! *dirty false)
-        (when @*retry (js/clearTimeout @*retry) (reset! *retry nil))
-        (read! opts
-          (fn [value]
-            (when (active? key entry transport)
-              (reset! *loading false)
-              (rf/dispatch [:store/scoped key value])
-              (status/recover! [:supabase-scoped key])
-              (when @*dirty (queue!))))
-          (fn [_]
-            (when (active? key entry transport)
-              (reset! *loading false)
-              (status/fail! [:supabase-scoped key] "Blog content unavailable"
-                            "The requested post or comment thread could not load. Existing content is retained; retrying automatically."
-                            #(load! key entry))
-              (reset! *retry (js/setTimeout #(when (active? key entry transport) (load! key entry)) 3000)))))))))
+    (let [opts (query/batch-query (mapv (comp :opts second) entries))
+          retry! (fn [[_ entry]] (reset! (:*dirty entry) true) (queue!))]
+      (doseq [[_ {:keys [*loading *dirty *retry]}] entries]
+        (reset! *loading true) (reset! *dirty false)
+        (when @*retry (js/clearTimeout @*retry) (reset! *retry nil)))
+      (read! opts
+        (fn [value]
+          (let [values
+                (into {} (keep (fn [[key {:keys [opts *loading *dirty] :as entry}]]
+                                 (when (active? key entry transport)
+                                   (reset! *loading false)
+                                   (status/recover! [:supabase-scoped key])
+                                   (when @*dirty (queue!))
+                                   [key (if (= 1 (count entries)) value
+                                          (query/query-contract
+                                           {(query/path-part (first (:path-collection opts)))
+                                            (into {} (map (juxt :id :data)) (:docs value))} opts))]))) entries)]
+            (when (seq values) (rf/dispatch [:store/scoped-batch values]))))
+        (fn [_]
+          (doseq [[key {:keys [*loading *retry] :as entry} :as pair] entries
+                  :when (active? key entry transport)]
+            (reset! *loading false)
+            (status/fail! [:supabase-scoped key] "Content unavailable"
+                          "The requested content could not load. Existing content is retained; retrying automatically."
+                          #(retry! pair))
+            (reset! *retry (js/setTimeout #(when (active? key entry transport) (retry! pair)) 3000))))))))
 
 (defn- invalidate! [table]
   (doseq [[_ {:keys [opts *dirty]}] @*readers
@@ -68,7 +78,7 @@
               current? #(and (identical? transport @*transport)
                              (identical? channel (get-in @*channels [table :channel])))
               monitor (connection/watch!
-                       {:id [:supabase-scoped-stream table] :title "Blog live updates unavailable"
+                       {:id [:supabase-scoped-stream table] :title "Live updates unavailable"
                         :current? current? :retry! #(invalidate! table)})]
           (swap! *channels assoc table {:client client :channel channel :monitor monitor})
           ;; One invalidation stream per table; snapshots remain query-scoped.
@@ -84,11 +94,13 @@
                    (when (= "SUBSCRIBED" state) (invalidate! table))))))))
       ;; HTTP doesn't wait for WebSocket readiness. A SUBSCRIBED invalidation
       ;; repairs the small connection window without discarding live writes.
-      (doseq [[key {:keys [*dirty] :as entry}] @*readers :when @*dirty]
-        (load! key entry)))))
+      (doseq [entries (vals (group-by (comp query/batch-key :opts second)
+                              (filter (fn [[_ {:keys [*dirty *loading]}]]
+                                        (and @*dirty (not @*loading))) @*readers)))]
+        (load! entries)))))
 
 (defn queue! []
-  (when-not @*tick (reset! *tick (js/setTimeout drain! 0))))
+  (when-not @*tick (reset! *tick (js/setTimeout #(rf/dispatch [:store/drain-readers]) 0))))
 
 (defn connect! [client read!]
   (doseq [table (keys @*channels)] (close-channel! table))
@@ -116,3 +128,6 @@
                                      :*dirty (atom true) :*retry (atom nil)})
           (queue!)
           state))))
+
+(rf/reg-fx :store/drain-readers (fn [_] (drain!)))
+(rf/reg-event-fx :store/drain-readers (fn [_ _] {:store/drain-readers true}))

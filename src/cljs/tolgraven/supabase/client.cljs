@@ -35,21 +35,31 @@
 (defn- session-key [session]
   [(session-user-id session) (session-owner-id session)])
 
-(defn- run-select! [client {:keys [table select filters]}]
+(defn- run-select! [client {:keys [table select filters limit order-by]}]
   (letfn [(page! [offset rows]
-            (let [q (reduce (fn [q [field op value]] (call-method q op (name field) value))
+            (let [q (reduce (fn [q [field op value]] (call-method q op (name field) (if (= op "in") (into-array value) value)))
                             (-> (.from client table) (.select select)) filters)
-                  q (reduce #(.order %1 (name %2)) q (:key (realtime/tables table)))]
-              (.then (status/within! (.range q offset (+ offset 499)) 15000)
+                  q (if (seq order-by)
+                      (reduce (fn [q [field direction]] (.order q (name field) #js {:ascending (= :asc direction)})) q order-by)
+                      (reduce #(.order %1 (name %2)) q (:key (realtime/tables table))))
+                  size (if limit (min 500 (- limit offset)) 500)]
+              (.then (status/within! (.range q offset (+ offset (dec size))) 15000)
                      (fn [res]
                        (let [{:keys [data error]} (js->clj res :keywordize-keys true)]
                          (when error (throw (ex-info "Supabase select failed" {:table table})))
                          (let [rows (into rows data)]
-                           (if (= 500 (count data)) (page! (+ offset 500) rows) rows)))))))]
+                           (if (and (= size (count data)) (or (nil? limit) (< (+ offset size) limit)))
+                             (page! (+ offset size) rows) rows)))))))]
     (-> (js/Promise.resolve) (.then (fn [] (page! 0 []))))))
 
 (defn- result [seed opts]
   (query/query-contract (shape/seed->contract seed) opts))
+
+(defn- with-reply-counts! [client opts value]
+  (if-let [plan (query/reply-count-plan opts value)]
+    (-> (run-select! client plan)
+        (.then #(query/with-reply-counts opts value %)))
+    (js/Promise.resolve value)))
 
 (defn read-once! [opts handler error-handler]
   (if-let [client @*client]
@@ -68,9 +78,12 @@
         (let [plan (query/seed-load-plan opts)]
           (-> (js/Promise.all (into-array (map #(run-select! client %) plan)))
               (.then (fn [rows]
+                       (let [value (result (into {} (map (fn [p r] [(:seed-key p) r]) plan (array-seq rows))) opts)]
+                         (if (:reply-counts? opts) (with-reply-counts! client opts value) value))))
+              (.then (fn [value]
                        (when (current?)
                          (status/recover! :supabase-read)
-                         (handler (result (into {} (map (fn [p r] [(:seed-key p) r]) plan (array-seq rows))) opts)))))
+                         (handler value))))
               (.catch (fn [_]
                         (when (current?)
                           (status/fail! :supabase-read "Supabase content unavailable"
@@ -87,7 +100,11 @@
 (rf/reg-event-db :store/cache-query
   (fn [db [_ key value]] (assoc-in db [:store :query-cache key] value)))
 (rf/reg-event-db :store/cache-seed
-  (fn [db [_ snapshot]] (assoc-in db [:store :snapshot] snapshot)))
+  (fn [db [_ snapshot]]
+    (cond-> (assoc-in db [:store :snapshot] snapshot)
+      (contains? (:loaded snapshot) "site_users")
+      (assoc-in [:store :public "users"] (into {} (map (fn [[id user]] [id (select-keys user [:id :name :avatar :bg-color :comment-count :karma :seq-id])]))
+                      (get (shape/seed->contract (:seed snapshot)) "users"))))))
 (defn- publish-cache! [& _]
   (rf/dispatch [:store/cache-seed {:seed @*seed :loaded @*loaded
                                   :owner (session-key @*session) :generation @*client-generation}]))
@@ -122,7 +139,7 @@
         tables (query/realtime-tables opts)
         entry (get-in @rfdb/app-db [:store :query-cache (query-key opts)])]
     (cond
-      (and (query/scoped-blog-query? opts) (get-in @rfdb/app-db [:store :scoped (query-key opts)]))
+      (and (query/scoped-query? opts) (get-in @rfdb/app-db [:store :scoped (query-key opts)]))
       {:ready? true :value (get-in @rfdb/app-db [:store :scoped (query-key opts)])}
       (and (seq tables) (every? @*loaded tables)
            (or (not (query/user-document-query? opts)) @*session))
@@ -149,7 +166,7 @@
                                (read-once! opts
                                  (fn [value]
                                    (when (and (identical? client @*client) (= owner (session-key @*session)))
-                                     (when (query/scoped-blog-query? opts)
+                                     (when (query/scoped-query? opts)
                                        (rf/dispatch-sync [:store/scoped key value]))
                                      (rf/dispatch-sync [:store/cache-query key
                                                         {:value value :owner owner :generation @*client-generation
@@ -247,7 +264,7 @@
   (when-not @*query-tick (reset! *query-tick (js/setTimeout drain-queries! 0))))
 
 (defn ensure-query! [options]
-  (if (query/scoped-blog-query? options)
+  (if (query/scoped-query? options)
     (scoped/ensure-query! options)
     (let [opts (query/normalize-query options)
         key (pr-str opts)

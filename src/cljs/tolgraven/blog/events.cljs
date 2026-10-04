@@ -1,5 +1,5 @@
 (ns tolgraven.blog.events
-  (:require
+  (:require [tolgraven.blog.comments :as comments]
     [tolgraven.react :as rf]
     [re-frame.std-interceptors :refer [path]]
     [tolgraven.blog.model :as model]
@@ -137,3 +137,8 @@
 (rf/reg-event-fx :blog/adding-comment
   (fn [{:keys [db]} [_ parent-path adding?]]
     (persist-comment-state db :adding-comment parent-path adding?)))
+
+(rf/reg-event-fx :blog/load-more-comments
+  (fn [{:keys [db]} [_ id]]
+    {:db (update-in db [:state :blog :comment-limit id] (fnil + comments/page-size) comments/page-size)
+     :dispatch [:blog/cache-state-changed]}))

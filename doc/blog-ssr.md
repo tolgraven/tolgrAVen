@@ -1,11 +1,26 @@
 # Page SSR and re-frame 1.4.7
 
-Set `SSR_ENABLED=true` to enable server rendering for `/`, `/about`, `/services`,
-`/hire`, `/cv`, `/docs`, `/docs/codox/:doc`, `/blog`, `/blog/page/:nr`, and numeric-ID permalinks such as
-`/blog/post/title-42`. `BLOG_SSR_ENABLED` remains a compatibility fallback.
-`SSR_WORKER` defaults to `target/ssr/site.js` locally and `/app/ssr/site.js` in
-Docker (`BLOG_SSR_WORKER` is also accepted). Run `make ssr` for the local worker.
-Other routes, including blog archive and tags, currently render in the browser. No Coolify flag is changed by this branch.
+SSR is enabled by default. Configure it under `:ssr` in your `config.edn`
+(`dev-config.edn` in local development):
+
+```clojure
+:ssr {:enabled true
+      :render-workers 2
+      :worker "target/ssr/site.js"
+      :node-binary "node"}
+```
+
+Production config points `:worker` to `/app/ssr/site.js`; Docker bundles that build.
+Raw `SSR_ENABLED`/`BLOG_SSR_ENABLED`/`SSR_WORKER` environment switches are no longer
+read. Set `:enabled false` explicitly to disable SSR. The normal development REPL
+watches both the browser and Node targets. Successful Node builds invalidate old
+render cache entries and restart each pooled worker on its next lease. The Node
+protocol has no development REPL injected into stdout.
+
+The currently enabled page declarations cover `/`, `/about`, `/services`, `/hire`,
+`/cv`, `/docs`, `/docs/codox/:doc`, `/blog`, `/blog/page/:nr`, and numeric-ID
+permalinks such as `/blog/post/title-42`. Archive and tag pages still use the SPA.
+Run `make ssr` for a standalone release build when no SSR watcher is running.
 
 Each module owns a `pages.cljc` namespace exposing `spec`, a native Reitit
 route tree containing its pages, names, exported view keys, and opt-in `:ssr`
@@ -27,14 +42,16 @@ The blog uses `blog/views.cljs`; the landing page uses `views/auto.cljs` and its
 existing home/media components. There are no SSR-only copies of the header,
 footer, post markup, Markdown configuration, pagination or landing sections.
 
-Ring fetches the requested post bodies (three per listing page, plus one
-lookahead), lightweight summaries for pagination/tags/adjacent links, public
-author profiles, selected posts' comment threads, and fresh CMS content. Subsequent
+Ring fetches the requested post bodies (three per listing page), lightweight
+summaries for pagination/tags/adjacent links, public
+author profiles in one filtered `site_users` request, bounded comment windows, and fresh CMS content. Subsequent
 SPA comment reads use the ordinary filtered subscriptions.
 All four landing URLs load the complete landing content because their existing
 controllers scroll within that page. Landing SSR does not read Supabase.
 
-A persistent Node worker renders synchronously with Reagent `render-to-string`.
+A pool of persistent Node workers renders with Reagent `render-to-string`.
+The renderer source is ClojureScript compiled by Shadow; Node supplies React’s
+JavaScript runtime. The JVM owns source acquisition and cache coordination.
 Each request initializes an isolated public app-db, renders using ordinary
 subscriptions, then clears the subscription cache, app-db and restoration context
 in `finally`. Browser effects are disabled during server rendering; accidental
@@ -44,8 +61,11 @@ such as Leaflet remain in their existing lazy bundles.
 
 The browser installs the same content and scoped post/summary/comment caches, preloads
 the visible shell modules, then hydrates the ordinary page. Public author data is
-held stable through hydration. The comments section, the first four root comments and their initially expanded
-replies render on the server. Comment reads are bounded to the selected posts;
+held stable through hydration. The comments section, the newest ten root comments per post and their immediate
+replies render on the server. Roots use a stable timestamp/ID order and one extra
+row to detect another page. Immediate replies are fetched in bulk; deeper bodies
+stay unloaded, with a bulk IDs-only query providing reply counts for folded
+placeholders. Comment reads are bounded to the selected posts;
 folded content stays unmounted. Supabase connections and browser controllers
 begin after commit. Existing DOM nodes remain in place. Main-module
 viewport loading, media interactions, editing, search, user/settings panels,
@@ -72,12 +92,39 @@ stale pages. Listing pages follow the same comparison and cannot reuse HTML if
 their contents have changed. Errors never validate or replace cached entries.
 
 The cache retains at most 64 paths and excludes entries larger than two million
-characters (HTML plus snapshot), with an eight-million-character total budget. Rendering is serialized in a single Node worker,
-with a ten-second deadline and 128 MiB V8 heap cap. The worker restarts after
-failure. A cache miss is single-flight under the cache lock. A slow cache miss
-can delay other misses; add a bounded worker pool only if measured traffic needs
-it. Whole HTTP responses are `no-store`: CSRF and request-specific layout data
-are never cached with public HTML.
+characters (HTML plus snapshot), with an eight-million-character total budget.
+`:ssr :render-workers` sets a bounded process pool (default 2, range 1–4; restart the server to resize); each Node
+process has a 128 MiB V8 heap limit, plus runtime overhead. Rendering within one
+worker is synchronous and isolated, while different workers render concurrently.
+A lease waits at most ten seconds and a render has its own ten-second deadline;
+only a failing worker is restarted. Cache locks cover bookkeeping, never reads
+or rendering. Identical concurrent path/query requests share one in-flight task,
+including source acquisition; different paths proceed independently.
+
+Undertow uses its three-argument async handler. The outer adapter runs the existing
+middleware chain on Java 21 virtual threads, preserving Clojure dynamic bindings,
+so blocking Ring middleware and HTTP clients do not occupy Undertow workers.
+Independent graph nodes execute in concurrent waves, and CMS/configuration reads
+run alongside Supabase data acquisition. Upstream work is capped at eight active
+calls; the request and distinct-page queues are bounded at 64. Whole HTTP responses
+are `no-store`: CSRF and request-specific layout data are never cached with public HTML.
+
+## Shared data declarations
+
+`supabase/query.cljc` defines the public table/field mappings, projections, filters,
+ordering, limits, batching keys and reply-count relation. The JVM reader and browser
+SDK adapter consume those same plans and the existing shared row-to-app-db contract.
+`blog/data.cljc` declares the graph of summaries, selected posts, bounded roots,
+immediate children and public authors. The module’s page spec carries that plan;
+`ssr.clj` has no blog SQL/REST predicates or blog snapshot branch.
+
+The pure `supabase/plan.cljc` evaluator accepts an adapter. On the JVM it uses
+batched concurrent reads; `:store/plan` in the browser acquires ordinary managed
+subscriptions. Blog route readiness and the visible components share the same
+query constructors. Exact query results are serialized with the public snapshot
+and installed into app-db before hydration. Public profile subscriptions batch
+by ID on both sides, including missing profiles as completed empty results.
+
 
 ## Individual blog reads
 
@@ -86,7 +133,18 @@ posts fetch their own bodies, and each comment thread filters on `parent_post`
 and `parent_comment` at the database (`is.null` for roots). Adjacent-post links
 read summaries. Archive previews still load each displayed post individually.
 
+“Load more comments” increases the visible root window by ten. It reads the new
+prefix plus one lookahead row, retaining the previous visible window until the
+response arrives. This avoids offset gaps when new comments are inserted.
+Expanding a deeper comment acquires its ordinary thread subscription; collapsing
+releases that reader while retaining cached data and the existing exit transition.
+
 Scoped readers coalesce identical subscriptions and next-tick invalidations.
+Compatible sibling-thread reads for a post are combined into one `parent_comment
+IN (...)` request, then distributed to their individual app-db query caches by one
+result event. Reply counts likewise use one filtered IDs query per batch. Public
+profile readers share filtered ID batches. No component instance starts
+its own profile request.
 One lightweight Realtime invalidation channel per active table refreshes only
 active filtered queries. Delete events can contain only a primary key, so they
 invalidate all active queries for that table. Channels/retries are released
@@ -152,7 +210,7 @@ References: [Reagent server rendering](https://reagent-project.github.io/docs/ma
 
 Cached comments and display state restore through the shared component-storage
 envelope before mounting. Only public scoped post/comment/profile queries are
-eligible; fresh SSR entries take precedence. Root expansion, thread folding and
+eligible; fresh SSR entries take precedence. The requested comment-window size, root expansion, thread folding and
 motion identities survive return navigation. SSR comments are present in the initial markup and matching client query caches;
 hydration does not gate the comments section on an interactive flag. Previously
 shown posts/comment frames use stable motion keys; explicitly folded threads
@@ -171,7 +229,12 @@ closed immediately. The component retains its last inputs during its CSS exit,
 then removes the original wrapper; reopening cancels removal. Event handlers
 contain no delayed close/open transitions.
 
-Service failures use the HUD, without duplicate banners above page content.
+Service failures use sticky, accessible HUD alerts with retry controls, without
+duplicate banners above page content. They remain until dismissed or recovered.
+When required content is unavailable, the affected component uses the same
+accessible fallback as render boundaries, module loading and page initialization.
+Retry belongs to the failed loader; usable cached content stays visible during
+background failures.
 Initial WebSocket negotiation is silent, including transient socket replacement
 during authentication. An explicit timeout or failure to join within ten seconds
 reports an error; losing an established connection reports immediately. Successful
@@ -192,3 +255,27 @@ The shell uses one Open Sans stylesheet, with the existing v29 Latin font served
 locally and preloaded. The fallback font uses matching vertical metrics so the
 landing title keeps its line-box height before the font arrives. A restored hero
 retains its settled decoration while its page fades out.
+
+## Saved returns without personalized server renders
+
+On pagehide/hidden visibility, the shared storage adapter writes one envelope per
+owner. After a successful public-content save (including ordinary batched saves, before
+a reload can begin) it sets a 30-minute `tolgraven-return`
+cookie containing up to 16 recently saved pathnames (bounded below 3 KB). A matching document request receives
+a client-rendered shell marked `data-restore`, without Supabase/CMS snapshot reads
+or an SSR worker call. The client restores content and display state before its
+first render, so an expanded 20-comment window does not hydrate over a default
+10-comment server window. No view state is replicated to the server.
+
+BFCache history returns retain the existing DOM directly. Ordinary SPA navigation
+never requests SSR. Fresh visits and paths not matching the saved-return hint
+still use public SSR. A non-BFCache return waits for the cached JavaScript and local
+restore before displaying content; it deliberately does not show an incorrect
+shorter SSR page. The cookie is only a hint: expired, missing, corrupt or unavailable
+storage falls back to the normal subscription/module loading and HUD error paths.
+Existing cached content remains visible during Supabase background refresh. Failed
+storage writes clear the hint. The cookie retains recent paths across document returns and merges paths from
+other tabs when saving; older paths can eventually be evicted and receive normal SSR. In that case the fresh public snapshot owns
+the initial fold/window defaults, ensuring cached display settings cannot cause a
+hydration mismatch. No schema or deployment configuration changes
+are required for this behavior.

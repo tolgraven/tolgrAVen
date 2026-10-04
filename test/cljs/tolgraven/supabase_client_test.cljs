@@ -11,7 +11,7 @@
 (defn tick! [] (js/Promise. (fn [resolve _] (js/setTimeout resolve 0))))
 
 (defn mock-client []
-  (let [*rows (atom {}) *selects (atom []) *channels (atom {})
+  (let [*rows (atom {}) *selects (atom []) *filters (atom []) *channels (atom {})
         *removed (atom []) *auth-change (atom nil) *deferred (atom nil)
         auth #js {:getSession #(js/Promise.resolve #js {:data #js {:session @client/*session}})
                   :onAuthStateChange (fn [callback]
@@ -23,13 +23,15 @@
                                q #js {}]
                            (aset q "select" (fn [_] q))
                            (aset q "order" (fn [_] q))
-                           (aset q "eq" (fn [_ _] q))
+                           (doseq [op ["eq" "is" "in"]]
+                             (aset q op (fn [field value]
+                                          (swap! *filters conj [table field op (if (= op "in") (vec value) value)]) q)))
                            (aset q "range" (fn [start end]
                                              (swap! *selects conj [table start end])
                                              (if-let [pending @*deferred]
                                                pending
                                                (js/Promise.resolve
-                                                (clj->js {:data (vec (take 500 (drop start (get @*rows table []))))})))))
+                                                (clj->js {:data (vec (take (inc (- end start)) (drop start (get @*rows table []))))})))))
                            q))
                  :channel (fn [name]
                             (let [*change (atom nil) *status (atom nil)
@@ -39,7 +41,7 @@
                               (swap! *channels assoc name {:channel channel :change *change :status *status})
                               channel))
                  :removeChannel (fn [channel] (swap! *removed conj channel) (js/Promise.resolve "ok"))}]
-    {:sdk sdk :rows *rows :selects *selects :channels *channels :removed *removed
+    {:sdk sdk :rows *rows :filters *filters :selects *selects :channels *channels :removed *removed
      :auth-change *auth-change :deferred *deferred}))
 
 (defn reset-client! [mock]
@@ -320,3 +322,19 @@
             (.then (fn [_] (is (= 1 (count @(:selects mock))) "Cache survives reader cleanup")))
             (.catch #(is false (str %)))
             (.finally done))))))
+
+(deftest bounded-comment-read-and-reply-counts-use-two-bulk-requests
+  (async done
+    (let [mock (mock-client)]
+      (reset-client! mock)
+      (reset! (:rows mock) {"blog_comments" (mapv #(hash-map :id (str %) :parent_post 42 :ts %) (range 50))})
+      (client/read-once! {:scoped? true :reply-counts? true :path-collection [:blog-comments]
+                         :where [[:parent-post :== 42] [:parent-comment :== nil]]
+                         :order-by [[:ts :desc] [:id :desc]] :limit 11}
+        (fn [result]
+          (is (= 11 (count (:docs result))))
+          (is (= [["blog_comments" 0 10] ["blog_comments" 0 499]] @(:selects mock)))
+          (is (= 1 (count (filter #(= "in" (nth % 2)) @(:filters mock)))))
+          (is (= 11 (count (last (last @(:filters mock))))) "One IDs query counts all replies")
+          (done))
+        (fn [error] (is false (str error)) (done))))))

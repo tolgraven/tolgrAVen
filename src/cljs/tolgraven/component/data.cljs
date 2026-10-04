@@ -227,3 +227,13 @@
 (rf/reg-fx :component-data/load prefetch!)
 (rf/reg-event-fx :component-data/load
   (fn [_ [_ resources]] {:component-data/load resources}))
+
+(defn failure [resources]
+  (some (fn [resource]
+          (let [result (snapshot resource)]
+            (when (= :error (:status result)) (:error result))))
+        resources))
+
+(defn retry-background! [resources]
+  ;; The shared loader records failures and reports them through the HUD.
+  (-> (retry! resources) (.catch (fn [_] nil))))

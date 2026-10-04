@@ -3,13 +3,16 @@
     [tolgraven.react :as rf]
     [reagent.ratom :as ratom]
     [tolgraven.blog.model :as model]
+    [tolgraven.blog.comments :as comments]
+    [tolgraven.blog.data :as data]
+    [tolgraven.supabase.scoped :as scoped]
+    [tolgraven.util :as util]
     [clojure.string :as string]))
 
 (rf/reg-sub :blog
   (fn [[_ path]]
     (case (first path)
-      :posts (rf/subscribe [:<-store-q {:path-collection [:blog-posts]
-                                        :scoped? true :summary? true}])
+      :posts (rf/subscribe [:<-store-q data/summaries-query])
       :comments (rf/subscribe [:<-store-2 :blog-comments])
       (rf/subscribe [:get :blog])))
   (fn [data [_ path]]
@@ -34,10 +37,7 @@
 
 (rf/reg-sub :blog/post-records
   (fn [[_ post-id]]
-    (rf/subscribe [:<-store-q {:path-collection [:blog-posts]
-                               :scoped? true
-                               :where [[:id :== post-id]]
-                               :doc-changes true}]))
+    (rf/subscribe [:<-store-q (data/post-query post-id)]))
   (fn [posts _] posts))
 
 (rf/reg-sub :blog/post
@@ -165,15 +165,39 @@
   (fn [[_ blog-id]] (rf/subscribe [:blog/post blog-id]))
   (fn [post _] (:comments post)))
 
+(rf/reg-sub :comments/limit
+  :<- [:blog/state [:comment-limit]]
+  (fn [limits [_ id]] (data/comment-limit limits id)))
+
+(rf/reg-sub-raw :comments/root-page
+  (fn [_ [_ id]]
+    (ratom/make-reaction
+     (fn []
+       (let [amount @(rf/subscribe [:comments/limit id])
+             value @(rf/subscribe [:<-store-q (comments/root-query id amount)])
+             [cached-amount cached] (when-not value
+                                      (some (fn [size]
+                                              (when-let [result @(rf/subscribe [:store/scoped (scoped/query-key (comments/root-query id size))])]
+                                                [size (util/normalize-store-result result)]))
+                                            (reverse (range comments/page-size amount comments/page-size))))
+             rows (->> (vals (or value cached)) (sort-by (juxt :ts :id)) reverse)
+             ids (set (map :id (take (if value amount (or cached-amount 0)) rows)))]
+         {:records (when (or value cached) (into {} (filter (fn [[_ row]] (ids (:id row)))) (or value cached)))
+          :loading? (nil? value) :more? (or (nil? value) (> (count rows) amount))})))))
+
 (rf/reg-sub :comments/thread-records
   (fn [[_ blog-id parent-id]]
-    (rf/subscribe [:<-store-q {:path-collection [:blog-comments]
-                              :scoped? true
-                              :where [[:parent-post :== blog-id]
-                                      [:parent-comment :== parent-id]]
-                              :order-by [[:ts :desc]]
-                              :doc-changes true}]))
-  (fn [comments _] comments))
+    (if parent-id
+      (rf/subscribe [:<-store-q (comments/thread-query blog-id parent-id)])
+      (rf/subscribe [:comments/root-page blog-id])))
+  (fn [value [_ _ parent-id]] (if parent-id value (:records value))))
+
+;; Folded threads retain their cached children for the exit transition without
+;; owning a remote reader. Each child removes its DOM after delayed visibility.
+(rf/reg-sub :comments/cached-thread
+  (fn [[_ post-id parent-id]]
+    (rf/subscribe [:store/scoped (scoped/query-key (comments/thread-query post-id parent-id))]))
+  (fn [result _] (some-> result util/normalize-store-result)))
 
 (rf/reg-sub :comments/for-q-flat
   (fn [[_ blog-id parent-id]] (rf/subscribe [:comments/thread-records blog-id parent-id]))
@@ -200,18 +224,14 @@
       1 :up -1 :down nil)))
 
 (rf/reg-sub-raw :blog/page-ready?
-  (fn [_ [_ {:keys [page post-id]}]]
+  (fn [_ [_ selection]]
     (ratom/make-reaction
-     (fn []
-       (let [posts @(rf/subscribe [:blog [:posts]])
-             size @(rf/subscribe [:blog/posts-per-page])
-             ids (if post-id [post-id]
-                     @(rf/subscribe [:blog/ids-for-page (dec (or page 1)) size]))
-             ;; Realize every input so bodies and comment threads start together.
-             ready (mapv (fn [id]
-                           [(some? @(rf/subscribe [:blog/post-records id]))
-                            (some? @(rf/subscribe [:comments/thread-records id]))]) ids)]
-         (and (or post-id (some? posts)) (every? true? (mapcat identity ready))))))))
+     #(-> @(rf/subscribe [:store/plan data/plan
+                          (assoc selection
+                                 :size @(rf/subscribe [:blog/posts-per-page])
+                                 :comment-limits @(rf/subscribe [:blog/state [:comment-limit]])
+                                 :thread-expanded @(rf/subscribe [:blog/state [:comment-thread-expanded]]))])
+          :ready?))))
 
 (rf/reg-sub :blog/post-loaded?
   (fn [[_ id]] (rf/subscribe [:blog/post-records id]))

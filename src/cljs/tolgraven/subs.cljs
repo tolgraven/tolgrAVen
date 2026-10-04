@@ -8,6 +8,7 @@
             [tolgraven.util :as util]
             [tolgraven.supabase.client :as supabase-client]
             [tolgraven.supabase.query :as query]
+            [tolgraven.supabase.plan :as plan]
             [clojure.walk :as walk]
             [clojure.string :as string]
             [reitit.frontend.easy :as rfe]))
@@ -17,6 +18,12 @@
     (if context/*server?*
       (ratom/make-reaction #(query/query-contract (get-in @db [:store :public]) opts))
       (supabase-client/ensure-query! opts))))
+
+(rf/reg-sub-raw :store/plan
+  (fn [_ [_ nodes context]]
+    (ratom/make-reaction
+     #(plan/evaluate nodes context
+                     (fn [queries] (mapv (fn [opts] @(rf/subscribe [:store/on-snapshot opts])) queries))))))
 
 (rf/reg-sub :get ;should this be discontinued? or only used transiently like migrate everything away once got a comp working?
  (fn [db [_ & path]]
