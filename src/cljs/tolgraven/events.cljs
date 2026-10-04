@@ -329,6 +329,31 @@
  (fn [db [_ on?]]
    {:db (assoc-in db [:options :theme :dark-mode] on?)}))
 
+(defn system-prefers-dark?
+  []
+  (boolean (some-> js/window
+                   (.matchMedia "(prefers-color-scheme: dark)")
+                   .-matches)))
+
+(defn resolved-theme
+  [selected-theme]
+  (if (#{"light" "dark"} selected-theme)
+    selected-theme
+    (if (system-prefers-dark?) "dark" "light")))
+
+(defn toggled-theme
+  [selected-theme]
+  (if (= "dark" (resolved-theme selected-theme)) "light" "dark"))
+
+(rf/reg-event-fx :theme/init
+  (fn [_ _]
+    {:dispatch [:html/set-attr! nil "data-theme" (resolved-theme nil)]}))
+
+(rf/reg-event-fx :theme/toggle
+  (fn [_ _]
+    {:dispatch [:html/set-attr! nil "data-theme"
+                (toggled-theme (.getAttribute js/document.documentElement "data-theme"))]}))
+
 (rf/reg-event-fx :theme/colorscheme
  (fn [db [_ colorscheme]]
    {:db (assoc-in db [:options :theme :colorscheme] (or colorscheme "default"))}))
@@ -607,6 +632,7 @@
 (rf/reg-event-fx :init/init  [] ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
  (fn [{:keys [db]} [_ _]]
   {:dispatch-n [[:listener/load]
+                [:theme/init]
                 [:ls/get-path [:scroll-position] [:state :scroll-position]]
                 [:listener/scroll]
                 [:scroll/update-direction]
