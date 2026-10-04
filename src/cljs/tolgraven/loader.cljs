@@ -100,7 +100,7 @@
                         ;; even when the module itself is already initialized.
                         (-> (js/Promise.all
                              #js [(prepare-view! spec view args)
-                                  (when (and route @(rf/subscribe [:common/route]) (:route-depends spec)
+                                  (when (and route (:route-depends spec)
                                              (not= (:path route) (:path @context/*snapshot)))
                                     (prepare-data! ((:route-depends spec) route)))])
                             (.then (fn [_] (if post-fn (apply post-fn spec args) spec))))))))

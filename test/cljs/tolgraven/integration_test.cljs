@@ -381,6 +381,20 @@
                (rf/clear-subscription-cache!) (reset! rfdb/app-db before)))))
 
 
+(deftest fragment-links-retain-current-route-parameters
+  (let [before @rfdb/app-db
+        *calls (atom [])]
+    (try
+      (rf/clear-subscription-cache!)
+      (swap! rfdb/app-db assoc :common/route
+             (reitit/match-by-path routes/router "/blog/post/A-new-era-28"))
+      (with-redefs [rfe/href (fn [route params _query]
+                              (swap! *calls conj [route params])
+                              "/blog/post/A-new-era-28")]
+        (is (= "/blog/post/A-new-era-28#main" @(rf/subscribe [:href "#main"])))
+        (is (= [[:blog-post {:permalink "A-new-era-28"}]] @*calls)))
+      (finally (rf/clear-subscription-cache!) (reset! rfdb/app-db before)))))
+
 (deftest shim-keeps-registration-call-site-in-debug-builds
   (shim/reg-event-db :test/instrumented-shim (fn [db _] db))
   (try

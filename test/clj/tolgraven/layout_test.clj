@@ -3,7 +3,20 @@
             [optimus.html :as ohtml]
             [optimus.link :as olink]
             [tolgraven.config :as config]
+            [tolgraven.ssr :as ssr]
             [tolgraven.layout :as layout]))
+
+(deftest ssr-failure-status
+  (doseq [[error status] [[(ex-info "Missing document" {:status 404}) 404]
+                         [(ex-info "Renderer unavailable" {}) 503]]]
+    (with-redefs [config/env {:dev true}
+                  ssr/enabled? (constantly true)
+                  ssr/page! (fn [& _] (throw error))
+                  ohtml/link-to-js-bundles (fn [& _] nil)]
+      (let [response (layout/render-home {:uri "/docs/codox/missing"})]
+        (is (= status (:status response)))
+        (is (= "no-store" (get-in response [:headers "Cache-Control"])))
+        (is (.contains (:body response) "Please retry."))))))
 
 (deftest first-paint-styles
   (doseq [[dev? stylesheet] [[true "css/tolgraven/main.min.css"]

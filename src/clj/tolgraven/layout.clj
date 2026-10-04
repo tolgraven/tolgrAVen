@@ -178,9 +178,10 @@
   (let [returning? (returning-page? request)
         ssr (when (and (not returning?) (ssr/enabled?) (ssr/route (:uri request)))
               (try (ssr/page! (:uri request) (:query-params request))
-                   (catch Exception _
+                   (catch Exception error
                      (log/error "Page SSR unavailable; returning a retryable public error")
-                     {:error? true})))
+                     {:error? true
+                      :status (if (= 404 (:status (ex-data error))) 404 503)})))
         request (cond-> request
                   returning? (assoc :restore? true)
                   (:snapshot ssr) (assoc :ssr ssr
@@ -230,7 +231,7 @@
                 "https://region1.google-analytics.com"])
    :title-img "img/logo/tolgraven-logo.png"
    :anti-forgery (force *anti-forgery-token*))
-    (:error? ssr) (assoc :status 503)
+    (:error? ssr) (assoc :status (:status ssr))
     (get-in ssr [:snapshot :missing?]) (assoc :status 404)
     (or ssr returning?) (assoc-in [:headers "Cache-Control"] "no-store"))))
 

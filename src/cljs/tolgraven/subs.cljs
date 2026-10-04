@@ -225,6 +225,7 @@
                  k
                  page-id)
           query (merge (:query-params route) query)
+          params (if (keyword? k) params (merge (:path-params route) params))
           uri (context/href rfe/href path params query)]
       (if (keyword? k)
         uri
