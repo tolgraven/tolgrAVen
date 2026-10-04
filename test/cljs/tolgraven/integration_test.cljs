@@ -3,6 +3,9 @@
             [re-frame.core :as rf]
             [re-frame.db :as rfdb]
             [reagent.ratom :as ratom]
+            [reagent.core :as r]
+            [reagent.dom.client :as dom]
+            [react-dom :as react-dom]
             [tolgraven.supabase.client :as supabase]
             [tolgraven.supabase.query :as supabase-query]
             [tolgraven.store.contract :as store-contract]
@@ -15,6 +18,7 @@
             [tolgraven.search.subs :as search]
             ;; Browser tests bundle all module specs so ready-module initialization is exercised.
             [tolgraven.blog.module]
+            [tolgraven.blog.model :as blog-model]
             [tolgraven.blog.views :as blog-views]
             [tolgraven.link-preview.module]
             [tolgraven.cv.module]
@@ -248,10 +252,37 @@
         (reset! rfdb/app-db before)))))
 
 (deftest active-vote-remains-clickable-unless-write-is-pending
-  (let [pending (ratom/atom false)]
+  (let [pending (ratom/atom false)
+        element (.createElement js/document "div")
+        root (dom/create-root element)]
     (with-redefs [rf/subscribe (fn
                                 ([[event]] (if (= :blog/vote event) (ratom/atom :up) pending))
                                 ([_ _] pending))]
-      (is (false? (:disabled (second (blog-views/vote-btn "author" "voter" [1 "c"] :up)))))
-      (reset! pending true)
-      (is (true? (:disabled (second (blog-views/vote-btn "author" "voter" [1 "c"] :up))))))))
+      (try
+        (react-dom/flushSync #(dom/render root [blog-views/<vote-btn> {:user "author" :active-user "voter" :path [1 "c"] :vote :up}]))
+        (is (false? (.-disabled (.querySelector element "button"))))
+        (reset! pending true)
+        (react-dom/flushSync #(r/flush))
+        (is (true? (.-disabled (.querySelector element "button"))))
+        (finally (react-dom/flushSync #(dom/unmount root)))))))
+
+
+(deftest blog-navigation-rejects-invalid-pages-and-page-sizes
+  (let [before @rfdb/app-db]
+    (try
+      (doseq [number [nil "" "invalid" "2oops" "0" "-1" -2 js/NaN 1.5]]
+        (rf/dispatch-sync [:blog/nav-page number])
+        (is (= 0 (get-in @rfdb/app-db [:state :blog :page]))))
+      (rf/dispatch-sync [:blog/nav-page "3"])
+      (is (= 2 (get-in @rfdb/app-db [:state :blog :page])))
+      (rf/dispatch-sync [:blog/set-posts-per-page 0])
+      (is (= 1 (get-in @rfdb/app-db [:options :blog :posts-per-page])))
+      (is (nil? (blog-model/page-ids [3 2 1] -1 2)))
+      (is (nil? (blog-model/page-ids [3 2 1] 0 0)))
+      (is (= [] (blog-model/page-ids [3 2 1] 9 2)))
+      (finally (reset! rfdb/app-db before)))))
+
+(deftest blog-tags-handle-missing-values-whitespace-and-sequences
+  (is (= [] (blog-model/tags nil)))
+  (is (= ["clojure" "web"] (blog-model/tags "  clojure\tweb  clojure ")))
+  (is (= ["web"] (blog-model/tags [nil "" " web " "web"]))))

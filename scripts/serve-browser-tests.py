@@ -15,6 +15,8 @@ class Handler(SimpleHTTPRequestHandler):
             return str(public / "__invalid_test_path__")
         if not path:
             return str(tests / "index.html")
+        if path.startswith("fixtures/"):
+            return str(public.parents[1] / "test/browser" / path.removeprefix("fixtures/"))
         root = tests if path.startswith("js/") else public
         return str(root / path)
 

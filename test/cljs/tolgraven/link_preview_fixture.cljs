@@ -9,7 +9,7 @@
 (defonce *root (atom nil))
 (defonce *fullscreen? (r/atom false))
 
-(defc <preview-link> [spec url]
+(defc <preview-link> {:features [:props :links]} [spec url]
   [:p [:a {:href url} "Open the local preview page"]])
 
 (defn <fixture> []

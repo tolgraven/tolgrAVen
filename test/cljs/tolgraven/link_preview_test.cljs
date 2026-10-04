@@ -14,12 +14,12 @@
   (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
 
 (defn- render! [root form]
-  (react-dom/flushSync #(rdom/render root form)))
+  (react-dom/flushSync #(.render root (r/as-element form))))
 
 (defn- flush! []
   (react-dom/flushSync #(r/flush)))
 
-(defc <link-example> [spec url]
+(defc <link-example> {:features [:props :links]} [spec url]
   [:div [:a {:href url} "Example link"]])
 
 (deftest queued-prefetch-lifecycle

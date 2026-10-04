@@ -1,5 +1,7 @@
 (ns tolgraven.supabase.client
   (:require [ajax.core :as ajax]
+            [re-frame.core :as rf]
+            [re-frame.db :as rfdb]
             [tolgraven.service-status :as status]
             [goog.object :as gobj]
             [reagent.ratom :as ratom]
@@ -74,6 +76,61 @@
                                         #(.reload js/location))
                           (error-handler {:message "Unable to read Supabase data"}))))))))
     (error-handler {:message "Supabase is not initialized"})))
+
+(defonce *preloads (atom {}))
+(defonce *client-generation (atom 0))
+(add-watch *client ::generation
+           (fn [_ _ old new] (when-not (identical? old new) (swap! *client-generation inc))))
+(defn query-key [opts] (pr-str (query/normalize-query opts)))
+(rf/reg-event-db :store/cache-query
+  (fn [db [_ key value]] (assoc-in db [:store :query-cache key] value)))
+(rf/reg-event-db :store/cache-seed
+  (fn [db [_ seed loaded]] (assoc-in db [:store :snapshot] {:seed seed :loaded loaded})))
+(add-watch *seed ::app-db-cache
+           (fn [_ _ _ seed] (rf/dispatch [:store/cache-seed seed @*loaded])))
+(add-watch *loaded ::app-db-cache
+           (fn [_ _ _ loaded] (rf/dispatch [:store/cache-seed @*seed loaded])))
+
+(defn cached-query [opts]
+  (let [opts (query/normalize-query opts)
+        tables (query/realtime-tables opts)
+        entry (get-in @rfdb/app-db [:store :query-cache (query-key opts)])]
+    (cond
+      (and (seq tables) (every? @*loaded tables)
+           (or (not (query/user-document-query? opts)) @*session))
+      {:ready? true :value (result @*seed opts)}
+      (and (= (:owner entry) (session-key @*session))
+           (= (:generation entry) @*client-generation)
+           (> (:expires-at entry 0) (.now js/Date)))
+      {:ready? true :value (:value entry)}
+      :else {:ready? false})))
+
+(defn preload-query!
+  "Load without holding a realtime subscription. Identical queued reads share a
+   Promise and populate the same app-db cache used on a later subscription."
+  [opts]
+  (let [key (query-key opts) owner (session-key @*session) client @*client
+        pending-key [key owner client]
+        cached (cached-query opts)]
+    (if (:ready? cached) (js/Promise.resolve (:value cached))
+      (or (get @*preloads pending-key)
+          (let [promise (js/Promise.
+                         (fn [resolve reject]
+                           (js/setTimeout
+                            #(if (and (identical? client @*client) (= owner (session-key @*session)))
+                               (read-once! opts
+                                 (fn [value]
+                                   (when (and (identical? client @*client) (= owner (session-key @*session)))
+                                     (rf/dispatch-sync [:store/cache-query key
+                                                        {:value value :owner owner :generation @*client-generation
+                                                         :expires-at (+ (.now js/Date) 60000)}]))
+                                   (resolve value))
+                                 (fn [_] (reject (js/Error. "Supabase dependency unavailable"))))
+                               (reject (js/Error. "Supabase session changed"))) 0)))
+                promise (-> (status/within! promise 15000)
+                            (.finally #(swap! *preloads dissoc pending-key)))]
+            (swap! *preloads assoc pending-key promise)
+            promise)))))
 
 (declare ensure-table! load-table!)
 
@@ -159,6 +216,15 @@
     (when (and *connect-timer @*connect-timer) (js/clearTimeout @*connect-timer))
     (call-method client "removeChannel" channel)))
 
+(defonce *query-tick (atom nil))
+(defn drain-queries! []
+  (when @*query-tick (js/clearTimeout @*query-tick))
+  (reset! *query-tick nil)
+  (doseq [table (set (mapcat #(query/realtime-tables (:opts %)) (vals @*queries)))]
+    (ensure-table! table)))
+(defn queue-queries! []
+  (when-not @*query-tick (reset! *query-tick (js/setTimeout drain-queries! 0))))
+
 (defn ensure-query! [options]
   (let [opts (query/normalize-query options)
         key (pr-str opts)
@@ -170,16 +236,19 @@
                       #(if (and (every? @*loaded tables)
                                 (or (not (query/user-document-query? opts)) @*session))
                          (result @*seed opts)
-                         (when-not (:path-document opts) {:docs []}))
+                         (if-let [cached (:value (cached-query opts))]
+                           cached
+                           (when-not (:path-document opts) {:docs []})))
                       :on-dispose
                       (fn []
                         (swap! *queries dissoc key)
                         (doseq [table tables]
                           (when-not (some #(some #{table} (query/realtime-tables (:opts %))) (vals @*queries))
-                            (remove-table! table)
-                            (swap! *loaded disj table))))) ]
+                            (remove-table! table))))) ]
           (swap! *queries assoc key {:opts opts :*state state})
-          (doseq [table tables] (ensure-table! table))
+          ;; A component can disappear before the next tick; do not create
+          ;; channels for readers that no longer exist.
+          (queue-queries!)
           state))))
 
 (defn authenticated-request! [method uri data on-success on-error]

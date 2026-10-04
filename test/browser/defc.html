@@ -1,0 +1,16 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Composable components</title>
+<link rel="stylesheet" href="/css/tolgraven/main.min.css">
+<style>
+body { background: #191a1b; color: #eee; font: 17px/1.6 system-ui, sans-serif; }
+button { color: inherit; background: #333; border: 1px solid #888; border-radius: 5px; padding: .65rem 1rem; cursor: pointer; }
+a { color: #c4b5fd; } .blog-post { margin-top: 2rem; padding: 1.5rem; border: 1px solid #666; }
+.component-failed { margin-top: 2rem; padding: 1.5rem; border: 1px solid #e98f82; background: #312323; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; } .blog-info span, .blog-post-tags span { margin-right: 1rem; }
+.motion-list { margin-block: 1rem; }
+.motion-card { padding: 1rem; border: 1px solid #988aba; background: #272233; }
+.appear-wrapper.slide-in { opacity: 0; transform: translateY(24px); transition: opacity .7s, transform .7s; }
+.appear-wrapper.appeared { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .appear-wrapper { transition: none; animation: none; } }
+</style></head><body><div id="app"></div><script src="/js/test.js"></script><script>tolgraven.component_fixture.init();</script></body></html>

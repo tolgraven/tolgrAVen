@@ -66,131 +66,79 @@
 ;; prob do some lookups by sub through passing a namespaced id key in spec
 ;; including whether is enabled
 (defmacro defc
-  "Define a reagent component with a docstring and metadata, with a bunch of
-   built-in functionality that doesn't wrap but is part of the component itself.
-  Usage:
-  (defcomp ^:private <my-component>
-    \"This is my component\"
-    [spec & form]
-    (into [:div (:props spec)] form))"
+  "Define a lean Reagent 2 function component with optional composed features.
+
+   Plain definitions delegate directly to reagent.core/defc. An optional spec
+   declaration map after the optional docstring declares :features and :depends. Features
+   include :error-boundary, :props, :lifecycle, :links, and registered extensions.
+   Merge-only features run inline with hooks; only error boundaries need classes.
+   :appear and :seen merge onto a native root; :presence retains keyed :exit
+   children until their exit animations finish.
+
+   :depends is a vector of data-source descriptors, or a function of component
+   arguments returning that vector. Dependencies start before mount and can be
+   explicitly prefetched with component/preload!. :data enables dependencies
+   supplied through the first argument at runtime. Spec arguments are inferred
+   from spec/opts/options bindings or destructured feature keys; domain-data
+   arguments need no opt-out annotation.
+
+   Optional :let [bindings] initializes per-instance state. Existing form-2
+   bodies, destructured/variadic arguments, docstrings and metadata are supported.
+   Use components in Hiccup, not as ordinary functions (Reagent 2 convention).
+
+   (defc <counter> {:features [:props :error-boundary]} [{:keys [label] :as spec}]
+     :let [*count (reagent.core/atom 0)]
+     [:button {:on-click #(swap! *count inc)} label @*count])"
   [name & decls]
   (let [docstring (when (string? (first decls)) (first decls))
-        decls     (if docstring (next decls) decls)
-        meta-map  (when (map? (first decls)) (first decls))
-        decls     (if meta-map (next decls) decls)
+        decls (if docstring (next decls) decls)
+        attrs (when (map? (first decls)) (first decls))
+        decls (if attrs (next decls) decls)
         [args & body] decls
-        [lets body] (if (and (seq body)
-                             (= :let (first body))
-                             (vector? (second body)))
-                      [(second body) (nnext body)]
-                      [nil body])
-        ns-name   (or (some-> &env :ns :name) (ns-name *ns*)) ; cljs + clj
-        spec-sym  (when (vector? args) (first args))]
-    `(defn ~name
-       ~@(when docstring [docstring])
-       ~@(when meta-map [meta-map])
-       ~args
-       (let [*error# (clojure.core/atom nil)
-             *mounted?# (reagent.core/atom nil)
-             *showing?# (reagent.core/atom nil)
-             spec#   ~spec-sym
-             *element# (atom nil)
-             *link-state# (atom nil)
-             *link-element# (atom nil)
-             *links# (atom nil)
-             link-feature# (tolgraven.component/feature :links)
-             capture-ref# (memoize
-                           (fn [ref#]
-                             (fn [element#]
-                               (reset! *element# element#)
-                               (cond
-                                 (fn? ref#) (ref# element#)
-                                 ref# (set! (.-current ref#) element#)))))
-             sync-links!# (fn [links#]
-                            (when (and link-feature#
-                                       (or (not= links# @*links#)
-                                           (not= @*element# @*link-element#)))
-                              (when @*link-state#
-                                ((:unmount link-feature#) @*link-state#))
-                              (reset! *links# links#)
-                              (reset! *link-element# @*element#)
-                              (reset! *link-state#
-                                      (when (and links# @*element#)
-                                        ((:setup link-feature#) links#)))
-                              (when @*link-state#
-                                ((:mount link-feature#) @*link-state# @*element#))))
-             ~@(when lets [lets])]
-         (reagent.core/create-class
-          {:display-name ~(str name)
-           :component-did-mount
-           (fn [this#]
-             (reset! *mounted?# true)
-             (sync-links!# (:links spec#))
-            (and (fn? (:init spec#))
-                  ((:init spec#) this#)))
-           :component-did-update
-           (fn [this# _old-argv#]
-             (sync-links!# (:links (second (reagent.core/argv this#)))))
-          :component-will-unmount
-          (fn [this#]
-            (reset! *mounted?# false)
-            (when @*link-state#
-              ((:unmount link-feature#) @*link-state#))
-            (and (fn? (:exit spec#))
-                 ((:exit spec#) this#)))
-           :component-did-catch
-           (fn [this# error# info#]
-             (let [stack# (some-> ^js info# .-componentStack)]
-               (reset! *error# {:error error# :stack stack#}))
-             (tolgraven.util/log :error (str "Error " ~(str name))
-                                 (ex-message error#))
-             (.forceUpdate ^js this#))
-           ; :component-did-update (fn [_this# _old-argv#] ; not working, clears error by itself
-           ;                         (when @*error# (reset! *error# nil)))
-           ; :get-derived-state-from-error (fn [error#]
-           ;                                 (reset! *error# {:error error#})
-           ;                                 {})
-           :reagent-render
-           (fn ~(symbol (str name "-inner"))
-             ~args
-             (letfn
-               [(merge-props-into-root# [el#]
-                  ;; Only merge when: vector hiccup and not a fragment
-                  (if (and (vector? el#)
-                           (not= :<> (first el#))
-                           ~@(when spec-sym [`(map? ~spec-sym)])) ; if no spec arg, skip
-                    (let [[tag# maybe-attrs# & children#] el#
-                          has-attrs?# (map? maybe-attrs#)
-                          classlist# (string/join
-                                      " "
-                                      (concat [(:class (:props ~spec-sym))]
-                                              (:classes ~spec-sym)
-                                              (case @*mounted?#
-                                                true  ["TOL_mounted"]
-                                                false ["TOL_mounted" "TOL_unmounted"]
-                                                nil   [])))
-                          base-attrs#   (if has-attrs?# maybe-attrs# {})
-                          merged-attrs# (if ~spec-sym
-                                          (merge base-attrs#
-                                                 (:props ~spec-sym)
-                                                 {:class classlist#})
-                                          base-attrs#)
-                          ;; DOM refs replace React's removed findDOMNode API. Preserve
-                          ;; caller refs and avoid adding a wrapper to experimental defc forms.
-                          root-attrs# (if (and link-feature# (:links ~spec-sym)
-                                              (or (keyword? tag#) (string? tag#)))
-                                        (assoc merged-attrs# :ref
-                                               (capture-ref# (:ref merged-attrs#)))
-                                        merged-attrs#)
-                          head#         [tag# root-attrs#]]
-                      (into head# (if has-attrs?#
-                                    children#
-                                    (cons maybe-attrs# children#))))
-                    el#))]
-               (if-not @*error#
-                 (merge-props-into-root# (do ~@body))
-                 [tolgraven.components.error/<error>
-                  ~(str ns-name) ~(str name) *error# ~spec-sym])))})))))
+        [bindings body] (if (= :let (first body))
+                          [(second body) (nnext body)]
+                          [[] body])
+        metadata (merge (meta name) attrs
+                        (when docstring {:doc docstring})
+                        {:arglists (list 'quote (list args))})
+        ns-name (or (some-> &env :ns :name) (ns-name *ns*))]
+    (when-not (and (symbol? name) (vector? args) (vector? bindings)
+                   (even? (count bindings)) (seq body))
+      (throw (ex-info "defc requires an argument vector, optional :let bindings, and a body"
+                      {:component name})))
+    (let [scoped-helpers? (some #(and (seq? %) (symbol? (first %))
+                                     (#{"<sub" ">reset" ">update"} (clojure.core/name (first %))))
+                               (tree-seq coll? seq (concat bindings body)))
+          options (select-keys (merge (meta name) attrs) [:spec :features :depends :loading :state :module])
+          options (if (and scoped-helpers? (nil? (:state options))) (assoc options :state {}) options)
+          helper-bindings (when scoped-helpers?
+                            ['<sub 'tolgraven.component/<sub
+                             '>reset 'tolgraven.component/>reset
+                             '>update 'tolgraven.component/>update])
+          spec-arg (first args)
+          spec? (or (and (symbol? spec-arg) (#{"spec" "opts" "options"} (clojure.core/name spec-arg)))
+                    (and (map? spec-arg)
+                         (or (#{'spec 'opts 'options} (:as spec-arg))
+                             (some #{'props 'classes 'depends 'appear 'seen 'links}
+                                   (:keys spec-arg))
+                             (some #{:props :classes :depends :appear :seen :links} (vals spec-arg)))))
+          options (assoc options :spec (if (contains? options :spec) (:spec options) (boolean spec?)))
+          plain? (and (empty? (:features options)) (nil? (:depends options)) (nil? (:state options)))
+          descriptor (gensym "definition")]
+      `(do
+         (declare ~name)
+         ;; Keep Reagent-generated render vars lexical: cached namespaces can
+         ;; otherwise reuse top-level compiler gensyms after incremental builds.
+         ((fn []
+         (let [~descriptor (tolgraven.component/definition
+                         ~(str ns-name) ~(str name) ~options
+                         (fn ~args (let [~@helper-bindings ~@bindings] (fn ~args ~@body))))]
+         ~(if plain?
+            `(reagent.core/defc ~(with-meta name metadata) ~args
+               ~@(if (seq bindings) [`(reagent.core/with-let ~bindings ~@body)] body))
+            `(reagent.core/defc ~(with-meta name metadata) [& argv#]
+               (tolgraven.component/render-component ~descriptor argv#)))
+         (tolgraven.component/register-component! ~name ~descriptor))))))))
 
 (defmacro defcomp-
   "Define a reagent component with a docstring and metadata, standardized arg

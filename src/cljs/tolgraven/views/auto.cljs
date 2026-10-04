@@ -1,6 +1,6 @@
 (ns tolgraven.views.auto
   (:require [re-frame.core :as rf]
-            [tolgraven.content.client :as content-client]
+            [tolgraven.component :as component]
             [tolgraven.content.contract :as content-contract]
             [tolgraven.components.home :as home]
             [tolgraven.components.media :as media]
@@ -91,7 +91,9 @@
                       :defer? true :<loading> <loading>}]
                [<comp>])]
     [:<>
-     [content-client/<prefetch> (or content-deps (if content [content] (get content-contract/module-content module [])))]
+     [component/<prefetch> (into (vec (:depends section-map))
+                                (when-let [keys (seq (or content-deps (if content [content] (get content-contract/module-content module []))))]
+                                  [{:source :strapi :keys (vec keys)}]))]
      (when (or init module)
        [run-init id init dep])
      (if (and content (nil? @(rf/subscribe [:content [content]])))
@@ -112,14 +114,17 @@
 ;; Keep these nested error-boundary experiments with the layout they exercise.
 (macroexpand '(m/defc <test-2>
   "test-comp-2"
+  {:features [:error-boundary]}
   [spec]
   [:div "goodbye" (throw (js/Error. "test2"))]))
 (m/defc <test-2>
   "test-comp-2"
+  {:features [:error-boundary]}
   [spec]
   [:div "goodbye" (throw (js/Error. "test2"))])
 (m/defc <test>
   "test-comp"
+  {:features [:error-boundary]}
   [spec]
   [:div "hello" spec [<test-2> spec] ])
 

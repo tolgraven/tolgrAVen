@@ -2,6 +2,9 @@
   (:require
    [re-frame.core :as rf]
    [tolgraven.content.client :as content]
+   [tolgraven.content.contract :as content-contract]
+   [tolgraven.component :as component]
+   [tolgraven.component.data :as data]
    [reagent.core :as r]
    [shadow.lazy :as lazy])
   (:require-macros
@@ -30,32 +33,55 @@
   (when-let [loadable (get modules module)]
     (lazy/ready? loadable)))
 
+(defn- prepare-data! [resources]
+  ;; A new module load/navigation is an explicit retry opportunity. Rendering
+  ;; components still retains errors until their Retry data action is used.
+  (let [failed (set (filter #(= :error (:status (data/snapshot %))) resources))]
+    (when (seq failed) (data/invalidate! failed))
+    (data/ensure-all! resources)))
+
+(defn- prepare-view! [spec view args]
+  (if-let [definition (component/component-spec (get-in spec [:view (or view :view)]))]
+    (prepare-data! (component/dependencies definition args))
+    (js/Promise.resolve nil)))
+
 (defn load!
   "Return a promise for an initialized module. Concurrent callers share one load.
    Hooks run per caller; module initialization runs once, including bundled modules."
-  [{:keys [module init-evt pre-fn post-fn args]}]
+  [{:keys [module view init-evt pre-fn post-fn args]}]
   (if-let [loadable (get modules module)]
     (do
       (when init-evt (rf/dispatch init-evt))
       (when pre-fn (apply pre-fn args))
       (let [loaded (or (get @*loads module)
-                       (let [promise (-> (if (lazy/ready? loadable)
-                                           (js/Promise.resolve @loadable)
-                                           (js/Promise.resolve (lazy/load loadable)))
-                                         (.then (fn [spec]
-                                                  (-> (content/ensure! (:content spec))
+                       (let [known-data (prepare-data! (get content-contract/module-dependencies module []))
+                             code (try
+                                    (if (lazy/ready? loadable)
+                                      (js/Promise.resolve @loadable)
+                                      (js/Promise.resolve (lazy/load loadable)))
+                                    (catch :default error (js/Promise.reject error)))
+                             promise (-> (js/Promise.all #js [code known-data])
+                                         (.then (fn [loaded]
+                                                  (let [spec (aget loaded 0)]
+                                                   (-> (js/Promise.all
+                                                        #js [(content/ensure! (:content spec))
+                                                             (prepare-data! (:depends spec))
+                                                             (prepare-view! spec view args)])
                                                       (.then (fn []
                                                                (rf/dispatch [:scope/init module args])
                                                                (when-let [init (:init spec)]
                                                                  (apply init args))
-                                                               spec)))))
+                                                               spec))))))
                                          (.catch (fn [error]
                                                    (swap! *loads dissoc module)
                                                    (throw error))))]
                          (swap! *loads assoc module promise)
                          promise))]
         (.then loaded (fn [spec]
-                        (if post-fn (apply post-fn spec args) spec)))))
+                        ;; Per-call component dependencies may depend on route args,
+                        ;; even when the module itself is already initialized.
+                        (-> (prepare-view! spec view args)
+                            (.then (fn [_] (if post-fn (apply post-fn spec args) spec))))))))
     (js/Promise.reject (ex-info "Unknown module" {:module module}))))
 
 (defn <assets>

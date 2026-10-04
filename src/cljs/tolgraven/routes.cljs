@@ -8,6 +8,7 @@
             [tolgraven.cv.routes :as cv]
             [tolgraven.docs.routes :as docs]
             [tolgraven.loader :as l]
+            [tolgraven.component.restore :as restore]
             [tolgraven.ui :as ui]
             [tolgraven.views.home :as home]
             [tolgraven.views.not-found :as a404]))
@@ -77,6 +78,7 @@
 (defn navigate!
   "Resolve a route with injectable loading and dispatch for isolated regression tests."
   [*navigation dispatch! load! match]
+  (when-let [path (:path match)] (restore/navigate! path))
   (let [navigation (swap! *navigation inc)
         {:keys [module page view name]} (:data match)
         navigate! (fn [component]
@@ -95,7 +97,7 @@
       module
       (do
         (dispatch! [:loading/on :page navigation])
-        (-> (load! {:module module})
+        (-> (load! {:module module :view page})
             (.then #(navigate! (get-in % [:view page])))
             (.catch (fn [error]
                       (when (= navigation @*navigation)

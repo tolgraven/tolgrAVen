@@ -93,7 +93,7 @@
      (doall (for [{:keys [id title text ts score] :as comment} (vals comments)] ^{:key (str "user-" (:id user) "-comment-" id)}
               [:div.blog-comment>div.blog-comment-main
                [:h4.blog-comment-title title]
-               [l/<> {:module :blog :view :posted-by} id user ts score]
+               [l/<> {:module :blog :view :posted-by} {:id id :user user :ts ts :score score}]
                [:div.blog-comment-text
                 [link-preview/<md> text]]]))) ])
 

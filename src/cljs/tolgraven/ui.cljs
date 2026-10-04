@@ -5,6 +5,8 @@
    [tolgraven.util :as util :refer [at]]
    [tolgraven.image :as img]
    [tolgraven.macros :as m :include-macros true]
+   [tolgraven.component :as component]
+   [tolgraven.component.restore :as restore]
    [clojure.string :as string]
    [clojure.pprint :as pprint]
    [tolgraven.ui.code :as code]
@@ -34,36 +36,11 @@
 ;; also just init event to dispatch
 ;; also setup event for when component module is loaded, ensure other data fetch goes parallel
 
-(defn safe "Error boundary for components. Also prints/logs error"
-  [category component]
-  (let [exception (rf/subscribe [:exception [category]])] ;or reg not ratom or ould cause etra re-render?
-  (r/create-class
-  {:display-name (str "Boundary: " (name category))
-   :component-did-catch (fn [error info] ;apparently no :this oi!
-                          (util/log :error (str "Component " (name category))
-                                    (-> info ex-message))
-                          (rf/dispatch [:exception [category]
-                                        {:error error :info info}])) ; error and info are empty.
-   ; :get-derived-state-from-error ;"defined as instance method and will be ignored. define as static"
-   ; (fn [error] ;this should update state to serve like, an error page (for render) "if using getDerivedState methods, the state has to be plain JS object as React implementation uses Object.assign to merge partial state into the current state."
-   ;  (rf/dispatch [:exception [category]
-   ;                {:error error :info (:info exception)}])
-   ;  #js {}) ; empty new state since not using react state
-    ; ^ found above in some blog post, just makes it go blank on error...
-   :reagent-render
-   (fn [category component]
-    (if-not @exception   ;state change downstream? then it gets easier to debug "in-page",
-     component
-     (let [[component state] component] ;cant remember why this is
-        [:section.component-failed
-          [:h2 "Component exception"]
-          [:p (name category)]
-          [:pre {:style {:color "var(--red)"}}
-           (-> @exception :info ex-message)]
-          [:pre (-> state js->clj str pprint/pprint with-out-str (string/escape {\" ""}))]
-          [:div
-           [:button {:on-click #(rf/dispatch [:exception [category] nil])}
-            "Attempt reload"]]])))})))
+(defn safe
+  "Compatibility boundary for existing [safe category component] call sites.
+   Keep the category in diagnostics while sharing defc's recovery machinery."
+  [category form]
+  [component/<boundary> "tolgraven.ui" (name category) form])
 
 (defn md->div [md & [options]]
   (let [showing? (r/atom false)]
@@ -81,13 +58,13 @@
   [:div.appear-wrapper
    {:id id
     :class (str kind " "
-                (when @(rf/subscribe [:state [:appear id]]) "appeared"))
+                (when (or (restore/skip-enter?) @(rf/subscribe [:state [:appear id]])) "appeared"))
     :ref #(rf/dispatch [:appear id (boolean %)])}
    (into [:<>] components)])
 
 (defn appear-anon "Animate mount. Dont use events just ratoms."
   [opts & components]
-  (let [appeared (r/atom false)]
+  (let [appeared (r/atom (boolean (restore/skip-enter?)))]
     (fn [opts & components]
       (let [kind (if (map? opts)
                    (:class opts)
@@ -103,7 +80,7 @@
 (defn appear-merge
   "Animate mount. Merge attrs into component, don't wrap."
   [_ _]
-  (let [appeared (r/atom false)]
+  (let [appeared (r/atom (boolean (restore/skip-enter?)))]
     (r/create-class
       {:reagent-render
        (fn [opts component]
