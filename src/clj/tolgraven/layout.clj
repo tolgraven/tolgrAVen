@@ -8,7 +8,7 @@
     [ring.util.response]
     [tolgraven.config :refer [env]]
     [tolgraven.content.service :as content]
-    [tolgraven.blog.ssr :as blog-ssr]
+    [tolgraven.ssr :as ssr]
     [clojure.tools.logging :as log]
     [optimus.link :as olink]
     [optimus.html :as ohtml]))
@@ -138,9 +138,9 @@
     
    [:body {:class "container themable framing-shadow sticky-footer-container"}
     
-    [:div#app (when (:blog-ssr request) {:data-hydrate "true"}) loading-content]
-    (when-let [snapshot (get-in request [:blog-ssr :snapshot])]
-      [:script#blog-ssr-bootstrap {:type "application/json"} (content/hydration-json snapshot)])
+    [:div#app (when (:ssr request) {:data-hydrate "true"}) loading-content]
+    (when-let [snapshot (get-in request [:ssr :snapshot])]
+      [:script#ssr-bootstrap {:type "application/json"} (content/hydration-json snapshot)])
     (when-let [bundle (:site-content request)]
       [:script#site-content-bootstrap {:type "application/json"} (content/hydration-json bundle)])
     (ohtml/link-to-js-bundles request ["main.js"]) ]])
@@ -156,18 +156,18 @@
 
 (defn render-home
   [request]
-  (let [ssr (when (and (blog-ssr/enabled?) (blog-ssr/route (:uri request)))
-              (try (blog-ssr/page! (:uri request))
+  (let [ssr (when (and (ssr/enabled?) (ssr/route (:uri request)))
+              (try (ssr/page! (:uri request))
                    (catch Exception _
-                     (log/error "Blog SSR unavailable; returning a retryable public error")
+                     (log/error "Page SSR unavailable; returning a retryable public error")
                      {:error? true})))
         request (cond-> request
-                  (:snapshot ssr) (assoc :blog-ssr ssr
+                  (:snapshot ssr) (assoc :ssr ssr
                                         :site-content {:version 1 :deferred? true
                                                        :content (get-in ssr [:snapshot :content])}))]
   (cond-> (render-hiccup
    home
-   (if (:blog-ssr request) request (if-let [mode (System/getenv "CONTENT_BOOTSTRAP_MODE")]
+   (if (:ssr request) request (if-let [mode (System/getenv "CONTENT_BOOTSTRAP_MODE")]
      (if (#{"route" "full"} mode)
        (let [route (keyword (or (second (clojure.string/split (:uri request) #"/")) "home"))
              bundle (if (= mode "route") (assoc (content/for-route! route) :deferred? true) (content/bundle!))]
@@ -176,12 +176,14 @@
      request))
    :loading-content (or (:html ssr)
                         (when (:error? ssr)
-                          [:main.main-content [:p {:role "alert"} "Blog content could not load. Please retry."]
+                          [:main.main-content [:p {:role "alert"} "Page content could not load. Please retry."]
                            [:a {:href (:uri request)} "Retry"]])
                         (basic-skeleton "tolgrAVen" ["audio" "visual"] "img/foggy-shit-small.jpg"))
    :title (or (when (= 1 (count (get-in ssr [:snapshot :posts])))
-                (:title (first (get-in ssr [:snapshot :posts])))) "tolgrAVen audiovisual")
-   :description "tolgrAVen audiovisual by Joen Tolgraven"
+                (:title (first (get-in ssr [:snapshot :posts]))))
+              (get-in ssr [:snapshot :content :document :title]) "tolgrAVen audiovisual")
+   :description (or (get-in ssr [:snapshot :content :document :description])
+                    "tolgrAVen audiovisual by Joen Tolgraven")
    :pre-pre [["media/fog-3d-small.mp4" "video"]]
    :css-paths ["https://fonts.googleapis.com/css?family=Open+Sans:300,400,500,600,700,800,900"
                "css/fontawesome.css"

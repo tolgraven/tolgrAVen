@@ -4,6 +4,7 @@
     [re-frame.core :as rf]
     [re-frame.db :as rfdb]
     [tolgraven.component.data :as component-data]
+    [tolgraven.component :as component]
     [tolgraven.component.storage :as storage]
     [tolgraven.main.module :as main-module]
     [react :as react]
@@ -11,7 +12,8 @@
     [reagent.dom.client :as rdomc]
     [tolgraven.ajax :as ajax]
     [tolgraven.content.client :as content]
-    [tolgraven.blog.ssr-client :as blog-ssr]
+    [tolgraven.ssr.client :as ssr]
+    [tolgraven.components.oembed :as oembed]
     [tolgraven.component.restore :as restore]
     [tolgraven.service-status :as service-status]
     [tolgraven.events]
@@ -92,9 +94,11 @@
         {:id    "main"
          :class (when-not ext-back? "animate")}
         [swapper swap-class
-         [ui/safe :page [page]]
+         [ui/safe :page [(component/resolve-view page)]
+          (:path @(rf/subscribe [:common/route]))]
          (when-let [page-prev @(rf/subscribe [:common/page :last])]
-           [ui/safe :page-prev [page-prev]])]]
+           [ui/safe :page-prev [(component/resolve-view page-prev)]
+            (:path @(rf/subscribe [:common/route :last]))])]]
        [ui/loading-spinner true :massive]))                 ; removed since jars now that have hero in original html
 
    [:div#error-portal]
@@ -127,8 +131,40 @@
                       (r/as-element [page]))
     [#'page]))
 
+(defn <ssr-footer> [content]
+  [:<> [common/footer-full (:footer content)] [common/footer (:footer content)]])
+
+(defn <ssr-header> [content]
+  [ui/safe :header [common/header content]])
+
+(defn <ssr-chrome> []
+  [:<>
+   [ui/zoom-to-modal :fullscreen]
+   [l/<> {:module :link-preview}]
+   [ui/safe :user [l/<> {:module :user :defer? true}]]
+   [ui/safe :settings [common/settings]]
+   [ui/safe :search [l/<> {:module :search :defer? true}]]
+   [:div#error-portal]
+   [ui/safe :hud [ui/hud (rf/subscribe [:hud])]]
+   [common/to-top]
+   [:a {:name "bottom" :id "bottom"}]])
+
+(defn <ssr-module> [id]
+  (r/with-let [_ (rf/dispatch (if (= id :soundcloud)
+                                [:on-booted :site [:booted :soundcloud]]
+                                [:scope/init id]))]
+    [ui/safe id (if (= id :soundcloud) [oembed/soundcloud]
+                   [l/<> {:module id}])]))
+
 (defn <root-page> []
-  (if (blog-ssr/active?) [blog-ssr/<page>] [page]))
+  (if (ssr/active?)
+    [ssr/<page> {:header <ssr-header> :footer <ssr-footer> :chrome <ssr-chrome>
+                 :module <ssr-module>
+                 :email (some :email (get-in @ssr/*snapshot [:content :footer]))
+                 :contact! #(rf/dispatch [:state [:contact-form :show?] true])
+                 :service! #(rf/dispatch [:state [:services :full-screened?] %])
+                 :selected @(rf/subscribe [:state [:services :full-screened?]])}]
+    [page]))
 
 (defn render []
   (if @root
@@ -169,7 +205,7 @@
             (when-let [error (.getElementById js/document "page-init-error")] (.remove error))
             (service-status/recover! :page-init)
             (-> (storage/ready!)
-                (.then (fn [_] (blog-ssr/install!)))
+                (.then (fn [_] (ssr/install!)))
                 (.then (fn [_] (content/bootstrap!)))
                 (.then (fn [_] (component-data/ensure-all! (:depends spec))))
                 (.then (fn []

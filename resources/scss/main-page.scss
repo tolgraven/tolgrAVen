@@ -103,14 +103,14 @@
     padding-top: 0;
   }
 }
-#headshot {
+#headshot, #story-image-headshot {
   width: 20%;
 }
 #byline > img {
   border-radius: 0.5em;
   border: 1px solid;
 }
-#multimeter {
+#multimeter, #story-image-multimeter {
   width: 30%;
   min-width: 150px;
 }
@@ -285,5 +285,29 @@
 #strava {
   .media-as-bg {
     filter: var(--dark-to-light);
+  }
+}
+
+// Server content is already present: don't replay the delayed hero entrance.
+main[data-ssr] {
+  // The SPA swapper used to establish the background-media stacking context.
+  isolation: isolate;
+  #logo-top { animation: none; }
+  #intro h1::after {
+    animation: none;
+    width: var(--line-percent);
+    transform: skew(-30deg);
+  }
+  .ssr-module { min-height: 16rem; }
+  #intro .ssr-action {
+    position: relative;
+    display: inline-block;
+    padding: calc(.4 * var(--space)) calc(.4 * var(--space-lg));
+    margin: calc(.4 * var(--space));
+    color: var(--fg-2);
+    border: var(--line-width-md) solid var(--line-color);
+    border-radius: .125rem;
+    text-decoration: none;
+    &:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
   }
 }

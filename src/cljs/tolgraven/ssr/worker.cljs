@@ -1,7 +1,7 @@
-(ns tolgraven.blog.ssr-worker
+(ns tolgraven.ssr.worker
   (:require ["node:readline" :as readline]
             [reagent.dom.server :as server]
-            [tolgraven.blog.ssr-view :as view]))
+            [tolgraven.ssr.views :as view]))
 
 (defn main []
   (-> (.createInterface readline #js {:input (.-stdin js/process) :crlfDelay js/Infinity})
@@ -14,5 +14,5 @@
                                   [view/<page> (js->clj (js/JSON.parse line) :keywordize-keys true)])}
                           (catch :default error
                             (.write (.-stderr js/process) (str (.-stack error) "\n"))
-                            {:error "Blog rendering failed"}))]
+                            {:error "Page rendering failed"}))]
            (.write (.-stdout js/process) (str (js/JSON.stringify (clj->js response)) "\n")))))))

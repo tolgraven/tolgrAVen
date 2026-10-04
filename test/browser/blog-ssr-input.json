@@ -1,5 +1,5 @@
 {
-  "renderer-version": 1,
+  "renderer-version": 2, "kind": "blog",
   "path": "/blog/post/server-rendered-42",
   "posts": [{"id": 42, "permalink": "server-rendered-42", "title": "Server-rendered blog", "text": "This **article** is present before JavaScript.\n\n- Hydrates without replacing the article\n- Loads comments afterwards\n\n<script>window.bad = true</script>\n\n[Unsafe](javascript:alert(1))", "tags": ["SSR", "ClojureScript"], "date": "2026-10-04", "author": {"id": "writer", "name": "Writer"}}],
   "content": {"header": {"text": ["tolgrAVen", ["audio", "visual"]], "menu": {"personal": [["Blog", "/blog", "blog"]]}}, "blog": {"heading": {"title": "SSR preview"}}, "footer": [{"id": "left", "text": ["SSR fixture"]}]}

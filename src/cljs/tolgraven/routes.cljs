@@ -1,5 +1,5 @@
 (ns tolgraven.routes
-  (:require [tolgraven.blog.ssr-client :as blog-ssr] [re-frame.core :as rf]
+  (:require [tolgraven.ssr.client :as ssr] [re-frame.core :as rf]
             [reitit.frontend :as reitit]
             [reitit.frontend.history :as rfh]
             [reitit.frontend.easy :as rfe]
@@ -109,7 +109,7 @@
       :else (navigate! nil))))
 
 (defn on-nav [match _history]
-  (when-let [path (:path match)] (blog-ssr/leave! path))
+  (when-let [path (:path match)] (ssr/leave! path))
   (navigate! *navigation rf/dispatch l/load! match))
 
 (defn ignore-anchor-click? [router event element ^goog.Uri uri]

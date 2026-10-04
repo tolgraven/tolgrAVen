@@ -19,6 +19,12 @@
 (def dump-state! state-store/dump!)
 (defn dump-content! [] (storage/flush! :content))
 
+(defn resolve-view
+  "Resolve exported Vars at render time; Reagent 2 defc values are descriptors,
+   not callable functions. Keep module Vars for development hot reloading."
+  [view]
+  (if (var? view) @view view))
+
 (defonce *features (atom {}))
 
 (defn register-feature!

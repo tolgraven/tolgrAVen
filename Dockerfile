@@ -35,7 +35,7 @@ RUN mkdir -p resources/public/css/tolgraven && npm run build
 ARG BUILD_JAVA_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m"
 RUN --mount=type=cache,id=tolgraven-shadow-release,target=/usr/src/app/.shadow-cljs,sharing=locked \
     JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" lein uberjar \
- && JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" lein with-profile prod run -m shadow.cljs.devtools.cli release blog-ssr
+ && JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" lein with-profile prod run -m shadow.cljs.devtools.cli release ssr
 
 # This stage intentionally uses TARGETPLATFORM. The compiler runs on the Mac's
 # architecture; the persistent renderer must run on the deployment host's CPU.
@@ -44,8 +44,8 @@ FROM eclipse-temurin:21-jre-jammy@sha256:f04fb34e053148344e83317976114ec3f37e4b8
 WORKDIR /app
 RUN mkdir -p resources/public
 COPY --from=ssr-node /usr/local/bin/node /usr/local/bin/node
-COPY --from=build /usr/src/app/target/ssr/blog.js /app/ssr/blog.js
-ENV BLOG_SSR_WORKER=/app/ssr/blog.js
+COPY --from=build /usr/src/app/target/ssr/site.js /app/ssr/site.js
+ENV SSR_WORKER=/app/ssr/site.js
 COPY --from=build /usr/src/app/target/uberjar/tolgraven.jar /app/tolgraven.jar
 COPY --from=build /usr/src/app/env/prod/resources/config.edn /app/env/prod/resources/config.edn
 ARG VCS_REF=unknown

@@ -24,7 +24,7 @@ docker-prefab:
 
 .PHONY: ssr
 ssr:
-	lein with-profile prod run -m shadow.cljs.devtools.cli release blog-ssr
+	lein with-profile prod run -m shadow.cljs.devtools.cli release ssr
 
 docker-registry:
 	python3 scripts/docker.py registry

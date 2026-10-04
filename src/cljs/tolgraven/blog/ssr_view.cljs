@@ -24,36 +24,16 @@
     (if comments [comments {:post post}]
       [:p {:role "status"} "Comments load when the page is ready."])]])
 
-(defn <page> [{:keys [posts content page more? missing?]} & [comments notices]]
-  (let [[brand tagline] (get-in content [:header :text])
-        menu (mapcat #(get-in content [:header :menu %]) [:work :personal])]
-    [:<>
-     [:header
-      [:div.header-logo
-       [:a {:href "/"} [:h1 brand]]
-       [:div.header-logo-text (for [line tagline] ^{:key line} [:p line])]]
-      [:menu [:nav (for [[label href] menu]
-                    ^{:key label} [:a {:href href} label])]]]
-     [:div.line.line-header]
-     (when notices [notices])
-     [:main#main.main-content
-      [:section.blog.fullwide.noborder
-       [:h1 (get-in content [:blog :heading :title])]
-       (when missing? [:p {:role "alert"} "This blog post could not be found."])
-       (for [post posts] ^{:key (:id post)} [<post> post comments])
-       (when page
-         [:nav.blog-nav.center-content {:aria-label "Blog pages"}
-          (when (> page 1) [:a {:href (str "/blog/page/" (dec page))} "Newer posts"])
-          [:span (str "Page " page)]
-          (when more? [:a {:href (str "/blog/page/" (inc page))} "Older posts"])])
-       [:div.flex.center-content
-        [:a.blog-btn {:href "/blog"} "Home"]
-        [:a.blog-btn {:href "/blog/archive"} "Archive"]]]]
-     [:footer.footer-sticky
-      [:div.footer-content
-       (for [{:keys [id email text links]} (:footer content)]
-         ^{:key id}
-         [:div
-          (when email [:a {:href (str "mailto:" email)} email])
-          (for [line text] ^{:key line} [:p line])
-          (for [{:keys [name href]} links] ^{:key name} [:a {:href href} name])])]]]))
+(defn <body> [{:keys [posts content page more? missing?]} comments]
+  [:section.blog.fullwide.noborder
+   [:h1 (get-in content [:blog :heading :title])]
+   (when missing? [:p {:role "alert"} "This blog post could not be found."])
+   (for [post posts] ^{:key (:id post)} [<post> post comments])
+   (when page
+     [:nav.blog-nav.center-content {:aria-label "Blog pages"}
+      (when (> page 1) [:a {:href (str "/blog/page/" (dec page))} "Newer posts"])
+      [:span (str "Page " page)]
+      (when more? [:a {:href (str "/blog/page/" (inc page))} "Older posts"])])
+   [:div.flex.center-content
+    [:a.blog-btn {:href "/blog"} "Home"]
+    [:a.blog-btn {:href "/blog/archive"} "Archive"]]])

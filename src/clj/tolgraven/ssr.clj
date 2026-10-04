@@ -1,25 +1,27 @@
-(ns tolgraven.blog.ssr
+(ns tolgraven.ssr
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as string]
             [tolgraven.content.service :as content]
             [tolgraven.platform.supabase :as supabase]
-            [tolgraven.supabase.query :as query])
+            [tolgraven.supabase.query :as query]
+            [tolgraven.ssr.contract :as contract])
   (:import [java.lang ProcessBuilder ProcessBuilder$Redirect]
            [java.time Instant ZoneOffset]
            [java.time.format DateTimeFormatter]))
 
-(def renderer-version 1)
+(def renderer-version 2)
 (def page-size 3)
 (defonce *worker (atom nil))
 (defonce *cache (atom {}))
 
-(defn worker-path [] (or (System/getenv "BLOG_SSR_WORKER") "target/ssr/blog.js"))
+(defn worker-path [] (or (System/getenv "SSR_WORKER") (System/getenv "BLOG_SSR_WORKER") "target/ssr/site.js"))
 (defn enabled? []
-  (= "true" (System/getenv "BLOG_SSR_ENABLED")))
+  (= "true" (or (System/getenv "SSR_ENABLED") (System/getenv "BLOG_SSR_ENABLED"))))
 
 (defn route [uri]
   (cond
+    (contract/page-spec uri) {:kind :landing}
     (= uri "/blog") {:page 1}
     (re-matches #"/blog/page/[1-9]\d{0,5}" uri)
     {:page (Long/parseLong (last (string/split uri #"/")))}
@@ -59,12 +61,12 @@
       (try
         (let [result (deref work 10000 ::timeout)]
           (when-not (and (map? result) (string? (:html result)))
-            (throw (ex-info "Blog renderer unavailable" {:status 503})))
+            (throw (ex-info "Page renderer unavailable" {:status 503})))
           (:html result))
         (catch Exception e
           (stop-worker!)
           (future-cancel work)
-          (throw (ex-info "Blog renderer unavailable" {:status 503} e)))))))
+          (throw (ex-info "Page renderer unavailable" {:status 503} e)))))))
 
 (defn- rows! [table params]
   (:body (supabase/request! :get table {:query-params params})))
@@ -80,7 +82,7 @@
      :date (when ts (.format DateTimeFormatter/ISO_LOCAL_DATE
                             (.atZone (Instant/ofEpochMilli (long ts)) ZoneOffset/UTC)))}))
 
-(defn snapshot! [uri {:keys [page post-id]}]
+(defn- blog-snapshot! [uri {:keys [page post-id]}]
   (let [rows (rows! "blog_posts"
                     (cond-> {"select" (query/public-columns "blog_posts") "order" "id.desc"}
                       post-id (assoc "id" (str "eq." post-id) "limit" 1)
@@ -91,11 +93,17 @@
                                                            "select" "id,name" "limit" 1}))]))
         ;; Read the CMS too before deciding a cached render is still valid.
         bundle (content/fresh-bundle! [:document :header :common :blog :footer :post-footer])]
-    {:renderer-version renderer-version :path uri :page page
+    {:renderer-version renderer-version :kind :blog :path uri :page page
      :more? (and page (> (count rows) page-size))
      :missing? (and post-id (empty? selected))
      :posts (mapv #(post % (get authors (:user_id %))) selected)
      :content (:content bundle)}))
+
+(defn snapshot! [uri selection]
+  (if-let [spec (contract/page-spec uri)]
+    {:renderer-version renderer-version :kind (:id spec) :path uri :posts []
+     :content (:content (content/fresh-bundle! (get-in spec [:depends 0 :keys])))}
+    (blog-snapshot! uri selection)))
 
 (defn page! [uri]
   (when-let [selection (route uri)]

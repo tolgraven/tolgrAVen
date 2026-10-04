@@ -387,14 +387,15 @@
       [:button {:on-click #(rf/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
        [:label "Cancel"]]]]))
 
+(defc <tag-link> [{:keys [tag]}]
+  [:span [:a.blog-tag-link {:href @(rf/subscribe [:href :blog-tag {:tag tag}])} tag]])
+
 (defc <tags-list> [{{:keys [id tags]} :post :as spec}]
   (when-let [tags (seq (model/tags tags))]
     [:div.blog-post-tags
      (for [tag (sort tags)]
        ^{:key (str "blog-post-" id "-category-" tag)}
-       [:span
-        [:a.blog-tag-link {:href @(rf/subscribe [:href :blog-tag {:tag tag}])}
-         tag]])]))
+       [<tag-link> {:tag tag}])]))
 
 (defc <post-header> {:features [[:appear "zoom slower"]]} [{:keys [children] :as spec}]
   (into [:div.flex.blog-post-header] children))
@@ -430,6 +431,10 @@
   (if (:text post)
     [<post-content> spec]
     [loading/<spinner>]))
+
+(defc <post-by-id> [{:keys [id]}]
+  ;; Own the subscription in a render context, never inside a lazy parent for.
+  [<blog-post> {:post @(rf/subscribe [:blog/post id])}])
 
 (defc <adjacent-post-link> [{:keys [direction post-id] :as spec}]
   (when-let [id @(rf/subscribe [:blog/adjacent-post-id direction post-id])]
@@ -487,7 +492,7 @@
         "Posts tagged " [:span.blog-post-tags [:span tag]]]
        (for [post @(rf/subscribe [:blog/posts-with-tag tag])]
          ^{:key (str "blog-with-tag-" (:id post))}
-         [<blog-post> {:post @(rf/subscribe [:blog/post (:id post)])}])]}]))
+         [<post-by-id> {:id (:id post)}])]}]))
 
 (defc <blog-tag-cloud> "Render all blog tags." []
   [:div.blog-post-tags.flex.center-content
@@ -495,9 +500,7 @@
    [:div.flex.center-content
     (for [tag (sort @(rf/subscribe [:blog/all-tags]))]
       ^{:key (str "blog-tag-" tag)}
-      [:span
-       [:a.blog-tag-link {:href @(rf/subscribe [:href :blog-tag {:tag tag}])}
-        tag]])]])
+      [<tag-link> {:tag tag}])]])
 
 (defc <blog-intros-view> "Headline and a paragraph, many on each page."
   []
@@ -528,7 +531,7 @@
       [:<>
        (for [id @(rf/subscribe [:blog/ids-for-page index size])]
          ^{:key (str "blog-post-" id)}
-         [<blog-post> {:post @(rf/subscribe [:blog/post id])}])
+         [<post-by-id> {:id id}])
        [<blog-nav> {:total-posts total :current-idx index :posts-per-page size}]])))
 
 (defc <blog-container>

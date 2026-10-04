@@ -1,11 +1,18 @@
-# Blog SSR and re-frame 1.4.7
+# Page SSR and re-frame 1.4.7
 
-This branch starts SSR with an opt-in public reading page for `/blog`,
-`/blog/page/:nr`, and numeric-ID permalinks such as `/blog/post/title-42`.
-Set `BLOG_SSR_ENABLED=true` to enable it. Other routes keep the existing client
-application. The renderer is packaged in Docker; locally run `make ssr` first.
-`BLOG_SSR_WORKER` defaults to `target/ssr/blog.js` locally and `/app/ssr/blog.js`
-in Docker. `NODE_BINARY` can override the executable.
+Set `SSR_ENABLED=true` to enable server rendering for `/`, `/about`, `/services`,
+`/hire`, `/blog`, `/blog/page/:nr`, and numeric-ID permalinks such as
+`/blog/post/title-42`. `BLOG_SSR_ENABLED` remains a compatibility fallback.
+`SSR_WORKER` defaults to `target/ssr/site.js` locally and `/app/ssr/site.js` in
+Docker (`BLOG_SSR_WORKER` is also accepted). Run `make ssr` for the local worker.
+Other routes, including CV, docs, archive, and tags, currently render in the
+browser. No Coolify flag is changed by this branch.
+
+The generic `ssr` Shadow target renders a shared page shell with route-specific
+bodies. `ssr/contract.cljc` declares the landing layout and its CMS dependencies;
+the ordinary client layout and main module reference the same declaration.
+All four landing URLs use the complete landing bundle because their client
+routes scroll within that page. They do not read Supabase during server rendering.
 
 ## Rendering and hydration
 
@@ -13,11 +20,13 @@ Ring fetches only the requested public posts (three per listing page, plus one
 lookahead), relevant author names, and fresh CMS shell content. It sends that
 allowlisted snapshot to a persistent Node renderer compiled with Shadow. The
 renderer calls Reagent `render-to-string`. The browser uses the same pure
-`blog/ssr_view.cljs` view and exact snapshot with `hydrate-root`.
+`ssr/views.cljs` shell and blog/landing body views and exact snapshot with `hydrate-root`.
 
 No server request uses the browser's global re-frame app-db, subscription cache,
 effects, or Supabase auth session. Dates are formatted on the backend in UTC.
 The snapshot contains no clock-dependent output or random component IDs.
+CMS image IDs are prefixed: a bare server-rendered ID such as `cljs` creates a
+named window property and can hijack Closure namespace initialization.
 Markdown uses the same ReactMarkdown/GFM configuration on both sides, with raw
 HTML disabled and the default safe URL transform. Bootstrap JSON escapes script
 terminators. Server credentials never enter that JSON.
@@ -25,15 +34,22 @@ terminators. Server credentials never enter that JSON.
 Comments are enabled by a client effect after hydration and use the existing
 blog comment components. Post bodies remain in their original DOM nodes.
 The server snapshot also seeds the exact scoped post cache. A partial snapshot
-never marks a complete table loaded. Navigation away discards the initial SSR
+never marks a complete table loaded. Navigation to a different blog page discards the initial SSR
 root and resumes the normal application; it cannot reuse that snapshot for a
 different post or a later navigation back.
 
-This first reading shell intentionally has a rollout flag: it does not yet
-reproduce the full interactive header, settings, login, search, post editing,
-link-preview behavior, or archive/tag SSR. Those still exist in the ordinary
-client application. Keep the flag off in production until those shell features
-have been shared or added to this view. No Coolify flag is changed by this branch.
+The first browser render exactly matches the public server shell. After commit,
+the existing interactive header, footer, settings, user, search and notification
+components replace shell slots while main content retains its DOM nodes.
+The landing hero, services, story, gallery and media are in server HTML. Hero
+entrances and typing animations are skipped. Services and contact actions attach
+during hydration. Video backgrounds use native controls and defer downloading.
+External modules (Strava, SoundCloud, Instagram, GitHub, GPT and chat) mount as
+viewport islands within 800px of the viewport; observers disconnect on entry or
+unmount. Their reserved space prevents an empty placeholder collapsing to zero.
+Navigating between landing aliases retains the hydrated content; leaving it
+resumes the normal application. Post editing and link previews remain in normal
+blog views; archive/tag SSR is still future work.
 
 Initialization failures retain server-rendered articles and display a retry
 message. A Supabase/CMS/renderer failure on the server returns a visible retryable
@@ -42,8 +58,8 @@ message. A Supabase/CMS/renderer failure on the server returns a visible retryab
 ## Cache correctness and limits
 
 The backend caches the rendered fragment together with its exact public snapshot,
-keyed by path. Every request still reads fresh Supabase rows and CMS content
-before reusing HTML. This deliberately saves rendering, not database reads: the
+keyed by path. Every request still reads fresh CMS content and, for blog routes,
+the required Supabase rows before reusing HTML. This deliberately saves rendering, not database reads: the
 schema does not provide a reliable revision covering edits, author names,
 deletions, and listing membership. A timestamp-only or blind path TTL would serve
 stale pages. Listing pages follow the same comparison and cannot reuse HTML if
@@ -114,8 +130,11 @@ lein with-profile prod run -m shadow.cljs.devtools.cli release app
 
 Open the browser suite at port 4002 after generating the SSR fixture. It checks
 real Node-rendered HTML against client hydration, DOM identity, absence of
-loading/mount transitions, and post-hydration comment insertion. The fixture
-generator also checks request isolation and Markdown escaping.
+loading/mount transitions, and post-hydration comment insertion. Landing tests preserve the hero, image,
+story, gallery and main nodes while enhancing the shell, and exercise the contact
+action. Regression tests cover exported Reagent 2 defc Vars, error-boundary reset
+on route changes, and asynchronous per-post updates. The fixture generator also
+checks alternating landing/blog request isolation and Markdown escaping.
 
 References: [Reagent server rendering](https://reagent-project.github.io/docs/master/reagent.dom.server.html),
 [Reagent client hydration](https://reagent-project.github.io/docs/master/reagent.dom.client.html),

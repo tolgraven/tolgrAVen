@@ -146,7 +146,7 @@
             [:<>
              [<assets> (merge-with into (:assets @*loaded) assets)]
              (if component
-               (into [component] args)
+               (into [(component/resolve-view component)] args)
                (if <missing>
                  (if (vector? <missing>) <missing> (into [<missing>] args))
                  [<default-missing> module view]))])

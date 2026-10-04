@@ -39,8 +39,9 @@
 (defn safe
   "Compatibility boundary for existing [safe category component] call sites.
    Keep the category in diagnostics while sharing defc's recovery machinery."
-  [category form]
-  [component/<boundary> "tolgraven.ui" (name category) form])
+  [category form & [reset-key]]
+  (with-meta [component/<boundary> "tolgraven.ui" (name category) form]
+    {:key reset-key}))
 
 (defn md->div [md & [options]]
   (let [showing? (r/atom false)]

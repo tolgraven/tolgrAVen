@@ -2,6 +2,7 @@
   (:require [re-frame.core :as rf]
             [tolgraven.component :as component]
             [tolgraven.content.contract :as content-contract]
+            [tolgraven.ssr.contract :as ssr-contract]
             [tolgraven.components.home :as home]
             [tolgraven.components.media :as media]
             [tolgraven.components.oembed :as oembed]
@@ -57,27 +58,7 @@
 ; (doall run/init @sub)
 
 (def layouts
-  {:main [:intro
-          [:interlude 0]
-          :services
-          [:init :services] ; just focuses it
-          [:interlude 1]
-          :moneyshot
-          [:init :instagram]
-          [:init :strava]
-          :story
-          [:interlude 2]
-
-          [:init :soundcloud]
-
-          :strava
-          [:init :gallery]
-          :soundcloud
-          :instagram
-          :gallery
-          :github
-          :gpt
-          :chat ]
+  {:main ssr-contract/landing-layout
    :desktop :something-splitty
    :joen :just-about-me/components
    :av :just-about-company })

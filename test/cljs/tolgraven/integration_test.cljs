@@ -286,3 +286,28 @@
   (is (= [] (blog-model/tags nil)))
   (is (= ["clojure" "web"] (blog-model/tags "  clojure\tweb  clojure ")))
   (is (= ["web"] (blog-model/tags [nil "" " web " "web"]))))
+
+(deftest blog-feed-keeps-post-subscriptions-reactive-after-initial-loading
+  (let [element (.createElement js/document "div") root (dom/create-root element)
+        *post (r/atom nil)]
+    (.appendChild (.-body js/document) element)
+    (with-redefs [rf/subscribe (fn ([query]
+                                (case (first query)
+                                  :blog/count (r/atom 1)
+                                  :blog/posts-per-page (r/atom 3)
+                                  :blog/nav-page (r/atom 0)
+                                  :blog/ids-for-page (r/atom [42])
+                                  :blog/post *post))
+                                ([query _] (rf/subscribe query)))
+                  blog-views/<blog-post> (fn [{:keys [post]}] [:p (or (:text post) "Loading")])
+                  blog-views/<blog-nav> (fn [_] nil)]
+      (try
+        (react-dom/flushSync #(dom/render root [blog-views/<blog-feed>]))
+        (is (= "Loading" (.-textContent element)))
+        (reset! *post {:id 42 :text "Loaded asynchronously"})
+        (react-dom/flushSync #(r/flush))
+        (is (= "Loaded asynchronously" (.-textContent element)))
+        (reset! *post {:id 42 :text "Live edit"})
+        (react-dom/flushSync #(r/flush))
+        (is (= "Live edit" (.-textContent element)))
+        (finally (react-dom/flushSync #(dom/unmount root)) (.remove element))))))

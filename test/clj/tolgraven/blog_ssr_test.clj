@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.data.json :as json]
             [clojure.string :as string]
-            [tolgraven.blog.ssr :as ssr]
+            [tolgraven.ssr :as ssr]
             [tolgraven.layout :as layout]
             [tolgraven.config :as config]
             [optimus.html :as optimus-html]
@@ -85,3 +85,22 @@
       (is (string/includes? html "<article>Safe rendered content</article>"))
       (is (string/includes? html "&lt;/title&gt;&lt;script&gt;"))
       (is (not (string/includes? html "<script>bad()"))))))
+
+(deftest landing-routes-load-complete-cms-content-without-supabase
+  (let [*requested (atom []) *title (atom "Landing")]
+    (reset! ssr/*cache {})
+    (with-redefs [supabase/request! (fn [& _] (throw (ex-info "Landing must not read Supabase" {})))
+                  content/fresh-bundle! (fn [keys]
+                                          (swap! *requested conj (set keys))
+                                          {:content {:intro {:title @*title}}})
+                  ssr/render! (fn [snapshot] (get-in snapshot [:content :intro :title]))]
+      (doseq [path ["/" "/about" "/services" "/hire"]]
+        (is (= {:kind :landing} (ssr/route path)))
+        (is (= :landing (:kind (ssr/snapshot! path (ssr/route path))))))
+      (is (every? #(every? % [:intro :services :story :moneyshot :gallery :header :footer]) @*requested))
+      (is (= :miss (:cache (ssr/page! "/"))))
+      (is (= :hit (:cache (ssr/page! "/"))))
+      (reset! *title "Edited in Strapi")
+      (is (= "Edited in Strapi" (:html (ssr/page! "/"))))
+      (is (nil? (ssr/route "/user/private"))))
+    (reset! ssr/*cache {})))

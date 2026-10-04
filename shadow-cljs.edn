@@ -3,9 +3,9 @@
  :source-paths ["src/clj" "src/cljs" "src/cljc"]
 
  :builds
- {:blog-ssr {:target :node-script
-             :main tolgraven.blog.ssr-worker/main
-             :output-to "target/ssr/blog.js"
+ {:ssr {:target :node-script
+             :main tolgraven.ssr.worker/main
+             :output-to "target/ssr/site.js"
              :js-options {:js-provider :shadow :keep-native-requires true
                           ;; Use DOM-free worker exports for Markdown's entity
                           ;; decoder; React's browser server renderer supports
