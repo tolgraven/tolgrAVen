@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as string]
    [tolgraven.react :as rf]
+   [tolgraven.macros :refer-macros [defc]]
    [reagent.core :as r]
    [tolgraven.components.timer :as anim]
    [tolgraven.component.restore :as restore]
@@ -14,47 +15,42 @@
   (for [line (string/split-lines text)]
         [:p line]))
 
-(defn intro [{:keys [title text buttons logo-bg bg]}]
-  (let [restored? (restore/skip-enter?)
-        showing-title (r/atom (if restored? (count title) 0))
-        updater-2 (fn update-2 []
-                    (let [frac (/ (count title)
-                                  (swap! showing-title inc))
-                          time-next (+ 25 (* @showing-title 18)
-                                       (when (= (nth title (dec @showing-title)) " ")
-                                         500)
-                                       (when (= @showing-title (dec (count title)))
-                                         600))]
-                    (when-not (= @showing-title (count title))
-                      (js/setTimeout update-2 time-next))))]
-    (fn [{:keys [title text buttons logo-bg bg]}]
-      [:section#intro {:data-restored (when restored? true)}
-       [media/bg-logo logo-bg]
-       [img/media-as-bg (merge (first bg) {:id "top-banner"})]
+(defc <intro-letter> {:features [[:appear "opacity"]]}
+  [{:keys [letter] :as spec}]
+  [:span letter])
 
-       [:div.h1-wrapper.center-content
-        [:h1.h-responsive.h-intro
-         (when-not restored? [anim/timeout updater-2 2000])
-         (if (< @showing-title 1)
-           "•"
-           (map-indexed
-            (fn [i letter]
-              (with-meta
-               [ui/appear-merge "opacity" [:span letter]]
-               {:key (str "intro-letter-" i)}))
-            (take @showing-title title)))]]
+(defn title-delay-ms [title shown]
+  (if (zero? shown) 2000
+    (+ 25 (* shown 18)
+       (if (= (nth title (dec shown)) " ") 500 0)
+       (if (= shown (dec (count title))) 600 0))))
 
-       (into [:<>] (ln->br text)) ; or just fix :pre css lol
-       [:br]
-       [:div.buttons
-        (for [[text what] buttons] ^{:key (str "intro-button-" text)}
-          [:button.background
-           {:on-click (when (vector? what)
-                        #(rf/dispatch what)) }
-           [:div {:class "blur-bg"}]
-           (if (string? what)
-             [:a {:href what} text]
-             [:label text])])]])))
+(defc <intro> [{:keys [title text buttons logo-bg bg] :as spec}]
+  :let [restored? (restore/skip-enter?)
+        *showing-title (r/atom (if restored? (count title) 0))]
+  [:section#intro {:data-restored (when restored? true)}
+   [media/bg-logo logo-bg]
+   [img/media-as-bg (merge (first bg) {:id "top-banner"})]
+   [:div.h1-wrapper.center-content
+    [:h1.h-responsive.h-intro
+     ;; A keyed timer owns each step, so leaving the page cancels the animation.
+     (when (and (not restored?) (< @*showing-title (count title)))
+       ^{:key @*showing-title}
+       [anim/timeout #(swap! *showing-title inc) (title-delay-ms title @*showing-title)])
+     (if (< @*showing-title 1)
+       "•"
+       (map-indexed
+        (fn [i letter]
+          ^{:key (str "intro-letter-" i)} [<intro-letter> {:letter letter}])
+        (take @*showing-title title)))]]
+   (into [:<>] (ln->br text))
+   [:br]
+   [:div.buttons
+    (for [[text what] buttons] ^{:key (str "intro-button-" text)}
+      [:button.background
+       {:on-click (when (vector? what) #(rf/dispatch what))}
+       [:div {:class "blur-bg"}]
+       (if (string? what) [:a {:href what} text] [:label text])])]])
 
 
 (defn portfolio "GOT NO PPORTFOLIE" [])
@@ -65,30 +61,31 @@
    listing any projects done in each..."
   [])
 
-(defn services-fullscreenable "yo"
-  [categories]
-  (let [{:keys [to-focus? full-screened?]} @(rf/subscribe [:state [:services]]) ]
-    (when to-focus?
-      (rf/dispatch [:focus-element "services-bg"]))
+(defc <service-category> {:features [[:seen "zoom-x"]]}
+  [{:keys [title icon-name lines full-screened? on-click] :as spec}]
+  ;; Preserve the existing category box: moving the transform onto its list
+  ;; would change sizing and fullscreen transitions. Motion adds no extra DOM.
+  [:div
+   (into [:ul {:class (cond (= full-screened? title) "service-fullscreen"
+                            full-screened? "service-minimized")
+               :on-click on-click}
+          [:li [:i {:class (str "fas fa-" icon-name)}] [:h3 title]]]
+         (for [line lines] ^{:key (str "service-" title "-" line)} [:li line]))])
+
+(defc <service-categories> [{:keys [categories] :as spec}]
+  (let [{:keys [to-focus? full-screened?]} @(rf/subscribe [:state [:services]])]
+    (when to-focus? (rf/dispatch [:focus-element "services-bg"]))
     [:div#services>div.categories
      {:class (when full-screened? "categories-fullscreened")
       :on-click #(rf/dispatch [:state [:services :full-screened?] nil])
       :ref #(when % (rf/dispatch [:focus-element "services-bg"]))}
-
-     (for [[title icon-name lines] categories ;(if-not full-screened? categories (filter #(= (first %) full-screened?) categories)) ;XXX change to keys!!
-           :let [on-click (fn [e] (.stopPropagation e)
-                            (rf/dispatch [:state [:services :full-screened?]
-                                          (when-not full-screened? title)]))
-                 id (str "service-" title)]] ^{:key id}
-       [ui/seen-anon "zoom-x"
-        (into [:ul {:class (cond (= full-screened? title) "service-fullscreen"
-                                 full-screened? "service-minimized")
-                    :on-click on-click}
-               [:li
-                [:i {:class (str "fas " "fa-" icon-name)}]
-                [:h3 title]]]
-              (for [line lines] ^{:key (str "service-" title "-" line)}
-                [:li line]))])]))
+     (for [[title icon-name lines] categories] ^{:key (str "service-" title)}
+       [<service-category>
+        {:title title :icon-name icon-name :lines lines :full-screened? full-screened?
+         :on-click (fn [event]
+                     (.stopPropagation event)
+                     (rf/dispatch [:state [:services :full-screened?]
+                                   (when-not full-screened? title)]))}])]))
 
 (defn services-carousel "yo"
   [categories]
@@ -103,8 +100,8 @@
               (for [line lines] ^{:key (str "service-" title "-" line)}
                 [:li line])))]))
 
-(defn services "List services on (fake) offer. Clicking one should bring it up to fill section..."
-  [{:keys [categories bg caption]}]
+(defc <services> "List services on (fake) offer. Clicking one should bring it up to fill section..."
+  [{:keys [categories bg caption] :as spec}]
   [:section#section-services
     {:class "link-anchor stick-up section-with-media-bg-wrapper"} ; want to  focus elem to zoomy zoom slow after reaching scroll
     [:a {:name "link-services"}]
@@ -113,10 +110,10 @@
       (merge bg {:id "services-bg"
                  :class "darken-5 parallax-bg"
                  :ref #(when % (rf/dispatch [:focus-element "services-bg"]))})]
-     [services-fullscreenable categories]])
+     [<service-categories> {:categories categories}]])
 
 
-(defn story "Big img header + story" [{:keys [heading] :as content}]
+(defc <story> "Big img header + story" [{:keys [heading] :as content}]
   [:<>
    [:div#about-intro {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
     [ui/fading-bg-heading heading]]

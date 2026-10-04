@@ -20,14 +20,14 @@
     [ui/lazy-load [:on-booted dependency event]]))
 
 (def sections
-  {:intro       {:<comp> home/intro
+  {:intro       {:<comp> home/<intro>
                  :content :intro}
-   :services    {:<comp> home/services
+   :services    {:<comp> home/<services>
                  :content :services
                  :init [:state [:services :to-focus?] true]}
    :moneyshot   {:<comp> media/moneyshot
                  :content :moneyshot}
-   :story       {:<comp> home/story
+   :story       {:<comp> home/<story>
                  :content :story}
    :gallery     {:<comp> media/gallery
                  :content :gallery

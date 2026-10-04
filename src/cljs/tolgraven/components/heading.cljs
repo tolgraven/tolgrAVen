@@ -1,8 +1,9 @@
 (ns tolgraven.components.heading
   "Heading markup shared by server rendering and the interactive application."
-  (:require [tolgraven.image :as image]))
+  (:require [tolgraven.image :as image]
+            [tolgraven.macros :refer-macros [defc]]))
 
-(defn <banner> [{:keys [title target bg tint]} & [navigate!]]
+(defc <banner> [{:keys [title target bg tint]} & [navigate!]]
   [:<>
    [:div.fading-bg-heading
     {:class "section-with-media-bg-wrapper covering stick-up fullwidth"
