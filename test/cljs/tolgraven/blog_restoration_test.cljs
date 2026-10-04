@@ -1,26 +1,27 @@
 (ns tolgraven.blog-restoration-test
-  (:require [cljs.reader :as reader]
-            [cljs.test :refer-macros [deftest is async]]
-            [re-frame.core :as rf]
-            [re-frame.db :as rfdb]
-            [reagent.core :as r]
-            [react-dom :as react-dom]
-            [reagent.dom.client :as dom]
-            [tolgraven.blog.cache :as cache]
-            [tolgraven.blog.comments :as comments]
-            [tolgraven.ssr.contract :as contract]
-            [reagent.ratom :as ratom]
-            [tolgraven.blog.views :as blog]
-            [tolgraven.component.storage :as storage]
-            [tolgraven.component.restore :as restore]
-            [tolgraven.supabase.scoped :as scoped]
-            [tolgraven.user.views :as user]
-            [tolgraven.user.module :as user-module]
-            [tolgraven.loader :as loader]
-            [shadow.lazy :as lazy]
-            [tolgraven.user.events]
-            [tolgraven.events]
-            [tolgraven.subs]))
+  (:require
+    [cljs.reader :as reader]
+    [cljs.test :refer-macros [deftest is async]]
+    [re-frame.core :as rf]
+    [re-frame.db :as rfdb]
+    [reagent.core :as r]
+    [react-dom :as react-dom]
+    [reagent.dom.client :as dom]
+    [tolgraven.blog.cache :as cache]
+    [tolgraven.blog.comments :as comments]
+    [tolgraven.ssr.contract :as contract]
+    [reagent.ratom :as ratom]
+    [tolgraven.blog.views :as blog]
+    [tolgraven.component.storage :as storage]
+    [tolgraven.component.restore :as restore]
+    [tolgraven.supabase.scoped :as scoped]
+    [tolgraven.user.views :as user]
+    [tolgraven.user.module :as user-module]
+    [tolgraven.loader :as loader]
+    [shadow.lazy :as lazy]
+    [tolgraven.user.events]
+    [tolgraven.events]
+    [tolgraven.subs]))
 
 (deftest restore-only-public-queries-and-retain-newer-server-data
   (let [before @rfdb/app-db buckets @storage/*buckets
@@ -124,7 +125,7 @@
         render! #(react-dom/flushSync (fn [] (r/flush)))]
     (try
       (swap! rfdb/app-db assoc-in [:content :common :user-avatar-fallback] fallback)
-      (react-dom/flushSync #(dom/render root [(fn [] [user/user-avatar @*profile "blog-user-avatar"])]))
+      (react-dom/flushSync #(dom/render root [(fn [] [user/<user-avatar> @*profile "blog-user-avatar"])]))
       (let [image (.querySelector element "img")]
         (is (= "hidden" (.. image -style -visibility)))
         (is (nil? (.getAttribute image "src")) "Pending profiles do not request the default logo"))

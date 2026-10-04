@@ -1,14 +1,15 @@
 (ns tolgraven.component-test
-  (:require [cljs.test :refer-macros [deftest is]]
-            [react-dom :as react-dom]
-            [react :as react]
-            [reagent.core :as r]
-            [reagent.dom.client :as dom]
-            [tolgraven.macros :refer-macros [defc]]
-            [tolgraven.ui :as ui]
-            [tolgraven.component :as component]
-            [tolgraven.component-fixture]
-            [tolgraven.util :as util]))
+  (:require
+    [cljs.test :refer-macros [deftest is]]
+    [react-dom :as react-dom]
+    [react :as react]
+    [reagent.core :as r]
+    [reagent.dom.client :as dom]
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.ui :as ui]
+    [tolgraven.component :as component]
+    [tolgraven.component-fixture]
+    [tolgraven.util :as util]))
 
 (defn- flush! [] (react-dom/flushSync #(r/flush)))
 (defn- render! [root form] (react-dom/flushSync #(.render root (r/as-element form))))
@@ -60,16 +61,16 @@
   (with-redefs [util/log (fn [& _])]
     (with-root
       (fn [root element]
-        (render! root [ui/safe :page [<throws> (r/atom true)] "/blog"])
+        (render! root [ui/<safe> :page [<throws> (r/atom true)] "/blog"])
         (is (some? (.querySelector element "[role=alert]")))
         ;; Changing children on the same route must not retry on every render.
-        (render! root [ui/safe :page [(component/resolve-view #'<empty-args>)] "/blog"])
+        (render! root [ui/<safe> :page [(component/resolve-view #'<empty-args>)] "/blog"])
         (is (some? (.querySelector element "[role=alert]")))
         ;; A new route owns a new boundary, even if the exported page is a defc Var.
-        (render! root [ui/safe :page [(component/resolve-view #'<empty-args>)] "/services"])
+        (render! root [ui/<safe> :page [(component/resolve-view #'<empty-args>)] "/services"])
         (is (nil? (.querySelector element "[role=alert]")))
         (is (= "No arguments" (.-textContent element)))
-        (render! root [ui/safe :page [(component/resolve-view #'<destructured>) {:title "Post route"}] "/blog/post/2"])
+        (render! root [ui/<safe> :page [(component/resolve-view #'<destructured>) {:title "Post route"}] "/blog/post/2"])
         (is (= "Post route" (.-textContent element)))))))
 
 (deftest local-state-props-fragments-and-argument-forwarding
@@ -132,7 +133,7 @@
       (with-root
         (fn [root element]
           (let [*broken? (r/atom true)]
-            (render! root [ui/safe :example [<throws> *broken?]])
+            (render! root [ui/<safe> :example [<throws> *broken?]])
             (is (some? (.querySelector element "[role=alert]")))
             (reset! *broken? false)
             (.click (.querySelector element "button")) (flush!)
@@ -201,3 +202,20 @@
           (is (= "Composed body" (.-textContent element)))
           (is (some? (.querySelector element "article[data-feature=outer] > section[data-feature=inner] > p")))
           (is (empty? @*events)))))))
+
+(defc <multi-arity>
+  ([label] (<multi-arity> label "!"))
+  ([label suffix] [:p (str label suffix)]))
+
+(defc <unfinished-stub> [])
+
+(deftest lean-components-preserve-render-arities-and-empty-stubs
+  (with-root
+    (fn [root element]
+      (render! root [<multi-arity> "First"])
+      (is (= "First!" (.-textContent element)))
+      (is (= "P" (.-tagName (.-firstElementChild element))))
+      (render! root [<multi-arity> "Second" "?"])
+      (is (= "Second?" (.-textContent element)))
+      (render! root [<unfinished-stub>])
+      (is (nil? (.-firstElementChild element))))))

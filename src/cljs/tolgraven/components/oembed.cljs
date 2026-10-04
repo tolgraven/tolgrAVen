@@ -1,5 +1,6 @@
 (ns tolgraven.components.oembed
   (:require
+    [tolgraven.component.registry]
     [clojure.string :as string]
     [reagent.core :as r]
     [tolgraven.react :as rf]
@@ -7,7 +8,7 @@
     [tolgraven.macros :as m]
     [tolgraven.ui :as ui]))
 
-(defn oembed-view [url <loading>]
+(m/defc <oembed-view> [url <loading>]
   (let [state    (r/atom {:loading? true})
         hovered? (r/atom false)
         <comp>   (fn []
@@ -35,7 +36,7 @@
            :else [<comp>])]))))
 
 ;; Unfinished React-player alternative; oEmbed remains the active player.
-(defn remote-player
+(m/defc <remote-player>
   [url]
   [:div "Soundcloud player hey"]
   #_[:> SoundCloud
@@ -43,30 +44,30 @@
     :width "100%"
     :height "100%"}])
 
-(defn soundcloud-loading "A dummy to show before initing react-player"
+(m/defc <soundcloud-loading> "A dummy to show before initing react-player"
   [artist song]
   [:div.soundcloud-player-loading
-   [img/picture
+   [img/<picture>
     {:src   "img/soundcloud-logo.png"
      :alt   "SoundCloud"
      :class "center-content"}]
    [:h3 song]
    [:h4 artist]])
 
-(defn soundcloud-player
+(m/defc <soundcloud-player>
+  {:features [[:seen "slide-in"]]}
   [artist song]
   (let [base-url "https://soundcloud.com/"
         url      (str base-url artist "/" song)]
-    [ui/seen-anon "slide-in"
-     (if @(rf/subscribe [:booted? :soundcloud])
-       [ui/safe :player
-        [oembed-view url [soundcloud-loading artist song]]]
-       [soundcloud-loading artist song])]))
+    [:div (if @(rf/subscribe [:booted? :soundcloud])
+       [ui/<safe> :player
+        [<oembed-view> url [<soundcloud-loading> artist song]]]
+       [<soundcloud-loading> artist song])]))
 
-(defn soundcloud "Soundcloud feed, plus selected tunes. Bonus if can do anything fun with it"
+(m/defc <soundcloud> "Soundcloud feed, plus selected tunes. Bonus if can do anything fun with it"
   []
   (let [{:keys [artist tunes]} @(rf/subscribe [:content [:soundcloud]])]
     [:section.soundcloud.fullwide.covering-3
      [:div.soundcloud-players.parallax-wrapper
       (m/for [tune tunes]
-             [soundcloud-player artist tune])]]))
+             [<soundcloud-player> artist tune])]]))

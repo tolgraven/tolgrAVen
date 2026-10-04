@@ -111,16 +111,16 @@
     [:link {:rel "icon" :type "image/png" :sizes "16x16" :href "/favicon-16x16.png"}]
     [:link {:rel "apple-touch-icon" :sizes "120x120" :href "/apple-touch-icon.png"}]
     [:link {:rel "manifest" :href "/site.webmanifest"}]
-    
+
     (for [link link-pre]
       (preconnect link))
-    
+
     (for [path img-pre]
       (img-preload-modern path))
 
     (for [path css-pre]
       (css-preload path))
-    
+
     [:link {:rel "preload" :as "font" :type "font/woff2" :crossorigin "anonymous"
             :href "/webfonts/OpenSans-v29-latin.woff2"}]
     ;; The layout must be styled before first paint, including on a cold/private visit.
@@ -130,7 +130,7 @@
       [:link {:href path :rel "stylesheet" :type "text/css"}])
     (for [href css-paths]
       (css href))
-    
+
     (when anti-forgery
       [:script {:type "text/javascript"}
        (str "var csrfToken = \"" anti-forgery "\";")])
@@ -140,9 +140,9 @@
       (js path))
     (for [script js-raw]
       [:script {:type "text/javascript"} script])]
-    
+
    [:body {:class "container themable framing-shadow sticky-footer-container"}
-    
+
     [:div#app (cond-> {} (:ssr request) (assoc :data-hydrate "true")
                          (:restore? request) (assoc :data-restore "true")) loading-content]
     ;; A separate React root can report bootstrap failures without replacing
@@ -175,7 +175,8 @@
 
 (defn render-home
   [request]
-  (let [returning? (returning-page? request)
+  (let [script-paths (olink/bundle-paths request ["main.js"])
+        returning? (returning-page? request)
         ssr (when (and (not returning?) (ssr/enabled?) (ssr/route (:uri request)))
               (try (ssr/page! (:uri request) (:query-params request))
                    (catch Exception error
@@ -223,7 +224,7 @@
 
                gtag('config', 'G-Y8H6RLZX3V');"])
    :css-pre ["css/solid.css"]
-   :js-pre []
+   :js-pre script-paths
    :img-pre [#_"img/logo/tolgraven-logo.png"]  ; Preload logo for instant display
    :link-pre (when-not (:dev env)
                ["https://fonts.gstatic.com"
@@ -231,6 +232,9 @@
                 "https://region1.google-analytics.com"])
    :title-img "img/logo/tolgraven-logo.png"
    :anti-forgery (force *anti-forgery-token*))
+    (seq script-paths) (assoc-in [:headers "Link"]
+                                (clojure.string/join ", "
+                                  (map #(str "<" % ">; rel=preload; as=script") script-paths)))
     (:error? ssr) (assoc :status (:status ssr))
     (get-in ssr [:snapshot :missing?]) (assoc :status 404)
     (or ssr returning?) (assoc-in [:headers "Cache-Control"] "no-store"))))

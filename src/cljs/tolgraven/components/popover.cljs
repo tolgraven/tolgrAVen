@@ -1,11 +1,14 @@
 (ns tolgraven.components.popover
   (:require
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [react :as react]
     [reagent.core :as r]
     [tolgraven.components.portal :as portal]))
 
 (def anchor-name "--active-popover-anchor")
 
-(defn <popover>
+(defc <popover>
   "Generic anchored content which can transition into a full-viewport surface."
   [_ _]
   (let [*element (atom nil)
@@ -22,16 +25,14 @@
                        (when element
                          (when observer (.observe observer element))
                          (measure!)))]
-    (r/create-class
-      {:display-name "Popover"
-       :component-did-mount (fn [_] (.addEventListener js/window "resize" measure!))
-       :component-will-unmount (fn [_]
-                                 (when observer (.disconnect observer))
-                                 (.removeEventListener js/window "resize" measure!))
-       :reagent-render
-       (fn [{:keys [aria-label class expanded? on-click on-pointer-enter
+    (fn [{:keys [aria-label class expanded? on-click on-pointer-enter
                     on-pointer-leave on-key-down on-focus on-blur open?]}
             content]
+      (react/useEffect
+       (fn []
+         (.addEventListener js/window "resize" measure!)
+         #(do (when observer (.disconnect observer))
+              (.removeEventListener js/window "resize" measure!))) #js [])
          (when open?
            [portal/<portal> js/document.body
             [:div.popover-layer
@@ -52,4 +53,4 @@
                :on-pointer-leave on-pointer-leave
                :ref set-element!
                :role "dialog"}
-              [:div.popover__surface content]]]]))})))
+              [:div.popover__surface content]]]]))))

@@ -1,5 +1,6 @@
 (ns tolgraven.search.views
   (:require
+    [tolgraven.component.registry]
     [tolgraven.link-preview.views :as link-preview]
     [reagent.core :as r]
     [tolgraven.react :as rf]
@@ -10,7 +11,7 @@
     [tolgraven.util :as util :refer [at]])
   (:require-macros [tolgraven.macros :as m]))
 
-(defn button "Search button, press to show input field..."
+(m/defc <button> "Search button, press to show input field..."
   []
   (let [open? (rf/subscribe [:search/open?])]
     [:button.search-ui-btn.noborder.nomargin
@@ -24,12 +25,12 @@
                          (util/scroll-to "search-input")
                          (some-> "search-input" util/elem-by-id .focus))
                        100))))}
-     [img/picture {:src "svg/search-ico.svg"
+     [img/<picture> {:src "svg/search-ico.svg"
                    :alt "Search"
                    :style {:width "1.2em" :height "1.2em"
                            :filter "var(--light-to-dark)"}}]]))
 
-(defn completion
+(m/defc <completion>
   [query suggestion height]
   (when-not (string/blank? (:match suggestion))
     (let [words (-> (or (:rest suggestion) "")
@@ -41,12 +42,11 @@
                 :display :inline-flex}}
        [:span.first-char char1]
        (m/for [letter others] ; causes issues with spacing? nice lil zoom effect though, figure out.
-         [ui/appear-anon "slide-in faster"
-          [:span
+         [ui/<appear> {:appear "slide-in faster" :form [:div [:span
            {:style {:min-height height}}
-           letter]])])))
+           letter]]}])])))
 
-(defn box "Search input field"
+(m/defc <box> "Search input field"
  [collections & {:as args :keys [query-by model height open? opts]
                  :or {height "2em"
                       query-by ["text" "title"]}}]
@@ -57,7 +57,7 @@
        on-enter #(doseq [coll collections]
                    (rf/dispatch [:search/search coll (:text (first suggestions)) query-by opts false]))
        on-esc #(rf/dispatch [:search/state [:open?] false])]
-   [ui/input-text-styled
+   [ui/<input-text-styled>
     :id "search-input"
     :query-by query-by
     :model model
@@ -66,11 +66,11 @@
     :on-change on-change
     :on-enter on-enter
     :on-esc on-esc
-    :completion-fn completion
+    :completion-fn <completion>
     :suggestions suggestions]))
 
 
-(defn suggestions "Display a dropdown of suggested further terms"
+(m/defc <suggestions> "Display a dropdown of suggested further terms"
   [collections]
   (let [suggestions (rf/subscribe [:search/autocomplete-multi collections])
         last-suggestions (atom nil)
@@ -95,7 +95,7 @@
             [:b query] without-query])]))))
 
 
-(defn instant-result-category "Wrapper for type of results/collection"
+(m/defc <instant-result-category> "Wrapper for type of results/collection"
   [collection component inner-class appear-class]
   (if-let [hits (:hits @(rf/subscribe [:search/results-for-query collection]))]
     [:<>
@@ -103,16 +103,15 @@
        (m/for [hit hits
              :let [{:keys [highlights document]} hit
                    {:keys [id text]} document]]
-         [ui/appear-merge (str appear-class " fast")
-          [:div.search-instant-result
+         [ui/<appear> {:appear (str appear-class " fast") :form [:div.search-instant-result
            {:class inner-class}
-           [component highlights document]]]))]
+           [component highlights document]]}]))]
 
-    [ui/loading-spinner true]))
+    [ui/<loading-spinner> true]))
 
 ; these should be provided by blog probably? and other respective modules
 ; could generalize a tiny bit but tricky due to css structure
-(defn blog-post-results "Show hits that are blog posts"
+(m/defc <blog-post-results> "Show hits that are blog posts"
   [highlights document]
   (let [{:keys [id permalink title text user ts]} document]
     [:<>
@@ -124,7 +123,7 @@
      (m/for [highlight highlights]
        [link-preview/<md> (:snippet highlight)])]))
 
-(defn blog-comment-results "Show hits that are blog post comments"
+(m/defc <blog-comment-results> "Show hits that are blog post comments"
   [highlights document]
   (let [{:keys [id title text user ts]} document]
     [:div
@@ -138,21 +137,21 @@
          [:div.blog-comment-text
           [link-preview/<md> (:snippet highlight)]])]]]))
 
-(defn instant-results "Show results while searching"
+(m/defc <instant-results> "Show results while searching"
   [open?]
   (let []
     (when (and open?
                (not (string/blank? @(rf/subscribe [:search/get-query "blog-posts"]))))
       [:div.search-instant-results
        [:div.blog
-        [instant-result-category "blog-posts" blog-post-results "blog-post" "zoom-y"]]
+        [<instant-result-category> "blog-posts" <blog-post-results> "blog-post" "zoom-y"]]
        [:div.blog-comments>div.blog-comments-inner
-        [instant-result-category "blog-comments" blog-comment-results "blog-comment-around flex" "zoom"]]])))
+        [<instant-result-category> "blog-comments" <blog-comment-results> "blog-comment-around flex" "zoom"]]])))
 
-(defn full-results "More full complete and whatnot"
+(m/defc <full-results> "More full complete and whatnot"
   [collection query])
 
-(defn ui "The search ui. Initially runs over blog-posts and comments, but should later also search docs and hence source-code."
+(m/defc <ui> "The search ui. Initially runs over blog-posts and comments, but should later also search docs and hence source-code."
   [collection]
   (let [open? (rf/subscribe [:search/open?])
         results-open? (rf/subscribe [:search/results-open?])]
@@ -160,11 +159,11 @@
       [:section.search-ui
        {:class (when @open? "search-ui-open")
         :ref #(when % (rf/dispatch [:search/init]))}
-       
-       [box ["blog-posts" "blog-comments"]
+
+       [<box> ["blog-posts" "blog-comments"]
         :model (rf/subscribe [:search/get-query "blog-posts"])
         :open? @open?
         :height (if @open? "2em" "2em")]
-       [suggestions ["blog-posts" "blog-comments"]]
-       [instant-results @open?]
+       [<suggestions> ["blog-posts" "blog-comments"]]
+       [<instant-results> @open?]
        ])))

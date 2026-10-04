@@ -1,8 +1,10 @@
 (ns tolgraven.image
   "Helpers for serving modern image formats (WebP, AVIF) with automatic fallbacks"
   (:require
-   [clojure.string :as string]
-   [reagent.core :as r]))
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [clojure.string :as string]
+    [reagent.core :as r]))
 
 (defn- replace-extension
   "Replace file extension. e.g., 'img/foo.jpg' -> 'img/foo.webp'"
@@ -37,7 +39,7 @@
      :avif (replace-extension src "avif")}
     {:original src}))
 
-(defn picture
+(defc <picture>
   "Generate a <picture> element with WebP and AVIF sources and fallback to original.
 
    Usage:
@@ -79,19 +81,19 @@
       ;; No modern format available, just use img directly.
       [:img attrs])))
 
-(defn img
+(defc <img>
   "Smart img component that automatically uses modern formats when available.
    Alias for picture component for drop-in replacement."
   [attrs]
-  [picture attrs])
+  [<picture> attrs])
 
-(defn media-as-bg
+(defc <media-as-bg>
   "Generate picture element optimized for use as background media.
    Adds common background styling attributes."
   [{:keys [src alt class] :as attrs}]
   (let [combined-attrs (merge attrs
                               {:class (str "media media-as-bg " (or class ""))})]
-    [picture combined-attrs]))
+    [<picture> combined-attrs]))
 
 ;; For backward compatibility - export main functions
-(def ^:export responsiveImage picture)
+(def ^:export responsiveImage <picture>)

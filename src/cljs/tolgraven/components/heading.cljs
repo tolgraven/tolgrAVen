@@ -1,7 +1,8 @@
 (ns tolgraven.components.heading
   "Heading markup shared by server rendering and the interactive application."
-  (:require [tolgraven.image :as image]
-            [tolgraven.macros :refer-macros [defc]]))
+  (:require
+    [tolgraven.image :as image]
+    [tolgraven.macros :refer-macros [defc]]))
 
 (defc <banner> [{:keys [title target bg tint]} & [navigate!]]
   [:<>
@@ -9,7 +10,7 @@
     {:class "section-with-media-bg-wrapper covering stick-up fullwidth"
      :on-click (when (and target navigate!) #(navigate! (keyword target)))}
     [:div.fader
-     [image/media-as-bg bg]
+     [image/<media-as-bg> bg]
      [:section.covering-faded.noborder
       {:style (when tint {:background (str "var(--" tint ")")
                           :filter "saturate(1.7) brightness(0.9)"})}

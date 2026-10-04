@@ -301,7 +301,7 @@
                           :comment {:user @(rf/subscribe [:user/active-user])
                                     :title (:title @*model)
                                     :text (or (:text @*model) "")}}]
-         [ui/input-text-styled :model *model
+         [ui/<input-text-styled> :model *model
           :on-change #(rf/dispatch-sync [:form-field [:write-comment parent-path :text] %])]
          ;; The experimental field could use :style {:opacity 0.1 :z-index 10}.
          ;; Future shortcut: submit on Alt-Enter.
@@ -327,23 +327,23 @@
      [:h2 "Write blog post"]
      [:br]
 
-     [ui/input-text
+     [ui/<input-text>
       :placeholder "Title"
       :path [:form-field [:post-blog :title]]]
 
-     [ui/input-text
+     [ui/<input-text>
       :placeholder "Tags"
       :path [:form-field [:post-blog :tags]]]
 
-     [ui/input-text :input-type :textarea
+     [ui/<input-text> :input-type :textarea
       :placeholder "Text (markdown)"
       :height "40vh"
       :min-rows 6
       :width "100%"
       :path [:form-field [:post-blog :text]]]
 
-     [ui/button "Save draft" :save-blog-draft]
-     [ui/button "Highlight code" :highlight-blog-code
+     [ui/<button> "Save draft" :save-blog-draft]
+     [ui/<button> "Highlight code" :highlight-blog-code
       :action #(rf/dispatch [:run-highlighter!])]
 
      [:br]
@@ -351,7 +351,7 @@
       [<preview-blog> {:post input}]]
 
      [:section
-      [ui/button "Submit" :post-new-blog
+      [ui/<button> "Submit" :post-new-blog
        :action #(do (rf/dispatch [:blog/submit
                                   (merge {:user user} input)
                                   editing])
@@ -538,20 +538,20 @@
 (defc <blog-page>
   {:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)}
   []
-  [ui/with-heading [:blog :heading] [<blog-container> {:section [<blog-feed>]}]])
+  [ui/<with-heading> [:blog :heading] [<blog-container> {:section [<blog-feed>]}]])
 (defc <post-blog-page>
   {:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)}
   [] ; how nicely set is-personal for this but also unset etc yada
-  [ui/with-heading [:blog :heading] [<post-blog>]])
+  [ui/<with-heading> [:blog :heading] [<post-blog>]])
 (defc <blog-archive-page>
   {:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)}
   []
-  [ui/with-heading [:blog :heading] [<blog-archive>]])
+  [ui/<with-heading> [:blog :heading] [<blog-archive>]])
 (defc <blog-tag-page>
   {:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)}
   []
-  [ui/with-heading [:blog :heading] [<blog-tag-view>]])
+  [ui/<with-heading> [:blog :heading] [<blog-tag-view>]])
 (defc <blog-post-page>
   {:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)}
   []
-  [ui/with-heading [:blog :heading] [<blog-single-post>]])
+  [ui/<with-heading> [:blog :heading] [<blog-single-post>]])

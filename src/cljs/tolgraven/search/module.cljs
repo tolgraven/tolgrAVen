@@ -9,6 +9,6 @@
 (def spec
   {:content (get content-contract/module-content :search [])
    :id :search
-   :view {:view #'view/ui
-          :button #'view/button}
+   :view {:view #'view/<ui>
+          :button #'view/<button>}
    :init #(rf/dispatch [:search/init])})

@@ -1,8 +1,11 @@
 (ns tolgraven.components.init
-  (:require [tolgraven.react :as rf]
-            [tolgraven.components.error :as error]))
+  (:require
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.react :as rf]
+    [tolgraven.components.error :as error]))
 
-(defn <fallback> [retry!]
+(defc <fallback> [retry!]
   (let [{:keys [status]} @(rf/subscribe [:state [:page-init]])]
     (when (= :failed status)
       [error/<failure> "page" "init"

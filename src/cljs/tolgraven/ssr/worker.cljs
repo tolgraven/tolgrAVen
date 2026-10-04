@@ -1,29 +1,40 @@
 (ns tolgraven.ssr.worker
-  (:require ["node:readline" :as readline]
-            [reagent.dom.server :as server]
-            [re-frame.core :as rf]
-            [re-frame.db :as rfdb]
-            [reitit.core :as reitit]
-            [tolgraven.db :as db]
-            [tolgraven.content.contract :as content]
-            [tolgraven.component :as component]
-            [tolgraven.component.restore :as restore]
-            [tolgraven.render-context :as context]
-            [tolgraven.routes :as routes]
-            [tolgraven.views.page :as page]
-            [tolgraven.views.auto :as auto]
-            [tolgraven.blog.module :as blog]
-            [tolgraven.cv.module :as cv]
-            [tolgraven.docs.module :as docs]
-            [tolgraven.ssr.contract :as contract]
-            [tolgraven.user.module :as user]
-            [tolgraven.link-preview.module :as link-preview]
-            [tolgraven.subs]))
+  (:require
+    ["node:readline" :as readline]
+    [reagent.dom.server :as server]
+    [reagent.ratom :as ratom]
+    [re-frame.core :as rf]
+    [re-frame.db :as rfdb]
+    [reitit.core :as reitit]
+    [tolgraven.db :as db]
+    [tolgraven.content.contract :as content]
+    [tolgraven.component :as component]
+    [tolgraven.component.restore :as restore]
+    [tolgraven.render-context :as context]
+    [tolgraven.routes :as routes]
+    [tolgraven.views.page :as page]
+    [tolgraven.views.auto :as auto]
+    [tolgraven.blog.module :as blog]
+    [tolgraven.cv.module :as cv]
+    [tolgraven.docs.module :as docs]
+    [tolgraven.ssr.contract :as contract]
+    [tolgraven.user.module :as user]
+    [tolgraven.link-preview.module :as link-preview]
+    [tolgraven.subs]))
 
 (def modules {:cv cv/spec :docs docs/spec :blog blog/spec :user user/spec :link-preview link-preview/spec})
 
 (defn render! [snapshot]
-  (let [snapshot (update snapshot :content content/normalize-content)
+  (let [subscribe rf/subscribe
+        *subscriptions (atom {})
+        read-sub (fn [args]
+                   (or (get @*subscriptions args)
+                       (let [*value (ratom/make-reaction
+                                     #(deref (apply subscribe args)))]
+                         (ratom/run *value)
+                         (swap! *subscriptions assoc args *value)
+                         *value)))
+        snapshot (update snapshot :content content/normalize-content)
         match (assoc (reitit/match-by-path routes/router (:path snapshot)) :query-params (:query-params snapshot))
         view (or (get-in match [:data :view])
                  (get-in modules [(get-in match [:data :module]) :view (get-in match [:data :page])]))]
@@ -48,9 +59,18 @@
                                         (reitit/match->path query)))]
         ;; Rendering is synchronous and requests are serialized. Browser effects
         ;; cannot enqueue work that would outlive this request's isolated state.
-        (with-redefs [rf/dispatch (fn [_] nil)]
-          (server/render-to-string [page/page])))
+        (with-redefs [rf/dispatch (fn [_] nil)
+                      ;; Each query owns a reactive context without sharing
+                      ;; component with-let state across the whole React tree.
+                      ;; Dispose these request-local readers before clearing db.
+                      rf/subscribe
+                      (fn
+                        ([query] (read-sub [query]))
+                        ([query dynamic] (read-sub [query dynamic])))]
+          (server/render-to-string [page/<page>])))
       (finally
+        (doseq [*subscription (vals @*subscriptions)]
+          (ratom/dispose! *subscription))
         (rf/clear-subscription-cache!)
         (reset! rfdb/app-db {})
         (reset! context/*snapshot nil)

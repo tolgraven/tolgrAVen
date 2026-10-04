@@ -8,4 +8,4 @@
 (def spec
   {:content (get content-contract/module-content :chat [])
    :id :chat
-   :view {:view #'view/chat}})
+   :view {:view #'view/<chat>}})

@@ -1,16 +1,17 @@
 (ns tolgraven.components.timer
-  (:require [reagent.core :as r]
-            [react :as react]))
+  (:require
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [react :as react]))
 
-(defn timeout
+(defc <timeout>
   "Call f after mount, cancelling on unmount. Renders no DOM and is safe in Node."
   [f milliseconds]
-  (let [*timer (atom nil)]
-    (r/create-class
-     {:display-name "timeout"
-      :component-did-mount (fn [_] (reset! *timer (js/setTimeout f milliseconds)))
-      :component-will-unmount (fn [_] (js/clearTimeout @*timer))
-      :reagent-render (fn [_ _] nil)})))
+  (react/useEffect
+   (fn []
+     (let [timer (js/setTimeout f milliseconds)]
+       #(js/clearTimeout timer))) #js [])
+  nil)
 
 (defn use-delayed-visible?
   "Retain visibility until the exit delay expires; cancel on reentry/unmount."

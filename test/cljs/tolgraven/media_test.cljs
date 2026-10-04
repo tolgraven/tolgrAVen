@@ -1,8 +1,9 @@
 (ns tolgraven.media-test
-  (:require [cljs.test :refer-macros [deftest is testing]]
-            [reagent.dom.server :as server]
-            [tolgraven.components.media :as media]
-            [tolgraven.video :as video]))
+  (:require
+    [cljs.test :refer-macros [deftest is testing]]
+    [reagent.dom.server :as server]
+    [tolgraven.components.media :as media]
+    [tolgraven.video :as video]))
 
 (defn- render-element [component]
   (let [element (.createElement js/document "div")]
@@ -12,7 +13,7 @@
 (deftest interlude-media-type
   (testing "an image interlude renders an image, not an undecodable video"
     (let [element (render-element
-                    [media/interlude [{:bg {:src "img/collage-strips.jpg"}}] 0])
+                    [media/<interlude> [{:bg {:src "img/collage-strips.jpg"}}] 0])
           image (.querySelector element "img")]
       (is (nil? (.querySelector element "video")))
       (is (= "img/collage-strips.jpg" (.getAttribute image "src")))
@@ -20,7 +21,7 @@
 
 (deftest interlude-video-background
   (let [element (render-element
-                  [media/interlude [{:bg {:src "media/fog-3d-small.mp4"
+                  [media/<interlude> [{:bg {:src "media/fog-3d-small.mp4"
                                          :poster "media/fog-3d-small.jpg"}}] 0])
         video (.querySelector element "video")
         poster (.querySelector element "picture img")]
@@ -34,7 +35,7 @@
 
 (deftest video-preserves-caller-attributes
   (let [element (render-element
-                  [video/video-with-picture-poster
+                  [video/<video-with-picture-poster>
                    {:src "media/fog-3d-small.mp4"
                     :poster "media/fog-3d-small.jpg"
                     :class "media-as-bg"

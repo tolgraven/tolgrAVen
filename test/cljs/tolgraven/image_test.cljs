@@ -1,8 +1,9 @@
 (ns tolgraven.image-test
-  (:require [cljs.test :refer-macros [async deftest is]]
-            [reagent.core :as r]
-            [reagent.dom.client :as dom]
-            [tolgraven.image :as image]))
+  (:require
+    [cljs.test :refer-macros [async deftest is]]
+    [reagent.core :as r]
+    [reagent.dom.client :as dom]
+    [tolgraven.image :as image]))
 
 (defn- check-original-fallback! [src done]
   (let [container (.createElement js/document "div")
@@ -63,7 +64,7 @@
                    :class "portrait"
                    :on-load loaded!
                    :on-error (fn [_] (swap! *errors inc))})
-    (dom/render root [(fn [] [image/picture @*attrs])])))
+    (dom/render root [(fn [] [image/<picture> @*attrs])])))
 
 (deftest picture-falls-back-to-png
   (async done

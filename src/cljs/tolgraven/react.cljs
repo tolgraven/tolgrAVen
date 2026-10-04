@@ -2,11 +2,12 @@
   (:refer-clojure :exclude [atom])
   (:require-macros [tolgraven.react])
   (:require
-   [react-dom :as react-dom]
-   [react :as react]
-   [reagent.core :as r]
-   [reagent.ratom]
-   [re-frame.core :as rf]))
+    [react-dom :as react-dom]
+    [react :as react]
+    [reagent.core :as r]
+    [reagent.ratom]
+    [re-frame.core :as rf]
+    [re-frame.alpha :as alpha]))
 
 (def adapt-react-class         reagent.core/adapt-react-class)
 (def argv                      reagent.core/argv)
@@ -29,6 +30,8 @@
 (defn dispatch [& args] (apply rf/dispatch args))
 (defn dispatch-sync [& args] (apply rf/dispatch-sync args))
 (defn subscribe [& args] (apply rf/subscribe args))
+;; Safe reads outside render contexts use re-frame's managed alpha lifecycle.
+(def sub alpha/sub)
 (defn reg-event-db [& args] (apply rf/reg-event-db args))
 (defn reg-event-fx [& args] (apply rf/reg-event-fx args))
 (defn reg-sub [& args] (apply rf/reg-sub args))

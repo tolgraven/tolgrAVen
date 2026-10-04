@@ -1,5 +1,6 @@
 (ns tolgraven.views-common
   (:require
+    [tolgraven.component.registry]
     [reagent.core :as r]
     [react :as react]
     [tolgraven.macros :refer-macros [defc]]
@@ -13,12 +14,12 @@
     [tolgraven.db :as db]
     [tolgraven.util :as util :refer [at]]))
 
-(defn flashing-ersatz-text-like-everyone-uses
+(defc <flashing-ersatz-text-like-everyone-uses>
   "Better than wee loading spinner no? Eg Docs, we know big page is coming
    so while loading should be expanded to that size already yo"
   [row-count])
 
-(defn component "Standard wrapper for component. Would have fallback loading thing, appear anim, disappear anim somehow..."
+(defc <component> "Standard wrapper for component. Would have fallback loading thing, appear anim, disappear anim somehow..."
   [id attrs model component]
   (let [state @(rf/subscribe [:state [:component id]])
         stage (:stage state)
@@ -26,13 +27,12 @@
         ]
     (if (at model)
       (when-not (= :closed stage)
-        [ui/appear-merge "slide-in"
-         (util/add-attrs component {:class stage})])
-      [ui/loading-spinner model])))
+        [ui/<appear> {:appear "slide-in" :form (util/add-attrs component {:class stage})}])
+      [ui/<loading-spinner> model])))
 
 ;; TODO curr 1px gap between outer lines and img. Fix whatever causing this by mistake (think lines are half-width)
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
-(defn header-logo [[text subtitle]]
+(defc <header-logo> [[text subtitle]]
   [:div.header-logo
    [:a {:href @(rf/subscribe [:href :home])} ;works w/o reitit fiddle
     [:h1 text]]
@@ -40,7 +40,7 @@
     (for [line subtitle] ^{:key (str "header-text-" line)}
       [:p line])]])
 
-(defn header-nav "PLAN: / across with personal stuf on other side. Fade between logos depending on mouse hover..."
+(defc <header-nav> "PLAN: / across with personal stuf on other side. Fade between logos depending on mouse hover..."
   [sections]
   (let [put-links (fn [links]
                     (doall
@@ -73,9 +73,9 @@
       ] ]))
 
 
-(defn header [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
+(defc <header> [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   [:<>
-   [ui/input-toggle "nav-menu-open" [:menu] :class "burger-check"]
+   [ui/<input-toggle> "nav-menu-open" [:menu] :class "burger-check"]
    (when @(rf/subscribe [:fullscreen/any?])
      [:div.header-before
       {:class (when @(rf/subscribe [:state [:scroll :past-top]])
@@ -84,14 +84,14 @@
     {:class (when @(rf/subscribe [:state [:hidden :header] ])
               "hide")}
     [:div.cover.cover-clip] ;covers around lines and that... XXX breaks when very wide tho.
-    [header-logo @(rf/subscribe [:header-text])]
-    [header-nav menu]
+    [<header-logo> @(rf/subscribe [:header-text])]
+    [<header-nav> menu]
 
     (when @(rf/subscribe [:state [:menu]])
       [:div.line])
 
     (when-let [loading @(rf/subscribe [:loading])]
-      [ui/loading-spinner (rf/subscribe [:loading]) :still
+      [ui/<loading-spinner> (rf/subscribe [:loading]) :still
        {:style {:position :absolute
                 :left     "-2.65em"                                   ; puts it to left of header-logo, only partly visible. looks nice.
                 :top      "0%"}}])
@@ -100,7 +100,7 @@
       [:button.blog-link-btn.noborder.nomargin
        {:title "My blog"}
        [:i.fa.fa-pen-fancy]]]
-    [:a {:href @(rf/subscribe [:href-add-query  
+    [:a {:href @(rf/subscribe [:href-add-query
                                {:settingsBox (not @(rf/subscribe [:state [:settings :panel-open]]))}])}
      [:button.settings-btn.noborder.nomargin
       [:i.settings-btn {:class "fa fa-cog"}]]]
@@ -110,7 +110,7 @@
            :<before> (fn []
                        [:button.search-ui-btn.noborder.nomargin
                         {:name "Search" :title "Search site"}
-                        [img/picture {:src   "svg/search-ico.svg"
+                        [img/<picture> {:src   "svg/search-ico.svg"
                                       :alt   "Search"
                                       :style {:width  "1.2em" :height "1.2em"
                                               :filter "var(--light-to-dark)"}}]])}]
@@ -128,14 +128,14 @@
    [:div.fill-above-line-header
     {:class (when @(rf/subscribe [:state [:hidden :header]])
             "fill ")}]
-   
+
    [:div.line.line-header
     {:class (when @(rf/subscribe [:state [:hidden :header]])
              "hide")}]])
 
 
 
-(defn contact-form-popup
+(defc <contact-form-popup>
   [_]
   (let [*inited? (r/atom nil)
         *submit-hovered? (r/atom false)]
@@ -151,42 +151,39 @@
                   (when (or sent? @*loading?) "result ")
                   (when @*inited? "inited"))
           :ref #(when % (reset! *inited? true))}
-         [ui/close #(rf/dispatch [:contact/close])]
+         [ui/<close> #(rf/dispatch [:contact/close])]
          [:h2 "Get in touch"]
 
          (when sent?
            [:div
             [:br] [:br]
-            [ui/appear-merge "slide-in"
-             [:h2 "Your message has been sent!"]]
+            [ui/<appear> {:appear "slide-in" :form [:h2 "Your message has been sent!"]}]
             [:br]
-            [ui/appear-merge "opacity"
-             [:h3 "I'll get back to you shortly."]]])
-         [ui/loading-spinner *loading? :massive]
+            [ui/<appear> {:appear "opacity" :form [:h3 "I'll get back to you shortly."]}]])
+         [ui/<loading-spinner> *loading? :massive]
 
          [:form.contact-form-form
           {:style {:height (when (or sent? @*loading?) 0)}}
-          [ui/input-text
+          [ui/<input-text>
            :placeholder "Name"
            :width "50%"
            :path [:form-field [:contact :name]]]
-          [ui/input-text
+          [ui/<input-text>
            :input-type :input.email
            :type "email" :placeholder "Email"
            :width "50%"
            :path [:form-field [:contact :email]]]
-          [ui/input-text
+          [ui/<input-text>
            :placeholder "Title"
            :width "100%"
            :path [:form-field [:contact :title]]]
-          [ui/appear-anon "slide-in slow"
-           [ui/input-text
+          [ui/<appear> {:appear "slide-in slow" :form [:div [ui/<input-text>
             :placeholder "Message"
             :input-type :textarea
             :width "100%"
             :height "15em"
             :min-rows 8
-            :path [:form-field [:contact :message]]]]
+            :path [:form-field [:contact :message]]]]}]
           (let [disabled? (or (string/blank? (:email @*contents))
                               (not (string/index-of (:email @*contents) "@"))
                               (string/blank? (:message @*contents)))]
@@ -202,18 +199,17 @@
                            (.preventDefault e)
                            (rf/dispatch [:contact/send-request]))}]
              (if (and disabled? @*submit-hovered?) ; mouseLeave never fires (wtf??) but still good enough I suppose
-               [ui/appear-merge "slide-in slower"
-                [:label {:for "submit-contact"}
-                 "Must enter at least email and message"]]
+               [ui/<appear> {:appear "slide-in slower" :form [:label {:for "submit-contact"}
+                 "Must enter at least email and message"]}]
                [:br])
              [:p "Whether for work, collaboration or something else, I'll do my best to accomodate you.
                   NOTE! Currently out of order, please just email me for now haha."]])]])))))
 
-(defn contact-ways [email]
+(defc <contact-ways> [email]
   (let [show-mail-form? @(rf/subscribe [:state [:contact-form :show?]])]
     [:div
-     [contact-form-popup show-mail-form?]
-     [:h4 
+     [<contact-form-popup> show-mail-form?]
+     [:h4
       [:span [:a {:href (str "mailto:" email)
                   :style {:font-size "85%"}}
               email]]
@@ -224,8 +220,8 @@
         :on-click #(rf/dispatch (if show-mail-form? [:contact/close] [:contact/open]))
         :style {:color "var(--fg-5)"}}
        [:i.fas.fa-envelope]]]]))
-            
-(defn footer-content "Upper content (first few rows) of footer"
+
+(defc <footer-content> "Upper content (first few rows) of footer"
   [content]
   [:div.footer-content ;; XXX should adapt to available height, also disappear...
    (for [{:keys [title email text id links logo] :as column} content
@@ -233,10 +229,10 @@
      [:div.footer-column {:id id}
 
       (when logo
-        [img/picture (merge logo {:class "img-icon"})])
+        [img/<picture> (merge logo {:class "img-icon"})])
       [:div
        (when title [:h4 title])
-       (when email [contact-ways email])
+       (when email [<contact-ways> email])
        (when text (for [line text] ^{:key (str id "-" line)}
                     [:h5 line]))]
       (when links [:div.footer-icons
@@ -245,7 +241,7 @@
                       [:i.fab {:class (str "fa-" icon)}]])])])])
 
 
-(defn post-footer "Extra stuff after the basic footer. Not very useful for me but for other sites."
+(defc <post-footer> "Extra stuff after the basic footer. Not very useful for me but for other sites."
   [content]
   [:div.footer-content.post-footer-content ;; XXX should adapt to available height, also disappear...
     (for [{:keys [title text id links img] :as column} content
@@ -262,10 +258,10 @@
                              [:div.footer-link-with-text
                               [:p name] [:p info]]])])
           (when img (for [img-data img]  ^{:key (str id "-" (:src img-data))}
-                      [img/picture (merge img-data {:class "img-icon"})]))])])
+                      [img/<picture> (merge img-data {:class "img-icon"})]))])])
 
 
-(defn footer "The sticky footer visible at load or when scrolling up."
+(defc <footer> "The sticky footer visible at load or when scrolling up."
   [content]
   [:footer#footer-sticky.footer-sticky
    {:class (str (when @(rf/subscribe [:state [:hidden :footer]])
@@ -274,30 +270,30 @@
                   "bottomed ")
                 (when @(rf/subscribe [:fullscreen/any?])
                    "adjust-for-fullscreen"))}
-   [footer-content content]])
+   [<footer-content> content]])
 
-(defn footer-full "Render the full footer at bottom of page"
+(defc <footer-full> "Render the full footer at bottom of page"
   [content]
   [:footer#footer-end.footer-full
    {:class "full"}
-   
-   [footer-content content]
-   [post-footer @(rf/subscribe [:content [:post-footer]])]])
+
+   [<footer-content> content]
+   [<post-footer> @(rf/subscribe [:content [:post-footer]])]])
 
 
-(defn to-top "A silly arrow, and twice lol. why." [icon]
+(defc <to-top> "A silly arrow, and twice lol. why." [icon]
  (let [icon (or icon "angle-double-up")
        i [:i {:class (str "fas fa-" icon)}]]
     [:a {:id "to-top" :class "to-top" :href @(rf/subscribe [:href "#main"]) :name "Up"} i]))
 
-(defn scrollbar "Basic custom scroll indicator. Add full functionality later..."
+(defc <scrollbar> "Basic custom scroll indicator. Add full functionality later..."
   [spec]
   [:div.scrollbar
    (merge spec
           {:on-mouse-down (fn [e] (println "etc"))})
    [:div.scrollbar-thumb]])
 
-(defc settings "Settings panel for theme and stuff"
+(defc <settings> "Settings panel for theme and stuff"
   []
   (react/useEffect (fn [] (rf/dispatch [:settings/read-css-vars]) js/undefined) #js [])
   (let [open? @(rf/subscribe [:state [:settings :panel-open]])
@@ -310,7 +306,7 @@
     [:div.settings-panel
      {:class (when open? "opened")
       :style {:position :sticky }}
-     
+
      [:h2 [:i {:class "fa fa-cog"}] " Settings"]
      [:div
       [:button {:on-click #(rf/dispatch [:html/set-attr! nil "data-theme" "light"])}
@@ -331,7 +327,7 @@
           (-> (name k)
               (string/replace "-" " ")
               (string/capitalize))]]))]
-     
+
      #_[:blog posts per page incl lazy-load option]
      #_[:palette in general?
      #_[:other css vars...]

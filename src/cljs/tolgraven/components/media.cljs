@@ -1,37 +1,39 @@
 (ns tolgraven.components.media
   (:require
-   [tolgraven.react :as rf]
-   [reagent.core :as r]
-   [tolgraven.image :as img]
-   [tolgraven.ui :as ui]
-   [tolgraven.util :as util]
-   [tolgraven.video :as vid]))
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.react :as rf]
+    [reagent.core :as r]
+    [tolgraven.image :as img]
+    [tolgraven.ui :as ui]
+    [tolgraven.util :as util]
+    [tolgraven.video :as vid]))
 
-(defn bg-logo "Try to remember why had to put img in css/style..."
+(defc <bg-logo> "Try to remember why had to put img in css/style..."
   [path]
   (fn [path]
     [:div#logo-top.logo-bg.stick-up ;.parallax-sm
      {:class "logo-tolgraven"
       :style {:background-image (str "url('" path "')")}} ])) ; cant remember why I did the weird path-in-css bs but anyways...
 
-(defn- media-as-bg-smart "Detects whether media is image or video and uses appropriate component"
+(defc ^:private <media-as-bg-smart> "Detects whether media is image or video and uses appropriate component"
   [media-data]
   (let [src (:src media-data)]
     (if (and src (re-find #"\.(mp4|mov|webm)$" src))
-      [vid/media-as-bg media-data]
-      [img/media-as-bg media-data])))
+      [vid/<media-as-bg> media-data]
+      [img/<media-as-bg> media-data])))
 
-(defn carousel-bg "Intro (bg img only) jumbotron slider
+(defc <carousel-bg> "Intro (bg img only) jumbotron slider
                       Should be a generic system also working for page transitions etc"
   [img-attrs]
   [:div#top-banner.carousel ;{:class ""}
    ; (map-indexed )
     (for [img-data img-attrs] ^{:key (str "carousel-bg-" (:src img-data))}
-         [media-as-bg-smart img-data])])
+         [<media-as-bg-smart> img-data])])
          ; [:div.carousel-item
          ;  [:img.media.media-as-bg img]])])
 
-(defn carousel-bg-2 "Intro (bg img only) jumbotron slider"
+(defc <carousel-bg-2> "Intro (bg img only) jumbotron slider"
   [img-attrs]
   [:div#top-banner.carousel.media-as-bg ;{:class ""}
    [:ol.carousel__viewport
@@ -44,7 +46,7 @@
            [:div.carousel__snapper
            [:a.carousel__prev {:href "#slide-fuckit-events are better4"}]
            [:a.carousel__next {:href "#carousel__slide2"} "Go to next"]] ;for nav
-           [media-as-bg-smart img]]
+           [<media-as-bg-smart> img]]
          {:key (str "carousel-bg-" (inc i))}))
      img-attrs)]
    [:aside.carousel-nav>ol
@@ -54,7 +56,7 @@
 
 
 
-(defn interlude "Banner across with some image or video or w/e
+(defc <interlude> "Banner across with some image or video or w/e
                     Partial content errors probably because stops buffering since we pause it.
                     Let's try a tricky trick"
   [interludes nr]
@@ -90,7 +92,7 @@
         :on-touch-start #(do-control :play)
         :on-touch-end   #(do-control :pause)}
        (if (re-find #"\.(mp4|mov|webm)$" (or (:src bg) ""))
-         [vid/video-with-picture-poster
+         [vid/<video-with-picture-poster>
           (merge
            {:id (str "interlude-bg-" nr)
             :class "media media-as-bg"
@@ -114,7 +116,7 @@
              :alt "Video poster"
              :class (str "media media-as-bg " (when (false? @on-hold) "hidden"))
              :style {:z-index 1}})]
-         [img/media-as-bg (assoc bg :id (str "interlude-bg-" nr))])
+         [img/<media-as-bg> (assoc bg :id (str "interlude-bg-" nr))])
        [:div
         {:class "covering-faded widescreen-safe center-content parallax-group"
          :ref #(observer %) ;oh yeah check first el for :video cant work it's rendered at that point lol
@@ -122,43 +124,43 @@
                  :opacity (when-not (zero? @in-view)
                             "0.4")}}
         [:h1.h-responsive title]]
-       [ui/inset caption nr]]))))
+       [ui/<inset> caption nr]]))))
 
-(defn gallery "Stupid css thing slides sidewayus x) Make it go out left side would be cool"
+(defc <gallery> "Stupid css thing slides sidewayus x) Make it go out left side would be cool"
   [img-attrs]
   [:section#gallery.covering.fullwide
    [:div.sideways
     (when @(rf/subscribe [:state [:gallery :loaded]])
       (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
-         [img/picture (merge img {:class "media"})]))]]) ; TODO add captions and other features etc...
+         [img/<picture> (merge img {:class "media"})]))]]) ; TODO add captions and other features etc...
 
-(defn gallery-2 "Gallery carousel"
+(defc <gallery-2> "Gallery carousel"
   [img-attrs]
   [:section#gallery-2.covering.fullwide {:style {:z-index 12}}
    [:div "test carousel-normal"]
-   [ui/carousel-normal :gallery-2-normal {:style {:height "40vh"} }
+   [ui/<carousel-normal> :gallery-2-normal {:style {:height "40vh"} }
     (into []
           (for [img img-attrs] ^{:key (str "gallery-2-normal-" (:src img))}
-            [img/picture (merge img {:class "media"})]))]])
+            [img/<picture> (merge img {:class "media"})]))]])
 
-(defn gallery-3 "Gallery carousel"
+(defc <gallery-3> "Gallery carousel"
   [img-attrs]
   [:section#gallery-2.covering.fullwide {:style {:z-index 12}}
    [:div "test carousel"]
-   [ui/carousel :gallery-2 {:style {:height "30vh"} }
+   [ui/<carousel> :gallery-2 {:style {:height "30vh"} }
     (into []
           (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
-         [img/picture (merge img {:class "media"})]))]])
+         [img/<picture> (merge img {:class "media"})]))]])
 
 
-(defn moneyshot "needs better name lol. what is hero img halfway down page?"
+(defc <moneyshot> "needs better name lol. what is hero img halfway down page?"
   [{:keys [title caption bg]}]
   (let [frac (r/atom 0.0)
         observer (util/observer #(reset! frac %))]
     (fn [{:keys [title caption bg]}]
         [:div#moneyshot {:class "section-with-media-bg-wrapper parallax-wrapper covering stick-up"
           :ref #(observer %)}
-         [img/media-as-bg ; TODO try it as background-image instead of separate div, see if calms down...
+         [img/<media-as-bg> ; TODO try it as background-image instead of separate div, see if calms down...
           (merge bg {:class "darken-8 parallax-bg origin-toptop" ;origin-toptop
                      :style (merge (when (pos? @frac)
                                      {:opacity 1.0})
@@ -172,5 +174,5 @@
                     :transition "transform 8.5s ease"
                     #_:transform #_(str "translateZ(" (* 14 @frac) "px)")}}
            title]] ;ideally want this also growing (and moving quicker upwards)]
-         [ui/inset caption 3]
-         [ui/fading]])))
+         [ui/<inset> caption 3]
+         [ui/<fading>]])))

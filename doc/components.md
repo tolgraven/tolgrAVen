@@ -1,6 +1,7 @@
 # Composable components with `defc`
 
-Require `[tolgraven.macros :refer-macros [defc]]` and use components in Hiccup.
+Require `[tolgraven.macros :refer-macros [defc]]` and
+`[tolgraven.component.registry]`, and use components in Hiccup.
 The default compiles directly to Reagent 2's `reagent.core/defc`: a memoized
 function component, with no error boundary, lifecycle class, DOM wrapper or data
 loader. Registering its descriptor happens once at definition time. As with
@@ -20,7 +21,22 @@ Hiccup metadata such as `^{:key ...}` still identifies instances.
 The macro accepts an optional docstring and declaration map, one
 argument vector (including destructuring and variadic arguments), and optional
 `:let [bindings]` for per-instance state. Existing form-2 bodies also work.
-Bindings survive argument updates; rendering receives current arguments.
+Bindings survive argument updates; rendering receives current arguments. Lean
+components also accept ordinary multiple render arities. Composed features need
+one argument vector. Empty prototype bodies render `nil`, so unfinished definitions
+can retain their API during a migration.
+
+The registry is deliberately independent of the component runtime. Leaf views
+such as the error fallback can declare lean components without loading the runtime
+that uses them. Only opt-in features require `tolgraven.component`.
+
+A `defc` value is a React component descriptor, not an ordinary callable function.
+Use `[<component> value]` even inside threading/helper code. At a native React
+adapter boundary, use `(r/reactify-component (fn [props] [<component> props]))`
+instead of passing the descriptor to `reactify-component`. Module exports may
+still use Vars; resolve them with `component/resolve-view` before placing the
+result in Hiccup. Mount roots with the component value rather than an unresolved
+Var wrapping that value.
 
 ## Selecting features
 

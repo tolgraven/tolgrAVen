@@ -10,6 +10,5 @@
   {:content (get content-contract/module-content :strava [])
    :id :strava
    :assets {:css ["https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]}
-   :view {:view #'view/strava}
-   :init #(do (js/console.error "STRAVA YO")
-              (rf/dispatch [:strava/init]))})
+   :view {:view #'view/<strava>}
+   :init #(rf/dispatch [:strava/init])})

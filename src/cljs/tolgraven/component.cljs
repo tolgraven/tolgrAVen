@@ -1,16 +1,18 @@
 (ns tolgraven.component
-  (:require [clojure.string :as string]
-            [tolgraven.render-context :as context]
-            [reagent.core :as r]
-            [react :as react]
-            [tolgraven.component.motion :as motion]
-            [tolgraven.component.persistent-state :as state-store]
-            [tolgraven.component.loading :as loading]
-            [tolgraven.component.storage :as storage]
-            [tolgraven.components.error :as error]
-            [tolgraven.util :as util]
-            [tolgraven.component.data :as data]
-            [tolgraven.component.sources]))
+  (:require
+    [clojure.string :as string]
+    [tolgraven.render-context :as context]
+    [tolgraven.component.registry :as registry]
+    [reagent.core :as r]
+    [react :as react]
+    [tolgraven.component.motion :as motion]
+    [tolgraven.component.persistent-state :as state-store]
+    [tolgraven.component.loading :as loading]
+    [tolgraven.component.storage :as storage]
+    [tolgraven.components.error :as error]
+    [tolgraven.util :as util]
+    [tolgraven.component.data :as data]
+    [tolgraven.component.sources]))
 
 (def state state-store/state)
 (def <sub state-store/<sub)
@@ -78,22 +80,9 @@
   (cond (fn? ref) (ref element)
         ref (set! (.-current ^js ref) element)))
 
-(defonce ^:private *definitions (js/WeakMap.))
-
-(defn component-spec [component]
-  (.get *definitions (if (var? component) @component component)))
-
-(defn register-component! [component definition]
-  (.set *definitions component definition)
-  component)
-
-(defn definition [ns-name component-name options make-render]
-  (let [features (->> (:features options)
-                      (map #(if (keyword? %) [% true] %))
-                      (remove #(false? (second %)))
-                      vec)]
-    {:ns ns-name :name component-name :options options :features features
-     :make-render make-render}))
+(def component-spec registry/component-spec)
+(def register-component! registry/register-component!)
+(def definition registry/definition)
 
 (defn dependencies [definition args]
   (let [declared (get-in definition [:options :depends])

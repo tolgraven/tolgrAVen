@@ -1,11 +1,14 @@
-(ns tolgraven.components.iframe)
+(ns tolgraven.components.iframe
+  (:require
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]))
 
 (def sandbox-by-trust
   {:trusted "allow-forms allow-scripts"
    :user ""
    :untrusted ""})
 
-(defn <iframe>
+(defc <iframe>
   "Generic sandboxed iframe. Loading and presentation belong to its caller."
   [{:keys [label on-load src trust]
     :or {trust :untrusted}}]

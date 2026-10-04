@@ -1,17 +1,18 @@
 (ns tolgraven.loader
   (:require
-   [tolgraven.react :as rf]
-   [tolgraven.render-context :as context]
-   [tolgraven.content.client :as content]
-   [tolgraven.content.contract :as content-contract]
-   [tolgraven.component :as component]
-   [tolgraven.component.data :as data]
-   [tolgraven.components.error :as error]
-   [tolgraven.service-status :as status]
-   [reagent.core :as r]
-   [shadow.lazy :as lazy])
+    [tolgraven.component.registry]
+    [tolgraven.react :as rf]
+    [tolgraven.render-context :as context]
+    [tolgraven.content.client :as content]
+    [tolgraven.content.contract :as content-contract]
+    [tolgraven.component :as component]
+    [tolgraven.component.data :as data]
+    [tolgraven.components.error :as error]
+    [tolgraven.service-status :as status]
+    [reagent.core :as r]
+    [shadow.lazy :as lazy])
   (:require-macros
-   [tolgraven.macros :as m]))
+    [tolgraven.macros :as m]))
 
 (def modules (m/browser-only (merge (m/make-modules "tolgraven" [:blog
                                                  :link-preview
@@ -26,7 +27,7 @@
                                                  :instagram])
                     {:test (lazy/loadable tolgraven.experiments/spec)})))
 
-(defn <default-missing>
+(m/defc <default-missing>
   [& args]
   [:div (pr-str args)])
 
@@ -106,7 +107,7 @@
                             (.then (fn [_] (if post-fn (apply post-fn spec args) spec))))))))
     (js/Promise.reject (ex-info "Unknown module" {:module module}))))
 
-(defn <assets>
+(m/defc <assets>
   "Inject external assets"
   [{:keys [css js]}]
   [:<>
@@ -118,7 +119,7 @@
           [:script {:type "text/javascript"
                     :src  src}])])
 
-(defn- <browser-module>
+(defn make-browser-render
   "Render a module component after loading and initialization, optionally on demand."
   [& _]
   (let [*loaded (r/atom nil)
@@ -183,7 +184,10 @@
             (if (vector? <loading>) <loading> (into [<loading>] args))
             [:div.loading-container [:div.loading-spinner]]))))))
 
-(defn <>
+(m/defc ^:private <browser-module> [& _]
+  (make-browser-render))
+
+(m/defc <>
   "Use the same module view in Node, without starting browser initialization."
   [& initial]
   (if context/*server?*
@@ -195,4 +199,4 @@
                                              (if (vector? <before>) <before> (into [<before>] args))])
           :else (when-let [view (get-in context/*modules* [module :view (or view :view)])]
                   (into [(component/resolve-view view)] args)))))
-    (apply <browser-module> initial)))
+    (into [<browser-module>] initial)))

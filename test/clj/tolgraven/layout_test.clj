@@ -24,8 +24,9 @@
     (testing (if dev? "development" "production")
       (with-redefs [config/env {:dev dev? :ssr {:enabled false}}
                     olink/bundle-paths (fn [_ bundles]
-                                        (is (= ["styles.css"] bundles))
-                                        [stylesheet])
+                                        (case (first bundles)
+                                          "styles.css" [stylesheet]
+                                          "main.js" ["/bundles/main.hash.js"]))
                     ohtml/link-to-js-bundles (fn [& _] nil)]
         (let [body (:body (layout/render-home {}))
               links (re-seq #"<link[^>]+>" body)
@@ -37,3 +38,16 @@
           (is (.contains body "prefers-color-scheme: dark"))
           (is (.contains body "href=\"/site.webmanifest\""))
           (is (.contains body "rel=\"apple-touch-icon\"")))))))
+
+(deftest preload-matches-the-executed-bundle
+  (with-redefs [config/env {:dev false :ssr {:enabled false}}
+                olink/bundle-paths (fn [_ bundles]
+                                    (case (first bundles)
+                                      "main.js" ["/bundles/main.hash.js"]
+                                      "styles.css" ["/bundles/styles.hash.css"]))
+                ohtml/link-to-js-bundles (fn [& _] [:script {:src "/bundles/main.hash.js"}])]
+    (let [{:keys [body headers]} (layout/render-home {:uri "/"})]
+      (is (= "</bundles/main.hash.js>; rel=preload; as=script" (get headers "Link")))
+      (is (re-find #"<link[^>]*href=\"/bundles/main.hash.js\"[^>]*rel=\"preload\"" body))
+      (is (< (.indexOf body "/bundles/main.hash.js") (.indexOf body "<body")))
+      (is (.contains body "<script src=\"/bundles/main.hash.js\"")))))

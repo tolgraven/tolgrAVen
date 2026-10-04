@@ -1,5 +1,6 @@
 (ns tolgraven.user.views
   (:require
+    [tolgraven.component.registry]
     [tolgraven.link-preview.views :as link-preview]
     [reagent.core :as r]
     [tolgraven.react :as rf]
@@ -9,34 +10,34 @@
     [tolgraven.loader :as l]
     [tolgraven.ui :as ui]))
 
-(defn back-btn [] ;tho ideally we push states and pop them... so becomes, yeah
+(defc <back-btn> [] ;tho ideally we push states and pop them... so becomes, yeah
   (when (< 1 (count @(rf/subscribe [:user/active-section])))
     [:button.user-back-btn.noborder.showing
      {:on-click #(rf/dispatch [:user/to-last-section])
       :style {:position :absolute :left 0 :top 0}}
      [:i.fa.fa-chevron-left]]))
 
-(defn password-input [& {:keys [placeholder path]
+(defc <password-input> [& {:keys [placeholder path]
                          :or {placeholder "Password"
                               path [:form-field [:login :password]]}}]
-  [ui/input-text
+  [ui/<input-text>
     :type (when-not @(rf/subscribe [:state [:login-show-password]]) :password)
     :placeholder placeholder
     :attr {:autoComplete "password"}
     :path path])
 
-(defn sign-in-input "Sign in component" []
+(defc <sign-in-input> "Sign in component" []
   [:section>form
-   [ui/input-text
+   [ui/<input-text>
     :placeholder "Email"
     :attr {:autoComplete "email"}
     :path [:form-field [:login :email]]]
    [:br]
-   [password-input]
-   [ui/toggle [:state :login-show-password] "show"]])
+   [<password-input>]
+   [ui/<toggle> [:state :login-show-password] "show"]])
 
 
-(defn sign-in "Sign in or go to reg page" []
+(defc <sign-in> "Sign in or go to reg page" []
   (let [disabled? (not @(rf/subscribe [:login/valid-input?]))
         providers @(rf/subscribe [:option [:supabase :providers]])
         with (fn [provider]
@@ -45,7 +46,7 @@
                   [:i.fab {:class (str "fa-" (name provider))}]]))]
     [:div.user-inner.noborder
      [:h2 "Please log in"]
-     [sign-in-input]
+     [<sign-in-input>]
 
      (when-let [error @(rf/subscribe [:user/error])] ;should be a sub
        [:<>
@@ -68,29 +69,29 @@
       [:div "or sign in without registration" [:br]
        [with :google] [with :github] [with :facebook]]]]))
 
-(defn register "Registration component" [user]
+(defc <register> "Registration component" [user]
   [:div.user-inner.user-register
    [:h2 "Register"]
-   [sign-in-input] ;well need different validation here (not exists etc)
-   [ui/input-text
+   [<sign-in-input>] ;well need different validation here (not exists etc)
+   [ui/<input-text>
     :path [:form-field [:register :email]]
     :placeholder "Email"]
-   
+
    [:button
     {:on-click #(rf/dispatch [:user/request-register])}
     "Sign up"] ])
 
-(defn profile "User profile page" [user-id]
+(defc <profile> "User profile page" [user-id]
   [:div "USER PROFILE"])
 
-(defn section "Wrap thing in user-inner etc"
+(defc <section> "Wrap thing in user-inner etc"
   [heading & components]
   [:div.user-inner
    (when heading [:h2 heading])
    (into [:section] components)])
 
-(defn comments "User comments page" [user]
-  [section "User comments" ;will need to save comment id's to user when make new ones.
+(defc <comments> "User comments page" [user]
+  [<section> "User comments" ;will need to save comment id's to user when make new ones.
    (let [comments @(rf/subscribe [:comments/for-user-q (:id user)])]
      (doall (for [{:keys [id title text ts score] :as comment} (vals comments)] ^{:key (str "user-" (:id user) "-comment-" id)}
               [:div.blog-comment>div.blog-comment-main
@@ -100,65 +101,65 @@
                 [link-preview/<md> text]]]))) ])
 
 
-(defn change-password "Change user password" [user]
-  [section "Change password"
+(defc <change-password> "Change user password" [user]
+  [<section> "Change password"
    [:form
-    [password-input :placeholder "Current password"
+    [<password-input> :placeholder "Current password"
      :path [:form-field [:change-password :current]]]
-    [password-input :placeholder "New password"
-     :path [:form-field [:change-password :new]]] 
-    [ui/toggle [:state :login-show-password] "show"]]
+    [<password-input> :placeholder "New password"
+     :path [:form-field [:change-password :new]]]
+    [ui/<toggle> [:state :login-show-password] "show"]]
    [:br]
    [:button
     {:on-click #(rf/dispatch [:user/request-change-password])}
     "Change password"] ])
 
-(defn change-username "Change username" [user]
-  [section "Change username"
+(defc <change-username> "Change username" [user]
+  [<section> "Change username"
    [:p "Current username: " (:name user)]
-   [ui/input-text
+   [ui/<input-text>
     :path [:form-field [:change :username]]
     :placeholder "New username"]
-   [ui/button "Change" :change-username
+   [ui/<button> "Change" :change-username
               :action #(rf/dispatch [:user/set-field
                                      (:id user) :name
                                      @(rf/subscribe [:form-field [:change :username]])])]])
-(declare avatar)
-(defn change-avatar "Change avatar" [user]
-  [section nil
-   [avatar user false]
+(declare <avatar>)
+(defc <change-avatar> "Change avatar" [user]
+  [<section> nil
+   [<avatar> user false]
    [:br]
    [:span "Upload file "]
-   [:input {:type "file" :id "file" :name "file" 
-            :on-change 
+   [:input {:type "file" :id "file" :name "file"
+            :on-change
             #(rf/dispatch [:user/upload-avatar
                            (-> % .-target .-files (aget 0))])}]
    [:br]
    [:span "Or from url "]
-   [ui/input-text
+   [ui/<input-text>
     :path [:form-field [:change :avatar-url]]
     :placeholder "URL"]
-   [ui/button "Change" :change-avatar-url
+   [ui/<button> "Change" :change-avatar-url
     :action #(rf/dispatch [:user/set-field (:id user) :avatar
                                           @(rf/subscribe [:form-field [:change :avatar-url]])])]])
-(declare user-avatar)
-(defn avatar "Display user avatar and option to change it"
+(declare <user-avatar>)
+(defc <avatar> "Display user avatar and option to change it"
   [user-map allow-edit?]
   [:div.user-avatar-wrapper
    (when allow-edit?
      [:div.user-avatar-change
       [:i.fa.fa-edit {:on-click #(rf/dispatch [:user/active-section :change-avatar])}]])
-   [user-avatar (merge user-map {:no-zoom true})] ])
+   [<user-avatar> (merge user-map {:no-zoom true})] ])
 
-(defn admin "User admin page" [user]
+(defc <admin> "User admin page" [user]
   (let [admin? @(rf/subscribe [:user/has-role? :admins])
         section-btn (fn [text k section]
-                      [ui/button text k
+                      [ui/<button> text k
                                  :action #(rf/dispatch [:user/active-section section])])]
     [:div.user-inner
      [:section
       [:div.flex
-       [avatar user true]
+       [<avatar> user true]
        [:div.user-info
         [:h3 {:style {:display :inline}}
          (:name user)]
@@ -171,20 +172,20 @@
         [:button
          {:on-click #(rf/dispatch [:user/active-section :comments])}
          (str (or (:comment-count user) 0) " comments (view)")]]]]
-     
+
      [:div.user-change-options
       {:style {:position :relative}}
       [:span "Change "]
       [section-btn "Username"  :username :change-username]
       [section-btn "Password"  :password :change-password]
-      
+
      [:button.border
       {:on-click #(rf/dispatch [:user/sign-out])
        :style {:position "relative" :right 0}}
       "Log out"]]]))
 
 
-(defn user-avatar
+(defc <user-avatar>
   "Render one avatar. Reserve its space while the profile is pending; use the
    default only for a resolved profile without an avatar or a failed image."
   [user-map & [extra-class]]
@@ -197,31 +198,31 @@
       [:div.user-avatar-container
        ;; A fallback overlay flashes during hydration even when SSR already
        ;; knows the author. Keep a single image and let the browser load it.
-       [img/picture
+       [img/<picture>
         {:class (str "user-avatar " extra-class)
          :src src
          :on-error (fn [_] (when avatar (swap! *failed-sources conj avatar)))
          :alt (if user-map (str (:name user-map) " profile picture") "")
          :on-click (when zoom?
                      #(rf/dispatch [:modal-zoom :fullscreen :open
-                                    [img/picture {:src src :alt "Profile picture"}]]))
+                                    [img/<picture> {:src src :alt "Profile picture"}]]))
          :style (cond-> {}
                   (nil? src) (assoc :visibility "hidden")
                   zoom? (assoc :cursor "pointer"))}]])))
 
-(defn user-btn [model]
+(defc <user-btn> [model]
   [:a {:href @(rf/subscribe [:href-add-query
                              {:userBox (not @(rf/subscribe [:user/ui-open?]))}])}
    [:button.user-btn.noborder
     (if-let [user @(rf/subscribe [:user/active-user])]
-      [user-avatar (merge user {:no-zoom true}) "btn-img"]
+      [<user-avatar> (merge user {:no-zoom true}) "btn-img"]
       [:i.user-btn {:class "fa fa-user"}])]])
 
 
-(defn user-box "Wrapper for user views"
+(defc <user-box> "Wrapper for user views"
   [user component]
   [:section.noborder
-   [back-btn]
+   [<back-btn>]
    [:a {:href @(rf/subscribe [:href-add-query {:userBox (not @(rf/subscribe [:user/ui-open?]))}])}
     [:button.close-btn.noborder
      [:i.fa.fa-times]]]
@@ -233,15 +234,15 @@
   [{:keys [section user] :as spec}]
   [:div.user-section-wrapper.stick-up.hi-z
    [:div.user-section
-    [user-box user
+    [<user-box> user
      (case section
-       :login sign-in
-       :register register
-       :admin admin
-       :comments comments
-       :change-avatar change-avatar
-       :change-password change-password
-       :change-username change-username
+       :login <sign-in>
+       :register <register>
+       :admin <admin>
+       :comments <comments>
+       :change-avatar <change-avatar>
+       :change-password <change-password>
+       :change-username <change-username>
        :none)]]])
 
 (defc <user-section> {:features [:presence]} []
@@ -252,5 +253,3 @@
        ;; Presence retains these inputs while closing, so the outgoing panel
        ;; keeps its contents without a second app-db transition or timer event.
        ^{:key :user-panel} [<user-panel> {:section (last sections) :user user}])]))
-
-(def user-section <user-section>)

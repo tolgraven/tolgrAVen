@@ -1,25 +1,28 @@
 (ns tolgraven.routes
-  (:require [tolgraven.ssr.client :as ssr] [tolgraven.react :as rf]
-            [reitit.frontend :as reitit]
-            [reitit.frontend.history :as rfh]
-            [reitit.frontend.easy :as rfe]
-            [reitit.dev.pretty :as rpretty]
-            [tolgraven.blog.pages :as blog]
-            [tolgraven.cv.pages :as cv]
-            [tolgraven.docs.pages :as docs]
-            [tolgraven.loader :as l]
-            [tolgraven.component.data :as data]
-            [tolgraven.components.error :as error-view]
-            [tolgraven.main.module :as main]
-            [tolgraven.component.restore :as restore]
-            [tolgraven.ui :as ui]
-            [tolgraven.main.pages :as home]
-            [tolgraven.views.auto :as auto]
-            [tolgraven.views.not-found :as a404]))
+  (:require
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.ssr.client :as ssr] [tolgraven.react :as rf]
+    [reitit.frontend :as reitit]
+    [reitit.frontend.history :as rfh]
+    [reitit.frontend.easy :as rfe]
+    [reitit.dev.pretty :as rpretty]
+    [tolgraven.blog.pages :as blog]
+    [tolgraven.cv.pages :as cv]
+    [tolgraven.docs.pages :as docs]
+    [tolgraven.loader :as l]
+    [tolgraven.component.data :as data]
+    [tolgraven.components.error :as error-view]
+    [tolgraven.main.module :as main]
+    [tolgraven.component.restore :as restore]
+    [tolgraven.ui :as ui]
+    [tolgraven.main.pages :as home]
+    [tolgraven.views.auto :as auto]
+    [tolgraven.views.not-found :as a404]))
 
-(defn log-page []
-  [ui/with-heading [:common :banner-heading]
-   [ui/log (rf/subscribe [:option [:log]])
+(defc <log-page> []
+  [ui/<with-heading> [:common :banner-heading]
+   [ui/<log> (rf/subscribe [:option [:log]])
     (rf/subscribe [:get :diagnostics])]
    {:title "Log" :tint "blue"}])
 
@@ -36,11 +39,11 @@
                                 ("false" nil) (rf/dispatch [:state [:settings :panel-open] false]))) ; well this being on start it wouldn't be open anyways
                      :stop (fn [{:keys [query]}]    ; why is this being run without leaving page?
                              )}]}]
-          (concat (mapv #(update % 1 assoc :module nil :view #'auto/auto) home/spec)
+          (concat (mapv #(update % 1 assoc :module nil :view #'auto/<auto>) home/spec)
                   [(into [""] cv/spec)
                    (into [""] docs/spec)
                    (into [""] blog/spec)
-                   ["/log" {:name :log :view #'log-page}]
+                   ["/log" {:name :log :view #'<log-page>}]
                    ["/test"
       ["" {:name :test
            :module :test
@@ -54,7 +57,7 @@
                                (rf/dispatch [:state [:experiments] (keyword (:tab path))])
                                (rf/dispatch [:exception [:experiments] nil]))}]}]]
                    ["/client-oauth" ; for client OAuth callbacks
-                    {:view #'a404/not-found-page}
+                    {:view #'a404/<not-found-page>}
                     ["" {:name :client-oauth
                          #_:view #_#'successful-oauth-page}]
                     #_["/:service" ; nope, considering non-universal naming unless can coerce keys to universal api/secret/etc...
@@ -75,7 +78,7 @@
                                                  (:oauth_token_secret query)])
                                    (rf/dispatch [:diag/new :error "Twitter auth"
                                                  "Error authenticating"])))}]}]]
-                   ["/not-found" {:name :not-found :view #'a404/not-found-page}]]))
+                   ["/not-found" {:name :not-found :view #'a404/<not-found-page>}]]))
     {:exception rpretty/exception}))
 
 ;; A late module response must never navigate back over a newer URL.
@@ -105,10 +108,10 @@
                       (if component
                         (dispatch! [:common/navigate
                                       (assoc-in match [:data :view] component)])
-                        (dispatch! [:state [:error-page] a404/not-found-page]))))]
+                        (dispatch! [:state [:error-page] a404/<not-found-page>]))))]
     (cond
       (nil? match)
-      (do (dispatch! [:state [:error-page] a404/not-found-page])
+      (do (dispatch! [:state [:error-page] a404/<not-found-page>])
           (dispatch! [:diag/new :error "404" "Not found"]))
 
       view (if (= :landing (:kind (:data match)))

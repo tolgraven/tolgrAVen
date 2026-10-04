@@ -19,7 +19,8 @@
     [tolgraven.service-status :as service-status]
     [tolgraven.events]
     [tolgraven.loader :as l]
-    [tolgraven.macros :as m]
+    [tolgraven.macros :as m :include-macros true]
+    [tolgraven.component.registry]
     [tolgraven.routes :as routes]
     [tolgraven.subs]
     [tolgraven.ui :as ui]
@@ -29,8 +30,8 @@
 
 (def spec main-module/spec)
 
-(def page page-view/page)
-(def swapper page-view/swapper)
+(def page page-view/<page>)
+(def swapper page-view/<swapper>)
 
 ;; -------------------------
 ;; Initialize app
@@ -44,15 +45,15 @@
                       (r/as-element [page]))
     [#'page]))
 
-(defn <root-page> []
+(m/defc <root-page> []
   [ssr/<hydrate> [page]])
 
 (defn render []
   (if @root
-    (rdomc/render @root [#'<root-page>])
+    (rdomc/render @root [<root-page>])
     (let [element (.getElementById js/document "app")]
       (if (:hydrate? @restore/*context)
-        (reset! root (rdomc/hydrate-root element [#'<root-page>]
+        (reset! root (rdomc/hydrate-root element [<root-page>]
                        {:on-recoverable-error
                         (fn [error _]
                           (js/console.error "Hydration recovery" error)
@@ -60,7 +61,7 @@
                                                "The page was rebuilt in your browser. Reload if anything is missing."
                                                #(.reload js/location)))}))
         (do (reset! root (rdomc/create-root element))
-            (rdomc/render @root [#'<root-page>]))))))
+            (rdomc/render @root [<root-page>]))))))
 
 (defn mount-components "Called each update when developing" []
   (let [hot-reload? (some? @root)]

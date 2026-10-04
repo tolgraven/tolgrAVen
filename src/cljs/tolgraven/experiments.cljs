@@ -1,17 +1,20 @@
 (ns tolgraven.experiments
-  (:require [reagent.core :as r]
-            [tolgraven.react :as rf]
-            [tolgraven.loader :as l]
-            [tolgraven.ui :as ui]
-            [react-leaflet]
-            [leaflet]))
+  (:require
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [reagent.core :as r]
+    [tolgraven.react :as rf]
+    [tolgraven.loader :as l]
+    [tolgraven.ui :as ui]
+    [react-leaflet]
+    [leaflet]))
 
-(defn transition-group "Might be good exercise in React to try implement in cljs?
+(defc <transition-group> "Might be good exercise in React to try implement in cljs?
                         Though understanding what causing issues / moving away from cljsjs would
                         likely be even better exercise in productivity. Q is what sought"
   [attrs & components])
 
-(defn model-viewer
+(defc <model-viewer>
   []
   [:section
    [:model-viewer {:alt "A wooden pallet" :src "media/pallet.glb"
@@ -19,27 +22,25 @@
                    #_:environment-image #_"media/moon_1k.hdr" ;:poster "media/model.jpg"
                    #_:seamless-poster #_true :shadow-intensity "2"
                    ; :camera-orbit "45deg 255deg 0.5m"
-                   :camera-orbit "calc(-1.5rad + env(window-scroll-y) * 4rad) calc(0deg + env(window-scroll-y) * 180deg) calc(3m - env(window-scroll-y) * 1.5m)" 
+                   :camera-orbit "calc(-1.5rad + env(window-scroll-y) * 4rad) calc(0deg + env(window-scroll-y) * 180deg) calc(3m - env(window-scroll-y) * 1.5m)"
                    :auto-rotate true
                    :camera-controls true :enable-pan true}]])
 
 
-(defn parallax []
+(defc <parallax> []
   [:<>
    (let [elems (or (rf/subscribe [:state [:elems]]) [1 2 3])]
      [:div.parallax-ui ;.fullwide
       [:div "Pure CSS parallax scroll demo #3 by Keith Clark -> tolgraven"]
-      [ui/appear-anon "opacity"
-       [:div.elem-group.flex
+      [ui/<appear> {:appear "opacity" :form [:div [:div.elem-group.flex
         (doall
          (for [el @elems] ^{:key el}
-           [ui/appear-anon "slide-in"
-            [:div.elem el]]))]]
+           [ui/<appear> {:appear "slide-in" :form [:div [:div.elem el]]}]))]]}]
       [:br]
-      
+
       [:div.elem-group
         (doall (for [el @elems] ^{:key el}
-          [ui/appear-anon "opacity" [:div el]]))]
+          [ui/<appear> {:appear "opacity" :form [:div [:div el]]}]))]
 
       [:button {:on-click #(rf/dispatch [:conj [:state :elems]
                                                (inc (first @elems))])}
@@ -129,7 +130,7 @@
 ;         ;   [:div "Some bullshit"])
 ;         )}))) ; how is inst injected here lol?inst injected here lol?
 
-(defn leaflet []
+(defc <leaflet> []
  [:section.leaflet-test
   [:div.covering-2
    {:style {:background "black"
@@ -300,7 +301,7 @@
             (recur (assoc new-geometries-map geom shape) geometries)))))))
 
 
-(defn leaflet-container [mapspec]
+(defc <leaflet-container> [mapspec]
   "A LeafletJS map component."
   (r/create-class
     {:get-initial-state (fn [_] {:mapspec mapspec})
@@ -321,11 +322,11 @@
 (def view-position (r/atom [65.1 25.2]))
 (def zoom-level (r/atom 8))
 
-(defn leaflet-react-component []
+(defc <leaflet-react-component> []
   (let [drawing (r/atom false)]
     (fn []
     [:span
-     [leaflet-container
+     [<leaflet-container>
       {:id "kartta"
        :width "100%" :height "300px" ;; set width/height as CSS units
        :view view-position ;; map center position
@@ -380,11 +381,11 @@
       [:b "current view pos: "] (pr-str @view-position) [:br]
       [:b "current zoom level: "] (pr-str @zoom-level)] ])))
 
-(defn test-page []
-  [ui/with-heading [:common :banner-heading]
-   (let [routes {:parallax parallax
-                 :model-viewer model-viewer
-                 :leaflet leaflet
+(defc <test-page> []
+  [ui/<with-heading> [:common :banner-heading]
+   (let [routes {:parallax <parallax>
+                 :model-viewer <model-viewer>
+                 :leaflet <leaflet>
                  :search [l/<> {:module :search, :view :view} "blog-posts"]
                  :broken [:div]}
          tab @(rf/subscribe [:state [:experiments]])]
@@ -394,11 +395,10 @@
                                     [:li [:a {:href @(rf/subscribe [:href :test-tab {:tab tab-key}])}
                                           [:button {:class (if (= tab tab-key) "bottomborder" "topborder")}
                                            tab-key]]])]
-      [ui/safe :experiments [(tab routes)]]])
+      [ui/<safe> :experiments [(tab routes)]]])
    {:title "Experiments" :tint "green"}])
 
 (def spec
   {:id :test
    :assets {:css ["https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]}
-   :view {:page #'test-page}})
-
+   :view {:page #'<test-page>}})

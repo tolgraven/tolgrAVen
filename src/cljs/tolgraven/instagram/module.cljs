@@ -9,5 +9,5 @@
 (def spec
   {:content (get content-contract/module-content :instagram [])
    :id :instagram
-   :view {:view #'view/instagram}
+   :view {:view #'view/<instagram>}
    :init #(rf/dispatch [:instagram/init])})

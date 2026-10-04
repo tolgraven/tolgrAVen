@@ -1,19 +1,21 @@
 (ns tolgraven.ui
   (:require
-   [reagent.core :as r]
-   [tolgraven.react :as rf]
-   [tolgraven.util :as util :refer [at]]
-   [tolgraven.image :as img]
-   [tolgraven.macros :as m :include-macros true]
-   [tolgraven.component :as component]
-   [tolgraven.components.heading :as heading]
-   [tolgraven.component.restore :as restore]
-   [clojure.string :as string]
-   [clojure.pprint :as pprint]
-   [tolgraven.ui.code :as code]
-   [cljs-time.core :as ct]
-   [cljs-time.coerce :as ctc]
-   [cljs-time.format :as ctf]))
+    [tolgraven.component.registry]
+    [react :as react]
+    [reagent.core :as r]
+    [tolgraven.react :as rf]
+    [tolgraven.util :as util :refer [at]]
+    [tolgraven.image :as img]
+    [tolgraven.macros :as m :include-macros true]
+    [tolgraven.component :as component]
+    [tolgraven.components.heading :as heading]
+    [tolgraven.component.restore :as restore]
+    [clojure.string :as string]
+    [clojure.pprint :as pprint]
+    [tolgraven.ui.code :as code]
+    [cljs-time.core :as ct]
+    [cljs-time.coerce :as ctc]
+    [cljs-time.format :as ctf]))
 
 ;; GENERAL WRAPPER COMPONENT
 ;; * Error boundary
@@ -37,132 +39,36 @@
 ;; also just init event to dispatch
 ;; also setup event for when component module is loaded, ensure other data fetch goes parallel
 
-(defn safe
+(m/defc <safe>
   "Compatibility boundary for existing [safe category component] call sites.
    Keep the category in diagnostics while sharing defc's recovery machinery."
   [category form & [reset-key]]
   (with-meta [component/<boundary> "tolgraven.ui" (name category) form]
     {:key reset-key}))
 
-(defn md->div [md & [options]]
+(m/defc <md->div> [md & [options]]
   (let [showing? (r/atom (boolean (restore/skip-enter?)))]
     (fn [md & [options]]
       [:div.md-rendered
        {:style {:opacity (if @showing? 1.0 0.0)}
         :ref #(when % (reset! showing? true))}
-       [code/parse-markdown-components
+       [code/<parse-markdown-components>
         (util/md->normal md)
         {:allow-images? (= :trusted (:trust options))
          :allow-raw? (= :trusted (:trust options))}]])))
 
-(defn appear "Animate mount"
-  [id kind & components]
-  [:div.appear-wrapper
-   {:id id
-    :class (str kind " "
-                (when (or (restore/skip-enter?) @(rf/subscribe [:state [:appear id]])) "appeared"))
-    :ref #(rf/dispatch [:appear id (boolean %)])}
-   (into [:<>] components)])
+(m/defc <appear> "Merge appearance onto an explicitly supplied native element."
+  {:features [:appear]}
+    [{:keys [form] :as spec}]
+  form)
 
-(defn appear-anon "Animate mount. Dont use events just ratoms."
-  [opts & components]
-  (let [appeared (r/atom (boolean (restore/skip-enter?)))]
-    (fn [opts & components]
-      (let [kind (if (map? opts)
-                   (:class opts)
-                   opts)]
-        [:div.appear-wrapper
-         {:class (str kind " " (when (or @appeared
-                                         (empty? (seq kind))
-                                         (:force opts))
-                                 "appeared"))
-          :ref #(when % (reset! appeared true))}
-         (into [:<>] components)]))))
+(m/defc <seen> "Merge viewport visibility onto an explicitly supplied native element."
+  {:features [:seen]}
+    [{:keys [form] :as spec}]
+  form)
 
-(defn appear-merge
-  "Animate mount. Merge attrs into component, don't wrap."
-  [_ _]
-  (let [appeared (r/atom (boolean (restore/skip-enter?)))]
-    (r/create-class
-      {:reagent-render
-       (fn [opts component]
-         (let [classes (str "appear-wrapper "
-                            (if (string? opts) opts (:class opts)) " "
-                            (when (or @appeared
-                                      (empty? (seq opts)))
-                              "appeared"))
-               wrap-class (if-let [existing (-> component second :class)]
-                            (str existing " " classes)
-                            classes)
-               attrs {:class wrap-class}]
-           (util/add-attrs component attrs)))
 
-       :component-did-mount
-       (fn [_] (reset! appeared true))
-
-       ;; optional, but nice if you ever remount/reuse
-       :component-will-unmount
-       (fn [_] (reset! appeared false))})))
-
-(defn seen "Animate on coming into view"
-  [id kind & components]
-  (let [on-change (fn [frac]
-                    (let [state @(rf/subscribe [:state [:seen id]])]
-                      (cond
-                       (and (>= frac 0.50) (not state))
-                       (rf/dispatch [:state [:seen id] true])
-                       (and (< frac 0.50) state)
-                       (rf/dispatch [:state [:seen id] false]))))
-        observer (util/observer on-change (str "seen-" id))]
-    (fn [id kind & components]
-      [:div.appear-wrapper
-       {:id id
-        :class (str kind " "
-                    (when @(rf/subscribe [:state [:seen id]])
-                      "appeared"))
-        :ref #(observer %)}
-       (into [:<>] components)])))
-
-(defn seen-anon "Animate on coming into view"
-  [kind & components]
-  (let [seen (r/atom (boolean (restore/skip-enter?)))
-        on-change (fn [frac]
-                    (cond
-                       (and (>= frac 0.50) (not @seen))
-                       (reset! seen true)
-                       (and (< frac 0.50) @seen)
-                       (reset! seen false)))
-        observer (util/observer on-change)]
-    (fn [kind & components]
-      [:div.appear-wrapper
-       {:class (str kind " " (when @seen "appeared"))
-        :ref #(observer %)}
-       (into [:<>] components)])))
-
-(defn seen-merge "Animate on coming into view. Attempts to merge existing stuff to avoid wrapping"
-  [kind component]
-  (let [seen (r/atom (boolean (restore/skip-enter?)))
-        on-change (fn [frac]
-                    (cond
-                       (and (>= frac 0.50) (not @seen))
-                       (reset! seen true)
-                       (and (< frac 0.50) @seen)
-                       (reset! seen false)))
-        observer (util/observer on-change) ]
-    (fn [kind component]
-      (let [wrap-ref (if-let [existing (-> component second :ref)]
-                       #(do (observer %)
-                            (existing %))
-                       #(observer %))
-            classes (str "appear-wrapper " kind " " (when @seen "appeared"))
-            wrap-class (if-let [existing (-> component second :class)]
-                         (str existing " " classes)
-                         classes)
-            attrs {:ref wrap-ref :class wrap-class}
-            component (util/add-attrs component attrs)]
-        component))))
-
-(defn seen-2 "Animate on coming into view. takes a map"
+(m/defc <seen-2> "Animate on coming into view. takes a map"
   [id kind div & components]
   (let [on-change (fn [frac]
                     (let [state @(rf/subscribe [:state [:seen id]])]
@@ -182,7 +88,7 @@
               :ref #(observer %)}
              (into [:<>] components)]))))
 
-(defn lazy-load "Dispatch init event when approaching something previous"
+(m/defc <lazy-load> "Dispatch init event when approaching something previous"
   [event repeatedly?]
   (let [observer (util/when-seen #(rf/dispatch event) repeatedly?)]
     (fn [event]
@@ -191,7 +97,7 @@
                 (js/setTimeout (fn [_] (observer %)) 500) ; delay to avoid firing immediately early on first complete page load
                 (observer %))}])))
 
-(defn lazy-load-repeatedly "Dispatch update event when approaching something"
+(m/defc <lazy-load-repeatedly> "Dispatch update event when approaching something"
   [event & [root-id run-on-appear?]]
   (let [observer (util/observer (fn [frac]
                                   (when (<= frac 0.99)
@@ -206,7 +112,7 @@
                  (rf/dispatch event))
                (observer el))}])))
 
-(defn observe-sticky "Check if sticky element has stuck."
+(m/defc <observe-sticky> "Check if sticky element has stuck."
   [event]
   (let [observer (util/observer (fn [frac]
                                   (rf/dispatch [event frac]))
@@ -217,9 +123,9 @@
       [:div
        {:ref (fn [el] (observer el))}])))
 
-(declare close)
+(declare <close>)
 
-(defn zoom-to-modal "E.g. bring up image to semi-fullscreen when clicked.
+(m/defc <zoom-to-modal> "E.g. bring up image to semi-fullscreen when clicked.
                      This version just generically zooms, would be nice if animated from current pos.
                      Would need to grab actual pos and size from DOM for that..."
   ; TODO should also function as gallery if passing multiple elements
@@ -239,21 +145,21 @@
         {:class (when opened "modal-zoomed")
          ; :on-click on-click
          :ref #(when % (rf/dispatch [:modal-zoom id :loaded])) } ;to apply things only later
-        [close on-click]
+        [<close> on-click]
         (util/add-attrs component
                         {:class "modal-zoomed-item"}) ]])))
 
-(defn inset [caption nr]
+(m/defc <inset> [caption nr]
   (let [pos (case (mod nr 4)
               0 "bottom right"  1 "bottom left"  2 "top right"   3 "top left")]
     [:p.caption-inset {:class pos}
      caption]))
 
 
-(defn fading-bg-heading [content]
+(m/defc <fading-bg-heading> [content]
   [heading/<banner> content #(rf/dispatch [:common/navigate! %])])
 
-(defn button "Pass text and id, plus either link anchor or action..."
+(m/defc <button> "Pass text and id, plus either link anchor or action..."
   [text id & {:keys [type bg-div-class link action disabled?]
               :or   {type "button" }}]
   [:button {:id (str "btn-" (name id)) :type type :on-click action :disabled disabled?}
@@ -264,17 +170,17 @@
       text)]])
 
 
-(defn toggle-for-path "Like below but supports attrs + path. I mean could just check if first arg is map anyways but yeah"
+(m/defc <toggle-for-path> "Like below but supports attrs + path. I mean could just check if first arg is map anyways but yeah"
   ([model-path])
   ([attrs model-path]))
 
-(defn toggle "A nice little (but not native checkbox little) toggle"
+(m/defc <toggle> "A nice little (but not native checkbox little) toggle"
  ([model-path label]
   (let [on-change #(rf/dispatch [:set model-path %])
         model (rf/subscribe (into [:get] model-path))]
-  [toggle {} model on-change label]))
+  [<toggle> {} model on-change label]))
  ([model on-change label]
-  (toggle {} model on-change label))
+  (<toggle> {} model on-change label))
  ([attrs model on-change label]
   (let []
    [:label.toggle-switch
@@ -286,7 +192,7 @@
     [:div.toggle-label label]
     ])))
 
-(defn burger "Toggle main menu. Entire point vs css is shove everything below down by extra height..."
+(m/defc <burger> "Toggle main menu. Entire point vs css is shove everything below down by extra height..."
   ([id model on-change]
    [:label.burger
     {:for id}
@@ -296,7 +202,7 @@
       :on-click (fn [e] ; (.preventDefault e) ;broke it! :O what
                   (on-change (not @model)))}]]))
 
-(defn float-img "Needs to go within a float-wrapper..."
+(m/defc <float-img> "Needs to go within a float-wrapper..."
   [id img-attr & [caption pos]]
   (let [zoomed? (r/atom false)]
     (fn [id img-attr & [caption pos]]
@@ -305,23 +211,21 @@
         :style (when @zoomed?
                  {:width "80%" ; TODO nvm not hardcoding and not going crazy large when vw high, should be based on img size so don't blow up too much anyways
                   :margin "var(--space-lg) 10%"}) }
-       [seen-anon "zoom" ;"slide-in"
-        [img/picture
+       [<seen> {:seen "zoom" :form [:div [img/<picture>
          (merge img-attr
                 {:class "media image-inset"
-                 :on-click #(r/rswap! zoomed? not)})]]
+                 :on-click #(r/rswap! zoomed? not)})]]}]
        (when caption [:figcaption caption])])))
 
-(defn auto-layout-text-imgs "Take text and images and space out floats appropriately. Pretty dumb but eh"
+(m/defc <auto-layout-text-imgs> "Take text and images and space out floats appropriately. Pretty dumb but eh"
   [content]
   (let [text-part (for [line (string/split-lines (:text content))]
                     [:<>
-                     [seen-anon "slide-in"
-                      [:span line]]
+                     [<seen> {:seen "slide-in" :form [:div [:span line]]}]
                      [:br]])
          chunk-size (int (/ (count text-part)
                             (count (:images content))))
-         result (->> (util/interleave-all (map (fn [[id & args]] (into [float-img (str "story-image-" id)] args))
+         result (->> (util/interleave-all (map (fn [[id & args]] (into [<float-img> (str "story-image-" id)] args))
                                                (:images content))
                                           (map #(into [:div] %)
                                                (partition chunk-size chunk-size
@@ -333,7 +237,7 @@
       result]))
 
 
-(defn material-toggle
+(m/defc <material-toggle>
  [model-path [on-state off-state & [prefix]]]
  (let [model (rf/subscribe (into [:get] model-path))]
   [:i.fa
@@ -343,17 +247,17 @@
     :style {:margin "0.1em 0.2em"}
     :on-click #(rf/dispatch [:toggle model-path])}]))
 
-(defn minimize [model-path]
- [material-toggle
+(m/defc <minimize> [model-path]
+ [<material-toggle>
   (into model-path [:minimized])
   ["maximize" "minimize" "window"]])
 
-(defn close [on-click]
+(m/defc <close> [on-click]
  [:button.close-btn.noborder
   {:on-click on-click}
   [:i.fa.fa-times]])
 
-(defn formatted-data [title path-or-data]
+(m/defc <formatted-data> [title path-or-data]
  (let [data (if (vector? path-or-data)
              @(rf/subscribe path-or-data)
              path-or-data)]
@@ -371,7 +275,7 @@
 ; maybe use ext md editor?
 ; alt-enter shortcut for post + others, re-press is kb shortcut lib
 
-(defn input-text-2 "Returns markup for a basic text input label"
+(m/defc <input-text-2> "Returns markup for a basic text input label"
  [& {:as args :keys [value path on-enter]}]
  (let [sub-or-val     #(or @(rf/subscribe path) (at value))
        external-model (r/atom (sub-or-val)) ;ok so why does (sub in ratom...) work, straight subscribe not...
@@ -429,7 +333,7 @@
              :on-key-up   on-key-up}
             attr)])))) ;after not before, want to be able to override stuff duh
 ;
-(defn input-text "Returns markup for a basic text input label"
+(m/defc <input-text> "Returns markup for a basic text input label"
  [& {:as args :keys [value path on-enter]}]
  (let [external-model (r/atom (or (rf/subscribe path) (at value))) ;ok so why does (sub in ratom...) work, straight subscribe not...
        internal-model (r/atom (if (nil? @external-model) "" @external-model)) ;; Create a new atom from the model to be used internally (avoid nil)
@@ -467,7 +371,7 @@
              :autoComplete (string/lower-case placeholder)
              :value       @internal-model
              :disabled    disabled?
-             :rows        min-rows 
+             :rows        min-rows
              :ref         (fn [el] (reset! div-ref el))
              :on-change (fn [e]
                          (let [new-val (-> e .-target .-value)]
@@ -494,7 +398,7 @@
             attr)])))) ;after not before, want to be able to override stuff duh
 
 
-(defn input-text-styled "Custom text field with individual elements for each letter, and styled caret"
+(m/defc <input-text-styled> "Custom text field with individual elements for each letter, and styled caret"
   [& {:as args :keys [model completion-fn]}]
  (let [internal-model (r/atom (or @model ""))
        char-width 0.61225
@@ -520,13 +424,13 @@
            caret-pos (str (* char-width @caret) "em")
            selection-len (* char-width (abs (- @caret @selection-end)))
            caret-height (* 1.6 (max 0.(- 1.0 (* 0.03 selection-len))))
-           output (-> @internal-model md->div)]
+           output [<md->div> @internal-model]]
    [:div.styled-input-container
     {:class (when-not open? "closed")}
-    
+
     [:div.styled-query-visible
      {:style {:height height }}
-     
+
      [:label.styled-caret.nomargin.nopadding
       {:id    "styled-caret"
        :for   "styled-input"
@@ -545,25 +449,24 @@
                :animation (when-not (zero? selection-len)
                             "unset")}}
       "_"]
-     
+
      (when-not (string/blank? @internal-model)
        [:span {:style {:white-space :pre-wrap
                        :display :inline-flex}}
         (for [[i letter] (map-indexed vector @internal-model)] ; causes issues with spacing? nice lil zoom effect though, figure out.
           ^{:key i}
-          [appear-anon "zoom fast"
-           [:span.styled-letter letter]])])
-     
+          [<appear> {:appear "zoom fast" :form [:div [:span.styled-letter letter]]}])])
+
      (when completion-fn
        [completion-fn @internal-model suggestion height])]
-     
+
      [:input.styled-input ;problem if multiple search boxes on same page tho
       {:type "textarea"
        :id   (or id "styled-input")
        :class class
        :style {:opacity 0
                :width width ;:min-width width :max-width width
-               ; :height height 
+               ; :height height
                :min-height height
                :max-height height
                :padding (when (or (zero? width) (zero? height)) 0)
@@ -578,7 +481,7 @@
                       (reset! internal-model new-val)
                       (and (some? on-change) (on-change new-val)))
                     (set-caret (.-target e)))
-       
+
        :on-key-down (fn [e] (set-caret (.-target e)))
        :on-click (fn [e] (set-caret (.-target e)))
        :on-touch-start (fn [e] (set-caret (.-target e)))
@@ -608,42 +511,42 @@
   ;   (object? message) (-> message js->clj :message str))
   )
 
-(defn log "Show an expandable log thingy. Prob dumb here but good base for any sorta feed thingy I guess!"
-  [options content]
- (let [table-ref (r/atom nil)
-       log-line (fn [{:keys [time level title message] :as msg}]
-                  [:tr.log-messages
-                    [:td.log-time (ctf/unparse (ctf/formatters :hour-minute-second)
-                                               (ctc/from-long time))]
-                   [:td.log-level {:class (name level)} (name level)]
-                   [:td.log-title title]
-                   [:td.log-message [:pre (format-log-message message)]]])]
-  (r/create-class
-   {:display-name "Log"
-    :component-did-update (fn [this]
-                           (set! (.-scrollTop @table-ref)
-                                 (.-scrollHeight @table-ref))) ;resort to this since :scroll-top @ratom in the actual element doesnt work...
-    :reagent-render
-    (fn [options content]
-      (let [messages (:messages @content)]
-        [:section#log-container.log-container.solid-bg
-         {:ref #(when % (rf/dispatch [:run-highlighter! %]))}
-         [minimize [:state [:display :log]]] ;this also needs to send an event to scroll-top the fucker...
-         [:table
-            {:ref (fn [el]
-                    (reset! table-ref el))
-             :style {:max-height (if (:minimized @options) "1.2em" "20em")}}
-          [:tbody.log ;TODO sort by time ffs
-           (for [msg #_(into (apply sorted-map-by :time messages))
-                 (map messages (sort-by str (keys messages))
-                          ; (if (:minimized @options) ;upside-down?
-                          ;     [(count messages)]
-                          ;     (sort (keys messages)))
-                            )]
-             ^{:key (str (:id msg))}
-             [log-line msg])]]]))})))
+(m/defc ^:private <log-line> [{:keys [time level title message]}]
+  [:tr.log-messages
+   [:td.log-time (ctf/unparse (ctf/formatters :hour-minute-second)
+                            (ctc/from-long time))]
+   [:td.log-level {:class (name level)} (name level)]
+   [:td.log-title title]
+   [:td.log-message [:pre (format-log-message message)]]])
 
-(defn modal "Container for anything modal, taking care of common stuff. USE FOR COOKIE NOTICE LOL YES"
+(m/defc <log>
+  "Show an expandable log/feed, following new messages after the first render."
+  [options content]
+  :let [*table (atom nil)
+        *mounted? (atom false)]
+  (react/useLayoutEffect
+   (fn []
+     (when @*mounted? (util/scroll-to-end! @*table))
+     (reset! *mounted? true)
+     js/undefined))
+  (let [messages (:messages @content)]
+    [:section#log-container.log-container.solid-bg
+     {:ref #(when % (rf/dispatch [:run-highlighter! %]))}
+     [<minimize> [:state [:display :log]]]
+     [:table
+      {:ref #(reset! *table %)
+       :style {:max-height (if (:minimized @options) "1.2em" "20em")}}
+      [:tbody.log ; TODO sort by time
+       (for [msg #_(into (apply sorted-map-by :time messages))
+             (map messages (sort-by str (keys messages))
+                  ; (if (:minimized @options) ; upside-down?
+                  ;   [(count messages)]
+                  ;   (sort (keys messages)))
+                  )]
+         ^{:key (str (:id msg))}
+         [<log-line> msg])]]]))
+
+(m/defc <modal> "Container for anything modal, taking care of common stuff. USE FOR COOKIE NOTICE LOL YES"
  [component & [on-outside-click]] ; and path for when to show...
  (let []
   [:div#modal-container
@@ -653,20 +556,20 @@
    [:div#modal ;{:class (when @(rf/subscribe [:state [:modal]]) "modal-is-open")}
     component]]))
 
-(defn hud-modal "Show more info about a specific HUD message"
+(m/defc <hud-modal> "Show more info about a specific HUD message"
  [] ;doesnt really have to be modal but wanted to implement that, so...
  (if-let [msg @(rf/subscribe   [:hud :modal])]
   (let [to-close #(rf/dispatch [:hud :modal :remove])]
-   [modal [:div.hud-modal-main
+   [<modal> [:div.hud-modal-main
            {:class (str "hud-message " (name (:level msg)))}
            [:h3  (:title   msg)]
            [:p   (str (:message msg))]
            [:p   (str (:time    msg))]
-           [close to-close]]
+           [<close> to-close]]
     to-close])
   (rf/dispatch [:modal false]))) ;eww gross
 
-(defn hud "Render a HUD sorta like figwheel's but at reagent/re-frame level"
+(m/defc <hud> "Render a HUD sorta like figwheel's but at reagent/re-frame level"
   [to-show]
  (let [msg-fn (fn [{:keys [level title message time actions buttons id]}]
                 ^{:key (str "hud-message-" id)}
@@ -681,7 +584,7 @@
                                        (rf/dispatch action)))}
                   [:div.hud-message-top
                    [:h4.hud-message-title title]
-                   [close (fn [e]
+                   [<close> (fn [e]
                             (.stopPropagation e) ;it's causing a click on hud-message as well...
                             (rf/dispatch [:diag/unhandled :remove id]))]]
                   (when message
@@ -699,11 +602,10 @@
    {:class (when (seq @to-show) "visible")}
    (for [msg @to-show
          :let [id (str "hud-id-" (:id msg))]] ^{:key id}
-     [appear-anon "zoom-x slow"
-      [msg-fn msg]])]))
+     [<appear> {:appear "zoom-x slow" :form [:div [msg-fn msg]]}])]))
 
 
-(defn input-toggle "Don't forget to put ze label - only was sep in first place due to css bs?"
+(m/defc <input-toggle> "Don't forget to put ze label - only was sep in first place due to css bs?"
   [id checked-path & {:keys [class label]}]
   (let [checked? @(rf/subscribe checked-path)]
    [:input ;.toggle
@@ -714,7 +616,7 @@
      :on-click (fn []
                  (rf/dispatch (into checked-path [(not checked?)])))}]))
 
-(defn loading-spinner [model kind & [attrs]]
+(m/defc <loading-spinner> [model kind & [attrs]]
   (if (and (at model)
            (not= :timeout (at model))) ;should it be outside so not put anything when not loading? or better know element goes here
     [:div.loading-container
@@ -722,19 +624,17 @@
      [(if (not= kind :still)
                 :div.loading-wiggle>div.loading-wiggle-z>div.loading-wiggle-y
                 :<>)
-     [appear-anon "zoom slow"
-      [:i.loading-spinner
+     [<appear> {:appear "zoom slow" :form [:div [:i.loading-spinner
        {:class (str "fa fa-spinner fa-spin"
                     (when (= kind :massive)
-                      " loading-spinner-massive"))}]]]]
+                      " loading-spinner-massive"))}]]}]]]
     (when (= :timeout (at model))
       [:div.loading-container
-       [appear-anon "opacity slow"
-        [:i.loading-timeout
-         {:class (str "fa fa-solid fa-hexagon-exclamation")}]]])))
+       [<appear> {:appear "opacity slow" :form [:div [:i.loading-timeout
+         {:class (str "fa fa-solid fa-hexagon-exclamation")}]]}]])))
 
 
-(defn link-img-title "Link eith an image and a title, for posts for example"
+(m/defc <link-img-title> "Link eith an image and a title, for posts for example"
   [& {:as content
       :keys [title text url side]
       :or {side :left}}]
@@ -744,31 +644,31 @@
       [:p text]]
      [:h2 title]]))
 
-(defn fading "Hitherto just css but prog gen prob easier in some cases..."
+(m/defc <fading> "Hitherto just css but prog gen prob easier in some cases..."
   [& {:keys [fade-to dir content classes]
       :or {fade-to "fade-to-black" dir "light-from-below"}}]
   [:div.fader [:div {:class (str fade-to " " dir " " classes)}]])
 
-(defn with-heading
+(m/defc <with-heading>
   "Standard heading component with fade and title."
   [heading-path component & [override]]
   [:<>
-   [fading-bg-heading (merge @(rf/subscribe [:content heading-path])
+   [<fading-bg-heading> (merge @(rf/subscribe [:content heading-path])
                                 override)]
    component])
 
 
-(defn carousel-idx-btns
+(m/defc <carousel-idx-btns>
   [id idx-model amount]
   [:div.carousel-idxs
    (doall (for [idx (range amount)]
-            ^{:id (str "carousel-" id "-index-btn-" idx)}
+            ^{:key (str "carousel-" id "-index-btn-" idx)}
             [:button.carousel-btn.carousel-idx
              {:class (when (= @idx-model idx) "carousel-idx-current")
               :on-click #(rf/dispatch [:carousel/set-index id idx])}
              [:i.fas.fa-circle]]))])
 
-(defn carousel "Three-showing carousel with zoom up of center item, and animating changes.
+(m/defc <carousel> "Three-showing carousel with zoom up of center item, and animating changes.
                 The generic enough stuff could go in a more general carousel-builder
                 or we just make two."
   [id options content]
@@ -789,9 +689,9 @@
       [:div.carousel.carousel-three
        (merge options
               {:id (name id)})
-       
+
        [:button.carousel-btn.carousel-prev-btn {:on-click dec-fn} "<"]
-       
+
        [:ul.carousel-items
         [:li.carousel-item-left-pseudo
          {:class @moving}
@@ -802,11 +702,11 @@
          {:class @moving
           :on-click dec-fn}
          (left-content @index)]
-        
+
         [:li.carousel-item-middle
          {:class @moving}
          (get content @index)]
-        
+
         [:li.carousel-item-right
          {:class @moving
           :on-click inc-fn}
@@ -816,11 +716,11 @@
          (if (< (inc @index) (dec (count content)))
            (get content (inc (inc @index)))
            (first content))]]
-       
-       [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} ">"]
-       [carousel-idx-btns id index (count content)] ])))
 
-(defn carousel-normal "Don't fuck up with fancy hot swaps for transitions, just stuff everything in."
+       [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} ">"]
+       [<carousel-idx-btns> id index (count content)] ])))
+
+(m/defc <carousel-normal> "Don't fuck up with fancy hot swaps for transitions, just stuff everything in."
   [id attrs content & {:keys [autoplay seconds-autoplay]
                        :or {seconds-autoplay 10}}]
   (let [index (rf/subscribe [:carousel/index id])
@@ -892,7 +792,7 @@
              (doall
               (map-indexed
                (fn [i item]
-                 (with-meta 
+                 (with-meta
                   [:li.carousel-item-min
                     {:class (cond
                               (= i @index) "carousel-item-main"
@@ -913,4 +813,4 @@
        [:button.carousel-btn.carousel-next-btn
         {:on-click inc-fn}
         [:i.fas.fa-angle-right]]
-       [carousel-idx-btns id index (count content)] ])))
+       [<carousel-idx-btns> id index (count content)] ])))

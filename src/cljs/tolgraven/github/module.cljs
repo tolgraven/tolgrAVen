@@ -9,5 +9,5 @@
 (def spec
   {:content (get content-contract/module-content :github [])
    :id :github
-   :view {:view #'view/commits}
+   :view {:view #'view/<commits>}
    :init #(rf/dispatch [:github/init])})

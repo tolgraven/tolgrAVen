@@ -1,9 +1,10 @@
 (ns tolgraven.component.storage
   "Opt-in snapshots, one disk envelope per owner. Components only touch memory."
-  (:require [cljs.reader :as reader]
-            [reagent.core :as r]
-            [re-frame.db :as rfdb]
-            [tolgraven.service-status :as status]))
+  (:require
+    [cljs.reader :as reader]
+    [reagent.core :as r]
+    [re-frame.db :as rfdb]
+    [tolgraven.service-status :as status]))
 
 (def missing (js-obj))
 (def prefix "tolgraven.component.v2:")
@@ -31,8 +32,10 @@
     :else []))
 (defn- affected? [id removed]
   (some (fn [path] (some #(or (prefix? path %) (prefix? % path)) removed)) (snapshot-paths id)))
-(defn read-disk! [key] (.getItem js/localStorage key))
-(defn write-disk! [key value] (.setItem js/localStorage key value))
+(defn read-disk! [key]
+  (when (exists? js/window) (.getItem (.-localStorage js/window) key)))
+(defn write-disk! [key value]
+  (when (exists? js/window) (.setItem (.-localStorage js/window) key value)))
 (defonce *write-tick (atom nil))
 (def max-bytes (* 2 1024 1024))
 (defn owner [options] (if (= :public (:scope options)) :public @*identity))
@@ -49,7 +52,7 @@
    awaits this before rendering; subsequent component reads are memory-only."
   ([] (ready! {:scope :public}))
   ([options]
-   (if-let [account (owner options)]
+   (if-let [account (when (exists? js/window) (owner options))]
      (or (get @*reads account)
          (let [key (storage-key nil options)
                promise (js/Promise.
@@ -147,7 +150,7 @@
             (try (mark-return! false) (catch :default _ nil)))
           (warn!))))))
 (defn schedule-write! []
-  (when-not @*write-tick
+  (when (and (exists? js/window) (nil? @*write-tick))
     (reset! *write-tick
             (js/setTimeout
              #(-> (js/Promise.all (into-array (vals @*reads))) (.then (fn [_] (drain!)))) 0))))
@@ -179,7 +182,8 @@
                     (when (= owner (tolgraven.component.storage/owner options))
                       (write-tracked! id read options)))))))))
 (defn schedule! []
-  (when-not @*pending (reset! *pending (js/setTimeout flush! 150))))
+  (when (and (exists? js/window) (nil? @*pending))
+    (reset! *pending (js/setTimeout flush! 150))))
 (defn track! [id read options]
   (ready! options)
   (swap! *tracked assoc id {:read read :options options :owner (owner options)}))
@@ -252,4 +256,6 @@
               (write! id value (or (get-in @*tracked [id :options]) options)))))))))
 
 (add-watch rfdb/app-db ::deletions
-           (fn [_ _ before after] (mirror-deletions! before after)))
+           (fn [_ _ before after]
+             ;; SSR resets request state too; those deletions are not browser edits.
+             (when (exists? js/window) (mirror-deletions! before after))))

@@ -2,7 +2,10 @@
   (:require
     [clojure.string :as string]
     [tolgraven.react :as rf]
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.component.registry]
     [reagent.core :as r]
+    [react :as react]
     [tolgraven.component :as component]
     [tolgraven.render-context :as context]
     [tolgraven.components.iframe :as iframe]
@@ -28,7 +31,10 @@
 
 (declare unregister-container!)
 
-(defonce *preview-state (rf/subscribe [:link-preview/state]))
+(defn- preview-state []
+  ;; Browser interaction callbacks read through the safe subscription lifecycle;
+  ;; the controller itself owns an ordinary reactive subscription while mounted.
+  @(rf/sub [:link-preview/state]))
 
 (defn register-provider!
   "Register a host renderer receiving preview data and an on-load callback."
@@ -114,15 +120,15 @@
 
 (defn- active-link []
   (let [{:keys [candidate-id container-id]}
-        (:active @*preview-state)
+        (:active (preview-state))
         exact (get @*link-elements [container-id candidate-id])]
     (or exact
         (some (fn [[_ {:keys [candidates-by-element]}]]
                 (some (fn [[link data]]
                         (when (and (= (:url data)
-                                      (get-in @*preview-state [:active :url]))
+                                      (get-in (preview-state) [:active :url]))
                                    (= (:origin-page data)
-                                      (get-in @*preview-state
+                                      (get-in (preview-state)
                                               [:active :origin-page])))
                           link))
                       candidates-by-element))
@@ -144,7 +150,7 @@
 (defn- schedule-close! []
   (clear-interaction-timer! :open)
   (when-not (#{:navigate :expanded :returning}
-              (get-in @*preview-state [:active :status]))
+              (get-in (preview-state) [:active :status]))
     (schedule! :close close-delay-ms close-preview!)))
 
 (defn- unmodified-primary-click? [event]
@@ -158,7 +164,7 @@
   (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)")))
 
 (defn- active-candidate? [data]
-  (let [active (:active @*preview-state)]
+  (let [active (:active (preview-state))]
     (= (select-keys data [:container-id :candidate-id])
        (select-keys active [:container-id :candidate-id]))))
 
@@ -270,7 +276,7 @@
   (when-let [{:keys [element handlers observer]} (get @*containers id)]
     ;; A queued hover callback must never reopen a detached element.
     (clear-interaction-timer! :open)
-    (when (= id (get-in @*preview-state [:active :container-id]))
+    (when (= id (get-in (preview-state) [:active :container-id]))
       (close-preview!))
     (.disconnect observer)
     (doseq [[event handler] handlers]
@@ -308,30 +314,25 @@
    :unmount (fn [{:keys [id]}]
               (unregister-container! id))})
 
-(defn- <observed-link-container>
+(defc ^:private <observed-link-container>
   [{:keys [candidates id trust]} content]
   (let [*element (atom nil)
         *cleanup (atom nil)
         observer (candidate-observer id)]
-    (r/create-class
-      {:display-name "Observed link container"
-       :component-did-mount
-       (fn [_]
+    (fn [_ content]
+      (react/useEffect
+       (fn []
          (reset! *cleanup
                  (register-container! id @*element {:trust trust}
-                                      observer candidates)))
-       :component-will-unmount
-       (fn [_]
-         (when @*cleanup (@*cleanup)))
-       :reagent-render
-       (fn [_ content]
-         [:div.link-preview-container
-          {:data-link-container true
-           :data-link-trust (when trust (name trust))
-           :ref #(reset! *element %)}
-          content])})))
+                                      observer candidates))
+         #(when @*cleanup (@*cleanup))) #js [])
+      [:div.link-preview-container
+       {:data-link-container true
+        :data-link-trust (when trust (name trust))
+        :ref #(reset! *element %)}
+       content])))
 
-(defn <link-container>
+(defc <link-container>
   "Subscribe to raw text candidates and mount observation only when needed."
   [{:keys [id text trust]} content]
   (let [base-url (if (exists? js/window) (.-href js/window.location)
@@ -346,7 +347,7 @@
         {:key (hash [id trust text])})
       [:div.link-preview-container content])))
 
-(defn <md>
+(defc <md>
   "Render markdown inside a candidate-aware preview container."
   [md & [options]]
   (let [id (or (:id options) (str "markdown-" (random-uuid)))]
@@ -355,18 +356,18 @@
        {:id id
         :text md
         :trust (:trust options)}
-       [ui/md->div md options]])))
+       [ui/<md->div> md options]])))
 
-(defn- default-preview [{:keys [title trust url]} on-load]
+(defc ^:private <default-preview> [{:keys [title trust url]} on-load]
   [iframe/<iframe>
    {:label (str "Preview of " (if (string/blank? title) url title))
     :on-load on-load
     :src url
     :trust trust}])
 
-(defn- <preview-content> [data on-load]
+(defc ^:private <preview-content> [data on-load]
   (let [host (.-host (js/URL. (:url data)))
-        renderer (get @*preview-providers host default-preview)]
+        renderer (get @*preview-providers host <default-preview>)]
     [renderer data on-load]))
 
 (defn- save-transition! [data]
@@ -398,10 +399,10 @@
     (.removeItem js/sessionStorage transition-storage-key)
     (catch :default _ nil)))
 
-(defn <link-preview>
+(defc <link-preview>
   "Top-level renderer and transition/prefetch controller for link containers."
   []
-  (let [state *preview-state
+  (let [state (rf/subscribe [:link-preview/state])
         *initial-transition (r/atom
                               (some-> (stored-transition)
                                       (assoc :status :returning)))
@@ -499,29 +500,25 @@
         window-handlers {"pageshow" on-page-show
                          "keydown" on-key-down
                          "pointerdown" on-pointer-down}]
-    (r/create-class
-      {:display-name "Link preview controller"
-       :component-did-mount
-       (fn [_]
+    (fn []
+      (react/useEffect
+       (fn []
          (doseq [[event handler] window-handlers]
            (dom/on-window event handler))
          (restore!)
-         (maybe-prefetch!))
-       :component-did-update
-       (fn [_ _]
+         #(do
+            (doseq [[event handler] window-handlers]
+              (.removeEventListener js/window event handler))
+            (close-preview!)
+            (doseq [timer [*prefetch-timer *navigation-timer *restore-timer]]
+              (when @timer (js/clearTimeout @timer))))) #js [])
+      (react/useEffect
+       (fn []
          (maybe-prefetch!)
          (when (= :navigate (get-in @state [:active :status]))
            (navigate! (:active @state)))
-         (reverse!))
-       :component-will-unmount
-       (fn [_]
-         (doseq [[event handler] window-handlers]
-           (.removeEventListener js/window event handler))
-         (close-preview!)
-         (doseq [timer [*prefetch-timer *navigation-timer *restore-timer]]
-           (when @timer (js/clearTimeout @timer))))
-       :reagent-render
-       (fn []
+         (reverse!)
+         js/undefined))
          (let [active (or (:active @state) @*initial-transition)
                {:keys [status title url]} active
                expanded? (#{:expanded :returning} status)]
@@ -582,4 +579,4 @@
                   [:div.link-preview__loading
                    [:i.fa.fa-spinner.fa-spin]
                    [:span "Loading preview"]])
-                [:div.link-preview__shield {:aria-hidden true}]]]])]))})))
+                [:div.link-preview__shield {:aria-hidden true}]]]])]))))

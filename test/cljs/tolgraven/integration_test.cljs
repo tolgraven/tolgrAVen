@@ -1,47 +1,49 @@
 (ns tolgraven.integration-test
-  (:require [cljs.test :refer-macros [deftest is testing async]]
-            [re-frame.core :as rf]
-            [re-frame.db :as rfdb]
-            [reagent.ratom :as ratom]
-            [reagent.core :as r]
-            [reagent.dom.client :as dom]
-            [react-dom :as react-dom]
-            [tolgraven.supabase.client :as supabase]
-            [tolgraven.supabase.query :as supabase-query]
-            [tolgraven.store.contract :as store-contract]
-            [reitit.core :as reitit]
-            [reitit.frontend.easy :as rfe]
-            [tolgraven.routes :as routes]
-            [tolgraven.loader :as loader]
-            [tolgraven.views-common :as common]
-            [tolgraven.views.page :as page]
-            [tolgraven.component.data :as data]
-            [tolgraven.component.sources]
-            [tolgraven.docs.views :as docs-view]
-            [tolgraven.ui.code :as code]
-            [tolgraven.components.init :as init-view]
-            [tolgraven.react :as shim]
-            [re-frame.registrar :as registrar]
-            [tolgraven.ssr.client :as ssr]
-            [tolgraven.events]
-            [tolgraven.subs]
-            [shadow.lazy :as lazy]
-            [tolgraven.search.subs :as search]
+  (:require
+    [cljs.test :refer-macros [deftest is testing async]]
+    [re-frame.core :as rf]
+    [re-frame.db :as rfdb]
+    [reagent.ratom :as ratom]
+    [reagent.core :as r]
+    [reagent.dom.client :as dom]
+    [reagent.dom.server :as server]
+    [react-dom :as react-dom]
+    [tolgraven.supabase.client :as supabase]
+    [tolgraven.supabase.query :as supabase-query]
+    [tolgraven.store.contract :as store-contract]
+    [reitit.core :as reitit]
+    [reitit.frontend.easy :as rfe]
+    [tolgraven.routes :as routes]
+    [tolgraven.loader :as loader]
+    [tolgraven.views-common :as common]
+    [tolgraven.views.page :as page]
+    [tolgraven.component.data :as data]
+    [tolgraven.component.sources]
+    [tolgraven.docs.views :as docs-view]
+    [tolgraven.ui.code :as code]
+    [tolgraven.components.init :as init-view]
+    [tolgraven.react :as shim]
+    [re-frame.registrar :as registrar]
+    [tolgraven.ssr.client :as ssr]
+    [tolgraven.events]
+    [tolgraven.subs]
+    [shadow.lazy :as lazy]
+    [tolgraven.search.subs :as search]
             ;; Browser tests bundle all module specs so ready-module initialization is exercised.
-            [tolgraven.blog.module]
-            [tolgraven.blog.model :as blog-model]
-            [tolgraven.blog.views :as blog-views]
-            [tolgraven.link-preview.module]
-            [tolgraven.cv.module]
-            [tolgraven.docs.module]
-            [tolgraven.search.module]
-            [tolgraven.user.module]
-            [tolgraven.chat.module]
-            [tolgraven.github.module]
-            [tolgraven.gpt.module]
-            [tolgraven.strava.module]
-            [tolgraven.instagram.module]
-            [tolgraven.experiments]))
+    [tolgraven.blog.module]
+    [tolgraven.blog.model :as blog-model]
+    [tolgraven.blog.views :as blog-views]
+    [tolgraven.link-preview.module]
+    [tolgraven.cv.module]
+    [tolgraven.docs.module]
+    [tolgraven.search.module]
+    [tolgraven.user.module]
+    [tolgraven.chat.module]
+    [tolgraven.github.module]
+    [tolgraven.gpt.module]
+    [tolgraven.strava.module]
+    [tolgraven.instagram.module]
+    [tolgraven.experiments]))
 
 (deftest route-matching
   (doseq [[path route-name module]
@@ -169,7 +171,7 @@
           loadable (reify
                      lazy/ILoadable (ready? [_] true)
                      IDeref (-deref [_] module-spec))
-          render (loader/<>)
+          render (loader/make-browser-render)
           spec {:module id
                 :init-evt [:test/init id]
                 :pre-fn (fn [& args] (swap! *calls conj [:pre args]))
@@ -206,7 +208,7 @@
 (deftest deferred-component-preserves-scope-arguments
   (let [*events (atom [])
         before (fn [& _] [:button "Load"])
-        render (loader/<>)]
+        render (loader/make-browser-render)]
     (with-redefs [rf/subscribe (fn ([_] (atom false))
                                  ([_ _] (atom false)))
                   rf/dispatch #(swap! *events conj %)]
@@ -374,7 +376,7 @@
                               ([route] (:path (reitit/match-by-name routes/router route)))
                               ([route _params _query]
                                (:path (reitit/match-by-name routes/router route))))]
-        (react-dom/flushSync #(.render root (r/as-element [common/header-nav menu])))
+        (react-dom/flushSync #(.render root (r/as-element [common/<header-nav> menu])))
         (is (= ["/services" "/about" "/hire" "/blog"]
                (mapv #(.getAttribute % "href") (array-seq (.querySelectorAll element "a"))))))
       (finally (react-dom/flushSync #(dom/unmount root))
@@ -432,14 +434,14 @@
   (let [before @rfdb/app-db element (.createElement js/document "div")
         root (dom/create-root element)
         a {:path "/"} b {:path "/blog"}
-        *form (r/atom [page/swapper "opacity" [:div#kept-page "Home"] nil a nil])]
+        *form (r/atom [page/<swapper> "opacity" [:div#kept-page "Home"] nil a nil])]
     (.appendChild (.-body js/document) element)
     (try
       (swap! rfdb/app-db assoc :common/route a :common/route-last nil)
       (react-dom/flushSync #(dom/render root [(fn [] @*form)]))
       (let [original (.querySelector element "#kept-page")]
         (swap! rfdb/app-db assoc :common/route b :common/route-last a)
-        (reset! *form [page/swapper "opacity" [:div#incoming-page "Blog"] [:div#kept-page "Home"] b a])
+        (reset! *form [page/<swapper> "opacity" [:div#incoming-page "Blog"] [:div#kept-page "Home"] b a])
         (r/flush)
         (is (identical? original (.querySelector element "#kept-page")))
         (is (some? (.querySelector element ".swapped #kept-page")))
@@ -481,7 +483,7 @@
       (is (= html (docs-view/page-links html))))))
 
 (deftest markdown-code-uses-reagent-props-without-js-conversion
-  (is (= [:code "inline"] (code/markdown-code-component {:children "inline"}))))
+  (is (= "<code>inline</code>" (server/render-to-static-markup [code/<markdown-code-component> {:children "inline"}]))))
 
 (deftest debug-and-theme-events-preserve-app-db
   (let [before @rfdb/app-db]
@@ -500,7 +502,7 @@
   (let [element (.createElement js/document "div") root (dom/create-root element)]
     (try
       (react-dom/flushSync
-       #(dom/render root [code/parse-markdown-components "Inline `hello`\n\n```clojure\n(+ 1 2)\n```\n"]))
+       #(dom/render root [code/<parse-markdown-components> "Inline `hello`\n\n```clojure\n(+ 1 2)\n```\n"]))
       (is (.includes (.-textContent element) "hello"))
       (is (.includes (.-textContent element) "(+ 1 2)"))
       (is (some? (.querySelector element "pre code")))

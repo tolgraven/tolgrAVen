@@ -11,5 +11,5 @@
   {:content (get content-contract/module-content :docs [])
    :id :docs
    :pages pages/spec
-   :view {:page #'view/page}
+   :view {:page #'view/<page>}
    :init #(rf/dispatch [:docs/init])})

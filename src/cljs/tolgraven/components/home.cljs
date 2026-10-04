@@ -1,14 +1,15 @@
 (ns tolgraven.components.home
   (:require
-   [clojure.string :as string]
-   [tolgraven.react :as rf]
-   [tolgraven.macros :refer-macros [defc]]
-   [reagent.core :as r]
-   [tolgraven.components.timer :as anim]
-   [tolgraven.component.restore :as restore]
-   [tolgraven.components.media :as media]
-   [tolgraven.image :as img]
-   [tolgraven.ui :as ui]))
+    [tolgraven.component.registry]
+    [clojure.string :as string]
+    [tolgraven.react :as rf]
+    [tolgraven.macros :refer-macros [defc]]
+    [reagent.core :as r]
+    [tolgraven.components.timer :as anim]
+    [tolgraven.component.restore :as restore]
+    [tolgraven.components.media :as media]
+    [tolgraven.image :as img]
+    [tolgraven.ui :as ui]))
 
 (defn ln->br "Ugh. UGH! Why"
   [text]
@@ -29,14 +30,14 @@
   :let [restored? (restore/skip-enter?)
         *showing-title (r/atom (if restored? (count title) 0))]
   [:section#intro {:data-restored (when restored? true)}
-   [media/bg-logo logo-bg]
-   [img/media-as-bg (merge (first bg) {:id "top-banner"})]
+   [media/<bg-logo> logo-bg]
+   [img/<media-as-bg> (merge (first bg) {:id "top-banner"})]
    [:div.h1-wrapper.center-content
     [:h1.h-responsive.h-intro
      ;; A keyed timer owns each step, so leaving the page cancels the animation.
      (when (and (not restored?) (< @*showing-title (count title)))
        ^{:key @*showing-title}
-       [anim/timeout #(swap! *showing-title inc) (title-delay-ms title @*showing-title)])
+       [anim/<timeout> #(swap! *showing-title inc) (title-delay-ms title @*showing-title)])
      (if (< @*showing-title 1)
        "•"
        (map-indexed
@@ -53,10 +54,10 @@
        (if (string? what) [:a {:href what} text] [:label text])])]])
 
 
-(defn portfolio "GOT NO PPORTFOLIE" [])
+(defc <portfolio> "GOT NO PPORTFOLIE" [])
 
 
-(defn service-category-full
+(defc <service-category-full>
   "Fullscreen version of a services category. Should eventually be like a mini-site/portfolio
    listing any projects done in each..."
   [])
@@ -87,7 +88,7 @@
                      (rf/dispatch [:state [:services :full-screened?]
                                    (when-not full-screened? title)]))}])]))
 
-(defn services-carousel "yo"
+(defc <services-carousel> "yo"
   [categories]
   (let [full-screened? @(rf/subscribe [:state [:services]]) ]
     [:div#services>div.categories
@@ -105,8 +106,8 @@
   [:section#section-services
     {:class "link-anchor stick-up section-with-media-bg-wrapper"} ; want to  focus elem to zoomy zoom slow after reaching scroll
     [:a {:name "link-services"}]
-     [ui/inset caption 4] ;auto-gen
-     [img/media-as-bg
+     [ui/<inset> caption 4] ;auto-gen
+     [img/<media-as-bg>
       (merge bg {:id "services-bg"
                  :class "darken-5 parallax-bg"
                  :ref #(when % (rf/dispatch [:focus-element "services-bg"]))})]
@@ -116,13 +117,13 @@
 (defc <story> "Big img header + story" [{:keys [heading] :as content}]
   [:<>
    [:div#about-intro {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
-    [ui/fading-bg-heading heading]]
+    [ui/<fading-bg-heading> heading]]
    [:div.fader>div.fade-to-black.between]
 
    [:a {:name "about"}]
    [:section#about.anim-gradient-bg.noborder
     [:h1 (:title content)]
     [:br]
-    [ui/auto-layout-text-imgs content]
+    [ui/<auto-layout-text-imgs> content]
     [:br] [:br]]
-   [ui/fading :dir "bottom"]])
+   [ui/<fading> :dir "bottom"]])
