@@ -12,11 +12,11 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Cold SSR streams a component-derived skeleton then the completed page. Cached SSR skips the skeleton. Hydration preserves the existing DOM and does not replay entrances.
 - After hydration, navigation is entirely SPA: commit the destination immediately, then acquire code/data through shared bindings. Related blog routes retain their shell.
 - Local external returns may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
-- Read `src/cljs/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/clj/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
+- Read `src/frontend/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/backend/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
 
 
 ## Project Structure & Module Organization
-- `src/clj`, `src/cljs`, `src/cljc`: Clojure, ClojureScript, and shared code.
+- `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code (including module-owned CLJC contracts), and shared CLJC infrastructure.
 - `experiments/clj`: preserved JVM prototypes, compiled only with `:experiments`.
 - `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/tolgraven`.
 - `test/clj`, `test/cljs`: backend and frontend tests.

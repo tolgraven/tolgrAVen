@@ -52,3 +52,7 @@ profiles.clj
 AGENTS.md
 **/AGENTS.md
 deploy
+
+# Ignore local aliases retained for an already-running development REPL.
+src/clj
+src/cljs

@@ -1,7 +1,7 @@
 # Shared schemas and runtime validation
 
 Module-owned Malli schemas and page declarations live as `schema.cljc` and
-`pages.cljc` beside their frontend implementation in `src/cljs/tolgraven/<module>/`.
+`pages.cljc` beside their frontend implementation in `src/frontend/tolgraven/<module>/`.
 The `.cljc` files remain available to the browser, Node renderer, Ring handlers
 and JVM tests through the configured source roots. Genuinely shared platform
 contracts and schema infrastructure remain in `src/cljc`, including `schema/*`,
@@ -54,12 +54,12 @@ corrupt content or saved state from entering the application.
 For example, an owner can expose its state schema with its module:
 
 ```clojure
-;; src/cljs/my_site/catalog/schema.cljc
+;; src/frontend/my_site/catalog/schema.cljc
 (def filters [:map [:search {:optional true} :string]
                    [:page {:optional true} [:int {:min 0}]]])
 (def sections {[:state :catalog] filters})
 
-;; src/cljs/my_site/catalog/module.cljs
+;; src/frontend/my_site/catalog/module.cljs
 (def spec
   {:id :catalog
    :pages pages/spec

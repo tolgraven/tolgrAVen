@@ -1,6 +1,6 @@
 ;; shadow-cljs configuration
 {;:lein {:profile "+dev"}
- :source-paths ["src/clj" "src/cljs" "src/cljc"]
+ :source-paths ["src/backend" "src/frontend" "src/cljc"]
 
  :builds
  ;; SSR is an eager Node program, deliberately without browser :modules.

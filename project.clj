@@ -72,7 +72,7 @@
 
   :min-lein-version "2.0.0"
 
-  :source-paths ["src/clj" "src/cljs" "src/cljc"]
+  :source-paths ["src/backend" "src/frontend" "src/cljc"]
   :test-paths ["test/clj"]
   :resource-paths ["resources"]
   ;; Git ignores do not affect resource packaging in local jar builds.
