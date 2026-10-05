@@ -3,6 +3,10 @@
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/blog-ssr.md`, and `doc/dev-console.md`.
 
+- Collocate module-owned `schema.cljc` and `pages.cljc` with the module here.
+  These portable declarations are consumed by JVM tooling and routers too; keep
+  browser-only implementation dependencies out of them. Shared platform contracts
+  and schema infrastructure remain in `src/cljc`.
 - Render state through `tolgraven.react` subscriptions and change it through events.
   Effects/source adapters own I/O; view functions remain pure.
 - Use `<component>` names, `defc` features and `defpage` boundaries. `m/<>` selects

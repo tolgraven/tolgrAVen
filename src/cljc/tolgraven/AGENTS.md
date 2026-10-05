@@ -1,7 +1,9 @@
 # Shared declarations and contracts
 
-Keep this guide current. Shared data shapes, schemas, query constructors, page
-specs and normalization belong here so CLJ and CLJS use the same definition.
+Keep this guide current. Shared platform data shapes, schema infrastructure,
+query constructors and normalization belong here so CLJ and CLJS use the same
+definition. Module-owned `.cljc` schemas and page specs live beside their frontend
+implementation in `src/cljs/tolgraven/<module>/`, also on the JVM source path.
 
 - Module `pages.cljc` exports a native Reitit route tree and may contain nested or
   multiple pages. Do not require module implementation namespaces from it.
@@ -12,7 +14,8 @@ specs and normalization belong here so CLJ and CLJS use the same definition.
 - Keep schemas composable by module/app-db section; avoid a second global inventory
   of declarations already owned by modules. Tests should consume the same schemas.
 - Keep component argument, form, state, event and subscription schemas in the
-  owning module's CLJC namespace. `schema/state.cljc` assembles these owners;
+  owning module's `src/cljs/tolgraven/<module>/schema.cljc`.
+  `schema/state.cljc` assembles these owners;
   it must not become a central inventory of module component arguments.
 - Reader conditionals must work for CLJ tooling/Codox as well as browser and Node
   Shadow builds. Do not make JVM documentation scan browser-only namespaces.

@@ -1,7 +1,11 @@
 # Shared schemas and runtime validation
 
-Malli schemas live in `src/cljc`, alongside the declarations/data they describe.
-The browser, Node renderer, Ring handlers and tests use the same schema values.
+Module-owned Malli schemas and page declarations live as `schema.cljc` and
+`pages.cljc` beside their frontend implementation in `src/cljs/tolgraven/<module>/`.
+The `.cljc` files remain available to the browser, Node renderer, Ring handlers
+and JVM tests through the configured source roots. Genuinely shared platform
+contracts and schema infrastructure remain in `src/cljc`, including `schema/*`,
+`content/schema.cljc`, `ssr/schema.cljc`, and `supabase/schema.cljc`.
 Maps are open by default: a partially migrated section does not reject unrelated
 application data. Make a map closed explicitly when unknown keys are an error.
 
@@ -50,12 +54,12 @@ corrupt content or saved state from entering the application.
 For example, an owner can expose its state schema with its module:
 
 ```clojure
-;; my_site/catalog/schema.cljc
+;; src/cljs/my_site/catalog/schema.cljc
 (def filters [:map [:search {:optional true} :string]
                    [:page {:optional true} [:int {:min 0}]]])
 (def sections {[:state :catalog] filters})
 
-;; my_site/catalog/module.cljs
+;; src/cljs/my_site/catalog/module.cljs
 (def spec
   {:id :catalog
    :pages pages/spec
