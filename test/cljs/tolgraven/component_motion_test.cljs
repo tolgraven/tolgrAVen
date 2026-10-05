@@ -276,3 +276,22 @@
                  (finally (close!) (reset! restore/*context context)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
+(defc <remembered-item>
+  {:features [[:appear {:class "opacity" :remember-key :motion-test/remembered}]]}
+  []
+  [:div {:data-remembered true} "Previously visible"])
+
+(deftest remembered-content-is-visible-on-its-next-mount
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture))
+                context @restore/*context]
+            (try
+              (restore/navigate! "/motion-test")
+              (react/dispatch [:component-motion/seen :motion-test/remembered])
+              (await! (flush!))
+              (await! (render! root [<remembered-item>]))
+              (is (.contains (.-classList (.querySelector element "[data-remembered]")) "appeared"))
+              (finally (close!) (reset! restore/*context context)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))

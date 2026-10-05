@@ -53,7 +53,7 @@
     (r/create-element rf/strict-mode
                       nil                ;; <-- props
                       (r/as-element [page]))
-    [#'page]))
+    [page]))
 
 ;; Profiling this host would include console commits and create capture feedback.
 (m/defc <root-page> {:profile false} []
