@@ -19,17 +19,29 @@
   color: var(--dev-fg); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
   button, input, select { font: inherit; color: inherit; border: 1px solid var(--dev-line); border-radius: .3rem; background: var(--dev-row); padding: .3rem .6rem; margin: .15rem; }
   button { cursor: pointer; min-height: 30px; }
-  button:hover, button.active { background: var(--dev-line); }
+  button:hover { background: var(--dev-line); }
+  button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--aqua-3); outline-offset: 2px;
+  }
+  button.active { background: var(--dev-key); border-color: var(--aqua-3); color: var(--aqua-3); }
   input { max-width: 100%; width: min(38rem, 75vw); }
   input[type=checkbox] { width: auto; }
   a { color: var(--blue-3); }
   code { color: inherit; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
   &__toggle { background: var(--dev-bg) !important; box-shadow: 0 2px 12px #0008; }
   &__panel { position: fixed; inset: auto 1rem 3.5rem; height: min(70vh, 720px); padding: 0; margin: 0; border: 1px solid var(--dev-line); border-radius: .6rem; background: var(--dev-bg); box-shadow: 0 10px 60px #0009; display: flex; flex-direction: column; }
-  &__header { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; padding: .5rem; border-bottom: 1px solid var(--dev-line); }
-  &__header > span { margin-right: auto; color: var(--blue-3); }
-  &__tabs { display: flex; flex-wrap: wrap; padding: .35rem; border-bottom: 1px solid var(--dev-line); }
-  &__body { overflow: auto; padding: .75rem; flex: 1; overscroll-behavior: contain; }
+  &__header { display: flex; flex-wrap: wrap; gap: .4rem .8rem; align-items: center; padding: .75rem; border-bottom: 1px solid var(--dev-line); }
+  &__header strong { letter-spacing: .02em; }
+  &__header label, &__body label { display: inline-flex; align-items: center; gap: .4rem; margin: .35rem 0; }
+  &__metrics { margin-right: auto; color: var(--blue-3); font-size: .9em; }
+  &__close { font-size: 1.25em !important; min-width: 2rem; }
+  &__tabs { display: flex; flex-wrap: wrap; gap: .2rem; padding: .5rem .65rem; border-bottom: 1px solid var(--dev-line); }
+  &__tabs button { text-transform: capitalize; margin: 0; padding: .35rem .65rem; }
+  &__body { overflow: auto; padding: 1rem; flex: 1; overscroll-behavior: contain; }
+  &__body h4 { margin: 1rem 0 .5rem; font-size: 1em; color: var(--blue-3); }
+  &__body p { margin: .5rem 0 .8rem; color: var(--blue-3); max-width: 95ch; font-size: .92em; }
+  &__body input:not([type=checkbox]) { min-height: 2.2rem; }
+  &__body label:has(input:not([type=checkbox])) { display: flex; flex-wrap: wrap; }
   details { border-bottom: 1px solid var(--dev-line); padding: .35rem 0; }
   summary { cursor: pointer; }
 }
@@ -102,7 +114,7 @@
 }
 .dev-event-group {
   margin-block: .4rem;
-  summary { display: list-item; padding: .5rem; background: var(--dev-surface); border-radius: .35rem; }
+  summary { display: list-item; padding: .65rem; background: var(--dev-surface); border-radius: .35rem; }
   summary > span { margin-left: .5rem; }
   strong { color: var(--aqua-3); }
 }

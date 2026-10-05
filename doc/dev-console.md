@@ -108,8 +108,8 @@ bash scripts/re-frame-pair.sh discover-app
 bash scripts/re-frame-pair.sh dispatch '[:dev-console/clear]'
 ```
 
-The console continuously mounts `[:dev-console/snapshot]`, even with its panel
-closed. Read that existing reaction instead of creating a dangling subscription:
+Open the console before inspecting `[:dev-console/snapshot]`. Read its existing
+mounted reaction instead of creating a dangling subscription:
 
 ```sh
 bash scripts/re-frame-pair.sh eval-cljs \
@@ -118,6 +118,12 @@ bash scripts/re-frame-pair.sh eval-cljs \
 
 The snapshot includes the route, options, mounted instances/resolved paths and
 bounded records. **Copy snapshot** copies the same EDN to the local clipboard.
+Closing the panel disposes inspector subscriptions, unregisters trace/epoch
+callbacks, disconnects the layout observer, disables Profiler callbacks and clears
+the pending drain timer/queue. A small mounted-instance index and the toggle's
+keyboard shortcut remain; dependency details resolve only when opened. Reopening
+backfills currently mounted instances without replaying their component mounts.
+**Record** pauses tracing while keeping the open inspector's instance list current.
 For exact handler sources, cascade tracing and post-mortems, use the installed
 skill's `handler-source`, `trace-recent` and `watch-epochs` commands alongside it.
 The console uses native `re-frame.tooling` trace/epoch callbacks and

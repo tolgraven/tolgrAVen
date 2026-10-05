@@ -2,6 +2,7 @@
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
+            [re-frame.tooling :as tooling]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.component :as component]
             [tolgraven.component.data :as data]
@@ -291,3 +292,32 @@
     (is (= 2 (count (views/timing-records records true))))
     (is (= records (views/timing-records records false)))
     (is (= [[:page/scrolled 10]] (views/captured-events records)))))
+
+(deftest closed-console-releases-capture-and-inspector-subscriptions
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                snapshot-mounted? (fn []
+                                    (some #(= [:dev-console/snapshot]
+                                              (tooling/query-v-for-reaction %))
+                                          (vals @tooling/query->reaction)))]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root [views/<console>]))
+              (is (false? @capture/*connected?))
+              (is (not (snapshot-mounted?)))
+              (.click (.querySelector element ".dev-console__toggle"))
+              (await! (support/settle!))
+              (is @capture/*connected?)
+              (is @capture/*recording?)
+              (is (boolean (snapshot-mounted?)))
+              (.click (.querySelector element ".dev-console__close"))
+              (await! (support/settle!))
+              (is (false? @capture/*connected?))
+              (is (false? @capture/*recording?))
+              (is (nil? @capture/*tick))
+              (is (empty? @capture/*pending))
+              (is (not (snapshot-mounted?)))
+              (finally (support/unmount! root) (.remove element)))))
+        (.then (fn [] (done)) #(do (is false (str %)) (done))))))

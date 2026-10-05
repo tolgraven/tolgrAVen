@@ -21,9 +21,36 @@ const sample = async (action, read, ms = 1400) => {
   while (performance.now() < end) { await new Promise(resolve => requestAnimationFrame(resolve)); values.push(read()); }
   return values;
 };
+// Sample the real document from its first paint through interactive startup.
+// Do not substitute data or manipulate application-owned markup.
+const entrance = async path => {
+  const samples = [], end = performance.now() + 45000;
+  frame.src = path;
+  let completeAt = null;
+  while (performance.now() < end) {
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    const main = doc()?.querySelector('#app main');
+    if (main && frame.contentWindow.location.pathname === '/') {
+      const style = frame.contentWindow.getComputedStyle(main);
+      samples.push({animation: style.animationName, opacity: Number(style.opacity),
+                    scale: style.transform, restored: doc().querySelector('#app').hasAttribute('data-restore')});
+      if (doc().querySelector('.dev-console__toggle')) completeAt ||= performance.now();
+      if (completeAt && performance.now() - completeAt > 600) return samples;
+    }
+  }
+  throw new Error('First-load entrance did not reach interactive startup');
+};
 document.querySelector('#run').onclick = async () => {
   results.replaceChildren();
   try {
+    const path = '/?motion-entrance';
+    const cold = await entrance(path);
+    check(cold.some(value => value.animation === 'fade-in-site' && value.opacity > 0 && value.opacity < .99),
+          'Initial landing page visibly animates before hydration without needing a mount replay');
+    const restored = await entrance(path);
+    check(restored.some(value => value.restored), 'Normal repeat document load restores persisted content');
+    check(restored.some(value => value.animation === 'fade-in-site' && value.opacity > 0 && value.opacity < .99),
+          'Normal persisted reload retains the page entrance (not mistaken for browser Back)');
     frame.src = '/blog/post/New-features-27';
     await wait(() => doc()?.querySelector('.blog-comment-collapsed-placeholder'));
     await wait(() => {

@@ -101,8 +101,9 @@
 (defn init "Called only on page load" []
   ;; Remove duplicate shell IDs before routing, measurement, or hydration.
   (clear-shell!)
-  (restore/begin! {:back? (or (restore/back-navigation?)
-                               (= "true" (.getAttribute (.getElementById js/document "app") "data-restore")))
+  ;; A persisted-content hint can also accompany a normal reload. Only browser
+  ;; history traversal bypasses entrance motion and restores the saved scroll.
+  (restore/begin! {:back? (restore/back-navigation?)
                    :hydrate? (= "true" (.getAttribute (.getElementById js/document "app") "data-hydrate"))})
   (rf/dispatch-sync [:init/app-db])
   (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
@@ -115,9 +116,11 @@
                          (ssr/install!)
                          (blog-cache/restore!)
                          (rf/dispatch-sync [:ls/get-path [:scroll-position] [:state :scroll-position]])
-                         ;; The server explicitly skipped SSR for this persisted
-                         ;; return. Start restoration before React builds content.
-                         (when (= "true" (.getAttribute (.getElementById js/document "app") "data-restore"))
+                         ;; A history return using persisted content needs layout-
+                         ;; aware scroll restoration. Real SSR HTML uses the browser's
+                         ;; native restoration; ordinary reloads keep entrance motion.
+                         (when (and (restore/back-navigation?)
+                                    (= "true" (.getAttribute (.getElementById js/document "app") "data-restore")))
                            (rf/dispatch [:scroll/restore-history (.-pathname js/location)]))))
                 (.then (fn [_] (content/bootstrap!)))
                 (.then (fn [_] (component-data/ensure-all! (:depends spec))))

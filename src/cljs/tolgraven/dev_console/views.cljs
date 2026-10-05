@@ -577,12 +577,12 @@
                                  (catch :default error (rf/dispatch [:dev-console/result {:error (str error)}])))} "Set through state event"]]
        [:p "Enter a vector path."])]))
 
-(defc <console>
-  {:state {:initial {:open? false :tab :page :query "[:common/route]" :path "[:state]"
+(defc <panel>
+  {:state {:initial {:tab :page :path "[:state]"
                      :value "nil" :event "[:page/preload-links]" :dry-run? false}}}
-  []
-  :let [*open (<sub :comp [:open?]) *tab (<sub :comp [:tab])
-        *query (<sub :comp [:query]) *path (<sub :comp [:path]) *value (<sub :comp [:value])
+  [{:keys [close!]}]
+  :let [*tab (<sub :comp [:tab])
+        *path (<sub :comp [:path]) *value (<sub :comp [:value])
         *event (<sub :comp [:event]) *dry-run (<sub :comp [:dry-run?])]
   (let [options @(rf/subscribe [:dev-console/options])
         debug @(rf/subscribe [:dev-console/data])
@@ -595,61 +595,69 @@
     (rf/use-effect
       (fn [] (if (:recording? options) (capture/start!) js/undefined))
       #js [(:recording? options)])
-    (rf/use-effect
-      (fn []
-        (let [handler (fn [event]
-                        (when (and (= "D" (string/upper-case (.-key event)))
-                                   (.-altKey event) (.-shiftKey event))
-                          (.preventDefault event) (scoped/>update *open not)))]
-          (.addEventListener js/window "keydown" handler)
-          #(.removeEventListener js/window "keydown" handler))) #js [])
-    [:aside.dev-console {:aria-label "Development console" :data-dev-console true}
-     [:button.dev-console__toggle {:on-click #(>update *open not) :aria-expanded (boolean @*open)} "Dev " (if @*open "×" "⌘")]
-     (when @*open
-       [:section.dev-console__panel {:aria-label "Re-frame inspector"}
-        [:div.dev-console__header
-         [:strong "tolgrAVen · re-frame inspector"]
-         [:span (str (count (:active debug)) " active components · " (count records) " records")]
-         [:label [:input {:type "checkbox" :checked (boolean (:recording? options))
-                          :on-change #(rf/dispatch [:dev-console/option :recording? (.. % -target -checked)])}] "Record"]
-         [:label [:input {:type "checkbox" :checked (boolean (:hydration-highlight? options))
-                          :on-change #(rf/dispatch [:dev-console/option :hydration-highlight? (.. % -target -checked)])}] "Hydration flash"]
-         [:button {:on-click #(rf/dispatch [:dev-console/clear])} "Clear"]
-         [:button {:on-click #(rf/dispatch [:dev-console/copy (pr-str snapshot)])} "Copy snapshot"]]
-        [:div.dev-console__tabs
-         (for [tab [:page :components :modules :state :subs :loads :events :errors :timings :layout :code]]
-           ^{:key tab} [:button {:class (when (= tab tab-value) "active") :on-click #(>reset *tab tab)} (name tab)])]
-        [:div.dev-console__body
-         (case @*tab
-           :page [<value> [:page] {:route route :spec (:data route)
-                                 :page-state @(rf/subscribe [:dev-console/path [:page (restore/page-key)]])} 0]
-           :components [<component-list> (:active debug)
-                        (fn [path] (>reset *path (pr-str path)) (>reset *tab :state))]
-           :modules [<value> [:modules]
-                     {:pages (reitit/routes routes/router)
-                      :modules (into {} (for [[id loadable] loader/modules]
-                                          [id (if (loader/ready? id) @loadable :code-not-loaded)]))
-                      :module-state @(rf/subscribe [:dev-console/path [:module]])} 0]
-           :state [:<> [<path-inspector> *path *value] [<value> [:app-db] @(rf/subscribe [:dev-console/db]) 0]]
-           :subs [<subscriptions>]
-           :loads [<value> [:loads] {:resources @(rf/subscribe [:dev-console/resources])
-                                    :loading @(rf/subscribe [:loading])
-                                    :store @(rf/subscribe [:dev-console/path [:store]])} 0]
-           :events [:<>
-                    [<event-completion> "Event vector" "dev-dispatch-events" *event
-                     @(rf/subscribe [:dev-console/handlers]) records]
-                    [:label [:input {:type "checkbox" :checked (boolean @*dry-run) :on-change #(>reset *dry-run (.. % -target -checked))}]
-                     "Stub common network/navigation/storage effects (other effects still run)"]
-                    [:button {:on-click #(rf/dispatch [:dev-console/dispatch {:event @*event :dry-run? @*dry-run}])} "Dispatch and trace"]
-                    [<value> [:dispatch-result] (:result debug) 0]
-                    [<record-groups> :epochs (filterv #(= :epoch (:kind %)) records)]]
-           :errors [<value> [:errors] @(rf/subscribe [:dev-console/path [:diagnostics]]) 0]
-           :timings [<timings> records]
-           :layout [:<>
-                    (if (and (exists? js/PerformanceObserver)
-                             (some #{"layout-shift"} (array-seq (.-supportedEntryTypes js/PerformanceObserver))))
-                      [<layout-graph> records]
-                      [:p "This browser does not provide layout-shift observation. React render timings are still available."])]
-           :code [<value> [:code] {:components @(rf/subscribe [:dev-console/catalog])
-                                   :registrations (into {} (for [[kind handlers] @(rf/subscribe [:dev-console/handlers])]
-                                                            [kind (into {} (map (fn [[id handler]] [id (meta handler)]) handlers))]))} 0])]])]))
+    [:section.dev-console__panel {:aria-label "Re-frame inspector"}
+     [:div.dev-console__header
+      [:strong "tolgrAVen · re-frame inspector"]
+      [:span.dev-console__metrics (str (count (:active debug)) " components · " (count records) " records")]
+      [:label [:input {:type "checkbox" :checked (boolean (:recording? options))
+                       :on-change #(rf/dispatch [:dev-console/option :recording? (.. % -target -checked)])}] "Record"]
+      [:label [:input {:type "checkbox" :checked (boolean (:hydration-highlight? options))
+                       :on-change #(rf/dispatch [:dev-console/option :hydration-highlight? (.. % -target -checked)])}] "Hydration flash"]
+      [:button {:on-click #(rf/dispatch [:dev-console/clear])} "Clear"]
+      [:button {:on-click #(rf/dispatch [:dev-console/copy (pr-str snapshot)])} "Copy snapshot"]
+      [:button.dev-console__close {:aria-label "Close inspector" :on-click close!} "×"]]
+     [:div.dev-console__tabs {:role "group" :aria-label "Inspector sections"}
+      (for [tab [:page :components :modules :state :subs :loads :events :errors :timings :layout :code]]
+        ^{:key tab} [:button {:class (when (= tab tab-value) "active")
+                             :aria-pressed (= tab tab-value) :on-click #(>reset *tab tab)} (name tab)])]
+     [:div.dev-console__body
+      (case @*tab
+        :page [<value> [:page] {:route route :spec (:data route)
+                              :page-state @(rf/subscribe [:dev-console/path [:page (restore/page-key)]])} 0]
+        :components [<component-list> (:active debug)
+                     (fn [path] (>reset *path (pr-str path)) (>reset *tab :state))]
+        :modules [<value> [:modules]
+                  {:pages (reitit/routes routes/router)
+                   :modules (into {} (for [[id loadable] loader/modules]
+                                       [id (if (loader/ready? id) @loadable :code-not-loaded)]))
+                   :module-state @(rf/subscribe [:dev-console/path [:module]])} 0]
+        :state [:<> [<path-inspector> *path *value] [<value> [:app-db] @(rf/subscribe [:dev-console/db]) 0]]
+        :subs [<subscriptions>]
+        :loads [<value> [:loads] {:resources @(rf/subscribe [:dev-console/resources])
+                                 :loading @(rf/subscribe [:loading])
+                                 :store @(rf/subscribe [:dev-console/path [:store]])} 0]
+        :events [:<>
+                 [<event-completion> "Event vector" "dev-dispatch-events" *event
+                  @(rf/subscribe [:dev-console/handlers]) records]
+                 [:label [:input {:type "checkbox" :checked (boolean @*dry-run) :on-change #(>reset *dry-run (.. % -target -checked))}]
+                  "Stub common network/navigation/storage effects (other effects still run)"]
+                 [:button {:on-click #(rf/dispatch [:dev-console/dispatch {:event @*event :dry-run? @*dry-run}])} "Dispatch and trace"]
+                 [<value> [:dispatch-result] (:result debug) 0]
+                 [<record-groups> :epochs (filterv #(= :epoch (:kind %)) records)]]
+        :errors [<value> [:errors] @(rf/subscribe [:dev-console/path [:diagnostics]]) 0]
+        :timings [<timings> records]
+        :layout [:<>
+                 (if (and (exists? js/PerformanceObserver)
+                          (some #{"layout-shift"} (array-seq (.-supportedEntryTypes js/PerformanceObserver))))
+                   [<layout-graph> records]
+                   [:p "This browser does not provide layout-shift observation. React render timings are still available."])]
+        :code [<value> [:code] {:components @(rf/subscribe [:dev-console/catalog])
+                                :registrations (into {} (for [[kind handlers] @(rf/subscribe [:dev-console/handlers])]
+                                                         [kind (into {} (map (fn [[id handler]] [id (meta handler)]) handlers))]))} 0])]]))
+
+(defc <console>
+  {:state {:initial {:open? false}}}
+  []
+  :let [*open (<sub :comp [:open?])]
+  (rf/use-effect
+    (fn []
+      (let [handler (fn [event]
+                      (when (and (= "D" (string/upper-case (.-key event)))
+                                 (.-altKey event) (.-shiftKey event))
+                        (.preventDefault event) (scoped/>update *open not)))]
+        (.addEventListener js/window "keydown" handler)
+        #(.removeEventListener js/window "keydown" handler))) #js [])
+  [:aside.dev-console {:aria-label "Development console" :data-dev-console true}
+   [:button.dev-console__toggle {:on-click #(>update *open not) :aria-expanded (boolean @*open)}
+    "Dev " (if @*open "×" "⌘")]
+   (when @*open [<panel> {:close! #(>reset *open false)}])])

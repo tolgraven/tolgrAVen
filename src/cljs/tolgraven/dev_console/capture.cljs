@@ -3,6 +3,7 @@
   (:require [clojure.data :as data]
             [clojure.string :as string]
             [re-frame.tooling :as tooling]
+            [reagent.core :as r]
             [tolgraven.react :as rf]
             [tolgraven.render-context :as context]
             [tolgraven.dev-console.state]))
@@ -10,16 +11,18 @@
 (defonce *pending (atom []))
 (defonce *tick (atom nil))
 (defonce *cleanup (atom nil))
-(defonce *connected? (atom false))
+(defonce *connected? (r/atom false))
 (defonce *recording? (atom false))
 ;; Probe lifecycles begin during hydration, before the interactive console mounts.
 (defonce *instances (atom {}))
+(defn resolve-instance [record]
+  (merge (dissoc record :resolve!) (when-let [resolve! (:resolve! record)] (resolve!))))
 (defn connect!
   "Enable queued instance tracking only while its console consumer is mounted."
   []
   (reset! *connected? true)
   (when (seq @*instances)
-    (rf/dispatch [:dev-console/records (vec (vals @*instances))]))
+    (rf/dispatch [:dev-console/records (mapv resolve-instance (vals @*instances))]))
   (fn []
     (reset! *connected? false)
     (when @*tick (js/clearTimeout @*tick))
@@ -40,7 +43,7 @@
       :unmount (swap! *instances dissoc (:instance record))
       nil))
   (when (and ^boolean goog.DEBUG @*connected? (not context/*server?*))
-    (swap! *pending #(vec (take-last 500 (conj % record))))
+    (swap! *pending #(vec (take-last 500 (conj % (if (= :mount (:kind record)) (resolve-instance record) record)))))
     (when-not @*tick (reset! *tick (js/setTimeout drain! 200)))))
 (defn public-db [db]
   (-> db (dissoc :dev-console)
