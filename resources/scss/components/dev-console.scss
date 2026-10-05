@@ -39,7 +39,7 @@
   &__preview-item { display: inline; }
   &__delimiter { color: var(--purple-3); font-weight: bold; }
   &__separator { color: var(--blue); }
-  &__preview.dev-value--vector > .dev-value__delimiter { color: var(--aqua-3); }
+  &__preview.dev-value--vector > .dev-value__delimiter { color: var(--aqua-3); font-size: 1.3em; text-shadow: 0 0 .3em var(--aqua); }
   &__preview.dev-value--list > .dev-value__delimiter { color: var(--yellow-3); }
   &__preview.dev-value--set > .dev-value__delimiter { color: var(--orange-3); }
   &__chevron { display: inline-block; width: 1.1em; color: var(--blue-3); }
@@ -56,7 +56,7 @@
   &--set > .dev-value__entries > .dev-value__enclosure { inset: .4rem .25rem .4rem auto; width: 1.15rem; height: calc(100% - .8rem); stroke: var(--purple-3); }
   &--set > .dev-value__entries > .dev-value__enclosure { stroke: var(--orange-3); stroke-dasharray: 4 3; }
   &--vector > .dev-value__entries { padding: .8rem .6rem; border-radius: 0; }
-  &--vector > .dev-value__entries > .dev-value__enclosure { stroke: var(--aqua-3); }
+  &--vector > .dev-value__entries > .dev-value__enclosure { stroke: var(--aqua-3); stroke-width: 3; filter: drop-shadow(0 0 2px var(--aqua)); }
   &--list > .dev-value__entries { padding: .6rem 1rem; border-radius: 1rem; }
   &--vector > .dev-value__entries > .dev-value__entry > .dev-value__key,
   &--list > .dev-value__entries > .dev-value__entry > .dev-value__key { white-space: nowrap; overflow: visible; }
@@ -76,4 +76,33 @@
 @media (max-width: 600px) {
   .dev-console__panel { inset: auto .25rem 3.5rem; height: 80vh; }
   .dev-value__entry { grid-template-columns: minmax(4ch, min(var(--dev-key-width, 12ch), 30vw)) minmax(0, 1fr); }
+}
+.dev-value__pagination { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: .4rem; margin-top: .5rem; color: var(--blue-3); }
+.dev-console button:disabled { opacity: .4; cursor: default; }
+.dev-layout {
+  &__controls { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+  &__graph { display: block; width: 100%; min-width: 500px; height: 260px; background: var(--dev-surface); border-radius: .4rem; margin-block: .5rem; }
+  &__graph text { fill: var(--blue-3); font-size: 12px; }
+  &__grid { stroke: var(--dev-line); stroke-width: 1; }
+  &__shift { stroke: var(--red-3); fill: var(--red-3); }
+  &__shift--input { stroke: var(--aqua-3); fill: var(--aqua-3); }
+  &__shift circle { cursor: pointer; stroke-width: 2; }
+  &__shift circle:hover, &__shift circle:focus { stroke: var(--yellow-3); stroke-width: 4; outline: none; }
+  &__epoch { stroke: var(--purple-3); stroke-width: 3; }
+  &__render { stroke: var(--yellow-3); stroke-width: 2; }
+}
+
+.dev-subscriptions {
+  &__suggestions { display: flex; flex-wrap: wrap; gap: .35rem; margin: .5rem 0; }
+  input { min-width: 18ch; width: min(100%, 45rem); }
+}
+.dev-time {
+  display: inline-flex; flex-wrap: wrap; gap: .25rem 1rem; color: var(--blue-3);
+  time { color: var(--purple-3); font-size: .9em; }
+}
+.dev-event-group {
+  margin-block: .4rem;
+  summary { display: list-item; padding: .5rem; background: var(--dev-surface); border-radius: .35rem; }
+  summary > span { margin-left: .5rem; }
+  strong { color: var(--aqua-3); }
 }

@@ -53,7 +53,7 @@
                    (same :path-params)
                    (same :query-params) ; causes some trouble with settingsbox getting stuck?
                    (same :path))
-        {:db (cond-> (-> db
+        (cond-> {:db (cond-> (-> db
                    (assoc :common/route new-match)
                    (update-in [:state] dissoc :error-page)  ; reset 404 page in case was triggered
                    (update-in [:state :exception] dissoc :page))
@@ -74,6 +74,7 @@
                    ;; has navigated yet. Its first route restores the saved offset.
                    [:scroll/on-navigate (:path new-match) (if old-match navigation-count 0) complete!]
                    [:page/ready nil complete!])))}
+          (:replace-shell? complete!) (assoc :page/replace-destination new-match))
 
       (let [fragment (-> db :state :fragment)]              ;; matches are equal (fragment not part of match)
         (if (pos? (count (seq fragment)))

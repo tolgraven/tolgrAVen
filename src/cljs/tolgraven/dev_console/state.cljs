@@ -1,6 +1,7 @@
 (ns tolgraven.dev-console.state
   "Bounded debug records. Views and automation both use the same subscriptions."
-  (:require [tolgraven.react :as rf]))
+  (:require [clojure.string :as string]
+            [tolgraven.react :as rf]))
 
 (def defaults {:recording? true :hydration-highlight? true :limit 500})
 (defn options [db]
@@ -18,6 +19,15 @@
   (fn [db _] (-> db (dissoc :dev-console)
                  (update :component dissoc "tolgraven.dev-console.views"))))
 (rf/reg-sub :dev-console/path (fn [db [_ path]] (get-in db path)))
+(rf/reg-sub :dev-console/path-keys
+  (fn [db query]
+    (let [[_ path needle] (or (:re-frame/query-v query) query)
+          value (get-in db path)]
+      (->> (cond (map? value) (keys value)
+                 (vector? value) (range (count value))
+                 :else [])
+           (filter #(string/starts-with? (pr-str %) (or needle "")))
+           (take 10) vec))))
 (rf/reg-event-db :dev-console/option
   (fn [db [_ key value]] (assoc-in db [:options :dev-console key] value)))
 (defn bounded [limit before batch] (vec (take-last limit (concat before batch))))

@@ -7,6 +7,19 @@
 
 (defonce *transition (atom nil))
 (defonce *generation (atom 0))
+(defonce *destination (atom nil))
+
+(defn replace-destination!
+  "Keep a pending native callback current when its module finishes first."
+  [match]
+  (swap! *destination
+    (fn [pending]
+      (if (and (= (:generation pending) @*generation)
+               (= (select-keys match [:path :path-params :query-params])
+                  (select-keys (:match pending) [:path :path-params :query-params])))
+        (assoc pending :match match)
+        pending))))
+(rf/reg-fx :page/replace-destination replace-destination!)
 (defonce *restore-cleanup (atom nil))
 
 (defn restore-position!
@@ -76,7 +89,7 @@
                   (js/Promise.
                    (fn [resolve! _]
                      (if (= generation @*generation)
-                       (rf/dispatch [:common/navigate match
+                       (rf/dispatch [:common/navigate (:match @*destination)
                                      {:current? #(= generation @*generation)
                                       :resolve! resolve!
                                       :transition-id generation
@@ -84,6 +97,7 @@
                                                       (not (fn? (.-startViewTransition js/document)))
                                                       (not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))))}])
                        (resolve!)))))]
+    (reset! *destination {:generation generation :match match})
     (when-let [transition @*transition] (.skipTransition transition))
     (reset! *transition nil)
     (if (and animate? (not back?) (exists? js/document)

@@ -91,6 +91,8 @@
         spec (spec-for (not= false (get-in definition [:options :spec])) args)]
     (vec (distinct (concat resolved (:depends spec))))))
 
+(instrumentation/register-dependencies-resolver! dependencies)
+
 (defn preload!
   "Start a component's declared dependencies without constructing or mounting it."
   [component & args]

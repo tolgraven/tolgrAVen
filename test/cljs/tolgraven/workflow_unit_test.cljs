@@ -993,3 +993,23 @@
     (let [html (server/render-to-string [github-views/<commits>])]
       (is (re-find #"github-loading" html))
       (is (re-find #"Loaded (?:<!-- -->)?0" html)))))
+
+(deftest code-arrival-before-native-transition-callback-keeps-real-view
+  (let [original (.-startViewTransition js/document)
+        *callback (atom nil) *events (atom [])
+        shell {:path "/race", :data {:view (fn [] [:div "Shell"])}}
+        real (assoc-in shell [:data :view] (fn [] [:div "Real page"]))]
+    (try
+      (set! (.-startViewTransition js/document)
+            (fn [callback]
+              (reset! *callback callback)
+              #js {:ready (js/Promise.resolve nil) :finished (js/Promise.resolve nil)
+                   :skipTransition (fn [])}))
+      (with-redefs [rf/dispatch #(swap! *events conj %)]
+        (page-transition/navigate! shell true)
+        (page-transition/replace-destination! real)
+        (@*callback)
+        (is (= real (get-in @*events [0 1])) "A delayed transition cannot reinstall its obsolete shell")
+        (page-transition/replace-destination! {:path "/unrelated" :data {:view identity}})
+        (is (= real (:match @page-transition/*destination)) "An unrelated route cannot change the pending destination"))
+      (finally (set! (.-startViewTransition js/document) original)))))

@@ -7,6 +7,8 @@
             [tolgraven.dev-console.capture :as capture]))
 
 (defonce *path-resolver (atom nil))
+(defonce *dependencies-resolver (atom nil))
+(defn register-dependencies-resolver! [resolve!] (reset! *dependencies-resolver resolve!))
 (defn register-path-resolver! [resolve!] (reset! *path-resolver resolve!))
 
 (defn identity-for [definition] [(:ns definition) (:name definition)])
@@ -14,13 +16,16 @@
   (let [*id (rf/use-ref nil)
         _ (when-not (.-current *id) (set! (.-current *id) (str (random-uuid))))
         qualified (string/join "/" (identity-for definition))
-        path (when-let [resolve! @*path-resolver] (resolve! definition args instance-key))]
+        path (when-let [resolve! @*path-resolver] (resolve! definition args instance-key))
+        dependencies (when-let [resolve! @*dependencies-resolver]
+                       (try (capture/preview (resolve! definition args))
+                            (catch :default error [{:resolution-error (str error)}])))]
     (rf/use-effect
       (fn []
         (do (capture/emit! {:kind :mount :instance (.-current *id) :component (identity-for definition)
-                          :path path :key instance-key :page (when (exists? js/location) (.-pathname js/location))})
+                          :path path :depends dependencies :key instance-key :page (when (exists? js/location) (.-pathname js/location))})
           #(capture/emit! {:kind :unmount :instance (.-current *id)})))
-      #js [qualified (pr-str path)])
+      #js [qualified (pr-str [path dependencies])])
     [:> rf/profiler
      {:id qualified
       :onRender (fn [_ phase duration base start commit]

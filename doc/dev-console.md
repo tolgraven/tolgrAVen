@@ -13,7 +13,7 @@ re-frame shim, and scoped state helpers throughout.
 - **modules**: composed routes, loaded module declarations and module state.
 - **state**: expandable, typed maps/vectors/lists/sets and scalar values. Enter an
   EDN path to subscribe to it, or set its value through the normal state event.
-- **subs**: enter a real subscription query. Its consumer mounts and dereferences
+- **subs**: autocomplete registered IDs or existing live query vectors, edit arguments, then press Enter or **Run subscription**. Invalid EDN, missing handlers and nil results have visible feedback. The separate path input completes child keys from a scoped subscription and **Run path** inspects that exact app-db path. Typing does not acquire data sources. The scoped-state picker resolves the active page, loaded modules, mounted namespace/key-specific components/views, and live scoped fields. Mounted probes report the dependencies resolved using their actual arguments; dependency buttons open the normal content/readiness/cache subscriptions. No hidden component is mounted to inspect it. The selected result and live query inventory are labeled separately. Its consumer mounts and dereferences
   the normal subscription, and releases it when this tab closes. Managed data
   subscriptions can therefore acquire their normal sources. Live queries are also listed.
 - **loads**: shared dependency resource owners/status, loading state, and content stores.
@@ -24,7 +24,7 @@ re-frame shim, and scoped state helpers throughout.
 - **timings**: select an event window, inspect nested re-frame traces and React
   commit bars, and click a bar for its details. Durations include child work;
   this is an instrumented event/commit timeline, not a CPU sampling profiler.
-- **layout**: component commit records and browser layout-shift sources/rectangles.
+- **layout**: a selectable layout-shift graph with nearby event/commit markers, source elements and rectangles. Filter by time or shifts outside recent input. Inspector-only shifts are excluded to avoid recording/display feedback; page, mixed and unknown shifts remain. Score totals are raw retained sums, not the browser CLS metric. Nearby events are correlation, not proof of cause.
   Layout-shift observation depends on browser support; user-input shifts are
   retained too, because they matter when diagnosing comment expansion jumps.
 - **code**: component declarations, feature/dependency options, source locations
@@ -32,12 +32,29 @@ re-frame shim, and scoped state helpers throughout.
 
 The tree opens its first two levels, then expands on demand. Collapsed collections
 show inline keys and short values, including shallow previews of child collections.
+Vectors of maps use one map marker and a count, for example `[{} × 2]`, while
+retaining access to each map through expansion.
 Map keys share a column sized to the longest key (capped at 36 characters), wrap
 when needed, and expose the full key on hover. Vector indexes stay on one line.
+Repeated events are grouped by event ID regardless of arguments. Trace operations
+and component commits are grouped by operation/component and phase. Groups show
+counts and summed duration; expanding a group exposes the original, paginated
+occurrences. The timeline still uses the original records.
+Timing fields display durations with ms/s units and relative h/m/s/ms clocks plus
+absolute UTC timestamps derived from `performance.timeOrigin`; hover retains the
+original numeric value. Numbers stay yellow, elapsed clocks are blue, and absolute
+timestamps are purple. Vector brackets have brighter aqua accents and a heavier
+expanded enclosure.
+Event inputs and the timing event selector complete registered event IDs and
+small captured event vectors, including arguments. Selecting a suggestion only
+fills the input; dispatch still requires the explicit action. In timings,
+`[event-id]` selects captured windows for every argument combination; a longer
+vector narrows the prefix. **Hide :sub/run** defaults to on and removes those
+traces from both bars and grouped history without discarding the captured records.
 Maps use curved right braces; vectors use full-width square brackets, lists use
 parentheses, and sets use dashed braces. Delimiters and scalar syntax use the
 accent palette from `resources/scss/vars.scss`; surfaces stay cool blue-purple.
-Collections show 40 items at a time. **Clear** clears history without losing mounted-instance tracking.
+Collections and active component lists show 10 items per page; Next replaces the current page rather than appending more DOM. Small collections fully represented by the inline preview have no expansion control. Large child collections remain collapsed until requested. **Clear** clears history without losing mounted-instance tracking.
 **Record** pauses trace, epoch and layout observers and commit recording, while
 mounted-instance tracking stays current. Console events and their trace descendants
 are excluded, and the console's root host is not profiled, preventing capture loops. Dependency readiness reads use scoped subscription

@@ -97,6 +97,33 @@
     (:cascaded-epochs result) (assoc :cascaded-epochs (mapv epoch-record (take 40 (:cascaded-epochs result))))
     (:captured-epochs result) (assoc :captured-epochs (mapv epoch-record (take 40 (:captured-epochs result))))))
 
+(defn element-for [node]
+  (if (= 1 (some-> node .-nodeType)) node (some-> node .-parentElement)))
+(defn layout-source [source]
+  (let [el (element-for (.-node source))]
+    {:component (some-> el (.closest "[data-dev-component]") (.getAttribute "data-dev-component"))
+     :inspector? (boolean (some-> el (.closest "[data-dev-console]")))
+     :element (when el (str (.-tagName el)
+                           (when-let [id (not-empty (.-id el))] (str "#" id))
+                           (when-let [class (not-empty (.getAttribute el "class"))]
+                             (str "." (string/replace (subs class 0 (min 160 (count class))) " " ".")))))
+     :before (some-> (.-previousRect source) .toJSON (js->clj :keywordize-keys true))
+     :after (some-> (.-currentRect source) .toJSON (js->clj :keywordize-keys true))}))
+(defn layout-scope [sources]
+  (cond (empty? sources) :unknown
+        (every? :inspector? sources) :inspector
+        (some :inspector? sources) :mixed
+        :else :page))
+(defn layout-record [entry]
+  (let [sources (mapv layout-source (array-seq (.-sources entry)))
+        start (.-startTime entry) input (.-lastInputTime entry)]
+    {:kind :layout :start start :value (.-value entry) :scope (layout-scope sources)
+     :path (when (exists? js/location) (.-pathname js/location))
+     :user-input? (.-hadRecentInput entry)
+     :last-input (when (and (number? input) (pos? input)) input)
+     :since-input (when (and (number? input) (pos? input)) (- start input))
+     :sources sources}))
+
 (defn start!
   "One observer/callback set per console lifecycle, including hot reload cleanup."
   []
@@ -117,17 +144,11 @@
                      (js/PerformanceObserver.
                        (fn [entries _]
                          (doseq [entry (array-seq (.getEntries entries))]
-                           (emit! {:kind :layout :start (.-startTime entry) :value (.-value entry)
-                                   :user-input? (.-hadRecentInput entry)
-                                   :sources (mapv (fn [source]
-                                                    {:component (some-> (let [node (.-node source)]
-                                                                         (if (= 1 (some-> node .-nodeType)) node
-                                                                             (some-> node .-parentElement)))
-                                                                       (.closest "[data-dev-component]")
-                                                                       (.getAttribute "data-dev-component"))
-                                                     :before (some-> (.-previousRect source) .toJSON (js->clj :keywordize-keys true))
-                                                     :after (some-> (.-currentRect source) .toJSON (js->clj :keywordize-keys true))})
-                                                  (array-seq (.-sources entry)))})))))]
+                           (let [record (layout-record entry)]
+                             ;; Recording the inspector's changing record list would
+                             ;; cause another shift and another record on each drain.
+                             ;; Keep mixed/unknown entries: attribution is incomplete.
+                             (when-not (= :inspector (:scope record)) (emit! record)))))))]
       (when observer (.observe observer #js {:type "layout-shift" :buffered false}))
       (let [cleanup! (fn []
                        (reset! *recording? false)
