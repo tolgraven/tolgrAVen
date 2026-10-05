@@ -86,10 +86,6 @@
    :closure-warnings {:externs-validation :off
                       :non-standard-jsdoc :off}
    :recompile-dependents false
-   :preloads [devtools.preload ;can remove devtools preload cause have in app.cljs?
-              re-frisk.preload-hidden
-              day8.re-frame-10x.preload
-              #_re-frisk.preload #_re-frisk-remote.preload]
    :external-config
    {:devtools/config
     {;:features-to-install [:formatters :hints] ;add exception hints
@@ -104,7 +100,9 @@
      :print-config-overrides false} }
    :source-map true
    :source-map-timestamp true
-   :devtools {:watch-dir   "resources/public"
+   ;; Legacy inspectors are opt-in; see doc/re-frame-pair.md.
+   :devtools {:preloads [devtools.preload]
+              :watch-dir   "resources/public"
               :repl-pprint true
               :after-load  tolgraven.core/mount-components}}
 

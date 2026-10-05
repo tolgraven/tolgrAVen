@@ -16,9 +16,13 @@
 (deftest scoped-update-settles-without-a-guessed-event-delay
   (async done
     (let [before @db/app-db
-          path [:state :upgrade-test]]
-      (-> (rf/dispatch-and-settle [:component-state/update path (fnil + 0) [3]]
-                                 {:timeout-ms 2000})
+          path [:state :upgrade-test]
+          ;; Keep instrumented macro expansion outside cljs.test/async: its
+          ;; expression lifting would await the Promise before .then.
+          settle! (fn []
+                    (rf/dispatch-and-settle [:component-state/update path (fnil + 0) [3]]
+                                            {:timeout-ms 2000}))]
+      (-> (settle!)
           (.then (fn [result]
                    (is (:ok? result) (pr-str result))
                    (is (= 3 (get-in @db/app-db path)))))

@@ -178,6 +178,7 @@
               (reset! validation/*enabled? true)
               (rf/reg-global-interceptor (rf/->interceptor :id :validation/app-db :after validation/intercept))
               (rf/dispatch [:init/app-db])
+              (await! (support/settle!))
               (await! (support/render! root [:<> [<scoped-counter>] [views/<reports>]]))
               (is (= "0" (.-textContent (.querySelector element "button"))))
               (.click (.querySelector element "button"))

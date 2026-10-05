@@ -6,8 +6,7 @@
     [ajax.core :as ajax]
     [day8.re-frame.http-fx]
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
-    [day8.re-frame.async-flow-fx :as async-flow-fx]
-    [akiroz.re-frame.storage :as localstore]
+    [tolgraven.component.legacy-storage :as localstore]
     [tolgraven.component.storage :as storage]
     [re-frame.db :as rfdb]
     [reitit.frontend.easy :as rfe]
@@ -19,6 +18,7 @@
     [tolgraven.user.events]
     [tolgraven.user.subs]
     [tolgraven.loader :as l]
+    [tolgraven.page-transition :as page-transition]
     [tolgraven.scroll]
     [tolgraven.supabase.client :as supabase-client]
     [tolgraven.service-status :as service-status]
@@ -37,10 +37,12 @@
 
 
 (rf/reg-event-fx :common/navigate   [debug
+                                     (rf/inject-cofx :page/destination)
                                      (rf/inject-cofx :scroll-position)
                                      (rf/inject-cofx :gen-id [:navigations])]
   (fn [{:as cofx :keys [db scroll-position id]} [_ match complete!]]
-    (let [navigation-count (get-in id [:id :navigations])
+    (let [match (page-transition/latest-match match complete! (:page/destination cofx))
+          navigation-count (get-in id [:id :navigations])
           old-match (:common/route db)
           new-match (assoc match :controllers
                            (when @render-context/*interactive?
@@ -540,9 +542,9 @@
 
 
 
-(localstore/reg-co-fx! :state       ;; local storage key
-                       {:fx   :ls   ;; re-frame fx ID.     Both :fx and :cofx keys are optional,
-                        :cofx :ls}) ;; re-frame cofx ID.   They will not be registered if unspecified.
+(rf/reg-fx :ls localstore/write!)
+(rf/reg-cofx :ls
+  (fn [coeffects] (assoc coeffects :ls (localstore/read!))))
 
 (rf/reg-event-fx :ls/store-path   [(rf/inject-cofx :ls)]
  (fn [{:keys [db ls]} [_ ls-path db-path]] ;map of keys to paths I guess?

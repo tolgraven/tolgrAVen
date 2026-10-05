@@ -45,8 +45,15 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `lein repl`: start the HTTP server and Shadow CLJS REPL (see `README.md`).
 - `npm run dev`: watch SCSS and PostCSS outputs for local development.
 - `npm run build`: produce compressed CSS assets for production.
-- `npm run init`: bootstrap CSS output dir and global tool installs.
+- `npm run init`: bootstrap CSS output, locked local npm tools, and the vendored SDK.
 - Live re-frame debugging: read the installed `re-frame-pair` skill, then run `bash scripts/re-frame-pair.sh discover-app` before inspecting the runtime. See `doc/re-frame-pair.md`; the wrapper selects `:app-dev` and Lein's nREPL port.
+
+## Dependency ownership
+
+- Shadow owns the CLJS/Closure compiler graph in `:provided`; explicit production build commands include that profile, while runtime packaging excludes it. Keep the managed Codox analyzer version aligned with Shadow.
+- Use locked local npm tools and run `npm run vendor:sync` after Supabase SDK updates.
+- 10x/re-frisk are opt-in through `:legacy-debug`; default development retains the custom console and re-frame-pair tracing. See `doc/re-frame-pair.md`.
+- Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
 
 ## Docker dependency updates
 - The prefab builder includes `node_modules` and Maven artifacts; reuse it for normal source changes.

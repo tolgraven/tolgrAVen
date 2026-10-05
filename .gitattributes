@@ -1,0 +1,2 @@
+# Preserve the upstream SDK bytes; vendor:sync reproduces this generated asset.
+resources/public/vendor/supabase.js linguist-generated -whitespace

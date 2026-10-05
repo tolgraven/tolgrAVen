@@ -24,10 +24,10 @@ docker-prefab:
 
 .PHONY: ssr return-worker
 return-worker:
-	lein with-profile prod run -m shadow.cljs.devtools.cli release return-worker
+	lein with-profile prod,provided run -m shadow.cljs.devtools.cli release return-worker
 
 ssr:
-	lein with-profile prod run -m shadow.cljs.devtools.cli release ssr
+	lein with-profile prod,provided run -m shadow.cljs.devtools.cli release ssr
 
 docker-registry:
 	python3 scripts/docker.py registry

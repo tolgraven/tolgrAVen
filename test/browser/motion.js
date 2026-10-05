@@ -29,12 +29,24 @@ const entrance = async path => {
   let completeAt = null;
   while (performance.now() < end) {
     await new Promise(resolve => requestAnimationFrame(resolve));
-    const main = doc()?.querySelector('#app main');
-    if (main && frame.contentWindow.location.pathname === '/') {
-      const style = frame.contentWindow.getComputedStyle(main);
-      samples.push({animation: style.animationName, opacity: Number(style.opacity),
-                    scale: style.transform, restored: doc().querySelector('#app').hasAttribute('data-restore')});
-      if (doc().querySelector('.dev-console__toggle')) completeAt ||= performance.now();
+    const mains = doc()?.querySelectorAll('#ssr-shell main, #app main');
+    if (mains?.length && frame.contentWindow.location.pathname === '/') {
+      // A cache miss animates its flushed shell; a cache hit animates #app.
+      // Sampling only #app incorrectly misses the entire streaming entrance.
+      for (const main of mains) {
+        const style = frame.contentWindow.getComputedStyle(main);
+        samples.push({animation: style.animationName, opacity: Number(style.opacity),
+                      scale: style.transform, restored: !!doc().querySelector('#app')?.hasAttribute('data-restore')});
+      }
+      // Production has no dev console. Establish interactivity through an
+      // ordinary control, as the live workflow checks do after hydration.
+      if (!completeAt) {
+        const search = doc().querySelector('button.search-ui-btn');
+        if (doc().querySelector('.search-ui-open')) {
+          search?.click();
+          completeAt = performance.now();
+        } else search?.click();
+      }
       if (completeAt && performance.now() - completeAt > 600) return samples;
     }
   }
@@ -51,10 +63,11 @@ document.querySelector('#run').onclick = async () => {
     // from the old document can race the return cookie sent with that request.
     frame.src = 'about:blank';
     await wait(() => doc()?.URL === 'about:blank');
-    const restored = await entrance(path);
-    check(restored.some(value => value.restored), 'Normal repeat document load restores persisted content');
-    check(restored.some(value => value.animation === 'fade-in-site' && value.opacity > 0 && value.opacity < .99),
-          'Normal persisted reload retains the page entrance (not mistaken for browser Back)');
+    const repeated = await entrance(path);
+    // A normal repeat request uses network SSR when the return worker is active.
+    // Saved HTML is armed by an external-link departure, covered by scroll.js.
+    check(repeated.some(value => value.animation === 'fade-in-site' && value.opacity > 0 && value.opacity < .99),
+          'Normal repeat document load retains the page entrance (not mistaken for browser Back)');
     frame.src = '/blog/post/New-features-27';
     await wait(() => doc()?.querySelector('.blog-comment-collapsed-placeholder'));
     await wait(() => {

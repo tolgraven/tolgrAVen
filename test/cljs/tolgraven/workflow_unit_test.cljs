@@ -198,11 +198,15 @@
                                     (swap! *calls conj [:init args])))}
           loadable (reify lazy/ILoadable (ready? [_] true)
                     IDeref (-deref [_] spec))
-          pending (with-redefs [loader/modules {id loadable}]
+          ;; A regular function keeps with-redefs from becoming an awaited
+          ;; expression in cljs.test/async, so pending retains the Promise.
+          load! (fn []
+                  (with-redefs [loader/modules {id loadable}]
                     (loader/load! {:module id :args [:first {:second true}]
                                    :pre-fn (fn [& args] (swap! *calls conj [:pre args]))
                                    :post-fn (fn [loaded & args]
-                                              (swap! *calls conj [:post loaded args]) loaded)}))]
+                                              (swap! *calls conj [:post loaded args]) loaded)})))
+          pending (load!)]
       (-> pending
           (.then (fn [loaded]
                    (is (= spec loaded))
@@ -727,6 +731,30 @@
         "Keep the first commit's completion if code arrives before React commits")
     (is (= [[:document/set-title! (get-in effects [:db :common/route])]] (:dispatch-n effects))
         "Code arrival neither repositions the page nor starts another transition")))
+
+(deftest queued-native-shell-cannot-overwrite-an-already-committed-module
+  (let [shell {:path "/cv" :data {:view (fn [] [:div "Loading CV"])}}
+        page (assoc-in shell [:data :view] (fn [] [:div "CV"]))
+        coeffects {:db {:common/route shell} :scroll-position 200
+                   :id {:id {:navigations 2}}}
+        replacement (event-effects :common/navigate coeffects
+                                   [:common/navigate page {:replace-shell? true}])
+        completion {:transition-id 7 :resolve! identity}
+        pending {:generation 7 :match (:page/replace-destination replacement)}
+        ;; Both events were queued before the replacement effect ran. The
+        ;; native callback captured shell; the handler must now resolve page.
+        stale (event-effects :common/navigate
+                             (assoc coeffects :db (:db replacement) :page/destination pending)
+                             [:common/navigate shell completion])]
+    (is (= page (dissoc (get-in (:db replacement) [:common/route]) :controllers)))
+    (is (not (contains? stale :db)) "The stale shell must not replace the real page")
+    (is (= [:page/ready nil completion] (:dispatch stale))
+        "The original transition still receives completion")
+    (is (= shell (page-transition/latest-match shell {:transition-id 6} pending))
+        "An old transition cannot borrow a newer generation")
+    (is (= shell (page-transition/latest-match shell completion
+                                               (assoc-in pending [:match :path] "/blog")))
+        "An unrelated address is never substituted")))
 
 (deftest code-ready-navigation-does-not-await-managed-data
   (async done

@@ -2,7 +2,7 @@
   "Restore public query results and display state before mounting any blog view.
    All persistence uses the shared envelope; no component performs disk IO."
   (:require [cljs.reader :as reader]
-            [akiroz.re-frame.storage :as legacy]
+            [tolgraven.component.legacy-storage :as legacy]
             [re-frame.db :as rfdb]
             [tolgraven.react :as rf]
             [tolgraven.component.storage :as storage]
@@ -40,7 +40,7 @@
 (defn restore!
   "Called after the single storage read and SSR installation, before mounting."
   []
-  (let [old-state (legacy/<-store :state)
+  (let [old-state (legacy/read!)
         paths (into state-paths
                     (keep (fn [id]
                             (when (and (vector? id) (= :state (first id))
@@ -53,7 +53,7 @@
                             (cond saved [path (:value saved)]
                                   (some? old-value) [path old-value]))) paths)]
     (rf/dispatch-sync [:blog/restore-cache (vec snapshots)])
-    (when (contains? old-state :blog) (legacy/->store :state (dissoc old-state :blog)))
+    (when (contains? old-state :blog) (legacy/write! (dissoc old-state :blog)))
     (doseq [path paths] (track-path! path))))
 
 (add-watch rfdb/app-db ::cache

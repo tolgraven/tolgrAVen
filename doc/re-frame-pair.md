@@ -3,8 +3,9 @@
 The [day8/re-frame-pair skill](https://github.com/day8/re-frame-pair) is installed
 locally in `~/.codex/skills/re-frame-pair`. New Codex sessions discover it there.
 It requires Babashka (`bb`), Shadow's nREPL, and an attached browser runtime.
-The project's `:app-dev` build already enables re-frame tracing and loads 10x;
-no production dependency or preload is needed.
+The project's `:app-dev` build enables re-frame tracing. The normal development
+build uses the application's dev console and does not load 10x or re-frisk;
+re-frame-pair does not require either inspector.
 
 Start the app with `lein repl` and the normal `:app-dev` watch, then open
 `http://localhost:4000`. From the repository root:
@@ -31,11 +32,25 @@ can overwrite watch output without the browser REPL connection; run
 `(shadow.cljs.devtools.api/watch-compile! :app-dev)` from the dev nREPL before
 reloading. Use the watch process for ordinary development compilation.
 
+### Optional legacy inspectors
+
+To use 10x and re-frisk, start a development JVM with the `:legacy-debug`
+dependency profile and explicitly select the legacy preload:
+
+```sh
+lein with-profile +legacy-debug run -m shadow.cljs.devtools.cli watch app-dev --config-merge '{:devtools {:preloads [devtools.preload tolgraven.legacy-debug]}}'
+```
+
+Stop the existing `:app-dev` watch before starting this command; both write the
+same development assets. This command watches the browser build; the HTTP
+server and SSR/return workers still need their usual development startup.
+The preload installs both inspectors with their panels initially hidden.
+Return to the normal development watch without the merge to omit them again.
+
 ### Shadow dependency warnings
 
-`lein deps :tree` currently selects Fipp 0.6.29's `core.rrb-vector` 0.1.2
-before Reitit's 0.2.0. Both it and upstream 0.2.1 omit `Vector`/`->Vector`
-from `rrbt.cljs`'s core exclusions. With our ClojureScript compiler, this
+`project.clj` aligns `core.rrb-vector` at 0.2.1, which still omits
+`Vector`/`->Vector` from `rrbt.cljs`'s core exclusions. With our compiler, this
 produces both `:redef` and `:fn-arity` warnings, and the generated positional
 constructor incorrectly calls `cljs.core.Vector`.
 

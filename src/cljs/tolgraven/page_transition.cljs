@@ -9,6 +9,20 @@
 (defonce *generation (atom 0))
 (defonce *destination (atom nil))
 
+(rf/reg-cofx :page/destination
+  (fn [coeffects] (assoc coeffects :page/destination @*destination)))
+
+(defn latest-match
+  "Resolve at event handling time: a native callback may have queued a shell
+   before the module's replacement event updated the pending destination."
+  [match completion destination]
+  (if (and (some? (:transition-id completion))
+           (= (:transition-id completion) (:generation destination))
+           (= (select-keys match [:path :path-params :query-params])
+              (select-keys (:match destination) [:path :path-params :query-params])))
+    (:match destination)
+    match))
+
 (defn replace-destination!
   "Keep a pending native callback current when its module finishes first."
   [match]

@@ -73,6 +73,12 @@ with working Supabase and Strapi configuration. Then:
 python3 scripts/serve-integration-tests.py --app http://127.0.0.1:4000
 ```
 
+For a locally published production container, add `--forwarded-proto https` to
+model its usual TLS-terminating proxy. Otherwise Ring's secure defaults redirect
+the plain HTTP test connection to HTTPS. Add `--verbose` to log request paths and
+statuses without query parameters. The container should use a separate local port
+and the same configured public providers; do not replace their responses.
+
 Open `http://127.0.0.1:4003/__tests/` and press **Run checks**. The driver loads the
 real site in an iframe, waits for ordinary controls to respond after hydration,
 then clicks actual permalink, tag, landing and blog links and uses browser Back.
