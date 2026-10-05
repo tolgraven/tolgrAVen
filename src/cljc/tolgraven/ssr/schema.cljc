@@ -22,3 +22,5 @@
 (def settings
   (c/optional-map {:enabled :boolean :streaming :boolean :render-workers [:int {:min 1 :max 4}]
                    :worker c/text :node-binary c/text :shell-refresh-seconds c/positive}))
+
+(def state (c/optional-map {:hydrating? :boolean, :dates [:map-of number? :string]}))

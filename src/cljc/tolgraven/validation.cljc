@@ -2,6 +2,7 @@
   "Shared, value-redacting Malli validation. Runtime policy belongs to adapters."
   (:require [malli.core :as m]
             [malli.error :as me]
+            [malli.transform :as mt]
             [clojure.string :as string]))
 
 (defonce ^:private *compiled (atom {}))
@@ -9,12 +10,25 @@
 (defn compiled [schema]
   (or (get @*compiled schema)
       (let [schema* (m/schema schema)
-            compiled {:valid? (m/validator schema*) :explain (m/explainer schema*)}]
+            compiled {:valid? (m/validator schema*)
+                      :explain (m/explainer schema*)
+                      :string-decoder (delay (m/decoder schema* mt/string-transformer))
+                      :json-decoder (delay (m/decoder schema* mt/json-transformer))}]
         ;; Declaration schemas are stable, but composed instance schemas can
         ;; change throughout a long session. Drop the previous cache generation
         ;; at the bound instead of retaining every historical schema forever.
         (swap! *compiled #(assoc (if (< (count %) compiled-cache-limit) % {}) schema compiled))
         compiled)))
+
+(defn decode
+  "Explicit normalization is identical with checks on or off. Never guess a
+   transformer from a value; ordinary event/subscription arguments retain types."
+  [schema value coercion]
+  (case coercion
+    nil value
+    :string ((force (:string-decoder (compiled schema))) value)
+    :json ((force (:json-decoder (compiled schema))) value)
+    (throw (ex-info "Unknown schema coercion" {:coercion coercion}))))
 
 (defn problems [explanation]
   ;; Never retain input values: state and request bodies can contain credentials.

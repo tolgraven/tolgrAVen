@@ -24,3 +24,9 @@
                    :sources [:sequential source]}))
 (def state (c/optional-map {:active [:maybe [:map-of :string instance]]
                             :records [:vector {:max 2000} record]}))
+
+(def options (c/optional-map {:recording? :boolean
+                              :hydration-highlight? :boolean
+                              :limit c/positive}))
+
+(def debug-state (c/optional-map {:layers :boolean, :divs :boolean, :hydration-token :uuid}))

@@ -1,7 +1,8 @@
 (ns tolgraven.validation.runtime
-  "Development checks at declaration/event boundaries, never in subscriptions."
+  "Runtime policy, declaration checks and transactional app-db validation."
   (:require [tolgraven.react :as rf]
             [tolgraven.validation :as validation]
+            [tolgraven.validation.bindings :as bindings]
             [tolgraven.schema.app-db :as app-db]
             [tolgraven.schema.declarations :as declarations]))
 
@@ -51,7 +52,7 @@
                          (update-in history [(dec (count history)) :count] inc)
                          (->> (conj history (assoc report :count 1)) (take-last 20) vec)))}
         (not duplicate?)
-        (assoc :dispatch [:diag/new :error (str "Schema validation: " (:contract report))
+        (assoc :dispatch [:diag/new (or (:severity report) :error) (str "Schema validation: " (:contract report))
                           (validation/message (:issues report))
                           {:custom-id [:validation (:contract report) (:event report)] :sticky? true}])))))
 (rf/reg-event-db :validation/dismiss
@@ -79,6 +80,7 @@
 
 (defn install! []
   (reset! *enabled? (configured?))
+  (reset! bindings/*enabled? @*enabled?)
   (swap! *sections merge app-db/sections)
   ;; Hot reload replaces by ID. Disabled builds do no per-event validation work.
   (if @*enabled?

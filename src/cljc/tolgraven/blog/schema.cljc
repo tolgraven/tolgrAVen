@@ -35,3 +35,48 @@
    (c/optional-map {:id [:maybe c/id] :user [:maybe [:or c/id store/profile]]
                     :ts [:maybe number?] :score [:maybe number?]})))
 (def tag-spec [:map [:tag :string]])
+
+(def post-fields [:maybe (c/optional-map {:title :string
+                                          :text :string
+                                          :tags [:or :string c/strings]})])
+(def comment-fields [:map-of c/path [:maybe (c/optional-map {:title [:maybe :string]
+                                                             :text [:maybe :string]})]])
+
+(def post-records [:maybe [:map-of c/id displayed-post]])
+(def comment-records [:maybe [:map-of c/id displayed-comment]])
+(def post-list [:maybe [:sequential displayed-post]])
+(def navigation-action [:or [:enum :prev :next] c/positive])
+(def no-args [:tuple])
+(def id-args [:tuple c/id])
+(def selected-id-args [:tuple [:maybe c/id]])
+(def path-args [:tuple c/path])
+(def thread-args [:cat c/id [:? [:maybe c/id]]])
+(def page-args [:tuple c/nonnegative c/positive])
+(def root-page
+  [:map
+   [:records comment-records]
+   [:loading? :boolean]
+   [:more? :boolean]])
+
+(def event-args
+  {:blog/init no-args
+   :blog/init-posting no-args
+   :blog/edit-post [:tuple displayed-post]
+   :blog/cancel-edit no-args
+   :blog/state [:tuple c/path :any]
+   :blog/set-posts-per-page [:tuple c/positive]
+   :blog/nav-action [:tuple navigation-action]
+   :blog/nav-page [:tuple c/positive]
+   :blog/submit [:tuple post-fields [:maybe displayed-post]]
+   :blog/post-saved [:tuple post-fields :map]
+   :blog/edit-comment [:tuple c/path displayed-comment]
+   :blog/cancel-comment path-args
+   :blog/comment-submit [:tuple c/path [:map [:text :string]] [:maybe displayed-comment]]
+   :blog/comment-saved [:tuple c/path :map :map]
+   :blog/write-failed [:tuple [:or :keyword c/path] :map]
+   :blog/comment-vote [:tuple [:maybe [:or c/id store/profile]] store/profile c/path [:enum :up :down]]
+   :blog/vote-saved [:tuple :string [:map [:vote [:enum -1 0 1]]]]
+   :blog/cache-state-changed no-args
+   :blog/expand-comment-thread [:tuple c/path :boolean]
+   :blog/adding-comment [:tuple c/path [:maybe :boolean]]
+   :blog/load-more-comments id-args})

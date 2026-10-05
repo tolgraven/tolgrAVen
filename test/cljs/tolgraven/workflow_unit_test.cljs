@@ -365,20 +365,29 @@
              (.finally done))))
 (deftest blog-navigation-rejects-invalid-pages-and-page-sizes
   (async done
-         (-> (go-promise (let [before (rf/make-restore-fn)]
-                           (try (doseq [number [nil "" "invalid" "2oops" "0" "-1" -2 js/NaN 1.5]]
-                                  (rf/dispatch-sync [:blog/nav-page number])
-                                  (is (= 0 (await! (state-at! [:state :blog :page])))))
-                                (rf/dispatch-sync [:blog/nav-page "3"])
-                                (is (= 2 (await! (state-at! [:state :blog :page]))))
-                                (rf/dispatch-sync [:blog/set-posts-per-page 0])
-                                (is (= 1 (await! (state-at! [:options :blog :posts-per-page]))))
-                                (is (nil? (blog-model/page-ids [3 2 1] -1 2)))
-                                (is (nil? (blog-model/page-ids [3 2 1] 0 0)))
-                                (is (= [] (blog-model/page-ids [3 2 1] 9 2)))
-                                (finally (before)))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+    (-> (go-promise
+          (let [restore! (rf/make-restore-fn)]
+            (try
+              (rf/dispatch [:blog/nav-page "3"])
+              (rf/dispatch [:blog/set-posts-per-page "5"])
+              (await! (support/settle!))
+              (is (= 2 (await! (state-at! [:state :blog :page]))))
+              (is (= 5 (await! (state-at! [:options :blog :posts-per-page]))))
+              (doseq [number [nil "" "invalid" "2oops" "0" "-1" -2 js/NaN 1.5]]
+                (rf/dispatch [:blog/nav-page number])
+                (await! (support/settle!))
+                (is (= 2 (await! (state-at! [:state :blog :page])))
+                    "An invalid event retains the last valid page"))
+              (rf/dispatch [:blog/set-posts-per-page 0])
+              (await! (support/settle!))
+              (is (= 5 (await! (state-at! [:options :blog :posts-per-page]))))
+              (is (seq (await! (support/subscription-value! [:validation/errors]))))
+              (is (nil? (blog-model/page-ids [3 2 1] -1 2)))
+              (is (nil? (blog-model/page-ids [3 2 1] 0 0)))
+              (is (= [] (blog-model/page-ids [3 2 1] 9 2)))
+              (finally (restore!)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
 (deftest blog-tags-handle-missing-values-whitespace-and-sequences
   (is (= [] (blog-model/tags nil)))
   (is (= ["clojure" "web"] (blog-model/tags "  clojure\tweb  clojure ")))

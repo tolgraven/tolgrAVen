@@ -49,3 +49,5 @@
                    (map (fn [[key schema]] [key {:optional true} schema])) sections))
 (def bundle [:map [:version [:= 1]] [:content content]
              [:deferred? {:optional true} :boolean]])
+
+(def state (c/optional-map {:status [:enum :idle :loading :ready :error]}))

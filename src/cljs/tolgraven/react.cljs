@@ -6,6 +6,7 @@
     [react :as react]
     [reagent.core :as r]
     [reagent.ratom]
+    [tolgraven.validation.bindings :as contracts]
     [re-frame.core :as rf]
     [re-frame.alpha :as alpha]))
 
@@ -48,9 +49,9 @@
 ;; Calls use the macros above and retain source metadata in debug builds.
 (defn dispatch [& args] (apply rf/dispatch args))
 (defn dispatch-sync [& args] (apply rf/dispatch-sync args))
-(defn subscribe [& args] (apply rf/subscribe args))
+(defn subscribe [query & args] (apply rf/subscribe (contracts/query query) args))
 ;; Safe reads outside render contexts use re-frame's managed alpha lifecycle.
-(def sub alpha/sub)
+(defn sub [query] (alpha/sub (contracts/query query)))
 (defn reg-event-db [& args] (apply rf/reg-event-db args))
 (defn reg-event-fx [& args] (apply rf/reg-event-fx args))
 (defn reg-sub [& args] (apply rf/reg-sub args))

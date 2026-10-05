@@ -44,7 +44,7 @@
     :width "100%"
     :height "100%"}])
 
-(m/defc <soundcloud-loading> "A dummy to show before initing react-player"
+(m/defc <soundcloud-loading> "Placeholder shown while the SoundCloud embed loads"
   [artist song]
   [:div.soundcloud-player-loading
    [img/<picture>

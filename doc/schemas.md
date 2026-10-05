@@ -179,6 +179,53 @@ a child, explicitly compose the schema and mark that value `^:replace` so Reitit
 metadata merge does not concatenate schema vectors. `extend-page` describes route
 data; `defpage` component options use `extend-component`, like other `defc` views.
 
+## Re-frame event and subscription contracts
+
+The `tolgraven.react` registration macros accept an optional contract map immediately
+after the event/subscription ID. Existing registrations retain their ordinary
+re-frame signatures, including input subscriptions and event interceptors.
+Keep reusable schemas in the owning module's `schema.cljc`.
+
+```clojure
+;; catalog/schema.cljc
+(def item-id-args [:tuple [:int {:min 1}]])
+(def item [:map [:id :int] [:title :string]])
+
+;; catalog/events.cljs
+(rf/reg-event-db :catalog/select
+  {:args schema/item-id-args, :coerce :string}
+  (fn [db [_ id]] (assoc-in db [:state :catalog :selected] id)))
+
+;; catalog/subs.cljs
+(rf/reg-sub :catalog/item
+  {:args schema/item-id-args
+   :coerce :string
+   :result [:maybe schema/item]}
+  (fn [db [_ id]] (get-in db [:catalog :items id])))
+```
+
+`:args` describes the vector **after the ID**. Use `[:tuple]` for no arguments,
+`:tuple` for fixed arity, or `:cat` with `:?`/`:*` for optional/variadic inputs.
+`:result` describes the value yielded when a mounted consumer dereferences a
+subscription; `nil` during an outstanding read must be declared when appropriate.
+These options also work with `reg-event-fx` and `reg-sub-raw`.
+
+Validation follows the existing deployment flag. Coercion is explicit (`:string`
+or `:json`) and remains active with validation disabled, so an event's intended
+normalization does not change between development and production. Subscription
+queries normalize before re-frame's cache lookup: equivalent normalized queries
+share the usual subscription and managed source lifecycle. Optional
+`:result-coerce` applies a transformer to the subscription result.
+
+Invalid event arguments stop the transaction before user interceptors, handlers
+or effects run. A redacted report enters the existing diagnostics/HUD flow.
+Invalid subscription arguments or results throw to the component's nearest error
+boundary by default. `:on-error :warn` delivers a bounded, deduplicated warning
+and allows the value through for an intentional migration; invalid events remain
+blocked regardless of notification severity. Reports contain schema paths and
+messages, never the rejected payload. Domain subscription functions retain their
+normal pure computations; the shared adapter owns checking and report delivery.
+
 ## App-db by section
 
 `tolgraven.schema.app-db/sections` contains the initial shared sections; blog owns
@@ -191,7 +238,8 @@ domain contracts from module sections or component `:state {:schema ...}`.
 | --- | --- |
 | `content/schema.cljc` | All CMS sections; headings, media, menus, CV timelines, footer items and versioned bundles |
 | `supabase/schema.cljc` | Queries, projected SQL rows, normalized profiles/posts/comments/chat, caches and closed write requests |
-| `schema/state.cljc` | UI state, forms, history, link previews, options and diagnostics |
+| Module-local `*/schema.cljc` | The owner's component inputs, forms, state, options and event/subscription contracts |
+| `schema/state.cljc` | Assembly of those module-owned state/form/option schemas plus shared navigation and diagnostics |
 | `schema/integrations.cljc` | Consumed GitHub, Strava, Instagram and search response fields |
 | `blog/schema.cljc` | Blog state and parent-supplied post/comment component specs |
 | `ssr/schema.cljc` | Public render snapshots, return snapshots, storage envelopes and renderer settings |

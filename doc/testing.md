@@ -31,10 +31,10 @@ Browser suite:
 4. `python3 scripts/serve-browser-tests.py`, then open `http://127.0.0.1:4002/`.
    Inspect final assertion counts and failures, not just compilation.
 
-The old Doo entry point only selects `core-test`; it is a legacy narrow runner,
-**not the full browser suite**. `:app-test` discovers all `tolgraven.*-test`
-namespaces. `workflow_unit_test.cljs` replaces the misleadingly named
-`integration_test.cljs`.
+`:app-test` discovers all `tolgraven.*-test` namespaces through the Shadow
+browser runner; the obsolete Doo entry point has been removed.
+`workflow_unit_test.cljs` replaces the misleadingly named `integration_test.cljs`.
+Ring request fixtures use `ring-mock` from `:project/test`.
 
 Application subscription tests mount a Reagent consumer, dereference the real
 subscription during render, change state through registered events, and unmount

@@ -17,6 +17,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 
 ## Project Structure & Module Organization
 - `src/clj`, `src/cljs`, `src/cljc`: Clojure, ClojureScript, and shared code.
+- `experiments/clj`: preserved JVM prototypes, compiled only with `:experiments`.
 - `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/tolgraven`.
 - `test/clj`, `test/cljs`: backend and frontend tests.
 - `env/`: environment-specific source/resources (dev/test/prod).
@@ -53,6 +54,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Shadow owns the CLJS/Closure compiler graph in `:provided`; explicit production build commands include that profile, while runtime packaging excludes it. Keep the managed Codox analyzer version aligned with Shadow.
 - Use locked local npm tools and run `npm run vendor:sync` after Supabase SDK updates.
 - 10x/re-frisk are opt-in through `:legacy-debug`; default development retains the custom console and re-frame-pair tracing. See `doc/re-frame-pair.md`.
+- Keep Ring mocks in `:project/test`, prototype dependencies/source paths in `:experiments`, and the S3 wagon in `:s3-publish`.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
 
 ## Docker dependency updates
@@ -63,6 +65,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 
 ## Coding Style & Naming Conventions
 - Clojure/ClojureScript: follow standard idioms (2-space indentation, align threading macros), use kebab-case for vars/functions, and keep namespaces aligned with file paths.
+- Maps: keep all entries on one line only when the whole map fits comfortably, separating entries with commas. Otherwise put each key/value entry on its own line, aligning keys; never pack several entries onto a line of a multiline map. Apply this to new and changed code while preserving comments.
 - Re-frame: do not use ns-scoped keywords, but rather simple ns based on module name.
 - CLJS: general structure (apart from top-level) is folder containing module with events.cljs, subs.cljs, views.cljs, module.cljs with spec.
 - SCSS: keep files modular in `resources/scss`; prefer BEM-ish class names when adding new components.
@@ -126,7 +129,7 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 
 ## Testing Guidelines
 - Use `lein with-profile +project/test test` for backend tests; browser tests use Shadow `:app-test` and the runner in `scripts/serve-browser-tests.py`.
-- Generate hydration fixtures from the current Node renderer with `python3 scripts/test-blog-ssr.py` before browser tests. Doo covers only a legacy subset.
+- Generate hydration fixtures from the current Node renderer with `python3 scripts/test-blog-ssr.py` before browser tests. The obsolete Doo runner has been removed.
 - Inspect existing watched builds before compiling. Live development normally watches `:app-dev`, `:ssr`, and `:return-worker`; never overwrite watched output with another compiler.
 - See `doc/testing.md` for mounted subscription workflows, live integration boundaries and browser checks. Unit replacements do not establish live service behavior.
 

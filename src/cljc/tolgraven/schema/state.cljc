@@ -1,74 +1,105 @@
 (ns tolgraven.schema.state
-  "Application-owned state. Native events, refs and exceptions are intentionally
-   opaque; feature data is described by its owning contract."
+  "Application state assembly. Feature contracts live with their owners; native
+   events, refs and exceptions remain intentionally opaque."
   (:require [tolgraven.schema.common :as c]
-            [tolgraven.supabase.schema :as store]))
+            [tolgraven.blog.schema :as blog]
+            [tolgraven.chat.schema :as chat]
+            [tolgraven.content.schema :as content]
+            [tolgraven.cv.schema :as cv]
+            [tolgraven.dev-console.schema :as dev-console]
+            [tolgraven.docs.schema :as docs]
+            [tolgraven.github.schema :as github]
+            [tolgraven.gpt.schema :as gpt]
+            [tolgraven.hud.schema :as hud]
+            [tolgraven.link-preview.schema :as link-preview]
+            [tolgraven.search.schema :as search]
+            [tolgraven.settings.schema :as settings]
+            [tolgraven.ssr.schema :as ssr]
+            [tolgraven.strava.schema :as strava]
+            [tolgraven.supabase.schema :as supabase]
+            [tolgraven.theme.schema :as theme]
+            [tolgraven.ui.schema :as ui]
+            [tolgraven.user.schema :as user]
+            [tolgraven.views-common.schema :as views-common]
+            [tolgraven.window.schema :as window]))
 
 (def flags [:map-of c/id :boolean])
 (def form-fields
-  (c/optional-map {:chat [:maybe :string] :gpt-thread [:map-of c/id :string]
-                   :login (c/optional-map {:email :string :password :string})
-                   :change-password (c/optional-map {:current :string :new :string})
-                   :contact (c/optional-map {:name :string :email :string :title :string :message :string})
-                   :post-blog [:maybe (c/optional-map {:title :string :text :string
-                                                       :tags [:or :string c/strings]})]
-                   :write-comment [:map-of c/path [:maybe (c/optional-map {:title [:maybe :string] :text [:maybe :string]})]]}))
-(def link-candidate
-  (c/optional-map {:candidate-id c/id :container-id c/id :url :string :title :string
-                   :trust [:enum :trusted :user :untrusted]
-                   :status [:enum :preview :leaving :returning :expanding :navigating :navigate :expanded]}))
-(def link-preview
-  (c/optional-map {:containers [:maybe [:map-of c/id [:map [:candidates [:sequential link-candidate]] [:count c/nonnegative]]]]
-                   :active [:maybe link-candidate] :prefetch [:maybe [:map-of :string [:enum :queued :prefetched]]]
-                   :prefetch-queue [:sequential link-candidate]}))
-(def init-entry (c/optional-map {:inited? :boolean :args [:maybe [:sequential :any]]}))
+  (c/optional-map {:chat chat/form-field
+                   :gpt-thread gpt/form-fields
+                   :login user/login-fields
+                   :change-password user/password-fields
+                   :contact views-common/contact-fields
+                   :post-blog blog/post-fields
+                   :write-comment blog/comment-fields}))
+(def link-candidate link-preview/link-candidate)
+(def link-preview link-preview/state)
+(def init-entry (c/optional-map {:inited? :boolean, :args [:maybe [:sequential :any]]}))
 (def state
   (c/optional-map
    {:link-preview [:maybe link-preview]
-    :supabase-init [:enum :loading :ready :failed]
+    :supabase-init supabase/init-status
     :appear [:map-of :any :boolean]
-    :init (c/optional-map {:loader [:map-of c/id init-entry] :scope [:map-of c/id init-entry]})
-    :menu :boolean :is-personal :boolean :theme-force-dark :boolean
-    :user [:maybe c/id] :active-user [:maybe store/profile] :user-section [:sequential :keyword]
-    :experiments [:maybe :keyword] :fragment [:maybe :string] :soft-path [:maybe :string]
-    :tab-visible :boolean :cookies-allowed :boolean :login-show-password :boolean
-    :is-loading :map :booted [:map-of [:or c/id c/path] :boolean] :motion-seen [:map-of :any :boolean]
-    :form-field form-fields :scroll-position [:map-of [:maybe c/named] number?]
-    :scroll (c/optional-map {:at-bottom :boolean :past-top :boolean :block :boolean})
-    :settings (c/optional-map {:panel-open :boolean})
+    :init (c/optional-map {:loader [:map-of c/id init-entry], :scope [:map-of c/id init-entry]})
+    :menu :boolean
+    :is-personal :boolean
+    :theme-force-dark :boolean
+    :user user/user-id
+    :active-user user/active-user
+    :user-section user/section
+    :experiments [:maybe :keyword]
+    :fragment [:maybe :string]
+    :soft-path [:maybe :string]
+    :tab-visible :boolean
+    :cookies-allowed :boolean
+    :login-show-password :boolean
+    :is-loading :map
+    :booted [:map-of [:or c/id c/path] :boolean]
+    :motion-seen [:map-of :any :boolean]
+    :form-field form-fields
+    :scroll-position [:map-of [:maybe c/named] number?]
+    :scroll (c/optional-map {:at-bottom :boolean, :past-top :boolean, :block :boolean})
+    :settings settings/state
     :document (c/optional-map {:title [:maybe :string]})
-    :content (c/optional-map {:status [:enum :idle :loading :ready :error]})
-    :search (c/optional-map {:open? :boolean :results-open? :boolean})
-    :chat (c/optional-map {:visible :boolean})
-    :cv (c/optional-map {:visited :boolean})
-    :docs (c/optional-map {:current-page [:maybe :string] :previous-page [:maybe :string]})
-    :github (c/optional-map {:pages-fetched [:sequential :int] :commits-fetched c/strings})
-    :strava (c/optional-map {:activity-expanded [:maybe :int]})
-    :ssr (c/optional-map {:hydrating? :boolean :dates [:map-of number? :string]})
-    :window (c/optional-map {:fullscreen? :boolean}) :hidden flags
-    :browser-nav (c/optional-map {:got-nav :boolean :nav-type [:maybe [:or c/named :int]] :referrer [:maybe :string]})
-    :contact-form (c/optional-map {:show? :boolean :sent? :boolean :closing? :boolean :response :any})
-    :carousel [:map-of c/id (c/optional-map {:index :int :direction [:or :keyword :string]})]
-    :supabase-writes [:map-of :any [:or :boolean [:map-of :any :boolean]]]
-    :debug (c/optional-map {:layers :boolean :divs :boolean :hydration-token :uuid})
+    :content content/state
+    :search search/state
+    :chat chat/state
+    :cv cv/state
+    :docs docs/state
+    :github github/state
+    :strava strava/state
+    :ssr ssr/state
+    :window window/state
+    :hidden flags
+    :browser-nav (c/optional-map {:got-nav :boolean
+                                  :nav-type [:maybe [:or c/named :int]]
+                                  :referrer [:maybe :string]})
+    :contact-form views-common/contact-state
+    :carousel ui/carousel-state
+    :supabase-writes supabase/writes
+    :debug dev-console/debug-state
     :css-var [:map-of c/named [:or number? :string]]}))
 (def options
   (c/optional-map
    {:auto-save-vars :boolean
-    :transition (c/optional-map {:time c/milliseconds :style :keyword})
-    :theme (c/optional-map {:dark-mode :boolean :colorscheme :string})
-    :github (c/optional-map {:user :string :repo :string})
-    :user (c/optional-map {:auto-open? :boolean})
-    :hud (c/optional-map {:timeout c/milliseconds :level :keyword})
-    :dev-console (c/optional-map {:recording? :boolean :hydration-highlight? :boolean :limit c/positive})
-    :supabase (c/optional-map {:url [:maybe :string] :anon-key [:maybe :string]
-                              :trusted-author-ids [:maybe [:sequential c/id]]})}))
+    :transition ui/transition-options
+    :theme theme/options
+    :github github/options
+    :user user/options
+    :hud hud/options
+    :dev-console dev-console/options
+    :supabase supabase/options}))
 (def route
-  [:maybe (c/optional-map {:path :string :template :string :data :map
-                           :path-params :map :query-params [:maybe c/query-params] :parameters :map
+  [:maybe (c/optional-map {:path :string
+                           :template :string
+                           :data :map
+                           :path-params :map
+                           :query-params [:maybe c/query-params]
+                           :parameters :map
                            :controllers [:maybe [:sequential :map]]})])
 (def report [:map [:contract [:or :keyword :string]] [:issues [:sequential [:map [:path [:vector :any]] [:message :string]]]]])
 (def diagnostics
-  (c/optional-map {:messages :map :unhandled [:or [:set :any] [:sequential :any]]
+  (c/optional-map {:messages :map
+                   :unhandled [:or [:set :any] [:sequential :any]]
                    :validation [:vector {:max 20} report]}))
 (def scoped-state [:map-of [:or :string :keyword] [:map-of :any :map]])

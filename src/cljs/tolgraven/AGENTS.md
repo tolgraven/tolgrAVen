@@ -24,7 +24,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 - `validation/runtime.cljs` owns declaration checks, module section registration
   and the app-db interceptor. Invalid transactions retain previous state and do
-  not run associated effects. Keep validation out of subscription computations.
+  not run associated effects. Declare event/subscription contracts through the
+  existing shim's registration macros; `validation/bindings.cljs` owns argument
+  coercion and result checking. Keep handwritten validation and diagnostic effects
+  out of domain subscription computations.
 
 - Use inline `defc`/`defpage` `[value :- schema]` for meaningful public inputs;
   a rest annotation validates each remaining value. Keep reusable spec schemas

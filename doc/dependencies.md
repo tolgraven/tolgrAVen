@@ -29,8 +29,9 @@ ClojureScript changes.
   `npm run vendor:sync` verifies the installed version and copies it;
   `npm run init` and `npm run build` include this step. Do not update the checked-in
   browser SDK independently of the lockfile.
-- The Maven repository uses ordinary HTTPS; the unused S3 wagon and shell
-  plugins are removed. This also avoids fetching their AWS SDK/plugin graphs.
+- The Maven repository uses ordinary HTTPS for reads. `s3-wagon-private` remains
+  available through `:s3-publish` for publishing patched forks to S3 without
+  loading its AWS tooling into every build. The unused shell plugin is removed.
 - CSS tools are local development dependencies. `npm run init` installs from the
   lockfile; it does not install global tools.
 
@@ -41,9 +42,23 @@ available to re-frame-pair. 10x and re-frisk are opt-in with `:legacy-debug`;
 see [the debugging guide](re-frame-pair.md). This avoids loading two additional
 inspectors into every development page.
 
-`:experiments` retains dependencies for preserved experiments, including
-CodeMirror, React Player and optional Ring middleware. Enable that profile before
-restoring those experiments; their source has not been deleted.
+`:experiments` retains HoneySQL and optional diff/Ring middleware dependencies
+for preserved prototypes. Its `experiments/clj` source path keeps the SQL prototype
+out of normal application compilation. Enable the profile before working on it.
+CodeMirror and React Player dependencies have been removed; their preserved
+frontend examples require restoring compatible dependencies before use.
+
+`ring-mock` belongs to `:project/test`. The obsolete Doo runner, humane-test-output,
+re-pollsive and direct Fipp dependency have been removed. Fipp remains transitively
+through Malli; Puget remains in the optional legacy debugging graph.
+
+For an S3-hosted fork, enable the publishing profile with
+`lein with-profile +s3-publish deploy <repository-name>`. Configure that named
+deployment repository and its S3 endpoint in the fork's project or your private
+Lein profile; keep credentials outside source control. The application's existing
+HTTPS repository continues to resolve artifacts without the wagon. A profile in
+this project is not automatically inherited by another fork's project: copy the
+small `:s3-publish` declaration there, or keep it in your private Lein profiles.
 
 The old localStorage library has been replaced by
 `tolgraven.component.legacy-storage`. It preserves the existing Transit-encoded
@@ -61,7 +76,9 @@ Several larger libraries remain because they perform real work:
 | Optimus + image transforms | Asset bundles, URLs and runtime image transforms. Its Graal/Truffle dependencies are substantial; removing them requires replacing these active asset paths. |
 | clj-http | Server-side provider HTTP adapters; use existing bulk plans rather than adding transport clients in views. |
 | cljs-time | Existing date calculations/formatting. |
-| PostgreSQL JDBC + HoneySQL | Database tooling and preserved SQL functionality. |
+| PostgreSQL JDBC + clojure.java.jdbc | Active database provisioning tooling. HoneySQL is confined to `:experiments`. |
+| tools.logging + Timbre + SLF4J bridge | Application logging facade and Timbre sink, including Java libraries using SLF4J 2. Keep the bridge compatible with the resolved SLF4J API. |
+| io.aviso/pretty / Prone | Application exception/log formatting and development error pages respectively. |
 | Leaflet / react-leaflet | Preserved map functionality. |
 | react-markdown, remark-gfm, rehype-raw, syntax highlighter | Existing Markdown rendering and highlighting. |
 | xmlhttprequest | Node test transport adapter; a development dependency. |
@@ -81,17 +98,23 @@ npm run build
 
 Inspect actual JARs when two different artifact names may supply the same classes:
 Maven chooses one version per coordinate but cannot detect every duplicate class.
-The October 2026 cleanup removed simultaneous shaded and unshaded Closure
-compilers (2,340 duplicate class names). The only remaining duplicate class
-names in the inspected graph are four JSpecify annotations bundled with Closure
-and also supplied by the annotation artifact; Closure is build-only.
-The default development classpath decreased from 240 JARs / 107.8 MiB
-to 183 JARs / 92.9 MiB; these are artifact sizes, not JVM heap measurements.
-The packaged runtime dependency classpath contains 145 JARs / 61.3 MiB and
-excludes Shadow, the ClojureScript compiler and Closure Compiler.
-The npm lockfile decreased from 264 to 243 packages. `npm audit` still reports
-findings in retained Markdown and development-tool chains; dependency upgrades
-are not a claim of a clean security audit.
+Do not treat earlier classpath size, duplicate-class or audit counts as current
+results after changing dependencies. Record measurements from the final resolved
+graph, distinguish default development from packaged runtime, and report artifact
+sizes separately from JVM heap use. Check both npm audit scopes; successful
+upgrades do not establish a clean security audit.
+
+The final cleanup on 2026-10-06 resolves 174 JARs (90.8 MiB) for default
+development and 144 JARs (61.3 MiB) for the production runtime. These are artifact
+sizes, not memory measurements. The production graph has no duplicate class
+names. Development has four duplicated JSpecify annotation classes supplied by
+Closure Compiler and JSpecify; there is no second Closure implementation.
+
+The locked npm audit reports 15 findings across build/runtime dependencies
+(6 high, 9 moderate), including 5 moderate runtime findings in the Markdown
+conversion chain. npm reports no automatic fixes for the current versions.
+Keep this limitation visible during upgrades; replacing the Markdown or build
+pipeline requires separate behavior testing.
 
 Follow [testing.md](testing.md), including fresh SSR fixtures and live browser
 checks. For an isolated renderer build, use

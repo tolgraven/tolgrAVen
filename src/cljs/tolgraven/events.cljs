@@ -11,7 +11,6 @@
     [re-frame.db :as rfdb]
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
-    [re-pollsive.core :as poll]
     [breaking-point.core :as bp]
     [tolgraven.util :as util]
     [tolgraven.listener]
@@ -829,20 +828,6 @@
    {:db (assoc-in db [:state :global-clicked] e)
     :dispatch-later {:ms 300
                      :dispatch [:state [:global-clicked] nil]}}))
-
-(rf/reg-event-fx :poll/start
- (fn [{:keys [db]} [_ ]]
-   {:dispatch [::poll/set-rules
-  [;; rule #1
-   {:interval                 60
-    :event                    [:update-ts 60]
-    :poll-when                [:chat/visible?]}
-
-   ;; rule #2
-   {:interval                 6
-    :event                    [:events/log "POLL (every 6 seconds)"]
-    :poll-when                [:subs/poll?]
-    :dispatch-event-on-start? false} ]]}))
 
 (rf/reg-event-db :page/hydrated
   (fn [db _]

@@ -86,3 +86,11 @@
      (let [fields (get row-fields table)
            selected (if (= "*" select) (keys fields) (map keyword (string/split select #",")))]
        [:sequential (into [:map] (map (fn [field] [field (get fields field :any)])) selected)]))))
+
+(def options (c/optional-map {:url [:maybe :string]
+                              :anon-key [:maybe :string]
+                              :trusted-author-ids [:maybe [:sequential c/id]]}))
+
+(def init-status [:enum :loading :ready :failed])
+
+(def writes [:map-of :any [:or :boolean [:map-of :any :boolean]]])

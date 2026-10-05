@@ -95,3 +95,13 @@
     (is (empty? (app-db/removed-sections [path] {} {})))
     (is (= [path] (app-db/removed-sections [path] before {:component {}})))
     (is (= [path] (app-db/removed-sections [path] before (dissoc before :component))))))
+
+(deftest explicit-coercion-is-shared-and-does-not-hide-invalid-input
+  (let [schema [:tuple [:int {:min 1}] :boolean]]
+    (is (= [3 false] (validation/decode schema ["3" "false"] :string)))
+    (is (= ["3" "false"] (validation/decode schema ["3" "false"] nil)))
+    (is (seq (validation/explain schema
+                                (validation/decode schema ["invalid" "false"] :string)))))
+  (is (= [:ready] (validation/decode [:tuple :keyword] ["ready"] :json)))
+  (is (= [] (validation/decode [:tuple] [] :string)))
+  (is (thrown? clojure.lang.ExceptionInfo (validation/decode :int 1 :unknown))))
