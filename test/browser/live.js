@@ -20,9 +20,13 @@ const check = (condition, description) => {
 };
 const app = () => doc()?.querySelector('#app');
 const posts = () => [...(app()?.querySelectorAll('.blog-post') || [])];
-const ready = () => app()?.querySelector('main') &&
+const ready = () => {
+  const failure = app()?.querySelector('main .component-failed');
+  if (failure) throw new Error(failure.textContent);
+  return app()?.querySelector('main') &&
   (!doc().querySelector('#ssr-shell') || doc().querySelector('#ssr-complete')) &&
   !app().querySelector('main .component-spinner, main .loading-spinner');
+};
 const link = selector => app().querySelector(selector);
 const navigate = async (anchor, path) => {
   if (!anchor) throw new Error(`Missing navigation link: ${path}`);
@@ -92,7 +96,7 @@ button.onclick = async () => {
     check(true, 'Browser Back restores the post through the application');
     const home = link('header a[href="/"]');
     await navigate(home, '/');
-    await waitFor(() => doc().querySelector('#intro h1') && ready(), 'landing page content');
+    await waitFor(() => ready() && doc().querySelector('#intro h1'), 'landing page content');
     check(!!doc().querySelector('footer'), 'Landing page renders real content and footer');
     const blog = link('a[href="/blog"]');
     await navigate(blog, '/blog');
