@@ -6,5 +6,6 @@
 
 (defn wrap-dev [handler]
   (-> handler
-      wrap-reload
+      ;; Watch real source roots, not temporary aliases or optional prototypes.
+      (wrap-reload {:dirs ["src/backend" "src/frontend" "src/cljc" "env/dev/clj"]})
       (wrap-exceptions {:app-namespaces ['tolgraven]})))
