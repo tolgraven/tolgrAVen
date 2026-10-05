@@ -2,7 +2,7 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.page-transition]
-    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.macros :refer-macros [defc defpage]]
     [tolgraven.ssr.client :as ssr] [tolgraven.react :as rf]
     [reitit.frontend :as reitit]
     [reitit.frontend.history :as rfh]
@@ -22,7 +22,9 @@
     [tolgraven.views.auto :as auto]
     [tolgraven.views.not-found :as a404]))
 
-(defc <log-page> []
+(defpage <log-page>
+  {:depends [{:source :strapi :keys [:common]}]}
+  []
   [ui/<with-heading> [:common :banner-heading]
    [ui/<log> (rf/subscribe [:option [:log]])
     (rf/subscribe [:get :diagnostics])]

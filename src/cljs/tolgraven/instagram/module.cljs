@@ -7,7 +7,7 @@
     [tolgraven.instagram.views :as view]))
 
 (def spec
-  {:content (get content-contract/module-content :instagram [])
+  {:depends (get content-contract/module-dependencies :instagram [])
    :id :instagram
    :view {:view #'view/<instagram>}
    :init #(rf/dispatch [:instagram/init])})

@@ -4,6 +4,8 @@
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require
     [cljs.core.async]
+    [ajax.core :as ajax]
+    [tolgraven.docs.pages :as docs-pages]
     [tolgraven.test-support :as support]
     [cljs.test :refer-macros [deftest is testing async]]
     [re-frame.core :as rf]
@@ -22,6 +24,9 @@
     [reitit.frontend.easy :as rfe]
     [tolgraven.routes :as routes]
     [tolgraven.loader :as loader]
+    [tolgraven.component :as component]
+    [tolgraven.macros :as m :refer-macros [defpage]]
+    [tolgraven.render-context :as context]
     [tolgraven.views-common :as common]
     [tolgraven.page-transition :as page-transition]
     [tolgraven.views.page :as page-view]
@@ -44,12 +49,13 @@
     ;; Browser tests bundle all module specs so ready-module initialization is exercised.
     [tolgraven.blog.module]
     [tolgraven.blog.model :as blog-model]
+    [tolgraven.blog.comments :as comments]
     [tolgraven.blog.views :as blog-views]
     [tolgraven.link-preview.module]
     [tolgraven.cv.module]
     [tolgraven.docs.module]
     [tolgraven.search.module]
-    [tolgraven.user.module]
+    [tolgraven.user.module :as user-module]
     [tolgraven.chat.module]
     [tolgraven.github.module]
     [tolgraven.github.views :as github-views]
@@ -182,79 +188,31 @@
                          (.catch (fn [error] (is false (str error))))
                          (.finally done))))))
              (.catch (fn [error] (is false (str error)) (done))))))
-(deftest ready-module-waits-for-declared-data
-  (let [id (keyword (str (random-uuid)))
-        before (rf/make-restore-fn)
-        spec {:depends [{:source :app-db, :path [id]}], :view {:view (fn [] [:div "Ready"])}}
-        loadable (reify
-                   lazy/ILoadable
-                     (ready? [_] true)
-                   IDeref
-                     (-deref [_] spec))]
-    (try (with-redefs [loader/modules {id loadable}]
-           (is (nil? (loader/ready-spec id :view [])))
-           (rf/dispatch-sync [:set [id] false])
-           (is (= spec (loader/ready-spec id :view []))
-               "A present false value is loaded data, not a loading state"))
-         (finally (before)))))
-(deftest component-loader-forwards-initialization-hooks-and-args
-  (async
-    done
-    (->
-      (go-promise
-        (let [id (keyword (str (random-uuid)))
-              *calls (atom [])
-              *events (atom [])
-              *resolve-post (atom nil)
-              posted (js/Promise. (fn [resolve _] (reset! *resolve-post resolve)))
-              component (fn [& _] [:div "Loaded"])
-              module-spec {:view {:view component},
-                           :init (fn [& args] (swap! *calls conj [:init args]))}
-              loadable (reify
-                         lazy/ILoadable
-                           (ready? [_] true)
-                         IDeref
-                           (-deref [_] module-spec))
-              render (loader/make-browser-render)
-              spec {:module id,
-                    :init-evt [:test/init id],
-                    :pre-fn (fn [& args] (swap! *calls conj [:pre args])),
-                    :post-fn (fn [loaded & args]
-                               (swap! *calls conj [:post loaded args])
-                               (@*resolve-post nil)
-                               ;; A hook result must not replace the module used to render.
-                               :hook-result)}]
-          (-> (js/Promise.resolve nil)
-              (.then (fn []
-                       (with-redefs [loader/modules {id loadable}
-                                     rf/subscribe (fn ([_] (atom true)) ([_ _] (atom true)))
-                                     rf/dispatch #(swap! *events conj %)]
-                         (is (= [component :first {:second true}]
-                                (last (render spec :first {:second true})))
-                             "Ready modules render on the first pass, before promise callbacks"))
-                       (is (= [[:test/init id]] @*events))
-                       posted))
-              (.then (fn []
-                       (is (= [[:pre [:first {:second true}]] [:init [:first {:second true}]]
-                               [:post module-spec [:first {:second true}]]]
-                              @*calls))
-                       (with-redefs [rf/subscribe (fn ([_] (atom true)) ([_ _] (atom true)))]
-                         (is (= [component :first {:second true}]
-                                (last (render spec :first {:second true})))))))
-              (.catch (fn [error] (is false (str error))))
-              (.finally (fn [] (swap! loader/*loads dissoc id) (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
-(deftest deferred-component-preserves-scope-arguments
-  (let [*events (atom [])
-        before (fn [& _] [:button "Load"])
-        render (loader/make-browser-render)]
-    (with-redefs [rf/subscribe (fn ([_] (atom false)) ([_ _] (atom false)))
-                  rf/dispatch #(swap! *events conj %)]
-      (let [[_ attrs content] (render {:module :search, :<before> before} "blog-posts")]
-        (testing "The placeholder and scope request both receive the component args"
-          (is (= [before "blog-posts"] content))
-          ((:on-click attrs))
-          (is (= [[:scope/init :search '("blog-posts")]] @*events)))))))
+(deftest module-load-forwards-hooks-and-initialization-arguments
+  (async done
+    (let [id (keyword (str (random-uuid)))
+          *calls (atom [])
+          spec {:view {:view (fn [] [:div "Loaded"])}
+                :init (fn [& args]
+                        (go-promise (await! (support/settle!))
+                                    (swap! *calls conj [:init args])))}
+          loadable (reify lazy/ILoadable (ready? [_] true)
+                    IDeref (-deref [_] spec))
+          pending (with-redefs [loader/modules {id loadable}]
+                    (loader/load! {:module id :args [:first {:second true}]
+                                   :pre-fn (fn [& args] (swap! *calls conj [:pre args]))
+                                   :post-fn (fn [loaded & args]
+                                              (swap! *calls conj [:post loaded args]) loaded)}))]
+      (-> pending
+          (.then (fn [loaded]
+                   (is (= spec loaded))
+                   (is (= [[:pre [:first {:second true}]]
+                           [:init [:first {:second true}]]
+                           [:post spec [:first {:second true}]]] @*calls))))
+          (.catch #(is false (str %)))
+          (.finally #(do (swap! loader/*loads dissoc id)
+                         (swap! loader/*code-loads dissoc id) (done)))))))
+
 (deftest literal-search-completions
   (doseq [query ["C++" "[x]" "a.b" "(fn"]]
     (let [result (search/autocomplete-suggestion
@@ -955,7 +913,7 @@
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 
-(deftest fallback-crossfade-commits-pending-content-and-releases-old-page
+(deftest fallback-transition-commits-pending-content-and-releases-old-page
   (async done
     (-> (go-promise
           (let [element (.createElement js/document "div")
@@ -976,6 +934,48 @@
                   "Repeating the same route pair starts a fresh transition")
               (await! (wait-for! #(nil? (.querySelector element "#outgoing"))))
               (finally (support/unmount! root) (.remove element)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest fallback-css-fades-out-before-fading-in
+  (async done
+    (-> (go-promise
+          (let [host (.createElement js/document "div")
+                shadow (.attachShadow host #js {:mode "open"})
+                stylesheet (.createElement js/document "link")
+                element (.createElement js/document "div")
+                *root (atom nil) *frames (atom [])]
+            (.appendChild (.-body js/document) host)
+            (.appendChild shadow element)
+            (try
+              ;; Production CSS in an isolated fixture, not duplicated test rules.
+              (await! (js/Promise.
+                        (fn [resolve reject]
+                          (set! (.-rel stylesheet) "stylesheet")
+                          (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
+                          (set! (.-onload stylesheet) #(resolve nil))
+                          (set! (.-onerror stylesheet) #(reject (js/Error. "Fixture CSS unavailable")))
+                          (.appendChild shadow stylesheet))))
+              (reset! *root (await! (support/create-root! element)))
+              (await! (support/render! @*root
+                         [:div {:style {"--navigation-transition-time" "0.1s"}}
+                          [page-view/<swapper> [:p "Incoming"] [:p "Outgoing"]
+                           {:path "/new"} {:path "/old"} true 1]]))
+              (await! (wait-for!
+                        (fn []
+                          (let [incoming (.querySelector element ".swap-in")
+                                outgoing (.querySelector element ".swapped")
+                                opacity #(js/parseFloat (.-opacity (js/getComputedStyle %)))
+                                frame {:incoming (opacity incoming)
+                                       :outgoing (if outgoing (opacity outgoing) 0)}]
+                            (swap! *frames conj frame)
+                            (and (nil? outgoing) (>= (:incoming frame) 0.99))))))
+              (is (some #(and (< 0.01 (:outgoing %) 0.99) (< (:incoming %) 0.01)) @*frames))
+              (is (some #(and (< (:outgoing %) 0.01) (< 0.01 (:incoming %) 0.99)) @*frames))
+              (is (every? #(not (and (> (:outgoing %) 0.01) (> (:incoming %) 0.01))) @*frames)
+                  "Incoming and outgoing fades never overlap")
+              (finally
+                (when @*root (support/unmount! @*root)) (.remove host)))))
         (.catch #(is false (str %)))
         (.finally done))))
 
@@ -1013,3 +1013,226 @@
         (page-transition/replace-destination! {:path "/unrelated" :data {:view identity}})
         (is (= real (:match @page-transition/*destination)) "An unrelated route cannot change the pending destination"))
       (finally (set! (.-startViewTransition js/document) original)))))
+
+
+(deftest cached-markdown-is-visible-on-its-first-commit-and-remount
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                *commits (atom [])
+                <article> (r/create-class
+                           {:component-did-mount
+                            (fn [_]
+                              (let [text (.querySelector element ".md-rendered")]
+                                (swap! *commits conj
+                                       {:text (.-textContent text)
+                                        :opacity (.-opacity (.getComputedStyle js/window text))})))
+                            :reagent-render
+                            (fn [] [ui/<md->div> "Already loaded article"])})]
+            (.appendChild (.-body js/document) element)
+            (let [root (await! (support/create-root! element))]
+              (try
+                (await! (support/render! root ^{:key :feed} [<article>]))
+                (await! (support/render! root nil))
+                (await! (support/render! root ^{:key :permalink} [<article>]))
+                (is (= 2 (count @*commits)) "Exercise both initial mount and route-style remount")
+                (is (every? #(= "Already loaded article" (:text %)) @*commits))
+                (is (every? #(= "1" (:opacity %)) @*commits)
+                    "The first commit must not hide cached Markdown until another render")
+                (finally (support/unmount! root) (.remove element))))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+(deftest loaded-module-vectors-use-the-component-directly
+  (let [<target> (fn [spec] [:section (:title spec)])
+        module-spec {:view {:post <target>}}]
+    (binding [context/*server?* true context/*modules* {:vector-test module-spec}]
+      (is (= [<target> {:title "SSR"}]
+             (m/<> {:module :vector-test :view :post} {:title "SSR"})))
+      (is (= [<target> {:title "Keyword"}]
+             (m/<> :vector-test/post {:title "Keyword"})))
+      (is (= [<target> {:title "Direct"}]
+             (m/<> <target> {:title "Direct"}))))))
+
+(defpage <recoverable-page> []
+  (let [route @(shim/subscribe [:common/route])]
+    (if (= "/page-error" (:path route))
+      (throw (js/Error. "Intentional page fixture error"))
+      [:section {:data-page-recovered true} "Recovered page"])))
+
+(deftest page-boundary-recovers-on-route-change-without-remounting-the-host
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                previous (await! (state-at! [:common/route]))]
+            (.appendChild (.-body js/document) element)
+            (try
+              (shim/dispatch [:set [:common/route] {:path "/page-error"}])
+              (await! (support/render! root [<recoverable-page>]))
+              (is (some? (.querySelector element "[role=alert]")))
+              (shim/dispatch [:set [:common/route] {:path "/page-recovered"}])
+              (await! (wait-for! #(.querySelector element "[data-page-recovered]")))
+              (is (nil? (.querySelector element "[role=alert]")))
+              (finally
+                (shim/dispatch [:set [:common/route] previous])
+                (support/unmount! root) (.remove element)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(m/defc <lazy-vector-target> [{:keys [title]}]
+  [:p {:data-lazy-vector-target true} title])
+(m/defc <lazy-vector-consumer> [module]
+  [:section (m/<> (keyword (name module) "view") {:title "Vector target"})])
+
+(deftest mounted-consumers-share-code-acquisition-and-promote-direct-vectors
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                module (keyword (str "vector-test-" (random-uuid)))
+                original-modules loader/modules original-load loader/load-code!
+                *ready? (atom false) *calls (atom 0) *complete (atom nil)
+                spec {:view {:view <lazy-vector-target>}}
+                pending (js/Promise. (fn [resolve _] (reset! *complete resolve)))
+                loadable (reify lazy/ILoadable (ready? [_] @*ready?)
+                          IDeref (-deref [_] spec))]
+            (.appendChild (.-body js/document) element)
+            (try
+              (set! loader/modules (assoc original-modules module loadable))
+              (set! loader/load-code!
+                    (fn [_]
+                      (swap! *calls inc)
+                      (.then pending (fn [_]
+                                       (reset! *ready? true)
+                                       (shim/dispatch [:loader/code-ready module]) spec))))
+              (await! (support/render! root
+                                      [:div [<lazy-vector-consumer> module]
+                                       [<lazy-vector-consumer> module]]))
+              (await! (wait-for! #(pos? @*calls)))
+              (is (= 1 @*calls) "Both mounted consumers acquire one shared module source")
+              (is (nil? (.querySelector element "[data-lazy-vector-target]")))
+              (@*complete nil)
+              (await! (wait-for! #(= 2 (.-length (.querySelectorAll element "[data-lazy-vector-target]")))))
+              (is (= 2 (.-length (.querySelectorAll element "section > p[data-lazy-vector-target]"))))
+              (is (nil? (.querySelector element ".loading-container")))
+              (finally
+                (support/unmount! root) (.remove element)
+                (set! loader/modules original-modules) (set! loader/load-code! original-load)
+                (shim/dispatch [:component-data/remove [:loader :code-ready module]])))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest documentation-events-and-components-share-the-backend-resource
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                page (str "docs-test-" (random-uuid))
+                html "<h1>Backend documentation</h1>"
+                original-get ajax/GET
+                *calls (atom []) *respond (atom nil)]
+            (.appendChild (.-body js/document) element)
+            (try
+              (set! ajax/GET (fn [url & [options]]
+                              (swap! *calls conj url)
+                              (reset! *respond (:handler options))))
+              ;; Route/controller event and two mounted views use the same source.
+              (shim/dispatch [:docs/get page])
+              (await! (support/render! root [:div [docs-view/<doc-page> page]
+                                             [docs-view/<doc-page> page]]))
+              (await! (wait-for! #(some? @*respond)))
+              (is (= [(str "/api/doc?path=" page)] @*calls))
+              (@*respond html)
+              (await! (wait-for! #(= 2 (.-length (.querySelectorAll element ".codox h1")))))
+              (is (= html (await! (state-at! [:docs page]))))
+              (await! (support/render! root nil))
+              (await! (support/render! root [docs-view/<doc-page> page]))
+              (is (= 1 (count @*calls)) "Remount reuses HTML in app-db")
+              (is (= "Backend documentation" (.-textContent element)))
+              (finally
+                (support/unmount! root) (.remove element)
+                (set! ajax/GET original-get)
+                (shim/dispatch [:component-data/remove [:docs page]])
+                (data/invalidate! #{(docs-pages/document-dependency page)
+                                    (:load (docs-pages/document-dependency page))})))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest mounted-thread-reveal-acquires-both-levels-before-child-mount
+  (async done
+    (-> (go-promise
+          (let [restore! (rf/make-restore-fn)
+                path [24 "root" "child" "folded"]
+                transport (fake-scoped-transport!
+                            (atom {:blog_comments
+                                   [{:id "reply" :parent_post 24 :parent_comment "folded" :ts 1}
+                                    {:id "grandchild" :parent_post 24 :parent_comment "reply" :ts 2}]}))
+                _ (rf/dispatch-sync [:blog/expand-comment-thread path true])
+                {:keys [values unmount!]} (await! (mount-subscriptions!
+                                                   {:replies [:comments/reveal-thread path]}))]
+            (try
+              (await! (wait-for! #(some? (:replies (values)))))
+              (is (= #{"reply"} (set (keys (:replies (values))))))
+              (let [result (await! (subscription-value!
+                                    [:comments/cached-thread 24 "reply"]))]
+                (is (= "grandchild" (get-in result [:grandchild :id]))
+                    "The child query was filled without mounting a child reader"))
+              (finally (unmount!) ((:close! transport)) (restore!)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+(deftest hydration-suppression-ends-without-restarting-document-motion
+  (let [before @restore/*context]
+    (try
+      (restore/begin! {:hydrate? true})
+      (is (restore/skip-enter?))
+      (is (restore/document-enter?))
+      (restore/hydrated!)
+      (is (not (restore/skip-enter?)) "Later SPA content can animate")
+      (is (not (restore/initial-enter?)) "Later components have no SSR animation marker")
+      (is (restore/document-enter?) "The existing document keeps its animation selector")
+      (restore/begin! {:back? true})
+      (restore/hydrated!)
+      (is (restore/skip-enter?) "Back restoration still bypasses all entrances")
+      (is (not (restore/document-enter?)))
+      (finally (reset! restore/*context before)))))
+
+(deftest restored-deep-thread-is-complete-in-the-first-mounted-commit
+  (async done
+    (-> (go-promise
+          (let [restore! (rf/make-restore-fn)
+                context @restore/*context
+                element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                rows (mapv (fn [[id parent]]
+                             {:id id :parent-post 42 :parent-comment parent
+                              :title id :text "Cached comment" :ts 1
+                              :reply-count (if (= id "leaf") 0 1)})
+                           [["root" nil] ["child" "root"] ["grandchild" "child"]
+                            ["deep" "grandchild"] ["leaf" "deep"]])]
+            (try
+              (restore/begin! {:back? true})
+              (rf/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] true])
+              (doseq [parent [nil "root" "child" "grandchild" "deep"]]
+                (let [query (if parent (comments/thread-query 42 parent)
+                                (comments/root-query 42 comments/page-size))]
+                  (rf/dispatch-sync [:store/scoped (scoped/query-key query)
+                                     {:docs (mapv #(hash-map :id (:id %) :data %)
+                                                  (filter #(= parent (:parent-comment %)) rows))}])))
+              ;; This test build bundles the real user module rather than using
+              ;; Shadow's split browser module runtime. Only adapt code readiness;
+              ;; comment subscriptions, caches and rendered components remain real.
+              (with-redefs [loader/modules
+                            {:user (reify lazy/ILoadable
+                                     (ready? [_] true)
+                                     IDeref
+                                     (-deref [_] (dissoc user-module/spec :content :depends)))}]
+                (await! (support/render! root [blog-views/<comments-section> {:post {:id 42}}])))
+              (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title")))
+                  (str "All restored depths render together, through real subscriptions: " (.-textContent element)))
+              (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared)"))))
+              (is (zero? (.-length (.querySelectorAll element ".component-spinner"))))
+              (finally (support/unmount! root) (reset! restore/*context context) (restore!)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))

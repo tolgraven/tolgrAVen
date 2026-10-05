@@ -42,6 +42,44 @@
   .component-skeleton-lines:nth-child(2) > :last-child { width: 58%; }
 }
 .ssr-skeleton-article { border: 0; margin-bottom: var(--space-lg); }
+
+// Keep the ordinary component's geometry and typography. Dummy text provides
+// line wrapping; it is masked rather than removing the content's layout boxes.
+.component-render-skeleton {
+  pointer-events: none;
+  user-select: none;
+  color: transparent;
+  * { color: transparent !important; text-shadow: none !important; caret-color: transparent; }
+  .appear-wrapper { opacity: 1 !important; transform: none !important; animation: none !important; }
+  img, video, svg { visibility: hidden; }
+  :is(h1, h2, h3, h4, h5, h6, p, em, .blog-info, .blog-tag-link, .user-avatar) {
+    border-radius: .2rem;
+    background: linear-gradient(110deg, var(--bg-2-2), color-mix(in srgb, var(--fg-2) 18%, var(--bg-2-2)), var(--bg-2-2));
+    background-size: 240% 100%;
+    animation: component-shimmer 1.8s ease-in-out infinite, component-pulse 1.8s ease-in-out infinite alternate;
+  }
+  a, button { pointer-events: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .component-render-skeleton * { animation: none !important; }
+}
+
+body:has(#ssr-complete) #ssr-shell { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  body:has(#ssr-complete) #ssr-shell {
+    display: block;
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 110;
+    pointer-events: none;
+    animation: skeleton-dissolve .16s ease-out both;
+    backdrop-filter: blur(5px);
+  }
+}
+@keyframes skeleton-dissolve {
+  from { opacity: 1; backdrop-filter: blur(5px); }
+  to { opacity: 0; backdrop-filter: blur(0); visibility: hidden; }
+}
 @media (max-width: 480px) {
   .component-skeleton-article {
     &__header { gap: .75rem; }
@@ -67,9 +105,11 @@
 // New SPA roots have no marker; normal defc motion owns those transitions.
 @media (prefers-reduced-motion: no-preference) {
   // The flushed shell paints independently while the final snapshot is pending.
-  #ssr-shell main { animation: fade-in-site 500ms; }
+  #ssr-shell main { animation: fade-in-site 500ms both; }
   #app[data-hydrate] {
-    main[data-stream-enter] { animation: fade-in-site 500ms; }
+    // Streamed pages already entered with their shell. Direct/cache-hit SSR
+    // performs the page entrance on the completed root instead.
+    main[data-stream-enter] { animation: none; }
     .appear-wrapper[data-stream-enter] {
       animation: stream-appear .45s ease both;
       &.opacity { animation-duration: 1s; }
@@ -77,12 +117,29 @@
       &.zoom-x { animation-name: stream-zoom-x; }
       &.zoom-y { animation-name: stream-zoom-y; }
       &.slide-in { animation-name: stream-slide-in; animation-duration: .35s; }
+      &.slide-behind {
+        animation-name: stream-slide-behind;
+        animation-duration: var(--comment-reveal-duration, 180ms);
+        animation-delay: calc(.16s + var(--comment-reveal-delay, 0ms));
+      }
       &.fast { animation-duration: .25s; }
       &.faster { animation-duration: .15s; }
       &.slow { animation-duration: 1s; }
       &.extra-slow { animation-duration: 2.2s; }
       &.super-slow { animation-duration: 4.5s; }
     }
+    .blog-comments[data-stream-enter] {
+      animation-duration: .25s;
+      animation-delay: .12s;
+    }
+    .blog-comment-around[data-stream-enter] {
+      animation-delay: calc(.16s + var(--comment-reveal-delay, 0ms));
+    }
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  body:not(:has(#ssr-complete)) #app[data-hydrate] main[data-stream-enter] {
+    animation: fade-in-site 500ms both;
   }
 }
 @keyframes stream-appear { from { opacity: 0; } to { opacity: 1; } }
@@ -90,3 +147,22 @@
 @keyframes stream-zoom-x { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: none; } }
 @keyframes stream-zoom-y { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: none; } }
 @keyframes stream-slide-in { from { opacity: 0; transform: translateY(20%); } to { opacity: 1; transform: none; } }
+
+// A dependency-gated component keeps its skeleton and real tree in one slot.
+.component-loading-reveal {
+  display: grid;
+  position: relative;
+  > * { grid-area: 1 / 1; min-width: 0; }
+  &__skeleton { z-index: 1; pointer-events: none; }
+  &__exit {
+    position: absolute;
+    inset: 0;
+    animation: skeleton-dissolve .4s ease-out both;
+    backdrop-filter: blur(5px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .component-loading-reveal__exit { animation: none; backdrop-filter: none; }
+}
+
+@keyframes stream-slide-behind { from { opacity: .5; transform: translateY(-80%) scaleY(.4); } to { opacity: 1; transform: none; } }

@@ -237,12 +237,12 @@
       margin-left: calc(1.0 * var(--space));
       max-height: 200em;
       overflow-y: scroll;
-      transition: max-height 1.0s ease;
+      transition: max-height var(--comment-reveal-duration, 180ms) ease;
 
       &.collapsed {
         max-height: 0rem;
         margin-bottom: 0;
-        transition: max-height 0.4s ease;
+        transition: max-height 0.2s ease;
       }
 
       &.restored-height {
@@ -262,6 +262,12 @@
       }
       .blog-comment-around {
         border-top: unset;
+        &.slide-behind {
+          transition: opacity 0.1s, transform var(--comment-reveal-duration, 180ms) ease;
+        }
+      }
+      .blog-info.appear-wrapper {
+        transition: opacity 0.1s, transform var(--comment-reveal-duration, 180ms) ease;
       }
     }
     .blog-comment-actions {

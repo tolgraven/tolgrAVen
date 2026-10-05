@@ -2,6 +2,15 @@
   "Page declarations independent of the module implementation."
   #?(:cljs (:require [tolgraven.react :as rf])))
 
+(defn document-dependency
+  "Generated Codox HTML comes from our backend, independently of CMS framing.
+   The path binding reuses SSR/restored HTML; the URL adapter deduplicates reads."
+  [page]
+  (let [page (or page "index")]
+    {:source :app-db :path [:docs page]
+     :load {:source :url :url (str "/api/doc?path=" page)
+            :format :text :into [:docs page]}}))
+
 #?(:cljs (do
   (defn- activate! [page]
     (rf/dispatch [:docs/get page])
@@ -13,7 +22,8 @@
 
 (def spec
   ;; Native Reitit routes, with shared data inherited by each child page.
-  [["/docs" {:module :docs :page :page :ssr true :streaming false :data-source :docs}
+  [["/docs" {:module :docs :page :page :ssr true :streaming false :data-source :docs
+            :depends [{:source :strapi :keys [:docs]}]}
     ["" {:name :docs :selection {:doc "index"}
          #?@(:cljs [:controllers (:docs controllers)])}]
     ["/codox/:doc" {:name :docs-codox-page

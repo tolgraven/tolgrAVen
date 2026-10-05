@@ -43,11 +43,18 @@
     :queries (fn [{:keys [thread-expanded] :as values}]
                (mapv #(comments/thread-query (:parent-post %) (:id %))
                      (filter #(and (pos? (:reply-count % 0))
-                                   (get thread-expanded [(:parent-post %) (:id %)] true))
+                                   (comments/expanded? thread-expanded [(:parent-post %) (:id %)]))
                              (visible-roots values))))}
-   {:id :authors :depends [:posts :roots :children]
-    :queries (fn [{:keys [posts roots children]}]
-               (mapv query/profile-query (sort (distinct (keep :user (concat posts roots children))))))}])
+   {:id :grandchildren :depends [:children]
+    :queries (fn [{:keys [children thread-expanded]}]
+               (mapv #(comments/thread-query (:parent-post %) (:id %))
+                     (filter #(and (pos? (:reply-count % 0))
+                                   (comments/expanded? thread-expanded
+                                                       [(:parent-post %) (:parent-comment %) (:id %)]))
+                             children)))}
+   {:id :authors :depends [:posts :roots :children :grandchildren]
+    :queries (fn [{:keys [posts roots children grandchildren]}]
+               (mapv query/profile-query (sort (distinct (keep :user (concat posts roots children grandchildren))))))}])
 
 (defn- display-date [ts now]
   (when ts
@@ -64,7 +71,7 @@
 (defn snapshot
   "Project the shared plan into public display rows and exact subscription caches."
   [{:keys [values cache]} now]
-  (let [{:keys [posts roots children summaries authors page post-id]} values
+  (let [{:keys [posts roots children grandchildren summaries authors page post-id thread-expanded]} values
         authors (into {} (map (juxt :id identity)) authors)
         decorate (fn [row] (assoc row :author (into {} (remove (comp nil? val)) (select-keys (get authors (:user row)) [:id :name :avatar :bg-color]))
                                      :date (display-date (:ts row) now)))]
@@ -72,7 +79,10 @@
      :more? (and page (< (* page page-size) (count summaries)))
      :missing? (and post-id (empty? posts))
      :posts (mapv #(-> % decorate (update :tags (fn [tags] (vec (distinct (remove string/blank? (if (string? tags) (string/split tags #"\s+") tags))))))) posts)
-     :comments (mapv decorate (concat roots children))
+     :comments (mapv decorate (concat roots children grandchildren))
      :summaries summaries
-     :comment-parents (mapv #(hash-map :post-id (:parent-post %) :parent-id (:id %)) (visible-roots values))
+     :comment-parents (mapv #(hash-map :post-id (:parent-post %) :parent-id (:id %))
+                           (concat (visible-roots values)
+                                   (filter #(comments/expanded? thread-expanded
+                                                                [(:parent-post %) (:parent-comment %) (:id %)]) children)))
      :app-db-edn (pr-str {:store {:scoped cache}})}))

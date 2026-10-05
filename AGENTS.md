@@ -1,5 +1,20 @@
 # Repository Guidelines
 
+Keep this file and every scoped `AGENTS.md` up to date in the same change that
+alters the architecture, build workflow, or contracts they describe. Keep
+instructions concise; detailed schemas, examples and user guides belong in `doc/`.
+Do not retain completed investigation diaries or historical test counts as current guidance.
+
+## Current architecture
+- Reagent 2 / React 19 components use `defc`; full pages use `defpage` and always have an error boundary. Application re-frame calls go through `tolgraven.react`.
+- Module-local `pages.cljc` files contain native Reitit route trees. Module specs expose these declarations; browser and server routers compose them.
+- JVM adapters acquire public data; the eager Shadow `:ssr` Node build renders the same page components as the browser. `:ssr` in config controls streaming and worker settings.
+- Cold SSR streams a component-derived skeleton then the completed page. Cached SSR skips the skeleton. Hydration preserves the existing DOM and does not replay entrances.
+- After hydration, navigation is entirely SPA: commit the destination immediately, then acquire code/data through shared bindings. Related blog routes retain their shell.
+- Local external returns may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
+- Read `src/cljs/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/clj/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
+
+
 ## Project Structure & Module Organization
 - `src/clj`, `src/cljs`, `src/cljc`: Clojure, ClojureScript, and shared code.
 - `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/tolgraven`.
@@ -86,10 +101,10 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   - `[<user-profile>]`
 
 ## Testing Guidelines
-- Clojure tests use `clojure.test` in `test/clj`; run with `lein test`.
-- ClojureScript tests live in `test/cljs` and are wired via a `doo` test build in `project.clj`. Use your preferred `doo` runner if needed.
-- Name tests `*_test.clj` / `*_test.cljs` (see `test/clj/tolgraven/handler_test.clj`).
-- Tests are not yet a priority and regular dev process is rather by confirming compiles go through and lints are ok. Try to use LSP MCP instead if available, and connect to nREPL + eval `(shadow/select-repl :app-dev)`
+- Use `lein with-profile +project/test test` for backend tests; browser tests use Shadow `:app-test` and the runner in `scripts/serve-browser-tests.py`.
+- Generate hydration fixtures from the current Node renderer with `python3 scripts/test-blog-ssr.py` before browser tests. Doo covers only a legacy subset.
+- Inspect existing watched builds before compiling. Live development normally watches `:app-dev`, `:ssr`, and `:return-worker`; never overwrite watched output with another compiler.
+- See `doc/testing.md` for mounted subscription workflows, live integration boundaries and browser checks. Unit replacements do not establish live service behavior.
 
 ## Commit & Pull Request Guidelines
 - Commit messages follow `scope: summary` (examples in git history: `scss: fix theme var helper broken`). Can also use `scope: subscope: summary`. Keep summaries short and imperative.
@@ -101,4 +116,4 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 - Do not commit secrets; prefer env vars or injected config files.
 
 ## Deploy
-- Works using 
+- Follow `doc/docker-builds.md` for `make docker` and PR preview cleanup; `doc/site-provisioning.md` covers separate sites and production/staging services.

@@ -86,11 +86,28 @@ document.querySelector('#run').onclick = async () => {
     check(doc() === before, 'Section navigation retains the document');
     const started = performance.now();
     const navFrames = await sample(() => doc().querySelector('header a[href="/blog"]').click(), () => {
-      const main = doc().querySelector('main');
-      return {path:frame.contentWindow.location.pathname, opacity:parseFloat(frame.contentWindow.getComputedStyle(main.querySelector(".swap-in") || main).opacity),
-              nativeFade: typeof doc().startViewTransition === 'function' && frame.contentWindow.getComputedStyle(doc().documentElement,'::view-transition-old(page)').animationName === 'page-opacity-out'};
-    });
+      const main = doc().querySelector('main'), win = frame.contentWindow;
+      const progress = name => doc().getAnimations().find(animation => animation.animationName === name)?.effect.getComputedTiming().progress;
+      return {path:win.location.pathname, opacity:parseFloat(win.getComputedStyle(main.querySelector(".swap-in") || main).opacity),
+              outgoing: main.querySelector('.swapped') ? parseFloat(win.getComputedStyle(main.querySelector('.swapped')).opacity) : 0,
+              oldProgress: progress('page-opacity-out'), newProgress: progress('page-opacity-in-a'),
+              nativeFade: typeof doc().startViewTransition === 'function' && win.getComputedStyle(doc().documentElement,'::view-transition-old(page)').animationName === 'page-opacity-out'};
+    }, 1800);
     check(navFrames.some(value => value.opacity < .95 || value.nativeFade), 'Section navigation uses an opacity fade');
+    const native = navFrames.some(value => value.oldProgress != null);
+    if (native) {
+      check(navFrames.some(value => value.oldProgress > .05 && value.oldProgress < .95 && value.newProgress === 0),
+            'Incoming page remains hidden during the outgoing native fade');
+      check(navFrames.some(value => value.oldProgress === 1 && value.newProgress > .05 && value.newProgress < .95),
+            'Incoming native fade starts after the outgoing fade finishes');
+      check(navFrames.every(value => !(value.oldProgress < .99 && value.newProgress > .01)),
+            'Native outgoing and incoming fades never overlap');
+    } else {
+      check(navFrames.some(value => value.outgoing > .05 && value.outgoing < .95 && value.opacity < .01),
+            'Fallback keeps the incoming page hidden during the outgoing fade');
+      check(navFrames.some(value => value.outgoing < .01 && value.opacity > .05 && value.opacity < .95),
+            'Fallback starts its incoming fade after outgoing opacity reaches zero');
+    }
     check(navFrames.some(value => value.path === '/blog'), 'Landing → blog commits during the transition');
     check(performance.now() - started < 2500, 'Section motion is bounded independently of content loading');
     check(true, 'MOTION CHECKS PASSED');

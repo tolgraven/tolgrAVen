@@ -5,7 +5,7 @@
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [clojure.string :as string]
-    [tolgraven.loader :as l]
+    [tolgraven.loader]
     [tolgraven.ui :as ui]
     [tolgraven.image :as img]
     [tolgraven.util :as util :refer [at]])
@@ -30,6 +30,13 @@
                    :style {:width "1.2em" :height "1.2em"
                            :filter "var(--light-to-dark)"}}]]))
 
+(m/defc ^:private <completion-letter>
+  {:features [[:appear "slide-in faster"]]}
+  [height letter]
+  [:div [:span
+           {:style {:min-height height}}
+           letter]])
+
 (m/defc <completion>
   [query suggestion height]
   (when-not (string/blank? (:match suggestion))
@@ -42,9 +49,7 @@
                 :display :inline-flex}}
        [:span.first-char char1]
        (m/for [letter others] ; causes issues with spacing? nice lil zoom effect though, figure out.
-         [ui/<appear> {:appear "slide-in faster" :form [:div [:span
-           {:style {:min-height height}}
-           letter]]}])])))
+         [<completion-letter> height letter])])))
 
 (m/defc <box> "Search input field"
  [collections & {:as args :keys [query-by model height open? opts]
@@ -95,6 +100,13 @@
             [:b query] without-query])]))))
 
 
+(m/defc ^:private <instant-result>
+  {:features [:appear]}
+  [{:keys [inner-class component highlights document] :as spec}]
+  [:div.search-instant-result
+           {:class inner-class}
+           [component highlights document]])
+
 (m/defc <instant-result-category> "Wrapper for type of results/collection"
   [collection component inner-class appear-class]
   (if-let [hits (:hits @(rf/subscribe [:search/results-for-query collection]))]
@@ -103,9 +115,8 @@
        (m/for [hit hits
              :let [{:keys [highlights document]} hit
                    {:keys [id text]} document]]
-         [ui/<appear> {:appear (str appear-class " fast") :form [:div.search-instant-result
-           {:class inner-class}
-           [component highlights document]]}]))]
+         [<instant-result> {:appear (str appear-class " fast") :inner-class inner-class
+                            :component component :highlights highlights :document document}]))]
 
     [ui/<loading-spinner> true]))
 
@@ -118,8 +129,8 @@
      [:div.blog-post-header-main
       [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
        [:h2.blog-post-title title]]
-      [l/<> {:module :blog :view :posted-by} {:id id :user user :ts ts}]
-      [l/<> {:module :blog :view :tags-list} {:post document}]]
+      (m/<> :blog/posted-by {:id id :user user :ts ts})
+      (m/<> :blog/tags-list {:post document})]
      (m/for [highlight highlights]
        [link-preview/<md> (:snippet highlight)])]))
 
@@ -129,10 +140,10 @@
     [:div
      [:div.blog-comment-border]
      [:section.blog-comment
-      [l/<> {:module :user, :view :avatar} @(rf/subscribe [:user/user user])]
+      (m/<> :user/avatar @(rf/subscribe [:user/user user]))
       [:div.blog-comment-main
        [:h4.blog-comment-title title]
-       [l/<> {:module :blog :view :posted-by} {:id id :user user :ts ts}]
+       (m/<> :blog/posted-by {:id id :user user :ts ts})
        (m/for [highlight highlights]
          [:div.blog-comment-text
           [link-preview/<md> (:snippet highlight)]])]]]))
@@ -152,6 +163,7 @@
   [collection query])
 
 (m/defc <ui> "The search ui. Initially runs over blog-posts and comments, but should later also search docs and hence source-code."
+  {:features [:error-boundary]}
   [collection]
   (let [open? (rf/subscribe [:search/open?])
         results-open? (rf/subscribe [:search/results-open?])]

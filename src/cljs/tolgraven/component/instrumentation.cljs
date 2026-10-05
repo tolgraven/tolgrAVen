@@ -3,6 +3,7 @@
   (:require [clojure.string :as string]
             [reagent.core :as r]
             [tolgraven.react :as rf]
+            [tolgraven.component.markup :as markup]
             [tolgraven.render-context :as context]
             [tolgraven.dev-console.capture :as capture]))
 
@@ -55,6 +56,7 @@
    (let [argv (rf/component-argv)]
      (instrument definition form (vec (rest argv)) (:key (meta argv)))))
   ([definition form args key]
+   (let [form (if (fn? form) form (markup/normalize-form form))]
    (if (or (not ^boolean goog.DEBUG)
            (= (:ns definition) "tolgraven.dev-console.views"))
      form
@@ -70,4 +72,4 @@
                       (with-meta (into [tag (assoc (if (map? attrs) attrs {}) :data-dev-component qualified)]
                                        (if (map? attrs) children (rest form))) (meta form))) form)]
          (if context/*server?* form
-             [<probe> definition args key form]))))))
+             [<probe> definition args key form])))))))

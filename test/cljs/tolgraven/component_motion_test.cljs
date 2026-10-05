@@ -295,3 +295,34 @@
               (finally (close!) (reset! restore/*context context)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
+
+(defc <visible-owner>
+  {:features [[:on-seen (fn [id] {:event [:test/visible-owner id]})]]}
+  [id]
+  [:section {:data-visible-owner id} "Owner"])
+
+(react/reg-event-db :test/visible-owner
+  (fn [db [_ id]] (update-in db [:test :visible-owner id] (fnil inc 0))))
+
+(deftest visibility-effects-are-owned-by-the-existing-root
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture))
+                original js/IntersectionObserver
+                *callback (atom nil) *observed (atom nil) *disconnects (atom 0)
+                id (str (random-uuid))
+                observer #js {:observe #(reset! *observed %) :disconnect #(swap! *disconnects inc)}]
+            (try
+              (set! js/IntersectionObserver
+                    (fn [callback _] (reset! *callback callback) observer))
+              (await! (render! root [<visible-owner> id]))
+              (is (identical? @*observed (.querySelector element "section")))
+              (is (= 1 (.-childElementCount element)))
+              (@*callback #js [#js {:isIntersecting true :intersectionRatio 0.8}] observer)
+              (@*callback #js [#js {:isIntersecting true :intersectionRatio 0.8}] observer)
+              (is (= 1 (await! (support/state-at! [:test :visible-owner id]))))
+              (await! (render! root nil))
+              (is (>= @*disconnects 2) "Once visibility and unmount both release observation")
+              (finally (close!) (set! js/IntersectionObserver original)))))
+        (.catch #(is false (str %)))
+        (.finally done))))

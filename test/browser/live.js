@@ -25,7 +25,10 @@ const ready = () => {
   if (failure) throw new Error(failure.textContent);
   return app()?.querySelector('main') &&
   (!doc().querySelector('#ssr-shell') || doc().querySelector('#ssr-complete')) &&
-  !app().querySelector('main .component-spinner, main .loading-spinner');
+  // GitHub's scroll-to-load footer intentionally keeps a spinner next to its
+  // manual pagination button, including when the current page is fully loaded.
+  ![...app().querySelectorAll('main .component-spinner, main .loading-spinner')]
+    .some(element => !element.closest('.github-loading'));
 };
 const link = selector => app().querySelector(selector);
 const navigate = async (anchor, path) => {

@@ -61,12 +61,10 @@ html {
 
 @keyframes fade-in-site {
   0% {
-    display: none;
     opacity: 0%;
     transform: scaleX(0);
   }
   100% {
-    display: block;
     opacity: 100%;
     transform: scaleX(1);
   }
@@ -140,7 +138,7 @@ main { /* dunno purpose of why I choose .main-content... */
   
   &.animate {
     display: block;
-    animation: fade-in-site 500ms;
+    animation: fade-in-site 500ms both;
   }
 }
 .main-loading {

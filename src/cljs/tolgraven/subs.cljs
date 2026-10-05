@@ -16,7 +16,10 @@
 (rf/reg-sub-raw :store/on-snapshot
   (fn [db [_ opts]]
     (if context/*server?*
-      (ratom/make-reaction #(query/query-contract (get-in @db [:store :public]) opts))
+      (ratom/make-reaction
+        #(or (when (:scoped? opts)
+               (get-in @db [:store :scoped (pr-str (query/normalize-query opts))]))
+             (query/query-contract (get-in @db [:store :public]) opts)))
       (supabase-client/ensure-query! opts))))
 
 (rf/reg-sub-raw :store/plan

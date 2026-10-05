@@ -8,7 +8,7 @@
  {:ssr {:target :node-script
              :build-hooks [(tolgraven.build.compat/rrb-vector) (tolgraven.build.ssr/revision)]
              :devtools {:enabled false}
-             :compiler-options {:external-config {:tolgraven/ssr true}}
+             :compiler-options {:reader-features #{:ssr :node}}
              :prepend-js "globalThis.XMLHttpRequest = class { constructor() { throw new Error('SSR views must use supplied request data, not browser HTTP'); } };"
              :main tolgraven.ssr.worker/main
              :output-to "target/ssr/site.js"
@@ -18,6 +18,13 @@
                           ;; renderToString in Node without native npm modules.
                           :export-conditions ["worker" "browser" "require" "default"]}}
 
+  :return-worker {:target :browser
+                  :devtools {:enabled false}
+                  :output-dir "resources/public/js/return"
+                  :asset-path "/js/return"
+                  :modules {:return-worker {:init-fn tolgraven.ssr.return-worker/init!
+                                            :web-worker true}}}
+
   :supabase-test {:target :node-test
              :build-hooks [(tolgraven.build.compat/rrb-vector)]
                   :output-to "target/supabase-tests.js"
@@ -25,12 +32,14 @@
                   :autorun true}
 
   :app-test {:target :browser-test
+             :compiler-options {:reader-features #{:browser}}
              :build-hooks [(tolgraven.build.compat/rrb-vector)]
              :test-dir "resources/public/js/tests"
              :ns-regexp "tolgraven\\..*-test$"}
 
   :app-dev
   {:lein true
+   :compiler-options {:reader-features #{:browser}}
    :jvm-opts ["-Ddev=true"]
    ; :dev-http {4001 "resources/public"}
    :target :browser
@@ -101,6 +110,7 @@
 
   :app
   {:build-hooks [(tolgraven.build.compat/rrb-vector)]
+   :compiler-options {:reader-features #{:browser}}
    :target               :browser
    :module-loader true
    :modules {:main      {:entries [tolgraven.app]

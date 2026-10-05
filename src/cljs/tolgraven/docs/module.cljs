@@ -8,7 +8,7 @@
     [tolgraven.docs.views :as view]))
 
 (def spec
-  {:content (get content-contract/module-content :docs [])
+  {:depends (get content-contract/module-dependencies :docs [])
    :id :docs
    :pages pages/spec
    :view {:page #'view/<page>}

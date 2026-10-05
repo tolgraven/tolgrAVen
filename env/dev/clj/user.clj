@@ -20,6 +20,7 @@
    (cljs-repl :app-dev))
   ([build-id]
    (server/start!)
+   (when (not= :return-worker build-id) (shadow/watch :return-worker))
    (when (and (ssr/enabled?) (not= :ssr build-id)) (shadow/watch :ssr))
    (shadow/watch build-id)
    (shadow/nrepl-select build-id)))

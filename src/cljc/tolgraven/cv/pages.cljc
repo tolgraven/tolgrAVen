@@ -8,4 +8,5 @@
 (def spec
   ;; Native Reitit routes, with shared data inherited by each child page.
   [["/cv" {:name :cv :module :cv :page :page :ssr true
+           :depends [{:source :strapi :keys [:cv]}]
            #?@(:cljs [:controllers (:cv controllers)])}]])

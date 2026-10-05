@@ -7,7 +7,7 @@
     [tolgraven.search.views :as view]))
 
 (def spec
-  {:content (get content-contract/module-content :search [])
+  {:depends (get content-contract/module-dependencies :search [])
    :id :search
    :view {:view #'view/<ui>
           :button #'view/<button>}

@@ -96,6 +96,7 @@
             (r/flush)
             (rf/dispatch [:store/init])
             (when (:hydrate? @restore/*context) (rf/dispatch [:dev-console/hydrated]))
-            (rf/dispatch [:page/hydrated]))))
+            (rf/dispatch [:page/hydrated])
+            (restore/hydrated!))))
        #(reset! *active? false))) #js [])
   form)

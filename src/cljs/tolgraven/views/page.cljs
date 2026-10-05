@@ -1,10 +1,11 @@
 (ns tolgraven.views.page
   (:require
     [tolgraven.component.registry]
-    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.macros :as m :refer-macros [defc defpage]]
     [tolgraven.react :as rf]
     [tolgraven.component :as component]
     [tolgraven.component.restore :as restore]
+    [tolgraven.component.motion :as motion]
     [tolgraven.page-transition :as transition]
     [tolgraven.main.module :as main-module]
     [tolgraven.loader :as l]
@@ -14,7 +15,7 @@
 (def spec main-module/spec)
 
 (defc <swapper>
-  "CSS crossfade fallback. Route commits never wait for this page-owned motion."
+  "Fade-out/fade-in fallback. Route commits never wait for this page-owned motion."
   [incoming outgoing current previous animate? transition-id]
   (let [page-key (fn [route] (or (get-in route [:data :transition-key]) (:path route)))
         current-key (page-key current)
@@ -22,38 +23,45 @@
         token (pr-str [transition-id previous-key current-key])
         [running set-running!] (rf/use-state nil)
         [finished set-finished!] (rf/use-state nil)
+        *outgoing (rf/use-ref nil)
         force? (or (not animate?) (nil? outgoing) (= current-key previous-key))]
     (rf/use-effect
       (fn []
         (if force?
           js/undefined
-          (let [*frame (atom nil)
-                *timer (atom nil)]
+          (let [*frame (atom nil)]
             (reset! *frame
               (js/requestAnimationFrame
                 (fn [_]
                   (reset! *frame
                     (js/requestAnimationFrame
                       (fn [_]
-                        (set-running! token)
-                        (reset! *timer (js/setTimeout #(set-finished! token) 750))))))))
+                        (set-running! token)))))))
             (fn []
-              (when @*frame (js/cancelAnimationFrame @*frame))
-              (when @*timer (js/clearTimeout @*timer))))))
+              (when @*frame (js/cancelAnimationFrame @*frame))))))
       #js [token force?])
+    (rf/use-effect
+      (fn []
+        (if (and (not force?) (= token running) (.-current *outgoing))
+          ;; Release the outgoing page when its CSS fade ends, not on a second
+          ;; hard-coded clock. CSS keeps incoming opacity at zero until then.
+          (motion/finish-animation! (.-current *outgoing) {} #(set-finished! token))
+          js/undefined))
+      #js [token running force?])
     [:div.swapper
      (for [[key active? form] (cond-> [[current-key true incoming]]
                                 (and (not force?) (not= token finished))
                                 (conj [previous-key false outgoing]))]
        ^{:key (pr-str key)}
-       [:div {:aria-hidden (when-not active? true)
+       [:div {:ref (when-not active? *outgoing)
+              :aria-hidden (when-not active? true)
               :inert (when-not active? true)
               :class (if active?
-                       (str "swap-in opacity " (when (or force? (= token running) (= token finished)) "swapped-in"))
+                       (str "swap-in opacity " (when force? "swap-static ") (when (or force? (= token running) (= token finished)) "swapped-in"))
                        (str "swapped " (when (= token running) "opacity swapped-out")))}
         form])]))
 
-(defc <page> "Render active page inbetween header, footer and general stuff."
+(defpage <page> "Render active page inbetween header, footer and general stuff."
   []
   (let [commit @(rf/subscribe [:get :page/commit])
         _ (transition/use-ready! commit)
@@ -61,17 +69,16 @@
         debug @(rf/subscribe [:state [:debug]])
         click-evt @(rf/subscribe [:state [:global-clicked]])]
   [:<>
-   [l/<assets> {:css (some-> spec :assets :css)
-                :js  (some-> spec :assets :js)}]
+   [l/<loaded-assets> (:assets spec)]
 
-   [ui/<safe> :header [common/<header> @(rf/subscribe [:content [:header]])]]
+   [common/<header> @(rf/subscribe [:content [:header]])]
    [:a {:name "linktotop" :id "linktotop"}]
 
    [ui/<zoom-to-modal> :fullscreen]
-   [l/<> {:module :link-preview}]
-   [ui/<safe> :user [l/<> {:module :user, :defer? true}]]
-   [ui/<safe> :settings [common/<settings>]]
-   [ui/<safe> :search [l/<> {:module :search, :defer? true}]]
+   (m/<> {:module :link-preview})
+   (m/<> {:module :user, :defer? true})
+   [common/<settings>]
+   (m/<> {:module :search, :defer? true})
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
       [error-page]]
@@ -80,18 +87,16 @@
         {:id    "main"
          :data-debug-hydrated (when @(rf/subscribe [:state [:debug :hydration-token]]) true)
          :data-restored (when ext-back? true)
-         :data-stream-enter (when (restore/initial-enter?) true)
-         :class (str (when (and (not ext-back?)
+         :data-stream-enter (when (restore/document-enter?) true)
+         :class (str (when (and (not ext-back?) (not (restore/document-enter?))
                                      (= (:page @restore/*context) (restore/page-key)))
                             "animate ")
                      (when (:layers debug) "debug-layers ")
                      (when (:parallax debug) "debug-on"))}
         [<swapper>
-         [ui/<safe> :page [(component/resolve-view page)]
-          (:path @(rf/subscribe [:common/route]))]
+         [(component/resolve-view page)]
          (when-let [previous @(rf/subscribe [:common/page :last])]
-           [ui/<safe> :page [(component/resolve-view previous)]
-            (:path @(rf/subscribe [:common/route :last]))])
+           [(component/resolve-view previous)])
          @(rf/subscribe [:common/route]) @(rf/subscribe [:common/route :last])
          (and (not ext-back?) (get-in commit [:completion :fallback?]))
          (get-in commit [:completion :transition-id])]]
@@ -101,7 +106,7 @@
 
    [common/<footer-full> @(rf/subscribe [:content [:footer]])]
    [common/<footer> @(rf/subscribe [:content [:footer]])]
-   [ui/<safe> :hud [ui/<hud> (rf/subscribe [:hud])]]
+   [ui/<hud> (rf/subscribe [:hud])]
    [common/<to-top>]
    ; [[:div.ripple-on-click
    ;    {:class (when click-evt "ripple")

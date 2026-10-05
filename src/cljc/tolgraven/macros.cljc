@@ -1,7 +1,6 @@
 (ns tolgraven.macros
   #?(:clj (:refer-clojure :exclude [for tap>]))
-  (:require #?(:clj [cljs.env :as cljs-env])
-            [clojure.string :as string]
+  (:require [clojure.string :as string]
             [malli.core :as m]
             [malli.error :as me]
             #?@(:cljs [[reagent.core :as r]
@@ -38,15 +37,6 @@
      (clojure.core/tap> val#)
      val#))
 
-(defmacro browser-only
-  "Emit module references only with a Shadow browser module graph.
-   SSR and standalone documentation analysis cannot resolve lazy loadables."
-  [form]
-  (let [compiler @cljs-env/*compiler*]
-    (when (and (seq (:shadow.build/ns->mod compiler))
-               (not (get-in compiler [:options :external-config :tolgraven/ssr])))
-      form)))
-
 (defmacro make-modules
   "Use keywords to generate Shadow lazy loadables.
    ks must be a literal seq of keywords at the call site."
@@ -58,6 +48,25 @@
              (let [qsym# (symbol (str base-str "." (name k) ".module/spec"))]
                [k `(shadow.lazy/loadable ~qsym#)]))
            ks))))
+
+(defmacro <>
+  "Return a component vector. Module references use the lazy loader only until
+   their code is available; direct components never acquire a loader wrapper.
+   Use (<> <component> spec), (<> :blog/post spec), or
+   (<> {:module :blog :view :post} spec)."
+  [component & args]
+  `(tolgraven.loader/component-vector ~component [~@args]))
+
+(defmacro defpage
+  "A defc page declaration with a mandatory error boundary. Other features and
+   dependencies compose as usual; the page adds no DOM wrapper."
+  [name & decls]
+  (let [prefix (take-while string? decls)
+        tail (drop (count prefix) decls)
+        options (if (map? (first tail)) (first tail) {})
+        decls' (concat prefix [(assoc options :page true)]
+                       (if (map? (first tail)) (next tail) tail))]
+    `(tolgraven.macros/defc ~name ~@decls')))
 
 
 ;; also should include tooltip popup functionality
@@ -118,6 +127,14 @@
         decls (if docstring (next decls) decls)
         attrs (when (map? (first decls)) (first decls))
         decls (if attrs (next decls) decls)
+        ;; Page semantics live here, including direct defc {:page true} users.
+        attrs (if (:page attrs)
+                (update attrs :features
+                        (fn [features]
+                          (into [:error-boundary]
+                                (remove #(= :error-boundary (if (keyword? %) % (first %))))
+                                features)))
+                attrs)
         [args & body] decls
         [bindings body] (if (= :let (first body))
                           [(second body) (nnext body)]
@@ -146,7 +163,7 @@
         (let [scoped-helpers? (some #(and (seq? %) (symbol? (first %))
                                          (#{"<sub" ">reset" ">update"} (clojure.core/name (first %))))
                                    (tree-seq coll? seq (concat bindings body)))
-              options (select-keys (merge (meta name) attrs) [:spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :state :module])
+              options (select-keys (merge (meta name) attrs) [:page :spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :loading-args :state :module])
               options (merge (loading-root (last body)) options)
               loading-helper? (and (some #{'<loading>} (tree-seq coll? seq (concat bindings body)))
                                    (not (get-in &env [:ns :defs '<loading>]))

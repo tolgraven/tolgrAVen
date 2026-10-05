@@ -22,7 +22,10 @@ docker-push:
 docker-prefab:
 	python3 scripts/docker.py prefab
 
-.PHONY: ssr
+.PHONY: ssr return-worker
+return-worker:
+	lein with-profile prod run -m shadow.cljs.devtools.cli release return-worker
+
 ssr:
 	lein with-profile prod run -m shadow.cljs.devtools.cli release ssr
 

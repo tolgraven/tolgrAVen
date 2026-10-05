@@ -1,10 +1,10 @@
 (ns tolgraven.experiments
   (:require
     [tolgraven.component.registry]
-    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.macros :as m :refer-macros [defc defpage]]
     [reagent.core :as r]
     [tolgraven.react :as rf]
-    [tolgraven.loader :as l]
+    [tolgraven.loader]
     [tolgraven.ui :as ui]
     [react-leaflet]
     [leaflet]))
@@ -27,20 +27,35 @@
                    :camera-controls true :enable-pan true}]])
 
 
+(defc ^:private <group-element>
+  {:features [[:appear "slide-in"]]}
+  [el]
+  [:div [:div.elem el]])
+
+(defc ^:private <element-group>
+  {:features [[:appear "opacity"]]}
+  [elems]
+  [:div [:div.elem-group.flex
+        (doall
+         (for [el @elems] ^{:key el}
+           [<group-element> el]))]])
+
+(defc ^:private <experiment-element>
+  {:features [[:appear "opacity"]]}
+  [el]
+  [:div [:div el]])
+
 (defc <parallax> []
   [:<>
    (let [elems (or (rf/subscribe [:state [:elems]]) [1 2 3])]
      [:div.parallax-ui ;.fullwide
       [:div "Pure CSS parallax scroll demo #3 by Keith Clark -> tolgraven"]
-      [ui/<appear> {:appear "opacity" :form [:div [:div.elem-group.flex
-        (doall
-         (for [el @elems] ^{:key el}
-           [ui/<appear> {:appear "slide-in" :form [:div [:div.elem el]]}]))]]}]
+      [<element-group> elems]
       [:br]
 
       [:div.elem-group
         (doall (for [el @elems] ^{:key el}
-          [ui/<appear> {:appear "opacity" :form [:div [:div el]]}]))]
+          [<experiment-element> el]))]
 
       [:button {:on-click #(rf/dispatch [:conj [:state :elems]
                                                (inc (first @elems))])}
@@ -381,12 +396,14 @@
       [:b "current view pos: "] (pr-str @view-position) [:br]
       [:b "current zoom level: "] (pr-str @zoom-level)] ])))
 
-(defc <test-page> []
+(defpage <test-page>
+  {:depends [{:source :strapi :keys [:common]}]}
+  []
   [ui/<with-heading> [:common :banner-heading]
    (let [routes {:parallax <parallax>
                  :model-viewer <model-viewer>
                  :leaflet <leaflet>
-                 :search [l/<> {:module :search, :view :view} "blog-posts"]
+                 :search (m/<> :search/view "blog-posts")
                  :broken [:div]}
          tab @(rf/subscribe [:state [:experiments]])]
      [:section.experiments.solid-bg.fullwide.noborder

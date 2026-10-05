@@ -111,6 +111,16 @@
         (swap! *dirty conj account)
         (schedule-write!))
       true)))
+
+(defn consume-restored!
+  "A local document already installed these paths. Consume their older public
+   envelope entries without re-applying values over its exact hydration state."
+  [state]
+  (doseq [[id _] (get @*buckets :public)
+          :let [paths (snapshot-paths id)]
+          :when (and (seq paths)
+                     (every? #(not (identical? missing (get-in state % missing))) paths))]
+    (read! id {:scope :public})))
 (defn remove! [id options]
   (when-let [account (owner options)]
     (ready! options)

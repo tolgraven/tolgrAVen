@@ -64,6 +64,8 @@
 ::view-transition-new(page) {
   animation-duration: var(--navigation-transition-time);
   animation-timing-function: ease;
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
   height: 100%;
   object-fit: none;
   object-position: top left;
@@ -72,8 +74,11 @@
 @keyframes page-opacity-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes page-opacity-in-a { from { opacity: 0; } to { opacity: 1; } }
 ::view-transition-old(page) { animation-name: page-opacity-out; }
-::view-transition-new(page) { animation-name: page-opacity-in-a; }
-// CSS crossfade for browsers without native View Transitions. The component
+::view-transition-new(page) {
+  animation-name: page-opacity-in-a;
+  animation-delay: var(--navigation-transition-time);
+}
+// Fade out, then fade in, for browsers without native View Transitions. The component
 // releases the outgoing layer after motion; navigation never waits for it.
 .swapper { position: relative; isolation: isolate; }
 .swapped {
@@ -83,7 +88,11 @@
 }
 .swap-in {
   &.opacity { opacity: 0; }
-  &.swapped-in { opacity: 1; transition: opacity var(--navigation-transition-time) ease; }
+  &.swapped-in {
+    opacity: 1;
+    transition: opacity var(--navigation-transition-time) ease var(--navigation-transition-time);
+  }
+  &.swap-static { transition: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .swapped, .swap-in.swapped-in { transition: none; }

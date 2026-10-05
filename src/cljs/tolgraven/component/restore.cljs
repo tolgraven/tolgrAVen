@@ -6,11 +6,19 @@
 (defonce *context (r/atom {}))
 (defn page-key [] (if (exists? js/location) (str (.-pathname js/location) (.-search js/location)) "/"))
 (defn begin! [{:keys [hydrate? back?]}]
-  (reset! *context {:hydrate? (boolean hydrate?) :back? (boolean back?) :page (page-key)}))
+  (reset! *context {:hydrate? (boolean hydrate?) :back? (boolean back?)
+                    :initial-document? (boolean (and hydrate? (not back?))) :page (page-key)}))
 (defn skip-enter? []
   (and (= (:page @*context) (page-key)) (or (:hydrate? @*context) (:back? @*context))))
 (defn initial-enter? []
   (and (skip-enter?) (:hydrate? @*context) (not (:back? @*context))))
+(defn document-enter? []
+  (and (= (:page @*context) (page-key)) (:initial-document? @*context)))
+(defn local-document? [] (boolean (:local? @*context)))
+(defn hydrated! []
+  ;; Existing motion hooks retain their first-render decision. New components
+  ;; loaded or expanded afterwards must use normal SPA entrance motion.
+  (swap! *context assoc :hydrate? false))
 (defn navigate! [path]
   (when (and (:page @*context) (not= (first (string/split path #"\?")) (first (string/split (:page @*context) #"\?")))) (reset! *context {})))
 (defn back-navigation? []

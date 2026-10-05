@@ -11,6 +11,17 @@
    [:span.sr-only "Loading content…"]])
 (declare <placeholder>)
 
+(defonce render-context (rf/create-context false))
+
+(r/defc <rendered>
+  "Render the ordinary component tree as an inert, CSS-shaped skeleton.
+   Sample arguments supply text lengths when content is not available yet."
+  [{:keys [form class]}]
+  [:> (rf/context-provider render-context) {:value true}
+   [:div {:class (str "component-render-skeleton " class)
+          :aria-busy true :aria-label "Loading content" :inert true}
+    form]])
+
 (r/defc <query-fallback>
   "Use the shared component fallback after a real managed-query failure."
   [opts & [placeholder]]

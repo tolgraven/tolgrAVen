@@ -31,7 +31,16 @@
 
 (def spec
   ;; Native Reitit routes, with shared data inherited by each child page.
-  [["/blog" {:module :blog :transition-key :blog :shell {:heading [:blog :heading] :loading-prefab :article :loading-class "blog-post ssr-skeleton-article"} :depends [{:source :strapi :availability :startup :keys [:blog]}]
+  [["/blog" {:module :blog :transition-key :blog
+              :shell {:heading [:blog :heading]
+                      :loading-prefab :article
+                      :loading-view {:module :blog :view :post-content}
+                      :loading-args {:post {:title "A thought worth sharing"
+                                            :user {:name "Author"}
+                                            :text "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vitae sapien sed lectus consequat feugiat.\n\nPraesent commodo cursus magna, vel scelerisque nisl consectetur et. Donec ullamcorper nulla non metus auctor fringilla.\n\nMaecenas sed diam eget risus varius blandit sit amet non magna. Aenean lacinia bibendum nulla sed consectetur."
+                                            :tags ["thoughts" "updates"]}}
+                      :loading-class "ssr-skeleton-article"}
+              :depends [{:source :strapi :availability :startup :keys [:blog]}]
               :preload-depends (fn [match]
                                  (if (:ssr (:data match))
                                    [{:source :subscription

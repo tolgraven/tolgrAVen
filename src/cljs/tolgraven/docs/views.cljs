@@ -1,7 +1,8 @@
 (ns tolgraven.docs.views
   (:require
     [tolgraven.component.registry]
-    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.docs.pages :as pages]
+    [tolgraven.macros :refer-macros [defc defpage]]
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [clojure.string :as string]
@@ -18,8 +19,10 @@
         original))))
 
 (defc <doc-page> "Display a codox page"
-  []
-  (let [html @(rf/subscribe [:docs/page-html])]
+  {:depends (fn [page] [(pages/document-dependency page)])
+   :loading-tag :div.docs :loading-prefab :text}
+  [page]
+  (let [html @(rf/subscribe [:docs/page-html page])]
     [:div.docs
      (if html
        ;; This is generated, trusted documentation HTML, an opaque React leaf.
@@ -27,7 +30,11 @@
        [:div.codox {:dangerouslySetInnerHTML (r/unsafe-html (page-links html))}]
        [ui/<loading-spinner> true :massive])]))
 
-(defc <page> []
+(defpage <page>
+  ;; Only the heading/framing is CMS content; <doc-page> declares backend HTML.
+  {:depends [{:source :strapi :keys [:docs]}]
+   :loading-tag :section.docs :loading-prefab :text}
+  []
   [ui/<with-heading> [:docs :heading]
    [:section.docs.solid-bg.hi-z.noborder.fullwide
-    [<doc-page>]]])
+    [<doc-page> @(rf/subscribe [:docs/current-page])]]])

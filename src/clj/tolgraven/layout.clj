@@ -99,6 +99,7 @@
     [:meta {:name "viewport"
             :content "width=device-width, initial-scale=1"}]
     [:meta {:name "color-scheme" :content "light dark"}]
+    [:meta {:name "app-build" :content (str (ssr/renderer-build))}]
     [:title (hu/escape-html (or title ""))]
     [:meta {:name "og:title" :content title}]             ; for link previews
     [:meta {:name "description" :content description}]
@@ -144,17 +145,21 @@
     (for [path js-paths]
       (js path))
     ;; Critical visibility rules prevent two page roots from ever painting together.
-    [:style "body:has(#ssr-shell):not(:has(#ssr-complete)) #app{display:none}body:has(#ssr-complete) #ssr-shell{display:none}"]
+    [:style "body:has(#ssr-shell):not(:has(#ssr-complete)) #app{display:none}"]
     (for [script js-raw]
       [:script {:type "text/javascript"} script])]
 
    [:body {:class "container themable framing-shadow sticky-footer-container"}
 
-    [:div#app (cond-> {} (:streamed? request) (assoc :data-streamed "true") (:ssr request) (assoc :data-hydrate "true")
+    [:div#app (cond-> {} (:streamed? request) (assoc :data-streamed "true") (or (:ssr request) (:local-return? request)) (assoc :data-hydrate "true")
+                         (:local-return? request) (assoc :data-local-return "true")
+                         (:local-return? request) (assoc :data-page-build (str (ssr/renderer-build)))
                          (:restore? request) (assoc :data-restore "true")) loading-content]
     ;; A separate React root can report bootstrap failures without replacing
     ;; server HTML that has not yet been hydrated.
     [:div#page-init-status]
+    (when (:local-return? request)
+      [:script#local-page-bootstrap {:type "application/json"} "__LOCAL_PAGE_STATE__"])
     (when-let [snapshot (get-in request [:ssr :snapshot])]
       [:script#ssr-bootstrap {:type "application/json"} (content/hydration-json snapshot)])
     (when-let [bundle (:site-content request)]
@@ -171,16 +176,26 @@
 (defn render-hiccup [page & args]
   (update (apply hiccup-response page args) :body render-document))
 
+(defn return-template [request]
+  ;; No page data acquisition: the browser supplies both markup and its state.
+  {:version 1 :build (str (ssr/renderer-build))
+   :template (render-document
+              (home (assoc request :local-return? true :restore? true)
+                    :loading-content "__LOCAL_PAGE_HTML__"
+                    :anti-forgery (force *anti-forgery-token*)
+                    :title "__LOCAL_PAGE_TITLE__"))})
+
 (def render-hiccup-memo) ; well no because of anti forgery token, requests differing etc
 
 (defn returning-page? [request]
   (try
-    (when-let [value (some-> (get-in request [:cookies "tolgraven-return" :value])
+    (when-not (= "ssr" (get-in request [:headers "x-page-render"]))
+      (when-let [value (some-> (get-in request [:cookies "tolgraven-return" :value])
                              (java.net.URLDecoder/decode "UTF-8"))]
       (or (= (:uri request) value) ; compatibility with the original single path
           (let [paths (json/read-str value)]
             (and (vector? paths) (<= (count paths) 16)
-                 (boolean (some #{(:uri request)} paths))))))
+                 (boolean (some #{(:uri request)} paths)))))))
     (catch Exception _ false)))
 
 (defonce ^:private *browser-manifest (atom nil))
@@ -296,18 +311,22 @@
           shell (ssr/shell! (:uri request) (:query-params request))
           shell-response (home-response (assoc request :ssr-result shell))
           ;; Capture dynamic Ring bindings before the response writer runs.
-          complete (bound-fn []
+          complete (bound-fn [streamed?]
                      (let [result (try (concurrent/await! pending 60000)
                                        (catch Exception _ {:error? true :status 503}))]
-                       (home-response (assoc request :ssr-result result :streamed? true))))]
-      (-> shell-response
+                       (home-response (assoc request :ssr-result result :streamed? streamed?))))]
+      (if (concurrent/completed? pending)
+        ;; A completed render needs no intermediate loading page or second
+        ;; entrance. Do not wait to find out: an unfinished render streams now.
+        (update (complete false) :body render-document)
+        (-> shell-response
           (assoc-in [:headers "X-Accel-Buffering"] "no")
           (assoc-in [:headers "Cache-Control"] "no-store")
           (assoc :body
                  (streaming/html-document
                    (:body shell-response)
                    [:div#ssr-shell {:aria-busy "true"} (:html shell)]
-                   (fn [] (drop 2 (last (:body (complete)))))))))
+                   (fn [] (drop 2 (last (:body (complete true))))))))))
     (render-home-complete request)))
 
 (defn error-page-hiccup

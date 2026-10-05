@@ -5,15 +5,17 @@
     [tolgraven.component.registry :as registry]
     [tolgraven.component.instrumentation :as instrumentation]
     [reagent.core :as r]
-    [tolgraven.react :as react]
+    [tolgraven.react :as rf]
     [tolgraven.component.motion :as motion]
+    [tolgraven.component.visibility :as visibility]
     [tolgraven.component.persistent-state :as state-store]
     [tolgraven.component.loading :as loading]
     [tolgraven.component.storage :as storage]
     [tolgraven.components.error :as error]
     [tolgraven.util :as util]
     [tolgraven.component.data :as data]
-    [tolgraven.component.sources]))
+    [tolgraven.component.sources]
+    [tolgraven.macros :refer-macros [defc]]))
 
 (def state state-store/state)
 (def <sub state-store/<sub)
@@ -117,8 +119,9 @@
 (defn- current-spec [definition args]
   (or (spec-for (not= false (get-in definition [:options :spec])) args) {}))
 
-(defn- feature-config [id config spec]
-  (get spec id config))
+(defn- feature-config [id config spec args]
+  (let [value (get spec id config)]
+    (if (fn? value) (apply value args) value)))
 
 (defn- decorate [form features spec mounted? capture-ref]
   (reduce (fn [form [id config implementation]]
@@ -132,9 +135,9 @@
   (some #(when (= :exit (first %)) (second %)) (:features (component-spec component))))
 
 (defn- use-lifecycle! [definition args features *element]
-  (let [[mounted? set-mounted!] (react/use-state false)
-        *active (react/use-ref {})
-        *latest (react/use-ref args)
+  (let [[mounted? set-mounted!] (rf/use-state false)
+        *active (rf/use-ref {})
+        *latest (rf/use-ref args)
         this (r/current-component)
         cleanup! (fn [id]
                    (when-let [{:keys [implementation state]} (get (.-current *active) id)]
@@ -142,11 +145,11 @@
                      (when state (when-let [unmount (:unmount implementation)] (unmount state)))))
         lifecycle? (some #(= :lifecycle (first %)) features)]
     (set! (.-current *latest) args)
-    (react/use-layout-effect
+    (rf/use-layout-effect
      (fn []
        (let [spec (current-spec definition args)]
          (doseq [[id default implementation] features :when (:setup implementation)]
-           (let [config (feature-config id default spec)
+           (let [config (feature-config id default spec args)
                  old (get (.-current *active) id)]
              (when (or (not= config (:config old))
                        (not= @*element (:element old))
@@ -159,7 +162,7 @@
                                                        :config config :element @*element}))
                    (when state (when-let [mount (:mount implementation)] (mount state @*element)))))))))
        js/undefined))
-    (react/use-layout-effect
+    (rf/use-layout-effect
      (fn []
        (set-mounted! true)
        (when lifecycle?
@@ -173,7 +176,7 @@
     mounted?))
 
 (defn- render-function [definition args presence state-key]
-  (let [*instance (react/use-ref nil)]
+  (let [*instance (rf/use-ref nil)]
     (when-not (.-current *instance)
       (let [*element (atom nil)]
         (set! (.-current *instance)
@@ -194,7 +197,7 @@
           form (decorate (binding [state-store/*component* definition state-store/*args* args state-store/*react-key* state-key] (render-body! *render args)) features spec mounted? capture-ref)
           form (if lifecycle?
                  (root-props form {:capture-root? true} false capture-ref) form)
-          options (into {} (map (fn [[id default _]] [id (feature-config id default spec)]) features))
+          options (into {} (map (fn [[id default _]] [id (feature-config id default spec args)]) features))
           form (if (some ids [:appear :seen :exit]) (motion/use-motion form options presence) form)
           form (if (ids :presence) (motion/use-presence form exit-config) form)]
       (instrumentation/instrument definition form args state-key))))
@@ -239,28 +242,43 @@
     (cond
       (vector? view) view
       view (into [(resolve-view view)] args)
+      (= :rendered (:loading-prefab options))
+      (let [sample (:loading-args options)
+            sample (if (fn? sample) (apply sample args) sample)
+            args (cond (map? sample) [sample] (sequential? sample) sample :else args)]
+        [loading/<rendered> {:form [<function-body> definition args nil nil]}])
       :else (loading-view options))))
 
+(declare <loading-reveal>)
+
 (r/defc <data-body> [definition args form]
-  (let [resources (dependencies definition args)]
+  (let [skeleton? (rf/use-context loading/render-context)
+        resources (dependencies definition args)]
     ;; Deliberately before mount: requests are shared and not owned by a React
     ;; instance, so speculative/abandoned renders neither duplicate nor leak them.
-    (when-not context/*server?* (data/prefetch! resources))
-    (case (data/state resources)
-      :ready form
-      :error [error/<failure> (:ns definition) (:name definition)
-              {:title "This component's data could not be loaded"
-               :message "Check your connection and try loading this content again."
-               :error (data/failure resources)}
-              #(data/retry-background! resources)]
-      (loading-form definition args))))
+    (when-not (or skeleton? context/*server?*) (data/prefetch! resources))
+    (let [status (if skeleton? :ready (data/state resources))
+          rendered? (= :rendered (:loading-prefab (merge (:options definition)
+                                                       (current-spec definition args))))]
+      (cond
+        (= :error status)
+        [error/<failure> (:ns definition) (:name definition)
+         {:title "This component's data could not be loaded"
+          :message "Check your connection and try loading this content again."
+          :error (data/failure resources)}
+         #(data/retry-background! resources)]
+        (and rendered? (not skeleton?))
+        [<loading-reveal> {:ready? (= :ready status) :form form
+                          :skeleton (when-not (= :ready status) (loading-form definition args))}]
+        (= :ready status) form
+        :else (loading-form definition args)))))
 
 (defn- current-argv []
   ;; Reagent 2 defc stores (subvec hiccup 1) on its function render state.
   ;; subvec drops metadata, but retains the original Hiccup vector as its backing
   ;; vector. Read that metadata before introducing any defc wrappers. Class-based
   ;; runtime components still expose the original vector through r/argv.
-  (react/component-argv))
+  (rf/component-argv))
 
 (defn render-component [definition raw-args]
   (let [state-key (some-> (current-argv) meta :key)
@@ -284,11 +302,15 @@
 (register-feature! :lifecycle {})
 (register-feature! :appear {})
 (register-feature! :seen {})
+(register-feature! :on-seen visibility/feature)
 (register-feature! :exit {})
 (register-feature! :presence {})
 (register-feature! :error-boundary
                    {:wrap (fn [form definition _]
-                            [<boundary> {:ns-name (:ns definition) :component-name (:name definition)} form])})
+                            [<boundary> {:ns-name (:ns definition) :component-name (:name definition)
+                                         :reset-key (when (get-in definition [:options :page])
+                                                      (select-keys @(rf/subscribe [:common/route])
+                                                                   [:path :query-params]))} form])})
 
 (r/defc <dynamic-component> [definition args]
   (render-component definition args))
@@ -301,6 +323,21 @@
                     (with-meta [<dynamic-component> definition args]
                       (meta (current-argv))))]
     (register-component! component definition)))
+
+(defc <skeleton-layer>
+  {:features [[:exit {:class "component-loading-reveal__exit" :timeout-ms 500}]]}
+  [{:keys [form]}]
+  [:div.component-loading-reveal__skeleton form])
+
+(defc <loading-reveal>
+  {:features [:presence]}
+  [{:keys [ready? form skeleton]}]
+  [:div.component-loading-reveal
+   ;; Both layers occupy one CSS grid cell. Removing the skeleton does not move
+   ;; the live content; presence owns its final unmount.
+   (when ready? form)
+   (when-not ready?
+     ^{:key :skeleton} [<skeleton-layer> {:form skeleton}])])
 
 (r/defc <prefetch>
   "An optional viewport sentinel for any source; fetching needs no component DOM."

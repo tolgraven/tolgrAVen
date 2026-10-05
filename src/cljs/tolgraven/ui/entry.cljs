@@ -3,11 +3,17 @@
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
     [clojure.string :as string]
-    [tolgraven.ui :as ui]
     [reagent.core :as r]
     [tolgraven.react :as rf]))
 
 (def char-width 0.61225)
+
+(defc ^:private <completion-letter>
+  {:features [[:appear "slide-in faster"]]}
+  [height letter]
+  [:div [:span
+           {:style {:min-height height}}
+           letter]])
 
 (defc ^:private <completion>
   [query suggestion height]
@@ -24,10 +30,13 @@
        {:style {:white-space :pre-wrap
                 :display :inline-flex}}
        [:span.first-char char1]
-       (for [letter others] ; causes issues with spacing? nice lil zoom effect though, figure out.
-         [ui/<appear> {:appear "slide-in faster" :form [:div [:span
-           {:style {:min-height height}}
-           letter]]}])])))
+       (for [[i letter] (map-indexed vector others)] ; causes issues with spacing? nice lil zoom effect though, figure out.
+         ^{:key i} [<completion-letter> height letter])])))
+
+(defc ^:private <query-letter>
+  {:features [[:appear "zoom fast"]]}
+  [letter]
+  [:div [:span.search-letter letter]])
 
 (defc <box> "Search input field"
   [model suggestions-query on-change
@@ -73,8 +82,8 @@
      (when-not (string/blank? @internal-model)
        [:span {:style {:white-space :pre-wrap
                        :display :inline-flex}}
-        (for [letter @internal-model] ; causes issues with spacing? nice lil zoom effect though, figure out.
-          [ui/<appear> {:appear "zoom fast" :form [:div [:span.search-letter letter]]}])])
+        (for [[i letter] (map-indexed vector @internal-model)] ; causes issues with spacing? nice lil zoom effect though, figure out.
+          ^{:key i} [<query-letter> letter])])
 
      [<completion> @internal-model suggestion height]]
 

@@ -9,7 +9,6 @@
 
 (def spec
   {:pages pages/spec
-   :content (get content-contract/module-content :blog [])
    :depends (get content-contract/module-dependencies :blog [])
    :id :blog
    :view {:page #'view/<blog-page>
@@ -18,6 +17,7 @@
           :tag #'view/<blog-page>
           :new-post #'view/<blog-page>
           :posted-by #'view/<posted-by>
+          :post-content #'view/<post-content>
           :tags-list #'view/<tags-list>
           :comments #'view/<comments-section>}
    :init #(rf/dispatch [:on-booted :store [:blog/init]])})
