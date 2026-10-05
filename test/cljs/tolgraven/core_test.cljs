@@ -5,9 +5,6 @@
             [tolgraven.link-preview.util :as link-preview]
             [tolgraven.routes :as routes]))
 
-(deftest test-home
-  (is (= true true)))
-
 (deftest external-http-url-test
   (testing "only cross-origin HTTP(S) links are previewable"
     (are [expected href]

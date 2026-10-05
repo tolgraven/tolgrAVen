@@ -55,76 +55,40 @@
 /* * * * * * * * * * * * * * *
  * MODS FOR PAGE TRANSITIONS *
  * * * * * * * * * * * * * * */
-.swapper {
-  position: relative;
-  // Keep the fading page's negative z-index above the main/background layer.
-  isolation: isolate;
+// The browser retains the outgoing pixels; only one React page stays mounted.
+// Keep the header/footer outside the page snapshot and avoid morphing heights.
+:root { view-transition-name: none; }
+#main { view-transition-name: page; }
+::view-transition-group(page) { animation: none; }
+::view-transition-old(page),
+::view-transition-new(page) {
+  animation-duration: var(--navigation-transition-time);
+  animation-timing-function: ease;
+  height: 100%;
+  object-fit: none;
+  object-position: top left;
 }
+// Explicit opacity motion rather than relying on browser UA defaults.
+@keyframes page-opacity-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes page-opacity-in-a { from { opacity: 0; } to { opacity: 1; } }
+::view-transition-old(page) { animation-name: page-opacity-out; }
+::view-transition-new(page) { animation-name: page-opacity-in-a; }
+// CSS crossfade for browsers without native View Transitions. The component
+// releases the outgoing layer after motion; navigation never waits for it.
+.swapper { position: relative; isolation: isolate; }
 .swapped {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  transform: none;
-  opacity: 1;
-
-  transition: opacity var(--navigation-transition-time) ease,
-              transform var(--navigation-transition-time) ease;
-  z-index: -1;
-
-  display: inherit;
-  pointer-events: none;
-  div {
-    transition: unset;
-  }
-  
-  &.opacity {
-    opacity: 0;
-    transition: opacity var(--navigation-transition-time) ease;
-  }
-  &.left {
-    z-index: -1;
-    transform: translateX(-150%);
-  }
-
-  &.swapped-out {
-    opacity: 0; // Keep the outgoing page through its fade; .removed hides it afterward.
-  }
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  opacity: 1; transition: opacity var(--navigation-transition-time) ease;
+  &.swapped-out { opacity: 0; }
 }
-
 .swap-in {
-  transition: none; // i guess so opacity 0 get applied instantly?
-  // transform-style: preserve-3d;
-  // perspective: 1000px;
-
-  &.right {
-    transform: translateX(150%);
-    transition: unset;
-    z-index: -1;
-  }
-  &.left {
-    transform: translateX(-150%);
-    transition: unset;
-    z-index: -1;
-  }
-  &.rotate {
-    transform: rotateY(180deg) translateZ(-500px);
-    perspective-origin: bottom;
-    // backface-visibility: hidden;
-  }
-  &.opacity {
-    opacity: 0;
-  }
-  &.swapped-in {
-    transition: opacity var(--navigation-transition-time) ease,
-                transform var(--navigation-transition-time) ease;
-    opacity: 1;
-    transform: none;
-  }
+  &.opacity { opacity: 0; }
+  &.swapped-in { opacity: 1; transition: opacity var(--navigation-transition-time) ease; }
 }
-
-
+@media (prefers-reduced-motion: reduce) {
+  .swapped, .swap-in.swapped-in { transition: none; }
+  ::view-transition-old(page), ::view-transition-new(page) { animation: none; }
+}
 
 /* Show/hide and slide in from left. */
 .slide-in-reset {

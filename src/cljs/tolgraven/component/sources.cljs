@@ -11,9 +11,21 @@
             [tolgraven.content.contract :as contract]
             [tolgraven.supabase.client :as supabase]))
 
+(rf/reg-sub :component-data/path
+  (fn [db query]
+    (let [[_ path] (or (:re-frame/query-v query) query)
+          value (get-in db path ::missing)]
+      {:ready? (not= ::missing value) :value value})))
+(rf/reg-sub :component-data/content
+  (fn [db query]
+    (let [[_ keys] (or (:re-frame/query-v query) query)]
+      {:ready? (every? #(contains? (:content db) %) keys)
+       :value (select-keys (:content db) keys)})))
+(rf/reg-sub :component-data/supabase-cache
+  (fn [_ q] (supabase/cached-query (second (or (:re-frame/query-v q) q)))))
+
 (defn- db-value [path]
-  (let [value (get-in @rfdb/app-db path ::missing)]
-    {:ready? (not= ::missing value) :value value}))
+  @(rf/sub [:component-data/path path]))
 
 (data/register-source!
  :app-db
@@ -30,8 +42,7 @@
                 (when-not (content/valid-bundle? bundle keys) (throw (js/Error. "Invalid cached content")))
                 (rf/dispatch-sync [:content/install bundle])))
   :read (fn [{:keys [keys]}]
-          {:ready? (every? #(contains? (:content @rfdb/app-db) %) keys)
-           :value (select-keys (:content @rfdb/app-db) keys)})
+          @(rf/sub [:component-data/content keys]))
   :load! (fn [{:keys [keys]}]
            (-> (content/ensure! keys)
                (.then (fn [_] (select-keys (:content @rfdb/app-db) keys)))))})
@@ -66,7 +77,7 @@
 (data/register-source!
  :supabase
  {:scope #(deref *auth-generation)
-  :read (fn [{:keys [query]}] (supabase/cached-query query))
+  :read (fn [{:keys [query]}] @(rf/sub [:component-data/supabase-cache query]))
   :load! (fn [{:keys [query timeout-ms]}]
            (let [generation @*auth-generation]
              (-> (data/wait-for! supabase/*client

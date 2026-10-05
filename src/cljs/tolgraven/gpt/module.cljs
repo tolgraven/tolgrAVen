@@ -8,4 +8,4 @@
 (def spec
   {:content (get content-contract/module-content :gpt [])
    :id :gpt
-   :view {:view #'view/threads}})
+   :view {:view #'view/<threads>}})

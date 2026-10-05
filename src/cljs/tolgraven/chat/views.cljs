@@ -1,5 +1,7 @@
 (ns tolgraven.chat.views
   (:require
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [clojure.string :as string]
@@ -8,7 +10,7 @@
     [tolgraven.ui :as ui]
     [tolgraven.util :as util]))
 
-(defn chat-message "A single chat message"
+(defc <chat-message> "A single chat message"
   [message]
   (let [user @(rf/subscribe [:user/user (:user message)])
         hovered? (r/atom false)]
@@ -30,16 +32,16 @@
          (or (:name user) "anon")
          [l/<> {:module :user, :view :avatar} user]]])))
 
-(defn chat "A place to hang out with real-time messaging"
+(defc <chat> "A place to hang out with real-time messaging"
   []
   (let [content @(rf/subscribe [:chat/content])]
     [:section.chat.noborder.covering-2
      [:div.chat-messages
       {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))}
       (for [message content] ^{:key (str "chat-message-" (:id message))}
-        [chat-message message])]
+        [<chat-message> message])]
      [:div.chat-input.flex
-      [ui/input-text
+      [ui/<input-text>
        :path [:form-field [:chat]]
        :placeholder "Message"
        :on-enter #(rf/dispatch [:chat/post])]

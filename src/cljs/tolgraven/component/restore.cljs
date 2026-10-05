@@ -9,6 +9,8 @@
   (reset! *context {:hydrate? (boolean hydrate?) :back? (boolean back?) :page (page-key)}))
 (defn skip-enter? []
   (and (= (:page @*context) (page-key)) (or (:hydrate? @*context) (:back? @*context))))
+(defn initial-enter? []
+  (and (skip-enter?) (:hydrate? @*context) (not (:back? @*context))))
 (defn navigate! [path]
   (when (and (:page @*context) (not= (first (string/split path #"\?")) (first (string/split (:page @*context) #"\?")))) (reset! *context {})))
 (defn back-navigation? []
@@ -17,4 +19,13 @@
 (defonce listener
   (when (exists? js/window)
     (.addEventListener js/window "pageshow"
-                       (fn [event] (when (.-persisted event) (begin! {:back? true}))))))
+                       (fn [event]
+                         (when (.-persisted event)
+                           (begin! {:back? true}))))))
+
+(defonce native-history-listener
+  (when (exists? js/window)
+    ;; The current entry may have been created by SPA navigation. Hand it back
+    ;; to the browser before leaving the document, including a BFCache freeze.
+    (.addEventListener js/window "pagehide"
+                       (fn [_] (set! (.-scrollRestoration js/history) "auto")))))

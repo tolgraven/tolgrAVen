@@ -1,8 +1,10 @@
-(ns tolgraven.components.portal 
+(ns tolgraven.components.portal
   (:require
-   [tolgraven.react :as r]))
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.react :as r]))
 
-(defn <portal>
+(defc <portal>
   "Render forms into a DOM node or an element id."
   [target & forms]
   (if-let [e (if (string? target)

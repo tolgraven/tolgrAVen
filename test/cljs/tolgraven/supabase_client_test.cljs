@@ -1,5 +1,5 @@
 (ns tolgraven.supabase-client-test
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [cljs.test :refer-macros [deftest is async use-fixtures]]
             [ajax.core :as ajax]
             [reagent.ratom :as ratom]
             [re-frame.core :as rf]
@@ -54,6 +54,29 @@
   (reset! client/*loaded #{})
   (reset! client/*seed realtime/empty-seed)
   (reset! client/*client (:sdk mock)))
+
+(defonce *restore-test (atom nil))
+(use-fixtures :each
+  {:before (fn []
+             (let [restore-db! (rf/make-restore-fn)
+                   snapshots (mapv (fn [state] [state @state])
+                                   [client/*client client/*settings client/*session
+                                    client/*seed client/*loaded client/*auth-listener
+                                    client/*preloads status/*failures])]
+               (reset! *restore-test
+                 (fn []
+                   ;; Dispose through the adapter even when an assertion/callback
+                   ;; fails before the test's happy-path disposal is reached.
+                   (doseq [entry (vals @client/*queries)]
+                     (ratom/dispose! (:*state entry)))
+                   (when-let [listener @client/*auth-listener] (.unsubscribe listener))
+                   (when-let [tick @client/*query-tick] (js/clearTimeout tick))
+                   (reset! client/*query-tick nil)
+                   (reset-client! {:sdk nil})
+                   (doseq [[state value] snapshots] (reset! state value))
+                   (restore-db!)))))
+   :after (fn [] (when-let [restore! @*restore-test] (restore!))
+                  (reset! *restore-test nil))})
 
 (defn status! [mock name status]
   (client/drain-queries!)

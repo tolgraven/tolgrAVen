@@ -1,7 +1,10 @@
 (ns tolgraven.service-status
-  (:require [reagent.core :as r]
-            [tolgraven.render-context :as context]
-            [tolgraven.react :as rf]))
+  (:require
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.component.registry]
+    [reagent.core :as r]
+    [tolgraven.render-context :as context]
+    [tolgraven.react :as rf]))
 
 (defonce *failures (r/atom {}))
 
@@ -32,7 +35,7 @@
            (.then (fn [value] (js/clearTimeout timer) (resolve value)))
            (.catch (fn [error] (js/clearTimeout timer) (reject error))))))))
 
-(defn <notices> []
+(defc <notices> []
   [:aside {:aria-label "Service notifications" :aria-live "polite"
            :style {:position "sticky" :top "var(--header-height-current, 5rem)" :z-index 90
                    :max-height "40vh" :overflow-y "auto"}}

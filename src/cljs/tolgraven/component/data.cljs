@@ -38,6 +38,12 @@
 (defn resource-key [resource]
   [resource (when-let [scope (:scope (adapter resource))] (scope))])
 
+(rf/reg-sub :component-data/installed
+  (fn [db query]
+    (let [[_ path] (or (:re-frame/query-v query) query)
+          missing (js-obj) value (get-in db path missing)]
+      {:present? (not (identical? missing value)) :value value})))
+
 (rf/reg-event-db :component-data/install
   (fn [db [_ path value]] (assoc-in db path value)))
 (rf/reg-event-db :component-data/remove
@@ -68,10 +74,9 @@
   "Install a valid opt-in snapshot synchronously, before the loading branch."
   [resource]
   (let [key (resource-key resource)
-        missing (js-obj)
-        hydrated (if (:into resource) (get-in @rfdb/app-db (:into resource) missing) missing)]
-    (when (and (restore/skip-enter?) (not (identical? missing hydrated)) (nil? (get @*entries key)))
-      (swap! *entries assoc key {:resource resource :status :ready :value hydrated
+        hydrated (when (:into resource) @(rf/sub [:component-data/installed (:into resource)]))]
+    (when (and (restore/skip-enter?) (:present? hydrated) (nil? (get @*entries key)))
+      (swap! *entries assoc key {:resource resource :status :ready :value (:value hydrated)
                                 :expires-at (+ (.now js/Date) (or (:ttl-ms resource) 60000))
                                 :accessed-at (.now js/Date)}))
     (when (and (nil? (get @*entries key)) (not (:ready? (ready-value resource))))

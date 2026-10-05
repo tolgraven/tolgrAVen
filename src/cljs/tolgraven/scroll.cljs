@@ -2,6 +2,7 @@
   (:require
     [reagent.core :as r]
     [tolgraven.react :as rf]
+    [tolgraven.page-transition :as page-transition]
     [clojure.string :as string]
     [tolgraven.util :as util]
     [cljs-time.core :as ct]
@@ -39,20 +40,34 @@
    (util/scroll-to-px px)))
 
 (rf/reg-event-fx :scroll/on-navigate [debug]
-  (fn [{:keys [db]} [_ path nav-count]]        ; TODO !! on iphone (also mac safari?) cancel transition on browser nav! fugly
+  (fn [{:keys [db]} [_ path nav-count completion]]
     (let [first-nav? (zero? nav-count)
           browser-nav? (get-in db [:state :browser-nav :got-nav])
           restore? (or first-nav? browser-nav?)
           saved-pos (get-in db [:state :scroll-position path])]
-      (merge
-       {:dispatch-n [(when (or (not restore?) (number? saved-pos))
-                       [:scroll/and-block (if restore? saved-pos "main")])
-                     [:hide-header-footer false false]
-                     (when-not restore?
-                       [:scroll/past-top false])]} ; ensure little square in corner goes away since scroll to "main" = side line not extending up to make it luk gud
-       (when browser-nav?
-         {:dispatch-later {:ms 300 ; should ofc rather queue up to fire on full page (size) load... something-Observer I guess
-                           :dispatch [:state [:browser-nav :got-nav] false]} }))))) ; waiting because checks in main-page
+      {:db (cond-> db browser-nav? (assoc-in [:state :browser-nav :got-nav] false))
+       :dispatch-n [[:hide-header-footer false false]
+                    (when-not restore? [:scroll/past-top false])
+                    [:page/ready (when (and (not first-nav?) (or (not restore?) (number? saved-pos)))
+                                   (if restore? saved-pos "main"))
+                     completion]]})))
+
+
+(rf/reg-event-fx :scroll/save-history [(rf/inject-cofx :scroll-position)]
+  (fn [{:keys [db scroll-position]} _]
+    (when-let [path (get-in db [:common/route :path])]
+      {:db (assoc-in db [:state :scroll-position path] scroll-position)})))
+
+(rf/reg-event-fx :scroll/restore-history
+  (fn [{:keys [db]} [_ path]]
+    (when-let [position (get-in db [:state :scroll-position (or path (get-in db [:common/route :path]))])]
+      {:scroll/restore-position position})))
+
+(rf/reg-fx :scroll/restore-position
+  (fn [position]
+    ;; An explicitly client-restored document starts observing before its
+    ;; content mounts. Layout growth, not hydration timing, makes it scrollable.
+    (page-transition/restore-position! position)))
 
 (rf/reg-event-fx :scroll/save-position-dev
   (fn [{:keys [db]} [_]]
@@ -151,4 +166,3 @@
                      (if (get-in db [:state :hidden :footer])
                        "calc(2 * var(--line-width))"
                        (:footer-height css-var)))]]})))
-

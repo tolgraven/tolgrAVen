@@ -1,19 +1,20 @@
 (ns tolgraven.cv.views
   (:require
-   [cljs-time.core :as ct]
-   [clojure.string :as string]
-   [tolgraven.react :as rf]
-   [reagent.core :as r]
-   [tolgraven.image :as img]
-   [tolgraven.ui :as ui]
-   [tolgraven.util :as util])
+    [tolgraven.component.registry]
+    [cljs-time.core :as ct]
+    [clojure.string :as string]
+    [tolgraven.react :as rf]
+    [reagent.core :as r]
+    [tolgraven.image :as img]
+    [tolgraven.ui :as ui]
+    [tolgraven.util :as util])
   (:require-macros
-   [tolgraven.macros :as m]))
+    [tolgraven.macros :as m]))
 
 ;; IDEA: make it possible for a box to contain its own timeline of boxes, so tapping it, "zooms in"
 ;; and can put like projects, roles/promotions, courses etc for that specific thing
 ;; either as a full new timeline of same type, or inside the existing big box (that'd be made bigger)
-(defn box "One thing, accomplishment, employment, etc"
+(m/defc <box> "One thing, accomplishment, employment, etc"
   [{:keys [from to what position how where logo color] :as all} pos size overlap-level]
   (let [expanded? (r/atom false)
         closing? (r/atom false)]
@@ -45,9 +46,9 @@
          [:p.cv-position position])
        [:p.cv-where where]
        (when logo
-         [img/picture {:src logo :alt "Company logo"}])])))
+         [img/<picture> {:src logo :alt "Company logo"}])])))
 
-(defn capabilities "The various skills"
+(m/defc <capabilities> "The various skills"
   [skills]
   (let [topic (fn [id icon]
                 [:div.cv-skill
@@ -62,17 +63,16 @@
     [:div.cv-skills
      {:style {:min-height "20em"}}
      [:h1 "Skills"]
-     [ui/carousel-normal :cv/skills {} [software digital general language]]]))
+     [ui/<carousel-normal> :cv/skills {} [software digital general language]]]))
 
-(defn intro
+(m/defc <intro>
   [cv]
   (let [win-fullscreen? @(rf/subscribe [:state [:window :fullscreen?]])]
     [:div.cv-intro
-     [ui/seen-anon "slide-in zoom opacity extra-slow"
-      [img/picture
+     [ui/<seen> {:seen "slide-in zoom opacity extra-slow" :form [:div [img/<picture>
        {:src "img/logo/tolgraven-logo.png"
         :alt "tolgrAVen"
-        :class "fullwide"}]]
+        :class "fullwide"}]]}]
      [:p (:intro cv)]
      [:div.center-content
       [:div.cv-howto
@@ -94,7 +94,7 @@
 
 
  ;; XXX TODO take out stuff specific to me (including categories, skill categories, logo etc) so is fully adaptable for others...
-(defn cv "Main cv component"
+(m/defc <cv> "Main cv component"
   []
   (let [;_ (rf/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
         visited (rf/subscribe [:state [:cv :visited]])
@@ -141,7 +141,7 @@
                                                (reset! overlap-level 0))
                                        id (str from "-" to "-" what)]]
                             ^{:key id}
-                            [box thing 
+                            [<box> thing
                              (get-pos from to)
                              (get-size from to)
                              (or level @overlap-level)])))
@@ -150,11 +150,11 @@
     [:section#cv.cv.nopadding.noborder
      {:class fullscreen?
       :ref ref-fn}
-     [intro cv]
+     [<intro> cv]
      [:div.cv-boxes
       {:ref #(when %
                (set! (.-scrollLeft %) (.-scrollWidth %)))}
-      [ui/close #(rf/dispatch [:state [:fullscreen :cv] false])]
+      [ui/<close> #(rf/dispatch [:state [:fullscreen :cv] false])]
       [:div.cv-decade-lines
        {:style {:width total-width}}
        (for [decade decades]
@@ -172,14 +172,16 @@
                  :style {:width total-width
                          :height (str (* height-ratio base-height) "em")
                          :background (str "linear-gradient(0deg, var(--bg-"
-                                          (get (:background-color-indexes cv) (inc i)) ")" 
+                                          (get (:background-color-indexes cv) (inc i)) ")"
                                           ", var(--bg-" (get (:background-color-indexes cv) i) "))")}}
                 [:h1 [:i {:class icon}] (name category)]
                 (gen-items things)]))]
-      [ui/fading :dir "bottom"]
-     
-     [capabilities skills]]))))
+      [ui/<fading> :dir "bottom"]
 
-(defn page []
-  [ui/with-heading [:cv :heading] [cv]])
+     [<capabilities> skills]]))))
 
+(m/defc <page>
+  {:depends [{:source :strapi :keys [:cv]}]
+   :loading-prefab :lines :loading-tag :section.cv}
+  []
+  [ui/<with-heading> [:cv :heading] [<cv>]])

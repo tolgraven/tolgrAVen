@@ -20,7 +20,14 @@
 (declare queue! load! drain!)
 
 (rf/reg-event-db :store/scoped-batch
-  (fn [db [_ values]] (update-in db [:store :scoped] merge values)))
+  (fn [db [_ values]]
+    (-> db (update-in [:store :scoped] merge values)
+        (update-in [:store :query-errors] #(apply dissoc % (keys values))))))
+
+(rf/reg-event-db :store/scoped-error
+  (fn [db [_ key error]] (assoc-in db [:store :query-errors key] error)))
+(rf/reg-sub :store/query-error
+  (fn [db [_ opts]] (get-in db [:store :query-errors (query-key opts)])))
 
 (defn- active? [key entry transport]
   (and (identical? entry (get @*readers key))
@@ -45,11 +52,16 @@
                                           (query/query-contract
                                            {(query/path-part (first (:path-collection opts)))
                                             (into {} (map (juxt :id :data)) (:docs value))} opts))]))) entries)]
-            (when (seq values) (rf/dispatch [:store/scoped-batch values]))))
+            (when (seq values)
+              (rf/dispatch [:store/scoped-batch
+                            (merge (query/document-caches opts value) values)]))))
         (fn [_]
           (doseq [[key {:keys [*loading *retry] :as entry} :as pair] entries
                   :when (active? key entry transport)]
             (reset! *loading false)
+            (rf/dispatch [:store/scoped-error key
+                          {:title "Content unavailable"
+                           :message "The requested content could not load. Try again."}])
             (status/fail! [:supabase-scoped key] "Content unavailable"
                           "The requested content could not load. Existing content is retained; retrying automatically."
                           #(retry! pair))

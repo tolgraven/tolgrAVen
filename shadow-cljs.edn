@@ -3,6 +3,8 @@
  :source-paths ["src/clj" "src/cljs" "src/cljc"]
 
  :builds
+ ;; SSR is an eager Node program, deliberately without browser :modules.
+ ;; The worker entry requires all supported page implementations at startup.
  {:ssr {:target :node-script
              :build-hooks [(tolgraven.build.compat/rrb-vector) (tolgraven.build.ssr/revision)]
              :devtools {:enabled false}

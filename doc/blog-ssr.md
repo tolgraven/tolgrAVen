@@ -241,14 +241,24 @@ reports an error; losing an established connection reports immediately. Successf
 reconnection clears the notice, and intentionally disposing a reader never raises
 a disconnection error. HTTP content remains usable while live updates reconnect.
 
-Client navigation does not request SSR output. The loader accepts a module's
-declarative `:route-depends`; blog readiness acquires the same re-frame
-subscriptions as the views for summaries, visible post bodies and root comment
-threads before committing navigation. A generic subscription adapter waits for
-readiness and releases its own reaction, retaining app-db content. Main-page CMS
-requirements likewise resolve before the page swap. The keyed swapper retains
-the outgoing page instance for its fade, and stale completion events cannot
-finish a different transition. Supabase settings initialization runs in the
+Client navigation does not request SSR output. Blog navigation commits once the
+module is ready, without waiting for post bodies, comments or authors. The page
+mounts immediately; managed subscriptions load its content and component
+appearance handles arrival. Feed pages request a bounded range of full posts,
+while tag subscriptions filter complete tag tokens in Supabase. The lightweight
+summary index still supplies pagination, the tag cloud and adjacent-post links.
+Bulk results also seed individual-post readers, so navigating to a post already
+shown in the feed can reuse its content. SSR uses the same shared queries and
+seeds those caches before hydration. Pending reads show the common spinner;
+failed reads show the shared component fallback and Retry, alongside the HUD.
+Main-page CMS requirements, including the hero and landing sections, resolve as
+one batched dependency before navigation. CSS View Transitions capture the outgoing
+page while React mounts only the incoming page. The lifecycle adapter waits for
+queued controller events and the React commit, restores the scroll position
+instantly, and decodes visible images before releasing the new capture. No
+outgoing component can start reading the new route during its fade. First loads,
+query changes, and reduced motion skip the transition; unsupported browsers
+commit normally. Obsolete navigation callbacks cannot scroll a newer page. Supabase settings initialization runs in the
 background without the global loading spinner.
 
 The shell uses one Open Sans stylesheet, with the existing v29 Latin font served
@@ -288,3 +298,154 @@ on `/blog/post/A-new-era-28` retained a 79.195px header at y=35.195px and main c
 at y=193.820px through hydration, with scrollY=0. The prior startup scroll-to-main
 moved both by 1.5px. Normal SPA navigation and saved browser-back positions retain
 their existing scroll behavior.
+
+
+## Progressive first response and startup content
+
+Page specs can declare CMS sections which must be resident before HTTP startup:
+
+```clojure
+{:depends [{:source :strapi :keys [:blog] :availability :startup}]
+ :shell {:heading [:blog :heading] :lines 8 :avatar? true}}
+```
+
+The server collects these declarations from the composed Reitit routes. Shared
+`:document`, `:header`, `:common`, `:footer`, and `:post-footer` sections are also
+startup dependencies. `content.service/startup-content` is a Mount prerequisite
+of the HTTP server: its initial read must succeed, then it refreshes atomically
+in the background every 30 seconds (`:ssr :shell-refresh-seconds`). A failed
+refresh logs a warning and retains the last successful snapshot. Startup-loaded
+sections are read from memory by both page snapshots and the CMS HTTP endpoint;
+requests never revalidate those sections against Strapi synchronously.
+
+Streaming is enabled by default (`:ssr {:streaming false}` disables it). On a
+cold render-cache miss the page-data future starts immediately. A short isolated
+React render produces the shell, using the ordinary header, footer, heading and
+skeleton components. Its HTML is flushed before waiting for page data. The same
+HTTP response then carries the complete ordinary page root and its public
+hydration snapshot. CSS displays that root only after both have arrived; React
+clears the temporary loading root when the application initializes. Elements
+with `data-stream-enter` use their ordinary appearance style (page fade,
+article zoom, comment zoom/fade) when the completed HTML becomes visible,
+respecting reduced motion. These markers match across SSR and hydration and do
+not depend on the temporary shell remaining populated. Hydration neither replaces
+the selected page with a code-loading shell nor restarts its animation. Cached
+SSR responses use the same first-appearance behavior without the skeleton step.
+
+This first stage streams two complete React renders, not suspended component
+renders. It preserves request isolation in the existing renderer pool: no Node
+worker is leased during the upstream wait. It does not yet progressively reveal
+multiple independent component boundaries. There is no HTML fetch or DOM
+replacement during SPA navigation. Existing render-cache entries and browser
+history restoration bypass the shell. Cache entries are still validated against
+a fresh snapshot (with startup CMS sections supplied from memory).
+
+The flush-aware response body implements the installed Undertow adapter's
+`RespondBody` protocol as well as Ring's streaming protocol. Plain InputStream
+responses are buffered by this adapter until its output buffer fills. The custom
+body flushes the shell explicitly and bypasses the buffering gzip middleware;
+`X-Accel-Buffering: no` requests unbuffered delivery from compatible proxies.
+Verify first-byte/chunk delivery through the deployed proxy before claiming
+production streaming timings.
+
+As with any early HTTP response, a failure discovered after the shell is sent
+cannot change the already-sent HTTP status. It renders the retryable error page
+instead. Set `:streaming false` on a route when final status must be determined
+before sending headers; documentation routes do this to preserve missing-file
+404 responses. The initial HTML title is the startup CMS document title; the
+completed snapshot installs the page-specific title through the document effect
+when the client initializes.
+
+
+## Shared loading views and background link preloading
+
+`defc` loading views apply to both server shells and ordinary SPA data waits.
+The default is an empty root retaining the literal DOM tag and classes inferred
+from the component's terminal Hiccup form. Inference never calls the render body
+with missing data. For conditional/dynamic roots, declare `:loading-tag` and
+`:loading-props` explicitly.
+
+```clojure
+(defc <name> {:depends name-data
+              :loading-prefab :text}
+  [spec]
+  [:span.profile-name (:name spec)])
+
+(defc <post> {:loading-tag :section.blog-post
+              :loading-prefab :lines}
+  [spec]
+  (if (:ready? spec)
+    [<post-body> spec]
+    [<loading>]))
+```
+
+Available prefabs: `:text`/`:span`, `:heading`/`:h1`/`:h2`, `:avatar`, `:box`,
+`:lines`. `:loading` accepts a custom Hiccup form or component, including Reagent
+2 function descriptors. A local `<loading>` helper is injected when referenced
+in a `defc` body; it accepts optional loading-option overrides. The existing
+`component.loading/<span>`, `<h1>`, `<h2>`, `<avatar>`, `<box>` and `<lines>`
+helpers remain available to compose full skeletons. Spinners remain explicit.
+
+After the first client commit, `page-preload/<background>` schedules work during
+idle time, discovers same-origin links in the current DOM, and loads their
+modules and page dependencies with two concurrent destinations at most. It
+observes new links after SPA navigation/content changes, deduplicates pending
+work, remembers successful destinations for five minutes, and retries failed
+speculation on a later scan. It does not recursively crawl unloaded pages.
+The main module also declares `:preload-modules [:user :link-preview :search]`;
+these common modules share the same bounded queue.
+Buttons can advertise destinations with `data-preload-href`; an element can
+opt out with `data-preload="false"`, or a page spec with `:preload false`.
+
+Additional managed dependencies can be declared as `:preload-depends` in a page
+spec (a vector or a function of the Reitit match). Blog pages acquire the existing
+`:blog/page-ready?` subscription, which evaluates the shared plan and caches
+posts, visible comments, and authors in app-db. Tag pages use the same scoped
+query as their normal subscription. Temporary subscription ownership is released
+on completion; app-db content stays cached. No SSR HTML request is made by this
+background queue or by SPA navigation.
+
+SPA route commits wait only for missing module code, never page data or image
+decoding. A cold code load commits a destination shell immediately; an available
+module renders its normal view and managed loading/error states immediately.
+Module initialization continues independently. CSS page transitions finish their
+capture after React/controller updates and scroll positioning, so slow images
+cannot freeze the outgoing page. Link preloading prioritizes `rel="prev"` and
+`rel="next"` links, then other links inside `main`, before shared navigation and
+common modules. Blog post and pagination links use these relations; their shared
+page-ready dependency acquires posts, bounded comment threads, and authors.
+
+History restoration is distinct from ordinary navigation: popstate selects the
+settled component state before committing the route, skips the native page
+transition, and restores the saved scroll position before paint. External Back
+uses the same restoration context (including BFCache). Leaving that restored
+route enables normal SPA entry motion again; a previously visited content ID
+alone no longer permanently disables its animation.
+
+The SSR Shadow target is an eager `:node-script` program, with no browser module
+loader. Browser hydration remains split, but the response head and HTTP `Link`
+header preload the route's transitive modules from Shadow's generated manifest
+(including shared user/link-preview dependencies) alongside the main bundle.
+This downloads code in parallel without overriding Shadow's execution order.
+
+Related blog routes share a `:transition-key`: their healthy page boundary and
+heading remain mounted while the destination post's managed subscription loads.
+Only incoming content runs its appearance transition. Error boundary reset keys
+clear failures on navigation without using the URL as a React remount key.
+
+The initial streamed shell has its own page fade. It is flushed before awaiting
+the snapshot; cache hits never emit a shell root. Image refs also check for a
+modern-format decode failure that occurred before hydration attached `on-error`,
+so Safari can recover using the original JPEG/PNG. Search defaults to closed
+until explicitly opened, even when its module is eagerly loaded.
+
+Document titles belong to module-local page specifications. A route may supply
+`:document-title`, a pure function of its public snapshot; the shared page helper
+falls back to `[:content :document :title]`. The blog spec selects a single post's
+title, while the renderer and layout have no blog-specific title rules. Layout
+can also use `[:site :title]` configuration when no snapshot title is available.
+
+The HTTP layout remains Hiccup data through response preparation. Streaming emits
+the head and Hiccup shell, flushes, then renders the completed Hiccup body. Only
+the transport adapter keeps the enclosing document tags open between chunks;
+there is no HTML marker or serialized-page splitting.

@@ -1,12 +1,14 @@
 (ns tolgraven.components.error
   (:require
-   [cljs.pprint]
-   [clojure.string :as string]
-   [reagent.core :as r]
-   [tolgraven.components.portal :as portal]
-   [tolgraven.ui.code :as code]))
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [cljs.pprint]
+    [clojure.string :as string]
+    [reagent.core :as r]
+    [tolgraven.components.portal :as portal]
+    [tolgraven.ui.code :as code]))
 
-(defn <failure>
+(defc <failure>
   "Shared fallback for rendering, dependencies, modules and initialization.
    The owner supplies retry; this component never starts requests itself."
   [ns-name comp-name {:keys [error stack title message]} retry!]
@@ -21,12 +23,12 @@
       [:pre (or (ex-message error) (str error))]
       (when (seq stack) [:pre stack])])])
 
-(defn <error-full>
+(defc <error-full>
   "Full error display compojnent, goes in a portal."
   [ns-name comp-name *error spec]
   (let [{:keys [error stack]} @*error]
     [:section.error
-     [:div 
+     [:div
       [:h2 "Component error"]
       [:span "Boundary " (str ns-name "/" comp-name)]]
      [:p "Exception: "]
@@ -37,20 +39,20 @@
      (when stack
        [:<>
         [:p "Stack trace:"]
-        [code/code-block
+        [code/<code-block>
          (->> (string/replace stack #"at |\(http.*\)" "")
               string/split-lines
               (map string/trim)
               (remove string/blank?)
               (string/join "\n"))]])
      [:p "Props/spec:"]
-     [code/code-block
+     [code/<code-block>
       (string/trim-newline (with-out-str (cljs.pprint/pprint spec)))]
      [:span
       [:button {:on-click #(reset! *error nil)}
       "Attempt reload"]]]))
 
-(defn <error>
+(defc <error>
   "Outer error display component."
   [_ _ _ _]
   (let [*open? (r/atom false)]

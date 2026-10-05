@@ -74,9 +74,12 @@
   (fn [post _] (set (model/tags (:tags post)))))
 
 (rf/reg-sub :blog/posts-with-tag
-  :<- [:blog/post-feed]
-  (fn [posts [_ tag]]
-    (filter #(contains? (set (model/tags (:tags %))) tag) posts)))
+  (fn [[_ tag]] (rf/subscribe [:<-store-q (data/tag-query tag)]))
+  (fn [posts _] (when (some? posts) (sort-by :id > (vals posts)))))
+
+(rf/reg-sub :blog/posts-for-page
+  (fn [[_ index size]] (rf/subscribe [:<-store-q (data/page-query index size)]))
+  (fn [posts _] (when (some? posts) (sort-by :id > (vals posts)))))
 
 (rf/reg-sub :blog/all-tags
   :<- [:blog/post-feed]
@@ -202,6 +205,15 @@
 (rf/reg-sub :comments/for-q-flat
   (fn [[_ blog-id parent-id]] (rf/subscribe [:comments/thread-records blog-id parent-id]))
   (fn [comments _] (when (seq comments) comments)))
+
+(rf/reg-sub :comments/visible-thread
+  (fn [[_ post-id parent-id acquire?]]
+    [(rf/subscribe [:comments/cached-thread post-id parent-id])
+     (rf/subscribe (if acquire? [:comments/thread-records post-id parent-id] [:nil]))])
+  (fn [[cached live] _]
+    ;; Acquiring/releasing a live reader must not temporarily remove cached
+    ;; children. An authoritative empty map still replaces stale cached rows.
+    (if (some? live) live cached)))
 
 ;; Reserved for direct comment lookup; keep the unfinished subscription visible.
 (rf/reg-sub :comments/for-id

@@ -5,10 +5,9 @@
             [malli.core :as m]
             [malli.error :as me]
             #?@(:cljs [[reagent.core :as r]
-                       [tolgraven.component]
+                       [tolgraven.component.registry]
                        [tolgraven.react :as rf]
                        [shadow.lazy]
-                       [tolgraven.components.error :as error]
                        [tolgraven.util :as util]]))
   #?(:cljs (:require-macros [tolgraven.macros])))
 
@@ -40,9 +39,13 @@
      val#))
 
 (defmacro browser-only
-  "Exclude browser module references from the SSR compilation graph."
+  "Emit module references only with a Shadow browser module graph.
+   SSR and standalone documentation analysis cannot resolve lazy loadables."
   [form]
-  (when-not (get-in @cljs-env/*compiler* [:options :external-config :tolgraven/ssr]) form))
+  (let [compiler @cljs-env/*compiler*]
+    (when (and (seq (:shadow.build/ns->mod compiler))
+               (not (get-in compiler [:options :external-config :tolgraven/ssr])))
+      form)))
 
 (defmacro make-modules
   "Use keywords to generate Shadow lazy loadables.
@@ -71,6 +74,21 @@
 ;; basic feature flag/disable component entirely support could go in here as well
 ;; prob do some lookups by sub through passing a namespaced id key in spec
 ;; including whether is enabled
+#?(:clj
+   (defn- loading-root [form]
+     ;; Infer only literal DOM shape. Never execute a data-dependent render to
+     ;; discover its placeholder, or capture expressions needing missing data.
+     (cond
+       (and (vector? form) (keyword? (first form))
+            (not (#{:<> :> :r> :f>} (first form))))
+       {:loading-tag (first form)
+        :loading-props (into {} (filter (fn [[k v]]
+                                         (and (#{:class :id} k) (string? v))))
+                             (when (map? (second form)) (second form)))}
+       (and (seq? form) (#{'let 'do 'when 'when-not} (first form)))
+       (loading-root (last form))
+       :else {})))
+
 (defmacro defc
   "Define a lean Reagent 2 function component with optional composed features.
 
@@ -104,47 +122,81 @@
         [bindings body] (if (= :let (first body))
                           [(second body) (nnext body)]
                           [[] body])
+        body (if (seq body) body '(nil))
         metadata (merge (meta name) attrs
                         (when docstring {:doc docstring})
-                        {:arglists (list 'quote (list args))})
+                        {:arglists (list 'quote (if (seq? args) (map first decls) (list args)))})
         ns-name (or (some-> &env :ns :name) (ns-name *ns*))]
-    (when-not (and (symbol? name) (vector? args) (vector? bindings)
-                   (even? (count bindings)) (seq body))
-      (throw (ex-info "defc requires an argument vector, optional :let bindings, and a body"
-                      {:component name})))
-    (let [scoped-helpers? (some #(and (seq? %) (symbol? (first %))
-                                     (#{"<sub" ">reset" ">update"} (clojure.core/name (first %))))
-                               (tree-seq coll? seq (concat bindings body)))
-          options (select-keys (merge (meta name) attrs) [:spec :features :depends :loading :state :module])
-          options (if (and scoped-helpers? (nil? (:state options))) (assoc options :state {}) options)
-          helper-bindings (when scoped-helpers?
-                            ['<sub 'tolgraven.component/<sub
-                             '>reset 'tolgraven.component/>reset
-                             '>update 'tolgraven.component/>update])
-          spec-arg (first args)
-          spec? (or (and (symbol? spec-arg) (#{"spec" "opts" "options"} (clojure.core/name spec-arg)))
-                    (and (map? spec-arg)
-                         (or (#{'spec 'opts 'options} (:as spec-arg))
-                             (some #{'props 'classes 'depends 'appear 'seen 'links}
-                                   (:keys spec-arg))
-                             (some #{:props :classes :depends :appear :seen :links} (vals spec-arg)))))
-          options (assoc options :spec (if (contains? options :spec) (:spec options) (boolean spec?)))
-          plain? (and (empty? (:features options)) (nil? (:depends options)) (nil? (:state options)))
-          descriptor (gensym "definition")]
-      `(do
-         (declare ~name)
-         ;; Keep Reagent-generated render vars lexical: cached namespaces can
-         ;; otherwise reuse top-level compiler gensyms after incremental builds.
-         ((fn []
-         (let [~descriptor (tolgraven.component/definition
-                         ~(str ns-name) ~(str name) ~options
-                         (fn ~args (let [~@helper-bindings ~@bindings] (fn ~args ~@body))))]
-         ~(if plain?
-            `(reagent.core/defc ~(with-meta name metadata) ~args
-               ~@(if (seq bindings) [`(reagent.core/with-let ~bindings ~@body)] body))
-            `(reagent.core/defc ~(with-meta name metadata) [& argv#]
-               (tolgraven.component/render-component ~descriptor argv#)))
-         (tolgraven.component/register-component! ~name ~descriptor))))))))
+    (if (seq? args)
+      ;; Reagent supports multiple render arities. Preserve that API for lean
+      ;; primitives; composed features use one explicit argument/spec vector.
+      (let [options (select-keys (merge (meta name) attrs) [:features :depends :state])]
+        (when (seq options)
+          (throw (ex-info "Composed defc features require a single argument vector" {:component name})))
+        `(do
+           (reagent.core/defc ~(with-meta name metadata) ~@decls)
+           (tolgraven.component.registry/register-component!
+            ~name (tolgraven.component.registry/definition
+                   ~(str ns-name) ~(str name) {:spec false} (fn ~@decls)))))
+      (do
+        (when-not (and (symbol? name) (vector? args) (vector? bindings)
+                       (even? (count bindings)) (seq body))
+          (throw (ex-info "defc requires an argument vector, optional :let bindings, and a body"
+                          {:component name})))
+        (let [scoped-helpers? (some #(and (seq? %) (symbol? (first %))
+                                         (#{"<sub" ">reset" ">update"} (clojure.core/name (first %))))
+                                   (tree-seq coll? seq (concat bindings body)))
+              options (select-keys (merge (meta name) attrs) [:spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :state :module])
+              options (merge (loading-root (last body)) options)
+              loading-helper? (and (some #{'<loading>} (tree-seq coll? seq (concat bindings body)))
+                                   (not (get-in &env [:ns :defs '<loading>]))
+                                   (not (get-in &env [:ns :uses '<loading>]))
+                                   (not (get-in &env [:ns :renames '<loading>]))
+                                   ;; Caller-provided placeholders and local bindings
+                                   ;; take precedence over the injected helper.
+                                   (not (some #{'<loading>}
+                                              (tree-seq coll? seq
+                                                        (concat args (take-nth 2 bindings))))))
+              loading-bindings (when loading-helper?
+                                 ['<loading> `(fn [& [overrides#]]
+                                               (tolgraven.component/loading-view
+                                                (merge ~(select-keys options [:loading-prefab :loading-tag :loading-props]) overrides#)))])
+              options (assoc options :source {:file (or (:file (meta &form)) (:file &env) *file*)
+                                               :line (:line (meta &form))})
+              options (if (and scoped-helpers? (nil? (:state options))) (assoc options :state {}) options)
+              helper-bindings (when scoped-helpers?
+                                ['<sub 'tolgraven.component/<sub
+                                 '>reset 'tolgraven.component/>reset
+                                 '>update 'tolgraven.component/>update])
+              spec-arg (first args)
+              spec? (or (and (symbol? spec-arg) (#{"spec" "opts" "options"} (clojure.core/name spec-arg)))
+                        (and (map? spec-arg)
+                             (or (#{'spec 'opts 'options} (:as spec-arg))
+                                 (some #{'props 'classes 'depends 'appear 'seen 'links}
+                                       (:keys spec-arg))
+                                 (some #{:props :classes :depends :appear :seen :links} (vals spec-arg)))))
+              options (assoc options :spec (if (contains? options :spec) (:spec options) (boolean spec?)))
+              plain? (and (empty? (:features options)) (nil? (:depends options)) (nil? (:state options)))
+              descriptor (gensym "definition")]
+          `(do
+             (declare ~name)
+             ;; Keep Reagent-generated render vars lexical: cached namespaces can
+             ;; otherwise reuse top-level compiler gensyms after incremental builds.
+             ((fn []
+             (let [~descriptor (tolgraven.component.registry/definition
+                             ~(str ns-name) ~(str name)
+                             (cond-> ~options ^boolean goog.DEBUG
+                               (assoc :code ~(pr-str (list* 'defc name (concat (when docstring [docstring]) (when attrs [attrs]) decls)))))
+                             (fn ~args (let [~@helper-bindings ~@loading-bindings ~@bindings] (fn ~args ~@body))))]
+             ~(if plain?
+                `(reagent.core/defc ~(with-meta name metadata) ~args
+                   (tolgraven.component.instrumentation/instrument ~descriptor
+                     ~@(if (seq (concat loading-bindings bindings))
+                         [`(reagent.core/with-let [~@loading-bindings ~@bindings] ~@body)]
+                         [`(do ~@body)])))
+                `(reagent.core/defc ~(with-meta name metadata) [& argv#]
+                   (tolgraven.component/render-component ~descriptor argv#)))
+             (tolgraven.component.registry/register-component! ~name ~descriptor))))))))))
 
 (defmacro defcomp-
   "Define a reagent component with a docstring and metadata, standardized arg

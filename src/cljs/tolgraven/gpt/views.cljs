@@ -1,5 +1,7 @@
 (ns tolgraven.gpt.views
   (:require
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [clojure.string :as string]
@@ -7,7 +9,7 @@
     [tolgraven.ui :as ui]
     [tolgraven.util :as util]))
 
-(defn gpt-message "A single gpt message"
+(defc <gpt-message> "A single gpt message"
   [prompt response thread]
   (let [user (rf/subscribe [:user/user (:user thread)])
         hovered? (r/atom false)]
@@ -29,7 +31,7 @@
         (or response
             "...")] ])))
 
-(defn thread
+(defc <thread>
   [id]
   (let [open? (r/atom false)
         thread (rf/subscribe [:gpt/thread id])]
@@ -49,29 +51,28 @@
 
          (when @open?
            [:div.gpt-messages.gpt-thread.open
-            {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))} 
+            {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))}
 
             (for [[prompt response] (partition 2 2 "..." (:messages @thread))]
               ^{:key (str "gpt-message-" (:user @thread) "-" (:time @thread))}
-              [gpt-message prompt response @thread])
+              [<gpt-message> prompt response @thread])
 
-            [:div.gpt-input.flex 
-             [ui/input-text
+            [:div.gpt-input.flex
+             [ui/<input-text>
               :path [:form-field [:gpt-thread id]]
               :placeholder "Message"
               :on-enter #(rf/dispatch [:gpt/post-in-thread id (:messages @thread)])]
              [:button {:on-click #(rf/dispatch [:gpt/post-in-thread id (:messages @thread)])}
               [:i.fa.fa-arrow-right]]]]) ]))))
 
-(defn threads "A place to hang out with real-time messaging"
+(defc <threads> "A place to hang out with real-time messaging"
   []
   (let [ids @(rf/subscribe [:gpt/thread-ids])]
     [:section.gpt.noborder.covering-2
      [:div.gpt-messages
       {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))}
       (for [id ids] ^{:key (str "gpt-thread-" id)}
-        [thread id])]
+        [<thread> id])]
       [:button
        {:on-click #(rf/dispatch [:gpt/new-thread])}
        "New thread"]]))
-

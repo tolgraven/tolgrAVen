@@ -9,4 +9,4 @@
   {:content (get content-contract/module-content :cv [])
    :id :cv
    :pages pages/spec
-   :view {:page #'view/page}})
+   :view {:page #'view/<page>}})

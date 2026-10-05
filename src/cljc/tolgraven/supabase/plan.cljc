@@ -20,6 +20,8 @@
                                  (if (every? some? results)
                                    (assoc values id ((or transform (fn [_ values] (rows values))) values results))
                                    values))) values requests)
+              cache (reduce-kv (fn [cache opts value]
+                                 (merge cache (query/document-caches opts value))) cache responses)
               cache (into cache (keep (fn [[opts result]]
                                        (when (some? result) [(pr-str (query/normalize-query opts)) result]))) responses)]
           (recur values cache (into attempted (map :id ready))))))))

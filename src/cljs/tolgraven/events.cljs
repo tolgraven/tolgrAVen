@@ -39,7 +39,7 @@
 (rf/reg-event-fx :common/navigate   [debug
                                      (rf/inject-cofx :scroll-position)
                                      (rf/inject-cofx :gen-id [:navigations])]
-  (fn [{:as cofx :keys [db scroll-position id]} [_ match]]
+  (fn [{:as cofx :keys [db scroll-position id]} [_ match complete!]]
     (let [navigation-count (get-in id [:id :navigations])
           old-match (:common/route db)
           new-match (assoc match :controllers
@@ -53,32 +53,37 @@
                    (same :path-params)
                    (same :query-params) ; causes some trouble with settingsbox getting stuck?
                    (same :path))
-        (util/deep-merge
-          {:db (-> db
+        (cond-> {:db (cond-> (-> db
                    (assoc :common/route new-match)
-                   (assoc :common/route-last old-match)
                    (update-in [:state] dissoc :error-page)  ; reset 404 page in case was triggered
-                   (update-in [:state] dissoc :swap)
-                   (update-in [:state :exception] dissoc :page)
-                   (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
-           :dispatch-n
-           [[:later/dispatch {:ms       300                 ; XXX like everything else this shouldn't be timed but fire after page booted (= height stabilized)
-                              :dispatch [:document/set-title! new-match]}]]} ; title of site
-          (when (or (and (same :query-params)               ; TODO maybe query params did change but also something else tho
-                         (or (not (same :data :view))
-                             (not (same :path-params))))
-                    (not old-match))                        ; restore last position if followed a link from elsewhere (even if go to top for internal links)
-            {:dispatch-n
-             [[:later/dispatch
-               {:ms       150
-                :dispatch [:scroll/on-navigate (:path new-match) navigation-count]}]]}))
+                   (update-in [:state :exception] dissoc :page))
+               (not (:replace-shell? complete!))
+               (assoc :common/route-last old-match)
+               (not (:replace-shell? complete!))
+               (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
+         :dispatch-n
+         (cond-> [[:document/set-title! new-match]]
+           ;; Loading code replaces this destination's placeholder in place.
+           ;; Its title still updates; its transition and scroll do not restart.
+           (not (:replace-shell? complete!))
+           (conj (if (or (not (same :path))
+                         (not (same :data :view))
+                         (not (same :path-params))
+                         (nil? old-match))
+                   ;; Persisted ID counters do not tell us whether this document
+                   ;; has navigated yet. Its first route restores the saved offset.
+                   [:scroll/on-navigate (:path new-match) (if old-match navigation-count 0) complete!]
+                   [:page/ready nil complete!])))}
+          (:replace-shell? complete!) (assoc :page/replace-destination new-match))
 
       (let [fragment (-> db :state :fragment)]              ;; matches are equal (fragment not part of match)
-        (when (pos? (count (seq fragment)))
+        (if (pos? (count (seq fragment)))
           {:db (update-in db [:state] dissoc :fragment)
            :dispatch-n
            [[:later/dispatch {:ms       200                 ; obv too much. but maybe scroll issues partly from swapper bs?
-                              :dispatch [:scroll/to fragment]}]]}))))))
+                              :dispatch [:scroll/to fragment]}]
+            [:page/ready nil complete!]]}
+          {:dispatch [:page/ready nil complete!]}))))))
 
 (rf/reg-fx :common/navigate-fx!
   (fn [[k & [params query]]]
@@ -90,7 +95,8 @@
 
 (rf/reg-event-fx :common/set-title [debug]
   (fn [{:keys [db]} [_ title]]
-    {:db (assoc-in db [:state :document :title] title)}))
+    (cond-> {:db (assoc-in db [:state :document :title] title)}
+      (:common/route db) (assoc :dispatch [:document/set-title! (:common/route db)]))))
 
 (rf/reg-event-fx :later/dispatch
   (fn [{:keys [db]} [_ m]]
@@ -135,19 +141,6 @@
 (rf/reg-fx :history/pop
   (fn [_]
     (.back js/window.history)))
-
-
-(rf/reg-event-fx :swap/trigger
-  (fn [{:keys [db]} [_ item]]
-    {:db (assoc-in db [:state :swap :running] item)
-     :dispatch-later {:ms 1000 ; got transition taking 1s yet this (?) sometimes triggers abruptly before it ends hmm (+ hardly optimal so long...)
-                      :dispatch [:swap/finish item]}}))
-
-(rf/reg-event-fx :swap/finish
-  (fn [{:keys [db]} [_ item]]
-    (when (= item (get-in db [:state :swap :running]))
-      {:db (-> db (assoc-in [:state :swap :finished] item)
-                  (update-in [:state :swap] dissoc :running))})))
 
 
 (rf/reg-event-fx :dispatch-in/ms     debug
@@ -357,8 +350,9 @@
       {:dispatch [:on-booted :store [:<-store path on-success on-failure]]})))
 
 (rf/reg-event-fx :supabase/fetch-settings
-  (fn [_ _]
-    {:dispatch [:http/get {:uri "/api/supabase/settings" :timeout 15000 :background? true}
+  (fn [{:keys [db]} _]
+    {:db (assoc-in db [:state :supabase-init] :loading)
+     :dispatch [:http/get {:uri "/api/supabase/settings" :timeout 15000 :background? true}
                 [:supabase/init]
                 [:supabase/error]]}))
 
@@ -368,7 +362,9 @@
                           "Account and database content are unavailable. Check your connection and retry."
                           #(rf/dispatch [:supabase/fetch-settings]))))
 (rf/reg-event-fx :supabase/error
-  (fn [_ _] {:supabase/report-init-error true}))
+  (fn [{:keys [db]} _]
+    {:db (assoc-in db [:state :supabase-init] :failed)
+     :supabase/report-init-error true}))
 
 (rf/reg-fx :supabase/request
   (fn [{:keys [method uri data on-success on-error]}]
@@ -420,11 +416,15 @@
 
 (rf/reg-event-fx :supabase/initialized
   (fn [{:keys [db]} [_ settings]]
-    {:db (assoc-in db [:options :supabase] settings)
+    {:db (-> db (assoc-in [:options :supabase] settings)
+               (assoc-in [:state :supabase-init] :ready))
      :dispatch [:booted :store]}))
 
 (rf/reg-event-fx :store/init
-  (fn [_ _] {:dispatch [:supabase/fetch-settings]}))
+  (fn [{:keys [db]} _]
+    (when-not (#{:loading :ready} (get-in db [:state :supabase-init]))
+      {:db (assoc-in db [:state :supabase-init] :loading)
+       :dispatch [:supabase/fetch-settings]})))
 
 (rf/reg-event-fx :<-cms
   (fn [_ [_ path]]
@@ -658,7 +658,9 @@
   (assoc-in db path value)))
 (rf/reg-event-db :unset
  (fn [db [_ path]]
-  (update-in db (butlast path) dissoc (last path))))
+  (if-let [parent (seq (butlast path))]
+    (update-in db parent dissoc (last path))
+    (dissoc db (last path)))))
 (rf/reg-event-db :toggle
  (fn [db [_ path]]
   (update-in db path not)))

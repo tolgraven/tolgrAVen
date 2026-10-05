@@ -150,9 +150,7 @@
   (let [scroll-to-ls
         (fn []
           (when (= js/document.visibilityState "hidden")
-            (rf/dispatch-sync [:state [:scroll-position ; doesnt it make more sense to save straight to ls tho instead of going by db... guess doesn't matter with -sync on both tho?
-                                       (-> db :common/route :data :name)]
-                               (.-scrollY js/window)])
+            (rf/dispatch-sync [:scroll/save-history])
             (rf/dispatch-sync [:ls/store-path [:scroll-position]
                                [:state :scroll-position]])))]
     {:dispatch [:listener/add! "window" "visibilitychange" scroll-to-ls]})))

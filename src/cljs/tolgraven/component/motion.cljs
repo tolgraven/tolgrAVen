@@ -1,7 +1,6 @@
 (ns tolgraven.component.motion
   "Root-merged motion and parent-owned exit retention. No wrapper components."
   (:require [clojure.string :as string]
-            [react :as react]
             [tolgraven.react :as rf]
             [tolgraven.component.restore :as restore]))
 
@@ -96,24 +95,26 @@
         appearance (config (or seen appear)) exit-options (config exit)
         remember-key (:remember-key appearance)
         remembered? (when remember-key @(rf/subscribe [:state [:motion-seen remember-key]]))
-        [skip-enter?] (react/useState #(boolean (or remembered? (restore/skip-enter?))))
-        [visible? set-visible!] (react/useState skip-enter?)
-        [reduced? set-reduced!] (react/useState reduced-motion?)
-        *element (react/useRef nil)
+        [skip-enter?] (rf/use-state #(boolean (and (not= false (:restore? appearance))
+                                                  (or remembered? (restore/skip-enter?)))))
+        [initial-enter?] (rf/use-state #(boolean (and (not= false (:restore? appearance)) (restore/initial-enter?))))
+        [visible? set-visible!] (rf/use-state skip-enter?)
+        [reduced? set-reduced!] (rf/use-state reduced-motion?)
+        *element (rf/use-ref nil)
         base-ref (:ref (attrs form))
-        capture! (react/useCallback
+        capture! (rf/use-callback
                   (fn [element] (set! (.-current *element) element) (set-ref! base-ref element) js/undefined)
                   #js [base-ref])
         exiting? (= :exiting (:phase presence))
         threshold (or (:threshold appearance) 0.5)
         once? (boolean (:once? appearance))
         root-margin (or (:root-margin appearance) "0px")]
-    (react/useEffect
+    (rf/use-effect
      (fn []
        (when (and remember-key visible? (not remembered?))
          (rf/dispatch [:component-motion/seen remember-key]))
        js/undefined) #js [remember-key visible? remembered?])
-    (react/useEffect
+    (rf/use-effect
      (fn []
        (if-not (and (exists? js/window) (.-matchMedia js/window))
          js/undefined
@@ -123,8 +124,8 @@
            #(.removeEventListener query "change" change!)))) #js [])
     ;; Run after every commit, but only restart when root/options change.
     ;; A ref replacement with the same DOM element does not reset visibility.
-    (let [*watch (react/useRef nil)]
-      (react/useLayoutEffect
+    (let [*watch (rf/use-ref nil)]
+      (rf/use-layout-effect
        (fn []
          (let [element (.-current *element)
                signature [element (boolean seen) threshold once? root-margin reduced? skip-enter? (:force appearance)]
@@ -152,10 +153,10 @@
                              :else (next-frame! #(set-visible! true))))]
                (set! (.-current *watch) {:signature signature :stop! stop!}))))
          js/undefined))
-      (react/useLayoutEffect (fn [] (fn []
+      (rf/use-layout-effect (fn [] (fn []
                                       (when-let [stop! (:stop! (.-current *watch))] (stop!))
                                       (set! (.-current *watch) nil))) #js []))
-    (react/useLayoutEffect
+    (rf/use-layout-effect
      (fn []
        (if-not (and exiting? (:finish! presence))
          js/undefined
@@ -176,7 +177,8 @@
                                                (when (and (not exiting?) (or visible? reduced? skip-enter?)) "appeared")
                                                (when exiting? (str "exiting " (class-text (:class exit-options))))]))]
         (with-attrs form
-          (cond-> (assoc base :class classes :ref capture!)
+          (cond-> (assoc base :class classes :ref capture!
+                                :data-stream-enter (when initial-enter? true))
             reduced? (update :style merge {:transition "none" :animation "none"})
             exiting? (assoc :aria-hidden true :inert true)))))))
 
@@ -187,10 +189,10 @@
   "Retain removed keyed direct children in their existing parent until they exit.
    eligible? identifies defc children opting into :exit; no virtual/DOM wrappers."
   [form eligible?]
-  (let [*committed (react/useRef [])
-        *mounted? (react/useRef true)
-        *deadlines (react/useRef {})
-        [_ refresh!] (react/useReducer inc 0)
+  (let [*committed (rf/use-ref [])
+        *mounted? (rf/use-ref true)
+        *deadlines (rf/use-ref {})
+        [_ refresh!] (rf/use-reducer inc 0)
         current (vec (flatten-children (children form)))
         keyed (fn [child] (when (and (vector? child) (eligible? (first child)))
                            (or (:key (meta child))
@@ -223,7 +225,7 @@
       (throw (js/Error. "Presence children require unique keys.")))
     (when-not (or (dom-root? form) (= :<> (first form)))
       (throw (js/Error. "The :presence feature needs a native parent root or fragment.")))
-    (react/useLayoutEffect
+    (rf/use-layout-effect
      (fn []
        (set! (.-current *committed) retained)
        (let [exiting (into {} (keep (fn [entry]
@@ -243,7 +245,7 @@
              (set! (.-current *deadlines)
                    (assoc (.-current *deadlines) key {:token (:token control) :timer timer})))))
        js/undefined))
-    (react/useLayoutEffect (fn [] (set! (.-current *mounted?) true)
+    (rf/use-layout-effect (fn [] (set! (.-current *mounted?) true)
                              (fn [] (set! (.-current *mounted?) false)
                                (doseq [[_ {:keys [timer]}] (.-current *deadlines)] (js/clearTimeout timer))
                                (set! (.-current *deadlines) {})

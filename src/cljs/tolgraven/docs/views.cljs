@@ -1,9 +1,11 @@
 (ns tolgraven.docs.views
   (:require
-   [reagent.core :as r]
-   [tolgraven.react :as rf]
-   [clojure.string :as string]
-   [tolgraven.ui :as ui]))
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [reagent.core :as r]
+    [tolgraven.react :as rf]
+    [clojure.string :as string]
+    [tolgraven.ui :as ui]))
 
 (defn page-links
   "Rewrite generated Codox filenames before rendering. External URLs, root
@@ -15,7 +17,7 @@
         (str before "/docs/codox/" doc suffix after)
         original))))
 
-(defn doc-page "Display a codox page"
+(defc <doc-page> "Display a codox page"
   []
   (let [html @(rf/subscribe [:docs/page-html])]
     [:div.docs
@@ -23,10 +25,9 @@
        ;; This is generated, trusted documentation HTML, an opaque React leaf.
        ;; Transform its content before rendering, never walk and rewrite live DOM.
        [:div.codox {:dangerouslySetInnerHTML (r/unsafe-html (page-links html))}]
-       [ui/loading-spinner true :massive])]))
+       [ui/<loading-spinner> true :massive])]))
 
-(defn page []
-  [ui/with-heading [:docs :heading]
+(defc <page> []
+  [ui/<with-heading> [:docs :heading]
    [:section.docs.solid-bg.hi-z.noborder.fullwide
-    [doc-page]]])
-
+    [<doc-page>]]])

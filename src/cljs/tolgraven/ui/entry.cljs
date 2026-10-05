@@ -1,13 +1,15 @@
 (ns tolgraven.ui.entry
   (:require
-   [clojure.string :as string]
-   [tolgraven.ui :as ui]
-   [reagent.core :as r]
-   [tolgraven.react :as rf]))
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [clojure.string :as string]
+    [tolgraven.ui :as ui]
+    [reagent.core :as r]
+    [tolgraven.react :as rf]))
 
 (def char-width 0.61225)
 
-(defn- completion
+(defc ^:private <completion>
   [query suggestion height]
   (when-not (string/blank? (:match suggestion))
     (let [words (-> (str #_(-> (get suggestion :query "")
@@ -23,12 +25,11 @@
                 :display :inline-flex}}
        [:span.first-char char1]
        (for [letter others] ; causes issues with spacing? nice lil zoom effect though, figure out.
-         [ui/appear-anon "slide-in faster"
-          [:span
+         [ui/<appear> {:appear "slide-in faster" :form [:div [:span
            {:style {:min-height height}}
-           letter]])])))
+           letter]]}])])))
 
-(defn box "Search input field"
+(defc <box> "Search input field"
   [model suggestions-query on-change
    & {:as args :keys [on-enter placeholder width height open? opts]}]
  (let [internal-model (r/atom (or @model ""))
@@ -52,10 +53,10 @@
            caret-height (* 1.6 (max 0.(- 1.0 (* 0.03 selection-len) )))]
    [:div.search-input-container
     {:class (when-not open? "closed")}
-    
+
     [:div.search-query-visible
      {:style {:height height }}
-     
+
      [:label.search-caret.blinking.nomargin.nopadding
       {:style {:position :absolute
                :width (str (max char-width selection-len) "em")
@@ -68,22 +69,21 @@
                :animation (when-not (zero? selection-len)
                             "unset")}}
       "_"]
-     
+
      (when-not (string/blank? @internal-model)
        [:span {:style {:white-space :pre-wrap
                        :display :inline-flex}}
         (for [letter @internal-model] ; causes issues with spacing? nice lil zoom effect though, figure out.
-          [ui/appear-anon "zoom fast"
-           [:span.search-letter letter]])])
-     
-     [completion @internal-model suggestion height]]
-     
+          [ui/<appear> {:appear "zoom fast" :form [:div [:span.search-letter letter]]}])])
+
+     [<completion> @internal-model suggestion height]]
+
      [:input#search-input.search-input ;problem if multiple search boxes on same page tho
       {:type "search"
        :incremental true
        :style {:opacity 0
                :width width ;:min-width width :max-width width
-               ; :height height 
+               ; :height height
                :min-height height
                :max-height height
                :padding (when (or (zero? width) (zero? height)) 0)
@@ -101,7 +101,7 @@
        :on-search (fn [e] ; this is da debounce! apparently recommended against. also not working anyways hahah
                     (let [new-val (-> e .-target .-value)]
                       (on-enter)))
-       
+
        :on-key-down (fn [e] (set-caret (.-target e)))
        :on-click (fn [e] (set-caret (.-target e)))
        :on-touch-start (fn [e] (set-caret (.-target e)))
@@ -118,5 +118,5 @@
                                    (.preventDefault e))
                       true)
                     (fn [e] (set-caret (.-target e))))}]
-     
+
      [:span.search-input-info "BETA"]]))))

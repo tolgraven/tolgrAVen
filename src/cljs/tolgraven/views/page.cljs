@@ -1,92 +1,108 @@
 (ns tolgraven.views.page
-  (:require [tolgraven.react :as rf]
-            [reagent.core :as r]
-            [tolgraven.component :as component]
-            [tolgraven.component.restore :as restore]
-            [tolgraven.main.module :as main-module]
-            [tolgraven.loader :as l]
-            [tolgraven.ui :as ui]
-            [tolgraven.views-common :as common]))
+  (:require
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.react :as rf]
+    [tolgraven.component :as component]
+    [tolgraven.component.restore :as restore]
+    [tolgraven.page-transition :as transition]
+    [tolgraven.main.module :as main-module]
+    [tolgraven.loader :as l]
+    [tolgraven.ui :as ui]
+    [tolgraven.views-common :as common]))
 
 (def spec main-module/spec)
 
-(defn swapper "Keep page instances keyed while moving them through the crossfade."
-  [& _]
-  (let [*started (atom nil)]
-    (fn [class comp-in comp-out current previous]
-      (let [swap @(rf/subscribe [:state [:swap]])
-            current-key [(:path current) (:query-params current)]
-            previous-key [(:path previous) (:query-params previous)]
-            transition [previous-key current-key]
-            force? (or (empty? class) (nil? comp-out) (= current-key previous-key))
-            running? (= transition (:running swap))
-            finished? (= transition (:finished swap))
-            start! (fn [element]
-                     (when (and element (not force?) (not running?) (not finished?)
-                                (not= transition @*started))
-                       (reset! *started transition)
-                       (js/requestAnimationFrame
-                        #(js/requestAnimationFrame
-                          (fn []
-                            (when (and (.-isConnected element) (= transition @*started))
-                              (rf/dispatch [:swap/trigger transition])))))))]
-        [:div.swapper
-         ;; Stable sibling keys retain the actual outgoing DOM/component state.
-         ;; Moving an old page into a new wrapper remounted its entrance effects.
-         (for [[key active? form] (cond-> [[current-key true comp-in]]
-                                  (and comp-out (not force?) (not finished?))
-                                  (conj [previous-key false comp-out]))]
-           ^{:key (pr-str key)}
-           [:div {:class (if active?
-                           (str "swap-in " class " " (when (or force? running? finished?) "swapped-in"))
-                           (str "swapped " (when running? (str class " swapped-out"))))
-                  :ref (when active? start!)}
-            form])]))))
+(defc <swapper>
+  "CSS crossfade fallback. Route commits never wait for this page-owned motion."
+  [incoming outgoing current previous animate? transition-id]
+  (let [page-key (fn [route] (or (get-in route [:data :transition-key]) (:path route)))
+        current-key (page-key current)
+        previous-key (page-key previous)
+        token (pr-str [transition-id previous-key current-key])
+        [running set-running!] (rf/use-state nil)
+        [finished set-finished!] (rf/use-state nil)
+        force? (or (not animate?) (nil? outgoing) (= current-key previous-key))]
+    (rf/use-effect
+      (fn []
+        (if force?
+          js/undefined
+          (let [*frame (atom nil)
+                *timer (atom nil)]
+            (reset! *frame
+              (js/requestAnimationFrame
+                (fn [_]
+                  (reset! *frame
+                    (js/requestAnimationFrame
+                      (fn [_]
+                        (set-running! token)
+                        (reset! *timer (js/setTimeout #(set-finished! token) 750))))))))
+            (fn []
+              (when @*frame (js/cancelAnimationFrame @*frame))
+              (when @*timer (js/clearTimeout @*timer))))))
+      #js [token force?])
+    [:div.swapper
+     (for [[key active? form] (cond-> [[current-key true incoming]]
+                                (and (not force?) (not= token finished))
+                                (conj [previous-key false outgoing]))]
+       ^{:key (pr-str key)}
+       [:div {:aria-hidden (when-not active? true)
+              :inert (when-not active? true)
+              :class (if active?
+                       (str "swap-in opacity " (when (or force? (= token running) (= token finished)) "swapped-in"))
+                       (str "swapped " (when (= token running) "opacity swapped-out")))}
+        form])]))
 
-(defn page "Render active page inbetween header, footer and general stuff."
+(defc <page> "Render active page inbetween header, footer and general stuff."
   []
-  (let [ext-back? (or (restore/skip-enter?) @(rf/subscribe [:history/back-nav-from-external?]))
-        swap-class (if ext-back? "" "opacity")
+  (let [commit @(rf/subscribe [:get :page/commit])
+        _ (transition/use-ready! commit)
+        ext-back? (restore/skip-enter?)
         debug @(rf/subscribe [:state [:debug]])
         click-evt @(rf/subscribe [:state [:global-clicked]])]
   [:<>
    [l/<assets> {:css (some-> spec :assets :css)
                 :js  (some-> spec :assets :js)}]
 
-   [ui/safe :header [common/header @(rf/subscribe [:content [:header]])]]
+   [ui/<safe> :header [common/<header> @(rf/subscribe [:content [:header]])]]
    [:a {:name "linktotop" :id "linktotop"}]
 
-   [ui/zoom-to-modal :fullscreen]
+   [ui/<zoom-to-modal> :fullscreen]
    [l/<> {:module :link-preview}]
-   [ui/safe :user [l/<> {:module :user, :defer? true}]]
-   [ui/safe :settings [common/settings]]
-   [ui/safe :search [l/<> {:module :search, :defer? true}]]
+   [ui/<safe> :user [l/<> {:module :user, :defer? true}]]
+   [ui/<safe> :settings [common/<settings>]]
+   [ui/<safe> :search [l/<> {:module :search, :defer? true}]]
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
       [error-page]]
      (if-let [page @(rf/subscribe [:common/page])]
        [:main.main-content.perspective-top
         {:id    "main"
+         :data-debug-hydrated (when @(rf/subscribe [:state [:debug :hydration-token]]) true)
          :data-restored (when ext-back? true)
-         :class (str (when-not ext-back? "animate ")
+         :data-stream-enter (when (restore/initial-enter?) true)
+         :class (str (when (and (not ext-back?)
+                                     (= (:page @restore/*context) (restore/page-key)))
+                            "animate ")
                      (when (:layers debug) "debug-layers ")
                      (when (:parallax debug) "debug-on"))}
-        [swapper swap-class
-         [ui/safe :page [(component/resolve-view page)]
+        [<swapper>
+         [ui/<safe> :page [(component/resolve-view page)]
           (:path @(rf/subscribe [:common/route]))]
-         (when-let [page-prev @(rf/subscribe [:common/page :last])]
-           [ui/safe :page [(component/resolve-view page-prev)]
+         (when-let [previous @(rf/subscribe [:common/page :last])]
+           [ui/<safe> :page [(component/resolve-view previous)]
             (:path @(rf/subscribe [:common/route :last]))])
-         @(rf/subscribe [:common/route])
-         @(rf/subscribe [:common/route :last])]]
-       [ui/loading-spinner true :massive]))                 ; removed since jars now that have hero in original html
+         @(rf/subscribe [:common/route]) @(rf/subscribe [:common/route :last])
+         (and (not ext-back?) (get-in commit [:completion :fallback?]))
+         (get-in commit [:completion :transition-id])]]
+       [ui/<loading-spinner> true :massive]))                 ; removed since jars now that have hero in original html
 
    [:div#error-portal]
 
-   [common/footer-full @(rf/subscribe [:content [:footer]])]
-   [common/footer @(rf/subscribe [:content [:footer]])]
-   [ui/safe :hud [ui/hud (rf/subscribe [:hud])]]
-   [common/to-top]
+   [common/<footer-full> @(rf/subscribe [:content [:footer]])]
+   [common/<footer> @(rf/subscribe [:content [:footer]])]
+   [ui/<safe> :hud [ui/<hud> (rf/subscribe [:hud])]]
+   [common/<to-top>]
    ; [[:div.ripple-on-click
    ;    {:class (when click-evt "ripple")
    ;     :style {:left (str "calc(" (if click-evt

@@ -1,20 +1,22 @@
 (ns tolgraven.github.views
   (:require
-   [reagent.core :as r]
-   [tolgraven.react :as rf]
-   [clojure.string :as string]
-   [tolgraven.ui :as ui]
-   [tolgraven.image :as img]
-   [tolgraven.util :as util :refer [at]]
-   [cljs-time.core :as ct]
-   [cljs-time.coerce :as ctc]
-   [cljs-time.format :as ctf]))
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [reagent.core :as r]
+    [tolgraven.react :as rf]
+    [clojure.string :as string]
+    [tolgraven.ui :as ui]
+    [tolgraven.image :as img]
+    [tolgraven.util :as util :refer [at]]
+    [cljs-time.core :as ct]
+    [cljs-time.coerce :as ctc]
+    [cljs-time.format :as ctf]))
 
 
-(defn commit "Show a single commit with highlighted diff etc..."
+(defc <commit> "Show a single commit with highlighted diff etc..."
+  {:features [[:appear "zoom-y"]]}
   [sha close]
   (let [commit @(rf/subscribe [:github/commit sha])]
-    [ui/appear-merge "zoom-y"
      [:div.github-commit-full
      close
      (for [file (:files commit)
@@ -53,7 +55,7 @@
                                              (case
                                                (string/starts-with? "-" line) i))
                                            (string/split-lines diff)) ]]
-              
+
              [:div
               [:p header]
               [:div.flex
@@ -74,24 +76,24 @@
                           "scss"          "css"
                           "")}
                 (-> hunk
-                    (string/replace #"(?m)^." ""))]]])))]])]]))
+                    (string/replace #"(?m)^." ""))]]])))]])]))
 
-(defn loading "Lazy load more on scroll to bottom, with a button as fallback for the poors"
+(defc <loading> "Lazy load more on scroll to bottom, with a button as fallback for the poors"
   [user repo]
   (fn [user repo]
    [:div.github-loading
-   [ui/lazy-load
+   [ui/<lazy-load>
     [:github/fetch-commits-next user repo]
     true]
    [:h2 "Loaded " (count @(rf/subscribe [:github/commits]))]
    [:h3 "Scrolling down should load more..."]
    [:div {:style {:padding "var(--space)"}}
-    [ui/loading-spinner true :still]]
+    [ui/<loading-spinner> true :still]]
    [:button {:style {:margin-top "var(--space-lg)"}
              :on-click #(do (rf/dispatch [:github/fetch-commits-next user repo]))}
     "...or you can click here"]]))
 
-(defn commits "List Github commits for this repo"
+(defc <commits> "List Github commits for this repo"
   []
   (let [from (rf/subscribe [:github/get-from])
         commits (rf/subscribe [:github/filter-by])
@@ -107,14 +109,14 @@
    (fn []
     [:<>
      [:section.github-commits.covering-2
-     
+
      [:h2 [:i.fab.fa-github]" " @amount " commits to "
       [:span
        [:a {:title "The repo" :href @url}
         "this website"]]]
-        
+
      [:div#github-commits-box.github-commits-inner
-      [ui/input-text :id "github-commits-filter"
+      [ui/<input-text> :id "github-commits-filter"
        :input-type "input.search"
        :placeholder "Search commits"
        :width "100%"
@@ -132,13 +134,12 @@
        (for [{:keys [commit author html_url sha sha7 message date clock ts] :as item} @commits
               :let [[info subtitle title] message]]
             ^{:key (str "github-commit-" ts)}
-        [ui/appear-merge "slide-in slow"
-        [:div.github-commit.flex
+        [ui/<appear> {:appear "slide-in slow" :form [:div.github-commit.flex
          {:on-click #(do (rf/dispatch [:github/fetch-commit (first @from) (second @from) sha])
                          (reset! main-view-position
                                  (.-scrollTop (util/elem-by-id "github-commits-box")))
                          (reset! view sha))}
-         [img/picture {:src (:avatar_url author)
+         [img/<picture> {:src (:avatar_url author)
                        :alt (str (:login author) " avatar")
                        :class "user-avatar center-content"}]
          [:div.github-commit-details
@@ -169,12 +170,11 @@
                  {:style {:cursor "pointer"}
                   :on-click (fn [e] (.stopPropagation e)
                               (rf/dispatch [:form-field [:github :search] subtitle]))}
-                 subtitle]]))]])
+                 subtitle]]))]}])
 
           [:div
-            [commit @view [ui/close #(reset! view :commits)]]])
-      
-     (when (= @view :commits)
-      [loading (first @from) (second @from)])]]]
-     [ui/fading :dir "bottom"]])))
+            [<commit> @view [ui/<close> #(reset! view :commits)]]])
 
+     (when (= @view :commits)
+      [<loading> (first @from) (second @from)])]]]
+     [ui/<fading> :dir "bottom"]])))

@@ -1,30 +1,31 @@
 (ns tolgraven.blog-ssr-test
-  (:require [cljs.test :refer-macros [deftest is async]]
-            [reagent.core :as r]
-            [reagent.dom.client :as dom]
-            [react :as react]
-            [re-frame.core :as rf]
-            [re-frame.db :as rfdb]
-            [reitit.core :as reitit]
-            [shadow.lazy :as lazy]
-            [tolgraven.db :as db]
-            [tolgraven.routes :as routes]
-            [tolgraven.loader :as loader]
-            [tolgraven.render-context :as context]
-            [tolgraven.component.restore :as restore]
-            [tolgraven.ssr.client :as client]
-            [tolgraven.views.page :as page]
-            [tolgraven.blog.module :as blog]
-            [tolgraven.cv.module :as cv]
-            [tolgraven.docs.module :as docs]
-            [tolgraven.user.module :as user]
-            [tolgraven.link-preview.module :as link-preview]))
+  (:require
+    [cljs.test :refer-macros [deftest is async]]
+    [reagent.core :as r]
+    [reagent.dom.client :as dom]
+    [tolgraven.react :as react]
+    [re-frame.core :as rf]
+    [re-frame.db :as rfdb]
+    [reitit.core :as reitit]
+    [shadow.lazy :as lazy]
+    [tolgraven.db :as db]
+    [tolgraven.routes :as routes]
+    [tolgraven.loader :as loader]
+    [tolgraven.render-context :as context]
+    [tolgraven.component.restore :as restore]
+    [tolgraven.ssr.client :as client]
+    [tolgraven.views.page :as page]
+    [tolgraven.blog.module :as blog]
+    [tolgraven.cv.module :as cv]
+    [tolgraven.docs.module :as docs]
+    [tolgraven.user.module :as user]
+    [tolgraven.link-preview.module :as link-preview]))
 
 (def modules {:cv cv/spec :docs docs/spec :blog blog/spec :user user/spec :link-preview link-preview/spec})
 
 (r/defc <hydration-check> [on-commit]
-  (react/useEffect (fn [] (on-commit) js/undefined) #js [])
-  [page/page])
+  (react/use-effect (fn [] (on-commit) js/undefined) #js [])
+  [page/<page>])
 
 (defn check-hydration! [fixture selectors done]
   (let [element (.createElement js/document "div") *root (atom nil)

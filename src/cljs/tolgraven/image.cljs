@@ -1,43 +1,20 @@
 (ns tolgraven.image
   "Helpers for serving modern image formats (WebP, AVIF) with automatic fallbacks"
   (:require
-   [clojure.string :as string]
-   [reagent.core :as r]))
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.image.sources :as sources]
+    [tolgraven.react :as react]
+    [reagent.core :as r]))
 
-(defn- replace-extension
-  "Replace file extension. e.g., 'img/foo.jpg' -> 'img/foo.webp'"
-  [path new-ext]
-  (string/replace path #"\.(jpe?g|png)$" (str "." new-ext)))
+(def get-src-variants sources/get-src-variants)
 
-(defn- should-use-modern-formats?
-  "Determine if we should generate modern format sources for this image.
-   Skip for:
-   - SVG files (already vector-based)
-   - External URLs (we don't control those assets)
-   - URLs with query strings (likely already proxied/optimized)
-   - Favicons and app icons
-   - Already modern formats (webp, avif)"
-  [src]
-  (and (string? src)
-       (re-find #"\.(jpe?g|png)$" src)
-       (not (re-find #"^(https?:|//)" src))               ;; Skip external URLs
-       (not (re-find #"\?" src))                          ;; Skip URLs with query strings
-       (not (re-find #"avatar" src))                      ;; Skip URLs from avatars (for now
-       (not (re-find #"\.svg$" src))                      ;; Skip SVG files
-       (not (re-find #"(favicon|android-chrome|apple-touch-icon|mstile)" src))))
+(defn- modern-source-selected? [image src]
+  (let [current-src (.-currentSrc image)]
+    (and (seq current-src)
+         (not= current-src (.-href (js/URL. src (.-baseURI image)))))))
 
-(defn get-src-variants
-  "Get all available format variants for an image path.
-   Returns a map with :original, :webp, and :avif paths.
-   Useful for preloading or manual format selection."
-  [src]
-  (if (should-use-modern-formats? src)
-    {:original src
-     :webp (replace-extension src "webp")
-     :avif (replace-extension src "avif")}
-    {:original src}))
-
-(defn picture
+(defc <picture>
   "Generate a <picture> element with WebP and AVIF sources and fallback to original.
 
    Usage:
@@ -54,20 +31,31 @@
    Browsers select the first supported format. If requesting or decoding that
    source fails, retry the original JPEG/PNG. Call the caller's on-error only when the
    original image fails too."
-  [{:keys [src on-error] :as attrs}]
+  [{:keys [src on-error ref] :as attrs}]
   (r/with-let [*fallback-sources (r/atom #{})]
-    (if (should-use-modern-formats? src)
-      (let [avif-src (replace-extension src "avif")
-            webp-src (replace-extension src "webp")
+    (let [capture! (react/use-callback
+                    (fn [image]
+                      ;; A server-rendered image may fail before React attaches
+                      ;; on-error. Inspect it at attachment without changing DOM;
+                      ;; state removes the modern sources through normal rendering.
+                      (when (and image (sources/should-use-modern-formats? src)
+                                 (.-complete image) (zero? (.-naturalWidth image))
+                                 (modern-source-selected? image src))
+                        (swap! *fallback-sources conj src))
+                      (cond (fn? ref) (ref image)
+                            ref (set! (.-current ^js ref) image))
+                      js/undefined)
+                    #js [src ref])]
+     (if (sources/should-use-modern-formats? src)
+      (let [avif-src (sources/replace-extension src "avif")
+            webp-src (sources/replace-extension src "webp")
             ;; Keep failures by original path so a new src tries modern formats anew.
             fallback? (contains? @*fallback-sources src)
             retry! (fn [event]
-                     (let [image (.-currentTarget event)
-                           current-src (.-currentSrc image)
-                           original-src (.-href (js/URL. src (.-baseURI image)))]
+                     (let [image (.-currentTarget event)]
                        ;; Safari can select AVIF in Lockdown Mode even though
                        ;; its decoder rejects it. <picture> does not retry itself.
-                       (if (and (not fallback?) (not= current-src original-src))
+                       (if (and (not fallback?) (modern-source-selected? image src))
                          (swap! *fallback-sources conj src)
                          (when on-error (on-error event)))))]
         [:picture
@@ -75,23 +63,23 @@
            [:source {:key avif-src :srcSet avif-src :type "image/avif"}])
          (when-not fallback?
            [:source {:key webp-src :srcSet webp-src :type "image/webp"}])
-         [:img (assoc attrs :on-error retry!)]])
+         [:img (assoc attrs :on-error retry! :ref capture!)]])
       ;; No modern format available, just use img directly.
-      [:img attrs])))
+      [:img attrs]))))
 
-(defn img
+(defc <img>
   "Smart img component that automatically uses modern formats when available.
    Alias for picture component for drop-in replacement."
   [attrs]
-  [picture attrs])
+  [<picture> attrs])
 
-(defn media-as-bg
+(defc <media-as-bg>
   "Generate picture element optimized for use as background media.
    Adds common background styling attributes."
   [{:keys [src alt class] :as attrs}]
   (let [combined-attrs (merge attrs
                               {:class (str "media media-as-bg " (or class ""))})]
-    [picture combined-attrs]))
+    [<picture> combined-attrs]))
 
 ;; For backward compatibility - export main functions
-(def ^:export responsiveImage picture)
+(def ^:export responsiveImage <picture>)

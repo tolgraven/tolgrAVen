@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Exercise the real Node worker and write its output for browser hydration tests.
 
-Run `make ssr` first, then this script, then the Shadow app-test browser suite.
+Use the existing SSR watch worker, or `make ssr` if none is running, first.
+Then run this script and the Shadow app-test browser suite. This is a renderer
+contract check with fixture snapshots, not live service integration.
 """
 import json
 from pathlib import Path
@@ -14,6 +16,8 @@ other["summaries"] = [{k: v for k, v in row.items() if k != "text"} for row in o
 result = subprocess.run(["node", "target/ssr/site.js"], cwd=root, text=True,
                         input="\n".join(map(json.dumps, [snapshot, other])) + "\n",
                         capture_output=True, timeout=15, check=True)
+assert "Subscribe was called outside" not in result.stderr, result.stderr
+assert "localStorage is not available" not in result.stderr, result.stderr
 first, second = map(json.loads, result.stdout.splitlines())
 assert "<strong>article</strong>" in first["html"]
 assert "Server comment 0" in first["html"]

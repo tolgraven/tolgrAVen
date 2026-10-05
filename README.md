@@ -74,3 +74,5 @@ Secret** under Coolify **Configuration → Webhooks**. Enable **Preview Deployme
 for that application, with repository `tolgraven/tolgrAVen` and base branch `master`.
 The workflow signs the original PR payload and checks that Coolify queues it.
 Repository PRs deploy automatically; fork PRs run validation without the staging job.
+
+See [test boundaries and workflow verification](doc/testing.md) for the full browser suite, unmocked live application checks, and database/infrastructure tests.

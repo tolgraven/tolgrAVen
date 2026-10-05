@@ -1,9 +1,11 @@
 (ns tolgraven.video
   "Helpers for serving modern video formats (VP9, AV1) with automatic fallbacks"
   (:require
-   [clojure.string :as string]
-   [reagent.core :as r]
-   [tolgraven.image :as img]))
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [clojure.string :as string]
+    [reagent.core :as r]
+    [tolgraven.image :as img]))
 
 (defn- replace-extension
   "Replace file extension and add codec suffix.
@@ -25,7 +27,7 @@
        (not (re-find #"^(https?:|//|blob:|data:)" src))    ;; Skip external/blob/data URLs
        (not (re-find #"\?" src))))
 
-(defn video
+(defc <video>
   "Generate a <video> element with WebM (VP9/AV1) sources and fallback to original.
 
    Usage:
@@ -60,7 +62,7 @@
     [:video attrs
      [:source {:src src}]]))
 
-(defn video-with-picture-poster
+(defc <video-with-picture-poster>
   "Generate a video with an optimized poster image using modern formats.
 
    The poster is rendered as an overlay using <picture> element, providing WebP/AVIF
@@ -87,7 +89,7 @@
       ;; background out of its section's containing block.
       [:<>
        (when (and poster (not= src @*playing-src))
-         [img/picture
+         [img/<picture>
           (merge {:src poster
                   :alt (or alt "Video poster")
                   :class "video-poster-image"}
@@ -101,22 +103,22 @@
                                  :z-index 1
                                  :pointer-events "none"}
                                 (:style poster-attrs))})])
-       [video (-> video-attrs
+       [<video> (-> video-attrs
                   (dissoc :on-playing)
                   (assoc :poster poster
                          :onPlaying (fn [event]
                                       (reset! *playing-src src)
                                       (when on-playing (on-playing event)))))]])))
 
-(defn media-as-bg
+(defc <media-as-bg>
   "Generate video element optimized for use as background media.
    Adds common background styling attributes and uses poster optimization."
   [{:keys [src poster class] :as attrs}]
   (let [combined-attrs (merge attrs
                               {:class (str "media media-as-bg " (or class ""))})]
     (if poster
-      [video-with-picture-poster combined-attrs {:poster poster}]
-      [video combined-attrs])))
+      [<video-with-picture-poster> combined-attrs {:poster poster}]
+      [<video> combined-attrs])))
 
 ;; For backward compatibility - export main functions
-(def ^:export modernVideo video)
+(def ^:export modernVideo <video>)

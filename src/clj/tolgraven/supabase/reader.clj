@@ -37,7 +37,7 @@
   (let [seed (into {} (map (fn [{:keys [seed-key] :as plan}]
                             [seed-key (rows! plan)]))
                    (query/seed-load-plan opts))
-        value (query/query-contract (shape/seed->contract seed) opts)]
+        value (query/query-contract (shape/seed->contract seed) (dissoc opts :offset))]
     (if-let [plan (query/reply-count-plan opts value)]
       (query/with-reply-counts opts value (rows! plan)) value)))
 

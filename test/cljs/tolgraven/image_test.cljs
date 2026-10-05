@@ -1,8 +1,10 @@
 (ns tolgraven.image-test
-  (:require [cljs.test :refer-macros [async deftest is]]
-            [reagent.core :as r]
-            [reagent.dom.client :as dom]
-            [tolgraven.image :as image]))
+  (:require
+    [cljs.test :refer-macros [async deftest is]]
+    [reagent.core :as r]
+    [reagent.dom.client :as dom]
+    [reagent.dom.server :as server]
+    [tolgraven.image :as image]))
 
 (defn- check-original-fallback! [src done]
   (let [container (.createElement js/document "div")
@@ -53,9 +55,11 @@
     (.appendChild (.-body js/document) container)
     (.observe observer container #js {:childList true :subtree true})
     (reset! *timeout (js/setTimeout (fn []
-                                     (is false "Image fallback completed within five seconds")
+                                     (is false "Image fallback completed within fifteen seconds")
                                      (finish!))
-                                   5000))
+                                   ;; Allow cold decodes and throttled background frames;
+                                   ;; this still fails if either real load never arrives.
+                                   15000))
     ;; Force the selected modern format to fail even when its decoder works.
     ;; In Safari Lockdown Mode, the AVIF error happens naturally instead.
     (reset! *attrs {:src src
@@ -63,7 +67,7 @@
                    :class "portrait"
                    :on-load loaded!
                    :on-error (fn [_] (swap! *errors inc))})
-    (dom/render root [(fn [] [image/picture @*attrs])])))
+    (dom/render root [(fn [] [image/<picture> @*attrs])])))
 
 (deftest picture-falls-back-to-png
   (async done
@@ -72,3 +76,22 @@
 (deftest picture-falls-back-to-jpeg
   (async done
     (check-original-fallback! "/img/foggy-shit-small.jpg" done)))
+
+(deftest hydration-recovers-a-modern-image-that-failed-before-react-attached
+  (async done
+    (let [container (.createElement js/document "div")
+          form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
+      ;; Test fixture models the browser's already-failed SSR image. No error
+      ;; event will arrive after hydration, so the ref adapter must detect it.
+      (set! (.-innerHTML container) (server/render-to-string form))
+      (let [img (.querySelector container "img")]
+        (doseq [[property value] [["complete" true] ["naturalWidth" 0]
+                                 ["currentSrc" (str (.-origin js/location) "/img/foggy-shit-small.avif")]]]
+          (js/Object.defineProperty img property #js {:configurable true :value value})))
+      (let [root (dom/hydrate-root container form)]
+        (js/setTimeout
+          (fn []
+            (r/flush)
+            (is (zero? (.-length (.querySelectorAll container "source")))))
+          50)
+        (js/setTimeout (fn [] (dom/unmount root) (done)) 100)))))

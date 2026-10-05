@@ -8,6 +8,6 @@
 (def spec
   {:content (get content-contract/module-content :user [])
    :id :user
-   :view {:view #'view/user-section
-          :btn #'view/user-btn
-          :avatar #'view/user-avatar}})
+   :view {:view #'view/<user-section>
+          :btn #'view/<user-btn>
+          :avatar #'view/<user-avatar>}})

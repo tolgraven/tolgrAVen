@@ -13,7 +13,8 @@
             [tolgraven.supabase.query :as query]
             [tolgraven.concurrent :as concurrent]
             [tolgraven.supabase.reader :as reader]
-            [tolgraven.supabase.plan :as plan]))
+            [tolgraven.supabase.plan :as plan]
+            [tolgraven.blog.data :as blog-data]))
 
 (deftest scoped-blog-plans-filter-at-the-database
   (is (= [{:seed-key :blog_posts :table "blog_posts"
@@ -82,7 +83,7 @@
       (finally (ssr/stop-worker!)))))
 
 (deftest layout-escapes-post-titles-and-embeds-the-matching-public-snapshot
-  (with-redefs [config/env {:dev true}
+  (with-redefs [config/env {:dev true :ssr {:streaming false}}
                 ssr/enabled? (constantly true)
                 ssr/page! (fn [& _] {:html "<article>Safe rendered content</article>"
                                    :snapshot {:posts [{:title "</title><script>bad()</script>"}]
@@ -174,7 +175,7 @@
         (is (= 1 (:reply-count (first (filter #(= "c0" (:id %)) (:comments snapshot))))))))))
 
 (deftest saved-return-uses-client-restoration-without-server-data-reads
-  (with-redefs [config/env {:dev true} ssr/enabled? (constantly true)
+  (with-redefs [config/env {:dev true :ssr {:streaming false}} ssr/enabled? (constantly true)
                 ssr/page! (fn [& _] (throw (ex-info "Must not render" {})))
                 content/bundle! (fn [] (throw (ex-info "Must not fetch CMS" {})))
                 optimus-html/link-to-js-bundles (fn [& _] "")]
@@ -257,3 +258,25 @@
     (is (false? (ssr/enabled?)))
     (is (= "/configured/site.js" (ssr/worker-path)))
     (is (= 3 (:render-workers (ssr/settings))))))
+
+
+(deftest blog-pages-and-tags-use-filtered-bulk-queries
+  (let [page (first (query/seed-load-plan (blog-data/page-query 2 3)))
+        tag (first (query/seed-load-plan (blog-data/tag-query "cljs")))
+        contract {"blog-posts" {"1" {:id 1 :tags "cljs clojure"}
+                               "2" {:id 2 :tags "cljs-more"}
+                               "3" {:id 3 :tags "work\tcljs"}
+                               "4" {:id 4 :tags "work"}}}]
+    (is (= 6 (:offset page)))
+    (is (= 3 (:limit page)))
+    (is (= [[:id :desc]] (:order-by page)))
+    (is (= [[:tags "match" "(^|\\s)cljs(\\s|$)"]] (:filters tag)))
+    (is (= [3 1] (mapv (comp :id :data) (:docs (query/query-contract contract (blog-data/tag-query "cljs"))))))
+    (is (= [2 1] (mapv (comp :id :data) (:docs (query/query-contract contract (blog-data/page-query 1 2))))))
+    (is (= "(^|\\s)c\\+\\+(\\s|$)" (query/tag-pattern "c++")))
+    (is (empty? (query/document-caches {:summary? true :path-collection [:blog-posts]}
+                                     {:docs [{:id "1" :data {:id 1}}]})))
+    (is (= {:docs [{:id "1" :data {:id 1 :text "Ready"}}]}
+           (get (query/document-caches (blog-data/page-query 0 3)
+                                      {:docs [{:id "1" :data {:id 1 :text "Ready"}}]})
+                (pr-str (query/normalize-query (blog-data/post-query 1))))))))

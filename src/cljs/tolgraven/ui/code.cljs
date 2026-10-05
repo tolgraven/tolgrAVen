@@ -1,14 +1,16 @@
 (ns tolgraven.ui.code
   (:require
-   [reagent.core :as r]
-   [tolgraven.react :as rf]
-   ["react-syntax-highlighter" :default SyntaxHighlighter]
-   ["react-syntax-highlighter/dist/esm/styles/hljs" :refer [darcula gruvboxDark]]
+    [tolgraven.component.registry]
+    [tolgraven.macros :refer-macros [defc]]
+    [reagent.core :as r]
+    [tolgraven.react :as rf]
+    ["react-syntax-highlighter$default" :as SyntaxHighlighter]
+    ["react-syntax-highlighter/dist/esm/styles/hljs" :refer [darcula gruvboxDark]]
    ; ["react-syntax-highlighter/dist/esm/languages/hljs/clojure" :as clj-lang]
    ; ["react-syntax-highlighter/dist/esm/languages/hljs/javascript" :as js-lang]
-   ["react-markdown" :default ReactMarkdown]
-   ["remark-gfm" :default remarkGfm]
-   ["rehype-raw" :default rehypeRaw]))
+    ["react-markdown$default" :as ReactMarkdown]
+    ["remark-gfm$default" :as remarkGfm]
+    ["rehype-raw$default" :as rehypeRaw]))
 
 
 (def syntax-highlighter (r/adapt-react-class SyntaxHighlighter))
@@ -19,10 +21,10 @@
 ; (.registerLanguage SyntaxHighlighter "javascript" js-lang)
 ; (.registerLanguage SyntaxHighlighter "clojure" clj-lang)
 
-(defn code-block 
+(defc <code-block>
   "Syntax highlighter component for code blocks"
-  [code & {:keys [language style basic?] 
-           :or {language "clojure" 
+  [code & {:keys [language style basic?]
+           :or {language "clojure"
                 basic? true
                 style gruvboxDark}}]
   [syntax-highlighter
@@ -32,7 +34,7 @@
     :children code
     :wrapLines (not basic?)}])
 
-(defn markdown-code-component
+(defc <markdown-code-component>
   "Custom code component for react-markdown that uses our syntax highlighter"
   [{:keys [children className]}]
   ;; reactify-component supplies a Clojure map. ReactMarkdown's code children
@@ -41,13 +43,13 @@
         language (some->> className (re-find #"language-([\w-]+)") second)]
     (if (re-find #"\n" code)
       (if language
-        [code-block code :language language]
+        [<code-block> code :language language]
         [:div code])
       [:code code])))
 
-(def markdown-code-react (r/reactify-component markdown-code-component))
+(def markdown-code-react (r/reactify-component (fn [props] [<markdown-code-component> props])))
 
-(defn parse-markdown-components
+(defc <parse-markdown-components>
   "Parse markdown into pure React components using react-markdown"
   [md-text & [{:keys [allow-images? allow-raw?]
               :or {allow-images? false

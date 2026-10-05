@@ -1,6 +1,18 @@
 .component-spinner { display: inline-flex; align-items: center; justify-content: center; padding: 1rem; }
 .component-spinner__wheel { width: 1.5rem; height: 1.5rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: component-spin .7s linear infinite; }
-.component-skeleton { display: inline-block; background-color: color-mix(in srgb, currentColor 18%, transparent); border-radius: .25rem; animation: component-pulse 1.4s ease-in-out infinite alternate; }
+.component-skeleton {
+  display: inline-block;
+  background-color: color-mix(in srgb, currentColor 12%, transparent);
+  background-image: linear-gradient(110deg, transparent 36%,
+    color-mix(in srgb, currentColor 5%, transparent) 43%,
+    color-mix(in srgb, currentColor 22%, transparent) 48%,
+    color-mix(in srgb, currentColor 22%, transparent) 50%,
+    transparent 59%);
+  background-size: 260% 100%;
+  border-radius: .2rem;
+  animation: component-shimmer 2.8s ease-in-out infinite,
+             component-pulse 2.8s ease-in-out infinite alternate;
+}
 .component-skeleton--text { width: 12ch; height: 1em; }
 .component-skeleton--heading { display: block; width: 65%; height: 1.2em; }
 .component-skeleton--box { display: block; width: 100%; min-height: 8rem; }
@@ -9,7 +21,72 @@
 .component-skeleton-lines > .component-skeleton { width: 100%; }
 .component-skeleton-lines > :last-child { width: 75%; }
 @keyframes component-spin { to { transform: rotate(360deg); } }
-@keyframes component-pulse { to { opacity: .4; } }
+@keyframes component-pulse { from { opacity: .7; } to { opacity: 1; } }
+@keyframes component-shimmer { from { background-position: 140% 0; } to { background-position: -140% 0; } }
+
+.component-skeleton-article {
+  width: 100%; min-width: 0;
+  &__header { display: flex; gap: var(--space); align-items: flex-start; margin-bottom: 1.75rem; }
+  &__header > .component-skeleton--avatar { flex: 0 0 3rem; margin-top: .6rem; }
+  &__identity { flex: 1; min-width: 0; }
+  .component-skeleton--heading { width: min(90%, 28ch); margin: 0 0 .9rem; font-size: 2rem; }
+  &__byline, &__tags { display: flex; flex-wrap: wrap; gap: .6rem; }
+  &__byline { margin-bottom: .9rem; }
+  &__byline > :first-child { width: 11ch; }
+  &__byline > :last-child { width: 16ch; opacity: .65; }
+  &__tags > .component-skeleton { width: 6ch; height: 1.3em; }
+  &__tags > :nth-child(2) { width: 9ch; }
+  &__body { max-width: 820px; display: grid; gap: 1.5rem; }
+  .component-skeleton-lines { gap: .65rem; }
+  .component-skeleton-lines > .component-skeleton { height: .85em; }
+  .component-skeleton-lines:nth-child(2) > :last-child { width: 58%; }
+}
+.ssr-skeleton-article { border: 0; margin-bottom: var(--space-lg); }
+@media (max-width: 480px) {
+  .component-skeleton-article {
+    &__header { gap: .75rem; }
+    .component-skeleton--heading { font-size: 1.65rem; width: 95%; }
+    &__byline > :last-child { width: 10ch; }
+  }
+}
 @media (prefers-reduced-motion: reduce) { .component-spinner__wheel, .component-skeleton { animation: none; } }
 
 .component-spinner .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+
+.ssr-skeleton {
+  max-width: 65rem;
+  margin: 2rem auto;
+  padding: 2rem;
+  min-height: 60vh;
+
+}
+
+// Markers are identical in server HTML and the first client render. Their
+// animation starts when the completed root is revealed, and survives hydration.
+// New SPA roots have no marker; normal defc motion owns those transitions.
+@media (prefers-reduced-motion: no-preference) {
+  // The flushed shell paints independently while the final snapshot is pending.
+  #ssr-shell main { animation: fade-in-site 500ms; }
+  #app[data-hydrate] {
+    main[data-stream-enter] { animation: fade-in-site 500ms; }
+    .appear-wrapper[data-stream-enter] {
+      animation: stream-appear .45s ease both;
+      &.opacity { animation-duration: 1s; }
+      &.zoom { animation-name: stream-zoom; }
+      &.zoom-x { animation-name: stream-zoom-x; }
+      &.zoom-y { animation-name: stream-zoom-y; }
+      &.slide-in { animation-name: stream-slide-in; animation-duration: .35s; }
+      &.fast { animation-duration: .25s; }
+      &.faster { animation-duration: .15s; }
+      &.slow { animation-duration: 1s; }
+      &.extra-slow { animation-duration: 2.2s; }
+      &.super-slow { animation-duration: 4.5s; }
+    }
+  }
+}
+@keyframes stream-appear { from { opacity: 0; } to { opacity: 1; } }
+@keyframes stream-zoom { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: none; } }
+@keyframes stream-zoom-x { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: none; } }
+@keyframes stream-zoom-y { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: none; } }
+@keyframes stream-slide-in { from { opacity: 0; transform: translateY(20%); } to { opacity: 1; transform: none; } }

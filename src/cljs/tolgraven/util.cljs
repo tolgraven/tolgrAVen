@@ -1,12 +1,13 @@
 (ns tolgraven.util
-  (:require [tolgraven.react :as rf]
-            [reitit.frontend.easy :as rfe]
-            [cljs-time.core :as ct]
-            [cljs-time.format :as ctf]
-            [cljs-time.coerce :as ctc]
-            [clojure.string :as string]
-            [clojure.pprint :as pprint]
-            [clojure.walk :as walk]))
+  (:require
+    [tolgraven.react :as rf]
+    [reitit.frontend.easy :as rfe]
+    [cljs-time.core :as ct]
+    [cljs-time.format :as ctf]
+    [cljs-time.coerce :as ctc]
+    [clojure.string :as string]
+    [clojure.pprint :as pprint]
+    [clojure.walk :as walk]))
 
 (defn <-store [& coll-docs]
   (-> @(rf/subscribe [:store/on-snapshot {:path-document coll-docs}])
@@ -424,3 +425,9 @@
       (when needs-resize
         (set! (.-width canvas) w)
         (set! (.-height canvas) h)))))
+
+(defn scroll-to-end!
+  "Scroll a referenced element without changing React-owned markup."
+  [element]
+  (when element
+    (set! (.-scrollTop element) (.-scrollHeight element))))

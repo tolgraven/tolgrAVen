@@ -1,25 +1,30 @@
 (ns tolgraven.routes
-  (:require [tolgraven.ssr.client :as ssr] [tolgraven.react :as rf]
-            [reitit.frontend :as reitit]
-            [reitit.frontend.history :as rfh]
-            [reitit.frontend.easy :as rfe]
-            [reitit.dev.pretty :as rpretty]
-            [tolgraven.blog.pages :as blog]
-            [tolgraven.cv.pages :as cv]
-            [tolgraven.docs.pages :as docs]
-            [tolgraven.loader :as l]
-            [tolgraven.component.data :as data]
-            [tolgraven.components.error :as error-view]
-            [tolgraven.main.module :as main]
-            [tolgraven.component.restore :as restore]
-            [tolgraven.ui :as ui]
-            [tolgraven.main.pages :as home]
-            [tolgraven.views.auto :as auto]
-            [tolgraven.views.not-found :as a404]))
+  (:require
+    [tolgraven.component.registry]
+    [tolgraven.page-transition]
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.ssr.client :as ssr] [tolgraven.react :as rf]
+    [reitit.frontend :as reitit]
+    [reitit.frontend.history :as rfh]
+    [reitit.frontend.easy :as rfe]
+    [reitit.dev.pretty :as rpretty]
+    [tolgraven.blog.pages :as blog]
+    [tolgraven.cv.pages :as cv]
+    [tolgraven.docs.pages :as docs]
+    [tolgraven.loader :as l]
+    [tolgraven.component.data :as data]
+    [tolgraven.content.contract :as content]
+    [tolgraven.components.error :as error-view]
+    [tolgraven.ssr.shell :as shell]
+    [tolgraven.component.restore :as restore]
+    [tolgraven.ui :as ui]
+    [tolgraven.main.pages :as home]
+    [tolgraven.views.auto :as auto]
+    [tolgraven.views.not-found :as a404]))
 
-(defn log-page []
-  [ui/with-heading [:common :banner-heading]
-   [ui/log (rf/subscribe [:option [:log]])
+(defc <log-page> []
+  [ui/<with-heading> [:common :banner-heading]
+   [ui/<log> (rf/subscribe [:option [:log]])
     (rf/subscribe [:get :diagnostics])]
    {:title "Log" :tint "blue"}])
 
@@ -36,11 +41,11 @@
                                 ("false" nil) (rf/dispatch [:state [:settings :panel-open] false]))) ; well this being on start it wouldn't be open anyways
                      :stop (fn [{:keys [query]}]    ; why is this being run without leaving page?
                              )}]}]
-          (concat (mapv #(update % 1 assoc :module nil :view #'auto/auto) home/spec)
+          (concat (mapv #(update % 1 assoc :module nil :view #'auto/<auto>) home/spec)
                   [(into [""] cv/spec)
                    (into [""] docs/spec)
                    (into [""] blog/spec)
-                   ["/log" {:name :log :view #'log-page}]
+                   ["/log" {:name :log :view #'<log-page>}]
                    ["/test"
       ["" {:name :test
            :module :test
@@ -54,7 +59,7 @@
                                (rf/dispatch [:state [:experiments] (keyword (:tab path))])
                                (rf/dispatch [:exception [:experiments] nil]))}]}]]
                    ["/client-oauth" ; for client OAuth callbacks
-                    {:view #'a404/not-found-page}
+                    {:view #'a404/<not-found-page>}
                     ["" {:name :client-oauth
                          #_:view #_#'successful-oauth-page}]
                     #_["/:service" ; nope, considering non-universal naming unless can coerce keys to universal api/secret/etc...
@@ -75,11 +80,14 @@
                                                  (:oauth_token_secret query)])
                                    (rf/dispatch [:diag/new :error "Twitter auth"
                                                  "Error authenticating"])))}]}]]
-                   ["/not-found" {:name :not-found :view #'a404/not-found-page}]]))
+                   ["/not-found" {:name :not-found :view #'a404/<not-found-page>}]]))
     {:exception rpretty/exception}))
 
 ;; A late module response must never navigate back over a newer URL.
 (defonce *navigation (atom 0))
+
+(defn landing-dependencies [match]
+  [{:source :strapi :keys (content/keys-for-route (get-in match [:data :name]))}])
 
 (defn navigate!
   "Resolve a route with injectable loading and dispatch for isolated regression tests."
@@ -89,7 +97,7 @@
         {:keys [module page view name]} (:data match)
         retry! (fn []
                  (when (= :landing (:kind (:data match)))
-                   (data/invalidate! (set (:depends main/spec))))
+                   (data/invalidate! (set (landing-dependencies match))))
                  (navigate! *navigation dispatch! load! match))
         fail! (fn [error]
                 (when (= navigation @*navigation)
@@ -100,40 +108,54 @@
                                        :message "Check your connection and try loading this page again."
                                        :error error}
                                       retry!])])))
-        navigate! (fn [component]
+        navigate! (fn [component & [pending-code? replace-shell?]]
                     (when (= navigation @*navigation)
                       (if component
-                        (dispatch! [:common/navigate
-                                      (assoc-in match [:data :view] component)])
-                        (dispatch! [:state [:error-page] a404/not-found-page]))))]
+                        (dispatch! (cond-> [(if replace-shell? :common/navigate :page/navigate)
+                                            (cond-> (assoc-in match [:data :view] component)
+                                              pending-code? (assoc-in [:data :controllers] nil))]
+                                     replace-shell? (conj {:replace-shell? true})))
+                        (dispatch! [:state [:error-page] a404/<not-found-page>]))))]
     (cond
       (nil? match)
-      (do (dispatch! [:state [:error-page] a404/not-found-page])
+      (do (dispatch! [:state [:error-page] a404/<not-found-page>])
           (dispatch! [:diag/new :error "404" "Not found"]))
 
-      view (if (= :landing (:kind (:data match)))
-             (-> (data/ensure-all! (:depends main/spec))
-                 (.then #(navigate! view))
-                 (.catch fail!))
-             (navigate! view))
+      view (do
+             (navigate! view)
+             (when (= :landing (:kind (:data match)))
+               (-> (data/ensure-all! (landing-dependencies match))
+                   (.catch fail!))))
 
       module
-      (do
-        ;; Hydrated content is already visible while the module initializes.
-        ;; Cached modules likewise need no intermediate page spinner.
-        (when-not (or (and (:path match) (= (:path match) (:path @ssr/*snapshot)))
-                      (and (identical? load! l/load!) (l/ready-spec module page nil)))
-          (dispatch! [:loading/on :page navigation]))
+      (let [ready (when (identical? load! l/load-code!) (l/code-spec module))
+            restoring? (or (and (:hydrate? @restore/*context)
+                                (= (:path match) (:path @ssr/*snapshot)))
+                           (and (:back? @restore/*context) (restore/skip-enter?)))]
+        ;; Commit the destination now, even on a cold code load. Managed views
+        ;; replace their placeholders as data arrives; no SSR request is involved.
+        ;; Initial hydration must select the real view, never a transient shell.
+        ;; Leave server markup untouched until its module registers.
+        ;; A cold history return also commits only once. An interim shell would
+        ;; consume its saved scroll restoration before the real module arrives.
+        (when (or ready (not restoring?))
+          (navigate! (or (get-in ready [:view page])
+                         (fn [] [shell/<page> (get-in match [:data :shell])]))
+                     (nil? ready)))
         (-> (load! {:module module :view page :route match})
-            (.then #(navigate! (get-in % [:view page])))
-            (.catch fail!)
-            (.finally #(dispatch! [:loading/off :page navigation]))))
+            ;; Finishing code replaces the destination shell in place. It must
+            ;; not cancel/restart its transition or reset its scroll a second time.
+            (.then #(when-not ready (navigate! (get-in % [:view page]) false (not restoring?))))
+            (.catch fail!)))
 
       :else (navigate! nil))))
 
 (defn on-nav [match _history]
+  ;; Only same-document routing takes ownership from native restoration.
+  (when (pos? @*navigation)
+    (set! (.-scrollRestoration js/history) "manual"))
   (when-let [path (:path match)] (ssr/leave! path))
-  (navigate! *navigation rf/dispatch l/load! match))
+  (navigate! *navigation rf/dispatch l/load-code! match))
 
 (defn ignore-anchor-click? [router event element ^goog.Uri uri]
   ;; Only intercepted internal links may update the pending fragment.
@@ -143,6 +165,7 @@
     ignore?))
 
 (defn start! []
+  ;; Preserve native restoration until a same-document navigation takes over.
   (rfe/start! router on-nav {:use-fragment false
                            :ignore-anchor-click? ignore-anchor-click?}))
 

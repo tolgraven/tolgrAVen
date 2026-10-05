@@ -2,7 +2,8 @@
   "Page declarations independent of the module implementation."
   (:require #?(:cljs [tolgraven.react :as rf])
             [clojure.string :as string]
-            [tolgraven.blog.data :as data]))
+            [tolgraven.blog.data :as data]
+            [tolgraven.page :as page]))
 
 #?(:cljs (def controllers
   {:blog [{:start (fn [_]
@@ -30,7 +31,16 @@
 
 (def spec
   ;; Native Reitit routes, with shared data inherited by each child page.
-  [["/blog" {:module :blog :data-plan data/plan :snapshot data/snapshot}
+  [["/blog" {:module :blog :transition-key :blog :shell {:heading [:blog :heading] :loading-prefab :article :loading-class "blog-post ssr-skeleton-article"} :depends [{:source :strapi :availability :startup :keys [:blog]}]
+              :preload-depends (fn [match]
+                                 (if (:ssr (:data match))
+                                   [{:source :subscription
+                                     :query [:blog/page-ready? (page/selection match)]}]
+                                   (when-let [tag (get-in match [:path-params :tag])]
+                                     [{:source :supabase :query (data/tag-query tag)}])))
+              :data-plan data/plan :snapshot data/snapshot
+              :document-title (fn [{:keys [posts]}]
+                                (when (= 1 (count posts)) (:title (first posts))))}
     ["" {:name :blog :page :page :ssr true :selection {:page 1}
          #?@(:cljs [:controllers (:blog controllers)])}]
     ["/page/:nr" {:name :blog-page :page :page :ssr true

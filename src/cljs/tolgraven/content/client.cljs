@@ -1,13 +1,16 @@
 (ns tolgraven.content.client
-  (:require [ajax.core :as ajax]
-            [clojure.string :as string]
-            [tolgraven.react :as rf]
-            [re-frame.db :as rfdb]
-            [reagent.core :as r]
-            [tolgraven.content.contract :as contract]
-            [tolgraven.service-status :as status]
-            [tolgraven.component.storage :as storage]
-            [tolgraven.component.restore :as restore]))
+  (:require
+    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.component.registry]
+    [ajax.core :as ajax]
+    [clojure.string :as string]
+    [tolgraven.react :as rf]
+    [re-frame.db :as rfdb]
+    [reagent.core :as r]
+    [tolgraven.content.contract :as contract]
+    [tolgraven.service-status :as status]
+    [tolgraven.component.storage :as storage]
+    [tolgraven.component.restore :as restore]))
 
 (def cache-options {:scope :public :version contract/version :ttl-ms 1800000})
 
@@ -127,7 +130,7 @@
 (defn prefetch! [ks]
   (-> (ensure! ks) (.catch (fn [_] nil)))) ; optional; initialization can retry
 
-(defn <prefetch> [ks]
+(defc <prefetch> [ks]
   (r/with-let [*observer (atom nil)
                attach! (fn [element]
                          (when-let [observer @*observer] (.disconnect observer))
