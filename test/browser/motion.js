@@ -47,6 +47,10 @@ document.querySelector('#run').onclick = async () => {
     const cold = await entrance(path);
     check(cold.some(value => value.animation === 'fade-in-site' && value.opacity > 0 && value.opacity < .99),
           'Initial landing page visibly animates before hydration without needing a mount replay');
+    // Finish pagehide/persistence before the next request. Starting it directly
+    // from the old document can race the return cookie sent with that request.
+    frame.src = 'about:blank';
+    await wait(() => doc()?.URL === 'about:blank');
     const restored = await entrance(path);
     check(restored.some(value => value.restored), 'Normal repeat document load restores persisted content');
     check(restored.some(value => value.animation === 'fade-in-site' && value.opacity > 0 && value.opacity < .99),

@@ -12,10 +12,12 @@
             [tolgraven.component.data :as data]
             [tolgraven.dev-console.capture :as capture]
             [tolgraven.dev-console.layout :as layout]
+            [tolgraven.dev-console.components :as components]
             [tolgraven.dev-console.state]
             [tolgraven.loader :as loader]
             [tolgraven.routes :as routes]))
 
+(rf/reg-sub-raw :dev-console/component-parents (fn [_ _] (rf/make-reaction #(deref capture/*component-parents))))
 (rf/reg-sub-raw :dev-console/catalog (fn [_ _] (rf/make-reaction #(deref registry/*catalog))))
 (rf/reg-sub-raw :dev-console/resources (fn [_ _] (rf/make-reaction #(deref data/*entries))))
 (rf/reg-sub-raw :dev-console/handlers
@@ -535,33 +537,66 @@
        [<value> [:layout-selected] {:shift selected :nearby (layout/nearby records selected)} 0])
      [<value> [:layout-records] {:shifts shifts :renders (filterv #(= :render (:kind %)) records)} 0]]))
 
-(defc <component-entry>
-  {:state {:key (fn [id & _] id) :initial {:open? false}}}
-  [id component inspect!]
-  :let [*open (<sub :comp [:open?])]
-  [:details {:open (boolean @*open)
-             :on-toggle #(let [open? (.. % -target -open)]
-                           (when (not= open? (boolean @*open)) (>reset *open open?)))}
-   [:summary (str (string/join "/" (:component component)) " · " (:key component))]
-   (when @*open
-     [:<>
-      [:code (pr-str (:path component))]
-      [:button {:on-click #(inspect! (:path component))} "Inspect state path"]
-      [<value> [:component id] component 0]
-      [<value> [:component-state id] @(rf/subscribe [:dev-console/path (:path component)]) 0]])])
+(declare <component-branch>)
 
-(defc <component-list>
-  {:state {:initial {:page 0}}}
-  [active inspect!]
+(defc <component-branches>
+  {:state {:key (fn [owner & _] owner) :initial {:page 0}}}
+  [owner nodes depth inspect!]
   :let [*page (<sub :comp [:page])]
-  (let [{:keys [items index offset more?]} (layout/page (sort-by (comp pr-str key) active) (or @*page 0) (count active))]
-    [:div
-     [:div.dev-value__pagination
-      [:button {:disabled (zero? index) :on-click #(>reset *page (dec index))} "Previous components"]
-      [:span (str (if (seq items) (inc offset) 0) "–" (+ offset (count items)) " of " (count active))]
-      [:button {:disabled (not more?) :on-click #(>reset *page (inc index))} "Next components"]]
-     (for [[id component] items] ^{:key id}
-       [<component-entry> id component inspect!])]))
+  (let [{:keys [items index offset more?]} (layout/page nodes (or @*page 0))]
+    [:div.dev-component-tree__children
+     (for [node items] ^{:key (pr-str (:id node))}
+       [<component-branch> node depth inspect!])
+     (when (or (pos? index) more?)
+       [:div.dev-value__pagination
+        [:button {:disabled (zero? index) :on-click #(>reset *page (dec index))} "Previous components"]
+        [:span (str (inc offset) "–" (+ offset (count items)) " of " (count nodes))]
+        [:button {:disabled (not more?) :on-click #(>reset *page (inc index))} "Next components"]])]))
+
+(defc <component-branch>
+  {:state {:key (fn [node & _] (pr-str (:id node)))}}
+  [node depth inspect!]
+  :let [*open (<sub :comp [:open?] {:initial (and (zero? depth) (= :mounted (:status node)))})
+        *details (<sub :comp [:details?] {:initial false})]
+  (let [{:keys [id component children status path key observed?]} node
+        branch? (seq children)
+        mounted? (= status :mounted)
+        namespace? (= status :namespace)]
+    [:div.dev-component-tree__node {:class (str "dev-component-tree__node--" (name status))}
+     [:div.dev-component-tree__row
+      [:button.dev-component-tree__branch
+       {:disabled (not branch?) :aria-expanded (when branch? (boolean @*open))
+        :on-click #(>update *open not) :title (string/join "/" component)}
+       [:span.dev-component-tree__arrow (if branch? (if @*open "▾" "▸") "·")]
+       [:code (if namespace? (first component) (last component))]
+       (when (some? key) [:span.dev-component-tree__key (pr-str key)])
+       (when branch? [:span.dev-value__count (count children)])]
+      (when-not namespace?
+        [:span.dev-component-tree__status
+         {:title (if mounted? "Live mounted instance" (if observed? "Loaded declaration at a previously observed parent" "Loaded declaration; no unambiguous parent has been observed"))}
+         (if mounted? "mounted" "ready · unmounted")])
+      (when-not namespace?
+        [:button {:on-click #(>update *details not) :aria-expanded (boolean @*details)} "Details"])]
+     (when @*details
+       [:div.dev-component-tree__details
+        (when path [:button {:on-click #(inspect! path)} "Inspect state path"])
+        [<value> [:component id] (dissoc node :children) 0]
+        (when (and mounted? path)
+          [<value> [:component-state id] @(rf/subscribe [:dev-console/path path]) 0])])
+     (when (and branch? @*open)
+       [<component-branches> id children (inc depth) inspect!])]))
+
+(defc <component-tree> [active inspect!]
+  (let [catalog @(rf/subscribe [:dev-console/catalog])
+        parents @(rf/subscribe [:dev-console/component-parents])
+        {:keys [mounted ready mounted-count ready-count]} (components/tree active catalog parents)]
+    [:section.dev-component-tree {:aria-label "Component hierarchy"}
+     [:p (str mounted-count " mounted instances · " ready-count " loaded, unmounted declarations. Native DOM nodes are omitted.")]
+     [:h4 "Mounted hierarchy"]
+     [<component-branches> :mounted-roots mounted 0 inspect!]
+     [:h4 "Other ready components"]
+     [:p "Previously observed children appear under their known parent when unambiguous. Other loaded declarations are grouped by namespace; inspecting them does not mount or preload them."]
+     [<component-branches> :ready-roots ready 0 inspect!]]))
 
 (defc <path-inspector> [path-text value-text]
   (let [path (try (reader/read-string @path-text) (catch :default _ nil))]
@@ -614,7 +649,7 @@
       (case @*tab
         :page [<value> [:page] {:route route :spec (:data route)
                               :page-state @(rf/subscribe [:dev-console/path [:page (restore/page-key)]])} 0]
-        :components [<component-list> (:active debug)
+        :components [<component-tree> (:active debug)
                      (fn [path] (>reset *path (pr-str path)) (>reset *tab :state))]
         :modules [<value> [:modules]
                   {:pages (reitit/routes routes/router)

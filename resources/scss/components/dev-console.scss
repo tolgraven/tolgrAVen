@@ -118,3 +118,16 @@
   summary > span { margin-left: .5rem; }
   strong { color: var(--aqua-3); }
 }
+.dev-component-tree {
+  &__children { padding-left: .8rem; border-left: 1px solid var(--dev-line); }
+  &__node { margin: .3rem 0; }
+  &__row { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; padding: .2rem; border-radius: .35rem; background: var(--dev-surface); }
+  &__branch { display: inline-flex; align-items: center; gap: .45rem; flex: 1; min-width: 12ch; text-align: left; border: 0 !important; background: transparent !important; }
+  &__branch:disabled { opacity: 1 !important; }
+  &__arrow { color: var(--aqua-3); width: 1ch; }
+  &__key { color: var(--yellow-3); font-size: .85em; }
+  &__status { color: var(--aqua-3); font-size: .8em; }
+  &__node--ready > &__row &__status { color: var(--blue-3); }
+  &__node--namespace > &__row { background: var(--dev-key); color: var(--blue-3); }
+  &__details { padding: .5rem; border-left: 2px solid var(--purple-3); }
+}

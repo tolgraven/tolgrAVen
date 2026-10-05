@@ -8,8 +8,14 @@ re-frame shim, and scoped state helpers throughout.
 ## Inspecting the app
 
 - **page**: active Reitit match, its composed page spec, and persistent page state.
-- **components**: mounted `defc` instances, namespace-qualified identities, React
-  keys, and their resolved app-db paths. “Inspect state path” opens the state editor.
+- **components**: a component-only React hierarchy with live instance keys and
+  expandable children; native DOM elements are omitted. Loaded, unmounted
+  declarations remain available as ready nodes. Previously observed children
+  retain their known placement where it is unambiguous; other declarations are
+  grouped by namespace. Details exposes dependencies, declarations and resolved
+  app-db paths; “Inspect state path” opens the state editor. Branches paginate
+  siblings and mount their details only when expanded. Inspection never mounts
+  hidden application components or loads an unloaded module.
 - **modules**: composed routes, loaded module declarations and module state.
 - **state**: expandable, typed maps/vectors/lists/sets and scalar values. Enter an
   EDN path to subscribe to it, or set its value through the normal state event.
@@ -80,8 +86,9 @@ rendering it. It does not eagerly mount or fetch every registered component.
 The `<loading>` macro helper only supplies a missing local helper: an existing
 namespace definition, referred/renamed var or argument binding takes precedence.
 
-Use `{:profile false}` in a `defc` declaration to omit its development probe. This
-is used for the root that hosts the console itself. Probes use React Profiler and
+Use `{:profile false}` in a `defc` declaration to omit its render timing callback
+while retaining its place in the component hierarchy. This is used for the root
+that hosts the console itself. Probes use React context for parentage and Profiler for timings and
 add no DOM wrappers; native roots get `data-dev-component` for layout attribution.
 Attribution attributes are added only after hydration; server and first-client
 markup stay unchanged. Server rendering never runs observers.

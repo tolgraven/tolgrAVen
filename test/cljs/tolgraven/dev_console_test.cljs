@@ -12,6 +12,7 @@
             [tolgraven.dev-console.capture :as capture]
             [tolgraven.dev-console.state :as state]
             [tolgraven.dev-console.layout :as layout]
+            [tolgraven.dev-console.components :as components]
             [tolgraven.dev-console.views :as views]
             [tolgraven.dev-console-fixture :as fixture]
             [tolgraven.render-context :as context]
@@ -23,6 +24,8 @@
 (defc <shared-name> {:state {}} []
   :let [*count (<sub :comp [:count] {:initial 0})]
   [:button {:on-click #(>update *count inc)} (str "here:" @*count)])
+(defc <tree-parent> {:profile false} [show?]
+  [:section [:div [<shared-name>]] (when show? [fixture/<shared-name>])])
 
 (deftest trace-projection-drops-snapshots-and-console-descendants
   (let [records (capture/trace-records
@@ -319,5 +322,50 @@
               (is (nil? @capture/*tick))
               (is (empty? @capture/*pending))
               (is (not (snapshot-mounted?)))
+              (finally (support/unmount! root) (.remove element)))))
+        (.then (fn [] (done)) #(do (is false (str %)) (done))))))
+
+(deftest component-tree-keeps-ready-children-and-does-not-guess-ambiguous-parents
+  (let [parent ["demo.views" "<parent>"] child ["demo.views" "<child>"]
+        conditional ["demo.views" "<conditional>"] other ["other.views" "<unused>"]
+        active {"parent" {:instance "parent" :component parent}
+                "child" {:instance "child" :component child :parent "parent"}}
+        catalog {parent {} child {} conditional {} other {}}
+        tree (components/tree active catalog {conditional #{parent}})
+        root (first (:mounted tree))]
+    (is (= 2 (:mounted-count tree)))
+    (is (= 2 (:ready-count tree)))
+    (is (= #{child conditional} (set (map :component (:children root)))))
+    (is (= :ready (:status (first (filter #(= conditional (:component %)) (:children root))))))
+    (is (= "other.views" (first (:component (first (:ready tree))))))
+    (let [ambiguous (components/tree (assoc active "parent-2" {:instance "parent-2" :component parent})
+                                    catalog {conditional #{parent}})]
+      (is (= 2 (count (:ready ambiguous))))
+      (is (every? #(not-any? (fn [node] (= conditional (:component node))) (:children %)) (:mounted ambiguous))))
+    (let [cycle (components/tree {} {parent {} child {}} {parent #{child} child #{parent}})]
+      (is (= 2 (count (:children (first (:ready cycle)))))))))
+
+(deftest mounted-components-report-react-parentage-through-native-elements
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div") root (await! (support/create-root! element))
+                parent-id ["tolgraven.dev-console-test" "<tree-parent>"]
+                child-id ["tolgraven.dev-console-fixture" "<shared-name>"]]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root [<tree-parent> true]))
+              (let [instances (vals @capture/*instances)
+                    parent (first (filter #(= parent-id (:component %)) instances))
+                    child (first (filter #(= child-id (:component %)) instances))]
+                (is (some? parent))
+                (is (= (:instance parent) (:parent child)))
+                (is (= parent-id (:parent-component child))))
+              (await! (support/render! root [<tree-parent> false]))
+              (is (not-any? #(= child-id (:component %)) (vals @capture/*instances)))
+              (is (contains? (get @capture/*component-parents child-id) parent-id))
+              (let [tree (components/tree (into {} (map (fn [[id record]] [id (capture/resolve-instance record)])) @capture/*instances)
+                                          @registry/*catalog @capture/*component-parents)
+                    parent (first (filter #(= parent-id (:component %)) (:mounted tree)))]
+                (is (some #(and (= child-id (:component %)) (= :ready (:status %))) (:children parent))))
               (finally (support/unmount! root) (.remove element)))))
         (.then (fn [] (done)) #(do (is false (str %)) (done))))))

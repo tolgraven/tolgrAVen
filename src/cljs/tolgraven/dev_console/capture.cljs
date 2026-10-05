@@ -15,6 +15,7 @@
 (defonce *recording? (atom false))
 ;; Probe lifecycles begin during hydration, before the interactive console mounts.
 (defonce *instances (atom {}))
+(defonce *component-parents (r/atom {}))
 (defn resolve-instance [record]
   (merge (dissoc record :resolve!) (when-let [resolve! (:resolve! record)] (resolve!))))
 (defn connect!
@@ -39,7 +40,11 @@
 (defn emit! [record]
   (when (and ^boolean goog.DEBUG (not context/*server?*))
     (case (:kind record)
-      :mount (swap! *instances assoc (:instance record) record)
+      :mount (do (swap! *instances assoc (:instance record) record)
+                 ;; Declaration-level placements are tiny metadata, retained so
+                 ;; a conditional child stays discoverable after it unmounts.
+                 (swap! *component-parents update (:component record)
+                        (fn [parents] (set (take 16 (conj (or parents #{}) (:parent-component record)))))))
       :unmount (swap! *instances dissoc (:instance record))
       nil))
   (when (and ^boolean goog.DEBUG @*connected? (not context/*server?*))
