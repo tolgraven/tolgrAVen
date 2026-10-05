@@ -78,7 +78,7 @@
                 (-> hunk
                     (string/replace #"(?m)^." ""))]]])))]])]))
 
-(defc <load-more> "Lazy load more on scroll to bottom, with a button as fallback for the poors"
+(defc <loading> "Lazy load more on scroll to bottom, with a button as fallback for the poors"
   [user repo]
   (fn [user repo]
    [:div.github-loading
@@ -176,5 +176,5 @@
             [<commit> @view [ui/<close> #(reset! view :commits)]]])
 
      (when (= @view :commits)
-      [<load-more> (first @from) (second @from)])]]]
+      [<loading> (first @from) (second @from)])]]]
      [ui/<fading> :dir "bottom"]])))

@@ -74,6 +74,14 @@
   (fn [_ _] {:page/preload-links true}))
 (rf/reg-fx :page/preload-links (fn [_] (enqueue! (linked-paths))))
 
+(defn console-node? [node]
+  (some-> (if (= 1 (.-nodeType node)) node (.-parentElement node))
+          (.closest "[data-dev-console]")))
+(defn relevant-mutation? [record]
+  (and (not (console-node? (.-target record)))
+       (let [nodes (concat (array-seq (.-addedNodes record)) (array-seq (.-removedNodes record)))]
+         (or (empty? nodes) (not-every? console-node? nodes)))))
+
 (defn start!
   "Start after the first React commit. Observe future SPA links; release observers/timers on unmount."
   []
@@ -93,7 +101,9 @@
                                   #js {:timeout 2000}))
                               (rf/dispatch [:page/preload-links])))
                           350))))
-        observer (js/MutationObserver. schedule!)]
+        observer (js/MutationObserver.
+                   (fn [records _]
+                     (when (some relevant-mutation? (array-seq records)) (schedule!))))]
     (.observe observer (.-body js/document)
               #js {:childList true :subtree true :attributes true
                    :attributeFilter #js ["href" "data-preload-href"]})

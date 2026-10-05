@@ -95,6 +95,7 @@
             (reset! context/*interactive? true)
             (r/flush)
             (rf/dispatch [:store/init])
+            (when (:hydrate? @restore/*context) (rf/dispatch [:dev-console/hydrated]))
             (rf/dispatch [:page/hydrated]))))
        #(reset! *active? false))) #js [])
   form)

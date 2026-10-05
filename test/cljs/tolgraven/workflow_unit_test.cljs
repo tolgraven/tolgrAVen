@@ -34,6 +34,7 @@
     [tolgraven.ui :as ui]
     [tolgraven.components.init :as init-view]
     [tolgraven.react :as shim]
+    [tolgraven.component.instrumentation :as instrumentation]
     [re-frame.registrar :as registrar]
     [tolgraven.ssr.client :as ssr]
     [tolgraven.events]
@@ -427,7 +428,8 @@
                      root (await! (support/create-root! element))
                      *post (r/atom [{:id 42}])]
                  (.appendChild (.-body js/document) element)
-                 (with-redefs [rf/subscribe (fn
+                 (with-redefs [instrumentation/instrument (fn ([_ form] form) ([_ form _ _] form))
+                               rf/subscribe (fn
                                               ([query]
                                                (case (first query)
                                                  :blog/count (r/atom 1)
@@ -455,7 +457,8 @@
                (let [element (.createElement js/document "div")
                      root (await! (support/create-root! element))
                      *posts (r/atom nil)]
-                 (with-redefs [rf/subscribe (fn
+                 (with-redefs [instrumentation/instrument (fn ([_ form] form) ([_ form _ _] form))
+                               rf/subscribe (fn
                                               ([query]
                                                (case (first query)
                                                  :blog/state (r/atom "cljs")
@@ -606,8 +609,8 @@
   (doseq [url ["https://example.com/page.html" "#heading" "/blog" "mailto:test@example.com"]]
     (let [html (str "<a href=\"" url "\">Link</a>")] (is (= html (docs-view/page-links html))))))
 (deftest markdown-code-uses-reagent-props-without-js-conversion
-  (is (= "<code>inline</code>"
-         (server/render-to-static-markup [code/<markdown-code-component> {:children "inline"}]))))
+  (let [html (server/render-to-static-markup [code/<markdown-code-component> {:children "inline"}])]
+    (is (re-matches #"<code(?: data-dev-component=\"[^\"]*\")?>inline</code>" html))))
 (deftest debug-and-theme-events-preserve-app-db
   (async done
          (-> (go-promise (let [before (rf/make-restore-fn)]

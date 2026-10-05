@@ -1,5 +1,6 @@
 (ns tolgraven.component.persistent-state
-  (:require [reagent.core :as r]
+  (:require [tolgraven.component.instrumentation :as instrumentation]
+            [reagent.core :as r]
             [clojure.string :as string]
             [tolgraven.content.contract :as content]
             [tolgraven.react :as rf]
@@ -45,6 +46,11 @@
         {:component-path true :component-root path
          :private? (= :user (get-in options [:persist :scope]))
          :owner @storage/*identity}))))
+
+(instrumentation/register-path-resolver!
+  (fn [definition args key]
+    (binding [*component* definition *args* args *react-key* key]
+      (path-for {}))))
 
 (defn- accessible-path? [path]
   (or (not (:private? (meta path))) (= (:owner (meta path)) @storage/*identity)))

@@ -27,6 +27,7 @@
 @use "fonts";
 @use "components/error";
 @use "components/loading";
+@use "components/dev-console";
 
 /* This keeps child nodes hidden while the element loads */
 :not(:defined) > * {

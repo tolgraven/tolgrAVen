@@ -2,6 +2,8 @@
   (:require
     [goog.events]
     [tolgraven.react :as rf]
+    [tolgraven.dev-console.views :as dev-console]
+    [tolgraven.render-context :as context]
     [tolgraven.component.data :as component-data]
     [tolgraven.component :as component]
     [tolgraven.component.storage :as storage]
@@ -53,8 +55,10 @@
                       (r/as-element [page]))
     [#'page]))
 
-(m/defc <root-page> []
-  [:<> [ssr/<hydrate> [page]] [page-preload/<background>]])
+;; Profiling this host would include console commits and create capture feedback.
+(m/defc <root-page> {:profile false} []
+  [:<> [ssr/<hydrate> [page]] [page-preload/<background>]
+   (when (and ^boolean goog.DEBUG @context/*interactive?) [dev-console/<console>])])
 
 (defn render []
   (if @root

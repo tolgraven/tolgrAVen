@@ -146,9 +146,12 @@
         (let [scoped-helpers? (some #(and (seq? %) (symbol? (first %))
                                          (#{"<sub" ">reset" ">update"} (clojure.core/name (first %))))
                                    (tree-seq coll? seq (concat bindings body)))
-              options (select-keys (merge (meta name) attrs) [:spec :features :depends :loading :loading-prefab :loading-tag :loading-props :state :module])
+              options (select-keys (merge (meta name) attrs) [:spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :state :module])
               options (merge (loading-root (last body)) options)
               loading-helper? (and (some #{'<loading>} (tree-seq coll? seq (concat bindings body)))
+                                   (not (get-in &env [:ns :defs '<loading>]))
+                                   (not (get-in &env [:ns :uses '<loading>]))
+                                   (not (get-in &env [:ns :renames '<loading>]))
                                    ;; Caller-provided placeholders and local bindings
                                    ;; take precedence over the injected helper.
                                    (not (some #{'<loading>}
@@ -158,6 +161,8 @@
                                  ['<loading> `(fn [& [overrides#]]
                                                (tolgraven.component/loading-view
                                                 (merge ~(select-keys options [:loading-prefab :loading-tag :loading-props]) overrides#)))])
+              options (assoc options :source {:file (or (:file (meta &form)) (:file &env) *file*)
+                                               :line (:line (meta &form))})
               options (if (and scoped-helpers? (nil? (:state options))) (assoc options :state {}) options)
               helper-bindings (when scoped-helpers?
                                 ['<sub 'tolgraven.component/<sub
@@ -179,11 +184,16 @@
              ;; otherwise reuse top-level compiler gensyms after incremental builds.
              ((fn []
              (let [~descriptor (tolgraven.component.registry/definition
-                             ~(str ns-name) ~(str name) ~options
+                             ~(str ns-name) ~(str name)
+                             (cond-> ~options ^boolean goog.DEBUG
+                               (assoc :code ~(pr-str (list* 'defc name (concat (when docstring [docstring]) (when attrs [attrs]) decls)))))
                              (fn ~args (let [~@helper-bindings ~@loading-bindings ~@bindings] (fn ~args ~@body))))]
              ~(if plain?
                 `(reagent.core/defc ~(with-meta name metadata) ~args
-                   ~@(if (seq (concat loading-bindings bindings)) [`(reagent.core/with-let [~@loading-bindings ~@bindings] ~@body)] body))
+                   (tolgraven.component.instrumentation/instrument ~descriptor
+                     ~@(if (seq (concat loading-bindings bindings))
+                         [`(reagent.core/with-let [~@loading-bindings ~@bindings] ~@body)]
+                         [`(do ~@body)])))
                 `(reagent.core/defc ~(with-meta name metadata) [& argv#]
                    (tolgraven.component/render-component ~descriptor argv#)))
              (tolgraven.component.registry/register-component! ~name ~descriptor))))))))))

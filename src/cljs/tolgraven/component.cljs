@@ -3,6 +3,7 @@
     [clojure.string :as string]
     [tolgraven.render-context :as context]
     [tolgraven.component.registry :as registry]
+    [tolgraven.component.instrumentation :as instrumentation]
     [reagent.core :as r]
     [tolgraven.react :as react]
     [tolgraven.component.motion :as motion]
@@ -194,7 +195,7 @@
           options (into {} (map (fn [[id default _]] [id (feature-config id default spec)]) features))
           form (if (some ids [:appear :seen :exit]) (motion/use-motion form options presence) form)
           form (if (ids :presence) (motion/use-presence form exit-config) form)]
-      form)))
+      (instrumentation/instrument definition form args state-key))))
 
 (r/defc <function-body> [definition args presence state-key]
   (render-function definition args presence state-key))
@@ -257,10 +258,7 @@
   ;; subvec drops metadata, but retains the original Hiccup vector as its backing
   ;; vector. Read that metadata before introducing any defc wrappers. Class-based
   ;; runtime components still expose the original vector through r/argv.
-  (when-let [instance (r/current-component)]
-    (if-let [argv (.-argv ^clj instance)]
-      (if (instance? cljs.core/Subvec argv) (.-v ^cljs.core/Subvec argv) argv)
-      (r/argv instance))))
+  (react/component-argv))
 
 (defn render-component [definition raw-args]
   (let [state-key (some-> (current-argv) meta :key)

@@ -1,0 +1,54 @@
+(ns tolgraven.component.instrumentation
+  "Development-only React profiling. Adds no DOM wrappers or application store."
+  (:require [clojure.string :as string]
+            [reagent.core :as r]
+            [tolgraven.react :as rf]
+            [tolgraven.render-context :as context]
+            [tolgraven.dev-console.capture :as capture]))
+
+(defonce *path-resolver (atom nil))
+(defn register-path-resolver! [resolve!] (reset! *path-resolver resolve!))
+
+(defn identity-for [definition] [(:ns definition) (:name definition)])
+(r/defc <probe> [definition args instance-key form]
+  (let [*id (rf/use-ref nil)
+        _ (when-not (.-current *id) (set! (.-current *id) (str (random-uuid))))
+        qualified (string/join "/" (identity-for definition))
+        path (when-let [resolve! @*path-resolver] (resolve! definition args instance-key))]
+    (rf/use-effect
+      (fn []
+        (do (capture/emit! {:kind :mount :instance (.-current *id) :component (identity-for definition)
+                          :path path :key instance-key :page (when (exists? js/location) (.-pathname js/location))})
+          #(capture/emit! {:kind :unmount :instance (.-current *id)})))
+      #js [qualified (pr-str path)])
+    [:> rf/profiler
+     {:id qualified
+      :onRender (fn [_ phase duration base start commit]
+                  (when @capture/*recording?
+                    (capture/emit! {:kind :render :component (identity-for definition)
+                                    :instance (.-current *id) :phase phase :duration duration
+                                    :base-duration base :start start :commit commit :end (+ start duration)})))}
+     form]))
+
+(defn instrument
+  ([definition form]
+   (let [argv (rf/component-argv)]
+     (instrument definition form (vec (rest argv)) (:key (meta argv)))))
+  ([definition form args key]
+   (if (or (not ^boolean goog.DEBUG)
+           (= false (get-in definition [:options :profile]))
+           (= (:ns definition) "tolgraven.dev-console.views"))
+     form
+     (if (fn? form)
+       (fn [& args] (instrument definition (apply form args) args key))
+       (let [qualified (string/join "/" (identity-for definition))
+             native? (and (vector? form) (or (string? (first form))
+                                            (and (keyword? (first form)) (not (#{:<> :> :r> :f>} (first form))))))
+             ;; The server loader and browser loader legitimately have different
+             ;; adapter identities. Attribute only after the hydration commit.
+             form (if (and native? (not context/*server?*) @context/*interactive?)
+                    (let [[tag attrs & children] form]
+                      (with-meta (into [tag (assoc (if (map? attrs) attrs {}) :data-dev-component qualified)]
+                                       (if (map? attrs) children (rest form))) (meta form))) form)]
+         (if context/*server?* form
+             [<probe> definition args key form]))))))

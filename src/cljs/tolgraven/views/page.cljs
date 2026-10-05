@@ -78,6 +78,7 @@
      (if-let [page @(rf/subscribe [:common/page])]
        [:main.main-content.perspective-top
         {:id    "main"
+         :data-debug-hydrated (when @(rf/subscribe [:state [:debug :hydration-token]]) true)
          :data-restored (when ext-back? true)
          :data-stream-enter (when (restore/initial-enter?) true)
          :class (str (when (and (not ext-back?)

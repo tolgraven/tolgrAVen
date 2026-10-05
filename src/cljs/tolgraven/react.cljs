@@ -24,12 +24,20 @@
 (def create-portal             react-dom/createPortal)
 (def suspense                  (adapt-react-class react/Suspense))
 (def strict-mode               react/StrictMode)
+(def profiler                  react/Profiler)
 (def use-state                 react/useState)
 (def use-ref                   react/useRef)
 (def use-effect                react/useEffect)
 (def use-layout-effect         react/useLayoutEffect)
 (def use-callback              react/useCallback)
 (def use-reducer               react/useReducer)
+(defn component-argv
+  "Recover Reagent's original Hiccup and metadata for function or class views."
+  []
+  (when-let [instance (r/current-component)]
+    (if-let [argv (.-argv ^clj instance)]
+      (if (instance? cljs.core/Subvec argv) (.-v ^cljs.core/Subvec argv) argv)
+      (r/argv instance))))
 (def flush-sync                react-dom/flushSync)
 
 
