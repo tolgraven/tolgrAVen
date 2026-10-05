@@ -18,6 +18,7 @@
     [tolgraven.cv.module :as cv]
     [tolgraven.docs.module :as docs]
     [tolgraven.ssr.contract :as contract]
+    [tolgraven.ssr.shell :as shell]
     [tolgraven.user.module :as user]
     [tolgraven.link-preview.module :as link-preview]
     [tolgraven.subs]))
@@ -36,8 +37,10 @@
                          *value)))
         snapshot (update snapshot :content content/normalize-content)
         match (assoc (reitit/match-by-path routes/router (:path snapshot)) :query-params (:query-params snapshot))
-        view (or (get-in match [:data :view])
-                 (get-in modules [(get-in match [:data :module]) :view (get-in match [:data :page])]))]
+        view (if (:shell? snapshot)
+               (fn [] [shell/<page> (get-in match [:data :shell])])
+               (or (get-in match [:data :view])
+                 (get-in modules [(get-in match [:data :module]) :view (get-in match [:data :page])])))]
     (when-not view (throw (js/Error. "No registered page view for SSR")))
     (try
       (reset! context/*snapshot snapshot)

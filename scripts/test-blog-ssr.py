@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Exercise the real Node worker and write its output for browser hydration tests.
 
-Run `make ssr` first, then this script, then the Shadow app-test browser suite.
+Use the existing SSR watch worker, or `make ssr` if none is running, first.
+Then run this script and the Shadow app-test browser suite. This is a renderer
+contract check with fixture snapshots, not live service integration.
 """
 import json
 from pathlib import Path

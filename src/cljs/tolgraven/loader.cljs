@@ -107,6 +107,31 @@
                             (.then (fn [_] (if post-fn (apply post-fn spec args) spec))))))))
     (js/Promise.reject (ex-info "Unknown module" {:module module}))))
 
+(defn code-spec
+  "Already-loaded code is renderable even while its managed data is pending."
+  [module]
+  (when-let [loadable (get modules module)]
+    (when (lazy/ready? loadable) @loadable)))
+
+(declare load-code!)
+
+(defn load-code!
+  "Navigation waits only for JavaScript. Initialization/data run independently;
+   managed component bindings own their loading and error views."
+  [options]
+  (let [module (:module options)]
+    (-> (load! options)
+        (.then (fn [_] (status/recover! [:module module])))
+        (.catch (fn [error]
+                  (status/fail! [:module module] "Section initialization failed"
+                                "This section could not finish loading. Retry to load it again."
+                                #(load-code! options)))))
+    (if-let [loadable (get modules module)]
+      (if (lazy/ready? loadable)
+        (js/Promise.resolve @loadable)
+        (js/Promise.resolve (lazy/load loadable)))
+      (js/Promise.reject (ex-info "Unknown module" {:module module})))))
+
 (m/defc <assets>
   "Inject external assets"
   [{:keys [css js]}]

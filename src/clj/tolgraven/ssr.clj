@@ -140,6 +140,8 @@
 (defn- build-page! [uri selection query-params]
   (let [snapshot (cond-> (snapshot! uri selection)
                    (seq query-params) (assoc :query-params query-params))
+        snapshot (assoc snapshot :document-title
+                        (page/document-title (:data (router/match uri)) snapshot))
         key [uri query-params] cached (get @*cache key)]
     ;; Validate against a fresh public snapshot, even on render-cache hits.
     (if (= snapshot (:snapshot cached))
@@ -174,3 +176,22 @@
 (defn page! [uri & [query-params]]
   ;; Layout is synchronous inside the outer Ring async/virtual-thread boundary.
   (concurrent/await! (page-async! uri query-params) 60000))
+
+(defonce *shell-cache (atom {}))
+
+(defn cached? [uri query-params]
+  (contains? @*cache [uri query-params]))
+
+(defn shell! [uri query-params]
+  (let [spec (:data (router/match uri))
+        snapshot {:renderer-version renderer-version :renderer-build (renderer-build)
+                  :kind (or (:kind spec) (:module spec)) :path uri
+                  :posts [] :shell? true :query-params query-params
+                  :content (content/immediate-content)}
+        key [uri query-params (:shell spec) (:content snapshot) (:renderer-build snapshot)]]
+    ;; No network work and no worker lease while upstream data is pending.
+    ;; Links and active navigation are route-specific, even in the loading shell.
+    (or (get @*shell-cache key)
+        (let [result {:snapshot snapshot :html (render! snapshot)}]
+          (swap! *shell-cache (fn [cache] (assoc (if (> (count cache) 32) {} cache) key result)))
+          result))))

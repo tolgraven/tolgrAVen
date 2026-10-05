@@ -2,6 +2,7 @@
   (:require
     [reagent.core :as r]
     [tolgraven.react :as rf]
+    [tolgraven.page-transition :as page-transition]
     [clojure.string :as string]
     [tolgraven.util :as util]
     [cljs-time.core :as ct]
@@ -47,10 +48,26 @@
       {:db (cond-> db browser-nav? (assoc-in [:state :browser-nav :got-nav] false))
        :dispatch-n [[:hide-header-footer false false]
                     (when-not restore? [:scroll/past-top false])
-                    [:page/ready (when (or (not restore?) (number? saved-pos))
+                    [:page/ready (when (and (not first-nav?) (or (not restore?) (number? saved-pos)))
                                    (if restore? saved-pos "main"))
                      completion]]})))
 
+
+(rf/reg-event-fx :scroll/save-history [(rf/inject-cofx :scroll-position)]
+  (fn [{:keys [db scroll-position]} _]
+    (when-let [path (get-in db [:common/route :path])]
+      {:db (assoc-in db [:state :scroll-position path] scroll-position)})))
+
+(rf/reg-event-fx :scroll/restore-history
+  (fn [{:keys [db]} [_ path]]
+    (when-let [position (get-in db [:state :scroll-position (or path (get-in db [:common/route :path]))])]
+      {:scroll/restore-position position})))
+
+(rf/reg-fx :scroll/restore-position
+  (fn [position]
+    ;; An explicitly client-restored document starts observing before its
+    ;; content mounts. Layout growth, not hydration timing, makes it scrollable.
+    (page-transition/restore-position! position)))
 
 (rf/reg-event-fx :scroll/save-position-dev
   (fn [{:keys [db]} [_]]
@@ -149,4 +166,3 @@
                      (if (get-in db [:state :hidden :footer])
                        "calc(2 * var(--line-width))"
                        (:footer-height css-var)))]]})))
-

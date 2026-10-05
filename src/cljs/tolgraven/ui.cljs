@@ -1,7 +1,6 @@
 (ns tolgraven.ui
   (:require
     [tolgraven.component.registry]
-    [react :as react]
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [tolgraven.util :as util :refer [at]]
@@ -43,8 +42,8 @@
   "Compatibility boundary for existing [safe category component] call sites.
    Keep the category in diagnostics while sharing defc's recovery machinery."
   [category form & [reset-key]]
-  (with-meta [component/<boundary> "tolgraven.ui" (name category) form]
-    {:key reset-key}))
+  [component/<boundary> {:ns-name "tolgraven.ui" :component-name (name category)
+                         :reset-key reset-key} form])
 
 (m/defc <md->div> [md & [options]]
   (let [showing? (r/atom (boolean (restore/skip-enter?)))]
@@ -524,7 +523,7 @@
   [options content]
   :let [*table (atom nil)
         *mounted? (atom false)]
-  (react/useLayoutEffect
+  (rf/use-layout-effect
    (fn []
      (when @*mounted? (util/scroll-to-end! @*table))
      (reset! *mounted? true)
@@ -569,40 +568,44 @@
     to-close])
   (rf/dispatch [:modal false]))) ;eww gross
 
+(m/defc <hud-message>
+  {:features [[:appear "zoom-x slow"]]}
+  [{:keys [level title message time actions buttons id]}]
+  ;; Keep the existing animation box: message margins and its 0.9 opacity
+  ;; remain independent of the entry animation. No separate appear component.
+  [:div
+   [:div.hud-message
+    {:role (if (= :error level) "alert" "status")
+     :class (name level)
+     :style {:position :relative}
+     :ref #(when % (util/run-highlighter! "pre" %))
+     :on-click #(doseq [action (or actions
+                                  [[:diag/unhandled :remove id]
+                                   [:common/navigate! :log]])]
+                  (rf/dispatch action))}
+    [:div.hud-message-top
+     [:h4.hud-message-title title]
+     [<close> (fn [event]
+                (.stopPropagation event)
+                (rf/dispatch [:diag/unhandled :remove id]))]]
+    (when message [:pre (format-log-message message)])
+    (when buttons
+      [:div.hud-message-buttons
+       (for [{button-id :id :keys [text action]} buttons]
+         ^{:key (str "hud-message-" id "-button-" button-id)}
+         [:button.hud-message-button
+          {:on-click (fn [event]
+                       (.stopPropagation event)
+                       (rf/dispatch action))}
+          text])])]])
+
 (m/defc <hud> "Render a HUD sorta like figwheel's but at reagent/re-frame level"
   [to-show]
- (let [msg-fn (fn [{:keys [level title message time actions buttons id]}]
-                ^{:key (str "hud-message-" id)}
-                [:div.hud-message
-                  {:role (if (= :error level) "alert" "status")
-                   :class (name level)
-                   :style {:position :relative}
-                   :ref #(when % (util/run-highlighter! "pre" %)) ;this works but dispatch not??
-                   :on-click #(doall (for [action (or actions
-                                                      [[:diag/unhandled :remove id]
-                                                       [:common/navigate! :log]])] ;TODO should then find elem by log id and scroll to it
-                                       (rf/dispatch action)))}
-                  [:div.hud-message-top
-                   [:h4.hud-message-title title]
-                   [<close> (fn [e]
-                            (.stopPropagation e) ;it's causing a click on hud-message as well...
-                            (rf/dispatch [:diag/unhandled :remove id]))]]
-                  (when message
-                    [:pre (format-log-message message)])
-                  (when buttons
-                    [:div.hud-message-buttons
-                     (for [{:keys [id text action] :as button} buttons]
-                        ^{:key (str "hud-message-" (cond-> id
-                                                     (keyword? id) name)
-                                    "-button-" (:id button))}
-                       [:button.hud-message-button
-                        {:on-click (fn [event] (.stopPropagation event) (rf/dispatch action))}
-                        text])])])]
   [:div.hud.hidden
    {:class (when (seq @to-show) "visible")}
-   (for [msg @to-show
-         :let [id (str "hud-id-" (:id msg))]] ^{:key id}
-     [<appear> {:appear "zoom-x slow" :form [:div [msg-fn msg]]}])]))
+   (for [msg @to-show]
+     ^{:key (str "hud-id-" (:id msg))}
+     [<hud-message> msg])])
 
 
 (m/defc <input-toggle> "Don't forget to put ze label - only was sep in first place due to css bs?"

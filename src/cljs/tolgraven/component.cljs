@@ -4,7 +4,7 @@
     [tolgraven.render-context :as context]
     [tolgraven.component.registry :as registry]
     [reagent.core :as r]
-    [react :as react]
+    [tolgraven.react :as react]
     [tolgraven.component.motion :as motion]
     [tolgraven.component.persistent-state :as state-store]
     [tolgraven.component.loading :as loading]
@@ -129,9 +129,9 @@
   (some #(when (= :exit (first %)) (second %)) (:features (component-spec component))))
 
 (defn- use-lifecycle! [definition args features *element]
-  (let [[mounted? set-mounted!] (react/useState false)
-        *active (react/useRef {})
-        *latest (react/useRef args)
+  (let [[mounted? set-mounted!] (react/use-state false)
+        *active (react/use-ref {})
+        *latest (react/use-ref args)
         this (r/current-component)
         cleanup! (fn [id]
                    (when-let [{:keys [implementation state]} (get (.-current *active) id)]
@@ -139,7 +139,7 @@
                      (when state (when-let [unmount (:unmount implementation)] (unmount state)))))
         lifecycle? (some #(= :lifecycle (first %)) features)]
     (set! (.-current *latest) args)
-    (react/useLayoutEffect
+    (react/use-layout-effect
      (fn []
        (let [spec (current-spec definition args)]
          (doseq [[id default implementation] features :when (:setup implementation)]
@@ -156,7 +156,7 @@
                                                        :config config :element @*element}))
                    (when state (when-let [mount (:mount implementation)] (mount state @*element)))))))))
        js/undefined))
-    (react/useLayoutEffect
+    (react/use-layout-effect
      (fn []
        (set-mounted! true)
        (when lifecycle?
@@ -170,7 +170,7 @@
     mounted?))
 
 (defn- render-function [definition args presence state-key]
-  (let [*instance (react/useRef nil)]
+  (let [*instance (react/use-ref nil)]
     (when-not (.-current *instance)
       (let [*element (atom nil)]
         (set! (.-current *instance)
@@ -202,18 +202,23 @@
 (def <boundary>
   (r/create-class
    {:display-name "Component error boundary"
-    :get-initial-state (fn [_] #js {:error nil :stack nil :attempt 0})
+    :get-initial-state (fn [_] #js {:error nil :stack nil :attempt 0 :resetKey nil})
+    :get-derived-state-from-props
+    (fn [{:keys [reset-key]} ^js state]
+      (when (not= reset-key (.-resetKey state))
+        #js {:error nil :stack nil :resetKey reset-key
+             :attempt (if (.-error state) (inc (.-attempt state)) (.-attempt state))}))
     :get-derived-state-from-error (fn [error] #js {:error error})
     :should-component-update (fn [_ _ _] true)
     :component-did-catch
     (fn [this exception info]
-      (let [[_ ns-name component-name] (r/argv this)]
+      (let [[_ {:keys [ns-name component-name]}] (r/argv this)]
         (.setState this #js {:stack (.-componentStack ^js info)})
         (util/log :error (str "Component " ns-name "/" component-name)
                   (or (ex-message exception) (str exception)))))
     :render
     (fn [this]
-      (let [[_ ns-name component-name form] (r/argv this)
+      (let [[_ {:keys [ns-name component-name]} form] (r/argv this)
             state (.-state this)]
         (r/as-element
          (if-let [exception (.-error state)]
@@ -221,6 +226,17 @@
             (fn [] (.setState this (fn [previous _]
                                     #js {:error nil :stack nil :attempt (inc (.-attempt previous))})))]
            (with-meta [:<> form] {:key (.-attempt state)})))))}))
+
+(defn loading-view [options]
+  [loading/<placeholder> options])
+
+(defn- loading-form [definition args]
+  (let [options (merge (:options definition) (current-spec definition args))
+        view (:loading options)]
+    (cond
+      (vector? view) view
+      view (into [(resolve-view view)] args)
+      :else (loading-view options))))
 
 (r/defc <data-body> [definition args form]
   (let [resources (dependencies definition args)]
@@ -234,8 +250,7 @@
                :message "Check your connection and try loading this content again."
                :error (data/failure resources)}
               #(data/retry-background! resources)]
-      (let [view (get-in definition [:options :loading])]
-        (cond (fn? view) (apply view args) view view :else [loading/<spinner>])))))
+      (loading-form definition args))))
 
 (defn- current-argv []
   ;; Reagent 2 defc stores (subvec hiccup 1) on its function render state.
@@ -273,7 +288,7 @@
 (register-feature! :presence {})
 (register-feature! :error-boundary
                    {:wrap (fn [form definition _]
-                            [<boundary> (:ns definition) (:name definition) form])})
+                            [<boundary> {:ns-name (:ns definition) :component-name (:name definition)} form])})
 
 (r/defc <dynamic-component> [definition args]
   (render-component definition args))

@@ -2,7 +2,7 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
-    [react :as react]
+    [tolgraven.react :as react]
     [reagent.core :as r]
     [tolgraven.components.portal :as portal]))
 
@@ -28,8 +28,10 @@
     (fn [{:keys [aria-label class expanded? on-click on-pointer-enter
                     on-pointer-leave on-key-down on-focus on-blur open?]}
             content]
-      (react/useEffect
+      (react/use-effect
        (fn []
+         ;; React may clean up and re-run effects without replacing the ref.
+         (when (and observer @*element) (.observe observer @*element))
          (.addEventListener js/window "resize" measure!)
          #(do (when observer (.disconnect observer))
               (.removeEventListener js/window "resize" measure!))) #js [])

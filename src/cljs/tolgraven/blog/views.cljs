@@ -106,13 +106,11 @@
        (case vote :up "+" :down "-")])))
 
 (defc <collapsed-reply-view>
+  {:features [[:appear "zoom-y"]]}
   [{:keys [path comments reply-count] :as spec}]
-  :let [*inited? (r/atom false)]
   [:div.blog-comment-reply.flex
    {:style {:cursor "zoom-in"
-            :transition "max-height 1s ease"
-            :max-height (if @*inited? "3rem" 0)}
-    :ref #(when % (reset! *inited? true))
+            :max-height "3rem"}
     :on-click #(rf/dispatch [:blog/expand-comment-thread path true])}
    [:div.blog-comment-border]
    [:section.blog-comment.blog-comment-collapsed-placeholder
@@ -401,11 +399,13 @@
         :trust (link-trust user)}]]
      [<comments-section> {:post post :appear {:class "zoom-y" :remember-key [:blog/comments id]}}]]))
 
-(defc <blog-post> [{:keys [id post] :as spec}]
+(defc <blog-post>
+  {:loading-prefab :lines :loading-tag :section.blog-post}
+  [{:keys [id post] :as spec}]
   (cond
-    (:text post) [<post-content> (assoc spec :appear {:class "zoom-x" :remember-key [:blog/post (:id post)]})]
+    (:text post) ^{:key (:id post)} [<post-content> (assoc spec :appear {:class "zoom-x" :remember-key [:blog/post (:id post)]})]
     (and id @(rf/subscribe [:blog/post-loaded? id])) [:p {:role "status"} "Post not found."]
-    :else [loading/<query-fallback> (data/post-query id)]))
+    :else [loading/<query-fallback> (data/post-query id) [<loading>]]))
 
 (defc <post-by-id> [{:keys [id]}]
   ;; Own the subscription in a render context, never inside a lazy parent for.
@@ -414,7 +414,7 @@
 (defc <adjacent-post-link> [{:keys [direction post-id] :as spec}]
   (when-let [id @(rf/subscribe [:blog/adjacent-post-id direction post-id])]
     (let [{:keys [title permalink]} @(rf/subscribe [:blog/post-summary id])]
-      [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
+      [:a {:rel (name direction) :href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
        [:span
         (when (= direction :prev) [:<> [:i.fa.fa-chevron-left] " "])
         title
@@ -458,7 +458,9 @@
        ^{:key (str "blog-archive-" (:id post))}
        [<archive-post> {:post post}])]}])
 
-(defc <blog-tag-view> "Render posts filed under the selected tag." []
+(defc <blog-tag-view> "Render posts filed under the selected tag."
+  {:loading-prefab :lines :loading-tag :section.blog-post}
+  []
   (when-let [tag @(rf/subscribe [:blog/state [:viewing-tag]])]
     [<blog-container>
      {:section
@@ -469,7 +471,7 @@
          (for [post posts]
            ^{:key (str "blog-with-tag-" (:id post))}
            [<blog-post> {:id (:id post) :post post}])
-         [loading/<query-fallback> (data/tag-query tag)])]}]))
+         [loading/<query-fallback> (data/tag-query tag) [<loading>]])]}]))
 
 (defc <blog-tag-cloud> "Render all blog tags." []
   [:div.blog-post-tags.flex.center-content
@@ -483,8 +485,8 @@
   []
   nil)
 
-(defc <nav-btn> [{:keys [nav label props] :as spec}]
-  [:a {:href @(rf/subscribe [:href :blog-page {:nr nav}])}
+(defc <nav-btn> [{:keys [nav label props rel] :as spec}]
+  [:a {:rel rel :href @(rf/subscribe [:href :blog-page {:nr nav}])}
    [:button.blog-btn.blog-nav-btn.topborder props label]])
 
 (defc <blog-nav> "Blog navigation buttons"
@@ -493,14 +495,16 @@
         previous @(rf/subscribe [:blog/page-index-for-nav-action :prev])
         next-page @(rf/subscribe [:blog/page-index-for-nav-action :next])]
     [:div.blog-nav.center-content
-     (when previous [<nav-btn> {:nav previous :label [:i.fa.fa-chevron-left]}])
+     (when previous [<nav-btn> {:nav previous :rel "prev" :label [:i.fa.fa-chevron-left]}])
      (for [number (range 1 (inc page-count))]
        ^{:key (str "blog-nav-btn-" number)}
        [<nav-btn> {:nav number :label number
                    :props (when (= number (inc current-idx)) {:class "current"})}])
-     (when next-page [<nav-btn> {:nav next-page :label [:i.fa.fa-chevron-right]}])]))
+     (when next-page [<nav-btn> {:nav next-page :rel "next" :label [:i.fa.fa-chevron-right]}])]))
 
-(defc <blog-feed> "Render the current database page of posts." []
+(defc <blog-feed> "Render the current database page of posts."
+  {:loading-prefab :lines :loading-tag :section.blog-post}
+  []
   (let [total @(rf/subscribe [:blog/count])
         size @(rf/subscribe [:blog/posts-per-page])
         index @(rf/subscribe [:blog/nav-page])
@@ -510,7 +514,7 @@
        (for [post posts]
          ^{:key (str "blog-post-" (:id post))}
          [<blog-post> {:id (:id post) :post post}])
-       [loading/<query-fallback> (data/page-query index size)])
+       [loading/<query-fallback> (data/page-query index size) [<loading>]])
      (when (pos? total)
        [<blog-nav> {:total-posts total :current-idx index :posts-per-page size}])]))
 
@@ -544,20 +548,13 @@
 (defc <blog-page>
   {:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)}
   []
-  [ui/<with-heading> [:blog :heading] [<blog-container> {:section [<blog-feed>]}]])
-(defc <post-blog-page>
-  {:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)}
-  [] ; how nicely set is-personal for this but also unset etc yada
-  [ui/<with-heading> [:blog :heading] [<post-blog>]])
-(defc <blog-archive-page>
-  {:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)}
-  []
-  [ui/<with-heading> [:blog :heading] [<blog-archive>]])
-(defc <blog-tag-page>
-  {:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)}
-  []
-  [ui/<with-heading> [:blog :heading] [<blog-tag-view>]])
-(defc <blog-post-page>
-  {:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)}
-  []
-  [ui/<with-heading> [:blog :heading] [<blog-single-post>]])
+  ;; One outer component identity preserves the heading across blog routes. Only
+  ;; the selected content changes; SSR and SPA use the same route subscription.
+  (let [page (get-in @(rf/subscribe [:common/route]) [:data :page])]
+    [ui/<with-heading> [:blog :heading]
+     (case page
+       :post [<blog-single-post>]
+       :tag [<blog-tag-view>]
+       :archive [<blog-archive>]
+       :new-post [<post-blog>]
+       [<blog-container> {:section [<blog-feed>]}])]))

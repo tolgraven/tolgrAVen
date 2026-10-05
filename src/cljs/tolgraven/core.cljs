@@ -7,7 +7,6 @@
     [tolgraven.component.storage :as storage]
     [tolgraven.blog.cache :as blog-cache]
     [tolgraven.main.module :as main-module]
-    [react :as react]
     [reagent.core :as r]
     [reagent.dom.client :as rdomc]
     [tolgraven.ajax :as ajax]
@@ -22,6 +21,7 @@
     [tolgraven.macros :as m :include-macros true]
     [tolgraven.component.registry]
     [tolgraven.routes :as routes]
+    [tolgraven.page-preload :as page-preload]
     [tolgraven.subs]
     [tolgraven.ui :as ui]
     [tolgraven.util :as util]
@@ -37,15 +37,24 @@
 
 (defonce root (atom nil))
 (defonce *init-root (atom nil))
+(defonce *shell-root (atom nil))
+
+(defn clear-shell!
+  "React owns disposal of the temporary server-rendered loading root."
+  []
+  (when-let [element (.getElementById js/document "ssr-shell")]
+    (when-not @*shell-root
+      (reset! *shell-root (rdomc/create-root element))
+      (rf/flush-sync #(rdomc/render @*shell-root nil)))))
 (defonce <page>
   (if false #_:biggus-debuggus
-    (r/create-element react/StrictMode
+    (r/create-element rf/strict-mode
                       nil                ;; <-- props
                       (r/as-element [page]))
     [#'page]))
 
 (m/defc <root-page> []
-  [ssr/<hydrate> [page]])
+  [:<> [ssr/<hydrate> [page]] [page-preload/<background>]])
 
 (defn render []
   (if @root
@@ -86,6 +95,8 @@
                  (when hot-reload? (rf/dispatch [:scroll/restore-position-dev 150])))))))
 
 (defn init "Called only on page load" []
+  ;; Remove duplicate shell IDs before routing, measurement, or hydration.
+  (clear-shell!)
   (restore/begin! {:back? (or (restore/back-navigation?)
                                (= "true" (.getAttribute (.getElementById js/document "app") "data-restore")))
                    :hydrate? (= "true" (.getAttribute (.getElementById js/document "app") "data-hydrate"))})
@@ -96,7 +107,14 @@
             (rf/dispatch-sync [:state [:page-init] {:status :loading}])
             (service-status/recover! :page-init)
             (-> (storage/ready!)
-                (.then (fn [_] (ssr/install!) (blog-cache/restore!)))
+                (.then (fn [_]
+                         (ssr/install!)
+                         (blog-cache/restore!)
+                         (rf/dispatch-sync [:ls/get-path [:scroll-position] [:state :scroll-position]])
+                         ;; The server explicitly skipped SSR for this persisted
+                         ;; return. Start restoration before React builds content.
+                         (when (= "true" (.getAttribute (.getElementById js/document "app") "data-restore"))
+                           (rf/dispatch [:scroll/restore-history (.-pathname js/location)]))))
                 (.then (fn [_] (content/bootstrap!)))
                 (.then (fn [_] (component-data/ensure-all! (:depends spec))))
                 (.then (fn []

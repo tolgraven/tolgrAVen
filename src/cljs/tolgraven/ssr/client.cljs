@@ -1,8 +1,8 @@
 (ns tolgraven.ssr.client
-  (:require [react :as react]
-            [clojure.string :as string]
+  (:require [clojure.string :as string]
             [reagent.core :as r]
             [tolgraven.react :as rf]
+            [tolgraven.component.restore :as restore]
             [tolgraven.render-context :as context]
             [tolgraven.ssr.contract :as contract]
             [tolgraven.content.contract :as content-contract]
@@ -15,6 +15,11 @@
 
 (rf/reg-event-db :page/install-public-state
   (fn [db [_ value]] (contract/merge-state db value)))
+
+(rf/reg-event-fx :page/install-metadata
+  (fn [_ [_ snapshot]]
+    (when-let [title (:document-title snapshot)]
+      {:document/set-title title})))
 
 (defn leave! [path]
   (let [path (first (string/split path #"\?"))]
@@ -33,6 +38,7 @@
         (throw (js/Error. "Invalid page hydration snapshot")))
       (rf/dispatch-sync [:page/install-public-state (contract/snapshot-state snapshot)])
       (reset! *snapshot snapshot)
+      (rf/dispatch-sync [:page/install-metadata snapshot])
       (reset! context/*interactive? false)
       (rf/dispatch-sync [:component-data/install [:options :supabase :trusted-author-ids]
                          (:trusted-author-ids snapshot)])
@@ -78,7 +84,7 @@
       snapshot)))
 
 (r/defc <hydrate> [form]
-  (react/useLayoutEffect
+  (rf/use-layout-effect
    (fn []
      ;; Run after the hydration commit, before the browser's next paint. Reagent
      ;; flushes with React.flushSync, which cannot run inside a React lifecycle.

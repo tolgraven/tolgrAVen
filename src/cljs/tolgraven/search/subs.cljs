@@ -27,8 +27,7 @@
 
 (rf/reg-sub :search/open?
  (fn [db [_]]
-   (or (nil? (get-in db [:state :search :open?]))
-       (get-in db [:state :search :open?]))))
+   (true? (get-in db [:state :search :open?]))))
 
 (rf/reg-sub :search/results-open?
  (fn [db [_]]
@@ -93,4 +92,3 @@
         (map :highlights)
         flatten
         (map :snippet))))
-

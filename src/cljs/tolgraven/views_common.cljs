@@ -2,7 +2,6 @@
   (:require
     [tolgraven.component.registry]
     [reagent.core :as r]
-    [react :as react]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.react :as rf]
     [reitit.frontend.easy :as rfe]
@@ -295,7 +294,7 @@
 
 (defc <settings> "Settings panel for theme and stuff"
   []
-  (react/useEffect (fn [] (rf/dispatch [:settings/read-css-vars]) js/undefined) #js [])
+  (rf/use-effect (fn [] (rf/dispatch [:settings/read-css-vars]) js/undefined) #js [])
   (let [open? @(rf/subscribe [:state [:settings :panel-open]])
         vars {:line-width         {:unit "px"   :min 0     :max 15}
               :line-width-vert    {:unit "px"   :min 0     :max 15}

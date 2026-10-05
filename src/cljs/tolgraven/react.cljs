@@ -23,6 +23,14 @@
 (def track!                    reagent.core/track!)
 (def create-portal             react-dom/createPortal)
 (def suspense                  (adapt-react-class react/Suspense))
+(def strict-mode               react/StrictMode)
+(def use-state                 react/useState)
+(def use-ref                   react/useRef)
+(def use-effect                react/useEffect)
+(def use-layout-effect         react/useLayoutEffect)
+(def use-callback              react/useCallback)
+(def use-reducer               react/useReducer)
+(def flush-sync                react-dom/flushSync)
 
 
 ;; First-class API values remain available (e.g. passing dispatch to a helper).

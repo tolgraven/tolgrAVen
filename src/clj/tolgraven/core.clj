@@ -1,6 +1,7 @@
 (ns tolgraven.core
   (:require
     [tolgraven.handler :as handler]
+    [tolgraven.content.service :as content]
     [tolgraven.routes.home :as home]
     [tolgraven.nrepl :as nrepl]
     [luminus.http-server :as http]
@@ -25,15 +26,17 @@
 
 (mount/defstate ^{:on-reload :noop} http-server
   :start
-  (http/start
-    (-> env
+  (do
+    content/startup-content
+    (http/start
+     (-> env
         (update :io-threads #(or % (* 2 (.availableProcessors (Runtime/getRuntime))))) 
         (merge {:handler (handler/app)}
                {:port (env :port)
                 :http2? true
                 :async? true
                 :websocket? true
-                :buffer-size 64368})))
+                :buffer-size 64368}))))
   :stop
   (http/stop http-server))
 

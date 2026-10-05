@@ -13,3 +13,12 @@
     (is (nil? (expand (assoc browser :options
                             {:external-config {:tolgraven/ssr true}})))
         "SSR still excludes browser module references")))
+
+(deftest loading-helper-respects-component-bindings
+  (let [expand #(macroexpand-1 (cons 'tolgraven.macros/defc %))
+        injected? #(some #{'tolgraven.component/loading-view}
+                         (tree-seq coll? seq (expand %)))]
+    (is (injected? '(<example> [] [<loading>])))
+    (is (not (injected? '(<example> [url <loading>] [:div <loading>]))))
+    (is (not (injected? '(<example> [{:keys [<loading>]}] [:div <loading>]))))
+    (is (not (injected? '(<example> [] :let [<loading> [:p "Custom"]] [:div <loading>]))))))

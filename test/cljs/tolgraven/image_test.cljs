@@ -3,6 +3,7 @@
     [cljs.test :refer-macros [async deftest is]]
     [reagent.core :as r]
     [reagent.dom.client :as dom]
+    [reagent.dom.server :as server]
     [tolgraven.image :as image]))
 
 (defn- check-original-fallback! [src done]
@@ -73,3 +74,22 @@
 (deftest picture-falls-back-to-jpeg
   (async done
     (check-original-fallback! "/img/foggy-shit-small.jpg" done)))
+
+(deftest hydration-recovers-a-modern-image-that-failed-before-react-attached
+  (async done
+    (let [container (.createElement js/document "div")
+          form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
+      ;; Test fixture models the browser's already-failed SSR image. No error
+      ;; event will arrive after hydration, so the ref adapter must detect it.
+      (set! (.-innerHTML container) (server/render-to-string form))
+      (let [img (.querySelector container "img")]
+        (doseq [[property value] [["complete" true] ["naturalWidth" 0]
+                                 ["currentSrc" (str (.-origin js/location) "/img/foggy-shit-small.avif")]]]
+          (js/Object.defineProperty img property #js {:configurable true :value value})))
+      (let [root (dom/hydrate-root container form)]
+        (js/setTimeout
+          (fn []
+            (r/flush)
+            (is (zero? (.-length (.querySelectorAll container "source")))))
+          50)
+        (js/setTimeout (fn [] (dom/unmount root) (done)) 100)))))

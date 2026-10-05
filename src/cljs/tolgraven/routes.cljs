@@ -15,6 +15,7 @@
     [tolgraven.component.data :as data]
     [tolgraven.content.contract :as content]
     [tolgraven.components.error :as error-view]
+    [tolgraven.ssr.shell :as shell]
     [tolgraven.component.restore :as restore]
     [tolgraven.ui :as ui]
     [tolgraven.main.pages :as home]
@@ -107,40 +108,51 @@
                                        :message "Check your connection and try loading this page again."
                                        :error error}
                                       retry!])])))
-        navigate! (fn [component]
+        navigate! (fn [component & [pending-code?]]
                     (when (= navigation @*navigation)
                       (if component
                         (dispatch! [:page/navigate
-                                      (assoc-in match [:data :view] component)])
+                                      (cond-> (assoc-in match [:data :view] component)
+                                        pending-code? (assoc-in [:data :controllers] nil))])
                         (dispatch! [:state [:error-page] a404/<not-found-page>]))))]
     (cond
       (nil? match)
       (do (dispatch! [:state [:error-page] a404/<not-found-page>])
           (dispatch! [:diag/new :error "404" "Not found"]))
 
-      view (if (= :landing (:kind (:data match)))
-             (-> (data/ensure-all! (landing-dependencies match))
-                 (.then #(navigate! view))
-                 (.catch fail!))
-             (navigate! view))
+      view (do
+             (navigate! view)
+             (when (= :landing (:kind (:data match)))
+               (-> (data/ensure-all! (landing-dependencies match))
+                   (.catch fail!))))
 
       module
-      (do
-        ;; Hydrated content is already visible while the module initializes.
-        ;; Cached modules likewise need no intermediate page spinner.
-        (when-not (or (and (:path match) (= (:path match) (:path @ssr/*snapshot)))
-                      (and (identical? load! l/load!) (l/ready-spec module page nil)))
-          (dispatch! [:loading/on :page navigation]))
+      (let [ready (when (identical? load! l/load-code!) (l/code-spec module))
+            restoring? (or (and (:hydrate? @restore/*context)
+                                (= (:path match) (:path @ssr/*snapshot)))
+                           (and (:back? @restore/*context) (restore/skip-enter?)))]
+        ;; Commit the destination now, even on a cold code load. Managed views
+        ;; replace their placeholders as data arrives; no SSR request is involved.
+        ;; Initial hydration must select the real view, never a transient shell.
+        ;; Leave server markup untouched until its module registers.
+        ;; A cold history return also commits only once. An interim shell would
+        ;; consume its saved scroll restoration before the real module arrives.
+        (when (or ready (not restoring?))
+          (navigate! (or (get-in ready [:view page])
+                         (fn [] [shell/<page> (get-in match [:data :shell])]))
+                     (nil? ready)))
         (-> (load! {:module module :view page :route match})
-            (.then #(navigate! (get-in % [:view page])))
-            (.catch fail!)
-            (.finally #(dispatch! [:loading/off :page navigation]))))
+            (.then #(when-not ready (navigate! (get-in % [:view page]))))
+            (.catch fail!)))
 
       :else (navigate! nil))))
 
 (defn on-nav [match _history]
+  ;; Only same-document routing takes ownership from native restoration.
+  (when (pos? @*navigation)
+    (set! (.-scrollRestoration js/history) "manual"))
   (when-let [path (:path match)] (ssr/leave! path))
-  (navigate! *navigation rf/dispatch l/load! match))
+  (navigate! *navigation rf/dispatch l/load-code! match))
 
 (defn ignore-anchor-click? [router event element ^goog.Uri uri]
   ;; Only intercepted internal links may update the pending fragment.
@@ -150,6 +162,7 @@
     ignore?))
 
 (defn start! []
+  ;; Preserve native restoration until a same-document navigation takes over.
   (rfe/start! router on-nav {:use-fragment false
                            :ignore-anchor-click? ignore-anchor-click?}))
 

@@ -83,7 +83,7 @@
       (finally (ssr/stop-worker!)))))
 
 (deftest layout-escapes-post-titles-and-embeds-the-matching-public-snapshot
-  (with-redefs [config/env {:dev true}
+  (with-redefs [config/env {:dev true :ssr {:streaming false}}
                 ssr/enabled? (constantly true)
                 ssr/page! (fn [& _] {:html "<article>Safe rendered content</article>"
                                    :snapshot {:posts [{:title "</title><script>bad()</script>"}]
@@ -175,7 +175,7 @@
         (is (= 1 (:reply-count (first (filter #(= "c0" (:id %)) (:comments snapshot))))))))))
 
 (deftest saved-return-uses-client-restoration-without-server-data-reads
-  (with-redefs [config/env {:dev true} ssr/enabled? (constantly true)
+  (with-redefs [config/env {:dev true :ssr {:streaming false}} ssr/enabled? (constantly true)
                 ssr/page! (fn [& _] (throw (ex-info "Must not render" {})))
                 content/bundle! (fn [] (throw (ex-info "Must not fetch CMS" {})))
                 optimus-html/link-to-js-bundles (fn [& _] "")]

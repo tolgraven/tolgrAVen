@@ -5,7 +5,6 @@
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.component.registry]
     [reagent.core :as r]
-    [react :as react]
     [tolgraven.component :as component]
     [tolgraven.render-context :as context]
     [tolgraven.components.iframe :as iframe]
@@ -320,7 +319,7 @@
         *cleanup (atom nil)
         observer (candidate-observer id)]
     (fn [_ content]
-      (react/useEffect
+      (rf/use-effect
        (fn []
          (reset! *cleanup
                  (register-container! id @*element {:trust trust}
@@ -505,7 +504,7 @@
                          "keydown" on-key-down
                          "pointerdown" on-pointer-down}]
     (fn []
-      (react/useEffect
+      (rf/use-effect
        (fn []
          (doseq [[event handler] window-handlers]
            (dom/on-window event handler))
@@ -516,7 +515,7 @@
             (close-preview!)
             (doseq [timer [*prefetch-timer *navigation-timer *restore-timer]]
               (when @timer (js/clearTimeout @timer))))) #js [])
-      (react/useEffect
+      (rf/use-effect
        (fn []
          (maybe-prefetch!)
          (when (= :navigate (get-in @state [:active :status]))

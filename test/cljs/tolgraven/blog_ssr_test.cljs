@@ -3,7 +3,7 @@
     [cljs.test :refer-macros [deftest is async]]
     [reagent.core :as r]
     [reagent.dom.client :as dom]
-    [react :as react]
+    [tolgraven.react :as react]
     [re-frame.core :as rf]
     [re-frame.db :as rfdb]
     [reitit.core :as reitit]
@@ -24,7 +24,7 @@
 (def modules {:cv cv/spec :docs docs/spec :blog blog/spec :user user/spec :link-preview link-preview/spec})
 
 (r/defc <hydration-check> [on-commit]
-  (react/useEffect (fn [] (on-commit) js/undefined) #js [])
+  (react/use-effect (fn [] (on-commit) js/undefined) #js [])
   [page/<page>])
 
 (defn check-hydration! [fixture selectors done]

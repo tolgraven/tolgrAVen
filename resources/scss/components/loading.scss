@@ -13,3 +13,46 @@
 @media (prefers-reduced-motion: reduce) { .component-spinner__wheel, .component-skeleton { animation: none; } }
 
 .component-spinner .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+
+.ssr-skeleton {
+  max-width: 65rem;
+  margin: 2rem auto;
+  padding: 2rem;
+  min-height: 60vh;
+
+  .component-skeleton--text {
+    display: block;
+    width: 100%;
+    margin: 1rem 0;
+  }
+}
+
+// Markers are identical in server HTML and the first client render. Their
+// animation starts when the completed root is revealed, and survives hydration.
+// New SPA roots have no marker; normal defc motion owns those transitions.
+@media (prefers-reduced-motion: no-preference) {
+  // The flushed shell paints independently while the final snapshot is pending.
+  #ssr-shell main { animation: fade-in-site 500ms; }
+  #app[data-hydrate] {
+    main[data-stream-enter] { animation: fade-in-site 500ms; }
+    .appear-wrapper[data-stream-enter] {
+      animation: stream-appear .45s ease both;
+      &.opacity { animation-duration: 1s; }
+      &.zoom { animation-name: stream-zoom; }
+      &.zoom-x { animation-name: stream-zoom-x; }
+      &.zoom-y { animation-name: stream-zoom-y; }
+      &.slide-in { animation-name: stream-slide-in; animation-duration: .35s; }
+      &.fast { animation-duration: .25s; }
+      &.faster { animation-duration: .15s; }
+      &.slow { animation-duration: 1s; }
+      &.extra-slow { animation-duration: 2.2s; }
+      &.super-slow { animation-duration: 4.5s; }
+    }
+  }
+}
+@keyframes stream-appear { from { opacity: 0; } to { opacity: 1; } }
+@keyframes stream-zoom { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: none; } }
+@keyframes stream-zoom-x { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: none; } }
+@keyframes stream-zoom-y { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: none; } }
+@keyframes stream-slide-in { from { opacity: 0; transform: translateY(20%); } to { opacity: 1; transform: none; } }

@@ -14,7 +14,7 @@
 
 (defc <page> "Render active page inbetween header, footer and general stuff."
   []
-  (let [ext-back? (or (restore/skip-enter?) @(rf/subscribe [:history/back-nav-from-external?]))
+  (let [ext-back? (restore/skip-enter?)
         debug @(rf/subscribe [:state [:debug]])
         click-evt @(rf/subscribe [:state [:global-clicked]])]
   [:<>
@@ -36,7 +36,10 @@
        [:main.main-content.perspective-top
         {:id    "main"
          :data-restored (when ext-back? true)
-         :class (str (when-not ext-back? "animate ")
+         :data-stream-enter (when (restore/initial-enter?) true)
+         :class (str (when (and (not ext-back?)
+                                     (= (:page @restore/*context) (restore/page-key)))
+                            "animate ")
                      (when (:layers debug) "debug-layers ")
                      (when (:parallax debug) "debug-on"))}
         [ui/<safe> :page [(component/resolve-view page)]

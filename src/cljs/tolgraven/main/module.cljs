@@ -7,5 +7,6 @@
   {:pages pages/spec
    :id :main
    :assets {}
+   :preload-modules [:user :link-preview :search]
    :ssr ssr/landing-spec
    :depends (get content/module-dependencies :main)})

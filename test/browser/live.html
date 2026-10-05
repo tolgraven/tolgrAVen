@@ -1,0 +1,10 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Live application integration checks</title>
+<style>body{font:16px system-ui;margin:1rem}iframe{width:100%;height:800px;border:1px solid #888}.failed{color:#b00}.passed{color:#075}</style>
+<h1>Live application integration checks</h1>
+<p>Runs real page loads and clicks against the local application, Supabase and Strapi. No mocked requests or application state. Requires published blog content.</p>
+<button id="run">Run checks</button>
+<ol id="results"></ol>
+<iframe id="app" title="Application under test"></iframe>
+<script src="/__tests/live.js"></script>

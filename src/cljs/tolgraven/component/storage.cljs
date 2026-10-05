@@ -4,6 +4,7 @@
     [cljs.reader :as reader]
     [reagent.core :as r]
     [re-frame.db :as rfdb]
+    [tolgraven.react :as rf]
     [tolgraven.service-status :as status]))
 
 (def missing (js-obj))
@@ -214,6 +215,10 @@
                "; Max-Age=" (if saved? 1800 0) "; Path=/; SameSite=Lax"))))
 
 (defn save-navigation! []
+  ;; Capture the current page before serializing tracked state. A separate
+  ;; visibility listener may run after this flush, leaving the previous offset
+  ;; in the snapshot used by a full-document browser Back.
+  (rf/dispatch-sync [:scroll/save-history])
   (flush! :navigation)
   (drain!)
   ;; Only mark a return after the consolidated public write succeeds.

@@ -53,22 +53,22 @@
                    (same :path-params)
                    (same :query-params) ; causes some trouble with settingsbox getting stuck?
                    (same :path))
-        (util/deep-merge
-          {:db (-> db
+        {:db (-> db
                    (assoc :common/route new-match)
                    (assoc :common/route-last old-match)
                    (update-in [:state] dissoc :error-page)  ; reset 404 page in case was triggered
                    (update-in [:state :exception] dissoc :page)
                    (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
-           :dispatch-n
-           [[:document/set-title! new-match]]} ; title of site
+         :dispatch-n
+         [[:document/set-title! new-match]
           (if (or (not (same :path))
                   (not (same :data :view))
                   (not (same :path-params))
                   (nil? old-match))
-            {:dispatch-n
-             [[:scroll/on-navigate (:path new-match) navigation-count complete!]]}
-            {:dispatch-n [[:page/ready nil complete!]]}))
+             ;; Persisted ID counters do not tell us whether this document has
+             ;; navigated yet. Its first route must restore the saved offset.
+             [:scroll/on-navigate (:path new-match) (if old-match navigation-count 0) complete!]
+             [:page/ready nil complete!])]}
 
       (let [fragment (-> db :state :fragment)]              ;; matches are equal (fragment not part of match)
         (if (pos? (count (seq fragment)))
@@ -89,7 +89,8 @@
 
 (rf/reg-event-fx :common/set-title [debug]
   (fn [{:keys [db]} [_ title]]
-    {:db (assoc-in db [:state :document :title] title)}))
+    (cond-> {:db (assoc-in db [:state :document :title] title)}
+      (:common/route db) (assoc :dispatch [:document/set-title! (:common/route db)]))))
 
 (rf/reg-event-fx :later/dispatch
   (fn [{:keys [db]} [_ m]]
@@ -651,7 +652,9 @@
   (assoc-in db path value)))
 (rf/reg-event-db :unset
  (fn [db [_ path]]
-  (update-in db (butlast path) dissoc (last path))))
+  (if-let [parent (seq (butlast path))]
+    (update-in db parent dissoc (last path))
+    (dissoc db (last path)))))
 (rf/reg-event-db :toggle
  (fn [db [_ path]]
   (update-in db path not)))

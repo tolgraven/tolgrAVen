@@ -10,7 +10,7 @@
     {:class "section-with-media-bg-wrapper covering stick-up fullwidth"
      :on-click (when (and target navigate!) #(navigate! (keyword target)))}
     [:div.fader
-     [image/<media-as-bg> bg]
+     [image/<media-as-bg> (merge bg {:fetch-priority "high" :loading "eager"})]
      [:section.covering-faded.noborder
       {:style (when tint {:background (str "var(--" tint ")")
                           :filter "saturate(1.7) brightness(0.9)"})}

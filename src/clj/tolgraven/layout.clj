@@ -1,6 +1,7 @@
 (ns tolgraven.layout
   (:require
     [clojure.java.io]
+    [clojure.edn :as edn]
     [clojure.data.json :as json]
     [hiccup.core :as hiccup]
     [hiccup.util :as hu]
@@ -10,6 +11,11 @@
     [tolgraven.config :refer [env]]
     [tolgraven.content.service :as content]
     [tolgraven.ssr :as ssr]
+    [tolgraven.page-router :as pages]
+    [tolgraven.page :as page]
+    [tolgraven.image.sources :as image-sources]
+    [tolgraven.concurrent :as concurrent]
+    [tolgraven.streaming :as streaming]
     [clojure.tools.logging :as log]
     [optimus.link :as olink]
     [optimus.html :as ohtml]))
@@ -29,14 +35,13 @@
 (defn- css-preload [path] [:link {:rel "preload" :as "style" :type "text/css" :href path}])
 
 (defn- img-preload-modern
-  "Preload image with modern format support (AVIF/WebP/original).
-   Browsers will only fetch the format they support."
+  "Prioritize the same first source as the shared picture component.
+   Preloading every supported format would download all three on modern phones."
   [path]
-  (let [base (clojure.string/replace path #"\.(jpg|jpeg|png)$" "")]
-    [:<>
-     [:link {:rel "preload" :as "image" :href (str base ".avif") :type "image/avif"}]
-     [:link {:rel "preload" :as "image" :href (str base ".webp") :type "image/webp"}]
-     [:link {:rel "preload" :as "image" :href path}]]))
+  (let [{:keys [original avif]} (image-sources/get-src-variants path)]
+    [:link (cond-> {:rel "preload" :as "image" :href (or avif original)
+                     :fetchpriority "high"}
+             avif (assoc :type "image/avif"))]))
 
 (defn- loading-spinner
   [text]
@@ -138,12 +143,14 @@
       (js-preload path))
     (for [path js-paths]
       (js path))
+    ;; Critical visibility rules prevent two page roots from ever painting together.
+    [:style "body:has(#ssr-shell):not(:has(#ssr-complete)) #app{display:none}body:has(#ssr-complete) #ssr-shell{display:none}"]
     (for [script js-raw]
       [:script {:type "text/javascript"} script])]
 
    [:body {:class "container themable framing-shadow sticky-footer-container"}
 
-    [:div#app (cond-> {} (:ssr request) (assoc :data-hydrate "true")
+    [:div#app (cond-> {} (:streamed? request) (assoc :data-streamed "true") (:ssr request) (assoc :data-hydrate "true")
                          (:restore? request) (assoc :data-restore "true")) loading-content]
     ;; A separate React root can report bootstrap failures without replacing
     ;; server HTML that has not yet been hydrated.
@@ -152,14 +159,17 @@
       [:script#ssr-bootstrap {:type "application/json"} (content/hydration-json snapshot)])
     (when-let [bundle (:site-content request)]
       [:script#site-content-bootstrap {:type "application/json"} (content/hydration-json bundle)])
+    (when (:streamed? request) [:span#ssr-complete {:hidden true}])
     (ohtml/link-to-js-bundles request ["main.js"]) ]])
 
-(defn render-hiccup
-  [page & args]
-  (-> (str "<!DOCTYPE html>\n"
-           (hiccup/html (apply page args)))
-      ok
-      (content-type "text/html; charset=utf-8")))
+(defn- hiccup-response [page & args]
+  (-> (apply page args) ok (content-type "text/html; charset=utf-8")))
+
+(defn- render-document [document]
+  (str "<!DOCTYPE html>\n" (hiccup/html document)))
+
+(defn render-hiccup [page & args]
+  (update (apply hiccup-response page args) :body render-document))
 
 (def render-hiccup-memo) ; well no because of anti forgery token, requests differing etc
 
@@ -173,22 +183,48 @@
                  (boolean (some #{(:uri request)} paths))))))
     (catch Exception _ false)))
 
-(defn render-home
+(defonce ^:private *browser-manifest (atom nil))
+
+(defn hydration-script-paths
+  "Preload the route's transitive Shadow dependencies without executing them.
+   Shadow still owns execution order; SSR itself has no lazy browser modules."
+  [uri]
+  (when-let [resource (clojure.java.io/resource "public/js/compiled/out/manifest.edn")]
+    (let [revision [resource (.getLastModified (.openConnection resource))]
+          manifest (if (= revision (:revision @*browser-manifest))
+                     (:modules @*browser-manifest)
+                     (let [modules (into {} (map (juxt :module-id identity))
+                                         (edn/read-string (slurp resource)))]
+                       (reset! *browser-manifest {:revision revision :modules modules})
+                       modules))
+          roots (remove nil? [:user :link-preview (get-in (pages/match uri) [:data :module])])]
+      (letfn [(dependencies [id]
+                (when-let [module (get manifest id)]
+                  (concat (mapcat dependencies (sort (:depends-on module))) [id])))]
+        (->> roots (mapcat dependencies) distinct (remove #{:main})
+             (keep #(when-let [output (:output-name (get manifest %))]
+                      (str "/js/compiled/out/" output))) vec)))))
+
+(defn- home-response
   [request]
   (let [script-paths (olink/bundle-paths request ["main.js"])
         returning? (returning-page? request)
-        ssr (when (and (not returning?) (ssr/enabled?) (ssr/route (:uri request)))
+        ssr (if (contains? request :ssr-result) (:ssr-result request)
+              (when (and (not returning?) (ssr/enabled?) (ssr/route (:uri request)))
               (try (ssr/page! (:uri request) (:query-params request))
                    (catch Exception error
                      (log/error "Page SSR unavailable; returning a retryable public error")
                      {:error? true
-                      :status (if (= 404 (:status (ex-data error))) 404 503)})))
+                      :status (if (= 404 (:status (ex-data error))) 404 503)}))))
+        script-paths (distinct (concat script-paths
+                                       (when (or ssr returning?)
+                                         (hydration-script-paths (:uri request)))))
         request (cond-> request
                   returning? (assoc :restore? true)
                   (:snapshot ssr) (assoc :ssr ssr
                                         :site-content {:version 1 :deferred? true
                                                        :content (get-in ssr [:snapshot :content])}))]
-  (cond-> (render-hiccup
+  (cond-> (hiccup-response
    home
    (if (or (:ssr request) returning?) request (if-let [mode (System/getenv "CONTENT_BOOTSTRAP_MODE")]
      (if (#{"route" "full"} mode)
@@ -202,9 +238,11 @@
                           [:main.main-content [:p {:role "alert"} "Page content could not load. Please retry."]
                            [:a {:href (:uri request)} "Retry"]])
                         (basic-skeleton "tolgrAVen" ["audio" "visual"] "img/foggy-shit-small.jpg")))
-   :title (or (when (= 1 (count (get-in ssr [:snapshot :posts])))
-                (:title (first (get-in ssr [:snapshot :posts]))))
-              (get-in ssr [:snapshot :content :document :title]) "tolgrAVen audiovisual")
+   :title (or (get-in ssr [:snapshot :document-title])
+              (page/document-title (some-> (:uri request) pages/match :data) (:snapshot ssr))
+              (get-in env [:site :title])
+              (try (get-in (content/immediate-content) [:document :title])
+                   (catch Exception _ nil)))
    :description (or (get-in ssr [:snapshot :content :document :description])
                     "tolgrAVen audiovisual by Joen Tolgraven")
    :pre-pre [["media/fog-3d-small.mp4" "video"]]
@@ -225,7 +263,10 @@
                gtag('config', 'G-Y8H6RLZX3V');"])
    :css-pre ["css/solid.css"]
    :js-pre script-paths
-   :img-pre [#_"img/logo/tolgraven-logo.png"]  ; Preload logo for instant display
+   :img-pre (page/critical-images (some-> (:uri request) pages/match :data)
+                                  (or (get-in ssr [:snapshot :content])
+                                      (try (content/immediate-content)
+                                           (catch Exception _ {}))))
    :link-pre (when-not (:dev env)
                ["https://fonts.gstatic.com"
                 "https://www.googletagmanager.com"
@@ -238,6 +279,36 @@
     (:error? ssr) (assoc :status (:status ssr))
     (get-in ssr [:snapshot :missing?]) (assoc :status 404)
     (or ssr returning?) (assoc-in [:headers "Cache-Control"] "no-store"))))
+
+(defn- render-home-complete [request]
+  (update (home-response request) :body render-document))
+
+(defn render-home
+  "Flush a React-rendered shell while the ordinary snapshot/render progresses.
+   The final root keeps its existing hydration contract and request isolation."
+  [request]
+  (if (and (not (returning-page? request)) (ssr/enabled?)
+           (not= false (get-in env [:ssr :streaming]))
+           (not= false (get-in (pages/match (:uri request)) [:data :streaming]))
+           (ssr/route (:uri request))
+           (not (ssr/cached? (:uri request) (:query-params request))))
+    (let [pending (ssr/page-async! (:uri request) (:query-params request))
+          shell (ssr/shell! (:uri request) (:query-params request))
+          shell-response (home-response (assoc request :ssr-result shell))
+          ;; Capture dynamic Ring bindings before the response writer runs.
+          complete (bound-fn []
+                     (let [result (try (concurrent/await! pending 60000)
+                                       (catch Exception _ {:error? true :status 503}))]
+                       (home-response (assoc request :ssr-result result :streamed? true))))]
+      (-> shell-response
+          (assoc-in [:headers "X-Accel-Buffering"] "no")
+          (assoc-in [:headers "Cache-Control"] "no-store")
+          (assoc :body
+                 (streaming/html-document
+                   (:body shell-response)
+                   [:div#ssr-shell {:aria-busy "true"} (:html shell)]
+                   (fn [] (drop 2 (last (:body (complete)))))))))
+    (render-home-complete request)))
 
 (defn error-page-hiccup
   [request error-details]

@@ -75,7 +75,11 @@
 
 (defc <service-categories> [{:keys [categories] :as spec}]
   (let [{:keys [to-focus? full-screened?]} @(rf/subscribe [:state [:services]])]
-    (when to-focus? (rf/dispatch [:focus-element "services-bg"]))
+    (rf/use-effect
+     (fn []
+       (when to-focus? (rf/dispatch [:focus-element "services-bg"]))
+       js/undefined)
+     #js [to-focus?])
     [:div#services>div.categories
      {:class (when full-screened? "categories-fullscreened")
       :on-click #(rf/dispatch [:state [:services :full-screened?] nil])

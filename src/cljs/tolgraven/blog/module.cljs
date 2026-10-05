@@ -13,10 +13,10 @@
    :depends (get content-contract/module-dependencies :blog [])
    :id :blog
    :view {:page #'view/<blog-page>
-          :post #'view/<blog-post-page>
-          :archive #'view/<blog-archive-page>
-          :tag #'view/<blog-tag-page>
-          :new-post #'view/<post-blog-page>
+          :post #'view/<blog-page>
+          :archive #'view/<blog-page>
+          :tag #'view/<blog-page>
+          :new-post #'view/<blog-page>
           :posted-by #'view/<posted-by>
           :tags-list #'view/<tags-list>
           :comments #'view/<comments-section>}
