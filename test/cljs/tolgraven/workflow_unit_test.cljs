@@ -912,7 +912,7 @@
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 
-(deftest fallback-crossfade-commits-pending-content-and-releases-old-page
+(deftest fallback-transition-commits-pending-content-and-releases-old-page
   (async done
     (-> (go-promise
           (let [element (.createElement js/document "div")
@@ -933,6 +933,48 @@
                   "Repeating the same route pair starts a fresh transition")
               (await! (wait-for! #(nil? (.querySelector element "#outgoing"))))
               (finally (support/unmount! root) (.remove element)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest fallback-css-fades-out-before-fading-in
+  (async done
+    (-> (go-promise
+          (let [host (.createElement js/document "div")
+                shadow (.attachShadow host #js {:mode "open"})
+                stylesheet (.createElement js/document "link")
+                element (.createElement js/document "div")
+                *root (atom nil) *frames (atom [])]
+            (.appendChild (.-body js/document) host)
+            (.appendChild shadow element)
+            (try
+              ;; Production CSS in an isolated fixture, not duplicated test rules.
+              (await! (js/Promise.
+                        (fn [resolve reject]
+                          (set! (.-rel stylesheet) "stylesheet")
+                          (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
+                          (set! (.-onload stylesheet) #(resolve nil))
+                          (set! (.-onerror stylesheet) #(reject (js/Error. "Fixture CSS unavailable")))
+                          (.appendChild shadow stylesheet))))
+              (reset! *root (await! (support/create-root! element)))
+              (await! (support/render! @*root
+                         [:div {:style {"--navigation-transition-time" "0.1s"}}
+                          [page-view/<swapper> [:p "Incoming"] [:p "Outgoing"]
+                           {:path "/new"} {:path "/old"} true 1]]))
+              (await! (wait-for!
+                        (fn []
+                          (let [incoming (.querySelector element ".swap-in")
+                                outgoing (.querySelector element ".swapped")
+                                opacity #(js/parseFloat (.-opacity (js/getComputedStyle %)))
+                                frame {:incoming (opacity incoming)
+                                       :outgoing (if outgoing (opacity outgoing) 0)}]
+                            (swap! *frames conj frame)
+                            (and (nil? outgoing) (>= (:incoming frame) 0.99))))))
+              (is (some #(and (< 0.01 (:outgoing %) 0.99) (< (:incoming %) 0.01)) @*frames))
+              (is (some #(and (< (:outgoing %) 0.01) (< 0.01 (:incoming %) 0.99)) @*frames))
+              (is (every? #(not (and (> (:outgoing %) 0.01) (> (:incoming %) 0.01))) @*frames)
+                  "Incoming and outgoing fades never overlap")
+              (finally
+                (when @*root (support/unmount! @*root)) (.remove host)))))
         (.catch #(is false (str %)))
         (.finally done))))
 

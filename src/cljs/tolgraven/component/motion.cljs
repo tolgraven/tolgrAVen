@@ -56,7 +56,7 @@
     (reduce max 0 (map-indexed (fn [i duration]
                                 (+ duration (nth delays (mod i (count delays))))) durations))))
 
-(defn- finish-animation!
+(defn finish-animation!
   "Wait for root animations/transitions, bounded even for paused/infinite CSS.
    Cleanup cancels completion, not the browser's styles, so re-entry can reverse."
   [element options finish!]
