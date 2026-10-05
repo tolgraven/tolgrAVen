@@ -71,7 +71,7 @@
   (fn [{:keys [db]} [_ match]]
     {:document/set-title
      (str (some-> (or (get-in db [:state :document :title])   ; specifically set (and cleared!!) by a component and/or its controller
-                      (some-> match :parameters :path vals first
+                      (some-> match :parameters :path vals first str
                               (string/replace #"-" " ")))     ; backup: use path-params as base
                   (str " - "))
           (some-> match :data :name name string/capitalize (str " ")) ; category

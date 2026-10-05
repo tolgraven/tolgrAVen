@@ -21,3 +21,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Debug instrumentation is bounded and inactive when closed. Keep diagnostics out
   of persistence snapshots and do not let diagnostic events trigger page renders.
 - After edits check watched Shadow errors and the actual routes in the browser.
+
+- `validation/runtime.cljs` owns declaration checks, module section registration
+  and the app-db interceptor. Invalid transactions retain previous state and do
+  not run associated effects. Keep validation out of subscription computations.

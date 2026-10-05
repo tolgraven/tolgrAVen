@@ -2,7 +2,8 @@
   (:require [clojure.tools.logging :as log]))
 
 (def defaults
-  {:init
+  {:development? false
+   :init
    (fn []
      (log/info "\n-=[tolgraven started successfully]=-"))
    :stop

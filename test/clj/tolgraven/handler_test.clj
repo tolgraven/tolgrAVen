@@ -6,6 +6,8 @@
     [tolgraven.config :as config]
     [tolgraven.middleware :as middleware]
     [tolgraven.middleware.formats :as formats]
+    [tolgraven.routes.services :as services]
+    [reitit.ring :as ring]
     [muuntaja.core :as m]
     [mount.core :as mount]))
 
@@ -67,3 +69,26 @@
                                 (header "accept" "application/transit+json")))]
         (is (= 200 (:status response)))
         (is (= {:total 16} (m/decode-response-body response)))))))
+
+(deftest malli-request-boundaries
+  (testing "query numbers reach the handler as numbers"
+    (let [response (app-routes (request :get "/api/math/plus?x=3&y=4"))]
+      (is (= 200 (:status response)))
+      (is (= {:total 7} (m/decode-response-body response)))))
+  (testing "request checks remain on with internal checks disabled"
+    (with-redefs [config/validation-enabled? (constantly false)]
+      (let [handler (ring/ring-handler (ring/router [(services/service-routes)]))
+            response (handler (request :get "/api/math/plus?x=3&y=private-value"))
+            body (m/decode-response-body response)]
+        (is (= 400 (:status response)))
+        (is (= ["y"] (get-in body [:issues 0 :path])))
+        (is (not (.contains (pr-str body) "private-value")))
+        (is (= 200 (:status (handler (request :get "/api/math/plus?x=-3&y=1"))))
+            "Response checks, unlike input checks, follow the disabled setting"))))
+  (testing "page paths reject invalid parameters before SSR"
+    (let [response ((app) (request :get "/blog/page/zero"))]
+      (is (= 400 (:status response)))
+      (is (.contains (:body response) "Invalid page address"))
+      (is (.contains (:body response) "[:nr]"))))
+  (testing "unsafe documentation names never reach resource lookup"
+    (is (= 400 (:status (app-routes (request :get "/api/doc?path=../secret")))))))

@@ -3,7 +3,8 @@
     [reitit.swagger :as swagger]
     [reitit.swagger-ui :as swagger-ui]
     [reitit.ring.coercion :as coercion]
-    [reitit.coercion.spec :as spec-coercion]
+    [tolgraven.schema.http :as schemas]
+    [tolgraven.config :as config]
     [reitit.ring.middleware.muuntaja :as muuntaja]
     [reitit.ring.middleware.multipart :as multipart]
     [reitit.ring.middleware.parameters :as parameters]
@@ -28,17 +29,17 @@
 
 (defn service-routes []
   ["/api"
-   {:coercion spec-coercion/coercion
+   {:coercion schemas/coercion
     :muuntaja formats/instance
     :swagger {:id ::api}
-    :middleware [parameters/parameters-middleware       ;; query-params & form-params
+    :middleware (cond-> [parameters/parameters-middleware       ;; query-params & form-params
                  muuntaja/format-negotiate-middleware   ;; content-negotiation
                  muuntaja/format-response-middleware    ;; encoding response body
                  exception/exception-middleware         ;; exception handling
                  muuntaja/format-request-middleware     ;; decoding request body
-                 coercion/coerce-response-middleware    ;; coercing response bodys
                  coercion/coerce-request-middleware     ;; coercing request parameters
-                 multipart/multipart-middleware]}       ;; multipart
+                 multipart/multipart-middleware]
+                  (config/validation-enabled?) (conj coercion/coerce-response-middleware))}       ;; multipart
 
    ;; swagger documentation
    ["" {:no-doc true
@@ -54,7 +55,7 @@
               :config {:validator-url nil}})}]]
    
    ["/doc" {:summary "Get doc stuff, with extra html stripped out"
-            :parameters {:query {:path string?}}
+            :parameters {:query schemas/docs-query}
             :get (fn [{{{:keys [path]} :query} :parameters}]
                   (when-not (string/blank? path)
                     (-> (str "docs/codox/" path ".html")
@@ -66,7 +67,7 @@
 
    ["/oembed"
     {:get {:summary "Get oembed data for a URL"
-           :parameters {:query {:url string?}}
+           :parameters {:query schemas/url-query}
            :handler (fn [{{{:keys [url]} :query} :parameters}]
                       (let [oembed-url (str "https://noembed.com/embed?url=" (java.net.URLEncoder/encode url "utf-8"))
                             reply (http/get oembed-url {:as :json
@@ -77,14 +78,14 @@
 
    ["/gpt"
     {:post {:summary "Poll OpenAI API"
-            :parameters {:body {:messages coll?}}
+            :parameters {:body schemas/messages}
             ; :responses {200 {:body {:reply string?}}}
             :handler (fn [{{{:keys [messages]} :body} :parameters :as params}]
                        (supabase-auth/response! params (fn [_] (gpt/chat messages))))}}]
 
    ["/send-contact-email"
     {:post {:summary "Send email to self and contact"
-            :parameters {:body {:name string? :email string? :title string? :message string?}}
+            :parameters {:body schemas/contact}
             ; :responses {200 {:body {:reply string?}}}
             :handler
             (fn [{{{:keys [name email title message]} :body} :parameters :as params}]
@@ -136,7 +137,7 @@
 
    ["/supabase/avatar"
     {:post {:summary "Upload an avatar to Supabase Storage as the signed-in user"
-            :parameters {:multipart {:file multipart/temp-file-part}}
+            :parameters {:multipart [:map [:file schemas/upload]]}
             :handler (fn [request]
                        (supabase-auth/response! request
                          #(storage/save-avatar! % (get-in request [:parameters :multipart :file]))))}}]
@@ -192,14 +193,14 @@
 
     ["/plus"
      {:get {:summary "plus with spec query parameters"
-            :parameters {:query {:x int?, :y int?}}
-            :responses {200 {:body {:total pos-int?}}}
+            :parameters {:query schemas/operands}
+            :responses {200 {:body schemas/positive-total}}
             :handler (fn [{{{:keys [x y]} :query} :parameters}]
                        {:status 200
                         :body {:total (+ x y)}})}
       :post {:summary "plus with spec body parameters"
-             :parameters {:body {:x int?, :y int?}}
-             :responses {200 {:body {:total pos-int?}}}
+             :parameters {:body schemas/operands}
+             :responses {200 {:body schemas/positive-total}}
              :handler (fn [{{{:keys [x y]} :body} :parameters}]
                         {:status 200
                          :body {:total (+ x y)}})}}]]

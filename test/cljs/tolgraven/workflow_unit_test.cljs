@@ -170,7 +170,7 @@
          (-> (go-promise
                (let [id (keyword (str (random-uuid)))
                      *initializations (atom 0)
-                     spec {:view {:page (fn [] [:div])}, :init #(swap! *initializations inc)}
+                     spec {:id id :view {:page (fn [] [:div])}, :init #(swap! *initializations inc)}
                      loadable (reify
                                 lazy/ILoadable
                                   (ready? [_] true)
@@ -192,7 +192,7 @@
   (async done
     (let [id (keyword (str (random-uuid)))
           *calls (atom [])
-          spec {:view {:view (fn [] [:div "Loaded"])}
+          spec {:id id :view {:view (fn [] [:div "Loaded"])}
                 :init (fn [& args]
                         (go-promise (await! (support/settle!))
                                     (swap! *calls conj [:init args])))}
@@ -732,7 +732,7 @@
   (async done
          (-> (go-promise
                (let [id (keyword (str (random-uuid)))
-                     spec {:view {:page (fn [] [:div "Destination"])}}
+                     spec {:id id :view {:page (fn [] [:div "Destination"])}}
                      loadable (reify
                                 lazy/ILoadable
                                   (ready? [_] true)
@@ -870,6 +870,13 @@
                                [:common/set-title "Loaded post"])]
     (is (= "Loaded post" (get-in effects [:db :state :document :title])))
     (is (= [:document/set-title! route] (:dispatch effects)))))
+
+(deftest document-title-accepts-coerced-page-numbers
+  (let [effects (event-effects :document/set-title!
+                 {:db {:content {:document {:title "Site"}}}}
+                 [:document/set-title! {:parameters {:path {:nr 2}}
+                                        :data {:name :blog-page}}])]
+    (is (= "2 - Blog-page  - Site" (:document/set-title effects)))))
 (deftest cold-history-return-does-not-consume-restoration-on-an-interim-shell
   (let [context @restore/*context
         *events (atom [])
@@ -1045,7 +1052,7 @@
 
 (deftest loaded-module-vectors-use-the-component-directly
   (let [<target> (fn [spec] [:section (:title spec)])
-        module-spec {:view {:post <target>}}]
+        module-spec {:id :vector-test :view {:post <target>}}]
     (binding [context/*server?* true context/*modules* {:vector-test module-spec}]
       (is (= [<target> {:title "SSR"}]
              (m/<> {:module :vector-test :view :post} {:title "SSR"})))
@@ -1093,7 +1100,7 @@
                 module (keyword (str "vector-test-" (random-uuid)))
                 original-modules loader/modules original-load loader/load-code!
                 *ready? (atom false) *calls (atom 0) *complete (atom nil)
-                spec {:view {:view <lazy-vector-target>}}
+                spec {:id module :view {:view <lazy-vector-target>}}
                 pending (js/Promise. (fn [resolve _] (reset! *complete resolve)))
                 loadable (reify lazy/ILoadable (ready? [_] @*ready?)
                           IDeref (-deref [_] spec))]

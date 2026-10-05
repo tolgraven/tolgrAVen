@@ -1,5 +1,5 @@
 (ns tolgraven.dev-console.views
-  (:require [cljs.reader :as reader]
+  (:require [tolgraven.validation.views :as validation] [cljs.reader :as reader]
             [clojure.string :as string]
             [reagent.core :as r]
             [re-frame.tooling :as tooling]
@@ -669,7 +669,8 @@
                  [:button {:on-click #(rf/dispatch [:dev-console/dispatch {:event @*event :dry-run? @*dry-run}])} "Dispatch and trace"]
                  [<value> [:dispatch-result] (:result debug) 0]
                  [<record-groups> :epochs (filterv #(= :epoch (:kind %)) records)]]
-        :errors [<value> [:errors] @(rf/subscribe [:dev-console/path [:diagnostics]]) 0]
+        :errors [:<> [validation/<reports>]
+                 [<value> [:errors] (dissoc @(rf/subscribe [:dev-console/path [:diagnostics]]) :validation) 0]]
         :timings [<timings> records]
         :layout [:<>
                  (if (and (exists? js/PerformanceObserver)

@@ -2,6 +2,7 @@
   (:require
     [tolgraven.middleware :as middleware]
     [tolgraven.concurrent :as concurrent]
+    [tolgraven.validation-server :as validation]
     [tolgraven.layout :refer [error-page]]
     [tolgraven.routes.home :refer [home-routes]]
     [tolgraven.routes.services :refer [service-routes]]
@@ -19,7 +20,8 @@
   (ring/ring-handler
     (ring/router
       [(home-routes)
-       (service-routes)])
+       (service-routes)]
+      {:validate validation/validate-routes!})
     (ring/routes
       (swagger-ui/create-swagger-ui-handler ; nuke this until/if need?
         {:path   "/swagger-ui"

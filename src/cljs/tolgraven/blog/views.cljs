@@ -3,6 +3,7 @@
     [reagent.core :as r]
     [tolgraven.components.timer :as timer]
     [tolgraven.blog.model :as model]
+    [tolgraven.blog.schema :as schema]
     [tolgraven.blog.data :as data]
     [tolgraven.blog.comments :as comments]
     [tolgraven.react :as rf]
@@ -385,7 +386,8 @@
        ^{:key (str "blog-post-" id "-category-" tag)}
        [<tag-link> {:tag tag}])]))
 
-(defc <post-header> {:features [[:appear "zoom slower"]]} [{:keys [children] :as spec}]
+(defc <post-header> {:features [[:appear "zoom slower"]]
+                     :spec-schema schema/post-header-spec} [{:keys [children] :as spec}]
   (into [:div.flex.blog-post-header] children))
 
 (defc <post-content> "Render a loaded post with metadata and comments."

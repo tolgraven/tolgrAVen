@@ -1,6 +1,7 @@
 (ns tolgraven.loader
   (:require
     [tolgraven.component.registry]
+    [tolgraven.validation.runtime :as validation]
     [tolgraven.loader.code :as module-code]
     [tolgraven.react :as rf]
     [tolgraven.render-context :as context]
@@ -36,6 +37,7 @@
                             (js/Promise.reject (ex-info "Unknown module" {:module module})))
                           (catch :default error (js/Promise.reject error)))
                         (.then (fn [spec]
+                                 (validation/module! spec)
                                  (rf/dispatch [:loader/code-ready module])
                                  spec))
                         (.catch (fn [error]
@@ -122,7 +124,7 @@
 
 (rf/reg-event-db :loader/code-ready
   (fn [db [_ module]] (-> db (assoc-in [:loader :code-ready module] true)
-                         (update-in [:loader :errors] dissoc module))))
+                         (update-in [:loader :errors] (fnil dissoc {}) module))))
 (rf/reg-event-db :loader/code-failed
   (fn [db [_ module error]] (assoc-in db [:loader :errors module] error)))
 (rf/reg-sub :loader/code-error
@@ -137,7 +139,7 @@
   (fn [db _] (keys (get-in db [:loader :code-ready]))))
 (rf/reg-event-fx :loader/acquire
   (fn [{:keys [db]} [_ module]]
-    {:db (update-in db [:loader :errors] dissoc module) :loader/acquire module}))
+    {:db (update-in db [:loader :errors] (fnil dissoc {}) module) :loader/acquire module}))
 (rf/reg-fx :loader/acquire
   (fn [module]
     ;; Initialization failures are reported by load-code!'s managed status path.

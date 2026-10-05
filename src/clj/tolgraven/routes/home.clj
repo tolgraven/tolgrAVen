@@ -4,6 +4,9 @@
    [clojure.data.json :as json]
    [tolgraven.layout :as layout]
    [tolgraven.ssr :as ssr]
+   [tolgraven.page-router :as pages]
+   [tolgraven.validation :as validation]
+   [reitit.coercion :as coercion]
    [ring.util.response]
    [ring.util.http-response :as response]
    [sitemap.core :as sitemap]))
@@ -13,7 +16,14 @@
   (response/content-type resp "text/plain; charset=utf-8"))
 
 (defn home-page [request]
-  (layout/render-home request))
+  (try
+    (let [match (pages/request-match (:uri request) (:query-params request))]
+      (layout/render-home (assoc request :parameters (:parameters match))))
+    (catch clojure.lang.ExceptionInfo error
+      (if (= ::coercion/request-coercion (:type (ex-data error)))
+        (layout/error-page {:status 400 :title "Invalid page address"
+                            :request request :issues (validation/problems (ex-data error))})
+        (throw error)))))
 
 (def other-route-names
   ["/log"

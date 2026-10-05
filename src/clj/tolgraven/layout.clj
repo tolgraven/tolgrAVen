@@ -8,11 +8,12 @@
     [ring.util.http-response :refer [content-type ok]]
     [ring.middleware.anti-forgery :refer [*anti-forgery-token*]]
     [ring.util.response]
-    [tolgraven.config :refer [env]]
+    [tolgraven.config :as config :refer [env]]
     [tolgraven.content.service :as content]
     [tolgraven.ssr :as ssr]
     [tolgraven.page-router :as pages]
     [tolgraven.page :as page]
+    [tolgraven.validation.markup :as validation-markup]
     [tolgraven.image.sources :as image-sources]
     [tolgraven.concurrent :as concurrent]
     [tolgraven.streaming :as streaming]
@@ -99,6 +100,7 @@
     [:meta {:name "viewport"
             :content "width=device-width, initial-scale=1"}]
     [:meta {:name "color-scheme" :content "light dark"}]
+    [:meta {:name "validation-enabled" :content (str (config/validation-enabled?))}]
     [:meta {:name "app-build" :content (str (ssr/renderer-build))}]
     [:title (hu/escape-html (or title ""))]
     [:meta {:name "og:title" :content title}]             ; for link previews
@@ -348,10 +350,14 @@
         (str "var csrfToken = \"" (force *anti-forgery-token*) "\";")]] ; this is where everything ends up for prod but cant remember why?
 
       [:body {:class "container themable framing-shadow sticky-footer-container"}
-       (basic-skeleton "tolgrAVen" ["error" (str (:status error-details))]
-                       "img/foggy-shit-small.jpg"
-                       (:title error-details)
-                       "main-error")]])))
+       [:main.main-content
+        [:section.component-failed {:role "alert"}
+         [:h1 (:title error-details)]
+         [:p (str "HTTP " (:status error-details))]
+         (if (seq (:issues error-details))
+           (validation-markup/issues (:issues error-details))
+           (when (:message error-details) [:p (:message error-details)]))
+         [:a {:href "/"} "Return to the site"]]]]])))
 
 (defn error-page ; reckon bail on this and make in hiccup then can nuke parser.
   "error-details should be a map containing the following keys:

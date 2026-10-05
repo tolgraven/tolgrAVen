@@ -2,6 +2,9 @@
   "Synchronous, isolated rendering of the ordinary Reagent tree. This adapter
    owns request-local subscriptions; it never replaces the running app's db."
   (:require [reagent.core :as r]
+            [tolgraven.validation.runtime :as validation]
+            [tolgraven.schema.app-db :as app-db]
+            [tolgraven.schema.declarations :as declarations]
             [reagent.ratom :as ratom]
             [reagent.dom.server :as server]
             [re-frame.core :as rf]
@@ -11,6 +14,14 @@
             [tolgraven.render-context :as context]))
 
 (defn html! [db form {:keys [modules href snapshot restored? interactive?]}]
+  (when @validation/*enabled?
+    (doseq [[id spec] modules]
+      (validation/check! (str "render module " id)
+                         (declarations/extend-module (:schema spec)) spec))
+    ;; Use the available module declarations without mutating the browser's
+    ;; registry during a local return capture or sharing request state in Node.
+    (let [sections (reduce merge @validation/*sections (keep :db-schema (vals modules)))]
+      (validation/check! "render state" (app-db/schema sections) db)))
   (let [subscribe rf/subscribe *readers (atom {})
         read! (fn [args]
                 (or (get @*readers args)

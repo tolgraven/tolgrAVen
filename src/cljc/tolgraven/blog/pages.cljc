@@ -3,7 +3,9 @@
   (:require #?(:cljs [tolgraven.react :as rf])
             [clojure.string :as string]
             [tolgraven.blog.data :as data]
-            [tolgraven.page :as page]))
+            [tolgraven.blog.schema :as schema]
+            [tolgraven.page :as page]
+            [tolgraven.schema.http :as schemas]))
 
 #?(:cljs (def controllers
   {:blog [{:start (fn [_]
@@ -31,7 +33,7 @@
 
 (def spec
   ;; Native Reitit routes, with shared data inherited by each child page.
-  [["/blog" {:module :blog :transition-key :blog
+  [["/blog" {:schema schema/page-extension :module :blog :transition-key :blog
               :shell {:heading [:blog :heading]
                       :loading-prefab :article
                       :loading-view {:module :blog :view :post-content}
@@ -52,14 +54,14 @@
                                 (when (= 1 (count posts)) (:title (first posts))))}
     ["" {:name :blog :page :page :ssr true :selection {:page 1}
          #?@(:cljs [:controllers (:blog controllers)])}]
-    ["/page/:nr" {:name :blog-page :page :page :ssr true
+    ["/page/:nr" {:parameters {:path schemas/blog-page} :name :blog-page :page :page :ssr true
                   :ssr-parameters {:page {:from :nr :type :page-number}}
                   #?@(:cljs [:controllers (:blog-page controllers)])}]
-    ["/post/:permalink" {:name :blog-post :page :post :ssr true
+    ["/post/:permalink" {:parameters {:path schemas/blog-post} :name :blog-post :page :post :ssr true
                         :ssr-parameters {:post-id {:from :permalink :type :trailing-id}}
                         #?@(:cljs [:controllers (:blog-post controllers)])}]
     ["/archive" {:name :blog-archive :page :archive}]
-    ["/tag/:tag" {:name :blog-tag :page :tag
+    ["/tag/:tag" {:parameters {:path schemas/blog-tag} :name :blog-tag :page :tag
                  #?@(:cljs [:controllers (:blog-tag controllers)])}]
     ["/new-post" {:name :new-post :page :new-post
                  #?@(:cljs [:controllers (:new-post controllers)])}]]])

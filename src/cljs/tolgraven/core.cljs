@@ -2,6 +2,7 @@
   (:require
     [goog.events]
     [tolgraven.react :as rf]
+    [tolgraven.validation.runtime :as validation]
     [tolgraven.dev-console.views :as dev-console]
     [tolgraven.render-context :as context]
     [tolgraven.component.data :as component-data]
@@ -116,6 +117,8 @@
                  (when hot-reload? (rf/dispatch [:scroll/restore-position-dev 150])))))))
 
 (defn init "Called only on page load" []
+  (validation/install!)
+  (validation/module! main-module/spec)
   (let [shell-cleared (clear-shell!)]
     ;; A persisted-content hint can also accompany a normal reload. Only browser
     ;; history traversal bypasses entrance motion and restores the saved scroll.

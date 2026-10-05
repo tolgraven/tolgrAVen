@@ -64,3 +64,6 @@
 (def get-effect rf/get-effect)
 (def inject-cofx rf/inject-cofx)
 (def set-loggers! rf/set-loggers!)
+
+(def reg-global-interceptor rf/reg-global-interceptor)
+(def clear-global-interceptor rf/clear-global-interceptor)

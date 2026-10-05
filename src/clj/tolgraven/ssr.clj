@@ -56,9 +56,11 @@
     (or (when-let [w @slot]
           (if (and (.isAlive ^Process (:process w)) (= (:build w) (renderer-build)))
             w (do (stop-slot! slot) nil)))
-        (let [process (-> (ProcessBuilder. ^java.util.List
-                                           [(:node-binary (settings))
-                                            "--max-old-space-size=128" (worker-path)])
+        (let [builder (ProcessBuilder. ^java.util.List
+                                     [(:node-binary (settings))
+                                      "--max-old-space-size=128" (worker-path)])
+              _ (.put (.environment builder) "VALIDATION_ENABLED" (str (config/validation-enabled?)))
+              process (-> builder
                           (.redirectError ProcessBuilder$Redirect/INHERIT)
                           (.start))
               worker {:process process :build (renderer-build)

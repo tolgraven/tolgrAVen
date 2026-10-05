@@ -24,6 +24,20 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `scripts/`: media conversion helpers (images/videos).
 - `doc/`: project documentation.
 
+## Shared schemas
+- Define Malli contracts in CLJC near the owning data/module. Reuse them in tests,
+  Reitit page/API parameters, and runtime validation; see `doc/schemas.md`.
+- Validate parent-supplied view data too: `defc` supports `:spec-schema` and
+  `:args-schema`, independently of subscription data. Extend/compose common
+  component, instance-spec, module and page schemas instead of duplicating them.
+- Extend app-db by section and expose module-owned additions through `:db-schema`.
+  Do not validate the entire db on every event; the shared interceptor checks
+  changed sections and rejects invalid transactions before effects run.
+- Internal checks follow `:validation {:enabled ...}` / `VALIDATION_ENABLED` and
+  default to development only. Public input coercion stays enabled in production.
+- Read typed request/controller parameters from `:parameters`; report paths and
+  constraints without logging raw values, credentials, or event arguments.
+
 ## Build, Test, and Development Commands
 - `lein repl`: start the HTTP server and Shadow CLJS REPL (see `README.md`).
 - `npm run dev`: watch SCSS and PostCSS outputs for local development.

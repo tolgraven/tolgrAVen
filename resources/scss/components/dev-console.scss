@@ -131,3 +131,18 @@
   &__node--namespace > &__row { background: var(--dev-key); color: var(--blue-3); }
   &__details { padding: .5rem; border-left: 2px solid var(--purple-3); }
 }
+
+.validation-issues {
+  margin: .6rem 0; font-size: .9rem;
+  &__row { display: grid; grid-template-columns: minmax(8ch, 2fr) minmax(12ch, 3fr);
+    gap: .8rem; padding: .65rem .8rem; border-bottom: 1px solid var(--blue); }
+  dt, dd { margin: 0; overflow-wrap: anywhere; }
+  dt { color: var(--aqua-3); }
+  dd { color: var(--orange-3); }
+}
+.validation-reports {
+  > header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+  article { margin: .8rem 0; padding: .6rem; border-left: 3px solid var(--orange-3);
+    border-radius: .4rem; background: var(--dev-row); }
+  h4 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; }
+}

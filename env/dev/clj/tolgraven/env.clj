@@ -4,7 +4,8 @@
     [tolgraven.dev-middleware :refer [wrap-dev]]))
 
 (def defaults
-  {:init
+  {:development? true
+   :init
    (fn []
      (log/info "\n-=[tolgraven started successfully using the development profile]=-"))
    :stop

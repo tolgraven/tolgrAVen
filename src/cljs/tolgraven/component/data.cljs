@@ -1,6 +1,8 @@
 (ns tolgraven.component.data
   "Shared, mount-independent resource loading. Adapters are registered separately."
-  (:require [reagent.core :as r]
+  (:require [tolgraven.validation.runtime :as validation]
+            [tolgraven.schema.declarations :as schemas]
+            [reagent.core :as r]
             [tolgraven.react :as rf]
             [re-frame.db :as rfdb]
             [tolgraven.service-status :as status]
@@ -113,6 +115,7 @@
    Errors are retained until retry; successful remote snapshots default to 60s TTL."
   [resource]
   (try
+    (validation/check! "data dependency" schemas/dependency resource)
     (restore! resource)
     (let [{:keys [load! read]} (adapter resource)
           key (resource-key resource)

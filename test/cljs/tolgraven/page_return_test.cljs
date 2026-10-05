@@ -45,6 +45,7 @@
             (.setAttribute element "data-page-build" "test-build")
             (.appendChild (.-body js/document) element)
             (try
+              (rf/dispatch-sync [:init/app-db])
               (rf/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] true])
               (doseq [parent [nil "root" "child" "grandchild" "deep"]]
                 (let [query (if parent (comments/thread-query 42 parent) (comments/root-query 42 comments/page-size))]

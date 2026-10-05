@@ -1,6 +1,7 @@
 (ns tolgraven.components.error
   (:require
     [tolgraven.component.registry]
+    [tolgraven.validation.views :as validation]
     [tolgraven.macros :refer-macros [defc]]
     [cljs.pprint]
     [clojure.string :as string]
@@ -20,7 +21,9 @@
      [:details
       [:summary "Error details"]
       [:p (str ns-name "/" comp-name)]
-      [:pre (or (ex-message error) (str error))]
+      (if-let [issues (:issues (ex-data error))]
+        [validation/<issues> issues]
+        [:pre (or (ex-message error) (str error))])
       (when (seq stack) [:pre stack])])])
 
 (defc <error-full>

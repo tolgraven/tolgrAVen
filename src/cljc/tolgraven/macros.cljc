@@ -147,14 +147,19 @@
     (if (seq? args)
       ;; Reagent supports multiple render arities. Preserve that API for lean
       ;; primitives; composed features use one explicit argument/spec vector.
-      (let [options (select-keys (merge (meta name) attrs) [:features :depends :state])]
-        (when (seq options)
+      (let [options (merge (select-keys (meta name) [:features :depends :state :schema :args-schema :spec-schema]) attrs)
+            descriptor (gensym "definition")]
+        (when (seq (select-keys options [:features :depends :state]))
           (throw (ex-info "Composed defc features require a single argument vector" {:component name})))
-        `(do
-           (reagent.core/defc ~(with-meta name metadata) ~@decls)
+        `(let [~descriptor (tolgraven.component.registry/definition
+                           ~(str ns-name) ~(str name) ~(assoc options :spec false) (fn ~name ~@decls))]
+           ~(if (or (:args-schema options) (:spec-schema options))
+              `(reagent.core/defc ~(with-meta name metadata) [& argv#]
+                 (tolgraven.component.registry/validate-args! ~descriptor argv#)
+                 (apply (fn ~name ~@decls) argv#))
+              `(reagent.core/defc ~(with-meta name metadata) ~@decls))
            (tolgraven.component.registry/register-component!
-            ~name (tolgraven.component.registry/definition
-                   ~(str ns-name) ~(str name) {:spec false} (fn ~@decls)))))
+            ~name ~descriptor)))
       (do
         (when-not (and (symbol? name) (vector? args) (vector? bindings)
                        (even? (count bindings)) (seq body))
@@ -163,7 +168,9 @@
         (let [scoped-helpers? (some #(and (seq? %) (symbol? (first %))
                                          (#{"<sub" ">reset" ">update"} (clojure.core/name (first %))))
                                    (tree-seq coll? seq (concat bindings body)))
-              options (select-keys (merge (meta name) attrs) [:page :spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :loading-args :state :module])
+              ;; Keep extension fields from the declaration for its composed
+              ;; schema and tooling. Symbol metadata is still explicitly scoped.
+              options (merge (select-keys (meta name) [:page :spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :loading-args :state :module :schema :spec-schema :args-schema]) attrs)
               options (merge (loading-root (last body)) options)
               loading-helper? (and (some #{'<loading>} (tree-seq coll? seq (concat bindings body)))
                                    (not (get-in &env [:ns :defs '<loading>]))
@@ -206,11 +213,15 @@
                                (assoc :code ~(pr-str (list* 'defc name (concat (when docstring [docstring]) (when attrs [attrs]) decls)))))
                              (fn ~args (let [~@helper-bindings ~@loading-bindings ~@bindings] (fn ~args ~@body))))]
              ~(if plain?
-                `(reagent.core/defc ~(with-meta name metadata) ~args
-                   (tolgraven.component.instrumentation/instrument ~descriptor
-                     ~@(if (seq (concat loading-bindings bindings))
-                         [`(reagent.core/with-let [~@loading-bindings ~@bindings] ~@body)]
-                         [`(do ~@body)])))
+                (let [render `(tolgraven.component.instrumentation/instrument ~descriptor
+                               ~@(if (seq (concat loading-bindings bindings))
+                                   [`(reagent.core/with-let [~@loading-bindings ~@bindings] ~@body)]
+                                   [`(do ~@body)]))]
+                  (if (or (:args-schema options) (:spec-schema options))
+                    `(reagent.core/defc ~(with-meta name metadata) [& argv#]
+                       (tolgraven.component.registry/validate-args! ~descriptor argv#)
+                       (apply (fn ~args ~render) argv#))
+                    `(reagent.core/defc ~(with-meta name metadata) ~args ~render)))
                 `(reagent.core/defc ~(with-meta name metadata) [& argv#]
                    (tolgraven.component/render-component ~descriptor argv#)))
              (tolgraven.component.registry/register-component! ~name ~descriptor))))))))))

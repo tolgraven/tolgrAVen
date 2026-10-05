@@ -1,5 +1,6 @@
 (ns tolgraven.blog.module
   (:require [tolgraven.blog.pages :as pages]
+            [tolgraven.blog.schema :as schema]
 
     [tolgraven.content.contract :as content-contract]
     [tolgraven.react :as rf]
@@ -11,6 +12,7 @@
   {:pages pages/spec
    :depends (get content-contract/module-dependencies :blog [])
    :id :blog
+   :db-schema schema/sections
    :view {:page #'view/<blog-page>
           :post #'view/<blog-page>
           :archive #'view/<blog-page>

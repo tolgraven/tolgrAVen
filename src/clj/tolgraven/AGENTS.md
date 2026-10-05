@@ -16,3 +16,7 @@ Keep this guide current. See `doc/blog-ssr.md`, `doc/strapi-content.md`, and
 - Secrets remain in server adapters/configuration. Runtime public settings must
   expose only public origins/keys and allowed options.
 - Do not stop a user's REPL or rebuild a watched Shadow target with another process.
+
+- Reitit uses shared Malli parameter schemas. Internal/response validation follows
+  runtime configuration; request coercion remains active. Coercion error handlers
+  must not log full exception data or return request/response values.

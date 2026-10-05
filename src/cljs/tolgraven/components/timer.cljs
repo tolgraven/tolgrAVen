@@ -2,10 +2,12 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
-    [tolgraven.react :as react]))
+    [tolgraven.react :as react]
+    [tolgraven.schema.components :as schemas]))
 
 (defc <timeout>
   "Call f after mount, cancelling on unmount. Renders no DOM and is safe in Node."
+  {:args-schema schemas/timeout-args}
   [f milliseconds]
   (react/use-effect
    (fn []

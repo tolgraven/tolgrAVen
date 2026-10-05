@@ -88,6 +88,7 @@
 (def definition registry/definition)
 
 (defn dependencies [definition args]
+  (registry/validate-args! definition args)
   (let [declared (get-in definition [:options :depends])
         resolved (if (fn? declared) (apply declared args) declared)
         spec (spec-for (not= false (get-in definition [:options :spec])) args)]
@@ -176,6 +177,7 @@
     mounted?))
 
 (defn- render-function [definition args presence state-key]
+  (registry/validate-args! definition args)
   (let [*instance (rf/use-ref nil)]
     (when-not (.-current *instance)
       (let [*element (atom nil)]

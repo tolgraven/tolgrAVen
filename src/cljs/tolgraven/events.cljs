@@ -759,7 +759,7 @@
 (rf/reg-event-db :diag/unhandled
  (fn [db [_ action id]]
   (case action
-   :add    (update-in db [:diagnostics :unhandled] conj id)
+   :add    (update-in db [:diagnostics :unhandled] #(conj (set %) id))
    ; :closing ;however this'd be achieved. nice fade-out. but if enough things call for it might as well go figure transition-group
    :remove (update-in db [:diagnostics :unhandled] #(-> % set (disj id))))))
 

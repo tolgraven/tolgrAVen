@@ -13,3 +13,9 @@ specs and normalization belong here so CLJ and CLJS use the same definition.
   of declarations already owned by modules. Tests should consume the same schemas.
 - Reader conditionals must work for CLJ tooling/Codox as well as browser and Node
   Shadow builds. Do not make JVM documentation scan browser-only namespaces.
+
+- `schema/declarations.cljc` defines declaration shapes; module-local schemas own
+  domain fields. `schema/app_db.cljc` composes initial sections. Keep coverage
+  explicit and retain open maps where migration is incomplete.
+- `schema/http.cljc` is shared by page and API routers; use those typed parameters
+  in handlers/controllers and use the same schemas for accepted/rejected fixtures.

@@ -1,6 +1,9 @@
 (ns tolgraven.routes
   (:require
     [tolgraven.component.registry]
+    [tolgraven.validation :as validation]
+    [tolgraven.validation.runtime :as validation-runtime]
+    [tolgraven.schema.http :as schemas]
     [tolgraven.page-transition]
     [tolgraven.macros :refer-macros [defc defpage]]
     [tolgraven.ssr.client :as ssr] [tolgraven.react :as rf]
@@ -32,15 +35,16 @@
 
 (def router
   (reitit/router
-    (into ["" {:controllers [{:parameters {:query [:userBox :settingsBox]} ; ok so this how done. but surely will get unwieldy af?
+    (into ["" {:coercion schemas/coercion :parameters {:query schemas/page-query}
+               :controllers [{:parameters {:query [:userBox :settingsBox]} ; ok so this how done. but surely will get unwieldy af?
                      :start (fn [{:keys [query]}]    ; and how get to update url with changes...
                               (case (:userBox query) ; was thinking "have :user/open-ui passing true/false and no case but would be spammy"
-                               "true" (rf/dispatch [:user/open-ui])
-                               ("false" nil) (rf/dispatch [:user/close-ui]))
+                               true (rf/dispatch [:user/open-ui])
+                               (false nil) (rf/dispatch [:user/close-ui]))
                               (case (:settingsBox query)
-                                "true" (do (rf/dispatch [:state [:settings :panel-open] true])
+                                true (do (rf/dispatch [:state [:settings :panel-open] true])
                                            (rf/dispatch [:scroll/to-top-and-arm-restore]))
-                                ("false" nil) (rf/dispatch [:state [:settings :panel-open] false]))) ; well this being on start it wouldn't be open anyways
+                                (false nil) (rf/dispatch [:state [:settings :panel-open] false]))) ; well this being on start it wouldn't be open anyways
                      :stop (fn [{:keys [query]}]    ; why is this being run without leaving page?
                              )}]}]
           (concat (mapv #(update % 1 assoc :module nil :view #'auto/<auto>) home/spec)
@@ -83,7 +87,7 @@
                                    (rf/dispatch [:diag/new :error "Twitter auth"
                                                  "Error authenticating"])))}]}]]
                    ["/not-found" {:name :not-found :view #'a404/<not-found-page>}]]))
-    {:exception rpretty/exception}))
+    {:exception rpretty/exception :validate validation-runtime/validate-routes!}))
 
 ;; A late module response must never navigate back over a newer URL.
 (defonce *navigation (atom 0))
@@ -166,10 +170,20 @@
       (rf/dispatch [:state [:fragment] (.getFragment uri)]))
     ignore?))
 
+(defn coercion-failed! [match error]
+  (let [issues (validation/problems (ex-data error))
+        message (validation/message issues)]
+    (rf/dispatch [:validation/report {:contract :route :issues issues}])
+    (rf/dispatch [:state [:error-page]
+                  (fn [] [error-view/<failure> "route" (:path match)
+                          {:title "Invalid page address" :message message}
+                          #(rfe/replace-state :home)])])))
+
 (defn start! []
   ;; Preserve native restoration until a same-document navigation takes over.
   (rfe/start! router on-nav {:use-fragment false
-                           :ignore-anchor-click? ignore-anchor-click?}))
+                           :ignore-anchor-click? ignore-anchor-click?
+                           :on-coercion-error coercion-failed!}))
 
 
 (defn external-http-url?
