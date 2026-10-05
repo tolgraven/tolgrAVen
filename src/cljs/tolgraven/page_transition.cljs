@@ -78,7 +78,11 @@
                      (if (= generation @*generation)
                        (rf/dispatch [:common/navigate match
                                      {:current? #(= generation @*generation)
-                                      :resolve! resolve!}])
+                                      :resolve! resolve!
+                                      :transition-id generation
+                                      :fallback? (and animate? (not back?)
+                                                      (not (fn? (.-startViewTransition js/document)))
+                                                      (not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))))}])
                        (resolve!)))))]
     (when-let [transition @*transition] (.skipTransition transition))
     (reset! *transition nil)

@@ -13,9 +13,50 @@
 
 (def spec main-module/spec)
 
+(defc <swapper>
+  "CSS crossfade fallback. Route commits never wait for this page-owned motion."
+  [incoming outgoing current previous animate? transition-id]
+  (let [page-key (fn [route] (or (get-in route [:data :transition-key]) (:path route)))
+        current-key (page-key current)
+        previous-key (page-key previous)
+        token (pr-str [transition-id previous-key current-key])
+        [running set-running!] (rf/use-state nil)
+        [finished set-finished!] (rf/use-state nil)
+        force? (or (not animate?) (nil? outgoing) (= current-key previous-key))]
+    (rf/use-effect
+      (fn []
+        (if force?
+          js/undefined
+          (let [*frame (atom nil)
+                *timer (atom nil)]
+            (reset! *frame
+              (js/requestAnimationFrame
+                (fn [_]
+                  (reset! *frame
+                    (js/requestAnimationFrame
+                      (fn [_]
+                        (set-running! token)
+                        (reset! *timer (js/setTimeout #(set-finished! token) 750))))))))
+            (fn []
+              (when @*frame (js/cancelAnimationFrame @*frame))
+              (when @*timer (js/clearTimeout @*timer))))))
+      #js [token force?])
+    [:div.swapper
+     (for [[key active? form] (cond-> [[current-key true incoming]]
+                                (and (not force?) (not= token finished))
+                                (conj [previous-key false outgoing]))]
+       ^{:key (pr-str key)}
+       [:div {:aria-hidden (when-not active? true)
+              :inert (when-not active? true)
+              :class (if active?
+                       (str "swap-in opacity " (when (or force? (= token running) (= token finished)) "swapped-in"))
+                       (str "swapped " (when (= token running) "opacity swapped-out")))}
+        form])]))
+
 (defc <page> "Render active page inbetween header, footer and general stuff."
   []
-  (let [_ (transition/use-ready! @(rf/subscribe [:get :page/commit]))
+  (let [commit @(rf/subscribe [:get :page/commit])
+        _ (transition/use-ready! commit)
         ext-back? (restore/skip-enter?)
         debug @(rf/subscribe [:state [:debug]])
         click-evt @(rf/subscribe [:state [:global-clicked]])]
@@ -44,8 +85,15 @@
                             "animate ")
                      (when (:layers debug) "debug-layers ")
                      (when (:parallax debug) "debug-on"))}
-        [ui/<safe> :page [(component/resolve-view page)]
-         (:path @(rf/subscribe [:common/route]))]]
+        [<swapper>
+         [ui/<safe> :page [(component/resolve-view page)]
+          (:path @(rf/subscribe [:common/route]))]
+         (when-let [previous @(rf/subscribe [:common/page :last])]
+           [ui/<safe> :page [(component/resolve-view previous)]
+            (:path @(rf/subscribe [:common/route :last]))])
+         @(rf/subscribe [:common/route]) @(rf/subscribe [:common/route :last])
+         (and (not ext-back?) (get-in commit [:completion :fallback?]))
+         (get-in commit [:completion :transition-id])]]
        [ui/<loading-spinner> true :massive]))                 ; removed since jars now that have hero in original html
 
    [:div#error-portal]

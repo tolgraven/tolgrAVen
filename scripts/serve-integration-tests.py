@@ -20,6 +20,7 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         assets = {'/__tests/': 'live.html', '/__tests/live.js': 'live.js',
                   '/__tests/scroll.html': 'scroll.html', '/__tests/scroll.js': 'scroll.js',
+                  '/__tests/motion.html': 'motion.html', '/__tests/motion.js': 'motion.js',
                   '/__tests/away.html': 'away.html'}
         if path in assets:
             body = (ROOT / 'test/browser' / assets[path]).read_bytes()

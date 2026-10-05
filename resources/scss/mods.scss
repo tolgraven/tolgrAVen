@@ -68,9 +68,26 @@
   object-fit: none;
   object-position: top left;
 }
+// Explicit opacity motion rather than relying on browser UA defaults.
+@keyframes page-opacity-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes page-opacity-in-a { from { opacity: 0; } to { opacity: 1; } }
+::view-transition-old(page) { animation-name: page-opacity-out; }
+::view-transition-new(page) { animation-name: page-opacity-in-a; }
+// CSS crossfade for browsers without native View Transitions. The component
+// releases the outgoing layer after motion; navigation never waits for it.
+.swapper { position: relative; isolation: isolate; }
+.swapped {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  opacity: 1; transition: opacity var(--navigation-transition-time) ease;
+  &.swapped-out { opacity: 0; }
+}
+.swap-in {
+  &.opacity { opacity: 0; }
+  &.swapped-in { opacity: 1; transition: opacity var(--navigation-transition-time) ease; }
+}
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(page),
-  ::view-transition-new(page) { animation: none; }
+  .swapped, .swap-in.swapped-in { transition: none; }
+  ::view-transition-old(page), ::view-transition-new(page) { animation: none; }
 }
 
 /* Show/hide and slide in from left. */

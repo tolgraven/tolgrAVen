@@ -24,6 +24,7 @@
     [tolgraven.loader :as loader]
     [tolgraven.views-common :as common]
     [tolgraven.page-transition :as page-transition]
+    [tolgraven.views.page :as page-view]
     [tolgraven.component.data :as data]
     [tolgraven.component.restore :as restore]
     [tolgraven.component.loading :as loading]
@@ -50,6 +51,7 @@
     [tolgraven.user.module]
     [tolgraven.chat.module]
     [tolgraven.github.module]
+    [tolgraven.github.views :as github-views]
     [tolgraven.gpt.module]
     [tolgraven.strava.module]
     [tolgraven.instagram.module]
@@ -949,3 +951,42 @@
                 (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
+
+(deftest fallback-crossfade-commits-pending-content-and-releases-old-page
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                current {:path "/new"} previous {:path "/old"}
+                form (fn [id] [page-view/<swapper> [:div#destination "Loading destination"]
+                               [:div#outgoing "Old page"] current previous true id])]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root (form 1)))
+              (is (some? (.querySelector element "#destination"))
+                  "Destination mounts immediately while content is pending")
+              (is (some? (.querySelector element "#outgoing")))
+              (await! (wait-for! #(nil? (.querySelector element "#outgoing"))))
+              (is (= "Loading destination" (.-textContent (.querySelector element "#destination"))))
+              (await! (support/render! root (form 2)))
+              (is (some? (.querySelector element "#outgoing"))
+                  "Repeating the same route pair starts a fresh transition")
+              (await! (wait-for! #(nil? (.querySelector element "#outgoing"))))
+              (finally (support/unmount! root) (.remove element)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest github-pagination-component-is-not-the-default-loading-helper
+  (with-redefs [rf/subscribe (fn
+                              ([[query]]
+                               (r/atom (case query
+                                        :github/get-from ["owner" "repo"]
+                                        :github/filter-by []
+                                        :github/commit-count 0
+                                        :github/website-url "https://github.com/owner/repo"
+                                        :github/commits []
+                                        nil)))
+                              ([_ _] (r/atom nil)))]
+    (let [html (server/render-to-string [github-views/<commits>])]
+      (is (re-find #"github-loading" html))
+      (is (re-find #"Loaded (?:<!-- -->)?0" html)))))

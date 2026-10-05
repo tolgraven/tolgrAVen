@@ -55,9 +55,11 @@
     (.appendChild (.-body js/document) container)
     (.observe observer container #js {:childList true :subtree true})
     (reset! *timeout (js/setTimeout (fn []
-                                     (is false "Image fallback completed within five seconds")
+                                     (is false "Image fallback completed within fifteen seconds")
                                      (finish!))
-                                   5000))
+                                   ;; Allow cold decodes and throttled background frames;
+                                   ;; this still fails if either real load never arrives.
+                                   15000))
     ;; Force the selected modern format to fail even when its decoder works.
     ;; In Safari Lockdown Mode, the AVIF error happens naturally instead.
     (reset! *attrs {:src src

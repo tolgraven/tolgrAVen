@@ -206,6 +206,15 @@
   (fn [[_ blog-id parent-id]] (rf/subscribe [:comments/thread-records blog-id parent-id]))
   (fn [comments _] (when (seq comments) comments)))
 
+(rf/reg-sub :comments/visible-thread
+  (fn [[_ post-id parent-id acquire?]]
+    [(rf/subscribe [:comments/cached-thread post-id parent-id])
+     (rf/subscribe (if acquire? [:comments/thread-records post-id parent-id] [:nil]))])
+  (fn [[cached live] _]
+    ;; Acquiring/releasing a live reader must not temporarily remove cached
+    ;; children. An authoritative empty map still replaces stale cached rows.
+    (if (some? live) live cached)))
+
 ;; Reserved for direct comment lookup; keep the unfinished subscription visible.
 (rf/reg-sub :comments/for-id
   (fn [db [_ comment-id]]))

@@ -62,17 +62,18 @@
                (not (:replace-shell? complete!))
                (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
          :dispatch-n
-         (if (:replace-shell? complete!)
-           [[:document/set-title! new-match]]
-           [[:document/set-title! new-match]
-            (if (or (not (same :path))
-                    (not (same :data :view))
-                    (not (same :path-params))
-                    (nil? old-match))
-              ;; Persisted ID counters do not tell us whether this document has
-              ;; navigated yet. Its first route must restore the saved offset.
-              [:scroll/on-navigate (:path new-match) (if old-match navigation-count 0) complete!]
-              [:page/ready nil complete!])])}
+         (cond-> [[:document/set-title! new-match]]
+           ;; Loading code replaces this destination's placeholder in place.
+           ;; Its title still updates; its transition and scroll do not restart.
+           (not (:replace-shell? complete!))
+           (conj (if (or (not (same :path))
+                         (not (same :data :view))
+                         (not (same :path-params))
+                         (nil? old-match))
+                   ;; Persisted ID counters do not tell us whether this document
+                   ;; has navigated yet. Its first route restores the saved offset.
+                   [:scroll/on-navigate (:path new-match) (if old-match navigation-count 0) complete!]
+                   [:page/ready nil complete!])))}
 
       (let [fragment (-> db :state :fragment)]              ;; matches are equal (fragment not part of match)
         (if (pos? (count (seq fragment)))

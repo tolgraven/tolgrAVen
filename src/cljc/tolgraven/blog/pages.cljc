@@ -31,7 +31,7 @@
 
 (def spec
   ;; Native Reitit routes, with shared data inherited by each child page.
-  [["/blog" {:module :blog :transition-key :blog :shell {:heading [:blog :heading]} :depends [{:source :strapi :availability :startup :keys [:blog]}]
+  [["/blog" {:module :blog :transition-key :blog :shell {:heading [:blog :heading] :loading-prefab :article :loading-class "blog-post ssr-skeleton-article"} :depends [{:source :strapi :availability :startup :keys [:blog]}]
               :preload-depends (fn [match]
                                  (if (:ssr (:data match))
                                    [{:source :subscription

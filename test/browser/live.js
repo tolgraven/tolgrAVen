@@ -108,3 +108,5 @@ button.onclick = async () => {
     row.textContent = `FAILED: ${error.message}`; results.append(row);
   } finally { button.disabled = false; }
 };
+
+if (new URLSearchParams(location.search).has('run')) button.click();

@@ -4,12 +4,12 @@
             [tolgraven.component.loading :as loading]
             [tolgraven.ui :as ui]))
 
-(defc <content> [{:keys [lines avatar?] :or {lines 8 avatar? true}}]
-  [:section.ssr-skeleton {:role "status" :aria-label "Loading page content"}
-   [loading/<h1>]
-   (when avatar? [loading/<avatar>])
-   [loading/<lines> {:count lines}]
-   [:span.sr-only "Loading page content…"]])
+(defc <content> [{:keys [loading-prefab loading-class] :as spec}]
+  [loading/<placeholder>
+   {:loading-tag :section
+    :classes (or loading-class "ssr-skeleton")
+    :loading-prefab (or loading-prefab :article)
+    :loading-props (select-keys spec [:lines :avatar?])}])
 
 (defc <page> [{:keys [heading] :as spec}]
   (if heading
