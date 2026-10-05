@@ -30,8 +30,8 @@
        {:style {:white-space :pre-wrap
                 :display :inline-flex}}
        [:span.first-char char1]
-       (for [letter others] ; causes issues with spacing? nice lil zoom effect though, figure out.
-         [<completion-letter> height letter])])))
+       (for [[i letter] (map-indexed vector others)] ; causes issues with spacing? nice lil zoom effect though, figure out.
+         ^{:key i} [<completion-letter> height letter])])))
 
 (defc ^:private <query-letter>
   {:features [[:appear "zoom fast"]]}
@@ -82,8 +82,8 @@
      (when-not (string/blank? @internal-model)
        [:span {:style {:white-space :pre-wrap
                        :display :inline-flex}}
-        (for [letter @internal-model] ; causes issues with spacing? nice lil zoom effect though, figure out.
-          [<query-letter> letter])])
+        (for [[i letter] (map-indexed vector @internal-model)] ; causes issues with spacing? nice lil zoom effect though, figure out.
+          ^{:key i} [<query-letter> letter])])
 
      [<completion> @internal-model suggestion height]]
 

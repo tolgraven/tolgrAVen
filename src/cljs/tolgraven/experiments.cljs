@@ -4,7 +4,7 @@
     [tolgraven.macros :as m :refer-macros [defc defpage]]
     [reagent.core :as r]
     [tolgraven.react :as rf]
-    [tolgraven.loader :as l]
+    [tolgraven.loader]
     [tolgraven.ui :as ui]
     [react-leaflet]
     [leaflet]))

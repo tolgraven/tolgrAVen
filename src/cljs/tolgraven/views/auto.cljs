@@ -8,8 +8,7 @@
     [tolgraven.components.media :as media]
     [tolgraven.components.oembed :as oembed]
     [tolgraven.loader :as l]
-    [tolgraven.macros :as m]
-))
+    [tolgraven.macros :as m]))
 
 (declare sections)
 

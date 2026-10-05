@@ -70,15 +70,12 @@
   "A defc page declaration with a mandatory error boundary. Other features and
    dependencies compose as usual; the page adds no DOM wrapper."
   [name & decls]
-  (let [docstring (when (string? (first decls)) (first decls))
-        decls (if docstring (next decls) decls)
-        options (if (map? (first decls)) (first decls) {})
-        body (if (map? (first decls)) (next decls) decls)
-        features (remove #(= :error-boundary (if (keyword? %) % (first %))) (:features options))]
-    `(tolgraven.macros/defc ~name
-       ~@(when docstring [docstring])
-       ~(assoc options :page true :features (into [:error-boundary] features))
-       ~@body)))
+  (let [prefix (take-while string? decls)
+        tail (drop (count prefix) decls)
+        options (if (map? (first tail)) (first tail) {})
+        decls' (concat prefix [(assoc options :page true)]
+                       (if (map? (first tail)) (next tail) tail))]
+    `(tolgraven.macros/defc ~name ~@decls')))
 
 
 ;; also should include tooltip popup functionality
@@ -139,6 +136,14 @@
         decls (if docstring (next decls) decls)
         attrs (when (map? (first decls)) (first decls))
         decls (if attrs (next decls) decls)
+        ;; Page semantics live here, including direct defc {:page true} users.
+        attrs (if (:page attrs)
+                (update attrs :features
+                        (fn [features]
+                          (into [:error-boundary]
+                                (remove #(= :error-boundary (if (keyword? %) % (first %))))
+                                features)))
+                attrs)
         [args & body] decls
         [bindings body] (if (= :let (first body))
                           [(second body) (nnext body)]

@@ -5,7 +5,7 @@
     [tolgraven.component.registry :as registry]
     [tolgraven.component.instrumentation :as instrumentation]
     [reagent.core :as r]
-    [tolgraven.react :as react]
+    [tolgraven.react :as rf]
     [tolgraven.component.motion :as motion]
     [tolgraven.component.visibility :as visibility]
     [tolgraven.component.persistent-state :as state-store]
@@ -134,9 +134,9 @@
   (some #(when (= :exit (first %)) (second %)) (:features (component-spec component))))
 
 (defn- use-lifecycle! [definition args features *element]
-  (let [[mounted? set-mounted!] (react/use-state false)
-        *active (react/use-ref {})
-        *latest (react/use-ref args)
+  (let [[mounted? set-mounted!] (rf/use-state false)
+        *active (rf/use-ref {})
+        *latest (rf/use-ref args)
         this (r/current-component)
         cleanup! (fn [id]
                    (when-let [{:keys [implementation state]} (get (.-current *active) id)]
@@ -144,7 +144,7 @@
                      (when state (when-let [unmount (:unmount implementation)] (unmount state)))))
         lifecycle? (some #(= :lifecycle (first %)) features)]
     (set! (.-current *latest) args)
-    (react/use-layout-effect
+    (rf/use-layout-effect
      (fn []
        (let [spec (current-spec definition args)]
          (doseq [[id default implementation] features :when (:setup implementation)]
@@ -161,7 +161,7 @@
                                                        :config config :element @*element}))
                    (when state (when-let [mount (:mount implementation)] (mount state @*element)))))))))
        js/undefined))
-    (react/use-layout-effect
+    (rf/use-layout-effect
      (fn []
        (set-mounted! true)
        (when lifecycle?
@@ -175,7 +175,7 @@
     mounted?))
 
 (defn- render-function [definition args presence state-key]
-  (let [*instance (react/use-ref nil)]
+  (let [*instance (rf/use-ref nil)]
     (when-not (.-current *instance)
       (let [*element (atom nil)]
         (set! (.-current *instance)
@@ -262,7 +262,7 @@
   ;; subvec drops metadata, but retains the original Hiccup vector as its backing
   ;; vector. Read that metadata before introducing any defc wrappers. Class-based
   ;; runtime components still expose the original vector through r/argv.
-  (react/component-argv))
+  (rf/component-argv))
 
 (defn render-component [definition raw-args]
   (let [state-key (some-> (current-argv) meta :key)
@@ -293,7 +293,7 @@
                    {:wrap (fn [form definition _]
                             [<boundary> {:ns-name (:ns definition) :component-name (:name definition)
                                          :reset-key (when (get-in definition [:options :page])
-                                                      (select-keys @(react/subscribe [:common/route])
+                                                      (select-keys @(rf/subscribe [:common/route])
                                                                    [:path :query-params]))} form])})
 
 (r/defc <dynamic-component> [definition args]

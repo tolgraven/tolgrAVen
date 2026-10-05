@@ -1,8 +1,5 @@
 (ns tolgraven.docs.subs
-  (:require
-   [tolgraven.react :as rf]
-   [clojure.string :as string]
-   [clojure.walk :as walk]))
+  (:require [tolgraven.react :as rf]))
 
 
 (rf/reg-sub :docs/get
@@ -22,10 +19,6 @@
    (get-in db [:state :docs :previous-page])))
 
 (rf/reg-sub :docs/page-html
- :<- [:docs/get]
- :<- [:docs/state]
- :<- [:docs/current-page]
- :<- [:docs/previous-page]
- (fn [[docs state current-page previous-page] [_ page]]
-   (let [page (or page current-page "index")]
-     (get-in docs [page] (get-in docs [previous-page])))))
+  (fn [db query]
+    (let [[_ page] (or (:re-frame/query-v query) query)]
+      (get-in db [:docs (or page (get-in db [:state :docs :current-page]) "index")]))))

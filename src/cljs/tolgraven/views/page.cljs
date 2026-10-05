@@ -61,9 +61,7 @@
         debug @(rf/subscribe [:state [:debug]])
         click-evt @(rf/subscribe [:state [:global-clicked]])]
   [:<>
-   [l/<assets> {:css (some-> spec :assets :css)
-                :js  (some-> spec :assets :js)}]
-   [l/<loaded-assets>]
+   [l/<loaded-assets> (:assets spec)]
 
    [ui/<safe> :header [common/<header> @(rf/subscribe [:content [:header]])]]
    [:a {:name "linktotop" :id "linktotop"}]

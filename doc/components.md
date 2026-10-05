@@ -497,3 +497,14 @@ native root and owns cleanup. Feature configurations may also be functions of th
 component's arguments, such as `[:on-seen (fn [id] {:event [:load id]})]`.
 `on-seen` supports `:threshold`, `:root-margin`, `:delay-ms`, and defaults to firing
 once. A native root is required for root-owned lifecycle features.
+
+Documentation has two independent dependencies: `[:docs]` CMS content supplies
+its heading/framing, while `docs.pages/document-dependency` describes Codox HTML
+served by `/api/doc`. Both `:docs/get` and the document component acquire that
+same backend resource; SSR/restored HTML in app-db avoids another request.
+
+Module activation (`:scope/inited?`) can precede code arrival. Shadow's
+`lazy/ready?` remains the authority for code availability, but is not a reactive
+value. `:loader/module` acquires the shared code/init adapter and observes its
+completion event. `load-code!` returns as soon as code arrives; `load!` also waits
+for declared data and optional initialization. Both share one Shadow acquisition.

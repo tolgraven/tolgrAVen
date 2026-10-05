@@ -4,6 +4,8 @@
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require
     [cljs.core.async]
+    [ajax.core :as ajax]
+    [tolgraven.docs.pages :as docs-pages]
     [tolgraven.test-support :as support]
     [cljs.test :refer-macros [deftest is testing async]]
     [re-frame.core :as rf]
@@ -185,79 +187,31 @@
                          (.catch (fn [error] (is false (str error))))
                          (.finally done))))))
              (.catch (fn [error] (is false (str error)) (done))))))
-(deftest ready-module-waits-for-declared-data
-  (let [id (keyword (str (random-uuid)))
-        before (rf/make-restore-fn)
-        spec {:depends [{:source :app-db, :path [id]}], :view {:view (fn [] [:div "Ready"])}}
-        loadable (reify
-                   lazy/ILoadable
-                     (ready? [_] true)
-                   IDeref
-                     (-deref [_] spec))]
-    (try (with-redefs [loader/modules {id loadable}]
-           (is (nil? (loader/ready-spec id :view [])))
-           (rf/dispatch-sync [:set [id] false])
-           (is (= spec (loader/ready-spec id :view []))
-               "A present false value is loaded data, not a loading state"))
-         (finally (before)))))
-(deftest component-loader-forwards-initialization-hooks-and-args
-  (async
-    done
-    (->
-      (go-promise
-        (let [id (keyword (str (random-uuid)))
-              *calls (atom [])
-              *events (atom [])
-              *resolve-post (atom nil)
-              posted (js/Promise. (fn [resolve _] (reset! *resolve-post resolve)))
-              component (fn [& _] [:div "Loaded"])
-              module-spec {:view {:view component},
-                           :init (fn [& args] (swap! *calls conj [:init args]))}
-              loadable (reify
-                         lazy/ILoadable
-                           (ready? [_] true)
-                         IDeref
-                           (-deref [_] module-spec))
-              render (loader/make-browser-render)
-              spec {:module id,
-                    :init-evt [:test/init id],
-                    :pre-fn (fn [& args] (swap! *calls conj [:pre args])),
-                    :post-fn (fn [loaded & args]
-                               (swap! *calls conj [:post loaded args])
-                               (@*resolve-post nil)
-                               ;; A hook result must not replace the module used to render.
-                               :hook-result)}]
-          (-> (js/Promise.resolve nil)
-              (.then (fn []
-                       (with-redefs [loader/modules {id loadable}
-                                     rf/subscribe (fn ([_] (atom true)) ([_ _] (atom true)))
-                                     rf/dispatch #(swap! *events conj %)]
-                         (is (= [component :first {:second true}]
-                                (last (render spec :first {:second true})))
-                             "Ready modules render on the first pass, before promise callbacks"))
-                       (is (= [[:test/init id]] @*events))
-                       posted))
-              (.then (fn []
-                       (is (= [[:pre [:first {:second true}]] [:init [:first {:second true}]]
-                               [:post module-spec [:first {:second true}]]]
-                              @*calls))
-                       (with-redefs [rf/subscribe (fn ([_] (atom true)) ([_ _] (atom true)))]
-                         (is (= [component :first {:second true}]
-                                (last (render spec :first {:second true})))))))
-              (.catch (fn [error] (is false (str error))))
-              (.finally (fn [] (swap! loader/*loads dissoc id) (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
-(deftest deferred-component-preserves-scope-arguments
-  (let [*events (atom [])
-        before (fn [& _] [:button "Load"])
-        render (loader/make-browser-render)]
-    (with-redefs [rf/subscribe (fn ([_] (atom false)) ([_ _] (atom false)))
-                  rf/dispatch #(swap! *events conj %)]
-      (let [[_ attrs content] (render {:module :search, :<before> before} "blog-posts")]
-        (testing "The placeholder and scope request both receive the component args"
-          (is (= [before "blog-posts"] content))
-          ((:on-click attrs))
-          (is (= [[:scope/init :search '("blog-posts")]] @*events)))))))
+(deftest module-load-forwards-hooks-and-initialization-arguments
+  (async done
+    (let [id (keyword (str (random-uuid)))
+          *calls (atom [])
+          spec {:view {:view (fn [] [:div "Loaded"])}
+                :init (fn [& args]
+                        (go-promise (await! (support/settle!))
+                                    (swap! *calls conj [:init args])))}
+          loadable (reify lazy/ILoadable (ready? [_] true)
+                    IDeref (-deref [_] spec))
+          pending (with-redefs [loader/modules {id loadable}]
+                    (loader/load! {:module id :args [:first {:second true}]
+                                   :pre-fn (fn [& args] (swap! *calls conj [:pre args]))
+                                   :post-fn (fn [loaded & args]
+                                              (swap! *calls conj [:post loaded args]) loaded)}))]
+      (-> pending
+          (.then (fn [loaded]
+                   (is (= spec loaded))
+                   (is (= [[:pre [:first {:second true}]]
+                           [:init [:first {:second true}]]
+                           [:post spec [:first {:second true}]]] @*calls))))
+          (.catch #(is false (str %)))
+          (.finally #(do (swap! loader/*loads dissoc id)
+                         (swap! loader/*code-loads dissoc id) (done)))))))
+
 (deftest literal-search-completions
   (doseq [query ["C++" "[x]" "a.b" "(fn"]]
     (let [result (search/autocomplete-suggestion
@@ -1093,5 +1047,41 @@
                 (support/unmount! root) (.remove element)
                 (set! loader/modules original-modules) (set! loader/load-code! original-load)
                 (shim/dispatch [:component-data/remove [:loader :code-ready module]])))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest documentation-events-and-components-share-the-backend-resource
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                page (str "docs-test-" (random-uuid))
+                html "<h1>Backend documentation</h1>"
+                original-get ajax/GET
+                *calls (atom []) *respond (atom nil)]
+            (.appendChild (.-body js/document) element)
+            (try
+              (set! ajax/GET (fn [url & [options]]
+                              (swap! *calls conj url)
+                              (reset! *respond (:handler options))))
+              ;; Route/controller event and two mounted views use the same source.
+              (shim/dispatch [:docs/get page])
+              (await! (support/render! root [:div [docs-view/<doc-page> page]
+                                             [docs-view/<doc-page> page]]))
+              (await! (wait-for! #(some? @*respond)))
+              (is (= [(str "/api/doc?path=" page)] @*calls))
+              (@*respond html)
+              (await! (wait-for! #(= 2 (.-length (.querySelectorAll element ".codox h1")))))
+              (is (= html (await! (state-at! [:docs page]))))
+              (await! (support/render! root nil))
+              (await! (support/render! root [docs-view/<doc-page> page]))
+              (is (= 1 (count @*calls)) "Remount reuses HTML in app-db")
+              (is (= "Backend documentation" (.-textContent element)))
+              (finally
+                (support/unmount! root) (.remove element)
+                (set! ajax/GET original-get)
+                (shim/dispatch [:component-data/remove [:docs page]])
+                (data/invalidate! #{(docs-pages/document-dependency page)
+                                    (:load (docs-pages/document-dependency page))})))))
         (.catch #(is false (str %)))
         (.finally done))))

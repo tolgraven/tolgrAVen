@@ -6,7 +6,7 @@
     [tolgraven.react :as rf]
     [clojure.string :as string]
     [tolgraven.components.timer :as anim]
-    [tolgraven.loader :as l]
+    [tolgraven.loader]
     [tolgraven.ui :as ui]
     [tolgraven.image :as img]
     [tolgraven.views-common :as views]
@@ -300,7 +300,7 @@
 
 (defc ^:private <graph-inner>
   {:features [[:appear "zoom-y slow"]]}
-  [canvas label data cursor-pos on-move on-down on-up zoom-to data-size unit data-min data-max]
+  [{:keys [canvas label data cursor-pos on-move on-down on-up zoom-to data-size unit data-min data-max]}]
   [:div [:div.strava-activity-graph-inner
            [:canvas
             {:ref #(when %
@@ -346,7 +346,9 @@
     (fn [label unit data]
       [:div.strava-activity-graph
        (when data
-         [<graph-inner> canvas label data cursor-pos on-move on-down on-up zoom-to data-size unit data-min data-max])]))) ; soo, for spinner would need to track whether not yet data or doesnt exist...
+         [<graph-inner> {:canvas canvas :label label :data data :cursor-pos cursor-pos
+                         :on-move on-move :on-down on-down :on-up on-up :zoom-to zoom-to
+                         :data-size data-size :unit unit :data-min data-min :data-max data-max}])]))) ; soo, for spinner would need to track whether not yet data or doesnt exist...
 
 (defc <activity-graphs>
   [activity]
@@ -450,7 +452,8 @@
 (defc ^:private <map-points>
   {:features [[:appear "opacity extra-slow"]]}
   [activity lat-min lat-max lng-min lng-max]
-  [:div (for [[lat lng] activity]
+  [:div (for [[i [lat lng]] (map-indexed vector activity)]
+         ^{:key i}
          [:span.strava-activity-map-point
           {:style {:bottom (str (* 100 (/ (- lat lat-min) (- lat-max lat-min))) "%")
                    :left (str (* 100 (/ (- lng lng-min) (- lng-max lng-min))) "%") }} ])])

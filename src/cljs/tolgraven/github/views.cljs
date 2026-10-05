@@ -95,7 +95,7 @@
 
 (defc ^:private <commit-row>
   {:features [[:appear "slide-in slow"]]}
-  [from sha main-view-position view author date clock html_url sha7 info title subtitle]
+  [{:keys [from sha main-view-position view author date clock html_url sha7 info title subtitle]}]
   [:div.github-commit.flex
          {:on-click #(do (rf/dispatch [:github/fetch-commit (first @from) (second @from) sha])
                          (reset! main-view-position
@@ -175,7 +175,8 @@
        (for [{:keys [commit author html_url sha sha7 message date clock ts] :as item} @commits
               :let [[info subtitle title] message]]
             ^{:key (str "github-commit-" ts)}
-        [<commit-row> from sha main-view-position view author date clock html_url sha7 info title subtitle])
+        [<commit-row> (assoc item :from from :main-view-position main-view-position :view view
+                            :info info :title title :subtitle subtitle)])
 
           [:div
             [<commit> @view [ui/<close> #(reset! view :commits)]]])

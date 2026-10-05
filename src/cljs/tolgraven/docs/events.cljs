@@ -1,12 +1,7 @@
 (ns tolgraven.docs.events
-  (:require
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
-    [clojure.string :as string]
-    [clojure.walk :as walk]
-    [ajax.core :as ajax]
-    [cljs-time.core :as ct]
-    [cljs-time.coerce :as ctc]))
+  (:require [tolgraven.react :as rf]
+            [tolgraven.docs.pages :as pages]
+            [tolgraven.component.data :as data]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
@@ -30,16 +25,10 @@
                (assoc-in [:state :docs :current-page] page)
                (assoc-in [:state :docs :previous-page] old-page))})))
 
+(rf/reg-fx :docs/load
+  (fn [page]
+    (data/prefetch! [(pages/document-dependency page)])))
+
 (rf/reg-event-fx :docs/get
-  (fn [{:keys [db]} [_ page]]
-    (when-not (get-in db [:docs page])
-      {:dispatch [:http/get-internal
-                  {:uri (str "/api/doc?path=" page)
-                   :response-format (ajax/raw-response-format)}
-                  [:docs/store-page page]]})))
-
-(rf/reg-event-fx :docs/store-page
-  (fn [{:keys [db]} [_ page data]]
-    {:db (assoc-in db [:docs page] data)}))
-
-
+  (fn [_ [_ page]]
+    {:docs/load page}))

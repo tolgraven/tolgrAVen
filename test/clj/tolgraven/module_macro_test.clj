@@ -31,7 +31,11 @@
                       [] [:section "Example"]))
         options (nth expanded 3)]
     (is (= 'tolgraven.macros/defc (first expanded)))
-    (is (= [:error-boundary [:appear "opacity"]] (:features options)))
+    (is (= [[:error-boundary false] [:appear "opacity"]] (:features options))
+        "defpage leaves feature interpretation to defc")
+    (is (some #(and (map? %) (= [:error-boundary [:appear "opacity"]] (:features %)))
+              (tree-seq coll? seq (macroexpand-1 expanded)))
+        "defc enforces the page boundary without duplicating declaration parsing")
     (is (:page options))
     (is (= [{:source :strapi :keys [:example]}] (:depends options)))))
 

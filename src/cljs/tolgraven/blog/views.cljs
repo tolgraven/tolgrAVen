@@ -6,7 +6,7 @@
     [tolgraven.blog.data :as data]
     [tolgraven.react :as rf]
     [clojure.string :as string]
-    [tolgraven.loader :as l]
+    [tolgraven.loader]
     [tolgraven.macros :as m :refer-macros [defc defpage]]
     [tolgraven.content.contract :as content-contract]
     [tolgraven.component :as component]

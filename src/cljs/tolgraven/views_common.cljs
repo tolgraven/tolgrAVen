@@ -7,7 +7,7 @@
     [reitit.frontend.easy :as rfe]
     [clojure.string :as string]
     [markdown.core :refer [md->html]]
-    [tolgraven.loader :as l]
+    [tolgraven.loader]
     [tolgraven.ui :as ui]
     [tolgraven.image :as img]
     [tolgraven.db :as db]

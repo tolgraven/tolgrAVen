@@ -5,7 +5,7 @@
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [clojure.string :as string]
-    [tolgraven.loader :as l]
+    [tolgraven.loader]
     [tolgraven.ui :as ui]
     [tolgraven.image :as img]
     [tolgraven.util :as util :refer [at]])
@@ -102,7 +102,7 @@
 
 (m/defc ^:private <instant-result>
   {:features [:appear]}
-  [{:keys [appear] :as spec} appear-class inner-class component highlights document]
+  [{:keys [inner-class component highlights document] :as spec}]
   [:div.search-instant-result
            {:class inner-class}
            [component highlights document]])
@@ -115,7 +115,8 @@
        (m/for [hit hits
              :let [{:keys [highlights document]} hit
                    {:keys [id text]} document]]
-         [<instant-result> {:appear (str appear-class " fast")} appear-class inner-class component highlights document]))]
+         [<instant-result> {:appear (str appear-class " fast") :inner-class inner-class
+                            :component component :highlights highlights :document document}]))]
 
     [ui/<loading-spinner> true]))
 
