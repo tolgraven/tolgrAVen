@@ -2,6 +2,8 @@
   "Opt-in snapshots, one disk envelope per owner. Components only touch memory."
   (:require
     [cljs.reader :as reader]
+    [tolgraven.validation :as validation]
+    [tolgraven.ssr.schema :as schema]
     [reagent.core :as r]
     [re-frame.db :as rfdb]
     [tolgraven.react :as rf]
@@ -63,8 +65,14 @@
                              (let [saved (try
                                            (when-let [text (read-disk! key)]
                                              (when (<= (count text) max-bytes)
-                                               (let [value (reader/read-string text)]
-                                                 (when (map? value) value))))
+                                               (let [value (reader/read-string text)
+                                                     clean (when (map? value)
+                                                             (into {} (filter (fn [[_ snapshot]]
+                                                                                (nil? (validation/explain schema/storage-snapshot snapshot)))) value))]
+                                                 (when (not= value clean)
+                                                   (swap! *dirty conj account)
+                                                   (schedule-write!))
+                                                 clean)))
                                            (catch :default _ nil))]
                                ;; Writes/removals queued before this read win.
                                (swap! *buckets update account

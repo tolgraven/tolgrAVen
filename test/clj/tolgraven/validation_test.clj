@@ -69,3 +69,29 @@
   (let [extended (declarations/extend-page [:map [:permission :keyword]])]
     (is (m/validate extended {:name :account :permission :signed-in :ssr true}))
     (is (not (m/validate extended {:name :account :permission :signed-in :ssr "yes"})))))
+
+(deftest schema-caches-release-historical-generations
+  (let [first-schema [:map [:first-generation :int]]
+        first-compiled (validation/compiled first-schema)]
+    (is (identical? first-compiled (validation/compiled first-schema)))
+    (dotimes [index validation/compiled-cache-limit]
+      (validation/compiled [:map [:cache-generation [:= index]]]))
+    (let [recompiled (validation/compiled first-schema)]
+      (is (not (identical? first-compiled recompiled)))
+      (is ((:valid? recompiled) {:first-generation 1}))))
+  (let [sections {[:first-generation] [:map [:count :int]]}
+        assembled (app-db/schema sections)]
+    (is (identical? assembled (app-db/schema sections)))
+    (app-db/schema {[:second-generation] :string})
+    (let [reassembled (app-db/schema sections)]
+      (is (not (identical? assembled reassembled)))
+      (is (m/validate reassembled {:first-generation {:count 1}})))))
+
+(deftest dynamic-contracts-follow-explicit-state-deletions
+  (let [path [:component "example" "<counter>" "one"]
+        before (assoc-in {} path {:count 1})]
+    (is (empty? (app-db/removed-sections [path] before before)))
+    (is (empty? (app-db/removed-sections [path] before (assoc-in before path nil))))
+    (is (empty? (app-db/removed-sections [path] {} {})))
+    (is (= [path] (app-db/removed-sections [path] before {:component {}})))
+    (is (= [path] (app-db/removed-sections [path] before (dissoc before :component))))))

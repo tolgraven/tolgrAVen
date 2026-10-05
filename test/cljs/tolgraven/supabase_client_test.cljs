@@ -1,6 +1,7 @@
 (ns tolgraven.supabase-client-test
   (:require [cljs.test :refer-macros [deftest is async use-fixtures]]
             [ajax.core :as ajax]
+            [clojure.string :as string]
             [reagent.ratom :as ratom]
             [re-frame.core :as rf]
             [re-frame.db :as rfdb]
@@ -19,19 +20,26 @@
                                        #js {:data #js {:subscription #js {:unsubscribe (fn [])}}})}
         sdk #js {:auth auth
                  :from (fn [table]
-                         (let [*offset (atom 0)
+                         (let [*columns (atom [])
                                q #js {}]
-                           (aset q "select" (fn [_] q))
+                           (aset q "select" (fn [columns] (reset! *columns (mapv keyword (string/split columns #","))) q))
                            (aset q "order" (fn [_] q))
                            (doseq [op ["eq" "is" "in"]]
                              (aset q op (fn [field value]
                                           (swap! *filters conj [table field op (if (= op "in") (vec value) value)]) q)))
-                           (aset q "range" (fn [start end]
-                                             (swap! *selects conj [table start end])
-                                             (if-let [pending @*deferred]
-                                               pending
-                                               (js/Promise.resolve
-                                                (clj->js {:data (vec (take (inc (- end start)) (drop start (get @*rows table []))))})))))
+                           (aset q "range"
+                             (fn [start end]
+                               (swap! *selects conj [table start end])
+                               (-> (or @*deferred
+                                       (js/Promise.resolve
+                                        (clj->js {:data (vec (take (inc (- end start)) (drop start (get @*rows table []))))})))
+                                   (.then (fn [reply]
+                                            ;; PostgREST includes every selected column, including
+                                            ;; SQL NULLs. Keep extra fields to test the allowlist.
+                                            (let [result (js->clj reply :keywordize-keys true)]
+                                              (clj->js
+                                               (update result :data
+                                                 #(mapv (fn [row] (merge (zipmap @*columns (repeat nil)) row)) %)))))))))
                            q))
                  :channel (fn [name]
                             (let [*change (atom nil) *status (atom nil)

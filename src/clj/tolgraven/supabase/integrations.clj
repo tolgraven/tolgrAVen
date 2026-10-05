@@ -1,5 +1,7 @@
 (ns tolgraven.supabase.integrations
   (:require [clj-http.client :as http]
+            [tolgraven.validation :as validation]
+            [tolgraven.schema.http :as schema]
             [clojure.string :as string]
             [tolgraven.platform.supabase :as platform])
   (:import [java.net URI URLEncoder]
@@ -25,10 +27,9 @@
        (catch Exception e {:status (or (:status (ex-data e)) 503)
                            :body {:error "Integration unavailable or request invalid"}})))
 
-(defn- path! [path pattern]
-  (when-not (and (string? path) (re-matches pattern path)
-                 (not (re-find #"(?i)(?:\.\.|%2e|%2f|%5c|\\|://)" path)))
-    (throw (ex-info "Invalid integration path" {:status 400})))
+(defn- path! [path schema]
+  (when-let [issues (validation/explain schema path)]
+    (throw (ex-info (validation/message issues) {:status 400})))
   path)
 
 (defn settings! []
@@ -51,12 +52,12 @@
           (:access_token updated))))))
 
 (defn strava! [path]
-  (path! path #"(?:athlete(?:/activities)?|athletes/[0-9]+/stats|segments/starred|gear/[A-Za-z0-9]+|activities/[0-9]+(?:/(?:streams|kudos))?|segments/[0-9]+/streams)(?:\?[A-Za-z0-9_=,&.-]*)?")
+  (path! path schema/strava-path)
   (upstream! :get (str "https://www.strava.com/api/v3/" path)
              {:headers {"Authorization" (str "Bearer " (strava-token!))}}))
 
 (defn intervals! [path]
-  (path! path #"athlete-summary(?:\{ext\})?(?:\?start=[0-9-]+&end=[0-9-]+)?")
+  (path! path schema/intervals-path)
   (let [{:keys [intervals_athlete_id intervals_api_key]} (config! "strava/auth")]
     (upstream! :get (str "https://intervals.icu/api/v1/athlete/" intervals_athlete_id "/"
                         (string/replace path "{ext}" ""))
@@ -96,7 +97,7 @@
                           :p_per_page (positive-number! (get parameters "per_page") 15 100)}})))
 
 (defn strapi! [path]
-  (path! path #"/api/[A-Za-z0-9/_-]+(?:\?[A-Za-z0-9_=&%\[\].,-]*)?")
+  (path! path schema/strapi-path)
   (let [{:keys [url read-api-key]} (config! "strapi/auth")]
     (when-not (seq url) (throw (ex-info "CMS not configured" {:status 503})))
     (upstream! :get (str (string/replace url #"/+$" "") path)

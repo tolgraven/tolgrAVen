@@ -1,6 +1,9 @@
 (ns tolgraven.supabase.reader
   "JVM transport for the same public query plans used by the browser adapter."
-  (:require [clojure.data.json :as json]
+  (:require [tolgraven.config :as config]
+            [tolgraven.validation :as validation]
+            [tolgraven.supabase.schema :as schema]
+            [clojure.data.json :as json]
             [clojure.string :as string]
             [tolgraven.platform.supabase :as platform]
             [tolgraven.concurrent :as concurrent]
@@ -24,6 +27,8 @@
     (let [size (if remaining (min 500 remaining) 500)
           rows (concurrent/upstream! #(-> (platform/request! :get table
                         {:query-params (assoc (params plan) "offset" offset "limit" size)}) :body))
+          _ (when (config/validation-enabled?)
+              (validation/check! (str "Supabase " table) (schema/projected-rows table select) rows))
           ;; The public allowlist applies even if a transport returns extra fields.
           rows (mapv #(select-keys % (map keyword (string/split select #","))) rows)
           result (into result rows)]

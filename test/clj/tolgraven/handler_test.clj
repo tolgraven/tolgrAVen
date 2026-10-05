@@ -7,6 +7,7 @@
     [tolgraven.middleware :as middleware]
     [tolgraven.middleware.formats :as formats]
     [tolgraven.routes.services :as services]
+    [tolgraven.supabase.integrations :as integrations]
     [reitit.ring :as ring]
     [muuntaja.core :as m]
     [mount.core :as mount]))
@@ -92,3 +93,21 @@
       (is (.contains (:body response) "[:nr]"))))
   (testing "unsafe documentation names never reach resource lookup"
     (is (= 400 (:status (app-routes (request :get "/api/doc?path=../secret")))))))
+
+
+(deftest integration-query-contracts-coerce-and-reject-before-transport
+  (let [calls (atom [])]
+    (with-redefs [integrations/search! (fn [collection params]
+                                        (swap! calls conj [collection params]) {:hits []})
+                  integrations/strava! (fn [path] (swap! calls conj path) {})]
+      (is (= 200 (:status (app-routes (request :get "/api/integrations/search?collection=blog-posts&q=test&page=2&per_page=10")))))
+      (is (= ["blog-posts" {"collection" "blog-posts" "q" "test" "page" 2 "per_page" 10}]
+             (first @calls)))
+      (reset! calls [])
+      (doseq [url ["/api/integrations/search?collection=private&q=test"
+                   "/api/integrations/search?collection=blog-posts&q=test&page=0"
+                   "/api/integrations/search?collection=blog-posts&q=test&per_page=101"
+                   "/api/integrations/strava?path=athlete/../secrets"
+                   "/api/integrations/image?url=https%3A%2F%2Fexample.test%2Fa.jpg&transforms=10000x10000"]]
+        (is (= 400 (:status (app-routes (request :get url)))) url))
+      (is (empty? @calls)))))

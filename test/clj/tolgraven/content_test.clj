@@ -64,7 +64,7 @@
                                (if @fail? (throw (Exception. "offline"))
                                    {:status 200 :body {:version 1 :content
                                                       {:document {:title (str "Version " @calls)}
-                                                       :footer {:copyright "Test"}}}}))]
+                                                       :footer [{:title "Test"}]}}}))]
         (content/refresh-immediate!)
         (reset! fail? true)
         (dotimes [_ 5]

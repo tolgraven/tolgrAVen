@@ -1,5 +1,6 @@
 (ns tolgraven.chat.views
   (:require
+    [tolgraven.supabase.schema :as schema]
     [tolgraven.component.registry]
     [tolgraven.macros :as m :refer-macros [defc]]
     [reagent.core :as r]
@@ -11,7 +12,7 @@
     [tolgraven.util :as util]))
 
 (defc <chat-message> "A single chat message"
-  [message]
+  [message :- schema/chat-message]
   (let [user @(rf/subscribe [:user/user (:user message)])
         hovered? (r/atom false)]
     (fn [message]

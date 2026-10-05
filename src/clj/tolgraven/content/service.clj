@@ -26,10 +26,12 @@
         (when-not (and (= 200 (:status response)) (= contract/version (:version body))
                        (map? (:content body)) (every? #(contains? (:content body) %) ks))
           (throw (ex-info "CMS content unavailable" {:status 503})))
-        (select-keys (:content body) ks))
+        (select-keys (:content (contract/checked-bundle body ks)) ks))
       ;; Development/offline seed is server-side only. A configured CMS failure
       ;; never silently replaces the editor's content with the original seed.
-      (select-keys (json/read-str (slurp (io/resource "content-seed.json")) :key-fn keyword) ks))))
+      (select-keys (:content (contract/checked-bundle
+                              {:version contract/version
+                               :content (json/read-str (slurp (io/resource "content-seed.json")) :key-fn keyword)} ks)) ks))))
 
 (defonce *immediate (atom nil))
 

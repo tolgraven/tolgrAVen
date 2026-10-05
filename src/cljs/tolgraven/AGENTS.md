@@ -25,3 +25,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - `validation/runtime.cljs` owns declaration checks, module section registration
   and the app-db interceptor. Invalid transactions retain previous state and do
   not run associated effects. Keep validation out of subscription computations.
+
+- Use inline `defc`/`defpage` `[value :- schema]` for meaningful public inputs;
+  a rest annotation validates each remaining value. Keep reusable spec schemas
+  in CLJC. Give persistent component state a `:state {:schema ...}` when it has
+  a domain shape, and test normal updates plus rejected transactions.

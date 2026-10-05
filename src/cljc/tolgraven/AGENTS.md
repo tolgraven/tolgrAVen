@@ -19,3 +19,8 @@ specs and normalization belong here so CLJ and CLJS use the same definition.
   explicit and retain open maps where migration is incomplete.
 - `schema/http.cljc` is shared by page and API routers; use those typed parameters
   in handlers/controllers and use the same schemas for accepted/rejected fixtures.
+
+- Define meaningful new contracts alongside their owner and use them across both
+  runtimes. CMS bundles and normalized app-db/provider content have different
+  shapes. SQL projections include selected NULL columns. Keep raw transport,
+  normalized record and component presentation contracts distinct where needed.

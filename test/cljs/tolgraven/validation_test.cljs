@@ -7,6 +7,8 @@
             [tolgraven.routes :as routes]
             [tolgraven.component :as component]
             [tolgraven.component.registry :as registry]
+            [tolgraven.component.persistent-state :as state]
+            [tolgraven.blog.events]
             [tolgraven.schema.declarations :as schemas]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.test-support :as support]
@@ -72,11 +74,47 @@
         (.finally done))))
 
 
+(deftest editing-and-clearing-drafts-use-valid-app-state
+  (async done
+    (-> (go-promise
+          (let [restore! (re-frame/make-restore-fn)
+                enabled? @validation/*enabled?
+                consumer (await! (support/mount-subscriptions!
+                                   {:draft [:form-field [:post-blog]]
+                                    :adding [:state [:blog :adding-comment]]
+                                    :errors [:validation/errors]}))]
+            (try
+              (reset! validation/*enabled? true)
+              (rf/reg-global-interceptor (rf/->interceptor :id :validation/app-db :after validation/intercept))
+              ;; This unit test exercises registered events/subscriptions; disk
+              ;; persistence is covered separately by the storage tests.
+              (rf/reg-fx :ls (fn [_]))
+              (rf/reg-fx :blog/cache-state (fn [_]))
+              (rf/dispatch [:init/app-db])
+              (rf/dispatch [:form-field [:post-blog] {:title "Draft" :text "Body" :tags ["cljs"]}])
+              (rf/dispatch [:blog/adding-comment [27] true])
+              (await! (support/settle!))
+              (is (= ["cljs"] (get-in ((:values consumer)) [:draft :tags])))
+              (is (true? (get-in ((:values consumer)) [:adding [27]])))
+              (rf/dispatch [:blog/cancel-edit])
+              (rf/dispatch [:blog/adding-comment [27] nil])
+              (await! (support/settle!))
+              (is (nil? (:draft ((:values consumer)))))
+              (is (nil? (get-in ((:values consumer)) [:adding [27]])))
+              (is (empty? (:errors ((:values consumer)))))
+              (finally
+                ((:unmount! consumer))
+                (rf/clear-global-interceptor :validation/app-db)
+                (reset! validation/*enabled? enabled?)
+                (restore!)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
 (defc <positional>
   {:schema [:map [:category :keyword]]
    :category :display
    :args-schema [:tuple [:map [:title :string]] :int]}
-  [{:keys [title]} count]
+  [{:keys [title]} :- [:map [:title :string]] count :- :int]
   [:p title ": " count])
 
 (defc <typed-spec>
@@ -86,14 +124,12 @@
   [:p label])
 
 (defc <variadic>
-  {:args-schema [:cat :string [:* :int]]}
-  [label & amounts]
+  [label :- :string & amounts :- :int]
   [:p label ": " (reduce + 0 amounts)])
 
 (defc <multi-arity>
-  {:args-schema [:alt [:cat :int] [:cat :int :int]]}
-  ([a] (<multi-arity> a a))
-  ([a b] [:p (+ a b)]))
+  ([a :- :int] (<multi-arity> a a))
+  ([a :- :int b :- :int] [:p (+ a b)]))
 
 (deftest component-input-schemas-cover-positional-destructured-variadic-and-spec-inputs
   (is (= :display (get-in (registry/component-spec <positional>) [:options :category])))
@@ -120,5 +156,40 @@
               (is (some? (.querySelector element "[role=alert]")))
               (is (.includes (.-textContent element) "[:props]"))
               (finally (support/unmount! root) (.remove element)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+
+(defc <scoped-counter>
+  {:state {:initial {:count 0} :schema [:map [:count [:int {:min 0}]]]}}
+  []
+  :let [*count (state/<sub :comp [:count])]
+  [:button {:on-click #(state/>update *count dec)} @*count])
+
+(deftest component-owned-state-rejects-invalid-updates-and-retains-rendered-value
+  (async done
+    (-> (go-promise
+          (let [restore! (re-frame/make-restore-fn)
+                enabled? @validation/*enabled? sections @validation/*sections
+                element (.createElement js/document "div")
+                root (await! (support/create-root! element))]
+            (.appendChild (.-body js/document) element)
+            (try
+              (reset! validation/*enabled? true)
+              (rf/reg-global-interceptor (rf/->interceptor :id :validation/app-db :after validation/intercept))
+              (rf/dispatch [:init/app-db])
+              (await! (support/render! root [:<> [<scoped-counter>] [views/<reports>]]))
+              (is (= "0" (.-textContent (.querySelector element "button"))))
+              (.click (.querySelector element "button"))
+              (await! (support/settle!))
+              (is (= "0" (.-textContent (.querySelector element "button"))))
+              (is (.includes (.-textContent element) "<scoped-counter>"))
+              (is (.includes (.-textContent element) ":count"))
+              (finally
+                (support/unmount! root) (.remove element)
+                (rf/clear-global-interceptor :validation/app-db)
+                (reset! validation/*sections sections)
+                (reset! validation/*enabled? enabled?)
+                (restore!)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))

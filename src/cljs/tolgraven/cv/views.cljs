@@ -1,5 +1,6 @@
 (ns tolgraven.cv.views
   (:require
+    [tolgraven.content.schema :as schema]
     [tolgraven.component.registry]
     [cljs-time.core :as ct]
     [clojure.string :as string]
@@ -15,7 +16,8 @@
 ;; and can put like projects, roles/promotions, courses etc for that specific thing
 ;; either as a full new timeline of same type, or inside the existing big box (that'd be made bigger)
 (m/defc <box> "One thing, accomplishment, employment, etc"
-  [{:keys [from to what position how where logo color] :as all} pos size overlap-level]
+  [{:keys [from to what position how where logo color] :as all} :- schema/timeline-item
+   pos :- [:or :string number?] size :- [:or :string number?] overlap-level :- :int]
   (let [expanded? (r/atom false)
         closing? (r/atom false)]
     (fn [{:keys [from to what position how where logo color] :as all} pos size overlap-level]
@@ -49,7 +51,7 @@
          [img/<picture> {:src logo :alt "Company logo"}])])))
 
 (m/defc <capabilities> "The various skills"
-  [skills]
+  [skills :- [:map-of [:or :string :keyword] [:sequential :string]]]
   (let [topic (fn [id icon]
                 [:div.cv-skill
                  {:class (str "cv-" (name id))}
@@ -74,7 +76,7 @@
         :class "fullwide"}]])
 
 (m/defc <intro>
-  [cv]
+  [cv :- schema/cv-body]
   (let [win-fullscreen? @(rf/subscribe [:state [:window :fullscreen?]])]
     [:div.cv-intro
      [<intro-logo>]

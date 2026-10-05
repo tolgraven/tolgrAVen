@@ -5,11 +5,15 @@
             [clojure.string :as string]))
 
 (defonce ^:private *compiled (atom {}))
+(def compiled-cache-limit 256)
 (defn compiled [schema]
   (or (get @*compiled schema)
       (let [schema* (m/schema schema)
             compiled {:valid? (m/validator schema*) :explain (m/explainer schema*)}]
-        (swap! *compiled assoc schema compiled)
+        ;; Declaration schemas are stable, but composed instance schemas can
+        ;; change throughout a long session. Drop the previous cache generation
+        ;; at the bound instead of retaining every historical schema forever.
+        (swap! *compiled #(assoc (if (< (count %) compiled-cache-limit) % {}) schema compiled))
         compiled)))
 
 (defn problems [explanation]

@@ -15,7 +15,7 @@
 
 (defc <commit> "Show a single commit with highlighted diff etc..."
   {:features [[:appear "zoom-y"]]}
-  [sha close]
+  [sha :- :string close]
   (let [commit @(rf/subscribe [:github/commit sha])]
      [:div.github-commit-full
      close
@@ -82,7 +82,7 @@
   {:features [[:on-seen (fn [user repo]
                          {:event [:github/fetch-commits-next user repo]
                           :once? false :delay-ms 500})]]}
-  [user repo]
+  [user :- :string repo :- :string]
   (fn [user repo]
    [:div.github-loading
    [:h2 "Loaded " (count @(rf/subscribe [:github/commits]))]

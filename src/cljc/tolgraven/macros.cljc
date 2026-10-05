@@ -98,6 +98,30 @@
        (loading-root (last form))
        :else {})))
 
+#?(:clj
+   (defn component-arguments
+     "Strip optional binding :- Malli-schema annotations. A rest annotation
+      describes each remaining argument, including destructured rest bindings."
+     [args]
+     (when-not (vector? args)
+       (throw (ex-info "Component arguments must be a vector" {})))
+     (loop [remaining (seq args) clean [] schemas [] typed? false]
+       (if-not remaining
+         {:args (with-meta clean (meta args)) :schema (into [:cat] schemas) :typed? typed?}
+         (let [rest? (= '& (first remaining))
+               remaining (if rest? (next remaining) remaining)
+               binding (first remaining)
+               annotated? (= :- (second remaining))
+               schema (if annotated? (nth remaining 2 nil) :any)
+               tail (if annotated? (drop 3 remaining) (next remaining))]
+           (when (or (nil? binding) (= :- binding) (= '& binding)
+                     (and annotated? (nil? schema)) (and rest? (seq tail)))
+             (throw (ex-info "Use [binding :- schema ... & rest :- item-schema]" {})))
+           (recur (seq tail)
+                  (into clean (if rest? ['& binding] [binding]))
+                  (conj schemas (if rest? [:* schema] schema))
+                  (or typed? annotated?)))))))
+
 (defmacro defc
   "Define a lean Reagent 2 function component with optional composed features.
 
@@ -123,10 +147,22 @@
      :let [*count (reagent.core/atom 0)]
      [:button {:on-click #(swap! *count inc)} label @*count])"
   [name & decls]
-  (let [docstring (when (string? (first decls)) (first decls))
+  (let [source-decls decls
+        docstring (when (string? (first decls)) (first decls))
         decls (if docstring (next decls) decls)
         attrs (when (map? (first decls)) (first decls))
         decls (if attrs (next decls) decls)
+        signatures (if (vector? (first decls))
+                     [(component-arguments (first decls))]
+                     (mapv #(component-arguments (first %)) decls))
+        inline-schema (when (some :typed? signatures)
+                        (if (= 1 (count signatures)) (:schema (first signatures))
+                            (into [:alt] (map :schema signatures))))
+        attrs (cond-> attrs inline-schema
+                (update :args-schema #(if % [:and % inline-schema] inline-schema)))
+        decls (if (vector? (first decls))
+                (cons (:args (first signatures)) (next decls))
+                (map (fn [arity signature] (cons (:args signature) (next arity))) decls signatures))
         ;; Page semantics live here, including direct defc {:page true} users.
         attrs (if (:page attrs)
                 (update attrs :features
@@ -210,7 +246,7 @@
              (let [~descriptor (tolgraven.component.registry/definition
                              ~(str ns-name) ~(str name)
                              (cond-> ~options ^boolean goog.DEBUG
-                               (assoc :code ~(pr-str (list* 'defc name (concat (when docstring [docstring]) (when attrs [attrs]) decls)))))
+                               (assoc :code ~(pr-str (list* 'defc name source-decls))))
                              (fn ~args (let [~@helper-bindings ~@loading-bindings ~@bindings] (fn ~args ~@body))))]
              ~(if plain?
                 (let [render `(tolgraven.component.instrumentation/instrument ~descriptor

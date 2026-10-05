@@ -25,17 +25,8 @@
         (assoc-in [:state :content :status] :ready))))
 
 (defn valid-bundle? [bundle ks]
-  (try
-    (and (= contract/version (:version bundle)) (map? (:content bundle))
-         (every? #(contains? (:content bundle) %) ks)
-         (every? (set contract/sections) (keys (:content bundle)))
-         (every? (fn [[k value]]
-                   ((if (#{:post-footer :footer :gallery :interlude} k) vector? map?) value))
-                 (:content bundle))
-         ;; Validate before dispatch: re-frame catches event-handler exceptions,
-         ;; which otherwise could resolve bootstrap with content still missing.
-         (do (contract/normalize-content (:content bundle)) true))
-    (catch :default _ false)))
+  (try (contract/checked-bundle bundle ks) true
+       (catch :default _ false)))
 
 (declare ensure! prefetch!)
 

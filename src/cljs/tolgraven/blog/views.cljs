@@ -42,7 +42,7 @@
 
 (defc <posted-by> "Render author, timestamp, and optional score."
   {:features [[:appear nil]]}
-  [{:keys [id user ts score] :or {score 0} :as spec}]
+  [{:keys [id user ts score] :or {score 0} :as spec} :- schema/posted-by-spec]
   (let [user @(rf/subscribe [:user/user user])
         username [:em.blog-user
                   (if-let [username (:name user)]
@@ -61,7 +61,7 @@
         score])])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
 
 (defc <add-comment-btn> "Open or cancel the comment editor."
-  [{:keys [parent-path kind] :as spec}]
+  [{:keys [parent-path kind] :as spec} :- schema/parent-spec]
   (let [adding-comment? @(rf/subscribe [:comments/adding? parent-path])
         attrs {:on-click
                #(rf/dispatch
@@ -128,7 +128,7 @@
 
 (defc <comment-post> "Render a comment and its replies; defer hidden threads until needed."
   {:features [:error-boundary]}
-  [{:keys [path visible?] {:keys [id ts user title text score] :as post} :comment :as spec}]
+  [{:keys [path visible?] {:keys [id ts user title text score] :as post} :comment :as spec} :- schema/comment-spec]
   :let [*full? (r/atom nil) ; nil: not measured, false: truncated, true: expanded
         *interacted? (r/atom false)
         capture-height! (fn [element]
@@ -235,7 +235,7 @@
 
 (defc <comments-section> "Comments section!"
   {:features [[:appear "zoom-y"]]}
-  [{{:keys [id] :as post} :post :as spec}]
+  [{{:keys [id] :as post} :post :as spec} :- schema/post-spec]
   (let [{:keys [records loading? more?]} @(rf/subscribe [:comments/root-page id])
         comments (->> (vals records) (sort-by (juxt :ts :id)) reverse)]
     [:section.blog-comments
@@ -292,7 +292,7 @@
 
 (defc <add-comment> "Edit or submit a comment with a live preview."
   {:features [:error-boundary]}
-  [{:keys [parent-path] :as spec}]
+  [{:keys [parent-path] :as spec} :- schema/parent-spec]
   :let [*preview? (r/atom false)]
   (when @(rf/subscribe [:comments/adding? parent-path])
     (let [*model (rf/subscribe [:form-field [:write-comment parent-path]])]
@@ -376,10 +376,10 @@
       [:button {:on-click #(rf/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
        [:label "Cancel"]]]]))
 
-(defc <tag-link> [{:keys [tag]}]
+(defc <tag-link> [{:keys [tag]} :- schema/tag-spec]
   [:span [:a.blog-tag-link {:href @(rf/subscribe [:href :blog-tag {:tag tag}])} tag]])
 
-(defc <tags-list> [{{:keys [id tags]} :post :as spec}]
+(defc <tags-list> [{{:keys [id tags]} :post :as spec} :- schema/post-spec]
   (when-let [tags (seq (model/tags tags))]
     [:div.blog-post-tags
      (for [tag (sort tags)]
@@ -392,7 +392,7 @@
 
 (defc <post-content> "Render a loaded post with metadata and comments."
   {:features [:error-boundary [:appear "zoom-x"]]}
-  [{{:keys [id ts user title text permalink comments] :as post} :post :as spec}]
+  [{{:keys [id ts user title text permalink comments] :as post} :post :as spec} :- schema/post-spec]
   (let [user @(rf/subscribe [:user/user user])]
      [:section.blog-post
       {:data-link-trust (name (link-trust user))}

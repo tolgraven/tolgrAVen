@@ -4,6 +4,7 @@
     [reitit.swagger-ui :as swagger-ui]
     [reitit.ring.coercion :as coercion]
     [tolgraven.schema.http :as schemas]
+    [tolgraven.supabase.schema :as store-schema]
     [tolgraven.config :as config]
     [reitit.ring.middleware.muuntaja :as muuntaja]
     [reitit.ring.middleware.multipart :as multipart]
@@ -110,14 +111,22 @@
                                                   (string/split #","))))}]
 
    ["/integrations/settings" {:get (fn [_] (integrations/response! integrations/settings!))}]
-   ["/integrations/strava" {:get (fn [request] (integrations/response! #(integrations/strava! (get-in request [:query-params "path"]))))}]
-   ["/integrations/intervals" {:get (fn [request] (integrations/response! #(integrations/intervals! (get-in request [:query-params "path"]))))}]
+   ["/integrations/strava" {:parameters {:query [:map [:path schemas/strava-path]]}
+                                :get (fn [request] (integrations/response! #(integrations/strava! (get-in request [:parameters :query :path]))))}]
+   ["/integrations/intervals" {:parameters {:query [:map [:path schemas/intervals-path]]}
+                                :get (fn [request] (integrations/response! #(integrations/intervals! (get-in request [:parameters :query :path]))))}]
    ["/integrations/instagram" {:get (fn [_] (integrations/response! integrations/instagram!))}]
-   ["/integrations/search" {:get (fn [request] (integrations/response! #(integrations/search! (get-in request [:query-params "collection"]) (:query-params request))))}]
-   ["/integrations/strapi" {:get (fn [request] (integrations/response! #(integrations/strapi! (get-in request [:query-params "path"]))))}]
-   ["/integrations/image" {:get (fn [request]
-                                (try (integrations/image-response! (get-in request [:query-params "url"])
-                                                                   (get-in request [:query-params "transforms"]))
+   ["/integrations/search" {:parameters {:query schemas/search-query}
+                            :get (fn [request]
+                                   (let [query (get-in request [:parameters :query])]
+                                     (integrations/response! #(integrations/search! (:collection query)
+                                                               (into {} (map (fn [[k v]] [(name k) v])) query)))))}]
+   ["/integrations/strapi" {:parameters {:query [:map [:path schemas/strapi-path]]}
+                                :get (fn [request] (integrations/response! #(integrations/strapi! (get-in request [:parameters :query :path]))))}]
+   ["/integrations/image" {:parameters {:query schemas/image-query}
+                           :get (fn [request]
+                                (try (integrations/image-response! (get-in request [:parameters :query :url])
+                                                                   (get-in request [:parameters :query :transforms]))
                                      (catch Exception _ {:status 400 :body {:error "Invalid image request"}})))}]
 
    ["/supabase/settings"
@@ -130,7 +139,7 @@
            :handler (fn [request]
                       (supabase-auth/response! request supabase-auth/profile!))}
      :put {:summary "Update the signed-in user's editable profile fields"
-           :parameters {:body map?}
+           :parameters {:body store-schema/profile-write}
            :handler (fn [request]
                       (supabase-auth/response!
                        request #(supabase-auth/save-profile! % (get-in request [:parameters :body]))))}}]
@@ -144,46 +153,46 @@
 
    ["/supabase/chat"
     {:post {:summary "Post a chat message as the signed-in user"
-            :parameters {:body map?}
+            :parameters {:body store-schema/chat-write}
             :handler (fn [request]
                        (supabase-auth/response!
                         request #(supabase-operations/post-chat! % (get-in request [:parameters :body]))))}}]
 
    ["/supabase/comments"
     {:post {:summary "Create a comment or reply as the signed-in user"
-            :parameters {:body map?}
+            :parameters {:body store-schema/comment-create}
             :handler (fn [request]
                        (supabase-auth/response!
                         request #(supabase-operations/create-comment! % (get-in request [:parameters :body]))))}
      :put {:summary "Edit an owned comment"
-           :parameters {:body map?}
+           :parameters {:body store-schema/comment-edit}
            :handler (fn [request]
                       (supabase-auth/response!
                        request #(supabase-operations/edit-comment! % (get-in request [:parameters :body]))))}}]
 
    ["/supabase/votes"
     {:post {:summary "Set or remove the signed-in user's comment vote atomically"
-            :parameters {:body map?}
+            :parameters {:body store-schema/vote-write}
             :handler (fn [request]
                        (supabase-auth/response!
                         request #(supabase-operations/set-comment-vote! % (get-in request [:parameters :body]))))}}]
 
    ["/supabase/store/query"
     {:post {:summary "Query Supabase-backed store data using document and collection paths"
-            :parameters {:body map?}
+            :parameters {:body store-schema/query}
             :handler (fn [{{query-map :body} :parameters}]
                        (supabase-api/query-response query-map))}}]
 
    ["/supabase/posts"
     {:post {:summary "Publish or edit a post as an authorized author"
-            :parameters {:body map?}
+            :parameters {:body store-schema/post-write}
             :handler (fn [request]
                        (supabase-auth/response! request
                          #(supabase-operations/save-post! % (get-in request [:parameters :body]))))}}]
 
    ["/supabase/documents"
     {:post {:summary "Save a private document owned by the signed-in user"
-            :parameters {:body map?}
+            :parameters {:body store-schema/document-write}
             :handler (fn [request]
                        (supabase-auth/response! request
                          #(supabase-operations/save-document! % (get-in request [:parameters :body]))))}}]

@@ -23,6 +23,9 @@ const posts = () => [...(app()?.querySelectorAll('.blog-post') || [])];
 const ready = () => {
   const failure = app()?.querySelector('main .component-failed');
   if (failure) throw new Error(failure.textContent);
+  const validationFailure = [...(app()?.querySelectorAll('[role="alert"]') || [])]
+    .find(element => element.textContent.includes('Schema validation:'));
+  if (validationFailure) throw new Error(validationFailure.textContent);
   return app()?.querySelector('main') &&
   (!doc().querySelector('#ssr-shell') || doc().querySelector('#ssr-complete')) &&
   // GitHub's scroll-to-load footer intentionally keeps a spinner next to its

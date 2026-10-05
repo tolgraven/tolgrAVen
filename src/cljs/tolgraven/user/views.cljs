@@ -1,5 +1,6 @@
 (ns tolgraven.user.views
   (:require
+    [tolgraven.supabase.schema :as schema]
     [tolgraven.component.registry]
     [tolgraven.link-preview.views :as link-preview]
     [reagent.core :as r]
@@ -188,7 +189,7 @@
 (defc <user-avatar>
   "Render one avatar. Reserve its space while the profile is pending; use the
    default only for a resolved profile without an avatar or a failed image."
-  [user-map & [extra-class]]
+  [user-map :- [:maybe schema/profile] & [extra-class] :- [:maybe :string]]
   (r/with-let [*failed-sources (r/atom #{})]
     (let [fallback @(rf/subscribe [:user/default-avatar])
           avatar (:avatar user-map)

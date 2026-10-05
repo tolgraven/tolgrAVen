@@ -4,6 +4,8 @@
             [clojure.string :as string]
             [tolgraven.content.service :as content]
             [tolgraven.config :as config]
+            [tolgraven.validation :as validation]
+            [tolgraven.ssr.schema :as schema]
             [tolgraven.concurrent :as concurrent]
             [tolgraven.supabase.reader :as reader]
             [tolgraven.supabase.plan :as plan]
@@ -15,8 +17,10 @@
 
 (def renderer-version 3)
 (defn settings []
-  (merge {:enabled true :render-workers 2 :worker "target/ssr/site.js" :node-binary "node"}
-         (:ssr config/env)))
+  (let [settings (merge {:enabled true :render-workers 2 :worker "target/ssr/site.js" :node-binary "node"}
+                        (:ssr config/env))]
+    (when (config/validation-enabled?) (validation/check! "SSR configuration" schema/settings settings))
+    settings))
 
 (defonce *pool (atom nil))
 (defn- pool! []

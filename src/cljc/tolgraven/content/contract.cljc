@@ -1,4 +1,6 @@
-(ns tolgraven.content.contract)
+(ns tolgraven.content.contract
+  (:require [tolgraven.content.schema :as schema]
+            [tolgraven.validation :as validation]))
 
 (def version 1)
 (def sections [:document :header :intro :services :moneyshot :story :strava :interlude
@@ -42,3 +44,12 @@
     (:blog content) (update-in [:blog :heading :target] #(some-> % keyword))
     (:cv content) (update-in [:cv :heading :target] #(some-> % keyword))
     (:cv content) (update-in [:cv :cv :timeline] #(mapv (fn [item] (update item :category keyword)) %))))
+
+(defn checked-bundle
+  "Validate normalized public content once at the transport boundary."
+  [bundle requested]
+  (let [normalized (update bundle :content normalize-content)]
+    (validation/check! :content/bundle schema/bundle normalized)
+    (when-not (every? #(contains? (:content normalized) %) requested)
+      (throw (ex-info "Content response is missing requested sections" {:status 503})))
+    normalized))

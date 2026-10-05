@@ -2,6 +2,7 @@
   "Helpers for serving modern image formats (WebP, AVIF) with automatic fallbacks"
   (:require
     [tolgraven.component.registry]
+    [tolgraven.schema.components :as schema]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.image.sources :as sources]
     [tolgraven.react :as react]
@@ -31,7 +32,7 @@
    Browsers select the first supported format. If requesting or decoding that
    source fails, retry the original JPEG/PNG. Call the caller's on-error only when the
    original image fails too."
-  [{:keys [src on-error ref] :as attrs}]
+  [{:keys [src on-error ref] :as attrs} :- schema/image-attrs]
   (r/with-let [*fallback-sources (r/atom #{})]
     (let [capture! (react/use-callback
                     (fn [image]
@@ -70,13 +71,13 @@
 (defc <img>
   "Smart img component that automatically uses modern formats when available.
    Alias for picture component for drop-in replacement."
-  [attrs]
+  [attrs :- schema/image-attrs]
   [<picture> attrs])
 
 (defc <media-as-bg>
   "Generate picture element optimized for use as background media.
    Adds common background styling attributes."
-  [{:keys [src alt class] :as attrs}]
+  [{:keys [src alt class] :as attrs} :- schema/image-attrs]
   (let [combined-attrs (merge attrs
                               {:class (str "media media-as-bg " (or class ""))})]
     [<picture> combined-attrs]))

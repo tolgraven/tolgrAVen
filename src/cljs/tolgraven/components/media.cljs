@@ -1,5 +1,6 @@
 (ns tolgraven.components.media
   (:require
+    [tolgraven.content.schema :as schema]
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.react :as rf]
@@ -17,7 +18,7 @@
       :style {:background-image (str "url('" path "')")}} ])) ; cant remember why I did the weird path-in-css bs but anyways...
 
 (defc ^:private <media-as-bg-smart> "Detects whether media is image or video and uses appropriate component"
-  [media-data]
+  [media-data :- schema/media]
   (let [src (:src media-data)]
     (if (and src (re-find #"\.(mp4|mov|webm)$" src))
       [vid/<media-as-bg> media-data]
@@ -25,7 +26,7 @@
 
 (defc <carousel-bg> "Intro (bg img only) jumbotron slider
                       Should be a generic system also working for page transitions etc"
-  [img-attrs]
+  [img-attrs :- [:sequential schema/media]]
   [:div#top-banner.carousel ;{:class ""}
    ; (map-indexed )
     (for [img-data img-attrs] ^{:key (str "carousel-bg-" (:src img-data))}
@@ -34,7 +35,7 @@
          ;  [:img.media.media-as-bg img]])])
 
 (defc <carousel-bg-2> "Intro (bg img only) jumbotron slider"
-  [img-attrs]
+  [img-attrs :- [:sequential schema/media]]
   [:div#top-banner.carousel.media-as-bg ;{:class ""}
    [:ol.carousel__viewport
     (map-indexed
@@ -59,7 +60,7 @@
 (defc <interlude> "Banner across with some image or video or w/e
                     Partial content errors probably because stops buffering since we pause it.
                     Let's try a tricky trick"
-  [interludes nr]
+  [interludes :- [:sequential schema/heading] nr :- [:int {:min 0}]]
   (let [vid-ref (atom nil) ; docs says reg atom better but only updates w ratom, bc 2nd fn or? also .play no works
         controls (atom nil)
         on-hold (r/atom nil)
@@ -127,7 +128,7 @@
        [ui/<inset> caption nr]]))))
 
 (defc <gallery> "Stupid css thing slides sidewayus x) Make it go out left side would be cool"
-  [img-attrs]
+  [img-attrs :- [:sequential schema/media]]
   [:section#gallery.covering.fullwide
    [:div.sideways
     (when @(rf/subscribe [:state [:gallery :loaded]])
@@ -135,7 +136,7 @@
          [img/<picture> (merge img {:class "media"})]))]]) ; TODO add captions and other features etc...
 
 (defc <gallery-2> "Gallery carousel"
-  [img-attrs]
+  [img-attrs :- [:sequential schema/media]]
   [:section#gallery-2.covering.fullwide {:style {:z-index 12}}
    [:div "test carousel-normal"]
    [ui/<carousel-normal> :gallery-2-normal {:style {:height "40vh"} }
@@ -144,7 +145,7 @@
             [img/<picture> (merge img {:class "media"})]))]])
 
 (defc <gallery-3> "Gallery carousel"
-  [img-attrs]
+  [img-attrs :- [:sequential schema/media]]
   [:section#gallery-2.covering.fullwide {:style {:z-index 12}}
    [:div "test carousel"]
    [ui/<carousel> :gallery-2 {:style {:height "30vh"} }

@@ -1,11 +1,18 @@
 (ns tolgraven.schema.declarations
   "Extensible contracts for the existing declaration language, shared by tooling
    and both runtimes. Extension keys stay open; declared keys have real types."
-  (:require [malli.util :as mu]))
+  (:require [malli.util :as mu]
+            [tolgraven.schema.common :as c]
+            [tolgraven.supabase.schema :as store]))
 
 (def path [:vector {:min 1} :any])
 (def event [:cat :keyword [:* :any]])
-(def dependency
+(def persistence
+  (c/optional-map {:scope [:enum :public :user] :version c/positive :ttl-ms c/milliseconds}))
+(def state-options
+  (c/optional-map {:schema :any :initial :any :key :any :id c/id :scope :keyword
+                   :persist [:or :boolean persistence]}))
+(def dependency-base
   [:map [:source :keyword]
    [:keys {:optional true} [:vector :keyword]]
    [:path {:optional true} path] [:into {:optional true} path]
@@ -13,7 +20,18 @@
    [:url {:optional true} :string]
    [:ttl-ms {:optional true} [:and number? [:> 0]]]
    [:timeout-ms {:optional true} [:and number? [:> 0]]]
-   [:availability {:optional true} [:enum :startup]]])
+   [:availability {:optional true} [:enum :startup]]
+   [:format {:optional true} [:enum :json :text]]
+   [:persist {:optional true} [:or :boolean persistence]]])
+(def dependency
+  [:and dependency-base
+   [:multi {:dispatch :source}
+    [:strapi [:map [:keys [:vector :keyword]]]]
+    [:supabase [:map [:query store/query]]]
+    [:subscription [:map [:query c/event]]]
+    [:url [:map [:url c/text]]]
+    [:app-db [:map [:path c/path]]]
+    [:malli.core/default :map]]])
 (def dependencies [:sequential dependency])
 (def feature [:or :keyword [:tuple :keyword :any]])
 (def component
@@ -21,6 +39,8 @@
    [:schema {:optional true} :any]
    [:args-schema {:optional true} :any]
    [:spec-schema {:optional true} :any]
+   [:state {:optional true} state-options]
+   [:spec {:optional true} :boolean]
    [:page {:optional true} :boolean]
    [:profile {:optional true} :boolean]
    [:features {:optional true} [:sequential feature]]
@@ -31,7 +51,8 @@
    [:module {:optional true} :keyword]])
 (def data-plan
   [:sequential [:map [:id :keyword] [:queries fn?]
-                [:depends {:optional true} [:sequential :keyword]]]])
+                [:depends {:optional true} [:or [:sequential :keyword] fn?]]
+                [:transform {:optional true} fn?]]])
 (def route-data
   [:map
    [:name {:optional true} :keyword]
@@ -58,6 +79,8 @@
    [:init {:optional true} fn?]
    [:depends {:optional true} dependencies]
    [:preload-modules {:optional true} [:sequential :keyword]]
+   [:route-depends {:optional true} fn?]
+   [:assets {:optional true} (c/optional-map {:css c/strings :js c/strings})]
    [:db-schema {:optional true} [:map-of path :any]]])
 
 

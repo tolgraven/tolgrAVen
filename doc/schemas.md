@@ -26,6 +26,9 @@ not complete removal of Malli from the bundle.
 Request coercion is always active for declared HTTP and page parameters, including
 production. Malformed external input must not reach handlers. Response checking
 and internal declaration/state checking follow the runtime setting.
+CMS bundle and persisted-envelope checks also remain active at their input
+boundaries, replacing the previous handwritten validity checks. They prevent
+corrupt content or saved state from entering the application.
 
 ## Declaration contracts
 
@@ -102,6 +105,52 @@ components with `:error-boundary` display their own shared fallback.
   [:p label ": " (reduce + 0 amounts)])
 ```
 
+Inline annotations are also supported on `defc` and `defpage`, including
+destructuring and multiple arities:
+
+```clojure
+(def label-spec (declarations/extend-spec [:map [:label :string]]))
+
+(defc <label> {:features [:props :error-boundary]}
+  [{:keys [label] :as spec} :- label-spec]
+  [:span label])
+
+(defc <count> [{:keys [title]} :- [:map [:title :string]] amount :- :int]
+  [:p title ": " amount])
+
+(defc <sum> [label :- :string & amounts :- :int]
+  [:p label ": " (reduce + 0 amounts)])
+```
+
+Annotations are removed from the actual argument vector. They build the existing
+`:args-schema`, with unannotated arguments accepting any value. A rest annotation
+checks **each remaining argument**, not the rest collection; it also works with
+`& [optional-callback] :- [:maybe fn?]`. For constraints involving several arguments,
+provide `:args-schema`; if inline annotations are also present both must pass.
+There is no return annotation or global function instrumentation. Inputs are
+validated before destructuring, without adding component/DOM wrappers.
+
+Persistent state can declare its own contract:
+
+```clojure
+(def counter-state [:map [:count [:int {:min 0}]]])
+(defc <counter>
+  {:state {:initial {:count 0} :schema counter-state
+           :persist {:scope :public :version 1}}}
+  []
+  :let [*count (<sub :comp [:count])]
+  [:button {:on-click #(>update *count inc)} @*count])
+```
+
+The resolved component path registers its schema for subsequent event updates.
+Initial, restored and existing values are checked too. Invalid storage envelopes
+are discarded at the storage boundary; retained data keeps its EDN types.
+Dynamic contracts survive unmount alongside cached state and are released when
+that state is explicitly deleted. Disabled validation does not register them.
+Compiled validators have a bounded cache; assembled app-db schemas retain only
+the current section set, so repeated instance creation does not retain every
+historical schema assembly.
+
 Schemas describe arguments as supplied. For optional inputs, declare `:?` or
 `:maybe` as appropriate; a destructuring default does not make an invalid supplied
 value valid. Skeleton sample arguments must satisfy the same contract.
@@ -133,10 +182,27 @@ data; `defpage` component options use `extend-component`, like other `defc` view
 ## App-db by section
 
 `tolgraven.schema.app-db/sections` contains the initial shared sections; blog owns
-its definitions in `tolgraven.blog.schema`. Initial coverage includes selected UI
-options/state, blog pagination and thread state, loader readiness, and the map
-shape of persistent component/page/module/global/content roots. It does **not**
-yet describe every content field, Supabase row, event or app-db entry.
+its definitions in `tolgraven.blog.schema`. The composition covers CMS sections, normalized public records and managed query caches,
+blog pagination/thread state, navigation/forms/options, provider caches, loader
+readiness, validation reports and inspector records. Persistent roots gain their
+domain contracts from module sections or component `:state {:schema ...}`.
+
+| Owner | Shared contracts |
+| --- | --- |
+| `content/schema.cljc` | All CMS sections; headings, media, menus, CV timelines, footer items and versioned bundles |
+| `supabase/schema.cljc` | Queries, projected SQL rows, normalized profiles/posts/comments/chat, caches and closed write requests |
+| `schema/state.cljc` | UI state, forms, history, link previews, options and diagnostics |
+| `schema/integrations.cljc` | Consumed GitHub, Strava, Instagram and search response fields |
+| `blog/schema.cljc` | Blog state and parent-supplied post/comment component specs |
+| `ssr/schema.cljc` | Public render snapshots, return snapshots, storage envelopes and renderer settings |
+| `dev_console/schema.cljc` | Mounted instances, profiler/trace/epoch/layout metadata and bounded records |
+
+Provider extension fields remain open. Function values, DOM/SDK objects, arbitrary
+inspected EDN and generic component-owned payloads are not recursively prescribed.
+A schema describes data that a consumer uses; it is not a duplicate of an entire
+third-party API. Small private view signatures need no annotation when the owner
+already validates their input. Add contracts for new meaningful CLJ/CLJS data and
+public boundaries as part of the feature, rather than a later cleanup.
 
 ```clojure
 (require '[tolgraven.schema.app-db :as app-db]
@@ -187,9 +253,10 @@ produces `{:nr 2}` and `?userBox=false` produces `{:userBox false}`. An invalid 
 address gets a readable fallback; invalid direct requests receive HTTP 400.
 
 Declared API schemas live in the same namespace: documentation, oEmbed, messages,
-contact, numeric examples and uploads. Existing authenticated operation bodies
-retain their broad map contract and their domain adapter validation; this change
-does not claim full schemas for those operations.
+contact, numeric examples and uploads. Authenticated chat, comment, vote, post, profile and private-document bodies use
+closed shared domain schemas. Direct operation callers use the same schemas;
+authorization/RLS checks remain separate. Integration queries coerce search page
+and page size and validate the shared service-path allowlists.
 
 API failures are negotiated responses, for example:
 

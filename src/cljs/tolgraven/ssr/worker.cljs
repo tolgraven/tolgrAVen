@@ -1,5 +1,7 @@
 (ns tolgraven.ssr.worker
   (:require
+    [tolgraven.validation.runtime :as validation]
+    [tolgraven.ssr.schema :as schema]
     ["node:readline" :as readline]
     [reitit.core :as reitit]
     [tolgraven.db :as db]
@@ -22,6 +24,7 @@
 
 (defn render! [snapshot]
   (let [snapshot (update snapshot :content content/normalize-content)
+        _ (validation/check! :ssr/snapshot schema/snapshot snapshot)
         match (assoc (reitit/match-by-path routes/router (:path snapshot)) :query-params (:query-params snapshot))
         view (if (:shell? snapshot)
                (fn [] [shell/<page> (get-in match [:data :shell])])

@@ -27,8 +27,11 @@ Do not retain completed investigation diaries or historical test counts as curre
 ## Shared schemas
 - Define Malli contracts in CLJC near the owning data/module. Reuse them in tests,
   Reitit page/API parameters, and runtime validation; see `doc/schemas.md`.
-- Validate parent-supplied view data too: `defc` supports `:spec-schema` and
-  `:args-schema`, independently of subscription data. Extend/compose common
+- Schema meaningful new/changed CLJ and CLJS data and public boundaries as part of
+  the feature. Derive contracts from actual writers/readers, including loading,
+  empty, error and restored states. Trivial private view signatures may stay plain.
+- Validate parent-supplied view data too: `defc` supports inline `[arg :- schema]`,
+  `:spec-schema` and `:args-schema`, independently of subscription data. Extend/compose common
   component, instance-spec, module and page schemas instead of duplicating them.
 - Extend app-db by section and expose module-owned additions through `:db-schema`.
   Do not validate the entire db on every event; the shared interceptor checks

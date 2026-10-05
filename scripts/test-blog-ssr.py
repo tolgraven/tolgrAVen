@@ -19,6 +19,7 @@ result = subprocess.run(["node", "target/ssr/site.js"], cwd=root, text=True,
 assert "Subscribe was called outside" not in result.stderr, result.stderr
 assert "localStorage is not available" not in result.stderr, result.stderr
 first, second = map(json.loads, result.stdout.splitlines())
+assert "html" in first and "html" in second, result.stderr
 assert "<strong>article</strong>" in first["html"]
 assert "Server comment 0" in first["html"]
 assert "Server visible reply" in first["html"]
@@ -40,6 +41,7 @@ result = subprocess.run(["node", "target/ssr/site.js"], cwd=root, text=True,
                         input="\n".join(map(json.dumps, [landing, snapshot, landing])) + "\n",
                         capture_output=True, timeout=15, check=True)
 home, blog, again = map(json.loads, result.stdout.splitlines())
+assert all("html" in response for response in [home, blog, again]), result.stderr
 assert home["html"] == again["html"]
 assert "h-intro" in home["html"]
 assert "intro-letter" not in home["html"]  # React keys never leak into DOM
@@ -81,3 +83,16 @@ assert "not found" in json.loads(result.stdout)["html"].lower(), result.stdout
 print("Missing permalink SSR: completed empty read renders not-found.")
 (root / "resources/public/js/tests/js/missing-ssr.json").write_text(
     json.dumps({"snapshot": missing, "html": json.loads(result.stdout)["html"]}))
+
+# The initial shell calls the ordinary views with skeleton sample inputs. Its
+# schemas must validate those as well as complete SSR and hydration inputs.
+shells = [{**data, "shell?": True, "posts": [], "query-params": {}}
+          for data in [landing, {**snapshot, "path": "/blog/post/42"}, cv]]
+result = subprocess.run(["node", "target/ssr/site.js"], cwd=root, text=True,
+                        input="\n".join(map(json.dumps, shells)) + "\n",
+                        capture_output=True, timeout=15, check=True)
+responses = list(map(json.loads, result.stdout.splitlines()))
+assert len(responses) == len(shells)
+assert all("html" in response for response in responses), result.stderr
+assert all("component-error" not in response["html"] for response in responses)
+print("Initial shells: landing, blog post and CV sample inputs pass shared contracts.")

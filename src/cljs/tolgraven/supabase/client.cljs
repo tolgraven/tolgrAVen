@@ -1,5 +1,7 @@
 (ns tolgraven.supabase.client
-  (:require [ajax.core :as ajax]
+  (:require [tolgraven.validation.runtime :as validation]
+            [tolgraven.supabase.schema :as schema]
+            [ajax.core :as ajax]
             [tolgraven.react :as rf]
             [re-frame.db :as rfdb]
             [tolgraven.service-status :as status]
@@ -54,6 +56,7 @@
                      (fn [res]
                        (let [{:keys [data error]} (js->clj res :keywordize-keys true)]
                          (when error (throw (ex-info "Supabase select failed" {:table table})))
+                         (validation/check! (str "Supabase " table) (schema/projected-rows table select) data)
                          (let [rows (into rows data)]
                            (if (and (= size (count data)) (or (nil? limit) (< (+ offset size) limit)))
                              (page! (+ offset size) rows) rows)))))))]

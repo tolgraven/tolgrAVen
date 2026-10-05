@@ -1,5 +1,6 @@
 (ns tolgraven.component.persistent-state
   (:require [tolgraven.component.instrumentation :as instrumentation]
+            [tolgraven.validation.runtime :as validation]
             [reagent.core :as r]
             [clojure.string :as string]
             [tolgraven.content.contract :as content]
@@ -120,14 +121,20 @@
 ;; One immutable reference for snapshot producers; components still read subs.
 (defonce *snapshot-state (atom @rfdb/app-db))
 (defn- initialize! [path options]
+  (when-let [schema (:schema options)]
+    (validation/register-sections! {path schema} {:dynamic? true}))
   (let [persistence (:persist options)
         persistence (when persistence (merge {:scope :public} (when (map? persistence) persistence)))
         id [:state path]
         entry (rf/subscribe [:component-state/entry path])]
+    (when (and (:present? @entry) (:schema options))
+      (validation/check! "component state" (:schema options) (:value @entry)))
     (when-not (:present? @entry)
       (let [saved (when persistence (storage/read! id persistence))
-            revision (:revision @entry)]
-        (rf/dispatch-sync [:component-state/init path (if saved (:value saved) (:initial options))])
+            revision (:revision @entry)
+            value (if saved (:value saved) (:initial options))]
+        (when-let [schema (:schema options)] (validation/check! "component state" schema value))
+        (rf/dispatch-sync [:component-state/init path value])
         (when (and persistence (nil? saved))
           (-> (storage/ready! persistence)
               (.then (fn [_]

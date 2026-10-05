@@ -15,17 +15,26 @@
     (validation/enabled? {:validation-enabled override} goog.DEBUG)))
 (defonce *enabled? (atom (configured?)))
 (defonce *sections (atom app-db/sections))
+(defonce ^:private *dynamic-paths (atom #{}))
 (defonce ^:private *installed? (atom false))
 
 (defn check! [contract schema value]
   (when @*enabled? (validation/check! contract schema value))
   value)
 
-(defn register-sections! [sections]
-  (when @*enabled?
-    ;; Compile once, at registration, so invalid schemas fail at their owner.
-    (doseq [[_ schema] sections] (validation/compiled schema)))
-  (swap! *sections merge sections))
+(defn register-sections!
+  ([sections] (register-sections! sections {}))
+  ([sections {:keys [dynamic?]}]
+   (when @*enabled?
+     ;; Compile once, at registration, so invalid schemas fail at their owner.
+     (doseq [[_ schema] sections] (validation/compiled schema))
+     (swap! *dynamic-paths #(if dynamic? (into % (keys sections)) (apply disj % (keys sections))))
+     (swap! *sections merge sections))))
+
+(defn- forget-sections! [paths]
+  (swap! *sections #(apply dissoc % paths))
+  (swap! *dynamic-paths #(apply disj % paths)))
+(rf/reg-fx :validation/forget-sections forget-sections!)
 
 (defn module! [spec]
   (check! (str "module " (:id spec)) (declarations/extend-module (:schema spec)) spec)
@@ -61,19 +70,26 @@
         (assoc context :effects
                {:dispatch [:validation/report {:contract :app-db :event event
                                                 :issues (vec issues)}]})
-        context)
+        (let [removed (app-db/removed-sections @*dynamic-paths before after)]
+          ;; Run only for an accepted transaction, after re-frame commits :db.
+          (cond-> context
+            (seq removed) (update-in [:effects :fx] (fnil conj [])
+                                    [:validation/forget-sections removed]))))
       context)))
 
 (defn install! []
   (reset! *enabled? (configured?))
+  (swap! *sections merge app-db/sections)
   ;; Hot reload replaces by ID. Disabled builds do no per-event validation work.
   (if @*enabled?
     (do (rf/reg-global-interceptor
          (rf/->interceptor :id :validation/app-db :after intercept))
         (reset! *installed? true))
-    (when @*installed?
-      (rf/clear-global-interceptor :validation/app-db)
-      (reset! *installed? false))))
+    (do
+      (forget-sections! @*dynamic-paths)
+      (when @*installed?
+        (rf/clear-global-interceptor :validation/app-db)
+        (reset! *installed? false)))))
 
 (defn validate-routes! [routes _]
   (when @*enabled?

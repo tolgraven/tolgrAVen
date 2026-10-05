@@ -1,7 +1,9 @@
 (ns tolgraven.supabase.scoped
   "Public scoped readers: retain results in app-db, hold live channels only while
    subscribed, and coalesce invalidations before issuing filtered HTTP reads."
-  (:require [tolgraven.react :as rf]
+  (:require [tolgraven.validation.runtime :as validation]
+            [tolgraven.supabase.schema :as schema]
+            [tolgraven.react :as rf]
             [reagent.ratom :as ratom]
             [tolgraven.supabase.query :as query]
             [tolgraven.supabase.connection :as connection]
@@ -124,6 +126,7 @@
   (queue!))
 
 (defn ensure-query! [opts]
+  (validation/check! :supabase/query schema/query opts)
   (let [key (query-key opts)]
     (or (get-in @*readers [key :*state])
         (let [state (ratom/make-reaction
