@@ -22,3 +22,21 @@
     (is (not (injected? '(<example> [url <loading>] [:div <loading>]))))
     (is (not (injected? '(<example> [{:keys [<loading>]}] [:div <loading>]))))
     (is (not (injected? '(<example> [] :let [<loading> [:p "Custom"]] [:div <loading>]))))))
+
+(deftest page-declarations-cannot-disable-their-boundary
+  (let [expanded (macroexpand-1
+                   '(tolgraven.macros/defpage <example> "Example"
+                      {:features [[:error-boundary false] [:appear "opacity"]]
+                       :depends [{:source :strapi :keys [:example]}]}
+                      [] [:section "Example"]))
+        options (nth expanded 3)]
+    (is (= 'tolgraven.macros/defc (first expanded)))
+    (is (= [:error-boundary [:appear "opacity"]] (:features options)))
+    (is (:page options))
+    (is (= [{:source :strapi :keys [:example]}] (:depends options)))))
+
+(deftest lazy-view-expands-to-a-vector-selector
+  (is (= '(tolgraven.loader/component-vector {:module :blog :view :post} [post])
+         (macroexpand-1 '(tolgraven.macros/view {:module :blog :view :post} post))))
+  (is (= '(tolgraven.loader/component-vector <example> [spec])
+         (macroexpand-1 '(tolgraven.macros/view <example> spec)))))

@@ -56,61 +56,6 @@
         {:allow-images? (= :trusted (:trust options))
          :allow-raw? (= :trusted (:trust options))}]])))
 
-(m/defc <appear> "Merge appearance onto an explicitly supplied native element."
-  {:features [:appear]}
-    [{:keys [form] :as spec}]
-  form)
-
-(m/defc <seen> "Merge viewport visibility onto an explicitly supplied native element."
-  {:features [:seen]}
-    [{:keys [form] :as spec}]
-  form)
-
-
-(m/defc <seen-2> "Animate on coming into view. takes a map"
-  [id kind div & components]
-  (let [on-change (fn [frac]
-                    (let [state @(rf/subscribe [:state [:seen id]])]
-                      (cond
-                       (and (>= frac 0.50) (not state))
-                       (rf/dispatch [:state [:seen id] true])
-                       (and (< frac 0.50) state)
-                       (rf/dispatch [:state [:seen id] false]))))
-        observer (util/observer on-change (str "seen-" id))]
-    (fn [id kind & components]
-      (into div
-            [{:id id
-              :class (str "appear-wrapper "
-                          kind " "
-                          (when @(rf/subscribe [:state [:seen id]])
-                            "appeared"))
-              :ref #(observer %)}
-             (into [:<>] components)]))))
-
-(m/defc <lazy-load> "Dispatch init event when approaching something previous"
-  [event repeatedly?]
-  (let [observer (util/when-seen #(rf/dispatch event) repeatedly?)]
-    (fn [event]
-      [:div
-       {:ref #(if %
-                (js/setTimeout (fn [_] (observer %)) 500) ; delay to avoid firing immediately early on first complete page load
-                (observer %))}])))
-
-(m/defc <lazy-load-repeatedly> "Dispatch update event when approaching something"
-  [event & [root-id run-on-appear?]]
-  (let [observer (util/observer (fn [frac]
-                                  (when (<= frac 0.99)
-                                    (rf/dispatch event)))
-                                (merge {:threshold 1.0}
-                                 (when root-id
-                                   {:root (util/elem-by-id root-id)})))]
-    (fn [event]
-      [:div
-       {:ref (fn [el]
-               (when (and el run-on-appear?)
-                 (rf/dispatch event))
-               (observer el))}])))
-
 (m/defc <observe-sticky> "Check if sticky element has stuck."
   [event]
   (let [observer (util/observer (fn [frac]
@@ -201,6 +146,14 @@
       :on-click (fn [e] ; (.preventDefault e) ;broke it! :O what
                   (on-change (not @model)))}]]))
 
+(m/defc ^:private <inset-image>
+  {:features [[:seen "zoom"]]}
+  [img-attr zoomed?]
+  [:div [img/<picture>
+         (merge img-attr
+                {:class "media image-inset"
+                 :on-click #(r/rswap! zoomed? not)})]])
+
 (m/defc <float-img> "Needs to go within a float-wrapper..."
   [id img-attr & [caption pos]]
   (let [zoomed? (r/atom false)]
@@ -210,17 +163,19 @@
         :style (when @zoomed?
                  {:width "80%" ; TODO nvm not hardcoding and not going crazy large when vw high, should be based on img size so don't blow up too much anyways
                   :margin "var(--space-lg) 10%"}) }
-       [<seen> {:seen "zoom" :form [:div [img/<picture>
-         (merge img-attr
-                {:class "media image-inset"
-                 :on-click #(r/rswap! zoomed? not)})]]}]
+       [<inset-image> img-attr zoomed?]
        (when caption [:figcaption caption])])))
+
+(m/defc ^:private <story-line>
+  {:features [[:seen "slide-in"]]}
+  [line]
+  [:div [:span line]])
 
 (m/defc <auto-layout-text-imgs> "Take text and images and space out floats appropriately. Pretty dumb but eh"
   [content]
   (let [text-part (for [line (string/split-lines (:text content))]
                     [:<>
-                     [<seen> {:seen "slide-in" :form [:div [:span line]]}]
+                     [<story-line> line]
                      [:br]])
          chunk-size (int (/ (count text-part)
                             (count (:images content))))
@@ -397,6 +352,11 @@
             attr)])))) ;after not before, want to be able to override stuff duh
 
 
+(m/defc ^:private <styled-letter>
+  {:features [[:appear "zoom fast"]]}
+  [letter]
+  [:div [:span.styled-letter letter]])
+
 (m/defc <input-text-styled> "Custom text field with individual elements for each letter, and styled caret"
   [& {:as args :keys [model completion-fn]}]
  (let [internal-model (r/atom (or @model ""))
@@ -454,7 +414,7 @@
                        :display :inline-flex}}
         (for [[i letter] (map-indexed vector @internal-model)] ; causes issues with spacing? nice lil zoom effect though, figure out.
           ^{:key i}
-          [<appear> {:appear "zoom fast" :form [:div [:span.styled-letter letter]]}])])
+          [<styled-letter> letter])])
 
      (when completion-fn
        [completion-fn @internal-model suggestion height])]
@@ -619,6 +579,20 @@
      :on-click (fn []
                  (rf/dispatch (into checked-path [(not checked?)])))}]))
 
+(m/defc ^:private <spinner-icon>
+  {:features [[:appear "zoom slow"]]}
+  [kind]
+  [:div [:i.loading-spinner
+       {:class (str "fa fa-spinner fa-spin"
+                    (when (= kind :massive)
+                      " loading-spinner-massive"))}]])
+
+(m/defc ^:private <timeout-icon>
+  {:features [[:appear "opacity slow"]]}
+  []
+  [:div [:i.loading-timeout
+         {:class (str "fa fa-solid fa-hexagon-exclamation")}]])
+
 (m/defc <loading-spinner> [model kind & [attrs]]
   (if (and (at model)
            (not= :timeout (at model))) ;should it be outside so not put anything when not loading? or better know element goes here
@@ -627,14 +601,10 @@
      [(if (not= kind :still)
                 :div.loading-wiggle>div.loading-wiggle-z>div.loading-wiggle-y
                 :<>)
-     [<appear> {:appear "zoom slow" :form [:div [:i.loading-spinner
-       {:class (str "fa fa-spinner fa-spin"
-                    (when (= kind :massive)
-                      " loading-spinner-massive"))}]]}]]]
+     [<spinner-icon> kind]]]
     (when (= :timeout (at model))
       [:div.loading-container
-       [<appear> {:appear "opacity slow" :form [:div [:i.loading-timeout
-         {:class (str "fa fa-solid fa-hexagon-exclamation")}]]}]])))
+       [<timeout-icon>]])))
 
 
 (m/defc <link-img-title> "Link eith an image and a title, for posts for example"

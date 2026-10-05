@@ -6,7 +6,7 @@
     [tolgraven.cv.views :as view]))
 
 (def spec
-  {:content (get content-contract/module-content :cv [])
+  {:depends (get content-contract/module-dependencies :cv [])
    :id :cv
    :pages pages/spec
    :view {:page #'view/<page>}})

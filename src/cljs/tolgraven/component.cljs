@@ -7,6 +7,7 @@
     [reagent.core :as r]
     [tolgraven.react :as react]
     [tolgraven.component.motion :as motion]
+    [tolgraven.component.visibility :as visibility]
     [tolgraven.component.persistent-state :as state-store]
     [tolgraven.component.loading :as loading]
     [tolgraven.component.storage :as storage]
@@ -117,8 +118,9 @@
 (defn- current-spec [definition args]
   (or (spec-for (not= false (get-in definition [:options :spec])) args) {}))
 
-(defn- feature-config [id config spec]
-  (get spec id config))
+(defn- feature-config [id config spec args]
+  (let [value (get spec id config)]
+    (if (fn? value) (apply value args) value)))
 
 (defn- decorate [form features spec mounted? capture-ref]
   (reduce (fn [form [id config implementation]]
@@ -146,7 +148,7 @@
      (fn []
        (let [spec (current-spec definition args)]
          (doseq [[id default implementation] features :when (:setup implementation)]
-           (let [config (feature-config id default spec)
+           (let [config (feature-config id default spec args)
                  old (get (.-current *active) id)]
              (when (or (not= config (:config old))
                        (not= @*element (:element old))
@@ -194,7 +196,7 @@
           form (decorate (binding [state-store/*component* definition state-store/*args* args state-store/*react-key* state-key] (render-body! *render args)) features spec mounted? capture-ref)
           form (if lifecycle?
                  (root-props form {:capture-root? true} false capture-ref) form)
-          options (into {} (map (fn [[id default _]] [id (feature-config id default spec)]) features))
+          options (into {} (map (fn [[id default _]] [id (feature-config id default spec args)]) features))
           form (if (some ids [:appear :seen :exit]) (motion/use-motion form options presence) form)
           form (if (ids :presence) (motion/use-presence form exit-config) form)]
       (instrumentation/instrument definition form args state-key))))
@@ -284,11 +286,15 @@
 (register-feature! :lifecycle {})
 (register-feature! :appear {})
 (register-feature! :seen {})
+(register-feature! :on-seen visibility/feature)
 (register-feature! :exit {})
 (register-feature! :presence {})
 (register-feature! :error-boundary
                    {:wrap (fn [form definition _]
-                            [<boundary> {:ns-name (:ns definition) :component-name (:name definition)} form])})
+                            [<boundary> {:ns-name (:ns definition) :component-name (:name definition)
+                                         :reset-key (when (get-in definition [:options :page])
+                                                      (select-keys @(react/subscribe [:common/route])
+                                                                   [:path :query-params]))} form])})
 
 (r/defc <dynamic-component> [definition args]
   (render-component definition args))

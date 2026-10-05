@@ -7,7 +7,7 @@
     [tolgraven.github.views :as view]))
 
 (def spec
-  {:content (get content-contract/module-content :github [])
+  {:depends (get content-contract/module-dependencies :github [])
    :id :github
    :view {:view #'view/<commits>}
    :init #(rf/dispatch [:github/init])})

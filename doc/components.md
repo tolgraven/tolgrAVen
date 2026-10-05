@@ -143,7 +143,8 @@ Managed children must have stable, unique Hiccup metadata keys, and both feature
 need native DOM roots. They reject fragments/component roots rather than silently
 adding wrappers. Nested lists should put `:presence` on their own direct parent.
 Only removed children are retained, and only until completion; no hidden DOM is
-kept after exit. Existing `ui/seen`/`ui/appear` helpers remain available.
+kept after exit. Declare `:seen` and `:appear` on the owning component; the
+former `ui/seen`/`ui/appear` wrappers have been retired.
 
 ## Data dependencies, before mount
 
@@ -467,3 +468,32 @@ and fade overlay. No `ui/appear-anon` wrappers are needed. The header zoom appli
 to its existing row (including the avatar); shared form controls and page headings
 remain provided by `ui`. The post loading branch uses `loading/<spinner>` and only
 mounts the animated post body once its content is available.
+
+Page declarations use `defpage`, with the same arguments and options as `defc`.
+It always supplies an error boundary, including when an incoming feature list
+tries to disable one. Page boundaries reset on a route path or query change;
+ordinary component boundaries keep their existing explicit recovery behavior.
+
+Use `(m/view {:module :user :view :avatar} user)` for a lazy exported view, or
+`(m/view <avatar> user)` for a direct reference. This macro yields a Hiccup vector,
+not a component wrapping the target. A shared module subscription acquires the
+code and initialization through events/effects. Once code is available, the
+containing render uses the actual component descriptor directly; pending data
+belongs to that component's `:depends` and loading/error views. SSR resolves the
+same vector from its bundled module specs without browser acquisition. External
+module assets belong to the page's `loader/<loaded-assets>` component.
+
+Declare module data in `:depends`, rather than the legacy `:content` loading path.
+Page specs declare the first-paint content; section/component declarations own
+more specific content. They all use the same managed resource queue and caches.
+The main page marks its shared document/header/footer dependencies for startup
+availability, while individual sections use `defc` dependency lifecycle handling.
+
+Appearance and visibility belong to actual components, for example
+`{:features [[:seen "zoom"]]}` on an image component. The old `ui/<appear>`,
+`ui/<seen>` and lazy observer wrappers have been retired. For a visibility-driven
+event, use `[:on-seen {:event [:load-more] :once? false}]`; it observes the existing
+native root and owns cleanup. Feature configurations may also be functions of the
+component's arguments, such as `[:on-seen (fn [id] {:event [:load id]})]`.
+`on-seen` supports `:threshold`, `:root-margin`, `:delay-ms`, and defaults to firing
+once. A native root is required for root-owned lifecycle features.

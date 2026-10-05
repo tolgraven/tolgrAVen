@@ -2,7 +2,7 @@
   (:require
     [tolgraven.component.registry]
     [reagent.core :as r]
-    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.macros :as m :refer-macros [defc]]
     [tolgraven.react :as rf]
     [reitit.frontend.easy :as rfe]
     [clojure.string :as string]
@@ -18,6 +18,11 @@
    so while loading should be expanded to that size already yo"
   [row-count])
 
+(defc ^:private <stage>
+  {:features [[:appear "slide-in"]]}
+  [component stage]
+  (util/add-attrs component {:class stage}))
+
 (defc <component> "Standard wrapper for component. Would have fallback loading thing, appear anim, disappear anim somehow..."
   [id attrs model component]
   (let [state @(rf/subscribe [:state [:component id]])
@@ -26,7 +31,7 @@
         ]
     (if (at model)
       (when-not (= :closed stage)
-        [ui/<appear> {:appear "slide-in" :form (util/add-attrs component {:class stage})}])
+        [<stage> component stage])
       [ui/<loading-spinner> model])))
 
 ;; TODO curr 1px gap between outer lines and img. Fix whatever causing this by mistake (think lines are half-width)
@@ -104,7 +109,7 @@
      [:button.settings-btn.noborder.nomargin
       [:i.settings-btn {:class "fa fa-cog"}]]]
 
-    [l/<> {:module :search
+    (m/view {:module :search
            :view :button
            :<before> (fn []
                        [:button.search-ui-btn.noborder.nomargin
@@ -112,9 +117,9 @@
                         [img/<picture> {:src   "svg/search-ico.svg"
                                       :alt   "Search"
                                       :style {:width  "1.2em" :height "1.2em"
-                                              :filter "var(--light-to-dark)"}}]])}]
-    [l/<> {:module :user
-           :view :btn}]
+                                              :filter "var(--light-to-dark)"}}]])})
+    (m/view {:module :user
+           :view :btn})
     [:label.burger {:for "nav-menu-open"}]]]
 
    [:div.fill-side-top
@@ -133,6 +138,33 @@
              "hide")}]])
 
 
+
+(defc ^:private <contact-confirmation>
+  {:features [[:appear "slide-in"]]}
+  []
+  [:h2 "Your message has been sent!"])
+
+(defc ^:private <contact-followup>
+  {:features [[:appear "opacity"]]}
+  []
+  [:h3 "I'll get back to you shortly."])
+
+(defc ^:private <contact-message>
+  {:features [[:appear "slide-in slow"]]}
+  []
+  [:div [ui/<input-text>
+            :placeholder "Message"
+            :input-type :textarea
+            :width "100%"
+            :height "15em"
+            :min-rows 8
+            :path [:form-field [:contact :message]]]])
+
+(defc ^:private <contact-submit-hint>
+  {:features [[:appear "slide-in slower"]]}
+  []
+  [:label {:for "submit-contact"}
+                 "Must enter at least email and message"])
 
 (defc <contact-form-popup>
   [_]
@@ -156,9 +188,9 @@
          (when sent?
            [:div
             [:br] [:br]
-            [ui/<appear> {:appear "slide-in" :form [:h2 "Your message has been sent!"]}]
+            [<contact-confirmation>]
             [:br]
-            [ui/<appear> {:appear "opacity" :form [:h3 "I'll get back to you shortly."]}]])
+            [<contact-followup>]])
          [ui/<loading-spinner> *loading? :massive]
 
          [:form.contact-form-form
@@ -176,13 +208,7 @@
            :placeholder "Title"
            :width "100%"
            :path [:form-field [:contact :title]]]
-          [ui/<appear> {:appear "slide-in slow" :form [:div [ui/<input-text>
-            :placeholder "Message"
-            :input-type :textarea
-            :width "100%"
-            :height "15em"
-            :min-rows 8
-            :path [:form-field [:contact :message]]]]}]
+          [<contact-message>]
           (let [disabled? (or (string/blank? (:email @*contents))
                               (not (string/index-of (:email @*contents) "@"))
                               (string/blank? (:message @*contents)))]
@@ -198,8 +224,7 @@
                            (.preventDefault e)
                            (rf/dispatch [:contact/send-request]))}]
              (if (and disabled? @*submit-hovered?) ; mouseLeave never fires (wtf??) but still good enough I suppose
-               [ui/<appear> {:appear "slide-in slower" :form [:label {:for "submit-contact"}
-                 "Must enter at least email and message"]}]
+               [<contact-submit-hint>]
                [:br])
              [:p "Whether for work, collaboration or something else, I'll do my best to accomodate you.
                   NOTE! Currently out of order, please just email me for now haha."]])]])))))

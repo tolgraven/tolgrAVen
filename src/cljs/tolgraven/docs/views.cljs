@@ -1,7 +1,7 @@
 (ns tolgraven.docs.views
   (:require
     [tolgraven.component.registry]
-    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.macros :refer-macros [defc defpage]]
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [clojure.string :as string]
@@ -27,7 +27,10 @@
        [:div.codox {:dangerouslySetInnerHTML (r/unsafe-html (page-links html))}]
        [ui/<loading-spinner> true :massive])]))
 
-(defc <page> []
+(defpage <page>
+  {:depends [{:source :strapi :keys [:docs]}]
+   :loading-tag :section.docs :loading-prefab :text}
+  []
   [ui/<with-heading> [:docs :heading]
    [:section.docs.solid-bg.hi-z.noborder.fullwide
     [<doc-page>]]])

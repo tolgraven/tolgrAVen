@@ -1,7 +1,7 @@
 (ns tolgraven.gpt.views
   (:require
     [tolgraven.component.registry]
-    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.macros :as m :refer-macros [defc]]
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [clojure.string :as string]
@@ -26,7 +26,7 @@
            (when @hovered? (util/unix->ts (:time thread)))]]]
          [:div.gpt-message-user.flex
           @(rf/subscribe [:gpt/user-short (:user thread)])
-          [l/<> {:module :user, :view :avatar} @user]]]
+          (m/view {:module :user, :view :avatar} @user)]]
        [:div.gpt-message-text.gpt-message-reply
         (or response
             "...")] ])))
@@ -47,7 +47,7 @@
 
           [:div.gpt-message-user.flex
            (or (:name user) "anon")
-           [l/<> {:module :user, :view :avatar} user]]]
+           (m/view {:module :user, :view :avatar} user)]]
 
          (when @open?
            [:div.gpt-messages.gpt-thread.open

@@ -22,6 +22,9 @@
     [reitit.frontend.easy :as rfe]
     [tolgraven.routes :as routes]
     [tolgraven.loader :as loader]
+    [tolgraven.component :as component]
+    [tolgraven.macros :as m :refer-macros [defpage]]
+    [tolgraven.render-context :as context]
     [tolgraven.views-common :as common]
     [tolgraven.page-transition :as page-transition]
     [tolgraven.views.page :as page-view]
@@ -1013,3 +1016,82 @@
         (page-transition/replace-destination! {:path "/unrelated" :data {:view identity}})
         (is (= real (:match @page-transition/*destination)) "An unrelated route cannot change the pending destination"))
       (finally (set! (.-startViewTransition js/document) original)))))
+
+
+(deftest loaded-module-vectors-use-the-component-directly
+  (let [<target> (fn [spec] [:section (:title spec)])
+        module-spec {:view {:post <target>}}]
+    (binding [context/*server?* true context/*modules* {:vector-test module-spec}]
+      (is (= [<target> {:title "SSR"}]
+             (m/view {:module :vector-test :view :post} {:title "SSR"})))
+      (is (= [<target> {:title "Direct"}]
+             (m/view <target> {:title "Direct"}))))))
+
+(defpage <recoverable-page> []
+  (let [route @(shim/subscribe [:common/route])]
+    (if (= "/page-error" (:path route))
+      (throw (js/Error. "Intentional page fixture error"))
+      [:section {:data-page-recovered true} "Recovered page"])))
+
+(deftest page-boundary-recovers-on-route-change-without-remounting-the-host
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                previous (await! (state-at! [:common/route]))]
+            (.appendChild (.-body js/document) element)
+            (try
+              (shim/dispatch [:set [:common/route] {:path "/page-error"}])
+              (await! (support/render! root [<recoverable-page>]))
+              (is (some? (.querySelector element "[role=alert]")))
+              (shim/dispatch [:set [:common/route] {:path "/page-recovered"}])
+              (await! (wait-for! #(.querySelector element "[data-page-recovered]")))
+              (is (nil? (.querySelector element "[role=alert]")))
+              (finally
+                (shim/dispatch [:set [:common/route] previous])
+                (support/unmount! root) (.remove element)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(m/defc <lazy-vector-target> [{:keys [title]}]
+  [:p {:data-lazy-vector-target true} title])
+(m/defc <lazy-vector-consumer> [module]
+  [:section (m/view {:module module} {:title "Vector target"})])
+
+(deftest mounted-consumers-share-code-acquisition-and-promote-direct-vectors
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                module (keyword (str "vector-test-" (random-uuid)))
+                original-modules loader/modules original-load loader/load-code!
+                *ready? (atom false) *calls (atom 0) *complete (atom nil)
+                spec {:view {:view <lazy-vector-target>}}
+                pending (js/Promise. (fn [resolve _] (reset! *complete resolve)))
+                loadable (reify lazy/ILoadable (ready? [_] @*ready?)
+                          IDeref (-deref [_] spec))]
+            (.appendChild (.-body js/document) element)
+            (try
+              (set! loader/modules (assoc original-modules module loadable))
+              (set! loader/load-code!
+                    (fn [_]
+                      (swap! *calls inc)
+                      (.then pending (fn [_]
+                                       (reset! *ready? true)
+                                       (shim/dispatch [:loader/code-ready module]) spec))))
+              (await! (support/render! root
+                                      [:div [<lazy-vector-consumer> module]
+                                       [<lazy-vector-consumer> module]]))
+              (await! (wait-for! #(pos? @*calls)))
+              (is (= 1 @*calls) "Both mounted consumers acquire one shared module source")
+              (is (nil? (.querySelector element "[data-lazy-vector-target]")))
+              (@*complete nil)
+              (await! (wait-for! #(= 2 (.-length (.querySelectorAll element "[data-lazy-vector-target]")))))
+              (is (= 2 (.-length (.querySelectorAll element "section > p[data-lazy-vector-target]"))))
+              (is (nil? (.querySelector element ".loading-container")))
+              (finally
+                (support/unmount! root) (.remove element)
+                (set! loader/modules original-modules) (set! loader/load-code! original-load)
+                (shim/dispatch [:component-data/remove [:loader :code-ready module]])))))
+        (.catch #(is false (str %)))
+        (.finally done))))

@@ -10,6 +10,7 @@
     [tolgraven.components.error :as error]
     [tolgraven.service-status :as status]
     [reagent.core :as r]
+    [reagent.ratom :as ratom]
     [shadow.lazy :as lazy])
   (:require-macros
     [tolgraven.macros :as m]))
@@ -126,11 +127,40 @@
                   (status/fail! [:module module] "Section initialization failed"
                                 "This section could not finish loading. Retry to load it again."
                                 #(load-code! options)))))
-    (if-let [loadable (get modules module)]
-      (if (lazy/ready? loadable)
-        (js/Promise.resolve @loadable)
-        (js/Promise.resolve (lazy/load loadable)))
-      (js/Promise.reject (ex-info "Unknown module" {:module module})))))
+    (-> (if-let [loadable (get modules module)]
+          (if (lazy/ready? loadable)
+            (js/Promise.resolve @loadable)
+            (js/Promise.resolve (lazy/load loadable)))
+          (js/Promise.reject (ex-info "Unknown module" {:module module})))
+        (.then (fn [spec]
+                 (rf/dispatch [:loader/code-ready module])
+                 spec)))))
+
+(rf/reg-event-db :loader/code-ready
+  (fn [db [_ module]] (-> db (assoc-in [:loader :code-ready module] true)
+                         (update-in [:loader :errors] dissoc module))))
+(rf/reg-event-db :loader/code-failed
+  (fn [db [_ module error]] (assoc-in db [:loader :errors module] error)))
+(rf/reg-sub :loader/code-error
+  (fn [db [_ module]] (get-in db [:loader :errors module])))
+(rf/reg-sub :loader/code-ready
+  (fn [db [_ module]] (get-in db [:loader :code-ready module])))
+(rf/reg-sub :loader/code-modules
+  (fn [db _] (keys (get-in db [:loader :code-ready]))))
+(rf/reg-event-fx :loader/acquire
+  (fn [{:keys [db]} [_ module]]
+    {:db (update-in db [:loader :errors] dissoc module) :loader/acquire module}))
+(rf/reg-fx :loader/acquire
+  (fn [module]
+    ;; Initialization failures are reported by load-code!'s managed status path.
+    (-> (load-code! {:module module})
+        (.catch (fn [error] (rf/dispatch [:loader/code-failed module error]))))))
+(rf/reg-sub-raw :loader/module
+  (fn [_ [_ module]]
+    ;; Acquisition happens once per shared subscription, outside its pure read.
+    ;; Shadow code and initialized module caches outlive individual consumers.
+    (rf/dispatch [:loader/acquire module])
+    (ratom/make-reaction #(deref (rf/subscribe [:loader/code-ready module])))))
 
 (m/defc <assets>
   "Inject external assets"
@@ -143,6 +173,35 @@
    (m/for [src js]
           [:script {:type "text/javascript"
                     :src  src}])])
+
+(m/defc <loaded-assets>
+  "The page owns external module assets; direct vectors need no asset wrapper."
+  []
+  (let [loaded @(rf/subscribe [:loader/code-modules])
+        assets (map #(get (code-spec %) :assets) loaded)]
+    [<assets> {:css (vec (distinct (mapcat :css assets)))
+               :js (vec (distinct (mapcat :js assets)))}]))
+
+(declare <>)
+(defn component-vector
+  "Pure vector selection, reactive to shared module-code acquisition. Data stays
+   with the component's ordinary declared bindings, never delays this selection."
+  [reference args]
+  (if-not (or (map? reference) (vector? reference))
+    (into [(component/resolve-view reference)] args)
+    (let [{:keys [module view defer? <before>] :as options}
+          (if (vector? reference) {:module (first reference) :view (second reference)} reference)
+          deferred? (and (or defer? <before>)
+                         (or (not @context/*interactive?)
+                             (and (not context/*server?*)
+                                  (not @(rf/subscribe [:scope/inited? module])))))
+          _ (when (and (not context/*server?*) (not deferred?))
+              @(rf/subscribe [:loader/module module]))
+          spec (if context/*server?* (get context/*modules* module) (code-spec module))
+          resolved (when-not deferred? (get-in spec [:view (or view :view)]))]
+      (if resolved
+        (into [(component/resolve-view resolved)] args)
+        (into [<> options] args)))))
 
 (defn make-browser-render
   "Render a module component after loading and initialization, optionally on demand."
@@ -212,6 +271,34 @@
 (m/defc ^:private <browser-module> [& _]
   (make-browser-render))
 
+(m/defc ^:private <pending-module>
+  "Temporary fallback only. Acquisition belongs to the shared source adapter;
+   renders contain no Promise chains or imperative initialization."
+  [spec & args]
+  (let [{:keys [module view defer? <before> <loading> <missing>] :as options}
+        (if (vector? spec) {:module (first spec) :view (second spec)} spec)
+        deferred? (and (or defer? <before>)
+                       (or (not @context/*interactive?)
+                           (not @(rf/subscribe [:scope/inited? module]))))
+        _ (when-not deferred? @(rf/subscribe [:loader/module module]))
+        failure @(rf/subscribe [:loader/code-error module])
+        loaded (when-not deferred? (code-spec module))
+        resolved (get-in loaded [:view (or view :view)])]
+    (cond
+      deferred? (when <before>
+                  [:div.before-loading-container
+                   {:on-click #(rf/dispatch [:scope/init module args])}
+                   (if (vector? <before>) <before> (into [<before>] args))])
+      resolved (into [(component/resolve-view resolved)] args)
+      failure [error/<failure> "module" (name module)
+               {:title "This section could not be loaded" :error failure}
+               #(rf/dispatch [:loader/acquire module])]
+      loaded (if <missing>
+               (if (vector? <missing>) <missing> (into [<missing>] args))
+               [<default-missing> module view])
+      <loading> (if (vector? <loading>) <loading> (into [<loading>] args))
+      :else [:div.loading-container [:div.loading-spinner]])))
+
 (m/defc <>
   "Use the same module view in Node, without starting browser initialization."
   [& initial]
@@ -224,4 +311,4 @@
                                              (if (vector? <before>) <before> (into [<before>] args))])
           :else (when-let [view (get-in context/*modules* [module :view (or view :view)])]
                   (into [(component/resolve-view view)] args)))))
-    (into [<browser-module>] initial)))
+    (into [<pending-module>] initial)))

@@ -7,7 +7,7 @@
     [tolgraven.react :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
-    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.macros :as m :refer-macros [defc defpage]]
     [tolgraven.content.contract :as content-contract]
     [tolgraven.component :as component]
     [tolgraven.component.loading :as loading]
@@ -171,7 +171,7 @@
               :ref capture-height!}
 
              [:div
-              [l/<> {:module :user, :view :avatar} user]
+              (m/view {:module :user, :view :avatar} user)
 
               [:div.blog-comment-main
                [:h4.blog-comment-title title]
@@ -391,7 +391,7 @@
 
      [<post-header> {:appear {:class "zoom slower" :remember-key [:blog/post-header id]}
                     :children [
-       [l/<> {:module :user, :view :avatar} user "blog-user-avatar"]
+       (m/view {:module :user, :view :avatar} user "blog-user-avatar")
       [:div.blog-post-header-main
        [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
          [:h1.blog-post-title title ]]
@@ -556,8 +556,8 @@
     [:i.fab.fa-github]]]])
 
 
-(defc <blog-page>
-  {:features [:error-boundary] :depends (get content-contract/module-dependencies :blog)}
+(defpage <blog-page>
+  {:depends (get content-contract/module-dependencies :blog)}
   []
   ;; One outer component identity preserves the heading across blog routes. Only
   ;; the selected content changes; SSR and SPA use the same route subscription.

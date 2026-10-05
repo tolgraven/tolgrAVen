@@ -79,12 +79,12 @@
                     (string/replace #"(?m)^." ""))]]])))]])]))
 
 (defc <loading> "Lazy load more on scroll to bottom, with a button as fallback for the poors"
+  {:features [[:on-seen (fn [user repo]
+                         {:event [:github/fetch-commits-next user repo]
+                          :once? false :delay-ms 500})]]}
   [user repo]
   (fn [user repo]
    [:div.github-loading
-   [ui/<lazy-load>
-    [:github/fetch-commits-next user repo]
-    true]
    [:h2 "Loaded " (count @(rf/subscribe [:github/commits]))]
    [:h3 "Scrolling down should load more..."]
    [:div {:style {:padding "var(--space)"}}
@@ -92,6 +92,47 @@
    [:button {:style {:margin-top "var(--space-lg)"}
              :on-click #(do (rf/dispatch [:github/fetch-commits-next user repo]))}
     "...or you can click here"]]))
+
+(defc ^:private <commit-row>
+  {:features [[:appear "slide-in slow"]]}
+  [from sha main-view-position view author date clock html_url sha7 info title subtitle]
+  [:div.github-commit.flex
+         {:on-click #(do (rf/dispatch [:github/fetch-commit (first @from) (second @from) sha])
+                         (reset! main-view-position
+                                 (.-scrollTop (util/elem-by-id "github-commits-box")))
+                         (reset! view sha))}
+         [img/<picture> {:src (:avatar_url author)
+                       :alt (str (:login author) " avatar")
+                       :class "user-avatar center-content"}]
+         [:div.github-commit-details
+          [:span.github-commit-time date]
+          [:span.github-commit-time (ctf/unparse (ctf/formatters :time-no-ms)
+                                                 (ct/to-default-time-zone (ctc/from-string clock)))]
+          [:a {:href html_url}
+           [:span.github-commit-sha sha7]]
+
+          [:div.github-commit-message
+           [:div.info info]]]
+          (if title
+             [:div.github-commit-titles
+              [:span.subtitle
+               {:style {:cursor "pointer"}
+                :on-click (fn [e] (.stopPropagation e)
+                            (rf/dispatch [:form-field [:github :search] subtitle]))}
+               subtitle]
+              [:i.fa.fa-solid.fa-arrow-left]
+              [:span.title
+               {:style {:cursor "pointer"}
+                :on-click (fn [e] (.stopPropagation e)
+                            (rf/dispatch [:form-field [:github :search] title]))}
+               title]]
+             (when subtitle
+               [:div.github-commit-titles
+                [:span.title
+                 {:style {:cursor "pointer"}
+                  :on-click (fn [e] (.stopPropagation e)
+                              (rf/dispatch [:form-field [:github :search] subtitle]))}
+                 subtitle]]))])
 
 (defc <commits> "List Github commits for this repo"
   []
@@ -134,43 +175,7 @@
        (for [{:keys [commit author html_url sha sha7 message date clock ts] :as item} @commits
               :let [[info subtitle title] message]]
             ^{:key (str "github-commit-" ts)}
-        [ui/<appear> {:appear "slide-in slow" :form [:div.github-commit.flex
-         {:on-click #(do (rf/dispatch [:github/fetch-commit (first @from) (second @from) sha])
-                         (reset! main-view-position
-                                 (.-scrollTop (util/elem-by-id "github-commits-box")))
-                         (reset! view sha))}
-         [img/<picture> {:src (:avatar_url author)
-                       :alt (str (:login author) " avatar")
-                       :class "user-avatar center-content"}]
-         [:div.github-commit-details
-          [:span.github-commit-time date]
-          [:span.github-commit-time (ctf/unparse (ctf/formatters :time-no-ms)
-                                                 (ct/to-default-time-zone (ctc/from-string clock)))]
-          [:a {:href html_url}
-           [:span.github-commit-sha sha7]]
-
-          [:div.github-commit-message
-           [:div.info info]]]
-          (if title
-             [:div.github-commit-titles
-              [:span.subtitle
-               {:style {:cursor "pointer"}
-                :on-click (fn [e] (.stopPropagation e)
-                            (rf/dispatch [:form-field [:github :search] subtitle]))}
-               subtitle]
-              [:i.fa.fa-solid.fa-arrow-left]
-              [:span.title
-               {:style {:cursor "pointer"}
-                :on-click (fn [e] (.stopPropagation e)
-                            (rf/dispatch [:form-field [:github :search] title]))}
-               title]]
-             (when subtitle
-               [:div.github-commit-titles
-                [:span.title
-                 {:style {:cursor "pointer"}
-                  :on-click (fn [e] (.stopPropagation e)
-                              (rf/dispatch [:form-field [:github :search] subtitle]))}
-                 subtitle]]))]}])
+        [<commit-row> from sha main-view-position view author date clock html_url sha7 info title subtitle])
 
           [:div
             [<commit> @view [ui/<close> #(reset! view :commits)]]])

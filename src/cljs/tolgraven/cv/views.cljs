@@ -65,14 +65,19 @@
      [:h1 "Skills"]
      [ui/<carousel-normal> :cv/skills {} [software digital general language]]]))
 
+(m/defc ^:private <intro-logo>
+  {:features [[:seen "slide-in zoom opacity extra-slow"]]}
+  []
+  [:div [img/<picture>
+       {:src "img/logo/tolgraven-logo.png"
+        :alt "tolgrAVen"
+        :class "fullwide"}]])
+
 (m/defc <intro>
   [cv]
   (let [win-fullscreen? @(rf/subscribe [:state [:window :fullscreen?]])]
     [:div.cv-intro
-     [ui/<seen> {:seen "slide-in zoom opacity extra-slow" :form [:div [img/<picture>
-       {:src "img/logo/tolgraven-logo.png"
-        :alt "tolgrAVen"
-        :class "fullwide"}]]}]
+     [<intro-logo>]
      [:p (:intro cv)]
      [:div.center-content
       [:div.cv-howto
@@ -180,7 +185,7 @@
 
      [<capabilities> skills]]))))
 
-(m/defc <page>
+(m/defpage <page>
   {:depends [{:source :strapi :keys [:cv]}]
    :loading-prefab :lines :loading-tag :section.cv}
   []

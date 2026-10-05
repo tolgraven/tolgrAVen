@@ -6,6 +6,6 @@
     [tolgraven.gpt.views :as view]))
 
 (def spec
-  {:content (get content-contract/module-content :gpt [])
+  {:depends (get content-contract/module-dependencies :gpt [])
    :id :gpt
    :view {:view #'view/<threads>}})

@@ -6,6 +6,6 @@
     [tolgraven.link-preview.views :as view]))
 
 (def spec
-  {:content (get content-contract/module-content :link-preview [])
+  {:depends (get content-contract/module-dependencies :link-preview [])
    :id :link-preview
    :view {:view #'view/<link-preview>}})

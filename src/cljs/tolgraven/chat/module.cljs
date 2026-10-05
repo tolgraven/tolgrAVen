@@ -6,6 +6,6 @@
     [tolgraven.chat.views :as view]))
 
 (def spec
-  {:content (get content-contract/module-content :chat [])
+  {:depends (get content-contract/module-dependencies :chat [])
    :id :chat
    :view {:view #'view/<chat>}})

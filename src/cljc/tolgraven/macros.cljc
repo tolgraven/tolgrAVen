@@ -59,6 +59,27 @@
                [k `(shadow.lazy/loadable ~qsym#)]))
            ks))))
 
+(defmacro view
+  "Return a component vector. Module references use the lazy loader only until
+   their code is available; direct components never acquire a loader wrapper.
+   Use (view {:module :blog :view :post} spec) or (view <component> spec)."
+  [component & args]
+  `(tolgraven.loader/component-vector ~component [~@args]))
+
+(defmacro defpage
+  "A defc page declaration with a mandatory error boundary. Other features and
+   dependencies compose as usual; the page adds no DOM wrapper."
+  [name & decls]
+  (let [docstring (when (string? (first decls)) (first decls))
+        decls (if docstring (next decls) decls)
+        options (if (map? (first decls)) (first decls) {})
+        body (if (map? (first decls)) (next decls) decls)
+        features (remove #(= :error-boundary (if (keyword? %) % (first %))) (:features options))]
+    `(tolgraven.macros/defc ~name
+       ~@(when docstring [docstring])
+       ~(assoc options :page true :features (into [:error-boundary] features))
+       ~@body)))
+
 
 ;; also should include tooltip popup functionality
 ;; other possible route is middleware style where each piece of functionality
@@ -146,7 +167,7 @@
         (let [scoped-helpers? (some #(and (seq? %) (symbol? (first %))
                                          (#{"<sub" ">reset" ">update"} (clojure.core/name (first %))))
                                    (tree-seq coll? seq (concat bindings body)))
-              options (select-keys (merge (meta name) attrs) [:spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :state :module])
+              options (select-keys (merge (meta name) attrs) [:page :spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :state :module])
               options (merge (loading-root (last body)) options)
               loading-helper? (and (some #{'<loading>} (tree-seq coll? seq (concat bindings body)))
                                    (not (get-in &env [:ns :defs '<loading>]))

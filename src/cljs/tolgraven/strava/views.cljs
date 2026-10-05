@@ -1,7 +1,7 @@
 (ns tolgraven.strava.views
   (:require
     [tolgraven.component.registry]
-    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.macros :as m :refer-macros [defc]]
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [clojure.string :as string]
@@ -17,6 +17,11 @@
 (declare <activity-map-canvas>)
 (declare <activity-map-leaflet>)
 
+(defc ^:private <photo-image>
+  {:features [[:appear "zoom"]]}
+  [item]
+  [:div item])
+
 (defc <activity-photo> "Display photo for activity and allow to view fullscreen. Sadly seems can only get primary photo from Strava, not all?"
   [data]
   (when (pos? (:count data))
@@ -29,7 +34,7 @@
                     (rf/dispatch [:modal-zoom :fullscreen :open
                                   (util/add-attrs item
                                                   {:style {:max-width "100%"}})]))}
-       [ui/<appear> {:appear "zoom" :form [:div item]}]])))
+       [<photo-image> item]])))
 
 (defc <activity-split> "Single split dot"
   [i {:keys [average_speed] :as split} num-splits min-speed max-speed space-per-split]
@@ -157,6 +162,11 @@
          [:div.strava-kudos-popup.strava-popup
            [:span (:firstname kudoer) " " (:lastname kudoer)]])])))
 
+(defc ^:private <kudo-entry>
+  {:features [[:seen "slide-in slow"]]}
+  [kudoer]
+  [:div [<kudo> kudoer]])
+
 (defc <kudos> "List kudos"
   [activity]
   (let [kudoers @(rf/subscribe [:strava/content [:kudos (:id activity)]])]
@@ -166,7 +176,7 @@
               (rf/dispatch [:strava/fetch-kudos (:id activity)]))}
      (if kudoers
        (for [kudoer kudoers] ^{:key (str "strava-kudoer-" (:firstname kudoer) "-" (:lastname kudoer))}
-         [ui/<seen> {:seen "slide-in slow" :form [:div [<kudo> kudoer]]}])
+         [<kudo-entry> kudoer])
        [ui/<loading-spinner> true nil
         {:style {:font-size "70%"
                  :width "0.7em"
@@ -193,18 +203,10 @@
              [:p [:span (:converted_distance @gear)] [:span "km"]]
              [:p (:desc info)]]]))])))
 
-(defc <activity-stats>
+(defc ^:private <stats-descriptions>
+  {:features [[:appear "opacity extra-slow"]]}
   [activity details]
-  [:<>
-   [:div.flex
-    {:style {:justify-content :space-between
-             :font-size "90%"}}
-    (into [:div.strava-activity-description]
-          (map #(vec [:p %]) (string/split-lines (:description details))))]
-   [:div.strava-activity-stats.flex
-
-   [:div.flex
-    [ui/<appear> {:appear "opacity extra-slow" :form [:div [:div.strava-activity-stats-descriptions
+  [:div [:div.strava-activity-stats-descriptions
       (when (:kilojoules activity)
         [:p "Kilojoules"])
       [:p "Watts"]
@@ -217,7 +219,20 @@
         [:p "PRs"])
        (when (pos? (:kudos_count details))
         [:p "Kudos"])
-       [:p "Bike"]]]}]
+       [:p "Bike"]]])
+
+(defc <activity-stats>
+  [activity details]
+  [:<>
+   [:div.flex
+    {:style {:justify-content :space-between
+             :font-size "90%"}}
+    (into [:div.strava-activity-description]
+          (map #(vec [:p %]) (string/split-lines (:description details))))]
+   [:div.strava-activity-stats.flex
+
+   [:div.flex
+    [<stats-descriptions> activity details]
     [:div.strava-activity-stats-numbers
      (when (:kilojoules activity)
         [:p (:kilojoules activity)])
@@ -283,21 +298,10 @@
      data))
     (.stroke ctx)))
 
-(defc <graph-canvas> "Canvas for drawing graphs, and legend"
-  [label unit data] ;also maybe an atom we can update to change downsampling/range
-  (let [[data-max data-min] (map #(util/format-number % 1)
-                                 (map #(apply % data) [max min]))
-        data-size (count data)
-        cursor-pos (r/atom [0 0])
-        canvas (r/atom nil)
-        on-move #(reset! cursor-pos (util/xy-in % [:x :y]))
-        zoom-to (r/atom {:start 0.0 :end 1.0})
-        on-down #(swap! zoom-to update :start util/xy-in % [:x])
-        on-up   #(swap! zoom-to update :end util/xy-in % [:x])]
-    (fn [label unit data]
-      [:div.strava-activity-graph
-       (when data
-         [ui/<appear> {:appear "zoom-y slow" :form [:div [:div.strava-activity-graph-inner
+(defc ^:private <graph-inner>
+  {:features [[:appear "zoom-y slow"]]}
+  [canvas label data cursor-pos on-move on-down on-up zoom-to data-size unit data-min data-max]
+  [:div [:div.strava-activity-graph-inner
            [:canvas
             {:ref #(when %
                      (reset! canvas %)
@@ -326,7 +330,23 @@
                                (util/format-number 1))]
                [:b current [:span " " unit]])]
             [:div.strava-activity-graph-legend-range
-             [:span data-min] " - " [:span data-max]]]]]}])]))) ; soo, for spinner would need to track whether not yet data or doesnt exist...
+             [:span data-min] " - " [:span data-max]]]]])
+
+(defc <graph-canvas> "Canvas for drawing graphs, and legend"
+  [label unit data] ;also maybe an atom we can update to change downsampling/range
+  (let [[data-max data-min] (map #(util/format-number % 1)
+                                 (map #(apply % data) [max min]))
+        data-size (count data)
+        cursor-pos (r/atom [0 0])
+        canvas (r/atom nil)
+        on-move #(reset! cursor-pos (util/xy-in % [:x :y]))
+        zoom-to (r/atom {:start 0.0 :end 1.0})
+        on-down #(swap! zoom-to update :start util/xy-in % [:x])
+        on-up   #(swap! zoom-to update :end util/xy-in % [:x])]
+    (fn [label unit data]
+      [:div.strava-activity-graph
+       (when data
+         [<graph-inner> canvas label data cursor-pos on-move on-down on-up zoom-to data-size unit data-min data-max])]))) ; soo, for spinner would need to track whether not yet data or doesnt exist...
 
 (defc <activity-graphs>
   [activity]
@@ -427,6 +447,14 @@
        (reverse activities))]]))
 
 
+(defc ^:private <map-points>
+  {:features [[:appear "opacity extra-slow"]]}
+  [activity lat-min lat-max lng-min lng-max]
+  [:div (for [[lat lng] activity]
+         [:span.strava-activity-map-point
+          {:style {:bottom (str (* 100 (/ (- lat lat-min) (- lat-max lat-min))) "%")
+                   :left (str (* 100 (/ (- lng lng-min) (- lng-max lng-min))) "%") }} ])])
+
 (defc <activity-map> "Visualize latlng somehow! Currently goes behind activity-full but putting it on bg would be best (fix latlng so fits...)"
   [activity]
   (let [activity @(rf/subscribe [:strava/activity-stream (:id activity) "latlng" 5])
@@ -435,21 +463,14 @@
         [lng-max lng-min] (map #(apply % lngs) [max min]) ]
     [:div.strava-activity-map
      (if activity
-       [ui/<appear> {:appear "opacity extra-slow" :form [:div (for [[lat lng] activity]
-         [:span.strava-activity-map-point
-          {:style {:bottom (str (* 100 (/ (- lat lat-min) (- lat-max lat-min))) "%")
-                   :left (str (* 100 (/ (- lng lng-min) (- lng-max lng-min))) "%") }} ])]}]
+       [<map-points> activity lat-min lat-max lng-min lng-max]
        [ui/<loading-spinner> true]) ]))
 
 
-(defc <activity-map-leaflet> "Visualize latlng somehow! Currently goes behind activity-full but putting it on bg would be best (fix latlng so fits...)"
-  [activity]
-  (let [latlng @(rf/subscribe [:strava/activity-stream (:id activity) "latlng" 15])
-        [lats lngs] (map #(map % latlng) [first second])]
-    [:div.strava-activity-map
-     {:on-click #(.stopPropagation %)}
-     (if latlng
-       [ui/<appear> {:appear "opacity slow" :form [:div [:div
+(defc ^:private <leaflet-map>
+  {:features [[:appear "opacity slow"]]}
+  [lats lngs latlng]
+  [:div [:div
          [:> js/ReactLeaflet.MapContainer
           {:center [(/ (apply + lats) (count lats))
                     (/ (apply + lngs) (count lngs))]
@@ -460,7 +481,16 @@
             :url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"}]
           [:> js/ReactLeaflet.Polyline
            {:pathOptions {:color "#fc4c02"}
-            :positions latlng}]]]]}]
+            :positions latlng}]]]])
+
+(defc <activity-map-leaflet> "Visualize latlng somehow! Currently goes behind activity-full but putting it on bg would be best (fix latlng so fits...)"
+  [activity]
+  (let [latlng @(rf/subscribe [:strava/activity-stream (:id activity) "latlng" 15])
+        [lats lngs] (map #(map % latlng) [first second])]
+    [:div.strava-activity-map
+     {:on-click #(.stopPropagation %)}
+     (if latlng
+       [<leaflet-map> lats lngs latlng]
        [ui/<loading-spinner> true]) ]))
 
 
@@ -495,6 +525,14 @@
     (.stroke ctx)))
 
 
+(defc ^:private <map-canvas>
+  {:features [[:appear "opacity slow"]]}
+  [node latlng watts]
+  [:div [:canvas#strava-activity-map
+         {:ref #(when %
+                  (reset! node %)
+                  (draw-map % latlng watts))} ]])
+
 (defc <activity-map-canvas> "Visualize latlng somehow! Currently goes behind activity-full but putting it on bg would be best (fix latlng so fits...)"
   [activity]
   (let [latlng @(rf/subscribe [:strava/activity-stream (:id activity) "latlng" 50])
@@ -503,10 +541,7 @@
         node (r/atom nil)]
     [:div.strava-activity-map
      (if latlng
-       [ui/<appear> {:appear "opacity slow" :form [:div [:canvas#strava-activity-map
-         {:ref #(when %
-                  (reset! node %)
-                  (draw-map % latlng watts))} ]]}]
+       [<map-canvas> node latlng watts]
        [ui/<loading-spinner> true]) ]))
 
 
@@ -629,7 +664,29 @@
 
        (:<comp> @active-tab)])))
 
+(defc ^:private <profile-background>
+  {:features [[:appear "opacity"]]}
+  [data]
+  [:div [img/<media-as-bg> {:src (:background data)}]])
+
+(defc ^:private <profile-details>
+  {:features [[:appear "opacity"]]}
+  [athlete data]
+  [:div [:div.strava-profile.flex
+         (m/view
+          {:module :user, :view :avatar}
+          {:avatar (:profile_medium athlete)
+           :name   (str (:firstname athlete) " " (:lastname athlete))}
+          "strava-profile-image")
+        [:div.strava-athlete ;.flex
+         [:h3 (:firstname athlete) " " (:lastname athlete)]
+         [:div (:bio athlete)]
+         [:div (:city athlete)]
+         [:div (:weight athlete) " kg"]]
+        [:div.strava-story (:story data)]]])
+
 (defc <strava> "Make an increasingly fancy visualizer feed thingy. Relies on [:content :strava] in db"
+  {:depends [{:source :strapi :keys [:strava]}]}
   []
   (let [data @(rf/subscribe [:strava/content])
         stats (:stats data)
@@ -639,7 +696,7 @@
                         :style {:color "#fc4c02"}}])]
     [:section#strava.strava.section-with-media-bg-wrapper.covering-2
      {:on-click #(rf/dispatch [:strava/activity-expand nil])}
-     [ui/<appear> {:appear "opacity" :form [:div [img/<media-as-bg> {:src (:background data)}]]}]
+     [<profile-background> data]
      [ui/<inset> "Click the dots for details" 4]
      [:a {:href (:profile-url data)}
       [:h1  [img/<picture> {:style {:height "2rem"}
@@ -650,18 +707,7 @@
         [:h3 "Rate limited?"]
         [:p "Uh-oh, looks like we failed to fetch the strava data. Try refreshing the page."]])
      (if athlete
-       [ui/<appear> {:appear "opacity" :form [:div [:div.strava-profile.flex
-         [l/<>
-          {:module :user, :view :avatar}
-          {:avatar (:profile_medium athlete)
-           :name   (str (:firstname athlete) " " (:lastname athlete))}
-          "strava-profile-image"]
-        [:div.strava-athlete ;.flex
-         [:h3 (:firstname athlete) " " (:lastname athlete)]
-         [:div (:bio athlete)]
-         [:div (:city athlete)]
-         [:div (:weight athlete) " kg"]]
-        [:div.strava-story (:story data)]]]}]
+       [<profile-details> athlete data]
        [ui/<loading-spinner> (rf/subscribe [:loading :strava])])
 
      (if stats

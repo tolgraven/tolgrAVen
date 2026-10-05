@@ -1,6 +1,6 @@
 (ns tolgraven.ssr.shell
   "Generic page fallback driven by module-local page declarations."
-  (:require [tolgraven.macros :refer-macros [defc]]
+  (:require [tolgraven.macros :refer-macros [defc defpage]]
             [tolgraven.component.loading :as loading]
             [tolgraven.ui :as ui]))
 
@@ -11,7 +11,7 @@
     :loading-prefab (or loading-prefab :article)
     :loading-props (select-keys spec [:lines :avatar?])}])
 
-(defc <page> [{:keys [heading] :as spec}]
+(defpage <page> [{:keys [heading] :as spec}]
   (if heading
     [ui/<with-heading> heading [<content> spec]]
     [<content> spec]))

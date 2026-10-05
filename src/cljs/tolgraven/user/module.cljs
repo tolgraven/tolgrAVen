@@ -6,7 +6,7 @@
     [tolgraven.user.views :as view]))
 
 (def spec
-  {:content (get content-contract/module-content :user [])
+  {:depends (get content-contract/module-dependencies :user [])
    :id :user
    :view {:view #'view/<user-section>
           :btn #'view/<user-btn>

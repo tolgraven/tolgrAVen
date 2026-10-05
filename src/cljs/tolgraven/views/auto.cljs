@@ -2,7 +2,6 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.react :as rf]
-    [tolgraven.component :as component]
     [tolgraven.content.contract :as content-contract]
     [tolgraven.ssr.contract :as ssr-contract]
     [tolgraven.components.home :as home]
@@ -10,16 +9,19 @@
     [tolgraven.components.oembed :as oembed]
     [tolgraven.loader :as l]
     [tolgraven.macros :as m]
-    [tolgraven.ui :as ui]))
+))
 
 (declare sections)
 
 (m/defc <run-init>
+  {:features [[:on-seen
+               (fn [section & [init dep]]
+                 (let [spec (get sections section)
+                       event (or init (:init spec) [:scope/init section])
+                       dependency (or dep (:dep spec))]
+                   {:event [:on-booted dependency event] :delay-ms 500}))]]}
   [section & [init dep]]
-  (let [spec (get sections section)
-        event (or init (:init spec) [:scope/init section])
-        dependency (or dep (:dep spec))]
-    [ui/<lazy-load> [:on-booted dependency event]]))
+  [:div])
 
 (def sections
   {:intro       {:<comp> home/<intro>
@@ -65,26 +67,31 @@
    :joen :just-about-me/components
    :av :just-about-company })
 
+(defn section-dependencies
+  "The section owns its content declaration; the same resources can be acquired
+   before its module is mounted and by its defc data lifecycle."
+  [_ {:keys [depends content content-deps module]}]
+  (into (vec depends)
+        (when-let [keys (seq (or content-deps
+                                (when content [content])
+                                (get content-contract/module-content module)))]
+          [{:source :strapi :keys (vec keys)}])))
 
 (m/defc <get-component> "Get component, and its init event runner, if any."
+  {:depends section-dependencies :loading-tag :section :loading-prefab :text}
   [id section-map]
   (let [{:keys [module <comp> <loading> content content-deps args dep init]} section-map
         view (if module
-               [l/<> {:module module :view (or <comp> :view)
-                      :defer? true :<loading> <loading>}]
+               (m/view {:module module :view (or <comp> :view)
+                      :defer? true :<loading> <loading>})
                [<comp>])]
     [:<>
-     [component/<prefetch> (into (vec (:depends section-map))
-                                (when-let [keys (seq (or content-deps (if content [content] (get content-contract/module-content module []))))]
-                                  [{:source :strapi :keys (vec keys)}]))]
      (when (or init module)
        [<run-init> id init dep])
-     (if (and content (nil? @(rf/subscribe [:content [content]])))
-       [:div.loading-container [:div.loading-spinner]]
-       (cond-> view
+     (cond-> view
          content (conj @(rf/subscribe [:content [content]]))
          args    (conj args)
-         true    vec))]))
+         true    vec)]))
 
 (m/defc <get-section> "Get a section, from either a vector (with args) or a straight keyword"
   [section]
@@ -111,7 +118,7 @@
   [spec]
   [:div "hello" spec [<test-2> spec] ])
 
-(m/defc <auto> "Present main page UI. Should come from data structure.
+(m/defpage <auto> "Present main page UI. Should come from data structure.
                Should auto lazy load/init all components with such functionality at point,
                apart from the separate lazy loading done before-hand (if loads in middle of page etc)"
   []

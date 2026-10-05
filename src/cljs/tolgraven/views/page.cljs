@@ -1,7 +1,7 @@
 (ns tolgraven.views.page
   (:require
     [tolgraven.component.registry]
-    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.macros :as m :refer-macros [defc defpage]]
     [tolgraven.react :as rf]
     [tolgraven.component :as component]
     [tolgraven.component.restore :as restore]
@@ -53,7 +53,7 @@
                        (str "swapped " (when (= token running) "opacity swapped-out")))}
         form])]))
 
-(defc <page> "Render active page inbetween header, footer and general stuff."
+(defpage <page> "Render active page inbetween header, footer and general stuff."
   []
   (let [commit @(rf/subscribe [:get :page/commit])
         _ (transition/use-ready! commit)
@@ -63,15 +63,16 @@
   [:<>
    [l/<assets> {:css (some-> spec :assets :css)
                 :js  (some-> spec :assets :js)}]
+   [l/<loaded-assets>]
 
    [ui/<safe> :header [common/<header> @(rf/subscribe [:content [:header]])]]
    [:a {:name "linktotop" :id "linktotop"}]
 
    [ui/<zoom-to-modal> :fullscreen]
-   [l/<> {:module :link-preview}]
-   [ui/<safe> :user [l/<> {:module :user, :defer? true}]]
+   (m/view {:module :link-preview})
+   [ui/<safe> :user (m/view {:module :user, :defer? true})]
    [ui/<safe> :settings [common/<settings>]]
-   [ui/<safe> :search [l/<> {:module :search, :defer? true}]]
+   [ui/<safe> :search (m/view {:module :search, :defer? true})]
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
       [error-page]]

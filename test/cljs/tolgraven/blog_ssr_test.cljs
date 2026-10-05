@@ -39,7 +39,9 @@
     (set! context/*href* (fn [name params query]
                           (some-> (reitit/match-by-name routes/router name params) (reitit/match->path query))))
     (set! rf/dispatch (fn [_] nil))
-    (-> (js/fetch (str "/js/" fixture "-ssr.json"))
+    ;; Fixtures are regenerated from the current Node bundle; never hydrate
+    ;; cached HTML from a previous component graph.
+    (-> (js/fetch (str "/js/" fixture "-ssr.json") #js {:cache "no-store"})
         (.then #(.json %))
         (.then (fn [payload]
                  (let [{:keys [snapshot html]} (js->clj payload :keywordize-keys true)
