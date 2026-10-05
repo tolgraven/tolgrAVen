@@ -5,6 +5,7 @@
     [tolgraven.react :as rf]
     [tolgraven.component :as component]
     [tolgraven.component.restore :as restore]
+    [tolgraven.page-transition :as transition]
     [tolgraven.main.module :as main-module]
     [tolgraven.loader :as l]
     [tolgraven.ui :as ui]
@@ -14,7 +15,8 @@
 
 (defc <page> "Render active page inbetween header, footer and general stuff."
   []
-  (let [ext-back? (restore/skip-enter?)
+  (let [_ (transition/use-ready! @(rf/subscribe [:get :page/commit]))
+        ext-back? (restore/skip-enter?)
         debug @(rf/subscribe [:state [:debug]])
         click-evt @(rf/subscribe [:state [:global-clicked]])]
   [:<>

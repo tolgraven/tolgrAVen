@@ -108,12 +108,13 @@
                                        :message "Check your connection and try loading this page again."
                                        :error error}
                                       retry!])])))
-        navigate! (fn [component & [pending-code?]]
+        navigate! (fn [component & [pending-code? replace-shell?]]
                     (when (= navigation @*navigation)
                       (if component
-                        (dispatch! [:page/navigate
-                                      (cond-> (assoc-in match [:data :view] component)
-                                        pending-code? (assoc-in [:data :controllers] nil))])
+                        (dispatch! (cond-> [(if replace-shell? :common/navigate :page/navigate)
+                                            (cond-> (assoc-in match [:data :view] component)
+                                              pending-code? (assoc-in [:data :controllers] nil))]
+                                     replace-shell? (conj {:replace-shell? true})))
                         (dispatch! [:state [:error-page] a404/<not-found-page>]))))]
     (cond
       (nil? match)
@@ -142,7 +143,9 @@
                          (fn [] [shell/<page> (get-in match [:data :shell])]))
                      (nil? ready)))
         (-> (load! {:module module :view page :route match})
-            (.then #(when-not ready (navigate! (get-in % [:view page]))))
+            ;; Finishing code replaces the destination shell in place. It must
+            ;; not cancel/restart its transition or reset its scroll a second time.
+            (.then #(when-not ready (navigate! (get-in % [:view page]) false (not restoring?))))
             (.catch fail!)))
 
       :else (navigate! nil))))

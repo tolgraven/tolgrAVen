@@ -6,6 +6,7 @@ A separate browser origin keeps test navigation/persistence out of user sessions
 """
 import argparse
 import http.client
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -35,6 +36,10 @@ class Handler(BaseHTTPRequestHandler):
         self.proxy()
 
     def proxy(self):
+        # Optional real transport latency, without fixtures or substituted data.
+        # This exposes navigation that accidentally waits for code/content.
+        if self.server.delay_path and self.server.delay_path in self.path:
+            time.sleep(self.server.delay_seconds)
         upstream = self.server.upstream
         connection = http.client.HTTPConnection(upstream.hostname, upstream.port or 80, timeout=60)
         try:
@@ -64,11 +69,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--app', default='http://127.0.0.1:4000')
     parser.add_argument('--port', type=int, default=4003)
+    parser.add_argument('--delay-path', default='')
+    parser.add_argument('--delay-seconds', type=float, default=0)
     args = parser.parse_args()
     upstream = urlsplit(args.app)
     if upstream.scheme != 'http' or upstream.hostname not in {'localhost', '127.0.0.1', '::1'}:
         parser.error('--app must be a local HTTP application')
     server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)
     server.upstream = upstream
+    server.delay_path = args.delay_path
+    server.delay_seconds = max(0, args.delay_seconds)
     print(f'Live integration checks: http://127.0.0.1:{args.port}/__tests/', flush=True)
     server.serve_forever()

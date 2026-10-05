@@ -53,22 +53,26 @@
                    (same :path-params)
                    (same :query-params) ; causes some trouble with settingsbox getting stuck?
                    (same :path))
-        {:db (-> db
+        {:db (cond-> (-> db
                    (assoc :common/route new-match)
-                   (assoc :common/route-last old-match)
                    (update-in [:state] dissoc :error-page)  ; reset 404 page in case was triggered
-                   (update-in [:state :exception] dissoc :page)
-                   (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
+                   (update-in [:state :exception] dissoc :page))
+               (not (:replace-shell? complete!))
+               (assoc :common/route-last old-match)
+               (not (:replace-shell? complete!))
+               (assoc-in [:state :scroll-position (-> old-match :path)] scroll-position))
          :dispatch-n
-         [[:document/set-title! new-match]
-          (if (or (not (same :path))
-                  (not (same :data :view))
-                  (not (same :path-params))
-                  (nil? old-match))
-             ;; Persisted ID counters do not tell us whether this document has
-             ;; navigated yet. Its first route must restore the saved offset.
-             [:scroll/on-navigate (:path new-match) (if old-match navigation-count 0) complete!]
-             [:page/ready nil complete!])]}
+         (if (:replace-shell? complete!)
+           [[:document/set-title! new-match]]
+           [[:document/set-title! new-match]
+            (if (or (not (same :path))
+                    (not (same :data :view))
+                    (not (same :path-params))
+                    (nil? old-match))
+              ;; Persisted ID counters do not tell us whether this document has
+              ;; navigated yet. Its first route must restore the saved offset.
+              [:scroll/on-navigate (:path new-match) (if old-match navigation-count 0) complete!]
+              [:page/ready nil complete!])])}
 
       (let [fragment (-> db :state :fragment)]              ;; matches are equal (fragment not part of match)
         (if (pos? (count (seq fragment)))

@@ -95,29 +95,28 @@
       (update!))))
 
 (defn ready!
-  "Flush the committed React page and position it before the incoming capture.
-   The callback runs after re-frame's queued controller and layout events, rather
-   than guessing readiness with navigation timers. Pending data and image decode
-   must not hold the outgoing snapshot on screen."
+  "Position an already committed destination and release its incoming capture.
+   Called by the page's layout effect, including when it contains only a shell.
+   Never schedule an animation frame inside a native transition's update phase."
   [target completion]
   (let [{:keys [current? resolve!]} completion]
     (when (exists? js/window)
-      (r/after-render
-       (fn []
-         (if (and current? (not (current?)))
-           (when resolve! (resolve!))
-           (js/queueMicrotask
-            (fn []
-              ;; after-render can run inside React's commit. Flush and scroll
-              ;; in the next microtask, still before paint, never in that lifecycle.
-              (when (or (nil? current?) (current?))
-                (r/flush)
-                (when target
-                  (if (number? target)
-                    (restore-position! target)
-                    (when-let [element (.getElementById js/document target)]
-                      (.scrollIntoView element #js {:block "start" :behavior "instant"})))))
-              (when resolve! (resolve!))))))))))
+      (when (or (nil? current?) (current?))
+        (when target
+          (if (number? target)
+            (restore-position! target)
+            (when-let [element (.getElementById js/document target)]
+              (.scrollIntoView element #js {:block "start" :behavior "instant"})))))
+      (when resolve! (resolve!)))))
+
+(defn use-ready!
+  "Complete navigation after React commits the subscribed route and its shell."
+  [commit]
+  (rf/use-layout-effect
+    (fn []
+      (when commit (ready! (:target commit) (:completion commit)))
+      js/undefined)
+    #js [commit]))
 
 (rf/reg-event-fx :page/navigate
   (fn [{:keys [db]} [_ match]]
@@ -132,5 +131,14 @@
 
 (rf/reg-fx :page/transition (fn [[match animate? back?]] (navigate! match animate? back?)))
 (rf/reg-event-fx :page/ready
-  (fn [_ [_ target complete!]] {:page/ready [target complete!]}))
-(rf/reg-fx :page/ready (fn [[target complete!]] (ready! target complete!)))
+  (fn [{:keys [db]} [_ target complete!]]
+    {:db (assoc db :page/commit {:target target :completion complete!})
+     :page/flush nil}))
+
+(rf/reg-fx :page/flush
+  (fn [_]
+    ;; Reagent normally batches updates on requestAnimationFrame. A native
+    ;; transition can suspend those frames until its update promise resolves.
+    ;; Drain Reagent outside React's commit; the layout effect resolves only
+    ;; after React has actually committed the destination, never after a fetch.
+    (js/queueMicrotask r/flush)))

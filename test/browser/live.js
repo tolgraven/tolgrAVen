@@ -28,7 +28,7 @@ const navigate = async (anchor, path) => {
   if (!anchor) throw new Error(`Missing navigation link: ${path}`);
   const documentBefore = doc();
   anchor.click();
-  await waitFor(() => frame.contentWindow.location.pathname === path, `SPA route ${path}`);
+  await waitFor(() => frame.contentWindow.location.pathname === path, `immediate SPA route ${path}`, 1000);
   check(doc() === documentBefore, `${path}: navigation retains the document (no SSR document load)`);
 };
 button.onclick = async () => {
@@ -56,6 +56,14 @@ button.onclick = async () => {
     }, 'hydrated search control');
     app().querySelector('button.search-ui-btn').click();
     await waitFor(() => !app().querySelector('.search-ui.search-ui-open'), 'search closes');
+    // Exercise a different module before relying on the warm blog bindings.
+    // The proxy can add transport latency to verify its cold shell too.
+    await navigate(link('#menu-link-cv'), '/cv');
+    await waitFor(() => !posts().length, 'CV replaces outgoing blog before its data is ready', 1000);
+    check(true, 'CV commits its destination without retaining outgoing blog content');
+    await waitFor(() => app().querySelector('.cv-intro') && ready(), 'CV content');
+    check(!app().querySelector('.component-failed'), 'CV renders through its normal CMS subscription');
+    await navigate(link('#menu-link-blog'), '/blog');
     await waitFor(() => link('.blog-post a[href*="/blog/post/"]') && ready(), 'hydrated post links');
     const heading = app().querySelector('.fading-bg-heading');
     check(!!heading, 'Blog heading is supplied with real CMS content');

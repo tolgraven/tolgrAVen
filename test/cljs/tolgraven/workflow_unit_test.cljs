@@ -699,7 +699,7 @@
   (is (= [:supabase/fetch-settings]
          (:dispatch
            (event-effects :store/init {:db {:state {:supabase-init :failed}}} [:store/init])))))
-(deftest native-page-transition-commits-only-the-new-react-tree
+(deftest native-page-transition-commits-destination-before-content-is-ready
   (async
     done
     (->
@@ -707,21 +707,28 @@
         (let [before (rf/make-restore-fn)
               element (.createElement js/document "div")
               root (await! (support/create-root! element))
+              *content-ready? (r/atom false)
               old {:path "/transition-old", :data {:view (fn [] [:div#old-transition-page "Old"])}}
-              next {:path "/transition-new", :data {:view (fn [] [:div#new-transition-page "New"])}}
+              next {:path "/transition-new", :data {:view (fn [] [:div#new-transition-page
+                                                                (if @*content-ready? "New" "Loading destination")])}}
               fixture (fn []
                         (let [route @(rf/subscribe [:common/route])]
+                          (page-transition/use-ready! @(rf/subscribe [:get :page/commit]))
                           [:main#main {:style {:min-height "100vh"}} [:h1 "Shared heading"]
                            [(get-in route [:data :view])]]))]
           (.appendChild (.-body js/document) element)
           (rf/dispatch-sync [:set [:common/route] old])
-          (await! (support/render! root [fixture]))
+          (await! (support/render! root [:f> fixture]))
           (-> (page-transition/navigate! next true)
               (.then (fn [_]
                        (is (nil? (.querySelector element "#old-transition-page")))
                        (is (some? (.querySelector element "#new-transition-page")))
                        (is (= 1 (.-length (.querySelectorAll element "main"))))
-                       (is (= "Shared heading" (.-textContent (.querySelector element "h1"))))))
+                       (is (= "Shared heading" (.-textContent (.querySelector element "h1"))))
+                       (is (= "Loading destination" (.-textContent (.querySelector element "#new-transition-page")))
+                           "The transition completes while destination content is still pending")
+                       (reset! *content-ready? true)
+                       (wait-for! #(= "New" (some-> (.querySelector element "#new-transition-page") .-textContent)))))
               (.catch #(is false (str %)))
               (.finally (fn []
                           (support/unmount! root)
@@ -743,6 +750,21 @@
                                [:scroll/on-navigate "/" 2])]
     (is (false? (get-in effects [:db :state :browser-nav :got-nav]))
         "A later link click must not inherit this navigation's Back flag")))
+
+(deftest loaded-code-replaces-the-destination-shell-without-a-second-transition
+  (let [shell {:path "/cv", :data {:view (fn [] [:div "Loading CV"])}}
+        page (assoc-in shell [:data :view] (fn [] [:div "CV"]))
+        completion {:target "main" :completion {:resolve! identity}}
+        effects (event-effects :common/navigate
+                               {:db {:common/route shell :page/commit completion}
+                                :scroll-position 200 :id {:id {:navigations 2}}}
+                               [:common/navigate page {:replace-shell? true}])]
+    (is (= page (dissoc (get-in effects [:db :common/route]) :controllers)))
+    (is (= completion (get-in effects [:db :page/commit]))
+        "Keep the first commit's completion if code arrives before React commits")
+    (is (= [[:document/set-title! (get-in effects [:db :common/route])]] (:dispatch-n effects))
+        "Code arrival neither repositions the page nor starts another transition")))
+
 (deftest code-ready-navigation-does-not-await-managed-data
   (async done
          (-> (go-promise
@@ -783,7 +805,7 @@
                  (set! (.-getBoundingClientRect image) (fn [] #js {:top 0, :bottom 100}))
                  (.appendChild main image)
                  (.appendChild (.-body js/document) main)
-                 (with-redefs [r/after-render (fn [f] (f))]
+                 (with-redefs [r/after-render (fn [_] (throw (js/Error. "Transition must not wait for an animation frame")))]
                    (page-transition/ready! nil
                                            {:current? (constantly true),
                                             :resolve! #(reset! *completed true)}))

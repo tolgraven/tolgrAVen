@@ -180,5 +180,8 @@
 
      [<capabilities> skills]]))))
 
-(m/defc <page> []
+(m/defc <page>
+  {:depends [{:source :strapi :keys [:cv]}]
+   :loading-prefab :lines :loading-tag :section.cv}
+  []
   [ui/<with-heading> [:cv :heading] [<cv>]])
