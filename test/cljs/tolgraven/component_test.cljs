@@ -9,9 +9,81 @@
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.ui :as ui]
             [tolgraven.component :as component]
+            [tolgraven.component.markup :as markup]
+            [tolgraven.component.loading :as loading]
             [tolgraven.component-fixture]
             [tolgraven.util :as util]))
+(declare with-root render!)
 (defn- flush! [] (support/settle!))
+(deftest native-attrs-flatten-props-without-leaking-component-options
+  (let [child (fn [_] [:p "Child"])
+        spec {:props {:class "outer" :style {:color "red"}}
+              :class "base" :style {:padding "1rem"}
+              :appear "zoom" :depends [{:source :strapi}] :skeleton true}
+        form (markup/normalize-form
+              [:section spec [:span {:props {:title "A title"} :seen true} "Text"]
+               [child spec]])]
+    (is (= "base outer" (get-in form [1 :class])))
+    (is (= {:padding "1rem" :color "red"} (get-in form [1 :style])))
+    (is (= #{:class :style} (set (keys (second form)))))
+    (is (= [:span {:title "A title"} "Text"] (nth form 2)))
+    (is (= [child spec] (nth form 3)) "Component args retain their specification")))
+
+(deftest rendered-skeleton-retains-the-normal-component-tree
+  (async done
+    (-> (with-root
+          (fn [root element]
+            (go-promise
+              (await! (render! root [loading/<rendered>
+                                    {:form [ui/<md->div> "# Sample heading\n\nSample paragraph"]}]))
+              (is (some? (.querySelector element ".component-render-skeleton .md-rendered h1")))
+              (is (= "Sample paragraph" (.-textContent (.querySelector element "p"))))
+              (is (.hasAttribute (.querySelector element ".component-render-skeleton") "inert")))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+(deftest skeleton-reveal-retains-the-outgoing-layer-and-disposes-it
+  (async done
+    (-> (with-root
+          (fn [root element]
+            (go-promise
+              (let [stylesheet (.createElement js/document "link")]
+                (set! (.-rel stylesheet) "stylesheet")
+                (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
+                (try
+                  (await! (js/Promise.
+                            (fn [resolve reject]
+                              (set! (.-onload stylesheet) resolve)
+                              (set! (.-onerror stylesheet) reject)
+                              (.appendChild (.-head js/document) stylesheet))))
+                  (await! (render! root [component/<loading-reveal>
+                                        {:ready? false :skeleton [:p "Sample layout"]}]))
+                  (is (= "Sample layout" (.-textContent element)))
+                  (await! (render! root [component/<loading-reveal>
+                                        {:ready? true :form [:article "Real content"]}]))
+                  (is (= "Real content" (.-textContent (.querySelector element "article"))))
+                  (when-not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))
+                    (is (some? (.querySelector element ".component-loading-reveal__exit"))
+                        "The actual CSS exit retains the skeleton alongside live content"))
+                  ;; Let ordinary commits and the presence lifecycle complete.
+                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 650))))
+                  (is (nil? (.querySelector element ".component-loading-reveal__skeleton")))
+                  (is (= "Real content" (.-textContent element)))
+                  (finally (.remove stylesheet)))))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+(deftest cached-skeleton-reveal-starts-with-only-the-live-component
+  (async done
+    (-> (with-root
+          (fn [root element]
+            (go-promise
+              (await! (render! root [component/<loading-reveal>
+                                    {:ready? true :form [:article "Cached content"]}]))
+              (is (nil? (.querySelector element ".component-loading-reveal__skeleton")))
+              (is (= "Cached content" (.-textContent element))))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
 (defn- render! [root form] (support/render! root form))
 (defn- with-root
   [test!]

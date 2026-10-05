@@ -96,7 +96,7 @@
      (doall (for [{:keys [id title text ts score] :as comment} (vals comments)] ^{:key (str "user-" (:id user) "-comment-" id)}
               [:div.blog-comment>div.blog-comment-main
                [:h4.blog-comment-title title]
-               (m/view {:module :blog :view :posted-by} {:id id :user user :ts ts :score score})
+               (m/<> :blog/posted-by {:id id :user user :ts ts :score score})
                [:div.blog-comment-text
                 [link-preview/<md> text]]]))) ])
 
@@ -245,7 +245,7 @@
        :change-username <change-username>
        :none)]]])
 
-(defc <user-section> {:features [:presence]} []
+(defc <user-section> {:features [:error-boundary :presence]} []
   (let [sections @(rf/subscribe [:user/active-section])
         user @(rf/subscribe [:user/active-user])]
     [:<>

@@ -30,7 +30,7 @@
            :trust (if (#{nil "anon"} (:user message)) :untrusted :user)}]]
         [:div.chat-message-user.flex
          (or (:name user) "anon")
-         (m/view {:module :user, :view :avatar} user)]])))
+         (m/<> :user/avatar user)]])))
 
 (defc <chat> "A place to hang out with real-time messaging"
   []

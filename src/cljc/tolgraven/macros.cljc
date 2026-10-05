@@ -1,7 +1,6 @@
 (ns tolgraven.macros
   #?(:clj (:refer-clojure :exclude [for tap>]))
-  (:require #?(:clj [cljs.env :as cljs-env])
-            [clojure.string :as string]
+  (:require [clojure.string :as string]
             [malli.core :as m]
             [malli.error :as me]
             #?@(:cljs [[reagent.core :as r]
@@ -38,15 +37,6 @@
      (clojure.core/tap> val#)
      val#))
 
-(defmacro browser-only
-  "Emit module references only with a Shadow browser module graph.
-   SSR and standalone documentation analysis cannot resolve lazy loadables."
-  [form]
-  (let [compiler @cljs-env/*compiler*]
-    (when (and (seq (:shadow.build/ns->mod compiler))
-               (not (get-in compiler [:options :external-config :tolgraven/ssr])))
-      form)))
-
 (defmacro make-modules
   "Use keywords to generate Shadow lazy loadables.
    ks must be a literal seq of keywords at the call site."
@@ -59,10 +49,11 @@
                [k `(shadow.lazy/loadable ~qsym#)]))
            ks))))
 
-(defmacro view
+(defmacro <>
   "Return a component vector. Module references use the lazy loader only until
    their code is available; direct components never acquire a loader wrapper.
-   Use (view {:module :blog :view :post} spec) or (view <component> spec)."
+   Use (<> <component> spec), (<> :blog/post spec), or
+   (<> {:module :blog :view :post} spec)."
   [component & args]
   `(tolgraven.loader/component-vector ~component [~@args]))
 
@@ -172,7 +163,7 @@
         (let [scoped-helpers? (some #(and (seq? %) (symbol? (first %))
                                          (#{"<sub" ">reset" ">update"} (clojure.core/name (first %))))
                                    (tree-seq coll? seq (concat bindings body)))
-              options (select-keys (merge (meta name) attrs) [:page :spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :state :module])
+              options (select-keys (merge (meta name) attrs) [:page :spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :loading-args :state :module])
               options (merge (loading-root (last body)) options)
               loading-helper? (and (some #{'<loading>} (tree-seq coll? seq (concat bindings body)))
                                    (not (get-in &env [:ns :defs '<loading>]))

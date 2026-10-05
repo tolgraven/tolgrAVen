@@ -129,8 +129,8 @@
      [:div.blog-post-header-main
       [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
        [:h2.blog-post-title title]]
-      (m/view {:module :blog :view :posted-by} {:id id :user user :ts ts})
-      (m/view {:module :blog :view :tags-list} {:post document})]
+      (m/<> :blog/posted-by {:id id :user user :ts ts})
+      (m/<> :blog/tags-list {:post document})]
      (m/for [highlight highlights]
        [link-preview/<md> (:snippet highlight)])]))
 
@@ -140,10 +140,10 @@
     [:div
      [:div.blog-comment-border]
      [:section.blog-comment
-      (m/view {:module :user, :view :avatar} @(rf/subscribe [:user/user user]))
+      (m/<> :user/avatar @(rf/subscribe [:user/user user]))
       [:div.blog-comment-main
        [:h4.blog-comment-title title]
-       (m/view {:module :blog :view :posted-by} {:id id :user user :ts ts})
+       (m/<> :blog/posted-by {:id id :user user :ts ts})
        (m/for [highlight highlights]
          [:div.blog-comment-text
           [link-preview/<md> (:snippet highlight)]])]]]))
@@ -163,6 +163,7 @@
   [collection query])
 
 (m/defc <ui> "The search ui. Initially runs over blog-posts and comments, but should later also search docs and hence source-code."
+  {:features [:error-boundary]}
   [collection]
   (let [open? (rf/subscribe [:search/open?])
         results-open? (rf/subscribe [:search/results-open?])]

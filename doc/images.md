@@ -304,3 +304,14 @@ Already configured in `middleware.clj`:
 - Asset pipeline includes WebM files (line 72)
 - Gzip correctly skips video files
 - Partial content support for Safari video playback
+
+## Failed modern-image decoding
+
+A browser may select an AVIF source yet fail to decode it (including restrictive
+Safari security modes). `<picture>` selection alone does not guarantee fallback.
+The image component handles failed modern sources by selecting the original
+JPEG/PNG, including failures before hydration attaches handlers. Keep originals
+packaged, serve AVIF as `image/avif`, and verify `currentSrc` plus `naturalWidth`
+in the rendered browser. A successful HTTP response alone does not prove decoding.
+Changing the original path resets the failure state; original-source errors still
+reach the caller. See `test/cljs/tolgraven/image_test.cljs`.

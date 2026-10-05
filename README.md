@@ -55,8 +55,8 @@ lein with-profile -dev,+prod run -m shadow.cljs.devtools.cli release app --confi
 Both browser builds use the same lazy module graph. Pull requests validate CSS;
 the deployment job runs only for pushes to `master`.
 
-See [the integration and recovery notes](doc/integration-20260909.md) for the
-preserved local work and the changes brought together in this branch.
+See [component authoring](doc/components.md), [page rendering](doc/blog-ssr.md),
+and [testing](doc/testing.md) for current architecture and verification workflows.
 
 ## License
 

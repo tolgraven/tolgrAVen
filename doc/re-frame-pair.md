@@ -47,9 +47,3 @@ checks its type, contents, slicing and concatenation. Remove this workaround
 when an upstream release includes the exclusions; upgrading to 0.2.1 alone
 is insufficient. Do not suppress these warnings globally or exclude the
 library entirely: Fipp and the dev tooling actually use it.
-
-The locally installed `lein-ancient` 1.0.0-RC3 currently fails metadata lookup
-with `Don't know how to create ISeq from: java.io.UncheckedIOException`,
-including `show-latest org.clojure/core.rrb-vector`. Its output is not a usable
-dependency audit. Maven Central metadata and the upstream jar were checked
-directly for this fix; no broad dependency upgrade was applied.

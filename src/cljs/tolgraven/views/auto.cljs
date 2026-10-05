@@ -81,7 +81,7 @@
   [id section-map]
   (let [{:keys [module <comp> <loading> content content-deps args dep init]} section-map
         view (if module
-               (m/view {:module module :view (or <comp> :view)
+               (m/<> {:module module :view (or <comp> :view)
                       :defer? true :<loading> <loading>})
                [<comp>])]
     [:<>

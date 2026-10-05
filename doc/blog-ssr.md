@@ -1,4 +1,4 @@
-# Page SSR and re-frame 1.4.7
+# Page rendering, hydration and navigation
 
 SSR is enabled by default. Configure it under `:ssr` in your `config.edn`
 (`dev-config.edn` in local development):
@@ -11,8 +11,7 @@ SSR is enabled by default. Configure it under `:ssr` in your `config.edn`
 ```
 
 Production config points `:worker` to `/app/ssr/site.js`; Docker bundles that build.
-Raw `SSR_ENABLED`/`BLOG_SSR_ENABLED`/`SSR_WORKER` environment switches are no longer
-read. Set `:enabled false` explicitly to disable SSR. The normal development REPL
+Set `:enabled false` explicitly to disable SSR. The normal development REPL
 watches both the browser and Node targets. Successful Node builds invalidate old
 render cache entries and restart each pooled worker on its next lease. The Node
 protocol has no development REPL injected into stdout.
@@ -53,8 +52,7 @@ A pool of persistent Node workers renders with Reagent `render-to-string`.
 The renderer source is ClojureScript compiled by Shadow; Node supplies React’s
 JavaScript runtime. The JVM owns source acquisition and cache coordination.
 Each request initializes an isolated public app-db, renders using ordinary
-subscriptions, then clears the subscription cache, app-db and restoration context
-in `finally`. Browser effects are disabled during server rendering; accidental
+subscriptions, then disposes its isolated subscriptions in `finally`. It does not reset a live application store. Browser effects are disabled during server rendering; accidental
 browser HTTP construction throws instead of starting an untracked request.
 Only required SSR modules enter the Node compilation graph; browser-only modules
 such as Leaflet remain in their existing lazy bundles.
@@ -128,10 +126,10 @@ by ID on both sides, including missing profiles as completed empty results.
 
 ## Individual blog reads
 
-Normal browser blog navigation now loads an index without body text. Visible
-posts fetch their own bodies, and each comment thread filters on `parent_post`
-and `parent_comment` at the database (`is.null` for roots). Adjacent-post links
-read summaries. Archive previews still load each displayed post individually.
+Feed and tag subscriptions request bounded full posts using shared Supabase
+filters; bulk results seed individual post readers. Permalinks fetch their own
+body when absent. The lightweight index supplies tags and adjacent-post links.
+Comment queries filter by `parent_post` and `parent_comment` on the server.
 
 “Load more comments” increases the visible root window by ten. It reads the new
 prefix plus one lookahead row, retaining the previous visible window until the
@@ -152,153 +150,41 @@ when readers unmount; app-db keeps the data. HTTP reads do not depend on a worki
 WebSocket. Reconnection refreshes snapshots, and responses from disposed readers
 or replaced clients cannot overwrite current content.
 
-## Using the re-frame upgrade
+## Navigation and history
 
-re-frame is now 1.4.7. Application code uses the existing `tolgraven.react`
-shim for re-frame operations. Its macros forward the original call site to
-`re-frame.core-instrumented`, preserving file/line metadata when `goog.DEBUG`
-is true. Release builds compile to the regular API without metadata allocation.
-First-class function values remain available through the same shim. See
-`doc/re-frame-pair.md` for live inspection with the installed skill.
+SPA navigation commits a destination immediately and acquires its module and
+managed data dependencies independently. Related blog routes keep their shared
+heading mounted. CSS View Transitions fade between sections; the component
+fallback supplies the transition in browsers without native support. Missing
+content uses the component loading view and animates when ready.
 
-Tests use `re-frame.tooling/live-query-vs` to check subscription disposal instead
-of depending on the internal cache representation. `dispatch-and-settle` verifies
-event completion without a guessed sleep, and `dispatch-sync-with` exercises the
-real blog edit handler with dispatch-local effect overrides. The latter supports
-safe REPL experiments without globally replacing effects:
+SSR and the first client render use matching public content and view defaults.
+For external returns, a service worker can serve local HTML paired with the exact
+app-db content and view state used to render it. Install the pair before hydration;
+expanded comment windows must not hydrate over a shorter default server tree.
+See [local return documents](components.md#local-return-documents) for lifecycle,
+limits and build requirements. BFCache resumes the live document directly.
 
-```clojure
-(require '[re-frame.core-instrumented :as rf]
-         '[re-frame.tooling :as tooling])
-(tooling/live-query-vs)
-(rf/dispatch-sync-with [:blog/edit-post {:id 42 :title "Preview"}]
-                       {:dispatch-n prn})
-```
+Public localStorage restoration remains a fallback when the pair is unavailable.
+Consumed snapshots are removed from disk and current state is saved on departure.
+SPA Back restores cached content/view state together and uses the shared
+layout-aware scroll adapter. Ordinary SSR and BFCache leave scroll restoration
+to the browser.
 
-`dispatch-and-settle` covers synchronous event cascades, not completion of HTTP
-requests, lazy module imports, React commits, or localStorage queues. Those keep
-their own promises and lifecycle checks. Do not enable alpha `:forever`
-subscriptions for mounted components: disposal is part of this architecture.
-
-The dependency change requires `make docker-prefab`; the published manifest-hash
-prefab includes 1.4.7, and both the prefab and fallback stages use `project.clj`.
+Service failures use the shared HUD and component retry fallback. Cached content
+remains visible during refresh failures. Initial WebSocket negotiation is quiet;
+a failed connection or lost established connection is reported.
 
 ## Verification
 
-```sh
-make ssr
-lein test tolgraven.blog-ssr-test tolgraven.supabase-shape-test
-lein with-profile +test run -m shadow.cljs.devtools.cli compile app-test
-python3 scripts/test-blog-ssr.py
-python3 scripts/serve-browser-tests.py --port 4002
-lein with-profile prod run -m shadow.cljs.devtools.cli release app
-```
+See [testing](testing.md) for build commands and the real-browser checklist.
+The Node fixture runner checks request isolation, escaping and ordinary page
+rendering; mounted browser tests verify DOM identity across hydration. Neither
+fixture tests nor offline content seeds establish live CMS/database integration.
 
-Open the browser suite at port 4002 after generating the SSR fixture. It checks
-real Node-rendered HTML against client hydration, DOM identity, absence of
-loading/mount transitions, and comment node preservation through hydration. Landing tests preserve the hero, image,
-story, gallery and main nodes while enhancing the shell, and exercise the contact
-action. Regression tests cover exported Reagent 2 defc Vars, error-boundary reset
-on route changes, and asynchronous per-post updates. The fixture generator also
-checks alternating landing/blog request isolation and Markdown escaping.
-
-References: [Reagent server rendering](https://reagent-project.github.io/docs/master/reagent.dom.server.html),
-[Reagent client hydration](https://reagent-project.github.io/docs/master/reagent.dom.client.html),
-[React hydration requirements](https://react.dev/reference/react-dom/client/hydrateRoot),
-[Shadow Node targets](https://shadow-cljs.github.io/docs/UsersGuide.html#target-node-library),
-[re-frame 2026 releases](https://day8.github.io/re-frame/releases/2026/).
-
-Cached comments and display state restore through the shared component-storage
-envelope before mounting. Only public scoped post/comment/profile queries are
-eligible; fresh SSR entries take precedence. The requested comment-window size, root expansion, thread folding and
-motion identities survive return navigation. SSR comments are present in the initial markup and matching client query caches;
-hydration does not gate the comments section on an interactive flag. Previously
-shown posts/comment frames use stable motion keys; explicitly folded threads
-remain unmounted.
-
-Reading a valid snapshot consumes its disk entry on the shared write tick. Its
-in-memory copy remains available to other consumers without further disk reads.
-Unchanged debounce flushes do not recreate consumed entries; navigation/pagehide
-publishes current tracked values again. Explicit app-db deletions still update
-or remove the corresponding snapshots. Expired envelopes are compacted on read.
-Legacy blog display settings migrate once into the same queue, and legacy
-settings reads remove the consumed path and empty parents.
-
-The user panel uses `defc` presence and exit handling. Closing sets app-db to
-closed immediately. The component retains its last inputs during its CSS exit,
-then removes the original wrapper; reopening cancels removal. Event handlers
-contain no delayed close/open transitions.
-
-Service failures use sticky, accessible HUD alerts with retry controls, without
-duplicate banners above page content. They remain until dismissed or recovered.
-When required content is unavailable, the affected component uses the same
-accessible fallback as render boundaries, module loading and page initialization.
-Retry belongs to the failed loader; usable cached content stays visible during
-background failures.
-Initial WebSocket negotiation is silent, including transient socket replacement
-during authentication. An explicit timeout or failure to join within ten seconds
-reports an error; losing an established connection reports immediately. Successful
-reconnection clears the notice, and intentionally disposing a reader never raises
-a disconnection error. HTTP content remains usable while live updates reconnect.
-
-Client navigation does not request SSR output. Blog navigation commits once the
-module is ready, without waiting for post bodies, comments or authors. The page
-mounts immediately; managed subscriptions load its content and component
-appearance handles arrival. Feed pages request a bounded range of full posts,
-while tag subscriptions filter complete tag tokens in Supabase. The lightweight
-summary index still supplies pagination, the tag cloud and adjacent-post links.
-Bulk results also seed individual-post readers, so navigating to a post already
-shown in the feed can reuse its content. SSR uses the same shared queries and
-seeds those caches before hydration. Pending reads show the common spinner;
-failed reads show the shared component fallback and Retry, alongside the HUD.
-Main-page CMS requirements, including the hero and landing sections, resolve as
-one batched dependency before navigation. CSS View Transitions capture the outgoing
-page while React mounts only the incoming page. The lifecycle adapter waits for
-queued controller events and the React commit, restores the scroll position
-instantly, and decodes visible images before releasing the new capture. No
-outgoing component can start reading the new route during its fade. First loads,
-query changes, and reduced motion skip the transition; unsupported browsers
-commit normally. Obsolete navigation callbacks cannot scroll a newer page. Supabase settings initialization runs in the
-background without the global loading spinner.
-
-The shell uses one Open Sans stylesheet, with the existing v29 Latin font served
-locally and preloaded. The fallback font uses matching vertical metrics so the
-landing title keeps its line-box height before the font arrives. A restored hero
-retains its settled decoration while its page fades out.
-
-## Saved returns without personalized server renders
-
-On pagehide/hidden visibility, the shared storage adapter writes one envelope per
-owner. After a successful public-content save (including ordinary batched saves, before
-a reload can begin) it sets a 30-minute `tolgraven-return`
-cookie containing up to 16 recently saved pathnames (bounded below 3 KB). A matching document request receives
-a client-rendered shell marked `data-restore`, without Supabase/CMS snapshot reads
-or an SSR worker call. The client restores content and display state before its
-first render, so an expanded 20-comment window does not hydrate over a default
-10-comment server window. No view state is replicated to the server.
-
-BFCache history returns retain the existing DOM directly. Ordinary SPA navigation
-never requests SSR. Fresh visits and paths not matching the saved-return hint
-still use public SSR. A non-BFCache return waits for the cached JavaScript and local
-restore before displaying content; it deliberately does not show an incorrect
-shorter SSR page. The cookie is only a hint: expired, missing, corrupt or unavailable
-storage falls back to the normal subscription/module loading and HUD error paths.
-Existing cached content remains visible during Supabase background refresh. Failed
-storage writes clear the hint. The cookie retains recent paths across document returns and merges paths from
-other tabs when saving; older paths can eventually be evicted and receive normal SSR. In that case the fresh public snapshot owns
-the initial fold/window defaults, ensuring cached display settings cannot cause a
-hydration mismatch. No schema or deployment configuration changes
-are required for this behavior.
-
-Initial route resolution retains the browser's scroll position through hydration.
-The navigation handler reads the actual injected `:id` counter; an empty initial
-scroll snapshot does not trigger scroll-to-main. Development scroll save/restore
-runs only when a root is already mounted. Frame-by-frame first-load verification
-on `/blog/post/A-new-era-28` retained a 79.195px header at y=35.195px and main content
-at y=193.820px through hydration, with scrollY=0. The prior startup scroll-to-main
-moved both by 1.5px. Normal SPA navigation and saved browser-back positions retain
-their existing scroll behavior.
-
+References: [React hydration](https://react.dev/reference/react-dom/client/hydrateRoot),
+[Reagent server rendering](https://reagent-project.github.io/docs/master/reagent.dom.server.html),
+[Shadow Node targets](https://shadow-cljs.github.io/docs/UsersGuide.html#target-node-library).
 
 ## Progressive first response and startup content
 
@@ -323,8 +209,7 @@ cold render-cache miss the page-data future starts immediately. A short isolated
 React render produces the shell, using the ordinary header, footer, heading and
 skeleton components. Its HTML is flushed before waiting for page data. The same
 HTTP response then carries the complete ordinary page root and its public
-hydration snapshot. CSS displays that root only after both have arrived; React
-clears the temporary loading root when the application initializes. Elements
+hydration snapshot. CSS displays that root only after both have arrived; React unmounts the temporary loading root after its exit animation. Elements
 with `data-stream-enter` use their ordinary appearance style (page fade,
 article zoom, comment zoom/fade) when the completed HTML becomes visible,
 respecting reduced motion. These markers match across SSR and hydration and do
@@ -405,8 +290,8 @@ query as their normal subscription. Temporary subscription ownership is released
 on completion; app-db content stays cached. No SSR HTML request is made by this
 background queue or by SPA navigation.
 
-SPA route commits wait only for missing module code, never page data or image
-decoding. A cold code load commits a destination shell immediately; an available
+SPA route commits never wait for page data or image decoding.
+A cold code load commits a destination shell immediately; an available
 module renders its normal view and managed loading/error states immediately.
 Module initialization continues independently. CSS page transitions finish their
 capture after React/controller updates and scroll positioning, so slow images

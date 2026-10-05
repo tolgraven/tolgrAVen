@@ -67,9 +67,7 @@ Features are explicit, ordered and registered independently of the macro:
 | `:exit` | Exit animation when removed by a presence-enabled parent | No |
 | `:presence` | Retain keyed direct children until exit completion | No |
 
-Definition-level `:depends` automatically enables data handling. The old `:spec false`
-is retained as a compatibility override, but is unnecessary in normal definitions.
-The macro recognizes a first argument named `spec`, `opts` or `options`, or a map
+Definition-level `:depends` automatically enables data handling. The macro recognizes a first argument named `spec`, `opts` or `options`, or a map
 destructuring feature keys such as `props`, `classes`, `depends`, `appear`, `seen`
 or `links`. Other arguments are domain data, even if their map happens to contain
 keys named `:props` or `:depends`. No spec argument needs to be added when absent.
@@ -144,7 +142,7 @@ need native DOM roots. They reject fragments/component roots rather than silentl
 adding wrappers. Nested lists should put `:presence` on their own direct parent.
 Only removed children are retained, and only until completion; no hidden DOM is
 kept after exit. Declare `:seen` and `:appear` on the owning component; the
-former `ui/seen`/`ui/appear` wrappers have been retired.
+root features require no wrapper.
 
 ## Data dependencies, before mount
 
@@ -159,7 +157,7 @@ of the component's arguments returning that vector:
                {:source :url :url (str "/api/articles/" id)
                 :into [:articles id]}])}
   [id]
-  [:article (get-in @rfdb/app-db [:articles id :title])])
+  [:article @(rf/subscribe [:get :articles id :title])])
 
 ;; Starts every request now, without constructing the component body or DOM.
 (component/preload! <article-page> "welcome") ; Promise, errors reject
@@ -216,8 +214,8 @@ optional `:scope` partitions the request cache (for example by session).
 
 ## Loading views and skeletons
 
-Missing dependencies show `loading/<spinner>` by default. It has an accessible
-status label but only the spinner is visible. A static Hiccup `:loading` value or
+Missing dependencies use the inferred native root and classes by default.
+Choose `:loading-prefab` for a skeleton, or `loading/<spinner>` explicitly. A static Hiccup `:loading` value or
 a function of current component arguments can build a skeleton:
 
 ```clojure
@@ -232,7 +230,7 @@ a function of current component arguments can build a skeleton:
              [loading/<lines> {:count 3}]
              [loading/<box> {:style {:min-height "12rem"}}]]}
   []
-  [:article (get-in @rfdb/app-db [:profile :name])])
+  [:article @(rf/subscribe [:get :profile :name])])
 ```
 
 Helpers include `<span>`, `<h1>`, `<h2>`, `<box>`, `<avatar>` and `<lines>`. They
@@ -303,8 +301,7 @@ empty content. The core's explicit `data-hydrate="true"` root contract selects
 `hydrate-root`, waits for route/module readiness, and leaves existing server DOM
 in place while preparing it. Only mark a root when its markup and initial app-db
 represent the same component tree; ordinary server placeholders use create-root.
-The server renderer must supply matching state/content before hydration. This
-change does not implement the future full server page renderer.
+The server renderer must supply matching state/content before hydration. See [page rendering](blog-ssr.md) for the shared server implementation.
 
 ## Modules, viewport prefetch and SSR
 
@@ -321,44 +318,19 @@ IntersectionObserver. Auto sections combine their declared `:depends` with
 legacy content requirements. Explicit `component/preload!` also works from route,
 hover or navigation preparation, without needing a sentinel or mounted view.
 
-Resource descriptors and the CLJC manifest are intended to be shared with SSR.
-The adapters in this change are browser adapters; server-side resource execution
-and generation of matching server markup/state remain the server renderer's job. A server renderer can resolve the
-same manifest and hydrate app-db before rendering, letting the app-db/Strapi
-readiness checks consume that data without an extra load. Keep credentials in
-backend/client configuration, never in component descriptors.
+Page declarations and public read plans live in CLJC and are consumed by JVM
+source adapters and the CLJS renderer. Credentials stay in server/client adapter
+configuration, never component descriptors.
 
-## Error recovery and the blog migration
+## Error recovery
 
-Only components selecting `:error-boundary` get a React boundary. It catches
-initialization, rendering and descendant lifecycle failures, logs via `util/log`,
-and shows **Attempt reload** with expandable diagnostics. Retry remounts the
-failed body with current arguments; siblings retain state. The existing
-`ui/safe` signature uses this same boundary.
+Render boundaries and failed required dependencies share the component fallback
+with retry and expandable diagnostics. Event/transport failures use registered
+error effects. Keep cached content visible during refresh failures and report
+those through the HUD; do not add duplicate banners above usable content.
 
-React boundaries do not catch event-handler errors, rejected promises/timers or
-server-rendering errors; handle those in their action/data layer. Data loading
-has its own failure UI regardless of whether a React boundary is selected.
-
-Blog labels, buttons and layout helpers use lean function components. Boundaries
-surround recoverable posts, comments, forms and pages; pages declare their CMS
-requirements. Existing public component names and argument signatures remain.
-The unfinished `delete-comment` and `blog-intros-view` stubs remain untouched.
-
-## Verification
-
-```sh
-lein with-profile +test run -m shadow.cljs.devtools.cli compile app-test
-npm run build
-python3 scripts/serve-browser-tests.py --port 4002
-```
-
-Open `http://127.0.0.1:4002/` for the browser suite. The interactive fixture at
-`http://127.0.0.1:4002/fixtures/defc.html` uses real blog views and local data.
-Increment the sibling counter, break the post, repair its data, then use Attempt
-reload: the counter retains its value. Click **Preload URL content** before
-**Show data component**: the resource becomes ready with zero bodies created,
-then the component consumes it when shown. This fixture makes no remote writes.
+Use `defpage` for page components; its error boundary resets on route changes.
+See [testing](testing.md) for mounted lifecycle and browser checks.
 
 ## Shared work queues
 
@@ -447,12 +419,6 @@ also accepted, as are `[:global ...]` / `[:shared ...]`. Relative component vect
 and `[:comp ...]` require active component context; use a handle in callbacks.
 Outside the macro, use `component/<sub`, `component/>reset`, and `component/>update`.
 
-Blog views with inputs take one spec map, for example
-`[<blog-post> {:post post}]`, `[<comment-post> {:path path :comment comment :visible? *visible?}]`,
-and `[<posted-by> {:id id :user user :ts ts :score score}]`. Domain records stay
-nested under `:post` or `:comment`; component options can coexist in the same spec.
-Destructuring with `:as spec` identifies a spec argument to `defc` automatically.
-
 Explicit app-db deletions invalidate affected local snapshots immediately in
 memory and queue the disk update. Nested state deletions keep the surviving
 siblings; deleting a whole state subtree removes its snapshot. This also covers
@@ -461,21 +427,16 @@ distinct from storing `nil` or `false`, both of which remain valid values. Pendi
 cold reads and later autosaves cannot resurrect the deleted snapshot. Unmounting
 alone still preserves app-db and persisted data.
 
-Blog component vars use `<name>` consistently, including the functions exported
-by `blog.module`. Public loader view keywords remain unchanged. Blog appearance
-uses `defc` features on native roots: post, header, metadata, comments, reply frame,
-and fade overlay. No `ui/appear-anon` wrappers are needed. The header zoom applies
-to its existing row (including the avatar); shared form controls and page headings
-remain provided by `ui`. The post loading branch uses `loading/<spinner>` and only
-mounts the animated post body once its content is available.
-
 Page declarations use `defpage`, with the same arguments and options as `defc`.
 It always supplies an error boundary, including when an incoming feature list
 tries to disable one. Page boundaries reset on a route path or query change;
 ordinary component boundaries keep their existing explicit recovery behavior.
 
-Use `(m/view {:module :user :view :avatar} user)` for a lazy exported view, or
-`(m/view <avatar> user)` for a direct reference. This macro yields a Hiccup vector,
+Use `(m/<> :user/avatar user)` for a lazy exported view, or
+`(m/<> <avatar> user)` for a direct reference. A qualified keyword is equivalent
+to `{:module :user :view :avatar}`; computed keywords work too. Keep the map form
+when specifying options such as `:defer?`, `:<before>` or a custom loading view.
+This macro yields a Hiccup vector,
 not a component wrapping the target. A shared module subscription acquires the
 code and initialization through events/effects. Once code is available, the
 containing render uses the actual component descriptor directly; pending data
@@ -486,13 +447,43 @@ module assets belong to the page's `loader/<loaded-assets>` component.
 Declare module data in `:depends`, rather than the legacy `:content` loading path.
 Page specs declare the first-paint content; section/component declarations own
 more specific content. They all use the same managed resource queue and caches.
+
+Rendered skeletons can reuse an ordinary component instead of a second loading
+layout. `(m/<> {:module :blog :view :post-content :skeleton true} sample-spec)`
+renders its usual tree in an inert skeleton region. Direct references also accept
+`:skeleton` in their spec argument. CSS masks text and adds a breathing gradient;
+the original classes, typography and line wrapping determine the geometry.
+Sample headings and paragraphs in `sample-spec` provide useful lengths when the
+real content is unavailable. Components must still tolerate missing optional data.
+For dependency-gated `defc` components, `:loading-prefab :rendered` uses the normal
+render body as the fallback. `:loading-args` supplies a sample spec, argument
+vector, or function of the current arguments. Declared dependency acquisition is
+skipped in this skeleton subtree; the live component's managed binding owns it.
+
+A streamed page's `:shell` may declare `:loading-view` as a module/view reference
+and `:loading-args` as its sample spec. Blog demonstrates this using the normal
+post-content component. Cold streamed SSR dissolves the shell over the completed
+page; cache hits and history restoration do not introduce a skeleton. React
+waits for the shell exit animation, then disposes the temporary shell before
+hydration, so hydration itself never replays the effect. Data/bootstrap work runs
+in parallel with that exit. In the SPA, rendered dependency fallbacks keep the
+live tree and skeleton as siblings in a shared grid slot. The existing presence
+feature retains the outgoing skeleton and unmounts it after its animation. Reduced motion switches directly to the completed page.
+
+Native Hiccup attrs flatten nested `:props`, merging classes and styles, and
+remove component feature options. Component vectors retain their original specs;
+only native-element maps are normalized.
+
+Browser-only loader declarations use `#?(:browser ... :default {})` in
+`loader/code.cljc`. Browser builds enable `:reader-features #{:browser}`; SSR enables
+`#{:ssr :node}`. Use custom branches before `:cljs`, since both browser and Node
+are ClojureScript. Conditional reading requires `.cljc`, including code shared
+only between browser and Node builds. Standalone Codox reads the default branch.
 The main page marks its shared document/header/footer dependencies for startup
 availability, while individual sections use `defc` dependency lifecycle handling.
 
 Appearance and visibility belong to actual components, for example
-`{:features [[:seen "zoom"]]}` on an image component. The old `ui/<appear>`,
-`ui/<seen>` and lazy observer wrappers have been retired. For a visibility-driven
-event, use `[:on-seen {:event [:load-more] :once? false}]`; it observes the existing
+`{:features [[:seen "zoom"]]}` on an image component. For a visibility-driven event, use `[:on-seen {:event [:load-more] :once? false}]`; it observes the existing
 native root and owns cleanup. Feature configurations may also be functions of the
 component's arguments, such as `[:on-seen (fn [id] {:event [:load id]})]`.
 `on-seen` supports `:threshold`, `:root-margin`, `:delay-ms`, and defaults to firing
@@ -508,3 +499,50 @@ Module activation (`:scope/inited?`) can precede code arrival. Shadow's
 value. `:loader/module` acquires the shared code/init adapter and observes its
 completion event. `load-code!` returns as soon as code arrives; `load!` also waits
 for declared data and optional initialization. Both share one Shadow acquisition.
+
+First-document motion distinguishes a streamed shell from direct SSR. The shell
+owns the page-container entrance; completing it reveals article/comment motion
+without replaying that container. Cached or already-completed SSR skips the
+shell and animates the rendered container. Hydration releases entrance suppression
+for subsequently loaded SPA components, while existing components retain their
+first-render decision. Browser history restoration continues to skip entrances.
+Comment expansion uses a shared two-level query plan before child mounting,
+respecting explicit folds. Short branches use 140ms motion; wider branches extend
+up to 280ms with bounded recursive stagger. Restored query caches and expansion
+state are installed together, so the visible tree renders in its first commit.
+
+### Local return documents
+
+After hydration, the application debounces changes to renderable state and
+generates a return snapshot from the ordinary components. The HTML and its EDN
+app-db state form one versioned document, including query caches, component/page
+state and comment windows/folds. Rendering has its own app-db and subscription
+cache; it neither replaces live state nor acquires network data.
+
+On an external link click, the worker saves the latest pair and arms its exact
+URL in one operation. A matching document navigation can then receive that local
+HTML immediately. Bootstrap installs its paired state and acquires the same
+module code before hydration. Module initialization is not replayed for this
+preparation. Live bindings resume after the hydration commit. Browser BFCache
+continues to resume the existing document directly when available.
+
+This worker handles document navigation only; SPA routing, API calls and asset
+requests keep their existing paths. Ordinary document requests use network SSR;
+only an external departure armed for that exact URL can select a local pair.
+This distinction also overrides old restoration cookies on regular reloads.
+Cached pairs
+expire after 30 minutes, are limited to eight documents and 2 MiB per document,
+and are consumed when served. Worker activation removes other build caches;
+account changes clear cached documents. Authentication tokens, password fields,
+transport state and diagnostics are excluded. The paired state preserves EDN
+types, including vector keys used by component and comment state.
+Matching older public localStorage envelopes are consumed on installation
+without overwriting the paired state, and are persisted again on departure.
+
+The worker is built by the Docker frontend stage and the ordinary uberjar
+frontend task. `lein repl` watches `:return-worker` alongside the application;
+`make return-worker` builds it separately. Service workers require a secure
+browser context (HTTPS or localhost). If registration, storage or rendering is
+unavailable, existing network navigation and state restoration remain in use.
+`:page-return/status` exposes readiness/failure for inspection, and
+`[:page-return/clear]` clears local documents.

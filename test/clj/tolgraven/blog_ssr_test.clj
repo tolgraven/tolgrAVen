@@ -14,7 +14,39 @@
             [tolgraven.concurrent :as concurrent]
             [tolgraven.supabase.reader :as reader]
             [tolgraven.supabase.plan :as plan]
+            [tolgraven.blog.comments :as comments]
             [tolgraven.blog.data :as blog-data]))
+
+(deftest comment-expansion-opens-two-levels-and-preserves-explicit-folds
+  (is (comments/expanded? {} [42 "root"]))
+  (is (comments/expanded? {} [42 "root" "child"]))
+  (is (false? (comments/expanded? {} [42 "root" "child" "grandchild"])))
+  (is (false? (comments/expanded? {[42 "root" "child"] false} [42 "root" "child"])))
+  (is (comments/expanded? {[42 "root" "child" "grandchild"] true}
+                          [42 "root" "child" "grandchild" "reply"]))
+  (is (false? (comments/expanded? {[42 "root" "child" "grandchild"] true
+                                 [42 "root" "child" "grandchild" "reply"] false}
+                                [42 "root" "child" "grandchild" "reply"]))))
+
+(deftest reply-reveal-plan-acquires-two-levels-and-respects-folds
+  (let [path [42 "root" "child" "folded"]
+        replies [{:id "reply" :reply-count 1 :user "writer"}]
+        requested (atom [])
+        read! (fn [queries]
+                (swap! requested into queries)
+                (mapv (fn [opts]
+                        {:docs (mapv #(hash-map :id (:id %) :data %)
+                                     (if (= opts (comments/thread-query 42 "folded")) replies []))}) queries))]
+    (plan/evaluate comments/reveal-plan {:path path :expanded {path true}} read!)
+    (is (some #{(comments/thread-query 42 "reply")} @requested)
+        "The second visible level is acquired before its component mounts")
+    (reset! requested [])
+    (plan/evaluate comments/reveal-plan
+                   {:path path :expanded {path true (conj path "reply") false}} read!)
+    (is (not (some #{(comments/thread-query 42 "reply")} @requested))
+        "An explicit child fold prevents the second read")
+    (is (< (comments/reveal-duration-ms 1) (comments/reveal-duration-ms 8)))
+    (is (= 280 (comments/reveal-duration-ms 100)))))
 
 (deftest scoped-blog-plans-filter-at-the-database
   (is (= [{:seed-key :blog_posts :table "blog_posts"
@@ -160,6 +192,9 @@
                                                                  (if (string/includes? (get query-params "parent_comment") "c0")
                                                                    [{:id "deep" :parent_comment "c0"}]
                                                                    (mapv #(select-keys % [:id :parent_comment]) children))
+                                                                 (string/includes? (get query-params "parent_comment") "c0")
+                                                                 [{:id "deep" :parent_post 42 :parent_comment "c0"
+                                                                   :user_id "deep-author" :text "grandchild" :ts 12}]
                                                                  :else children)
                                                "site_users" [{:id "author" :name "Author"}]
                                                "auth_roles" [])})]
@@ -170,8 +205,9 @@
         (is (string/starts-with? (get-in (first user-reads) [1 "id"]) "in.("))
         (is (= 11 (get root-read "limit")))
         (is (= "ts.desc,id.desc" (get root-read "order")))
-        (is (= 21 (count (:comments snapshot))))
-        (is (not-any? #(= "deep" (:id %)) (:comments snapshot)))
+        (is (= 22 (count (:comments snapshot))))
+        (is (some #(= "deep" (:id %)) (:comments snapshot)))
+        (is (string/includes? (get-in (first user-reads) [1 "id"]) "deep-author"))
         (is (= 1 (:reply-count (first (filter #(= "c0" (:id %)) (:comments snapshot))))))))))
 
 (deftest saved-return-uses-client-restoration-without-server-data-reads
@@ -186,6 +222,8 @@
       (is (= "no-store" (get-in response [:headers "Cache-Control"]))))))
 
 (deftest saved-return-hints-cover-recent-paths-and-reject-invalid-values
+  (is (not (layout/returning-page? {:uri "/blog" :headers {"x-page-render" "ssr"}
+                                  :cookies {"tolgraven-return" {:value "%2Fblog"}}})))
   (is (layout/returning-page? {:uri "/blog" :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}}))
   (is (not (layout/returning-page? {:uri "/cv" :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}})))
   (is (not (layout/returning-page? {:uri "/blog" :cookies {"tolgraven-return" {:value "%invalid"}}}))))
@@ -280,3 +318,19 @@
            (get (query/document-caches (blog-data/page-query 0 3)
                                       {:docs [{:id "1" :data {:id 1 :text "Ready"}}]})
                 (pr-str (query/normalize-query (blog-data/post-query 1))))))))
+
+(deftest already-completed-first-render-skips-the-intermediate-shell
+  (let [result {:html "<article>Ready now</article>"
+                :snapshot {:posts [] :content {}}}
+        pending (java.util.concurrent.CompletableFuture/completedFuture result)]
+    (with-redefs [config/env {:dev true :ssr {:streaming true}}
+                  ssr/enabled? (constantly true)
+                  ssr/cached? (constantly false)
+                  ssr/page-async! (fn [& _] pending)
+                  ssr/shell! (fn [& _] {:html "<p>Pending</p>"})
+                  optimus-html/link-to-js-bundles (fn [& _] "")]
+      (let [response (layout/render-home {:uri "/blog/post/test-42" :query-params {}})]
+        (is (string? (:body response)))
+        (is (string/includes? (:body response) "Ready now"))
+        (is (not (string/includes? (:body response) "id=\"ssr-shell\"")))
+        (is (not (string/includes? (:body response) "id=\"ssr-complete\"")))))))

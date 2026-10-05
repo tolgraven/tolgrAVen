@@ -14,9 +14,11 @@
     [tolgraven.ajax :as ajax]
     [tolgraven.content.client :as content]
     [tolgraven.ssr.client :as ssr]
+    [tolgraven.ssr.local :as local-page]
     [tolgraven.components.oembed :as oembed]
     [tolgraven.components.init :as init-view]
     [tolgraven.component.restore :as restore]
+    [tolgraven.component.motion :as motion]
     [tolgraven.service-status :as service-status]
     [tolgraven.events]
     [tolgraven.loader :as l]
@@ -41,13 +43,28 @@
 (defonce *init-root (atom nil))
 (defonce *shell-root (atom nil))
 
+(m/defc <disposed-shell> {:profile false} [complete!]
+  (rf/use-layout-effect (fn [] (complete!) js/undefined) #js [complete!])
+  [:<>])
+
+(defonce *shell-removal (atom nil))
 (defn clear-shell!
-  "React owns disposal of the temporary server-rendered loading root."
+  "Let the streamed overlay finish its exit, then let React dispose its tree.
+   Bootstrap/data acquisition runs in parallel; hydration waits for disposal so
+   duplicate shell IDs cannot interfere with routing or measurements."
   []
-  (when-let [element (.getElementById js/document "ssr-shell")]
-    (when-not @*shell-root
-      (reset! *shell-root (rdomc/create-root element))
-      (rf/flush-sync #(rdomc/render @*shell-root nil)))))
+  (or @*shell-removal
+      (let [pending
+            (if-let [element (.getElementById js/document "ssr-shell")]
+              (js/Promise.
+                (fn [complete! _]
+                  (motion/finish-animation! element {:timeout-ms 500}
+                    (fn []
+                      (reset! *shell-root (rdomc/create-root element))
+                      (rdomc/render @*shell-root [<disposed-shell> complete!])))))
+              (js/Promise.resolve nil))]
+        (reset! *shell-removal pending)
+        pending)))
 (defonce <page>
   (if false #_:biggus-debuggus
     (r/create-element rf/strict-mode
@@ -57,7 +74,7 @@
 
 ;; Profiling this host would include console commits and create capture feedback.
 (m/defc <root-page> {:profile false} []
-  [:<> [ssr/<hydrate> [page]] [page-preload/<background>]
+  [:<> [ssr/<hydrate> [page]] [page-preload/<background>] [local-page/<capture>]
    (when (and ^boolean goog.DEBUG @context/*interactive?) [dev-console/<console>])])
 
 (defn render []
@@ -99,45 +116,54 @@
                  (when hot-reload? (rf/dispatch [:scroll/restore-position-dev 150])))))))
 
 (defn init "Called only on page load" []
-  ;; Remove duplicate shell IDs before routing, measurement, or hydration.
-  (clear-shell!)
-  ;; A persisted-content hint can also accompany a normal reload. Only browser
-  ;; history traversal bypasses entrance motion and restores the saved scroll.
-  (restore/begin! {:back? (restore/back-navigation?)
-                   :hydrate? (= "true" (.getAttribute (.getElementById js/document "app") "data-hydrate"))})
-  (rf/dispatch-sync [:init/app-db])
-  (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
-  (ajax/load-interceptors!)
-  (letfn [(start! []
-            (rf/dispatch-sync [:state [:page-init] {:status :loading}])
-            (service-status/recover! :page-init)
-            (-> (storage/ready!)
-                (.then (fn [_]
-                         (ssr/install!)
-                         (blog-cache/restore!)
-                         (rf/dispatch-sync [:ls/get-path [:scroll-position] [:state :scroll-position]])
-                         ;; A history return using persisted content needs layout-
-                         ;; aware scroll restoration. Real SSR HTML uses the browser's
-                         ;; native restoration; ordinary reloads keep entrance motion.
-                         (when (and (restore/back-navigation?)
-                                    (= "true" (.getAttribute (.getElementById js/document "app") "data-restore")))
-                           (rf/dispatch [:scroll/restore-history (.-pathname js/location)]))))
-                (.then (fn [_] (content/bootstrap!)))
-                (.then (fn [_] (component-data/ensure-all! (:depends spec))))
-                (.then (fn []
-                         (-> (mount-components)
-                             (.then (fn [_]
-                                      (rf/dispatch [:state [:page-init] {:status :ready}])
-                                      (js/setTimeout #(rf/dispatch [:init/init]) 16))))))
-                (.catch (fn [_]
-                          (service-status/fail! :page-init "Page initialization failed"
-                                                "The page could not initialize. Existing server content is retained."
-                                                start!)
-                          (rf/dispatch [:state [:page-init] {:status :failed}])))))]
-    (when-let [element (.getElementById js/document "page-init-status")]
-      (when-not @*init-root (reset! *init-root (rdomc/create-root element)))
-      (rdomc/render @*init-root [init-view/<fallback> start!]))
-    (start!)))
+  (let [shell-cleared (clear-shell!)]
+    ;; A persisted-content hint can also accompany a normal reload. Only browser
+    ;; history traversal bypasses entrance motion and restores the saved scroll.
+    (let [hydrate? (= "true" (.getAttribute (.getElementById js/document "app") "data-hydrate"))]
+      ;; Fresh network SSR keeps its server entrance attributes even on a
+      ;; history traversal. A local pair installs its own restoration context
+      ;; below; a client-only return has no server attributes to match.
+      (restore/begin! {:back? (and (restore/back-navigation?) (not hydrate?))
+                       :hydrate? hydrate?}))
+    (rf/dispatch-sync [:init/app-db])
+    (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
+    (ajax/load-interceptors!)
+    (letfn [(start! []
+              (rf/dispatch-sync [:state [:page-init] {:status :loading}])
+              (service-status/recover! :page-init)
+              (-> (storage/ready!)
+                  (.then (fn [_]
+                           (let [local-snapshot (local-page/install!)]
+                             (if local-snapshot
+                               (local-page/prepare! local-snapshot)
+                               (do (ssr/install!) (blog-cache/restore!))))))
+                  (.then (fn [_]
+                           (rf/dispatch-sync [:ls/get-path [:scroll-position] [:state :scroll-position]])
+                           ;; A history return using persisted content needs layout-
+                           ;; aware scroll restoration. Real SSR HTML uses the browser's
+                           ;; native restoration; ordinary reloads keep entrance motion.
+                           (when (and (restore/back-navigation?)
+                                      (not (.getElementById js/document "local-page-bootstrap"))
+                                      (= "true" (.getAttribute (.getElementById js/document "app") "data-restore")))
+                             (rf/dispatch [:scroll/restore-history (.-pathname js/location)]))))
+                  (.then (fn [_] (content/bootstrap!)))
+                  (.then (fn [_]
+                           (js/Promise.all
+                             #js [shell-cleared (component-data/ensure-all! (:depends spec))])))
+                  (.then (fn []
+                           (-> (mount-components)
+                               (.then (fn [_]
+                                        (rf/dispatch [:state [:page-init] {:status :ready}])
+                                        (js/setTimeout #(rf/dispatch [:init/init]) 16))))))
+                  (.catch (fn [_]
+                            (service-status/fail! :page-init "Page initialization failed"
+                                                  "The page could not initialize. Existing server content is retained."
+                                                  start!)
+                            (rf/dispatch [:state [:page-init] {:status :failed}])))))]
+      (when-let [element (.getElementById js/document "page-init-status")]
+        (when-not @*init-root (reset! *init-root (rdomc/create-root element)))
+        (rdomc/render @*init-root [init-view/<fallback> start!]))
+      (start!))))
 
 (defn ^:export init!  []
   (defonce _init_ (init))) ;; why still need for thisi don't get it init! is now being called each reload?

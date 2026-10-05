@@ -46,15 +46,13 @@
                          :reset-key reset-key} form])
 
 (m/defc <md->div> [md & [options]]
-  (let [showing? (r/atom (boolean (restore/skip-enter?)))]
-    (fn [md & [options]]
-      [:div.md-rendered
-       {:style {:opacity (if @showing? 1.0 0.0)}
-        :ref #(when % (reset! showing? true))}
-       [code/<parse-markdown-components>
-        (util/md->normal md)
-        {:allow-images? (= :trusted (:trust options))
-         :allow-raw? (= :trusted (:trust options))}]])))
+  ;; The containing component owns appearance. A separate hidden first commit
+  ;; here flashes cached text when an already-visible article is remounted.
+  [:div.md-rendered
+   [code/<parse-markdown-components>
+    (util/md->normal md)
+    {:allow-images? (= :trusted (:trust options))
+     :allow-raw? (= :trusted (:trust options))}]])
 
 (m/defc <observe-sticky> "Check if sticky element has stuck."
   [event]
@@ -560,6 +558,7 @@
           text])])]])
 
 (m/defc <hud> "Render a HUD sorta like figwheel's but at reagent/re-frame level"
+  {:features [:error-boundary]}
   [to-show]
   [:div.hud.hidden
    {:class (when (seq @to-show) "visible")}

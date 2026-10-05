@@ -1,7 +1,9 @@
 (ns tolgraven.routes.home
   (:require
    [clojure.java.io :as io]
+   [clojure.data.json :as json]
    [tolgraven.layout :as layout]
+   [tolgraven.ssr :as ssr]
    [ring.util.response]
    [ring.util.http-response :as response]
    [sitemap.core :as sitemap]))
@@ -50,6 +52,20 @@
    {:middleware [;middleware/wrap-csrf ; csrf not really needed since no http auth and whatnot
                  #_middleware/wrap-formats]}
    ["/" {:get home-page}]
+   ["/return-worker.js"
+    {:get (fn [_]
+            (if-let [resource (io/resource "public/js/return/return-worker.js")]
+              {:status 200 :headers {"Content-Type" "text/javascript; charset=utf-8"
+                                    "Service-Worker-Allowed" "/" "Cache-Control" "no-cache"}
+               ;; Changes even when the worker source itself did not change:
+               ;; browser worker updates then retire previous build caches.
+               :body (str "self.TOLGRAVEN_RETURN_BUILD="
+                          (json/write-str (str (ssr/renderer-build))) ";\n" (slurp resource))}
+              (response/not-found)))}]
+   ["/api/page-return-template"
+    {:get (fn [request]
+            {:status 200 :headers {"Content-Type" "application/json" "Cache-Control" "no-store"}
+             :body (json/write-str (layout/return-template request))})}]
    ["/blog*" {:get home-page}]
    ["/not-found" {:get home-page}]
    ["/client-oauth*" {:get home-page}]
@@ -104,4 +120,3 @@
      (sitemap/save-sitemap file)
      #_sitemap/validate-sitemap
      #_count)))
-

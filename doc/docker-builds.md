@@ -80,8 +80,9 @@ documentation. The packaging stage waits for all three, copies the completed
 browser assets, and
 creates the uberjar without repeating prep tasks or cleaning compiled classes.
 Separate stage filesystems prevent target-directory and Maven download races.
-Codox analyzes source without a Shadow module graph: `browser-only` therefore
-omits lazy-loadable declarations for documentation analysis as well as SSR.
+Codox analyzes source without the custom `:browser` reader feature. The loader's
+`.cljc` reader conditional therefore omits lazy-loadable declarations during
+documentation analysis and SSR; browser builds explicitly enable that feature.
 The npm imports use the supported `$default`/`:as` form, which Codox can parse,
 and the namespace filter matches `tolgraven.*` names rather than file extensions.
 The prefab still supplies most dependencies, so ordinary builds gain primarily
@@ -174,28 +175,13 @@ Do not run registry garbage collection during pushes; image retention/garbage
 collection is intentionally a separate operation. Old versions remain available
 for rollback in S3.
 
-## Verification on 2026-10-03
-
-The prefab was published successfully. An unauthenticated request for its S3
-manifest link returned HTTP 403; authenticated S3 access succeeded. The final
-ARM64 runtime image was 419 MiB versus the preceding staging image's 1.32 GB.
-Homepage, CSS and compiled JavaScript served successfully from the local image.
-The end-to-end `make docker` run with a warm local build cache completed in
-42 seconds, including the server's first runtime-image pull and Coolify rollout.
-The deployed homepage and public settings endpoint both returned HTTP 200, and
-production remained available. These timings are measurements of this run,
-not a guarantee for source changes or the initial prefab build/upload.
+## Build cache behavior
 
 Coolify writes a release-specific `docker-compose.yaml` into the checkout before
 building. Docker's context excludes that generated manifest (and the ignore file
 itself), so deployment metadata and documentation/tooling-only changes do not
 invalidate `COPY . .` and force a new application compilation. Application source
 changes still compile normally.
-
-Cache validation on the Mac (2026-10-03): the first local image build after the
-context change took 54.82 seconds. Two subsequent builds with different generated
-Compose image references took 2.17 and 0.85 seconds; the `lein uberjar` layer was
-cached in both. These are local image-build times, excluding push and deployment.
 
 ## PR preview cleanup
 

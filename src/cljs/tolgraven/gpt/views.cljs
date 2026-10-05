@@ -26,7 +26,7 @@
            (when @hovered? (util/unix->ts (:time thread)))]]]
          [:div.gpt-message-user.flex
           @(rf/subscribe [:gpt/user-short (:user thread)])
-          (m/view {:module :user, :view :avatar} @user)]]
+          (m/<> :user/avatar @user)]]
        [:div.gpt-message-text.gpt-message-reply
         (or response
             "...")] ])))
@@ -47,7 +47,7 @@
 
           [:div.gpt-message-user.flex
            (or (:name user) "anon")
-           (m/view {:module :user, :view :avatar} user)]]
+           (m/<> :user/avatar user)]]
 
          (when @open?
            [:div.gpt-messages.gpt-thread.open

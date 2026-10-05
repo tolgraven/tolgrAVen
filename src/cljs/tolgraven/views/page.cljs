@@ -71,14 +71,14 @@
   [:<>
    [l/<loaded-assets> (:assets spec)]
 
-   [ui/<safe> :header [common/<header> @(rf/subscribe [:content [:header]])]]
+   [common/<header> @(rf/subscribe [:content [:header]])]
    [:a {:name "linktotop" :id "linktotop"}]
 
    [ui/<zoom-to-modal> :fullscreen]
-   (m/view {:module :link-preview})
-   [ui/<safe> :user (m/view {:module :user, :defer? true})]
-   [ui/<safe> :settings [common/<settings>]]
-   [ui/<safe> :search (m/view {:module :search, :defer? true})]
+   (m/<> {:module :link-preview})
+   (m/<> {:module :user, :defer? true})
+   [common/<settings>]
+   (m/<> {:module :search, :defer? true})
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
       [error-page]]
@@ -87,18 +87,16 @@
         {:id    "main"
          :data-debug-hydrated (when @(rf/subscribe [:state [:debug :hydration-token]]) true)
          :data-restored (when ext-back? true)
-         :data-stream-enter (when (restore/initial-enter?) true)
-         :class (str (when (and (not ext-back?)
+         :data-stream-enter (when (restore/document-enter?) true)
+         :class (str (when (and (not ext-back?) (not (restore/document-enter?))
                                      (= (:page @restore/*context) (restore/page-key)))
                             "animate ")
                      (when (:layers debug) "debug-layers ")
                      (when (:parallax debug) "debug-on"))}
         [<swapper>
-         [ui/<safe> :page [(component/resolve-view page)]
-          (:path @(rf/subscribe [:common/route]))]
+         [(component/resolve-view page)]
          (when-let [previous @(rf/subscribe [:common/page :last])]
-           [ui/<safe> :page [(component/resolve-view previous)]
-            (:path @(rf/subscribe [:common/route :last]))])
+           [(component/resolve-view previous)])
          @(rf/subscribe [:common/route]) @(rf/subscribe [:common/route :last])
          (and (not ext-back?) (get-in commit [:completion :fallback?]))
          (get-in commit [:completion :transition-id])]]
@@ -108,7 +106,7 @@
 
    [common/<footer-full> @(rf/subscribe [:content [:footer]])]
    [common/<footer> @(rf/subscribe [:content [:footer]])]
-   [ui/<safe> :hud [ui/<hud> (rf/subscribe [:hud])]]
+   [ui/<hud> (rf/subscribe [:hud])]
    [common/<to-top>]
    ; [[:div.ripple-on-click
    ;    {:class (when click-evt "ripple")

@@ -206,10 +206,21 @@
   (fn [[_ blog-id parent-id]] (rf/subscribe [:comments/thread-records blog-id parent-id]))
   (fn [comments _] (when (seq comments) comments)))
 
+(rf/reg-sub-raw :comments/reveal-thread
+  (fn [_ [_ path]]
+    (ratom/make-reaction
+      #(let [expanded @(rf/subscribe [:blog/state [:comment-thread-expanded]])
+             {:keys [ready? values]} @(rf/subscribe [:store/plan comments/reveal-plan
+                                                    {:path path :expanded expanded}])]
+         (when ready? (into {} (map (juxt :id identity)) (:replies values)))))))
+
 (rf/reg-sub :comments/visible-thread
-  (fn [[_ post-id parent-id acquire?]]
+  (fn [[_ post-id parent-id acquire? path]]
     [(rf/subscribe [:comments/cached-thread post-id parent-id])
-     (rf/subscribe (if acquire? [:comments/thread-records post-id parent-id] [:nil]))])
+     (rf/subscribe (if acquire?
+                      (if path [:comments/reveal-thread path]
+                          [:comments/thread-records post-id parent-id])
+                      [:nil]))])
   (fn [[cached live] _]
     ;; Acquiring/releasing a live reader must not temporarily remove cached
     ;; children. An authoritative empty map still replaces stale cached rows.
@@ -222,8 +233,7 @@
 (rf/reg-sub :comments/thread-expanded?
   :<- [:blog/state [:comment-thread-expanded]]
   (fn [expanded [_ path]]
-    ;; Root comments start expanded; explicit false always wins.
-    (if-some [value (get expanded path)] value (= 2 (count path)))))
+    (comments/expanded? expanded path)))
 
 (rf/reg-sub :comments/adding?
   :<- [:blog/state [:adding-comment]]

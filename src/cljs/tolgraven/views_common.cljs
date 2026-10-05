@@ -77,7 +77,8 @@
       ] ]))
 
 
-(defc <header> [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
+(defc <header> {:features [:error-boundary]}
+  [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   [:<>
    [ui/<input-toggle> "nav-menu-open" [:menu] :class "burger-check"]
    (when @(rf/subscribe [:fullscreen/any?])
@@ -109,7 +110,7 @@
      [:button.settings-btn.noborder.nomargin
       [:i.settings-btn {:class "fa fa-cog"}]]]
 
-    (m/view {:module :search
+    (m/<> {:module :search
            :view :button
            :<before> (fn []
                        [:button.search-ui-btn.noborder.nomargin
@@ -118,8 +119,7 @@
                                       :alt   "Search"
                                       :style {:width  "1.2em" :height "1.2em"
                                               :filter "var(--light-to-dark)"}}]])})
-    (m/view {:module :user
-           :view :btn})
+    (m/<> :user/btn)
     [:label.burger {:for "nav-menu-open"}]]]
 
    [:div.fill-side-top
@@ -252,13 +252,14 @@
          :let [id (str "footer-" id)]] ^{:key id}
      [:div.footer-column {:id id}
 
-      (when logo
+      (when (:src logo)
         [img/<picture> (merge logo {:class "img-icon"})])
-      [:div
-       (when title [:h4 title])
-       (when email [<contact-ways> email])
-       (when text (for [line text] ^{:key (str id "-" line)}
-                    [:h5 line]))]
+      (when (or title email (seq text))
+        [:div
+         (when title [:h4 title])
+         (when email [<contact-ways> email])
+         (when text (for [line text] ^{:key (str id "-" line)}
+                      [:h5 line]))])
       (when links [:div.footer-icons
                    (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
                      [:a {:href href :name name}
@@ -318,6 +319,7 @@
    [:div.scrollbar-thumb]])
 
 (defc <settings> "Settings panel for theme and stuff"
+  {:features [:error-boundary]}
   []
   (rf/use-effect (fn [] (rf/dispatch [:settings/read-css-vars]) js/undefined) #js [])
   (let [open? @(rf/subscribe [:state [:settings :panel-open]])

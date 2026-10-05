@@ -14,7 +14,8 @@
     [tolgraven.components.error :as error]
     [tolgraven.util :as util]
     [tolgraven.component.data :as data]
-    [tolgraven.component.sources]))
+    [tolgraven.component.sources]
+    [tolgraven.macros :refer-macros [defc]]))
 
 (def state state-store/state)
 (def <sub state-store/<sub)
@@ -241,21 +242,36 @@
     (cond
       (vector? view) view
       view (into [(resolve-view view)] args)
+      (= :rendered (:loading-prefab options))
+      (let [sample (:loading-args options)
+            sample (if (fn? sample) (apply sample args) sample)
+            args (cond (map? sample) [sample] (sequential? sample) sample :else args)]
+        [loading/<rendered> {:form [<function-body> definition args nil nil]}])
       :else (loading-view options))))
 
+(declare <loading-reveal>)
+
 (r/defc <data-body> [definition args form]
-  (let [resources (dependencies definition args)]
+  (let [skeleton? (rf/use-context loading/render-context)
+        resources (dependencies definition args)]
     ;; Deliberately before mount: requests are shared and not owned by a React
     ;; instance, so speculative/abandoned renders neither duplicate nor leak them.
-    (when-not context/*server?* (data/prefetch! resources))
-    (case (data/state resources)
-      :ready form
-      :error [error/<failure> (:ns definition) (:name definition)
-              {:title "This component's data could not be loaded"
-               :message "Check your connection and try loading this content again."
-               :error (data/failure resources)}
-              #(data/retry-background! resources)]
-      (loading-form definition args))))
+    (when-not (or skeleton? context/*server?*) (data/prefetch! resources))
+    (let [status (if skeleton? :ready (data/state resources))
+          rendered? (= :rendered (:loading-prefab (merge (:options definition)
+                                                       (current-spec definition args))))]
+      (cond
+        (= :error status)
+        [error/<failure> (:ns definition) (:name definition)
+         {:title "This component's data could not be loaded"
+          :message "Check your connection and try loading this content again."
+          :error (data/failure resources)}
+         #(data/retry-background! resources)]
+        (and rendered? (not skeleton?))
+        [<loading-reveal> {:ready? (= :ready status) :form form
+                          :skeleton (when-not (= :ready status) (loading-form definition args))}]
+        (= :ready status) form
+        :else (loading-form definition args)))))
 
 (defn- current-argv []
   ;; Reagent 2 defc stores (subvec hiccup 1) on its function render state.
@@ -307,6 +323,21 @@
                     (with-meta [<dynamic-component> definition args]
                       (meta (current-argv))))]
     (register-component! component definition)))
+
+(defc <skeleton-layer>
+  {:features [[:exit {:class "component-loading-reveal__exit" :timeout-ms 500}]]}
+  [{:keys [form]}]
+  [:div.component-loading-reveal__skeleton form])
+
+(defc <loading-reveal>
+  {:features [:presence]}
+  [{:keys [ready? form skeleton]}]
+  [:div.component-loading-reveal
+   ;; Both layers occupy one CSS grid cell. Removing the skeleton does not move
+   ;; the live content; presence owns its final unmount.
+   (when ready? form)
+   (when-not ready?
+     ^{:key :skeleton} [<skeleton-layer> {:form skeleton}])])
 
 (r/defc <prefetch>
   "An optional viewport sentinel for any source; fetching needs no component DOM."

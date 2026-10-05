@@ -12,6 +12,8 @@
   (let [work (bound-fn [] (f))]
     (.submit executor (reify Callable (call [_] (work))))))
 
+(defn completed? [^Future task] (.isDone task))
+
 (defn await!
   ([task] (await! task 30000))
   ([^Future task timeout-ms]

@@ -49,12 +49,13 @@
     ;; Browser tests bundle all module specs so ready-module initialization is exercised.
     [tolgraven.blog.module]
     [tolgraven.blog.model :as blog-model]
+    [tolgraven.blog.comments :as comments]
     [tolgraven.blog.views :as blog-views]
     [tolgraven.link-preview.module]
     [tolgraven.cv.module]
     [tolgraven.docs.module]
     [tolgraven.search.module]
-    [tolgraven.user.module]
+    [tolgraven.user.module :as user-module]
     [tolgraven.chat.module]
     [tolgraven.github.module]
     [tolgraven.github.views :as github-views]
@@ -1014,14 +1015,44 @@
       (finally (set! (.-startViewTransition js/document) original)))))
 
 
+(deftest cached-markdown-is-visible-on-its-first-commit-and-remount
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                *commits (atom [])
+                <article> (r/create-class
+                           {:component-did-mount
+                            (fn [_]
+                              (let [text (.querySelector element ".md-rendered")]
+                                (swap! *commits conj
+                                       {:text (.-textContent text)
+                                        :opacity (.-opacity (.getComputedStyle js/window text))})))
+                            :reagent-render
+                            (fn [] [ui/<md->div> "Already loaded article"])})]
+            (.appendChild (.-body js/document) element)
+            (let [root (await! (support/create-root! element))]
+              (try
+                (await! (support/render! root ^{:key :feed} [<article>]))
+                (await! (support/render! root nil))
+                (await! (support/render! root ^{:key :permalink} [<article>]))
+                (is (= 2 (count @*commits)) "Exercise both initial mount and route-style remount")
+                (is (every? #(= "Already loaded article" (:text %)) @*commits))
+                (is (every? #(= "1" (:opacity %)) @*commits)
+                    "The first commit must not hide cached Markdown until another render")
+                (finally (support/unmount! root) (.remove element))))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
 (deftest loaded-module-vectors-use-the-component-directly
   (let [<target> (fn [spec] [:section (:title spec)])
         module-spec {:view {:post <target>}}]
     (binding [context/*server?* true context/*modules* {:vector-test module-spec}]
       (is (= [<target> {:title "SSR"}]
-             (m/view {:module :vector-test :view :post} {:title "SSR"})))
+             (m/<> {:module :vector-test :view :post} {:title "SSR"})))
+      (is (= [<target> {:title "Keyword"}]
+             (m/<> :vector-test/post {:title "Keyword"})))
       (is (= [<target> {:title "Direct"}]
-             (m/view <target> {:title "Direct"}))))))
+             (m/<> <target> {:title "Direct"}))))))
 
 (defpage <recoverable-page> []
   (let [route @(shim/subscribe [:common/route])]
@@ -1052,7 +1083,7 @@
 (m/defc <lazy-vector-target> [{:keys [title]}]
   [:p {:data-lazy-vector-target true} title])
 (m/defc <lazy-vector-consumer> [module]
-  [:section (m/view {:module module} {:title "Vector target"})])
+  [:section (m/<> (keyword (name module) "view") {:title "Vector target"})])
 
 (deftest mounted-consumers-share-code-acquisition-and-promote-direct-vectors
   (async done
@@ -1126,4 +1157,82 @@
                 (data/invalidate! #{(docs-pages/document-dependency page)
                                     (:load (docs-pages/document-dependency page))})))))
         (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest mounted-thread-reveal-acquires-both-levels-before-child-mount
+  (async done
+    (-> (go-promise
+          (let [restore! (rf/make-restore-fn)
+                path [24 "root" "child" "folded"]
+                transport (fake-scoped-transport!
+                            (atom {:blog_comments
+                                   [{:id "reply" :parent_post 24 :parent_comment "folded" :ts 1}
+                                    {:id "grandchild" :parent_post 24 :parent_comment "reply" :ts 2}]}))
+                _ (rf/dispatch-sync [:blog/expand-comment-thread path true])
+                {:keys [values unmount!]} (await! (mount-subscriptions!
+                                                   {:replies [:comments/reveal-thread path]}))]
+            (try
+              (await! (wait-for! #(some? (:replies (values)))))
+              (is (= #{"reply"} (set (keys (:replies (values))))))
+              (let [result (await! (subscription-value!
+                                    [:comments/cached-thread 24 "reply"]))]
+                (is (= "grandchild" (get-in result [:grandchild :id]))
+                    "The child query was filled without mounting a child reader"))
+              (finally (unmount!) ((:close! transport)) (restore!)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+(deftest hydration-suppression-ends-without-restarting-document-motion
+  (let [before @restore/*context]
+    (try
+      (restore/begin! {:hydrate? true})
+      (is (restore/skip-enter?))
+      (is (restore/document-enter?))
+      (restore/hydrated!)
+      (is (not (restore/skip-enter?)) "Later SPA content can animate")
+      (is (not (restore/initial-enter?)) "Later components have no SSR animation marker")
+      (is (restore/document-enter?) "The existing document keeps its animation selector")
+      (restore/begin! {:back? true})
+      (restore/hydrated!)
+      (is (restore/skip-enter?) "Back restoration still bypasses all entrances")
+      (is (not (restore/document-enter?)))
+      (finally (reset! restore/*context before)))))
+
+(deftest restored-deep-thread-is-complete-in-the-first-mounted-commit
+  (async done
+    (-> (go-promise
+          (let [restore! (rf/make-restore-fn)
+                context @restore/*context
+                element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                rows (mapv (fn [[id parent]]
+                             {:id id :parent-post 42 :parent-comment parent
+                              :title id :text "Cached comment" :ts 1
+                              :reply-count (if (= id "leaf") 0 1)})
+                           [["root" nil] ["child" "root"] ["grandchild" "child"]
+                            ["deep" "grandchild"] ["leaf" "deep"]])]
+            (try
+              (restore/begin! {:back? true})
+              (rf/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] true])
+              (doseq [parent [nil "root" "child" "grandchild" "deep"]]
+                (let [query (if parent (comments/thread-query 42 parent)
+                                (comments/root-query 42 comments/page-size))]
+                  (rf/dispatch-sync [:store/scoped (scoped/query-key query)
+                                     {:docs (mapv #(hash-map :id (:id %) :data %)
+                                                  (filter #(= parent (:parent-comment %)) rows))}])))
+              ;; This test build bundles the real user module rather than using
+              ;; Shadow's split browser module runtime. Only adapt code readiness;
+              ;; comment subscriptions, caches and rendered components remain real.
+              (with-redefs [loader/modules
+                            {:user (reify lazy/ILoadable
+                                     (ready? [_] true)
+                                     IDeref
+                                     (-deref [_] (dissoc user-module/spec :content :depends)))}]
+                (await! (support/render! root [blog-views/<comments-section> {:post {:id 42}}])))
+              (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title")))
+                  (str "All restored depths render together, through real subscriptions: " (.-textContent element)))
+              (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared)"))))
+              (is (zero? (.-length (.querySelectorAll element ".component-spinner"))))
+              (finally (support/unmount! root) (reset! restore/*context context) (restore!)))))
+        (.catch (fn [error] (is false (str error))))
         (.finally done))))

@@ -17,6 +17,7 @@
           :tag #'view/<blog-page>
           :new-post #'view/<blog-page>
           :posted-by #'view/<posted-by>
+          :post-content #'view/<post-content>
           :tags-list #'view/<tags-list>
           :comments #'view/<comments-section>}
    :init #(rf/dispatch [:on-booted :store [:blog/init]])})

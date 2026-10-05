@@ -676,8 +676,7 @@
   {:features [[:appear "opacity"]]}
   [athlete data]
   [:div [:div.strava-profile.flex
-         (m/view
-          {:module :user, :view :avatar}
+         (m/<> :user/avatar
           {:avatar (:profile_medium athlete)
            :name   (str (:firstname athlete) " " (:lastname athlete))}
           "strava-profile-image")

@@ -4,6 +4,7 @@
     [tolgraven.components.timer :as timer]
     [tolgraven.blog.model :as model]
     [tolgraven.blog.data :as data]
+    [tolgraven.blog.comments :as comments]
     [tolgraven.react :as rf]
     [clojure.string :as string]
     [tolgraven.loader]
@@ -133,13 +134,13 @@
                           (when (and element (> (util/element-height-rem element) 24))
                             (reset! *full? false)))]
   (let [[show-expand? show-expand! hide-expand!] (timer/use-delayed-hide 2000)
-        showing? (timer/use-delayed-visible? (or (nil? visible?) @visible?) 1000)
+        showing? (timer/use-delayed-visible? (or (nil? visible?) @visible?) 250)
         is-preview? (= [:new-comment] path)
         *expanded? (rf/subscribe [:comments/thread-expanded? path])
         *comments (when-not is-preview?
                     (rf/subscribe [:comments/visible-thread (first path) (last path)
                                    (boolean (and showing? @*expanded?
-                                                 (or (nil? (:reply-count post)) (pos? (:reply-count post)))))]))]
+                                                 (or (nil? (:reply-count post)) (pos? (:reply-count post))))) path]))]
     (when showing?
       (let [active-user @(rf/subscribe [:user/active-user])
             user @(rf/subscribe [:user/user user])
@@ -147,10 +148,12 @@
             *comments (or *comments (r/atom nil))
             replies? (or (seq @*comments) (pos? (:reply-count post 0)))]
           [:<>
-           [<comment-frame> {:appear {:class (:appear spec)
+           [<comment-frame> {:appear {:class (or (:appear spec) "zoom-y fast")
                                       :restore? (not (:enter? spec))
                                       :remember-key (when (nil? visible?) [:blog/comment path])}
-                            :props {:style {:transition-delay (str (* 45 (max 0 (- (count path) 2))) "ms")}}
+                            :props {:style {:transition-delay (str (or (:stagger-ms spec) 0) "ms")
+                                            "--comment-reveal-duration" (str (or (:motion-ms spec) 180) "ms")
+                                            "--comment-reveal-delay" (str (or (:stagger-ms spec) 0) "ms")}}
                             :children [
             [:div.blog-comment-border
              {:style {:cursor (if (and @*expanded? replies?)
@@ -171,7 +174,7 @@
               :ref capture-height!}
 
              [:div
-              (m/view {:module :user, :view :avatar} user)
+              (m/<> :user/avatar user)
 
               [:div.blog-comment-main
                [:h4.blog-comment-title title]
@@ -214,13 +217,15 @@
            (when replies? ;replies
              [:div.blog-comment-reply-outer
               [:div.blog-comment-reply
-               {:class (when-not @*expanded?
-                         "collapsed")}
-               (doall (for [post (sort-by :ts (vals @*comments))]
+               {:class (when-not @*expanded? "collapsed")
+                :style {"--comment-reveal-duration" (str (comments/reveal-duration-ms (count @*comments)) "ms")}}
+               (doall (for [[index post] (map-indexed vector (sort-by :ts (vals @*comments)))]
                         ^{:key (get-id-str (conj path (:id post)))}
                         [<comment-post> {:path (conj path (:id post)) :comment post
                                          :enter? (or (:enter? spec) @*interacted?)
-                                         :visible? *expanded? :appear "slide-behind"}] ))]
+                                         :visible? *expanded? :appear "slide-behind"
+                                         :motion-ms (comments/reveal-duration-ms (count @*comments))
+                                         :stagger-ms (min 36 (+ (or (:stagger-ms spec) 0) 12 (* 12 index)))}] ))]
               (when (or (not @*expanded?) (nil? @*comments))
                 [<collapsed-reply-view> {:path path :comments @*comments :reply-count (:reply-count post)
                                          :expand! (fn [] (reset! *interacted? true)
@@ -236,9 +241,10 @@
      [:h6.bottomborder (str (util/pluralize (count comments) "comment") (when more? "+"))]
      (when (seq comments)
        [:div.blog-comments-inner
-        (doall (for [comment comments :let [path [id (:id comment)]]]
+        (doall (for [[index comment] (map-indexed vector comments) :let [path [id (:id comment)]]]
                  ^{:key (get-id-str path)}
-                 [<comment-post> {:path path :comment comment}]))])
+                 [<comment-post> {:path path :comment comment
+                                  :stagger-ms (min 48 (* 12 index))}]))])
      (when more?
        [:button.blog-btn.blog-load-more
         {:disabled loading? :on-click #(rf/dispatch [:blog/load-more-comments id])}
@@ -391,7 +397,7 @@
 
      [<post-header> {:appear {:class "zoom slower" :remember-key [:blog/post-header id]}
                     :children [
-       (m/view {:module :user, :view :avatar} user "blog-user-avatar")
+       (m/<> :user/avatar user "blog-user-avatar")
       [:div.blog-post-header-main
        [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
          [:h1.blog-post-title title ]]
