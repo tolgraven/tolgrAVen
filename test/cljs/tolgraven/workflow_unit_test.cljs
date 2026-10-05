@@ -876,8 +876,8 @@
                                 :id {:id {:navigations 83}}}
                                [:common/navigate {:path "/blog/post/17", :data {}} nil])]
     (is (some #{[:scroll/on-navigate "/blog/post/17" 0 nil]} (:dispatch-n effects)))
-    (is (some #{[:document/set-title! {:path "/blog/post/17" :data {} :controllers nil}]}
-              (:dispatch-n effects)))))
+    (is (= [:document/set-title! (get-in effects [:db :common/route])]
+           (first (:dispatch-n effects))))))
 
 (deftest loaded-component-title-refreshes-current-document-title
   (let [route {:path "/blog/post/17" :data {:name :blog-post}}
