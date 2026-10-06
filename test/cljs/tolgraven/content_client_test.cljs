@@ -39,31 +39,32 @@
         (.catch (fn [error] (is false (str error)) (done))))))
 (deftest module-init-waits-for-required-content
   (async done
-         (-> (go-promise
-               (let [id (keyword (str (random-uuid)))
-                     initialized (atom false)
-                     resolve! (atom nil)
-                     pending (js/Promise. (fn [resolve _] (reset! resolve! resolve)))
-                     spec {:content [:cv], :init #(reset! initialized true)}
-                     loadable (reify
-                                lazy/ILoadable
-                                  (ready? [_] true)
-                                IDeref
-                                  (-deref [_] spec))
-                     original content/ensure!]
-                 ;; Keep the replacement active across the loader's asynchronous chain.
-                 (set! content/ensure! (fn [ks] (is (= [:cv] ks)) pending))
-                 (with-redefs [loader/modules {id loadable}]
-                   (let [loaded (loader/load! {:module id})]
-                     (-> (js/Promise.resolve)
-                         (.then (fn [] (is (false? @initialized)) (@resolve! nil) loaded))
-                         (.then (fn [_] (is (true? @initialized))))
-                         (.catch (fn [error] (is false (str error))))
-                         (.finally (fn []
-                                     (set! content/ensure! original)
-                                     (swap! loader/*loads dissoc id)
-                                     (done))))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+    (-> (go-promise
+          (let [id (keyword (str (random-uuid)))
+                restore! (rf/make-restore-fn)
+                *initialized? (atom false) *started? (atom false) *resolve (atom nil)
+                pending (js/Promise. (fn [resolve _] (reset! *resolve resolve)))
+                resource {:source :strapi :keys [:cv] :key id}
+                spec {:id id :depends [resource] :init #(reset! *initialized? true)}
+                loadable (reify lazy/ILoadable (ready? [_] true) IDeref (-deref [_] spec))
+                original content/ensure!]
+            (try
+              (rf/dispatch-sync [:init/app-db])
+              (set! content/ensure! (fn [ks] (is (= [:cv] ks)) (reset! *started? true) pending))
+              (let [loaded (with-redefs [loader/modules {id loadable}] (loader/load! {:module id}))]
+                (await! (support/settle!))
+                (is @*started? "The declared managed source was actually acquired")
+                (is (false? @*initialized?) "Init waits while that source is pending")
+                (@*resolve nil)
+                (await! loaded)
+                (is @*initialized?))
+              (finally
+                (set! content/ensure! original)
+                (swap! loader/*loads dissoc id)
+                (data/invalidate! #{resource})
+                (restore!)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
 (deftest bootstrap-rejects-content-outside-the-public-contract
   (is (false? (content/valid-bundle? {:version 1, :content {:secrets {}}} [])))
   (is (false? (content/valid-bundle? {:version 1, :content {:story nil}} [:story])))
@@ -129,7 +130,7 @@
               original-modules loader/modules
               original-manifest contract/module-dependencies
               original-load lazy/load
-              spec {:init #(swap! *events conj :init)}
+              spec {:id id :init #(swap! *events conj :init)}
               loadable (reify
                          lazy/ILoadable
                            (ready? [_] false)

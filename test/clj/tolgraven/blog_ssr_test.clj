@@ -17,6 +17,11 @@
             [tolgraven.blog.comments :as comments]
             [tolgraven.blog.data :as blog-data]))
 
+(defn projected-response [select rows]
+  ;; REST projections include selected SQL NULLs. Preserve extra fields here
+  ;; so the public-reader tests still prove the allowlist removes them.
+  (mapv #(merge (zipmap (map keyword (string/split select #",")) (repeat nil)) %) rows))
+
 (deftest comment-expansion-opens-two-levels-and-preserves-explicit-folds
   (is (comments/expanded? {} [42 "root"]))
   (is (comments/expanded? {} [42 "root" "child"]))
@@ -81,13 +86,13 @@
     (with-redefs [content/fresh-bundle! (fn [_] {:content {:header {:text ["Test" []]}}})
                   supabase/request! (fn [_ table {:keys [query-params]}]
                                       (swap! *calls conj [table query-params])
-                                      {:body (case table
+                                      {:body (projected-response (get query-params "select" "") (case table
                                                "blog_posts" [{:id 42 :doc_id "42" :user_id "u1" :title "Hi"
                                                               :text "Body" :ts 0 :tags "one two"
                                                               :secret "never serialize"}]
                                                "blog_comments" (if (= "is.null" (get query-params "parent_comment")) [{:id "c1" :parent_post 42 :user_id "u1" :text "SSR comment" :ts 0 :secret "private"}] [])
                                                "site_users" [{:id "u1" :name "Name" :email "private"}]
-                                               "auth_roles" [])})]
+                                               "auth_roles" []))})]
       (let [snapshot (ssr/snapshot! "/blog/post/hi-42" {:post-id 42})]
         (is (some #(= "eq.42" (get-in % [1 "id"])) @*calls))
         (is (= {"blog_posts" 2 "blog_comments" 2 "site_users" 1 "auth_roles" 1} (frequencies (map first @*calls))))
@@ -184,7 +189,7 @@
     (with-redefs [content/fresh-bundle! (fn [_] {:content {}})
                   supabase/request! (fn [_ table {:keys [query-params]}]
                                       (swap! calls conj [table query-params])
-                                      {:body (case table
+                                      {:body (projected-response (get query-params "select" "") (case table
                                                "blog_posts" [{:id 42 :doc_id "42" :user_id "author"}]
                                                "blog_comments" (cond
                                                                  (= "is.null" (get query-params "parent_comment")) roots
@@ -197,7 +202,7 @@
                                                                    :user_id "deep-author" :text "grandchild" :ts 12}]
                                                                  :else children)
                                                "site_users" [{:id "author" :name "Author"}]
-                                               "auth_roles" [])})]
+                                               "auth_roles" []))})]
       (let [snapshot (ssr/snapshot! "/blog/post/test-42" {:post-id 42})
             user-reads (filter #(= "site_users" (first %)) @calls)
             root-read (second (first (filter #(= "is.null" (get-in % [1 "parent_comment"])) @calls)))]

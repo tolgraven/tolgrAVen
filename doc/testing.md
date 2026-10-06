@@ -31,10 +31,10 @@ Browser suite:
 4. `python3 scripts/serve-browser-tests.py`, then open `http://127.0.0.1:4002/`.
    Inspect final assertion counts and failures, not just compilation.
 
-The old Doo entry point only selects `core-test`; it is a legacy narrow runner,
-**not the full browser suite**. `:app-test` discovers all `tolgraven.*-test`
-namespaces. `workflow_unit_test.cljs` replaces the misleadingly named
-`integration_test.cljs`.
+`:app-test` discovers all `tolgraven.*-test` namespaces through the Shadow
+browser runner; the obsolete Doo entry point has been removed.
+`workflow_unit_test.cljs` replaces the misleadingly named `integration_test.cljs`.
+Ring request fixtures use `ring-mock` from `:project/test`.
 
 Application subscription tests mount a Reagent consumer, dereference the real
 subscription during render, change state through registered events, and unmount
@@ -72,6 +72,12 @@ with working Supabase and Strapi configuration. Then:
 ```sh
 python3 scripts/serve-integration-tests.py --app http://127.0.0.1:4000
 ```
+
+For a locally published production container, add `--forwarded-proto https` to
+model its usual TLS-terminating proxy. Otherwise Ring's secure defaults redirect
+the plain HTTP test connection to HTTPS. Add `--verbose` to log request paths and
+statuses without query parameters. The container should use a separate local port
+and the same configured public providers; do not replace their responses.
 
 Open `http://127.0.0.1:4003/__tests/` and press **Run checks**. The driver loads the
 real site in an iframe, waits for ordinary controls to respond after hydration,

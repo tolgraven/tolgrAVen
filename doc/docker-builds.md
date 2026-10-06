@@ -47,10 +47,11 @@ No additional Coolify API token or SSH key is created.
 ## Prefab builder
 
 `Dockerfile.builder` combines pinned Node 22, Temurin Java 21, and Leiningen images,
-then installs exactly `package-lock.json` and downloads production Maven artifacts.
+then installs exactly `package-lock.json` and downloads build and documentation
+Maven artifacts.
 The prefab includes the complete project `node_modules` directory, including
-Sass, PostCSS, and Shadow CLI tools. Sass/PostCSS
-symlinks support the existing login-shell Sass command without global npm installs.
+Sass, PostCSS, and Shadow CLI tools. npm scripts use these local executables;
+no global CSS-tool installs or compatibility symlinks are needed.
 
 `make docker-prefab` publishes a dependency-hash tag and the compatibility alias
 `registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v1` (the server uses
@@ -74,7 +75,7 @@ Application builds reuse prefab npm/Maven dependencies and a BuildKit cache for
 Shadow release analysis. Application source changes no longer reinstall Node,
 Leiningen, or npm packages.
 BuildKit runs three independent branches concurrently: the frontend builds CSS
-and releases both Shadow targets (`app` and `ssr`) in one invocation; the backend
+and releases the Shadow targets (`app`, `ssr`, and `return-worker`) in one invocation; the backend
 resolves Clojure dependencies and AOT-compiles; a third stage generates Codox
 documentation. The packaging stage waits for all three, copies the completed
 browser assets, and

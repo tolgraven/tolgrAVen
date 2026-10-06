@@ -170,7 +170,7 @@
          (-> (go-promise
                (let [id (keyword (str (random-uuid)))
                      *initializations (atom 0)
-                     spec {:view {:page (fn [] [:div])}, :init #(swap! *initializations inc)}
+                     spec {:id id :view {:page (fn [] [:div])}, :init #(swap! *initializations inc)}
                      loadable (reify
                                 lazy/ILoadable
                                   (ready? [_] true)
@@ -192,17 +192,21 @@
   (async done
     (let [id (keyword (str (random-uuid)))
           *calls (atom [])
-          spec {:view {:view (fn [] [:div "Loaded"])}
+          spec {:id id :view {:view (fn [] [:div "Loaded"])}
                 :init (fn [& args]
                         (go-promise (await! (support/settle!))
                                     (swap! *calls conj [:init args])))}
           loadable (reify lazy/ILoadable (ready? [_] true)
                     IDeref (-deref [_] spec))
-          pending (with-redefs [loader/modules {id loadable}]
+          ;; A regular function keeps with-redefs from becoming an awaited
+          ;; expression in cljs.test/async, so pending retains the Promise.
+          load! (fn []
+                  (with-redefs [loader/modules {id loadable}]
                     (loader/load! {:module id :args [:first {:second true}]
                                    :pre-fn (fn [& args] (swap! *calls conj [:pre args]))
                                    :post-fn (fn [loaded & args]
-                                              (swap! *calls conj [:post loaded args]) loaded)}))]
+                                              (swap! *calls conj [:post loaded args]) loaded)})))
+          pending (load!)]
       (-> pending
           (.then (fn [loaded]
                    (is (= spec loaded))
@@ -361,20 +365,29 @@
              (.finally done))))
 (deftest blog-navigation-rejects-invalid-pages-and-page-sizes
   (async done
-         (-> (go-promise (let [before (rf/make-restore-fn)]
-                           (try (doseq [number [nil "" "invalid" "2oops" "0" "-1" -2 js/NaN 1.5]]
-                                  (rf/dispatch-sync [:blog/nav-page number])
-                                  (is (= 0 (await! (state-at! [:state :blog :page])))))
-                                (rf/dispatch-sync [:blog/nav-page "3"])
-                                (is (= 2 (await! (state-at! [:state :blog :page]))))
-                                (rf/dispatch-sync [:blog/set-posts-per-page 0])
-                                (is (= 1 (await! (state-at! [:options :blog :posts-per-page]))))
-                                (is (nil? (blog-model/page-ids [3 2 1] -1 2)))
-                                (is (nil? (blog-model/page-ids [3 2 1] 0 0)))
-                                (is (= [] (blog-model/page-ids [3 2 1] 9 2)))
-                                (finally (before)))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+    (-> (go-promise
+          (let [restore! (rf/make-restore-fn)]
+            (try
+              (rf/dispatch [:blog/nav-page "3"])
+              (rf/dispatch [:blog/set-posts-per-page "5"])
+              (await! (support/settle!))
+              (is (= 2 (await! (state-at! [:state :blog :page]))))
+              (is (= 5 (await! (state-at! [:options :blog :posts-per-page]))))
+              (doseq [number [nil "" "invalid" "2oops" "0" "-1" -2 js/NaN 1.5]]
+                (rf/dispatch [:blog/nav-page number])
+                (await! (support/settle!))
+                (is (= 2 (await! (state-at! [:state :blog :page])))
+                    "An invalid event retains the last valid page"))
+              (rf/dispatch [:blog/set-posts-per-page 0])
+              (await! (support/settle!))
+              (is (= 5 (await! (state-at! [:options :blog :posts-per-page]))))
+              (is (seq (await! (support/subscription-value! [:validation/errors]))))
+              (is (nil? (blog-model/page-ids [3 2 1] -1 2)))
+              (is (nil? (blog-model/page-ids [3 2 1] 0 0)))
+              (is (= [] (blog-model/page-ids [3 2 1] 9 2)))
+              (finally (restore!)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
 (deftest blog-tags-handle-missing-values-whitespace-and-sequences
   (is (= [] (blog-model/tags nil)))
   (is (= ["clojure" "web"] (blog-model/tags "  clojure\tweb  clojure ")))
@@ -728,11 +741,35 @@
     (is (= [[:document/set-title! (get-in effects [:db :common/route])]] (:dispatch-n effects))
         "Code arrival neither repositions the page nor starts another transition")))
 
+(deftest queued-native-shell-cannot-overwrite-an-already-committed-module
+  (let [shell {:path "/cv" :data {:view (fn [] [:div "Loading CV"])}}
+        page (assoc-in shell [:data :view] (fn [] [:div "CV"]))
+        coeffects {:db {:common/route shell} :scroll-position 200
+                   :id {:id {:navigations 2}}}
+        replacement (event-effects :common/navigate coeffects
+                                   [:common/navigate page {:replace-shell? true}])
+        completion {:transition-id 7 :resolve! identity}
+        pending {:generation 7 :match (:page/replace-destination replacement)}
+        ;; Both events were queued before the replacement effect ran. The
+        ;; native callback captured shell; the handler must now resolve page.
+        stale (event-effects :common/navigate
+                             (assoc coeffects :db (:db replacement) :page/destination pending)
+                             [:common/navigate shell completion])]
+    (is (= page (dissoc (get-in (:db replacement) [:common/route]) :controllers)))
+    (is (not (contains? stale :db)) "The stale shell must not replace the real page")
+    (is (= [:page/ready nil completion] (:dispatch stale))
+        "The original transition still receives completion")
+    (is (= shell (page-transition/latest-match shell {:transition-id 6} pending))
+        "An old transition cannot borrow a newer generation")
+    (is (= shell (page-transition/latest-match shell completion
+                                               (assoc-in pending [:match :path] "/blog")))
+        "An unrelated address is never substituted")))
+
 (deftest code-ready-navigation-does-not-await-managed-data
   (async done
          (-> (go-promise
                (let [id (keyword (str (random-uuid)))
-                     spec {:view {:page (fn [] [:div "Destination"])}}
+                     spec {:id id :view {:page (fn [] [:div "Destination"])}}
                      loadable (reify
                                 lazy/ILoadable
                                   (ready? [_] true)
@@ -870,6 +907,13 @@
                                [:common/set-title "Loaded post"])]
     (is (= "Loaded post" (get-in effects [:db :state :document :title])))
     (is (= [:document/set-title! route] (:dispatch effects)))))
+
+(deftest document-title-accepts-coerced-page-numbers
+  (let [effects (event-effects :document/set-title!
+                 {:db {:content {:document {:title "Site"}}}}
+                 [:document/set-title! {:parameters {:path {:nr 2}}
+                                        :data {:name :blog-page}}])]
+    (is (= "2 - Blog-page  - Site" (:document/set-title effects)))))
 (deftest cold-history-return-does-not-consume-restoration-on-an-interim-shell
   (let [context @restore/*context
         *events (atom [])
@@ -1045,7 +1089,7 @@
 
 (deftest loaded-module-vectors-use-the-component-directly
   (let [<target> (fn [spec] [:section (:title spec)])
-        module-spec {:view {:post <target>}}]
+        module-spec {:id :vector-test :view {:post <target>}}]
     (binding [context/*server?* true context/*modules* {:vector-test module-spec}]
       (is (= [<target> {:title "SSR"}]
              (m/<> {:module :vector-test :view :post} {:title "SSR"})))
@@ -1093,7 +1137,7 @@
                 module (keyword (str "vector-test-" (random-uuid)))
                 original-modules loader/modules original-load loader/load-code!
                 *ready? (atom false) *calls (atom 0) *complete (atom nil)
-                spec {:view {:view <lazy-vector-target>}}
+                spec {:id module :view {:view <lazy-vector-target>}}
                 pending (js/Promise. (fn [resolve _] (reset! *complete resolve)))
                 loadable (reify lazy/ILoadable (ready? [_] @*ready?)
                           IDeref (-deref [_] spec))]

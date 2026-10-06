@@ -98,6 +98,30 @@
        (loading-root (last form))
        :else {})))
 
+#?(:clj
+   (defn component-arguments
+     "Strip optional binding :- Malli-schema annotations. A rest annotation
+      describes each remaining argument, including destructured rest bindings."
+     [args]
+     (when-not (vector? args)
+       (throw (ex-info "Component arguments must be a vector" {})))
+     (loop [remaining (seq args) clean [] schemas [] typed? false]
+       (if-not remaining
+         {:args (with-meta clean (meta args)) :schema (into [:cat] schemas) :typed? typed?}
+         (let [rest? (= '& (first remaining))
+               remaining (if rest? (next remaining) remaining)
+               binding (first remaining)
+               annotated? (= :- (second remaining))
+               schema (if annotated? (nth remaining 2 nil) :any)
+               tail (if annotated? (drop 3 remaining) (next remaining))]
+           (when (or (nil? binding) (= :- binding) (= '& binding)
+                     (and annotated? (nil? schema)) (and rest? (seq tail)))
+             (throw (ex-info "Use [binding :- schema ... & rest :- item-schema]" {})))
+           (recur (seq tail)
+                  (into clean (if rest? ['& binding] [binding]))
+                  (conj schemas (if rest? [:* schema] schema))
+                  (or typed? annotated?)))))))
+
 (defmacro defc
   "Define a lean Reagent 2 function component with optional composed features.
 
@@ -123,10 +147,22 @@
      :let [*count (reagent.core/atom 0)]
      [:button {:on-click #(swap! *count inc)} label @*count])"
   [name & decls]
-  (let [docstring (when (string? (first decls)) (first decls))
+  (let [source-decls decls
+        docstring (when (string? (first decls)) (first decls))
         decls (if docstring (next decls) decls)
         attrs (when (map? (first decls)) (first decls))
         decls (if attrs (next decls) decls)
+        signatures (if (vector? (first decls))
+                     [(component-arguments (first decls))]
+                     (mapv #(component-arguments (first %)) decls))
+        inline-schema (when (some :typed? signatures)
+                        (if (= 1 (count signatures)) (:schema (first signatures))
+                            (into [:alt] (map :schema signatures))))
+        attrs (cond-> attrs inline-schema
+                (update :args-schema #(if % [:and % inline-schema] inline-schema)))
+        decls (if (vector? (first decls))
+                (cons (:args (first signatures)) (next decls))
+                (map (fn [arity signature] (cons (:args signature) (next arity))) decls signatures))
         ;; Page semantics live here, including direct defc {:page true} users.
         attrs (if (:page attrs)
                 (update attrs :features
@@ -147,14 +183,19 @@
     (if (seq? args)
       ;; Reagent supports multiple render arities. Preserve that API for lean
       ;; primitives; composed features use one explicit argument/spec vector.
-      (let [options (select-keys (merge (meta name) attrs) [:features :depends :state])]
-        (when (seq options)
+      (let [options (merge (select-keys (meta name) [:features :depends :state :schema :args-schema :spec-schema]) attrs)
+            descriptor (gensym "definition")]
+        (when (seq (select-keys options [:features :depends :state]))
           (throw (ex-info "Composed defc features require a single argument vector" {:component name})))
-        `(do
-           (reagent.core/defc ~(with-meta name metadata) ~@decls)
+        `(let [~descriptor (tolgraven.component.registry/definition
+                           ~(str ns-name) ~(str name) ~(assoc options :spec false) (fn ~name ~@decls))]
+           ~(if (or (:args-schema options) (:spec-schema options))
+              `(reagent.core/defc ~(with-meta name metadata) [& argv#]
+                 (tolgraven.component.registry/validate-args! ~descriptor argv#)
+                 (apply (fn ~name ~@decls) argv#))
+              `(reagent.core/defc ~(with-meta name metadata) ~@decls))
            (tolgraven.component.registry/register-component!
-            ~name (tolgraven.component.registry/definition
-                   ~(str ns-name) ~(str name) {:spec false} (fn ~@decls)))))
+            ~name ~descriptor)))
       (do
         (when-not (and (symbol? name) (vector? args) (vector? bindings)
                        (even? (count bindings)) (seq body))
@@ -163,7 +204,9 @@
         (let [scoped-helpers? (some #(and (seq? %) (symbol? (first %))
                                          (#{"<sub" ">reset" ">update"} (clojure.core/name (first %))))
                                    (tree-seq coll? seq (concat bindings body)))
-              options (select-keys (merge (meta name) attrs) [:page :spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :loading-args :state :module])
+              ;; Keep extension fields from the declaration for its composed
+              ;; schema and tooling. Symbol metadata is still explicitly scoped.
+              options (merge (select-keys (meta name) [:page :spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :loading-args :state :module :schema :spec-schema :args-schema]) attrs)
               options (merge (loading-root (last body)) options)
               loading-helper? (and (some #{'<loading>} (tree-seq coll? seq (concat bindings body)))
                                    (not (get-in &env [:ns :defs '<loading>]))
@@ -203,14 +246,18 @@
              (let [~descriptor (tolgraven.component.registry/definition
                              ~(str ns-name) ~(str name)
                              (cond-> ~options ^boolean goog.DEBUG
-                               (assoc :code ~(pr-str (list* 'defc name (concat (when docstring [docstring]) (when attrs [attrs]) decls)))))
+                               (assoc :code ~(pr-str (list* 'defc name source-decls))))
                              (fn ~args (let [~@helper-bindings ~@loading-bindings ~@bindings] (fn ~args ~@body))))]
              ~(if plain?
-                `(reagent.core/defc ~(with-meta name metadata) ~args
-                   (tolgraven.component.instrumentation/instrument ~descriptor
-                     ~@(if (seq (concat loading-bindings bindings))
-                         [`(reagent.core/with-let [~@loading-bindings ~@bindings] ~@body)]
-                         [`(do ~@body)])))
+                (let [render `(tolgraven.component.instrumentation/instrument ~descriptor
+                               ~@(if (seq (concat loading-bindings bindings))
+                                   [`(reagent.core/with-let [~@loading-bindings ~@bindings] ~@body)]
+                                   [`(do ~@body)]))]
+                  (if (or (:args-schema options) (:spec-schema options))
+                    `(reagent.core/defc ~(with-meta name metadata) [& argv#]
+                       (tolgraven.component.registry/validate-args! ~descriptor argv#)
+                       (apply (fn ~args ~render) argv#))
+                    `(reagent.core/defc ~(with-meta name metadata) ~args ~render)))
                 `(reagent.core/defc ~(with-meta name metadata) [& argv#]
                    (tolgraven.component/render-component ~descriptor argv#)))
              (tolgraven.component.registry/register-component! ~name ~descriptor))))))))))

@@ -13,10 +13,6 @@ RUN npm ci --no-audit --no-fund
 COPY project.clj ./
 # Bake Maven artifacts into the prefab itself, so a fresh host also benefits.
 RUN JAVA_TOOL_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m" \
-    lein with-profile uberjar deps
+    lein with-profile uberjar,provided,codox deps
 RUN cp package-lock.json /opt/prefab-package-lock.json \
  && cp package.json /opt/prefab-package.json
-# The existing Sass script starts a login shell, which resets npm's PATH.
-# Link the locked project tools instead of installing another global copy.
-RUN ln -s /usr/src/app/node_modules/.bin/sass /usr/local/bin/sass \
- && ln -s /usr/src/app/node_modules/.bin/postcss /usr/local/bin/postcss

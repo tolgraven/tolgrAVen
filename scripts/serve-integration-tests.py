@@ -46,8 +46,13 @@ class Handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get('Content-Length', 0))
             headers = {k: v for k, v in self.headers.items() if k.lower() not in HOP | {'host'}}
+            if self.server.forwarded_proto:
+                # Match a TLS-terminating deployment proxy when testing a prod image.
+                headers['X-Forwarded-Proto'] = self.server.forwarded_proto
             connection.request(self.command, self.path, self.rfile.read(length) if length else None, headers)
             response = connection.getresponse()
+            if self.server.verbose:
+                print(self.command, urlsplit(self.path).path, response.status, flush=True)
             self.send_response(response.status)
             for key, value in response.getheaders():
                 if key.lower() not in HOP:
@@ -72,6 +77,8 @@ if __name__ == '__main__':
     parser.add_argument('--port', type=int, default=4003)
     parser.add_argument('--delay-path', default='')
     parser.add_argument('--delay-seconds', type=float, default=0)
+    parser.add_argument('--forwarded-proto', choices=['http', 'https'])
+    parser.add_argument('--verbose', action='store_true', help='Log request paths and response statuses')
     args = parser.parse_args()
     upstream = urlsplit(args.app)
     if upstream.scheme != 'http' or upstream.hostname not in {'localhost', '127.0.0.1', '::1'}:
@@ -80,5 +87,7 @@ if __name__ == '__main__':
     server.upstream = upstream
     server.delay_path = args.delay_path
     server.delay_seconds = max(0, args.delay_seconds)
+    server.forwarded_proto = args.forwarded_proto
+    server.verbose = args.verbose
     print(f'Live integration checks: http://127.0.0.1:{args.port}/__tests/', flush=True)
     server.serve_forever()

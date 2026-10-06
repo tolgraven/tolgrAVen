@@ -546,3 +546,12 @@ browser context (HTTPS or localhost). If registration, storage or rendering is
 unavailable, existing network navigation and state restoration remain in use.
 `:page-return/status` exposes readiness/failure for inspection, and
 `[:page-return/clear]` clears local documents.
+
+
+## Shared input schemas
+
+`defc` accepts `:spec-schema` for its instance spec and `:args-schema` for the full
+positional/destructured/variadic argument vector. `:schema` extends declaration
+options. Define these in CLJC and compose the common base contracts; see
+[schemas and validation](schemas.md#component-inputs-and-schema-composition) for
+examples, runtime configuration, and error behavior. Input checks add no wrappers.

@@ -12,11 +12,12 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Cold SSR streams a component-derived skeleton then the completed page. Cached SSR skips the skeleton. Hydration preserves the existing DOM and does not replay entrances.
 - After hydration, navigation is entirely SPA: commit the destination immediately, then acquire code/data through shared bindings. Related blog routes retain their shell.
 - Local external returns may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
-- Read `src/cljs/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/clj/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
+- Read `src/frontend/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/backend/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
 
 
 ## Project Structure & Module Organization
-- `src/clj`, `src/cljs`, `src/cljc`: Clojure, ClojureScript, and shared code.
+- `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code (including module-owned CLJC contracts), and shared CLJC infrastructure.
+- `experiments/clj`: preserved JVM prototypes, compiled only with `:experiments`.
 - `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/tolgraven`.
 - `test/clj`, `test/cljs`: backend and frontend tests.
 - `env/`: environment-specific source/resources (dev/test/prod).
@@ -24,12 +25,37 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `scripts/`: media conversion helpers (images/videos).
 - `doc/`: project documentation.
 
+## Shared schemas
+- Define Malli contracts in CLJC near the owning data/module. Reuse them in tests,
+  Reitit page/API parameters, and runtime validation; see `doc/schemas.md`.
+- Schema meaningful new/changed CLJ and CLJS data and public boundaries as part of
+  the feature. Derive contracts from actual writers/readers, including loading,
+  empty, error and restored states. Trivial private view signatures may stay plain.
+- Validate parent-supplied view data too: `defc` supports inline `[arg :- schema]`,
+  `:spec-schema` and `:args-schema`, independently of subscription data. Extend/compose common
+  component, instance-spec, module and page schemas instead of duplicating them.
+- Extend app-db by section and expose module-owned additions through `:db-schema`.
+  Do not validate the entire db on every event; the shared interceptor checks
+  changed sections and rejects invalid transactions before effects run.
+- Internal checks follow `:validation {:enabled ...}` / `VALIDATION_ENABLED` and
+  default to development only. Public input coercion stays enabled in production.
+- Read typed request/controller parameters from `:parameters`; report paths and
+  constraints without logging raw values, credentials, or event arguments.
+
 ## Build, Test, and Development Commands
 - `lein repl`: start the HTTP server and Shadow CLJS REPL (see `README.md`).
 - `npm run dev`: watch SCSS and PostCSS outputs for local development.
 - `npm run build`: produce compressed CSS assets for production.
-- `npm run init`: bootstrap CSS output dir and global tool installs.
+- `npm run init`: bootstrap CSS output, locked local npm tools, and the vendored SDK.
 - Live re-frame debugging: read the installed `re-frame-pair` skill, then run `bash scripts/re-frame-pair.sh discover-app` before inspecting the runtime. See `doc/re-frame-pair.md`; the wrapper selects `:app-dev` and Lein's nREPL port.
+
+## Dependency ownership
+
+- Shadow owns the CLJS/Closure compiler graph in `:provided`; explicit production build commands include that profile, while runtime packaging excludes it. Keep the managed Codox analyzer version aligned with Shadow.
+- Use locked local npm tools and run `npm run vendor:sync` after Supabase SDK updates.
+- 10x/re-frisk are opt-in through `:legacy-debug`; default development retains the custom console and re-frame-pair tracing. See `doc/re-frame-pair.md`.
+- Keep Ring mocks in `:project/test`, prototype dependencies/source paths in `:experiments`, and the S3 wagon in `:s3-publish`.
+- Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
 
 ## Docker dependency updates
 - The prefab builder includes `node_modules` and Maven artifacts; reuse it for normal source changes.
@@ -39,6 +65,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 
 ## Coding Style & Naming Conventions
 - Clojure/ClojureScript: follow standard idioms (2-space indentation, align threading macros), use kebab-case for vars/functions, and keep namespaces aligned with file paths.
+- Maps: keep all entries on one line only when the whole map fits comfortably, separating entries with commas. Otherwise put each key/value entry on its own line, aligning keys; never pack several entries onto a line of a multiline map. Apply this to new and changed code while preserving comments.
 - Re-frame: do not use ns-scoped keywords, but rather simple ns based on module name.
 - CLJS: general structure (apart from top-level) is folder containing module with events.cljs, subs.cljs, views.cljs, module.cljs with spec.
 - SCSS: keep files modular in `resources/scss`; prefer BEM-ish class names when adding new components.
@@ -102,11 +129,12 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 
 ## Testing Guidelines
 - Use `lein with-profile +project/test test` for backend tests; browser tests use Shadow `:app-test` and the runner in `scripts/serve-browser-tests.py`.
-- Generate hydration fixtures from the current Node renderer with `python3 scripts/test-blog-ssr.py` before browser tests. Doo covers only a legacy subset.
+- Generate hydration fixtures from the current Node renderer with `python3 scripts/test-blog-ssr.py` before browser tests. The obsolete Doo runner has been removed.
 - Inspect existing watched builds before compiling. Live development normally watches `:app-dev`, `:ssr`, and `:return-worker`; never overwrite watched output with another compiler.
 - See `doc/testing.md` for mounted subscription workflows, live integration boundaries and browser checks. Unit replacements do not establish live service behavior.
 
 ## Commit & Pull Request Guidelines
+- Commit each completed, verified task before starting the next. Subagents commit their own finished changes; coordinate the shared index so unrelated work is never included.
 - Commit messages follow `scope: summary` (examples in git history: `scss: fix theme var helper broken`). Can also use `scope: subscope: summary`. Keep summaries short and imperative.
 - PRs should include: a clear description, related issue links, and screenshots/gifs for UI changes.
 - Note any config changes (e.g., `env/*` or Supabase schema) in the PR description.

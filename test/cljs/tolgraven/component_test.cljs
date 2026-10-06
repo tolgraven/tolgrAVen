@@ -31,58 +31,60 @@
 
 (deftest rendered-skeleton-retains-the-normal-component-tree
   (async done
-    (-> (with-root
-          (fn [root element]
-            (go-promise
-              (await! (render! root [loading/<rendered>
-                                    {:form [ui/<md->div> "# Sample heading\n\nSample paragraph"]}]))
-              (is (some? (.querySelector element ".component-render-skeleton .md-rendered h1")))
-              (is (= "Sample paragraph" (.-textContent (.querySelector element "p"))))
-              (is (.hasAttribute (.querySelector element ".component-render-skeleton") "inert")))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+    ;; Bind the callback before Promise interop: CLJS async expression lifting
+    ;; otherwise awaits the receiver before invoking .catch.
+    (let [test! (fn [root element]
+                  (go-promise
+                    (await! (render! root [loading/<rendered>
+                                          {:form [ui/<md->div> "# Sample heading\n\nSample paragraph"]}]))
+                    (is (some? (.querySelector element ".component-render-skeleton .md-rendered h1")))
+                    (is (= "Sample paragraph" (.-textContent (.querySelector element "p"))))
+                    (is (.hasAttribute (.querySelector element ".component-render-skeleton") "inert"))))]
+      (-> (with-root test!)
+          (.catch (fn [error] (is false (str error))))
+          (.finally done)))))
 (deftest skeleton-reveal-retains-the-outgoing-layer-and-disposes-it
   (async done
-    (-> (with-root
-          (fn [root element]
-            (go-promise
-              (let [stylesheet (.createElement js/document "link")]
-                (set! (.-rel stylesheet) "stylesheet")
-                (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
-                (try
-                  (await! (js/Promise.
-                            (fn [resolve reject]
-                              (set! (.-onload stylesheet) resolve)
-                              (set! (.-onerror stylesheet) reject)
-                              (.appendChild (.-head js/document) stylesheet))))
-                  (await! (render! root [component/<loading-reveal>
-                                        {:ready? false :skeleton [:p "Sample layout"]}]))
-                  (is (= "Sample layout" (.-textContent element)))
-                  (await! (render! root [component/<loading-reveal>
-                                        {:ready? true :form [:article "Real content"]}]))
-                  (is (= "Real content" (.-textContent (.querySelector element "article"))))
-                  (when-not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))
-                    (is (some? (.querySelector element ".component-loading-reveal__exit"))
-                        "The actual CSS exit retains the skeleton alongside live content"))
-                  ;; Let ordinary commits and the presence lifecycle complete.
-                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 650))))
-                  (is (nil? (.querySelector element ".component-loading-reveal__skeleton")))
-                  (is (= "Real content" (.-textContent element)))
-                  (finally (.remove stylesheet)))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+    (let [test! (fn [root element]
+                  (go-promise
+                    (let [stylesheet (.createElement js/document "link")]
+                      (set! (.-rel stylesheet) "stylesheet")
+                      (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
+                      (try
+                        (await! (js/Promise.
+                                  (fn [resolve reject]
+                                    (set! (.-onload stylesheet) resolve)
+                                    (set! (.-onerror stylesheet) reject)
+                                    (.appendChild (.-head js/document) stylesheet))))
+                        (await! (render! root [component/<loading-reveal>
+                                              {:ready? false :skeleton [:p "Sample layout"]}]))
+                        (is (= "Sample layout" (.-textContent element)))
+                        (await! (render! root [component/<loading-reveal>
+                                              {:ready? true :form [:article "Real content"]}]))
+                        (is (= "Real content" (.-textContent (.querySelector element "article"))))
+                        (when-not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))
+                          (is (some? (.querySelector element ".component-loading-reveal__exit"))
+                              "The actual CSS exit retains the skeleton alongside live content"))
+                        ;; Let ordinary commits and the presence lifecycle complete.
+                        (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 650))))
+                        (is (nil? (.querySelector element ".component-loading-reveal__skeleton")))
+                        (is (= "Real content" (.-textContent element)))
+                        (finally (.remove stylesheet))))))]
+      (-> (with-root test!)
+          (.catch (fn [error] (is false (str error))))
+          (.finally done)))))
 
 (deftest cached-skeleton-reveal-starts-with-only-the-live-component
   (async done
-    (-> (with-root
-          (fn [root element]
-            (go-promise
-              (await! (render! root [component/<loading-reveal>
-                                    {:ready? true :form [:article "Cached content"]}]))
-              (is (nil? (.querySelector element ".component-loading-reveal__skeleton")))
-              (is (= "Cached content" (.-textContent element))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+    (let [test! (fn [root element]
+                  (go-promise
+                    (await! (render! root [component/<loading-reveal>
+                                          {:ready? true :form [:article "Cached content"]}]))
+                    (is (nil? (.querySelector element ".component-loading-reveal__skeleton")))
+                    (is (= "Cached content" (.-textContent element)))))]
+      (-> (with-root test!)
+          (.catch (fn [error] (is false (str error))))
+          (.finally done)))))
 
 (defn- render! [root form] (support/render! root form))
 (defn- with-root

@@ -1,7 +1,9 @@
 (ns tolgraven.ssr.return-contract
   "Versioned page/state pair. Transport objects and credentials never belong in
    a render snapshot; persistent component data retains EDN keys and types."
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [tolgraven.validation :as validation]
+            [tolgraven.ssr.schema :as schema]))
 
 (def version 1)
 (def ttl-ms 1800000)
@@ -33,10 +35,10 @@
 (defn state-for [db] (without-credentials (source-for db)))
 
 (defn valid? [snapshot {:keys [url build now]}]
-  (and (= version (:version snapshot)) (= url (:url snapshot))
-       (= build (:build snapshot)) (number? (:saved-at snapshot))
+  (and (nil? (validation/explain schema/return-snapshot snapshot))
+       (= url (:url snapshot)) (= build (:build snapshot))
        (<= 0 (- now (:saved-at snapshot)) ttl-ms)
-       (string? (:state-edn snapshot)) (<= (byte-count (:state-edn snapshot)) max-bytes)))
+       (<= (byte-count (:state-edn snapshot)) max-bytes)))
 
 (defn script-json [text]
   ;; This is data inside a script element, not interpolated executable code.

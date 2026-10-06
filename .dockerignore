@@ -38,7 +38,8 @@ doc
 .github
 .agents
 .codex
-scripts
+scripts/*
+!scripts/sync-vendor.mjs
 test
 resources/docs/codox
 
@@ -49,4 +50,9 @@ profiles.clj
 
 # Repository instructions and deployment configuration are not application inputs.
 AGENTS.md
+**/AGENTS.md
 deploy
+
+# Ignore local aliases retained for an already-running development REPL.
+src/clj
+src/cljs

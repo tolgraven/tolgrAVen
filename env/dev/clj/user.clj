@@ -43,11 +43,6 @@
   (stop)
   (start))
 
-(defn reload-deps []
-  (log/warn "Disabled")
-  #_(require 'alembic.still)
-  #_(alembic.still/load-project))
-
 (defn restart-handler []
   (mount/stop #'handler/app-routes)
   (mount/start #'handler/app-routes))

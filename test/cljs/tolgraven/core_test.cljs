@@ -1,6 +1,5 @@
 (ns tolgraven.core-test
   (:require [cljs.test :refer-macros [is are deftest testing]]
-            [pjstadig.humane-test-output]
             [tolgraven.components.iframe :as iframe]
             [tolgraven.link-preview.util :as link-preview]
             [tolgraven.routes :as routes]))
