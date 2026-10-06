@@ -555,3 +555,14 @@ positional/destructured/variadic argument vector. `:schema` extends declaration
 options. Define these in CLJC and compose the common base contracts; see
 [schemas and validation](schemas.md#component-inputs-and-schema-composition) for
 examples, runtime configuration, and error behavior. Input checks add no wrappers.
+
+## Page crossfade frame rate
+
+Page navigation crossfades opacity for 250 ms with linear timing and no delayed
+incoming fade. Native View Transitions and the swapper fallback share the CSS
+navigation duration/easing variables. Their lifecycle adapters request
+`Animation.frameRate = "highest"` only if the browser exposes that experimental
+property, honoring reduced motion. This is a sampling-rate hint, not a change to
+playback speed or a guarantee of 120 Hz. Unsupported or rejected requests leave
+the ordinary CSS animation and completion cleanup intact. The request targets
+only the two page layers; it does not increase the rate of unrelated animations.

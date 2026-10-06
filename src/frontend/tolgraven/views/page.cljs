@@ -23,6 +23,7 @@
         token (pr-str [transition-id previous-key current-key])
         [running set-running!] (rf/use-state nil)
         [finished set-finished!] (rf/use-state nil)
+        *incoming (rf/use-ref nil)
         *outgoing (rf/use-ref nil)
         force? (or (not animate?) (nil? outgoing) (= current-key previous-key))]
     (rf/use-effect
@@ -45,7 +46,11 @@
         (if (and (not force?) (= token running) (.-current *outgoing))
           ;; Release the outgoing page when its CSS fade ends, not on a second
           ;; hard-coded clock. Both layers crossfade over the same interval.
-          (motion/finish-animation! (.-current *outgoing) {} #(set-finished! token))
+          (do
+            (doseq [element [(.-current *incoming) (.-current *outgoing)]]
+              (when (and element (.-getAnimations element))
+                (motion/prefer-high-frame-rate! (array-seq (.getAnimations element)))))
+            (motion/finish-animation! (.-current *outgoing) {} #(set-finished! token)))
           js/undefined))
       #js [token running force?])
     [:div.swapper
@@ -53,7 +58,7 @@
                                 (and (not force?) (not= token finished))
                                 (conj [previous-key false outgoing]))]
        ^{:key (pr-str key)}
-       [:div {:ref (when-not active? *outgoing)
+       [:div {:ref (if active? *incoming *outgoing)
               :aria-hidden (when-not active? true)
               :inert (when-not active? true)
               :class (if active?

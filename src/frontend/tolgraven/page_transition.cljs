@@ -3,7 +3,8 @@
   (:require [reagent.core :as r]
             [tolgraven.react :as rf]
             [tolgraven.render-context :as context]
-            [tolgraven.component.restore :as restore]))
+            [tolgraven.component.restore :as restore]
+            [tolgraven.component.motion :as motion]))
 
 (defonce *transition (atom nil))
 (defonce *generation (atom 0))
@@ -120,7 +121,14 @@
       (let [transition (.startViewTransition js/document update!)]
         (reset! *transition transition)
         ;; Skipping an obsolete animation rejects ready, but still runs update!.
-        (.catch (.-ready transition) (fn [_] nil))
+        (-> (.-ready transition)
+            (.then (fn []
+                     (when (and (identical? transition @*transition)
+                                (.-getAnimations js/document))
+                       (motion/prefer-high-frame-rate!
+                         (filter #(#{"page-opacity-out" "page-opacity-in-a"} (.-animationName %))
+                                 (array-seq (.getAnimations js/document)))))))
+            (.catch (fn [_] nil)))
         (.finally (.-finished transition)
                   #(when (identical? transition @*transition)
                      (reset! *transition nil))))

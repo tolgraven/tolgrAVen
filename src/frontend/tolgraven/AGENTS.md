@@ -26,6 +26,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   of persistence snapshots and do not let diagnostic events trigger page renders.
 - Page navigation uses a brief simultaneous opacity crossfade. Native View Transitions
   and the swapper fallback share duration/easing; neither delays the incoming fade.
+  Both request the highest frame rate only when the native Animation API exposes it;
+  do not drive page opacity with a JavaScript loop or change browser settings.
 - After edits check watched Shadow errors and the actual routes in the browser.
 
 - `validation/runtime.cljs` owns declaration checks, module section registration

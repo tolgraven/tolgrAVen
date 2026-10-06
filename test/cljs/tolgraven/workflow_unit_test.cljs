@@ -713,6 +713,39 @@
                           (before)
                           (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))
+(deftest native-frame-rate-hint-targets-only-the-current-page-crossfade
+  (async done
+    (-> (go-promise
+          (let [original-start (.-startViewTransition js/document)
+                original-animations (.-getAnimations js/document)
+                original-transition @page-transition/*transition
+                original-generation @page-transition/*generation
+                original-destination @page-transition/*destination
+                outgoing #js {:animationName "page-opacity-out", :frameRate "auto"}
+                incoming #js {:animationName "page-opacity-in-a", :frameRate "auto"}
+                unrelated #js {:animationName "blinking", :frameRate "auto"}
+                transition #js {:ready (js/Promise.resolve nil)
+                                :finished (js/Promise.resolve nil)
+                                :skipTransition (fn [])}]
+            (try
+              (reset! page-transition/*transition nil)
+              (set! (.-startViewTransition js/document) (fn [_] transition))
+              (set! (.-getAnimations js/document) (fn [] #js [outgoing incoming unrelated]))
+              (page-transition/navigate! {:path "/frame-rate"} true)
+              (await! (.-ready transition))
+              (is (= "highest" (.-frameRate outgoing)))
+              (is (= "highest" (.-frameRate incoming)))
+              (is (= "auto" (.-frameRate unrelated))
+                  "Other page animations retain their browser-selected rate")
+              (finally
+                (set! (.-startViewTransition js/document) original-start)
+                (set! (.-getAnimations js/document) original-animations)
+                (reset! page-transition/*transition original-transition)
+                (reset! page-transition/*generation original-generation)
+                (reset! page-transition/*destination original-destination)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
 (deftest route-change-with-a-query-change-still-positions-the-new-page
   (let [old {:path "/blog", :query-params {:userBox "false"}, :data {:view identity}}
         next {:path "/", :data {:view identity}}
@@ -989,10 +1022,22 @@
                 stylesheet (.createElement js/document "link")
                 native-stylesheet (.createElement js/document "link")
                 element (.createElement js/document "div")
-                *root (atom nil) *frames (atom [])]
+                *root (atom nil) *frames (atom [])
+                *requested-layers (atom [])
+                original-frame-rate (js/Object.getOwnPropertyDescriptor js/Animation.prototype "frameRate")]
+
             (.appendChild (.-body js/document) host)
             (.appendChild shadow element)
             (try
+              ;; Expose the optional native boundary without changing CSS timing.
+              (js/Object.defineProperty js/Animation.prototype "frameRate"
+                #js {:configurable true
+                     :get (fn [] "auto")
+                     :set (fn [rate]
+                            (this-as animation
+                              (swap! *requested-layers conj
+                                     {:rate rate,
+                                      :class (.. animation -effect -target -className)})))})
               ;; Production CSS in an isolated fixture, not duplicated test rules.
               (await! (js/Promise.
                         (fn [resolve reject]
@@ -1030,6 +1075,10 @@
               (is (every? #(<= (js/Math.abs (- 1 (+ (:incoming %) (:outgoing %)))) 0.05)
                           @*frames)
                   "Matching timing keeps the opacities complementary throughout the crossfade")
+              (is (= 2 (count @*requested-layers)) "Both fallback page layers request a higher rate")
+              (is (every? #(= "highest" (:rate %)) @*requested-layers))
+              (is (some #(re-find #"swap-in" (:class %)) @*requested-layers))
+              (is (some #(re-find #"swapped-out" (:class %)) @*requested-layers))
               (let [fallback (js/getComputedStyle (.querySelector element ".swap-in"))]
                 (doseq [pseudo ["::view-transition-old(page)" "::view-transition-new(page)"]]
                   (let [native (js/getComputedStyle (.-documentElement js/document) pseudo)]
@@ -1041,7 +1090,10 @@
               (finally
                 (when @*root (support/unmount! @*root))
                 (.remove native-stylesheet)
-                (.remove host)))))
+                (.remove host)
+                (if original-frame-rate
+                  (js/Object.defineProperty js/Animation.prototype "frameRate" original-frame-rate)
+                  (js/Reflect.deleteProperty js/Animation.prototype "frameRate"))))))
         (.catch #(is false (str %)))
         (.finally done))))
 
