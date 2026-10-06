@@ -63,7 +63,7 @@
 ::view-transition-old(page),
 ::view-transition-new(page) {
   animation-duration: var(--navigation-transition-time);
-  animation-timing-function: ease;
+  animation-timing-function: var(--navigation-transition-ease);
   animation-fill-mode: both;
   mix-blend-mode: normal;
   height: 100%;
@@ -76,21 +76,21 @@
 ::view-transition-old(page) { animation-name: page-opacity-out; }
 ::view-transition-new(page) {
   animation-name: page-opacity-in-a;
-  animation-delay: var(--navigation-transition-time);
+  animation-delay: 0s;
 }
-// Fade out, then fade in, for browsers without native View Transitions. The component
-// releases the outgoing layer after motion; navigation never waits for it.
+// Crossfade both layers together with identical timing in native and fallback paths.
+// The component releases the outgoing layer after motion; navigation never waits for it.
 .swapper { position: relative; isolation: isolate; }
 .swapped {
   position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  opacity: 1; transition: opacity var(--navigation-transition-time) ease;
+  opacity: 1; transition: opacity var(--navigation-transition-time) var(--navigation-transition-ease);
   &.swapped-out { opacity: 0; }
 }
 .swap-in {
   &.opacity { opacity: 0; }
   &.swapped-in {
     opacity: 1;
-    transition: opacity var(--navigation-transition-time) ease var(--navigation-transition-time);
+    transition: opacity var(--navigation-transition-time) var(--navigation-transition-ease);
   }
   &.swap-static { transition: none; }
 }

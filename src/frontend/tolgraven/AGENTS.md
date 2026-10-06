@@ -24,6 +24,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Use Shadow reader features for build-specific dependencies, not runtime imports.
 - Debug instrumentation is bounded and inactive when closed. Keep diagnostics out
   of persistence snapshots and do not let diagnostic events trigger page renders.
+- Page navigation uses a brief simultaneous opacity crossfade. Native View Transitions
+  and the swapper fallback share duration/easing; neither delays the incoming fade.
 - After edits check watched Shadow errors and the actual routes in the browser.
 
 - `validation/runtime.cljs` owns declaration checks, module section registration

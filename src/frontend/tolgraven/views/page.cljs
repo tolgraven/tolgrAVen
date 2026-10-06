@@ -15,7 +15,7 @@
 (def spec main-module/spec)
 
 (defc <swapper>
-  "Fade-out/fade-in fallback. Route commits never wait for this page-owned motion."
+  "Brief crossfade fallback. Route commits never wait for this page-owned motion."
   [incoming outgoing current previous animate? transition-id]
   (let [page-key (fn [route] (or (get-in route [:data :transition-key]) (:path route)))
         current-key (page-key current)
@@ -44,7 +44,7 @@
       (fn []
         (if (and (not force?) (= token running) (.-current *outgoing))
           ;; Release the outgoing page when its CSS fade ends, not on a second
-          ;; hard-coded clock. CSS keeps incoming opacity at zero until then.
+          ;; hard-coded clock. Both layers crossfade over the same interval.
           (motion/finish-animation! (.-current *outgoing) {} #(set-finished! token))
           js/undefined))
       #js [token running force?])

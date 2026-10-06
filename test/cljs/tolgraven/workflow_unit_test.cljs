@@ -981,12 +981,13 @@
         (.catch #(is false (str %)))
         (.finally done))))
 
-(deftest fallback-css-fades-out-before-fading-in
+(deftest fallback-css-crossfades-incoming-and-outgoing-together
   (async done
     (-> (go-promise
           (let [host (.createElement js/document "div")
                 shadow (.attachShadow host #js {:mode "open"})
                 stylesheet (.createElement js/document "link")
+                native-stylesheet (.createElement js/document "link")
                 element (.createElement js/document "div")
                 *root (atom nil) *frames (atom [])]
             (.appendChild (.-body js/document) host)
@@ -1000,9 +1001,18 @@
                           (set! (.-onload stylesheet) #(resolve nil))
                           (set! (.-onerror stylesheet) #(reject (js/Error. "Fixture CSS unavailable")))
                           (.appendChild shadow stylesheet))))
+              ;; Native pseudo-elements live at the document root. Load the same
+              ;; sheet there so both paths inherit the production timing variables.
+              (await! (js/Promise.
+                        (fn [resolve reject]
+                          (set! (.-rel native-stylesheet) "stylesheet")
+                          (set! (.-href native-stylesheet) (.-href stylesheet))
+                          (set! (.-onload native-stylesheet) #(resolve nil))
+                          (set! (.-onerror native-stylesheet) #(reject (js/Error. "Native CSS unavailable")))
+                          (.appendChild (.-head js/document) native-stylesheet))))
               (reset! *root (await! (support/create-root! element)))
               (await! (support/render! @*root
-                         [:div {:style {"--navigation-transition-time" "0.1s"}}
+                         [:div
                           [page-view/<swapper> [:p "Incoming"] [:p "Outgoing"]
                            {:path "/new"} {:path "/old"} true 1]]))
               (await! (wait-for!
@@ -1014,12 +1024,24 @@
                                        :outgoing (if outgoing (opacity outgoing) 0)}]
                             (swap! *frames conj frame)
                             (and (nil? outgoing) (>= (:incoming frame) 0.99))))))
-              (is (some #(and (< 0.01 (:outgoing %) 0.99) (< (:incoming %) 0.01)) @*frames))
-              (is (some #(and (< (:outgoing %) 0.01) (< 0.01 (:incoming %) 0.99)) @*frames))
-              (is (every? #(not (and (> (:outgoing %) 0.01) (> (:incoming %) 0.01))) @*frames)
-                  "Incoming and outgoing fades never overlap")
+              (is (some #(and (< 0.01 (:outgoing %) 0.99)
+                              (< 0.01 (:incoming %) 0.99)) @*frames)
+                  "Incoming and outgoing pages fade simultaneously")
+              (is (every? #(<= (js/Math.abs (- 1 (+ (:incoming %) (:outgoing %)))) 0.05)
+                          @*frames)
+                  "Matching timing keeps the opacities complementary throughout the crossfade")
+              (let [fallback (js/getComputedStyle (.querySelector element ".swap-in"))]
+                (doseq [pseudo ["::view-transition-old(page)" "::view-transition-new(page)"]]
+                  (let [native (js/getComputedStyle (.-documentElement js/document) pseudo)]
+                    (is (= "0.25s" (.-transitionDuration fallback) (.-animationDuration native))
+                        "Native and fallback use the same brief production duration")
+                    (is (= "linear" (.-transitionTimingFunction fallback) (.-animationTimingFunction native)))
+                    (is (= "0s" (.-transitionDelay fallback) (.-animationDelay native))
+                        "Neither path delays either layer"))))
               (finally
-                (when @*root (support/unmount! @*root)) (.remove host)))))
+                (when @*root (support/unmount! @*root))
+                (.remove native-stylesheet)
+                (.remove host)))))
         (.catch #(is false (str %)))
         (.finally done))))
 
