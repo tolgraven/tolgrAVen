@@ -80,9 +80,10 @@
 }
 // Crossfade both layers together with identical timing in native and fallback paths.
 // The component releases the outgoing layer after motion; navigation never waits for it.
-.swapper { position: relative; isolation: isolate; }
+#main { display: grid; isolation: isolate; }
+#main > .page-root { grid-area: 1 / 1; min-width: 0; align-self: start; }
 .swapped {
-  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  z-index: -1; pointer-events: none;
   opacity: 1; transition: opacity var(--navigation-transition-time) var(--navigation-transition-ease);
   &.swapped-out { opacity: 0; }
 }

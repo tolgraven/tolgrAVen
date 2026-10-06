@@ -59,7 +59,8 @@
 
 (defmacro defpage
   "A defc page declaration with a mandatory error boundary. Other features and
-   dependencies compose as usual; the page adds no DOM wrapper."
+   dependencies compose as usual. An optional layout container encloses the
+   boundary; :container false opts out for the site shell."
   [name & decls]
   (let [prefix (take-while string? decls)
         tail (drop (count prefix) decls)
@@ -170,6 +171,21 @@
                           (into [:error-boundary]
                                 (remove #(= :error-boundary (if (keyword? %) % (first %))))
                                 features)))
+                attrs)
+        attrs (if (and (:page attrs) (not (contains? attrs :container)))
+                (assoc attrs :container {:tag :div}) attrs)
+        attrs (if (and (:page attrs) (:container attrs))
+                (update attrs :container
+                        (fn [container]
+                          (let [container (if (vector? container) {:form container} container)]
+                            (update-in container [:props :class]
+                                       #(if % ["page-root" %] "page-root")))))
+                attrs)
+        attrs (if (:container attrs)
+                (update attrs :features
+                        #(into [[:container (:container attrs)]]
+                               (remove (fn [feature]
+                                         (= :container (if (keyword? feature) feature (first feature)))) %)))
                 attrs)
         [args & body] decls
         [bindings body] (if (= :let (first body))

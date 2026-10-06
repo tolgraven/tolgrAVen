@@ -54,7 +54,9 @@
           ;; An optional optimization must not interrupt navigation or cleanup.
           (catch :default _ nil))))))
 
-(defn- next-frame! [callback]
+(defn next-frame!
+  "Start after the initial styles have painted; return cancellation cleanup."
+  [callback]
   ;; Two frames ensure the browser paints the initial state before entering.
   (let [*frame (atom nil)]
     (reset! *frame (js/requestAnimationFrame

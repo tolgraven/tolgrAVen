@@ -15,6 +15,47 @@
             [tolgraven.util :as util]))
 (declare with-root render!)
 (defn- flush! [] (support/settle!))
+(defc <custom-layout> {:features [:props]} [spec & forms]
+  (into [:article.custom-layout [:header "Custom layout"]]
+        [[:div.inner (into [:<>] forms)]]))
+
+(defc <contained-content>
+  {:container {:tag :section :props {:class "layout" :style {:padding "4px"}}}}
+  [spec]
+  [:<> [:p "First"] [:p "Second"]])
+
+(defc <custom-contained-content>
+  {:container {:view <custom-layout> :props {:class "injected"}}}
+  [spec]
+  [:p "Custom content"])
+
+(deftest optional-containers-compose-without-manual-body-wrappers
+  (async done
+    (let [test! (fn [root element]
+            (go-promise
+              (await! (render! root [<contained-content>
+                                    {:props {:class "caller" :style {:color "red"}}}]))
+              (let [surface (.querySelector element "section.layout.caller")]
+                (is (some? surface))
+                (is (= 2 (.-length (.querySelectorAll surface ":scope > p"))))
+                (is (= "4px" (.. surface -style -padding)))
+                (is (= "red" (.. surface -style -color))))
+              (await! (render! root [<custom-contained-content> {:props {:id "custom"}}]))
+              (is (some? (.querySelector element "article#custom.custom-layout.injected")))
+              (is (= "Custom content" (.-textContent (.querySelector element ".inner"))))
+              (await! (render! root [<contained-content>
+                                    {:container [:article {:class "template"}
+                                                 [:header "Template heading"]
+                                                 [:div.slot :container/content]]
+                                     :props {:id "caller-layout"}}]))
+              (is (some? (.querySelector element "article#caller-layout.layout.template")))
+              (is (= 2 (.-length (.querySelectorAll element ".slot > p"))))
+              (await! (render! root [<contained-content> {:container [<custom-layout> {:props {:class "supplied"}}]}]))
+              (is (= 2 (.-length (.querySelectorAll element "article.supplied .inner > p"))))))]
+      (-> (with-root test!)
+          (.catch #(is false (str %)))
+          (.finally done)))))
+
 (deftest native-attrs-flatten-props-without-leaking-component-options
   (let [child (fn [_] [:p "Child"])
         spec {:props {:class "outer" :style {:color "red"}}

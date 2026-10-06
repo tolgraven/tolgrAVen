@@ -37,59 +37,121 @@
 (rf/reg-fx :page/replace-destination replace-destination!)
 (defonce *restore-cleanup (atom nil))
 
+(defonce *restored-position (atom nil))
+(rf/reg-cofx :scroll/restoring?
+  (fn [coeffects]
+    (assoc coeffects :scroll/restoring?
+           (boolean (or @*restore-cleanup
+                        (and (exists? js/window) (number? @*restored-position)
+                             (<= (js/Math.abs (- (.-scrollY js/window) @*restored-position)) 1)))))))
+
+(def layout-properties
+  #{"height" "minHeight" "maxHeight" "width" "minWidth" "maxWidth"
+    "marginTop" "marginBottom" "paddingTop" "paddingBottom" "fontSize"
+    "lineHeight" "flexBasis" "gridTemplateRows"})
+
+(defn- layout-animations []
+  (when (.-getAnimations js/document)
+    (filter (fn [animation]
+              (when-let [effect (.-effect animation)]
+                (and (or (= "running" (.-playState animation)) (.-pending animation))
+                     (js/isFinite (.-endTime (.getComputedTiming effect)))
+                     (some #(some layout-properties (array-seq (js/Object.keys %)))
+                           (array-seq (.getKeyframes effect))))))
+            (array-seq (.getAnimations js/document)))))
+
 (defn restore-position!
-  "Restore cached history before paint, retaining the target if the first commit
-   is shorter than it. Retain it through late layout changes until settled;
-   user input or navigation cancels restoration immediately."
+  "Restore against committed layout, releasing only after mounted code/data,
+   layout-affecting images/fonts and two measured frames agree on the target.
+   User input/navigation cancels immediately; the timeout only bounds failure."
   [position]
   (when-let [cleanup! @*restore-cleanup] (cleanup!))
   (set! (.-scrollRestoration js/history) "manual")
+  (reset! *restored-position position)
   (let [*observer (atom nil)
         *mutations (atom nil)
         *timeout (atom nil)
-        *settle-timeout (atom nil)
-        *load-listener (atom nil)
-        cleanup! (fn cleanup! []
-                   (when-let [observer @*observer] (.disconnect observer))
-                   (when-let [observer @*mutations] (.disconnect observer))
-                   (when @*timeout (js/clearTimeout @*timeout))
-                   (when @*settle-timeout (js/clearTimeout @*settle-timeout))
-                   (when-let [listener @*load-listener]
-                     (.removeEventListener js/document "load" listener true))
-                   (doseq [event ["wheel" "touchstart" "pointerdown" "keydown" "pagehide"]]
-                     (.removeEventListener js/window event cleanup!))
-                   (reset! *restore-cleanup nil))
-        restore! (fn []
-                   (when @*settle-timeout (js/clearTimeout @*settle-timeout))
-                   (.scrollTo js/window #js {:top position :left 0 :behavior "instant"})
-                   (when (<= (js/Math.abs (- (.-scrollY js/window) position)) 1)
-                     ;; A matching offset can precede image decode or another
-                     ;; React commit. Require a quiet layout, not one successful
-                     ;; scroll, before releasing the observer.
-                     (reset! *settle-timeout
-                             (js/setTimeout
-                               (fn []
-                                 (when-not (or (= "loading" (some-> js/document .-fonts .-status))
-                                               (some #(and (not (.-complete %))
-                                                           (not= "lazy" (.-loading %)))
-                                                     (array-seq (.-images js/document))))
-                                   (cleanup!)))
-                               500))))]
+        *frame (atom nil)
+        *previous (atom nil)
+        *waiting (atom #{})
+        *wake (atom nil)
+        *unlisten (atom nil)
+        *event-listener (atom nil)
+        *active? (atom true)
+        events ["wheel" "touchstart" "pointerdown" "keydown" "pagehide"]
+        cleanup! (fn cleanup! [& [event]]
+                   (when event (reset! *restored-position nil))
+                   (when (compare-and-set! *active? true false)
+                     (when-let [observer @*observer] (.disconnect observer))
+                     (when-let [observer @*mutations] (.disconnect observer))
+                     (when @*timeout (js/clearTimeout @*timeout))
+                     (when @*frame (js/cancelAnimationFrame @*frame))
+                     (when-let [unlisten! @*unlisten] (unlisten!))
+                     (.removeEventListener js/document "load" @*event-listener true)
+                     (.removeEventListener js/document "error" @*event-listener true)
+                     (doseq [event events] (.removeEventListener js/window event cleanup!))
+                     (reset! *restore-cleanup nil)))
+        measure! (fn measure! []
+                   (reset! *frame nil)
+                   (when @*active?
+                     ;; Scroll early too: it exposes lazy content at the saved position.
+                     (.scrollTo js/window #js {:top position :left 0 :behavior "instant"})
+                     (let [animations (vec (layout-animations))
+                           main (.getElementById js/document "main")
+                           images (array-seq (.querySelectorAll (or main js/document) "img"))
+                           assets-ready? (and (not= "loading" (some-> js/document .-fonts .-status))
+                                              (every? #(or (> (+ (.-top (.getBoundingClientRect %)) (.-scrollY js/window))
+                                                            (+ position (.-innerHeight js/window)))
+                                                           (.-complete %)
+                                                           ;; Explicit dimensions/aspect ratio reserve layout
+                                                           ;; without waiting for below-fold lazy downloads.
+                                                           (and (pos? (js/parseFloat (.getAttribute % "width")))
+                                                                (pos? (js/parseFloat (.getAttribute % "height"))))
+                                                           (let [ratio (.-aspectRatio (js/getComputedStyle %))]
+                                                             (and (seq ratio) (not (re-find #"auto" ratio)))))
+                                                      images))
+                           geometry [(.-scrollHeight (.-documentElement js/document))
+                                     (.-innerHeight js/window)
+                                     (when main (.-height (.getBoundingClientRect main)))
+                                     (when main (+ (.-top (.getBoundingClientRect main)) (.-scrollY js/window)))]
+                           ready? (and (empty? animations) (restore/layout-ready?) assets-ready?
+                                       (<= (js/Math.abs (- (.-scrollY js/window) position)) 1))]
+                       (doseq [animation animations :when (not (contains? @*waiting animation))]
+                         (swap! *waiting conj animation)
+                         (.then (.-finished animation)
+                                (fn [_] (when @*active? (@*wake)))
+                                (fn [_] (when @*active? (@*wake)))))
+                       (if (and ready? (= geometry @*previous))
+                         (cleanup!)
+                         (do
+                           (reset! *previous (when ready? geometry))
+                           ;; Only ready layout needs another measured frame. Pending
+                           ;; layout wakes through commit, resize, load or font events.
+                           (when ready?
+                             (reset! *frame (js/requestAnimationFrame measure!))))))))
+        schedule! (fn [& _]
+                    (when (and @*active? (nil? @*frame))
+                      (reset! *previous nil)
+                      (reset! *frame (js/requestAnimationFrame measure!))))]
     (reset! *restore-cleanup cleanup!)
-    (reset! *load-listener restore!)
-    (.addEventListener js/document "load" restore! true)
+    (reset! *wake schedule!)
+    (reset! *event-listener schedule!)
+    (reset! *unlisten (restore/listen-layout! schedule!))
+    (.addEventListener js/document "load" schedule! true)
+    (.addEventListener js/document "error" schedule! true)
     (when (exists? js/ResizeObserver)
-      (reset! *observer (js/ResizeObserver. restore!))
+      (reset! *observer (js/ResizeObserver. schedule!))
       (.observe @*observer (.-body js/document))
       (.observe @*observer (.-documentElement js/document)))
     (when (exists? js/MutationObserver)
-      (reset! *mutations (js/MutationObserver. restore!))
+      (reset! *mutations (js/MutationObserver. schedule!))
       (.observe @*mutations (.-body js/document)
-                #js {:childList true :subtree true :characterData true}))
-    (doseq [event ["wheel" "touchstart" "pointerdown" "keydown" "pagehide"]]
-      (.addEventListener js/window event cleanup! #js {:passive true}))
-    (reset! *timeout (js/setTimeout cleanup! 5000))
-    (restore!)))
+                #js {:childList true :subtree true :characterData true :attributes true}))
+    (when-let [fonts (.-fonts js/document)]
+      (.then (.-ready fonts) schedule!))
+    (doseq [event events] (.addEventListener js/window event cleanup! #js {:passive true}))
+    (reset! *timeout (js/setTimeout cleanup! 15000))
+    (schedule!)))
 
 (defn navigate!
   "Capture the old page, then commit the destination route through ordinary events.
@@ -100,6 +162,12 @@
     (when-let [cleanup! @*restore-cleanup] (cleanup!)))
   (when back? (restore/begin! {:back? true}))
   (let [generation (swap! *generation inc)
+        animate? (and animate? (not back?) (not (motion/reduced-motion?)))
+        native? (and animate? (exists? js/document) (fn? (.-startViewTransition js/document)))
+        outgoing-top (when (and animate? (exists? js/document))
+                       (some-> (.querySelector js/document "#main > .page-root") .getBoundingClientRect .-top))
+        outgoing-height (when native?
+                          (some-> (.getElementById js/document "main") .getBoundingClientRect .-height))
         update! (fn []
                   (js/Promise.
                    (fn [resolve! _]
@@ -108,16 +176,15 @@
                                      {:current? #(= generation @*generation)
                                       :resolve! resolve!
                                       :transition-id generation
-                                      :fallback? (and animate? (not back?)
-                                                      (not (fn? (.-startViewTransition js/document)))
-                                                      (not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))))}])
+                                      :outgoing-height outgoing-height
+                                      :outgoing-top outgoing-top
+                                      :fallback? (and animate? (not native?))}])
                        (resolve!)))))]
+    (reset! *restored-position nil)
     (reset! *destination {:generation generation :match match})
     (when-let [transition @*transition] (.skipTransition transition))
     (reset! *transition nil)
-    (if (and animate? (not back?) (exists? js/document)
-             (fn? (.-startViewTransition js/document))
-             (not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))))
+    (if native?
       (let [transition (.startViewTransition js/document update!)]
         (reset! *transition transition)
         ;; Skipping an obsolete animation rejects ready, but still runs update!.
@@ -131,8 +198,15 @@
             (.catch (fn [_] nil)))
         (.finally (.-finished transition)
                   #(when (identical? transition @*transition)
-                     (reset! *transition nil))))
+                     (reset! *transition nil)
+                     (rf/dispatch [:page/transition-finished generation]))))
       (update!))))
+
+(rf/reg-event-db :page/transition-finished
+  (fn [db [_ generation]]
+    (if (= generation (get-in db [:page/commit :completion :transition-id]))
+      (update-in db [:page/commit :completion] dissoc :outgoing-height)
+      db)))
 
 (defn ready!
   "Position an already committed destination and release its incoming capture.
@@ -146,17 +220,25 @@
           (if (number? target)
             (restore-position! target)
             (when-let [element (.getElementById js/document target)]
-              (.scrollIntoView element #js {:block "start" :behavior "instant"})))))
+              (.scrollIntoView element #js {:block "start" :behavior "instant"})
+              ;; Anchor positioning is controlled navigation too. Hold adaptive
+              ;; header reactions until that layout is settled.
+              (restore-position! (.-scrollY js/window))))))
       (when resolve! (resolve!)))))
 
 (defn use-ready!
-  "Complete navigation after React commits the subscribed route and its shell."
+  "Complete navigation after React commits the subscribed route and its shell.
+   Releasing a height reservation must not replay scrolling or route completion."
   [commit]
-  (rf/use-layout-effect
-    (fn []
-      (when commit (ready! (:target commit) (:completion commit)))
-      js/undefined)
-    #js [commit]))
+  (let [*handled (rf/use-ref nil)]
+    (rf/use-layout-effect
+      (fn []
+        (let [navigation (when commit (update commit :completion dissoc :outgoing-height))]
+          (when (and navigation (not= navigation (.-current *handled)))
+            (set! (.-current *handled) navigation)
+            (ready! (:target commit) (:completion commit))))
+        js/undefined)
+      #js [commit])))
 
 (rf/reg-event-fx :page/navigate
   (fn [{:keys [db]} [_ match]]

@@ -34,6 +34,13 @@
     [:malli.core/default :map]]])
 (def dependencies [:sequential dependency])
 (def feature [:or :keyword [:tuple :keyword :any]])
+(def container
+  [:or [:= false] [:vector {:min 1} :any]
+   [:map
+    [:tag {:optional true} [:or :keyword :string]]
+    [:props {:optional true} :map]
+    [:view {:optional true} :any]
+    [:form {:optional true} [:vector {:min 1} :any]]]])
 (def component
   [:map
    [:schema {:optional true} :any]
@@ -42,6 +49,7 @@
    [:state {:optional true} state-options]
    [:spec {:optional true} :boolean]
    [:page {:optional true} :boolean]
+   [:container {:optional true} container]
    [:profile {:optional true} :boolean]
    [:features {:optional true} [:sequential feature]]
    [:depends {:optional true} [:or dependencies fn?]]
@@ -87,6 +95,7 @@
 (def component-spec
   "The map supplied to a component instance, distinct from its declaration."
   [:map [:props {:optional true} :map]
+        [:container {:optional true} container]
         [:depends {:optional true} dependencies]
         [:classes {:optional true} [:or :string [:sequential :string]]]])
 

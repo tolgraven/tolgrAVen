@@ -25,6 +25,7 @@
     [tolgraven.routes :as routes]
     [tolgraven.loader :as loader]
     [tolgraven.component :as component]
+    [tolgraven.react :as react]
     [tolgraven.macros :as m :refer-macros [defpage]]
     [tolgraven.render-context :as context]
     [tolgraven.views-common :as common]
@@ -958,6 +959,126 @@
                            {:path (restore/page-key), :data {:module :blog, :page :post}})
          (is (empty? @*events))
          (finally (reset! restore/*context context)))))
+(deftest restoration-scroll-does-not-toggle-the-header
+  (let [coeffects {:db {:state {:hidden {:header false :footer false}}}
+                   :css-var {}
+                   :scroll/restoring? true}
+        effects (event-effects :scroll/direction coeffects [:scroll/direction :down 485 2000 false false])]
+    (is (not-any? #(= :hide-header-footer (first %)) (:dispatch-n effects)))
+    (is (some #{[:scroll/past-top true]} (:dispatch-n effects)))))
+
+(deftest anchor-navigation-controls-scroll-until-settled-and-cancels-on-input
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                original-position (.-scrollY js/window)
+                original-mode (.-scrollRestoration js/history)]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root [:div {:style {:height "1600px"}} [:div#anchor-fixture "Target"]]))
+              (page-transition/ready! "anchor-fixture" {})
+              ;; Capture before assertions add rows to this scrolling runner DOM.
+              (let [position (.-scrollY js/window)]
+                (is (some? @page-transition/*restore-cleanup)
+                    "Anchor positioning also guards the controlled scroll")
+                (is (= position @page-transition/*restored-position)))
+              (.dispatchEvent js/window (js/Event. "wheel"))
+              (is (nil? @page-transition/*restore-cleanup))
+              (is (nil? @page-transition/*restored-position))
+              (is (empty? @restore/*layout-listeners))
+              (finally
+                (when-let [cleanup! @page-transition/*restore-cleanup] (cleanup!))
+                (support/unmount! root) (.remove element)
+                (set! (.-scrollRestoration js/history) original-mode)
+                (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest native-height-release-only-applies-to-the-current-navigation
+  (let [db {:page/commit {:target "main"
+                         :completion {:transition-id 9 :outgoing-height 2400.5}}}]
+    (is (= db (:db (event-effects :page/transition-finished {:db db} [:page/transition-finished 8]))))
+    (is (nil? (get-in (event-effects :page/transition-finished {:db db} [:page/transition-finished 9])
+                     [:db :page/commit :completion :outgoing-height])))))
+
+(deftest history-scroll-waits-for-layout-animation-completion
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                original-position (.-scrollY js/window)
+                original-mode (.-scrollRestoration js/history)]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root [:div#height-animation {:style {:height "600px"}}]))
+              (let [animation (.animate (.querySelector element "#height-animation")
+                                        #js [#js {:height "200px"} #js {:height "600px"}]
+                                        #js {:duration 250})]
+                (page-transition/restore-position! 0)
+                (await! (support/settle!))
+                (is (some? @page-transition/*restore-cleanup)
+                    "Reachable scroll cannot finish during an active layout animation")
+                (await! (.-finished animation))
+                (await! (wait-for! #(nil? @page-transition/*restore-cleanup))))
+              (is (empty? @restore/*layout-listeners))
+              (finally
+                (when-let [cleanup! @page-transition/*restore-cleanup] (cleanup!))
+                (support/unmount! root) (.remove element)
+                (set! (.-scrollRestoration js/history) original-mode)
+                (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(defpage <restoration-data-page>
+  {:depends [{:source :restoration-fixture}]}
+  []
+  [:section#restored-content {:style {:height "1800px"}} "Ready page"])
+
+(deftest history-scroll-waits-for-mounted-data-then-measured-layout
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                original-position (.-scrollY js/window)
+                original-mode (.-scrollRestoration js/history)
+                original-source (get @data/*sources :restoration-fixture)
+                *resolve (atom nil)]
+            (.appendChild (.-body js/document) element)
+            (data/register-source! :restoration-fixture
+              {:load! (fn [_] (js/Promise. (fn [resolve _] (reset! *resolve resolve))))})
+            (try
+              (await! (support/render! root
+                        [:r> (react/context-provider restore/readiness-context) #js {:value true}
+                         [<restoration-data-page>]]))
+              (await! (wait-for! #(some? @*resolve)))
+              (is (not (restore/layout-ready?)))
+              (page-transition/restore-position! 0)
+              (await! (support/settle!))
+              (is (some? @page-transition/*restore-cleanup)
+                  "A reachable offset cannot complete while page data is still pending")
+              (let [page-root (.querySelector element ".page-root")]
+                (@*resolve {})
+                (await! (wait-for! #(some? (.querySelector element "#restored-content"))))
+                (is (identical? page-root (.querySelector element ".page-root"))
+                    "The page boundary root survives loading-to-content replacement"))
+              (await! (wait-for! #(nil? @page-transition/*restore-cleanup)))
+              (is (restore/layout-ready?))
+              (is (empty? @restore/*layout-listeners) "Completion releases readiness listeners")
+              (is (= 0 (.-scrollY js/window)))
+              (finally
+                (when-let [cleanup! @page-transition/*restore-cleanup] (cleanup!))
+                (support/unmount! root)
+                (.remove element)
+                (data/invalidate! #(= :restoration-fixture (:source %)))
+                (if original-source
+                  (data/register-source! :restoration-fixture original-source)
+                  (swap! data/*sources dissoc :restoration-fixture))
+                (set! (.-scrollRestoration js/history) original-mode)
+                (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
 (deftest history-scroll-follows-layout-growth-and-releases-its-observer
   (async done
     (-> (go-promise
@@ -990,14 +1111,57 @@
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 
+(defpage <crossfade-fixture> [spec]
+  [:p {:id (:id spec)
+       :style {:height (or (:height spec) "40px")}}
+   (:text spec)])
+
+(m/defc <crossfade-host> [incoming outgoing current previous animate? id]
+  [:main#main
+   (page-view/use-page-crossfade incoming outgoing current previous animate? id)])
+
+(deftest page-container-merges-caller-and-navigation-root-props
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                *caller (atom nil) *navigation (atom nil)]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root
+                        [:r> (react/context-provider component/page-root-context)
+                         #js {:value {:class "navigation"
+                                      :style {:opacity 0.5}
+                                      :inert true
+                                      :ref #(reset! *navigation %)}}
+                         [<crossfade-fixture>
+                          {:text "Content"
+                           :props {:class "caller"
+                                   :style {:color "red"}
+                                   :ref #(reset! *caller %)}}]]))
+              (let [page-root (.querySelector element ".page-root")]
+                (is (and (identical? page-root @*caller) (identical? page-root @*navigation)))
+                (is (.contains (.-classList page-root) "caller"))
+                (is (.contains (.-classList page-root) "navigation"))
+                (is (= "red" (.. page-root -style -color)))
+                (is (= "0.5" (.. page-root -style -opacity)))
+                (is (.hasAttribute page-root "inert"))
+                (is (nil? (.querySelector element "p.caller"))
+                    "Caller root props belong to the boundary, not the page's inner body"))
+              (finally (support/unmount! root) (.remove element)))
+            (is (nil? @*caller))
+            (is (nil? @*navigation))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
 (deftest fallback-transition-commits-pending-content-and-releases-old-page
   (async done
     (-> (go-promise
           (let [element (.createElement js/document "div")
                 root (await! (support/create-root! element))
                 current {:path "/new"} previous {:path "/old"}
-                form (fn [id] [page-view/<swapper> [:div#destination "Loading destination"]
-                               [:div#outgoing "Old page"] current previous true id])]
+                form (fn [id] [<crossfade-host> [<crossfade-fixture> {:id "destination" :text "Loading destination"}]
+                               [<crossfade-fixture> {:id "outgoing" :text "Old page"}] current previous true id])]
             (.appendChild (.-body js/document) element)
             (try
               (await! (support/render! root (form 1)))
@@ -1058,14 +1222,18 @@
               (reset! *root (await! (support/create-root! element)))
               (await! (support/render! @*root
                          [:div
-                          [page-view/<swapper> [:p "Incoming"] [:p "Outgoing"]
+                          [<crossfade-host> [<crossfade-fixture> {:id "destination" :text "Incoming" :height "160px"}]
+                           [<crossfade-fixture> {:id "outgoing" :text "Outgoing" :height "640px"}]
                            {:path "/new"} {:path "/old"} true 1]]))
               (await! (wait-for!
                         (fn []
                           (let [incoming (.querySelector element ".swap-in")
                                 outgoing (.querySelector element ".swapped")
                                 opacity #(js/parseFloat (.-opacity (js/getComputedStyle %)))
-                                frame {:incoming (opacity incoming)
+                                frame {:incoming-top (.-top (.getBoundingClientRect incoming))
+                                       :outgoing-top (when outgoing (.-top (.getBoundingClientRect outgoing)))
+                                       :main-height (.-height (.getBoundingClientRect (.querySelector element "#main")))
+                                       :incoming (opacity incoming)
                                        :outgoing (if outgoing (opacity outgoing) 0)}]
                             (swap! *frames conj frame)
                             (and (nil? outgoing) (>= (:incoming frame) 0.99))))))
@@ -1075,6 +1243,14 @@
               (is (every? #(<= (js/Math.abs (- 1 (+ (:incoming %) (:outgoing %)))) 0.05)
                           @*frames)
                   "Matching timing keeps the opacities complementary throughout the crossfade")
+              (is (nil? (.querySelector element ".swapper")) "No outer swapper DOM wrapper")
+              (is (= "DIV" (.-tagName (.querySelector element ".swap-in")))
+                  "The page boundary owns the transition root")
+              (is (every? #(or (nil? (:outgoing-top %))
+                              (= (:incoming-top %) (:outgoing-top %))) @*frames)
+                  "Unequal-height roots stay aligned throughout the crossfade")
+              (is (every? #(or (nil? (:outgoing-top %)) (>= (:main-height %) 640)) @*frames)
+                  "The outgoing root continues to contribute height until its fade ends")
               (is (= 2 (count @*requested-layers)) "Both fallback page layers request a higher rate")
               (is (every? #(= "highest" (:rate %)) @*requested-layers))
               (is (some #(re-find #"swap-in" (:class %)) @*requested-layers))

@@ -215,7 +215,8 @@
         _ (when-not deferred? @(rf/subscribe [:loader/module module]))
         failure @(rf/subscribe [:loader/code-error module])
         loaded (when-not deferred? (code-spec module))
-        resolved (get-in loaded [:view (or view :view)])]
+        resolved (get-in loaded [:view (or view :view)])
+        _ (restore/use-readiness! (boolean (or deferred? resolved failure loaded)))]
     (cond
       deferred? (when <before>
                   [:div.before-loading-container

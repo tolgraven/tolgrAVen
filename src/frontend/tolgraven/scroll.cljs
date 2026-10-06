@@ -116,15 +116,17 @@
                                        (rf/inject-cofx :css-var [:footer-height])
                                        (rf/inject-cofx :css-var [:space-top])
                                        (rf/inject-cofx :css-var [:space-lg])
-                                       (rf/inject-cofx :css-var [:footer-height-current])]
- (fn [{:keys [db css-var]} [_ direction position height at-top? at-bottom?]]
+                                       (rf/inject-cofx :css-var [:footer-height-current])
+                                       (rf/inject-cofx :scroll/restoring?)]
+ (fn [{:keys [db css-var] restoring? :scroll/restoring?} [_ direction position height at-top? at-bottom?]]
    (let [header-height (if (get-in db [:state :menu])
                             (:header-with-menu-height css-var)
                             (:header-height css-var))
          past-top? (not at-top?) ; + space-lg above main. but header + 2x space-top seems sufficient...
          hidden? (get-in db [:state :hidden :header])
          footer-hidden? (get-in db [:state :hidden :footer])] ; will jump page so...
-     {:dispatch-n [(cond (or (and (or hidden? footer-hidden?)
+     {:dispatch-n [(when-not restoring?
+                      (cond (or (and (or hidden? footer-hidden?)
                                   (= direction :up))
                              (< position 50))
                          [:hide-header-footer false false]
@@ -139,7 +141,7 @@
                               past-top?
                               (not at-bottom?)
                               (not (get-in db [:state :menu])))
-                         [:hide-header-footer true true]) ; hide header and footer
+                         [:hide-header-footer true true])) ; hide header and footer
                    
                   (if (and at-bottom? (not (get-in db [:state :scroll :at-bottom])))
                     [:scroll/at-bottom true]

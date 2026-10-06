@@ -4,6 +4,7 @@
             [tolgraven.macros :as m]
             [tolgraven.loader]
             [tolgraven.component.loading :as loading]
+            [tolgraven.component.restore :as restore]
             [tolgraven.ui :as ui]))
 
 (defc <content> [{:keys [loading-view loading-args loading-prefab loading-class] :as spec}]
@@ -16,6 +17,7 @@
     :loading-props (select-keys spec [:lines :avatar?])}]))
 
 (defpage <page> [{:keys [heading] :as spec}]
+  (restore/use-readiness! false)
   (if heading
     [ui/<with-heading> heading [<content> spec]]
     [<content> spec]))

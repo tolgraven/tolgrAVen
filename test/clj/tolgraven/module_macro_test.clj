@@ -34,7 +34,8 @@
     (is (= 'tolgraven.macros/defc (first expanded)))
     (is (= [[:error-boundary false] [:appear "opacity"]] (:features options))
         "defpage leaves feature interpretation to defc")
-    (is (some #(and (map? %) (= [:error-boundary [:appear "opacity"]] (:features %)))
+    (is (some #(and (map? %) (= [[:container {:tag :div :props {:class "page-root"}}]
+                                             :error-boundary [:appear "opacity"]] (:features %)))
               (tree-seq coll? seq (macroexpand-1 expanded)))
         "defc enforces the page boundary without duplicating declaration parsing")
     (is (:page options))
@@ -47,3 +48,9 @@
          (macroexpand-1 '(tolgraven.macros/<> :blog/post post))))
   (is (= '(tolgraven.loader/component-vector <example> [spec])
          (macroexpand-1 '(tolgraven.macros/<> <example> spec)))))
+
+(deftest page-container-opt-out-preserves-the-boundary
+  (is (some #(and (map? %) (= [:error-boundary] (:features %)))
+            (tree-seq coll? seq
+                      (macroexpand-1 '(tolgraven.macros/defc <shell>
+                                        {:page true :container false} [] [:<> "Shell"]))))))
