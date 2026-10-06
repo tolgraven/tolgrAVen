@@ -14,4 +14,3 @@
                    :active [:maybe link-candidate]
                    :prefetch [:maybe [:map-of :string [:enum :queued :prefetched]]]
                    :prefetch-queue [:sequential link-candidate]}))
-
