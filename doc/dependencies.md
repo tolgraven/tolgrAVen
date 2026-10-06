@@ -37,6 +37,13 @@ ClojureScript changes.
 
 ## Optional and retained libraries
 
+The development CIDER Lein plugin injects its middleware automatically. The
+REPL handler explicitly lists Piggieback and Shadow to satisfy their middleware
+ordering dependencies. CIDER 0.57.0 also constructs its own handler when its
+namespace loads, and Shadow starts a separate nREPL server from `user/start`;
+both can still emit missing-Piggieback warnings with nREPL 1.8.0. That version
+automatically adds the missing middleware after warning.
+
 Default development starts the custom console and keeps re-frame tracing
 available to re-frame-pair. 10x and re-frisk are opt-in with `:legacy-debug`;
 see [the debugging guide](re-frame-pair.md). This avoids loading two additional

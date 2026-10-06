@@ -54,6 +54,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Shadow owns the CLJS/Closure compiler graph in `:provided`; explicit production build commands include that profile, while runtime packaging excludes it. Keep the managed Codox analyzer version aligned with Shadow.
 - Use locked local npm tools and run `npm run vendor:sync` after Supabase SDK updates.
 - 10x/re-frisk are opt-in through `:legacy-debug`; default development retains the custom console and re-frame-pair tracing. See `doc/re-frame-pair.md`.
+- The CIDER Lein plugin supplies CIDER middleware; list Piggieback and Shadow explicitly in the development REPL handler. See `doc/dependencies.md` for upstream startup warnings.
 - Keep Ring mocks in `:project/test`, prototype dependencies/source paths in `:experiments`, and the S3 wagon in `:s3-publish`.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
 
