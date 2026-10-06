@@ -8,7 +8,7 @@
     [reagent.ratom]
     [tolgraven.validation.bindings :as contracts]
     [re-frame.core :as rf]
-    [re-frame.alpha :as alpha]))
+    [re-frame.subs.alpha :as subs-alpha]))
 
 (def adapt-react-class         reagent.core/adapt-react-class)
 (def argv                      reagent.core/argv)
@@ -50,8 +50,10 @@
 (defn dispatch [& args] (apply rf/dispatch args))
 (defn dispatch-sync [& args] (apply rf/dispatch-sync args))
 (defn subscribe [query & args] (apply rf/subscribe (contracts/query query) args))
-;; Safe reads outside render contexts use re-frame's managed alpha lifecycle.
-(defn sub [query] (alpha/sub (contracts/query query)))
+;; Use the lifecycle implementation directly: re-frame.alpha also registers
+;; the core default event error handler a second time when both APIs load.
+;; Safe reads outside render contexts retain re-frame's managed alpha lifecycle.
+(defn sub [query] (subs-alpha/sub (contracts/query query)))
 (defn reg-event-db [& args] (apply rf/reg-event-db args))
 (defn reg-event-fx [& args] (apply rf/reg-event-fx args))
 (defn reg-sub [& args] (apply rf/reg-sub args))

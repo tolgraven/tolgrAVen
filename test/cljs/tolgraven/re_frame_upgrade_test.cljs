@@ -4,6 +4,9 @@
             [cljs.test :refer-macros [deftest is async]]
             [re-frame.core-instrumented :as rf]
             [re-frame.tooling :as tooling]
+            [re-frame.registrar :as registrar]
+            [re-frame.subs :as subs]
+            [tolgraven.react :as react]
             [re-frame.db :as db]
             [tolgraven.component.persistent-state]
             [tolgraven.blog.events]))
@@ -49,3 +52,15 @@
     (is (= (vec (range 80)) rebuilt))
     (is (= (vec (range 15 70)) (rrb/subvec rebuilt 15 70)))
     (is (= 160 (count (rrb/catvec rebuilt rebuilt))))))
+
+(react/reg-sub :upgrade/safe-read
+  (fn [_ _] :ready))
+
+(deftest safe-shim-read-keeps-the-core-error-handler-and-no-reactive-cache
+  (let [handler (registrar/get-handler :error :event-handler)
+        query [:upgrade/safe-read]]
+    ;; This is intentionally outside a mounted component: safe reads support
+    ;; SSR/adapters without retaining a dangling reactive subscription.
+    (is (= :ready @(react/sub query)))
+    (is (nil? (subs/cache-lookup query)))
+    (is (identical? handler (registrar/get-handler :error :event-handler)))))
