@@ -40,7 +40,23 @@
   (and (exists? js/window) (.-matchMedia js/window)
        (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))))
 
-(defn- next-frame! [callback]
+(defn prefer-high-frame-rate!
+  "Request the display's highest rate for native Animation objects when exposed.
+   This experimental browser hint never changes playback speed or CSS timing."
+  [animations]
+  (when-not (reduced-motion?)
+    (doseq [animation animations]
+      ;; Check inherited API support without reading a getter or creating an
+      ;; inert expando in browsers without this experimental property.
+      (when (js/Reflect.has animation "frameRate")
+        (try
+          (set! (.-frameRate animation) "highest")
+          ;; An optional optimization must not interrupt navigation or cleanup.
+          (catch :default _ nil))))))
+
+(defn next-frame!
+  "Start after the initial styles have painted; return cancellation cleanup."
+  [callback]
   ;; Two frames ensure the browser paints the initial state before entering.
   (let [*frame (atom nil)]
     (reset! *frame (js/requestAnimationFrame

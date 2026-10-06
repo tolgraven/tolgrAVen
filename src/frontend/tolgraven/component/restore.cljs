@@ -1,7 +1,37 @@
 (ns tolgraven.component.restore
   "First-page restoration context; no loading/motion bypass without ready data."
   (:require [reagent.core :as r]
+            [tolgraven.react :as rf]
             [clojure.string :as string]))
+
+(defonce readiness-context (rf/create-context false))
+(defonce *pending-layout (atom #{}))
+(defonce *layout-listeners (atom #{}))
+
+(defn layout-ready? [] (empty? @*pending-layout))
+(defn listen-layout! [callback]
+  (swap! *layout-listeners conj callback)
+  #(swap! *layout-listeners disj callback))
+
+(defn use-readiness!
+  "Track mounted pending code/data inside the page, never speculative renders.
+   Ready and terminal error views release their blocker after the DOM commit."
+  [ready?]
+  (let [tracked? (rf/use-context readiness-context)
+        *identity (rf/use-ref nil)]
+    (when-not (.-current *identity) (set! (.-current *identity) (js-obj)))
+    (rf/use-layout-effect
+      (fn []
+        (if (and tracked? (not ready?))
+          (let [id (.-current *identity)
+                notify! #(doseq [callback @*layout-listeners] (callback))]
+            (swap! *pending-layout conj id)
+            (notify!)
+            (fn []
+              (swap! *pending-layout disj id)
+              (notify!)))
+          js/undefined))
+      #js [tracked? ready?])))
 
 (defonce *context (r/atom {}))
 (defn page-key [] (if (exists? js/location) (str (.-pathname js/location) (.-search js/location)) "/"))

@@ -40,6 +40,26 @@
 (defc <seen> {:features [:props :seen]} [spec] [:div {:class "original"} "Seen"])
 (defc <domain-map> {:features [:props]} [{:keys [title]}] [:p title])
 (defc <destructured-spec> {:features [:props]} [{:keys [props]}] [:p (:title props)])
+(deftest high-frame-rate-hint-is-optional-and-preserves-animation-timing
+  (let [supported #js {:frameRate "auto", :playbackRate 1, :currentTime 50}
+        unsupported #js {:playbackRate 1}
+        rejected #js {}]
+    (js/Object.defineProperty rejected "frameRate"
+      #js {:get (fn [] "auto")
+           :set (fn [_] (throw (js/Error. "Frame-rate hint rejected")))})
+    (with-redefs [motion/reduced-motion? (constantly false)]
+      (motion/prefer-high-frame-rate! [unsupported rejected supported]))
+    (is (= "highest" (.-frameRate supported))
+        "A rejected hint does not stop the remaining page layer")
+    (is (= 1 (.-playbackRate supported)))
+    (is (= 50 (.-currentTime supported)))
+    (is (not (.hasOwnProperty unsupported "frameRate"))
+        "Unsupported browsers receive no inert expando property")
+    (set! (.-frameRate supported) "auto")
+    (with-redefs [motion/reduced-motion? (constantly true)]
+      (motion/prefer-high-frame-rate! [supported]))
+    (is (= "auto" (.-frameRate supported)) "Reduced motion receives no request")))
+
 (deftest spec-inference-does-not-consume-domain-maps
   (async
     done

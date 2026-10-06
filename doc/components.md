@@ -57,6 +57,7 @@ Features are explicit, ordered and registered independently of the macro:
 | Feature | Behavior | Adds a class? |
 | --- | --- | --- |
 | none | Native Reagent function component | No |
+| `:container` | Optional layout root outside other features; merge caller attrs there | No |
 | `:props` | Merge first-argument `:props` / `:classes` into a native DOM root; preserve both refs | No |
 | `:data` | Enable dependencies supplied in the first argument's `:depends` | No |
 | `:error-boundary` | Isolate render/initialization/descendant lifecycle failures; log and offer retry | Yes, a boundary around the function body |
@@ -428,7 +429,7 @@ cold reads and later autosaves cannot resurrect the deleted snapshot. Unmounting
 alone still preserves app-db and persisted data.
 
 Page declarations use `defpage`, with the same arguments and options as `defc`.
-It always supplies an error boundary, including when an incoming feature list
+It enables a layout container and always supplies an error boundary, including when an incoming feature list
 tries to disable one. Page boundaries reset on a route path or query change;
 ordinary component boundaries keep their existing explicit recovery behavior.
 
@@ -555,3 +556,54 @@ positional/destructured/variadic argument vector. `:schema` extends declaration
 options. Define these in CLJC and compose the common base contracts; see
 [schemas and validation](schemas.md#component-inputs-and-schema-composition) for
 examples, runtime configuration, and error behavior. Input checks add no wrappers.
+
+## Page crossfade frame rate
+
+Page navigation crossfades opacity for 250 ms with linear timing and no delayed
+incoming fade. Native View Transitions and the swapper fallback share the CSS
+navigation duration/easing variables. Their lifecycle adapters request
+`Animation.frameRate = "highest"` only if the browser exposes that experimental
+property, honoring reduced motion. This is a sampling-rate hint, not a change to
+playback speed or a guarantee of 120 Hz. Unsupported or rejected requests leave
+the ordinary CSS animation and completion cleanup intact. The request targets
+only the two page layers; it does not increase the rate of unrelated animations.
+
+### Page roots and crossfades
+
+`defpage` enables an optional layout container outside its error boundary. Its
+`div.page-root` stays mounted across loading, content and failure output; ordinary
+component boundaries keep their fragment output. The outer site shell uses
+`:container false`. A `defc` can opt in with `:container {:tag :section :props {...}}`
+without enabling an error boundary. Enable `:container` in `:features` to accept
+caller-supplied containers with a default `div`. A caller's `:container` may be a
+settings map, a DOM Hiccup template or `[<layout> spec & forms]`. Custom layouts
+accept `[spec & forms]`, forward `:props`/ref onto their DOM root, and place forms
+inside their own layout. `:container/content` marks an inner slot in a template;
+without a slot, content is appended. Declared default root attrs are preserved
+when the caller changes the container. `false` disables the container.
+Page-root context supplies navigation classes, refs, `inert` and `aria-hidden`
+without changing page argument signatures. It is consumed at the owning page
+root and cleared for descendants. Native React provider props use `:r>` with a
+JavaScript props container so the Clojure attrs map remains a Clojure value.
+
+The site page calls `use-page-crossfade` unconditionally. It returns keyed forms
+in a fragment, with no swapper component/div. `#main` provides a single grid cell
+for overlapping roots; both stay in flow while visible, and the outgoing root
+retains its pre-navigation viewport offset through destination scrolling. After completion the outgoing root is
+removed and the main/footer adopt the destination's natural height. Native View
+Transitions retain pixels rather than outgoing DOM and reserve the measured
+outgoing main height until their completion event, matching fallback layout.
+The crossfade timing remains
+250 ms linear in both paths. Do not introduce permanent absolute page layout.
+
+The main page also provides a readiness context. Mounted data/code lifecycles
+register pending layout work and release it after their ready or terminal-error
+DOM commit; intentionally deferred sections do not block. SPA Back retains its
+saved scroll target until that work completes, layout-affecting images before the
+saved viewport and fonts are ready, and consecutive animation-frame measurements
+confirm both layout and the reachable offset. Finite animations of layout
+properties also block completion; their finished promises wake measurement.
+Controlled navigation/restoration scrolls do not toggle the directional header/footer UI. Reserved image dimensions/aspect
+ratios permit restoration without waiting for lazy downloads. Resize, mutation,
+asset and readiness signals wake retries. User input/new navigation cancels;
+the 15-second bound releases failed/unreachable restoration, never marks it ready.

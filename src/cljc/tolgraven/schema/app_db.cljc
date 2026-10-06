@@ -4,6 +4,7 @@
   (:require [malli.util :as mu]
             [tolgraven.schema.common :as c]
             [tolgraven.schema.state :as state]
+            [tolgraven.page-transition.schema :as page-transition]
             [tolgraven.dev-console.schema :as debug]
             [tolgraven.schema.integrations :as integrations]
             [tolgraven.content.schema :as content]
@@ -24,6 +25,7 @@
      [:docs] [:map-of :string :string]
      [:diagnostics] state/diagnostics
      [:dev-console] debug/state
+     [:page/commit] [:maybe page-transition/commit]
      [:common/route] state/route
      [:common/route-last] state/route
      [:component-revisions] [:map-of c/path c/nonnegative]

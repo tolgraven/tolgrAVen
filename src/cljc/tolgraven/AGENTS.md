@@ -30,3 +30,7 @@ implementation in `src/frontend/tolgraven/<module>/`, also on the JVM source pat
   runtimes. CMS bundles and normalized app-db/provider content have different
   shapes. SQL projections include selected NULL columns. Keep raw transport,
   normalized record and component presentation contracts distinct where needed.
+
+- `defpage` enables an optional `:container` layout capability outside its error
+  boundary. It owns a stable root across loading/content/error states; the site
+  shell opts out with `:container false`.

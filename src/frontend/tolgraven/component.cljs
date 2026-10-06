@@ -1,12 +1,16 @@
 (ns tolgraven.component
   (:require
     [clojure.string :as string]
+    [clojure.walk :as walk]
     [tolgraven.render-context :as context]
     [tolgraven.component.registry :as registry]
+    [tolgraven.schema.declarations :as schemas]
+    [tolgraven.validation.runtime :as validation]
     [tolgraven.component.instrumentation :as instrumentation]
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [tolgraven.component.motion :as motion]
+    [tolgraven.component.restore :as restore]
     [tolgraven.component.visibility :as visibility]
     [tolgraven.component.persistent-state :as state-store]
     [tolgraven.component.loading :as loading]
@@ -78,6 +82,8 @@
                      merged))]
       (with-meta (into [tag merged] (if attrs? children (rest form))) (meta form)))
     form))
+
+(defonce page-root-context (rf/create-context nil))
 
 (defn- set-ref! [ref element]
   (cond (fn? ref) (ref element)
@@ -196,7 +202,12 @@
           spec (current-spec definition args)
           lifecycle? (some #(or (= :lifecycle (first %)) (:setup (nth % 2))) features)
           mounted? (when lifecycle? (use-lifecycle! definition args features *element))
-          form (decorate (binding [state-store/*component* definition state-store/*args* args state-store/*react-key* state-key] (render-body! *render args)) features spec mounted? capture-ref)
+          form (decorate
+                 (binding [state-store/*component* definition state-store/*args* args state-store/*react-key* state-key]
+                   (render-body! *render args))
+                 (if (and (ids :container) (not (false? (:container spec))))
+                   (remove #(= :props (first %)) features) features)
+                 spec mounted? capture-ref)
           form (if lifecycle?
                  (root-props form {:capture-root? true} false capture-ref) form)
           options (into {} (map (fn [[id default _]] [id (feature-config id default spec args)]) features))
@@ -225,7 +236,7 @@
         (util/log :error (str "Component " ns-name "/" component-name)
                   (or (ex-message exception) (str exception)))))
     :render
-    (fn [this]
+    (fn [^js this]
       (let [[_ {:keys [ns-name component-name]} form] (r/argv this)
             state (.-state this)]
         (r/as-element
@@ -234,6 +245,55 @@
             (fn [] (.setState this (fn [previous _]
                                     #js {:error nil :stack nil :attempt (inc (.-attempt previous))})))]
            (with-meta [:<> form] {:key (.-attempt state)})))))}))
+
+(r/defc <container>
+  "Optional layout surface. Callers may select a view or Hiccup template.
+   Custom views accept a spec with :props and content forms. :container/content
+   places content inside a template; without a slot it is appended at the root."
+  [defaults spec content]
+  (let [navigation-props (rf/use-context page-root-context)
+        *capture-ref (rf/use-ref nil)
+        supplied (get spec :container defaults)
+        _ (when (contains? spec :container)
+            (validation/check! "component container" schemas/container supplied))
+        options (merge (when (map? defaults) defaults)
+                       (cond (map? supplied) supplied
+                             (vector? supplied) {:form supplied}
+                             :else {}))]
+    (when-not (.-current *capture-ref)
+      (set! (.-current *capture-ref)
+            (memoize (fn [base caller]
+                       (fn [element]
+                         (doseq [ref (distinct [base caller])] (set-ref! ref element)))))))
+    (if (false? supplied)
+      content
+      (let [children [:r> (rf/context-provider page-root-context) #js {:value nil} content]
+            template (or (:form options) [(or (:tag options) :div)])
+            slotted? (some #{:container/content} (tree-seq coll? seq template))
+            form (if slotted?
+                   (walk/postwalk #(if (= :container/content %) children %) template)
+                   (conj template children))
+            capture-ref (.-current *capture-ref)
+            ;; Keep the declared default attrs even when the caller selects a new
+            ;; template/view; page roots still need their shared layout class.
+            attrs-form (root-props [:div (:props defaults)]
+                                   {:props (when (and (contains? spec :container) (map? supplied))
+                                             (:props supplied))}
+                                   false capture-ref)
+            attrs-form (root-props attrs-form spec false capture-ref)
+            attrs-form (root-props attrs-form {:props navigation-props} false capture-ref)
+            attrs (second attrs-form)]
+        (cond
+          (:view options) [(resolve-view (:view options)) {:props attrs} children]
+          (motion/dom-root? form) (root-props form {:props attrs} false capture-ref)
+          :else
+          (let [[view maybe-spec & forms] form
+                spec? (map? maybe-spec)
+                container-spec (if spec? maybe-spec {})
+                merged (root-props [:div (:props container-spec)] {:props attrs} false capture-ref)]
+            (into [(resolve-view view) (assoc container-spec :props (second merged))]
+                  (if spec? forms (rest form)))))))))
+
 
 (defn loading-view [options]
   [loading/<placeholder> options])
@@ -260,6 +320,7 @@
     ;; instance, so speculative/abandoned renders neither duplicate nor leak them.
     (when-not (or skeleton? context/*server?*) (data/prefetch! resources))
     (let [status (if skeleton? :ready (data/state resources))
+          _ (restore/use-readiness! (not= :loading status))
           rendered? (= :rendered (:loading-prefab (merge (:options definition)
                                                        (current-spec definition args))))]
       (cond
@@ -295,8 +356,13 @@
       (render-function definition args presence state-key)
       (let [body [<function-body> definition args presence state-key]
             body (if data? [<data-body> definition args body] body)]
-        (reduce (fn [form [_ config feature]]
-                  (if-let [wrap (:wrap feature)] (wrap form definition config) form))
+        (reduce (fn [form [id config feature]]
+                  (if-let [wrap (:wrap feature)]
+                    (wrap form definition
+                          (if (= id :container)
+                            {:options config :spec (current-spec definition args)}
+                            config))
+                    form))
                 body (reverse features))))))
 
 (register-feature! :data {})
@@ -307,6 +373,9 @@
 (register-feature! :on-seen visibility/feature)
 (register-feature! :exit {})
 (register-feature! :presence {})
+(register-feature! :container
+                   {:wrap (fn [form _ {:keys [options spec]}]
+                            [<container> options spec form])})
 (register-feature! :error-boundary
                    {:wrap (fn [form definition _]
                             [<boundary> {:ns-name (:ns definition) :component-name (:name definition)

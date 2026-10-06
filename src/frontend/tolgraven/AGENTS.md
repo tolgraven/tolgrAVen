@@ -24,6 +24,18 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Use Shadow reader features for build-specific dependencies, not runtime imports.
 - Debug instrumentation is bounded and inactive when closed. Keep diagnostics out
   of persistence snapshots and do not let diagnostic events trigger page renders.
+- Page navigation uses a brief simultaneous opacity crossfade. Native View Transitions
+  and the page-root fallback share duration/easing; neither delays the incoming fade.
+  Both request the highest frame rate only when the native Animation API exposes it;
+  do not drive page opacity with a JavaScript loop or change browser settings.
+- `defpage` enables the optional `:container` layout capability outside its error
+  boundary. Merge caller and transition attrs there; loading/content/error share
+  the same root; the site shell opts out with `:container false`. No swapper wrapper.
+  Fallback roots overlap in one grid cell and both contribute height until cleanup.
+- SPA scroll restoration waits for committed page code/data, relevant image/font
+  layout and a reachable saved offset on consecutive measured frames. Track pending
+  work through the page readiness context and wait for finite layout animations;
+  controlled navigation/restoration scrolls must not trigger header hide/show feedback; do not use a guessed completion delay.
 - After edits check watched Shadow errors and the actual routes in the browser.
 
 - `validation/runtime.cljs` owns declaration checks, module section registration
