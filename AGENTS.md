@@ -47,6 +47,10 @@ Do not retain completed investigation diaries or historical test counts as curre
 
 ## Build, Test, and Development Commands
 - `lein repl`: start the HTTP server and Shadow CLJS REPL (see `README.md`).
+- Browser builds discover `modules/*/module.cljs` through `tolgraven.build.browser/process`;
+  the literal spec `:id` owns the bundle ID and namespace `:bundle/depends-on`
+  declares extra code dependencies. Restart the browser watch after adding/removing
+  module entry files; the runtime loadable map comes from the same discovery.
 - `npm run dev`: watch SCSS and PostCSS outputs for local development.
 - `npm run build`: produce compressed CSS assets for production.
 - `npm run init`: bootstrap CSS output, locked local npm tools, and the vendored SDK.

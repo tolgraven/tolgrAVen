@@ -1,4 +1,5 @@
 (ns tolgraven.modules.search.module
+  {:bundle/depends-on #{:main :link-preview}}
   (:require
     [tolgraven.content.contract :as content-contract]
     [tolgraven.react :as rf]

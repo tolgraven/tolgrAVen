@@ -146,3 +146,17 @@ BFCache pageshow do not independently force a scroll. User input, another
 navigation, pagehide, a settled layout, or the timeout disposes the observers. A brief quiet
 period after reaching the target covers subsequent React commits and image layout;
 pending eager images/fonts retain observation within the same bounded deadline.
+
+## Browser bundle declarations
+
+`tolgraven.build.browser/process` delegates to Shadow's browser target after
+reading `src/frontend/tolgraven/modules/*/module.cljs`. Entries need a literal
+`(def spec {:id :feature ...})`. Their namespace can declare
+`{:bundle/depends-on #{:main :other-feature}}`; the default is `#{:main}`.
+Directories without `module.cljs` remain ordinary source organization. `:main`
+is the eager app entry configured in `shadow-cljs.edn`. The runtime lazy-load map
+is generated from the same declarations, including aliases such as `:test`.
+
+No generated configuration needs committing. Restart the browser watcher after
+adding/removing entries or changing bundle dependencies. The build reads source
+as data with evaluation disabled; it never loads browser code into the JVM.

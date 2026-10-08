@@ -1,21 +1,8 @@
 (ns tolgraven.loader.code
   "Platform-specific Shadow loadables; JVM tooling and SSR use eager specs."
   #?(:cljs (:require [shadow.lazy :as lazy]))
-  #?(:cljs (:require-macros [tolgraven.macros :as m])))
+  #?(:cljs (:require-macros [tolgraven.build.modules :refer [loadables]])))
 
 (def modules
-  #?(:browser
-     (merge (m/make-modules "tolgraven.modules" [:blog
-                                                :link-preview
-                                                :search
-                                                :user
-                                                :chat
-                                                :github
-                                                :cv
-                                                :docs
-                                                :gpt
-                                                :strava
-                                                :instagram])
-            {:test (lazy/loadable tolgraven.modules.experiments.module/spec)})
+  #?(:browser (loadables)
      :default {}))
-

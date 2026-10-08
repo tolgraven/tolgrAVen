@@ -1,4 +1,5 @@
 (ns tolgraven.modules.blog.module
+  {:bundle/depends-on #{:main :user :link-preview}}
   (:require [tolgraven.modules.blog.pages :as pages]
             [tolgraven.modules.blog.schema :as schema]
 
