@@ -26,6 +26,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   of persistence snapshots and do not let diagnostic events trigger page renders.
 - Page navigation uses a brief simultaneous opacity crossfade. Native View Transitions
   and the page-root fallback share duration/easing; neither delays the incoming fade.
+  Native page snapshots must not cover the sticky footer: retain its own opaque,
+  unanimated snapshot layer above the page. DOM z-index cannot outrank that overlay.
   Both request the highest frame rate only when the native Animation API exposes it;
   do not drive page opacity with a JavaScript loop or change browser settings.
 - `defpage` enables the optional `:container` layout capability outside its error

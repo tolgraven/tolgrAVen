@@ -1224,7 +1224,8 @@
                          [:div
                           [<crossfade-host> [<crossfade-fixture> {:id "destination" :text "Incoming" :height "160px"}]
                            [<crossfade-fixture> {:id "outgoing" :text "Outgoing" :height "640px"}]
-                           {:path "/new"} {:path "/old"} true 1]]))
+                           {:path "/new"} {:path "/old"} true 1]
+                          [:footer#footer-sticky.footer-sticky "Persistent footer"]]))
               (await! (wait-for!
                         (fn []
                           (let [incoming (.querySelector element ".swap-in")
@@ -1234,6 +1235,7 @@
                                        :outgoing-top (when outgoing (.-top (.getBoundingClientRect outgoing)))
                                        :main-height (.-height (.getBoundingClientRect (.querySelector element "#main")))
                                        :incoming (opacity incoming)
+                                       :footer (opacity (.querySelector element "#footer-sticky"))
                                        :outgoing (if outgoing (opacity outgoing) 0)}]
                             (swap! *frames conj frame)
                             (and (nil? outgoing) (>= (:incoming frame) 0.99))))))
@@ -1243,6 +1245,8 @@
               (is (every? #(<= (js/Math.abs (- 1 (+ (:incoming %) (:outgoing %)))) 0.05)
                           @*frames)
                   "Matching timing keeps the opacities complementary throughout the crossfade")
+              (is (every? #(= 1 (:footer %)) @*frames)
+                  "The fallback keeps the sticky footer fully opaque")
               (is (nil? (.querySelector element ".swapper")) "No outer swapper DOM wrapper")
               (is (= "DIV" (.-tagName (.querySelector element ".swap-in")))
                   "The page boundary owns the transition root")
@@ -1263,6 +1267,22 @@
                     (is (= "linear" (.-transitionTimingFunction fallback) (.-animationTimingFunction native)))
                     (is (= "0s" (.-transitionDelay fallback) (.-animationDelay native))
                         "Neither path delays either layer"))))
+              (when (.-startViewTransition js/document)
+                (let [footer (.querySelector element "#footer-sticky")
+                      transition (.startViewTransition js/document #(js/Promise.resolve nil))
+                      style #(js/getComputedStyle (.-documentElement js/document) %)]
+                  (await! (.-ready transition))
+                  (is (= "sticky-footer" (.-viewTransitionName (js/getComputedStyle footer))))
+                  (is (= "none" (.-display (style "::view-transition-old(sticky-footer)"))))
+                  (is (= "none" (.-animationName (style "::view-transition-new(sticky-footer)"))))
+                  (is (= "1" (.-opacity (style "::view-transition-new(sticky-footer)"))))
+                  (is (= "none" (.-animationName (style "::view-transition-group(sticky-footer)"))))
+                  (is (> (js/parseInt (.-zIndex (style "::view-transition-group(sticky-footer)")))
+                         (js/parseInt (.-zIndex (style "::view-transition-group(page)"))))
+                      "The unanimated footer snapshot stays above both fading page snapshots")
+                  (await! (.-finished transition))
+                  (is (identical? footer (.querySelector element "#footer-sticky"))
+                      "Native transitions retain the mounted footer DOM")))
               (finally
                 (when @*root (support/unmount! @*root))
                 (.remove native-stylesheet)
