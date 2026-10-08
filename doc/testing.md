@@ -175,3 +175,17 @@ watched app assets are untouched. `sources.edn` records module ownership and
 renderer/highlighting implementations in `:main`. It keeps the normal production
 entry/profile, optimizations and reader features. Total bytes measure every
 bundle, not the initial route's network cost; lazy code remains part of that total.
+
+To run the route checks against those actual advanced-compiled files while keeping
+the HTTP/data server unchanged:
+
+```sh
+python3 scripts/serve-integration-tests.py --app http://127.0.0.1:4000 \
+  --port 4018 --bundle-dir target/bundle-audit/final
+```
+
+Open `http://127.0.0.1:4018/__tests/`. Only the compiled JS is served from the
+audited directory; other requests use the live server. The manifest is a whitelist,
+so missing production chunks cannot silently fall back to development output.
+This verifies production frontend code with the current backend configuration;
+it does not establish production server packaging or deployment behavior.
