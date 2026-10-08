@@ -32,8 +32,10 @@
                   :autorun true}
 
   :app-test {:target :browser-test
+             :module-loader true
              :compiler-options {:reader-features #{:browser :dev}}
-             :build-hooks [(tolgraven.build.compat/rrb-vector)]
+             :build-hooks [(tolgraven.build.compat/rrb-vector)
+                           (tolgraven.build.browser/test-modules)]
              :test-dir "resources/public/js/tests"
              :ns-regexp "tolgraven\\..*-test$"}
 

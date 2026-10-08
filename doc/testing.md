@@ -160,3 +160,18 @@ is generated from the same declarations, including aliases such as `:test`.
 No generated configuration needs committing. Restart the browser watcher after
 adding/removing entries or changing bundle dependencies. The build reads source
 as data with evaluation disabled; it never loads browser code into the JVM.
+
+Reusable Markdown/highlighting and mapping libraries have explicit shared
+`:markdown` and `:maps` bundles, avoiding hoisting into `:main`. Preview consumers
+load Markdown as a code dependency before hydration; Node uses the same component
+synchronously. The local-return installer stays eager, but its React server
+renderer is in `:page-render` and is acquired only after the cache connects.
+
+Run `bash scripts/audit-bundles.sh before` and repeat with an `after` label to
+compare actual production artifacts (raw, gzip level 9 and Brotli quality 11).
+Each build has an isolated build ID/cache and writes to `target/bundle-audit/<label>`;
+watched app assets are untouched. `sources.edn` records module ownership and
+`sizes.json` records bytes. The audit rejects diagnostics, mapping and server
+renderer/highlighting implementations in `:main`. It keeps the normal production
+entry/profile, optimizations and reader features. Total bytes measure every
+bundle, not the initial route's network cost; lazy code remains part of that total.

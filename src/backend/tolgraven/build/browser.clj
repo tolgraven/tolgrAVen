@@ -15,3 +15,11 @@
       (= :configure stage)
       (update-in [::build/config :modules]
                  #(merge (modules/bundles) %)))))
+
+(defn test-modules
+  {:shadow.build/stage :configure}
+  [state]
+  ;; The single browser-test bundle needs every discovered namespace available
+  ;; to shadow.lazy, even when no test directly requires that module entry yet.
+  (update-in state [::build/config :devtools :preloads]
+             #(vec (distinct (concat % (map :entry (modules/discover)))))))

@@ -52,6 +52,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   declares extra code dependencies. Restart the browser watch after adding/removing
   module entry files; the runtime loadable map comes from the same discovery.
 - `npm run dev`: watch SCSS and PostCSS outputs for local development.
+- `bash scripts/audit-bundles.sh <label>`: measure isolated production bundles
+  and check optional dependency ownership without overwriting watched output.
 - `npm run build`: produce compressed CSS assets for production.
 - `npm run init`: bootstrap CSS output, locked local npm tools, and the vendored SDK.
 - `make hooks`: install the tracked pre-commit hook; staged public JPG/PNG images

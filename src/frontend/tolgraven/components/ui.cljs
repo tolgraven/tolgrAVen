@@ -11,7 +11,7 @@
     [tolgraven.component.restore :as restore]
     [clojure.string :as string]
     [clojure.pprint :as pprint]
-    [tolgraven.components.ui.code :as code]
+    [tolgraven.components.markdown :as code]
     [cljs-time.core :as ct]
     [cljs-time.coerce :as ctc]
     [cljs-time.format :as ctf]))

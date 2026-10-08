@@ -130,3 +130,36 @@
             (finally (await! (.delete js/caches worker/cache-name)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
+
+(deftest lazy-renderer-discards-saves-overtaken-while-code-loads
+  (async done
+    (let [restore! (re-frame/make-restore-fn)
+          connect! local/connect!
+          acquire! loader/acquire-code!
+          message! local/message!
+          *resolve (atom nil)
+          pending (js/Promise. (fn [resolve _] (reset! *resolve resolve)))
+          *published (atom [])
+          *rendered (atom [])]
+      (set! local/connect! #(js/Promise.resolve {:worker :worker}))
+      (set! loader/acquire-code! (fn [id] (is (= :page-render id)) pending))
+      (set! local/message! (fn [_ pair]
+                            (swap! *published conj pair)
+                            (js/Promise.resolve nil)))
+      (let [first-save (local/save! {:version :old} false)
+            second-save (local/save! {:version :current} false)]
+        (@*resolve {:pair! (fn [db _]
+                            (swap! *rendered conj db)
+                            {:op "save" :url "current" :state db})})
+        (-> (js/Promise.all #js [first-save second-save])
+            (.then (fn [_]
+                     (is (= [{:version :current}] @*rendered))
+                     (is (= 1 (count @*published)))
+                     (is (not (contains? (first @*published) :state)))))
+            (.catch (fn [error] (is false (str error))))
+            (.finally (fn []
+                        (set! local/connect! connect!)
+                        (set! loader/acquire-code! acquire!)
+                        (set! local/message! message!)
+                        (restore!)
+                        (done))))))))

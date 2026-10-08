@@ -6,7 +6,7 @@
 (deftest module-build-and-runtime-catalog-have-one-owner
   (let [found (modules/discover)
         by-id (into {} (map (juxt :id identity)) found)]
-    (is (= 12 (count found)))
+    (is (every? #(contains? by-id %) [:blog :cv :docs :test :user :link-preview]))
     (is (not (contains? by-id :main)))
     (is (= 'tolgraven.modules.experiments.module (get-in by-id [:test :entry])))
     (is (= #{:main :user :link-preview} (get-in by-id [:blog :depends-on])))

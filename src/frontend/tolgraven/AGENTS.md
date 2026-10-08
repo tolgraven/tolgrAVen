@@ -23,6 +23,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   duplicate transport reads in pages or component render functions.
 - Reuse appearance/presence/loading features. Hydration and restored data bypass
   loading and entrances; later SPA navigation must restore ordinary motion.
+- Shared Markdown/highlighting and mapping code live in the `:markdown` and
+  `:maps` bundles. Declare bundle dependencies for consumers that must have them
+  before hydration. Local-return rendering uses the lazy `:page-render` bundle;
+  the installer remains eager to restore state before the first commit.
 - The local return adapter renders an isolated state snapshot using the shared
   renderer. HTML and state are inseparable. Do not copy DOM or replay init before
   hydration; retain exact query caches and fold/window state.
