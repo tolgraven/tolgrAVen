@@ -53,4 +53,3 @@
     (is (= [:state :blog :comment-limit 42]
            (:path (first (app-db/changed-errors state/sections data
                           (assoc-in data [:state :blog :comment-limit 42] 0))))))))
-
