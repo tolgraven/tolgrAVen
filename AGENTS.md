@@ -50,6 +50,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `npm run dev`: watch SCSS and PostCSS outputs for local development.
 - `npm run build`: produce compressed CSS assets for production.
 - `npm run init`: bootstrap CSS output, locked local npm tools, and the vendored SDK.
+- `make hooks`: install the tracked pre-commit hook; staged public JPG/PNG images
+  generate staged WebP/AVIF variants without including unstaged source edits.
 - Live re-frame debugging: read the installed `re-frame-pair` skill, then run `bash scripts/re-frame-pair.sh discover-app` before inspecting the runtime. See `doc/re-frame-pair.md`; the wrapper selects `:app-dev` and Lein's nREPL port.
 
 ## Dependency ownership

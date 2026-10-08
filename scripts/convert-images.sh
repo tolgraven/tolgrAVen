@@ -1,71 +1,56 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Convert bundled assets, or only the explicit JPG/PNG paths supplied by a caller.
+set -euo pipefail
 
-# Convert images to WebP and AVIF formats
-# Usage: ./scripts/convert-images.sh [--force]
-
-set -e
-
-FORCE=false
-if [[ "$1" == "--force" ]]; then
-    FORCE=true
-fi
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-# Counters
-CONVERTED_WEBP=0
-CONVERTED_AVIF=0
-SKIPPED=0
-
-echo "Starting image conversion to WebP and AVIF..."
-echo "=============================================="
-
-# Find all JPG and PNG files, excluding already converted ones
-find resources/public -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) \
-    ! -name "*.webp" ! -name "*.avif" | while read -r img; do
-
-    # Skip favicons and tiny icons (they're already optimized)
-    if [[ "$img" =~ (favicon|android-chrome|apple-touch-icon|mstile) ]]; then
-        echo -e "${YELLOW}Skipping${NC} $img (favicon/icon)"
-        ((SKIPPED++)) || true
-        continue
-    fi
-
-    # Get file info
-    filename="${img%.*}"
-    extension="${img##*.}"
-    webp_file="${filename}.webp"
-    avif_file="${filename}.avif"
-
-    # Convert to WebP
-    if [[ ! -f "$webp_file" ]] || [[ "$FORCE" == true ]]; then
-        echo -e "${GREEN}Converting to WebP:${NC} $img"
-        cwebp -q 85 -m 6 "$img" -o "$webp_file" 2>/dev/null
-        ((CONVERTED_WEBP++)) || true
-    else
-        echo -e "${YELLOW}Skipping WebP${NC} (exists): $webp_file"
-        ((SKIPPED++)) || true
-    fi
-
-    # Convert to AVIF
-    if [[ ! -f "$avif_file" ]] || [[ "$FORCE" == true ]]; then
-        echo -e "${GREEN}Converting to AVIF:${NC} $img"
-        magick "$img" -quality 80 "$avif_file" 2>/dev/null
-        ((CONVERTED_AVIF++)) || true
-    else
-        echo -e "${YELLOW}Skipping AVIF${NC} (exists): $avif_file"
-        ((SKIPPED++)) || true
-    fi
-
+force=false
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --force) force=true; shift ;;
+        --) shift; break ;;
+        -*) echo "Usage: $0 [--force] [--] [image ...]" >&2; exit 2 ;;
+        *) break ;;
+    esac
 done
 
-echo ""
-echo "=============================================="
-echo -e "${GREEN}Conversion complete!${NC}"
-echo "WebP files created: $CONVERTED_WEBP"
-echo "AVIF files created: $CONVERTED_AVIF"
-echo "Files skipped: $SKIPPED"
+converted=0
+skipped=0
+convert_image() {
+    local img="$1" stem tmp
+    case "$img" in
+        *favicon*|*android-chrome*|*apple-touch-icon*|*mstile*) return ;;
+    esac
+    case "$img" in
+        *.[jJ][pP][gG]|*.[jJ][pP][eE][gG]|*.[pP][nN][gG]) ;;
+        *) echo "Unsupported image: $img" >&2; return 2 ;;
+    esac
+    [[ -f "$img" ]] || { echo "Missing image: $img" >&2; return 2; }
+    stem="${img%.*}"
+    for format in webp avif; do
+        local target="$stem.$format"
+        if [[ -f "$target" && "$force" == false && ! "$img" -nt "$target" ]]; then
+            skipped=$((skipped + 1))
+            continue
+        fi
+        # Publish only successful encodes, retaining a previous variant on failure.
+        tmp=$(mktemp "$target.XXXXXX")
+        if [[ "$format" == webp ]]; then
+            if ! cwebp -quiet -q 85 -m 6 "$img" -o "$tmp"; then
+                rm -f "$tmp"; return 1
+            fi
+        elif ! magick "$img" -quality 80 "avif:$tmp"; then
+            rm -f "$tmp"; return 1
+        fi
+        chmod 644 "$tmp"
+        mv -f "$tmp" "$target"
+        converted=$((converted + 1))
+    done
+}
+
+if [[ $# -gt 0 ]]; then
+    for img in "$@"; do convert_image "$img"; done
+else
+    while IFS= read -r -d '' img; do
+        convert_image "$img"
+    done < <(find resources/public -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \) -print0)
+fi
+echo "Image conversion: $converted variants created, $skipped current variants skipped."

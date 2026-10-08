@@ -1,6 +1,11 @@
 .DEFAULT_GOAL := help
+.PHONY: hooks
+hooks:
+	bash scripts/install-git-hooks.sh
+
 .PHONY: help docker docker-build docker-push docker-prefab docker-registry docker-clean provision-plan provision-site
 help:
+	@echo 'make hooks          Install automatic staged-image conversion before commits'
 	@echo 'make docker         Build locally, publish to Hetzner S3, deploy staging through Coolify'
 	@echo 'make docker-build   Build locally only'
 	@echo 'make docker-push    Build and publish without deploying'

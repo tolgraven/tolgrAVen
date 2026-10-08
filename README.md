@@ -15,6 +15,7 @@ Use Java 21 or newer, Leiningen, and Node.js 22. Install the lockfile and build 
 ```sh
 npm ci
 npm run build
+make hooks
 lein repl
 ```
 
