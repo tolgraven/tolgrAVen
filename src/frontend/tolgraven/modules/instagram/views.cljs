@@ -5,8 +5,8 @@
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [clojure.string :as string]
-    [tolgraven.ui :as ui]
-    [tolgraven.image :as img]
+    [tolgraven.components.ui :as ui]
+    [tolgraven.components.image :as img]
     [tolgraven.util :as util :refer [at]]))
 
 (defc <instagram-post> "An instagram post"

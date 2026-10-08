@@ -15,6 +15,6 @@
                                                  :gpt
                                                  :strava
                                                  :instagram])
-                    {:test (lazy/loadable tolgraven.experiments/spec)})
+                    {:test (lazy/loadable tolgraven.modules.experiments.module/spec)})
      :default {}))
 

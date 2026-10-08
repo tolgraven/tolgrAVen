@@ -1,5 +1,5 @@
 (ns tolgraven.dev-console.views
-  (:require [tolgraven.validation.views :as validation] [cljs.reader :as reader]
+  (:require [tolgraven.components.validation :as validation] [cljs.reader :as reader]
             [clojure.string :as string]
             [reagent.core :as r]
             [re-frame.tooling :as tooling]

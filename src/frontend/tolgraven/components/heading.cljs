@@ -2,7 +2,7 @@
   "Heading markup shared by server rendering and the interactive application."
   (:require
     [tolgraven.content.schema :as schema]
-    [tolgraven.image :as image]
+    [tolgraven.components.image :as image]
     [tolgraven.macros :refer-macros [defc]]))
 
 (defc <banner> [{:keys [title target bg tint]} :- schema/heading & [navigate!] :- [:maybe fn?]]

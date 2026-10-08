@@ -14,7 +14,7 @@
     [tolgraven.page-router :as pages]
     [tolgraven.page :as page]
     [tolgraven.validation.markup :as validation-markup]
-    [tolgraven.image.sources :as image-sources]
+    [tolgraven.components.image.sources :as image-sources]
     [tolgraven.concurrent :as concurrent]
     [tolgraven.streaming :as streaming]
     [clojure.tools.logging :as log]

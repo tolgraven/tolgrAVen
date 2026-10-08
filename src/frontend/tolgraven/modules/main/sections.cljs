@@ -1,4 +1,4 @@
-(ns tolgraven.components.home
+(ns tolgraven.modules.main.sections
   (:require
     [tolgraven.component.registry]
     [clojure.string :as string]
@@ -8,8 +8,8 @@
     [tolgraven.components.timer :as anim]
     [tolgraven.component.restore :as restore]
     [tolgraven.components.media :as media]
-    [tolgraven.image :as img]
-    [tolgraven.ui :as ui]))
+    [tolgraven.components.image :as img]
+    [tolgraven.components.ui :as ui]))
 
 (defn ln->br "Ugh. UGH! Why"
   [text]

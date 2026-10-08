@@ -1,11 +1,11 @@
-(ns tolgraven.experiments
+(ns tolgraven.modules.experiments.views
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :as m :refer-macros [defc defpage]]
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [tolgraven.loader]
-    [tolgraven.ui :as ui]
+    [tolgraven.components.ui :as ui]
     [react-leaflet]
     [leaflet]))
 
@@ -414,8 +414,3 @@
                                            tab-key]]])]
       [ui/<safe> :experiments [(tab routes)]]])
    {:title "Experiments" :tint "green"}])
-
-(def spec
-  {:id :test
-   :assets {:css ["https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]}
-   :view {:page #'<test-page>}})

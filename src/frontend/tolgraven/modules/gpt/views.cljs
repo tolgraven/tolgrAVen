@@ -6,7 +6,7 @@
     [tolgraven.react :as rf]
     [clojure.string :as string]
     [tolgraven.loader :as l]
-    [tolgraven.ui :as ui]
+    [tolgraven.components.ui :as ui]
     [tolgraven.util :as util]))
 
 (defc <gpt-message> "A single gpt message"

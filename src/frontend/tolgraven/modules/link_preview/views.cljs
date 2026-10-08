@@ -13,7 +13,7 @@
     [tolgraven.component.motion :as motion]
     [tolgraven.modules.link-preview.subs]
     [tolgraven.modules.link-preview.util :as util]
-    [tolgraven.ui :as ui]
+    [tolgraven.components.ui :as ui]
     [tolgraven.util :as dom]))
 
 (def ^:private open-delay-ms 300)

@@ -1,4 +1,4 @@
-(ns tolgraven.image.sources
+(ns tolgraven.components.image.sources
   "Shared format selection for rendered pictures and server preloads."
   (:require [clojure.string :as string]))
 

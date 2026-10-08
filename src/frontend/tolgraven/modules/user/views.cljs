@@ -7,9 +7,9 @@
     [tolgraven.react :as rf]
     [tolgraven.component]
     [tolgraven.macros :as m :refer-macros [defc]]
-    [tolgraven.image :as img]
+    [tolgraven.components.image :as img]
     [tolgraven.loader :as l]
-    [tolgraven.ui :as ui]))
+    [tolgraven.components.ui :as ui]))
 
 (defc <back-btn> [] ;tho ideally we push states and pop them... so becomes, yeah
   (when (< 1 (count @(rf/subscribe [:user/active-section])))

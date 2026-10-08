@@ -8,6 +8,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   These portable declarations are consumed by JVM tooling and routers too; keep
   browser-only implementation dependencies out of them. Shared platform contracts
   and schema infrastructure remain in `src/cljc`.
+- Rendered reusable UI lives in `components/`; feature-specific UI lives with its
+  module. `component/` is the declaration/lifecycle runtime, not a view inventory.
+  Import the owning namespace directly; there is no top-level `views.cljs` shim.
 - Render state through `tolgraven.react` subscriptions and change it through events.
   Effects/source adapters own I/O; view functions remain pure.
 - Use `<component>` names, `defc` features and `defpage` boundaries. `m/<>` selects

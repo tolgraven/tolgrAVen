@@ -15,7 +15,7 @@
     [tolgraven.component.loading :as loading]
     [tolgraven.modules.link-preview.views :as link-preview]
     [tolgraven.util :as util]
-    [tolgraven.ui :as ui]))
+    [tolgraven.components.ui :as ui]))
 
 (defn- link-trust [user]
   (let [id (if (string? user) user (:id user))]

@@ -3,7 +3,7 @@
     [cljs.test :refer-macros [deftest is testing]]
     [reagent.dom.server :as server]
     [tolgraven.components.media :as media]
-    [tolgraven.video :as video]))
+    [tolgraven.components.video :as video]))
 
 (defn- render-element [component]
   (let [element (.createElement js/document "div")]

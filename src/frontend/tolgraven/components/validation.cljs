@@ -1,4 +1,4 @@
-(ns tolgraven.validation.views
+(ns tolgraven.components.validation
   (:require [tolgraven.react :as rf]
             [tolgraven.validation.markup :as markup]
             [tolgraven.component.registry]

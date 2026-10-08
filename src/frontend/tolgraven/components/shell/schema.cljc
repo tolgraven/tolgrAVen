@@ -1,4 +1,4 @@
-(ns tolgraven.views-common.schema
+(ns tolgraven.components.shell.schema
   "Contracts owned by this feature, shared by browser and JVM validation."
   (:require [tolgraven.schema.common :as c]))
 

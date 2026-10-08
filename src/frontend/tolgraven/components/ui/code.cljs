@@ -1,4 +1,4 @@
-(ns tolgraven.ui.code
+(ns tolgraven.components.ui.code
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]

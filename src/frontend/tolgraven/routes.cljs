@@ -18,12 +18,12 @@
     [tolgraven.component.data :as data]
     [tolgraven.content.contract :as content]
     [tolgraven.components.error :as error-view]
-    [tolgraven.ssr.shell :as shell]
+    [tolgraven.components.page-shell :as shell]
     [tolgraven.component.restore :as restore]
-    [tolgraven.ui :as ui]
+    [tolgraven.components.ui :as ui]
     [tolgraven.modules.main.pages :as home]
-    [tolgraven.views.auto :as auto]
-    [tolgraven.views.not-found :as a404]))
+    [tolgraven.modules.main.views :as auto]
+    [tolgraven.components.not-found :as a404]))
 
 (defpage <log-page>
   {:depends [{:source :strapi :keys [:common]}]}

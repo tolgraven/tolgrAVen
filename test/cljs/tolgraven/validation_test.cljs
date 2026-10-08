@@ -13,7 +13,7 @@
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.test-support :as support]
             [tolgraven.validation.runtime :as validation]
-            [tolgraven.validation.views :as views]))
+            [tolgraven.components.validation :as views]))
 
 (defonce *effects (atom 0))
 (rf/reg-fx :validation-test/external (fn [_] (swap! *effects inc)))

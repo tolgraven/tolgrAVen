@@ -1,13 +1,13 @@
 (ns tolgraven.components.error
   (:require
     [tolgraven.component.registry]
-    [tolgraven.validation.views :as validation]
+    [tolgraven.components.validation :as validation]
     [tolgraven.macros :refer-macros [defc]]
     [cljs.pprint]
     [clojure.string :as string]
     [reagent.core :as r]
     [tolgraven.components.portal :as portal]
-    [tolgraven.ui.code :as code]))
+    [tolgraven.components.ui.code :as code]))
 
 (defc <failure>
   "Shared fallback for rendering, dependencies, modules and initialization.

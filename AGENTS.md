@@ -17,6 +17,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 
 ## Project Structure & Module Organization
 - `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code, and shared CLJC infrastructure. Feature implementations and their portable declarations live in `src/frontend/tolgraven/modules/<module>/`.
+- `src/frontend/tolgraven/components/`: reusable rendered UI and site shell;
+  `component/` contains the declaration/lifecycle runtime.
 - `experiments/clj`: preserved JVM prototypes, compiled only with `:experiments`.
 - `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/tolgraven`.
 - `test/clj`, `test/cljs`: backend and frontend tests.

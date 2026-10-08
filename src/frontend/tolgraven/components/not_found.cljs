@@ -1,8 +1,8 @@
-(ns tolgraven.views.not-found
+(ns tolgraven.components.not-found
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc defpage]]
-    [tolgraven.ui :as ui]))
+    [tolgraven.components.ui :as ui]))
 
 (defpage <not-found-page>
   {:depends [{:source :strapi :keys [:common]}]}

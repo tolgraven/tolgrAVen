@@ -1,4 +1,4 @@
-(ns tolgraven.views-common)
+(ns tolgraven.shell)
   #_(:require
    ; [tolgraven.react :as rf]
    ; [re-graph.core :as rg]
@@ -7,7 +7,7 @@
    ; [markdown.core :refer [md->html]]
    ; [cljs-time.core :as ct]
    ; [cljs-time.format :refer [formatters formatter unparse]]
-   ; [tolgraven.ui :as ui]
+   ; [tolgraven.components.ui :as ui]
    ; [tolgraven.db :as db :refer [<-db ->db]]
    #_[tolgraven.util :as util])
 

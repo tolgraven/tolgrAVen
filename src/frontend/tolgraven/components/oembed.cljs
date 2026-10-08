@@ -4,9 +4,9 @@
     [clojure.string :as string]
     [reagent.core :as r]
     [tolgraven.react :as rf]
-    [tolgraven.image :as img]
+    [tolgraven.components.image :as img]
     [tolgraven.macros :as m]
-    [tolgraven.ui :as ui]))
+    [tolgraven.components.ui :as ui]))
 
 (m/defc <oembed-view> [url <loading>]
   (let [state    (r/atom {:loading? true})

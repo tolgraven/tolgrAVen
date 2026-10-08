@@ -1,11 +1,11 @@
-(ns tolgraven.video
+(ns tolgraven.components.video
   "Helpers for serving modern video formats (VP9, AV1) with automatic fallbacks"
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
     [clojure.string :as string]
     [reagent.core :as r]
-    [tolgraven.image :as img]))
+    [tolgraven.components.image :as img]))
 
 (defn- replace-extension
   "Replace file extension and add codec suffix.

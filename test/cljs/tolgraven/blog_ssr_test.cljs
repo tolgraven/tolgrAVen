@@ -14,7 +14,7 @@
     [tolgraven.render-context :as context]
     [tolgraven.component.restore :as restore]
     [tolgraven.ssr.client :as client]
-    [tolgraven.views.page :as page]
+    [tolgraven.components.page :as page]
     [tolgraven.modules.blog.module :as blog]
     [tolgraven.modules.cv.module :as cv]
     [tolgraven.modules.docs.module :as docs]

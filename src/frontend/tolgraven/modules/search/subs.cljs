@@ -1,7 +1,7 @@
 (ns tolgraven.modules.search.subs
   (:require
    [tolgraven.react :as rf]
-   [tolgraven.ui :as ui]
+   [tolgraven.components.ui :as ui]
    [clojure.string :as string]
    [clojure.walk :as walk]))
 

@@ -8,7 +8,7 @@
     [clojure.string :as string]
     [tolgraven.loader :as l]
     [tolgraven.modules.link-preview.views :as link-preview]
-    [tolgraven.ui :as ui]
+    [tolgraven.components.ui :as ui]
     [tolgraven.util :as util]))
 
 (defc <chat-message> "A single chat message"

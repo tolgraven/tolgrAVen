@@ -1,17 +1,17 @@
-(ns tolgraven.ui
+(ns tolgraven.components.ui
   (:require
     [tolgraven.component.registry]
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [tolgraven.util :as util :refer [at]]
-    [tolgraven.image :as img]
+    [tolgraven.components.image :as img]
     [tolgraven.macros :as m :include-macros true]
     [tolgraven.component :as component]
     [tolgraven.components.heading :as heading]
     [tolgraven.component.restore :as restore]
     [clojure.string :as string]
     [clojure.pprint :as pprint]
-    [tolgraven.ui.code :as code]
+    [tolgraven.components.ui.code :as code]
     [cljs-time.core :as ct]
     [cljs-time.coerce :as ctc]
     [cljs-time.format :as ctf]))
@@ -42,7 +42,7 @@
   "Compatibility boundary for existing [safe category component] call sites.
    Keep the category in diagnostics while sharing defc's recovery machinery."
   [category form & [reset-key]]
-  [component/<boundary> {:ns-name "tolgraven.ui" :component-name (name category)
+  [component/<boundary> {:ns-name "tolgraven.components.ui" :component-name (name category)
                          :reset-key reset-key} form])
 
 (m/defc <md->div> [md & [options]]

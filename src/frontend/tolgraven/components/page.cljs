@@ -1,4 +1,4 @@
-(ns tolgraven.views.page
+(ns tolgraven.components.page
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :as m :refer-macros [defc defpage]]
@@ -9,8 +9,8 @@
     [tolgraven.page-transition :as transition]
     [tolgraven.modules.main.module :as main-module]
     [tolgraven.loader :as l]
-    [tolgraven.ui :as ui]
-    [tolgraven.views-common :as common]))
+    [tolgraven.components.ui :as ui]
+    [tolgraven.components.shell :as common]))
 
 (def spec main-module/spec)
 

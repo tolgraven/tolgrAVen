@@ -7,7 +7,7 @@
             [reagent.core :as r]
             [reagent.dom.client :as dom]
             [tolgraven.macros :refer-macros [defc]]
-            [tolgraven.ui :as ui]
+            [tolgraven.components.ui :as ui]
             [tolgraven.component :as component]
             [tolgraven.component.markup :as markup]
             [tolgraven.component.loading :as loading]

@@ -4,7 +4,7 @@
     [reagent.core :as r]
     [reagent.dom.client :as dom]
     [reagent.dom.server :as server]
-    [tolgraven.image :as image]))
+    [tolgraven.components.image :as image]))
 
 (defn- check-original-fallback! [src done]
   (let [container (.createElement js/document "div")

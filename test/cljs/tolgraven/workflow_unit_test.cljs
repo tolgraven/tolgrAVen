@@ -28,16 +28,16 @@
     [tolgraven.react :as react]
     [tolgraven.macros :as m :refer-macros [defpage]]
     [tolgraven.render-context :as context]
-    [tolgraven.views-common :as common]
+    [tolgraven.components.shell :as common]
     [tolgraven.page-transition :as page-transition]
-    [tolgraven.views.page :as page-view]
+    [tolgraven.components.page :as page-view]
     [tolgraven.component.data :as data]
     [tolgraven.component.restore :as restore]
     [tolgraven.component.loading :as loading]
     [tolgraven.component.sources]
     [tolgraven.modules.docs.views :as docs-view]
-    [tolgraven.ui.code :as code]
-    [tolgraven.ui :as ui]
+    [tolgraven.components.ui.code :as code]
+    [tolgraven.components.ui :as ui]
     [tolgraven.components.init :as init-view]
     [tolgraven.react :as shim]
     [tolgraven.component.instrumentation :as instrumentation]
@@ -63,7 +63,7 @@
     [tolgraven.modules.gpt.module]
     [tolgraven.modules.strava.module]
     [tolgraven.modules.instagram.module]
-    [tolgraven.experiments]))
+    [tolgraven.modules.experiments.module]))
 (defn- fake-scoped-transport!
   [*rows]
   ;; Only the external boundary is fake. Production managed readers still batch,

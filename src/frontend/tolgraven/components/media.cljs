@@ -5,10 +5,10 @@
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.react :as rf]
     [reagent.core :as r]
-    [tolgraven.image :as img]
-    [tolgraven.ui :as ui]
+    [tolgraven.components.image :as img]
+    [tolgraven.components.ui :as ui]
     [tolgraven.util :as util]
-    [tolgraven.video :as vid]))
+    [tolgraven.components.video :as vid]))
 
 (defc <bg-logo> "Try to remember why had to put img in css/style..."
   [path]

@@ -7,9 +7,9 @@
     [clojure.string :as string]
     [tolgraven.components.timer :as anim]
     [tolgraven.loader]
-    [tolgraven.ui :as ui]
-    [tolgraven.image :as img]
-    [tolgraven.views-common :as views]
+    [tolgraven.components.ui :as ui]
+    [tolgraven.components.image :as img]
+    [tolgraven.components.shell :as views]
     [tolgraven.util :as util :refer [at]]
     [react-leaflet]))
 

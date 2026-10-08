@@ -6,7 +6,7 @@
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [clojure.string :as string]
-    [tolgraven.ui :as ui]))
+    [tolgraven.components.ui :as ui]))
 
 (defn page-links
   "Rewrite generated Codox filenames before rendering. External URLs, root

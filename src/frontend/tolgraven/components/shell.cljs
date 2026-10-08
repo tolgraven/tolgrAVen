@@ -1,4 +1,4 @@
-(ns tolgraven.views-common
+(ns tolgraven.components.shell
   (:require
     [tolgraven.component.registry]
     [reagent.core :as r]
@@ -8,8 +8,8 @@
     [clojure.string :as string]
     [markdown.core :refer [md->html]]
     [tolgraven.loader]
-    [tolgraven.ui :as ui]
-    [tolgraven.image :as img]
+    [tolgraven.components.ui :as ui]
+    [tolgraven.components.image :as img]
     [tolgraven.db :as db]
     [tolgraven.util :as util :refer [at]]))
 

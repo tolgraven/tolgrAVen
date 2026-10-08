@@ -68,7 +68,7 @@
                          :depends-on #{:main}}
              :instagram {:entries    [tolgraven.modules.instagram.module]
                          :depends-on #{:main}}
-             :test      {:entries    [tolgraven.experiments]
+             :test      {:entries    [tolgraven.modules.experiments.module]
                          :depends-on #{:main}}
              :blog      {:entries    [tolgraven.modules.blog.module]
                          :depends-on #{:main :user :link-preview}}}
@@ -134,7 +134,7 @@
                          :depends-on #{:main}}
              :instagram {:entries    [tolgraven.modules.instagram.module]
                          :depends-on #{:main}}
-             :test      {:entries    [tolgraven.experiments]
+             :test      {:entries    [tolgraven.modules.experiments.module]
                          :depends-on #{:main}}
              :blog      {:entries    [tolgraven.modules.blog.module]
                          :depends-on #{:main :user :link-preview}}}

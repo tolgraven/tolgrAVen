@@ -15,7 +15,7 @@
             [tolgraven.ssr.contract :as ssr-contract]
             [tolgraven.ssr.return-contract :as contract]
             [tolgraven.ssr.render :as render]
-            [tolgraven.views.page :as page]))
+            [tolgraven.components.page :as page]))
 
 (defonce *connection (atom nil))
 (defonce *pending (atom nil))

@@ -1,11 +1,11 @@
-(ns tolgraven.ssr.shell
+(ns tolgraven.components.page-shell
   "Generic page fallback driven by module-local page declarations."
   (:require [tolgraven.macros :refer-macros [defc defpage]]
             [tolgraven.macros :as m]
             [tolgraven.loader]
             [tolgraven.component.loading :as loading]
             [tolgraven.component.restore :as restore]
-            [tolgraven.ui :as ui]))
+            [tolgraven.components.ui :as ui]))
 
 (defc <content> [{:keys [loading-view loading-args loading-prefab loading-class] :as spec}]
   (if loading-view

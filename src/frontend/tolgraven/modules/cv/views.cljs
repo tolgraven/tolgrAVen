@@ -6,8 +6,8 @@
     [clojure.string :as string]
     [tolgraven.react :as rf]
     [reagent.core :as r]
-    [tolgraven.image :as img]
-    [tolgraven.ui :as ui]
+    [tolgraven.components.image :as img]
+    [tolgraven.components.ui :as ui]
     [tolgraven.util :as util])
   (:require-macros
     [tolgraven.macros :as m]))

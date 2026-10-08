@@ -28,10 +28,10 @@
     [tolgraven.routes :as routes]
     [tolgraven.page-preload :as page-preload]
     [tolgraven.subs]
-    [tolgraven.ui :as ui]
+    [tolgraven.components.ui :as ui]
     [tolgraven.util :as util]
-    [tolgraven.views-common :as common]
-    [tolgraven.views.page :as page-view]))
+    [tolgraven.components.shell :as common]
+    [tolgraven.components.page :as page-view]))
 
 (def spec main-module/spec)
 

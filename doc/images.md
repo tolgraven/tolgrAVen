@@ -10,7 +10,7 @@ Use the `tolgraven.image` namespace for automatic format selection:
 
 ```clojure
 (ns my-app.views
-  (:require [tolgraven.image :as img]))
+  (:require [tolgraven.components.image :as img]))
 
 ;; Drop-in replacement for [:img]
 [img/picture {:src "img/photo.jpg" :alt "My photo"}]
@@ -150,7 +150,7 @@ Use the `tolgraven.video` namespace for automatic format selection:
 
 ```clojure
 (ns my-app.views
-  (:require [tolgraven.video :as vid]))
+  (:require [tolgraven.components.video :as vid]))
 
 ;; Basic video with modern format sources
 [vid/video {:src "media/clip.mp4"

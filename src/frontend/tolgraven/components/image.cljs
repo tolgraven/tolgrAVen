@@ -1,10 +1,10 @@
-(ns tolgraven.image
+(ns tolgraven.components.image
   "Helpers for serving modern image formats (WebP, AVIF) with automatic fallbacks"
   (:require
     [tolgraven.component.registry]
     [tolgraven.schema.components :as schema]
     [tolgraven.macros :refer-macros [defc]]
-    [tolgraven.image.sources :as sources]
+    [tolgraven.components.image.sources :as sources]
     [tolgraven.react :as react]
     [reagent.core :as r]))
 

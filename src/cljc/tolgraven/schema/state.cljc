@@ -18,9 +18,9 @@
             [tolgraven.modules.strava.schema :as strava]
             [tolgraven.supabase.schema :as supabase]
             [tolgraven.theme.schema :as theme]
-            [tolgraven.ui.schema :as ui]
+            [tolgraven.components.ui.schema :as ui]
             [tolgraven.modules.user.schema :as user]
-            [tolgraven.views-common.schema :as views-common]
+            [tolgraven.components.shell.schema :as views-common]
             [tolgraven.window.schema :as window]))
 
 (def flags [:map-of c/id :boolean])
