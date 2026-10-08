@@ -1,5 +1,11 @@
 # Composable components with `defc`
 
+Reusable rendered UI lives in `tolgraven.components.*`; feature views live under
+`tolgraven.modules.<feature>.*`. `tolgraven.component.*` implements declaration,
+lifecycle, data and state capabilities. Import the owning namespace directly;
+there is no `tolgraven.views` compatibility entry point. See [source layout](source-layout.md).
+
+
 Require `[tolgraven.macros :refer-macros [defc]]` and
 `[tolgraven.component.registry]`, and use components in Hiccup.
 The default compiles directly to Reagent 2's `reagent.core/defc`: a memoized

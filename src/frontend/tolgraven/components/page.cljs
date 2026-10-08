@@ -6,7 +6,7 @@
     [tolgraven.component :as component]
     [tolgraven.component.restore :as restore]
     [tolgraven.component.motion :as motion]
-    [tolgraven.page-transition :as transition]
+    [tolgraven.navigation.transition :as transition]
     [tolgraven.modules.main.module :as main-module]
     [tolgraven.loader :as l]
     [tolgraven.components.ui :as ui]

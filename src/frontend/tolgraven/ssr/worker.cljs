@@ -7,7 +7,7 @@
     [tolgraven.db :as db]
     [tolgraven.content.contract :as content]
     [tolgraven.component :as component]
-    [tolgraven.routes :as routes]
+    [tolgraven.navigation.routes :as routes]
     [tolgraven.components.page :as page]
     [tolgraven.modules.main.views :as auto]
     [tolgraven.modules.blog.module :as blog]

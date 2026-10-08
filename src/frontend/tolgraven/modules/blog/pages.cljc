@@ -3,9 +3,12 @@
   (:require #?(:cljs [tolgraven.react :as rf])
             [clojure.string :as string]
             [tolgraven.modules.blog.data :as data]
-            [tolgraven.modules.blog.schema :as schema]
             [tolgraven.page :as page]
             [tolgraven.schema.http :as schemas]))
+
+(def page-extension
+  [:map [:selection {:optional true}
+         [:map [:page {:optional true} [:int {:min 1}]]]]])
 
 #?(:cljs (def controllers
   {:blog [{:start (fn [_]
@@ -33,7 +36,7 @@
 
 (def spec
   ;; Native Reitit routes, with shared data inherited by each child page.
-  [["/blog" {:schema schema/page-extension :module :blog :transition-key :blog
+  [["/blog" {:schema page-extension :module :blog :transition-key :blog
               :shell {:heading [:blog :heading]
                       :loading-prefab :article
                       :loading-view {:module :blog :view :post-content}

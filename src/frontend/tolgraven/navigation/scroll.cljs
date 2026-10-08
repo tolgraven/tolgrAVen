@@ -1,8 +1,8 @@
-(ns tolgraven.scroll
+(ns tolgraven.navigation.scroll
   (:require
     [reagent.core :as r]
     [tolgraven.react :as rf]
-    [tolgraven.page-transition :as page-transition]
+    [tolgraven.navigation.transition :as page-transition]
     [clojure.string :as string]
     [tolgraven.util :as util]
     [cljs-time.core :as ct]

@@ -1,9 +1,9 @@
-(ns tolgraven.page-preload
+(ns tolgraven.navigation.preload
   "Idle, bounded acquisition of the same modules and managed dependencies used by pages."
   (:require [reagent.core :as r]
             [reitit.core :as reitit]
             [tolgraven.react :as rf]
-            [tolgraven.routes :as routes]
+            [tolgraven.navigation.routes :as routes]
             [tolgraven.loader :as loader]
             [tolgraven.page :as page]
             [tolgraven.modules.main.module :as main]

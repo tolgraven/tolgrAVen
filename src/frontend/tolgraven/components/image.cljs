@@ -2,11 +2,20 @@
   "Helpers for serving modern image formats (WebP, AVIF) with automatic fallbacks"
   (:require
     [tolgraven.component.registry]
-    [tolgraven.schema.components :as schema]
+    [malli.util :as mu]
+    [tolgraven.content.schema :as content]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.components.image.sources :as sources]
     [tolgraven.react :as react]
     [reagent.core :as r]))
+
+(def attrs-schema
+  ;; Pending avatars intentionally reserve their box without an image request.
+  ;; CMS media uses a concrete source; a mounted image may temporarily omit it.
+  (mu/merge content/media [:map [:src {:optional true} [:maybe :string]]
+                               [:on-error {:optional true} [:maybe fn?]]
+                               [:on-load {:optional true} [:maybe fn?]]
+                               [:style {:optional true} [:maybe :map]]]))
 
 (def get-src-variants sources/get-src-variants)
 
@@ -32,7 +41,7 @@
    Browsers select the first supported format. If requesting or decoding that
    source fails, retry the original JPEG/PNG. Call the caller's on-error only when the
    original image fails too."
-  [{:keys [src on-error ref] :as attrs} :- schema/image-attrs]
+  [{:keys [src on-error ref] :as attrs} :- attrs-schema]
   (r/with-let [*fallback-sources (r/atom #{})]
     (let [capture! (react/use-callback
                     (fn [image]
@@ -71,13 +80,13 @@
 (defc <img>
   "Smart img component that automatically uses modern formats when available.
    Alias for picture component for drop-in replacement."
-  [attrs :- schema/image-attrs]
+  [attrs :- attrs-schema]
   [<picture> attrs])
 
 (defc <media-as-bg>
   "Generate picture element optimized for use as background media.
    Adds common background styling attributes."
-  [{:keys [src alt class] :as attrs} :- schema/image-attrs]
+  [{:keys [src alt class] :as attrs} :- attrs-schema]
   (let [combined-attrs (merge attrs
                               {:class (str "media media-as-bg " (or class ""))})]
     [<picture> combined-attrs]))

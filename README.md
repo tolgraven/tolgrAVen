@@ -77,4 +77,6 @@ Repository PRs deploy automatically; fork PRs run validation without the staging
 
 See [test boundaries and workflow verification](doc/testing.md) for the full browser suite, unmocked live application checks, and database/infrastructure tests.
 
+Source organization: [ownership and platform boundaries](doc/source-layout.md).
+
 Shared data and declaration contracts: [Malli schemas and validation](doc/schemas.md).

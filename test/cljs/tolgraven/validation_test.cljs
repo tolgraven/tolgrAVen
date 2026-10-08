@@ -4,7 +4,7 @@
             [re-frame.core :as re-frame]
             [reitit.frontend :as frontend]
             [tolgraven.react :as rf]
-            [tolgraven.routes :as routes]
+            [tolgraven.navigation.routes :as routes]
             [tolgraven.component :as component]
             [tolgraven.component.registry :as registry]
             [tolgraven.component.persistent-state :as state]

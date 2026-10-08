@@ -9,7 +9,7 @@
     [reitit.core :as reitit]
     [shadow.lazy :as lazy]
     [tolgraven.db :as db]
-    [tolgraven.routes :as routes]
+    [tolgraven.navigation.routes :as routes]
     [tolgraven.loader :as loader]
     [tolgraven.render-context :as context]
     [tolgraven.component.restore :as restore]

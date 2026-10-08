@@ -1,10 +1,10 @@
-(ns tolgraven.routes
+(ns tolgraven.navigation.routes
   (:require
     [tolgraven.component.registry]
     [tolgraven.validation :as validation]
     [tolgraven.validation.runtime :as validation-runtime]
     [tolgraven.schema.http :as schemas]
-    [tolgraven.page-transition]
+    [tolgraven.navigation.transition]
     [tolgraven.macros :refer-macros [defc defpage]]
     [tolgraven.ssr.client :as ssr] [tolgraven.react :as rf]
     [reitit.frontend :as reitit]

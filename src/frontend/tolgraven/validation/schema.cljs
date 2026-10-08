@@ -1,4 +1,4 @@
-(ns tolgraven.schema.state
+(ns tolgraven.validation.schema
   "Application state assembly. Feature contracts live with their owners; native
    events, refs and exceptions remain intentionally opaque."
   (:require [tolgraven.schema.common :as c]
@@ -10,18 +10,15 @@
             [tolgraven.modules.docs.schema :as docs]
             [tolgraven.modules.github.schema :as github]
             [tolgraven.modules.gpt.schema :as gpt]
-            [tolgraven.hud.schema :as hud]
+            [tolgraven.modules.instagram.schema :as instagram]
             [tolgraven.modules.link-preview.schema :as link-preview]
             [tolgraven.modules.search.schema :as search]
-            [tolgraven.settings.schema :as settings]
             [tolgraven.ssr.schema :as ssr]
             [tolgraven.modules.strava.schema :as strava]
             [tolgraven.supabase.schema :as supabase]
-            [tolgraven.theme.schema :as theme]
-            [tolgraven.components.ui.schema :as ui]
-            [tolgraven.modules.user.schema :as user]
-            [tolgraven.components.shell.schema :as views-common]
-            [tolgraven.window.schema :as window]))
+            [malli.util :as mu]
+            [tolgraven.navigation.schema :as navigation]
+            [tolgraven.modules.user.schema :as user]))
 
 (def flags [:map-of c/id :boolean])
 (def form-fields
@@ -29,7 +26,10 @@
                    :gpt-thread gpt/form-fields
                    :login user/login-fields
                    :change-password user/password-fields
-                   :contact views-common/contact-fields
+                   :contact (c/optional-map {:name :string
+                                            :email :string
+                                            :title :string
+                                            :message :string})
                    :post-blog blog/post-fields
                    :write-comment blog/comment-fields}))
 (def link-candidate link-preview/link-candidate)
@@ -59,7 +59,7 @@
     :form-field form-fields
     :scroll-position [:map-of [:maybe c/named] number?]
     :scroll (c/optional-map {:at-bottom :boolean, :past-top :boolean, :block :boolean})
-    :settings settings/state
+    :settings (c/optional-map {:panel-open :boolean})
     :document (c/optional-map {:title [:maybe :string]})
     :content content/state
     :search search/state
@@ -69,37 +69,63 @@
     :github github/state
     :strava strava/state
     :ssr ssr/state
-    :window window/state
+    :window (c/optional-map {:fullscreen? :boolean})
     :hidden flags
     :browser-nav (c/optional-map {:got-nav :boolean
                                   :nav-type [:maybe [:or c/named :int]]
                                   :referrer [:maybe :string]})
-    :contact-form views-common/contact-state
-    :carousel ui/carousel-state
+    :contact-form (c/optional-map {:show? :boolean
+                                  :sent? :boolean
+                                  :closing? :boolean
+                                  :response :any})
+    :carousel [:map-of c/id (c/optional-map {:index :int
+                                           :direction [:or :keyword :string]})]
     :supabase-writes supabase/writes
     :debug dev-console/debug-state
     :css-var [:map-of c/named [:or number? :string]]}))
 (def options
   (c/optional-map
    {:auto-save-vars :boolean
-    :transition ui/transition-options
-    :theme theme/options
+    :transition (c/optional-map {:time c/milliseconds, :style :keyword})
+    :theme (c/optional-map {:dark-mode :boolean, :colorscheme :string})
     :github github/options
     :user user/options
-    :hud hud/options
+    :hud (c/optional-map {:timeout c/milliseconds, :level :keyword})
     :dev-console dev-console/options
     :supabase supabase/options}))
-(def route
-  [:maybe (c/optional-map {:path :string
-                           :template :string
-                           :data :map
-                           :path-params :map
-                           :query-params [:maybe c/query-params]
-                           :parameters :map
-                           :controllers [:maybe [:sequential :map]]})])
 (def report [:map [:contract [:or :keyword :string]] [:issues [:sequential [:map [:path [:vector :any]] [:message :string]]]]])
 (def diagnostics
   (c/optional-map {:messages :map
                    :unhandled [:or [:set :any] [:sequential :any]]
                    :validation [:vector {:max 20} report]}))
 (def scoped-state [:map-of [:or :string :keyword] [:map-of :any :map]])
+
+(def sections
+  (merge blog/sections
+    {[:state] state
+     [:options] options
+     [:content] (c/optional-map
+                 (merge content/sections
+                   {:github github/content
+                    :strava (mu/merge (:strava content/sections) strava/content)
+                    :instagram (c/optional-map {:posts [:map-of c/id instagram/post]
+                                                :error :any})}))
+     [:store] supabase/store
+     [:search] search/results
+     [:docs] [:map-of :string :string]
+     [:diagnostics] diagnostics
+     [:dev-console] dev-console/state
+     [:page/commit] [:maybe navigation/commit]
+     [:common/route] navigation/route
+     [:common/route-last] navigation/route
+     [:component-revisions] [:map-of c/path c/nonnegative]
+     ;; Values at these roots are owned by each component/page/module. Their
+     ;; :db-schema or :state {:schema ...} adds deeper validation.
+     [:component] :map
+     [:page] :map
+     [:module] :map
+     [:global] :map
+     [:page-return] (c/optional-map {:status [:enum :ready :unavailable :saving]
+                                    :url :string
+                                    :message :string})
+     [:loader] (c/optional-map {:code-ready [:map-of :keyword :boolean] :errors :map})}))

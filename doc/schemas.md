@@ -1,11 +1,13 @@
 # Shared schemas and runtime validation
 
-Module-owned Malli schemas and page declarations live as `schema.cljc` and
-`pages.cljc` beside their frontend implementation in `src/frontend/tolgraven/modules/<module>/`.
-The `.cljc` files remain available to the browser, Node renderer, Ring handlers
-and JVM tests through the configured source roots. Genuinely shared platform
-contracts and schema infrastructure remain in `src/cljc`, including `schema/*`,
-`content/schema.cljc`, `ssr/schema.cljc`, and `supabase/schema.cljc`.
+Keep Malli contracts beside their consumers. Feature contracts live under
+`src/frontend/tolgraven/modules/<module>/`; reusable component inputs can be inline
+beside the component. Browser and Node-renderer state/input contracts use `.cljs`.
+Use `.cljc` when the JVM actually consumes the same definition: module-local
+`pages.cljc`, blog data/query declarations, public CMS/Supabase data, HTTP parameters,
+SSR snapshots and shared schema infrastructure. A JVM test alone is not a reason
+to give browser state a portable namespace; those tests run in the browser suite.
+See [source layout](source-layout.md) for ownership boundaries.
 Maps are open by default: a partially migrated section does not reject unrelated
 application data. Make a map closed explicitly when unknown keys are an error.
 
@@ -54,7 +56,7 @@ corrupt content or saved state from entering the application.
 For example, an owner can expose its state schema with its module:
 
 ```clojure
-;; src/frontend/my_site/catalog/schema.cljc
+;; src/frontend/my_site/catalog/schema.cljs
 (def filters [:map [:search {:optional true} :string]
                    [:page {:optional true} [:int {:min 0}]]])
 (def sections {[:state :catalog] filters})
@@ -89,7 +91,7 @@ or React wrapper. An invalid input is caught by the existing nearest error bound
 components with `:error-boundary` display their own shared fallback.
 
 ```clojure
-;; schema.cljc
+;; schema.cljs
 (def label-spec [:map [:label :string]])
 (def count-args [:tuple [:map [:title :string]] [:int {:min 0}]])
 (def sum-args [:cat :string [:* :int]])
@@ -188,10 +190,10 @@ data; `defpage` component options use `extend-component`, like other `defc` view
 The `tolgraven.react` registration macros accept an optional contract map immediately
 after the event/subscription ID. Existing registrations retain their ordinary
 re-frame signatures, including input subscriptions and event interceptors.
-Keep reusable schemas in the owning module's `schema.cljc`.
+Keep reusable schemas in the owning module's `schema.cljs`; use `.cljc` when JVM consumers need them too.
 
 ```clojure
-;; catalog/schema.cljc
+;; catalog/schema.cljs
 (def item-id-args [:tuple [:int {:min 1}]])
 (def item [:map [:id :int] [:title :string]])
 
@@ -232,7 +234,7 @@ normal pure computations; the shared adapter owns checking and report delivery.
 
 ## App-db by section
 
-`tolgraven.schema.app-db/sections` contains the initial shared sections; blog owns
+`tolgraven.validation.schema/sections` contains the initial browser/Node sections; blog owns
 its definitions in `tolgraven.modules.blog.schema`. The composition covers CMS sections, normalized public records and managed query caches,
 blog pagination/thread state, navigation/forms/options, provider caches, loader
 readiness, validation reports and inspector records. Persistent roots gain their
@@ -242,12 +244,12 @@ domain contracts from module sections or component `:state {:schema ...}`.
 | --- | --- |
 | `content/schema.cljc` | All CMS sections; headings, media, menus, CV timelines, footer items and versioned bundles |
 | `supabase/schema.cljc` | Queries, projected SQL rows, normalized profiles/posts/comments/chat, caches and closed write requests |
-| Module-local `*/schema.cljc` | The owner's component inputs, forms, state, options and event/subscription contracts |
-| `schema/state.cljc` | Assembly of those module-owned state/form/option schemas plus shared navigation and diagnostics |
-| `schema/integrations.cljc` | Consumed GitHub, Strava, Instagram and search response fields |
-| `blog/schema.cljc` | Blog state and parent-supplied post/comment component specs |
+| Module-local `*/schema.cljs` | The owner's component inputs, forms, state, options and event/subscription contracts |
+| `validation/schema.cljs` | Assembly of those module-owned state/form/option schemas plus shared navigation and diagnostics |
+| Provider module `schema.cljs` | Consumed GitHub, Strava, Instagram and search response fields |
+| `modules/blog/schema.cljs` | Blog state and parent-supplied post/comment component specs |
 | `ssr/schema.cljc` | Public render snapshots, return snapshots, storage envelopes and renderer settings |
-| `dev_console/schema.cljc` | Mounted instances, profiler/trace/epoch/layout metadata and bounded records |
+| `dev_console/schema.cljs` | Mounted instances, profiler/trace/epoch/layout metadata and bounded records |
 
 Provider extension fields remain open. Function values, DOM/SDK objects, arbitrary
 inspected EDN and generic component-owned payloads are not recursively prescribed.
@@ -258,9 +260,10 @@ public boundaries as part of the feature, rather than a later cleanup.
 
 ```clojure
 (require '[tolgraven.schema.app-db :as app-db]
-         '[tolgraven.validation :as validation])
+         '[tolgraven.validation :as validation]
+         '[tolgraven.validation.schema :as state])
 
-(def total-schema (app-db/schema app-db/sections))
+(def total-schema (app-db/schema state/sections))
 (validation/check! :app-db total-schema
   {:state {:blog {:page 0 :comment-limit {28 20}
                  :comment-thread-expanded {[28 "comment-id"] true}}}})
@@ -269,7 +272,7 @@ public boundaries as part of the feature, rather than a later cleanup.
 `schema` recursively merges the sections into one optional-root schema. Missing
 sections are allowed; a present field must match its schema. Keep deep schemas
 near their owning module. SSR/local rendering also composes sections from the
-available module specs. Add a section to the initial CLJC composition if state
+available module specs. Add a section to the initial browser/Node composition if state
 can arrive before its owning module is available.
 
 In the browser a global re-frame interceptor compares section references after an

@@ -18,10 +18,6 @@
 
 
 (def post-header-spec [:map [:children [:sequential :any]]])
-(def page-extension
-  [:map [:selection {:optional true}
-         [:map [:page {:optional true} [:int {:min 1}]]]]])
-
 (def displayed-post
   (mu/merge store/post [:map [:user {:optional true} [:maybe [:or c/id store/profile]]]]))
 (def post-spec (declarations/extend-spec [:map [:post displayed-post]]))

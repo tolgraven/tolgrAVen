@@ -1,4 +1,4 @@
-(ns tolgraven.page-transition.schema
+(ns tolgraven.navigation.schema
   "State exchanged by the route commit and browser transition lifecycle."
   (:require [tolgraven.schema.common :as c]))
 
@@ -13,3 +13,12 @@
 (def commit
   (c/optional-map {:target [:maybe [:or number? :string]]
                    :completion [:maybe completion]}))
+
+(def route
+  [:maybe (c/optional-map {:path :string
+                           :template :string
+                           :data :map
+                           :path-params :map
+                           :query-params [:maybe c/query-params]
+                           :parameters :map
+                           :controllers [:maybe [:sequential :map]]})])

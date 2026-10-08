@@ -2,7 +2,7 @@
   (:require
     [clojure.string :as string]
     [goog.string :as gstring]
-    [tolgraven.routes :as routes]))
+    [tolgraven.navigation.routes :as routes]))
 
 (def external-http-url? routes/external-http-url?)
 (def prefetch-delay-ms {:trusted 250, :user 1500})

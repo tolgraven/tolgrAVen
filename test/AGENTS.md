@@ -7,7 +7,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   app-db mutation, dangling subscriptions and forced React flushes.
 - Unit/component tests may replace transport boundaries. Live integration must use
   real routes, module loaders and service bindings; do not inject fixture app state.
-- Use shared CLJC schemas/constructors in fixtures instead of duplicating contracts.
+- Use owning schemas/constructors in fixtures instead of duplicating contracts.
+  Test browser/Node-only schemas in `test/cljs`; JVM tests exercise portable/server
+  contracts and generic composition helpers.
   Include malformed input, missing/empty content, failure/retry and stale responses.
 - Hydration tests preserve DOM identity and complete expanded/folded state. Browser
   review must also exercise cold/cached loads, both navigation directions, comments,

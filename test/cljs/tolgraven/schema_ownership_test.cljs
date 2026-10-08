@@ -1,9 +1,9 @@
 (ns tolgraven.schema-ownership-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [cljs.test :refer-macros [deftest is]]
             [malli.core :as m]
             [tolgraven.modules.blog.schema :as blog]
             [tolgraven.modules.link-preview.schema :as link-preview]
-            [tolgraven.schema.state :as state]
+            [tolgraven.validation.schema :as state]
             [tolgraven.modules.user.schema :as user]
             [tolgraven.modules.github.schema :as github]))
 

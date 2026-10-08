@@ -1,4 +1,4 @@
-(ns tolgraven.page-transition
+(ns tolgraven.navigation.transition
   "Browser lifecycle adapter for CSS page transitions. React owns all page markup."
   (:require [reagent.core :as r]
             [tolgraven.react :as rf]

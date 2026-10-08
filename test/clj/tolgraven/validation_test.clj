@@ -23,20 +23,6 @@
   (is (nil? (validation/explain declarations/dependency
                                {:source :supabase :query {:path-collection [:blog-posts]}}))))
 
-(deftest partial-app-db-sections-compose
-  (let [schema (app-db/schema app-db/sections)
-        data {:state {:menu false :blog {:page 0 :comment-limit {42 20}
-                                         :comment-thread-expanded {[42 "a"] true}}}
-              :unmigrated {:anything [:still :valid]}}]
-    (is (m/validate schema data))
-    (is (not (m/validate schema (assoc-in data [:state :menu] "true"))))
-    (is (not (m/validate schema (assoc-in data [:state :blog :page] -1))))
-    (is (empty? (app-db/changed-errors app-db/sections data data)))
-    (is (= [] (:path (first (app-db/changed-errors app-db/sections data [])))))
-    (is (= [:state :blog :comment-limit 42]
-           (:path (first (app-db/changed-errors app-db/sections data
-                          (assoc-in data [:state :blog :comment-limit 42] 0))))))))
-
 (deftest route-parameters-coerce-at-shared-boundary
   (let [match (pages/request-match "/blog/page/2" {"userBox" "false" "debug" "keep"})]
     (is (= {:nr 2} (get-in match [:parameters :path])))

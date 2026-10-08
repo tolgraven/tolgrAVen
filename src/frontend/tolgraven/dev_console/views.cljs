@@ -15,7 +15,7 @@
             [tolgraven.dev-console.components :as components]
             [tolgraven.dev-console.state]
             [tolgraven.loader :as loader]
-            [tolgraven.routes :as routes]))
+            [tolgraven.navigation.routes :as routes]))
 
 (rf/reg-sub-raw :dev-console/component-parents (fn [_ _] (rf/make-reaction #(deref capture/*component-parents))))
 (rf/reg-sub-raw :dev-console/catalog (fn [_ _] (rf/make-reaction #(deref registry/*catalog))))

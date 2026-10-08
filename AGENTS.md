@@ -28,7 +28,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `doc/`: project documentation.
 
 ## Shared schemas
-- Define Malli contracts in CLJC near the owning data/module. Reuse them in tests,
+- Define Malli contracts beside their consumers. Use `.cljs` for browser/Node-only
+  state and component contracts; use `.cljc` only for actual JVM/CLJS consumers. Reuse them in tests,
   Reitit page/API parameters, and runtime validation; see `doc/schemas.md`.
 - Schema meaningful new/changed CLJ and CLJS data and public boundaries as part of
   the feature. Derive contracts from actual writers/readers, including loading,

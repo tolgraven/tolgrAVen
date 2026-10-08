@@ -4,6 +4,7 @@
             [tolgraven.validation :as validation]
             [tolgraven.validation.bindings :as bindings]
             [tolgraven.schema.app-db :as app-db]
+            [tolgraven.validation.schema :as schema]
             [tolgraven.schema.declarations :as declarations]))
 
 (defn configured? []
@@ -15,7 +16,7 @@
                    (exists? js/process) (aget js/process.env "VALIDATION_ENABLED"))]
     (validation/enabled? {:validation-enabled override} goog.DEBUG)))
 (defonce *enabled? (atom (configured?)))
-(defonce *sections (atom app-db/sections))
+(defonce *sections (atom schema/sections))
 (defonce ^:private *dynamic-paths (atom #{}))
 (defonce ^:private *installed? (atom false))
 
@@ -81,7 +82,7 @@
 (defn install! []
   (reset! *enabled? (configured?))
   (reset! bindings/*enabled? @*enabled?)
-  (swap! *sections merge app-db/sections)
+  (swap! *sections merge schema/sections)
   ;; Hot reload replaces by ID. Disabled builds do no per-event validation work.
   (if @*enabled?
     (do (rf/reg-global-interceptor

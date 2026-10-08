@@ -1,5 +1,4 @@
 (ns tolgraven.modules.user.schema
-  "Contracts owned by this feature, shared by browser and JVM validation."
   (:require [tolgraven.schema.common :as c]
             [tolgraven.supabase.schema :as store]))
 
