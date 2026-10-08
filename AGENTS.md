@@ -111,6 +111,7 @@ These are required principles for new code and changes to existing code. Follow 
 - Use the existing `tolgraven.react` shim so development uses the instrumented re-frame API and non-debug builds use the regular API. Do not bypass the shim or introduce a second React/Reagent runtime.
 - Use the configured Shadow CLJS builds and module boundaries. Keep browser-only APIs out of server execution, and verify referenced framework symbols against the installed versions rather than assuming an API exists.
 - Inspect the running Shadow worker and its compile errors/warnings after changes. Do not launch a competing compile for a build already being watched; use its existing worker/nREPL. Compile affected browser, test, and SSR targets as appropriate.
+- `:app` and `:app-dev` share output. Isolate production build output during a dev watch, or pause the watch and restore its assets before browser checks.
 - Verify behavior in the browser, not just successful compilation: cold direct loads, hydration, SPA navigation in both directions, cached/history return, and relevant empty/error/recovery states. For hydration or transition changes, check for spinners, flashes, layout jumps, missing content, and console errors. Never report a check as passed without actually running it.
 
 ### Code symbol naming

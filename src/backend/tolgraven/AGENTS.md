@@ -3,6 +3,8 @@
 Keep this guide current. See `doc/blog-ssr.md`, `doc/strapi-content.md`, and
 `doc/site-provisioning.md` for operating and configuration details.
 
+- Feature-owned server adapters live under `modules/<feature>/`; shared platform
+  adapters retain their `content/`, `supabase/`, and `ssr/` ownership.
 - Use shared CLJC data contracts and page declarations. Generic SSR must not grow
   page-specific SQL/REST predicates or duplicate component markup.
 - Source acquisition runs concurrently under bounded limits; identical requests

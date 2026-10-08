@@ -6,6 +6,8 @@
             [tolgraven.modules.chat.schema :as chat]
             [tolgraven.content.schema :as content]
             [tolgraven.modules.cv.schema :as cv]
+            [tolgraven.modules.contact.schema :as contact]
+            [tolgraven.modules.settings.schema :as settings]
             [tolgraven.dev-console.schema :as dev-console]
             [tolgraven.modules.docs.schema :as docs]
             [tolgraven.modules.github.schema :as github]
@@ -26,10 +28,7 @@
                    :gpt-thread gpt/form-fields
                    :login user/login-fields
                    :change-password user/password-fields
-                   :contact (c/optional-map {:name :string
-                                            :email :string
-                                            :title :string
-                                            :message :string})
+                   :contact contact/fields
                    :post-blog blog/post-fields
                    :write-comment blog/comment-fields}))
 (def link-candidate link-preview/link-candidate)
@@ -59,7 +58,7 @@
     :form-field form-fields
     :scroll-position [:map-of [:maybe c/named] number?]
     :scroll (c/optional-map {:at-bottom :boolean, :past-top :boolean, :block :boolean})
-    :settings (c/optional-map {:panel-open :boolean})
+    :settings settings/state
     :document (c/optional-map {:title [:maybe :string]})
     :content content/state
     :search search/state
@@ -74,10 +73,7 @@
     :browser-nav (c/optional-map {:got-nav :boolean
                                   :nav-type [:maybe [:or c/named :int]]
                                   :referrer [:maybe :string]})
-    :contact-form (c/optional-map {:show? :boolean
-                                  :sent? :boolean
-                                  :closing? :boolean
-                                  :response :any})
+    :contact-form contact/state
     :carousel [:map-of c/id (c/optional-map {:index :int
                                            :direction [:or :keyword :string]})]
     :supabase-writes supabase/writes
@@ -87,7 +83,7 @@
   (c/optional-map
    {:auto-save-vars :boolean
     :transition (c/optional-map {:time c/milliseconds, :style :keyword})
-    :theme (c/optional-map {:dark-mode :boolean, :colorscheme :string})
+    :theme settings/theme
     :github github/options
     :user user/options
     :hud (c/optional-map {:timeout c/milliseconds, :level :keyword})

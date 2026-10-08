@@ -17,5 +17,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Regenerate Node-rendered fixtures before the browser suite. Check final assertion
   results, running Shadow warnings and browser logs; successful compilation is not
   a passing browser test or proof of live CMS integration.
+- Live motion checks assert simultaneous 250ms linear fades and an opaque sticky
+  footer. `motion.html?fallback` removes only the optional native transition API
+  in the test driver so the ordinary page-root fallback can be checked too.
 - Live write tests need disposable records and verified cleanup. Prefer read-only
   browser review for ordinary presentation changes.

@@ -1,9 +1,6 @@
 (ns tolgraven.service-status
   (:require
-    [tolgraven.macros :refer-macros [defc]]
-    [tolgraven.component.registry]
     [reagent.core :as r]
-    [tolgraven.render-context :as context]
     [tolgraven.react :as rf]))
 
 (defonce *failures (r/atom {}))
@@ -34,13 +31,3 @@
        (-> (js/Promise.resolve promise)
            (.then (fn [value] (js/clearTimeout timer) (resolve value)))
            (.catch (fn [error] (js/clearTimeout timer) (reject error))))))))
-
-(defc <notices> []
-  [:aside {:aria-label "Service notifications" :aria-live "polite"
-           :style {:position "sticky" :top "var(--header-height-current, 5rem)" :z-index 90
-                   :max-height "40vh" :overflow-y "auto"}}
-   (for [[id {:keys [title message retry!]}] (when @context/*interactive? @*failures)]
-     ^{:key (pr-str id)}
-     [:div {:role "alert" :style {:padding "1rem" :background "#392a24" :color "#fff"}}
-      [:strong title] [:p message]
-      (when retry! [:button {:on-click (fn [_] (retry!))} "Retry"])])])

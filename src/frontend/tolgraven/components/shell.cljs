@@ -9,6 +9,7 @@
     [markdown.core :refer [md->html]]
     [tolgraven.loader]
     [tolgraven.components.ui :as ui]
+    [tolgraven.modules.contact.views :as contact]
     [tolgraven.components.image :as img]
     [tolgraven.db :as db]
     [tolgraven.util :as util :refer [at]]))
@@ -139,112 +140,6 @@
 
 
 
-(defc ^:private <contact-confirmation>
-  {:features [[:appear "slide-in"]]}
-  []
-  [:h2 "Your message has been sent!"])
-
-(defc ^:private <contact-followup>
-  {:features [[:appear "opacity"]]}
-  []
-  [:h3 "I'll get back to you shortly."])
-
-(defc ^:private <contact-message>
-  {:features [[:appear "slide-in slow"]]}
-  []
-  [:div [ui/<input-text>
-            :placeholder "Message"
-            :input-type :textarea
-            :width "100%"
-            :height "15em"
-            :min-rows 8
-            :path [:form-field [:contact :message]]]])
-
-(defc ^:private <contact-submit-hint>
-  {:features [[:appear "slide-in slower"]]}
-  []
-  [:label {:for "submit-contact"}
-                 "Must enter at least email and message"])
-
-(defc <contact-form-popup>
-  [_]
-  (let [*inited? (r/atom nil)
-        *submit-hovered? (r/atom false)]
-    (fn [show?]
-      (when show?
-        (let [*loading? (rf/subscribe [:loading :post]) ; seems bit bruteforcy haha
-              *contents (rf/subscribe [:form-field [:contact]])
-              *contact-form-state (rf/subscribe [:state [:contact-form]])
-              {:keys [show? sent? closing?]} @*contact-form-state]
-        [:section.contact-form-popup
-         {:class (str
-                  (when closing? "closing ")
-                  (when (or sent? @*loading?) "result ")
-                  (when @*inited? "inited"))
-          :ref #(when % (reset! *inited? true))}
-         [ui/<close> #(rf/dispatch [:contact/close])]
-         [:h2 "Get in touch"]
-
-         (when sent?
-           [:div
-            [:br] [:br]
-            [<contact-confirmation>]
-            [:br]
-            [<contact-followup>]])
-         [ui/<loading-spinner> *loading? :massive]
-
-         [:form.contact-form-form
-          {:style {:height (when (or sent? @*loading?) 0)}}
-          [ui/<input-text>
-           :placeholder "Name"
-           :width "50%"
-           :path [:form-field [:contact :name]]]
-          [ui/<input-text>
-           :input-type :input.email
-           :type "email" :placeholder "Email"
-           :width "50%"
-           :path [:form-field [:contact :email]]]
-          [ui/<input-text>
-           :placeholder "Title"
-           :width "100%"
-           :path [:form-field [:contact :title]]]
-          [<contact-message>]
-          (let [disabled? (or (string/blank? (:email @*contents))
-                              (not (string/index-of (:email @*contents) "@"))
-                              (string/blank? (:message @*contents)))]
-            [:div.flex
-             {:on-mouse-enter #(reset! *submit-hovered? true)
-              :on-mouse-leave #(reset! *submit-hovered? false)}
-             [:input
-              {:type "submit" :id "submit-contact"
-
-               :disabled disabled?
-               :title (when-not disabled? "Ready to go!")
-               :on-click (fn [e]
-                           (.preventDefault e)
-                           (rf/dispatch [:contact/send-request]))}]
-             (if (and disabled? @*submit-hovered?) ; mouseLeave never fires (wtf??) but still good enough I suppose
-               [<contact-submit-hint>]
-               [:br])
-             [:p "Whether for work, collaboration or something else, I'll do my best to accomodate you.
-                  NOTE! Currently out of order, please just email me for now haha."]])]])))))
-
-(defc <contact-ways> [email]
-  (let [show-mail-form? @(rf/subscribe [:state [:contact-form :show?]])]
-    [:div
-     [<contact-form-popup> show-mail-form?]
-     [:h4
-      [:span [:a {:href (str "mailto:" email)
-                  :style {:font-size "85%"}}
-              email]]
-      [:span {:style {:color "var(--fg-6)"}}
-       " | "]
-      [:button.nomargin.nopadding.noborder
-       {:title "Contact us by form"
-        :on-click #(rf/dispatch (if show-mail-form? [:contact/close] [:contact/open]))
-        :style {:color "var(--fg-5)"}}
-       [:i.fas.fa-envelope]]]]))
-
 (defc <footer-content> "Upper content (first few rows) of footer"
   [content]
   [:div.footer-content ;; XXX should adapt to available height, also disappear...
@@ -257,7 +152,7 @@
       (when (or title email (seq text))
         [:div
          (when title [:h4 title])
-         (when email [<contact-ways> email])
+         (when email [contact/<contact-ways> email])
          (when text (for [line text] ^{:key (str id "-" line)}
                       [:h5 line]))])
       (when links [:div.footer-icons
@@ -317,44 +212,3 @@
    (merge spec
           {:on-mouse-down (fn [e] (println "etc"))})
    [:div.scrollbar-thumb]])
-
-(defc <settings> "Settings panel for theme and stuff"
-  {:features [:error-boundary]}
-  []
-  (rf/use-effect (fn [] (rf/dispatch [:settings/read-css-vars]) js/undefined) #js [])
-  (let [open? @(rf/subscribe [:state [:settings :panel-open]])
-        vars {:line-width         {:unit "px"   :min 0     :max 15}
-              :line-width-vert    {:unit "px"   :min 0     :max 15}
-              :section-rounded    {:unit "%"    :min 0     :max 10}
-              :space              {:unit "rem"  :min 0.0   :max 4.0 :step 0.1}
-              :space-lg           {:unit "rem"  :min 0.0   :max 6.0 :step 0.1}
-              :space-top          {:unit "rem"  :min 0.0   :max 6.0 :step 0.1}}]
-    [:div.settings-panel
-     {:class (when open? "opened")
-      :style {:position :sticky }}
-
-     [:h2 [:i {:class "fa fa-cog"}] " Settings"]
-     [:div
-      [:button {:on-click #(rf/dispatch [:html/set-attr! nil "data-theme" "light"])}
-       "Light/dark"]]
-
-     [:div.settings-numbers
-      (doall (for [[k {:keys [unit min max step]}] vars]
-        ^{:key (str "settings-input-var-" (name k))}
-        [:div.settings-number
-         [:input
-          {:id (str (name k) "-input")
-           :type :number
-           :min min :max max :step step
-           :value (if-let [value @(rf/subscribe [:get-css-var (name k)])]
-                    (str (js/parseFloat value)) "")
-           :on-change #(rf/dispatch [:->css-var! (name k) (-> % .-target .-value (str unit))])}]
-         [:label {:for (str (name k) "-input")}
-          (-> (name k)
-              (string/replace "-" " ")
-              (string/capitalize))]]))]
-
-     #_[:blog posts per page incl lazy-load option]
-     #_[:palette in general?
-     #_[:other css vars...]
-     #_[:idea to let customize as much as possible and eventually turn into a kinda interactive site-builder]]]))

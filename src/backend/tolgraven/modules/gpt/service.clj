@@ -1,4 +1,4 @@
-(ns tolgraven.services.gpt
+(ns tolgraven.modules.gpt.service
   (:require
    [tolgraven.config :refer [env]]
    [clojure.data.json :as json]

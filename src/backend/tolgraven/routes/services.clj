@@ -15,7 +15,7 @@
     [clojure.data.json :as json]
     [tolgraven.middleware.formats :as formats]
     [tolgraven.middleware.exception :as exception]
-    [tolgraven.services.gpt :as gpt]
+    [tolgraven.modules.gpt.service :as gpt]
     [tolgraven.content.service :as content]
     [tolgraven.supabase.api :as supabase-api]
     [tolgraven.supabase.auth :as supabase-auth]

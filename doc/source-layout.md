@@ -6,6 +6,7 @@ portability determines the extension.
 | Location | Responsibility |
 | --- | --- |
 | `src/frontend/tolgraven/modules/<feature>/` | Feature module specs, views, events, subscriptions, schemas and portable page/data declarations |
+| `src/backend/tolgraven/modules/<feature>/` | Server adapters owned by a feature |
 | `src/frontend/tolgraven/components/` | Reusable rendered UI, page roots and the site shell |
 | `src/frontend/tolgraven/component/` | `defc` declaration, lifecycle, managed data, motion and persistence runtime |
 | `src/frontend/tolgraven/navigation/` | Router, page preload, transitions, scroll restoration and their contracts |
