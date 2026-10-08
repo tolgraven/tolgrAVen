@@ -1,5 +1,10 @@
 # Development console
 
+The console and profiling implementation live in `env/dev/cljs/tolgraven/`.
+`:app-dev` and `:app-test` enable Shadow's `:dev` reader feature. Production and
+Node SSR omit those dependencies at read time, including their registration
+side effects and inspector schemas; `goog.DEBUG` is not their import boundary.
+
 In `:app-dev`, click **Dev** or press **Alt+Shift+D**. The console mounts after
 hydration, so it does not change the first client tree. Release builds do not
 mount it or run capture adapters. Application views use the existing Reagent,

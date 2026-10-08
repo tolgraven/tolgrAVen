@@ -32,14 +32,14 @@
                   :autorun true}
 
   :app-test {:target :browser-test
-             :compiler-options {:reader-features #{:browser}}
+             :compiler-options {:reader-features #{:browser :dev}}
              :build-hooks [(tolgraven.build.compat/rrb-vector)]
              :test-dir "resources/public/js/tests"
              :ns-regexp "tolgraven\\..*-test$"}
 
   :app-dev
   {:lein true
-   :compiler-options {:reader-features #{:browser}}
+   :compiler-options {:reader-features #{:browser :dev}}
    :jvm-opts ["-Ddev=true"]
    ; :dev-http {4001 "resources/public"}
    :target tolgraven.build.browser/process

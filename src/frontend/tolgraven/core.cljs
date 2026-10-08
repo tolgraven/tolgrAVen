@@ -3,7 +3,7 @@
     [goog.events]
     [tolgraven.react :as rf]
     [tolgraven.validation.runtime :as validation]
-    [tolgraven.dev-console.views :as dev-console]
+    [tolgraven.diagnostics.host :as dev-console]
     [tolgraven.render-context :as context]
     [tolgraven.component.data :as component-data]
     [tolgraven.component :as component]

@@ -8,7 +8,7 @@
             [tolgraven.modules.cv.schema :as cv]
             [tolgraven.modules.contact.schema :as contact]
             [tolgraven.modules.settings.schema :as settings]
-            [tolgraven.dev-console.schema :as dev-console]
+            [tolgraven.diagnostics.schema :as dev-console]
             [tolgraven.modules.docs.schema :as docs]
             [tolgraven.modules.github.schema :as github]
             [tolgraven.modules.gpt.schema :as gpt]

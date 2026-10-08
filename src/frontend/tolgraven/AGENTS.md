@@ -28,7 +28,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   hydration; retain exact query caches and fold/window state.
 - Browser-only APIs belong in lifecycle/effect adapters with cleanup and SSR guards.
   Use Shadow reader features for build-specific dependencies, not runtime imports.
-- Debug instrumentation is bounded and inactive when closed. Keep diagnostics out
+- Development console and React profiling implementations live in `env/dev/cljs`.
+  Only builds with the `:dev` reader feature import them; production and SSR use
+  small diagnostics/instrumentation boundaries. Debug instrumentation is bounded and inactive when closed. Keep diagnostics out
   of persistence snapshots and do not let diagnostic events trigger page renders.
 - Page navigation uses a brief simultaneous opacity crossfade. Native View Transitions
   and the page-root fallback share duration/easing; neither delays the incoming fade.
