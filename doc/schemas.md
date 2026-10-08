@@ -16,7 +16,7 @@ application data. Make a map closed explicitly when unknown keys are an error.
 Internal checks default on in development and off in production. Configure:
 
 ```clojure
-;; dev-config.edn or the deployed config.edn
+;; config/local.dev.edn or the deployed config.edn
 {:validation {:enabled true}}
 ```
 
@@ -248,7 +248,8 @@ domain contracts from module sections or component `:state {:schema ...}`.
 | `validation/schema.cljs` | Assembly of those module-owned state/form/option schemas plus shared navigation and diagnostics |
 | Provider module `schema.cljs` | Consumed GitHub, Strava, Instagram and search response fields |
 | `modules/blog/schema.cljs` | Blog state and parent-supplied post/comment component specs |
-| `ssr/schema.cljc` | Public render snapshots, return snapshots, storage envelopes and renderer settings |
+| `ssr/contract_schema.cljc` | JVM/Node public render snapshot and renderer settings |
+| `ssr/schema.cljs` | Browser/Node return snapshots, storage envelopes and hydration state |
 | `dev_console/schema.cljs` | Mounted instances, profiler/trace/epoch/layout metadata and bounded records |
 
 Provider extension fields remain open. Function values, DOM/SDK objects, arbitrary

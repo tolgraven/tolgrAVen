@@ -308,7 +308,7 @@ empty content. The core's explicit `data-hydrate="true"` root contract selects
 `hydrate-root`, waits for route/module readiness, and leaves existing server DOM
 in place while preparing it. Only mark a root when its markup and initial app-db
 represent the same component tree; ordinary server placeholders use create-root.
-The server renderer must supply matching state/content before hydration. See [page rendering](blog-ssr.md) for the shared server implementation.
+The server renderer must supply matching state/content before hydration. See [page rendering](ssr.md) for the shared server implementation.
 
 ## Modules, viewport prefetch and SSR
 

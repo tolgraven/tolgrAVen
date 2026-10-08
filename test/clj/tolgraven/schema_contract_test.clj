@@ -16,7 +16,7 @@
             [tolgraven.supabase.reader :as reader]
             [tolgraven.platform.supabase :as platform]
             [tolgraven.config :as config]
-            [tolgraven.ssr.schema :as ssr]))
+            [tolgraven.ssr.contract-schema :as ssr]))
 
 (deftest inline-arguments-preserve-bindings-and-describe-real-arity
   (doseq [[input clean schema]
@@ -123,10 +123,6 @@
                                                                :persist {:scope :public :version 1}}})))
 
 (deftest persistence-and-render-boundaries-reject-corrupt-envelopes
-  (is (m/validate ssr/storage-snapshot {:version 1 :schema 2 :expires-at 100 :value {:a []}}))
-  (doseq [value [nil [] {:version 1 :schema 1 :expires-at "later" :value {}}
-                       {:version 1 :schema 1 :expires-at 100}]]
-    (is (not (m/validate ssr/storage-snapshot value))))
   (is (m/validate ssr/snapshot {:path "/" :content {} :shell? true}))
   (is (not (m/validate ssr/snapshot {:path "/" :posts [{:title 7}]})))
   (is (not (m/validate ssr/settings {:render-workers 0}))))

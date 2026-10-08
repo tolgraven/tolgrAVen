@@ -38,10 +38,7 @@
             (contract/merge-state (contract/snapshot-state snapshot))
             (assoc :content (:content snapshot)
                    :common/route (assoc-in match [:data :view] view))
-            (assoc-in [:state :booted :store] true)
-            (assoc-in [:state :blog :page] (dec (or (:page snapshot) 1)))
-            (assoc-in [:state :blog :current-post-id] (or (:post-id snapshot) (get-in snapshot [:posts 0 :id])))
-            (assoc-in [:options :supabase :trusted-author-ids] (:trusted-author-ids snapshot)))
+            (assoc-in [:state :booted :store] true))
         [page/<page>]
         {:snapshot snapshot :modules modules
          :href (fn [name params query]

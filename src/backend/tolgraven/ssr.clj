@@ -5,11 +5,10 @@
             [tolgraven.content.service :as content]
             [tolgraven.config :as config]
             [tolgraven.validation :as validation]
-            [tolgraven.ssr.schema :as schema]
+            [tolgraven.ssr.contract-schema :as schema]
             [tolgraven.concurrent :as concurrent]
             [tolgraven.supabase.reader :as reader]
             [tolgraven.supabase.plan :as plan]
-            [tolgraven.ssr.contract :as contract]
             [tolgraven.page :as page]
             [tolgraven.page-router :as router])
   (:import [java.lang ProcessBuilder ProcessBuilder$Redirect]
