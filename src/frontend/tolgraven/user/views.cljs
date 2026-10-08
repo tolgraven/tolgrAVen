@@ -195,13 +195,30 @@
           avatar (:avatar user-map)
           src (when user-map
                 (if (contains? @*failed-sources avatar) fallback (or avatar fallback)))
-          zoom? (and avatar (= src avatar) (not (:no-zoom user-map)))]
+          zoom? (and avatar (= src avatar) (not (:no-zoom user-map)))
+          *image (rf/use-ref nil)]
+      (rf/use-effect
+        (fn []
+          ;; SSR images may fail before hydration attaches on-error. Wait for
+          ;; Reagent's mount commit before updating its local reactive state.
+          ;; <picture> still owns retries of failed modern sources.
+          (let [frame (js/requestAnimationFrame
+                        (fn [_]
+                          (let [image (.-current *image)]
+                            (when (and image avatar (= src avatar)
+                                       (.-complete image) (zero? (.-naturalWidth image))
+                                       (= (.-currentSrc image)
+                                          (.-href (js/URL. src (.-baseURI image)))))
+                              (swap! *failed-sources conj avatar)))))]
+            #(js/cancelAnimationFrame frame)))
+        #js [avatar src])
       [:div.user-avatar-container
        ;; A fallback overlay flashes during hydration even when SSR already
        ;; knows the author. Keep a single image and let the browser load it.
        [img/<picture>
         {:class (str "user-avatar " extra-class)
          :src src
+         :ref *image
          :on-error (fn [_] (when avatar (swap! *failed-sources conj avatar)))
          :alt (if user-map (str (:name user-map) " profile picture") "")
          :on-click (when zoom?

@@ -188,6 +188,57 @@
                  (finally (support/unmount! root) (reset! rfdb/app-db before)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
+
+(deftest hydration-recovers-failed-avatar-originals-without-widening-the-avatar
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                stylesheet (.createElement js/document "link")
+                before @rfdb/app-db
+                fallback "/img/tolgrav-square.png"]
+            (.appendChild (.-body js/document) element)
+            (try
+              (swap! rfdb/app-db assoc-in [:content :common :user-avatar-fallback] fallback)
+              (await! (js/Promise.
+                        (fn [resolve reject]
+                          (set! (.-rel stylesheet) "stylesheet")
+                          (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
+                          (set! (.-onload stylesheet) #(resolve nil))
+                          (set! (.-onerror stylesheet) #(reject (js/Error. "Avatar CSS unavailable")))
+                          (.appendChild (.-head js/document) stylesheet))))
+              (doseq [[avatar selected expected]
+                      [["/missing-avatar.svg" "/missing-avatar.svg" fallback]
+                       ["/missing-avatar.png" "/missing-avatar.png" fallback]
+                       ["/img/tolgrav.png" "/img/tolgrav.avif" "/img/tolgrav.png"]]]
+                (let [form [user/<user-avatar>
+                            {:name "A very long author name that must never widen the avatar"
+                             :avatar avatar} "blog-user-avatar"]]
+                  ;; Model an SSR request which already failed before hydration;
+                  ;; no later error event is available to the newly attached handler.
+                  (set! (.-innerHTML element) (server/render-to-string form))
+                  (let [image (.querySelector element "img")]
+                    (doseq [[property value] [["complete" true] ["naturalWidth" 0]
+                                             ["currentSrc" (str (.-origin js/location) selected)]]]
+                      (js/Object.defineProperty image property #js {:configurable true :value value}))
+                    (let [bounds (.getBoundingClientRect image)]
+                      (is (< (js/Math.abs (- (.-width bounds) (.-height bounds))) 1)
+                          "Broken-image alt text stays in the square avatar box before hydration"))
+                    (let [root (dom/hydrate-root element form)]
+                      (try
+                        (await! (support/wait-for!
+                                  #(and (= expected (.getAttribute (.querySelector element "img") "src"))
+                                        (or (not= expected avatar)
+                                            (zero? (.-length (.querySelectorAll element "source")))))))
+                        (is (= expected (.getAttribute (.querySelector element "img") "src"))
+                            "Failed originals use the logo; failed modern sources still try the original")
+                        (is (= 1 (.-length (.querySelectorAll element "img"))))
+                        (finally (dom/unmount root)))))))
+              (finally
+                (.remove stylesheet) (.remove element)
+                (reset! rfdb/app-db before)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
 (deftest load-more-retains-the-visible-window-and-persists-the-requested-size
   (async
     done

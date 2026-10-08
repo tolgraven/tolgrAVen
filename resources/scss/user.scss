@@ -82,6 +82,9 @@
 }
 
 .user-avatar { // outside because also used by blog
+  // Broken images render alt text too; keep that text inside the same sized box.
+  display: inline-block;
+  overflow: hidden;
   border-radius: 50%;
   border: var(--line-width-sm) solid var(--line-color);
   box-shadow: 0px 0px 8px 1px var(--user-avatar-shadow);

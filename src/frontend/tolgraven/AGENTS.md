@@ -51,3 +51,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   a rest annotation validates each remaining value. Keep reusable spec schemas
   in CLJC. Give persistent component state a `:state {:schema ...}` when it has
   a domain shape, and test normal updates plus rejected transactions.
+
+- Avatar fallbacks must also recover originals that failed before hydration attached
+  handlers. Preserve modern-format retries and constrain broken-image alt text to
+  the avatar box; a missing upload must not widen post/comment layout.
