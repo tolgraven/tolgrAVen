@@ -12,7 +12,7 @@
                       (nth (read options reader) 2))))]
     (is (= {} (modules #{:cljs})) "Standalone Codox excludes browser lazy modules")
     (is (= {} (modules #{:cljs :ssr :node})) "SSR uses its eager module graph")
-    (is (some #{'m/make-modules} (tree-seq coll? seq (modules #{:cljs :browser})))
+    (is (some #{'loadables} (tree-seq coll? seq (modules #{:cljs :browser})))
         "Browser builds retain the Shadow loadables")))
 
 (deftest loading-helper-respects-component-bindings

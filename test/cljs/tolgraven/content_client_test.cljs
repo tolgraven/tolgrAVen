@@ -220,3 +220,36 @@
                       (finally (rf/clear-subscription-cache!) (reset! rfdb/app-db before)))))
              (.catch (fn [error] (is false (str error))))
              (.finally done))))
+
+(deftest module-installation-is-shared-and-finishes-before-code-is-renderable
+  (async done
+    (let [id (keyword (str (random-uuid)))
+          original loader/modules
+          *finish (atom nil)
+          *installs (atom 0)
+          spec {:id id
+                :install #(do (swap! *installs inc)
+                              (js/Promise. (fn [resolve _] (reset! *finish resolve))))}
+          loadable (reify lazy/ILoadable (ready? [_] true)
+                         IDeref (-deref [_] spec))]
+      (set! loader/modules {id loadable})
+      (let [first-load (loader/acquire-code! id)
+            second-load (loader/acquire-code! id)]
+        (is (identical? first-load second-load))
+        (-> (js/Promise.resolve nil)
+            (.then (fn [_]
+                     (is (= 1 @*installs))
+                     (is (not (loader/ready? id)))
+                     (is (nil? (loader/code-spec id)))
+                     (@*finish nil)
+                     first-load))
+            (.then (fn [loaded]
+                     (is (= spec loaded))
+                     (is (true? (loader/ready? id)))
+                     (is (= spec (loader/code-spec id)))))
+            (.catch (fn [error] (is false (str error))))
+            (.finally (fn []
+                        (set! loader/modules original)
+                        (swap! loader/*code-loads dissoc id)
+                        (swap! loader/*installed disj id)
+                        (done))))))))

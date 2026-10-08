@@ -85,6 +85,7 @@
    [:pages {:optional true} routes]
    [:view {:optional true} [:map-of :keyword :any]]
    [:init {:optional true} fn?]
+   [:install {:optional true} fn?]
    [:depends {:optional true} dependencies]
    [:preload-modules {:optional true} [:sequential :keyword]]
    [:route-depends {:optional true} fn?]

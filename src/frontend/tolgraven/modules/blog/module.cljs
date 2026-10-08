@@ -5,6 +5,7 @@
 
     [tolgraven.content.contract :as content-contract]
     [tolgraven.react :as rf]
+    [tolgraven.modules.blog.install :as install]
     [tolgraven.modules.blog.events]
     [tolgraven.modules.blog.subs]
     [tolgraven.modules.blog.views :as view]))
@@ -13,6 +14,7 @@
   {:pages pages/spec
    :depends (get content-contract/module-dependencies :blog [])
    :id :blog
+   :install install/cache!
    :db-schema schema/sections
    :view {:page #'view/<blog-page>
           :post #'view/<blog-page>

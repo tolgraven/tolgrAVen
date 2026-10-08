@@ -17,6 +17,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Effects/source adapters own I/O; view functions remain pure.
 - Use `<component>` names, `defc` features and `defpage` boundaries. `m/<>` selects
   direct or lazy module exports; it does not add a permanent wrapper.
+- A module `:install` hook may restore browser-local caches after code acquisition.
+  The loader shares/awaits it before publishing code readiness; ordinary `:init`
+  still owns data activation. SSR adapters must not install disk caches or watches.
 - Declare managed dependencies at the narrowest owning component/module/page.
   Preloads acquire those same sources; keep pending, empty, failed and cached distinct.
 - Subscription-backed Supabase/Strapi results enter app-db through events. Never

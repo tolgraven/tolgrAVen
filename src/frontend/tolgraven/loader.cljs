@@ -25,6 +25,7 @@
 
 (defonce *loads (atom {}))
 (defonce *code-loads (atom {}))
+(defonce *installed (atom #{}))
 
 (defn acquire-code!
   "One Shadow acquisition shared by navigation, initialization and subscribers.
@@ -38,8 +39,11 @@
                           (catch :default error (js/Promise.reject error)))
                         (.then (fn [spec]
                                  (validation/module! spec)
-                                 (rf/dispatch [:loader/code-ready module])
-                                 spec))
+                                 (-> (js/Promise.resolve (when-let [install! (:install spec)] (install!)))
+                                     (.then (fn [_]
+                                              (swap! *installed conj module)
+                                              (rf/dispatch [:loader/code-ready module])
+                                              spec)))))
                         (.catch (fn [error]
                                   (swap! *code-loads dissoc module)
                                   (throw error))))]
@@ -48,7 +52,8 @@
 
 (defn ready? [module]
   (when-let [loadable (get modules module)]
-    (lazy/ready? loadable)))
+    (and (lazy/ready? loadable)
+         (or (nil? (:install @loadable)) (contains? @*installed module)))))
 
 (defn- prepare-data! [resources]
   ;; A new module load/navigation is an explicit retry opportunity. Rendering
@@ -105,7 +110,7 @@
   "Already-loaded code is renderable even while its managed data is pending."
   [module]
   (when-let [loadable (get modules module)]
-    (when (lazy/ready? loadable) @loadable)))
+    (when (ready? module) @loadable)))
 
 (declare load-code!)
 
