@@ -3,7 +3,8 @@
    All persistence uses the shared envelope; no component performs disk IO."
   (:require [cljs.reader :as reader]
             [tolgraven.component.legacy-storage :as legacy]
-            [re-frame.db :as rfdb]
+            [reagent.core :as r]
+            [reagent.ratom :as ratom]
             [tolgraven.react :as rf]
             [tolgraven.component.storage :as storage]
             [tolgraven.supabase.query :as query]))
@@ -26,16 +27,41 @@
   (and (vector? path) (= 3 (count path))
        (= [:store :scoped] (subvec path 0 2)) (public-query? (last path))))
 
-(defn- track-path! [path]
-  (storage/track! [:state path] #(get-in @rfdb/app-db path storage/missing) options))
+(rf/reg-sub :blog/cache-values
+  (fn [db _]
+    (into (into {} (map (fn [path] [path (get-in db path storage/missing)])) state-paths)
+          (keep (fn [[key value]]
+                  (when (public-query? key) [[:store :scoped key] value])))
+          (get-in db [:store :scoped]))))
+
+(defonce *tracking (atom nil))
+
+(defn stop! []
+  (when-let [{:keys [reaction paths]} @*tracking]
+    (ratom/dispose! reaction)
+    (doseq [path @paths] (storage/untrack! [:state path]))
+    (reset! *tracking nil)))
+
+(defn start! []
+  (stop!)
+  (let [values (rf/subscribe [:blog/cache-values])
+        *paths (atom #{})
+        reaction (r/track!
+                   (fn []
+                     (let [current @values]
+                       (doseq [path (keys current) :when (not (contains? @*paths path))]
+                         (swap! *paths conj path)
+                         (storage/track! [:state path] #(get @values path storage/missing) options))
+                       (storage/schedule!))))]
+    ;; This cache lives with the installed browser module, including while its
+    ;; pages are unmounted. Explicit disposal releases the subscription owner.
+    (reset! *tracking {:reaction reaction :paths *paths})))
 
 (rf/reg-event-db :blog/restore-cache
   (fn [db [_ snapshots]]
     (reduce (fn [db [path value]]
               ;; A newer SSR snapshot (or an already completed query) wins.
               (if (some? (get-in db path)) db (assoc-in db path value))) db snapshots)))
-
-(declare install-watch!)
 
 (defn restore!
   "Called after the single storage read and SSR installation, before mounting."
@@ -54,16 +80,7 @@
                                   (some? old-value) [path old-value]))) paths)]
     (rf/dispatch-sync [:blog/restore-cache (vec snapshots)])
     (when (contains? old-state :blog) (legacy/write! (dissoc old-state :blog)))
-    (doseq [path paths] (track-path! path))
-    (install-watch!)))
-
-(defn install-watch! []
-  (add-watch rfdb/app-db ::cache
-    (fn [_ _ before after]
-      (when-not (identical? (get-in before [:store :scoped]) (get-in after [:store :scoped]))
-        (doseq [key (keys (get-in after [:store :scoped])) :when (public-query? key)]
-          (track-path! [:store :scoped key]))
-        (storage/schedule!)))))
+    (start!)))
 
 (defn install! []
   (-> (storage/ready!) (.then (fn [_] (restore!)))))

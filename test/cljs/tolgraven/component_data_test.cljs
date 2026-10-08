@@ -123,7 +123,8 @@
               (.catch (fn [_]
                         (go-promise
                           (is (= :error (data/state [resource])))
-                          (is (some #(= :component-data (first %)) (keys @status/*failures)))
+                          (is (some #(and (vector? %) (= :component-data (first %)))
+                                    (keys @status/*failures)))
                           (await! (support/render! root
                                                    [component/<data-body>
                                                     {:ns "fixture",
