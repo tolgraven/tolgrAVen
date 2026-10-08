@@ -593,6 +593,9 @@ retains its pre-navigation viewport offset through destination scrolling. After 
 removed and the main/footer adopt the destination's natural height. Native View
 Transitions retain pixels rather than outgoing DOM and reserve the measured
 outgoing main height until their completion event, matching fallback layout.
+The sticky footer has its own opaque, unanimated native snapshot layer above the
+page; ordinary DOM stacking cannot place it above the native transition overlay.
+Only the new footer snapshot is shown, avoiding the browser default crossfade.
 The crossfade timing remains
 250 ms linear in both paths. Do not introduce permanent absolute page layout.
 

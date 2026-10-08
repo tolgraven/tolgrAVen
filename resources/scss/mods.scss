@@ -56,10 +56,20 @@
  * MODS FOR PAGE TRANSITIONS *
  * * * * * * * * * * * * * * */
 // The browser retains the outgoing pixels; only one React page stays mounted.
-// Keep the header/footer outside the page snapshot and avoid morphing heights.
+// Avoid morphing heights. Persistent fixed UI needs its own layer above page pixels.
 :root { view-transition-name: none; }
 #main { view-transition-name: page; }
-::view-transition-group(page) { animation: none; }
+::view-transition-group(page) { animation: none; z-index: 0; }
+// Normal DOM z-index cannot outrank the native transition overlay. Retain one
+// opaque footer snapshot above the page crossfade, with no UA fade or morph.
+#footer-sticky { view-transition-name: sticky-footer; }
+::view-transition-group(sticky-footer) { animation: none; z-index: 1; }
+::view-transition-old(sticky-footer) { display: none; }
+::view-transition-new(sticky-footer) {
+  animation: none;
+  opacity: 1;
+  mix-blend-mode: normal;
+}
 ::view-transition-old(page),
 ::view-transition-new(page) {
   animation-duration: var(--navigation-transition-time);
