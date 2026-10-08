@@ -3,10 +3,16 @@
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/blog-ssr.md`, and `doc/dev-console.md`.
 
-- Collocate module-owned `schema.cljc` and `pages.cljc` with the module here.
-  These portable declarations are consumed by JVM tooling and routers too; keep
-  browser-only implementation dependencies out of them. Shared platform contracts
-  and schema infrastructure remain in `src/cljc`.
+- Feature modules live under `modules/<module>/`; collocate schemas, query
+  declarations and `pages.cljc` with the implementation. Browser/Node-only schemas
+  use `.cljs`; portable routes/data contracts use `.cljc` and must not require
+  browser implementation namespaces. Shared platform contracts remain in `src/cljc`.
+- `navigation/` owns routing, preload, transition and scroll adapters and contracts.
+  `validation/schema.cljs` assembles browser/Node app-db sections from their owners;
+  small single-use shell-state contracts stay inline there.
+- Rendered reusable UI lives in `components/`; feature-specific UI lives with its
+  module. `component/` is the declaration/lifecycle runtime, not a view inventory.
+  Import the owning namespace directly; there is no top-level `views.cljs` shim.
 - Render state through `tolgraven.react` subscriptions and change it through events.
   Effects/source adapters own I/O; view functions remain pure.
 - Use `<component>` names, `defc` features and `defpage` boundaries. `m/<>` selects
@@ -48,8 +54,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   out of domain subscription computations.
 
 - Use inline `defc`/`defpage` `[value :- schema]` for meaningful public inputs;
-  a rest annotation validates each remaining value. Keep reusable spec schemas
-  in CLJC. Give persistent component state a `:state {:schema ...}` when it has
+  a rest annotation validates each remaining value. Keep schemas beside their
+  owning component or module; browser-only inputs do not require CLJC. Give persistent component state a `:state {:schema ...}` when it has
   a domain shape, and test normal updates plus rejected transactions.
 
 - Avatar fallbacks must also recover originals that failed before hydration attached

@@ -16,7 +16,9 @@ Do not retain completed investigation diaries or historical test counts as curre
 
 
 ## Project Structure & Module Organization
-- `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code (including module-owned CLJC contracts), and shared CLJC infrastructure.
+- `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code, and shared CLJC infrastructure. Feature implementations and their portable declarations live in `src/frontend/tolgraven/modules/<module>/`.
+- `src/frontend/tolgraven/components/`: reusable rendered UI and site shell;
+  `component/` contains the declaration/lifecycle runtime.
 - `experiments/clj`: preserved JVM prototypes, compiled only with `:experiments`.
 - `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/tolgraven`.
 - `test/clj`, `test/cljs`: backend and frontend tests.
@@ -26,7 +28,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `doc/`: project documentation.
 
 ## Shared schemas
-- Define Malli contracts in CLJC near the owning data/module. Reuse them in tests,
+- Define Malli contracts beside their consumers. Use `.cljs` for browser/Node-only
+  state and component contracts; use `.cljc` only for actual JVM/CLJS consumers. Reuse them in tests,
   Reitit page/API parameters, and runtime validation; see `doc/schemas.md`.
 - Schema meaningful new/changed CLJ and CLJS data and public boundaries as part of
   the feature. Derive contracts from actual writers/readers, including loading,
@@ -69,7 +72,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Clojure/ClojureScript: follow standard idioms (2-space indentation, align threading macros), use kebab-case for vars/functions, and keep namespaces aligned with file paths.
 - Maps: keep all entries on one line only when the whole map fits comfortably, separating entries with commas. Otherwise put each key/value entry on its own line, aligning keys; never pack several entries onto a line of a multiline map. Apply this to new and changed code while preserving comments.
 - Re-frame: do not use ns-scoped keywords, but rather simple ns based on module name.
-- CLJS: general structure (apart from top-level) is folder containing module with events.cljs, subs.cljs, views.cljs, module.cljs with spec.
+- CLJS: features live under `modules/`, with events.cljs, subs.cljs, views.cljs and module.cljs as needed. Keep their portable declarations beside the implementation.
 - SCSS: keep files modular in `resources/scss`; prefer BEM-ish class names when adding new components.
 - Avoid introducing new formatters unless the team agrees; none are enforced in-repo.
 - Always confirm that variables (symbols) that are referred to actually exist in the given namespace, do not assume anything just from implicit context.
@@ -108,6 +111,7 @@ These are required principles for new code and changes to existing code. Follow 
 - Use the existing `tolgraven.react` shim so development uses the instrumented re-frame API and non-debug builds use the regular API. Do not bypass the shim or introduce a second React/Reagent runtime.
 - Use the configured Shadow CLJS builds and module boundaries. Keep browser-only APIs out of server execution, and verify referenced framework symbols against the installed versions rather than assuming an API exists.
 - Inspect the running Shadow worker and its compile errors/warnings after changes. Do not launch a competing compile for a build already being watched; use its existing worker/nREPL. Compile affected browser, test, and SSR targets as appropriate.
+- `:app` and `:app-dev` share output. Isolate production build output during a dev watch, or pause the watch and restore its assets before browser checks.
 - Verify behavior in the browser, not just successful compilation: cold direct loads, hydration, SPA navigation in both directions, cached/history return, and relevant empty/error/recovery states. For hydration or transition changes, check for spinners, flashes, layout jumps, missing content, and console errors. Never report a check as passed without actually running it.
 
 ### Code symbol naming

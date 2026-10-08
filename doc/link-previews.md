@@ -8,7 +8,7 @@ while the expansion is in progress. Back restores the source scroll position and
 reverses the transition when its link is available.
 
 The iframe and popover are independent components. Host-specific renderers can be
-registered with `tolgraven.link-preview.views/register-provider!`. The lazy
+registered with `tolgraven.modules.link-preview.views/register-provider!`. The lazy
 `:link-preview` module owns discovery, subscriptions, prefetch pacing and the
 transition controller, with matching dependencies in development and production.
 

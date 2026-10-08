@@ -9,17 +9,17 @@
     [reitit.core :as reitit]
     [shadow.lazy :as lazy]
     [tolgraven.db :as db]
-    [tolgraven.routes :as routes]
+    [tolgraven.navigation.routes :as routes]
     [tolgraven.loader :as loader]
     [tolgraven.render-context :as context]
     [tolgraven.component.restore :as restore]
     [tolgraven.ssr.client :as client]
-    [tolgraven.views.page :as page]
-    [tolgraven.blog.module :as blog]
-    [tolgraven.cv.module :as cv]
-    [tolgraven.docs.module :as docs]
-    [tolgraven.user.module :as user]
-    [tolgraven.link-preview.module :as link-preview]))
+    [tolgraven.components.page :as page]
+    [tolgraven.modules.blog.module :as blog]
+    [tolgraven.modules.cv.module :as cv]
+    [tolgraven.modules.docs.module :as docs]
+    [tolgraven.modules.user.module :as user]
+    [tolgraven.modules.link-preview.module :as link-preview]))
 
 (def modules {:cv cv/spec :docs docs/spec :blog blog/spec :user user/spec :link-preview link-preview/spec})
 

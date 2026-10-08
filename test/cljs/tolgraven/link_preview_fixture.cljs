@@ -2,8 +2,8 @@
   "Manual browser fixture using real preview components, isolated from Firebase."
   (:require [reagent.core :as r]
             [reagent.dom.client :as rdom]
-            [tolgraven.link-preview.module]
-            [tolgraven.link-preview.views :as preview]
+            [tolgraven.modules.link-preview.module]
+            [tolgraven.modules.link-preview.views :as preview]
             [tolgraven.macros :refer-macros [defc]]))
 
 (defonce *root (atom nil))

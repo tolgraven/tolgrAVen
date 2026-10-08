@@ -35,6 +35,13 @@ Browser suite:
 browser runner; the obsolete Doo entry point has been removed.
 `workflow_unit_test.cljs` replaces the misleadingly named `integration_test.cljs`.
 Ring request fixtures use `ring-mock` from `:project/test`.
+Browser/Node-only state and component schemas are tested in `test/cljs`; portable
+contracts and generic schema composition helpers are also tested on the JVM.
+
+`:app` and `:app-dev` share their output directory. Use an isolated output directory
+for production compilation during development, or pause the development watch and
+restore its output before resuming browser checks. Watching a different build ID
+does not make overlapping output safe.
 
 Application subscription tests mount a Reagent consumer, dereference the real
 subscription during render, change state through registered events, and unmount
@@ -88,6 +95,12 @@ It checks real content, image decoding, shared heading identity, closed initial
 search, and that SPA navigation retains the document. No test functions are
 loaded into the application's CLJS runtime. The proxy forwards the application's
 response bytes and flushes streaming chunks without replacing them.
+
+`/__tests/motion.html` measures entrances, comment layout, simultaneous 250ms
+linear page fades and the opaque sticky footer. Add `?fallback` to remove the
+optional native transition API in the test driver and exercise ordinary fallback
+navigation with the same content. `__tests/scroll.html` checks SPA and document
+Back restoration. Run these on separate test origins if they overlap in time.
 
 The separate localhost origin is exclusively for these tests; the runner clears
 that origin's storage before a run. It does not clear your regular port-4000

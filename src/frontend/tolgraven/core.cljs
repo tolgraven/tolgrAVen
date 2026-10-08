@@ -8,8 +8,8 @@
     [tolgraven.component.data :as component-data]
     [tolgraven.component :as component]
     [tolgraven.component.storage :as storage]
-    [tolgraven.blog.cache :as blog-cache]
-    [tolgraven.main.module :as main-module]
+    [tolgraven.modules.blog.cache :as blog-cache]
+    [tolgraven.modules.main.module :as main-module]
     [reagent.core :as r]
     [reagent.dom.client :as rdomc]
     [tolgraven.ajax :as ajax]
@@ -25,13 +25,13 @@
     [tolgraven.loader :as l]
     [tolgraven.macros :as m :include-macros true]
     [tolgraven.component.registry]
-    [tolgraven.routes :as routes]
-    [tolgraven.page-preload :as page-preload]
+    [tolgraven.navigation.routes :as routes]
+    [tolgraven.navigation.preload :as page-preload]
     [tolgraven.subs]
-    [tolgraven.ui :as ui]
+    [tolgraven.components.ui :as ui]
     [tolgraven.util :as util]
-    [tolgraven.views-common :as common]
-    [tolgraven.views.page :as page-view]))
+    [tolgraven.components.shell :as common]
+    [tolgraven.components.page :as page-view]))
 
 (def spec main-module/spec)
 

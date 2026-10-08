@@ -6,10 +6,10 @@
             [tolgraven.schema.app-db :as app-db]
             [tolgraven.schema.http :as http]
             [tolgraven.page-router :as pages]
-            [tolgraven.main.pages :as main]
-            [tolgraven.blog.pages :as blog]
-            [tolgraven.docs.pages :as docs]
-            [tolgraven.cv.pages :as cv]))
+            [tolgraven.modules.main.pages :as main]
+            [tolgraven.modules.blog.pages :as blog]
+            [tolgraven.modules.docs.pages :as docs]
+            [tolgraven.modules.cv.pages :as cv]))
 
 (deftest shared-declarations-cover-real-route-trees
   (doseq [spec [main/spec blog/spec docs/spec cv/spec]]
@@ -22,20 +22,6 @@
   (is (seq (validation/explain declarations/dependency {:source :url :ttl-ms -1})))
   (is (nil? (validation/explain declarations/dependency
                                {:source :supabase :query {:path-collection [:blog-posts]}}))))
-
-(deftest partial-app-db-sections-compose
-  (let [schema (app-db/schema app-db/sections)
-        data {:state {:menu false :blog {:page 0 :comment-limit {42 20}
-                                         :comment-thread-expanded {[42 "a"] true}}}
-              :unmigrated {:anything [:still :valid]}}]
-    (is (m/validate schema data))
-    (is (not (m/validate schema (assoc-in data [:state :menu] "true"))))
-    (is (not (m/validate schema (assoc-in data [:state :blog :page] -1))))
-    (is (empty? (app-db/changed-errors app-db/sections data data)))
-    (is (= [] (:path (first (app-db/changed-errors app-db/sections data [])))))
-    (is (= [:state :blog :comment-limit 42]
-           (:path (first (app-db/changed-errors app-db/sections data
-                          (assoc-in data [:state :blog :comment-limit 42] 0))))))))
 
 (deftest route-parameters-coerce-at-shared-boundary
   (let [match (pages/request-match "/blog/page/2" {"userBox" "false" "debug" "keep"})]

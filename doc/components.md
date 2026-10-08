@@ -1,5 +1,11 @@
 # Composable components with `defc`
 
+Reusable rendered UI lives in `tolgraven.components.*`; feature views live under
+`tolgraven.modules.<feature>.*`. `tolgraven.component.*` implements declaration,
+lifecycle, data and state capabilities. Import the owning namespace directly;
+there is no `tolgraven.views` compatibility entry point. See [source layout](source-layout.md).
+
+
 Require `[tolgraven.macros :refer-macros [defc]]` and
 `[tolgraven.component.registry]`, and use components in Hiccup.
 The default compiles directly to Reagent 2's `reagent.core/defc`: a memoized
@@ -74,7 +80,7 @@ or `links`. Other arguments are domain data, even if their map happens to contai
 keys named `:props` or `:depends`. No spec argument needs to be added when absent.
 A feature may be `[id config]`; `[id false]` disables it.
 Require the namespace that registers a feature (for links,
-`tolgraven.link-preview.views`) before using it.
+`tolgraven.modules.link-preview.views`) before using it.
 
 Root props only apply to native DOM roots, never fragment, child-component or
 React-interop roots. Link discovery needs a native DOM root. Feature composition
@@ -347,7 +353,7 @@ its existing disk envelope.
 Dependencies register pending promises synchronously and adapters start together
 on the next tick. Repeated resources share a promise. Strapi unions all section
 keys queued in that tick into one `/api/content?keys=...` request. Modules and
-components use the same queue, including `tolgraven.main.module/spec` and its
+components use the same queue, including `tolgraven.modules.main.module/spec` and its
 explicit shell dependencies in the shared backend/frontend manifest.
 
 ```clojure

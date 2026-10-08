@@ -9,7 +9,7 @@
             [tolgraven.react :as react]
             [re-frame.db :as db]
             [tolgraven.component.persistent-state]
-            [tolgraven.blog.events]))
+            [tolgraven.modules.blog.events]))
 
 (deftest instrumented-component-registrations-retain-source-locations
   (let [handler (get-in @tooling/kind->id->handler [:event :component-state/update])]

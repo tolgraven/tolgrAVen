@@ -1,0 +1,37 @@
+(ns tolgraven.components.image.sources
+  "Shared format selection for rendered pictures and server preloads."
+  (:require [clojure.string :as string]))
+
+(defn replace-extension
+  "Replace file extension. e.g., 'img/foo.jpg' -> 'img/foo.webp'"
+  [path new-ext]
+  (string/replace path #"\.(jpe?g|png)$" (str "." new-ext)))
+
+(defn should-use-modern-formats?
+  "Determine if we should generate modern format sources for this image.
+   Skip for:
+   - SVG files (already vector-based)
+   - External URLs (we don't control those assets)
+   - URLs with query strings (likely already proxied/optimized)
+   - Favicons and app icons
+   - Already modern formats (webp, avif)"
+  [src]
+  (and (string? src)
+       (re-find #"\.(jpe?g|png)$" src)
+       (not (re-find #"^(https?:|//)" src))               ;; Skip external URLs
+       (not (re-find #"\?" src))                          ;; Skip URLs with query strings
+       (not (re-find #"avatar" src))                      ;; Skip URLs from avatars (for now
+       (not (re-find #"\.svg$" src))                      ;; Skip SVG files
+       (not (re-find #"(favicon|android-chrome|apple-touch-icon|mstile)" src))))
+
+(defn get-src-variants
+  "Get all available format variants for an image path.
+   Returns a map with :original, :webp, and :avif paths.
+   Useful for preloading or manual format selection."
+  [src]
+  (if (should-use-modern-formats? src)
+    {:original src
+     :webp (replace-extension src "webp")
+     :avif (replace-extension src "avif")}
+    {:original src}))
+

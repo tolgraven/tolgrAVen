@@ -6,10 +6,10 @@
             [tolgraven.validation-server :as validation]
             [tolgraven.page :as page]
             [tolgraven.content.contract :as content]
-            [tolgraven.main.pages :as main]
-            [tolgraven.blog.pages :as blog]
-            [tolgraven.cv.pages :as cv]
-            [tolgraven.docs.pages :as docs]))
+            [tolgraven.modules.main.pages :as main]
+            [tolgraven.modules.blog.pages :as blog]
+            [tolgraven.modules.cv.pages :as cv]
+            [tolgraven.modules.docs.pages :as docs]))
 
 (def router
   (reitit/router

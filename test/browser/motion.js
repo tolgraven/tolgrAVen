@@ -21,6 +21,16 @@ const sample = async (action, read, ms = 1400) => {
   while (performance.now() < end) { await new Promise(resolve => requestAnimationFrame(resolve)); values.push(read()); }
   return values;
 };
+const settleLayout = async element => {
+  await doc().fonts.ready;
+  const animations = doc().getAnimations().filter(animation => {
+    const target = animation.effect?.target;
+    return target instanceof frame.contentWindow.Element &&
+      (target.contains(element) || element.contains(target)) &&
+      Number.isFinite(animation.effect.getComputedTiming().endTime);
+  });
+  await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
+};
 // Sample the real document from its first paint through interactive startup.
 // Do not substitute data or manipulate application-owned markup.
 const entrance = async path => {
@@ -78,6 +88,8 @@ document.querySelector('#run').onclick = async () => {
     doc().querySelector('button.search-ui-btn').click();
     const placeholder = doc().querySelector('.blog-comment-collapsed-placeholder');
     const outer = placeholder.closest('.blog-comment-reply-outer');
+    // Measure a stable footprint, not an in-flight document/font entrance.
+    await settleLayout(outer);
     const parent = outer.previousElementSibling;
     const parentHeight = parent.getBoundingClientRect().height;
     const read = () => ({parent: parent.getBoundingClientRect().height, outer: outer.getBoundingClientRect().height});
@@ -93,34 +105,66 @@ document.querySelector('#run').onclick = async () => {
     const reopened = await sample(() => outer.querySelector('.blog-comment-collapsed-placeholder').click(), read);
     check(reopened.every(value => value.parent >= parentHeight - 1), 'Reopening a cached thread retains its parent layout');
     await wait(() => outer.querySelector('.blog-comment-title'));
+    // Exercise the same application with the optional native capability absent.
+    // Only the test driver changes API availability; app state/markup stay real.
+    if (new URLSearchParams(location.search).has('fallback')) {
+      Object.defineProperty(doc(), 'startViewTransition', {value: undefined, configurable: true});
+    }
     const before = doc();
     doc().querySelector('header a[href="/"]').click();
     await wait(() => doc().querySelector('#intro'));
     check(doc() === before, 'Section navigation retains the document');
+    await wait(() => !doc().querySelector('#main > .swapped') &&
+      !doc().getAnimations().some(animation => animation.animationName === 'page-opacity-out' &&
+                                              animation.playState !== 'finished'));
+    await settleLayout(doc().querySelector('main'));
     const started = performance.now();
     const navFrames = await sample(() => doc().querySelector('header a[href="/blog"]').click(), () => {
       const main = doc().querySelector('main'), win = frame.contentWindow;
-      const progress = name => doc().getAnimations().find(animation => animation.animationName === name)?.effect.getComputedTiming().progress;
-      return {path:win.location.pathname, opacity:parseFloat(win.getComputedStyle(main.querySelector(".swap-in") || main).opacity),
-              outgoing: main.querySelector('.swapped') ? parseFloat(win.getComputedStyle(main.querySelector('.swapped')).opacity) : 0,
-              oldProgress: progress('page-opacity-out'), newProgress: progress('page-opacity-in-a'),
-              nativeFade: typeof doc().startViewTransition === 'function' && win.getComputedStyle(doc().documentElement,'::view-transition-old(page)').animationName === 'page-opacity-out'};
+      const animation = name => doc().getAnimations().find(value => value.animationName === name);
+      const old = animation('page-opacity-out'), incoming = animation('page-opacity-in-a');
+      const oldTiming = old?.effect.getTiming(), newTiming = incoming?.effect.getTiming();
+      const entering = main.querySelector('.swap-in'), leaving = main.querySelector('.swapped');
+      const footer = doc().querySelector('#footer-sticky');
+      const footerSnapshot = win.getComputedStyle(doc().documentElement, '::view-transition-new(sticky-footer)');
+      return {path: win.location.pathname,
+              opacity: parseFloat(win.getComputedStyle(entering || main).opacity),
+              outgoing: leaving ? parseFloat(win.getComputedStyle(leaving).opacity) : 0,
+              oldProgress: old?.effect.getComputedTiming().progress,
+              newProgress: incoming?.effect.getComputedTiming().progress,
+              nativeTiming: oldTiming && newTiming && [oldTiming, newTiming],
+              fallbackTiming: entering?.classList.contains('swapped-in') &&
+                leaving?.classList.contains('swapped-out') && [entering, leaving].map(element => {
+                const style = win.getComputedStyle(element);
+                return [style.transitionDuration, style.transitionTimingFunction, style.transitionDelay];
+              }),
+              footerOpacity: footer ? parseFloat(win.getComputedStyle(footer).opacity) : 1,
+              footerSnapshotOpacity: parseFloat(footerSnapshot.opacity),
+              footerSnapshotAnimation: footerSnapshot.animationName,
+              nativeFade: typeof doc().startViewTransition === 'function' &&
+                win.getComputedStyle(doc().documentElement, '::view-transition-old(page)').animationName === 'page-opacity-out'};
     }, 1800);
     check(navFrames.some(value => value.opacity < .95 || value.nativeFade), 'Section navigation uses an opacity fade');
     const native = navFrames.some(value => value.oldProgress != null);
     if (native) {
-      check(navFrames.some(value => value.oldProgress > .05 && value.oldProgress < .95 && value.newProgress === 0),
-            'Incoming page remains hidden during the outgoing native fade');
-      check(navFrames.some(value => value.oldProgress === 1 && value.newProgress > .05 && value.newProgress < .95),
-            'Incoming native fade starts after the outgoing fade finishes');
-      check(navFrames.every(value => !(value.oldProgress < .99 && value.newProgress > .01)),
-            'Native outgoing and incoming fades never overlap');
+      check(navFrames.some(value => value.oldProgress > .05 && value.oldProgress < .95 &&
+                                   value.newProgress > .05 && value.newProgress < .95),
+            'Native outgoing and incoming pages crossfade simultaneously');
+      check(navFrames.filter(value => value.nativeTiming).every(value =>
+              value.nativeTiming.every(timing => timing.duration === 250 && timing.delay === 0 && timing.easing === 'linear')),
+            'Both native fades use 250ms linear motion without delay');
+      check(navFrames.filter(value => value.nativeTiming).every(value =>
+              value.footerSnapshotOpacity === 1 && value.footerSnapshotAnimation === 'none'),
+            'Native sticky footer snapshot stays opaque and unanimated');
     } else {
-      check(navFrames.some(value => value.outgoing > .05 && value.outgoing < .95 && value.opacity < .01),
-            'Fallback keeps the incoming page hidden during the outgoing fade');
-      check(navFrames.some(value => value.outgoing < .01 && value.opacity > .05 && value.opacity < .95),
-            'Fallback starts its incoming fade after outgoing opacity reaches zero');
+      check(navFrames.some(value => value.outgoing > .05 && value.outgoing < .95 &&
+                                   value.opacity > .05 && value.opacity < .95),
+            'Fallback outgoing and incoming pages crossfade simultaneously');
+      check(navFrames.filter(value => value.fallbackTiming).every(value =>
+              value.fallbackTiming.every(([duration, easing, delay]) => duration === '0.25s' && easing === 'linear' && delay === '0s')),
+            'Both fallback fades use 250ms linear motion without delay');
     }
+    check(navFrames.every(value => value.footerOpacity === 1), 'Sticky footer stays opaque during page navigation');
     check(navFrames.some(value => value.path === '/blog'), 'Landing → blog commits during the transition');
     check(performance.now() - started < 2500, 'Section motion is bounded independently of content loading');
     check(true, 'MOTION CHECKS PASSED');

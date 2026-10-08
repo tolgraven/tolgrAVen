@@ -7,11 +7,8 @@
             [tolgraven.macros :as macros]
             [tolgraven.validation :as validation]
             [tolgraven.schema.app-db :as db]
+            [tolgraven.schema.common :as c]
             [tolgraven.schema.declarations :as declarations]
-            [tolgraven.schema.integrations :as integrations]
-            [tolgraven.schema.state :as state]
-            [tolgraven.blog.schema :as blog]
-            [tolgraven.dev-console.schema :as debug]
             [tolgraven.content.contract :as content]
             [tolgraven.content.schema :as cms]
             [tolgraven.supabase.schema :as store]
@@ -52,7 +49,7 @@
     (is (= (set content/sections) (set (keys cms/sections))))
     (doseq [[section schema] cms/sections]
       (is (m/validate schema (get-in bundle [:content section])) (str section)))
-    (is (m/validate (db/schema db/sections) {:content (:content bundle)}))
+    (is (m/validate (db/schema {[:content] (c/optional-map cms/sections)}) {:content (:content bundle)}))
     (doseq [bad [(assoc-in bundle [:content :header :text] "wrong")
                  (assoc-in bundle [:content :cv :cv :timeline] [1])
                  (assoc-in bundle [:content :blog :heading :bg :src] 1)
@@ -112,25 +109,6 @@
     (is (= [{:id "x" :parent_comment nil}]
            (reader/rows! {:table "blog_comments" :select "id,parent_comment"})))))
 
-(deftest assembled-state-checks-nested-provider-data-and-view-state
-  (let [schema (db/schema db/sections)
-        good {:state {:link-preview {:active {:url "https://example.test" :trust :trusted :status :preview}}
-                      :form-field {:login {:email "user@example.test" :password "secret"}}
-                      :browser-nav {:nav-type :back} :blog {:comment-thread-expanded {[28 "c"] false}}}
-              :common/route {:path "/blog" :query-params nil}
-              :content {:github {:commits [{:sha "abc" :commit {:message "Change"}}]}
-                        :strava {:activities [{:id 1 :distance 100.0}]}}
-              :store {:public {"blog-posts" {28 {:id 28 :tags ["one" "two"]}}}}}]
-    (is (m/validate schema good))
-    (doseq [[path value] [[[:state :form-field :login :email] 1]
-                          [[:content :github :commits 0 :commit :message] []]
-                          [[:content :strava :activities 0 :distance] "100"]
-                          [[:store :public "blog-posts" 28 :tags] {}]
-                          [[:state :blog :comment-thread-expanded [28 "c"]] "false"]]]
-      (let [issues (validation/explain schema (assoc-in good path value))]
-        (is (seq issues))
-        (is (some #(= path (:path %)) issues))))))
-
 (deftest dependency-variants-and-extensible-specs
   (doseq [dep [{:source :strapi :keys [:blog]}
                {:source :supabase :query {:path-document [:blog-posts 1]}}
@@ -152,16 +130,3 @@
   (is (m/validate ssr/snapshot {:path "/" :content {} :shell? true}))
   (is (not (m/validate ssr/snapshot {:path "/" :posts [{:title 7}]})))
   (is (not (m/validate ssr/settings {:render-workers 0}))))
-
-
-(deftest inspector-and-transient-ui-metadata-have-concrete-shapes
-  (is (m/validate blog/posted-by-spec {:user "author-id" :ts 123}))
-  (is (m/validate blog/posted-by-spec {:user {:id "author-id" :name "Author"}}))
-  (is (m/validate state/state {:init {:scope {:github {:inited? true :args nil}}}}))
-  (is (m/validate state/state {:debug {:hydration-token (random-uuid)}
-                               :form-field {:write-comment {[28 "c"] nil}}}))
-  (is (m/validate debug/state {:active {"instance" {:instance "instance" :component ["ns" "<view>"] :parent nil}}
-                               :records [{:kind :render :duration 1.2 :start 10 :phase "mount"}
-                                         {:kind :epoch :event [:state [:menu] true] :effects {}}]}))
-  (is (not (m/validate debug/state {:records [{:kind :layout :start "10"}]})))
-  (is (m/validate ssr/snapshot {:path "/blog/post/27" :page nil :post-id 27 :content {}})))

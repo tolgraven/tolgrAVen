@@ -4,16 +4,16 @@
             [re-frame.core :as re-frame]
             [reitit.frontend :as frontend]
             [tolgraven.react :as rf]
-            [tolgraven.routes :as routes]
+            [tolgraven.navigation.routes :as routes]
             [tolgraven.component :as component]
             [tolgraven.component.registry :as registry]
             [tolgraven.component.persistent-state :as state]
-            [tolgraven.blog.events]
+            [tolgraven.modules.blog.events]
             [tolgraven.schema.declarations :as schemas]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.test-support :as support]
             [tolgraven.validation.runtime :as validation]
-            [tolgraven.validation.views :as views]))
+            [tolgraven.components.validation :as views]))
 
 (defonce *effects (atom 0))
 (rf/reg-fx :validation-test/external (fn [_] (swap! *effects inc)))

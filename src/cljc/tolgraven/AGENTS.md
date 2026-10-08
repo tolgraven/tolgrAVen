@@ -2,8 +2,8 @@
 
 Keep this guide current. Shared platform data shapes, schema infrastructure,
 query constructors and normalization belong here so CLJ and CLJS use the same
-definition. Module-owned `.cljc` schemas and page specs live beside their frontend
-implementation in `src/frontend/tolgraven/<module>/`, also on the JVM source path.
+definition. Portable module data contracts and page specs live beside their frontend
+implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM source path.
 
 - Module `pages.cljc` exports a native Reitit route tree and may contain nested or
   multiple pages. Do not require module implementation namespaces from it.
@@ -13,15 +13,15 @@ implementation in `src/frontend/tolgraven/<module>/`, also on the JVM source pat
   only at transport boundaries. Never include credentials in public snapshots.
 - Keep schemas composable by module/app-db section; avoid a second global inventory
   of declarations already owned by modules. Tests should consume the same schemas.
-- Keep component argument, form, state, event and subscription schemas in the
-  owning module's `src/frontend/tolgraven/<module>/schema.cljc`.
-  `schema/state.cljc` assembles these owners;
-  it must not become a central inventory of module component arguments.
+- Component/form/event/browser-state contracts live beside their frontend owner in
+  `.cljs`. Use `.cljc` only for real consumers on both platforms. Do not make
+  browser contracts portable merely to include them in a JVM inventory test.
 - Reader conditionals must work for CLJ tooling/Codox as well as browser and Node
   Shadow builds. Do not make JVM documentation scan browser-only namespaces.
 
 - `schema/declarations.cljc` defines declaration shapes; module-local schemas own
-  domain fields. `schema/app_db.cljc` composes initial sections. Keep coverage
+  domain fields. `schema/app_db.cljc` supplies generic composition/change-validation helpers;
+  frontend `validation/schema.cljs` assembles browser/Node sections. Keep coverage
   explicit and retain open maps where migration is incomplete.
 - `schema/http.cljc` is shared by page and API routers; use those typed parameters
   in handlers/controllers and use the same schemas for accepted/rejected fixtures.

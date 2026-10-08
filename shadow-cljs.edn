@@ -47,30 +47,30 @@
    :module-loader true
    :modules {:main      {:entries [tolgraven.app]
                          :init-fn tolgraven.app/init!}
-             :search    {:entries    [tolgraven.search.module]
+             :search    {:entries    [tolgraven.modules.search.module]
                          :depends-on #{:main :link-preview}}
-             :user      {:entries    [tolgraven.user.module]
+             :user      {:entries    [tolgraven.modules.user.module]
                          :depends-on #{:main :link-preview}}
              :link-preview
-                        {:entries    [tolgraven.link-preview.module]
+                        {:entries    [tolgraven.modules.link-preview.module]
                          :depends-on #{:main}}
-             :chat      {:entries    [tolgraven.chat.module]
+             :chat      {:entries    [tolgraven.modules.chat.module]
                          :depends-on #{:main :user :link-preview}}
-             :github    {:entries    [tolgraven.github.module]
+             :github    {:entries    [tolgraven.modules.github.module]
                          :depends-on #{:main}}
-             :docs      {:entries    [tolgraven.docs.module]
+             :docs      {:entries    [tolgraven.modules.docs.module]
                          :depends-on #{:main}}
-             :gpt       {:entries    [tolgraven.gpt.module]
+             :gpt       {:entries    [tolgraven.modules.gpt.module]
                          :depends-on #{:main :user}}
-             :cv        {:entries    [tolgraven.cv.module]
+             :cv        {:entries    [tolgraven.modules.cv.module]
                          :depends-on #{:main}}
-             :strava    {:entries    [tolgraven.strava.module]
+             :strava    {:entries    [tolgraven.modules.strava.module]
                          :depends-on #{:main}}
-             :instagram {:entries    [tolgraven.instagram.module]
+             :instagram {:entries    [tolgraven.modules.instagram.module]
                          :depends-on #{:main}}
-             :test      {:entries    [tolgraven.experiments]
+             :test      {:entries    [tolgraven.modules.experiments.module]
                          :depends-on #{:main}}
-             :blog      {:entries    [tolgraven.blog.module]
+             :blog      {:entries    [tolgraven.modules.blog.module]
                          :depends-on #{:main :user :link-preview}}}
    :js-options {}
    :output-dir "resources/public/js/compiled/out"
@@ -113,30 +113,30 @@
    :module-loader true
    :modules {:main      {:entries [tolgraven.app]
                          :init-fn tolgraven.app/init!}
-             :search    {:entries    [tolgraven.search.module]
+             :search    {:entries    [tolgraven.modules.search.module]
                          :depends-on #{:main :link-preview}}
-             :user      {:entries    [tolgraven.user.module]
+             :user      {:entries    [tolgraven.modules.user.module]
                          :depends-on #{:main :link-preview}}
              :link-preview
-                        {:entries    [tolgraven.link-preview.module]
+                        {:entries    [tolgraven.modules.link-preview.module]
                          :depends-on #{:main}}
-             :chat      {:entries    [tolgraven.chat.module]
+             :chat      {:entries    [tolgraven.modules.chat.module]
                          :depends-on #{:main :user :link-preview}}
-             :github    {:entries    [tolgraven.github.module]
+             :github    {:entries    [tolgraven.modules.github.module]
                          :depends-on #{:main}}
-             :docs      {:entries    [tolgraven.docs.module]
+             :docs      {:entries    [tolgraven.modules.docs.module]
                          :depends-on #{:main}}
-             :gpt       {:entries    [tolgraven.gpt.module]
+             :gpt       {:entries    [tolgraven.modules.gpt.module]
                          :depends-on #{:main :user}}
-             :cv        {:entries    [tolgraven.cv.module]
+             :cv        {:entries    [tolgraven.modules.cv.module]
                          :depends-on #{:main}}
-             :strava    {:entries    [tolgraven.strava.module]
+             :strava    {:entries    [tolgraven.modules.strava.module]
                          :depends-on #{:main}}
-             :instagram {:entries    [tolgraven.instagram.module]
+             :instagram {:entries    [tolgraven.modules.instagram.module]
                          :depends-on #{:main}}
-             :test      {:entries    [tolgraven.experiments]
+             :test      {:entries    [tolgraven.modules.experiments.module]
                          :depends-on #{:main}}
-             :blog      {:entries    [tolgraven.blog.module]
+             :blog      {:entries    [tolgraven.modules.blog.module]
                          :depends-on #{:main :user :link-preview}}}
    :output-dir           "resources/public/js/compiled/out"
    :asset-path           "/js/compiled/out"

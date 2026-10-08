@@ -14,8 +14,8 @@
             [tolgraven.concurrent :as concurrent]
             [tolgraven.supabase.reader :as reader]
             [tolgraven.supabase.plan :as plan]
-            [tolgraven.blog.comments :as comments]
-            [tolgraven.blog.data :as blog-data]))
+            [tolgraven.modules.blog.comments :as comments]
+            [tolgraven.modules.blog.data :as blog-data]))
 
 (defn projected-response [select rows]
   ;; REST projections include selected SQL NULLs. Preserve extra fields here

@@ -2,39 +2,7 @@
   "Partial sections assemble without closing the rest of app-db. Owners can add
    sections; the event adapter checks only changed section references."
   (:require [malli.util :as mu]
-            [tolgraven.schema.common :as c]
-            [tolgraven.schema.state :as state]
-            [tolgraven.page-transition.schema :as page-transition]
-            [tolgraven.dev-console.schema :as debug]
-            [tolgraven.schema.integrations :as integrations]
-            [tolgraven.content.schema :as content]
-            [tolgraven.supabase.schema :as store]
-            [tolgraven.blog.schema :as blog]
             [tolgraven.validation :as validation]))
-
-(def sections
-  (merge blog/sections
-    {[:state] state/state
-     [:options] state/options
-     [:content] (c/optional-map (merge content/sections
-                                  {:github integrations/github
-                                   :strava (mu/merge (:strava content/sections) integrations/strava)
-                                   :instagram (c/optional-map {:posts [:map-of c/id integrations/instagram-post] :error :any})}))
-     [:store] store/store
-     [:search] integrations/search
-     [:docs] [:map-of :string :string]
-     [:diagnostics] state/diagnostics
-     [:dev-console] debug/state
-     [:page/commit] [:maybe page-transition/commit]
-     [:common/route] state/route
-     [:common/route-last] state/route
-     [:component-revisions] [:map-of c/path c/nonnegative]
-     ;; Values at these roots are owned by each component/page/module. Their
-     ;; :db-schema or :state {:schema ...} adds deeper validation.
-     [:component] :map [:page] :map [:module] :map [:global] :map
-     [:page-return] (c/optional-map {:status [:enum :ready :unavailable :saving]
-                                     :url :string :message :string})
-     [:loader] (c/optional-map {:code-ready [:map-of :keyword :boolean] :errors :map})}))
 
 (defonce ^:private *assembled (atom nil))
 (defn schema

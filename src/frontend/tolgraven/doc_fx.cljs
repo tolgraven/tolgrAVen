@@ -133,10 +133,3 @@
 (rf/reg-fx :run-highlighter-fx!
  (fn [elem]
    (util/run-highlighter! "pre" elem)))
-
-
-(rf/reg-event-fx :settings/read-css-vars
-  [(rf/inject-cofx :css-vars ["line-width" "line-width-vert" "section-rounded"
-                             "space" "space-lg" "space-top"])]
-  (fn [{:keys [db css-vars]} _]
-    {:db (update-in db [:state :css-var] merge css-vars)}))
