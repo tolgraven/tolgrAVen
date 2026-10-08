@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location('staging_supabase', ROOT / 'scripts/staging_supabase.py')
+spec = importlib.util.spec_from_file_location('staging_supabase', ROOT / 'scripts/ops/host/staging_supabase.py')
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 

@@ -195,11 +195,11 @@ the profile points to the PNG and the shared picture component selects modern
 variants, with direct PNG fallback on decoding failure. The profile is updated
 only after all three uploads succeed. Older avatars remain readable.
 
-Conversion uses the same `scripts/convert-images.sh` as bundled assets, with two
+Conversion uses the same `scripts/media/images.clj` as bundled assets, with two
 concurrent jobs, a 45-second job timeout and ImageMagick resource limits. Install
 `webp` and ImageMagick with AVIF support for local server uploads. The runtime
 Docker stage installs and smoke-tests these codecs. `:image-converter` optionally
-sets the server script path; production uses `/app/scripts/convert-images.sh`.
+sets the server script path; production uses `/app/scripts/media/images.clj`.
 Temporary encoding files are removed after each request. Supabase's Storage/MinIO
 backend must retain its persistent mount (MinIO `/data` in Coolify); no uploaded
 media belongs in the web image or `resources/public`. Back up both Storage's
@@ -365,7 +365,7 @@ Build concurrency on bux is limited to one.
 
 Different pull requests otherwise create independent staging previews. The
 `tolgraven-runtime-policy` systemd service on bux runs
-`scripts/coolify-site-runtime-policy.py` every two seconds to stop superseded
+`scripts/ops/host/coolify-site-runtime-policy.py` every two seconds to stop superseded
 site runtimes and disable their Docker restart policies. It keeps the newest
 created production and staging containers and stops any production previews.
 Web cleanup is restricted to the two application UUIDs in the script. The

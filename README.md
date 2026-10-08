@@ -23,7 +23,7 @@ The development server runs at http://localhost:4000. Run `npm run dev` in a
 second terminal to watch CSS. In the Clojure REPL, `(cljs-repl)` selects the
 `:app-dev` browser runtime and watches the `:ssr` Node target. SSR is enabled by
 default; configure `:ssr {:enabled true :render-workers 2 :worker "target/ssr/site.js"
-:node-binary "node"}` in `dev-config.edn`. See [SSR configuration](doc/blog-ssr.md). `(restart-handler)` reloads the Ring handler after
+:node-binary "node"}` in `config/local.dev.edn`. See [SSR configuration](doc/blog-ssr.md). `(restart-handler)` reloads the Ring handler after
 reloading changed backend namespaces.
 
 Set `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY` and server-only
@@ -38,7 +38,7 @@ credentials remain ignored and are not needed to run the site.
 lein with-profile +test test
 lein with-profile +test run -m shadow.cljs.devtools.cli compile supabase-test
 lein with-profile +test run -m shadow.cljs.devtools.cli compile app-test
-python3 scripts/serve-browser-tests.py
+bb test:browser
 ```
 
 Open http://localhost:4002 to run the browser tests. They cover the split route
@@ -81,3 +81,5 @@ See [test boundaries and workflow verification](doc/testing.md) for the full bro
 Source organization: [ownership and platform boundaries](doc/source-layout.md).
 
 Shared data and declaration contracts: [Malli schemas and validation](doc/schemas.md).
+
+Build, media and test commands are listed by `bb tasks`; see [tool ownership](doc/tooling.md) and [local configuration](config/README.md).

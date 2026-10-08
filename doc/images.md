@@ -39,7 +39,7 @@ see [upload storage and configuration](supabase-provisioning.md).
 # 1. Add JPG/PNG to resources/public/img/
 cp new-photo.jpg resources/public/img/
 
-# 2. Install the hook once per checkout (requires Python 3, cwebp and ImageMagick)
+# 2. Install the hook once per checkout (requires Babashka, cwebp and ImageMagick)
 make hooks
 
 # 3. Stage the original; committing generates and stages WebP/AVIF alongside it
@@ -56,14 +56,14 @@ variants cause a clear failure; stage or move those edits before retrying. Faile
 conversion leaves the index unchanged. Other commits do not require the codecs.
 An existing custom `core.hooksPath` is preserved; chain `.githooks/pre-commit` from it.
 
-Manual conversion remains available: `./scripts/convert-images.sh` scans public
+Manual conversion remains available: `bb images` scans public
 assets, or pass explicit image paths. Current variants and favicons are skipped;
 `--force` regenerates variants. Originals remain available as fallbacks.
 
 ### Verification
 
 ```bash
-./scripts/verify-images.sh
+bb images:verify
 ```
 
 Shows conversion status and size savings for sample images.
@@ -149,7 +149,7 @@ Never delete the originals - older browsers need them.
 - Check ImageMagick AVIF support: `magick identify -list format | grep AVIF`
 
 **Need to exclude certain images?**
-Edit `scripts/convert-images.sh` and add patterns to the skip condition.
+Edit `scripts/media/images.clj` and add patterns to the skip condition.
 
 ---
 
@@ -204,10 +204,10 @@ Browsers automatically select the first format they support.
 
 ```bash
 # Convert MP4 videos to WebM formats
-./scripts/convert-videos.sh
+bb videos
 
 # Force reconvert all videos
-./scripts/convert-videos.sh --force
+bb videos --force
 ```
 
 Creates two WebM versions:

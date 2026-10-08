@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-source = Path(__file__).resolve().parents[2] / 'scripts' / 'deploy-image.py'
+source = Path(__file__).resolve().parents[2] / 'scripts/ops/host' / 'deploy-image.py'
 spec = importlib.util.spec_from_file_location('deploy_image', source)
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)

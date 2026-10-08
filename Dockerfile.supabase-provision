@@ -6,7 +6,7 @@ COPY project.clj /app/project.clj
 COPY resources /app/resources
 COPY src /app/src
 COPY test /app/test
-COPY scripts/entrypoint-supabase-provision.sh /usr/local/bin/entrypoint-supabase-provision.sh
+COPY scripts/ops/entrypoint-supabase-provision.sh /usr/local/bin/entrypoint-supabase-provision.sh
 
 RUN chmod +x /usr/local/bin/entrypoint-supabase-provision.sh && \
     lein deps

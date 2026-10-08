@@ -11,9 +11,9 @@ Start the app with `lein repl` and the normal `:app-dev` watch, then open
 `http://localhost:4000`. From the repository root:
 
 ```sh
-bash scripts/re-frame-pair.sh discover-app
-bash scripts/re-frame-pair.sh app-summary
-bash scripts/re-frame-pair.sh eval-cljs '(re-frame-pair.runtime/app-db-at [:state :blog])'
+bb pair discover-app
+bb pair app-summary
+bb pair eval-cljs '(re-frame-pair.runtime/app-db-at [:state :blog])'
 ```
 
 Always run discovery at the start of a debugging session. The wrapper selects

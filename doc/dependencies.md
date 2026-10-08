@@ -147,7 +147,7 @@ pipeline requires separate behavior testing.
 
 Follow [testing.md](testing.md), including fresh SSR fixtures and live browser
 checks. For an isolated renderer build, use
-`python3 scripts/test-blog-ssr.py --worker target/path/to/site.js`.
+`bb ssr:fixtures --worker target/path/to/site.js`.
 Do not run a competing compilation against a watched build. A running Lein REPL
 keeps its original JVM classpath, so use a separate process to validate dependency
 changes; restarting it is an explicit development-session decision.

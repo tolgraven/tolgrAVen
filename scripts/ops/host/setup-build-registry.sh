@@ -22,5 +22,5 @@ if [ -n "${REGISTRY_HTPASSWD_FILE:-}" ]; then
   registry_script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
   install -d -m 700 /data/coolify/proxy/auth
   install -m 600 "$REGISTRY_HTPASSWD_FILE" /data/coolify/proxy/auth/tolgraven-registry.htpasswd
-  install -m 600 "$registry_script_dir/../deploy/coolify/registry-proxy.yaml" /data/coolify/proxy/dynamic/tolgraven-registry.yaml
+  install -m 600 "$registry_script_dir/../../../deploy/coolify/registry-proxy.yaml" /data/coolify/proxy/dynamic/tolgraven-registry.yaml
 fi

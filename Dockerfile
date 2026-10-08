@@ -2,8 +2,11 @@
 # Self-contained fallback for production and other hosts without the S3 registry.
 # Coolify staging overrides BUILDER_IMAGE with the published prefab.
 ARG BUILDER_IMAGE=prefab
+FROM --platform=$BUILDPLATFORM babashka/babashka:1.13.225@sha256:0dd6985b8492b3bde9defbd95a7e7daf7d6fcb08102df9de4f07337f99d000a2 AS babashka
 FROM --platform=$BUILDPLATFORM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS node
 FROM --platform=$BUILDPLATFORM clojure:temurin-21-lein-bookworm-slim@sha256:12d1d3d51f3aa9b4f1c643a084b6e13180caa3b83176423ad839a3b1ac493bb2 AS prefab
+COPY --from=babashka /usr/local/bin/bb /usr/local/bin/bb
+RUN bb --version
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
@@ -61,15 +64,17 @@ RUN JAVA_TOOL_OPTIONS="${BUILD_CLJ_JAVA_OPTIONS}" \
 # This stage intentionally uses TARGETPLATFORM. The compiler runs on the Mac's
 # architecture; the persistent renderer must run on the deployment host's CPU.
 FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS ssr-node
+FROM babashka/babashka:1.13.225@sha256:0dd6985b8492b3bde9defbd95a7e7daf7d6fcb08102df9de4f07337f99d000a2 AS runtime-babashka
 FROM eclipse-temurin:21-jre-jammy@sha256:f04fb34e053148344e83317976114ec3f37e4b830ec8bdab5a2fe3cecd7d010b AS media-tools
 RUN apt-get update \
  && apt-get install -y --no-install-recommends imagemagick webp \
  && rm -rf /var/lib/apt/lists/*
-COPY --chmod=755 scripts/convert-images.sh /app/scripts/convert-images.sh
+COPY --from=runtime-babashka /usr/local/bin/bb /usr/local/bin/bb
+COPY scripts/media/images.clj /app/scripts/media/images.clj
 # Fail the image build if the runtime distro cannot encode either modern format.
 RUN mkdir /tmp/image-codec-check \
  && convert -size 16x16 xc:red /tmp/image-codec-check/image.png \
- && bash /app/scripts/convert-images.sh /tmp/image-codec-check/image.png \
+ && bb /app/scripts/media/images.clj /tmp/image-codec-check/image.png \
  && identify /tmp/image-codec-check/image.webp /tmp/image-codec-check/image.avif \
  && rm -rf /tmp/image-codec-check
 

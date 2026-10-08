@@ -16,15 +16,14 @@ class ImageHookTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="tolgraven-image-hook-test-")
         self.addCleanup(self.temp.cleanup)
         self.repo = Path(self.temp.name)
-        for name in ("scripts/convert-images.sh", "scripts/convert-staged-images.py",
-                     "scripts/install-git-hooks.sh", ".githooks/pre-commit"):
+        for name in ("scripts/media/images.clj", "scripts/media/staged.clj", ".githooks/pre-commit"):
             target = self.repo / name
-            target.parent.mkdir(exist_ok=True)
+            target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(ROOT / name, target)
         self.run_command("git", "init", "-q")
         self.run_command("git", "config", "user.email", "test@example.invalid")
         self.run_command("git", "config", "user.name", "Image hook test")
-        self.run_command("bash", "scripts/install-git-hooks.sh")
+        self.run_command("bb", "--classpath", "scripts", "-e", "(require '[media.staged :as staged]) (staged/install!)")
         self.image = self.repo / "resources/public/img/a space\nname.PNG"
         self.image.parent.mkdir(parents=True)
 
@@ -111,7 +110,7 @@ class ImageHookTest(unittest.TestCase):
     def test_excludes_icons_and_nonpublic_images(self):
         for name in ("resources/public/favicon.png", "doc/example.png"):
             target = self.repo / name
-            target.parent.mkdir(exist_ok=True)
+            target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(b"not decoded")
             self.run_command("git", "add", "--", name)
         self.run_command("git", "commit", "-qm", "No eligible images")
@@ -119,7 +118,7 @@ class ImageHookTest(unittest.TestCase):
 
     def test_does_not_replace_custom_hook_path(self):
         self.run_command("git", "config", "core.hooksPath", "custom-hooks")
-        result = self.run_command("bash", "scripts/install-git-hooks.sh", check=False)
+        result = self.run_command("bb", "--classpath", "scripts", "-e", "(require '[media.staged :as staged]) (staged/install!)", check=False)
         self.assertNotEqual(0, result.returncode)
         self.assertEqual(b"custom-hooks", self.run_command("git", "config", "core.hooksPath").stdout.strip())
 

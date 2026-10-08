@@ -46,12 +46,12 @@
     (is (m/validate image/variants-schema (image/variants! (png-bytes))))))
 
 (deftest missing-and-stalled-encoders-fail-safely
-  (with-redefs [config/env {:image-converter "/nonexistent/converter.sh"}]
+  (with-redefs [config/env {:image-converter "/nonexistent/converter.clj"}]
     (is (= 503 (:auth/status (ex-data (try (image/variants! (png-bytes))
                                          (catch Exception error error)))))))
-  (let [script (File/createTempFile "tolgraven-slow-encoder-" ".sh")]
+  (let [script (File/createTempFile "tolgraven-slow-encoder-" ".clj")]
     (try
-      (spit script "#!/bin/bash\nsleep 10\n")
+      (spit script "(Thread/sleep 10000)\n")
       (with-redefs [config/env {:image-converter (str script)}]
         (with-redefs-fn {#'image/timeout-ms 100}
           #(let [start (System/nanoTime)

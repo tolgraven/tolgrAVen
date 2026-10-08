@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 HOP = {'connection', 'transfer-encoding', 'keep-alive', 'upgrade', 'proxy-authenticate',
        'proxy-authorization', 'te', 'trailer'}
 
