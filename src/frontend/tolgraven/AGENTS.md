@@ -53,6 +53,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   layout and a reachable saved offset on consecutive measured frames. Track pending
   work through the page readiness context and wait for finite layout animations;
   controlled navigation/restoration scrolls must not trigger header hide/show feedback; do not use a guessed completion delay.
+- Idle navigation prefetch is limited to adjacent (`rel=prev/next`) and explicit
+  `data-preload=true` links. Other internal links acquire on pointer/keyboard
+  intent, through the same loader and bindings; never prefetch the whole navbar.
 - After edits check watched Shadow errors and the actual routes in the browser.
 
 - `validation/runtime.cljs` owns declaration checks, module section registration

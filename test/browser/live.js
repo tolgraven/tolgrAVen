@@ -57,13 +57,20 @@ button.onclick = async () => {
     await waitFor(() => posts().length && ready(), 'real blog content');
     check(!!doc().querySelector('#ssr-bootstrap'), 'Cold blog load includes a real server-rendered snapshot');
     check(!app().querySelector('.search-ui.search-ui-open'), 'Search starts closed');
-    // SSR markup can be visible before React attaches handlers. Exercise an
-    // ordinary UI control to establish that the application is interactive.
+    // Establish interactivity with an eager control, without warming Search.
+    // A deferred button must retain its first click while its code loads.
     await waitFor(() => {
-      if (app().querySelector('.search-ui.search-ui-open')) return true;
-      app().querySelector('button.search-ui-btn')?.click();
+      if (app().querySelector('.settings-panel.opened')) return true;
+      app().querySelector('button.settings-btn')?.click();
       return false;
-    }, 'hydrated search control');
+    }, 'hydrated settings control');
+    app().querySelector('button.settings-btn').click();
+    await waitFor(() => !app().querySelector('.settings-panel.opened'), 'settings closes');
+    app().querySelector('button.search-ui-btn').click();
+    await waitFor(() => app().querySelector('.search-ui.search-ui-open'), 'first Search click opens the lazy UI');
+    check(true, 'One Search click loads and opens the deferred UI');
+    await waitFor(() => doc().activeElement?.id === 'search-input', 'deferred search input receives focus');
+    check(true, 'Deferred search focuses its input after mounting');
     app().querySelector('button.search-ui-btn').click();
     await waitFor(() => !app().querySelector('.search-ui.search-ui-open'), 'search closes');
     // Exercise a different module before relying on the warm blog bindings.
@@ -100,11 +107,13 @@ button.onclick = async () => {
     frame.contentWindow.history.back();
     await waitFor(() => frame.contentWindow.location.pathname === target && posts().length === 1 && ready(), 'history return');
     check(true, 'Browser Back restores the post through the application');
-    const home = link('header a[href="/"]');
+    const home = [...app().querySelectorAll('header a[href]')]
+      .find(anchor => new URL(anchor.href).pathname === '/');
     await navigate(home, '/');
     await waitFor(() => ready() && doc().querySelector('#intro h1'), 'landing page content');
     check(!!doc().querySelector('footer'), 'Landing page renders real content and footer');
-    const blog = link('a[href="/blog"]');
+    const blog = [...app().querySelectorAll('a[href]')]
+      .find(anchor => new URL(anchor.href).pathname === '/blog');
     await navigate(blog, '/blog');
     await waitFor(() => posts().length && ready(), 'return to blog');
     check(!app().querySelector('.component-failed'), 'Landing → blog succeeds through regular SPA bindings');

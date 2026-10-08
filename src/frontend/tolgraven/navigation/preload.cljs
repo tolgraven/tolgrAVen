@@ -6,7 +6,6 @@
             [tolgraven.navigation.routes :as routes]
             [tolgraven.loader :as loader]
             [tolgraven.page :as page]
-            [tolgraven.modules.main.module :as main]
             [tolgraven.component.data :as data]))
 
 (defonce *queue (atom []))
@@ -42,33 +41,37 @@
 (defn enqueue! [paths]
   (let [now (.now js/Date)]
     (swap! *completed #(into {} (filter (fn [[_ at]] (< (- now at) 300000))) %))
-    (doseq [[path match] (concat
-                           (map (fn [path] [path (reitit/match-by-path routes/router path)]) (distinct paths))
-                           (map (fn [id] [[:module id] {:data {:module id :module-only? true}}])
-                                (:preload-modules main/spec)))
+    (doseq [[path match] (map (fn [path] [path (reitit/match-by-path routes/router path)])
+                            (distinct paths))
             :when (and match (not= false (get-in match [:data :preload]))
                        (not (@*active path)) (not (contains? @*completed path))
                        (not (some #(= path (first %)) @*queue)))]
       (swap! *queue conj [path match]))
     (drain!)))
 
+(defn path-for-element [element]
+  (when-not (or (.hasAttribute element "download")
+                (= "false" (.getAttribute element "data-preload"))
+                (.closest element "[data-dev-console]"))
+    (try
+      (let [url (js/URL. (or (.getAttribute element "data-preload-href")
+                            (.getAttribute element "href")) (.-href js/location))]
+        (when (and (= (.-origin url) (.-origin js/location))
+                   (not= (.-pathname url) (.-pathname js/location)))
+          (.-pathname url)))
+      (catch :default _ nil))))
+
 (defn- linked-paths []
-  ;; DOM inspection belongs to this lifecycle adapter, never to page render code.
-  ;; Buttons can declare a destination with data-preload-href too.
-  (->> (concat (array-seq (.querySelectorAll js/document "main a[rel=prev],main a[rel=next]"))
-               (array-seq (.querySelectorAll js/document "main a[href],main button[data-preload-href]"))
-               (array-seq (.querySelectorAll js/document "a[href],button[data-preload-href]")))
-       (keep (fn [element]
-               (when-not (or (.hasAttribute element "download")
-                             (= "false" (.getAttribute element "data-preload")))
-                 (try
-                   (let [url (js/URL. (or (.getAttribute element "data-preload-href")
-                                         (.getAttribute element "href")) (.-href js/location))]
-                     (when (and (= (.-origin url) (.-origin js/location))
-                                (not= (.-pathname url) (.-pathname js/location)))
-                       (.-pathname url)))
-                   (catch :default _ nil)))))
+  ;; Idle work is limited to adjacent pages and explicit caller hints. Header
+  ;; links acquire on intent, so a navbar does not download the entire site.
+  (->> (array-seq (.querySelectorAll js/document
+                    "main a[rel=prev],main a[rel=next],a[data-preload=true],button[data-preload=true]"))
+       (keep path-for-element)
        distinct vec))
+
+(defn intent! [event]
+  (when-let [element (some-> (.-target event) (.closest "a[href],button[data-preload-href]"))]
+    (when-let [path (path-for-element element)] (enqueue! [path]))))
 
 (rf/reg-event-fx :page/preload-links
   (fn [_ _] {:page/preload-links true}))
@@ -107,11 +110,15 @@
     (.observe observer (.-body js/document)
               #js {:childList true :subtree true :attributes true
                    :attributeFilter #js ["href" "data-preload-href"]})
+    (.addEventListener js/document "pointerover" intent!)
+    (.addEventListener js/document "focusin" intent!)
     (schedule!)
     (fn []
       (reset! *running? false)
       (reset! *queue [])
       (.disconnect observer)
+      (.removeEventListener js/document "pointerover" intent!)
+      (.removeEventListener js/document "focusin" intent!)
       (when @*timer (js/clearTimeout @*timer))
       (when @*idle (js/cancelIdleCallback @*idle)))))
 
