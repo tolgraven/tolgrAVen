@@ -10,7 +10,7 @@
             [tolgraven.schema.declarations :as declarations]
             [tolgraven.schema.integrations :as integrations]
             [tolgraven.schema.state :as state]
-            [tolgraven.blog.schema :as blog]
+            [tolgraven.modules.blog.schema :as blog]
             [tolgraven.dev-console.schema :as debug]
             [tolgraven.content.contract :as content]
             [tolgraven.content.schema :as cms]

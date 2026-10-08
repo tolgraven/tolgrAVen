@@ -7,9 +7,9 @@
             [reagent.dom.client :as rdom]
             [re-frame.core :as rf]
             [re-frame.db :as db]
-            [tolgraven.link-preview.module]
+            [tolgraven.modules.link-preview.module]
             [tolgraven.link-preview-fixture]
-            [tolgraven.link-preview.views :as preview]
+            [tolgraven.modules.link-preview.views :as preview]
             [tolgraven.macros :refer-macros [defc]]))
 (defn- tick [ms] (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
 (defn- render! [root form] (support/render! root form))

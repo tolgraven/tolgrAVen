@@ -7,7 +7,7 @@
     [tolgraven.component.restore :as restore]
     [tolgraven.component.motion :as motion]
     [tolgraven.page-transition :as transition]
-    [tolgraven.main.module :as main-module]
+    [tolgraven.modules.main.module :as main-module]
     [tolgraven.loader :as l]
     [tolgraven.ui :as ui]
     [tolgraven.views-common :as common]))

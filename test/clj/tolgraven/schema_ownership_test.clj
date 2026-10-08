@@ -1,11 +1,11 @@
 (ns tolgraven.schema-ownership-test
   (:require [clojure.test :refer [deftest is]]
             [malli.core :as m]
-            [tolgraven.blog.schema :as blog]
-            [tolgraven.link-preview.schema :as link-preview]
+            [tolgraven.modules.blog.schema :as blog]
+            [tolgraven.modules.link-preview.schema :as link-preview]
             [tolgraven.schema.state :as state]
-            [tolgraven.user.schema :as user]
-            [tolgraven.github.schema :as github]))
+            [tolgraven.modules.user.schema :as user]
+            [tolgraven.modules.github.schema :as github]))
 
 (deftest owned-contracts-validate-independently-and-through-assembly
   (doseq [[schema value invalid assembled]

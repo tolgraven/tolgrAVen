@@ -7,8 +7,8 @@
             [tolgraven.ssr.contract :as contract]
             [tolgraven.content.contract :as content-contract]
             [tolgraven.component]
-            [tolgraven.blog.comments :as comments]
-            [tolgraven.blog.data :as data]
+            [tolgraven.modules.blog.comments :as comments]
+            [tolgraven.modules.blog.data :as data]
             [tolgraven.supabase.scoped :as scoped]))
 
 (def *snapshot context/*snapshot)

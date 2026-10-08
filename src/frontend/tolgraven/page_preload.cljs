@@ -6,7 +6,7 @@
             [tolgraven.routes :as routes]
             [tolgraven.loader :as loader]
             [tolgraven.page :as page]
-            [tolgraven.main.module :as main]
+            [tolgraven.modules.main.module :as main]
             [tolgraven.component.data :as data]))
 
 (defonce *queue (atom []))

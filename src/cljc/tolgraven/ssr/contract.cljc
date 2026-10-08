@@ -2,7 +2,7 @@
   (:require #?(:clj [clojure.edn :as edn] :cljs [cljs.reader :as edn])
             [tolgraven.content.contract :as content]
             [tolgraven.supabase.query :as query]
-            [tolgraven.main.pages :as main-pages]
+            [tolgraven.modules.main.pages :as main-pages]
             [reitit.core :as reitit]))
 
 (def landing-paths

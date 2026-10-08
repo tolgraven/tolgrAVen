@@ -16,7 +16,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 
 
 ## Project Structure & Module Organization
-- `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code (including module-owned CLJC contracts), and shared CLJC infrastructure.
+- `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code, and shared CLJC infrastructure. Feature implementations and their portable declarations live in `src/frontend/tolgraven/modules/<module>/`.
 - `experiments/clj`: preserved JVM prototypes, compiled only with `:experiments`.
 - `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/tolgraven`.
 - `test/clj`, `test/cljs`: backend and frontend tests.
@@ -69,7 +69,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Clojure/ClojureScript: follow standard idioms (2-space indentation, align threading macros), use kebab-case for vars/functions, and keep namespaces aligned with file paths.
 - Maps: keep all entries on one line only when the whole map fits comfortably, separating entries with commas. Otherwise put each key/value entry on its own line, aligning keys; never pack several entries onto a line of a multiline map. Apply this to new and changed code while preserving comments.
 - Re-frame: do not use ns-scoped keywords, but rather simple ns based on module name.
-- CLJS: general structure (apart from top-level) is folder containing module with events.cljs, subs.cljs, views.cljs, module.cljs with spec.
+- CLJS: features live under `modules/`, with events.cljs, subs.cljs, views.cljs and module.cljs as needed. Keep their portable declarations beside the implementation.
 - SCSS: keep files modular in `resources/scss`; prefer BEM-ish class names when adding new components.
 - Avoid introducing new formatters unless the team agrees; none are enforced in-repo.
 - Always confirm that variables (symbols) that are referred to actually exist in the given namespace, do not assume anything just from implicit context.

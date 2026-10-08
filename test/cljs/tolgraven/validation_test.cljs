@@ -8,7 +8,7 @@
             [tolgraven.component :as component]
             [tolgraven.component.registry :as registry]
             [tolgraven.component.persistent-state :as state]
-            [tolgraven.blog.events]
+            [tolgraven.modules.blog.events]
             [tolgraven.schema.declarations :as schemas]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.test-support :as support]

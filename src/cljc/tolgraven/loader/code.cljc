@@ -4,7 +4,7 @@
   #?(:cljs (:require-macros [tolgraven.macros :as m])))
 
 (def modules
-  #?(:browser (merge (m/make-modules "tolgraven" [:blog
+  #?(:browser (merge (m/make-modules "tolgraven.modules" [:blog
                                                  :link-preview
                                                  :search
                                                  :user

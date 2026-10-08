@@ -7,9 +7,9 @@
             [tolgraven.component :as component]
             [tolgraven.component.data :as data]
             [tolgraven.component.loading :as loading]
-            [tolgraven.blog.module]
+            [tolgraven.modules.blog.module]
             [tolgraven.loader :as loader]
-            [tolgraven.blog.views :as blog]
+            [tolgraven.modules.blog.views :as blog]
             [tolgraven.macros :refer-macros [defc]]))
 
 (defonce *root (atom nil))

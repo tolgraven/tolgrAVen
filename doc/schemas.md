@@ -1,7 +1,7 @@
 # Shared schemas and runtime validation
 
 Module-owned Malli schemas and page declarations live as `schema.cljc` and
-`pages.cljc` beside their frontend implementation in `src/frontend/tolgraven/<module>/`.
+`pages.cljc` beside their frontend implementation in `src/frontend/tolgraven/modules/<module>/`.
 The `.cljc` files remain available to the browser, Node renderer, Ring handlers
 and JVM tests through the configured source roots. Genuinely shared platform
 contracts and schema infrastructure remain in `src/cljc`, including `schema/*`,
@@ -233,7 +233,7 @@ normal pure computations; the shared adapter owns checking and report delivery.
 ## App-db by section
 
 `tolgraven.schema.app-db/sections` contains the initial shared sections; blog owns
-its definitions in `tolgraven.blog.schema`. The composition covers CMS sections, normalized public records and managed query caches,
+its definitions in `tolgraven.modules.blog.schema`. The composition covers CMS sections, normalized public records and managed query caches,
 blog pagination/thread state, navigation/forms/options, provider caches, loader
 readiness, validation reports and inspector records. Persistent roots gain their
 domain contracts from module sections or component `:state {:schema ...}`.

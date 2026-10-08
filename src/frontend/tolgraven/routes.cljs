@@ -11,9 +11,9 @@
     [reitit.frontend.history :as rfh]
     [reitit.frontend.easy :as rfe]
     [reitit.dev.pretty :as rpretty]
-    [tolgraven.blog.pages :as blog]
-    [tolgraven.cv.pages :as cv]
-    [tolgraven.docs.pages :as docs]
+    [tolgraven.modules.blog.pages :as blog]
+    [tolgraven.modules.cv.pages :as cv]
+    [tolgraven.modules.docs.pages :as docs]
     [tolgraven.loader :as l]
     [tolgraven.component.data :as data]
     [tolgraven.content.contract :as content]
@@ -21,7 +21,7 @@
     [tolgraven.ssr.shell :as shell]
     [tolgraven.component.restore :as restore]
     [tolgraven.ui :as ui]
-    [tolgraven.main.pages :as home]
+    [tolgraven.modules.main.pages :as home]
     [tolgraven.views.auto :as auto]
     [tolgraven.views.not-found :as a404]))
 

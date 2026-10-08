@@ -1,7 +1,7 @@
 (ns tolgraven.core-test
   (:require [cljs.test :refer-macros [is are deftest testing]]
             [tolgraven.components.iframe :as iframe]
-            [tolgraven.link-preview.util :as link-preview]
+            [tolgraven.modules.link-preview.util :as link-preview]
             [tolgraven.routes :as routes]))
 
 (deftest external-http-url-test

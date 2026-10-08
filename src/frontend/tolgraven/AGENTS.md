@@ -3,7 +3,8 @@
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/blog-ssr.md`, and `doc/dev-console.md`.
 
-- Collocate module-owned `schema.cljc` and `pages.cljc` with the module here.
+- Feature modules live under `modules/<module>/`; collocate their portable
+  `schema.cljc`, query declarations and `pages.cljc` with the implementation.
   These portable declarations are consumed by JVM tooling and routers too; keep
   browser-only implementation dependencies out of them. Shared platform contracts
   and schema infrastructure remain in `src/cljc`.

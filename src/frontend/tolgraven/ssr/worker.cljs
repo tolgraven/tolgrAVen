@@ -10,14 +10,14 @@
     [tolgraven.routes :as routes]
     [tolgraven.views.page :as page]
     [tolgraven.views.auto :as auto]
-    [tolgraven.blog.module :as blog]
-    [tolgraven.cv.module :as cv]
-    [tolgraven.docs.module :as docs]
+    [tolgraven.modules.blog.module :as blog]
+    [tolgraven.modules.cv.module :as cv]
+    [tolgraven.modules.docs.module :as docs]
     [tolgraven.ssr.contract :as contract]
     [tolgraven.ssr.shell :as shell]
     [tolgraven.ssr.render :as render]
-    [tolgraven.user.module :as user]
-    [tolgraven.link-preview.module :as link-preview]
+    [tolgraven.modules.user.module :as user]
+    [tolgraven.modules.link-preview.module :as link-preview]
     [tolgraven.subs]))
 
 (def modules {:cv cv/spec :docs docs/spec :blog blog/spec :user user/spec :link-preview link-preview/spec})

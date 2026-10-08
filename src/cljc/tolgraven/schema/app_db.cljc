@@ -9,7 +9,7 @@
             [tolgraven.schema.integrations :as integrations]
             [tolgraven.content.schema :as content]
             [tolgraven.supabase.schema :as store]
-            [tolgraven.blog.schema :as blog]
+            [tolgraven.modules.blog.schema :as blog]
             [tolgraven.validation :as validation]))
 
 (def sections

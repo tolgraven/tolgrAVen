@@ -6,10 +6,10 @@
             [tolgraven.schema.app-db :as app-db]
             [tolgraven.schema.http :as http]
             [tolgraven.page-router :as pages]
-            [tolgraven.main.pages :as main]
-            [tolgraven.blog.pages :as blog]
-            [tolgraven.docs.pages :as docs]
-            [tolgraven.cv.pages :as cv]))
+            [tolgraven.modules.main.pages :as main]
+            [tolgraven.modules.blog.pages :as blog]
+            [tolgraven.modules.docs.pages :as docs]
+            [tolgraven.modules.cv.pages :as cv]))
 
 (deftest shared-declarations-cover-real-route-trees
   (doseq [spec [main/spec blog/spec docs/spec cv/spec]]
