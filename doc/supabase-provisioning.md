@@ -179,7 +179,7 @@ verifies the bearer session with Auth and derives its actor on the server:
 | `POST/PUT /api/supabase/comments` | Transactional comment/reply creation and owned edits. |
 | `POST /api/supabase/votes` | Atomic vote deltas and karma, preserving imported baselines. |
 | `POST /api/supabase/documents` | Owner-only GPT documents/threads; protected configuration is rejected. |
-| `POST /api/supabase/avatar` | Validate/re-encode an image and upload an owned PNG to Supabase Storage. |
+| `POST /api/supabase/avatar` | Validate/re-encode an image, convert WebP/AVIF, and publish all three owned objects to Supabase Storage. |
 | `GET /api/integrations/search` | Native Supabase full-text/prefix search of public posts and comments. |
 
 The `user_documents` table is private, RLS-enabled, and published to Realtime.
@@ -187,6 +187,24 @@ Only explicitly owned legacy threads are copied from the archive. The new public
 `avatars` bucket permits public image reads; browser writes remain denied, and
 only the verified server upload endpoint chooses filenames. The endpoint accepts
 images up to 5 MB and 4096 pixels per dimension.
+
+Reapply `operations.sql` when upgrading an existing installation: the avatar
+bucket must allow `image/png`, `image/webp`, and `image/avif`. Browser writes remain
+denied. Converted objects use `avatars/<verified-profile-id>/<sha256>.{png,webp,avif}`;
+the profile points to the PNG and the shared picture component selects modern
+variants, with direct PNG fallback on decoding failure. The profile is updated
+only after all three uploads succeed. Older avatars remain readable.
+
+Conversion uses the same `scripts/convert-images.sh` as bundled assets, with two
+concurrent jobs, a 45-second job timeout and ImageMagick resource limits. Install
+`webp` and ImageMagick with AVIF support for local server uploads. The runtime
+Docker stage installs and smoke-tests these codecs. `:image-converter` optionally
+sets the server script path; production uses `/app/scripts/convert-images.sh`.
+Temporary encoding files are removed after each request. Supabase's Storage/MinIO
+backend must retain its persistent mount (MinIO `/data` in Coolify); no uploaded
+media belongs in the web image or `resources/public`. Back up both Storage's
+Postgres metadata and mounted object files. Versioned objects remain available
+for cached pages; deleting superseded objects requires a separate retention policy.
 
 Integration tokens are read from private `service_configs` on the server. Strava
 refreshes tokens there; Intervals and Instagram are proxied. Imported Instagram

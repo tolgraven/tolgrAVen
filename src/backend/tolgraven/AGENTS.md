@@ -17,6 +17,9 @@ Keep this guide current. See `doc/blog-ssr.md`, `doc/strapi-content.md`, and
   Authentication/authorization and input protection remain active in production.
 - Secrets remain in server adapters/configuration. Runtime public settings must
   expose only public origins/keys and allowed options.
+- Avatar uploads normalize/validate PNG before bounded `media/image` conversion.
+  Publish versioned PNG/WebP/AVIF to Supabase Storage before updating the profile;
+  its mounted object backend owns persistence, never the web container filesystem.
 - Do not stop a user's REPL or rebuild a watched Shadow target with another process.
 
 - Reitit uses shared Malli parameter schemas. Internal/response validation follows

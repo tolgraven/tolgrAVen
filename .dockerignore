@@ -40,6 +40,8 @@ doc
 .codex
 scripts/*
 !scripts/sync-vendor.mjs
+!scripts/convert-images.sh
+.githooks
 test
 resources/docs/codox
 

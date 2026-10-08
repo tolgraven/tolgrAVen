@@ -1,11 +1,14 @@
 """Exercise real codecs and a real Git index in disposable repositories."""
 from pathlib import Path
+import os
 import shutil
 import subprocess
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
+MAGICK = shutil.which("magick") or "convert"
+IDENTIFY = [MAGICK, "identify"] if Path(MAGICK).name == "magick" else ["identify"]
 
 
 class ImageHookTest(unittest.TestCase):
@@ -29,7 +32,7 @@ class ImageHookTest(unittest.TestCase):
         return subprocess.run(args, cwd=self.repo, check=check, capture_output=True)
 
     def create_image(self, color="red"):
-        self.run_command("magick", "-size", "16x16", f"xc:{color}", str(self.image))
+        self.run_command(MAGICK, "-size", "16x16", f"xc:{color}", str(self.image))
 
     def stage_image(self):
         self.run_command("git", "add", "--", str(self.image))
@@ -48,9 +51,9 @@ class ImageHookTest(unittest.TestCase):
             variant = self.image.with_suffix(extension)
             self.assertEqual(variant.read_bytes(), self.run_command(
                 "git", "show", f"HEAD:{Path(relative).with_suffix(extension)}").stdout)
-            pixel = self.run_command("magick", str(variant), "-format", "%[fx:r>b]", "info:").stdout
+            pixel = self.run_command(MAGICK, str(variant), "-format", "%[fx:r>b]", "info:").stdout
             self.assertEqual(b"1", pixel)
-            self.assertEqual(b"16 16", self.run_command("magick", "identify", "-format", "%w %h", str(variant)).stdout)
+            self.assertEqual(b"16 16", self.run_command(*IDENTIFY, "-format", "%w %h", str(variant)).stdout)
 
     def test_failure_preserves_index_and_does_not_publish_partial_variants(self):
         self.image.write_bytes(b"invalid image")
@@ -61,6 +64,34 @@ class ImageHookTest(unittest.TestCase):
         self.assertEqual(before, self.run_command("git", "write-tree").stdout)
         self.assertFalse(self.image.with_suffix(".webp").exists())
         self.assertFalse(self.image.with_suffix(".avif").exists())
+
+    def test_avif_failure_does_not_stage_successful_webp(self):
+        self.create_image()
+        self.stage_image()
+        before = self.run_command("git", "write-tree").stdout
+        tools = self.repo / "failing-tools"
+        tools.mkdir()
+        encoder = tools / "magick"
+        encoder.write_text("#!/bin/sh\nexit 1\n")
+        encoder.chmod(0o755)
+        result = subprocess.run([".githooks/pre-commit"], cwd=self.repo,
+                                env={**os.environ, "PATH": str(tools) + os.pathsep + os.environ["PATH"]},
+                                capture_output=True)
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual(before, self.run_command("git", "write-tree").stdout)
+        self.assertFalse(self.image.with_suffix(".webp").exists())
+
+    def test_ambiguous_original_names_leave_index_unchanged(self):
+        self.create_image()
+        other = self.image.with_suffix(".jpg")
+        self.run_command(MAGICK, str(self.image), str(other))
+        self.stage_image()
+        self.run_command("git", "add", "--", str(other))
+        before = self.run_command("git", "write-tree").stdout
+        result = self.run_command(".githooks/pre-commit", check=False)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn(b"Multiple staged originals", result.stderr)
+        self.assertEqual(before, self.run_command("git", "write-tree").stdout)
 
     def test_preserves_unstaged_generated_edits(self):
         self.create_image()
@@ -102,7 +133,7 @@ class ImageHookTest(unittest.TestCase):
         for extension in (".webp", ".avif"):
             variant = self.image.with_suffix(extension)
             self.assertEqual(b"1", self.run_command(
-                "magick", str(variant), "-format", "%[fx:b>r]", "info:").stdout)
+                MAGICK, str(variant), "-format", "%[fx:b>r]", "info:").stdout)
         self.assertEqual(b"", self.run_command("git", "status", "--porcelain", "--", "resources").stdout)
 
 

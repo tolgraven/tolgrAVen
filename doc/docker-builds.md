@@ -89,6 +89,13 @@ and the namespace filter matches `tolgraven.*` names rather than file extensions
 The prefab still supplies most dependencies, so ordinary builds gain primarily
 from overlapping compilation rather than downloading dependencies.
 
+The independent `media-tools` runtime stage installs ImageMagick and `cwebp`, then
+encodes and decodes a tiny WebP/AVIF fixture during the image build. Check only
+these runtime codecs with `docker build --target media-tools .`; this does not
+compile the application or refresh the prefab. Uploads use the copied
+`/app/scripts/convert-images.sh`. Persistent image objects live in Supabase's
+mounted Storage backend; see [upload storage](supabase-provisioning.md).
+
 The Shadow JVM defaults to a 1536 MB heap (`BUILD_JAVA_OPTIONS`), while the
 concurrent backend JVM defaults to 768 MB (`BUILD_CLJ_JAVA_OPTIONS`) and Codox to
 512 MB (`BUILD_DOCS_JAVA_OPTIONS`). These are

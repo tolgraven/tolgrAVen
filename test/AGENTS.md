@@ -22,3 +22,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   in the test driver so the ordinary page-root fallback can be checked too.
 - Live write tests need disposable records and verified cleanup. Prefer read-only
   browser review for ordinary presentation changes.
+- Image upload tests exercise real codecs, timeout/cleanup and Storage publication
+  ordering. Browser avatar fixtures test modern-source failure and direct PNG retry;
+  they do not establish live Storage behavior. Hook tests use disposable Git indices:
+  `python3 -m unittest discover -s test/scripts -p image_hook_test.py`.

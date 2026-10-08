@@ -235,8 +235,9 @@ grant execute on function public.tolgraven_save_post(text,bigint,text,text,text)
 do $$ begin
   if to_regclass('storage.buckets') is not null then
     insert into storage.buckets (id,name,public,file_size_limit,allowed_mime_types)
-      values ('avatars','avatars',true,20971520,array['image/png'])
-      on conflict (id) do nothing;
+      values ('avatars','avatars',true,20971520,array['image/png','image/webp','image/avif'])
+      on conflict (id) do update
+        set allowed_mime_types = excluded.allowed_mime_types;
   end if;
 end $$;
 

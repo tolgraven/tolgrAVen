@@ -195,7 +195,10 @@
           (let [element (.createElement js/document "div")
                 stylesheet (.createElement js/document "link")
                 before @rfdb/app-db
-                fallback "/img/tolgrav-square.png"]
+                fallback "/img/tolgrav-square.png"
+                converted-stem (str "/storage/v1/object/public/avatars/test/"
+                                    (apply str (repeat 64 "0")))
+                converted-avatar (str (.-origin js/location) converted-stem ".png")]
             (.appendChild (.-body js/document) element)
             (try
               (swap! rfdb/app-db assoc-in [:content :common :user-avatar-fallback] fallback)
@@ -209,7 +212,8 @@
               (doseq [[avatar selected expected]
                       [["/missing-avatar.svg" "/missing-avatar.svg" fallback]
                        ["/missing-avatar.png" "/missing-avatar.png" fallback]
-                       ["/img/tolgrav.png" "/img/tolgrav.avif" "/img/tolgrav.png"]]]
+                       ["/img/tolgrav.png" "/img/tolgrav.avif" "/img/tolgrav.png"]
+                       [converted-avatar (str converted-stem ".avif") converted-avatar]]]
                 (let [form [user/<user-avatar>
                             {:name "A very long author name that must never widen the avatar"
                              :avatar avatar} "blog-user-avatar"]]

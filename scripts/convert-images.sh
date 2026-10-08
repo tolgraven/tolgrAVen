@@ -37,8 +37,13 @@ convert_image() {
             if ! cwebp -quiet -q 85 -m 6 "$img" -o "$tmp"; then
                 rm -f "$tmp"; return 1
             fi
-        elif ! magick "$img" -quality 80 "avif:$tmp"; then
-            rm -f "$tmp"; return 1
+        else
+            # Ubuntu's packaged ImageMagick 6 uses `convert`; macOS uses `magick`.
+            local imagemagick=magick
+            command -v magick >/dev/null 2>&1 || imagemagick=convert
+            if ! "$imagemagick" "$img" -quality 80 "avif:$tmp"; then
+                rm -f "$tmp"; return 1
+            fi
         fi
         chmod 644 "$tmp"
         mv -f "$tmp" "$target"

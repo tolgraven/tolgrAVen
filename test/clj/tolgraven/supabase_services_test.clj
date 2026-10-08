@@ -7,6 +7,7 @@
             [tolgraven.supabase.auth :as auth]
             [tolgraven.supabase.api :as api]
             [tolgraven.supabase.storage :as storage]
+            [tolgraven.media.image :as image]
             [tolgraven.supabase.integrations :as integrations])
   (:import [javax.imageio ImageIO]
            [java.awt.image BufferedImage]
@@ -66,24 +67,56 @@
 
 (deftest avatar-filenames-and-ownership-come-from-auth
   (let [file (File/createTempFile "tolgraven-avatar-test-" ".png")
-        request (atom nil) profile (atom nil)]
+        requests (atom []) profile (atom nil)]
     (try
       (ImageIO/write (BufferedImage. 2 2 BufferedImage/TYPE_INT_ARGB) "png" file)
       (with-redefs [platform/rest-base-url (constantly "https://example.invalid/")
                     platform/service-key (constantly "server-key")
                     auth/ensure-profile! (fn [user] (is (= "account" (:id user))) "verified-owner")
                     auth/save-profile! (fn [user data] (reset! profile [user data]) data)
-                    http/post (fn [url opts] (reset! request [url opts]) {:status 200})]
+                    http/post (fn [url opts]
+                                (is (nil? @profile) "Publish all formats before changing the profile")
+                                (swap! requests conj [url opts])
+                                {:status 200})]
         (storage/save-avatar! {:id "account"} {:tempfile file :size (.length file) :filename "victim.png"})
-        (is (= "https://example.invalid/storage/v1/object/avatars/verified-owner.png" (first @request)))
-        (is (= "true" (get-in @request [1 :headers "x-upsert"])))
-        (is (= "Bearer server-key" (get-in @request [1 :headers "Authorization"])))
-        (is (.startsWith (get-in @profile [1 :avatar]) "https://example.invalid/storage/v1/object/public/avatars/verified-owner.png?v="))
+        (is (= 3 (count @requests)))
+        (is (= ["image/png" "image/webp" "image/avif"]
+               (mapv #(get-in % [1 :content-type]) @requests)))
+        (doseq [[url opts] @requests]
+          (is (re-matches #"https://example.invalid/storage/v1/object/avatars/verified-owner/[a-f0-9]{64}\.(png|webp|avif)" url))
+          (is (= "true" (get-in opts [:headers "x-upsert"])))
+          (is (= "Bearer server-key" (get-in opts [:headers "Authorization"])))
+          (is (pos? (alength ^bytes (:body opts)))))
+        (is (re-matches #"https://example.invalid/storage/v1/object/public/avatars/verified-owner/[a-f0-9]{64}\.png"
+                        (get-in @profile [1 :avatar])))
         (is (not (.contains (pr-str @profile) "server-key"))))
       (doseq [upload [{:tempfile file :size 5242881} {:size 0}]]
         (is (= 400 (:auth/status (ex-data (try (storage/png-bytes! upload) (catch Exception e e)))))))
       (spit file "Not an image")
       (is (= 400 (:auth/status (ex-data (try (storage/png-bytes! {:tempfile file :size (.length file)}) (catch Exception e e))))))
+      (finally (.delete file)))))
+
+(deftest failed-avatar-uploads-preserve-the-current-profile
+  (let [file (File/createTempFile "tolgraven-avatar-failure-" ".png")]
+    (try
+      (ImageIO/write (BufferedImage. 2 2 BufferedImage/TYPE_INT_ARGB) "png" file)
+      (doseq [fail-at [1 2 3]]
+        (let [*requests (atom 0)]
+          (with-redefs [platform/rest-base-url (constantly "https://example.invalid")
+                        platform/service-key (constantly "server-key")
+                        auth/ensure-profile! (constantly "owner")
+                        auth/save-profile! (fn [& _] (throw (AssertionError. "Changed profile after failed upload")))
+                        http/post (fn [& _] {:status (if (= fail-at (swap! *requests inc)) 503 200)})]
+            (is (= 503 (:auth/status (ex-data
+                                      (try (storage/save-avatar! {:id "owner"} {:tempfile file :size (.length file)})
+                                           (catch Exception error error))))))
+            (is (= fail-at @*requests)))))
+      (with-redefs [image/variants! (fn [_] (throw (ex-info "Conversion failed" {:auth/status 503})))
+                    http/post (fn [& _] (throw (AssertionError. "Uploaded after failed encoding")))
+                    auth/save-profile! (fn [& _] (throw (AssertionError. "Changed profile after failed encoding")))]
+        (is (= 503 (:auth/status (ex-data
+                                  (try (storage/save-avatar! {:id "owner"} {:tempfile file :size (.length file)})
+                                       (catch Exception error error)))))))
       (finally (.delete file)))))
 
 (deftest server-configuration-supports-local-key-and-environment-precedence
