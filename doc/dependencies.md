@@ -31,11 +31,19 @@ ClojureScript changes.
   browser SDK independently of the lockfile.
 - The Maven repository uses ordinary HTTPS for reads. `s3-wagon-private` remains
   available through `:s3-publish` for publishing patched forks to S3 without
-  loading its AWS tooling into every build. The unused shell plugin is removed.
+  loading its AWS tooling into every build. The project does not need
+  `lein-shell`; the personal `deploy-private` alias still uses it.
 - CSS tools are local development dependencies. `npm run init` installs from the
   lockfile; it does not install global tools.
 
 ## Optional and retained libraries
+
+The development CIDER Lein plugin injects its middleware automatically. The
+REPL handler explicitly lists Piggieback and Shadow to satisfy their middleware
+ordering dependencies. CIDER 0.57.0 also constructs its own handler when its
+namespace loads, and Shadow starts a separate nREPL server from `user/start`;
+both can still emit missing-Piggieback warnings with nREPL 1.8.0. That version
+automatically adds the missing middleware after warning.
 
 Default development starts the custom console and keeps re-frame tracing
 available to re-frame-pair. 10x and re-frisk are opt-in with `:legacy-debug`;
@@ -59,6 +67,27 @@ Lein profile; keep credentials outside source control. The application's existin
 HTTPS repository continues to resolve artifacts without the wagon. A profile in
 this project is not automatically inherited by another fork's project: copy the
 small `:s3-publish` declaration there, or keep it in your private Lein profiles.
+
+The workstation's AWS CLI publishing alternative is recorded in
+[lein-profiles.clj](lein-profiles.clj), matching `~/.lein/profiles.clj`. It keeps
+`lein-pprint`, `lein-ancient` and `lein-shell`, without Portal. This is a personal
+profile example; it is not automatically loaded by this project.
+
+Run `lein deploy-private` from the patched library's checkout. The alias downloads
+the existing `s3://tolgraven/m2/releases/` repository into `.deploy-m2`, then runs
+`clean` and `deploy private-local` as direct Lein tasks. Seeding the staging
+repository preserves previous versions in Maven metadata. It uploads with the
+AWS CLI's `hetzner` profile and public-read ACL, then trashes staging only after
+success. Any failed step stops the sequence and leaves staging available for
+inspection. Neither sync uses `--delete`; serialize publishing to avoid
+concurrent metadata updates.
+
+`private-local` belongs in `:deploy-repositories`: it is a file repository used
+only for staging uploads, not dependency resolution. This route needs
+`lein-shell`, AWS CLI and macOS `trash`, but does not need `s3-wagon-private`.
+AWS credentials stay outside the Lein profile. The HTTPS read URL matches the
+bucket and prefix used by the upload. A read or dry-run check cannot establish
+current remote write/ACL permissions; verify those on the next real publish.
 
 The old localStorage library has been replaced by
 `tolgraven.component.legacy-storage`. It preserves the existing Transit-encoded

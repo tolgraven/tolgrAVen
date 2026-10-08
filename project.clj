@@ -122,8 +122,8 @@
                                  :init-ns user
                                  :port 7000
                                  :init (start)
-                                 :nrepl-middleware [shadow.cljs.devtools.server.nrepl/middleware
-                                                    #_cider.nrepl/cider-middleware]
+                                 :nrepl-middleware [cider.piggieback/wrap-cljs-repl
+                                                    shadow.cljs.devtools.server.nrepl/middleware]
                                  :timeout 30000}
                   }
    :project/test {:dependencies [[ring/ring-mock "0.6.2"]]
