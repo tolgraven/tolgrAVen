@@ -34,8 +34,23 @@ const ready = () => {
     .some(element => !element.closest('.github-loading'));
 };
 const link = selector => app().querySelector(selector);
+const settled = async () => {
+  let previous;
+  await waitFor(() => {
+    const page = doc();
+    const pending = page.getAnimations().some(animation =>
+      (animation.playState === 'running' || animation.pending) &&
+      Number.isFinite(animation.effect?.getComputedTiming().endTime));
+    const main = app()?.querySelector('main')?.getBoundingClientRect();
+    const geometry = [frame.contentWindow.scrollY, main?.top, main?.height].join(':');
+    const stable = !pending && geometry === previous;
+    previous = pending ? undefined : geometry;
+    return stable;
+  }, 'page motion and scrolling settle');
+};
 const navigate = async (anchor, path) => {
   if (!anchor) throw new Error(`Missing navigation link: ${path}`);
+  await settled();
   const documentBefore = doc();
   anchor.click();
   await waitFor(() => frame.contentWindow.location.pathname === path, `immediate SPA route ${path}`, 1000);
@@ -79,6 +94,8 @@ button.onclick = async () => {
     check(true, 'Deferred search focuses its input after mounting');
     app().querySelector('button.search-ui-btn').click();
     await waitFor(() => !app().querySelector('.search-ui.search-ui-open'), 'search closes');
+    await waitFor(() => doc().activeElement?.id !== 'search-input', 'closed Search releases focus');
+    check(true, 'Closed Search releases its hidden input focus');
     // Exercise a different module before relying on the warm blog bindings.
     // The proxy can add transport latency to verify its cold shell too.
     await navigate(link('#menu-link-cv'), '/cv');
