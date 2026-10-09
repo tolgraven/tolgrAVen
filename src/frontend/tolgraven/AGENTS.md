@@ -59,7 +59,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Local-return rendering uses the lazy `:page-render` bundle;
   the installer remains eager to restore state before the first commit.
 - Pretty data and expanded error details live in `:data-inspector`; keep pprint
-  out of initial browser code. Shared numeric display uses native fixed decimal
+  out of initial browser code. Rendered Markdown uses Marked in its module; keep
+  unused Markdown-clj imports out of the shell. Shared numeric display uses native fixed decimal
   formatting. Landing story/float helpers belong to `:home`, with lazy compatibility
   exports in shared UI. Preserve prototype implementations when moving ownership.
 - The local return adapter renders an isolated state snapshot using the shared

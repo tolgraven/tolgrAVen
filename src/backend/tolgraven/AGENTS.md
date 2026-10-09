@@ -57,7 +57,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - `build/audit.clj` uses isolated output and source maps to produce the optimized
   per-source report alongside chunk sizes; keep the normal compatibility hooks
   and optional-main boundary checks when changing this workflow. Browser audits
-  also reject server Malli API-documentation/serialization dependencies in main.
+  also reject Markdown-clj and server Malli API-documentation/serialization
+  dependencies in main.
   Release browser, renderer and return-worker graphs reject 10x/re-frisk/legacy
   inspectors through `build/policy.clj`; stale analysis cache files are not graph membership.
 

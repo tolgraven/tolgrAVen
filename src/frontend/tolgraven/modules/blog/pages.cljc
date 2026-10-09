@@ -14,11 +14,11 @@
   {:blog [{:start (fn [_]
                     (rf/dispatch [:blog/nav-page 1])
                     ;; Preserve the existing blog framing on enter/leave.
-                    (rf/dispatch [:->css-var! "line-width" "1px"])
-                    (rf/dispatch [:->css-var! "line-width-vert" "1px"]))
+                    (rf/dispatch [:->css-var! "line-width" "0.0625rem"])
+                    (rf/dispatch [:->css-var! "line-width-vert" "0.0625rem"]))
            :stop (fn []
-                   (rf/dispatch [:->css-var! "line-width" "2px"])
-                   (rf/dispatch [:->css-var! "line-width-vert" "2px"]))}]
+                   (rf/dispatch [:->css-var! "line-width" "0.125rem"])
+                   (rf/dispatch [:->css-var! "line-width-vert" "0.125rem"]))}]
    :blog-page [{:parameters {:path [:nr]}
                 :start (fn [{:keys [path]}] (rf/dispatch [:blog/nav-action (:nr path)]))}]
    :blog-post [{:parameters {:path [:permalink]}
