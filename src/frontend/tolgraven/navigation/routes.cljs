@@ -10,7 +10,7 @@
     [reitit.frontend :as reitit]
     [reitit.frontend.history :as rfh]
     [reitit.frontend.easy :as rfe]
-    [reitit.dev.pretty :as rpretty]
+    [tolgraven.diagnostics.routes :as diagnostics]
     [tolgraven.modules.blog.pages :as blog]
     [tolgraven.modules.cv.pages :as cv]
     [tolgraven.modules.docs.pages :as docs]
@@ -87,7 +87,7 @@
                                    (rf/dispatch [:diag/new :error "Twitter auth"
                                                  "Error authenticating"])))}]}]]
                    ["/not-found" {:name :not-found :view #'a404/<not-found-page>}]]))
-    {:exception rpretty/exception :validate validation-runtime/validate-routes!}))
+    (merge diagnostics/options {:validate validation-runtime/validate-routes!})))
 
 ;; A late module response must never navigate back over a newer URL.
 (defonce *navigation (atom 0))

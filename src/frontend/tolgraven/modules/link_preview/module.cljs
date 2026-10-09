@@ -1,4 +1,5 @@
 (ns tolgraven.modules.link-preview.module
+  {:bundle/depends-on #{:main :markdown}}
   (:require
     [tolgraven.content.contract :as content-contract]
     [tolgraven.modules.link-preview.events]

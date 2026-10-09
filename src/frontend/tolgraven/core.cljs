@@ -1,14 +1,11 @@
 (ns tolgraven.core
   (:require
-    [goog.events]
     [tolgraven.react :as rf]
     [tolgraven.validation.runtime :as validation]
-    [tolgraven.dev-console.views :as dev-console]
+    [tolgraven.diagnostics.host :as dev-console]
     [tolgraven.render-context :as context]
     [tolgraven.component.data :as component-data]
-    [tolgraven.component :as component]
     [tolgraven.component.storage :as storage]
-    [tolgraven.modules.blog.cache :as blog-cache]
     [tolgraven.modules.main.module :as main-module]
     [reagent.core :as r]
     [reagent.dom.client :as rdomc]
@@ -16,7 +13,6 @@
     [tolgraven.content.client :as content]
     [tolgraven.ssr.client :as ssr]
     [tolgraven.ssr.local :as local-page]
-    [tolgraven.components.oembed :as oembed]
     [tolgraven.components.init :as init-view]
     [tolgraven.component.restore :as restore]
     [tolgraven.component.motion :as motion]
@@ -28,9 +24,7 @@
     [tolgraven.navigation.routes :as routes]
     [tolgraven.navigation.preload :as page-preload]
     [tolgraven.subs]
-    [tolgraven.components.ui :as ui]
     [tolgraven.util :as util]
-    [tolgraven.components.shell :as common]
     [tolgraven.components.page :as page-view]))
 
 (def spec main-module/spec)
@@ -139,7 +133,7 @@
                            (let [local-snapshot (local-page/install!)]
                              (if local-snapshot
                                (local-page/prepare! local-snapshot)
-                               (do (ssr/install!) (blog-cache/restore!))))))
+                               (do (ssr/install!) (storage/restore-public-cache!))))))
                   (.then (fn [_]
                            (rf/dispatch-sync [:ls/get-path [:scroll-position] [:state :scroll-position]])
                            ;; A history return using persisted content needs layout-

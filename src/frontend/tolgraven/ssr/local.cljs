@@ -8,14 +8,11 @@
             [tolgraven.react :as rf]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.loader :as loader]
-            [tolgraven.db :as db]
             [tolgraven.render-context :as context]
             [tolgraven.component.restore :as restore]
             [tolgraven.component.storage :as storage]
             [tolgraven.ssr.contract :as ssr-contract]
-            [tolgraven.ssr.return-contract :as contract]
-            [tolgraven.ssr.render :as render]
-            [tolgraven.components.page :as page]))
+            [tolgraven.ssr.return-contract :as contract]))
 
 (defonce *connection (atom nil))
 (defonce *pending (atom nil))
@@ -82,41 +79,36 @@
   (into {} (keep (fn [[id loadable]]
                   (when (loader/ready? id) [id @loadable]))) loader/modules))
 
-(defn pair! [db {:keys [template build]}]
-  (let [url (str (.-origin js/location) (.-pathname js/location) (.-search js/location))
-        state (contract/state-for db)
-        encoded (pr-str state)
-        ;; Reject non-EDN values rather than hydrating with silently missing data.
-        _ (when (or (> (contract/byte-count encoded) contract/max-bytes) (not= state (reader/read-string encoded)))
-            (throw (js/Error. "Page state cannot be cached")))
-        snapshot {:version contract/version :url url :build build :saved-at (.now js/Date)
-                  :owner @storage/*identity
-                  :state-edn encoded :modules (vec (keys (modules)))
-                  :document-title (.-title js/document)}
-        render-db (-> (ssr-contract/merge-state db/data state)
-                      (assoc :common/route (:common/route db) :loader (:loader db)
-                             :routes (:routes db) :page/commit nil))
-        html (render/html! render-db [page/<page>]
-                          {:modules (modules) :restored? true :interactive? true
-                           :snapshot @context/*snapshot})
-        document (contract/document template html (js/JSON.stringify (clj->js snapshot)) (.-title js/document))]
-    (when (> (contract/byte-count document) contract/max-bytes) (throw (js/Error. "Page document exceeds cache budget")))
-    {:op "save" :url url :build build :html document :state state}))
+(defn pair! [db config]
+  (-> (loader/acquire-code! :page-render)
+      (.then (fn [spec] ((:pair! spec) db config)))))
+
+(defonce *save-generation (atom 0))
+
+(defn- publish! [db arm? current? worker config spec]
+  (when (current?)
+    (let [pair ((:pair! spec) db config)]
+      (-> (message! worker (assoc (dissoc pair :state) :arm arm?))
+          (.then (fn [_]
+                   (when (current?)
+                     (rf/dispatch [:page-return/status {:status :ready :url (:url pair)}]))))))))
 
 (defn save! [db arm?]
-  ;; Rendering and transport belong to this effect, never to a subscription.
-  (-> (connect!)
-      (.then (fn [{:keys [worker] :as config}]
-               (when worker
-                 (let [pair (pair! db config)]
-                   (-> (message! worker (assoc (dissoc pair :state) :arm arm?))
-                       (.then (fn [_]
-                                (rf/dispatch [:page-return/status {:status :ready :url (:url pair)}]))))))))
-      ;; Persistence is an optional enhancement. Existing state restoration and
-      ;; normal network navigation remain available when storage is denied.
-      (.catch (fn [error]
-                (when arm? (clear!))
-                (rf/dispatch [:page-return/status {:status :unavailable :message (str error)}])))))
+  ;; Loading the renderer is asynchronous. Discard a save overtaken by another
+  ;; save or a route change, rather than pairing old state with a new URL.
+  (let [generation (swap! *save-generation inc)
+        url (.-href js/location)
+        current? #(and (= generation @*save-generation) (= url (.-href js/location)))]
+    (-> (connect!)
+        (.then (fn [{:keys [worker] :as config}]
+                 (when (and worker (current?))
+                   (-> (loader/acquire-code! :page-render)
+                       (.then #(publish! db arm? current? worker config %))))))
+        ;; Optional persistence retains normal navigation when unavailable.
+        (.catch (fn [error]
+                  (when (current?)
+                    (when arm? (clear!))
+                    (rf/dispatch [:page-return/status {:status :unavailable :message (str error)}])))))))
 
 (rf/reg-event-fx :page-return/save
   (fn [{:keys [db]} [_ arm?]] {:page-return/save {:db db :arm? arm?}}))

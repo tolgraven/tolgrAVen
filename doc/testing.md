@@ -146,3 +146,46 @@ BFCache pageshow do not independently force a scroll. User input, another
 navigation, pagehide, a settled layout, or the timeout disposes the observers. A brief quiet
 period after reaching the target covers subsequent React commits and image layout;
 pending eager images/fonts retain observation within the same bounded deadline.
+
+## Browser bundle declarations
+
+`tolgraven.build.browser/process` delegates to Shadow's browser target after
+reading `src/frontend/tolgraven/modules/*/module.cljs`. Entries need a literal
+`(def spec {:id :feature ...})`. Their namespace can declare
+`{:bundle/depends-on #{:main :other-feature}}`; the default is `#{:main}`.
+Directories without `module.cljs` remain ordinary source organization. `:main`
+is the eager app entry configured in `shadow-cljs.edn`. The runtime lazy-load map
+is generated from the same declarations, including aliases such as `:test`.
+
+No generated configuration needs committing. Restart the browser watcher after
+adding/removing entries or changing bundle dependencies. The build reads source
+as data with evaluation disabled; it never loads browser code into the JVM.
+
+Reusable Markdown/highlighting and mapping libraries have explicit shared
+`:markdown` and `:maps` bundles, avoiding hoisting into `:main`. Preview consumers
+load Markdown as a code dependency before hydration; Node uses the same component
+synchronously. The local-return installer stays eager, but its React server
+renderer is in `:page-render` and is acquired only after the cache connects.
+
+Run `bash scripts/audit-bundles.sh before` and repeat with an `after` label to
+compare actual production artifacts (raw, gzip level 9 and Brotli quality 11).
+Each build has an isolated build ID/cache and writes to `target/bundle-audit/<label>`;
+watched app assets are untouched. `sources.edn` records module ownership and
+`sizes.json` records bytes. The audit rejects diagnostics, mapping and server
+renderer/highlighting implementations in `:main`. It keeps the normal production
+entry/profile, optimizations and reader features. Total bytes measure every
+bundle, not the initial route's network cost; lazy code remains part of that total.
+
+To run the route checks against those actual advanced-compiled files while keeping
+the HTTP/data server unchanged:
+
+```sh
+python3 scripts/serve-integration-tests.py --app http://127.0.0.1:4000 \
+  --port 4018 --bundle-dir target/bundle-audit/final
+```
+
+Open `http://127.0.0.1:4018/__tests/`. Only the compiled JS is served from the
+audited directory; other requests use the live server. The manifest is a whitelist,
+so missing production chunks cannot silently fall back to development output.
+This verifies production frontend code with the current backend configuration;
+it does not establish production server packaging or deployment behavior.

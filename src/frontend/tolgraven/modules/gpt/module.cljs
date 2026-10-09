@@ -1,4 +1,5 @@
 (ns tolgraven.modules.gpt.module
+  {:bundle/depends-on #{:main :user}}
   (:require
     [tolgraven.content.contract :as content-contract]
     [tolgraven.modules.gpt.events]

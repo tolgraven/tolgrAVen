@@ -7,7 +7,7 @@
     [clojure.string :as string]
     [reagent.core :as r]
     [tolgraven.components.portal :as portal]
-    [tolgraven.components.ui.code :as code]))
+    [tolgraven.components.markdown :as code]))
 
 (defc <failure>
   "Shared fallback for rendering, dependencies, modules and initialization.

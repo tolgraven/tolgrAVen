@@ -17,18 +17,27 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Effects/source adapters own I/O; view functions remain pure.
 - Use `<component>` names, `defc` features and `defpage` boundaries. `m/<>` selects
   direct or lazy module exports; it does not add a permanent wrapper.
+- A module `:install` hook may restore browser-local caches after code acquisition.
+  The loader shares/awaits it before publishing code readiness; ordinary `:init`
+  still owns data activation. SSR adapters must not install disk caches or watches.
 - Declare managed dependencies at the narrowest owning component/module/page.
   Preloads acquire those same sources; keep pending, empty, failed and cached distinct.
 - Subscription-backed Supabase/Strapi results enter app-db through events. Never
   duplicate transport reads in pages or component render functions.
 - Reuse appearance/presence/loading features. Hydration and restored data bypass
   loading and entrances; later SPA navigation must restore ordinary motion.
+- Shared Markdown/highlighting and mapping code live in the `:markdown` and
+  `:maps` bundles. Declare bundle dependencies for consumers that must have them
+  before hydration. Local-return rendering uses the lazy `:page-render` bundle;
+  the installer remains eager to restore state before the first commit.
 - The local return adapter renders an isolated state snapshot using the shared
   renderer. HTML and state are inseparable. Do not copy DOM or replay init before
   hydration; retain exact query caches and fold/window state.
 - Browser-only APIs belong in lifecycle/effect adapters with cleanup and SSR guards.
   Use Shadow reader features for build-specific dependencies, not runtime imports.
-- Debug instrumentation is bounded and inactive when closed. Keep diagnostics out
+- Development console and React profiling implementations live in `env/dev/cljs`.
+  Only builds with the `:dev` reader feature import them; production and SSR use
+  small diagnostics/instrumentation boundaries. Debug instrumentation is bounded and inactive when closed. Keep diagnostics out
   of persistence snapshots and do not let diagnostic events trigger page renders.
 - Page navigation uses a brief simultaneous opacity crossfade. Native View Transitions
   and the page-root fallback share duration/easing; neither delays the incoming fade.
@@ -44,6 +53,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   layout and a reachable saved offset on consecutive measured frames. Track pending
   work through the page readiness context and wait for finite layout animations;
   controlled navigation/restoration scrolls must not trigger header hide/show feedback; do not use a guessed completion delay.
+- Idle navigation prefetch is limited to adjacent (`rel=prev/next`) and explicit
+  `data-preload=true` links. Other internal links acquire on pointer/keyboard
+  intent, through the same loader and bindings; never prefetch the whole navbar.
 - After edits check watched Shadow errors and the actual routes in the browser.
 
 - `validation/runtime.cljs` owns declaration checks, module section registration

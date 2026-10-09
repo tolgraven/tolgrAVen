@@ -21,6 +21,14 @@ const check = (condition, description) => {
   if (!condition) throw Error(description);
   record(description);
 };
+const settleLayout = async () => {
+  await doc().fonts.ready;
+  const animations = doc().getAnimations().filter(animation =>
+    Number.isFinite(animation.effect?.getComputedTiming().endTime));
+  await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
+  // Let the application's layout observer measure the completed animations.
+  await new Promise(resolve => win().requestAnimationFrame(() => win().requestAnimationFrame(resolve)));
+};
 const interactive = async () => {
   await waitFor(() => doc()?.querySelector('.blog-post'), 'post content');
   await waitFor(() => {
@@ -30,6 +38,7 @@ const interactive = async () => {
   }, 'hydration attaches controls');
   doc().querySelector('button.search-ui-btn').click();
   await waitFor(() => !doc().querySelector('.search-ui.search-ui-open'), 'search closes');
+  await settleLayout();
 };
 run.onclick = async () => {
   run.disabled = true; results.replaceChildren();
@@ -58,11 +67,15 @@ run.onclick = async () => {
     check(win().history.scrollRestoration === 'manual', 'SPA navigation takes scroll ownership');
     win().history.back();
     await waitFor(() => win().location.pathname === '/blog/post/17' && Math.abs(win().scrollY - position) <= 2, 'SPA Back position');
+    await settleLayout();
+    await waitFor(() => Math.abs(win().scrollY - position) <= 2, 'settled SPA Back position');
     record(`SPA Back restores ${position}px`);
     // A different document exercises pagehide and native document history.
     win().location.href = '/__tests/away.html';
     await waitFor(() => doc()?.title === 'Another document', 'leave application document');
     doc().querySelector('button').click();
+    await waitFor(() => win().location.pathname === '/blog/post/17' && doc()?.querySelector('.blog-post'), 'document Back content');
+    record(`Document Back uses ${doc() === initial ? 'retained' : 'new'} document; initial offset ${win().scrollY}px`);
     await waitFor(() => win().location.pathname === '/blog/post/17' && doc()?.querySelector('.blog-post') && Math.abs(win().scrollY - position) <= 2, 'document Back position');
     record(`Document Back restores ${position}px (${doc() === initial ? 'retained document' : 'new document'})`);
     check(!doc().querySelector('.component-failed'), 'Returned page has no component failure');

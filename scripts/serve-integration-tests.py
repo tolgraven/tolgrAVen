@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Serve the live browser checks and proxy an unchanged running application.
 
-No fixtures, response substitutions, app-db seeding, or upstream credentials.
+No fixtures, app-db seeding, or upstream credentials. An optional audited bundle
+directory serves actual production JS against the unchanged live HTTP/data routes.
 A separate browser origin keeps test navigation/persistence out of user sessions.
 """
 import argparse
 import http.client
+import json
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -26,6 +28,19 @@ class Handler(BaseHTTPRequestHandler):
             body = (ROOT / 'test/browser' / assets[path]).read_bytes()
             self.send_response(200)
             self.send_header('Content-Type', 'text/html' if not path.endswith('.js') else 'text/javascript')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.server.bundle_dir and path.startswith('/js/compiled/out/'):
+            name = path.removeprefix('/js/compiled/out/')
+            if name not in self.server.bundle_names:
+                self.send_error(404, 'Not in the audited production bundle manifest')
+                return
+            body = (self.server.bundle_dir / name).read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/javascript; charset=utf-8')
+            self.send_header('Cache-Control', 'no-store')
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -78,6 +93,7 @@ if __name__ == '__main__':
     parser.add_argument('--delay-path', default='')
     parser.add_argument('--delay-seconds', type=float, default=0)
     parser.add_argument('--forwarded-proto', choices=['http', 'https'])
+    parser.add_argument('--bundle-dir', type=Path, help='Serve JS from an isolated production bundle audit')
     parser.add_argument('--verbose', action='store_true', help='Log request paths and response statuses')
     args = parser.parse_args()
     upstream = urlsplit(args.app)
@@ -89,5 +105,11 @@ if __name__ == '__main__':
     server.delay_seconds = max(0, args.delay_seconds)
     server.forwarded_proto = args.forwarded_proto
     server.verbose = args.verbose
+    server.bundle_dir = args.bundle_dir.resolve() if args.bundle_dir else None
+    server.bundle_names = set()
+    if server.bundle_dir:
+        server.bundle_names = set(json.loads((server.bundle_dir / 'bundles.json').read_text()))
+        if any(Path(name).name != name or not name.endswith('.js') for name in server.bundle_names):
+            parser.error('Invalid production bundle manifest')
     print(f'Live integration checks: http://127.0.0.1:{args.port}/__tests/', flush=True)
     server.serve_forever()

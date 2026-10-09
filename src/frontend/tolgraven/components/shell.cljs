@@ -115,7 +115,11 @@
            :view :button
            :<before> (fn []
                        [:button.search-ui-btn.noborder.nomargin
-                        {:name "Search" :title "Search site"}
+                        {:name "Search"
+                         :title "Search site"
+                         ;; Preserve the click's intent while the parent acquires
+                         ;; Search. Its module events do not exist yet.
+                         :on-click #(rf/dispatch [:state [:search :open?] true])}
                         [img/<picture> {:src   "svg/search-ico.svg"
                                       :alt   "Search"
                                       :style {:width  "1.2em" :height "1.2em"

@@ -15,16 +15,9 @@
   []
   (let [open? (rf/subscribe [:search/open?])]
     [:button.search-ui-btn.noborder.nomargin
-     {:name "Search" :title "Search site"
-      :on-click (fn [e]
-                  (rf/dispatch [:search/state [:open?] (not @open?)])
-                  (when-not @open? ; going from closed to open
-                    (r/after-render
-                     #(js/setTimeout
-                       (fn []
-                         (util/scroll-to "search-input")
-                         (some-> "search-input" util/elem-by-id .focus))
-                       100))))}
+     {:name "Search"
+      :title "Search site"
+      :on-click #(rf/dispatch [:search/state [:open?] (not @open?)])}
      [img/<picture> {:src "svg/search-ico.svg"
                    :alt "Search"
                    :style {:width "1.2em" :height "1.2em"
@@ -62,6 +55,19 @@
        on-enter #(doseq [coll collections]
                    (rf/dispatch [:search/search coll (:text (first suggestions)) query-by opts false]))
        on-esc #(rf/dispatch [:search/state [:open?] false])]
+   ;; The input may first mount already open after a deferred button click.
+   ;; Own focus here so code loading does not consume that first interaction.
+   (rf/use-effect
+     (fn []
+       (if (and open? (exists? js/document))
+         (let [timer (js/setTimeout
+                       (fn []
+                         (util/scroll-to "search-input")
+                         (some-> "search-input" util/elem-by-id .focus))
+                       100)]
+           #(js/clearTimeout timer))
+         js/undefined))
+     #js [open?])
    [ui/<input-text-styled>
     :id "search-input"
     :query-by query-by

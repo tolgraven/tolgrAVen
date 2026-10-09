@@ -282,3 +282,26 @@
            (fn [_ _ before after]
              ;; SSR resets request state too; those deletions are not browser edits.
              (when (exists? js/window) (mirror-deletions! before after))))
+
+
+(def public-cache-paths [[:store :public] [:state :motion-seen]])
+(def public-cache-options {:scope :public :ttl-ms 1800000})
+
+(rf/reg-event-db :component-storage/restore-public
+  {:args [:tuple [:vector [:tuple [:vector :keyword] :any]]]}
+  (fn [db [_ snapshots]]
+    (reduce (fn [db [path value]]
+              (if (some? (get-in db path)) db (assoc-in db path value)))
+            db snapshots)))
+
+(defn restore-public-cache!
+  "Restore shared caches after bootstrap state installation. Feature caches
+   install with their own modules, before those modules become renderable."
+  []
+  (rf/dispatch-sync
+    [:component-storage/restore-public
+     (vec (keep (fn [path]
+                  (when-let [saved (read! [:state path] public-cache-options)]
+                    [path (:value saved)])) public-cache-paths))])
+  (doseq [path public-cache-paths]
+    (track! [:state path] #(get-in @rfdb/app-db path missing) public-cache-options)))

@@ -1,4 +1,5 @@
 (ns tolgraven.modules.chat.module
+  {:bundle/depends-on #{:main :user :link-preview}}
   (:require
     [tolgraven.content.contract :as content-contract]
     [tolgraven.modules.chat.events]

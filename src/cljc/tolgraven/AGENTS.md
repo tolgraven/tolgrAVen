@@ -34,3 +34,7 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
 - `defpage` enables an optional `:container` layout capability outside its error
   boundary. It owns a stable root across loading/content/error states; the site
   shell opts out with `:container false`.
+
+- Module declarations may supply `:install` for code-owned setup. Browser loading
+  awaits it before publishing readiness; Node adapters keep browser disk/cache
+  installation inert. Keep this lifecycle distinct from managed data activation.

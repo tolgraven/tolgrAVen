@@ -616,3 +616,22 @@ Controlled navigation/restoration scrolls do not toggle the directional header/f
 ratios permit restoration without waiting for lazy downloads. Resize, mutation,
 asset and readiness signals wake retries. User input/new navigation cancels;
 the 15-second bound releases failed/unreachable restoration, never marks it ready.
+
+Module `:install` is a no-argument lifecycle hook for code-owned setup, such as
+restoring a browser feature cache. The shared loader runs it once per successful
+code acquisition, shares its Promise between callers, and publishes code readiness
+only after completion. Failure remains retryable. A module with an installation
+hook is not renderable until installation finishes. `:init` retains its existing
+data/dependency activation and arguments. Node-specific adapters can leave
+browser cache installation inert. Shared public/motion snapshots belong to the
+storage runtime; blog query/display snapshots install with the blog module.
+
+Navigation prefetch is bounded to adjacent `rel=prev/next` links and explicit
+`data-preload=true` hints at idle. Pointer/keyboard intent acquires other internal
+links, including `data-preload-href` buttons. `data-preload=false` and downloads
+opt out. The host lifecycle cleans up its observers, listeners and idle timers.
+Speculation uses the ordinary loader/data bindings and their deduplication;
+routes/modules are not all downloaded merely because a header links to them.
+Deferred controls must preserve the activation's intent before loading their
+module. Search records its open state through the shared state event, then its
+mounted input owns focus and cleanup; loading never requires a second click.

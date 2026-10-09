@@ -9,12 +9,10 @@
             [tolgraven.supabase.query :as query]))
 
 (def options {:scope :public :ttl-ms 1800000})
-(def state-paths [[:store :public]
-                 [:state :blog :comment-limit]
+(def state-paths [[:state :blog :comment-limit]
                  [:state :blog :comments-expanded]
-                  [:state :blog :comment-thread-expanded]
-                  [:state :blog :adding-comment]
-                  [:state :motion-seen]])
+                 [:state :blog :comment-thread-expanded]
+                 [:state :blog :adding-comment]])
 
 (defn public-query? [key]
   (try
@@ -37,6 +35,8 @@
               ;; A newer SSR snapshot (or an already completed query) wins.
               (if (some? (get-in db path)) db (assoc-in db path value))) db snapshots)))
 
+(declare install-watch!)
+
 (defn restore!
   "Called after the single storage read and SSR installation, before mounting."
   []
@@ -54,11 +54,16 @@
                                   (some? old-value) [path old-value]))) paths)]
     (rf/dispatch-sync [:blog/restore-cache (vec snapshots)])
     (when (contains? old-state :blog) (legacy/write! (dissoc old-state :blog)))
-    (doseq [path paths] (track-path! path))))
+    (doseq [path paths] (track-path! path))
+    (install-watch!)))
 
-(add-watch rfdb/app-db ::cache
-  (fn [_ _ before after]
-    (when-not (identical? (get-in before [:store :scoped]) (get-in after [:store :scoped]))
-      (doseq [key (keys (get-in after [:store :scoped])) :when (public-query? key)]
-        (track-path! [:store :scoped key]))
-      (storage/schedule!))))
+(defn install-watch! []
+  (add-watch rfdb/app-db ::cache
+    (fn [_ _ before after]
+      (when-not (identical? (get-in before [:store :scoped]) (get-in after [:store :scoped]))
+        (doseq [key (keys (get-in after [:store :scoped])) :when (public-query? key)]
+          (track-path! [:store :scoped key]))
+        (storage/schedule!)))))
+
+(defn install! []
+  (-> (storage/ready!) (.then (fn [_] (restore!)))))

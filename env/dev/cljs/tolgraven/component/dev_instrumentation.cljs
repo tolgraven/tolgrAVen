@@ -1,4 +1,4 @@
-(ns tolgraven.component.instrumentation
+(ns tolgraven.component.dev-instrumentation
   "Development-only React profiling. Adds no DOM wrappers or application store."
   (:require [clojure.string :as string]
             [reagent.core :as r]
