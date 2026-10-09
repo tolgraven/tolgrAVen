@@ -94,3 +94,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   reads. Score candidate subtrees in one traversal; failure completion may update
   only its own still-cached promise. Emit text blocks/image metadata and frame policy,
   never remote HTML.
+
+- oEmbed derives native player URLs from provider HTML with the shared endpoint
+  allowlist. Do not trust provider-supplied player metadata or return arbitrary
+  URLs as origin-enabled players. Other markup requires an opaque browser sandbox.
+  The bounded cache shares in-flight requests, keeps success for fifteen minutes
+  and failure for one minute, and retains only consumed provider fields.

@@ -160,7 +160,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 - Use inline `defc`/`defpage` `[value :- schema]` for meaningful public inputs;
   a rest annotation validates each remaining value. Keep schemas beside their
-  owning component or module; browser-only inputs do not require CLJC. Give persistent component state a `:state {:schema ...}` when it has
+  owning component or module; browser-only inputs do not require CLJC. Define
+  schemas used only by one component near the top of that component file. Keep
+  contracts consumed by both API and browser in CLJC and use them on both sides.
+  Give persistent component state a `:state {:schema ...}` when it has
   a domain shape, and test normal updates plus rejected transactions.
 
 - Bundled shell images reserve catalog dimensions. Footer icons declare sizes
@@ -187,3 +190,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   sandboxed miniature starts after the readable card paints and only when frame
   policy permits the parent origin. Following a preview expands it before departure;
   visited URLs and transient-surface restoration keep their existing owner policy.
+
+- oEmbed provider HTML belongs only in an opaque-origin `srcDoc` iframe. Known
+  HTTPS player endpoints may use a direct cross-origin iframe with provider-origin
+  access; derive/check that URL through the shared oEmbed contract on both sides.
+  Never give arbitrary markup same-origin access or insert it into application DOM.
+  Acquisition uses the shared managed URL source.

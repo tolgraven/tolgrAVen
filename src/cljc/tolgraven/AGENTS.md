@@ -65,3 +65,6 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
 - Thin build adapters may use `.cljc` solely for Shadow reader features (`:browser`,
   `:ssr`, `:dev`); `.cljs` cannot contain reader conditionals. Keep these separate
   from shared JVM contracts and do not infer a server renderer from the extension.
+
+- `components/oembed/contract.cljc` owns the recognized player endpoint allowlist
+  and normalized response consumed by both the JVM proxy and browser frame.
