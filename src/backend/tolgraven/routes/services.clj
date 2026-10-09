@@ -6,6 +6,8 @@
     [tolgraven.schema.http :as schemas]
     [tolgraven.supabase.schema :as store-schema]
     [tolgraven.config :as config]
+    [tolgraven.oembed :as oembed]
+    [tolgraven.components.oembed.contract :as oembed-contract]
     [reitit.ring.middleware.muuntaja :as muuntaja]
     [reitit.ring.middleware.multipart :as multipart]
     [reitit.ring.middleware.parameters :as parameters]
@@ -78,13 +80,9 @@
    ["/oembed"
     {:get {:summary "Get oembed data for a URL"
            :parameters {:query schemas/url-query}
+           :responses {200 {:body oembed-contract/result}}
            :handler (fn [{{{:keys [url]} :query} :parameters}]
-                      (let [oembed-url (str "https://noembed.com/embed?url=" (java.net.URLEncoder/encode url "utf-8"))
-                            reply (http/get oembed-url {:as :json
-                                                        :conn-timeout 3000
-                                                        :socket-timeout 5000})]
-                        {:status 200
-                         :body (:body reply)}))}}]
+                      (oembed/response! url))}}]
 
    ["/gpt"
     {:post {:summary "Poll OpenAI API"

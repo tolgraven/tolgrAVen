@@ -2,7 +2,7 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.component.data :as data]
-    [tolgraven.components.oembed-schema :as schema]
+    [tolgraven.components.oembed.contract :as schema]
     [tolgraven.react :as rf]
     [tolgraven.components.image :as img]
     [tolgraven.macros :as m]
@@ -17,18 +17,23 @@
   (or placeholder [:p "Loading player…"]))
 
 (m/defc ^:private <player> [result :- schema/result]
-  ;; Provider markup runs in an opaque-origin document. Never combine
-  ;; allow-scripts with allow-same-origin for this untrusted srcDoc boundary.
-  [:iframe.oembed-inner
-   {:title (or (:title result) "Embedded player")
-    :sandbox "allow-scripts"
-    :referrer-policy "no-referrer"
-    :style {:width "100%"
-            :border "none"
-            :height (str (/ (max 80 (min 640 (or (:height result) 166))) 16) "rem")}
-    :src-doc (str "<!doctype html><html><head><meta name='viewport' content='width=device-width'>"
-                  "<style>body{margin:0}iframe{display:block;width:100%;border:0}</style>"
-                  "</head><body>" (or (:html result) "") "</body></html>")}])
+  ;; Arbitrary markup stays opaque. Recognized cross-origin players need their
+  ;; own origin for storage/API requests, and never receive the provider HTML.
+  (let [source (schema/player-url (:player-src result))
+        attrs {:title (:title result)
+               :referrer-policy "no-referrer"
+               :style {:width "100%"
+                       :border "none"
+                       :height (str (max 5 (min 40 (/ (:height result) 16))) "rem")}}]
+    [:iframe.oembed-inner
+     (if source
+       (assoc attrs :sandbox "allow-scripts allow-same-origin"
+                    :allow "autoplay; encrypted-media"
+                    :src source)
+       (assoc attrs :sandbox "allow-scripts"
+                    :src-doc (str "<!doctype html><html><head><meta name='viewport' content='width=device-width'>"
+                                  "<style>body{margin:0}iframe{display:block;width:100%;border:0}</style>"
+                                  "</head><body>" (:html result) "</body></html>")))]))
 
 (m/defc <oembed-view>
   {:depends (fn [url _] [(dependency url)])

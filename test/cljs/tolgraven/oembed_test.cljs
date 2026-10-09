@@ -3,6 +3,7 @@
   (:require [cljs.test :refer-macros [deftest is async]]
             [tolgraven.component.data :as data]
             [tolgraven.components.oembed :as oembed]
+            [tolgraven.components.oembed.contract :as contract]
             [tolgraven.test-support :as support]))
 
 (deftest provider-html-runs-without-access-to-the-application-origin
@@ -27,7 +28,8 @@
                 (await! (support/render! root [oembed/<oembed-view> url [:p "Loading player"]]))
                 (await! (support/wait-for! #(deref *resolve)))
                 (is (.includes (.-textContent element) "Loading player"))
-                (@*resolve {:height 166
+                (@*resolve {:title "Sandbox regression"
+                            :height 166
                             :html (str "<p id='provider-content'>Provider</p><script>"
                                        "let blocked=false;try{parent.document.body.dataset.oembedEscaped='yes'}"
                                        "catch(e){blocked=true}parent.postMessage({type:'oembed-sandbox-regression',blocked},'*');"
@@ -47,3 +49,13 @@
                       (data/invalidate! #(= (:url %) (:url (oembed/dependency url))))
                       (data/register-source! :url source)
                       (done)))))))
+
+(deftest browser-player-url-guard-rejects-other-origins-and-paths
+  (is (= "https://w.soundcloud.com/player/?url=test"
+         (contract/player-url "https://w.soundcloud.com/player/?url=test")))
+  (doseq [source ["https://w.soundcloud.com.attacker.example/player/"
+                  "https://user@w.soundcloud.com/player/"
+                  "https://w.soundcloud.com:8443/player/"
+                  "https://w.soundcloud.com/redirect"
+                  "https://tolgraven.se/" "javascript:alert(1)"]]
+    (is (nil? (contract/player-url source)))))
