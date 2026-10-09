@@ -9,7 +9,9 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Reagent 2 / React 19 components use `defc`; full pages use `defpage` and always have an error boundary. Application re-frame calls go through `tolgraven.react`.
 - Module-local `pages.cljc` files contain native Reitit route trees. Module specs expose these declarations; browser and server routers compose them.
 - JVM adapters acquire public data; the eager Shadow `:ssr` Node build renders the same page components as the browser. `:ssr` in config controls streaming and worker settings.
-- Cold SSR streams a component-derived skeleton then the completed page. Cached SSR skips the skeleton. Hydration preserves the existing DOM and does not replay entrances.
+- Cold/expired SSR streams a component-derived skeleton then the completed page.
+  Fresh cached SSR skips the skeleton (`:ssr :cache-ttl-ms`, default 10 seconds).
+  Hydration preserves the existing DOM and does not replay entrances.
 - After hydration, navigation is entirely SPA: commit the destination immediately, then acquire code/data through shared bindings. Related blog routes retain their shell.
 - Local external returns may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
 - Read `src/frontend/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/backend/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.

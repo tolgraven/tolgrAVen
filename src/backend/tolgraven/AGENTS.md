@@ -11,6 +11,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   share an in-flight task. Node workers perform isolated React rendering only.
 - Cache public HTML with its exact data snapshot. Never cache a request's CSRF token
   or personalized shell as a shared response. Errors cannot validate old cache entries.
+  Successful page snapshots are fresh for `:ssr :cache-ttl-ms` (10 seconds by
+  default; zero always revalidates). Expired/build-changed entries stream the shell
+  while revalidating; only fresh entries bypass it.
 - Optimus fingerprints the shared and per-module CSS bundles independently. Emit
   route dependency styles in the first head and all URLs in `#module-styles`;
   local return documents carry their saved modules' styles before first paint.
