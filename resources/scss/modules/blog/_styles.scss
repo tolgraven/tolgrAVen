@@ -353,6 +353,8 @@
     .blog-comment-title {
       font-size: 120%;
       font-weight: bold;
+      // Keep the existing comment typography when its heading level changes.
+      &::first-letter { font-size: inherit; line-height: inherit; filter: none; }
     }
     .blog-comment-text {
       // margin-top: calc(0.25 * var(--space));

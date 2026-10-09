@@ -172,7 +172,8 @@
       (css-preload path))
 
     [:link {:rel "preload" :as "font" :type "font/woff2" :crossorigin "anonymous"
-            :href "/webfonts/OpenSans-v29-latin.woff2"}]
+            :href (or (olink/file-path request "/webfonts/OpenSans-v29-latin.woff2")
+                      "/webfonts/OpenSans-v29-latin.woff2")}]
     ;; The layout must be styled before first paint, including on a cold/private visit.
     (for [path (if (:dev env)
                  ["css/tolgraven/main.min.css"]

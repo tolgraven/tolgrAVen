@@ -178,7 +178,7 @@
               (m/<> :user/avatar user)
 
               [:div.blog-comment-main
-               [:h4.blog-comment-title title]
+               [:h3.blog-comment-title title]
                [<posted-by> {:id id :user user :ts ts :score score}]
                (when (not= (:id active-user) (:id user))
                  [:span.blog-comment-vote [<vote-btn> {:user user :active-user active-user :path path :vote :up}]

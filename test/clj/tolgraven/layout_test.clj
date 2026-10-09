@@ -57,6 +57,9 @@
 
 (deftest preload-matches-the-executed-bundle
   (with-redefs [config/env {:dev false :ssr {:enabled false}}
+                olink/file-path (fn [_ path]
+                                  (when (= path "/webfonts/OpenSans-v29-latin.woff2")
+                                    "/webfonts/hash/OpenSans-v29-latin.woff2"))
                 olink/bundle-paths (fn [_ bundles]
                                     (case (first bundles)
                                       "main.js" ["/bundles/main.hash.js"]
@@ -72,6 +75,7 @@
       (is (< (.indexOf body "src=\"/vendor/supabase.js\"")
              (.indexOf body "src=\"/bundles/main.hash.js\"")))
       (is (.contains body "name=\"analytics-id\""))
+      (is (re-find #"<link[^>]*href=\"/webfonts/hash/OpenSans-v29-latin.woff2\"[^>]*rel=\"preload\"" body))
       (is (.contains body "window.dataLayer = window.dataLayer || []"))
       (is (not (.contains body "googletagmanager.com")))
       (is (not (.contains body "google-analytics.com")))
