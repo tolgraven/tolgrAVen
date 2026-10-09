@@ -34,7 +34,17 @@
 (defn- css [href]
   [:link (cond-> {:href href :rel "stylesheet" :type "text/css"}
            (not= href "css/opensans.css") (assoc :media "print" :onload "this.media='all'"))])
-(defn- js-preload  [path] [:link {:rel "preload" :as "script" :href path}])
+(defn- script-priority [request]
+  ;; Server HTML can paint before hydration; let its styles and fonts win bandwidth.
+  (when (:ssr request) "low"))
+(defn- script-preload-attrs [request path]
+  ;; Shadow fetches lazy chunks through XHR, then evaluates them itself.
+  (let [lazy? (not (some #{path} (olink/bundle-paths request ["main.js"])))]
+    (cond-> {:rel "preload" :as (if lazy? "fetch" "script")}
+      lazy? (assoc :crossorigin "anonymous")
+      (script-priority request) (assoc :fetchpriority (script-priority request)))))
+(defn- js-preload [request path]
+  [:link (assoc (script-preload-attrs request path) :href path)])
 (defn- img-preload [path] [:link {:rel "preload" :as "image" :href path}])
 (defn- css-preload [path] [:link {:rel "preload" :as "style" :type "text/css" :href path}])
 
@@ -189,7 +199,7 @@
       [:script {:type "text/javascript"}
        (str "var csrfToken = \"" anti-forgery "\";")])
     (for [path js-pre]
-      (js-preload path))
+      (js-preload request path))
     (for [path js-paths]
       (js path))
     ;; Critical visibility rules prevent two page roots from ever painting together.
@@ -215,7 +225,8 @@
     (when (:streamed? request) [:span#ssr-complete {:hidden true}])
     ;; Match the SDK's deferred execution order without blocking streamed HTML.
     (for [path (olink/bundle-paths request ["main.js"])]
-      [:script {:src path :defer true}]) ]]))
+      [:script (cond-> {:src path :defer true}
+                 (script-priority request) (assoc :fetchpriority (script-priority request)))]) ]]))
 
 (defn- hiccup-response [page & args]
   (-> (apply page args) ok (content-type "text/html; charset=utf-8")))
@@ -342,7 +353,11 @@
    :anti-forgery (force *anti-forgery-token*))
     (seq script-paths) (assoc-in [:headers "Link"]
                                 (clojure.string/join ", "
-                                  (map #(str "<" % ">; rel=preload; as=script") script-paths)))
+                                  (for [path script-paths
+                                        :let [{:keys [as crossorigin fetchpriority]} (script-preload-attrs request path)]]
+                                    (str "<" path ">; rel=preload; as=" as
+                                         (when crossorigin (str "; crossorigin=" crossorigin))
+                                         (when fetchpriority (str "; fetchpriority=" fetchpriority))))))
     (:error? ssr) (assoc :status (:status ssr))
     (get-in ssr [:snapshot :missing?]) (assoc :status 404)
     (or ssr returning?) (assoc-in [:headers "Cache-Control"] "no-store"))))
