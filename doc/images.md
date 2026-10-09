@@ -6,17 +6,17 @@ WebP averages 46% smaller, AVIF can be 50-70% smaller depending on image type.
 
 ### Usage in ClojureScript
 
-Use the `tolgraven.image` namespace for automatic format selection:
+Use the `tolgraven.components.image` namespace for automatic format selection:
 
 ```clojure
 (ns my-app.views
   (:require [tolgraven.components.image :as img]))
 
 ;; Drop-in replacement for [:img]
-[img/picture {:src "img/photo.jpg" :alt "My photo"}]
+[img/<picture> {:src "img/photo.jpg" :alt "My photo"}]
 
 ;; For background images (adds .media-as-bg class)
-[img/media-as-bg {:src "img/background.jpg" :alt "Background"}]
+[img/<media-as-bg> {:src "img/background.jpg" :alt "Background"}]
 ```
 
 The component generates HTML5 `<picture>` elements with proper source sets:
@@ -29,7 +29,9 @@ The component generates HTML5 `<picture>` elements with proper source sets:
 </picture>
 ```
 
-Browsers automatically pick the first format they support. No JavaScript required.
+Browsers pick the first supported format. If decoding fails, the component
+retries the original PNG/JPEG. Avatar uploads use the same conversion script;
+see [upload storage and configuration](supabase-provisioning.md).
 
 ### Adding new images
 
@@ -37,14 +39,26 @@ Browsers automatically pick the first format they support. No JavaScript require
 # 1. Add JPG/PNG to resources/public/img/
 cp new-photo.jpg resources/public/img/
 
-# 2. Convert to modern formats
-./scripts/convert-images.sh
+# 2. Install the hook once per checkout (requires Python 3, cwebp and ImageMagick)
+make hooks
 
-# 3. Use in code
-[img/picture {:src "img/new-photo.jpg" :alt "Description"}]
+# 3. Stage the original; committing generates and stages WebP/AVIF alongside it
+git add resources/public/img/new-photo.jpg
+
+# 4. Use in code
+[img/<picture> {:src "img/new-photo.jpg" :alt "Description"}]
 ```
 
-The script skips favicons and already-converted files. Use `--force` to reconvert everything.
+Git has no `git add` hook: conversion runs immediately before a commit for staged
+added/changed JPG/PNG files under `resources/public/`. It reads the staged bytes,
+so partially staged originals stay partially staged. Unstaged edits to generated
+variants cause a clear failure; stage or move those edits before retrying. Failed
+conversion leaves the index unchanged. Other commits do not require the codecs.
+An existing custom `core.hooksPath` is preserved; chain `.githooks/pre-commit` from it.
+
+Manual conversion remains available: `./scripts/convert-images.sh` scans public
+assets, or pass explicit image paths. Current variants and favicons are skipped;
+`--force` regenerates variants. Originals remain available as fallbacks.
 
 ### Verification
 
@@ -63,7 +77,7 @@ Replace existing image tags:
 [:img {:src "img/photo.jpg" :alt "Photo"}]
 
 ;; After
-[img/picture {:src "img/photo.jpg" :alt "Photo"}]
+[img/<picture> {:src "img/photo.jpg" :alt "Photo"}]
 ```
 
 Everything else stays the same. Original images are kept as fallbacks for older browsers.

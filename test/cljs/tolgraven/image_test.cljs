@@ -77,6 +77,13 @@
   (async done
     (check-original-fallback! "/img/foggy-shit-small.jpg" done)))
 
+(deftest converted-avatar-falls-back-to-its-original-png
+  (async done
+    (check-original-fallback!
+     (str (.-origin js/location) "/storage/v1/object/public/avatars/test/"
+          (apply str (repeat 64 "0")) ".png")
+     done)))
+
 (deftest hydration-recovers-a-modern-image-that-failed-before-react-attached
   (async done
     (let [container (.createElement js/document "div")

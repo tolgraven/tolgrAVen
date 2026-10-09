@@ -1,5 +1,6 @@
 {:prod true
  :port 3000
+ :image-converter "/app/scripts/convert-images.sh"
  :ssr {:enabled true
        :render-workers 2
        :worker "/app/ssr/site.js"

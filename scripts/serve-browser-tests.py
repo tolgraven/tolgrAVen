@@ -17,6 +17,11 @@ class Handler(SimpleHTTPRequestHandler):
             return str(tests / "index.html")
         if path.startswith("fixtures/"):
             return str(public.parents[1] / "test/browser" / path.removeprefix("fixtures/"))
+        # Exercise the real picture component's converted-avatar URL contract
+        # with local image fixtures; this is a component test, not live Storage.
+        avatar = "storage/v1/object/public/avatars/test/" + "0" * 64
+        if path in {avatar + suffix for suffix in (".png", ".webp", ".avif")}:
+            return str(public / "img" / ("tolgrav" + Path(path).suffix))
         root = tests if path.startswith("js/") else public
         return str(root / path)
 

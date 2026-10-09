@@ -61,7 +61,19 @@ RUN JAVA_TOOL_OPTIONS="${BUILD_CLJ_JAVA_OPTIONS}" \
 # This stage intentionally uses TARGETPLATFORM. The compiler runs on the Mac's
 # architecture; the persistent renderer must run on the deployment host's CPU.
 FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS ssr-node
-FROM eclipse-temurin:21-jre-jammy@sha256:f04fb34e053148344e83317976114ec3f37e4b830ec8bdab5a2fe3cecd7d010b AS runtime
+FROM eclipse-temurin:21-jre-jammy@sha256:f04fb34e053148344e83317976114ec3f37e4b830ec8bdab5a2fe3cecd7d010b AS media-tools
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends imagemagick webp \
+ && rm -rf /var/lib/apt/lists/*
+COPY --chmod=755 scripts/convert-images.sh /app/scripts/convert-images.sh
+# Fail the image build if the runtime distro cannot encode either modern format.
+RUN mkdir /tmp/image-codec-check \
+ && convert -size 16x16 xc:red /tmp/image-codec-check/image.png \
+ && bash /app/scripts/convert-images.sh /tmp/image-codec-check/image.png \
+ && identify /tmp/image-codec-check/image.webp /tmp/image-codec-check/image.avif \
+ && rm -rf /tmp/image-codec-check
+
+FROM media-tools AS runtime
 WORKDIR /app
 RUN mkdir -p resources/public
 COPY --from=ssr-node /usr/local/bin/node /usr/local/bin/node

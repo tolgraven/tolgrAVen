@@ -50,6 +50,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `npm run dev`: watch SCSS and PostCSS outputs for local development.
 - `npm run build`: produce compressed CSS assets for production.
 - `npm run init`: bootstrap CSS output, locked local npm tools, and the vendored SDK.
+- `make hooks`: install the tracked pre-commit hook; staged public JPG/PNG images
+  generate staged WebP/AVIF variants without including unstaged source edits.
 - Live re-frame debugging: read the installed `re-frame-pair` skill, then run `bash scripts/re-frame-pair.sh discover-app` before inspecting the runtime. See `doc/re-frame-pair.md`; the wrapper selects `:app-dev` and Lein's nREPL port.
 
 ## Dependency ownership
@@ -66,6 +68,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - The prefab builder includes `node_modules` and Maven artifacts; reuse it for normal source changes.
 - When changing `package.json`, `package-lock.json`, `project.clj` dependencies, or `Dockerfile.builder`, run and verify `make docker-prefab` to publish the refreshed dependency-hash image and the staging compatibility tag.
 - Keep the fallback `prefab` stage in `Dockerfile` aligned with `Dockerfile.builder`. Do not refresh the prefab for unrelated application-source edits.
+- `Dockerfile`'s independent `media-tools` runtime stage installs and smoke-tests
+  upload codecs; `docker build --target media-tools .` verifies it without a prefab refresh.
 - See `doc/docker-builds.md` for registry setup and deployment recovery.
 
 ## Coding Style & Naming Conventions
