@@ -19,6 +19,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Hydration tests preserve DOM identity and complete expanded/folded state. Browser
   review must also exercise cold/cached loads, both navigation directions, comments,
   SPA Back and external Back, looking for flashes, jumps and replayed animations.
+  SSR query variants retain separate HTML/state, reuse only matching fresh public
+  data, and never extend freshness without a successful provider read.
 - Regenerate Node-rendered fixtures before the browser suite. Check final assertion
   results, running Shadow warnings and browser logs; successful compilation is not
   a passing browser test or proof of live CMS integration.

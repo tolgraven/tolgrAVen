@@ -91,6 +91,13 @@ request. Edits, deletions, author changes and listing membership can remain in
 the initial server snapshot until its next revalidation; browser bindings
 retain their own refresh behavior.
 
+Presentation query variants, such as open/closed side panels, reuse a fresh
+public snapshot for the same path and page selection. Each variant still renders
+and caches its own HTML with its exact query parameters. Reuse retains the
+original successful data-read timestamp; creating another variant cannot extend
+the one-hour interval. The page declaration selects data from path parameters,
+and a changed selection or renderer build prevents reuse.
+
 Expired entries read the complete public data plan again while the initial shell
 streams. Reuse HTML only if the exact snapshot and renderer build match. An
 unchanged snapshot renews freshness after its successful read; errors never
