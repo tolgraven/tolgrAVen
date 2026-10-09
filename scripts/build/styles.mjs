@@ -11,7 +11,7 @@ const watch = process.argv.includes('--watch');
 const sassOnly = process.argv.includes('--sass-only');
 const postcssOnly = process.argv.includes('--postcss-only');
 async function build() {
-  const entries = ['main.scss', 'dev.scss', ...(await fs.readdir(`${root}/modules`))
+  const entries = ['main.scss', 'dev.scss', 'icons.scss', ...(await fs.readdir(`${root}/modules`))
     .filter(name => name.endsWith('.scss')).sort().map(name => `modules/${name}`)];
   for (const entry of entries) {
     const file = path.join(output, entry.replace(/\.scss$/, '.css'));

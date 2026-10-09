@@ -64,3 +64,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   ordering. Browser avatar fixtures test modern-source failure and direct PNG retry;
   they do not establish live Storage behavior. Hook tests use disposable Git indices:
   `bb test:scripts`.
+
+- Icon font checks preserve selected glyph outlines/metrics, verify disjoint core
+  and full-font acquisition in a fresh browser, and test real Optimus rewriting,
+  font-byte preservation and fingerprinted-only long cache headers.

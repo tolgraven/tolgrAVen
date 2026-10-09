@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [optimus.assets :as assets]
+            [optimus.link :as link]
             [tolgraven.config :as config]
             [tolgraven.env :as env]
             [tolgraven.middleware :as middleware]))
@@ -47,3 +48,27 @@
                         expected (io/input-stream (io/resource (str "public" path)))]
               (is (= (vec (.readAllBytes expected))
                      (vec (.readAllBytes actual)))))))))))
+
+(deftest icon-font-bundle-rewrites-and-caches-its-fonts
+  (with-redefs [config/env {:stage true}]
+    (let [files (middleware/optimize-all
+                 (assets/load-bundle "public" "icons.css"
+                   ["/css/fontawesome.css" "/css/tolgraven/icons.min.css"]) {})
+          request {:optimus-assets files}
+          css-path (first (link/bundle-paths request ["icons.css"]))
+          css (:contents (assets/get-asset-by-path request css-path))]
+      (is (re-matches #"/bundles/[a-f0-9]{12}/icons\.css" css-path))
+      (doseq [name ["fa-solid-900-core" "fa-brands-400-core"
+                   "fa-solid-900" "fa-brands-400"]]
+        (let [original (str "/webfonts/" name ".woff2")
+              path (link/file-path request original)
+              optimized (assets/get-asset-by-path request path)
+              plain (first (filter #(and (= original (:path %)) (:outdated %)) files))]
+          (is (not= original path))
+          (is (.contains css path))
+          (is (= "max-age=315360000" (get-in optimized [:headers "Cache-Control"])))
+          (is (nil? (get-in plain [:headers "Cache-Control"])))
+          (with-open [actual (io/input-stream (assets/get-contents optimized))
+                      expected (io/input-stream (io/resource (str "public" original)))]
+            (is (= (vec (.readAllBytes expected)) (vec (.readAllBytes actual)))))))
+      (is (.contains css "unicode-range:")))))

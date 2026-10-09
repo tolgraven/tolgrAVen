@@ -333,15 +333,13 @@
    :description (or (get-in ssr [:snapshot :content :document :description])
                     "tolgrAVen audiovisual by Joen Tolgraven")
    :pre-pre [["media/fog-3d-small.mp4" "video"]]
-   :css-paths [
-               "css/fontawesome.css"
-               "css/solid.css"
-               "css/brands.min.css"]
+   :css-paths (if (:dev env)
+                ["/css/fontawesome.css" "/css/tolgraven/icons.min.css"]
+                (olink/bundle-paths request ["icons.css"]))
    :js-paths [{:src (if (:dev env) "/vendor/supabase.js"
                         (or (first (olink/bundle-paths request ["supabase.js"])) "/vendor/supabase.js"))
                :async false
                :defer true}]
-   :css-pre ["css/solid.css"]
    :js-pre script-paths
    :img-pre (page/critical-images (some-> (:uri request) pages/match :data)
                                   (or (get-in ssr [:snapshot :content])

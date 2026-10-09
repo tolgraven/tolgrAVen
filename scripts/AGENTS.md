@@ -4,7 +4,7 @@
 when moving tools; tasks accept argument vectors, never interpolate a local shell.
 
 - `build/styles.mjs` compiles shell, development inspector and module CSS entries
-  with locked Sass/PostCSS and vendors
+  with locked Sass/PostCSS, compiles the separate icon sheet and vendors
   Leaflet images. Keep `npm run build` and the watch workflow aligned.
 - `test/ssr.clj` saves renderer export metadata with each HTML/state hydration
   fixture; never infer rendered exports from the browser bundle inventory.
@@ -25,3 +25,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - Hook conversion reads index blobs, handles NUL-delimited paths, checks all outputs
   before staging, and preserves unstaged source and variant edits. Test with real
   codecs in disposable Git repositories.
+
+- `bb fonts:icons` uses the optional pinned Python/fontTools authoring tool to
+  regenerate small icon fonts and their disjoint Unicode ranges. Source literals
+  and `resources/icon-fonts.json` own glyph selection; keep full-font fallbacks.
+  Commit catalog, generated SCSS and fonts together; see `doc/styles.md`.

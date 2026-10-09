@@ -139,3 +139,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Thin build adapters may use `.cljc` solely for Shadow reader features (`:browser`,
   `:ssr`, `:dev`); `.cljs` cannot contain reader conditionals. Keep these separate
   from shared JVM contracts and do not infer a server renderer from the extension.
+
+- Icon faces use small application subsets with disjoint Unicode ranges and the
+  original full fonts as on-demand fallbacks. Keep CMS-driven names in
+  `resources/icon-fonts.json`; regenerate after adding literal icons. The deferred
+  icon bundle and font URLs are fingerprinted by Optimus. See `doc/styles.md`.

@@ -1,6 +1,7 @@
 {:paths ["scripts"]
  :tasks
- {:requires ([media.images :as images]
+ {:requires ([babashka.process :as process]
+             [media.images :as images]
              [media.staged :as staged]
              [media.videos :as videos]
              [dev.tasks :as dev]
@@ -21,6 +22,8 @@
           :task (apply videos/-main *command-line-args*)}
   videos:responsive {:doc "Rebuild the opt-in responsive video catalog's renditions"
                      :task (videos/responsive!)}
+  fonts:icons {:doc "Regenerate application icon subsets with Python/fontTools (see doc/styles.md)"
+              :task (process/shell "python3" "scripts/media/icon_fonts.py")}
   audit {:doc "Measure isolated production bundles [label]"
          :task (apply dev/audit! *command-line-args*)}
   pair {:doc "Run the installed re-frame-pair skill [operation args...]"
