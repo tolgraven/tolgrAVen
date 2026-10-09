@@ -1,0 +1,4 @@
+@use "sass:meta";
+
+// Only the development document loads this inspector stylesheet.
+@include meta.load-css("components/dev-console");

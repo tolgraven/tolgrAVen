@@ -2,8 +2,10 @@
 
 `npm run build` compiles the shared `resources/scss/main.scss` and the entry files
 in `resources/scss/modules/` through the locked Sass and Autoprefixer packages.
-Outputs are `resources/public/css/tolgraven/main.min.css` and
-`modules/<feature>.min.css`. `npm run dev` watches both shared and module sources.
+Outputs are `resources/public/css/tolgraven/main.min.css`, `dev.min.css`, and
+`modules/<feature>.min.css`. The development document alone links `dev.min.css`,
+which contains inspector styles; production shell and error pages share the same
+fingerprinted shell link without loading those rules. `npm run dev` watches both shared and module sources.
 Set `CSS_OUTPUT_DIR` to build into a separate directory for comparisons.
 
 Shared shell/layout rules live in `scss/shell`, reusable component rules in
@@ -35,7 +37,8 @@ feature requests before first paint. Larger sheets retain stylesheet links;
 development keeps links for CSS watching. The `data-module-style` attribute
 associates each inline sheet with its immutable URL in the small `#module-styles`
 JSON inventory. The loader treats that sheet as already ready, avoiding duplicate
-requests. Streamed skeletons and completed SSR pages share the initial head.
+requests. Streamed skeletons and completed SSR pages share the initial head. The shell
+retains the centered body width when it leaves document flow to dissolve.
 Local return documents include their saved modules' CSS as links in the head.
 When modules share a stylesheet, their manifest entries reference the same bundle;
 the initial head and browser loader deduplicate that URL. Keep declared output

@@ -34,7 +34,7 @@
         (is (.contains (:body response) "Please retry."))))))
 
 (deftest first-paint-styles
-  (doseq [[dev? stylesheet] [[true "css/tolgraven/main.min.css"]
+  (doseq [[dev? stylesheet] [[true "/css/tolgraven/main.min.css"]
                              [false "/bundles/styles.hash.css"]]]
     (testing (if dev? "development" "production")
       (with-redefs [config/env {:dev dev? :ssr {:enabled false}}
@@ -48,6 +48,13 @@
               links (re-seq #"<link[^>]+>" body)
               main-links (filter #(.contains % stylesheet) links)]
           (is (= 1 (count main-links)))
+          (is (= dev? (.contains body "href=\"/css/tolgraven/dev.min.css\"")))
+          (let [error-body (:body (layout/error-page {:request {} :status 503}))
+                error-links (re-seq #"<link[^>]+>" error-body)]
+            (is (= 1 (count (filter #(.contains % stylesheet) error-links))))
+            (is (= dev? (.contains error-body "href=\"/css/tolgraven/dev.min.css\"")))
+            (when-not dev?
+              (is (not (.contains error-body "/css/tolgraven/main.min.css")))))
           (is (not (re-find #"media=|onload=" (first main-links))))
           (is (.contains body "name=\"color-scheme\""))
           (is (.contains body "prefers-color-scheme: light"))

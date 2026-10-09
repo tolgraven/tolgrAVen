@@ -34,6 +34,15 @@
 (defn- css [href]
   [:link (cond-> {:href href :rel "stylesheet" :type "text/css"}
            (not= href "css/opensans.css") (assoc :media "print" :onload "this.media='all'"))])
+(defn- shell-styles [request]
+  (for [path (if (:dev env)
+               ["/css/tolgraven/main.min.css" "/css/tolgraven/dev.min.css"]
+               (olink/bundle-paths request ["styles.css"]))]
+    [:link {:href path
+            :rel "stylesheet"
+            :type "text/css"
+            :data-precedence "shell"}]))
+
 (defn- script-priority [request]
   ;; Server HTML can paint before hydration; let its styles and fonts win bandwidth.
   (when (:ssr request) "low"))
@@ -184,10 +193,7 @@
             :href (or (olink/file-path request "/webfonts/OpenSans-v29-latin.woff2")
                       "/webfonts/OpenSans-v29-latin.woff2")}]
     ;; The layout must be styled before first paint, including on a cold/private visit.
-    (for [path (if (:dev env)
-                 ["css/tolgraven/main.min.css"]
-                 (olink/bundle-paths request ["styles.css"]))]
-      [:link {:href path :rel "stylesheet" :type "text/css" :data-precedence "shell"}])
+    (shell-styles request)
     (when-not (:local-return? request) (initial-style-tags request style-manifest))
     (when (:local-return? request) "__LOCAL_PAGE_STYLES__")
     [:script#module-styles {:type "application/json"} (content/hydration-json style-manifest)]
@@ -401,9 +407,7 @@
        [:title "Something bad happened - tolgrAVen"]
        [:meta {:name "description" :content "Error page"}]
 
-       (when-not (:dev env)
-         [:link {:href "/css/tolgraven/main.min.css" :rel "stylesheet" :type "text/css"}])
-       (ohtml/link-to-css-bundles request ["styles.css"])
+       (shell-styles request)
        [:script {:type "text/javascript"}
         (str "var csrfToken = \"" (force *anti-forgery-token*) "\";")]] ; this is where everything ends up for prod but cant remember why?
 

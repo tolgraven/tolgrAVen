@@ -69,7 +69,8 @@ body:has(#ssr-complete) #ssr-shell { display: none; }
   body:has(#ssr-complete) #ssr-shell {
     display: block;
     position: absolute;
-    inset: 0 0 auto;
+    // The containing block is html; preserve the centered body width while fading.
+    inset: 0 var(--space-edges) auto;
     z-index: 110;
     pointer-events: none;
     animation: skeleton-dissolve .16s ease-out both;
