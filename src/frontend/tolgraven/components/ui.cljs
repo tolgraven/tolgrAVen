@@ -52,7 +52,9 @@
    [code/<parse-markdown-components>
     (util/md->normal md)
     {:allow-images? (= :trusted (:trust options))
-     :allow-raw? (= :trusted (:trust options))}]])
+     :allow-raw? (= :trusted (:trust options))
+     :default-language (:default-language options)
+     :auto-languages (:auto-languages options)}]])
 
 (m/defc <observe-sticky> "Check if sticky element has stuck."
   [event]

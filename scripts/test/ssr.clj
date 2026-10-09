@@ -46,7 +46,7 @@
                            :missing? true :posts [] :comments [])
         [missing-html] (render! worker [missing])
         code-blog (update-in blog [:posts 0 :text]
-                             str "\n\n```clojure\n(defn greet [name] (str \"Hello \" name))\n```\n\n```cpp\n// Retain the language during hydration\nint answer = 42;\n```\n")
+                             str "\n\nInline `42` and `(inc 1)`.\n\n```\n(defn untagged [x] (inc x))\n```\n\n```clojure\n(defn greet [name] (str \"Hello \" name))\n```\n\n```cpp\n// Retain the language during hydration\nint answer = 42;\n```\n")
         [code-html] (render! worker [code-blog])
         shells (render! worker (mapv #(assoc % :shell? true :posts [] :query-params {})
                                      [home (assoc blog :path "/blog/post/42") cv]))]
@@ -66,7 +66,7 @@
                  (str/includes? (:html docs-html) "Shared documentation view.")
                  (not (str/includes? (:html docs-html) "cv-skills"))) "CV/docs state leaked")
     (check! (str/includes? (str/lower-case (:html missing-html)) "not found") "Missing permalink did not render not-found")
-    (check! (contains-all? (:html code-html) ["code-block" "<!--$-->" "language-cpp" "color:#fb4934" "greet" "Wrap lines"])
+    (check! (contains-all? (:html code-html) ["code-block" "<!--$-->" "language-cpp" "color:#80a0b3" "color:#bd979d" "code-highlight" "untagged" "greet" "Wrap lines"])
             "SSR code must retain highlighted markup in a completed Suspense boundary")
     (check! (not (str/includes? (:html code-html) "<pre><div"))
             "Markdown must not wrap a code block in another pre")

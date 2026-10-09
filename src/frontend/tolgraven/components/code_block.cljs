@@ -41,7 +41,7 @@
         committed! (hydration/use-deferred! defer?)
         [formatter _] (rf/use-state #(make-formatter committed!))
         args (into [code] (mapcat identity options))
-        fallback [:pre [:code code]]]
+        fallback (if (:inline? options) [:code.code-highlight code] [:pre [:code code]])]
     (rf/use-effect
       (fn []
         (if defer?
@@ -73,13 +73,15 @@
   (let [options (options-map options)
         [wrap? set-wrap!] (rf/use-state false)
         [copy-label set-copy-label!] (rf/use-state "Copy")]
-    [:div.code-block {:class (when wrap? "code-block-wrapped")}
-     [:div.code-block-controls
-      [:button {:type "button"
-                :on-click #(rf/dispatch [:code-block/copy code set-copy-label!])}
-       copy-label]
-      [:button {:type "button"
-                :aria-pressed wrap?
-                :on-click #(set-wrap! (not wrap?))}
-       "Wrap lines"]]
-     [<formatter> code options]]))
+    (if (:inline? options)
+      [<formatter> code options]
+      [:div.code-block {:class (when wrap? "code-block-wrapped")}
+       [:div.code-block-controls
+        [:button {:type "button"
+                  :on-click #(rf/dispatch [:code-block/copy code set-copy-label!])}
+         copy-label]
+        [:button {:type "button"
+                  :aria-pressed wrap?
+                  :on-click #(set-wrap! (not wrap?))}
+         "Wrap lines"]]
+       [<formatter> code options]])))

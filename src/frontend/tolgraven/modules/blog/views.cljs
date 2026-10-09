@@ -17,6 +17,16 @@
     [tolgraven.util :as util]
     [tolgraven.components.ui :as ui]))
 
+(def code-languages
+  ;; Keep Lisp-family false positives out of this Clojure-centric blog.
+  ["clojure" "cpp" "javascript" "json" "bash" "css" "xml" "python" "sql" "diff"])
+
+(defc <markdown>
+  "This blog falls back to Clojure when code has no tag or detectable language."
+  [text & [options]]
+  [link-preview/<md> text (merge {:default-language "clojure"
+                                :auto-languages code-languages} options)])
+
 (defn- link-trust [user]
   (let [id (if (string? user) user (:id user))]
     (cond
@@ -35,7 +45,7 @@
      {:style {:min-height "7.35rem"}}
      (when title
        [:h3.blog-comment-title title])
-     [link-preview/<md> text {:trust (link-trust user)}]]))
+     [<markdown> text {:trust (link-trust user)}]]))
 
 (declare <add-comment>)
 (declare <blog-container>)
@@ -187,7 +197,7 @@
                 {:style {:filter (when (neg? score)
                                    (str "brightness(calc(1 + "
                                         (max -0.7 (* 0.1 score)) "))"))}}
-                [link-preview/<md> text
+                [<markdown> text
                  {:trust (link-trust user)}]]]
 
              [:div.blog-comment-actions
@@ -331,7 +341,7 @@
   [:div
     [:h2.blog-post-title title]
     [:br]
-    [link-preview/<md> text
+    [<markdown> text
      {:trust (link-trust @(rf/subscribe [:user/active-user]))}]])
 
 (defc <post-blog> "Render post-making ui"
@@ -413,7 +423,7 @@
            [:i.fa.fa-edit] ])]]]}]
      ; [a custom sticky mini "how far youve scrolled bar" on right?]
      [:div.blog-post-text
-      [link-preview/<md> text
+      [<markdown> text
        {:id (str "blog-post-" id)
         :trust (link-trust user)}]]
      [<comments-section> {:post post :appear {:class "zoom-y" :remember-key [:blog/comments id]}}]]))
@@ -464,7 +474,7 @@
       (util/pluralize (count comments) "comment")])
    [<tags-list> {:post post}]
    [:div {:style {:padding-top "0.4em" :padding-bottom "var(--space)" :font-size "0.9em"}}
-    [link-preview/<md> @(rf/subscribe [:blog/post-preview id])
+    [<markdown> @(rf/subscribe [:blog/post-preview id])
      {:trust (link-trust user)}]]])
 
 (defc <blog-archive> "Render the post archive." []

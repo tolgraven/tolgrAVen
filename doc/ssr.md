@@ -359,6 +359,16 @@ subscription to the later completion flag. New SPA code acquires the formatter t
 the normal loader immediately. Paired local documents also render completed
 boundaries, and skip `:highlight` during bootstrap. Markdown delegates ownership of
 the native `pre` to the code component, avoiding parser repairs of nested blocks.
+Untagged blocks and inline snippets use the same formatter boundary; inline code
+retains an inline `code` root without block controls. Explicit tags take priority,
+otherwise Lowlight detects a language. The blog's Markdown wrapper supplies a
+Clojure fallback when detection finds none, and a focused automatic detection set
+that excludes Lisp-family false positives. Explicit tags retain the full registry;
+other consumers remain neutral and may supply their own `:auto-languages`.
+Both runtimes use `modules/highlight/theme.cljs`, adapted from
+[Bruvbox](https://github.com/tolgraven/bruvbox/blob/dd115f1133ce40f83711584fad51d83796de6898/colors/bruvbox.vim).
+Highlight.js categories are mapped to its palette and syntax roles; its grammar
+has fewer categories than Vim, so the mapping is intentionally approximate.
 
 Related blog routes share a `:transition-key`: their healthy page boundary and
 heading remain mounted while the destination post's managed subscription loads.

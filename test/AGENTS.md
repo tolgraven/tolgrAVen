@@ -50,6 +50,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   Generate both plain and fenced-code Node fixtures. Verify completed Suspense
   boundaries preserve pre/code/span identity before and after deferred hydration,
   including control/ancestor updates while suspended and the actual inner commit.
+  Include untagged blocks, explicit C/Clojure tags and inline snippets; check
+  Bruvbox tokens, inline roots and the blog-only fallback in the same fixture.
   Verify temporary transition batching is released on unmount and early navigation.
   Formatter acquisition waits for
   hydration, load, page readiness and painted idle frames. Plain pages never
