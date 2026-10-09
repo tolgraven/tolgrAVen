@@ -3,6 +3,7 @@
     [tolgraven.component.registry]
     [tolgraven.validation.runtime :as validation]
     [tolgraven.loader.code :as module-code]
+    [tolgraven.loader.styles :as styles]
     [tolgraven.react :as rf]
     [tolgraven.render-context :as context]
     [tolgraven.component.restore :as restore]
@@ -28,22 +29,25 @@
 (defonce *installed (atom #{}))
 
 (defn acquire-code!
-  "One Shadow acquisition shared by navigation, initialization and subscribers.
+  "One parallel CSS/Shadow acquisition shared by navigation and subscribers.
    The completion event makes Shadow readiness observable through re-frame."
   [module]
   (or (get @*code-loads module)
-      (let [promise (-> (try
-                          (if-let [loadable (get modules module)]
-                            (js/Promise.resolve (if (lazy/ready? loadable) @loadable (lazy/load loadable)))
-                            (js/Promise.reject (ex-info "Unknown module" {:module module})))
-                          (catch :default error (js/Promise.reject error)))
-                        (.then (fn [spec]
-                                 (validation/module! spec)
-                                 (-> (js/Promise.resolve (when-let [install! (:install spec)] (install!)))
-                                     (.then (fn [_]
-                                              (swap! *installed conj module)
-                                              (rf/dispatch [:loader/code-ready module])
-                                              spec)))))
+      (let [css (styles/acquire! module)
+            code (try
+                   (if-let [loadable (get modules module)]
+                     (js/Promise.resolve (if (lazy/ready? loadable) @loadable (lazy/load loadable)))
+                     (js/Promise.reject (ex-info "Unknown module" {:module module})))
+                   (catch :default error (js/Promise.reject error)))
+            promise (-> (js/Promise.all #js [code css])
+                        (.then (fn [results]
+                                 (let [spec (aget results 0)]
+                                   (validation/module! spec)
+                                   (-> (js/Promise.resolve (when-let [install! (:install spec)] (install!)))
+                                       (.then (fn [_]
+                                                (swap! *installed conj module)
+                                                (rf/dispatch [:loader/code-ready module])
+                                                spec))))))
                         (.catch (fn [error]
                                   (swap! *code-loads dissoc module)
                                   (throw error))))]
@@ -53,6 +57,7 @@
 (defn ready? [module]
   (when-let [loadable (get modules module)]
     (and (lazy/ready? loadable)
+         (styles/ready? module)
          (or (nil? (:install @loadable)) (contains? @*installed module)))))
 
 (defn- prepare-data! [resources]
@@ -115,7 +120,7 @@
 (declare load-code!)
 
 (defn load-code!
-  "Navigation waits only for JavaScript. Initialization/data run independently;
+  "Navigation waits for JavaScript and CSS. Initialization/data run independently;
    managed component bindings own their loading and error views."
   [options]
   (let [module (:module options)]

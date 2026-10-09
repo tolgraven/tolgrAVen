@@ -21,6 +21,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Effects/source adapters own I/O; view functions remain pure.
 - Use `<component>` names, `defc` features and `defpage` boundaries. `m/<>` selects
   direct or lazy module exports; it does not add a permanent wrapper.
+- Module `:styles` metadata is available before code acquisition. The shared loader
+  starts CSS and JS together and waits for both before readiness; React owns
+  stylesheet insertion. Keep feature CSS in `resources/scss/modules` and preserve
+  ordinary selector specificity. See `doc/styles.md`.
 - A module `:install` hook may restore browser-local caches after code acquisition.
   The loader shares/awaits it before publishing code readiness; ordinary `:init`
   still owns data activation. SSR adapters must not install disk caches or watches.

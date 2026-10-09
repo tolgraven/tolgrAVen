@@ -1,6 +1,9 @@
 (ns tolgraven.ssr.local-render
   "Loaded only when the local document cache can save a page."
   (:require [cljs.reader :as reader]
+            [reagent.dom.server :as server]
+            [tolgraven.loader.styles :as styles]
+            [tolgraven.loader.style-catalog :as style-catalog]
             [tolgraven.db :as db]
             [tolgraven.component.storage :as storage]
             [tolgraven.render-context :as context]
@@ -27,6 +30,12 @@
         html (render/html! render-db [page/<page>]
                           {:modules (local/modules) :restored? true :interactive? true
                            :snapshot @context/*snapshot})
-        document (contract/document template html (js/JSON.stringify (clj->js snapshot)) (.-title js/document))]
+        stylesheet-links (server/render-to-static-markup
+                           (into [:<>]
+                                 (for [href (distinct (mapcat #(style-catalog/paths (styles/manifest) %)
+                                                             (:modules snapshot)))]
+                                   [:link {:rel "stylesheet" :href href :data-precedence "modules"}])))
+        document (contract/document template html (js/JSON.stringify (clj->js snapshot))
+                                    (.-title js/document) stylesheet-links)]
     (when (> (contract/byte-count document) contract/max-bytes) (throw (js/Error. "Page document exceeds cache budget")))
     {:op "save" :url url :build build :html document :state state}))

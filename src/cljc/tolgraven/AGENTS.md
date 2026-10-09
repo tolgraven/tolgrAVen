@@ -35,6 +35,8 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
   boundary. It owns a stable root across loading/content/error states; the site
   shell opts out with `:container false`.
 
+- `loader/style_catalog.cljc` bakes literal module `:styles` and bundle dependencies
+  into both runtimes at compile time. Packaged servers do not read a source tree.
 - Module declarations may supply `:install` for code-owned setup. Browser loading
   awaits it before publishing readiness; Node adapters keep browser disk/cache
   installation inert. Keep this lifecycle distinct from managed data activation.

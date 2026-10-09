@@ -44,3 +44,6 @@ variants; it never claims codec or live-storage validation.
 Runtime configuration is described in [config/README.md](../config/README.md).
 Unfinished project notes remain under `experiments/notes/`; prototype source remains
 under `experiments/clj/`. Tool-mandated root configuration stays at its native path.
+
+CSS build and watch entry points compile shared and feature sheets independently;
+see [styles.md](styles.md) for declarations, source ownership and verification.

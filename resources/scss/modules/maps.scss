@@ -1,0 +1,4 @@
+@use "sass:meta";
+
+// Use the stylesheet matching the locked JS package; its images are vendored too.
+@include meta.load-css("../../../node_modules/leaflet/dist/leaflet");

@@ -26,6 +26,7 @@
     ; [ring-middleware-csp.core :refer [wrap-csp]]
     ; [ring.middleware.logger :refer [wrap-with-logger]]
     [optimus.prime :as optimus]
+    [tolgraven.loader.style-catalog :as styles]
     [optimus.assets :as assets]
     [optimus.optimizations :as optimizations]
     [optimus.strategies :as strategies]
@@ -65,7 +66,11 @@
   (concat
    (assets/load-bundle "public"
                        "styles.css"
-                       ["/css/tolgraven/main.min.css"]) ;should have a list for these, edn ting...
+                       ["/css/tolgraven/main.min.css"])
+   (assets/load-bundles "public"
+                        (into {} (keep (fn [[id {:keys [paths]}]]
+                                         (when (seq paths) [(styles/bundle-name id) paths])))
+                              styles/modules))
    (assets/load-bundles "public"
                         {"main.js" ["/js/compiled/out/main.js"]})
    (assets/load-assets "public"
@@ -84,7 +89,7 @@
       (transform-images {:regexp #"(/media/.*\.jpg)|(/img/.*\.(jpg|png))" ; Only transform originals, not webp/avif
                          :quality 0.80
                          :progressive true}) ; webp/avif already optimized at creation time
-      ; (optimizations/add-cache-busted-expires-headers) ; pisses off lighthouse. not sure why would want media to instantly expire anyways so
+      (optimizations/add-cache-busted-expires-headers)
       (optimizations/add-last-modified-headers)))
 
 (defonce serve-live-assets-maybe-autorefresh

@@ -44,10 +44,11 @@
   (-> text (string/replace "<" "\\u003c")
       (string/replace "\u2028" "\\u2028") (string/replace "\u2029" "\\u2029")))
 
-(defn document [template html json title]
+(defn document [template html json title & [styles]]
   ;; Replace only the template slots, in one pass; user content must not become
   ;; another slot even if a post happens to contain one of these strings.
-  (string/replace template #"__LOCAL_PAGE_(?:HTML|STATE|TITLE)__"
+  (string/replace template #"__LOCAL_PAGE_(?:HTML|STATE|TITLE|STYLES)__"
     {"__LOCAL_PAGE_HTML__" html "__LOCAL_PAGE_STATE__" (script-json json)
+     "__LOCAL_PAGE_STYLES__" (or styles "")
      "__LOCAL_PAGE_TITLE__" (-> title (string/replace "&" "&amp;")
                                (string/replace "<" "&lt;") (string/replace "\"" "&quot;"))}))

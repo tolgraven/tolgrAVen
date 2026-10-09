@@ -24,3 +24,12 @@
       (spit file "#=(throw (Exception. \"must not run\"))")
       (is (thrown? RuntimeException (modules/declaration file)))
       (finally (.delete file)))))
+
+(deftest stylesheet-catalog-contains-transitive-code-dependencies
+  (let [file (java.io.File/createTempFile "module-styles" ".cljs")]
+    (try
+      (spit file "(ns example.module)\n(def spec {:id :example :styles [\"/css/example.css\"]})")
+      (is (= ["/css/example.css"] (:styles (modules/declaration file))))
+      (spit file "(ns example.module)\n(def spec {:id :example :styles (identity [])})")
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"literal vector" (modules/declaration file)))
+      (finally (.delete file)))))

@@ -227,16 +227,20 @@
           original loader/modules
           *finish (atom nil)
           *installs (atom 0)
+          *started (atom nil)
+          started (js/Promise. (fn [resolve _] (reset! *started resolve)))
           spec {:id id
                 :install #(do (swap! *installs inc)
-                              (js/Promise. (fn [resolve _] (reset! *finish resolve))))}
+                              (js/Promise. (fn [resolve _]
+                                             (reset! *finish resolve)
+                                             (@*started nil))))}
           loadable (reify lazy/ILoadable (ready? [_] true)
                          IDeref (-deref [_] spec))]
       (set! loader/modules {id loadable})
       (let [first-load (loader/acquire-code! id)
             second-load (loader/acquire-code! id)]
         (is (identical? first-load second-load))
-        (-> (js/Promise.resolve nil)
+        (-> started
             (.then (fn [_]
                      (is (= 1 @*installs))
                      (is (not (loader/ready? id)))

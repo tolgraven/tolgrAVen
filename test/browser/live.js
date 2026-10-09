@@ -60,8 +60,14 @@ button.onclick = async () => {
     // Establish interactivity with an eager control, without warming Search.
     // A deferred button must retain its first click while its code loads.
     await waitFor(() => {
-      if (app().querySelector('.settings-panel.opened')) return true;
-      app().querySelector('button.settings-btn')?.click();
+      const root = app();
+      if (root?.querySelector('.settings-panel.opened')) return true;
+      // SSR can be visible before hydration. Its first link may perform a
+      // document navigation; let that pending intent hydrate instead of clicking
+      // it repeatedly and interrupting every reload before JavaScript can start.
+      if (root && !new URL(frame.contentWindow.location.href).searchParams.has('settingsBox')) {
+        root.querySelector('button.settings-btn')?.click();
+      }
       return false;
     }, 'hydrated settings control');
     app().querySelector('button.settings-btn').click();

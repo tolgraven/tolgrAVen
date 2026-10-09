@@ -4,5 +4,5 @@
 
 (def spec
   {:id :test
-   :assets {:css ["https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]}
+   :styles ["/css/tolgraven/modules/test.min.css"]
    :view {:page #'views/<test-page>}})

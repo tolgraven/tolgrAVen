@@ -9,4 +9,5 @@
 (def spec
   {:depends (get content-contract/module-dependencies :gpt [])
    :id :gpt
+   :styles ["/css/tolgraven/modules/gpt.min.css"]
    :view {:view #'view/<threads>}})

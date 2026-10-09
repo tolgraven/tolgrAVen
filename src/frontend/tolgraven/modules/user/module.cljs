@@ -9,6 +9,7 @@
 (def spec
   {:depends (get content-contract/module-dependencies :user [])
    :id :user
+   :styles ["/css/tolgraven/modules/user.min.css"]
    :view {:view #'view/<user-section>
           :btn #'view/<user-btn>
           :avatar #'view/<user-avatar>}})

@@ -10,6 +10,6 @@
 (def spec
   {:depends (get content-contract/module-dependencies :strava [])
    :id :strava
-   :assets {:css ["https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"]}
+   :styles ["/css/tolgraven/modules/strava.min.css"]
    :view {:view #'view/<strava>}
    :init #(rf/dispatch [:strava/init])})

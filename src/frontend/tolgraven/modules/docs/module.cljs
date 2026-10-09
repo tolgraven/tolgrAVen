@@ -10,6 +10,7 @@
 (def spec
   {:depends (get content-contract/module-dependencies :docs [])
    :id :docs
+   :styles ["/css/tolgraven/modules/docs.min.css"]
    :pages pages/spec
    :view {:page #'view/<page>}
    :init #(rf/dispatch [:docs/init])})
