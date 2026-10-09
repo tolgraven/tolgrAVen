@@ -6,7 +6,6 @@
     [tolgraven.react :as rf]
     [reitit.frontend.easy :as rfe]
     [clojure.string :as string]
-    [markdown.core :refer [md->html]]
     [tolgraven.loader]
     [tolgraven.components.ui :as ui]
     [tolgraven.modules.contact.views :as contact]
