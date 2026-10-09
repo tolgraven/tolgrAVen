@@ -170,3 +170,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   original full fonts as on-demand fallbacks. Keep CMS-driven names in
   `resources/icon-fonts.json`; regenerate after adding literal icons. The deferred
   icon bundle and font URLs are fingerprinted by Optimus. See `doc/styles.md`.
+
+- Link Preview acquires readable text/image data only when opened through the
+  managed URL source. Render remote content as text in site styles; an optional
+  sandboxed miniature starts after the readable card paints and only when frame
+  policy permits the parent origin. Following a preview expands it before departure;
+  visited URLs and transient-surface restoration keep their existing owner policy.

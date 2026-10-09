@@ -35,6 +35,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Link Preview sheet to unrelated routes. Inline small optimized sheets
   within a 16 KiB document budget; publish all URLs in `#module-styles`;
   local return documents carry their saved modules' styles before first paint.
+  Strip a leading UTF-8 marker when inlining CSS so its first selector remains valid.
 - Keep SDK and app scripts ordered and deferred, including local-return templates. Emit no analytics metadata,
   queue or scripts; the browser initializes it only after hydration and page readiness.
   SSR hydration preloads follow only the route’s Shadow dependency graph; other
@@ -81,3 +82,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - Network SSR snapshots carry `:route-parameters`, coerced by the server router,
   alongside raw `:query-params`. The browser trusts these only for its exact initial
   HTML/state pair; subsequent navigation uses the deferred browser adapter.
+
+- Link Preview owns `/api/link-preview`: bounded public HTML reads, checked DNS at
+  connection time and every redirect, short failure caching and shared in-flight
+  reads. Emit text blocks/image metadata and frame policy, never remote HTML.

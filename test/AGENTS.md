@@ -82,3 +82,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   preserve invalid-route/redacted-error/query round trips. Production checks must
   withhold the coercion chunk, prove SSR hydrates without it, then test early
   navigation and retries. Audit every Malli namespace out of the main bundle.
+
+- Readable preview checks cover semantic extraction, malformed/oversized documents,
+  public-address DNS enforcement, redirect bounds, deduplication and frame policies.
+  Mounted browser checks render text safely, delay miniatures and suppress blocked
+  frames; live review must distinguish static article extraction from JS-only pages.

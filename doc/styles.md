@@ -99,3 +99,7 @@ in a virtual environment and run `bb fonts:icons` with that environment on PATH.
 The generator retains font license/copyright records and names derivative fonts
 separately. Verify glyph outlines/metrics, fresh-browser requests, the full-font
 fallback and cache headers after changing it.
+
+Build CSS as UTF-8 without a byte-order marker (`charset: false` in Sass). The
+server also strips a leading marker before inlining third-party/optimized sheets;
+a marker inside an HTML style element becomes part of its first selector.

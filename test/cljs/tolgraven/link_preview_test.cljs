@@ -10,6 +10,7 @@
             [tolgraven.modules.link-preview.module]
             [tolgraven.link-preview-fixture]
             [tolgraven.modules.link-preview.views :as preview]
+            [tolgraven.component.data :as data]
             [tolgraven.macros :refer-macros [defc]]))
 (defn- tick [ms] (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
 (defn- render! [root form] (support/render! root form))
@@ -219,3 +220,47 @@
                           (.removeItem js/sessionStorage storage-key))
                       (restore!)
                       (done)))))))
+
+(deftest readable-preview-renders-text-and-respects-frame-policy
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                _ (.appendChild js/document.body element)
+                root (await! (support/create-root! element))
+                *loaded (atom 0)
+                candidate {:url "https://example.invalid/article" :trust :untrusted}
+                result {:status "ready"
+                        :url (:url candidate)
+                        :title "Readable title"
+                        :description "Summary"
+                        :image "https://example.invalid/image.webp"
+                        :blocks [{:kind "heading" :level 1 :text "A heading"}
+                                 {:kind "paragraph" :text "<script>plain text</script>"}]
+                        :truncated? true
+                        :frame-policy "same-origin"}]
+            (try
+              (is (false? (preview/frame-allowed? result "http://127.0.0.1:4011/blog")))
+              (is (preview/frame-allowed? result "https://example.invalid/other"))
+              (is (false? (preview/frame-allowed? (assoc result :frame-policy "blocked")
+                                                  "https://example.invalid/other")))
+              (await! (render! root [preview/<readable-content> result candidate #(swap! *loaded inc)]))
+              (await! (tick 70))
+              (is (= "A heading" (.-textContent (.querySelector element "h2:last-of-type"))))
+              (is (nil? (.querySelector element "script")))
+              (is (.includes (.-textContent element) "<script>plain text</script>"))
+              (is (= "https://example.invalid/image.webp" (.-src (.querySelector element "img"))))
+              (is (nil? (.querySelector element "iframe")))
+              (is (= 1 @*loaded))
+              (await! (render! root [preview/<readable-content>
+                                    (assoc result :frame-policy "none") candidate #(swap! *loaded inc)]))
+              (await! (tick 80))
+              (is (= (:url candidate) (.-src (.querySelector element "iframe"))))
+              (await! (render! root [preview/<readable-content>
+                                    (assoc result :blocks [] :frame-policy "blocked")
+                                    candidate #(swap! *loaded inc)]))
+              (is (.querySelector element ".link-preview__readable--metadata"))
+              (is (.includes (.-textContent element) "Only page metadata is available"))
+              (is (nil? (.querySelector element "iframe")))
+              (finally (await! (support/unmount! root)) (.remove element)))))
+        (.then (fn [_] (done)))
+        (.catch (fn [error] (is false (str error)) (done))))))

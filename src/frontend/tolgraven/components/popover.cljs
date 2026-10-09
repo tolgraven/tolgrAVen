@@ -26,7 +26,8 @@
                          (when observer (.observe observer element))
                          (measure!)))]
     (fn [{:keys [aria-label class expanded? on-click on-pointer-enter
-                    on-pointer-leave on-key-down on-focus on-blur open?]}
+                    on-pointer-leave on-key-down on-focus on-blur open? scaled?]
+             :or {scaled? true}}
             content]
       (react/use-effect
        (fn []
@@ -41,7 +42,9 @@
              {:class (when expanded? "popover-layer--expanded")}
              [:div.popover
               {:aria-label aria-label
-               :class (str class (when expanded? " popover--expanded"))
+               :class (str class
+                           (when-not scaled? " popover--readable")
+                           (when expanded? " popover--expanded"))
                :data-popover true
                :style (when @*scale {"--popover-content-scale" @*scale})
                :tab-index 0
