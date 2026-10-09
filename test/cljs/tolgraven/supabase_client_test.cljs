@@ -11,6 +11,20 @@
 
 (defn tick! [] (js/Promise. (fn [resolve _] (js/setTimeout resolve 0))))
 
+(defn await-value! [reference predicate]
+  ;; SDK completion queues a re-frame event. Observe the delivered value rather
+  ;; than assuming that one zero-delay timer also commits that event.
+  (js/Promise.
+    (fn [resolve reject]
+      (let [deadline (+ (.now js/performance) 2000)]
+        (letfn [(check! []
+                  (ratom/flush!)
+                  (cond
+                    (predicate @reference) (resolve nil)
+                    (> (.now js/performance) deadline) (reject (js/Error. "Query value did not settle"))
+                    :else (js/requestAnimationFrame check!)))]
+          (check!))))))
+
 (defn mock-client []
   (let [*rows (atom {}) *selects (atom []) *filters (atom []) *channels (atom {})
         *removed (atom []) *auth-change (atom nil) *deferred (atom nil)
@@ -125,7 +139,7 @@
                      ;; Rejoining fetches once to catch changes missed offline.
                      (reset! (:rows mock) {"site_users" [{:id "v" :name "Offline insert"}]})
                      (status! mock "store-site_users" "SUBSCRIBED")
-                     (tick!)))
+                     (await-value! all #(= "v" (get-in % [:docs 0 :id])))))
             (.then (fn []
                      (ratom/flush!)
                      (is (= "v" (get-in @all [:docs 0 :id])))

@@ -115,6 +115,8 @@ These are required principles for new code and changes to existing code. Follow 
 - Batch and deduplicate pending data loads and persistence operations through the shared queues. Distinguish pending, successfully loaded empty, failed, and cached data. Preserve usable cached content during refresh and report real failures through the established notification/retry system.
 - Release subscriptions, watches, listeners, and live connections when their owning lifecycle ends. Retain app-db content caches for reuse; temporary preloading must not dispose a subscription still owned by a mounted component.
 - Use the scoped subscription/update helpers for persistent component, module, page, and shared state. Reserve local Reagent state for transient component-owned state; do not introduce a second application store or bypass event-driven persistence.
+  Scoped helpers return native re-frame subscriptions; write with `>reset`/`>update`.
+  Persistence runs through registered effects after accepted event transactions.
 
 ### Components and DOM ownership
 - Build UI declaratively with Reagent/React components, preferably the existing composable `defc` capabilities. Put feature specifications in the declaration, use `<component>` naming, and avoid extra wrappers or class-component lifecycle machinery when a function component suffices.

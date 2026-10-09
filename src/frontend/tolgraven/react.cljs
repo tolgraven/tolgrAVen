@@ -16,7 +16,6 @@
 (def atom                      reagent.core/atom)
 (def children                  reagent.core/children)
 (def create-class              reagent.core/create-class)
-(def cursor                    reagent.core/cursor)
 (def lazy                      react/lazy)
 (def reactify-component        reagent.core/reactify-component)
 (def make-reaction             reagent.ratom/make-reaction)

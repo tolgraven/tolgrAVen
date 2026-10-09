@@ -8,7 +8,6 @@
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
     [tolgraven.component.legacy-storage :as localstore]
     [tolgraven.component.storage :as storage]
-    [re-frame.db :as rfdb]
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
     [breaking-point.core :as bp]
@@ -530,7 +529,7 @@
 
 (rf/reg-fx :ls/track
   (fn [path]
-    (storage/track! [:state path] #(get-in @rfdb/app-db path storage/missing) {:scope :public})))
+    (storage/track! [:state path] #(storage/state-value path) {:scope :public})))
 
 (rf/reg-event-fx :ls/get-path [(rf/inject-cofx :ls) (rf/inject-cofx :ls/restored)]
   (fn [{:keys [db ls] :ls/keys [restored]} [_ ls-path db-path]]

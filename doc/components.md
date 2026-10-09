@@ -254,12 +254,12 @@ reduced motion. Errors still show the existing retry UI instead of a skeleton.
   []
   (let [*state (component/state)]
     [:input {:value (:search @*state)
-             :on-change #(swap! *state assoc :search (.. % -target -value))}]))
+             :on-change #(component/>update *state assoc :search (.. % -target -value))}]))
 ```
 
-`component/state` returns a writable Reagent cursor whose reads use a registered
-re-frame subscription and whose writes update app-db. `@`, `reset!` and `swap!`
-work like a normal ratom, but unmounting does not delete the value. Call it in the
+`component/state` returns a native re-frame subscription. Dereference it to read;
+use `component/>reset` and `component/>update` to dispatch writes through events.
+Unmounting does not delete the value. Call it in the
 render body; no `:let` is needed. Options on that call override definition defaults.
 
 Paths are populated automatically under `[:component component-ns component-name instance-key ...]`, using the
@@ -387,9 +387,9 @@ declaration is needed unless configuring component keys, defaults, or persistenc
   [:button {:on-click #(>update *setting not)} (str @*setting)])
 ```
 
-`<sub` returns a reactive writable handle backed by a re-frame subscription.
-`@*setting` always reads the value. The handle carries its resolved path in metadata,
-so write helpers accept it directly without dereferencing it or requiring a tuple.
+`<sub` returns a native re-frame subscription; `@*setting` reads the value.
+A weak index retains its resolved write destination without storing application
+values, so write helpers accept it directly without dereferencing it or requiring a tuple.
 `(component/path-of *setting)` returns the resolved vector when needed.
 
 | Scope | Expanded path |

@@ -25,6 +25,38 @@
   (rf/use-effect (fn [] (committed!) js/undefined) #js [])
   form)
 
+(deftest capture-observes-native-source-and-releases-it-on-unmount
+  (async done
+    (let [restore! (re-frame/make-restore-fn)
+          schedule! local/schedule!
+          connect! local/connect!
+          *scheduled (atom 0)]
+      (set! local/schedule! #(swap! *scheduled inc))
+      (set! local/connect! #(js/Promise.resolve nil))
+      (-> (go-promise
+            (let [element (.createElement js/document "div")
+                  root (await! (support/create-root! element))]
+              (try
+                (await! (support/render! root [local/<capture>]))
+                (let [initial @*scheduled]
+                  (rf/dispatch [:component-state/reset [:state :capture-test] true])
+                  (await! (support/settle!))
+                  (is (= (inc initial) @*scheduled))
+                  (rf/dispatch [:page-return/status {:status :ready :url "/blog"}])
+                  (await! (support/settle!))
+                  (is (= (inc initial) @*scheduled) "Capture status does not trigger another capture")
+                  (await! (support/render! root nil))
+                  (rf/dispatch [:component-state/reset [:state :capture-test] false])
+                  (await! (support/settle!))
+                  (is (= (inc initial) @*scheduled) "Unmount releases the source subscription"))
+                (finally (support/unmount! root)))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (set! local/schedule! schedule!)
+                      (set! local/connect! connect!)
+                      (restore!)
+                      (done)))))))
+
 (deftest local-rendered-expanded-comments-hydrate-with-the-same-state-and-nodes
   (async done
     (-> (go-promise

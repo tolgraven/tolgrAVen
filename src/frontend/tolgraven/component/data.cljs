@@ -4,7 +4,6 @@
             [tolgraven.schema.declarations :as schemas]
             [reagent.core :as r]
             [tolgraven.react :as rf]
-            [re-frame.db :as rfdb]
             [tolgraven.service-status :as status]
             [tolgraven.component.storage :as storage]
             [tolgraven.component.restore :as restore]))
@@ -107,7 +106,7 @@
   (doseq [[path {:keys [resource value]}] @*installed :when (matches? resource)]
     (swap! *installed dissoc path)
     ;; Do not remove a value another producer has since replaced.
-    (when (= value (get-in @rfdb/app-db path))
+    (when (= value (storage/state-value path))
       (rf/dispatch-sync [:component-data/remove path]))))
 
 (defn ensure!
@@ -156,7 +155,7 @@
                                       (storage/write! (snapshot-id resource) value options)
                                       (storage/track! (snapshot-id resource)
                                                       #(if (:into resource)
-                                                         (get-in @rfdb/app-db (:into resource) storage/missing)
+                                                         (storage/state-value (:into resource))
                                                          (get-in @*entries [key :value] storage/missing)) options))
                                     (status/recover! [:component-data key]))
                                   value))
