@@ -15,7 +15,7 @@
                    [:div.oembed-inner
                     {:style {:height (:height @state)}
                      :dangerouslySetInnerHTML
-                     {:__html (get-in @state [:data :html])}}])]
+                     (r/unsafe-html (or (get-in @state [:data :html]) ""))}])]
     (rf/dispatch [:http/get {:uri    "/api/oembed"
                              :params {:url url}}
                   #(r/rswap! state merge {:loading? false
