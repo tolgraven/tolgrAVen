@@ -68,6 +68,7 @@
                 ohtml/link-to-js-bundles (fn [& _] [:script {:src "/bundles/main.hash.js"}])]
     (let [{:keys [body headers]} (layout/render-home {:uri "/"})]
       (is (= "</bundles/main.hash.js>; rel=preload; as=script" (get headers "Link")))
+      (is (not (.contains body "fetchpriority=\"low\"")) "Browser-rendered pages keep normal script priority")
       (is (re-find #"<link[^>]*href=\"/bundles/main.hash.js\"[^>]*rel=\"preload\"" body))
       (is (< (.indexOf body "/bundles/main.hash.js") (.indexOf body "<body")))
       (is (re-find #"<script[^>]*defer[^>]*src=\"/bundles/main.hash.js\"" body))
@@ -153,8 +154,14 @@
     (let [{:keys [headers body]} (layout/render-home {:uri "/blog/post/28"})]
       (doseq [module ["link-preview" "user" "blog"]]
         (let [path (str "/js/compiled/out/" module ".js")]
-          (is (.contains (get headers "Link") path))
-          (is (< (.indexOf body path) (.indexOf body "<body"))))))))
+          (is (.contains (get headers "Link") (str "<" path ">; rel=preload; as=fetch; crossorigin=anonymous; fetchpriority=low")))
+          (is (< (.indexOf body path) (.indexOf body "<body")))
+          (is (.contains (first (filter #(.contains % path) (re-seq #"<link[^>]+>" body)))
+                         "fetchpriority=\"low\""))
+          (is (.contains (first (filter #(.contains % path) (re-seq #"<link[^>]+>" body)))
+                         "as=\"fetch\" crossorigin=\"anonymous\""))))
+      (is (.contains (get headers "Link") "</bundles/main.hash.js>; rel=preload; as=script; fetchpriority=low"))
+      (is (re-find #"<script[^>]*fetchpriority=\"low\"[^>]*src=\"/bundles/main.hash.js\"" body)))))
 
 (deftest production-inlines-optimized-route-sheets-with-a-bounded-budget
   (let [asset (fn [module css]

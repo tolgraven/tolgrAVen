@@ -318,6 +318,11 @@ loader. Browser hydration remains split, but the response head and HTTP `Link`
 header preload the route's transitive modules from Shadow's generated manifest
 (including shared user/link-preview dependencies) alongside the main bundle.
 This downloads code in parallel without overriding Shadow's execution order.
+For SSR responses, both preload forms and the deferred main script use
+`fetchpriority="low"`, keeping first-paint CSS and fonts ahead of hydration code.
+Responses without server-rendered content keep ordinary script priority.
+Lazy chunks use `as="fetch"` and `crossorigin="anonymous"` to match Shadow's
+XHR acquisition. The main bundle uses `as="script"` to match its deferred tag.
 
 Related blog routes share a `:transition-key`: their healthy page boundary and
 heading remain mounted while the destination post's managed subscription loads.

@@ -19,7 +19,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   a passing browser test or proof of live CMS integration.
 - Module CSS checks cover request initiation before Shadow, shared acquisition,
   readiness/failure/retry, inline SSR styles, budget/link fallback and no duplicate
-  initial downloads. Compression checks must decode the shell before final data
+  initial downloads. Hydration preload hints must match Shadow's request kind,
+  CORS mode and priority in both the response header and document head.
+  Compression checks must decode the shell before final data
   is ready. Initial SSR visibility alone
   does not prove hydration; let pending link intent settle before repeating clicks.
 - Live motion checks assert simultaneous 250ms linear fades and an opaque sticky
