@@ -32,7 +32,7 @@
     (is (nil? (get-in saved [:state :login-field])))
     (is (nil? (get-in saved [:state :supabase-init])))
     (is (nil? (get-in saved [:state :booted :store])))
-    (is (true? (get-in saved [:state :booted :blog])))
+    (is (nil? (get-in saved [:state :booted :blog])))
     (is (nil? (:diagnostics saved)))
     (is (nil? (get-in saved [:store :private])))))
 
@@ -73,3 +73,22 @@
     (is (= 7 (get-in encoded [:state :blog :page])))
     (is (= 20 (get-in encoded [:state :blog :comment-limit 42])))
     (is (nil? (get-in (snapshot/snapshot-state {:kind :cv :path "/cv" :posts []}) [:state :blog])))))
+
+(deftest return-state-retains-owner-decisions-and-drops-runtime-layout
+  (let [state {:menu true
+               :scroll-position {"/blog/post/24" 850}
+               :hidden {:header true :footer true}
+               :scroll {:past-top true :at-bottom true :block true}
+               :dispatch-in {:timer {:js-id 42}}
+               :unknown-feature {:open? true}
+               :blog {:comments-expanded {24 true}
+                      :comment-thread-expanded {[24 "root"] true}
+                      :restore-edits #{[:comments-expanded 24]}}
+               :link-preview {:visited #{"https://example.org"} :active {:status :expanded}}}
+        saved (contract/restored-view-state state)]
+    (is (= {:menu true
+            :scroll-position {"/blog/post/24" 850}
+            :blog {:comments-expanded {24 true}
+                   :comment-thread-expanded {[24 "root"] true}}
+            :link-preview {:visited #{"https://example.org"}}} saved))
+    (is (= saved (contract/restored-view-state saved)))))

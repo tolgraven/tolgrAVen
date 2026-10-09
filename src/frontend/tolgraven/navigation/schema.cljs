@@ -2,6 +2,8 @@
   "State exchanged by the route commit and browser transition lifecycle."
   (:require [tolgraven.schema.common :as c]))
 
+(def return-state-keys [:scroll-position])
+
 (def completion
   (c/optional-map {:current? fn?
                    :resolve! fn?

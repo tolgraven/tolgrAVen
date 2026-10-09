@@ -3,6 +3,10 @@
             [tolgraven.schema.declarations :as declarations]
             [tolgraven.supabase.schema :as store]))
 
+(def return-state-keys
+  [:current-post-id :viewing-tag :page :comment-limit :comments-expanded
+   :comment-thread-expanded :adding-comment])
+
 (def state
   [:map
    [:restore-edits {:optional true}
@@ -17,7 +21,6 @@
    [:comment-thread-expanded {:optional true} [:map-of :any :boolean]]])
 (def options [:map [:posts-per-page {:optional true} [:int {:min 1}]]])
 (def sections {[:state :blog] state [:options :blog] options})
-
 
 (def post-header-spec [:map [:children [:sequential :any]]])
 (def displayed-post

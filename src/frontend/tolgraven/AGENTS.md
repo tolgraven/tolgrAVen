@@ -86,6 +86,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Paired shell markup suppresses default header/menu/footer entrances; explicit
   menu intent resumes ordinary motion. Temporary preview surfaces do not enter
   saved markup/state: owners declare retained return keys, such as visited URLs.
+  Shared `:state` restoration is opt-in: shell/navigation/module schema owners
+  declare retained keys. Header/footer visibility, scroll measurements, timers and
+  boot flags are rebuilt; HTML and installed state use the same policy. Component,
+  page and module scoped state retains its existing ownership contract.
   Preview departures use the common capture adapter, and BFCache closes transient
   surfaces; already visited URLs do not reopen automatic previews.
 - The local return adapter renders an isolated state snapshot using the shared

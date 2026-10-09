@@ -44,14 +44,14 @@
               (try
                 (await! (support/render! root [local/<capture>]))
                 (let [initial @*scheduled]
-                  (rf/dispatch [:component-state/reset [:state :capture-test] true])
+                  (rf/dispatch [:component-state/reset [:state :menu] true])
                   (await! (support/settle!))
                   (is (= (inc initial) @*scheduled))
                   (rf/dispatch [:page-return/status {:status :ready :url "/blog"}])
                   (await! (support/settle!))
                   (is (= (inc initial) @*scheduled) "Capture status does not trigger another capture")
                   (await! (support/render! root nil))
-                  (rf/dispatch [:component-state/reset [:state :capture-test] false])
+                  (rf/dispatch [:component-state/reset [:state :menu] false])
                   (await! (support/settle!))
                   (is (= (inc initial) @*scheduled) "Unmount releases the source subscription"))
                 (finally (support/unmount! root)))))
@@ -236,3 +236,30 @@
                       (reset! restore/*context original-context)
                       (restore-db!)
                       (done)))))))
+
+(deftest collapsed-shell-is-not-captured-as-a-display-choice
+  (async done
+    (let [restore-db! (re-frame/make-restore-fn)
+          form [shell/<header> {:menu {:work [] :personal []}}]]
+      (-> (go-promise
+            (rf/dispatch-sync [:init/app-db])
+            (rf/dispatch-sync [:state [:hidden] {:header true :footer true}])
+            (rf/dispatch-sync [:state [:scroll] {:past-top true :at-bottom true}])
+            (let [saved (contract/state-for (await! (support/state-at! [])))
+                  html (render/html! saved form {:restored? true :interactive? true})
+                  element (.createElement js/document "div")]
+              (set! (.-innerHTML element) html)
+              (is (nil? (get-in saved [:state :hidden])))
+              (is (nil? (get-in saved [:state :scroll])))
+              (is (not (.contains (.-classList (.querySelector element "header")) "hide")))
+              ;; Installing legacy saved state must apply the same owner policy.
+              (rf/dispatch-sync [:init/app-db])
+              (rf/dispatch-sync [:page-return/install
+                                 (assoc-in saved [:state :hidden :header] true)])
+              (let [root (await! (support/create-root! element))]
+                (try
+                  (await! (support/render! root form))
+                  (is (not (.contains (.-classList (.querySelector element "header")) "hide")))
+                  (finally (support/unmount! root))))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn [] (restore-db!) (done)))))))

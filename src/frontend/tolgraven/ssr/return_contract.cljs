@@ -4,7 +4,11 @@
   (:require [clojure.string :as string]
             [tolgraven.validation :as validation]
             [tolgraven.ssr.schema :as schema]
-            [tolgraven.modules.link-preview.schema :as preview]))
+            [tolgraven.modules.link-preview.schema :as preview]
+            [tolgraven.modules.blog.schema :as blog]
+            [tolgraven.modules.user.schema :as user]
+            [tolgraven.navigation.schema :as navigation]
+            [tolgraven.components.shell-schema :as shell]))
 
 (def version 1)
 (def ttl-ms 1800000)
@@ -12,8 +16,6 @@
 (defn byte-count [text]
   (.-length (.encode (js/TextEncoder.) text)))
 (def roots [:content :component :page :module :global :docs :search :cookie-notice :hud])
-(def transient-state [:debug :global-clicked :is-loading :page-init :navigation :login-field :register-field :form-field
-                      :supabase-init :on-booted :supabase-writes])
 (defn- without-credentials [value]
   (cond
     (map? value) (into {} (keep (fn [[key child]]
@@ -24,22 +26,25 @@
     (set? value) (into #{} (map without-credentials) value)
     (seq? value) (doall (map without-credentials value))
     :else value))
+(def return-state-keys
+  (into [:motion-seen] (concat shell/return-state-keys user/return-state-keys
+                               navigation/return-state-keys)))
 (def return-state-sections
-  ;; Temporary surfaces do not participate in layout restoration. Owners name
-  ;; the durable decisions that should survive; DOM registrations are rebuilt.
-  {:link-preview preview/return-state-keys})
+  {:blog blog/return-state-keys
+   :link-preview preview/return-state-keys})
 
 (defn restored-view-state [state]
-  (reduce-kv (fn [state section retained]
-               (if (contains? state section)
-                 (update state section #(when % (select-keys % retained)))
-                 state))
-             state return-state-sections))
+  ;; Shared state is opt-in. Runtime measurements, pending work and temporary
+  ;; surfaces must not become the first render of a new document.
+  (reduce-kv (fn [retained section keys]
+               (if-let [value (get state section)]
+                 (assoc retained section (select-keys value keys))
+                 retained))
+             (select-keys state return-state-keys) return-state-sections))
 
 (defn source-for [db]
   (-> (select-keys db roots)
-      (assoc :state (restored-view-state (apply dissoc (:state db) transient-state)))
-      (update-in [:state :booted] dissoc :store)
+      (assoc :state (restored-view-state (:state db)))
       (assoc :options (dissoc (:options db) :supabase))
       (assoc-in [:options :supabase :trusted-author-ids]
                 (get-in db [:options :supabase :trusted-author-ids]))

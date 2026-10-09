@@ -456,3 +456,12 @@ Each network snapshot includes the server router's coerced `:route-parameters`
 (path/query maps) and the original `:query-params`. This lets the matching initial
 browser route hydrate without importing Malli. The Node renderer uses the same
 typed parameters; subsequent SPA routes wait for the deferred browser adapter.
+
+Local document shared view state is opt-in through owner declarations:
+`shell-schema/return-state-keys`, `navigation.schema/return-state-keys`, and
+module-local schema keys. `ssr.return-contract` composes these declarations for
+both rendering and installation. Expanded blog threads and their query caches
+survive; scroll-derived header/footer visibility, scroll measurements, pending
+work, timers and boot flags do not. A new shared-state field is transient until
+its owner explicitly declares it. This policy is separate from scoped component
+state and opt-in disk persistence.
