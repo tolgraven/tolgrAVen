@@ -4,7 +4,6 @@
   (:require [ajax.core :as ajax]
             [cljs.reader :as reader]
             [reagent.core :as r]
-            [re-frame.db :as rfdb]
             [tolgraven.react :as rf]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.loader :as loader]
@@ -119,6 +118,7 @@
 (rf/reg-fx :page-return/consume storage/consume-restored!)
 (rf/reg-event-db :page-return/status (fn [db [_ status]] (assoc db :page-return status)))
 (rf/reg-sub :page-return/status (fn [db _] (:page-return db)))
+(rf/reg-sub :page-return/source (fn [db _] (contract/source-for db)))
 (rf/reg-event-fx :page-return/clear (fn [_ _] {:page-return/clear true}))
 (rf/reg-fx :page-return/clear (fn [_] (clear!)))
 
@@ -172,22 +172,23 @@
           (rf/dispatch-sync [:page-return/save true]))))))
 
 (defc <capture> {:profile false} []
+  (let [source @(rf/subscribe [:page-return/source])
+        identity @storage/*identity
+        *previous-identity (rf/use-ref identity)]
+    (rf/use-effect (fn [] (schedule!) js/undefined) #js [source])
+    (rf/use-effect
+      (fn []
+        (when (not= identity (.-current *previous-identity))
+          (set! (.-current *previous-identity) identity)
+          (clear!))
+        js/undefined)
+      #js [identity]))
   (rf/use-effect
     (fn []
       (-> (connect!) (.catch (fn [_] nil)))
-      (schedule!)
-      (add-watch rfdb/app-db ::capture
-                 (fn [_ _ before after]
-                   ;; Compare persistent source references before traversing or
-                   ;; serializing anything. Trace/debug events do no cache work.
-                   (when (not= (contract/source-for before) (contract/source-for after)) (schedule!))))
-      (add-watch storage/*identity ::capture
-                 (fn [_ _ before after] (when (not= before after) (clear!))))
       (.addEventListener js/document "click" external-click! true)
       (.addEventListener js/window "pageshow" resumed!)
       (fn []
-        (remove-watch rfdb/app-db ::capture)
-        (remove-watch storage/*identity ::capture)
         (.removeEventListener js/document "click" external-click! true)
         (.removeEventListener js/window "pageshow" resumed!)
         (when @*pending (js/clearTimeout @*pending) (reset! *pending nil)))) #js [])

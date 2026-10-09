@@ -5,11 +5,15 @@
     [tolgraven.validation :as validation]
     [tolgraven.ssr.schema :as schema]
     [reagent.core :as r]
-    [re-frame.db :as rfdb]
     [tolgraven.react :as rf]
     [tolgraven.service-status :as status]))
 
 (def missing (js-obj))
+(rf/reg-sub :component-storage/value
+  (fn [db query]
+    (let [[_ path] (or (:re-frame/query-v query) query)]
+      (get-in db path missing))))
+(defn state-value [path] @(rf/sub [:component-storage/value path]))
 (def prefix "tolgraven.component.v2:")
 (defonce *public-saved? (atom false))
 (defonce *identity (r/atom nil))
@@ -281,10 +285,26 @@
               ;; Disk IO still belongs to the shared write queue.
               (write! id value (or (get-in @*tracked [id :options]) options)))))))))
 
-(add-watch rfdb/app-db ::deletions
-           (fn [_ _ before after]
-             ;; SSR resets request state too; those deletions are not browser edits.
-             (when (exists? js/window) (mirror-deletions! before after))))
+(rf/reg-fx :component-storage/commit
+  (fn [{:keys [before after]}]
+    (when (exists? js/window)
+      (mirror-deletions! before after)
+      (when (some #(not (identical? (get before %) (get after %)))
+                  [:component :module :page :state])
+        (schedule!)))))
+
+(rf/reg-global-interceptor
+  (rf/->interceptor
+    :id :component-storage/commit
+    :after (fn [context]
+             ;; Validation can reject a transaction by discarding its effects.
+             ;; Capture accepted values here; effects run after the :db commit.
+             (if (contains? (:effects context) :db)
+               (update-in context [:effects :fx] (fnil conj [])
+                          [:component-storage/commit
+                           {:before (rf/get-coeffect context :db)
+                            :after (rf/get-effect context :db)}])
+               context))))
 
 
 (def public-cache-paths [[:store :public] [:state :motion-seen]])
@@ -307,4 +327,4 @@
                   (when-let [saved (read! [:state path] public-cache-options)]
                     [path (:value saved)])) public-cache-paths))])
   (doseq [path public-cache-paths]
-    (track! [:state path] #(get-in @rfdb/app-db path missing) public-cache-options)))
+    (track! [:state path] #(state-value path) public-cache-options)))

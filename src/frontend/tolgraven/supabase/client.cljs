@@ -3,7 +3,6 @@
             [tolgraven.supabase.schema :as schema]
             [ajax.core :as ajax]
             [tolgraven.react :as rf]
-            [re-frame.db :as rfdb]
             [tolgraven.service-status :as status]
             [goog.object :as gobj]
             [reagent.ratom :as ratom]
@@ -145,13 +144,19 @@
 
         :else nil))))
 
+(rf/reg-sub :supabase/cached-query
+  (fn [db query-v]
+    (let [[_ key] (or (:re-frame/query-v query-v) query-v)]
+      {:entry (get-in db [:store :query-cache key])
+       :scoped (get-in db [:store :scoped key])})))
+
 (defn cached-query [opts]
   (let [opts (query/normalize-query opts)
         tables (query/realtime-tables opts)
-        entry (get-in @rfdb/app-db [:store :query-cache (query-key opts)])]
+        {:keys [entry scoped]} @(rf/sub [:supabase/cached-query (query-key opts)])]
     (cond
-      (and (query/scoped-query? opts) (get-in @rfdb/app-db [:store :scoped (query-key opts)]))
-      {:ready? true :value (get-in @rfdb/app-db [:store :scoped (query-key opts)])}
+      (and (query/scoped-query? opts) scoped)
+      {:ready? true :value scoped}
       (and (seq tables) (every? @*loaded tables)
            (or (not (query/user-document-query? opts)) @*session))
       {:ready? true :value (result @*seed opts)}

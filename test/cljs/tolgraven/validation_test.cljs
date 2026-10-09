@@ -8,6 +8,7 @@
             [tolgraven.component :as component]
             [tolgraven.component.registry :as registry]
             [tolgraven.component.persistent-state :as state]
+            [tolgraven.component.storage :as storage]
             [tolgraven.modules.blog.events]
             [tolgraven.schema.declarations :as schemas]
             [tolgraven.macros :refer-macros [defc]]
@@ -21,6 +22,27 @@
   (fn [{:keys [db]} _]
     {:db (assoc-in db [:options :blog :posts-per-page] -5)
      :validation-test/external true}))
+
+(deftest rejected-and-effect-only-events-do-not-enqueue-persistence
+  (let [restore! (re-frame/make-restore-fn)
+        enabled? @validation/*enabled?
+        *scheduled (atom 0)]
+    (try
+      (rf/dispatch-sync [:init/app-db])
+      (reset! validation/*enabled? true)
+      (rf/reg-global-interceptor
+        (rf/->interceptor :id :validation/app-db :after validation/intercept))
+      (rf/reg-event-fx :validation-test/effect-only (fn [_ _] {}))
+      (with-redefs [storage/schedule! #(swap! *scheduled inc)]
+        (rf/dispatch-sync [:validation-test/invalid])
+        (rf/dispatch-sync [:validation-test/effect-only])
+        (is (zero? @*scheduled) "Rejected transactions have no persistence effects")
+        (rf/dispatch-sync [:component-state/reset [:state :persist-event-test] false])
+        (is (= 1 @*scheduled) "Accepted state transactions enqueue the shared persistence effect"))
+      (finally
+        (rf/clear-global-interceptor :validation/app-db)
+        (reset! validation/*enabled? enabled?)
+        (restore!)))))
 
 (deftest frontend-uses-the-same-route-coercion
   (let [match (frontend/match-by-path routes/router "/blog/page/2?userBox=false")]

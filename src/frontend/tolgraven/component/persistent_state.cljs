@@ -1,17 +1,19 @@
 (ns tolgraven.component.persistent-state
   (:require [tolgraven.component.instrumentation :as instrumentation]
             [tolgraven.validation.runtime :as validation]
-            [reagent.core :as r]
             [clojure.string :as string]
             [tolgraven.content.contract :as content]
             [tolgraven.react :as rf]
-            [re-frame.db :as rfdb]
             [tolgraven.component.restore :as restore]
             [tolgraven.component.storage :as storage]))
 
 (def ^:dynamic *component* nil)
 (def ^:dynamic *args* nil)
 (def ^:dynamic *react-key* nil)
+
+;; Native subscription references remain owned by re-frame. This weak index
+;; carries only resolved write destinations; it contains no application values.
+(defonce state-paths (js/WeakMap.))
 
 (rf/reg-sub :component-state/entry
   (fn [db [_ path]]
@@ -101,7 +103,9 @@
   "Accept a scoped state handle, a resolved path, or a scope-qualified path.
    [:global ...] routes to shared :state; [:comp ...] uses current component."
   [target]
-  (if-let [path (:state-path (meta target))]
+  (if-let [path (or (when (and (some? target) (= "object" (goog/typeOf target)))
+                     (.get state-paths target))
+                   (:state-path (meta target)))]
     path
     (do
       (when-not (vector? target) (throw (js/Error. "Expected a state handle or path vector")))
@@ -118,8 +122,6 @@
   (when-not (ifn? f) (throw (js/Error. "State update requires a callable function")))
   (rf/dispatch [:component-state/update (path-of target) f args]))
 
-;; One immutable reference for snapshot producers; components still read subs.
-(defonce *snapshot-state (atom @rfdb/app-db))
 (defn- initialize! [path options]
   (when-let [schema (:schema options)]
     (validation/register-sections! {path schema} {:dynamic? true}))
@@ -142,13 +144,13 @@
                          (when-let [snapshot (storage/read! id persistence)]
                            (rf/dispatch-sync [:component-state/restore path revision (:value snapshot)])))))))))
     (when persistence
-      (storage/track! id #(get-in @*snapshot-state path storage/missing) persistence))))
+      (storage/track! id #(storage/state-value path) persistence))))
 
 (rf/reg-sub :component-state/scoped-value
   (fn [db [_ path]] (when (accessible-path? path) (get-in db path))))
 
 (defn <sub
-  "Return a reactive, writable state handle. @handle reads the subscription;
+  "Return a native re-frame subscription. @handle reads the value;
    >update/>reset accept the handle itself or its path-of path. Scopes: :comp,
    :module, :page, :global (:shared). Persistence is opt-in."
   ([scope path] (<sub scope path {}))
@@ -161,24 +163,12 @@
      (initialize! root root-options)
      (when (and component? (seq path) (contains? options :initial))
        (rf/dispatch-sync [:component-state/init full (:initial options)]))
-     ;; Dereferencing captures the re-frame reaction normally, so its lifecycle
-     ;; follows the last consumer. Routing lives in metadata, never in the value.
-     (with-meta
-       (r/cursor (fn
-                   ([_] @(rf/subscribe [:component-state/scoped-value full]))
-                   ([_ value]
-                    (when (accessible-path? full)
-                      (rf/dispatch-sync [:component-state/reset full value])))) [])
-       {:state-path full}))))
+     (let [subscription (rf/subscribe [:component-state/scoped-value full])]
+       (.set state-paths subscription full)
+       subscription))))
 
 (defn state
   "Compatibility convenience for the entire component state."
   ([] (<sub :comp []))
   ([options] (<sub :comp [] options)))
 (defn dump! [] (storage/flush! :state))
-
-(add-watch rfdb/app-db ::persist-state
-           (fn [_ _ before after]
-             (reset! *snapshot-state after)
-             (when (some #(not (identical? (get before %) (get after %))) [:component :module :page :state])
-               (storage/schedule!))))

@@ -35,7 +35,7 @@
 (defc <counter>
   {:state {:id :persist-test, :initial 0, :persist true}}
   []
-  (let [*count (component/state)] [:button {:on-click #(swap! *count inc)} (str @*count)]))
+  (let [*count (component/state)] [:button {:on-click #(component/>update *count inc)} (str @*count)]))
 (defc <ready>
   {:features [[:appear "opacity"]],
    :depends [{:source :url, :url "/never-needed", :into [:persist-test :content]}]}
@@ -457,7 +457,7 @@
               id [:state path]]
           (reset! storage/*identity owner)
           (rf/dispatch-sync [:component-state/reset path {:keep false, :remove "Old value"}])
-          (storage/track! id #(get-in @rfdb/app-db path storage/missing) options)
+          (storage/track! id #(storage/state-value path) options)
           (storage/write! id {:keep false, :remove "Old value"} options)
           (rf/dispatch-sync [:unset (conj path :remove)])
           (is (= {:keep false} (:value (storage/read! id options)))
@@ -548,9 +548,12 @@
             (is (= [:module :blog :handle-test] (component/path-of *module)))
             (is (= [:page :test-page :handle-test] (component/path-of *page)))
             (is (= [:state :handle-test] (component/path-of *global)))
-            (reset! *comp 4)
-            (swap! *comp inc)
-            (is (= 5 @*comp) "Native atom operations route through re-frame too")
+            (is (identical? *comp (rf/subscribe [:component-state/scoped-value (component/path-of *comp)]))
+                "The state handle is the native re-frame subscription")
+            (component/>reset *comp 4)
+            (component/>update *comp inc)
+            (await! (tick!))
+            (is (= 5 @*comp) "Queued writes compute from current state in event handlers")
             (.click (.querySelector element "button"))
             (-> (tick!)
                 (.then (fn [_]

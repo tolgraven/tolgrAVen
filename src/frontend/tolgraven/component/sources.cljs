@@ -2,7 +2,6 @@
   "Adapters use existing application clients; credentials stay in those clients."
   (:require [ajax.core :as ajax]
             [goog.object :as gobj]
-            [re-frame.db :as rfdb]
             [reagent.ratom :as ratom]
             [tolgraven.component.data :as data]
             [tolgraven.component.storage :as storage]
@@ -33,7 +32,10 @@
   :read (fn [{:keys [path]}] (db-value path))
   :load! (fn [{:keys [path load timeout-ms]}]
            (-> (if load (data/ensure! load) (js/Promise.resolve nil))
-               (.then (fn [_] (data/wait-for! rfdb/app-db #(db-value path) (or timeout-ms 15000))))))})
+               (.then (fn [_]
+                        (let [*value (ratom/make-reaction #(db-value path) :auto-run true)]
+                          (-> (data/wait-for! *value #(deref *value) (or timeout-ms 15000))
+                              (.finally #(ratom/dispose! *value))))))))})
 
 (data/register-source!
  :strapi
@@ -45,7 +47,7 @@
           @(rf/sub [:component-data/content keys]))
   :load! (fn [{:keys [keys]}]
            (-> (content/ensure! keys)
-               (.then (fn [_] (select-keys (:content @rfdb/app-db) keys)))))})
+               (.then (fn [_] (:value @(rf/sub [:component-data/content keys]))))))})
 
 (data/register-source!
  :url

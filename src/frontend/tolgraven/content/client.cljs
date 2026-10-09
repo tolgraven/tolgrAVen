@@ -5,7 +5,6 @@
     [ajax.core :as ajax]
     [clojure.string :as string]
     [tolgraven.react :as rf]
-    [re-frame.db :as rfdb]
     [reagent.core :as r]
     [tolgraven.content.contract :as contract]
     [tolgraven.service-status :as status]
@@ -17,6 +16,10 @@
 (defonce *pending (atom {}))
 (defonce *queued (atom {}))
 (defonce *tick (atom nil))
+
+(rf/reg-sub :content/cache
+  (fn [db _] (:content db)))
+(defn- cached-content [] @(rf/sub [:content/cache]))
 
 (rf/reg-event-db :content/install
   (fn [db [_ bundle]]
@@ -41,7 +44,7 @@
                              (do (rf/dispatch-sync [:content/install bundle])
                                  (doseq [id (keys @status/*failures)
                                          :when (and (vector? id) (= :strapi (first id))
-                                                    (every? #(contains? (:content @rfdb/app-db) %) (second id)))]
+                                                    (every? #(contains? (cached-content) %) (second id)))]
                                    (status/recover! id))
                                  (resolve bundle))
                              (reject (js/Error. "Invalid content response"))))
@@ -69,7 +72,7 @@
 
 (defn ensure! [requested]
   (doseq [k (distinct requested)
-          :when (and (not (contains? (:content @rfdb/app-db) k))
+          :when (and (not (contains? (cached-content) k))
                      (not (contains? @*pending k)))]
     (let [promise (js/Promise. (fn [resolve reject]
                                 (swap! *queued assoc k {:resolve resolve :reject reject})))]
@@ -95,9 +98,9 @@
           (when (valid-bundle? (:value saved) (keys (:content (:value saved))))
             (rf/dispatch-sync [:content/install
                                (update (:value saved) :content
-                                       #(apply dissoc % (keys (:content @rfdb/app-db))))]))))
+                                       #(apply dissoc % (keys (cached-content))))]))))
       (storage/track! :public-content
-                      #(hash-map :version contract/version :content (:content @rfdb/app-db)) cache-options)
+                      #(hash-map :version contract/version :content (cached-content)) cache-options)
       ;; The default loads all content. An SSR response can opt into a partial
       ;; bootstrap; module initialization/prefetch then fill only missing sections.
       (-> (ensure! (cond

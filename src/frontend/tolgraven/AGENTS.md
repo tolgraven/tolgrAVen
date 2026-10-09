@@ -6,6 +6,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Feature caches observe re-frame subscriptions through owned, disposable
   reactions. Persistence belongs in the storage lifecycle adapter; do not add
   feature watches to app-db or perform IO in subscription computations.
+  Scoped state handles are native re-frame subscriptions; write through
+  `>reset`/`>update` events. Accepted transactions enqueue persistence through
+  the storage interceptor/effect; no mirrored app-db or writable cursor.
+  Local-return capture observes its source subscription in the component lifecycle.
 
 - Feature modules live under `modules/<module>/`; collocate schemas, query
   declarations and `pages.cljc` with the implementation. Browser/Node-only schemas

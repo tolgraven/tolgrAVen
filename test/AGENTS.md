@@ -5,6 +5,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Mount actual Reagent components, dereference subscriptions during render, dispatch
   real events, await lifecycle completion, and unmount in cleanup. Avoid direct
   app-db mutation, dangling subscriptions and forced React flushes.
+  Scoped-state tests use native subscription handles and event writes; persistence
+  checks cover accepted transactions, rejected transactions and explicit deletions.
 - Unit/component tests may replace transport boundaries. Live integration must use
   real routes, module loaders and service bindings; do not inject fixture app state.
 - Use owning schemas/constructors in fixtures instead of duplicating contracts.
