@@ -106,6 +106,7 @@ footer {
 }
 
 img.img-icon {
+  width: auto;
   margin: calc(0.5 * var(--space));
   height: 2em;
   filter: saturate(0.6);

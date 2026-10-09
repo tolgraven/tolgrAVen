@@ -11,6 +11,7 @@
     [tolgraven.components.ui :as ui]
     [tolgraven.modules.contact.views :as contact]
     [tolgraven.components.image :as img]
+    [tolgraven.components.image.sources :as image-sources]
     [tolgraven.db :as db]
     [tolgraven.util :as util :refer [at]]))
 
@@ -147,6 +148,14 @@
 
 
 
+(defn- footer-image-attrs [image]
+  (let [{:keys [width height]} (image-sources/dimensions (:src image))]
+    ;; Footer icons render at two em high; source selection follows their ratio.
+    (merge {:class "img-icon"
+            :loading "lazy"}
+           (when (and width height) {:sizes (str (* 2 (/ width height)) "em")})
+           image)))
+
 (defc <footer-content> "Upper content (first few rows) of footer"
   [content]
   [:div.footer-content ;; XXX should adapt to available height, also disappear...
@@ -155,7 +164,7 @@
      [:div.footer-column {:id id}
 
       (when (:src logo)
-        [img/<picture> (merge logo {:class "img-icon"})])
+        [img/<picture> (footer-image-attrs logo)])
       (when (or title email (seq text))
         [:div
          (when title [:h2.footer-title title])
@@ -185,7 +194,7 @@
                              [:div.footer-link-with-text
                               [:p name] [:p info]]])])
           (when img (for [img-data img]  ^{:key (str id "-" (:src img-data))}
-                      [img/<picture> (merge img-data {:class "img-icon"})]))])])
+                      [img/<picture> (footer-image-attrs img-data)]))])])
 
 
 (defc <footer> "The sticky footer visible at load or when scrolling up."

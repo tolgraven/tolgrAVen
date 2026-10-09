@@ -60,6 +60,17 @@ Manual conversion remains available: `bb images` scans public
 assets, or pass explicit image paths. Current variants and favicons are skipped;
 `--force` regenerates variants. Originals remain available as fallbacks.
 
+### Responsive bundled images
+
+`resources/responsive-images.edn` records intrinsic dimensions and opt-in variant
+widths. `bb images:responsive` rebuilds those AVIF/WebP candidates; `<picture>` and
+server preloads consume the same catalog. Originals remain available for fallback.
+Footer icons use candidates sized for their two-em height and declare lazy loading;
+wide heading backgrounds have mobile candidates. Explicit dimensions reserve the
+correct aspect ratio before decoding, while CSS owns their displayed size.
+Convert images to standard sRGB before removing an embedded display profile;
+deleting its ICC data alone can change the displayed colors.
+
 ### Verification
 
 ```bash

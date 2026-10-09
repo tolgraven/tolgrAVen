@@ -8,7 +8,12 @@
    [:map [:width pos-int?] [:height pos-int?] [:sizes [:vector pos-int?]]]])
 
 (defmacro responsive-images []
-  (let [catalog (edn/read-string (slurp (io/resource "responsive-images.edn")))]
+  (let [catalog (edn/read-string
+                  (if (:ns &env)
+                    ;; Register the resource so incremental Shadow builds invalidate
+                    ;; the baked catalog. Shadow is compiler-only on the JVM.
+                    ((requiring-resolve 'shadow.resource/slurp-resource) &env "responsive-images.edn")
+                    (slurp (io/resource "responsive-images.edn"))))]
     (when-not (m/validate catalog-schema catalog)
       (throw (ex-info "Invalid responsive image catalog" {})))
     catalog))

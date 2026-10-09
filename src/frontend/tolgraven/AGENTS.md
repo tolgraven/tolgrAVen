@@ -127,6 +127,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   owning component or module; browser-only inputs do not require CLJC. Give persistent component state a `:state {:schema ...}` when it has
   a domain shape, and test normal updates plus rejected transactions.
 
+- Bundled shell images reserve catalog dimensions. Footer icons declare sizes
+  for their relative height and use small responsive candidates with lazy loading.
+  Markup normalization preserves native image/iframe loading attributes while
+  removing component loading specifications.
 - Avatar fallbacks must also recover originals that failed before hydration attached
   handlers. Preserve modern-format retries and constrain broken-image alt text to
   the avatar box; a missing upload must not widen post/comment layout.

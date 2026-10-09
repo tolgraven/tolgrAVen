@@ -4,7 +4,9 @@
     [reagent.core :as r]
     [reagent.dom.client :as dom]
     [reagent.dom.server :as server]
-    [tolgraven.components.image :as image]))
+    [tolgraven.components.image :as image]
+    [tolgraven.components.shell :as shell]
+    [tolgraven.component.markup :as markup]))
 
 (defn- check-original-fallback! [src done]
   (let [container (.createElement js/document "div")
@@ -102,3 +104,23 @@
             (is (zero? (.-length (.querySelectorAll container "source")))))
           50)
         (js/setTimeout (fn [] (dom/unmount root) (done)) 100)))))
+
+(deftest footer-image-reserves-dimensions-and-uses-native-lazy-loading
+  (let [html (server/render-to-string
+               [shell/<footer-content> [{:id :left
+                                         :logo {:src "img/tolgrav-square.png"
+                                                :alt "Site logo"}}]])]
+    (is (.includes html "width=\"106\""))
+    (is (.includes html "height=\"106\""))
+    (is (.includes html "tolgrav-square-40w.avif"))
+    (is (.includes html "loading=\"lazy\""))))
+
+(deftest native-loading-attributes-survive-component-markup-normalization
+  (let [html (server/render-to-string
+               (markup/normalize-form
+                 [:div {:loading [:p "Component placeholder"]}
+                  [:iframe {:src "about:blank" :props {:loading "lazy"}}]
+                  [:img.test-image {:src "image.png" :loading "eager"}]]))]
+    (is (.includes html "loading=\"lazy\""))
+    (is (.includes html "loading=\"eager\""))
+    (is (not (.includes html "<div loading=")))))
