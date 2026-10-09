@@ -30,4 +30,3 @@
         document (contract/document template html (js/JSON.stringify (clj->js snapshot)) (.-title js/document))]
     (when (> (contract/byte-count document) contract/max-bytes) (throw (js/Error. "Page document exceeds cache budget")))
     {:op "save" :url url :build build :html document :state state}))
-
