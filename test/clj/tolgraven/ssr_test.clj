@@ -69,7 +69,7 @@
   (let [*snapshot (atom {:posts [{:id 1 :text "First"}]}) *renders (atom 0)]
     (reset! ssr/*cache {})
     (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}
-                  ssr/snapshot! (fn [_ _] @*snapshot)
+                  ssr/snapshot! (fn [uri _] (assoc @*snapshot :path uri))
                   ssr/render! (fn [snapshot] (swap! *renders inc) (str snapshot))]
       (is (= :miss (:cache (ssr/page! "/blog"))))
       (is (= :hit (:cache (ssr/page! "/blog"))))
@@ -130,6 +130,50 @@
         (is (= :miss (:cache (ssr/page! "/blog"))))
         (is (= "Edited" (get-in (ssr/page! "/blog") [:snapshot :posts 0 :text])))
         (is (= [5 3] [@*reads @*renders]) "Retry reads fresh content and saves its exact HTML"))
+      (finally (reset! ssr/*cache {})))))
+
+(deftest presentation-variants-reuse-data-without-sharing-html-or-extending-freshness
+  (let [*reads (atom 0)
+        *renders (atom 0)
+        *selection (atom {:page 1})
+        *build (atom 1)
+        first-key ["/blog" {:settingsBox true}]
+        second-key ["/blog" {:settingsBox false}]]
+    (reset! ssr/*cache {})
+    (try
+      (with-redefs [config/env {}
+                    ssr/route (fn [_] @*selection)
+                    ssr/renderer-build (fn [] @*build)
+                    ssr/snapshot! (fn [path selection]
+                                    (swap! *reads inc)
+                                    {:path path :posts [{:text "Shared public content"}]
+                                     :selected selection})
+                    ssr/render! (fn [snapshot] (swap! *renders inc) (pr-str snapshot))]
+        (let [first-page (ssr/page! "/blog" {:settingsBox true})
+              at (- (System/nanoTime) 3500000000000)]
+          (swap! ssr/*cache assoc-in [first-key :at] at)
+          (let [second-page (ssr/page! "/blog" {:settingsBox false})]
+            (is (= [1 2] [@*reads @*renders]) "Different presentation needs rendering but no provider read")
+            (is (= :miss (:cache second-page)))
+            (is (not= (:html first-page) (:html second-page)))
+            (is (= {:settingsBox true} (get-in first-page [:snapshot :query-params])))
+            (is (= {:settingsBox false} (get-in second-page [:snapshot :query-params])))
+            (is (= at (:at second-page)) "Reuse cannot extend the original data lifetime")
+            (is (ssr/cached? "/blog" {:settingsBox false}))))
+        (reset! *selection {:page 2})
+        (is (not (ssr/cached? "/blog" {:settingsBox false})))
+        (ssr/page! "/blog" {:settingsBox false})
+        (is (= [2 3] [@*reads @*renders]) "A different data selection cannot reuse another snapshot")
+        (swap! *build inc)
+        (ssr/page! "/blog" {:userBox false})
+        (is (= [3 4] [@*reads @*renders]) "A renderer change invalidates all variants")
+        (doseq [key (keys @ssr/*cache)]
+          (swap! ssr/*cache assoc-in [key :at] (- (System/nanoTime) 3601000000000)))
+        (ssr/page! "/blog" {:userBox true})
+        (is (= [4 5] [@*reads @*renders]) "Expired sibling variants cannot renew one another")
+        (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}]
+          (ssr/page! "/blog" {:userBox false :settingsBox false})
+          (is (= 5 @*reads) "Zero TTL reads providers even when sibling variants exist")))
       (finally (reset! ssr/*cache {})))))
 
 (deftest post-snapshot-reads-only-selected-post-threads-and-public-columns

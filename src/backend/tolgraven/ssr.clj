@@ -132,7 +132,17 @@
             :path uri :posts []}
            (page-data! spec uri selection))))
 
+(def ^:private cache-entry-schema
+  [:map
+   [:snapshot schema/snapshot]
+   [:selection [:map-of :keyword :any]]
+   [:html :string]
+   [:build :int]
+   [:at :int]])
+
 (defn- cache-entry! [cache-key entry]
+  (when (config/validation-enabled?)
+    (validation/check! "SSR cache entry" cache-entry-schema entry))
   (let [size (+ (count (:html entry)) (count (pr-str (:snapshot entry))))]
     (when (< size 2000000)
       ;; Only bookkeeping is serialized. Fetching and rendering never hold this lock.
@@ -153,23 +163,38 @@
          (pos? ttl)
          (< (- (System/nanoTime) at) (* 1000000 ttl)))))
 
+(defn- fresh-page-data [uri selection]
+  ;; Queries control presentation; the page declaration selects public data from
+  ;; the path. Reuse data only, never another query's HTML or hydration settings.
+  (->> @*cache
+       (keep (fn [[[path _] entry]]
+               (when (and (= uri path) (= selection (:selection entry)) (fresh? entry))
+                 entry)))
+       (sort-by :at >)
+       first))
+
 (defn- build-page! [uri selection query-params]
   (let [key [uri query-params]
         cached (get @*cache key)]
-    (if (fresh? cached)
+    (if (and (= selection (:selection cached)) (fresh? cached))
       (assoc cached :cache :hit)
-      (let [snapshot (cond-> (snapshot! uri selection)
+      (let [reused (fresh-page-data uri selection)
+            public-data (if reused
+                          (dissoc (:snapshot reused) :query-params :document-title)
+                          (snapshot! uri selection))
+            snapshot (cond-> public-data
                        (seq query-params) (assoc :query-params query-params))
-            snapshot (assoc snapshot :document-title
-                            (page/document-title (:data (router/match uri)) snapshot))
+            title (page/document-title (:data (router/match uri)) snapshot)
+            snapshot (cond-> snapshot (some? title) (assoc :document-title title))
             unchanged? (and (= (:build cached) (renderer-build))
                             (= snapshot (:snapshot cached)))
             ;; Renew freshness only after a successful public snapshot read.
             ;; An unchanged snapshot also validates its paired HTML again.
             entry {:snapshot snapshot
+                   :selection selection
                    :html (if unchanged? (:html cached) (render! snapshot))
                    :build (renderer-build)
-                   :at (System/nanoTime)}]
+                   :at (or (:at reused) (System/nanoTime))}]
         (cache-entry! key entry)
         (assoc entry :cache (if unchanged? :hit :miss))))))
 
@@ -204,7 +229,8 @@
 
 (defn cached? [uri query-params]
   ;; Expired entries revalidate behind the streamed shell, not before headers.
-  (boolean (fresh? (get @*cache [uri query-params]))))
+  (let [entry (get @*cache [uri query-params])]
+    (boolean (and (= (route uri) (:selection entry)) (fresh? entry)))))
 
 (defn shell! [uri query-params]
   (let [spec (:data (router/match uri))

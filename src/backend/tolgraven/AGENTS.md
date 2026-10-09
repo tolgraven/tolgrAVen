@@ -16,6 +16,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Successful page snapshots are fresh for `:ssr :cache-ttl-ms` (one hour by
   default; zero always revalidates). Expired/build-changed entries stream the shell
   while revalidating; only fresh entries bypass it.
+  Presentation query variants may reuse fresh data for the same path/selection,
+  preserving its original timestamp, but must render their own paired HTML/state.
 - Optimus fingerprints the shell and each declared module stylesheet independently;
   shared styles keep one URL across consumer modules. Emit
   route dependency styles in the first head, inlining small optimized sheets
