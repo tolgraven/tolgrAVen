@@ -1,6 +1,7 @@
 (ns tolgraven.platform.supabase
   (:require
    [clj-http.client :as http]
+   [clj-http.conn-mgr :as connections]
    [clojure.data.json :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as string]
@@ -174,15 +175,33 @@
        "/rest/v1/"
        path))
 
+(def ^:dynamic ^:private *rest-connections nil)
+
+(defn with-rest-connections!
+  "Reuse bounded Supabase connections for a joined read stage, then close them.
+   The binding follows concurrent/submit!'s bound tasks; headers stay per request."
+  [f]
+  (if *rest-connections
+    (f)
+    (let [pool (connections/make-reusable-conn-manager
+                {:timeout 5
+                 :threads 8
+                 :default-per-route 8
+                 :insecure? (insecure-rest?)})]
+      (try
+        (binding [*rest-connections pool] (f))
+        (finally (connections/shutdown-manager pool))))))
+
 (defn base-http-opts []
-  {:headers {"apikey" (service-key)
-             "Authorization" (str "Bearer " (service-key))}
-   :throw-exceptions false
-   :conn-timeout 3000
-   :socket-timeout 15000
-   :as :json
-   :coerce :always
-   :insecure? (insecure-rest?)})
+  (cond-> {:headers {"apikey" (service-key)
+                    "Authorization" (str "Bearer " (service-key))}
+           :throw-exceptions false
+           :conn-timeout 3000
+           :socket-timeout 15000
+           :as :json
+           :coerce :always
+           :insecure? (insecure-rest?)}
+    *rest-connections (assoc :connection-manager *rest-connections)))
 
 (defn request! [method path opts]
   (let [response (http/request (-> (merge (base-http-opts)

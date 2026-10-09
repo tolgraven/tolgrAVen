@@ -8,7 +8,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 ## Current architecture
 - Reagent 2 / React 19 components use `defc`; full pages use `defpage` and always have an error boundary. Application re-frame calls go through `tolgraven.react`.
 - Module-local `pages.cljc` files contain native Reitit route trees. Module specs expose these declarations; browser and server routers compose them.
-- JVM adapters acquire public data; the eager Shadow `:ssr` Node build renders the same page components as the browser. `:ssr` in config controls streaming and worker settings.
+- JVM adapters acquire public data with snapshot-owned, bounded Supabase REST
+  connections; the eager Shadow `:ssr` Node build renders the same page components as the browser. `:ssr` in config controls streaming and worker settings.
 - Module references activate near the viewport by default; hidden panels use
   explicit intent. Completed SSR module views retain their DOM until selective
   hydration; module CSS is available for that static view.

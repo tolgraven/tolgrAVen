@@ -418,3 +418,11 @@ Source extensions reflect actual consumers:
 Run `bb ssr:fixtures` against the current Node build before browser tests. The
 blog-named fixture remains a blog test input, while the command checks all page
 kinds, request isolation, unsafe Markdown, missing permalinks and initial shells.
+
+Public snapshot acquisition reuses a bounded Supabase REST connection pool across
+query-plan levels. The snapshot owns that pool until all source tasks join;
+`concurrent/submit!` carries its dynamic binding into virtual threads. Both success
+and failure close it. Other HTTP adapters retain their own transport/TLS policy,
+and authentication headers are resolved on each request rather than stored in the
+pool. This reduces repeated TCP/TLS setup on uncached pages without changing the
+one-hour HTML/state freshness policy.

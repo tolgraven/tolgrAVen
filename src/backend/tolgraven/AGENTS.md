@@ -9,6 +9,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   the same lazy `:home` bundle as SPA navigation.
 - Use shared CLJC data contracts and page declarations. Generic SSR must not grow
   page-specific SQL/REST predicates or duplicate component markup.
+- Public snapshot acquisition owns a bounded Supabase connection pool across
+  plan levels. Joined tasks inherit its binding; per-request headers and TLS
+  policy remain in the transport, and success/failure closes the pool.
 - Source acquisition runs concurrently under bounded limits; identical requests
   share an in-flight task. Node workers perform isolated React rendering only.
 - The Node response pairs HTML with its module/export inventory. Keep that

@@ -68,3 +68,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Icon font checks preserve selected glyph outlines/metrics, verify disjoint core
   and full-font acquisition in a fresh browser, and test real Optimus rewriting,
   font-byte preservation and fingerprinted-only long cache headers.
+
+- Snapshot transport checks use a local HTTP server to prove TCP reuse across
+  bound tasks, fresh request credentials and pool closure after success/failure.
+  Live provider timing checks perform public GETs only and never log payloads/keys.
