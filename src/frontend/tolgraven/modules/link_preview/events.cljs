@@ -35,7 +35,8 @@
           url (:url candidate)
           trust (:trust candidate)
           queued? (get-in db (conj path :prefetch url))]
-      (if (or queued? (not (get util/prefetch-delay-ms trust)))
+      (if (or queued? (contains? (get-in db (conj path :visited) #{}) url)
+              (not (get util/prefetch-delay-ms trust)))
         db
         (-> db
             (assoc-in (conj path :prefetch url) :queued)
@@ -55,8 +56,10 @@
 (rf/reg-event-db
   :link-preview/open
   (fn [db [_ candidate]]
-    (assoc-in db [:state :link-preview :active]
-              (assoc candidate :status :preview))))
+    (if (contains? (get-in db [:state :link-preview :visited] #{}) (:url candidate))
+      db
+      (assoc-in db [:state :link-preview :active]
+                (assoc candidate :status :preview)))))
 
 (rf/reg-event-db
   :link-preview/status
@@ -66,10 +69,11 @@
       db)))
 
 (rf/reg-event-db
-  :link-preview/restore
-  (fn [db [_ transition]]
-    (assoc-in db [:state :link-preview :active]
-              (assoc transition :status :returning))))
+  :link-preview/visited
+  {:args [:tuple :string]}
+  (fn [db [_ url]]
+    (update-in db [:state :link-preview]
+               #(-> % (update :visited (fnil conj #{}) url) (dissoc :active)))))
 
 (rf/reg-event-db
   :link-preview/close

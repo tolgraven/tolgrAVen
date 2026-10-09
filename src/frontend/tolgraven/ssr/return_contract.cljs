@@ -3,7 +3,8 @@
    a render snapshot; persistent component data retains EDN keys and types."
   (:require [clojure.string :as string]
             [tolgraven.validation :as validation]
-            [tolgraven.ssr.schema :as schema]))
+            [tolgraven.ssr.schema :as schema]
+            [tolgraven.modules.link-preview.schema :as preview]))
 
 (def version 1)
 (def ttl-ms 1800000)
@@ -23,9 +24,21 @@
     (set? value) (into #{} (map without-credentials) value)
     (seq? value) (doall (map without-credentials value))
     :else value))
+(def return-state-sections
+  ;; Temporary surfaces do not participate in layout restoration. Owners name
+  ;; the durable decisions that should survive; DOM registrations are rebuilt.
+  {:link-preview preview/return-state-keys})
+
+(defn restored-view-state [state]
+  (reduce-kv (fn [state section retained]
+               (if (contains? state section)
+                 (update state section #(when % (select-keys % retained)))
+                 state))
+             state return-state-sections))
+
 (defn source-for [db]
   (-> (select-keys db roots)
-      (assoc :state (apply dissoc (:state db) transient-state))
+      (assoc :state (restored-view-state (apply dissoc (:state db) transient-state)))
       (update-in [:state :booted] dissoc :store)
       (assoc :options (dissoc (:options db) :supabase))
       (assoc-in [:options :supabase :trusted-author-ids]
