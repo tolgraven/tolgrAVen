@@ -1,8 +1,7 @@
 (ns tolgraven.schema.declarations
   "Extensible contracts for the existing declaration language, shared by tooling
    and both runtimes. Extension keys stay open; declared keys have real types."
-  (:require [malli.util :as mu]
-            [tolgraven.schema.common :as c]
+  (:require [tolgraven.schema.common :as c]
             [tolgraven.supabase.schema :as store]))
 
 (def path [:vector {:min 1} :any])
@@ -105,7 +104,7 @@
   "Recursively merge Malli maps. Extension fields refine/replace base fields;
    use [:and base extra] when both constraints must independently hold."
   (memoize (fn [base & extensions]
-             (reduce mu/merge base (remove nil? extensions)))))
+             (into [:merge base] (remove nil? extensions)))))
 (defn extend-component [& extensions] (apply compose component extensions))
 (defn extend-spec [& extensions] (apply compose component-spec extensions))
 (defn extend-module [& extensions] (apply compose module extensions))

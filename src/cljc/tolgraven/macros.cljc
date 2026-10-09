@@ -1,8 +1,8 @@
 (ns tolgraven.macros
   #?(:clj (:refer-clojure :exclude [for tap>]))
   (:require [clojure.string :as string]
-            [malli.core :as m]
-            [malli.error :as me]
+            #?@(:clj [[malli.core :as m]
+                      [malli.error :as me]])
             #?@(:cljs [[reagent.core :as r]
                        [tolgraven.component.registry]
                        [tolgraven.react :as rf]

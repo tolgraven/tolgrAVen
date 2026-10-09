@@ -38,7 +38,7 @@
   (fn [blog [_ state-path value]] (assoc-in blog state-path value)))
 
 (rf/reg-event-db :blog/set-posts-per-page
-  {:args (get schema/event-args :blog/set-posts-per-page), :coerce :string}
+  {:args (get schema/event-args :blog/set-posts-per-page)}
   [(path [:options :blog])]
   (fn [options [_ size]] (assoc options :posts-per-page (model/page-size size))))
 
@@ -51,7 +51,7 @@
       {:dispatch [:blog/nav-page number]})))
 
 (rf/reg-event-db :blog/nav-page
-  {:args (get schema/event-args :blog/nav-page), :coerce :string}
+  {:args (get schema/event-args :blog/nav-page)}
   [(path [:state :blog :page])]
   (fn [_ [_ number]] (model/page-index number)))
 

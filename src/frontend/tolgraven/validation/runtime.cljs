@@ -15,7 +15,7 @@
                            (.getAttribute "content"))
                    (exists? js/process) (aget js/process.env "VALIDATION_ENABLED"))]
     (validation/enabled? {:validation-enabled override} goog.DEBUG)))
-(defonce *enabled? (atom (configured?)))
+(defonce *enabled? (atom (and (validation/ready?) (configured?))))
 (defonce *sections (atom schema/sections))
 (defonce ^:private *dynamic-paths (atom #{}))
 (defonce ^:private *installed? (atom false))

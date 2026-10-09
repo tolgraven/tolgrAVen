@@ -189,7 +189,9 @@
             public-data (if reused
                           (dissoc (:snapshot reused) :query-params :document-title :module-views)
                           (snapshot! uri selection))
+            parameters (:parameters (router/request-match uri (or query-params {})))
             snapshot (cond-> public-data
+                       parameters (assoc :route-parameters parameters)
                        (seq query-params) (assoc :query-params query-params))
             title (page/document-title (:data (router/match uri)) snapshot)
             snapshot (cond-> snapshot (some? title) (assoc :document-title title))
@@ -246,6 +248,7 @@
         snapshot {:renderer-version renderer-version :renderer-build (renderer-build)
                   :kind (or (:kind spec) (:module spec)) :path uri
                   :posts [] :shell? true :query-params query-params
+                  :route-parameters (:parameters (router/request-match uri (or query-params {})))
                   :content (content/immediate-content)}
         key [uri query-params (:shell spec) (:content snapshot) (:renderer-build snapshot)]]
     ;; No network work and no worker lease while upstream data is pending.

@@ -118,10 +118,16 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   independent monospace sheet; font bytes load only for used glyphs.
 - After edits check watched Shadow errors and the actual routes in the browser.
 
-- `schema/registry.cljs` installs the release Malli constructors before schema
-  composition. Browser tests use that registry; development retains the full one.
-  `schema/page_coercion.cljs` implements Reitit parameter/query coercion with
-  Malli, keeping server API-document generators out of the browser graph.
+- `:coercion` owns the Malli engine, portable `schema/registry.cljc` and
+  `schema/malli_coercion.cljs`. Eager schemas are data, including `[:merge ...]`.
+  `schema/page_coercion.cljc` compiles stable Reitit dispatchers; no router rebuild
+  is needed when the adapter arrives. Only the matching initial SSR pair supplies
+  typed parameters without Malli. Other navigation waits before controllers/data,
+  and ignores stale acquisition completions. Boot schedules acquisition through
+  the common after-page gate. Client-only/local returns and explicit production
+  validation acquire it before restoring disk/rendering. Disk and CMS transport
+  checks remain active; do not replace them with handwritten validators.
+  Browser tests use the release registry; development/Node retain eager engines.
 - `validation/runtime.cljs` owns declaration checks, module section registration
   and the app-db interceptor. Invalid transactions retain previous state and do
   not run associated effects. Declare event/subscription contracts through the

@@ -66,8 +66,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - `build/audit.clj` uses isolated output and source maps to produce the optimized
   per-source report alongside chunk sizes; keep the normal compatibility hooks
   and optional-main boundary checks when changing this workflow. Browser audits
-  also reject Markdown-clj and server Malli API-documentation/serialization
-  dependencies in main.
+  also reject Markdown-clj and every Malli implementation namespace in main.
   Release browser, renderer and return-worker graphs reject 10x/re-frisk/legacy
   inspectors through `build/policy.clj`; stale analysis cache files are not graph membership.
 
@@ -78,3 +77,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - `ssr/contract_schema.cljc` is the JVM/Node protocol boundary. Hydration and
   local-return adapters live in frontend CLJS; module-owned snapshot conversion
   is shared by the Node renderer and browser, not required by the JVM server.
+
+- Network SSR snapshots carry `:route-parameters`, coerced by the server router,
+  alongside raw `:query-params`. The browser trusts these only for its exact initial
+  HTML/state pair; subsequent navigation uses the deferred browser adapter.

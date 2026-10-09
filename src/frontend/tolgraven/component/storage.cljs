@@ -56,40 +56,42 @@
 
 (defn ready!
   "Queue one disk read per owner per document, shared by every caller. Startup
-   awaits this before rendering; subsequent component reads are memory-only."
+   awaits this for client/local loads; network SSR uses its server pair first."
   ([] (ready! {:scope :public}))
   ([options]
    (if-let [account (when (exists? js/window) (owner options))]
      (or (get @*reads account)
          (let [key (storage-key nil options)
-               promise (js/Promise.
-                        (fn [resolve _]
-                          (js/setTimeout
-                           (fn []
-                             (let [saved (try
-                                           (when-let [text (read-disk! key)]
-                                             (when (<= (count text) max-bytes)
-                                               (let [value (reader/read-string text)
-                                                     clean (when (map? value)
-                                                             (into {} (filter (fn [[_ snapshot]]
-                                                                                (nil? (validation/explain schema/storage-snapshot snapshot)))) value))]
-                                                 (when (not= value clean)
-                                                   (swap! *dirty conj account)
-                                                   (schedule-write!))
-                                                 clean)))
-                                           (catch :default _ nil))]
-                               ;; Writes/removals queued before this read win.
-                               (swap! *buckets update account
-                                      #(merge (into {} (remove (fn [[id _]] (affected? id (get @*deleted-paths account)))) saved) %))
-                               (when (or (some #(affected? % (get @*deleted-paths account)) (keys saved))
-                                         (some (fn [[_ snapshot]]
-                                                 (or (not= 1 (:version snapshot))
-                                                     (<= (:expires-at snapshot 0) (.now js/Date)))) saved))
-                                 (swap! *dirty conj account)
-                                 (schedule-write!))
-                               (swap! *deleted-paths dissoc account)
-                               (swap! *ready conj account)
-                               (resolve nil))) 0)))]
+               promise (-> (validation/when-ready!)
+                           (.then (fn [_]
+                                    (js/Promise.
+                                      (fn [resolve _]
+                                        (js/setTimeout
+                                         (fn []
+                                           (let [saved (try
+                                                         (when-let [text (read-disk! key)]
+                                                           (when (<= (count text) max-bytes)
+                                                             (let [value (reader/read-string text)
+                                                                   clean (when (map? value)
+                                                                           (into {} (filter (fn [[_ snapshot]]
+                                                                                              (nil? (validation/explain schema/storage-snapshot snapshot)))) value))]
+                                                               (when (not= value clean)
+                                                                 (swap! *dirty conj account)
+                                                                 (schedule-write!))
+                                                               clean)))
+                                                         (catch :default _ nil))]
+                                             ;; Writes/removals queued before this read win.
+                                             (swap! *buckets update account
+                                                    #(merge (into {} (remove (fn [[id _]] (affected? id (get @*deleted-paths account)))) saved) %))
+                                             (when (or (some #(affected? % (get @*deleted-paths account)) (keys saved))
+                                                       (some (fn [[_ snapshot]]
+                                                               (or (not= 1 (:version snapshot))
+                                                                   (<= (:expires-at snapshot 0) (.now js/Date)))) saved))
+                                               (swap! *dirty conj account)
+                                               (schedule-write!))
+                                             (swap! *deleted-paths dissoc account)
+                                             (swap! *ready conj account)
+                                             (resolve nil))) 0))))))]
            (swap! *reads assoc account promise)
            promise))
      (js/Promise.resolve nil))))

@@ -2,7 +2,6 @@
   "Helpers for serving modern image formats (WebP, AVIF) with automatic fallbacks"
   (:require
     [tolgraven.component.registry]
-    [malli.util :as mu]
     [tolgraven.content.schema :as content]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.components.image.sources :as sources]
@@ -12,7 +11,7 @@
 (def attrs-schema
   ;; Pending avatars intentionally reserve their box without an image request.
   ;; CMS media uses a concrete source; a mounted image may temporarily omit it.
-  (mu/merge content/media [:map [:src {:optional true} [:maybe :string]]
+  (vector :merge content/media [:map [:src {:optional true} [:maybe :string]]
                                [:on-error {:optional true} [:maybe fn?]]
                                [:on-load {:optional true} [:maybe fn?]]
                                [:style {:optional true} [:maybe :map]]]))

@@ -257,3 +257,24 @@
                         (swap! loader/*code-loads dissoc id)
                         (swap! loader/*installed disj id)
                         (done))))))))
+
+(deftest network-ssr-installs-content-without-waiting-for-disk-or-transport
+  (async done
+    (-> (go-promise
+          (let [restore! (rf/make-restore-fn)
+                *tracked (atom [])
+                snapshot {:content {:document {:title "Server title"}
+                                    :blog {}}}]
+            (try
+              (rf/dispatch-sync [:init/app-db])
+              (with-redefs [storage/ready! #(throw (js/Error. "SSR must not await disk"))
+                            storage/track! (fn [id _ _] (swap! *tracked conj id))
+                            content/request! (fn [_] (throw (js/Error. "SSR must not refetch its pair")))]
+                (let [pending (content/bootstrap-server! snapshot)]
+                  (is (= (contract/normalize-content (:content snapshot)) (:content @rfdb/app-db)))
+                  (is (= :ready (get-in @rfdb/app-db [:state :content :status])))
+                  (await! pending)
+                  (is (= [:public-content] @*tracked))))
+              (finally (restore!)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))

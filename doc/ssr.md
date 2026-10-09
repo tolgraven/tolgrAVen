@@ -441,3 +441,8 @@ when that view is rendered; Blog retains its direct Markdown dependencies.
 The global Link Preview controller is an event-activated module host. Mounted
 candidate-bearing containers request it through the loader; a plain page does
 not acquire that controller or its Markdown dependency merely to render the host.
+
+Each network snapshot includes the server router's coerced `:route-parameters`
+(path/query maps) and the original `:query-params`. This lets the matching initial
+browser route hydrate without importing Malli. The Node renderer uses the same
+typed parameters; subsequent SPA routes wait for the deferred browser adapter.

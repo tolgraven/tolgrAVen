@@ -2,6 +2,8 @@
   (:require
     [tolgraven.react :as rf]
     [tolgraven.validation.runtime :as validation]
+    [tolgraven.validation :as engine]
+    [tolgraven.loader :as loader]
     [tolgraven.diagnostics.host :as dev-console]
     [tolgraven.render-context :as context]
     [tolgraven.component.data :as component-data]
@@ -107,9 +109,32 @@
                  (render)
                  (when hot-reload? (rf/dispatch [:scroll/restore-position-dev 150])))))))
 
+(defn prepare-bootstrap! []
+  (let [snapshot (when-not (.getElementById js/document "local-page-bootstrap")
+                   (or @ssr/*snapshot (ssr/install!)))
+        server-ready? (and (:hydrate? @restore/*context)
+                           (:route-parameters snapshot)
+                           (not (validation/configured?)))]
+    (if server-ready?
+      ;; The server validated this exact pair. Disk records remain pending until
+      ;; their validator arrives; retries must not reinstall older paired state.
+      (js/Promise.resolve snapshot)
+      (-> (loader/acquire-code! :coercion)
+          (.then (fn [_]
+                   (validation/install!)
+                   (validation/module! main-module/spec)
+                   (storage/ready!)))
+          (.then (fn [_]
+                   (let [local-snapshot (local-page/install!)]
+                     (if local-snapshot
+                       (local-page/prepare! local-snapshot)
+                       (storage/restore-public-cache!)))))
+          (.then (fn [_] nil))))))
+
 (defn init "Called only on page load" []
-  (validation/install!)
-  (validation/module! main-module/spec)
+  (when (engine/ready?)
+    (validation/install!)
+    (validation/module! main-module/spec))
   (let [shell-cleared (clear-shell!)]
     ;; A persisted-content hint can also accompany a normal reload. Only browser
     ;; history traversal bypasses entrance motion and restores the saved scroll.
@@ -126,13 +151,9 @@
     (letfn [(start! []
               (rf/dispatch-sync [:state [:page-init] {:status :loading}])
               (service-status/recover! :page-init)
-              (-> (storage/ready!)
-                  (.then (fn [_]
-                           (let [local-snapshot (local-page/install!)]
-                             (if local-snapshot
-                               (local-page/prepare! local-snapshot)
-                               (do (ssr/install!) (storage/restore-public-cache!))))))
-                  (.then (fn [_]
+              (-> (js/Promise.resolve nil)
+                  (.then (fn [_] (prepare-bootstrap!)))
+                  (.then (fn [snapshot]
                            (rf/dispatch-sync [:ls/get-path [:scroll-position] [:state :scroll-position]])
                            ;; A history return using persisted content needs layout-
                            ;; aware scroll restoration. Real SSR HTML uses the browser's
@@ -140,8 +161,10 @@
                            (when (and (restore/back-navigation?)
                                       (not (.getElementById js/document "local-page-bootstrap"))
                                       (= "true" (.getAttribute (.getElementById js/document "app") "data-restore")))
-                             (rf/dispatch [:scroll/restore-history (.-pathname js/location)]))))
-                  (.then (fn [_] (content/bootstrap!)))
+                             (rf/dispatch [:scroll/restore-history (.-pathname js/location)]))
+                           (if snapshot
+                             (content/bootstrap-server! snapshot)
+                             (content/bootstrap!))))
                   (.then (fn [_]
                            (js/Promise.all
                              #js [shell-cleared (component-data/ensure-all! (:depends spec))])))

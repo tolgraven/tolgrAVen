@@ -18,7 +18,6 @@
             [tolgraven.ssr.schema :as ssr]
             [tolgraven.modules.strava.schema :as strava]
             [tolgraven.supabase.schema :as supabase]
-            [malli.util :as mu]
             [tolgraven.navigation.schema :as navigation]
             [tolgraven.modules.user.schema :as user]))
 
@@ -103,7 +102,7 @@
      [:content] (c/optional-map
                  (merge content/sections
                    {:github github/content
-                    :strava (mu/merge (:strava content/sections) strava/content)
+                    :strava (vector :merge (:strava content/sections) strava/content)
                     :instagram (c/optional-map {:posts [:map-of c/id instagram/post]
                                                 :error :any})}))
      [:store] supabase/store
