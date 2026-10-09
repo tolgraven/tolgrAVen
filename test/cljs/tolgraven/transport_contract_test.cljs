@@ -12,6 +12,10 @@
             :store {:public {"blog-comments" {"root" {:text "Saved comment"}}}
                     :scoped {"query" {:docs []}} :private {:credentials "excluded"}}
             :state {:blog {:comment-thread-expanded {[27 "root"] true}}
+                    :link-preview {:visited #{"https://example.org/read"}
+                                   :active {:url "https://example.org/open" :status :expanded}
+                                   :containers {"old-dom" {:count 1}}
+                                   :prefetch-queue [{:url "https://example.org/open"}]}
                     :active-user {:id "author" :access-token "secret"}
                     :login-field {:password "secret"}
                     :supabase-init :ready :booted {:store true :blog true}}
@@ -22,6 +26,7 @@
     (is (= "A recording session" (get-in saved [:content :blog :session-title])))
     (is (= "Saved comment" (get-in saved [:store :public "blog-comments" "root" :text])))
     (is (true? (get-in saved [:state :blog :comment-thread-expanded [27 "root"]])))
+    (is (= {:visited #{"https://example.org/read"}} (get-in saved [:state :link-preview])))
     (is (= #{[27 "root"]} (get-in saved [:component "blog" :settings :folded])))
     (is (nil? (get-in saved [:state :active-user :access-token])))
     (is (nil? (get-in saved [:state :login-field])))

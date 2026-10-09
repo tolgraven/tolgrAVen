@@ -77,7 +77,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   hydrates first; validated disk display choices restore afterwards, preserving
   interactions made since startup. Server content/query results retain priority.
   Paired shell markup suppresses default header/menu/footer entrances; explicit
-  menu intent resumes ordinary motion.
+  menu intent resumes ordinary motion. Temporary preview surfaces do not enter
+  saved markup/state: owners declare retained return keys, such as visited URLs.
+  Preview departures use the common capture adapter, and BFCache closes transient
+  surfaces; already visited URLs do not reopen automatic previews.
 - The local return adapter renders an isolated state snapshot using the shared
   renderer. HTML and state are inseparable. Do not copy DOM or replay init before
   hydration; retain exact query caches and fold/window state.

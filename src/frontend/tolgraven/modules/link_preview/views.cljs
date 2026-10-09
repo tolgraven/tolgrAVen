@@ -7,6 +7,7 @@
     [reagent.core :as r]
     [tolgraven.component :as component]
     [tolgraven.render-context :as context]
+    [tolgraven.ssr.local :as local-page]
     [tolgraven.components.iframe :as iframe]
     [tolgraven.components.popover :as popover]
     [tolgraven.components.portal :as portal]
@@ -19,7 +20,6 @@
 (def ^:private open-delay-ms 300)
 (def ^:private close-delay-ms 180)
 (def ^:private navigation-delay-ms 420)
-(def ^:private return-close-delay-ms 500)
 (def ^:private transition-storage-key "tolgraven.modules.link-preview.transition")
 
 (defonce *containers (atom {}))
@@ -133,12 +133,16 @@
                       candidates-by-element))
               @*containers))))
 
+(defn- visited? [data]
+  (contains? (:visited (preview-state)) (:url data)))
+
 (defn- open! [data link]
   (clear-interaction-timer! :open)
   (clear-interaction-timer! :close)
-  (detach-anchor! (active-link))
-  (attach-anchor! link)
-  (rf/dispatch [:link-preview/open data]))
+  (when-not (visited? data)
+    (detach-anchor! (active-link))
+    (attach-anchor! link)
+    (rf/dispatch [:link-preview/open data])))
 
 (defn- close-preview! []
   (clear-interaction-timer! :open)
@@ -148,7 +152,7 @@
 
 (defn- schedule-close! []
   (clear-interaction-timer! :open)
-  (when-not (#{:navigate :expanded :returning}
+  (when-not (#{:navigate :expanded}
               (get-in (preview-state) [:active :status]))
     (schedule! :close close-delay-ms close-preview!)))
 
@@ -213,6 +217,7 @@
             (reset! *touch-open-link
                     (when (and (= "touch" (.-pointerType event))
                                link
+                               (not (visited? (link-data link)))
                                (not (active-candidate? (link-data link))))
                       link))))
         click
@@ -228,7 +233,10 @@
                 (and (active-candidate? data)
                      (unmodified-primary-click? event))
                 (do (.preventDefault event)
-                    (rf/dispatch [:link-preview/status :navigate])))))
+                    (rf/dispatch [:link-preview/status :navigate]))
+
+                (unmodified-primary-click? event)
+                (rf/dispatch-sync [:link-preview/visited (:url data)]))))
           (reset! *touch-open-link nil))]
     {"pointerover" pointer-over
      "pointerout" pointer-out
@@ -394,10 +402,10 @@
     (catch :default _ nil)))
 
 (defn- restore-transition! []
+  ;; Older departures stored a reverse-animation token. Consume only the visit;
+  ;; the document/SPA restoration adapter owns scroll and layout restoration.
   (when-let [data (stored-transition)]
-    (when-let [{:keys [scroll-x scroll-y]} (:view-state data)]
-      (.scrollTo js/window scroll-x scroll-y))
-    (rf/dispatch-sync [:link-preview/restore data])
+    (rf/dispatch-sync [:link-preview/visited (:url data)])
     data))
 
 (defn- clear-transition! []
@@ -409,21 +417,14 @@
   "Top-level renderer and transition/prefetch controller for link containers."
   []
   (let [state (rf/subscribe [:link-preview/state])
-        *initial-transition (r/atom
-                              (some-> (stored-transition)
-                                      (assoc :status :returning)))
         *loaded-url (r/atom nil)
         *prefetch-timer (atom nil)
         *prefetches (r/atom #{})
         *navigation-timer (atom nil)
-        *restore-timer (atom nil)
-        *reversing? (atom false)
         dismiss! (fn []
-                   (doseq [timer [*navigation-timer *restore-timer]]
+                   (doseq [timer [*navigation-timer]]
                      (when @timer (js/clearTimeout @timer))
                      (reset! timer nil))
-                   (reset! *reversing? false)
-                   (reset! *initial-transition nil)
                    (clear-transition!)
                    (close-preview!))
         on-key-down (fn [event]
@@ -452,56 +453,29 @@
         maybe-prefetch! #(when (and (seq (:prefetch-queue @state))
                                     (not @*prefetch-timer))
                            (prefetch-next!))
+        leave!
+        (fn [data]
+          (save-transition! data)
+          (rf/dispatch-sync [:link-preview/visited (:url data)])
+          (close-preview!)
+          ;; Commit the closed surface before BFCache can freeze the document.
+          (r/after-render #(do (local-page/departure!)
+                               (.assign js/window.location (:url data)))))
         navigate!
         (fn [data]
           (clear-interaction-timer! :open)
           (clear-interaction-timer! :close)
           (when @*navigation-timer (js/clearTimeout @*navigation-timer))
-          (save-transition! data)
           (rf/dispatch [:link-preview/status :expanded])
           (reset! *navigation-timer
-                  (js/setTimeout
-                    #(.assign js/window.location (:url data))
-                    (if (reduced-motion?) 0 navigation-delay-ms))))
-        reverse!
-        (fn []
-          (when (= :returning (get-in @state [:active :status]))
-            (when-let [link (active-link)]
-              (when @*restore-timer
-                (js/clearTimeout @*restore-timer)
-                (reset! *restore-timer nil))
-              (attach-anchor! link)
-              (reset! *reversing? true)
-              (js/requestAnimationFrame
-                (fn []
-                  (js/requestAnimationFrame
-                    (fn []
-                      (rf/dispatch [:link-preview/status :preview])
-                      (reset! *restore-timer (js/setTimeout
-                        #(do
-                           (reset! *reversing? false)
-                           (clear-transition!)
-                           (when-not (or (.matches link ":hover")
-                                         (some-> js/document
-                                                 (.querySelector "[data-popover]:hover")))
-                             (schedule-close!)))
-                        return-close-delay-ms)))))))))
+                  (js/setTimeout #(leave! data)
+                                 (if (reduced-motion?) 0 navigation-delay-ms))))
         restore!
         (fn []
-          (when (restore-transition!)
-            (reset! *initial-transition nil))
-          (when @*restore-timer
-            (js/clearTimeout @*restore-timer))
-          (reset! *restore-timer
-                  (js/setTimeout
-                    #(when (= :returning
-                              (get-in @state [:active :status]))
-                       (clear-transition!)
-                       (rf/dispatch [:link-preview/close]))
-                    (* 3 return-close-delay-ms))))
-        on-page-show (fn [_]
-                       (when @*navigation-timer (js/clearTimeout @*navigation-timer))
-                       (reset! *navigation-timer nil)
+          (when (restore-transition!) (close-preview!))
+          (clear-transition!))
+        on-page-show (fn [event]
+                       (when (.-persisted event) (dismiss!))
                        (restore!))
         window-handlers {"pageshow" on-page-show
                          "keydown" on-key-down
@@ -516,18 +490,17 @@
             (doseq [[event handler] window-handlers]
               (.removeEventListener js/window event handler))
             (close-preview!)
-            (doseq [timer [*prefetch-timer *navigation-timer *restore-timer]]
+            (doseq [timer [*prefetch-timer *navigation-timer]]
               (when @timer (js/clearTimeout @timer))))) #js [])
       (rf/use-effect
        (fn []
          (maybe-prefetch!)
          (when (= :navigate (get-in @state [:active :status]))
            (navigate! (:active @state)))
-         (reverse!)
          js/undefined))
-         (let [active (or (:active @state) @*initial-transition)
+         (let [active (:active @state)
                {:keys [status title url]} active
-               expanded? (#{:expanded :returning} status)]
+               expanded? (= :expanded status)]
            [:<>
             (when (and (exists? js/document) @*anchor-selector)
               [portal/<portal> js/document.head
@@ -563,15 +536,17 @@
                                           (.contains (.-relatedTarget %)))
                            (schedule-close!))
                :on-pointer-enter #(clear-interaction-timer! :close)
-               :on-pointer-leave #(when-not @*reversing?
-                                    (schedule-close!))
-               :open? (or (= :returning status)
-                          (boolean (active-link)))}
+               :on-pointer-leave #(schedule-close!)
+               :open? (boolean (active-link))}
               [:<>
                [:div.link-preview__bar
                 [:a.link-preview__link
                  {:data-popover-direct true
-                  :href url}
+                  :href url
+                  :on-click (fn [event]
+                              (when (unmodified-primary-click? event)
+                                (.preventDefault event)
+                                (leave! active)))}
                  (if (string/blank? title) url title)]
                 [:span.link-preview__hint "Click to open"]
                 [:button.link-preview__close

@@ -565,6 +565,15 @@ and are consumed when served. Worker activation removes other build caches;
 account changes clear cached documents. Authentication tokens, password fields,
 transport state and diagnostics are excluded. The paired state preserves EDN
 types, including vector keys used by component and comment state.
+
+Restoration retains durable layout choices and content, not temporary interaction
+surfaces. `return-state-sections` applies owner-declared retained keys to transient
+sections before rendering and encoding a local pair. Link Preview retains visited
+URLs only; active/expanded state, DOM candidates and pending prefetch work are
+rebuilt or discarded. Visited links no longer open automatic hover/focus/touch
+previews in that tab. Native and preview-controlled departures use the same capture
+adapter. BFCache resumes close temporary previews too; the preview never owns
+scroll restoration or reverses its outgoing animation on return.
 Matching older public localStorage envelopes are consumed on installation
 without overwriting the paired state, and are persisted again on departure.
 

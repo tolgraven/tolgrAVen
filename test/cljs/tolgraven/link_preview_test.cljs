@@ -170,3 +170,52 @@
                         (.remove element)
                         (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))
+
+(deftest returning-from-a-visited-preview-does-not-reopen-on-hover-or-focus
+  (async done
+    (let [restore! (rf/make-restore-fn)
+          storage-key "tolgraven.modules.link-preview.transition"
+          old-token (.getItem js/sessionStorage storage-key)]
+      (-> (go-promise
+            (let [element (.createElement js/document "div")
+                  root (await! (support/create-root! element))
+                  url "https://visited.invalid/read"
+                  data {:url url :origin-page (str (.-pathname js/location) (.-search js/location))
+                        :container-id "visited-test" :candidate-id 0 :trust :untrusted}
+                  *link (atom nil)]
+              (.appendChild js/document.body element)
+              (try
+                (.setItem js/sessionStorage storage-key (js/JSON.stringify (clj->js data)))
+                (rf/dispatch-sync [:link-preview/open data])
+                (await! (render! root
+                                [:<>
+                                 [preview/<link-container>
+                                  {:id "visited-test" :text url :trust :untrusted}
+                                  [:a {:href url :ref #(reset! *link %)} "Visited link"]]
+                                 [preview/<link-preview>]]))
+                (await! (flush!))
+                (is (nil? (get-in @db/app-db [:state :link-preview :active])))
+                (is (contains? (get-in @db/app-db [:state :link-preview :visited]) url))
+                (is (nil? (.getItem js/sessionStorage storage-key)))
+                (.dispatchEvent @*link (js/PointerEvent. "pointerover"
+                                        #js {:bubbles true :pointerType "mouse"}))
+                (.dispatchEvent @*link (js/FocusEvent. "focusin" #js {:bubbles true}))
+                (await! (tick 350))
+                (await! (flush!))
+                (is (nil? (get-in @db/app-db [:state :link-preview :active])))
+                (is (nil? (.querySelector js/document "[data-popover]")))
+                ;; A frozen document's pageshow also closes transient presentation.
+                (rf/dispatch-sync [:link-preview/open (assoc data :url "https://unvisited.invalid/read")])
+                (await! (flush!))
+                (.dispatchEvent js/window (js/PageTransitionEvent. "pageshow" #js {:persisted true}))
+                (await! (flush!))
+                (is (nil? (get-in @db/app-db [:state :link-preview :active])))
+                (finally
+                  (support/unmount! root)
+                  (.remove element)))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (if old-token (.setItem js/sessionStorage storage-key old-token)
+                          (.removeItem js/sessionStorage storage-key))
+                      (restore!)
+                      (done)))))))
