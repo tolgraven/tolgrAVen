@@ -36,6 +36,13 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   Data-inspector checks mount its lazy compatibility exports and preserve formatted
   values, full error details and retry. Production audits prove pprint/home helpers
   leave main; a successful source move alone does not establish the boundary.
+  Generate both plain and fenced-code Node fixtures. Verify completed Suspense
+  boundaries preserve pre/code/span identity before and after deferred hydration,
+  including control/ancestor updates while suspended and the actual inner commit.
+  Verify temporary transition batching is released on unmount and early navigation.
+  Formatter acquisition waits for
+  hydration, load, page readiness and painted idle frames. Plain pages never
+  acquire it; new SPA code uses the normal loader immediately.
   Compression checks must decode the shell before final data
   is ready. Initial SSR visibility alone
   does not prove hydration; let pending link intent settle before repeating clicks.

@@ -1,6 +1,8 @@
 (ns tolgraven.component.restore
   "First-page restoration context; no loading/motion bypass without ready data."
   (:require [reagent.core :as r]
+            [reagent.ratom :as ratom]
+            [tolgraven.component.hydration :as hydration]
             [tolgraven.react :as rf]
             [clojure.string :as string]))
 
@@ -34,6 +36,12 @@
       #js [tracked? ready?])))
 
 (defonce *context (r/atom {}))
+(defn initial-hydration?
+  "Capture the mount's hydration decision without subscribing its render to the
+   later hydration-complete update. Call from a hook initializer, not derived UI."
+  []
+  (binding [ratom/*ratom-context* nil]
+    (boolean (:hydrate? @*context))))
 (defn page-key [] (if (exists? js/location) (str (.-pathname js/location) (.-search js/location)) "/"))
 (defn begin! [{:keys [hydrate? back?]}]
   (reset! *context {:hydrate? (boolean hydrate?) :back? (boolean back?)
@@ -48,7 +56,11 @@
   ;; loaded or expanded afterwards must use normal SPA entrance motion.
   (swap! *context assoc :hydrate? false))
 (defn navigate! [path]
-  (when (and (:page @*context) (not= (first (string/split path #"\?")) (first (string/split (:page @*context) #"\?")))) (reset! *context {})))
+  (when (and (:page @*context)
+             (not= (first (string/split path #"\?"))
+                   (first (string/split (:page @*context) #"\?"))))
+    (hydration/release-all!)
+    (reset! *context {})))
 (defn back-navigation? []
   (or (= "back_forward" (some-> js/performance (.getEntriesByType "navigation") (aget 0) .-type))
       (= 2 (some-> js/performance .-navigation .-type))))

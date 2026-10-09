@@ -43,9 +43,16 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   class. SSR roots paint visible, without separate child/page entrance keyframes.
 - Shared Markdown, full syntax highlighting and mapping code live in the
   `:markdown`, `:highlight` and `:maps` bundles. Keep the full highlighter out of
-  Markdown so link previews do not acquire every language. Declare bundle
-  dependencies for consumers that must have them
-  before hydration. Local-return rendering uses the lazy `:page-render` bundle;
+  Markdown so link previews do not acquire every language. Node renders highlighted
+  code inside completed React Suspense boundaries. Copy/wrapping and the page
+  hydrate first; the formatter loads/hydrates after the common after-page gate.
+  Keep the formatter in its own memoized `defc` so control updates do not replace
+  pending SSR nodes. Initial boundaries own transition batching in
+  `component/hydration.cljs` until inner commit/unmount; navigation releases it.
+  Capture their initial restoration decision without subscribing to completion.
+  New SPA code uses the normal loader immediately. Paired local
+  returns render completed boundaries too and skip the formatter during bootstrap.
+  Local-return rendering uses the lazy `:page-render` bundle;
   the installer remains eager to restore state before the first commit.
 - Pretty data and expanded error details live in `:data-inspector`; keep pprint
   out of initial browser code. Shared numeric display uses native fixed decimal

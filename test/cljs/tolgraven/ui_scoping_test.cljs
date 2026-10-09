@@ -32,13 +32,14 @@
               (is (= value (reader/read-string (.-textContent (.querySelector element "pre")))))
               (is (= "Data" (.-textContent (.querySelector element "h5"))))
               (await! (support/render! root [error/<error-full> "test" "view" *error value]))
-              (await! (support/wait-for!
-                        #(some-> (.querySelector element "button") .-textContent
-                                 (= "Attempt reload"))))
-              (is (.includes (.-textContent element) "Readable error"))
-              (is (.includes (.-textContent element) "Props/spec:"))
-              (.click (.querySelector element "button"))
-              (is (nil? @*error))
+              (let [retry (await! (support/wait-for!
+                                   #(some (fn [button]
+                                            (when (= "Attempt reload" (.-textContent button)) button))
+                                          (array-seq (.querySelectorAll element "button")))))]
+                (is (.includes (.-textContent element) "Readable error"))
+                (is (.includes (.-textContent element) "Props/spec:"))
+                (.click retry)
+                (is (nil? @*error)))
               (finally (support/unmount! root)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))

@@ -12,7 +12,7 @@
   border-bottom-right-radius: 0.5em;
 	color: var(--fg-2);
 
-  box-shadow: 2px 1px 1em 0px rgba(110, 100, 120, 0.20);
+  box-shadow: 0.125rem 0.0625rem 1em 0 rgba(110, 100, 120, 0.20);
 }
 
 .hljs-comment,
@@ -111,7 +111,7 @@
 /* Override react-syntax-highlighter default styles */
 .react-syntax-highlighter-line-number {
   font-family: 'Fira Code', monospace ;
-  border-right: 0.5px solid var(--blue);
+  border-right: 0.03125rem solid var(--blue);
   margin-right: calc(0.5 * var(--space));
   padding-left: 0.5em;
   background: linear-gradient(130deg,
@@ -131,12 +131,24 @@ pre[class*="language-"] {
   border-bottom-left-radius: 0.7em;
   border-bottom-right-radius: 0.5em;
 	color: var(--fg-2) !important;
-  box-shadow: 2px 1px 1em 0px rgba(110, 100, 120, 0.20);
+  box-shadow: 0.125rem 0.0625rem 1em 0 rgba(110, 100, 120, 0.20);
 }
 
 /* Style the container div that react-syntax-highlighter creates */
 div > pre[class*="language-"] {
   margin: 0;
+}
+
+.code-block-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5em;
+  font-size: 0.8em;
+}
+.code-block-wrapped code,
+.code-block-wrapped code span {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
 }
 
 /* Custom syntax highlighting colors for react-syntax-highlighter can be added here if needed */
