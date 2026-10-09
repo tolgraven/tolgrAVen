@@ -15,7 +15,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   default; zero always revalidates). Expired/build-changed entries stream the shell
   while revalidating; only fresh entries bypass it.
 - Optimus fingerprints the shared and per-module CSS bundles independently. Emit
-  route dependency styles in the first head and all URLs in `#module-styles`;
+  route dependency styles in the first head, inlining small optimized sheets
+  within a 16 KiB document budget, and all URLs in `#module-styles`;
   local return documents carry their saved modules' styles before first paint.
 - Keep SDK and app scripts ordered and deferred. Analytics metadata/queue is
   local; the browser lifecycle acquires its remote script after initial rendering.

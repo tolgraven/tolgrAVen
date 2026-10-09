@@ -65,3 +65,30 @@
                                    (.catch retry (fn [_] (is (= 2 (get @styles/*attempts missing)))))))))))
           (.catch (fn [error] (is false (str error))))
           (.finally done)))))
+
+(deftest initial-inline-css-satisfies-acquisition-without-a-duplicate-request
+  (async done
+    (let [url (str "/bundles/inline-" (random-uuid) "/module.css")
+          sheet (.createElement js/document "style")
+          probe (.createElement js/document "div")]
+      (.setAttribute sheet "data-module-style" url)
+      (set! (.-textContent sheet) ".inline-module-fixture {font-weight:700}")
+      (set! (.-className probe) "inline-module-fixture")
+      (.appendChild (.-head js/document) sheet)
+      (.appendChild (.-body js/document) probe)
+      (let [request (styles/acquire-path! url)]
+        (is (identical? request (styles/acquire-path! url)))
+        (-> request
+            (.then (fn [_]
+                     (is (contains? @styles/*ready url))
+                     (is (= "700" (.-fontWeight (js/getComputedStyle probe))))
+                     (is (not-any? #(= (.-pathname (js/URL. (.-href %))) url)
+                                   (array-seq (.querySelectorAll js/document "link[rel=stylesheet]")))
+                         "Ready inline CSS does not call React preinit again")))
+            (.catch (fn [error] (is false (str error))))
+            (.finally (fn []
+                        (.remove sheet)
+                        (.remove probe)
+                        (swap! styles/*ready disj url)
+                        (swap! styles/*requests dissoc url)
+                        (done))))))))
