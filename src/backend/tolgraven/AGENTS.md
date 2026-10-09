@@ -19,7 +19,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Presentation query variants may reuse fresh data for the same path/selection,
   preserving its original timestamp, but must render their own paired HTML/state.
 - Optimus fingerprints the shell and each declared module stylesheet independently;
-  shared styles keep one URL across consumer modules. Emit
+  shared styles keep one URL across consumer modules. Development-only inspector
+  rules use a separate unbundled sheet; normal and error documents share the shell
+  stylesheet policy. Emit
   route dependency styles in the first head, inlining small optimized sheets
   within a 16 KiB document budget, and all URLs in `#module-styles`;
   local return documents carry their saved modules' styles before first paint.

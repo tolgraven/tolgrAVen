@@ -3,7 +3,8 @@
 `bb.edn` is the local task catalog. Keep `doc/tooling.md` and caller paths current
 when moving tools; tasks accept argument vectors, never interpolate a local shell.
 
-- `build/styles.mjs` compiles all CSS entries with locked Sass/PostCSS and vendors
+- `build/styles.mjs` compiles shell, development inspector and module CSS entries
+  with locked Sass/PostCSS and vendors
   Leaflet images. Keep `npm run build` and the watch workflow aligned.
 - `build/`, `media/`, `dev/`, `test/`: local build, asset and verification tools.
   Prefer Babashka using its built-in libraries; Node owns SDK/zlib operations.

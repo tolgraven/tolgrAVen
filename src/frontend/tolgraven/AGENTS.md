@@ -78,6 +78,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Lazy videos omit sources until visible; their observer owns cleanup, React owns markup.
   Use Shadow reader features for build-specific dependencies, not runtime imports.
 - Development console and React profiling implementations live in `env/dev/cljs`.
+  Inspector styles compile into `dev.min.css`, linked only by development documents.
   Only builds with the `:dev` reader feature import them; production and SSR use
   small diagnostics/instrumentation boundaries. Debug instrumentation is bounded and inactive when closed. Keep diagnostics out
   of persistence snapshots and do not let diagnostic events trigger page renders.
