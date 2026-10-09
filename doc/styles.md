@@ -21,7 +21,8 @@ feature for a mixin would duplicate its selectors in another module's output.
 The `:home` sheet owns landing hero/page rules. Its module also declares the shared
 Markdown/monospace sheets for its static rendered text, without a JavaScript
 dependency on the parser. Initial route styles include the global User controls
-but do not force Link Preview styles onto unrelated plain routes.
+but exclude the Link Preview popup sheet even on Blog. Its static
+`display: contents` container rule belongs to Markdown, keeping SSR layout intact.
 The optional `:styled-input`
 module owns the custom field used by Search and blog editing. It, Markdown and
 the deferred highlighter declare the independent monospace sheet, containing FiraCode's font declaration.
@@ -32,7 +33,12 @@ its glyphs; do not preload it merely because a Markdown module is loaded.
 Each feature's literal module spec declares `:styles` with its local output URLs.
 The existing module declaration reader generates the shared stylesheet catalog
 at compile time, including transitive bundle dependencies. No browser feature
-code must load to discover its CSS. Declaration macros register the entry sources
+code must load to discover its CSS. A module may declare `:ssr-styles :deferred`
+when its styles apply only to intent-driven UI absent from SSR, such as a preview
+popup. The default is `:initial`; dependencies retain their own policies.
+This only filters initial head styles: the full loader inventory and synchronous
+CSS acquisition before Shadow remain unchanged. Do not defer styles needed by
+visible static SSR content. Declaration macros register the entry sources
 as Shadow resources so metadata changes invalidate their baked catalogs in
 incremental builds. Restart Shadow watches after adding or removing module entry
 files so build discovery sees the changed set.

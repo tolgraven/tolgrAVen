@@ -32,7 +32,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   stylesheet policy. Emit
   route dependency styles and User control styles in the first head. Home owns
   its static Markdown styles without depending on Markdown code. Do not add the
-  Link Preview sheet to unrelated routes. Inline small optimized sheets
+  Link Preview popup sheet to the initial head; its static container rule belongs
+  to Markdown. Respect module `:ssr-styles :deferred` without removing loader URLs.
+  Inline small optimized sheets
   within a 16 KiB document budget; publish all URLs in `#module-styles`;
   local return documents carry their saved modules' styles before first paint.
   Strip a leading UTF-8 marker when inlining CSS so its first selector remains valid.

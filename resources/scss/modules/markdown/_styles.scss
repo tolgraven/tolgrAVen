@@ -152,3 +152,8 @@ div > pre[class*="language-"] {
 }
 
 /* Custom syntax highlighting colors for react-syntax-highlighter can be added here if needed */
+
+// Static Markdown structure must be styled before popup code/CSS acquisition.
+.link-preview-container {
+  display: contents;
+}

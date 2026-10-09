@@ -103,3 +103,12 @@
                         (swap! styles/*ready disj url)
                         (swap! styles/*requests dissoc url)
                         (done))))))))
+
+(deftest deferred-popup-styles-still-start-with-module-acquisition
+  (let [manifest (into {} (map (fn [[id spec]] [id (:paths spec)])) catalog/modules)
+        popup "/css/tolgraven/modules/link-preview.min.css"
+        markdown "/css/tolgraven/modules/markdown.min.css"]
+    (is (not (some #{popup} (catalog/initial-paths manifest :blog))))
+    (is (some #{markdown} (catalog/initial-paths manifest :blog)))
+    (is (some #{popup} (catalog/paths manifest :blog)))
+    (is (some #{popup} (catalog/paths manifest :link-preview)))))

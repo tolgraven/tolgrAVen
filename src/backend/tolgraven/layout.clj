@@ -65,7 +65,7 @@
 
 (defn initial-styles [request manifest]
   (vec (distinct
-         (mapcat #(styles/paths manifest %)
+         (mapcat #(styles/initial-paths manifest %)
                  [:user (get-in (pages/match (or (:uri request) "/")) [:data :module])]))))
 
 (defn- initial-style-tags [request manifest]

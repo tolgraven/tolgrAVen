@@ -57,3 +57,13 @@
       (reset! *reads [])
       (expand-loadables nil env)
       (is (= (count (modules/discover)) (count @*reads))))))
+
+(deftest deferred-ssr-styles-remain-in-the-runtime-catalog
+  (let [file (java.io.File/createTempFile "module-style-policy" ".cljs")]
+    (try
+      (spit file "(ns example.module)\n(def spec {:id :example :styles [\"/css/example.css\"] :ssr-styles :deferred})")
+      (is (= :deferred (:ssr-styles (modules/declaration file))))
+      (is (= ["/css/example.css"] (:styles (modules/declaration file))))
+      (spit file "(ns example.module)\n(def spec {:id :example :ssr-styles (identity :deferred)})")
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"literal" (modules/declaration file)))
+      (finally (.delete file)))))
