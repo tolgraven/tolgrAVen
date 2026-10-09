@@ -30,12 +30,22 @@
   (and (vector? path) (= 3 (count path))
        (= [:store :scoped] (subvec path 0 2)) (public-query? (last path))))
 
+(rf/reg-sub :blog/cache-queries
+  {:args [:tuple], :result [:map-of c/path :any]}
+  :<- [:component-storage/value [:store :scoped]]
+  (fn [scoped _]
+    ;; Parsing persisted EDN keys belongs to the query-cache dependency alone.
+    (into {} (keep (fn [[key value]]
+                     (when (public-query? key) [[:store :scoped key] value])))
+          (when (map? scoped) scoped))))
+
 (rf/reg-sub :blog/cache-values
-  (fn [db _]
-    (into (into {} (map (fn [path] [path (get-in db path storage/missing)])) state-paths)
-          (keep (fn [[key value]]
-                  (when (public-query? key) [[:store :scoped key] value])))
-          (get-in db [:store :scoped]))))
+  {:args [:tuple], :result [:map-of c/path :any]}
+  (fn [_]
+    (into [(rf/subscribe [:blog/cache-queries])]
+          (map #(rf/subscribe [:component-storage/value %])) state-paths))
+  (fn [[queries & display] _]
+    (into queries (map vector state-paths display))))
 
 (defonce *tracking (atom nil))
 
@@ -67,7 +77,7 @@
               (if (some #{path} state-paths)
                 ;; The server owns content, not this browser's display choices.
                 ;; An interaction since startup wins even if it returns to a default.
-                (if restore-ui?
+                (if (and restore-ui? (map? value))
                   (reduce-kv (fn [db key value]
                                (if (contains? (get-in db [:state :blog :restore-edits] #{})
                                               [(last path) key])

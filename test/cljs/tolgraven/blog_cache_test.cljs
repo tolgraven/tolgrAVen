@@ -2,7 +2,8 @@
   (:require [cljs.test :refer-macros [deftest is]]
             [re-frame.core :as re-frame]
             [tolgraven.react :as rf]
-            [tolgraven.modules.blog.cache]
+            [tolgraven.modules.blog.cache :as cache]
+            [reagent.core :as r]
             [tolgraven.modules.blog.events]
             [tolgraven.component.storage :as storage]
             [tolgraven.supabase.scoped :as scoped]
@@ -33,3 +34,42 @@
       (rf/dispatch-sync [:blog/restore-cache [[path {other false}]] false])
       (is (true? (get (storage/state-value path) other)) "An exact local pair owns all display state")
       (finally (restore!)))))
+
+(deftest malformed-disk-display-values-do-not-block-other-restored-choices
+  (let [restore! (re-frame/make-restore-fn)
+        path [:state :blog :comment-thread-expanded]
+        thread [24 "105"]]
+    (try
+      (rf/dispatch-sync [:init/app-db])
+      (doseq [value [nil false 7 "broken" [true]]]
+        (rf/dispatch-sync [:blog/restore-cache
+                           [[[:state :blog :comments-expanded] value]
+                            [path {thread true}]] true])
+        (is (true? (get (storage/state-value path) thread))))
+      (finally (restore!)))))
+
+(deftest tracking-parses-query-keys-only-when-query-content-changes
+  (let [restore! (re-frame/make-restore-fn)
+        query-key (scoped/query-key (data/post-query 24))
+        parse-query? cache/public-query?
+        *parses (atom 0)]
+    (with-redefs [cache/public-query? (fn [key] (swap! *parses inc) (parse-query? key))
+                  storage/*tracked (atom {})
+                  storage/schedule! (fn [])]
+      (try
+        (rf/dispatch-sync [:init/app-db])
+        (rf/dispatch-sync [:store/scoped query-key {:docs []}])
+        (cache/start!)
+        (r/flush)
+        (is (pos? @*parses) "Already seeded SSR queries are tracked immediately")
+        (let [initial @*parses]
+          (rf/dispatch-sync [:state [:scroll :past-top] true])
+          (r/flush)
+          (is (= initial @*parses) "Scroll events do not parse persisted query keys")
+          (rf/dispatch-sync [:component-state/reset [:state :blog :comments-expanded] {24 true}])
+          (r/flush)
+          (is (= initial @*parses) "Display changes also retain the parsed queries")
+          (rf/dispatch-sync [:store/scoped query-key {:docs [{:id 24}]}])
+          (r/flush)
+          (is (> @*parses initial) "New query data refreshes the tracked snapshot"))
+        (finally (cache/stop!) (restore!))))))
