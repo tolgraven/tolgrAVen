@@ -25,4 +25,4 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Image upload tests exercise real codecs, timeout/cleanup and Storage publication
   ordering. Browser avatar fixtures test modern-source failure and direct PNG retry;
   they do not establish live Storage behavior. Hook tests use disposable Git indices:
-  `python3 -m unittest discover -s test/scripts -p image_hook_test.py`.
+  `bb test:scripts`.

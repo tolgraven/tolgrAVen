@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 .PHONY: hooks
 hooks:
-	bash scripts/install-git-hooks.sh
+	bb hooks
 
 .PHONY: help docker docker-build docker-push docker-prefab docker-registry docker-clean provision-plan provision-site
 help:
@@ -16,16 +16,16 @@ help:
 	@echo 'make provision-site SITE=path.json  Create and verify isolated production/staging stacks'
 
 docker:
-	python3 scripts/docker.py deploy
+	bb docker deploy
 
 docker-build:
-	python3 scripts/docker.py build
+	bb docker build
 
 docker-push:
-	python3 scripts/docker.py push
+	bb docker push
 
 docker-prefab:
-	python3 scripts/docker.py prefab
+	bb docker prefab
 
 .PHONY: ssr return-worker
 return-worker:
@@ -35,15 +35,15 @@ ssr:
 	lein with-profile prod,provided run -m shadow.cljs.devtools.cli release ssr
 
 docker-registry:
-	python3 scripts/docker.py registry
+	bb docker registry
 
 provision-plan:
 	@test -n "$(SITE)" || (echo "Set SITE=path/to/site.json"; exit 1)
-	python3 scripts/provision-site.py plan "$(SITE)"
+	python3 scripts/ops/provision-site.py plan "$(SITE)"
 
 provision-site:
 	@test -n "$(SITE)" || (echo "Set SITE=path/to/site.json"; exit 1)
-	python3 scripts/provision-site.py up "$(SITE)"
+	python3 scripts/ops/provision-site.py up "$(SITE)"
 
 docker-clean:
-	python3 scripts/docker.py clean
+	bb docker clean

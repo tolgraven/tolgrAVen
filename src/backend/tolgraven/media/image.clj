@@ -20,8 +20,8 @@
   (throw (ex-info "Unable to convert the image; try again later" {:auth/status 503})))
 
 (defn- run-converter! [file]
-  (let [script (or (:image-converter config/env) "scripts/convert-images.sh")
-        builder (ProcessBuilder. ^java.util.List ["bash" script "--force" "--" (str file)])]
+  (let [script (or (:image-converter config/env) "scripts/media/images.clj")
+        builder (ProcessBuilder. ^java.util.List ["bb" script "--force" "--" (str file)])]
     ;; Only our normalized PNG reaches ImageMagick, never the supplied filename
     ;; or original format. Bound CPU/memory and suppress private process output.
     (doseq [[key value] {"MAGICK_THREAD_LIMIT" "2"

@@ -34,7 +34,7 @@ The server setup script reuses the existing `hetzner` S3 record inside Coolify.
 Credentials are supplied to the registry at runtime, never Docker build arguments.
 Removing the registry container does not delete its S3 image data.
 
-Required locally: Docker/BuildKit, Python 3, make, a registry login, and working
+Required locally: Docker/BuildKit, Babashka, make, a registry login, and working
 `ssh bux` authentication. This Mac's Docker login is already configured through
 Docker's credential store. Other machines need their own authorized credentials:
 
@@ -46,7 +46,7 @@ No additional Coolify API token or SSH key is created.
 
 ## Prefab builder
 
-`Dockerfile.builder` combines pinned Node 22, Temurin Java 21, and Leiningen images,
+`Dockerfile.builder` combines pinned Babashka 1.13.225, Node 22, Temurin Java 21, and Leiningen images,
 then installs exactly `package-lock.json` and downloads build and documentation
 Maven artifacts.
 The prefab includes the complete project `node_modules` directory, including
@@ -89,11 +89,11 @@ and the namespace filter matches `tolgraven.*` names rather than file extensions
 The prefab still supplies most dependencies, so ordinary builds gain primarily
 from overlapping compilation rather than downloading dependencies.
 
-The independent `media-tools` runtime stage installs ImageMagick and `cwebp`, then
+The independent `media-tools` runtime stage copies the pinned Babashka runtime and installs ImageMagick and `cwebp`, then
 encodes and decodes a tiny WebP/AVIF fixture during the image build. Check only
 these runtime codecs with `docker build --target media-tools .`; this does not
 compile the application or refresh the prefab. Uploads use the copied
-`/app/scripts/convert-images.sh`. Persistent image objects live in Supabase's
+`/app/scripts/media/images.clj`. Persistent image objects live in Supabase's
 mounted Storage backend; see [upload storage](supabase-provisioning.md).
 
 The Shadow JVM defaults to a 1536 MB heap (`BUILD_JAVA_OPTIONS`), while the
@@ -145,10 +145,10 @@ one; ordinary cross-PR Git deployments still use that service's reconciliation.
 ```sh
 # On bux, after copying the scripts from this checkout:
 # Use an existing bcrypt htpasswd file; keep it out of Git.
-REGISTRY_HTPASSWD_FILE=/secure/registry.htpasswd bash scripts/setup-build-registry.sh
-sudo install -D -m 755 scripts/deploy-image.py /usr/local/lib/tolgraven/deploy-image.py
-sudo install -D -m 755 scripts/staging_supabase.py /usr/local/lib/tolgraven/staging_supabase.py
-sudo install -D -m 755 scripts/coolify-site-runtime-policy.py /usr/local/lib/tolgraven/coolify-site-runtime-policy.py
+REGISTRY_HTPASSWD_FILE=/secure/registry.htpasswd bash scripts/ops/host/setup-build-registry.sh
+sudo install -D -m 755 scripts/ops/host/deploy-image.py /usr/local/lib/tolgraven/deploy-image.py
+sudo install -D -m 755 scripts/ops/host/staging_supabase.py /usr/local/lib/tolgraven/staging_supabase.py
+sudo install -D -m 755 scripts/ops/host/coolify-site-runtime-policy.py /usr/local/lib/tolgraven/coolify-site-runtime-policy.py
 sudo systemctl restart tolgraven-runtime-policy
 ```
 

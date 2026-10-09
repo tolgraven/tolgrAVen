@@ -38,9 +38,11 @@ doc
 .github
 .agents
 .codex
-scripts/*
-!scripts/sync-vendor.mjs
-!scripts/convert-images.sh
+scripts/**
+!scripts/build/
+!scripts/build/sync-vendor.mjs
+!scripts/media/
+!scripts/media/images.clj
 .githooks
 test
 resources/docs/codox
@@ -58,3 +60,6 @@ deploy
 # Ignore local aliases retained for an already-running development REPL.
 src/clj
 src/cljs
+
+# Private overrides are never Docker build inputs.
+config/local*.edn

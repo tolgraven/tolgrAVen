@@ -116,15 +116,15 @@ suppressed for reduced motion. Ordinary navigation does not retrigger it.
 Follow [re-frame-pair setup](re-frame-pair.md), starting each session with:
 
 ```sh
-bash scripts/re-frame-pair.sh discover-app
-bash scripts/re-frame-pair.sh dispatch '[:dev-console/clear]'
+bb pair discover-app
+bb pair dispatch '[:dev-console/clear]'
 ```
 
 Open the console before inspecting `[:dev-console/snapshot]`. Read its existing
 mounted reaction instead of creating a dangling subscription:
 
 ```sh
-bash scripts/re-frame-pair.sh eval-cljs \
+bb pair eval-cljs \
   '(when-let [reaction (some (fn [[_ r]] (when (= [:dev-console/snapshot] (re-frame.tooling/query-v-for-reaction r)) r)) @re-frame.tooling/query->reaction)] @reaction)'
 ```
 

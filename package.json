@@ -21,7 +21,7 @@
     "dev": "concurrently \"npm run sass:dev\" \"npm run postcss:dev\"",
     "build": "npm run vendor:sync && npm run sass:build && npm run postcss:build",
     "update": "npm update",
-    "vendor:sync": "node scripts/sync-vendor.mjs"
+    "vendor:sync": "node scripts/build/sync-vendor.mjs"
   },
   "devDependencies": {
     "autoprefixer": "^10.6.1",

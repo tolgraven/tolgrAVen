@@ -1,0 +1,4 @@
+{:port 4000
+ :ssr {:enabled true
+       :worker "target/ssr/site.js"
+       :node-binary "node"}}

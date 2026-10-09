@@ -49,3 +49,5 @@ resources/docs/codox/
 # Local compatibility aliases for REPLs started before the source-root rename.
 /src/clj
 /src/cljs
+
+/config/local*.edn

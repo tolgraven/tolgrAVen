@@ -37,7 +37,7 @@ Coolify 4.3.23. Re-run the transactional probe after upgrading Coolify.
 
 ```sh
 make provision-plan SITE=.local-wip/my-site.json
-python3 scripts/provision-site.py probe .local-wip/my-site.json
+python3 scripts/ops/provision-site.py probe .local-wip/my-site.json
 make provision-site SITE=.local-wip/my-site.json
 ```
 
@@ -56,12 +56,12 @@ so use `status` before retrying an interrupted `up`. For an already running site
 use the individual phases below rather than restarting the entire stack.
 
 ```sh
-python3 scripts/provision-site.py prepare .local-wip/my-site.json
-python3 scripts/provision-site.py start .local-wip/my-site.json
-python3 scripts/provision-site.py schema .local-wip/my-site.json
-python3 scripts/provision-site.py wire .local-wip/my-site.json
-python3 scripts/provision-site.py deploy .local-wip/my-site.json
-python3 scripts/provision-site.py verify .local-wip/my-site.json
+python3 scripts/ops/provision-site.py prepare .local-wip/my-site.json
+python3 scripts/ops/provision-site.py start .local-wip/my-site.json
+python3 scripts/ops/provision-site.py schema .local-wip/my-site.json
+python3 scripts/ops/provision-site.py wire .local-wip/my-site.json
+python3 scripts/ops/provision-site.py deploy .local-wip/my-site.json
+python3 scripts/ops/provision-site.py verify .local-wip/my-site.json
 ```
 
 New web applications have PR previews and automatic deployments disabled, so
@@ -114,7 +114,7 @@ service to the existing staging project/environment/application, including PR 45
 It does not create or modify production resources. This is an explicit data-copy
 operation separate from provisioning empty sites.
 
-The server-side `scripts/seed-staging-supabase.py` helper requires distinct
+The server-side `scripts/ops/host/seed-staging-supabase.py` helper requires distinct
 source/target service UUIDs, the same server/team, a provisioner-owned target in
 an environment named `staging`, and empty destination site/Auth tables. It allows
 only the identical empty `avatars` bucket created by schema bootstrap, retaining
@@ -161,7 +161,7 @@ turning on automatic deployment rather than reusing tolgraven's secrets.
 
 `make docker` remains deliberately scoped to tolgraven's existing staging app;
 it refuses a checkout whose `origin` is another repository. A new site's deploy
-command is `python3 scripts/provision-site.py deploy <site.json>`. `docker-build`
+command is `python3 scripts/ops/provision-site.py deploy <site.json>`. `docker-build`
 and `docker-push` do not change a Coolify application. Do not reuse the shared
 builder alias for a different architecture/toolchain; use a matching dependency
 hash tag or the self-contained builder for that server.

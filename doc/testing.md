@@ -7,7 +7,7 @@ Supabase, or hydration works. Keep these layers distinct when reporting results.
 | --- | --- | --- |
 | `test/clj` | Pure transformations, request/permission contracts, Ring handlers, SSR cache/concurrency and streaming | Yes: these are unit/contract tests. The worker protocol test also starts the real Node renderer with fixture input. |
 | `test/cljs/*_test.cljs` | Mounted components, events/subscriptions, adapter lifecycles, persistence, error recovery, renderer/hydration contracts | Yes: explicitly isolated unit/component tests. A fake HTTP/SDK boundary does not make a test live integration. |
-| `scripts/test-blog-ssr.py` | Actual compiled Node renderer, request isolation, escaping, fixtures for browser hydration | Fixture snapshots, not live CMS/database integration. |
+| `bb ssr:fixtures` | Actual compiled Node renderer, request isolation, escaping, fixtures for browser hydration | Fixture snapshots, not live CMS/database integration. |
 | `test/scripts/*_test.py` | Deployment/provisioning decisions and shell entrypoint contracts | Yes: SSH, Docker, Coolify, clock and HTTP commands are faked. No deployment occurs. |
 | `test/browser/live.html` | Real server, compiled app, router/module loader, CMS/database bindings, hydration and browser navigation | **No mocks, injected application state, fake responses, or replacement loaders.** |
 | `test/sql` | Installed SQL operations/imports, transactions, ownership and RLS in PostgreSQL/Supabase | Real database, controlled fixture records. Use a disposable database. |
@@ -17,18 +17,18 @@ Supabase, or hydration works. Keep these layers distinct when reporting results.
 
 ```sh
 lein with-profile +project/test test
-python3 -m unittest discover -s test/scripts -p '*_test.py'
+bb test:scripts
 ```
 
 Browser suite:
 
 1. Compile the existing `:ssr` target. If it is already watched, use that Shadow
    worker (`shadow.cljs.devtools.api/watch-compile!`), not a competing compilation.
-2. `python3 scripts/test-blog-ssr.py` regenerates browser hydration fixtures from
+2. `bb ssr:fixtures` regenerates browser hydration fixtures from
    the current renderer. Do not test against stale generated HTML.
 3. `lein with-profile +project/test run -m shadow.cljs.devtools.cli compile app-test`
    (use its existing worker instead if that target is watched).
-4. `python3 scripts/serve-browser-tests.py`, then open `http://127.0.0.1:4002/`.
+4. `bb test:browser`, then open `http://127.0.0.1:4002/`.
    Inspect final assertion counts and failures, not just compilation.
 
 `:app-test` discovers all `tolgraven.*-test` namespaces through the Shadow
@@ -77,7 +77,7 @@ Start the normal application (`lein repl`, watched `:app-dev` and `:ssr`, and CS
 with working Supabase and Strapi configuration. Then:
 
 ```sh
-python3 scripts/serve-integration-tests.py --app http://127.0.0.1:4000
+bb test:integration --app http://127.0.0.1:4000
 ```
 
 For a locally published production container, add `--forwarded-proto https` to
@@ -167,7 +167,7 @@ load Markdown as a code dependency before hydration; Node uses the same componen
 synchronously. The local-return installer stays eager, but its React server
 renderer is in `:page-render` and is acquired only after the cache connects.
 
-Run `bash scripts/audit-bundles.sh before` and repeat with an `after` label to
+Run `bb audit before` and repeat with an `after` label to
 compare actual production artifacts (raw, gzip level 9 and Brotli quality 11).
 Each build has an isolated build ID/cache and writes to `target/bundle-audit/<label>`;
 watched app assets are untouched. `sources.edn` records module ownership and
@@ -180,7 +180,7 @@ To run the route checks against those actual advanced-compiled files while keepi
 the HTTP/data server unchanged:
 
 ```sh
-python3 scripts/serve-integration-tests.py --app http://127.0.0.1:4000 \
+bb test:integration --app http://127.0.0.1:4000 \
   --port 4018 --bundle-dir target/bundle-audit/final
 ```
 

@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 TABLES = ('site_users', 'auth_roles', 'blog_posts', 'blog_comments', 'chat_messages',
           'service_configs', 'store_documents', 'comment_votes', 'user_documents')
 
@@ -59,7 +59,7 @@ def validate(spec):
 
 def php_script(spec, action):
     payload = base64.b64encode(json.dumps({'spec': spec, 'action': action}).encode()).decode()
-    helper = (ROOT / 'scripts/provision-site.php').read_text()
+    helper = (ROOT / 'scripts/ops/coolify/provision-site.php').read_text()
     return "<?php $input=json_decode(base64_decode('" + payload + "'),true); ?>\n" + helper
 
 
@@ -150,7 +150,7 @@ def provision_cms(spec, state, action):
                 'image': spec.get('cms_image', '127.0.0.1:5005/tolgraven/strapi:content-v2')}
         payload = base64.b64encode(json.dumps(data).encode()).decode()
         source = "<?php $input=json_decode(base64_decode('" + payload + "'),true); ?>\n"
-        source += (ROOT / 'scripts/provision-strapi.php').read_text()
+        source += (ROOT / 'scripts/ops/coolify/provision-strapi.php').read_text()
         result = json.loads(ssh(spec, ['docker', 'exec', '-i', 'coolify', 'php'], source,
                                 host=spec.get('coolify_ssh_host', spec['ssh_host'])))
         env.update(cms_uuid=result['uuid'], cms_container='cms-' + result['uuid'])

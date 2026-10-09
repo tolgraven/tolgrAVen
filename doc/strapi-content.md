@@ -39,10 +39,10 @@ new uploads take precedence. Seed-on-start creates missing sections only and
 preserves edits across restarts.
 
 ```sh
-python3 scripts/provision-strapi.py prepare deploy/coolify/strapi-staging.json
-python3 scripts/provision-strapi.py start deploy/coolify/strapi-staging.json
-python3 scripts/provision-strapi.py verify deploy/coolify/strapi-staging.json
-python3 scripts/provision-strapi.py wire deploy/coolify/strapi-staging.json
+python3 scripts/ops/provision-strapi.py prepare deploy/coolify/strapi-staging.json
+python3 scripts/ops/provision-strapi.py start deploy/coolify/strapi-staging.json
+python3 scripts/ops/provision-strapi.py verify deploy/coolify/strapi-staging.json
+python3 scripts/ops/provision-strapi.py wire deploy/coolify/strapi-staging.json
 ```
 
 Repeat with `strapi-production.json` for production. Each environment has separate

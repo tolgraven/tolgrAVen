@@ -24,12 +24,13 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `test/clj`, `test/cljs`: backend and frontend tests.
 - `env/`: environment-specific source/resources (dev/test/prod).
 - `resources/supabase/`: schema, native operations and account import SQL.
-- `scripts/`: media conversion helpers (images/videos).
+- `scripts/`: grouped Babashka build/media/dev/test tasks and explicit operations adapters; `bb.edn` is the task catalog. See `doc/tooling.md`.
+- `config/`: private local overrides and tracked examples; environment classpath defaults remain in `env/`.
 - `doc/`: project documentation.
 
 ## Shared schemas
 - Define Malli contracts beside their consumers. Use `.cljs` for browser/Node-only
-  state and component contracts; use `.cljc` only for actual JVM/CLJS consumers. Reuse them in tests,
+  state and component contracts; use `.cljc` only for actual JVM/CLJS consumers (or thin Shadow target-feature adapters). Reuse them in tests,
   Reitit page/API parameters, and runtime validation; see `doc/schemas.md`.
 - Schema meaningful new/changed CLJ and CLJS data and public boundaries as part of
   the feature. Derive contracts from actual writers/readers, including loading,
@@ -52,13 +53,13 @@ Do not retain completed investigation diaries or historical test counts as curre
   declares extra code dependencies. Restart the browser watch after adding/removing
   module entry files; the runtime loadable map comes from the same discovery.
 - `npm run dev`: watch SCSS and PostCSS outputs for local development.
-- `bash scripts/audit-bundles.sh <label>`: measure isolated production bundles
+- `bb audit <label>`: measure isolated production bundles
   and check optional dependency ownership without overwriting watched output.
 - `npm run build`: produce compressed CSS assets for production.
 - `npm run init`: bootstrap CSS output, locked local npm tools, and the vendored SDK.
 - `make hooks`: install the tracked pre-commit hook; staged public JPG/PNG images
   generate staged WebP/AVIF variants without including unstaged source edits.
-- Live re-frame debugging: read the installed `re-frame-pair` skill, then run `bash scripts/re-frame-pair.sh discover-app` before inspecting the runtime. See `doc/re-frame-pair.md`; the wrapper selects `:app-dev` and Lein's nREPL port.
+- Live re-frame debugging: read the installed `re-frame-pair` skill, then run `bb pair discover-app` before inspecting the runtime. See `doc/re-frame-pair.md`; the wrapper selects `:app-dev` and Lein's nREPL port.
 
 ## Dependency ownership
 
@@ -144,8 +145,8 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   - `[<user-profile>]`
 
 ## Testing Guidelines
-- Use `lein with-profile +project/test test` for backend tests; browser tests use Shadow `:app-test` and the runner in `scripts/serve-browser-tests.py`.
-- Generate hydration fixtures from the current Node renderer with `python3 scripts/test-blog-ssr.py` before browser tests. The obsolete Doo runner has been removed.
+- Use `lein with-profile +project/test test` for backend tests; browser tests use Shadow `:app-test` and the runner in `bb test:browser`.
+- Generate hydration fixtures from the current Node renderer with `bb ssr:fixtures` before browser tests. The obsolete Doo runner has been removed.
 - Inspect existing watched builds before compiling. Live development normally watches `:app-dev`, `:ssr`, and `:return-worker`; never overwrite watched output with another compiler.
 - See `doc/testing.md` for mounted subscription workflows, live integration boundaries and browser checks. Unit replacements do not establish live service behavior.
 
@@ -156,7 +157,7 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 - Note any config changes (e.g., `env/*` or Supabase schema) in the PR description.
 
 ## Configuration & Secrets
-- Local config lives in `dev-config.edn` and `test-config.edn`; production config is under `env/prod/resources`.
+- Local config lives in `config/local.dev.edn` and `config/local.test.edn`; production config is under `env/prod/resources`.
 - Do not commit secrets; prefer env vars or injected config files.
 
 ## Deploy
