@@ -163,39 +163,42 @@
             (recur)))
         (swap! *cache assoc cache-key (assoc entry :size size))))))
 
-(defn- fresh? [{:keys [at build]}]
-  (let [ttl (:cache-ttl-ms (settings))]
-    (and at
-         (= build (renderer-build))
-         (pos? ttl)
-         (< (- (System/nanoTime) at) (* 1000000 ttl)))))
+(defn- fresh?
+  ([entry] (fresh? entry (renderer-build)))
+  ([{:keys [at build]} current-build]
+   (let [ttl (:cache-ttl-ms (settings))]
+     (and at
+          (= build current-build)
+          (pos? ttl)
+          (< (- (System/nanoTime) at) (* 1000000 ttl))))))
 
-(defn- fresh-page-data [uri selection]
+(defn- fresh-page-data [uri selection build]
   ;; Queries control presentation; the page declaration selects public data from
   ;; the path. Reuse data only, never another query's HTML or hydration settings.
   (->> @*cache
        (keep (fn [[[path _] entry]]
-               (when (and (= uri path) (= selection (:selection entry)) (fresh? entry))
+               (when (and (= uri path) (= selection (:selection entry)) (fresh? entry build))
                  entry)))
        (sort-by :at >)
        first))
 
 (defn- build-page! [uri selection query-params]
-  (let [key [uri query-params]
+  (let [build (renderer-build)
+        key [uri query-params]
         cached (get @*cache key)]
-    (if (and (= selection (:selection cached)) (fresh? cached))
+    (if (and (= selection (:selection cached)) (fresh? cached build))
       (assoc cached :cache :hit)
-      (let [reused (fresh-page-data uri selection)
+      (let [reused (fresh-page-data uri selection build)
             public-data (if reused
                           (dissoc (:snapshot reused) :query-params :document-title :module-views)
                           (snapshot! uri selection))
             parameters (:parameters (router/request-match uri (or query-params {})))
-            snapshot (cond-> public-data
+            snapshot (cond-> (assoc public-data :renderer-build build)
                        parameters (assoc :route-parameters parameters)
                        (seq query-params) (assoc :query-params query-params))
             title (page/document-title (:data (router/match uri)) snapshot)
             snapshot (cond-> snapshot (some? title) (assoc :document-title title))
-            unchanged? (and (= (:build cached) (renderer-build))
+            unchanged? (and (= (:build cached) build)
                             (= snapshot (dissoc (:snapshot cached) :module-views)))
             ;; Renew freshness only after a successful public snapshot read.
             ;; An unchanged snapshot also validates its paired HTML again.
@@ -204,7 +207,7 @@
                        (render-page! snapshot))
             entry (assoc rendered
                          :selection selection
-                         :build (renderer-build)
+                         :build build
                          :at (or (:at reused) (System/nanoTime)))]
         (cache-entry! key entry)
         (assoc entry :cache (if unchanged? :hit :miss))))))

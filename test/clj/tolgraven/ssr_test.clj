@@ -477,3 +477,19 @@
         (is (= {:blog [:view :posted-by]} (get-in first-page [:snapshot :module-views])))
         (is (= (:snapshot first-page) (:snapshot repeated)))))
     (finally (reset! ssr/*cache {}))))
+
+(deftest an-in-flight-renderer-build-change-cannot-freshen-old-html
+  (let [*build (atom 1)]
+    (reset! ssr/*cache {})
+    (try
+      (with-redefs [config/env {:ssr {:cache-ttl-ms 3600000}}
+                    ssr/renderer-build (fn [] @*build)
+                    ssr/snapshot! (fn [uri _] {:path uri :posts []})
+                    ssr/render-page! (fn [snapshot]
+                                       (swap! *build inc)
+                                       (rendered-page snapshot "Old build HTML"))]
+        (let [page (ssr/page! "/blog")]
+          (is (= 1 (:build page)))
+          (is (= 1 (get-in page [:snapshot :renderer-build])))
+          (is (not (ssr/cached? "/blog" nil)))))
+      (finally (reset! ssr/*cache {})))))

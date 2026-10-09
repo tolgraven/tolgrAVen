@@ -17,8 +17,10 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - The Node response pairs HTML with its module/export inventory. Keep that
   inventory in the matching snapshot/cache entry so selective hydration knows
   which exports rendered real SSR views.
-- Cache public HTML with its exact data snapshot. Never cache a request's CSRF token
-  or personalized shell as a shared response. Errors cannot validate old cache entries.
+- Capture one renderer build for each cache transaction; an in-flight build
+  change must leave its result stale. Cache public HTML with its exact data snapshot.
+  Never cache a request's CSRF token or personalized shell as a shared response.
+  Errors cannot validate old cache entries.
   Successful page snapshots are fresh for `:ssr :cache-ttl-ms` (one hour by
   default; zero always revalidates). Expired/build-changed entries stream the shell
   while revalidating; only fresh entries bypass it.
@@ -62,7 +64,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Authentication/authorization and input protection remain active in production.
 - Secrets remain in server adapters/configuration. Runtime public settings must
   expose only public origins/keys and allowed options.
-- Avatar uploads normalize/validate PNG before bounded `media/image` conversion.
+- ImageMagick pixel-cache files stay inside the request temporary directory so
+  failure/timeout cleanup also removes them. Avatar uploads normalize/validate PNG
+  before bounded `media/image` conversion.
   Publish versioned PNG/WebP/AVIF to Supabase Storage before updating the profile;
   its mounted object backend owns persistence, never the web container filesystem.
 - Do not stop a user's REPL or rebuild a watched Shadow target with another process.
@@ -87,4 +91,6 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 
 - Link Preview owns `/api/link-preview`: bounded public HTML reads, checked DNS at
   connection time and every redirect, short failure caching and shared in-flight
-  reads. Emit text blocks/image metadata and frame policy, never remote HTML.
+  reads. Score candidate subtrees in one traversal; failure completion may update
+  only its own still-cached promise. Emit text blocks/image metadata and frame policy,
+  never remote HTML.

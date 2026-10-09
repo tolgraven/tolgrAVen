@@ -5,12 +5,14 @@
             [clojure.string :as string])
   (:import [java.io ByteArrayOutputStream InputStream]
            [java.net InetAddress URI]
+           [java.util ArrayDeque]
            [java.util.concurrent Semaphore]
            [org.apache.http.conn DnsResolver]
            [org.apache.http.impl.conn DefaultRoutePlanner DefaultSchemePortResolver]
            [org.apache.http.impl.client HttpClientBuilder]
            [org.jsoup Jsoup]
-           [org.jsoup.nodes Element]))
+           [org.jsoup.nodes Element TextNode]
+           [org.jsoup.select NodeTraversor NodeVisitor]))
 
 (def max-bytes (* 1024 1024))
 (def max-text 10000)
@@ -147,6 +149,42 @@
 (defn- metadata [document selector]
   (some-> (.selectFirst document selector) (.attr "content") string/trim not-empty))
 
+(defn- content-root [document]
+  ;; Score every subtree once, in postorder. Repeated .text/.select calls for
+  ;; nested candidates can otherwise traverse the same 1 MiB body quadratically.
+  (let [stack (ArrayDeque.)
+        *semantic (volatile! nil)
+        *fallback (volatile! nil)
+        choose! (fn [best element score]
+                  (when (or (nil? @best) (> score (:score @best)))
+                    (vreset! best {:element element :score score})))]
+    (NodeTraversor/traverse
+      (reify NodeVisitor
+        (head [_ node _]
+          (cond
+            (instance? Element node) (.push stack (long-array 2))
+            (instance? TextNode node)
+            (when-let [^longs stats (.peek stack)]
+              (aset-long stats 0 (+ (aget stats 0)
+                                   (count (string/trim (.getWholeText ^TextNode node))))))))
+        (tail [_ node _]
+          (when (instance? Element node)
+            (let [^Element element node
+                  ^longs stats (.pop stack)
+                  text (aget stats 0)
+                  links (if (= "a" (.tagName element)) text (aget stats 1))
+                  score (- text (* 2 links))
+                  tag (.tagName element)]
+              (when (or (#{"article" "main"} tag) (= "main" (.attr element "role")))
+                (choose! *semantic element score))
+              (when (#{"section" "div"} tag)
+                (choose! *fallback element score))
+              (when-let [^longs parent (.peek stack)]
+                (aset-long parent 0 (+ (aget parent 0) text))
+                (aset-long parent 1 (+ (aget parent 1) links)))))))
+      document)
+    (or (:element @*semantic) (:element @*fallback) (.body document))))
+
 (defn extract
   "Use semantic article/main content where available, otherwise the densest body
    region. Emit only bounded text blocks and a public image URL, never HTML."
@@ -157,12 +195,7 @@
         description (clip (or (metadata document "meta[property=og:description]")
                               (metadata document "meta[name=description]")) 600)
         _ (.remove (.select document "script,style,noscript,nav,footer,aside,form,[hidden],[aria-hidden=true],.cookie-banner,.advertisement"))
-        candidates (.select document "article,main,[role=main]")
-        score (fn [^Element element]
-                (- (count (.text element)) (* 2 (count (.text (.select element "a"))))))
-        root (or (last (sort-by score candidates))
-                 (last (sort-by score (.select document "section,div")))
-                 (.body document))
+        root (content-root document)
         elements (.select ^Element root "h1,h2,h3,h4,p,blockquote,pre,li")
         blocks (->> elements
                     ;; Outer quote/code/list items own nested paragraphs once.
@@ -173,7 +206,7 @@
                     (keep (fn [^Element element]
                             (let [tag (.tagName element)
                                   text (if (= tag "pre") (.wholeText element) (.text element))
-                                  text (clip (string/trim text) 3000)]
+                                  text (string/trim text)]
                               (when (seq text)
                                 (cond-> {:kind (cond
                                                  (re-matches #"h[1-4]" tag) "heading"
@@ -186,12 +219,12 @@
                                   (assoc :level (Integer/parseInt (subs tag 1))))))))
                     vec)
         blocks (if (seq blocks) blocks
-                   (let [text (clip (string/trim (.text ^Element root)) 3000)]
+                   (let [text (string/trim (.text ^Element root))]
                      (if (seq text) [{:kind "paragraph" :text text}] [])))
         bounded (loop [remaining blocks selected [] size 0]
                   (if-let [block (first remaining)]
                     (if (or (= 32 (count selected)) (>= size max-text)) selected
-                        (let [block (update block :text clip (- max-text size))]
+                        (let [block (update block :text clip (min 3000 (- max-text size)))]
                           (recur (next remaining) (conj selected block)
                                  (+ size (count (:text block)))))) selected))
         raw-image (or (metadata document "meta[property=og:image]")
@@ -239,7 +272,11 @@
                           (finally (.release slots)))
                      (unavailable url))]
         (when (= "unavailable" (:status result))
-          (swap! *cache update url assoc :expires-at (+ now 60000)))
+          (swap! *cache
+                 (fn [cache]
+                   (if (identical? (:value entry) (get-in cache [url :value]))
+                     (assoc-in cache [url :expires-at] (+ now 60000))
+                     cache))))
         (deliver (:value entry) result)))
     (deref (:value entry) 12000 (unavailable url))))
 
