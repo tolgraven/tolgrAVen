@@ -57,3 +57,11 @@ under `experiments/clj/`. Tool-mandated root configuration stays at its native p
 
 CSS build and watch entry points compile shared and feature sheets independently;
 see [styles.md](styles.md) for declarations, source ownership and verification.
+
+`bb audit <label>` writes isolated optimized chunks, compression sizes, the
+namespace/module inventory and `report.html`/`report.json` under
+`target/bundle-audit/<label>`. The standalone Shadow report attributes optimized
+bytes through source maps; inspect those contributions before choosing a new
+module boundary. Source maps/report generation are confined to this audit build.
+The audit rejects known optional implementations entering `:main`, including
+landing views, the custom input, pprint/data inspection, maps and highlighting.

@@ -6,7 +6,6 @@
     [cljs-time.format :as ctf]
     [cljs-time.coerce :as ctc]
     [clojure.string :as string]
-    [clojure.pprint :as pprint]
     [clojure.walk :as walk]))
 
 (defn <-store [& coll-docs]
@@ -103,7 +102,7 @@
     (case n
       (nil, 0) 0
       (try
-       (-> (pprint/cl-format nil (str "~," precision "f") n)
+       (-> (.toFixed n precision)
            js/parseFloat)
        (catch js/Error e n)))))
 

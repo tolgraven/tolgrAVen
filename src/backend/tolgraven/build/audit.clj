@@ -3,7 +3,8 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.data.json :as json]
-            [shadow.cljs.devtools.api :as api]))
+            [shadow.cljs.devtools.api :as api]
+            [shadow.cljs.build-report :as report]))
 
 (defn -main [& [label]]
   (let [label (or label "current")]
@@ -13,7 +14,8 @@
           config (-> (get-in (edn/read-string (slurp "shadow-cljs.edn")) [:builds :app])
                      (assoc :build-id (keyword (str "audit-" label))
                             :output-dir directory
-                            :asset-path "/js/compiled/out"))]
+                            :asset-path "/js/compiled/out")
+                     (assoc-in [:compiler-options :source-map] true))]
       (api/with-runtime
         (let [state (api/release* config {})
               modules (or (:shadow.build.closure/modules state) (:build-modules state))
@@ -26,7 +28,14 @@
           (spit (str directory "/bundles.json") (json/write-str names))
           ;; Keep the important boundaries reviewable in every future audit.
           (doseq [source (:main graph)
-                  :when (re-find #"dev_console/|reitit/dev/pretty|expound/|modules/blog/cache|modules/home/(views|sections|module)|modules/styled_input/(views|module)|react-dom-server|highlight[_-]|refractor/|react_leaflet|leaflet/"
+                  :when (re-find #"dev_console/|reitit/dev/pretty|expound/|cljs/pprint|modules/blog/cache|modules/home/(views|sections|layout|module)|modules/styled_input/(views|module)|modules/data_inspector/|react-dom-server|highlight[_-]|refractor/|react_leaflet|leaflet/"
                                  (:resource-name source ""))]
             (throw (ex-info "An optional dependency entered the main bundle" source)))
+          (let [data (report/extract-report-data state)
+                main (first (filter #(= :main (:module-id %)) (:build-modules data)))]
+            (spit (str directory "/report.json") (json/write-str data))
+            (report/generate-html state data (str directory "/report.html") {})
+            (println "Largest optimized main sources (bytes):")
+            (doseq [[source size] (take 20 (sort-by val > (:source-bytes main)))]
+              (println size source)))
           (println "Bundle audit output:" directory))))))

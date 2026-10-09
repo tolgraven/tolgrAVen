@@ -45,6 +45,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Publish versioned PNG/WebP/AVIF to Supabase Storage before updating the profile;
   its mounted object backend owns persistence, never the web container filesystem.
 - Do not stop a user's REPL or rebuild a watched Shadow target with another process.
+- `build/audit.clj` uses isolated output and source maps to produce the optimized
+  per-source report alongside chunk sizes; keep the normal compatibility hooks
+  and optional-main boundary checks when changing this workflow.
 
 - Reitit uses shared Malli parameter schemas. Internal/response validation follows
   runtime configuration; request coercion remains active. Coercion error handlers

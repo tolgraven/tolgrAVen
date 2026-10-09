@@ -47,6 +47,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   dependencies for consumers that must have them
   before hydration. Local-return rendering uses the lazy `:page-render` bundle;
   the installer remains eager to restore state before the first commit.
+- Pretty data and expanded error details live in `:data-inspector`; keep pprint
+  out of initial browser code. Shared numeric display uses native fixed decimal
+  formatting. Landing story/float helpers belong to `:home`, with lazy compatibility
+  exports in shared UI. Preserve prototype implementations when moving ownership.
 - The local return adapter renders an isolated state snapshot using the shared
   renderer. HTML and state are inseparable. Do not copy DOM or replay init before
   hydration; retain exact query caches and fold/window state.

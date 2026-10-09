@@ -9,6 +9,7 @@
     [tolgraven.component.restore :as restore]
     [tolgraven.components.media :as media]
     [tolgraven.components.image :as img]
+    [tolgraven.modules.home.layout :as layout]
     [tolgraven.components.ui :as ui]))
 
 (defn ln->br "Ugh. UGH! Why"
@@ -130,6 +131,6 @@
    [:section#about.anim-gradient-bg.noborder
     [:h1 (:title content)]
     [:br]
-    [ui/<auto-layout-text-imgs> content]
+    [layout/<auto-layout-text-imgs> content]
     [:br] [:br]]
    [ui/<fading> :dir "bottom"]])

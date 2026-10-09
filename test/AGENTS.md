@@ -31,6 +31,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   Check that landing code/styles and FiraCode stay absent on unrelated cold routes;
   opening Search acquires its font, and visible code consumers retain typography.
   Idle prefetch checks include offscreen/hidden hints and restricted connections.
+  Data-inspector checks mount its lazy compatibility exports and preserve formatted
+  values, full error details and retry. Production audits prove pprint/home helpers
+  leave main; a successful source move alone does not establish the boundary.
   Compression checks must decode the shell before final data
   is ready. Initial SSR visibility alone
   does not prove hydration; let pending link intent settle before repeating clicks.

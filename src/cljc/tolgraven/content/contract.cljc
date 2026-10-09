@@ -12,7 +12,8 @@
   {:main [:document :header :common :footer :post-footer]
    :blog [:blog :common] :cv [:cv] :docs [:docs] :strava [:strava]
    :user [:common] :instagram [] :chat [] :github [] :gpt []
-   :search [] :link-preview [] :test [] :home [] :styled-input []})
+   :search [] :link-preview [] :test [] :home [] :styled-input []
+   :data-inspector []})
 (def module-dependencies
   (into {} (map (fn [[id keys]] [id (if (seq keys) [{:source :strapi :keys keys}] [])]) module-content)))
 
