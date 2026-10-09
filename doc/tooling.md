@@ -65,3 +65,14 @@ bytes through source maps; inspect those contributions before choosing a new
 module boundary. Source maps/report generation are confined to this audit build.
 The audit rejects known optional implementations entering `:main`, including
 landing views, the custom input, pprint/data inspection, maps and highlighting.
+
+All release browser, Node renderer and return-worker builds reject 10x, re-frisk
+and the legacy inspector entry point before compilation, including isolated audits.
+This check reads the resolved graph. Shadow retains analysis for removed imports,
+so the presence of a namespace under `release/ana` does not establish bundle ownership.
+
+Audit labels create separate compiler caches under `.shadow-cljs/builds/audit-*`.
+Periodically remove completed labels after inspecting active workers. Keep the
+current audit's cache for incremental iterations, watched `app-dev`/`ssr`/
+`return-worker` caches, and useful reports/chunks in `target/bundle-audit`.
+Do not clear the entire Shadow directory while watches are running.

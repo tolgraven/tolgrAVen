@@ -6,7 +6,9 @@
  ;; SSR is an eager Node program, deliberately without browser :modules.
  ;; The worker entry requires all supported page implementations at startup.
  {:ssr {:target :node-script
-             :build-hooks [(tolgraven.build.compat/rrb-vector) (tolgraven.build.ssr/revision)]
+             :build-hooks [(tolgraven.build.compat/rrb-vector)
+                           (tolgraven.build.policy/no-debug-tools)
+                           (tolgraven.build.ssr/revision)]
              :devtools {:enabled false}
              :compiler-options {:reader-features #{:ssr :node}}
              :prepend-js "globalThis.XMLHttpRequest = class { constructor() { throw new Error('SSR views must use supplied request data, not browser HTTP'); } };"
@@ -19,6 +21,7 @@
                           :export-conditions ["worker" "browser" "require" "default"]}}
 
   :return-worker {:target :browser
+                  :build-hooks [(tolgraven.build.policy/no-debug-tools)]
                   :devtools {:enabled false}
                   :output-dir "resources/public/js/return"
                   :asset-path "/js/return"
@@ -84,7 +87,8 @@
               :after-load  tolgraven.core/mount-components}}
 
   :app
-  {:build-hooks [(tolgraven.build.compat/rrb-vector)]
+  {:build-hooks [(tolgraven.build.compat/rrb-vector)
+                 (tolgraven.build.policy/no-debug-tools)]
    :compiler-options {:reader-features #{:browser}}
    :target               tolgraven.build.browser/process
    :module-loader true
