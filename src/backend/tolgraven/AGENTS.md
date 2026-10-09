@@ -34,8 +34,10 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   local return documents carry their saved modules' styles before first paint.
 - Keep SDK and app scripts ordered and deferred. Emit no analytics metadata,
   queue or scripts; the browser initializes it only after hydration and page readiness.
-  SSR hydration preloads use low fetch priority in both HTTP and HTML hints so
-  they share bandwidth behind the first-paint stylesheet and fonts.
+  SSR hydration preloads follow only the route’s Shadow dependency graph; other
+  module exports acquire code on activation. Preloads use low fetch priority in
+  both HTTP and HTML hints so they share bandwidth behind the first-paint
+  stylesheet and fonts.
   Lazy chunks use `as=fetch` with anonymous CORS to match Shadow's XHR loader;
   the main script uses `as=script`.
   Image preloads must use the same responsive candidates as rendered pictures.

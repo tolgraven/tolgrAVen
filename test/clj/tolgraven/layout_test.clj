@@ -224,3 +224,26 @@
       (is (re-find #"onload=\"this.media=" tag))
       (is (not (.contains body "css/solid.css")))
       (is (not (.contains body "css/brands.min.css"))))))
+
+(deftest hydration-preloads-follow-only-the-owning-route-graph
+  (let [module (fn [id dependencies]
+                 {:module-id id
+                  :depends-on dependencies
+                  :output-name (str (name id) ".hash.js")})
+        modules (into {} (map (juxt :module-id identity))
+                      [(module :main #{})
+                       (module :user #{:main})
+                       (module :markdown #{:main})
+                       (module :link-preview #{:main :markdown})
+                       (module :blog #{:main :user :link-preview})
+                       (module :cv #{:main})
+                       (module :home #{:main})])]
+    (with-redefs [layout/browser-modules (constantly modules)]
+      (is (= ["/js/compiled/out/cv.hash.js"] (layout/hydration-script-paths "/cv")))
+      (is (= ["/js/compiled/out/home.hash.js"] (layout/hydration-script-paths "/")))
+      (is (= ["/js/compiled/out/markdown.hash.js"
+              "/js/compiled/out/link-preview.hash.js"
+              "/js/compiled/out/user.hash.js"
+              "/js/compiled/out/blog.hash.js"]
+             (layout/hydration-script-paths "/blog")))
+      (is (= [] (layout/hydration-script-paths "/not-a-page"))))))

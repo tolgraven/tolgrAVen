@@ -19,7 +19,6 @@
     [tolgraven.component.motion :as motion]
     [tolgraven.service-status :as service-status]
     [tolgraven.events]
-    [tolgraven.loader :as l]
     [tolgraven.macros :as m :include-macros true]
     [tolgraven.component.registry]
     [tolgraven.navigation.routes :as routes]
@@ -100,11 +99,9 @@
     (rf/dispatch [:reloaded])
     (util/log "Mounting root component")
     (-> (if (restore/skip-enter?)
-          ;; Preserve existing server DOM until the selected route/module is ready.
-          (js/Promise.all
-           #js [(l/load! {:module :user})
-                (l/load! {:module :link-preview})
-                (component-data/ensure! {:source :subscription :query [:common/page-ready?] :ttl-ms 1})])
+          ;; The route owns initial readiness. Optional SSR exports preserve their
+          ;; native DOM and acquire code through their mounted activation boundary.
+          (component-data/ensure! {:source :subscription :query [:common/page-ready?] :ttl-ms 1})
           (js/Promise.resolve nil))
         (.then (fn [_]
                  (render)

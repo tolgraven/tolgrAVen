@@ -29,6 +29,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   configure intent/earlier triggers. Hidden panels use explicit intent. Completed
   SSR boundaries retain native nodes until activation and inner hydration commit.
   CSS/code failures retry silently once after three seconds before a local error.
+  Bootstrap waits for route readiness, not a fixed set of optional modules; their
+  mounted boundaries own acquisition and preserve static SSR until activation.
 - Module `:styles` metadata is available before code acquisition. The shared loader
   starts CSS and JS together and waits for both before readiness; React owns
   stylesheet insertion. Initial inlined route styles already satisfy readiness
