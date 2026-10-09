@@ -15,8 +15,12 @@
                  :task (staged/-main)}
   images:verify {:doc "Fail if any bundled image is missing its variants"
                  :task (images/verify!)}
+  images:responsive {:doc "Rebuild the opt-in responsive image catalog's AVIF/WebP sizes"
+                     :task (images/responsive!)}
   videos {:doc "Convert MP4 to muted VP9/AV1 WebM [--force] [files...]"
           :task (apply videos/-main *command-line-args*)}
+  videos:responsive {:doc "Rebuild the opt-in responsive video catalog's renditions"
+                     :task (videos/responsive!)}
   audit {:doc "Measure isolated production bundles [label]"
          :task (apply dev/audit! *command-line-args*)}
   pair {:doc "Run the installed re-frame-pair skill [operation args...]"

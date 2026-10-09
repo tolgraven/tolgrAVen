@@ -12,6 +12,7 @@
     [tolgraven.modules.main.views :as auto]
     [tolgraven.modules.blog.module :as blog]
     [tolgraven.modules.markdown.module :as markdown]
+    [tolgraven.modules.highlight.module :as highlight]
     [tolgraven.modules.cv.module :as cv]
     [tolgraven.modules.docs.module :as docs]
     [tolgraven.ssr.contract :as contract]
@@ -21,7 +22,13 @@
     [tolgraven.modules.link-preview.module :as link-preview]
     [tolgraven.subs]))
 
-(def modules {:markdown markdown/spec :cv cv/spec :docs docs/spec :blog blog/spec :user user/spec :link-preview link-preview/spec})
+(def modules {:markdown markdown/spec
+              :highlight highlight/spec
+              :cv cv/spec
+              :docs docs/spec
+              :blog blog/spec
+              :user user/spec
+              :link-preview link-preview/spec})
 
 (defn render! [snapshot]
   (let [snapshot (update snapshot :content content/normalize-content)

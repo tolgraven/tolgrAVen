@@ -127,9 +127,16 @@ img.img-icon {
     display: flex;
     flex-direction: column;
 
+    > a {
+      min-height: 2rem;
+      display: flex;
+      align-items: center;
+    }
+
     .footer-link-with-text {
       display: flex;
       justify-content: space-between;
+      width: 100%;
 
       p:last-of-type {
         font-weight: 300;
@@ -137,11 +144,11 @@ img.img-icon {
     }
   }
   
-  h4 {
+  .footer-title, .contact-ways {
     display: inline;
     position: relative;
   }
-  h4:after {
+  .footer-title:after, .contact-ways:after {
     content: "";
     height: 0.1em;
     background: linear-gradient(to right, rgba(216, 187, 182, 0.63), var(--fg-2) 185%);
@@ -155,6 +162,14 @@ img.img-icon {
 }
 
 .footer-column {
+  .footer-title {
+    font-size: 1em;
+  }
+
+  .footer-note {
+    font-size: 0.83em;
+    font-weight: 600;
+  }
 
   &#footer-left {
     display: flex;
@@ -218,6 +233,9 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
 
 
 .to-top {
+  min-width: 2rem;
+  min-height: 2rem;
+  text-align: center;
   position: fixed;
   left:  calc(var(--space-sides) + 0.75 * var(--space));
   bottom: calc(0.33 * var(--space) + var(--footer-height-current) + env(safe-area-inset-bottom, 0px));
@@ -232,4 +250,3 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
 #to-top-bg {
   /* filter: brightness(150%); */
 }
-

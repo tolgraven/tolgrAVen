@@ -10,6 +10,7 @@
     [reagent.core :as r]
     [reagent.dom.client :as rdomc]
     [tolgraven.ajax :as ajax]
+    [tolgraven.browser-resources :as browser-resources]
     [tolgraven.content.client :as content]
     [tolgraven.ssr.client :as ssr]
     [tolgraven.ssr.local :as local-page]
@@ -70,6 +71,7 @@
 ;; Profiling this host would include console commits and create capture feedback.
 (m/defc <root-page> {:profile false} []
   [:<> [ssr/<hydrate> [page]] [page-preload/<background>] [local-page/<capture>]
+   (when @context/*interactive? [browser-resources/<deferred>])
    (when (and ^boolean goog.DEBUG @context/*interactive?) [dev-console/<console>])])
 
 (defn render []

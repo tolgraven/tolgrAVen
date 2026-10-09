@@ -2,6 +2,7 @@
   "Bundled and uploaded image conversion share these codecs and publication rules."
   (:require [babashka.fs :as fs]
             [babashka.process :as process]
+            [clojure.edn :as edn]
             [clojure.string :as str]))
 
 (def formats ["webp" "avif"])
@@ -60,6 +61,29 @@
     (doseq [file missing] (println "Missing:" (str file)))
     (when (seq missing) (throw (ex-info "Missing image variants; run bb images" {:count (count missing)})))
     (println "All public image variants are present.")))
+
+(defn responsive! []
+  ;; This small opt-in catalog is also baked into picture markup and preloads.
+  ;; Originals and full-size fallbacks remain intact.
+  (doseq [[src {:keys [width height sizes]}]
+          (edn/read-string (slurp "resources/responsive-images.edn"))
+          :let [file (fs/path "resources/public" src)]
+          size sizes
+          format formats]
+    (when-not (and (fs/regular-file? file) (pos-int? width) (pos-int? height)
+                   (pos-int? size) (< size width))
+      (throw (ex-info "Invalid responsive image source or size" {:src src :size size})))
+    (let [target (fs/path (str (fs/strip-ext file) "-" size "w." format))
+          temporary (fs/create-temp-file {:dir (fs/parent target)
+                                          :prefix (str (fs/file-name target) ".")})]
+      (try
+        (process/shell "magick" (str file) "-resize" (str size "x>")
+                       "-strip" "-quality" (if (= format "avif") "60" "80")
+                       (str format ":" temporary))
+        (fs/set-posix-file-permissions temporary "rw-r--r--")
+        (fs/move temporary target {:replace-existing true :atomic-move true})
+        (finally (fs/delete-if-exists temporary)))))
+  (println "Responsive image variants rebuilt."))
 
 (when (= *file* (System/getProperty "babashka.file"))
   (apply -main *command-line-args*))

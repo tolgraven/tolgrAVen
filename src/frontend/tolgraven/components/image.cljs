@@ -43,7 +43,8 @@
    original image fails too."
   [{:keys [src on-error ref] :as attrs} :- attrs-schema]
   (r/with-let [*fallback-sources (r/atom #{})]
-    (let [capture! (react/use-callback
+    (let [attrs (merge {:decoding "async"} (sources/dimensions src) attrs)
+          capture! (react/use-callback
                     (fn [image]
                       ;; A server-rendered image may fail before React attaches
                       ;; on-error. Inspect it at attachment without changing DOM;
@@ -70,9 +71,15 @@
                          (when on-error (on-error event)))))]
         [:picture
          (when-not fallback?
-           [:source {:key avif-src :srcSet avif-src :type "image/avif"}])
+           [:source {:key avif-src
+                     :srcSet (or (sources/srcset src "avif") avif-src)
+                     :sizes (or (:sizes attrs) "100vw")
+                     :type "image/avif"}])
          (when-not fallback?
-           [:source {:key webp-src :srcSet webp-src :type "image/webp"}])
+           [:source {:key webp-src
+                     :srcSet (or (sources/srcset src "webp") webp-src)
+                     :sizes (or (:sizes attrs) "100vw")
+                     :type "image/webp"}])
          [:img (assoc attrs :on-error retry! :ref capture!)]])
       ;; No modern format available, just use img directly.
       [:img attrs]))))
@@ -87,8 +94,9 @@
   "Generate picture element optimized for use as background media.
    Adds common background styling attributes."
   [{:keys [src alt class] :as attrs} :- attrs-schema]
-  (let [combined-attrs (merge attrs
-                              {:class (str "media media-as-bg " (or class ""))})]
+  (let [combined-attrs (merge {:loading "lazy"} attrs
+                              {:alt (or alt "")
+                               :class (str "media media-as-bg " (or class ""))})]
     [<picture> combined-attrs]))
 
 ;; For backward compatibility - export main functions

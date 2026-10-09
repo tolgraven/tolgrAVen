@@ -34,14 +34,21 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   duplicate transport reads in pages or component render functions.
 - Reuse appearance/presence/loading features. Hydration and restored data bypass
   loading and entrances; later SPA navigation must restore ordinary motion.
-- Shared Markdown/highlighting and mapping code live in the `:markdown` and
-  `:maps` bundles. Declare bundle dependencies for consumers that must have them
+- Shared Markdown, full syntax highlighting and mapping code live in the
+  `:markdown`, `:highlight` and `:maps` bundles. Keep the full highlighter out of
+  Markdown so link previews do not acquire every language. Declare bundle
+  dependencies for consumers that must have them
   before hydration. Local-return rendering uses the lazy `:page-render` bundle;
   the installer remains eager to restore state before the first commit.
 - The local return adapter renders an isolated state snapshot using the shared
   renderer. HTML and state are inseparable. Do not copy DOM or replay init before
   hydration; retain exact query caches and fold/window state.
 - Browser-only APIs belong in lifecycle/effect adapters with cleanup and SSR guards.
+- `browser_resources.cljs` acquires analytics and necessary compatibility scripts
+  after hydration, window load, two paint frames and idle with no pending page
+  bindings. Keep remote scripts/preconnects out of the initial head. Modern browsers
+  use native smooth scrolling without downloading its polyfill.
+  Lazy videos omit sources until visible; their observer owns cleanup, React owns markup.
   Use Shadow reader features for build-specific dependencies, not runtime imports.
 - Development console and React profiling implementations live in `env/dev/cljs`.
   Only builds with the `:dev` reader feature import them; production and SSR use

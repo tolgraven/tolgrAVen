@@ -1,11 +1,13 @@
 @font-face {
   font-family: 'Fira Code';
+  font-display: swap;
   src:  url('../../webfonts/FiraCode-Retina.woff2') format('woff2'),
         url('../../webfonts/FiraCode-Retina.woff') format('woff');
 }
 @font-face {
   font-family: 'Open Sans';
-  src:  url('../../webfonts/OpenSans-Regular.ttf') format('ttf');
+  font-display: swap;
+  src:  url('../../webfonts/OpenSans-Regular.ttf') format('truetype');
 }
 
 // Match Open Sans v29's vertical metrics while its font file is in flight.

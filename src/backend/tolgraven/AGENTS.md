@@ -14,6 +14,12 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - Optimus fingerprints the shared and per-module CSS bundles independently. Emit
   route dependency styles in the first head and all URLs in `#module-styles`;
   local return documents carry their saved modules' styles before first paint.
+- Keep SDK and app scripts ordered and deferred. Analytics metadata/queue is
+  local; the browser lifecycle acquires its remote script after initial rendering.
+  Image preloads must use the same responsive candidates as rendered pictures.
+- Production Shadow chunks use content-hashed names from `manifest.edn`; the
+  Optimus main bundle resolves that manifest too. Only successful fingerprinted
+  chunk responses receive immutable caching; plain names and errors must not.
 - Streaming uses Hiccup document parts and the existing flush-aware Ring body;
   do not split serialized pages by marker strings. Headers cannot change after flush.
 - Validate/coerce requests at the Ring boundary; handlers consume parsed parameters.

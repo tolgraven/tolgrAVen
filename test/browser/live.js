@@ -66,11 +66,11 @@ button.onclick = async () => {
       // document navigation; let that pending intent hydrate instead of clicking
       // it repeatedly and interrupting every reload before JavaScript can start.
       if (root && !new URL(frame.contentWindow.location.href).searchParams.has('settingsBox')) {
-        root.querySelector('button.settings-btn')?.click();
+        root.querySelector('a.settings-btn')?.click();
       }
       return false;
     }, 'hydrated settings control');
-    app().querySelector('button.settings-btn').click();
+    app().querySelector('a.settings-btn').click();
     await waitFor(() => !app().querySelector('.settings-panel.opened'), 'settings closes');
     app().querySelector('button.search-ui-btn').click();
     await waitFor(() => app().querySelector('.search-ui.search-ui-open'), 'first Search click opens the lazy UI');

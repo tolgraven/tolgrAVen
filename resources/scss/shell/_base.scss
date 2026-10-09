@@ -194,6 +194,9 @@ section { /* one main section (img + header + piece of content) */
 article { // use for blog posts and other stuff
 }
 
+// Intrinsic dimensions reserve a ratio; shrinking width must shrink height too.
+:where(img[width][height]) { height: auto; }
+
 aside { // use for text inserts and maybe sidebars
 
 }
@@ -223,7 +226,7 @@ p::first-letter {
   display: flex;
   justify-content: space-evenly;
 }
-button {
+button, :where(.button) {
   --around: calc(0.4 * var(--space)) calc(0.4 * var(--space-lg));
   padding: var(--around);
   margin: var(--around);
@@ -266,7 +269,7 @@ button {
     background: hsla(0, 5%, 100%, 0.05);
   }
 
-  label {
+  label, > span:not(.blur-bg) {
     position: relative;
     font-size: 1.2rem;
     z-index: 2;
@@ -281,6 +284,13 @@ button {
     width: 1.5em;
     height: 1.5em;
   }
+}
+
+// Links styled as buttons remain single, keyboard-focusable navigation targets.
+.button {
+  display: inline-block;
+  font-size: 1rem;
+  text-decoration: none;
 }
 
 input {

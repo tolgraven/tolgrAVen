@@ -189,6 +189,8 @@
   overflow: hidden;
 }
 .carousel-btn {
+  min-width: 2rem;
+  min-height: 2rem;
   border: none;
   padding: 0;
   margin: 0;
@@ -582,7 +584,7 @@ figcaption, .float-with-caption {
   transition: bottom var(--header-expand-time) ease;
   bottom: calc(var(--footer-height-current) + env(safe-area-inset-bottom, 0px) + 0.25rem); /* ;actually, footer, if sticky... */
   right: calc(var(--space-edges) + 0.05rem);
-  max-width: 50em;
+  max-width: min(50em, calc(100% - var(--space-edges) - 3rem));
   max-height: 50%;
   // overflow-x: break-word;
   overflow-y: scroll;
@@ -623,6 +625,7 @@ figcaption, .float-with-caption {
     justify-content: space-between;
     
     .hud-message-title {
+      font-size: 1em;
       font-weight: bold;
       padding-right: var(--space-lg);
       padding-bottom: calc(0.33 * var(--space));
@@ -637,6 +640,11 @@ figcaption, .float-with-caption {
       padding: 0;
       padding-bottom: calc(0.33 * var(--space));
     }
+  }
+
+  .hud-message-button {
+    min-height: 2rem;
+    min-width: 2rem;
   }
 }
 
@@ -723,7 +731,10 @@ figcaption, .float-with-caption {
       padding: var(--space);
       border: var(--line-width) solid #bc6c52; //XXX fix real
       background-color: var(--orange);
-      color: var(--fg-2);
+      color: #24160f;
+
+      .track-title { font-size: 1.17em; }
+      .track-artist { font-weight: bold; }
 
       img {
         height: 3rem;

@@ -88,6 +88,7 @@
    :compiler-options {:reader-features #{:browser}}
    :target               tolgraven.build.browser/process
    :module-loader true
+   :module-hash-names true
    :modules {:main {:entries [tolgraven.app]
                     :init-fn tolgraven.app/init!}}
    :output-dir           "resources/public/js/compiled/out"

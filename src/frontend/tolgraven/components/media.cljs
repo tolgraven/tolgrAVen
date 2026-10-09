@@ -110,6 +110,7 @@
                            (js/setTimeout #(do-control :play)
                                           8000))) ; should be read from css i guess to correspond with other anim
             :loop true
+            :loading "lazy"
             :muted true}
            bg)
           (when-let [poster (:poster bg)]

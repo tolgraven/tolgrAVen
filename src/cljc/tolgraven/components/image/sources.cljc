@@ -1,6 +1,20 @@
 (ns tolgraven.components.image.sources
   "Shared format selection for rendered pictures and server preloads."
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            #?(:clj [tolgraven.build.images :refer [responsive-images]]))
+  #?(:cljs (:require-macros [tolgraven.build.images :refer [responsive-images]])))
+
+(def responsive (responsive-images))
+
+(defn dimensions [src]
+  (select-keys (get responsive (string/replace (or src "") #"^/" "")) [:width :height]))
+
+(defn srcset [src format]
+  (when-let [{:keys [sizes width]} (get responsive (string/replace (or src "") #"^/" ""))]
+    (string/join ", "
+      (concat (for [size sizes]
+                (str (string/replace src #"(?i)\.(jpe?g|png)$" (str "-" size "w." format)) " " size "w"))
+              [(str (string/replace src #"(?i)\.(jpe?g|png)$" (str "." format)) " " width "w")]))))
 
 (defn replace-extension
   "Replace file extension. e.g., 'img/foo.jpg' -> 'img/foo.webp'"

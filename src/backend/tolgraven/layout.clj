@@ -54,7 +54,9 @@
   (let [{:keys [original avif]} (image-sources/get-src-variants path)]
     [:link (cond-> {:rel "preload" :as "image" :href (or avif original)
                      :fetchpriority "high"}
-             avif (assoc :type "image/avif"))]))
+             avif (assoc :type "image/avif")
+             (image-sources/srcset path "avif")
+             (assoc :imagesrcset (image-sources/srcset path "avif") :imagesizes "100vw"))]))
 
 (defn- loading-spinner
   [text]
@@ -125,6 +127,7 @@
     [:meta {:name "theme-color" :content "#edc"
             :media "(prefers-color-scheme: light)"}]    ; for mobile safari status bar
     [:meta {:name "mobile-web-app-capable" :content "yes"}]
+    (when-not (:dev env) [:meta {:name "analytics-id" :content "G-Y8H6RLZX3V"}])
     #_[:meta {:name "apple-mobile-web-app-status-bar-style"
             :content "black-translucent"}] ; ought to be theme dependent tho
     [:base {:href "/"}]
@@ -185,7 +188,9 @@
     (when-let [bundle (:site-content request)]
       [:script#site-content-bootstrap {:type "application/json"} (content/hydration-json bundle)])
     (when (:streamed? request) [:span#ssr-complete {:hidden true}])
-    (ohtml/link-to-js-bundles request ["main.js"]) ]]))
+    ;; Match the SDK's deferred execution order without blocking streamed HTML.
+    (for [path (olink/bundle-paths request ["main.js"])]
+      [:script {:src path :defer true}]) ]]))
 
 (defn- hiccup-response [page & args]
   (-> (apply page args) ok (content-type "text/html; charset=utf-8")))
@@ -220,19 +225,23 @@
 
 (defonce ^:private *browser-manifest (atom nil))
 
+(defn browser-modules []
+  (when-let [resource (clojure.java.io/resource "public/js/compiled/out/manifest.edn")]
+    (let [revision [resource (.getLastModified (.openConnection resource))]
+          cached @*browser-manifest]
+      (if (= revision (:revision cached))
+        (:modules cached)
+        (let [modules (into {} (map (juxt :module-id identity))
+                            (edn/read-string (slurp resource)))]
+          (reset! *browser-manifest {:revision revision :modules modules})
+          modules)))))
+
 (defn hydration-script-paths
   "Preload the route's transitive Shadow dependencies without executing them.
    Shadow still owns execution order; SSR itself has no lazy browser modules."
   [uri]
-  (when-let [resource (clojure.java.io/resource "public/js/compiled/out/manifest.edn")]
-    (let [revision [resource (.getLastModified (.openConnection resource))]
-          manifest (if (= revision (:revision @*browser-manifest))
-                     (:modules @*browser-manifest)
-                     (let [modules (into {} (map (juxt :module-id identity))
-                                         (edn/read-string (slurp resource)))]
-                       (reset! *browser-manifest {:revision revision :modules modules})
-                       modules))
-          roots (remove nil? [:user :link-preview (get-in (pages/match uri) [:data :module])])]
+  (when-let [manifest (browser-modules)]
+    (let [roots (remove nil? [:user :link-preview (get-in (pages/match uri) [:data :module])])]
       (letfn [(dependencies [id]
                 (when-let [module (get manifest id)]
                   (concat (mapcat dependencies (sort (:depends-on module))) [id])))]
@@ -284,12 +293,11 @@
    :css-paths [
                "css/fontawesome.css"
                "css/solid.css"
-               "css/brands.min.css"
-               "css/opensans.css"]
-   :js-paths (concat [{:src "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"}]
-                     [{:src "/vendor/supabase.js" :async false}]
-                     (when-not (:dev env)
-                       [{:src "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"}]))
+               "css/brands.min.css"]
+   :js-paths [{:src (if (:dev env) "/vendor/supabase.js"
+                        (or (first (olink/bundle-paths request ["supabase.js"])) "/vendor/supabase.js"))
+               :async false
+               :defer true}]
    :js-raw (when-not (:dev env)
              ["window.dataLayer = window.dataLayer || [];
                function gtag(){dataLayer.push(arguments);}
@@ -302,10 +310,7 @@
                                   (or (get-in ssr [:snapshot :content])
                                       (try (content/immediate-content)
                                            (catch Exception _ {}))))
-   :link-pre (when-not (:dev env)
-               ["https://fonts.gstatic.com"
-                "https://www.googletagmanager.com"
-                "https://region1.google-analytics.com"])
+   :link-pre []
    :title-img "img/logo/tolgraven-logo.png"
    :anti-forgery (force *anti-forgery-token*))
     (seq script-paths) (assoc-in [:headers "Link"]

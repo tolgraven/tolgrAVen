@@ -52,6 +52,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   the literal spec `:id` owns the bundle ID and namespace `:bundle/depends-on`
   declares extra code dependencies. Restart the browser watch after adding/removing
   module entry files; the runtime loadable map comes from the same discovery.
+- Production `:app` uses content-hashed chunk names; server bundle/preload paths
+  come from Shadow's output manifest. Development keeps plain watched filenames.
 - `npm run dev`: watch SCSS and PostCSS outputs for local development.
 - `bb audit <label>`: measure isolated production bundles
   and check optional dependency ownership without overwriting watched output.
@@ -59,6 +61,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   specs declare literal `:styles`; CSS starts alongside JS acquisition. SSR emits
   route styles in the initial head; Optimus fingerprints each bundle separately.
   See `doc/styles.md` for source ownership and loading behavior.
+- `bb images:responsive`: rebuild the opt-in image catalog's sized AVIF/WebP assets.
+- `bb videos:responsive`: rebuild the opt-in video catalog's mobile renditions.
 - `npm run init`: bootstrap CSS output, locked local npm tools, and the vendored SDK.
 - `make hooks`: install the tracked pre-commit hook; staged public JPG/PNG images
   generate staged WebP/AVIF variants without including unstaged source edits.
@@ -88,6 +92,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Re-frame: do not use ns-scoped keywords, but rather simple ns based on module name.
 - CLJS: features live under `modules/`, with events.cljs, subs.cljs, views.cljs and module.cljs as needed. Keep their portable declarations beside the implementation.
 - SCSS: keep files modular in `resources/scss`; prefer BEM-ish class names when adding new components.
+  Use relative units (`rem`, `em`, percentages or viewport units), never `px`,
+  for new or changed styling, sizing, spacing and media queries.
 - Avoid introducing new formatters unless the team agrees; none are enforced in-repo.
 - Always confirm that variables (symbols) that are referred to actually exist in the given namespace, do not assume anything just from implicit context.
 

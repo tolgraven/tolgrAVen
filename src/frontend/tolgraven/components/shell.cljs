@@ -102,14 +102,17 @@
                 :left     "-2.65em"                                   ; puts it to left of header-logo, only partly visible. looks nice.
                 :top      "0%"}}])
     [:div.header-icons
-     [:a {:href @(rf/subscribe [:href :blog])}
-      [:button.blog-link-btn.noborder.nomargin
-       {:title "My blog"}
-       [:i.fa.fa-pen-fancy]]]
-    [:a {:href @(rf/subscribe [:href-add-query
-                               {:settingsBox (not @(rf/subscribe [:state [:settings :panel-open]]))}])}
-     [:button.settings-btn.noborder.nomargin
-      [:i.settings-btn {:class "fa fa-cog"}]]]
+     [:a.button.blog-link-btn.noborder.nomargin
+      {:href @(rf/subscribe [:href :blog])
+       :aria-label "My blog"
+       :title "My blog"}
+      [:i.fa.fa-pen-fancy]]
+    [:a.button.settings-btn.noborder.nomargin
+     {:href @(rf/subscribe [:href-add-query
+                            {:settingsBox (not @(rf/subscribe [:state [:settings :panel-open]]))}])
+      :aria-label "Settings"
+      :title "Settings"}
+     [:i.settings-btn {:class "fa fa-cog"}]]
 
     (m/<> {:module :search
            :view :button
@@ -155,13 +158,13 @@
         [img/<picture> (merge logo {:class "img-icon"})])
       (when (or title email (seq text))
         [:div
-         (when title [:h4 title])
+         (when title [:h2.footer-title title])
          (when email [contact/<contact-ways> email])
          (when text (for [line text] ^{:key (str id "-" line)}
-                      [:h5 line]))])
+                      [:p.footer-note line]))])
       (when links [:div.footer-icons
                    (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
-                     [:a {:href href :name name}
+                     [:a {:href href :name name :aria-label name}
                       [:i.fab {:class (str "fa-" icon)}]])])])])
 
 
@@ -173,9 +176,9 @@
          [:div.footer-column {:class (:id column)
                               :id id}
 
-          (when title [:h4 title])
+          (when title [:h2.footer-title title])
           (when text (for [line text] ^{:key (str id "-" line)}
-                          [:h5 line]))
+                          [:p.footer-note line]))
           (when links [:div.footer-links
                        (for [{:keys [name href info]} links] ^{:key (str "post-footer-link-" name)}
                             [:a {:href href :name name}
@@ -208,7 +211,10 @@
 (defc <to-top> "A silly arrow, and twice lol. why." [icon]
  (let [icon (or icon "angle-double-up")
        i [:i {:class (str "fas fa-" icon)}]]
-    [:a {:id "to-top" :class "to-top" :href @(rf/subscribe [:href "#main"]) :name "Up"} i]))
+    [:a {:id "to-top"
+         :class "to-top"
+         :href @(rf/subscribe [:href "#main"])
+         :aria-label "Back to top"} i]))
 
 (defc <scrollbar> "Basic custom scroll indicator. Add full functionality later..."
   [spec]

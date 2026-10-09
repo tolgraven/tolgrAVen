@@ -239,7 +239,7 @@
   (let [{:keys [records loading? more?]} @(rf/subscribe [:comments/root-page id])
         comments (->> (vals records) (sort-by (juxt :ts :id)) reverse)]
     [:section.blog-comments
-     [:h6.bottomborder (str (util/pluralize (count comments) "comment") (when more? "+"))]
+     [:h2.blog-comments-title.bottomborder (str (util/pluralize (count comments) "comment") (when more? "+"))]
      (when (seq comments)
        [:div.blog-comments-inner
         (doall (for [[index comment] (map-indexed vector comments) :let [path [id (:id comment)]]]
@@ -505,8 +505,12 @@
   nil)
 
 (defc <nav-btn> [{:keys [nav label props rel] :as spec}]
-  [:a {:rel rel :href @(rf/subscribe [:href :blog-page {:nr nav}])}
-   [:button.blog-btn.blog-nav-btn.topborder props label]])
+  [:a.button.blog-btn.blog-nav-btn.topborder
+   (merge props {:rel rel
+                 :href @(rf/subscribe [:href :blog-page {:nr nav}])
+                 :aria-label (case rel "prev" "Previous page" "next" "Next page" (str "Page " nav))
+                 :aria-current (when (= "current" (:class props)) "page")})
+   label])
 
 (defc <blog-nav> "Blog navigation buttons"
   [{:keys [total-posts current-idx posts-per-page] :as spec}]
@@ -545,16 +549,13 @@
      [loading/<spinner>])
    [:div.flex.center-content
     (when (or @(rf/subscribe [:user/has-role? :bloggers]) @(rf/subscribe [:user/has-role? :admins]))
-      [:a {:href @(rf/subscribe [:href :new-post])
-           :title "Post blog"}
-       [:button.noborder [:i.fa.fa-feather-alt]]])
+      [:a.button.noborder {:href @(rf/subscribe [:href :new-post])
+                           :title "Post blog"
+                           :aria-label "Post blog"}
+       [:i.fa.fa-feather-alt]])
 
-    [:a {:href @(rf/subscribe [:href :blog])}
-     [:button.blog-btn.noborder
-     "Home"]]
-    [:a {:href @(rf/subscribe [:href :blog-archive])}
-     [:button.blog-btn.noborder
-     "Archive"]]]
+    [:a.button.blog-btn.noborder {:href @(rf/subscribe [:href :blog])} "Home"]
+    [:a.button.blog-btn.noborder {:href @(rf/subscribe [:href :blog-archive])} "Archive"]]
 
     [<blog-tag-cloud>]
 

@@ -51,8 +51,8 @@
     {:src   "img/soundcloud-logo.png"
      :alt   "SoundCloud"
      :class "center-content"}]
-   [:h3 song]
-   [:h4 artist]])
+   [:h2.track-title song]
+   [:p.track-artist artist]])
 
 (m/defc <soundcloud-player>
   {:features [[:seen "slide-in"]]}
