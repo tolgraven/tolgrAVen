@@ -1,8 +1,9 @@
 # Module stylesheets
 
-`npm run build` compiles the shared `resources/scss/main.scss` and the entry files
+`npm run build` compiles the shared `resources/scss/main.scss`, `dev.scss`,
+`icons.scss` and the entry files
 in `resources/scss/modules/` through the locked Sass and Autoprefixer packages.
-Outputs are `resources/public/css/tolgraven/main.min.css`, `dev.min.css`, and
+Outputs are `resources/public/css/tolgraven/main.min.css`, `dev.min.css`, `icons.min.css`, and
 `modules/<feature>.min.css`. The development document alone links `dev.min.css`,
 which contains inspector styles; production shell and error pages share the same
 fingerprinted shell link without loading those rules. Shared validation-error
@@ -66,3 +67,28 @@ Module references defer code/data activation until proximity or explicit intent;
 SSR styles remain available for the static view before hydration. CSS acquisition
 starts directly when the module request starts, shares its in-flight promise, and
 retries a failed CSS/code request once after three seconds before showing an error.
+
+## Icon fonts
+
+The deferred `icons.css` bundle combines vendored Font Awesome selectors with
+`icons.scss`. Optimus fingerprints the sheet and rewrites all of its font URLs,
+so repeat visits can reuse font bytes without caching mutable original paths.
+Development links the same selectors/faces as individual watched sheets.
+
+`bb fonts:icons` regenerates small WOFF2 faces from the vendored originals. It
+collects literal `fa-*` names from application source and the CMS-driven names in
+`resources/icon-fonts.json`; commit that catalog, the generated SCSS and both fonts.
+The generated faces have disjoint Unicode ranges: known glyphs use the small
+fonts, while other glyphs acquire the original full font when actually rendered.
+A failed subset request can also fall back to the full font through native CSS
+source selection.
+Keep full originals and selectors available for new CMS icons. Regenerate after
+adding literal icons, changing catalog names, or replacing the vendored fonts.
+
+Generation uses Python with `fonttools==4.60.2` and `Brotli==1.2.0`. These are
+optional authoring tools, not server or Docker build dependencies; normal CSS
+builds compile the committed generated SCSS. For an isolated setup, install them
+in a virtual environment and run `bb fonts:icons` with that environment on PATH.
+The generator retains font license/copyright records and names derivative fonts
+separately. Verify glyph outlines/metrics, fresh-browser requests, the full-font
+fallback and cache headers after changing it.

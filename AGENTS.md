@@ -84,6 +84,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   See `doc/styles.md` for source ownership and loading behavior.
 - `bb images:responsive`: rebuild the opt-in image catalog's sized AVIF/WebP assets.
 - `bb videos:responsive`: rebuild the opt-in video catalog's mobile renditions.
+- `bb fonts:icons`: regenerate small application icon fonts and full-font Unicode
+  fallbacks with optional Python authoring tools; see `doc/styles.md`.
 - `npm run init`: bootstrap CSS output, locked local npm tools, and the vendored SDK.
 - `make hooks`: install the tracked pre-commit hook; staged public JPG/PNG images
   generate staged WebP/AVIF variants without including unstaged source edits.

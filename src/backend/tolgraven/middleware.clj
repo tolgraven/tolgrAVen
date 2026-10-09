@@ -70,6 +70,9 @@
                        ["/css/tolgraven/main.min.css"])
    (assets/load-bundles "public"
                         styles/stylesheet-bundles)
+   (assets/load-bundle "public"
+                       "icons.css"
+                       ["/css/fontawesome.css" "/css/tolgraven/icons.min.css"])
    (assets/load-bundles "public"
                         {"main.js" [(str "/js/compiled/out/"
                                          (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))]

@@ -211,3 +211,16 @@
         (is (= [(str "/css/tolgraven/modules/" absent ".min.css")]
                (get (json/read-str
                       (second (re-find #"<script[^>]*id=\"module-styles\"[^>]*>(.*?)</script>" body))) absent)))))))
+
+(deftest icon-style-bundle-is-deferred-and-has-no-original-preload
+  (with-redefs [config/env {:dev false :ssr {:enabled false}}
+                olink/bundle-paths (fn [_ bundles]
+                                    (when (= ["icons.css"] bundles)
+                                      ["/bundles/icon-hash/icons.css"]))
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (let [body (:body (layout/render-home {:uri "/blog"}))
+          tag (first (filter #(.contains % "icons.css") (re-seq #"<link[^>]+>" body)))]
+      (is (.contains tag "media=\"print\""))
+      (is (re-find #"onload=\"this.media=" tag))
+      (is (not (.contains body "css/solid.css")))
+      (is (not (.contains body "css/brands.min.css"))))))
