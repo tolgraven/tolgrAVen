@@ -2,7 +2,6 @@
   "Exercise all page kinds through the one Node renderer; generate hydration fixtures."
   (:require [babashka.cli :as cli]
             [babashka.fs :as fs]
-            [babashka.process :as process]
             [util.process :refer [shell]]
             [cheshire.core :as json]
             [clojure.string :as str]))

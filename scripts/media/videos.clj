@@ -18,7 +18,8 @@
                      (not (pos? (compare (fs/last-modified-time file) (fs/last-modified-time target)))))
               :skipped
               (let [temporary (fs/create-temp-file {:dir (or (fs/parent target) ".")
-                                                    :prefix "video-" :suffix ".webm"})]
+                                                    :prefix "video-"
+                                                    :suffix ".webm"})]
                 (try
                   (apply process/shell (into ["ffmpeg" "-hide_banner" "-loglevel" "error" "-i" (str file)]
                                        (concat options ["-an" "-y" (str temporary)])))

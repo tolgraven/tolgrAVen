@@ -5,9 +5,16 @@
             [clojure.string :as str]
             [org.httpkit.server :as http]))
 
-(def mime {"html" "text/html; charset=utf-8" "js" "text/javascript; charset=utf-8"
-           "json" "application/json" "css" "text/css" "png" "image/png" "webp" "image/webp"
-           "avif" "image/avif" "svg" "image/svg+xml" "woff2" "font/woff2"})
+(def mime
+  {"html" "text/html; charset=utf-8"
+   "js" "text/javascript; charset=utf-8"
+   "json" "application/json"
+   "css" "text/css"
+   "png" "image/png"
+   "webp" "image/webp"
+   "avif" "image/avif"
+   "svg" "image/svg+xml"
+   "woff2" "font/woff2"})
 
 (defn route-file [uri]
   (let [path (str/replace (java.net.URLDecoder/decode (str/replace uri "+" "%2B") "UTF-8") #"^/+" "")
@@ -23,8 +30,9 @@
 (defn handler [{:keys [uri]}]
   (if-let [file (try (route-file uri) (catch Exception _ nil))]
     (if (fs/regular-file? file)
-      {:status 200 :headers {"content-type" (get mime (fs/extension file) "application/octet-stream")
-                            "cache-control" "no-store"}
+      {:status 200
+       :headers {"content-type" (get mime (fs/extension file) "application/octet-stream")
+                 "cache-control" "no-store"}
        :body (fs/file file)}
       {:status 404 :body "Not found"})
     {:status 400 :body "Invalid test path"}))

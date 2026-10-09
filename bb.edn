@@ -7,16 +7,29 @@
              [build.docker :as docker]
              [test.ssr :as ssr]
              [test.server :as server])
-  hooks {:doc "Install the tracked staged-image hook" :task (staged/install!)}
-  images {:doc "Convert bundled images, or explicit paths [--force] [--] [files...]" :task (apply images/-main *command-line-args*)}
-  images:staged {:doc "Convert staged originals and stage their variants" :task (staged/-main)}
-  images:verify {:doc "Fail if any bundled image is missing its variants" :task (images/verify!)}
-  videos {:doc "Convert MP4 to muted VP9/AV1 WebM [--force] [files...]" :task (apply videos/-main *command-line-args*)}
-  audit {:doc "Measure isolated production bundles [label]" :task (apply dev/audit! *command-line-args*)}
-  pair {:doc "Run the installed re-frame-pair skill [operation args...]" :task (apply dev/pair! *command-line-args*)}
-  ssr:fixtures {:doc "Check the generic Node renderer and generate hydration fixtures [--worker path]" :task (apply ssr/-main *command-line-args*)}
-  test:browser {:doc "Serve Shadow browser tests [--port 4002]" :task (apply server/-main *command-line-args*)}
-  test:integration {:doc "Serve live checks through the streaming Python proxy [args...]" :task (apply dev/integration! *command-line-args*)}
-  test:scripts {:doc "Run isolated Babashka/media/operations tests" :task (dev/test!)}
-  supabase {:doc "Run the native JVM provisioner [schema|import|all args...]" :task (apply dev/supabase! *command-line-args*)}
-  docker {:doc "Docker [registry|prefab|build|push|deploy|clean]" :task (apply docker/-main *command-line-args*)}}}
+  hooks {:doc "Install the tracked staged-image hook"
+         :task (staged/install!)}
+  images {:doc "Convert bundled images, or explicit paths [--force] [--] [files...]"
+          :task (apply images/-main *command-line-args*)}
+  images:staged {:doc "Convert staged originals and stage their variants"
+                 :task (staged/-main)}
+  images:verify {:doc "Fail if any bundled image is missing its variants"
+                 :task (images/verify!)}
+  videos {:doc "Convert MP4 to muted VP9/AV1 WebM [--force] [files...]"
+          :task (apply videos/-main *command-line-args*)}
+  audit {:doc "Measure isolated production bundles [label]"
+         :task (apply dev/audit! *command-line-args*)}
+  pair {:doc "Run the installed re-frame-pair skill [operation args...]"
+        :task (apply dev/pair! *command-line-args*)}
+  ssr:fixtures {:doc "Check the generic Node renderer and generate hydration fixtures [--worker path]"
+                :task (apply ssr/-main *command-line-args*)}
+  test:browser {:doc "Serve Shadow browser tests [--port 4002]"
+                :task (apply server/-main *command-line-args*)}
+  test:integration {:doc "Serve live checks through the streaming Python proxy [args...]"
+                    :task (apply dev/integration! *command-line-args*)}
+  test:scripts {:doc "Run isolated Babashka/media/operations tests"
+                :task (dev/test!)}
+  supabase {:doc "Run the native JVM provisioner [schema|import|all args...]"
+            :task (apply dev/supabase! *command-line-args*)}
+  docker {:doc "Docker [registry|prefab|build|push|deploy|clean]"
+          :task (apply docker/-main *command-line-args*)}}}

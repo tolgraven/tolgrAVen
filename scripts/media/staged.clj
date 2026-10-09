@@ -14,7 +14,7 @@
 (defn same? [a b] (java.util.Arrays/equals ^bytes a ^bytes b))
 
 (defn install! []
-  (let [current (str/trim (:out @(process/process ["git" "config" "--get" "core.hooksPath"] {:out :string}))) ]
+  (let [current (str/trim (:out @(process/process ["git" "config" "--get" "core.hooksPath"] {:out :string})))]
     (when-not (#{"" ".githooks"} current)
       (throw (ex-info (str "Existing core.hooksPath (" current "): add .githooks/pre-commit to your hook chain.") {})))
     (git ["config" "--local" "core.hooksPath" ".githooks"])
