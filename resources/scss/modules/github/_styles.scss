@@ -52,7 +52,8 @@
     padding-bottom: 0.4em;
 
     .github-commit-details {
-      width: 100%;
+      flex: 1 1 auto;
+      min-width: 0;
 
       a {
         color: var(--purple);
@@ -91,15 +92,19 @@
       display: flex;
       flex-direction: row;
       justify-content: space-between;
+      min-width: 0;
 
       .info {
         flex: 1 1 auto;
+        min-width: 0;
         white-space: pre-line;
+        overflow-wrap: anywhere;
       }
 
     }
 
     .user-avatar {
+      flex: 0 0 auto;
       position: relative;
       width: 2.2em;
       height: 2.2em;
@@ -109,12 +114,20 @@
   
 }
 .github-commit-titles {
-  flex: 0 0 auto;
-  margin: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.2em;
+  max-width: 100%;
+  margin-top: 0.3em;
   margin-right: calc(0.5 * var(--space));
-  margin-left: calc(1.0 * var(--space));
+  margin-left: 0;
 
   > span, i {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
     padding: 0.2em 0.35em;
     height: fit-content;
     border-radius: 0.3em;
