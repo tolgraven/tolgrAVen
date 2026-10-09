@@ -205,6 +205,8 @@
     ignore?))
 
 (defn coercion-failed! [match error]
+  (swap! *route-request inc)
+  (swap! *navigation inc)
   (let [issues (validation/problems (ex-data error))
         message (validation/message issues)]
     (rf/dispatch [:validation/report {:contract :route :issues issues}])
@@ -213,11 +215,17 @@
                           {:title "Invalid page address" :message message}
                           #(rfe/replace-state :home)])])))
 
+(defn history-coercion-failed! [match error]
+  (coercion-failed! match error)
+  ;; Reitit rethrows after this callback. Replace its value-bearing exception so
+  ;; browser error listeners/logs cannot retain raw query parameters.
+  (throw (ex-info "Invalid page address" {:type :validation/route})))
+
 (defn start! []
   ;; Preserve native restoration until a same-document navigation takes over.
   (rfe/start! router on-nav {:use-fragment false
                            :ignore-anchor-click? ignore-anchor-click?
-                           :on-coercion-error coercion-failed!}))
+                           :on-coercion-error history-coercion-failed!}))
 
 
 (defn external-http-url?

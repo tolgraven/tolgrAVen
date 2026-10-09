@@ -9,7 +9,8 @@
             [tolgraven.schema.page-coercion :as page]
             [tolgraven.schema.declarations :as declarations]
             [malli.util :as mu]
-            [tolgraven.validation.runtime :as validation]))
+            [tolgraven.validation.runtime :as validation]
+            [tolgraven.react :as rf]))
 
 (deftest production-registry-retains-owned-contracts
   (is (= "custom" registry/type) "Browser tests exercise the release registry")
@@ -84,3 +85,25 @@
         (is (false? (get-in (coercion/coerce! raw) [:query :userBox])))
         (is (= "kept" (get-in (coercion/coerce! raw) [:query :extra]))))
       (finally (page/install! adapter)))))
+
+(deftest history-error-rethrow-is-redacted-and-supersedes-pending-navigation
+  (let [navigation @routes/*navigation
+        request @routes/*route-request
+        *reports (atom [])
+        decode (coercion/-request-coercer schemas/coercion :string schemas/page-query)
+        error (ex-info "Request coercion failed"
+                       (into {} (decode {:userBox "private-invalid-value"} nil)))]
+    (try
+      (with-redefs [rf/dispatch #(swap! *reports conj %)]
+        (try
+          (routes/history-coercion-failed! {:path "/blog"} error)
+          (is false "History must receive a redacted exception")
+          (catch js/Error failure
+            (is (= {:type :validation/route} (ex-data failure)))
+            (is (not (.includes (str failure) "private-invalid-value")))))
+        (is (> @routes/*navigation navigation))
+        (is (> @routes/*route-request request))
+        (is (not (.includes (pr-str @*reports) "private-invalid-value"))))
+      (finally
+        (reset! routes/*navigation navigation)
+        (reset! routes/*route-request request)))))
