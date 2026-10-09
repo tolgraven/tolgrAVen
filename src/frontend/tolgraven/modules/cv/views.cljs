@@ -36,7 +36,8 @@
         :class (str (when @expanded? "cv-detail-expanded ")
                     (when @closing? "cv-detail-closing"))}
        [:div.cv-bg-logo
-        {:style {:background-image (str "url(../../" logo ")")}}]
+        {:style (when-not (string/blank? logo)
+                  {:background-image (str "url(../../" logo ")")})}]
        [:p.cv-from from]
        [:p.cv-to (if (= from to)
                    ""
@@ -47,7 +48,7 @@
            [:p.cv-how [:i.fas.fa-arrow-right] item])
          [:p.cv-position position])
        [:p.cv-where where]
-       (when logo
+       (when-not (string/blank? logo)
          [img/<picture> {:src logo :alt "Company logo"}])])))
 
 (m/defc <capabilities> "The various skills"

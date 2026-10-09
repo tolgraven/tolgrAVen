@@ -137,7 +137,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Bundled shell images reserve catalog dimensions. Footer icons declare sizes
   for their relative height and use small responsive candidates with lazy loading.
   Markup normalization preserves native image/iframe loading attributes while
-  removing component loading specifications.
+  removing component loading specifications. Optional logo backgrounds stay unset
+  for nil/blank sources; a relative empty URL can request the site document as an
+  image and follow its module preload hints.
 - Avatar fallbacks must also recover originals that failed before hydration attached
   handlers. Preserve modern-format retries and constrain broken-image alt text to
   the avatar box; a missing upload must not widen post/comment layout.
