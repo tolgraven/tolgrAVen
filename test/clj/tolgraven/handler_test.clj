@@ -99,7 +99,9 @@
   (let [calls (atom [])]
     (with-redefs [integrations/search! (fn [collection params]
                                         (swap! calls conj [collection params]) {:hits []})
-                  integrations/strava! (fn [path] (swap! calls conj path) {})]
+                  integrations/strava! (fn [path] (swap! calls conj path) {})
+                  integrations/strapi! (fn [path] (swap! calls conj path) {})
+                  integrations/intervals! (fn [path] (swap! calls conj path) {})]
       (is (= 200 (:status (app-routes (request :get "/api/integrations/search?collection=blog-posts&q=test&page=2&per_page=10")))))
       (is (= ["blog-posts" {"collection" "blog-posts" "q" "test" "page" 2 "per_page" 10}]
              (first @calls)))
@@ -108,6 +110,12 @@
                    "/api/integrations/search?collection=blog-posts&q=test&page=0"
                    "/api/integrations/search?collection=blog-posts&q=test&per_page=101"
                    "/api/integrations/strava?path=athlete/../secrets"
+                   "/api/integrations/strava?path=athlete/zones"
+                   "/api/integrations/strava?path=prefix-athlete"
+                   "/api/integrations/strava?path=athlete%0A"
+                   "/api/integrations/intervals?path=prefix-athlete-summary"
+                   "/api/integrations/strapi?path=.attacker.example/api/posts"
+                   "/api/integrations/strapi?path=/api/posts%23fragment"
                    "/api/integrations/image?url=https%3A%2F%2Fexample.test%2Fa.jpg&transforms=10000x10000"]]
         (is (= 400 (:status (app-routes (request :get url)))) url))
       (is (empty? @calls)))))

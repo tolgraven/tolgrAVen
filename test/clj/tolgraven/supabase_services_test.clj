@@ -187,3 +187,14 @@
         (is (= 400 (:status (integrations/response! #(integrations/image-response! "https://media.test/a" transforms)))))))
     (with-redefs [integrations/config! (constantly (dissoc settings :loader-network-protected))]
       (is (= 503 (:status (integrations/response! #(integrations/image-response! "https://media.test/a" ""))))))))
+
+(deftest rejected-service-paths-never-read-credentials-or-send-http
+  (let [calls (atom [])]
+    (with-redefs [integrations/config! (fn [_] (swap! calls conj :credentials) {})
+                  http/request (fn [_] (swap! calls conj :http) {:status 200 :body {}})]
+      (doseq [[service paths] [[integrations/strava! ["athlete/zones" "prefix-athlete" "athlete\n"]]
+                               [integrations/strapi! [".attacker.example/api/posts" "/api/posts#fragment"]]
+                               [integrations/intervals! ["prefix-athlete-summary"]]]
+              path paths]
+        (is (= 400 (:status (integrations/response! #(service path))))))
+      (is (empty? @calls)))))

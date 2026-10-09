@@ -34,6 +34,9 @@
 ;; Service paths are allowlisted values, never arbitrary upstream URLs.
 (defn service-path [pattern]
   [:and :string [:re pattern]
+   ;; Malli :re accepts a substring; service paths must match the whole value.
+   [:fn {:error/message "must exactly match an allowed service path"}
+    #(boolean (re-matches pattern %))]
    [:fn {:error/message "must be an allowed service path"}
     #(not (re-find #"(?i)(?:\.\.|%2e|%2f|%5c|\\|://)" %))]])
 (def strava-path (service-path #"(?:athlete(?:/activities)?|athletes/[0-9]+/stats|segments/starred|gear/[A-Za-z0-9]+|activities/[0-9]+(?:/(?:streams|kudos))?|segments/[0-9]+/streams)(?:\?[A-Za-z0-9_=,&.-]*)?"))
