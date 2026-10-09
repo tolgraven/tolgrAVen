@@ -66,7 +66,7 @@
 (defn initial-styles [request manifest]
   (vec (distinct
          (mapcat #(styles/paths manifest %)
-                 [:user :link-preview (get-in (pages/match (or (:uri request) "/")) [:data :module])]))))
+                 [:user (get-in (pages/match (or (:uri request) "/")) [:data :module])]))))
 
 (defn- initial-style-tags [request manifest]
   ;; Small route sheets travel with HTML, so neither the shell nor completed SSR

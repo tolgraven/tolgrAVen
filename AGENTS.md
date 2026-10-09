@@ -64,7 +64,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `lein repl`: start the HTTP server and Shadow CLJS REPL (see `README.md`).
 - Browser builds discover `modules/*/module.cljs` through `tolgraven.build.browser/process`;
   the literal spec `:id` owns the bundle ID and namespace `:bundle/depends-on`
-  declares extra code dependencies. Restart the browser watch after adding/removing
+  declares extra code dependencies. Runtime inventories track declaration resources
+  for incremental metadata updates. Restart the browser watch after adding/removing
   module entry files; the runtime loadable map comes from the same discovery.
 - Production `:app` uses content-hashed chunk names; server bundle/preload paths
   come from Shadow's output manifest. Development keeps plain watched filenames.

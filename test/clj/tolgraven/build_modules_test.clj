@@ -11,6 +11,8 @@
     (is (= 'tolgraven.modules.experiments.module (get-in by-id [:test :entry])))
     (is (= #{:main :user :link-preview} (get-in by-id [:blog :depends-on])))
     (is (= #{:main} (get-in by-id [:cv :depends-on])))
+    (is (= #{:main} (get-in by-id [:user :depends-on])))
+    (is (= #{:main :markdown} (get-in by-id [:link-preview :depends-on])))
     (is (= (set (keys by-id)) (set (keys (modules/bundles)))))))
 
 (deftest declaration-is-data-and-does-not-evaluate-browser-code
@@ -33,3 +35,25 @@
       (spit file "(ns example.module)\n(def spec {:id :example :styles (identity [])})")
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"literal vector" (modules/declaration file)))
       (finally (.delete file)))))
+
+(deftest runtime-catalogs-track-declarations-only-in-shadow-expansion
+  (let [*reads (atom [])
+        env {:ns {:name 'tolgraven.catalog-fixture}}
+        expand-styles (deref #'modules/style-definitions)
+        expand-loadables (deref #'modules/loadables)]
+    (with-redefs [clojure.core/requiring-resolve
+                  (fn [symbol]
+                    (is (= 'shadow.resource/slurp-resource symbol))
+                    (fn [env path] (swap! *reads conj [env path]) ""))]
+      (expand-styles nil nil)
+      (expand-loadables nil nil)
+      (is (empty? @*reads) "JVM catalog expansion has no compiler dependency")
+      (let [styles (expand-styles nil env)
+            resources (map second @*reads)]
+        (is (= (set (keys styles)) (set (map :id (modules/discover)))))
+        (is (= (count styles) (count resources)))
+        (is (every? io/resource resources) "Every tracked entry resolves on the source classpath")
+        (is (every? #(= env (first %)) @*reads)))
+      (reset! *reads [])
+      (expand-loadables nil env)
+      (is (= (count (modules/discover)) (count @*reads))))))

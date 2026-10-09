@@ -41,7 +41,9 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
   shell opts out with `:container false`.
 
 - `loader/style_catalog.cljc` bakes literal module `:styles` and bundle dependencies
-  into both runtimes at compile time. Packaged servers do not read a source tree.
+  into both runtimes at compile time. Declaration macros track the module entry
+  resources in Shadow so metadata changes invalidate cached inventories. JVM
+  expansion stays independent of the compiler. Packaged servers do not read a source tree.
   Fingerprint each declared stylesheet once; shared dependencies retain one URL
   across module manifests. Reject colliding output names rather than merging them.
 - `components/image/sources.cljc` shares responsive candidates/dimensions with

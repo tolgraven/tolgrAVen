@@ -29,8 +29,10 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   bundle fingerprints its fonts and rewrites CSS references through Optimus. Development-only inspector
   rules use a separate unbundled sheet; normal and error documents share the shell
   stylesheet policy. Emit
-  route dependency styles in the first head, inlining small optimized sheets
-  within a 16 KiB document budget, and all URLs in `#module-styles`;
+  route dependency styles and User control styles in the first head. Home owns
+  its static Markdown styles without depending on Markdown code. Do not add the
+  Link Preview sheet to unrelated routes. Inline small optimized sheets
+  within a 16 KiB document budget; publish all URLs in `#module-styles`;
   local return documents carry their saved modules' styles before first paint.
 - Keep SDK and app scripts ordered and deferred. Emit no analytics metadata,
   queue or scripts; the browser initializes it only after hydration and page readiness.

@@ -433,3 +433,11 @@ on unrelated routes. Proximity/intent activation acquires optional exports throu
 the loader; preloading a stylesheet for static SSR does not require preloading its
 JavaScript implementation. Bootstrap likewise waits for route readiness rather
 than eagerly loading a fixed set of optional modules before root hydration.
+
+User controls and avatars load without Link Preview/Markdown. The User comments
+view acquires the `:link-preview/md` export through its normal module boundary
+when that view is rendered; Blog retains its direct Markdown dependencies.
+
+The global Link Preview controller is an event-activated module host. Mounted
+candidate-bearing containers request it through the loader; a plain page does
+not acquire that controller or its Markdown dependency merely to render the host.

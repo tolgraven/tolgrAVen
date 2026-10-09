@@ -2,7 +2,6 @@
   (:require
     [tolgraven.supabase.schema :as schema]
     [tolgraven.component.registry]
-    [tolgraven.modules.link-preview.views :as link-preview]
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [tolgraven.component]
@@ -99,7 +98,7 @@
                [:h4.blog-comment-title title]
                (m/<> :blog/posted-by {:id id :user user :ts ts :score score})
                [:div.blog-comment-text
-                [link-preview/<md> text]]]))) ])
+                (m/<> :link-preview/md text)]]))) ])
 
 
 (defc <change-password> "Change user password" [user]

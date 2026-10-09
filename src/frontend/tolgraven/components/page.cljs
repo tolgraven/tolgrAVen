@@ -92,7 +92,7 @@
    [:a {:name "linktotop" :id "linktotop"}]
 
    [ui/<zoom-to-modal> :fullscreen]
-   (m/<> {:module :link-preview})
+   (m/<> {:module :link-preview :defer? true})
    (m/<> {:module :user, :defer? true})
    [settings/<settings>]
    (m/<> {:module :search, :defer? true})

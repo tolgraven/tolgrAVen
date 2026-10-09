@@ -18,7 +18,11 @@ that rely on ordering between equally specific selectors across features.
 Keep mixins in CSS-free `scss/tools` partials: importing a
 feature for a mixin would duplicate its selectors in another module's output.
 `all.scss` remains an explicit combined preview entry, outside the normal build.
-The `:home` sheet owns landing hero/page rules. The optional `:styled-input`
+The `:home` sheet owns landing hero/page rules. Its module also declares the shared
+Markdown/monospace sheets for its static rendered text, without a JavaScript
+dependency on the parser. Initial route styles include the global User controls
+but do not force Link Preview styles onto unrelated plain routes.
+The optional `:styled-input`
 module owns the custom field used by Search and blog editing. It, Markdown and
 the deferred highlighter declare the independent monospace sheet, containing FiraCode's font declaration.
 The highlighter shares Markdown's code/control sheet too, so standalone code consumers acquire their styles.
@@ -28,8 +32,10 @@ its glyphs; do not preload it merely because a Markdown module is loaded.
 Each feature's literal module spec declares `:styles` with its local output URLs.
 The existing module declaration reader generates the shared stylesheet catalog
 at compile time, including transitive bundle dependencies. No browser feature
-code must load to discover its CSS. Restart Shadow watches after changing this
-metadata so their compile-time inventories agree.
+code must load to discover its CSS. Declaration macros register the entry sources
+as Shadow resources so metadata changes invalidate their baked catalogs in
+incremental builds. Restart Shadow watches after adding or removing module entry
+files so build discovery sees the changed set.
 
 Optimus bundles each declared stylesheet separately and publishes content-addressed asset
 URLs with long cache lifetimes. The shared shell sheet stays a blocking,

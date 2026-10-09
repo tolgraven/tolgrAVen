@@ -28,6 +28,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   exports default to proximity activation; `:load-on` and `loader/<trigger>`
   configure intent/earlier triggers. Hidden panels use explicit intent. Completed
   SSR boundaries retain native nodes until activation and inner hydration commit.
+  User controls/avatars do not depend on Markdown or Link Preview; the comments
+  view acquires its candidate-aware Markdown export through `m/<>` when rendered.
+  The global Link Preview controller stays deferred until a candidate-bearing
+  container activates it; plain routes do not acquire it just for an empty host.
   CSS/code failures retry silently once after three seconds before a local error.
   Bootstrap waits for route readiness, not a fixed set of optional modules; their
   mounted boundaries own acquisition and preserve static SSR until activation.
