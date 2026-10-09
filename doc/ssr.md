@@ -426,3 +426,10 @@ and failure close it. Other HTTP adapters retain their own transport/TLS policy,
 and authentication headers are resolved on each request rather than stored in the
 pool. This reduces repeated TCP/TLS setup on uncached pages without changing the
 one-hour HTML/state freshness policy.
+
+Initial JavaScript preloads follow the route module’s transitive Shadow dependency
+graph. Do not unconditionally preload nested User, Link Preview or Markdown code
+on unrelated routes. Proximity/intent activation acquires optional exports through
+the loader; preloading a stylesheet for static SSR does not require preloading its
+JavaScript implementation. Bootstrap likewise waits for route readiness rather
+than eagerly loading a fixed set of optional modules before root hydration.

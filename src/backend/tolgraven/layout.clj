@@ -284,7 +284,7 @@
    Shadow still owns execution order; SSR itself has no lazy browser modules."
   [uri]
   (when-let [manifest (browser-modules)]
-    (let [roots (remove nil? [:user :link-preview (get-in (pages/match uri) [:data :module])])]
+    (let [roots (remove nil? [(get-in (pages/match uri) [:data :module])])]
       (letfn [(dependencies [id]
                 (when-let [module (get manifest id)]
                   (concat (mapcat dependencies (sort (:depends-on module))) [id])))]
