@@ -82,12 +82,17 @@ message. A Supabase/CMS/renderer failure on the server returns a visible retryab
 ## Cache correctness and limits
 
 The backend caches the rendered fragment together with its exact public snapshot,
-keyed by path and query parameters. Every request still reads fresh CMS content and, for blog routes,
-the required Supabase rows before reusing HTML. This deliberately saves rendering, not database reads: the
-schema does not provide a reliable revision covering edits, author names,
-deletions, and listing membership. A timestamp-only or blind path TTL would serve
-stale pages. Listing pages follow the same comparison and cannot reuse HTML if
-their contents have changed. Errors never validate or replace cached entries.
+keyed by path and query parameters. A successfully acquired snapshot stays fresh
+for `:ssr :cache-ttl-ms` (default 10000). Fresh hits avoid provider reads and Node
+rendering. Set this to zero to revalidate on every request. Public edits,
+deletions, author changes and listing membership may take up to this interval
+to appear on repeat document loads; SPA bindings retain their own refresh behavior.
+
+Expired entries read the complete public data plan again while the initial shell
+streams. Reuse HTML only if the exact snapshot and renderer build match. An
+unchanged snapshot renews freshness after its successful read; errors never
+validate or replace cached entries. A renderer change immediately invalidates
+freshness, independently of the interval.
 
 The cache retains at most 64 paths and excludes entries larger than two million
 characters (HTML plus snapshot), with an eight-million-character total budget.
@@ -210,25 +215,26 @@ React render produces the shell, using the ordinary header, footer, heading and
 skeleton components. Its HTML is flushed before waiting for page data. The same
 HTTP response then carries the complete ordinary page root and its public
 hydration snapshot. CSS displays that root only after both have arrived; React unmounts the temporary loading root after its exit animation. Elements
-with `data-stream-enter` use their ordinary appearance style (page fade,
-article zoom, comment zoom/fade) when the completed HTML becomes visible,
-respecting reduced motion. These markers match across SSR and hydration and do
-not depend on the temporary shell remaining populated. Hydration neither replaces
-the selected page with a code-loading shell nor restarts its animation. Cached
-SSR responses use the same first-appearance behavior without the skeleton step.
+paint fully visible with the same root-merged `defc` appearance classes on the
+server and browser. The completed page does not replay page/child entrances;
+the temporary shell owns its dissolve, respecting reduced motion. Hydration
+neither replaces the selected page with a code-loading shell nor starts another
+animation. Cached SSR responses paint immediately without a skeleton step.
 
 This first stage streams two complete React renders, not suspended component
 renders. It preserves request isolation in the existing renderer pool: no Node
 worker is leased during the upstream wait. It does not yet progressively reveal
 multiple independent component boundaries. There is no HTML fetch or DOM
-replacement during SPA navigation. Existing render-cache entries and browser
-history restoration bypass the shell. Cache entries are still validated against
+replacement during SPA navigation. Fresh render-cache entries and browser
+history restoration bypass the shell. Expired entries are validated against
 a fresh snapshot (with startup CMS sections supplied from memory).
 
 The flush-aware response body implements the installed Undertow adapter's
 `RespondBody` protocol as well as Ring's streaming protocol. Plain InputStream
 responses are buffered by this adapter until its output buffer fills. The custom
-body flushes the shell explicitly and bypasses the buffering gzip middleware;
+body flushes the shell explicitly. When the client accepts gzip, it compresses
+directly into Undertow with sync flush, preserving progressive decompression;
+it never passes through the generic middleware's buffered InputStream.
 `X-Accel-Buffering: no` requests unbuffered delivery from compatible proxies.
 Verify first-byte/chunk delivery through the deployed proxy before claiming
 production streaming timings.
@@ -319,7 +325,7 @@ Only incoming content runs its appearance transition. Error boundary reset keys
 clear failures on navigation without using the URL as a React remount key.
 
 The initial streamed shell has its own page fade. It is flushed before awaiting
-the snapshot; cache hits never emit a shell root. Image refs also check for a
+the snapshot; fresh cache hits never emit a shell root. Image refs also check for a
 modern-format decode failure that occurred before hydration attached `on-error`,
 so Safari can recover using the original JPEG/PNG. Search defaults to closed
 until explicitly opened, even when its module is eagerly loaded.
@@ -345,6 +351,11 @@ The shell and complete page use the same renderer. Blog query plans are module
 capabilities, not a second blog server or alternate set of page markup.
 
 The browser's optional local-return renderer also calls the shared React renderer.
+A saved return cookie alone never bypasses network SSR: reloads, direct visits
+and audits still receive server content when the worker is unavailable or bypassed.
+Only the worker's explicit `X-Page-Render: state` header selects browser state
+restoration after a failed local return.
+
 Its service worker serves an exact cached document/state pair; it does not create
 another server rendering pipeline. Ordinary SPA navigation never requests SSR HTML.
 

@@ -3,6 +3,7 @@
     [clojure.java.io]
     [clojure.edn :as edn]
     [clojure.data.json :as json]
+    [clojure.string :as string]
     [hiccup.core :as hiccup]
     [hiccup.util :as hu]
     [ring.util.http-response :refer [content-type ok]]
@@ -20,6 +21,7 @@
     [tolgraven.streaming :as streaming]
     [clojure.tools.logging :as log]
     [optimus.link :as olink]
+    [optimus.assets :as assets]
     [optimus.html :as ohtml]))
 
 ;also the thing about telling browser to expect certain loads
@@ -46,6 +48,30 @@
   (vec (distinct
          (mapcat #(styles/paths manifest %)
                  [:user :link-preview (get-in (pages/match (or (:uri request) "/")) [:data :module])]))))
+
+(defn- initial-style-tags [request manifest]
+  ;; Small route sheets travel with HTML, so neither the shell nor completed SSR
+  ;; waits for separate feature requests. Keep the large shared sheet cacheable.
+  ;; Use Optimus's actual optimized contents, including its rewritten asset URLs.
+  (seq (:tags
+    (reduce
+      (fn [{:keys [remaining] :as result} path]
+        (let [asset (when-not (:dev env) (assets/get-asset-by-path request path))
+              contents (when asset
+                         (let [content (assets/get-contents asset)]
+                           (if (string? content) content
+                               (with-open [reader (clojure.java.io/reader content)]
+                                 (slurp reader)))))
+              size (when contents (alength (.getBytes ^String contents "UTF-8")))
+              inline? (and size (<= size remaining))
+              tag (if inline?
+                    [:style {:data-module-style path :data-precedence "modules"}
+                     (string/replace contents #"(?i)</style" (fn [_] "<\\/style"))]
+                    [:link {:href path :rel "stylesheet" :type "text/css" :data-precedence "modules"}])]
+          (cond-> (update result :tags conj tag)
+            inline? (update :remaining - size))))
+      {:remaining 16384 :tags []}
+      (initial-styles request manifest)))))
 
 (defn- img-preload-modern
   "Prioritize the same first source as the shared picture component.
@@ -146,15 +172,14 @@
       (css-preload path))
 
     [:link {:rel "preload" :as "font" :type "font/woff2" :crossorigin "anonymous"
-            :href "/webfonts/OpenSans-v29-latin.woff2"}]
+            :href (or (olink/file-path request "/webfonts/OpenSans-v29-latin.woff2")
+                      "/webfonts/OpenSans-v29-latin.woff2")}]
     ;; The layout must be styled before first paint, including on a cold/private visit.
     (for [path (if (:dev env)
                  ["css/tolgraven/main.min.css"]
                  (olink/bundle-paths request ["styles.css"]))]
       [:link {:href path :rel "stylesheet" :type "text/css" :data-precedence "shell"}])
-    ;; Route CSS is blocking on direct/streamed SSR loads, before either shell paints.
-    (for [path (when-not (:local-return? request) (initial-styles request style-manifest))]
-      [:link {:href path :rel "stylesheet" :type "text/css" :data-precedence "modules"}])
+    (when-not (:local-return? request) (initial-style-tags request style-manifest))
     (when (:local-return? request) "__LOCAL_PAGE_STYLES__")
     [:script#module-styles {:type "application/json"} (content/hydration-json style-manifest)]
     (for [href css-paths]
@@ -214,7 +239,9 @@
 
 (defn returning-page? [request]
   (try
-    (when-not (= "ssr" (get-in request [:headers "x-page-render"]))
+    ;; A persistence cookie also accompanies ordinary reloads and audits.
+    ;; Only the worker's explicit failed-local-return request may bypass SSR.
+    (when (= "state" (get-in request [:headers "x-page-render"]))
       (when-let [value (some-> (get-in request [:cookies "tolgraven-return" :value])
                              (java.net.URLDecoder/decode "UTF-8"))]
       (or (= (:uri request) value) ; compatibility with the original single path

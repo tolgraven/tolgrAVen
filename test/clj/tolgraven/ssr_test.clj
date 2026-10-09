@@ -68,7 +68,8 @@
 (deftest render-cache-compares-fresh-snapshots-and-does-not-cache-errors
   (let [*snapshot (atom {:posts [{:id 1 :text "First"}]}) *renders (atom 0)]
     (reset! ssr/*cache {})
-    (with-redefs [ssr/snapshot! (fn [_ _] @*snapshot)
+    (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}
+                  ssr/snapshot! (fn [_ _] @*snapshot)
                   ssr/render! (fn [snapshot] (swap! *renders inc) (str snapshot))]
       (is (= :miss (:cache (ssr/page! "/blog"))))
       (is (= :hit (:cache (ssr/page! "/blog"))))
@@ -77,9 +78,51 @@
       (swap! *snapshot assoc :posts [])
       (is (= :miss (:cache (ssr/page! "/blog"))))
       (is (= 3 @*renders)))
-    (with-redefs [ssr/snapshot! (fn [_ _] (throw (ex-info "Offline" {})))]
+    (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}
+                  ssr/snapshot! (fn [_ _] (throw (ex-info "Offline" {})))]
       (is (thrown? Exception (ssr/page! "/blog"))))
     (reset! ssr/*cache {})))
+
+(deftest public-cache-freshness-bounds-reads-and-expires-without-validating-errors
+  (let [*reads (atom 0)
+        *renders (atom 0)
+        *build (atom 1)
+        *offline? (atom false)
+        *text (atom "First")
+        expire! #(swap! ssr/*cache update-in [["/blog" nil] :at] - 11000000000)]
+    (reset! ssr/*cache {})
+    (try
+      (with-redefs [config/env {:ssr {:cache-ttl-ms 10000}}
+                    ssr/renderer-build (fn [] @*build)
+                    ssr/snapshot! (fn [_ _]
+                                    (swap! *reads inc)
+                                    (when @*offline? (throw (ex-info "Offline" {})))
+                                    {:path "/blog" :posts [{:text @*text}]})
+                    ssr/render! (fn [snapshot] (swap! *renders inc) (str snapshot))]
+        (is (= :miss (:cache (ssr/page! "/blog"))))
+        (is (ssr/cached? "/blog" nil))
+        (is (not (ssr/cached? "/blog" {:tag "other"})) "Query keys remain isolated")
+        (is (= :hit (:cache (ssr/page! "/blog"))))
+        (is (= [1 1] [@*reads @*renders]) "A fresh hit performs neither I/O nor rendering")
+        (expire!)
+        (is (not (ssr/cached? "/blog" nil)) "Expired data may stream the shell")
+        (is (= :hit (:cache (ssr/page! "/blog"))))
+        (is (= [2 1] [@*reads @*renders]) "Unchanged snapshots renew freshness without rendering")
+        (is (ssr/cached? "/blog" nil))
+        (swap! *build inc)
+        (is (not (ssr/cached? "/blog" nil)))
+        (is (= :miss (:cache (ssr/page! "/blog"))))
+        (is (= [3 2] [@*reads @*renders]) "A renderer change invalidates both data and HTML")
+        (expire!)
+        (reset! *offline? true)
+        (is (thrown? Exception (ssr/page! "/blog")))
+        (is (not (ssr/cached? "/blog" nil)) "A failed read cannot renew the old entry")
+        (reset! *offline? false)
+        (reset! *text "Edited")
+        (is (= :miss (:cache (ssr/page! "/blog"))))
+        (is (= "Edited" (get-in (ssr/page! "/blog") [:snapshot :posts 0 :text])))
+        (is (= [5 3] [@*reads @*renders]) "Retry reads fresh content and saves its exact HTML"))
+      (finally (reset! ssr/*cache {})))))
 
 (deftest post-snapshot-reads-only-selected-post-threads-and-public-columns
   (let [*calls (atom [])]
@@ -138,7 +181,8 @@
 (deftest landing-routes-load-complete-cms-content-without-supabase
   (let [*requested (atom []) *title (atom "Landing")]
     (reset! ssr/*cache {})
-    (with-redefs [supabase/request! (fn [& _] (throw (ex-info "Landing must not read Supabase" {})))
+    (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}
+                  supabase/request! (fn [& _] (throw (ex-info "Landing must not read Supabase" {})))
                   content/fresh-bundle! (fn [keys]
                                           (swap! *requested conj (set keys))
                                           {:content {:intro {:title @*title}}})
@@ -161,7 +205,8 @@
       {:content {} :app-db-edn (pr-str {:example {:value @*value}})})
     (reset! ssr/*cache {})
     (try
-      (with-redefs [pages/match (fn [_] {:data spec :path-params {}})
+      (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}
+                    pages/match (fn [_] {:data spec :path-params {}})
                     ssr/render! (fn [snapshot] (swap! *renders inc) (:app-db-edn snapshot))]
         (is (= {} (ssr/route "/example")))
         (is (= :miss (:cache (ssr/page! "/example"))))
@@ -220,7 +265,8 @@
                 ssr/page! (fn [& _] (throw (ex-info "Must not render" {})))
                 content/bundle! (fn [] (throw (ex-info "Must not fetch CMS" {})))
                 optimus-html/link-to-js-bundles (fn [& _] "")]
-    (let [response (layout/render-home {:uri "/blog" :cookies {"tolgraven-return" {:value "%2Fblog"}}})]
+    (let [response (layout/render-home {:uri "/blog" :headers {"x-page-render" "state"}
+                                       :cookies {"tolgraven-return" {:value "%2Fblog"}}})]
       (is (= 200 (:status response)))
       (is (string/includes? (:body response) "data-restore=\"true\""))
       (is (not (string/includes? (:body response) "data-hydrate")))
@@ -229,9 +275,14 @@
 (deftest saved-return-hints-cover-recent-paths-and-reject-invalid-values
   (is (not (layout/returning-page? {:uri "/blog" :headers {"x-page-render" "ssr"}
                                   :cookies {"tolgraven-return" {:value "%2Fblog"}}})))
-  (is (layout/returning-page? {:uri "/blog" :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}}))
-  (is (not (layout/returning-page? {:uri "/cv" :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}})))
-  (is (not (layout/returning-page? {:uri "/blog" :cookies {"tolgraven-return" {:value "%invalid"}}}))))
+  (is (not (layout/returning-page? {:uri "/blog" :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}}))
+      "An ordinary reload with a saved cookie still gets SSR")
+  (is (layout/returning-page? {:uri "/blog" :headers {"x-page-render" "state"}
+                              :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}}))
+  (is (not (layout/returning-page? {:uri "/cv" :headers {"x-page-render" "state"}
+                                  :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}})))
+  (is (not (layout/returning-page? {:uri "/blog" :headers {"x-page-render" "state"}
+                                  :cookies {"tolgraven-return" {:value "%invalid"}}}))))
 
 (deftest concurrent-pages-share-identical-flights-without-serializing-other-pages
   (let [entered (java.util.concurrent.CountDownLatch. 2)
@@ -296,6 +347,7 @@
 (deftest ssr-is-enabled-by-default-and-configurable-through-edn
   (with-redefs [config/env {}]
     (is (ssr/enabled?))
+    (is (= 10000 (:cache-ttl-ms (ssr/settings))))
     (is (= "target/ssr/site.js" (ssr/worker-path))))
   (with-redefs [config/env {:ssr {:enabled false :worker "/configured/site.js" :render-workers 3}}]
     (is (false? (ssr/enabled?)))

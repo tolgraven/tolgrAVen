@@ -23,7 +23,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   direct or lazy module exports; it does not add a permanent wrapper.
 - Module `:styles` metadata is available before code acquisition. The shared loader
   starts CSS and JS together and waits for both before readiness; React owns
-  stylesheet insertion. Keep feature CSS in `resources/scss/modules` and preserve
+  stylesheet insertion. Initial inlined route styles already satisfy readiness
+  and must not trigger duplicate external requests. Keep feature CSS in `resources/scss/modules` and preserve
   ordinary selector specificity. See `doc/styles.md`.
 - A module `:install` hook may restore browser-local caches after code acquisition.
   The loader shares/awaits it before publishing code readiness; ordinary `:init`
@@ -34,6 +35,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   duplicate transport reads in pages or component render functions.
 - Reuse appearance/presence/loading features. Hydration and restored data bypass
   loading and entrances; later SPA navigation must restore ordinary motion.
+  Appearance classes merge onto native roots; `appear-wrapper` is only a CSS
+  class. SSR roots paint visible, without separate child/page entrance keyframes.
 - Shared Markdown, full syntax highlighting and mapping code live in the
   `:markdown`, `:highlight` and `:maps` bundles. Keep the full highlighter out of
   Markdown so link previews do not acquire every language. Declare bundle

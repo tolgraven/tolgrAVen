@@ -18,7 +18,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   results, running Shadow warnings and browser logs; successful compilation is not
   a passing browser test or proof of live CMS integration.
 - Module CSS checks cover request initiation before Shadow, shared acquisition,
-  readiness/failure/retry and initial SSR head links. Initial SSR visibility alone
+  readiness/failure/retry, inline SSR styles, budget/link fallback and no duplicate
+  initial downloads. Compression checks must decode the shell before final data
+  is ready. Initial SSR visibility alone
   does not prove hydration; let pending link intent settle before repeating clicks.
 - Live motion checks assert simultaneous 250ms linear fades and an opaque sticky
   footer. `motion.html?fallback` removes only the optional native transition API

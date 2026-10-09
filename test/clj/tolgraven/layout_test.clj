@@ -57,6 +57,9 @@
 
 (deftest preload-matches-the-executed-bundle
   (with-redefs [config/env {:dev false :ssr {:enabled false}}
+                olink/file-path (fn [_ path]
+                                  (when (= path "/webfonts/OpenSans-v29-latin.woff2")
+                                    "/webfonts/hash/OpenSans-v29-latin.woff2"))
                 olink/bundle-paths (fn [_ bundles]
                                     (case (first bundles)
                                       "main.js" ["/bundles/main.hash.js"]
@@ -72,6 +75,7 @@
       (is (< (.indexOf body "src=\"/vendor/supabase.js\"")
              (.indexOf body "src=\"/bundles/main.hash.js\"")))
       (is (.contains body "name=\"analytics-id\""))
+      (is (re-find #"<link[^>]*href=\"/webfonts/hash/OpenSans-v29-latin.woff2\"[^>]*rel=\"preload\"" body))
       (is (.contains body "window.dataLayer = window.dataLayer || []"))
       (is (not (.contains body "googletagmanager.com")))
       (is (not (.contains body "google-analytics.com")))
@@ -122,6 +126,22 @@
       (is (not (.contains body "id=\"ssr-shell\"")))
       (is (.contains body "data-hydrate=\"true\"")))))
 
+(deftest ordinary-reload-with-a-persistence-cookie-still-renders-the-page
+  (let [*calls (atom 0)]
+    (with-redefs [config/env {:dev true :ssr {:streaming false}}
+                  ssr/page! (fn [& _]
+                              (swap! *calls inc)
+                              {:html "<article>SSR ready</article>"
+                               :snapshot {:content {} :posts []}})
+                  ohtml/link-to-js-bundles (fn [& _] nil)]
+      (let [body (:body (layout/render-home
+                          {:uri "/blog" :cookies {"tolgraven-return" {:value "%2Fblog"}}}))]
+        (is (= 1 @*calls))
+        (is (.contains body "SSR ready"))
+        (is (.contains body "id=\"ssr-bootstrap\""))
+        (is (.contains body "data-hydrate=\"true\""))
+        (is (not (.contains body "data-restore=\"true\"")))))))
+
 (deftest preload-hydration-dependencies-in-the-first-response-head
   (with-redefs [config/env {:dev true :ssr {:streaming false}}
                 ssr/page! (fn [& _] {:html "<article>Ready</article>" :snapshot {:content {} :posts []}})
@@ -135,6 +155,32 @@
         (let [path (str "/js/compiled/out/" module ".js")]
           (is (.contains (get headers "Link") path))
           (is (< (.indexOf body path) (.indexOf body "<body"))))))))
+
+(deftest production-inlines-optimized-route-sheets-with-a-bounded-budget
+  (let [asset (fn [module css]
+                {:path (str "/bundles/hash/module-" module ".css")
+                 :bundle (str "module-" module ".css")
+                 :contents css})
+        blog-css ".blog-post{color:red}/* </style> */"
+        cv-css (str ".cv{" (apply str (repeat 16385 " ")) "}")
+        request {:optimus-assets [(asset "blog" blog-css)
+                                  (asset "cv" cv-css)
+                                  (asset "user" ".user-avatar{width:3rem}")
+                                  (asset "link-preview" ".link-preview{color:blue}")
+                                  (asset "markdown" ".md-rendered{color:green}")]}
+        render #(-> request (assoc :uri %) layout/render-home :body)]
+    (with-redefs [config/env {:dev false :ssr {:enabled false}}
+                  ohtml/link-to-js-bundles (fn [& _] nil)]
+      (let [blog (render "/blog")
+            cv (render "/cv")]
+        (is (.contains blog "data-module-style=\"/bundles/hash/module-blog.css\""))
+        (is (.contains blog ".blog-post{color:red}"))
+        (is (.contains blog "<\\/style>") "CSS cannot terminate the style element")
+        (is (not (re-find #"<link[^>]*module-(blog|user|link-preview|markdown)\.css" blog)))
+        (is (< (.indexOf blog "data-module-style") (.indexOf blog "<body")))
+        (is (not (.contains blog cv-css)) "Other modules remain lazy")
+        (is (re-find #"<link[^>]*module-cv\.css" cv) "Large sheets keep cacheable links")
+        (is (.contains cv "module-blog.css") "All URLs remain available to the loader")))))
 
 (deftest route-css-is-in-the-initial-head-and-lazy-css-stays-in-the-manifest
   (with-redefs [config/env {:dev true :ssr {:enabled false}}

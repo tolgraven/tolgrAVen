@@ -23,13 +23,25 @@
     (some #(when (= absolute (.-href %)) %)
           (array-seq (.querySelectorAll js/document "link[rel=stylesheet]")))))
 
+(defn- inline-style [href]
+  (let [absolute #(.-href (js/URL. % (.-baseURI js/document)))
+        href (absolute href)]
+    (some #(when (= href (absolute (.getAttribute % "data-module-style"))) %)
+          (array-seq (.querySelectorAll js/document "style[data-module-style]")))))
+
 (defn ready? [module]
   (or context/*server?*
-      (every? #(or (contains? @*ready %) (some-> (link %) .-sheet))
+      (every? #(or (contains? @*ready %) (some-> (inline-style %) .-sheet)
+                  (some-> (link %) .-sheet))
               (catalog/paths (manifest) module))))
 
 (defn acquire-path! [path]
   (or (get @*requests path)
+      (when (some-> (inline-style path) .-sheet)
+        (let [ready (js/Promise.resolve nil)]
+          (swap! *ready conj path)
+          (swap! *requests assoc path ready)
+          ready))
       (let [attempt (get @*attempts path 0)
             ;; React deduplicates resources by href, including failed resources.
             ;; A fresh retry URL lets React retry without mutating its DOM nodes.

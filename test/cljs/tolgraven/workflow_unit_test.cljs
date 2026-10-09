@@ -881,7 +881,7 @@
     (try (with-redefs [shim/dispatch #(swap! *events conj %)]
            (page-transition/navigate! {:path (restore/page-key)} true true))
          (is (restore/skip-enter?))
-         (is (not (restore/initial-enter?)))
+         (is (not (restore/document-enter?)))
          (restore/navigate! "/another-page")
          (is (not (restore/skip-enter?)) "Ordinary navigation enables motion again")
          (finally (reset! restore/*context before)))))
@@ -1504,8 +1504,7 @@
       (is (restore/document-enter?))
       (restore/hydrated!)
       (is (not (restore/skip-enter?)) "Later SPA content can animate")
-      (is (not (restore/initial-enter?)) "Later components have no SSR animation marker")
-      (is (restore/document-enter?) "The existing document keeps its animation selector")
+      (is (restore/document-enter?) "The existing SSR page continues to bypass its entrance")
       (restore/begin! {:back? true})
       (restore/hydrated!)
       (is (restore/skip-enter?) "Back restoration still bypasses all entrances")

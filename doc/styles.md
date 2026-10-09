@@ -22,11 +22,15 @@ code must load to discover its CSS. Restart Shadow watches after changing this
 metadata so their compile-time inventories agree.
 
 Optimus bundles each feature separately and publishes content-addressed asset
-URLs with long cache lifetimes. The server includes only shell/route dependencies
-as blocking stylesheet links in the initial head, plus a small `#module-styles`
-JSON inventory of all feature URLs. Streamed skeletons and completed SSR pages
-share those links. Local return documents include their saved modules' CSS in
-the head too.
+URLs with long cache lifetimes. The shared shell sheet stays a blocking,
+cacheable link. Small initial route/dependency sheets are inlined from Optimus's
+optimized contents, within a 16 KiB document budget, eliminating separate
+feature requests before first paint. Larger sheets retain stylesheet links;
+development keeps links for CSS watching. The `data-module-style` attribute
+associates each inline sheet with its immutable URL in the small `#module-styles`
+JSON inventory. The loader treats that sheet as already ready, avoiding duplicate
+requests. Streamed skeletons and completed SSR pages share the initial head.
+Local return documents include their saved modules' CSS as links in the head.
 
 The browser module loader starts CSS acquisition synchronously before calling
 Shadow's JavaScript loader. React DOM `preinit` owns insertion and deduplication;

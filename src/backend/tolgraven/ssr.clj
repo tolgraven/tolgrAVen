@@ -16,7 +16,11 @@
 
 (def renderer-version 3)
 (defn settings []
-  (let [settings (merge {:enabled true :render-workers 2 :worker "target/ssr/site.js" :node-binary "node"}
+  (let [settings (merge {:enabled true
+                         :render-workers 2
+                         :cache-ttl-ms 10000
+                         :worker "target/ssr/site.js"
+                         :node-binary "node"}
                         (:ssr config/env))]
     (when (config/validation-enabled?) (validation/check! "SSR configuration" schema/settings settings))
     settings))
@@ -142,18 +146,32 @@
             (recur)))
         (swap! *cache assoc cache-key (assoc entry :size size))))))
 
+(defn- fresh? [{:keys [at build]}]
+  (let [ttl (:cache-ttl-ms (settings))]
+    (and at
+         (= build (renderer-build))
+         (pos? ttl)
+         (< (- (System/nanoTime) at) (* 1000000 ttl)))))
+
 (defn- build-page! [uri selection query-params]
-  (let [snapshot (cond-> (snapshot! uri selection)
-                   (seq query-params) (assoc :query-params query-params))
-        snapshot (assoc snapshot :document-title
-                        (page/document-title (:data (router/match uri)) snapshot))
-        key [uri query-params] cached (get @*cache key)]
-    ;; Validate against a fresh public snapshot, even on render-cache hits.
-    (if (= snapshot (:snapshot cached))
+  (let [key [uri query-params]
+        cached (get @*cache key)]
+    (if (fresh? cached)
       (assoc cached :cache :hit)
-      (let [entry {:snapshot snapshot :html (render! snapshot) :at (System/nanoTime)}]
+      (let [snapshot (cond-> (snapshot! uri selection)
+                       (seq query-params) (assoc :query-params query-params))
+            snapshot (assoc snapshot :document-title
+                            (page/document-title (:data (router/match uri)) snapshot))
+            unchanged? (and (= (:build cached) (renderer-build))
+                            (= snapshot (:snapshot cached)))
+            ;; Renew freshness only after a successful public snapshot read.
+            ;; An unchanged snapshot also validates its paired HTML again.
+            entry {:snapshot snapshot
+                   :html (if unchanged? (:html cached) (render! snapshot))
+                   :build (renderer-build)
+                   :at (System/nanoTime)}]
         (cache-entry! key entry)
-        (assoc entry :cache :miss)))))
+        (assoc entry :cache (if unchanged? :hit :miss))))))
 
 (defn page-async!
   "Share an in-flight snapshot/render for a path while unrelated paths progress.
@@ -185,7 +203,8 @@
 (defonce *shell-cache (atom {}))
 
 (defn cached? [uri query-params]
-  (contains? @*cache [uri query-params]))
+  ;; Expired entries revalidate behind the streamed shell, not before headers.
+  (boolean (fresh? (get @*cache [uri query-params]))))
 
 (defn shell! [uri query-params]
   (let [spec (:data (router/match uri))

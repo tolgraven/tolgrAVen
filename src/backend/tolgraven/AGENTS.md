@@ -11,8 +11,12 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   share an in-flight task. Node workers perform isolated React rendering only.
 - Cache public HTML with its exact data snapshot. Never cache a request's CSRF token
   or personalized shell as a shared response. Errors cannot validate old cache entries.
+  Successful page snapshots are fresh for `:ssr :cache-ttl-ms` (10 seconds by
+  default; zero always revalidates). Expired/build-changed entries stream the shell
+  while revalidating; only fresh entries bypass it.
 - Optimus fingerprints the shared and per-module CSS bundles independently. Emit
-  route dependency styles in the first head and all URLs in `#module-styles`;
+  route dependency styles in the first head, inlining small optimized sheets
+  within a 16 KiB document budget, and all URLs in `#module-styles`;
   local return documents carry their saved modules' styles before first paint.
 - Keep SDK and app scripts ordered and deferred. Analytics metadata/queue is
   local; the browser lifecycle acquires its remote script after initial rendering.
@@ -22,6 +26,10 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   chunk responses receive immutable caching; plain names and errors must not.
 - Streaming uses Hiccup document parts and the existing flush-aware Ring body;
   do not split serialized pages by marker strings. Headers cannot change after flush.
+  Compress that body directly with sync-flush gzip when accepted; do not convert
+  it to the generic middleware's buffered InputStream.
+- A return cookie alone never bypasses network SSR. Only the local worker's
+  explicit `X-Page-Render: state` fallback requests browser state restoration.
 - Validate/coerce requests at the Ring boundary; handlers consume parsed parameters.
   Authentication/authorization and input protection remain active in production.
 - Secrets remain in server adapters/configuration. Runtime public settings must

@@ -120,7 +120,7 @@ features whose failures should be contained.
 
 `:appear` and `:seen` merge the existing `appear-wrapper`, animation kind and
 `appeared` classes onto the component's own root. There is no wrapper element or
-React component. Original classes, styles and refs are preserved. `:appear` waits
+React component; `appear-wrapper` is a CSS class retained for selector compatibility. Original classes, styles and refs are preserved. `:appear` waits
 for the initial frame before adding `appeared`. `:seen` uses IntersectionObserver
 with a default 50% threshold; `:root-margin` and `:once?` are configurable. Without
 IntersectionObserver it falls back to appearing immediately after the initial
