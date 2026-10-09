@@ -2,6 +2,7 @@
   (:require
     [reagent.core :as r]
     [tolgraven.react :as rf]
+    [tolgraven.modules.github.message :as message]
     [clojure.string :as string]))
 
 
@@ -28,12 +29,7 @@
    (let [commits (for [{:keys [commit author html_url sha] :as item} data
                        :let [ts (get-in commit [:author :date])
                              [date clock] (string/split ts "T")
-                             [info subtitle title :as message]
-                             (map string/trim
-                                  (some-> (:message commit)
-                                          (string/replace #"\b(\w+):" "$1=====")
-                                          (string/split #"=====")
-                                          reverse))]]
+                             message (message/parse-message (:message commit))]]
                    (assoc item
                           :date date :clock clock :ts ts
                           :message message

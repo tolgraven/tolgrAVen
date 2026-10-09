@@ -9,6 +9,8 @@
   (c/optional-map {:name [:maybe :string]
                    :date [:maybe :string]
                    :email [:maybe :string]}))
+(def parsed-message [:tuple :string [:maybe :string] [:maybe :string]])
+
 (def commit
   (c/optional-map {:sha :string
                    :html_url :string
