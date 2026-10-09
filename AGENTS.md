@@ -39,6 +39,9 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `doc/`: project documentation.
 
 ## Shared schemas
+- Browser releases use Malli's custom registry and a frontend Reitit coercion
+  adapter; keep Swagger/OpenAPI generation on the JVM. Extend the registry for
+  new schema types and verify the browser contract suite. See `doc/schemas.md`.
 - Define Malli contracts beside their consumers. Use `.cljs` for browser/Node-only
   state and component contracts; use `.cljc` only for actual JVM/CLJS consumers (or thin Shadow target-feature adapters). Reuse them in tests,
   Reitit page/API parameters, and runtime validation; see `doc/schemas.md`.

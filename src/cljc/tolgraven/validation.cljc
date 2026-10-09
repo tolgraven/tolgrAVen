@@ -1,6 +1,7 @@
 (ns tolgraven.validation
   "Shared, value-redacting Malli validation. Runtime policy belongs to adapters."
-  (:require [malli.core :as m]
+  (:require #?(:cljs [tolgraven.schema.registry])
+            [malli.core :as m]
             [malli.error :as me]
             [malli.transform :as mt]
             [clojure.string :as string]))

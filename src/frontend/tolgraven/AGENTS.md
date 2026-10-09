@@ -111,6 +111,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   independent monospace sheet; font bytes load only for used glyphs.
 - After edits check watched Shadow errors and the actual routes in the browser.
 
+- `schema/registry.cljs` installs the release Malli constructors before schema
+  composition. Browser tests use that registry; development retains the full one.
+  `schema/page_coercion.cljs` implements Reitit parameter/query coercion with
+  Malli, keeping server API-document generators out of the browser graph.
 - `validation/runtime.cljs` owns declaration checks, module section registration
   and the app-db interceptor. Invalid transactions retain previous state and do
   not run associated effects. Declare event/subscription contracts through the

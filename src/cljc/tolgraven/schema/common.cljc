@@ -1,6 +1,7 @@
 (ns tolgraven.schema.common
   "Small shared types. Open maps still validate every declared field; only
-   explicitly extensible payloads use :any.")
+   explicitly extensible payloads use :any."
+  #?(:cljs (:require [tolgraven.schema.registry])))
 
 (def id [:or :string :int :keyword])
 (def nonnegative [:int {:min 0}])
