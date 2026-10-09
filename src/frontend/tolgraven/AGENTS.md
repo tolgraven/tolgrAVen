@@ -45,6 +45,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   still owns data activation. SSR adapters must not install disk caches or watches.
 - Declare managed dependencies at the narrowest owning component/module/page.
   Preloads acquire those same sources; keep pending, empty, failed and cached distinct.
+- Supabase startup retries a settings/SDK initialization failure silently once after
+  three seconds; only a second failure publishes the retry HUD. Queued reads
+  retain their boot dependency and resume when startup succeeds.
 - Subscription-backed Supabase/Strapi results enter app-db through events. Never
   duplicate transport reads in pages or component render functions.
 - Reuse appearance/presence/loading features. Hydration and restored data bypass

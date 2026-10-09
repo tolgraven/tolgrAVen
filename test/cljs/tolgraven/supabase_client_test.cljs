@@ -118,7 +118,7 @@
         (is (= 1 (count @(:channels mock))))
         (is (empty? @(:selects mock)))
         (status! mock "store-site_users" "SUBSCRIBED")
-        (-> (tick!)
+        (-> (await-value! one #(= "Before" (get-in % [:data :name])))
             (.then (fn []
                      (is (= "Before" (get-in @one [:data :name])))
                      (is (nil? (get-in @one [:data :email])))

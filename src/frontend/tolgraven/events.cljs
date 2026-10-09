@@ -20,6 +20,7 @@
     [tolgraven.navigation.transition :as page-transition]
     [tolgraven.navigation.scroll]
     [tolgraven.supabase.client :as supabase-client]
+    [tolgraven.supabase.schema :as supabase-schema]
     [tolgraven.service-status :as service-status]
     [tolgraven.doc-fx]
     [tolgraven.effects]
@@ -312,12 +313,15 @@
                              on-success on-failure]}
       {:dispatch [:on-booted :store [:<-store path on-success on-failure]]})))
 
+(def init-attempt [:enum 0 1])
+
 (rf/reg-event-fx :supabase/fetch-settings
-  (fn [{:keys [db]} _]
+  {:args [:cat [:? init-attempt]]}
+  (fn [{:keys [db]} [_ attempt]]
     {:db (assoc-in db [:state :supabase-init] :loading)
      :dispatch [:http/get {:uri "/api/supabase/settings" :timeout 15000 :background? true}
-                [:supabase/init]
-                [:supabase/error]]}))
+                [:supabase/init (or attempt 0)]
+                [:supabase/error (or attempt 0)]]}))
 
 (rf/reg-fx :supabase/report-init-error
   (fn [_]
@@ -325,9 +329,13 @@
                           "Account and database content are unavailable. Check your connection and retry."
                           #(rf/dispatch [:supabase/fetch-settings]))))
 (rf/reg-event-fx :supabase/error
-  (fn [{:keys [db]} _]
-    {:db (assoc-in db [:state :supabase-init] :failed)
-     :supabase/report-init-error true}))
+  {:args [:cat init-attempt :any]}
+  (fn [{:keys [db]} [_ attempt _]]
+    (if (zero? attempt)
+      {:db (assoc-in db [:state :supabase-init] :loading)
+       :dispatch-later [{:ms 3000 :dispatch [:supabase/fetch-settings 1]}]}
+      {:db (assoc-in db [:state :supabase-init] :failed)
+       :supabase/report-init-error true})))
 
 (rf/reg-fx :supabase/request
   (fn [{:keys [method uri data on-success on-error]}]
@@ -364,7 +372,7 @@
                 (or (get-in error [:response :error]) (:message error) "Authentication failed")]}))
 
 (rf/reg-fx :supabase/initialize
-  (fn [settings]
+  (fn [[attempt settings]]
     (try
       (supabase-client/init! settings
                             #(rf/dispatch [:supabase/profile %])
@@ -372,10 +380,11 @@
       (service-status/recover! :supabase-init)
       (rf/dispatch [:supabase/initialized settings])
       (catch :default error
-        (rf/dispatch [:supabase/error (.-message error)])))))
+        (rf/dispatch [:supabase/error attempt nil])))))
 
 (rf/reg-event-fx :supabase/init
-  (fn [_ [_ settings]] {:supabase/initialize settings}))
+  {:args [:cat init-attempt supabase-schema/options]}
+  (fn [_ [_ attempt settings]] {:supabase/initialize [attempt settings]}))
 
 (rf/reg-event-fx :supabase/initialized
   (fn [{:keys [db]} [_ settings]]
