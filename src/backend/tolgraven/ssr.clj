@@ -8,6 +8,7 @@
             [tolgraven.ssr.contract-schema :as schema]
             [tolgraven.concurrent :as concurrent]
             [tolgraven.supabase.reader :as reader]
+            [tolgraven.platform.supabase :as supabase]
             [tolgraven.supabase.plan :as plan]
             [tolgraven.page :as page]
             [tolgraven.page-router :as router])
@@ -136,7 +137,7 @@
   (let [spec (:data (router/match uri))]
     (merge {:renderer-version renderer-version :renderer-build (renderer-build) :kind (or (:kind spec) (:module spec))
             :path uri :posts []}
-           (page-data! spec uri selection))))
+           (supabase/with-rest-connections! #(page-data! spec uri selection)))))
 
 (def ^:private cache-entry-schema
   [:map
