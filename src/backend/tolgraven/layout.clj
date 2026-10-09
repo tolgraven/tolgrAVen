@@ -238,7 +238,9 @@
 
 (defn returning-page? [request]
   (try
-    (when-not (= "ssr" (get-in request [:headers "x-page-render"]))
+    ;; A persistence cookie also accompanies ordinary reloads and audits.
+    ;; Only the worker's explicit failed-local-return request may bypass SSR.
+    (when (= "state" (get-in request [:headers "x-page-render"]))
       (when-let [value (some-> (get-in request [:cookies "tolgraven-return" :value])
                              (java.net.URLDecoder/decode "UTF-8"))]
       (or (= (:uri request) value) ; compatibility with the original single path

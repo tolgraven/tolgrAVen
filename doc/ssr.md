@@ -349,6 +349,11 @@ The shell and complete page use the same renderer. Blog query plans are module
 capabilities, not a second blog server or alternate set of page markup.
 
 The browser's optional local-return renderer also calls the shared React renderer.
+A saved return cookie alone never bypasses network SSR: reloads, direct visits
+and audits still receive server content when the worker is unavailable or bypassed.
+Only the worker's explicit `X-Page-Render: state` header selects browser state
+restoration after a failed local return.
+
 Its service worker serves an exact cached document/state pair; it does not create
 another server rendering pipeline. Ordinary SPA navigation never requests SSR HTML.
 

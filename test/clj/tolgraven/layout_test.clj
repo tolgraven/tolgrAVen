@@ -122,6 +122,22 @@
       (is (not (.contains body "id=\"ssr-shell\"")))
       (is (.contains body "data-hydrate=\"true\"")))))
 
+(deftest ordinary-reload-with-a-persistence-cookie-still-renders-the-page
+  (let [*calls (atom 0)]
+    (with-redefs [config/env {:dev true :ssr {:streaming false}}
+                  ssr/page! (fn [& _]
+                              (swap! *calls inc)
+                              {:html "<article>SSR ready</article>"
+                               :snapshot {:content {} :posts []}})
+                  ohtml/link-to-js-bundles (fn [& _] nil)]
+      (let [body (:body (layout/render-home
+                          {:uri "/blog" :cookies {"tolgraven-return" {:value "%2Fblog"}}}))]
+        (is (= 1 @*calls))
+        (is (.contains body "SSR ready"))
+        (is (.contains body "id=\"ssr-bootstrap\""))
+        (is (.contains body "data-hydrate=\"true\""))
+        (is (not (.contains body "data-restore=\"true\"")))))))
+
 (deftest preload-hydration-dependencies-in-the-first-response-head
   (with-redefs [config/env {:dev true :ssr {:streaming false}}
                 ssr/page! (fn [& _] {:html "<article>Ready</article>" :snapshot {:content {} :posts []}})

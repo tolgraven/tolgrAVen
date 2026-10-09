@@ -265,7 +265,8 @@
                 ssr/page! (fn [& _] (throw (ex-info "Must not render" {})))
                 content/bundle! (fn [] (throw (ex-info "Must not fetch CMS" {})))
                 optimus-html/link-to-js-bundles (fn [& _] "")]
-    (let [response (layout/render-home {:uri "/blog" :cookies {"tolgraven-return" {:value "%2Fblog"}}})]
+    (let [response (layout/render-home {:uri "/blog" :headers {"x-page-render" "state"}
+                                       :cookies {"tolgraven-return" {:value "%2Fblog"}}})]
       (is (= 200 (:status response)))
       (is (string/includes? (:body response) "data-restore=\"true\""))
       (is (not (string/includes? (:body response) "data-hydrate")))
@@ -274,9 +275,14 @@
 (deftest saved-return-hints-cover-recent-paths-and-reject-invalid-values
   (is (not (layout/returning-page? {:uri "/blog" :headers {"x-page-render" "ssr"}
                                   :cookies {"tolgraven-return" {:value "%2Fblog"}}})))
-  (is (layout/returning-page? {:uri "/blog" :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}}))
-  (is (not (layout/returning-page? {:uri "/cv" :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}})))
-  (is (not (layout/returning-page? {:uri "/blog" :cookies {"tolgraven-return" {:value "%invalid"}}}))))
+  (is (not (layout/returning-page? {:uri "/blog" :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}}))
+      "An ordinary reload with a saved cookie still gets SSR")
+  (is (layout/returning-page? {:uri "/blog" :headers {"x-page-render" "state"}
+                              :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}}))
+  (is (not (layout/returning-page? {:uri "/cv" :headers {"x-page-render" "state"}
+                                  :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}})))
+  (is (not (layout/returning-page? {:uri "/blog" :headers {"x-page-render" "state"}
+                                  :cookies {"tolgraven-return" {:value "%invalid"}}}))))
 
 (deftest concurrent-pages-share-identical-flights-without-serializing-other-pages
   (let [entered (java.util.concurrent.CountDownLatch. 2)
