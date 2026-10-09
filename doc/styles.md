@@ -5,7 +5,8 @@ in `resources/scss/modules/` through the locked Sass and Autoprefixer packages.
 Outputs are `resources/public/css/tolgraven/main.min.css`, `dev.min.css`, and
 `modules/<feature>.min.css`. The development document alone links `dev.min.css`,
 which contains inspector styles; production shell and error pages share the same
-fingerprinted shell link without loading those rules. `npm run dev` watches both shared and module sources.
+fingerprinted shell link without loading those rules. Shared validation-error
+markup stays in the common component error stylesheet. `npm run dev` watches both shared and module sources.
 Set `CSS_OUTPUT_DIR` to build into a separate directory for comparisons.
 
 Shared shell/layout rules live in `scss/shell`, reusable component rules in

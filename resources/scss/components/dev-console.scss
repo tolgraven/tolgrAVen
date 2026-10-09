@@ -132,14 +132,6 @@
   &__details { padding: .5rem; border-left: 0.125rem solid var(--purple-3); }
 }
 
-.validation-issues {
-  margin: .6rem 0; font-size: .9rem;
-  &__row { display: grid; grid-template-columns: minmax(8ch, 2fr) minmax(12ch, 3fr);
-    gap: .8rem; padding: .65rem .8rem; border-bottom: 0.0625rem solid var(--blue); }
-  dt, dd { margin: 0; overflow-wrap: anywhere; }
-  dt { color: var(--aqua-3); }
-  dd { color: var(--orange-3); }
-}
 .validation-reports {
   > header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
   article { margin: .8rem 0; padding: .6rem; border-left: 0.1875rem solid var(--orange-3);
