@@ -3,11 +3,9 @@
     [tolgraven.component.registry]
     [tolgraven.components.validation :as validation]
     [tolgraven.macros :refer-macros [defc]]
-    [cljs.pprint]
-    [clojure.string :as string]
+    [tolgraven.loader.view :as loader-view]
     [reagent.core :as r]
-    [tolgraven.components.portal :as portal]
-    [tolgraven.components.markdown :as code]))
+    [tolgraven.components.portal :as portal]))
 
 (defc <failure>
   "Shared fallback for rendering, dependencies, modules and initialization.
@@ -26,34 +24,9 @@
         [:pre (or (ex-message error) (str error))])
       (when (seq stack) [:pre stack])])])
 
-(defc <error-full>
-  "Full error display compojnent, goes in a portal."
-  [ns-name comp-name *error spec]
-  (let [{:keys [error stack]} @*error]
-    [:section.error
-     [:div
-      [:h2 "Component error"]
-      [:span "Boundary " (str ns-name "/" comp-name)]]
-     [:p "Exception: "]
-     [:code {:style {:color "var(--red)"}}
-       (or (some->> error ex-message (str "Message: "))
-           (str error)
-           "Unknown")]
-     (when stack
-       [:<>
-        [:p "Stack trace:"]
-        [code/<code-block>
-         (->> (string/replace stack #"at |\(http.*\)" "")
-              string/split-lines
-              (map string/trim)
-              (remove string/blank?)
-              (string/join "\n"))]])
-     [:p "Props/spec:"]
-     [code/<code-block>
-      (string/trim-newline (with-out-str (cljs.pprint/pprint spec)))]
-     [:span
-      [:button {:on-click #(reset! *error nil)}
-      "Attempt reload"]]]))
+(defn <error-full> [ns-name comp-name *error spec]
+  (loader-view/form :data-inspector :error [ns-name comp-name *error spec]
+                    [:section.error [:h2 "Component error"] [:p "Loading details…"]]))
 
 (defc <error>
   "Outer error display component."
