@@ -83,10 +83,13 @@ message. A Supabase/CMS/renderer failure on the server returns a visible retryab
 
 The backend caches the rendered fragment together with its exact public snapshot,
 keyed by path and query parameters. A successfully acquired snapshot stays fresh
-for `:ssr :cache-ttl-ms` (default 10000). Fresh hits avoid provider reads and Node
-rendering. Set this to zero to revalidate on every request. Public edits,
-deletions, author changes and listing membership may take up to this interval
-to appear on repeat document loads; SPA bindings retain their own refresh behavior.
+for `:ssr :cache-ttl-ms` (default 3600000, one hour). Fresh hits avoid provider
+reads and Node rendering. The browser hydrates the exact cached HTML/snapshot
+pair before switching its managed bindings to live data, so server-rendered
+content can be older than the live page. Set this to zero to revalidate on every
+request. Edits, deletions, author changes and listing membership can remain in
+the initial server snapshot until its next revalidation; browser bindings
+retain their own refresh behavior.
 
 Expired entries read the complete public data plan again while the initial shell
 streams. Reuse HTML only if the exact snapshot and renderer build match. An
