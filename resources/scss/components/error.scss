@@ -31,3 +31,13 @@
   // height: 40vh;
 }
 
+
+// These rows also appear in public server validation errors.
+.validation-issues {
+  margin: .6rem 0; font-size: .9rem;
+  &__row { display: grid; grid-template-columns: minmax(8ch, 2fr) minmax(12ch, 3fr);
+    gap: .8rem; padding: .65rem .8rem; border-bottom: 0.0625rem solid var(--blue); }
+  dt, dd { margin: 0; overflow-wrap: anywhere; }
+  dt { color: var(--aqua-3); }
+  dd { color: var(--orange-3); }
+}
