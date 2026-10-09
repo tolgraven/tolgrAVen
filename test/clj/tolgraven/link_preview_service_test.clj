@@ -123,3 +123,39 @@
         (is (thrown? Exception (service/fetch-html! "https://example.com/")))
         (is (false? @consulted)))
       (finally (ProxySelector/setDefault original)))))
+
+(deftest reports-clipped-single-blocks-as-truncated
+  (let [result (service/extract (document (str "<article><p>" (apply str (repeat 5000 "x")) "</p></article>")))]
+    (is (= 3000 (count (get-in result [:blocks 0 :text]))))
+    (is (:truncated? result))
+    (is (m/validate contract/result result))))
+
+(deftest deeply-nested-fallback-content-is-scored-with-bounded-work
+  (let [work (future
+               (service/extract
+                 (document (str (apply str (repeat 12000 "<div>"))
+                                "<p>Deep readable content</p>"
+                                (apply str (repeat 12000 "</div>"))))))]
+    (try
+      (let [result (deref work 5000 ::timeout)]
+        (is (not= ::timeout result))
+        (when (map? result)
+          (is (= "Deep readable content" (get-in result [:blocks 0 :text])))))
+      (finally (future-cancel work)))))
+
+(deftest evicted-failed-preview-does-not-recreate-a-poisoned-cache-entry
+  (let [cache @#'service/*cache
+        url "https://example.com/eviction-regression"
+        calls (atom 0)]
+    (swap! cache dissoc url)
+    (try
+      (with-redefs [service/fetch-html! (fn [_]
+                                        (if (= 1 (swap! calls inc))
+                                          (do (swap! cache dissoc url)
+                                              (throw (Exception. "Evicted request failed")))
+                                          (document "<main><p>Recovered content</p></main>")))]
+        (is (= "unavailable" (:status (service/preview! url))))
+        (is (not (contains? @cache url)))
+        (is (= "ready" (:status (service/preview! url))))
+        (is (= 2 @calls)))
+      (finally (swap! cache dissoc url)))))

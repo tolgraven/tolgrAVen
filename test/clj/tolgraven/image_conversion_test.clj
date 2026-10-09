@@ -78,3 +78,19 @@
       (is (= {:original legacy} (sources/get-src-variants legacy))))
     (is (= {:original "/img/Photo.PNG" :webp "/img/Photo.webp" :avif "/img/Photo.avif"}
            (sources/get-src-variants "/img/Photo.PNG")))))
+
+(deftest converter-pixel-cache-is-owned-by-the-request-directory
+  (let [script (File/createTempFile "tolgraven-cache-encoder-" ".clj")
+        marker (File/createTempFile "tolgraven-cache-directory-" ".txt")]
+    (try
+      (spit script (str "(let [directory (System/getenv \"MAGICK_TEMPORARY_PATH\")]\n"
+                        "  (spit " (pr-str (str marker)) " directory)\n"
+                        "  (spit (str directory \"/pixel-cache\") \"private upload bytes\")\n"
+                        "  (throw (Exception. \"Encoder failed\")))\n"))
+      (with-redefs [config/env {:image-converter (str script)}]
+        (is (= 503 (:auth/status (ex-data (try (image/variants! (png-bytes))
+                                             (catch Exception error error)))))))
+      (let [directory (io/file (slurp marker))]
+        (is (.startsWith (.getName directory) "tolgraven-upload-"))
+        (is (not (.exists directory))))
+      (finally (.delete script) (.delete marker)))))

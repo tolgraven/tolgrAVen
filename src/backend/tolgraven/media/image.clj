@@ -27,7 +27,8 @@
     (doseq [[key value] {"MAGICK_THREAD_LIMIT" "2"
                         "MAGICK_MEMORY_LIMIT" "128MiB"
                         "MAGICK_MAP_LIMIT" "256MiB"
-                        "MAGICK_DISK_LIMIT" "256MiB"}]
+                        "MAGICK_DISK_LIMIT" "256MiB"
+                        "MAGICK_TEMPORARY_PATH" (str (.getParentFile ^java.io.File file))}]
       (.put (.environment builder) key value))
     (.redirectOutput builder ProcessBuilder$Redirect/DISCARD)
     (.redirectError builder ProcessBuilder$Redirect/DISCARD)
