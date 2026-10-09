@@ -1,11 +1,14 @@
 (ns tolgraven.schema.http
-  (:require [reitit.coercion.malli :as malli]))
+  (:require #?(:clj [reitit.coercion.malli :as malli]
+               :cljs [tolgraven.schema.page-coercion :as page])))
 
 ;; Open maps preserve application extension/query keys. Only declared fields are
 ;; coerced; do not strip OAuth/debug query parameters or untyped operation bodies.
-(def coercion (malli/create {:compile (fn [schema _] schema)
-                             :strip-extra-keys false
-                             :error-keys #{:type :in :humanized}}))
+(def coercion
+  #?(:cljs page/coercion
+     :clj (malli/create {:compile (fn [schema _] schema)
+                        :strip-extra-keys false
+                        :error-keys #{:type :in :humanized}})))
 (def page-number [:int {:min 1 :max 999999}])
 (def document-name [:and :string [:re #"^[A-Za-z0-9_.-]+$"]
                     [:fn {:error/message "must name a documentation page"} #(not= ".." %)]])

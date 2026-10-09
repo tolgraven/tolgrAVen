@@ -12,6 +12,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Boot checks dispatch the real startup/stop events and mount/unmount the common
   lifecycle host. Verify repeated starts/remounts do not multiply listeners,
   persistence drains before native history release, and deferred work is cancelled.
+- Browser tests use the release Malli registry. Check typed page parameters,
+  bounds, booleans, query encoding/extension keys and redacted coercion failures
+  with internal validation disabled as well as ordinary contract validation.
 - Use owning schemas/constructors in fixtures instead of duplicating contracts.
   Test browser/Node-only schemas in `test/cljs`; JVM tests exercise portable/server
   contracts and generic composition helpers.

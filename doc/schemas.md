@@ -29,6 +29,21 @@ component/module declarations. The schema code remains available in optimized
 builds so a deployment can enable it without rebuilding. This is runtime gating,
 not complete removal of Malli from the bundle.
 
+Browser releases set `malli.registry/type` to `"custom"` and install the types in
+`schema/registry.cljs` before schema composition. The registry uses Malli's
+extension constructors; unused function instrumentation and named branching
+constructors can be eliminated. Predicate, scalar and sequence types remain
+available for the application's declaration/input contracts. Browser tests use
+this same registry; ordinary development and the Node/JVM renderer retain the
+full one. Add a constructor when introducing an additional schema type.
+
+CLJS page routers use `schema/page_coercion.cljs`, implementing Reitit's coercion
+protocol with Malli validators, explainers and string decoders/encoders. It retains
+open query maps, boolean false and redacted humanized errors. The JVM uses the
+standard Reitit Malli adapter for Ring/API documentation and response coercion.
+Swagger, JSON Schema, EDN schema serialization and lite-schema conversion are not
+needed by the page adapter and stay out of the production browser graph.
+
 Request coercion is always active for declared HTTP and page parameters, including
 production. Malformed external input must not reach handlers. Response checking
 and internal declaration/state checking follow the runtime setting.

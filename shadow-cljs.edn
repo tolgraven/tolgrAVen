@@ -37,6 +37,7 @@
   :app-test {:target :browser-test
              :module-loader true
              :compiler-options {:reader-features #{:browser :dev}}
+             :closure-defines {malli.registry/type "custom"}
              :build-hooks [(tolgraven.build.compat/rrb-vector)
                            (tolgraven.build.browser/test-modules)]
              :test-dir "resources/public/js/tests"
@@ -90,6 +91,7 @@
   {:build-hooks [(tolgraven.build.compat/rrb-vector)
                  (tolgraven.build.policy/no-debug-tools)]
    :compiler-options {:reader-features #{:browser}}
+   :closure-defines {malli.registry/type "custom"}
    :target               tolgraven.build.browser/process
    :module-loader true
    :module-hash-names true
