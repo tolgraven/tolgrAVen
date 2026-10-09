@@ -90,7 +90,7 @@
                    (set! (.-innerHTML element) html)
                    (when (= fixture "code-blog")
                      (reset! *code-nodes (mapv #(.querySelector element %)
-                                              [".code-block pre" ".code-block span" ".code-block code.language-cpp"])))
+                                              [".code-block pre" ".code-block span" ".code-block code.language-cpp" "p > code.code-highlight" "p > code.code-highlight span[style]"])))
                    (let [nodes (mapv #(.querySelector element %) selectors)]
                      (is (every? some? nodes) "Ordinary page elements exist before hydration")
                      (js/Promise.
@@ -114,15 +114,15 @@
                    (.click (.querySelector element ".code-block button[aria-pressed]"))
                    (-> (support/wait-for! #(.querySelector element ".code-block-wrapped"))
                        (.then (fn [_]
-                                (doseq [[node selector] (map vector @*code-nodes [".code-block pre" ".code-block span" ".code-block code.language-cpp"])]
+                                (doseq [[node selector] (map vector @*code-nodes [".code-block pre" ".code-block span" ".code-block code.language-cpp" "p > code.code-highlight" "p > code.code-highlight span[style]"])]
                                   (is (identical? node (.querySelector element selector))))
                                 (is (empty? @*highlight-requests) "Wrapping does not advance the gate")
                                 (doseq [release! @*release] (release!))
                                 (support/wait-for!
-                                  #(= (.-length (.querySelectorAll element ".code-block"))
+                                  #(= (.-length (.querySelectorAll element ".code-block, .code-highlight"))
                                       @*formatter-commits))))
                        (.then (fn [_]
-                                (doseq [[node selector] (map vector @*code-nodes [".code-block pre" ".code-block span" ".code-block code.language-cpp"])]
+                                (doseq [[node selector] (map vector @*code-nodes [".code-block pre" ".code-block span" ".code-block code.language-cpp" "p > code.code-highlight" "p > code.code-highlight span[style]"])]
                                   (is (identical? node (.querySelector element selector))))
                                 (is (empty? @*errors) (pr-str @*errors))))))))
         (.catch #(is false (str %)))

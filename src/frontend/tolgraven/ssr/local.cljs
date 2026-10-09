@@ -82,7 +82,7 @@
 (defn- renderer! []
   (-> (loader/acquire-code! :page-render)
       (.then (fn [spec]
-               (if (.querySelector js/document "#app .code-block")
+               (if (.querySelector js/document "#app .code-block, #app .code-highlight")
                  ;; Even an early external click cannot pull the formatter into
                  ;; initial hydration. A capture waits for the same page gate.
                  (js/Promise.

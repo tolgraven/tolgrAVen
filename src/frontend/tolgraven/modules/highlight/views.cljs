@@ -3,8 +3,10 @@
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
     [reagent.core :as r]
+    [tolgraven.react :as rf]
+    [tolgraven.modules.highlight.theme :as theme]
+    ["lowlight" :as lowlight]
     ["react-syntax-highlighter/dist/esm/default-highlight$default" :as SyntaxHighlighter]
-    ["react-syntax-highlighter/dist/esm/styles/hljs/gruvbox-dark$default" :as gruvboxDark]
    ; ["react-syntax-highlighter/dist/esm/languages/hljs/clojure" :as clj-lang]
    ; ["react-syntax-highlighter/dist/esm/languages/hljs/javascript" :as js-lang]
     ))
@@ -14,15 +16,42 @@
 ; (.registerLanguage SyntaxHighlighter "javascript" js-lang)
 ; (.registerLanguage SyntaxHighlighter "clojure" clj-lang)
 
+(defn code-tree
+  "Honor language tags; otherwise detect, using the owner's optional fallback
+   only when detection produces no language. Unknown tags also try detection."
+  [code language default-language & [auto-languages]]
+  (let [explicit (when language
+                   (try (.highlight lowlight language code)
+                        (catch :default _ nil)))
+        detected (or explicit (.highlightAuto lowlight code
+                                           (when auto-languages
+                                             #js {:subset (into-array auto-languages)})))]
+    (if (and (nil? (.-language detected)) default-language)
+      (.highlight lowlight default-language code)
+      detected)))
+
 (defc <code-block>
-  "Full language support is acquired only by code-block consumers."
-  [code & {:keys [language style basic?]
-           :or {language "clojure"
-                basic? true
-                style gruvboxDark}}]
-  [syntax-highlighter
-   {:language language
-    :style style
-    :showLineNumbers (not basic?)
-    :children code
-    :wrapLines (not basic?)}])
+  "Full language support and Bruvbox are acquired only by code consumers."
+  [code & {:keys [language default-language auto-languages style basic? inline?]
+           :or {basic? true
+                style theme/bruvbox}}]
+  (let [tree (rf/use-memo #(code-tree code language default-language auto-languages)
+                         #js [code language default-language auto-languages])
+        ;; Reuse the selected AST instead of running auto-detection twice.
+        generator (rf/use-memo
+                    #(clj->js {:listLanguages (fn [] #js [])
+                               :highlightAuto (fn [_] tree)})
+                    #js [tree])]
+    [syntax-highlighter
+     (cond-> {:language (or (.-language tree) language "text")
+              :astGenerator generator
+              :style style
+              :showLineNumbers (and (not inline?) (not basic?))
+              :children code
+              :wrapLines (and (not inline?) (not basic?))}
+       inline? (assoc :PreTag "code"
+                      :CodeTag "span"
+                      :className "code-highlight"
+                      :customStyle {:display "inline"
+                                    :padding 0
+                                    :background "transparent"}))]))

@@ -27,7 +27,11 @@ Do not retain completed investigation diaries or historical test counts as curre
   cleanup; importing a namespace must not install document listeners.
 - Local returns and reloads may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
 - Read `src/frontend/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/backend/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
-
+- Markdown code, including untagged blocks and inline snippets, shares the deferred
+  formatter boundary. Node SSR renders Bruvbox-highlighted tokens immediately;
+  browser acquisition waits for the existing after-page gate. The blog supplies
+  its Clojure fallback and detection set; reusable Markdown has no site-specific default.
+  Bruvbox palette/token ownership lives in `modules/highlight/theme.cljs`.
 
 ## Project Structure & Module Organization
 - `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code, and shared CLJC infrastructure. Feature implementations and their portable declarations live in `src/frontend/tolgraven/modules/<module>/`.

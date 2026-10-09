@@ -582,7 +582,7 @@
     (let [html (str "<a href=\"" url "\">Link</a>")] (is (= html (docs-view/page-links html))))))
 (deftest markdown-code-uses-reagent-props-without-js-conversion
   (let [html (server/render-to-static-markup [code/<markdown-code-component> {:children "inline"}])]
-    (is (re-matches #"<code(?: data-dev-component=\"[^\"]*\")?>inline</code>" html))))
+    (is (re-matches #"<code class=\"code-highlight\"(?: data-dev-component=\"[^\"]*\")?>inline</code>" html))))
 (deftest debug-and-theme-events-preserve-app-db
   (async done
          (-> (go-promise (let [before (rf/make-restore-fn)]

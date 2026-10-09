@@ -69,8 +69,13 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   returns render completed boundaries too and skip the formatter during bootstrap.
   Local-return rendering uses the lazy `:page-render` bundle;
   the installer remains eager to restore state before the first commit.
+- Markdown code, including untagged blocks and inline snippets, shares the deferred
+  formatter boundary. Node SSR renders Bruvbox-highlighted tokens immediately;
+  browser acquisition waits for the existing after-page gate. The blog supplies
+  its Clojure fallback and detection set; reusable Markdown has no site-specific default.
+  Bruvbox palette/token ownership lives in `modules/highlight/theme.cljs`.
 - Pretty data and expanded error details live in `:data-inspector`; keep pprint
-  out of initial browser code. Rendered Markdown uses Marked in its module; keep
+  out of initial browser code. Rendered Markdown uses ReactMarkdown in its module; keep
   unused Markdown-clj imports out of the shell. Shared numeric display uses native fixed decimal
   formatting. Landing story/float helpers belong to `:home`, with lazy compatibility
   exports in shared UI. Preserve prototype implementations when moving ownership.
