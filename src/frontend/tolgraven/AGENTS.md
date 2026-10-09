@@ -38,7 +38,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Module `:styles` metadata is available before code acquisition. The shared loader
   starts CSS and JS together and waits for both before readiness; React owns
   stylesheet insertion. Initial inlined route styles already satisfy readiness
-  and must not trigger duplicate external requests. Keep feature CSS in `resources/scss/modules` and preserve
+  and must not trigger duplicate external requests. Popup-only `:ssr-styles :deferred`
+  sheets stay out of the SSR head but still start before Shadow acquisition. Keep
+  feature CSS in `resources/scss/modules` and preserve
   ordinary selector specificity. See `doc/styles.md`.
 - A module `:install` hook may restore browser-local caches after code acquisition.
   The loader shares/awaits it before publishing code readiness; ordinary `:init`

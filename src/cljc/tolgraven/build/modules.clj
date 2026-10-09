@@ -14,6 +14,7 @@
             attrs (first (filter map? (drop 2 ns-form)))
             id (:id spec)
             styles (:styles spec)
+            ssr-styles (:ssr-styles spec)
             dependencies (get attrs :bundle/depends-on #{:main})]
         (when-not (and (= 'ns (first ns-form)) (symbol? (second ns-form))
                        (keyword? id) (set? dependencies) (every? keyword? dependencies))
@@ -23,8 +24,13 @@
                       (and (vector? styles) (every? string? styles)))
           (throw (ex-info "Module :styles must be a literal vector of stylesheet paths"
                           {:file (str file)})))
+        (when (and (contains? spec :ssr-styles)
+                   (not (#{:initial :deferred} ssr-styles)))
+          (throw (ex-info "Module :ssr-styles must be literal :initial or :deferred"
+                          {:file (str file)})))
         (cond-> {:id id :entry (second ns-form) :depends-on dependencies}
-          (seq styles) (assoc :styles styles))))))
+          (seq styles) (assoc :styles styles)
+          ssr-styles (assoc :ssr-styles ssr-styles))))))
 
 (defn discover
   ([] (discover root))
@@ -73,5 +79,7 @@
   ;; Bake this inventory into both runtimes. Packaged servers have no source tree.
   (let [declarations (discover)]
     (track-declarations! &env declarations)
-    (into {} (map (fn [{:keys [id styles depends-on]}]
-                   [id {:paths (vec styles) :depends-on depends-on}])) declarations)))
+    (into {} (map (fn [{:keys [id styles depends-on ssr-styles]}]
+                   [id (cond-> {:paths (vec styles)
+                                :depends-on depends-on}
+                         ssr-styles (assoc :ssr-styles ssr-styles))])) declarations)))

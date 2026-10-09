@@ -191,6 +191,8 @@
             cv (render "/cv")]
         (is (.contains blog "data-module-style=\"/bundles/hash/module-blog.css\""))
         (is (.contains blog ".blog-post{color:red}"))
+        (is (not (.contains blog "data-module-style=\"/bundles/hash/module-link-preview.css\"")))
+        (is (.contains blog "module-link-preview.css") "Deferred URLs remain in the loader manifest")
         (is (not (.contains blog "\uFEFF")) "A UTF-8 marker cannot become part of the first selector")
         (is (.contains blog "<\\/style>") "CSS cannot terminate the style element")
         (is (not (re-find #"<link[^>]*module-(blog|user|link-preview|markdown)\.css" blog)))
@@ -260,7 +262,8 @@
       (is (some #(.contains % "modules/markdown.min.css") home))
       (is (some #(.contains % "modules/monospace.min.css") home))
       (is (not-any? #(.contains % "modules/link-preview.min.css") home))
-      (is (some #(.contains % "modules/link-preview.min.css") blog)))))
+      (is (not-any? #(.contains % "modules/link-preview.min.css") blog))
+      (is (some #(.contains % "modules/markdown.min.css") blog)))))
 
 (deftest local-return-template-preserves-sdk-before-app-execution
   (doseq [[dev? sdk-path] [[true "/vendor/supabase.js"]

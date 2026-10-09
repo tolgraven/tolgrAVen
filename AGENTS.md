@@ -87,7 +87,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   compressed icon selector/font-face sheet, and independent feature sheets. Module
   specs declare literal `:styles`; CSS starts alongside JS acquisition. SSR emits
   route styles in the initial head, inlining small feature sheets within a bounded
-  budget; Optimus fingerprints each bundle separately.
+  budget. Popup-only modules may declare `:ssr-styles :deferred`; Optimus
+  fingerprints each bundle separately.
   See `doc/styles.md` for source ownership and loading behavior.
 - `bb images:responsive`: rebuild the opt-in image catalog's sized AVIF/WebP assets.
 - `bb videos:responsive`: rebuild the opt-in video catalog's mobile renditions.

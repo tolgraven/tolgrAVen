@@ -40,3 +40,11 @@
 
 (defn paths [manifest module]
   (vec (distinct (mapcat #(get manifest % []) (dependencies module)))))
+
+(defn initial-paths [manifest module]
+  ;; Dependencies still contribute their own initial styles even when a consumer
+  ;; owns only popup/intent CSS. Runtime acquisition always uses the full `paths`.
+  (vec (distinct
+         (mapcat #(get manifest % [])
+                 (remove #(= :deferred (get-in modules [% :ssr-styles]))
+                         (dependencies module))))))
