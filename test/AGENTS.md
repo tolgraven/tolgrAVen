@@ -9,6 +9,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   checks cover accepted transactions, rejected transactions and explicit deletions.
 - Unit/component tests may replace transport boundaries. Live integration must use
   real routes, module loaders and service bindings; do not inject fixture app state.
+- Boot checks dispatch the real startup/stop events and mount/unmount the common
+  lifecycle host. Verify repeated starts/remounts do not multiply listeners,
+  persistence drains before native history release, and deferred work is cancelled.
 - Use owning schemas/constructors in fixtures instead of duplicating contracts.
   Test browser/Node-only schemas in `test/cljs`; JVM tests exercise portable/server
   contracts and generic composition helpers.

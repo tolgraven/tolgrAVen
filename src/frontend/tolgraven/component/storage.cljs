@@ -249,13 +249,6 @@
   ;; Only mark a return after the consolidated public write succeeds.
   (try (mark-return! @*public-saved?) (catch :default _ nil)))
 
-(defonce listeners
-  (when (exists? js/window)
-    (.addEventListener js/window "pagehide" (fn [_] (save-navigation!)))
-    (.addEventListener js/document "visibilitychange"
-                       (fn [_] (when (= "hidden" (.-visibilityState js/document))
-                                 (save-navigation!))))))
-
 (defn- removed-paths
   "Walk only changed map branches; unchanged subtrees retain their identity."
   [before after path]

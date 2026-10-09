@@ -15,6 +15,9 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Analytics initialization and script acquisition belong to the browser lifecycle
   after hydration and page readiness; SSR emits no analytics markup or bootstrap.
 - After hydration, navigation is entirely SPA: commit the destination immediately, then acquire code/data through shared bindings. Related blog routes retain their shell.
+- `boot.cljs` owns ordered document listeners, committed UI setup and deferred
+  background hosts. Register browser listeners through effects with an owner and
+  cleanup; importing a namespace must not install document listeners.
 - Local external returns may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
 - Read `src/frontend/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/backend/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
 
