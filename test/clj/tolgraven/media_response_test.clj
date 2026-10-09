@@ -53,7 +53,7 @@
   (with-redefs [config/env {:stage true}]
     (let [files (middleware/optimize-all
                  (assets/load-bundle "public" "icons.css"
-                   ["/css/fontawesome.css" "/css/tolgraven/icons.min.css"]) {})
+                   ["/css/tolgraven/icons.min.css"]) {})
           request {:optimus-assets files}
           css-path (first (link/bundle-paths request ["icons.css"]))
           css (:contents (assets/get-asset-by-path request css-path))]
