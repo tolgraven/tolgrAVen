@@ -187,3 +187,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   sandboxed miniature starts after the readable card paints and only when frame
   policy permits the parent origin. Following a preview expands it before departure;
   visited URLs and transient-surface restoration keep their existing owner policy.
+
+- oEmbed provider HTML belongs only in an opaque-origin `srcDoc` iframe with
+  scripts enabled and same-origin access disabled. Its URL uses the shared
+  managed source; never insert provider markup into the application DOM.

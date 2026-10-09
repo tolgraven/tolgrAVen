@@ -1,39 +1,46 @@
 (ns tolgraven.components.oembed
   (:require
     [tolgraven.component.registry]
-    [clojure.string :as string]
-    [reagent.core :as r]
+    [tolgraven.component.data :as data]
+    [tolgraven.components.oembed-schema :as schema]
     [tolgraven.react :as rf]
     [tolgraven.components.image :as img]
     [tolgraven.macros :as m]
     [tolgraven.components.ui :as ui]))
 
-(m/defc <oembed-view> [url <loading>]
-  (let [state    (r/atom {:loading? true})
-        hovered? (r/atom false)
-        <comp>   (fn []
-                   [:div.oembed-inner
-                    {:style {:height (:height @state)}
-                     :dangerouslySetInnerHTML
-                     (r/unsafe-html (or (get-in @state [:data :html]) ""))}])]
-    (rf/dispatch [:http/get {:uri    "/api/oembed"
-                             :params {:url url}}
-                  #(r/rswap! state merge {:loading? false
-                                          :data %})
-                  #(r/rswap! state merge {:loading? false
-                                          :error %})])
-    (fn [_ _]
-      (let [{:keys [loading? data error]} @state]
-        [:div.oembed.parallax-sm
-         {:class          (when @hovered? "hovered")
-          :on-mouse-enter #(do (reset! hovered? true)
-                               (js/console.log "hovered embed"))
-          :on-mouse-leave #(do (reset! hovered? false)
-                               (js/console.log "unhovered embed"))}
-         (cond
-           (and loading? <loading>) <loading>
-           error "Failed to load embed"
-           :else [<comp>])]))))
+(defn dependency [url]
+  {:source :url
+   :url (str "/api/oembed?url=" (js/encodeURIComponent url))
+   :ttl-ms 60000})
+
+(m/defc ^:private <loading> [_ placeholder]
+  (or placeholder [:p "Loading player…"]))
+
+(m/defc ^:private <player> [result :- schema/result]
+  ;; Provider markup runs in an opaque-origin document. Never combine
+  ;; allow-scripts with allow-same-origin for this untrusted srcDoc boundary.
+  [:iframe.oembed-inner
+   {:title (or (:title result) "Embedded player")
+    :sandbox "allow-scripts"
+    :referrer-policy "no-referrer"
+    :style {:width "100%"
+            :border "none"
+            :height (str (/ (max 80 (min 640 (or (:height result) 166))) 16) "rem")}
+    :src-doc (str "<!doctype html><html><head><meta name='viewport' content='width=device-width'>"
+                  "<style>body{margin:0}iframe{display:block;width:100%;border:0}</style>"
+                  "</head><body>" (or (:html result) "") "</body></html>")}])
+
+(m/defc <oembed-view>
+  {:depends (fn [url _] [(dependency url)])
+   :loading <loading>}
+  [url :- :string placeholder]
+  (let [[hovered? set-hovered!] (rf/use-state false)
+        result (:value (data/snapshot (dependency url)))]
+    [:div.oembed.parallax-sm
+     {:class (when hovered? "hovered")
+      :on-mouse-enter #(set-hovered! true)
+      :on-mouse-leave #(set-hovered! false)}
+     [<player> result]]))
 
 ;; Unfinished React-player alternative; oEmbed remains the active player.
 (m/defc <remote-player>
