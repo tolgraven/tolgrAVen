@@ -18,7 +18,7 @@
 (defn settings []
   (let [settings (merge {:enabled true
                          :render-workers 2
-                         :cache-ttl-ms 10000
+                         :cache-ttl-ms 3600000
                          :worker "target/ssr/site.js"
                          :node-binary "node"}
                         (:ssr config/env))]

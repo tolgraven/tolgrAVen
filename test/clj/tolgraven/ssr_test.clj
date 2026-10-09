@@ -89,10 +89,13 @@
         *build (atom 1)
         *offline? (atom false)
         *text (atom "First")
-        expire! #(swap! ssr/*cache update-in [["/blog" nil] :at] - 11000000000)]
+        age! (fn [seconds]
+               (swap! ssr/*cache assoc-in [["/blog" nil] :at]
+                      (- (System/nanoTime) (* seconds 1000000000))))
+        expire! #(age! 3601)]
     (reset! ssr/*cache {})
     (try
-      (with-redefs [config/env {:ssr {:cache-ttl-ms 10000}}
+      (with-redefs [config/env {}
                     ssr/renderer-build (fn [] @*build)
                     ssr/snapshot! (fn [_ _]
                                     (swap! *reads inc)
@@ -104,6 +107,11 @@
         (is (not (ssr/cached? "/blog" {:tag "other"})) "Query keys remain isolated")
         (is (= :hit (:cache (ssr/page! "/blog"))))
         (is (= [1 1] [@*reads @*renders]) "A fresh hit performs neither I/O nor rendering")
+        (doseq [seconds [15 3540]]
+          (age! seconds)
+          (is (ssr/cached? "/blog" nil))
+          (is (= :hit (:cache (ssr/page! "/blog"))))
+          (is (= [1 1] [@*reads @*renders]) "The default avoids reads and renders within one hour"))
         (expire!)
         (is (not (ssr/cached? "/blog" nil)) "Expired data may stream the shell")
         (is (= :hit (:cache (ssr/page! "/blog"))))
@@ -347,12 +355,16 @@
 (deftest ssr-is-enabled-by-default-and-configurable-through-edn
   (with-redefs [config/env {}]
     (is (ssr/enabled?))
-    (is (= 10000 (:cache-ttl-ms (ssr/settings))))
+    (is (= 3600000 (:cache-ttl-ms (ssr/settings))))
     (is (= "target/ssr/site.js" (ssr/worker-path))))
-  (with-redefs [config/env {:ssr {:enabled false :worker "/configured/site.js" :render-workers 3}}]
+  (with-redefs [config/env {:ssr {:enabled false
+                                :worker "/configured/site.js"
+                                :render-workers 3
+                                :cache-ttl-ms 10000}}]
     (is (false? (ssr/enabled?)))
     (is (= "/configured/site.js" (ssr/worker-path)))
-    (is (= 3 (:render-workers (ssr/settings))))))
+    (is (= 3 (:render-workers (ssr/settings))))
+    (is (= 10000 (:cache-ttl-ms (ssr/settings))))))
 
 
 (deftest blog-pages-and-tags-use-filtered-bulk-queries
