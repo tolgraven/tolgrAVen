@@ -1,7 +1,7 @@
 # Browser and renderer implementation
 
 Keep this guide current with source changes. Detailed APIs/examples live in
-`doc/components.md`, `doc/blog-ssr.md`, and `doc/dev-console.md`.
+`doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.
 
 - Feature caches observe re-frame subscriptions through owned, disposable
   reactions. Persistence belongs in the storage lifecycle adapter; do not add
@@ -77,3 +77,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Avatar fallbacks must also recover originals that failed before hydration attached
   handlers. Preserve modern-format retries and constrain broken-image alt text to
   the avatar box; a missing upload must not widen post/comment layout.
+
+- Thin build adapters may use `.cljc` solely for Shadow reader features (`:browser`,
+  `:ssr`, `:dev`); `.cljs` cannot contain reader conditionals. Keep these separate
+  from shared JVM contracts and do not infer a server renderer from the extension.

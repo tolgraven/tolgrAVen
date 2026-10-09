@@ -3,7 +3,7 @@
     [tolgraven.component.registry]
     [tolgraven.react :as rf]
     [tolgraven.content.contract :as content-contract]
-    [tolgraven.ssr.contract :as ssr-contract]
+    [tolgraven.modules.main.layout :as layout]
     [tolgraven.modules.main.sections :as home]
     [tolgraven.components.media :as media]
     [tolgraven.components.oembed :as oembed]
@@ -61,7 +61,7 @@
 ; (doall run/init @sub)
 
 (def layouts
-  {:main ssr-contract/landing-layout
+  {:main layout/landing-layout
    :desktop :something-splitty
    :joen :just-about-me/components
    :av :just-about-company })

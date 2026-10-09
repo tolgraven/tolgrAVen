@@ -1,7 +1,10 @@
-(ns tolgraven.page-return-test
-  (:require [clojure.test :refer [deftest is]]
-            [clojure.edn :as edn]
-            [tolgraven.ssr.return-contract :as contract]))
+(ns tolgraven.transport-contract-test
+  (:require [cljs.test :refer-macros [deftest is]]
+            [cljs.reader :as edn]
+            [tolgraven.ssr.return-contract :as contract]
+            [tolgraven.ssr.schema :as ssr]
+            [tolgraven.ssr.contract :as snapshot]
+            [malli.core :as m]))
 
 (deftest render-state-preserves-typed-content-and-view-state-without-runtime-or-credentials
   (let [db {:content {:blog {:heading "Saved heading" :session-title "A recording session"}}
@@ -42,7 +45,26 @@
   (let [template "<title>__LOCAL_PAGE_TITLE__</title>__LOCAL_PAGE_HTML__<script>__LOCAL_PAGE_STATE__</script>"
         html "<p>__LOCAL_PAGE_STATE__</p>"
         result (contract/document template html "{\"text\":\"</script>\"}" "A < B & C")]
-    (is (.contains result "<title>A &lt; B &amp; C</title>"))
-    (is (.contains result html))
-    (is (.contains result "\\u003c/script>"))
-    (is (not (.contains result "\"</script>\"")))))
+    (is (.includes result "<title>A &lt; B &amp; C</title>"))
+    (is (.includes result html))
+    (is (.includes result "\\u003c/script>"))
+    (is (not (.includes result "\"</script>\"")))))
+
+(deftest storage-envelope-contract
+  (is (m/validate ssr/storage-snapshot {:version 1 :schema 2 :expires-at 100 :value {:a []}}))
+  (doseq [value [nil [] {:version 1 :schema 1 :expires-at "later" :value {}}
+                       {:version 1 :schema 1 :expires-at 100}]]
+    (is (not (m/validate ssr/storage-snapshot value)))))
+
+(deftest hydration-and-node-share-module-owned-snapshot-state
+  (let [post {:id 42 :title "Portable" :text "Body"}
+        public (snapshot/snapshot-state {:kind :blog :path "/blog/post/42" :posts [post]
+                                         :trusted-author-ids ["author"]})
+        encoded (snapshot/snapshot-state {:kind :blog :path "/blog/post/42" :posts [post]
+                                           :app-db-edn "{:state {:blog {:page 7 :comment-limit {42 20}}}}"})]
+    (is (= 42 (get-in public [:state :blog :current-post-id])))
+    (is (= ["author"] (get-in public [:options :supabase :trusted-author-ids])))
+    (is (seq (get-in public [:store :scoped])))
+    (is (= 7 (get-in encoded [:state :blog :page])))
+    (is (= 20 (get-in encoded [:state :blog :comment-limit 42])))
+    (is (nil? (get-in (snapshot/snapshot-state {:kind :cv :path "/cv" :posts []}) [:state :blog])))))

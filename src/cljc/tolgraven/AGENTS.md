@@ -38,3 +38,7 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
 - Module declarations may supply `:install` for code-owned setup. Browser loading
   awaits it before publishing readiness; Node adapters keep browser disk/cache
   installation inert. Keep this lifecycle distinct from managed data activation.
+
+- Thin build adapters may use `.cljc` solely for Shadow reader features (`:browser`,
+  `:ssr`, `:dev`); `.cljs` cannot contain reader conditionals. Keep these separate
+  from shared JVM contracts and do not infer a server renderer from the extension.

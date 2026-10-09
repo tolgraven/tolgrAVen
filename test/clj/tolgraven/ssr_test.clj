@@ -1,4 +1,4 @@
-(ns tolgraven.blog-ssr-test
+(ns tolgraven.ssr-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.data.json :as json]
             [clojure.string :as string]

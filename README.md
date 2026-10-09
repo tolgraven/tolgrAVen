@@ -23,7 +23,7 @@ The development server runs at http://localhost:4000. Run `npm run dev` in a
 second terminal to watch CSS. In the Clojure REPL, `(cljs-repl)` selects the
 `:app-dev` browser runtime and watches the `:ssr` Node target. SSR is enabled by
 default; configure `:ssr {:enabled true :render-workers 2 :worker "target/ssr/site.js"
-:node-binary "node"}` in `config/local.dev.edn`. See [SSR configuration](doc/blog-ssr.md). `(restart-handler)` reloads the Ring handler after
+:node-binary "node"}` in `config/local.dev.edn`. See [SSR configuration](doc/ssr.md). `(restart-handler)` reloads the Ring handler after
 reloading changed backend namespaces.
 
 Set `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY` and server-only
@@ -56,7 +56,7 @@ lein with-profile -dev,+prod run -m shadow.cljs.devtools.cli release app --confi
 Both browser builds use the same lazy module graph. Pull requests validate CSS;
 the deployment job runs only for pushes to `master`.
 
-See [component authoring](doc/components.md), [page rendering](doc/blog-ssr.md),
+See [component authoring](doc/components.md), [page rendering](doc/ssr.md),
 and [testing](doc/testing.md) for current architecture and verification workflows.
 
 ## License

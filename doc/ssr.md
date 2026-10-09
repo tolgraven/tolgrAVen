@@ -1,7 +1,7 @@
 # Page rendering, hydration and navigation
 
 SSR is enabled by default. Configure it under `:ssr` in your `config.edn`
-(`dev-config.edn` in local development):
+(`config/local.dev.edn` in local development):
 
 ```clojure
 :ssr {:enabled true
@@ -36,8 +36,8 @@ component definition.
 
 ## Rendering and hydration
 
-Both environments render `views/page.cljs`, the ordinary application shell.
-The blog uses `blog/views.cljs`; the landing page uses `views/auto.cljs` and its
+Both environments render `components/page.cljs`, the ordinary application shell.
+The blog uses `modules/blog/views.cljs`; the landing page uses `modules/main/sections.cljs` and its
 existing home/media components. There are no SSR-only copies of the header,
 footer, post markup, Markdown configuration, pagination or landing sections.
 
@@ -112,7 +112,7 @@ are `no-store`: CSRF and request-specific layout data are never cached with publ
 `supabase/query.cljc` defines the public table/field mappings, projections, filters,
 ordering, limits, batching keys and reply-count relation. The JVM reader and browser
 SDK adapter consume those same plans and the existing shared row-to-app-db contract.
-`blog/data.cljc` declares the graph of summaries, selected posts, bounded roots,
+`modules/blog/data.cljc` declares the graph of summaries, selected posts, bounded roots,
 immediate children and public authors. The module’s page spec carries that plan;
 `ssr.clj` has no blog SQL/REST predicates or blog snapshot branch.
 
@@ -334,3 +334,35 @@ The HTTP layout remains Hiccup data through response preparation. Streaming emit
 the head and Hiccup shell, flushes, then renders the completed Hiccup body. Only
 the transport adapter keeps the enclosing document tags open between chunks;
 there is no HTML marker or serialized-page splitting.
+
+## Runtime and source ownership
+
+There is one generic SSR pipeline. Ring matches the module's native route and
+acquires public content through JVM adapters, coordinates the cache/in-flight
+work, and leases a persistent Node worker. Node renders the ordinary page
+components and returns markup; it does not acquire database or CMS content.
+The shell and complete page use the same renderer. Blog query plans are module
+capabilities, not a second blog server or alternate set of page markup.
+
+The browser's optional local-return renderer also calls the shared React renderer.
+Its service worker serves an exact cached document/state pair; it does not create
+another server rendering pipeline. Ordinary SPA navigation never requests SSR HTML.
+
+Source extensions reflect actual consumers:
+
+- Module `pages.cljc`, public query plans, data normalization and
+  `ssr/contract_schema.cljc` are consumed by JVM and CLJS code.
+- `ssr/contract.cljs`, `return_contract.cljs`, and `schema.cljs` belong to Node and
+  browser execution. Their tests run in the browser suite. The JVM does not need
+  a copy of hydration or browser persistence logic.
+- `modules/blog/ssr.cljs` owns legacy display-row snapshot conversion and initial
+  blog state. Node rendering and browser hydration use this once through the
+  same snapshot adapter; exact `:app-db-edn` state takes precedence.
+- `modules/main/layout.cljs` owns home section ordering and its module SSR metadata.
+- Small `.cljc` build adapters may use Shadow's `:browser`, `:ssr` and `:dev`
+  reader features even without JVM consumers. `.cljs` does not support reader
+  conditionals; these adapters do not imply a second JVM renderer.
+
+Run `bb ssr:fixtures` against the current Node build before browser tests. The
+blog-named fixture remains a blog test input, while the command checks all page
+kinds, request isolation, unsafe Markdown, missing permalinks and initial shells.

@@ -1,6 +1,6 @@
 # Server adapters
 
-Keep this guide current. See `doc/blog-ssr.md`, `doc/strapi-content.md`, and
+Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 `doc/site-provisioning.md` for operating and configuration details.
 
 - Feature-owned server adapters live under `modules/<feature>/`; shared platform
@@ -25,3 +25,7 @@ Keep this guide current. See `doc/blog-ssr.md`, `doc/strapi-content.md`, and
 - Reitit uses shared Malli parameter schemas. Internal/response validation follows
   runtime configuration; request coercion remains active. Coercion error handlers
   must not log full exception data or return request/response values.
+
+- `ssr/contract_schema.cljc` is the JVM/Node protocol boundary. Hydration and
+  local-return adapters live in frontend CLJS; module-owned snapshot conversion
+  is shared by the Node renderer and browser, not required by the JVM server.

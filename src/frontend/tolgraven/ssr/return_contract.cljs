@@ -9,8 +9,7 @@
 (def ttl-ms 1800000)
 (def max-bytes (* 2 1024 1024))
 (defn byte-count [text]
-  #?(:clj (alength (.getBytes ^String text "UTF-8"))
-     :cljs (.-length (.encode (js/TextEncoder.) text))))
+  (.-length (.encode (js/TextEncoder.) text)))
 (def roots [:content :component :page :module :global :docs :search :cookie-notice :hud])
 (def transient-state [:debug :global-clicked :is-loading :page-init :navigation :login-field :register-field :form-field
                       :supabase-init :on-booted :supabase-writes])
