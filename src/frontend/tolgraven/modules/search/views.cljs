@@ -60,12 +60,18 @@
    (rf/use-effect
      (fn []
        (if (and open? (exists? js/document))
-         (let [timer (js/setTimeout
+         (let [input (util/elem-by-id "search-input")
+               timer (js/setTimeout
                        (fn []
                          (util/scroll-to "search-input")
-                         (some-> "search-input" util/elem-by-id .focus))
+                         (when input (.focus input #js {:preventScroll true})))
                        100)]
-           #(js/clearTimeout timer))
+           (fn []
+             (js/clearTimeout timer)
+             ;; A focused, collapsed input makes the browser chase its hidden
+             ;; caret during later page/layout changes, even after navigation.
+             (when (identical? input (.-activeElement js/document))
+               (.blur input))))
          js/undefined))
      #js [open?])
    [ui/<input-text-styled>

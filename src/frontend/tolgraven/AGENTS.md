@@ -47,6 +47,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   renderer. HTML and state are inseparable. Do not copy DOM or replay init before
   hydration; retain exact query caches and fold/window state.
 - Browser-only APIs belong in lifecycle/effect adapters with cleanup and SSR guards.
+  Deferred Search owns focus while open and releases it on close/unmount; hidden
+  input focus must not drive scrolling during later navigation.
 - `browser_resources.cljs` acquires analytics and necessary compatibility scripts
   after hydration, window load, two paint frames and idle with no pending page
   bindings. Production analytics initializes its queue/configuration there too;
