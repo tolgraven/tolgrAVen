@@ -72,6 +72,12 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   unused Markdown-clj imports out of the shell. Shared numeric display uses native fixed decimal
   formatting. Landing story/float helpers belong to `:home`, with lazy compatibility
   exports in shared UI. Preserve prototype implementations when moving ownership.
+- Saved local HTML/state pairs also restore reload and address-bar document
+  navigation at the exact URL/build, once. With no usable pair, network SSR
+  hydrates first; validated disk display choices restore afterwards, preserving
+  interactions made since startup. Server content/query results retain priority.
+  Paired shell markup suppresses default header/menu/footer entrances; explicit
+  menu intent resumes ordinary motion.
 - The local return adapter renders an isolated state snapshot using the shared
   renderer. HTML and state are inseparable. Do not copy DOM or replay init before
   hydration; retain exact query caches and fold/window state.

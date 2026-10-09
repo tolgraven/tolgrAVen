@@ -5,6 +5,9 @@
 
 (def state
   [:map
+   [:restore-edits {:optional true}
+    [:set [:tuple [:enum :comment-thread-expanded :comment-limit :adding-comment :comments-expanded]
+           :any]]]
    [:current-post-id {:optional true} [:maybe c/id]]
    [:viewing-tag {:optional true} [:maybe :string]]
    [:comments-expanded {:optional true} [:map-of c/id :boolean]]

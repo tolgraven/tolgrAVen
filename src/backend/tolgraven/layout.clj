@@ -242,6 +242,12 @@
 (defn render-hiccup [page & args]
   (update (apply hiccup-response page args) :body render-document))
 
+(defn- store-sdk-script [request]
+  {:src (if (:dev env) "/vendor/supabase.js"
+          (or (first (olink/bundle-paths request ["supabase.js"])) "/vendor/supabase.js"))
+   :async false
+   :defer true})
+
 (defn return-template [request]
   ;; No page data acquisition: the browser supplies both markup and its state.
   {:version 1 :build (str (ssr/renderer-build))
@@ -249,7 +255,8 @@
               (home (assoc request :local-return? true :restore? true)
                     :loading-content "__LOCAL_PAGE_HTML__"
                     :anti-forgery (force *anti-forgery-token*)
-                    :title "__LOCAL_PAGE_TITLE__"))})
+                    :title "__LOCAL_PAGE_TITLE__"
+                    :js-paths [(store-sdk-script request)]))})
 
 (def render-hiccup-memo) ; well no because of anti forgery token, requests differing etc
 
@@ -336,10 +343,7 @@
    :css-paths (if (:dev env)
                 ["/css/tolgraven/icons.min.css"]
                 (olink/bundle-paths request ["icons.css"]))
-   :js-paths [{:src (if (:dev env) "/vendor/supabase.js"
-                        (or (first (olink/bundle-paths request ["supabase.js"])) "/vendor/supabase.js"))
-               :async false
-               :defer true}]
+   :js-paths [(store-sdk-script request)]
    :js-pre script-paths
    :img-pre (page/critical-images (some-> (:uri request) pages/match :data)
                                   (or (get-in ssr [:snapshot :content])

@@ -34,8 +34,8 @@
       (.then #(.put % arm-url (js/Response. (js/JSON.stringify #js {:url url :expires (+ (.now js/Date) ttl-ms)}))))))
 
 (defn network! [request returning?]
-  ;; A regular document load must not be mistaken for a history restoration
-  ;; merely because an older state-persistence cookie exists.
+  ;; Without an exact local pair, ordinary requests still use network SSR.
+  ;; Only an explicitly armed failed external return requests disk restoration.
   (let [headers (js/Headers. (.-headers request))]
     (.set headers "X-Page-Render" (if returning? "state" "ssr"))
     (js/fetch (js/Request. request #js {:headers headers}))))
@@ -45,21 +45,27 @@
       (.catch (fn [_] nil))
       (.then (fn [_] (.open js/caches cache-name)))
       (.then (fn [cache]
-               (-> (.match cache arm-url)
-                   (.then (fn [armed]
-                            (when armed (.json armed))))
-                   (.then (fn [armed]
-                            (if (and armed (= (.-url armed) (.-url request))
-                                     (> (.-expires armed) (.now js/Date)))
-                              (-> (.match cache request)
-                                  (.then (fn [saved]
-                                           (if (and saved
-                                                    (< (- (.now js/Date) (js/Number (.get (.-headers saved) "X-Local-Saved"))) ttl-ms))
-                                             ;; Consume only after a matching document was found.
-                                             (-> (js/Promise.all #js [(.delete cache arm-url) (.delete cache request)])
-                                                 (.then (fn [_] saved)))
-                                             (network! request true)))))
-                              (network! request false)))))))
+               (-> (js/Promise.all #js [(.match cache request) (.match cache arm-url)])
+                   (.then (fn [entries]
+                            (let [saved (aget entries 0)
+                                  armed (aget entries 1)]
+                              (-> (if armed (.json armed) (js/Promise.resolve nil))
+                                  (.then (fn [armed]
+                                           (let [returning? (and armed (= (.-url armed) (.-url request))
+                                                                 (> (.-expires armed) (.now js/Date)))
+                                                 fresh? (and saved
+                                                             (< (- (.now js/Date)
+                                                                   (js/Number (.get (.-headers saved) "X-Local-Saved")))
+                                                                ttl-ms))]
+                                             (if fresh?
+                                               ;; Reload/address-bar navigation needs the same
+                                               ;; paired layout as an external history return.
+                                               ;; Consume once; the new page republishes current state.
+                                               (-> (js/Promise.all
+                                                     (into-array (cond-> [(.delete cache request)]
+                                                                   returning? (conj (.delete cache arm-url)))))
+                                                   (.then (fn [_] saved)))
+                                               (network! request returning?))))))))))))
       (.catch (fn [_] (js/fetch request)))))
 
 (defn init! []

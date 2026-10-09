@@ -35,7 +35,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Link Preview sheet to unrelated routes. Inline small optimized sheets
   within a 16 KiB document budget; publish all URLs in `#module-styles`;
   local return documents carry their saved modules' styles before first paint.
-- Keep SDK and app scripts ordered and deferred. Emit no analytics metadata,
+- Keep SDK and app scripts ordered and deferred, including local-return templates. Emit no analytics metadata,
   queue or scripts; the browser initializes it only after hydration and page readiness.
   SSR hydration preloads follow only the route’s Shadow dependency graph; other
   module exports acquire code on activation. Preloads use low fetch priority in

@@ -260,3 +260,22 @@
       (is (some #(.contains % "modules/monospace.min.css") home))
       (is (not-any? #(.contains % "modules/link-preview.min.css") home))
       (is (some #(.contains % "modules/link-preview.min.css") blog)))))
+
+(deftest local-return-template-preserves-sdk-before-app-execution
+  (doseq [[dev? sdk-path] [[true "/vendor/supabase.js"]
+                          [false "/bundles/supabase.hash.js"]]]
+    (with-redefs [config/env {:dev dev?}
+                  ssr/renderer-build (constantly "return-test")
+                  olink/bundle-paths (fn [_ bundles]
+                                      (case (first bundles)
+                                        "supabase.js" [sdk-path]
+                                        "main.js" ["/bundles/main.hash.js"]
+                                        []))]
+      (let [html (:template (layout/return-template {:uri "/api/page-return-template"}))
+            sdk-tags (filter #(.contains % (str "src=\"" sdk-path "\""))
+                             (re-seq #"<script[^>]+>" html))]
+        (is (= 1 (count sdk-tags)))
+        (is (.contains (first sdk-tags) "defer"))
+        (is (not (.contains (first sdk-tags) "async")))
+        (is (< (.indexOf html sdk-path) (.indexOf html "/bundles/main.hash.js")))
+        (is (not (.contains html "googletagmanager")))))))

@@ -251,3 +251,7 @@ h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
 #to-top-bg {
   /* filter: brightness(150%); */
 }
+
+.footer-full[data-restored-motion="true"] {
+  animation: none;
+}

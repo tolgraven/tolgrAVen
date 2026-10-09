@@ -1,6 +1,7 @@
 (ns tolgraven.components.shell
   (:require
     [tolgraven.component.registry]
+    [tolgraven.component.restore :as restore]
     [reagent.core :as r]
     [tolgraven.macros :as m :refer-macros [defc]]
     [tolgraven.react :as rf]
@@ -80,71 +81,81 @@
 
 (defc <header> {:features [:error-boundary]}
   [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
-  [:<>
-   [ui/<input-toggle> "nav-menu-open" [:menu] :class "burger-check"]
-   (when @(rf/subscribe [:fullscreen/any?])
-     [:div.header-before
-      {:class (when @(rf/subscribe [:state [:scroll :past-top]])
-                "past-top")}])
-   [:header
-    {:class (when @(rf/subscribe [:state [:hidden :header] ])
-              "hide")}
-    [:div.cover.cover-clip] ;covers around lines and that... XXX breaks when very wide tho.
-    [<header-logo> @(rf/subscribe [:header-text])]
-    [<header-nav> menu]
+  (let [menu-open? @(rf/subscribe [:state [:menu]])
+        initial-menu (rf/use-ref menu-open?)
+        [restored? set-restored!] (rf/use-state #(restore/local-document?))
+        initial-menu? (= menu-open? (.-current initial-menu))]
+    ;; A restored shell is already visible. The first menu intent resumes motion.
+    (rf/use-effect
+     (fn []
+       (when-not initial-menu? (set-restored! false))
+       js/undefined)
+     #js [initial-menu?])
+    [:<>
+     [ui/<input-toggle> "nav-menu-open" [:menu] :class "burger-check"]
+     (when @(rf/subscribe [:fullscreen/any?])
+       [:div.header-before
+        {:class (when @(rf/subscribe [:state [:scroll :past-top]])
+                  "past-top")}])
+     [:header
+      {:data-restored-motion (and restored? initial-menu?)
+       :class (when @(rf/subscribe [:state [:hidden :header] ])
+                "hide")}
+      [:div.cover.cover-clip] ;covers around lines and that... XXX breaks when very wide tho.
+      [<header-logo> @(rf/subscribe [:header-text])]
+      [<header-nav> menu]
 
-    (when @(rf/subscribe [:state [:menu]])
-      [:div.line])
+      (when @(rf/subscribe [:state [:menu]])
+        [:div.line])
 
-    (when-let [loading @(rf/subscribe [:loading])]
-      [ui/<loading-spinner> (rf/subscribe [:loading]) :still
-       {:style {:position :absolute
-                :left     "-2.65em"                                   ; puts it to left of header-logo, only partly visible. looks nice.
-                :top      "0%"}}])
-    [:div.header-icons
-     [:a.button.blog-link-btn.noborder.nomargin
-      {:href @(rf/subscribe [:href :blog])
-       :aria-label "My blog"
-       :title "My blog"}
-      [:i.fa.fa-pen-fancy]]
-    [:a.button.settings-btn.noborder.nomargin
-     {:href @(rf/subscribe [:href-add-query
-                            {:settingsBox (not @(rf/subscribe [:state [:settings :panel-open]]))}])
-      :aria-label "Settings"
-      :title "Settings"}
-     [:i.settings-btn {:class "fa fa-cog"}]]
+      (when-let [loading @(rf/subscribe [:loading])]
+        [ui/<loading-spinner> (rf/subscribe [:loading]) :still
+         {:style {:position :absolute
+                  :left     "-2.65em"                                   ; puts it to left of header-logo, only partly visible. looks nice.
+                  :top      "0%"}}])
+      [:div.header-icons
+       [:a.button.blog-link-btn.noborder.nomargin
+        {:href @(rf/subscribe [:href :blog])
+         :aria-label "My blog"
+         :title "My blog"}
+        [:i.fa.fa-pen-fancy]]
+      [:a.button.settings-btn.noborder.nomargin
+       {:href @(rf/subscribe [:href-add-query
+                              {:settingsBox (not @(rf/subscribe [:state [:settings :panel-open]]))}])
+        :aria-label "Settings"
+        :title "Settings"}
+       [:i.settings-btn {:class "fa fa-cog"}]]
 
-    (m/<> {:module :search
-           :view :button
-           :<before> (fn []
-                       [:button.search-ui-btn.noborder.nomargin
-                        {:name "Search"
-                         :title "Search site"
-                         ;; Preserve the click's intent while the parent acquires
-                         ;; Search. Its module events do not exist yet.
-                         :on-click #(rf/dispatch [:state [:search :open?] true])}
-                        [img/<picture> {:src   "svg/search-ico.svg"
-                                      :alt   "Search"
-                                      :style {:width  "1.2em" :height "1.2em"
-                                              :filter "var(--light-to-dark)"}}]])})
-    (m/<> :user/btn)
-    [:label.burger {:for "nav-menu-open"}]]]
+      (m/<> {:module :search
+             :view :button
+             :<before> (fn []
+                         [:button.search-ui-btn.noborder.nomargin
+                          {:name "Search"
+                           :title "Search site"
+                           ;; Preserve the click's intent while the parent acquires
+                           ;; Search. Its module events do not exist yet.
+                           :on-click #(rf/dispatch [:state [:search :open?] true])}
+                          [img/<picture> {:src   "svg/search-ico.svg"
+                                        :alt   "Search"
+                                        :style {:width  "1.2em" :height "1.2em"
+                                                :filter "var(--light-to-dark)"}}]])})
+      (m/<> :user/btn)
+      [:label.burger {:for "nav-menu-open"}]]]
 
-   [:div.fill-side-top
-    [:div
-     {:class (str (when-not @(rf/subscribe [:state [:scroll :past-top]])
-                    "hide ")
-                  (when @(rf/subscribe [:fullscreen/any?])
-                    "adjust-for-fullscreen"))}]]
+     [:div.fill-side-top
+      [:div
+       {:class (str (when-not @(rf/subscribe [:state [:scroll :past-top]])
+                      "hide ")
+                    (when @(rf/subscribe [:fullscreen/any?])
+                      "adjust-for-fullscreen"))}]]
 
-   [:div.fill-above-line-header
-    {:class (when @(rf/subscribe [:state [:hidden :header]])
-            "fill ")}]
+     [:div.fill-above-line-header
+      {:class (when @(rf/subscribe [:state [:hidden :header]])
+              "fill ")}]
 
-   [:div.line.line-header
-    {:class (when @(rf/subscribe [:state [:hidden :header]])
-             "hide")}]])
-
+     [:div.line.line-header
+      {:class (when @(rf/subscribe [:state [:hidden :header]])
+               "hide")}]]))
 
 
 (defn- footer-image-attrs [image]
@@ -209,11 +220,12 @@
 
 (defc <footer-full> "Render the full footer at bottom of page"
   [content]
-  [:footer#footer-end.footer-full
-   {:class "full"}
-
-   [<footer-content> content]
-   [<post-footer> @(rf/subscribe [:content [:post-footer]])]])
+  (let [[restored?] (rf/use-state #(restore/local-document?))]
+    [:footer#footer-end.footer-full
+     {:class "full"
+      :data-restored-motion restored?}
+     [<footer-content> content]
+     [<post-footer> @(rf/subscribe [:content [:post-footer]])]]))
 
 
 (defc <to-top> "A silly arrow, and twice lol. why." [icon]

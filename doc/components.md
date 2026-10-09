@@ -551,9 +551,14 @@ preparation. Live bindings resume after the hydration commit. Browser BFCache
 continues to resume the existing document directly when available.
 
 This worker handles document navigation only; SPA routing, API calls and asset
-requests keep their existing paths. Ordinary document requests use network SSR;
-only an external departure armed for that exact URL can select a local pair.
-This distinction also overrides old restoration cookies on regular reloads.
+requests keep their existing paths. Reloads and address-bar document navigation
+also use a fresh saved pair at the exact URL/build, restoring the same layout
+before hydration. The template retains the ordered deferred SDK/app scripts.
+Restored shell markup skips default entrances; explicit menu intent resumes its
+normal animation. With no usable pair, ordinary requests use network SSR; an
+explicitly armed external return may request disk restoration as its fallback.
+After network hydration, saved blog display choices replace server defaults,
+but never an interaction made since startup. Query content keeps server priority.
 Cached pairs
 expire after 30 minutes, are limited to eight documents and 2 MiB per document,
 and are consumed when served. Worker activation removes other build caches;
