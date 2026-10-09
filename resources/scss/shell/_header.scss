@@ -394,3 +394,10 @@ menu > nav > .nav-section:last-of-type > .nav-links {
 @keyframes menu-anim     { 45%, 75% { transform: scaleX(0.0) scaleY(0.25); } }
 @keyframes menu-anim-out { 25%, 75% { transform: scaleX(1.0) scaleY(0.00); } }
 
+
+// Paired documents already show the shell; explicit menu intent removes the guard.
+#nav-menu-open ~ header[data-restored-motion="true"] {
+  .header-logo, menu {
+    animation: none;
+  }
+}

@@ -49,8 +49,8 @@
                                           (get public "users"))
                                    (legacy-queries snapshot))}}
       (#{:blog "blog"} (:kind snapshot))
-      ;; Fresh SSR display state wins over older disk folds/window sizes. Exact
-      ;; public state, when present, is merged over this by the shared contract.
+      ;; Defaults match network SSR during hydration. Afterwards disk display
+      ;; choices may restore them; an exact local pair already owns its state.
       (assoc :state {:blog {:comment-limit {}
                            :comment-thread-expanded {}
                            :page (dec (or (:page snapshot) 1))

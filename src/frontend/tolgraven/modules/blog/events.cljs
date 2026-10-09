@@ -146,7 +146,9 @@
   {:args (get schema/event-args :blog/cache-state-changed)} (fn [_ _] {:blog/cache-state true}))
 
 (defn- persist-comment-state [db key comment-path value]
-  {:db (assoc-in db [:state :blog key comment-path] value)
+  {:db (-> db
+           (assoc-in [:state :blog key comment-path] value)
+           (update-in [:state :blog :restore-edits] (fnil conj #{}) [key comment-path]))
    :dispatch [:blog/cache-state-changed]})
 
 (rf/reg-event-fx :blog/expand-comment-thread
@@ -162,5 +164,7 @@
 (rf/reg-event-fx :blog/load-more-comments
   {:args (get schema/event-args :blog/load-more-comments)}
   (fn [{:keys [db]} [_ id]]
-    {:db (update-in db [:state :blog :comment-limit id] (fnil + comments/page-size) comments/page-size)
+    {:db (-> db
+             (update-in [:state :blog :comment-limit id] (fnil + comments/page-size) comments/page-size)
+             (update-in [:state :blog :restore-edits] (fnil conj #{}) [:comment-limit id]))
      :dispatch [:blog/cache-state-changed]}))

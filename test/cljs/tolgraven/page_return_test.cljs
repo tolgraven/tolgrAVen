@@ -9,6 +9,7 @@
             [re-frame.core :as re-frame]
             [tolgraven.react :as rf]
             [tolgraven.test-support :as support]
+            [tolgraven.components.shell :as shell]
             [tolgraven.modules.blog.views :as blog]
             [tolgraven.modules.blog.comments :as comments]
             [tolgraven.modules.user.module :as user]
@@ -128,7 +129,7 @@
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 
-(deftest local-worker-serves-only-an-armed-pair-and-consumes-the-document
+(deftest local-worker-restores-reloads-and-armed-returns-once
   (async done
     (-> (go-promise
           (let [url (str (.-origin js/location) "/js/blog-ssr.json")
@@ -136,9 +137,13 @@
             (await! (.delete js/caches worker/cache-name))
             (try
               (await! (worker/save! {:url url :html html :build worker/build}))
-              ;; Saving alone does not replace a normal document request.
+              ;; A saved exact pair also restores reload/address-bar navigation.
+              (let [reloaded (await! (worker/navigation! (js/Request. url)))]
+                (is (= "1" (.get (.-headers reloaded) "X-Local-Page")))
+                (is (= html (await! (.text reloaded)))))
               (let [network (await! (worker/navigation! (js/Request. url)))]
-                (is (nil? (.get (.-headers network) "X-Local-Page"))))
+                (is (nil? (.get (.-headers network) "X-Local-Page")) "A pair is consumed once"))
+              (await! (worker/save! {:url url :html html :build worker/build}))
               (await! (worker/arm! url))
               (let [cached (await! (worker/navigation! (js/Request. url)))]
                 (is (= "1" (.get (.-headers cached) "X-Local-Page")))
@@ -201,3 +206,33 @@
                         (set! local/message! message!)
                         (restore!)
                         (done))))))))
+
+(deftest restored-shell-resumes-motion-on-menu-intent
+  (async done
+    (let [restore-db! (re-frame/make-restore-fn)
+          original-context @restore/*context]
+      (-> (go-promise
+            (let [element (.createElement js/document "div")
+                  root (await! (support/create-root! element))
+                  form [:<> [shell/<header> {:menu {:work [] :personal []}}]
+                        [shell/<footer-full> []]]]
+              (try
+                (rf/dispatch-sync [:init/app-db])
+                (rf/dispatch-sync [:state [:menu] false])
+                (reset! restore/*context {:local? true})
+                (await! (support/render! root form))
+                (is (= "true" (.getAttribute (.querySelector element "header") "data-restored-motion")))
+                (is (= "true" (.getAttribute (.querySelector element ".footer-full") "data-restored-motion")))
+                (rf/dispatch-sync [:state [:menu] true])
+                (await! (support/settle!))
+                (is (= "false" (.getAttribute (.querySelector element "header") "data-restored-motion")))
+                (rf/dispatch-sync [:state [:menu] false])
+                (await! (support/settle!))
+                (is (= "false" (.getAttribute (.querySelector element "header") "data-restored-motion"))
+                    "Closing the menu retains ordinary motion")
+                (finally (support/unmount! root)))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (reset! restore/*context original-context)
+                      (restore-db!)
+                      (done)))))))

@@ -19,6 +19,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   Test browser/Node-only schemas in `test/cljs`; JVM tests exercise portable/server
   contracts and generic composition helpers.
   Include malformed input, missing/empty content, failure/retry and stale responses.
+- Reload checks cover worker-paired exact layout and network fallback display
+  restoration, including explicit interaction while disk restoration is pending.
 - Hydration tests preserve DOM identity and complete expanded/folded state. Browser
   review must also exercise cold/cached loads, both navigation directions, comments,
   SPA Back and external Back, looking for flashes, jumps and replayed animations.

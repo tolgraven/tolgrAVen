@@ -47,8 +47,8 @@
            (is (= "fresh-server" (get-in @rfdb/app-db (into path [:docs 0 :id]))))
            (reset! rfdb/app-db (contract/snapshot-state {:kind :blog, :posts []}))
            (cache/restore!)
-           (is (= {} (get-in @rfdb/app-db [:state :blog :comment-thread-expanded]))
-               "Fresh SSR display state wins when the return hint did not match")
+           (is (= {[28 "root"] false} (get-in @rfdb/app-db [:state :blog :comment-thread-expanded]))
+               "After hydration saved display choices replace server defaults")
            (cache/stop!))
          (is (false? (boolean (cache/public-query? (pr-str {:scoped? true,
                                                             :path-collection [:gpt]})))))

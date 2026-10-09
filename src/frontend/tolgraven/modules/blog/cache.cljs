@@ -9,7 +9,8 @@
             [tolgraven.component.storage :as storage]
             [tolgraven.component.restore :as restore]
             [tolgraven.render-context :as context]
-            [tolgraven.supabase.query :as query]))
+            [tolgraven.supabase.query :as query]
+            [tolgraven.schema.common :as c]))
 
 (def options {:scope :public :ttl-ms 1800000})
 (def state-paths [[:state :blog :comment-limit]
@@ -60,13 +61,23 @@
     (reset! *tracking {:reaction reaction :paths *paths})))
 
 (rf/reg-event-db :blog/restore-cache
-  (fn [db [_ snapshots]]
+  {:args [:tuple [:vector [:tuple c/path :any]] :boolean]}
+  (fn [db [_ snapshots restore-ui?]]
     (reduce (fn [db [path value]]
-              ;; A newer SSR snapshot (or an already completed query) wins.
-              (if (some? (get-in db path)) db (assoc-in db path value))) db snapshots)))
+              (if (some #{path} state-paths)
+                ;; The server owns content, not this browser's display choices.
+                ;; An interaction since startup wins even if it returns to a default.
+                (if restore-ui?
+                  (reduce-kv (fn [db key value]
+                               (if (contains? (get-in db [:state :blog :restore-edits] #{})
+                                              [(last path) key])
+                                 db
+                                 (assoc-in db (conj path key) value))) db value)
+                  db)
+                (if (some? (get-in db path)) db (assoc-in db path value)))) db snapshots)))
 
 (defn restore!
-  "Called after the single storage read and SSR installation, before mounting."
+  "Restore after the single validated disk read; network SSR may already be hydrated."
   []
   (let [old-state (legacy/read!)
         paths (into state-paths
@@ -80,7 +91,7 @@
                                             (get-in old-state (subvec path 1)))]
                             (cond saved [path (:value saved)]
                                   (some? old-value) [path old-value]))) paths)]
-    (rf/dispatch-sync [:blog/restore-cache (vec snapshots)])
+    (rf/dispatch-sync [:blog/restore-cache (vec snapshots) (not (restore/local-document?))])
     (when (contains? old-state :blog) (legacy/write! (dissoc old-state :blog)))
     (start!)))
 
@@ -88,7 +99,7 @@
   (let [pending (-> (storage/ready!) (.then (fn [_] (restore!))))]
     (if (and (:hydrate? @restore/*context)
              (:route-parameters @context/*snapshot))
-      ;; Paired server query/state is authoritative. Publish code now; missing
-      ;; disk entries can fill later, after validation, without replacing it.
+      ;; Hydrate the server pair first. Restore validated disk choices afterwards,
+      ;; retaining server query data and interactions made while it was pending.
       (do (start!) (-> pending (.catch (fn [_] nil))) nil)
       pending)))
