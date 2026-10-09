@@ -100,7 +100,7 @@
   (let [show-mail-form? @(rf/subscribe [:state [:contact-form :show?]])]
     [:div
      [<contact-form-popup> show-mail-form?]
-     [:h4
+     [:div.contact-ways
       [:span [:a {:href (str "mailto:" email)
                   :style {:font-size "85%"}}
               email]]

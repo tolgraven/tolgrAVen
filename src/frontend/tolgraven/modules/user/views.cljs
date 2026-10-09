@@ -229,12 +229,14 @@
                   zoom? (assoc :cursor "pointer"))}]])))
 
 (defc <user-btn> [model]
-  [:a {:href @(rf/subscribe [:href-add-query
-                             {:userBox (not @(rf/subscribe [:user/ui-open?]))}])}
-   [:button.user-btn.noborder
+  [:a.button.user-btn.noborder
+   {:href @(rf/subscribe [:href-add-query
+                          {:userBox (not @(rf/subscribe [:user/ui-open?]))}])
+    :aria-label "User account"
+    :title "User account"}
     (if-let [user @(rf/subscribe [:user/active-user])]
       [<user-avatar> (merge user {:no-zoom true}) "btn-img"]
-      [:i.user-btn {:class "fa fa-user"}])]])
+      [:i.user-btn {:class "fa fa-user"}])])
 
 
 (defc <user-box> "Wrapper for user views"

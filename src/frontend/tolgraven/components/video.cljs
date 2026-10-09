@@ -5,7 +5,42 @@
     [tolgraven.macros :refer-macros [defc]]
     [clojure.string :as string]
     [reagent.core :as r]
+    [tolgraven.react :as rf]
+    [tolgraven.content.schema :as content]
+    [tolgraven.components.video.sources :as sources]
     [tolgraven.components.image :as img]))
+
+(defn- use-source-attrs [attrs]
+  (let [lazy? (= "lazy" (:loading attrs))
+        [visible? show!] (rf/use-state false)
+        *element (rf/use-ref nil)
+        caller-ref (:ref attrs)
+        capture! (rf/use-callback
+                   (fn [element]
+                     (set! (.-current *element) element)
+                     (cond (fn? caller-ref) (caller-ref element)
+                           caller-ref (set! (.-current caller-ref) element))
+                     js/undefined)
+                   #js [caller-ref])]
+    (rf/use-effect
+     (fn []
+       (if (and lazy? (not visible?) (.-current *element))
+         (if (exists? js/IntersectionObserver)
+           (let [observer (js/IntersectionObserver.
+                            (fn [entries observer]
+                              (when (some #(.-isIntersecting %) (array-seq entries))
+                                (.disconnect observer)
+                                (show! true)))
+                            #js {:rootMargin "0%"})]
+             (.observe observer (.-current *element))
+             #(.disconnect observer))
+           (do (show! true) js/undefined))
+         js/undefined))
+     #js [lazy? visible?])
+    ;; React owns the sources. In particular, autoplay cannot initiate a distant
+    ;; video request before this observer has admitted it, unlike preload=none.
+    (cond-> (-> attrs (dissoc :loading) (assoc :ref capture!))
+      (and lazy? (not visible?)) (dissoc :src))))
 
 (defn- replace-extension
   "Replace file extension and add codec suffix.
@@ -45,22 +80,26 @@
    with WebP/AVIF support, use [video-with-picture-poster] instead.
 
    Browsers automatically select the first format they support."
-  [{:keys [src] :as attrs}]
-  (if (should-use-modern-formats? src)
-    (let [video-attrs (dissoc attrs :src)] ; Remove :src from video tag, it goes in sources
-      [:video video-attrs
-       ;; AV1 - best compression, Chrome 90+, Firefox 93+, Safari 17+
-       [:source {:src (replace-extension src "av1")
-                 :type "video/webm; codecs=av01.0.05M.08"}]
-       ;; VP9 - good compression, Chrome, Firefox, Edge, Safari 14.1+
-       [:source {:src (replace-extension src "vp9")
-                 :type "video/webm; codecs=vp9"}]
-       ;; H.264 MP4 - universal fallback
-       [:source {:src src
-                 :type "video/mp4"}]])
-    ;; No modern format available or non-MP4 source, use video with src directly
-    [:video attrs
-     [:source {:src src}]]))
+  [attrs :- content/media]
+  (let [{:keys [src] :as attrs} (use-source-attrs attrs)]
+    (if (should-use-modern-formats? src)
+      (let [video-attrs (dissoc attrs :src)] ; Remove :src from video tag, it goes in sources
+        [:video video-attrs
+         ;; The browser selects its rendition without viewport state in React.
+         (for [source (sources/variants src)]
+           ^{:key (:src source)} [:source source])
+         ;; AV1 - best compression, Chrome 90+, Firefox 93+, Safari 17+
+         [:source {:src (replace-extension src "av1")
+                   :type "video/webm; codecs=av01.0.05M.08"}]
+         ;; VP9 - good compression, Chrome, Firefox, Edge, Safari 14.1+
+         [:source {:src (replace-extension src "vp9")
+                   :type "video/webm; codecs=vp9"}]
+         ;; H.264 MP4 - universal fallback
+         [:source {:src src
+                   :type "video/mp4"}]])
+      ;; No modern format available or non-MP4 source, use video with src directly
+      [:video attrs
+       (when src [:source {:src src}])])))
 
 (defc <video-with-picture-poster>
   "Generate a video with an optimized poster image using modern formats.
@@ -114,7 +153,7 @@
   "Generate video element optimized for use as background media.
    Adds common background styling attributes and uses poster optimization."
   [{:keys [src poster class] :as attrs}]
-  (let [combined-attrs (merge attrs
+  (let [combined-attrs (merge {:loading "lazy"} attrs
                               {:class (str "media media-as-bg " (or class ""))})]
     (if poster
       [<video-with-picture-poster> combined-attrs {:poster poster}]

@@ -6,7 +6,11 @@
 (def media (c/optional-map {:src :string :alt :string :poster :string :title :string
                            :playsInline :boolean :autoPlay :boolean :muted :boolean
                            :loop :boolean :controls :boolean :width [:or number? :string]
-                           :height [:or number? :string]}))
+                           :height [:or number? :string]
+                           :sizes :string
+                           :loading [:enum "lazy" "eager"]
+                           :decoding [:enum "async" "sync" "auto"]
+                           :fetchPriority [:enum "high" "low" "auto"]}))
 (def heading (c/optional-map {:title :string :caption :string :target [:maybe c/named]
                              :bg media :tint :string}))
 (def link (c/optional-map {:id c/id :name :string :href :string :info :string :icon :string}))

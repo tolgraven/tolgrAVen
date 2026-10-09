@@ -3,7 +3,7 @@
     [tolgraven.env :refer [defaults]]
     [cognitect.transit :as transit]
     [clojure.tools.logging :as log]
-    [tolgraven.layout :refer [error-page]]
+    [tolgraven.layout :as layout :refer [error-page]]
     [tolgraven.middleware.formats :as formats]
     [tolgraven.config :refer [env]]
     [muuntaja.middleware :refer [wrap-format wrap-params]]
@@ -72,7 +72,9 @@
                                          (when (seq paths) [(styles/bundle-name id) paths])))
                               styles/modules))
    (assets/load-bundles "public"
-                        {"main.js" ["/js/compiled/out/main.js"]})
+                        {"main.js" [(str "/js/compiled/out/"
+                                         (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))]
+                         "supabase.js" ["/vendor/supabase.js"]})
    (assets/load-assets "public"
                        [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?|webp|avif)$"
                         #"/media/.*\.(jpg?|jpeg?|webp|avif|mp4|webm)$"])
@@ -127,6 +129,16 @@
       (handler req)
       ((gzip/wrap-gzip handler) req))))
 
+(defn wrap-module-cache [handler]
+  (fn [request]
+    (let [response (handler request)]
+      (if (and (not (:dev env)) (= 200 (:status response))
+               (re-find #"(?i)^(?:application|text)/javascript(?:;|$)"
+                        (get-in response [:headers "Content-Type"] ""))
+               (re-matches #"/js/compiled/out/[a-zA-Z0-9_-]+\.[a-fA-F0-9]{32}\.js" (:uri request "")))
+        (assoc-in response [:headers "Cache-Control"] "public, max-age=31536000, immutable")
+        response))))
+
 (defn wrap-base [handler]
   (-> ((:middleware defaults) handler)
       ; wrap-flash
@@ -142,6 +154,7 @@
       wrap-optimus
       ;; Ring's default MIME table has WebP but no AVIF entry.
       (wrap-content-type {:mime-types {"avif" "image/avif"}})
+      wrap-module-cache
       wrap-gzip-content-aware
       ; (wrap-log "Wrapped gzip")
       wrap-not-modified ; guess this doesnt work cause optimus gens new files tho..

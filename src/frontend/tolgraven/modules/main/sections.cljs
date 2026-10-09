@@ -31,7 +31,9 @@
         *showing-title (r/atom (if restored? (count title) 0))]
   [:section#intro {:data-restored (when restored? true)}
    [media/<bg-logo> logo-bg]
-   [img/<media-as-bg> (merge (first bg) {:id "top-banner"})]
+   [img/<media-as-bg> (merge (first bg) {:id "top-banner"
+                                      :loading "eager"
+                                      :fetchPriority "high"})]
    [:div.h1-wrapper.center-content
     [:h1.h-responsive.h-intro
      ;; A keyed timer owns each step, so leaving the page cancels the animation.
@@ -48,10 +50,10 @@
    [:br]
    [:div.buttons
     (for [[text what] buttons] ^{:key (str "intro-button-" text)}
-      [:button.background
-       {:on-click (when (vector? what) #(rf/dispatch what))}
-       [:div {:class "blur-bg"}]
-       (if (string? what) [:a {:href what} text] [:label text])])]])
+      [(if (string? what) :a.button.background :button.background)
+       (if (string? what) {:href what} {:on-click #(rf/dispatch what)})
+       [:span {:class "blur-bg"}]
+       [:span text]])]])
 
 
 (defc <portfolio> "GOT NO PPORTFOLIE" [])
@@ -70,7 +72,7 @@
    (into [:ul {:class (cond (= full-screened? title) "service-fullscreen"
                             full-screened? "service-minimized")
                :on-click on-click}
-          [:li [:i {:class (str "fas fa-" icon-name)}] [:h3 title]]]
+          [:li [:i {:class (str "fas fa-" icon-name)}] [:h2.service-title title]]]
          (for [line lines] ^{:key (str "service-" title "-" line)} [:li line]))])
 
 (defc <service-categories> [{:keys [categories] :as spec}]

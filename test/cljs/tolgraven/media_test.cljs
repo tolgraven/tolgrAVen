@@ -3,12 +3,21 @@
     [cljs.test :refer-macros [deftest is testing]]
     [reagent.dom.server :as server]
     [tolgraven.components.media :as media]
+    [tolgraven.components.image :as image]
     [tolgraven.components.video :as video]))
 
 (defn- render-element [component]
   (let [element (.createElement js/document "div")]
     (set! (.-innerHTML element) (server/render-to-static-markup component))
     element))
+
+(deftest responsive-picture-preserves-uppercase-original-and-selects-sized-variants
+  (let [element (render-element [image/<picture> {:src "img/crowd-lbp.JPG"}])
+        img (.querySelector element "img")
+        avif (.querySelector element "source[type='image/avif']")]
+    (is (= "img/crowd-lbp.JPG" (.getAttribute img "src")))
+    (is (= "540" (.getAttribute img "width")))
+    (is (.includes (.getAttribute avif "srcset") "img/crowd-lbp-400w.avif 400w"))))
 
 (deftest interlude-media-type
   (testing "an image interlude renders an image, not an undecodable video"

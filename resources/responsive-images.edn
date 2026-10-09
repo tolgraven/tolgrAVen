@@ -1,0 +1,4 @@
+{"img/foggy-shit-small.jpg" {:width 1189 :height 1189 :sizes [400 800]}
+ "img/vim-code-small.jpg" {:width 600 :height 800 :sizes [400]}
+ "img/crowd-lbp.JPG" {:width 540 :height 540 :sizes [400]}
+ "img/multimeter-driver-small.jpg" {:width 500 :height 667 :sizes [200 400]}}

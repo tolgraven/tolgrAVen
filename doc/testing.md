@@ -161,10 +161,18 @@ No generated configuration needs committing. Restart the browser watcher after
 adding/removing entries or changing bundle dependencies. The build reads source
 as data with evaluation disabled; it never loads browser code into the JVM.
 
-Reusable Markdown/highlighting and mapping libraries have explicit shared
-`:markdown` and `:maps` bundles, avoiding hoisting into `:main`. Preview consumers
+Production `:app` enables Shadow's `:module-hash-names`. The server reads
+`manifest.edn` for the Optimus main input and route preloads; Shadow owns lazy
+chunk URLs. Successful hashed chunk responses are immutable for a year. The
+SDK uses its own fingerprinted Optimus bundle. Development and test builds
+retain their ordinary output names.
+
+Reusable Markdown, full syntax highlighting and mapping libraries have explicit shared
+`:markdown`, `:highlight` and `:maps` bundles, avoiding hoisting into `:main`. Preview consumers
 load Markdown as a code dependency before hydration; Node uses the same component
-synchronously. The local-return installer stays eager, but its React server
+synchronously. Blog also declares `:highlight` so server-rendered code blocks
+hydrate immediately; other consumers retain readable plain code during acquisition.
+The local-return installer stays eager, but its React server
 renderer is in `:page-render` and is acquired only after the cache connects.
 
 Run `bb audit before` and repeat with an `after` label to

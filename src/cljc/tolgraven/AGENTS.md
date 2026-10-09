@@ -37,6 +37,11 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
 
 - `loader/style_catalog.cljc` bakes literal module `:styles` and bundle dependencies
   into both runtimes at compile time. Packaged servers do not read a source tree.
+- `components/image/sources.cljc` shares responsive candidates/dimensions with
+  server preloads. The resource catalog is compiled into CLJS; regenerate sized
+  AVIF/WebP files with `bb images:responsive`.
+- `components/video/sources.cljc` bakes the responsive video catalog into source
+  declarations. Native media queries select smaller renditions; preserve full-size fallbacks.
 - Module declarations may supply `:install` for code-owned setup. Browser loading
   awaits it before publishing readiness; Node adapters keep browser disk/cache
   installation inert. Keep this lifecycle distinct from managed data activation.

@@ -155,6 +155,9 @@
 }
 
 .blog-posts-with-tag {
+  // Keep the lower navigation out of view while a full post query is pending.
+  > .blog-post[aria-busy="true"] { min-height: 75svh; }
+
   > h2 {
     position: sticky;
     top: calc(var(--header-height-current) - 3.5 * var(--space));
@@ -168,6 +171,8 @@
 }
 
 .blog-comments {
+  .blog-comments-title { font-size: 0.67em; }
+
   // width: 100%;
   max-width: unset; // negative margins to fill outside main padding since got our own...
   margin: 0 calc(0px - var(--space));
@@ -396,6 +401,8 @@
 
 
 .blog-btn {
+  min-width: 2rem;
+  min-height: 2rem;
   background-color: var(--bg-2);
   font-size: 0.8em;
   border-radius: 0;

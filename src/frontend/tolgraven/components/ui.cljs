@@ -148,7 +148,9 @@
   {:features [[:seen "zoom"]]}
   [img-attr zoomed?]
   [:div [img/<picture>
-         (merge img-attr
+         (merge {:loading "lazy"
+                 :sizes (if @zoomed? "80vw" "(max-width: 37.5em) 9.375rem, 35vw")}
+                img-attr
                 {:class "media image-inset"
                  :on-click #(r/rswap! zoomed? not)})]])
 
@@ -206,7 +208,7 @@
 
 (m/defc <close> [on-click]
  [:button.close-btn.noborder
-  {:on-click on-click}
+  {:on-click on-click :aria-label "Close"}
   [:i.fa.fa-times]])
 
 (m/defc <formatted-data> [title path-or-data]
@@ -542,7 +544,7 @@
                                    [:common/navigate! :log]])]
                   (rf/dispatch action))}
     [:div.hud-message-top
-     [:h4.hud-message-title title]
+     [:h2.hud-message-title title]
      [<close> (fn [event]
                 (.stopPropagation event)
                 (rf/dispatch [:diag/unhandled :remove id]))]]
@@ -636,7 +638,9 @@
    (doall (for [idx (range amount)]
             ^{:key (str "carousel-" id "-index-btn-" idx)}
             [:button.carousel-btn.carousel-idx
-             {:class (when (= @idx-model idx) "carousel-idx-current")
+             {:aria-label (str "Show slide " (inc idx))
+              :aria-current (when (= @idx-model idx) "true")
+              :class (when (= @idx-model idx) "carousel-idx-current")
               :on-click #(rf/dispatch [:carousel/set-index id idx])}
              [:i.fas.fa-circle]]))])
 
@@ -662,7 +666,7 @@
        (merge options
               {:id (name id)})
 
-       [:button.carousel-btn.carousel-prev-btn {:on-click dec-fn} "<"]
+       [:button.carousel-btn.carousel-prev-btn {:on-click dec-fn :aria-label "Previous slide"} "<"]
 
        [:ul.carousel-items
         [:li.carousel-item-left-pseudo
@@ -689,7 +693,7 @@
            (get content (inc (inc @index)))
            (first content))]]
 
-       [:button.carousel-btn.carousel-next-btn {:on-click inc-fn} ">"]
+       [:button.carousel-btn.carousel-next-btn {:on-click inc-fn :aria-label "Next slide"} ">"]
        [<carousel-idx-btns> id index (count content)] ])))
 
 (m/defc <carousel-normal> "Don't fuck up with fancy hot swaps for transitions, just stuff everything in."
@@ -733,7 +737,7 @@
                :ref ref-f})
 
        [:button.carousel-btn.carousel-prev-btn
-        {:on-click dec-fn}
+        {:on-click dec-fn :aria-label "Previous slide"}
         [:i.fas.fa-angle-left]]
 
        (into [:ul.carousel-items
@@ -783,6 +787,6 @@
                content)))
 
        [:button.carousel-btn.carousel-next-btn
-        {:on-click inc-fn}
+        {:on-click inc-fn :aria-label "Next slide"}
         [:i.fas.fa-angle-right]]
        [<carousel-idx-btns> id index (count content)] ])))

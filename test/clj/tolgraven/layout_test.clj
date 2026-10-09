@@ -67,7 +67,15 @@
       (is (= "</bundles/main.hash.js>; rel=preload; as=script" (get headers "Link")))
       (is (re-find #"<link[^>]*href=\"/bundles/main.hash.js\"[^>]*rel=\"preload\"" body))
       (is (< (.indexOf body "/bundles/main.hash.js") (.indexOf body "<body")))
-      (is (.contains body "<script src=\"/bundles/main.hash.js\"")))))
+      (is (re-find #"<script[^>]*defer[^>]*src=\"/bundles/main.hash.js\"" body))
+      (is (re-find #"<script[^>]*defer[^>]*src=\"/vendor/supabase.js\"" body))
+      (is (< (.indexOf body "src=\"/vendor/supabase.js\"")
+             (.indexOf body "src=\"/bundles/main.hash.js\"")))
+      (is (.contains body "name=\"analytics-id\""))
+      (is (.contains body "window.dataLayer = window.dataLayer || []"))
+      (is (not (.contains body "googletagmanager.com")))
+      (is (not (.contains body "google-analytics.com")))
+      (is (not (.contains body "smoothscroll-polyfill"))))))
 
 (deftest shell-flushes-before-data-completes
   (let [pending (java.util.concurrent.CompletableFuture.)]

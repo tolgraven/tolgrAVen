@@ -52,7 +52,7 @@
   }
 
   .buttons {
-    a {
+    a, a.button > span:not(.blur-bg) {
       font-size: 0.8rem;
     }
   }
@@ -159,7 +159,10 @@
     font-size: 120%;
     filter: brightness(110%);
   }
-  h3::first-letter { /* nice looking fancy. why isnt applying to h3 within category?? */
+  .service-title {
+    font-size: 1.17em;
+  }
+  .service-title::first-letter { /* nice looking fancy. why isnt applying to h3 within category?? */
     font-size: 120%;
   }
 }

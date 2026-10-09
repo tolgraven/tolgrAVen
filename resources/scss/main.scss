@@ -15,6 +15,8 @@
 @include meta.load-css("shell/vars");
 @include meta.load-css("shell/compat");
 @include meta.load-css("shell/fonts");
+// Font declarations share the blocking shell response, avoiding another CSS round trip.
+@include meta.load-css("../public/css/opensans.css");
 @include meta.load-css("components/error");
 @include meta.load-css("components/loading");
 @include meta.load-css("components/dev-console");

@@ -36,7 +36,9 @@ if (watch) {
   const watched = postcssOnly ? output : root;
   async function revision() {
     const files = await fs.readdir(watched, {recursive: true});
-    return (await Promise.all(files.filter(name => postcssOnly
+    const fontRevision = postcssOnly ? ''
+      : `opensans:${(await fs.stat('resources/public/css/opensans.css')).mtimeMs}`;
+    return fontRevision + (await Promise.all(files.filter(name => postcssOnly
       ? name.endsWith('.css') && !name.endsWith('.min.css') : name.endsWith('.scss'))
       .map(async name => `${name}:${(await fs.stat(path.join(watched, name))).mtimeMs}`)))
       .sort().join('|');
