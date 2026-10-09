@@ -206,6 +206,9 @@
 (defn track! [id read options]
   (ready! options)
   (swap! *tracked assoc id {:read read :options options :owner (owner options)}))
+(defn untrack! [id]
+  (swap! *tracked dissoc id))
+
 (defn identity! [identity]
   (when-not (= identity @*identity)
     (flush!)

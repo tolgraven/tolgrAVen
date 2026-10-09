@@ -37,7 +37,8 @@
     (try (reset! rfdb/app-db {})
          (swap! storage/*buckets assoc :public snapshots)
          (with-redefs [storage/read! (fn [id _] (get snapshots id))
-                       storage/track! (fn [& _])]
+                       storage/track! (fn [& _])
+                       storage/schedule! (fn [])]
            (cache/restore!)
            (is (= {:docs [{:id "cached"}]} (get-in @rfdb/app-db path)))
            (is (false? (get-in @rfdb/app-db (conj fold [28 "root"]))))
@@ -47,11 +48,42 @@
            (reset! rfdb/app-db (contract/snapshot-state {:kind :blog, :posts []}))
            (cache/restore!)
            (is (= {} (get-in @rfdb/app-db [:state :blog :comment-thread-expanded]))
-               "Fresh SSR display state wins when the return hint did not match"))
+               "Fresh SSR display state wins when the return hint did not match")
+           (cache/stop!))
          (is (false? (boolean (cache/public-query? (pr-str {:scoped? true,
                                                             :path-collection [:gpt]})))))
          (is (false? (boolean (cache/public-query? "malformed ["))))
-         (finally (reset! rfdb/app-db before) (reset! storage/*buckets buckets)))))
+         (finally (cache/stop!) (reset! rfdb/app-db before) (reset! storage/*buckets buckets)))))
+(deftest cache-tracks-public-query-events-and-releases-its-subscription
+  (let [before @rfdb/app-db
+        *scheduled (atom 0)
+        public-key (scoped/query-key (comments/root-query 42 10))
+        private-key (scoped/query-key {:path-collection [:gpt], :scoped? true})
+        path [:store :scoped public-key]]
+    (with-redefs [storage/*tracked (atom {})
+                  storage/ready! (fn ([] (js/Promise.resolve nil))
+                                    ([_] (js/Promise.resolve nil)))
+                  storage/schedule! #(swap! *scheduled inc)]
+      (try
+        (cache/start!)
+        (rf/dispatch-sync [:store/scoped public-key {:docs [{:id "first"}]}])
+        (r/flush)
+        (is (= {:docs [{:id "first"}]}
+               ((:read (get @storage/*tracked [:state path])))))
+        (rf/dispatch-sync [:store/scoped public-key {:docs [{:id "updated"}]}])
+        (rf/dispatch-sync [:store/scoped private-key {:docs [{:id "private"}]}])
+        (r/flush)
+        (is (= "updated" (get-in ((:read (get @storage/*tracked [:state path]))) [:docs 0 :id])))
+        (is (not (contains? @storage/*tracked [:state [:store :scoped private-key]])))
+        (is (pos? @*scheduled))
+        (cache/stop!)
+        (is (empty? @storage/*tracked))
+        (let [scheduled @*scheduled]
+          (rf/dispatch-sync [:store/scoped public-key {:docs []}])
+          (r/flush)
+          (is (= scheduled @*scheduled) "Disposed cache no longer schedules persistence"))
+        (finally (cache/stop!) (reset! rfdb/app-db before))))))
+
 (deftest returning-comments-render-immediately-and-keep-folded-threads-folded
   (async
     done
@@ -326,7 +358,7 @@
             (swap! storage/*dirty conj :public)
             (storage/save-navigation!)
             (is (false? @marker) "Failed writes must not opt out of SSR")))
-        (finally (reset! storage/*tracked {}) (storage/drain!) (reset! rfdb/app-db before))))))
+        (finally (cache/stop!) (reset! storage/*tracked {}) (storage/drain!) (reset! rfdb/app-db before))))))
 (deftest folded-reply-placeholder-reserves-its-height-before-mount
   (let [context @restore/*context]
     (try (restore/begin! {:hydrate? true})

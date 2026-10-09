@@ -3,6 +3,10 @@
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/blog-ssr.md`, and `doc/dev-console.md`.
 
+- Feature caches observe re-frame subscriptions through owned, disposable
+  reactions. Persistence belongs in the storage lifecycle adapter; do not add
+  feature watches to app-db or perform IO in subscription computations.
+
 - Feature modules live under `modules/<module>/`; collocate schemas, query
   declarations and `pages.cljc` with the implementation. Browser/Node-only schemas
   use `.cljs`; portable routes/data contracts use `.cljc` and must not require
