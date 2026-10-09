@@ -287,14 +287,13 @@ in a `defc` body; it accepts optional loading-option overrides. The existing
 `component.loading/<span>`, `<h1>`, `<h2>`, `<avatar>`, `<box>` and `<lines>`
 helpers remain available to compose full skeletons. Spinners remain explicit.
 
-After the first client commit, `page-preload/<background>` schedules work during
-idle time, discovers same-origin links in the current DOM, and loads their
+After hydration, page readiness, window load and painted idle frames,
+`page-preload/<background>` discovers visible same-origin explicit/adjacent hints and loads their
 modules and page dependencies with two concurrent destinations at most. It
 observes new links after SPA navigation/content changes, deduplicates pending
 work, remembers successful destinations for five minutes, and retries failed
 speculation on a later scan. It does not recursively crawl unloaded pages.
-The main module also declares `:preload-modules [:user :link-preview :search]`;
-these common modules share the same bounded queue.
+Hidden tabs, Data Saver and 2G suppress speculation; other links acquire on intent.
 Buttons can advertise destinations with `data-preload-href`; an element can
 opt out with `data-preload="false"`, or a page spec with `:preload false`.
 
@@ -333,6 +332,22 @@ For SSR responses, both preload forms and the deferred main script use
 Responses without server-rendered content keep ordinary script priority.
 Lazy chunks use `as="fetch"` and `crossorigin="anonymous"` to match Shadow's
 XHR acquisition. The main bundle uses `as="script"` to match its deferred tag.
+
+Node renders highlighted code inside completed React Suspense boundaries. The
+browser hydrates the page and small Copy/wrapping controls first, preserving the
+server's native code nodes while the formatter remains suspended. The common
+after-page gate releases its lazy acquisition only after hydration, window load,
+page binding readiness and painted idle frames. React then hydrates the formatter
+against those same nodes. Its own memoized `defc` prevents outer control updates
+from replacing pending server content. Each initial boundary temporarily owns
+React transition batching through Reagent's batching adapter: its ordinary
+`flushSync` would discard a still-unhydrated boundary on ancestor updates.
+Inner commit/unmount releases that ownership; navigation restores ordinary
+batching immediately. Capture the initial hydration decision without a reactive
+subscription to the later completion flag. New SPA code acquires the formatter through
+the normal loader immediately. Paired local documents also render completed
+boundaries, and skip `:highlight` during bootstrap. Markdown delegates ownership of
+the native `pre` to the code component, avoiding parser repairs of nested blocks.
 
 Related blog routes share a `:transition-key`: their healthy page boundary and
 heading remain mounted while the destination post's managed subscription loads.

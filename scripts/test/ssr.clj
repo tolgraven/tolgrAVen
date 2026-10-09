@@ -43,6 +43,9 @@
         missing (assoc blog :path "/blog/post/missing-999999" :post-id 999999
                            :missing? true :posts [] :comments [])
         [missing-html] (render! worker [missing])
+        code-blog (update-in blog [:posts 0 :text]
+                             str "\n\n```clojure\n(defn greet [name] (str \"Hello \" name))\n```\n\n```cpp\n// Retain the language during hydration\nint answer = 42;\n```\n")
+        [code-html] (render! worker [code-blog])
         shells (render! worker (mapv #(assoc % :shell? true :posts [] :query-params {})
                                      [home (assoc blog :path "/blog/post/42") cv]))]
     (check! (contains-all? (:html first) ["<strong>article</strong>" "Server comment 0"
@@ -61,8 +64,15 @@
                  (str/includes? (:html docs-html) "Shared documentation view.")
                  (not (str/includes? (:html docs-html) "cv-skills"))) "CV/docs state leaked")
     (check! (str/includes? (str/lower-case (:html missing-html)) "not found") "Missing permalink did not render not-found")
+    (check! (contains-all? (:html code-html) ["code-block" "<!--$-->" "language-cpp" "color:#fb4934" "greet" "Wrap lines"])
+            "SSR code must retain highlighted markup in a completed Suspense boundary")
+    (check! (not (str/includes? (:html code-html) "<pre><div"))
+            "Markdown must not wrap a code block in another pre")
+    (check! (not (str/includes? (:html first) "code-block"))
+            "Plain blog content must not require the highlighter")
     (check! (every? #(not (str/includes? (:html %) "component-error")) shells) "A page shell violated its contract")
     (doseq [[name snapshot response] [["blog" blog first] ["landing" home landing]
-                                      ["cv" cv cv-html] ["docs" docs docs-html] ["missing" missing missing-html]]]
+                                      ["cv" cv cv-html] ["docs" docs docs-html] ["missing" missing missing-html]
+                                      ["code-blog" code-blog code-html]]]
       (fixture! name snapshot response))
     (println "Node SSR: all page kinds, escaping, request isolation, missing permalink and shells passed; hydration fixtures generated.")))

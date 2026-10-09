@@ -26,10 +26,14 @@
     (if (re-find #"\n" code)
       (if language
         [<code-block> code :language language]
-        [:div code])
+        [:pre [:code code]])
       [:code code])))
 
 (def markdown-code-react (r/reactify-component (fn [props] [<markdown-code-component> props])))
+(def markdown-pre-react
+  ;; The code component owns its pre. Nested pre/div content otherwise makes
+  ;; the HTML parser repair SSR markup before React can hydrate it.
+  (r/reactify-component (fn [{:keys [children]}] [:<> children])))
 
 (defc <parse-markdown-components>
   "Parse markdown into pure React components using react-markdown"
@@ -42,5 +46,6 @@
            :components (if allow-images?
                          {:code markdown-code-react}
                          {:code markdown-code-react
-                              :img omit-markdown-component})}
+                          :img omit-markdown-component})}
+    true (assoc-in [:components :pre] markdown-pre-react)
     allow-raw? (assoc :rehypePlugins [rehypeRaw]))])

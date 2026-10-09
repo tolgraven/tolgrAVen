@@ -15,8 +15,9 @@ Keep mixins in CSS-free `scss/tools` partials: importing a
 feature for a mixin would duplicate its selectors in another module's output.
 `all.scss` remains an explicit combined preview entry, outside the normal build.
 The `:home` sheet owns landing hero/page rules. The optional `:styled-input`
-module owns the custom field used by Search and blog editing. It and Markdown
-declare the independent monospace sheet, containing FiraCode's font declaration.
+module owns the custom field used by Search and blog editing. It, Markdown and
+the deferred highlighter declare the independent monospace sheet, containing FiraCode's font declaration.
+The highlighter shares Markdown's code/control sheet too, so standalone code consumers acquire their styles.
 The common shell contains neither. Browsers acquire the font URL only when a rendered consumer uses
 its glyphs; do not preload it merely because a Markdown module is loaded.
 

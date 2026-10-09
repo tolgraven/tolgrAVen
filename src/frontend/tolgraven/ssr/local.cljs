@@ -79,9 +79,22 @@
   (into {} (keep (fn [[id loadable]]
                   (when (loader/ready? id) [id @loadable]))) loader/modules))
 
-(defn pair! [db config]
+(defn- renderer! []
   (-> (loader/acquire-code! :page-render)
-      (.then (fn [spec] ((:pair! spec) db config)))))
+      (.then (fn [spec]
+               (if (.querySelector js/document "#app .code-block")
+                 ;; Even an early external click cannot pull the formatter into
+                 ;; initial hydration. A capture waits for the same page gate.
+                 (js/Promise.
+                   (fn [resolve reject]
+                     (browser-resources/after-page!
+                       #(-> (loader/acquire-code! :highlight)
+                            (.then (fn [_] (resolve spec)))
+                            (.catch reject)))))
+                 spec)))))
+
+(defn pair! [db config]
+  (-> (renderer!) (.then (fn [spec] ((:pair! spec) db config)))))
 
 (defonce *save-generation (atom 0))
 
@@ -102,7 +115,7 @@
     (-> (connect!)
         (.then (fn [{:keys [worker] :as config}]
                  (when (and worker (current?))
-                   (-> (loader/acquire-code! :page-render)
+                   (-> (renderer!)
                        (.then #(publish! db arm? current? worker config %))))))
         ;; Optional persistence retains normal navigation when unavailable.
         (.catch (fn [error]
@@ -143,7 +156,9 @@
 
 (defn prepare! [snapshot]
   (js/Promise.all
-    (into-array (map loader/acquire-code! (:modules snapshot)))))
+    ;; Completed Suspense boundaries retain their native SSR code. Hydrate the
+    ;; surrounding page first; the formatter follows through after-page!.
+    (into-array (map loader/acquire-code! (remove #{:highlight} (:modules snapshot))))))
 
 (defn schedule! []
   (when @*pending (js/clearTimeout @*pending))
