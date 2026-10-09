@@ -3,10 +3,11 @@
    this lifecycle adapter owns the observer, delay and teardown."
   (:require [tolgraven.react :as rf]))
 
-(defn setup [{:keys [event once? threshold root-margin delay-ms]
+(defn setup [{:keys [event callback once? threshold root-margin delay-ms]
               :or {once? true threshold 0.5 root-margin "0px" delay-ms 0}}]
-  (when (and event (exists? js/window))
-    (let [*observer (atom nil)
+  (when (and (or event callback) (exists? js/window))
+    (let [fire! (or callback #(rf/dispatch event))
+          *observer (atom nil)
           *timer (atom nil)
           *active? (atom true)
           *fired? (atom false)
@@ -21,11 +22,11 @@
                                                              (array-seq entries)))
                                               (reset! *fired? true)
                                               (when once? (.disconnect observer))
-                                              (rf/dispatch event)))
+                                              (fire!)))
                                           (clj->js {:threshold threshold :rootMargin root-margin}))]
                            (reset! *observer observer)
                            (.observe observer element))
-                         (rf/dispatch event))))]
+                         (fire!))))]
       {:mount! (fn [element]
                  (if (pos? delay-ms)
                    (reset! *timer (js/setTimeout #(observe! element) delay-ms))

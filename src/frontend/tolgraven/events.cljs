@@ -120,9 +120,12 @@
   (fn [[spec]]
     (l/load! spec)))
 
-(rf/reg-event-fx :scope/init ; should be like, a scope is usually a cljs module, possibly backend stuff that might want to be eagerly inited/refreshed before module load finishes, so outside module def
+(rf/reg-event-fx :scope/init
   (fn [{:keys [db]} [_ scope- & args]]
-    {:db (assoc-in db [:state :init :scope scope-] {:inited? true :args args})}))
+    (cond-> {:db (assoc-in db [:state :init :scope scope-] {:inited? true :args args})}
+      (and (contains? l/modules scope-)
+           (not (get-in db [:loader :requested scope-])))
+      (assoc :dispatch [:loader/activate {:module scope- :args args}]))))
 
 (rf/reg-event-fx :history/popped
   (fn [{:keys [db]} [_ e]]

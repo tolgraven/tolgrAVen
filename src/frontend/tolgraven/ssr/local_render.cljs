@@ -23,6 +23,7 @@
         snapshot {:version contract/version :url url :build build :saved-at (.now js/Date)
                   :owner @storage/*identity
                   :state-edn encoded :modules (vec (keys (local/modules)))
+                  :module-views (render/module-views (local/modules))
                   :document-title (.-title js/document)}
         render-db (-> (ssr-contract/merge-state db/data state)
                       (assoc :common/route (:common/route db) :loader (:loader db)

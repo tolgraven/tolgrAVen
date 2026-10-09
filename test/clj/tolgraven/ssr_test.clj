@@ -3,6 +3,8 @@
             [clojure.data.json :as json]
             [clojure.string :as string]
             [tolgraven.ssr :as ssr]
+            [tolgraven.ssr.contract-schema :as contract-schema]
+            [malli.core :as m]
             [tolgraven.page-router :as pages]
             [tolgraven.page :as page]
             [tolgraven.layout :as layout]
@@ -16,6 +18,10 @@
             [tolgraven.supabase.plan :as plan]
             [tolgraven.modules.blog.comments :as comments]
             [tolgraven.modules.blog.data :as blog-data]))
+
+(defn rendered-page [snapshot html]
+  {:snapshot (assoc snapshot :module-views {:blog [:view :posted-by]})
+   :html html})
 
 (defn projected-response [select rows]
   ;; REST projections include selected SQL NULLs. Preserve extra fields here
@@ -70,7 +76,7 @@
     (reset! ssr/*cache {})
     (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}
                   ssr/snapshot! (fn [uri _] (assoc @*snapshot :path uri))
-                  ssr/render! (fn [snapshot] (swap! *renders inc) (str snapshot))]
+                  ssr/render-page! (fn [snapshot] (swap! *renders inc) (rendered-page snapshot (str snapshot)))]
       (is (= :miss (:cache (ssr/page! "/blog"))))
       (is (= :hit (:cache (ssr/page! "/blog"))))
       (swap! *snapshot assoc-in [:posts 0 :text] "Edited")
@@ -101,7 +107,7 @@
                                     (swap! *reads inc)
                                     (when @*offline? (throw (ex-info "Offline" {})))
                                     {:path "/blog" :posts [{:text @*text}]})
-                    ssr/render! (fn [snapshot] (swap! *renders inc) (str snapshot))]
+                    ssr/render-page! (fn [snapshot] (swap! *renders inc) (rendered-page snapshot (str snapshot)))]
         (is (= :miss (:cache (ssr/page! "/blog"))))
         (is (ssr/cached? "/blog" nil))
         (is (not (ssr/cached? "/blog" {:tag "other"})) "Query keys remain isolated")
@@ -148,7 +154,7 @@
                                     (swap! *reads inc)
                                     {:path path :posts [{:text "Shared public content"}]
                                      :selected selection})
-                    ssr/render! (fn [snapshot] (swap! *renders inc) (pr-str snapshot))]
+                    ssr/render-page! (fn [snapshot] (swap! *renders inc) (rendered-page snapshot (pr-str snapshot)))]
         (let [first-page (ssr/page! "/blog" {:settingsBox true})
               at (- (System/nanoTime) 3500000000000)]
           (swap! ssr/*cache assoc-in [first-key :at] at)
@@ -238,7 +244,7 @@
                   content/fresh-bundle! (fn [keys]
                                           (swap! *requested conj (set keys))
                                           {:content {:intro {:title @*title}}})
-                  ssr/render! (fn [snapshot] (get-in snapshot [:content :intro :title]))]
+                  ssr/render-page! (fn [snapshot] (rendered-page snapshot (get-in snapshot [:content :intro :title])))]
       (doseq [path ["/" "/about" "/services" "/hire"]]
         (is (= {:kind :landing} (ssr/route path)))
         (is (= :landing (:kind (ssr/snapshot! path (ssr/route path))))))
@@ -259,7 +265,7 @@
     (try
       (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}
                     pages/match (fn [_] {:data spec :path-params {}})
-                    ssr/render! (fn [snapshot] (swap! *renders inc) (:app-db-edn snapshot))]
+                    ssr/render-page! (fn [snapshot] (swap! *renders inc) (rendered-page snapshot (:app-db-edn snapshot)))]
         (is (= {} (ssr/route "/example")))
         (is (= :miss (:cache (ssr/page! "/example"))))
         (is (= :hit (:cache (ssr/page! "/example"))))
@@ -342,11 +348,11 @@
     (reset! ssr/*cache {})
     (try
       (with-redefs [ssr/snapshot! (fn [uri _] (swap! snapshots conj uri) {:path uri :posts []})
-                    ssr/render! (fn [snapshot]
+                    ssr/render-page! (fn [snapshot]
                                   (swap! renders conj (:path snapshot))
                                   (.countDown entered)
                                   (deref release 5000 nil)
-                                  (:path snapshot))]
+                                  (rendered-page snapshot (:path snapshot)))]
         (let [a (ssr/page-async! "/blog") duplicate (ssr/page-async! "/blog")
               b (ssr/page-async! "/blog/page/2")]
           (is (identical? a duplicate))
@@ -447,3 +453,25 @@
         (is (string/includes? (:body response) "Ready now"))
         (is (not (string/includes? (:body response) "id=\"ssr-shell\"")))
         (is (not (string/includes? (:body response) "id=\"ssr-complete\"")))))))
+
+(deftest renderer-response-validates-export-metadata-with-its-html
+  (is (m/validate contract-schema/render-response
+                  {:html "<article>SSR</article>" :module-views {:blog [:view :posted-by]}}))
+  (doseq [response [{:html "SSR"}
+                    {:html "SSR" :module-views {:blog [:view 17]}}
+                    {:html "SSR" :module-views {:blog "view"}}]]
+    (is (not (m/validate contract-schema/render-response response)))))
+
+(deftest cached-html-keeps-its-rendered-export-inventory
+  (reset! ssr/*cache {})
+  (try
+    (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}
+                  ssr/snapshot! (fn [uri _] {:path uri :posts []})
+                  ssr/render-page! (fn [snapshot] (rendered-page snapshot "<article>SSR</article>"))]
+      (let [first-page (ssr/page! "/blog")
+            repeated (ssr/page! "/blog")]
+        (is (= :hit (:cache repeated)))
+        (is (= "<article>SSR</article>" (:html repeated)))
+        (is (= {:blog [:view :posted-by]} (get-in first-page [:snapshot :module-views])))
+        (is (= (:snapshot first-page) (:snapshot repeated)))))
+    (finally (reset! ssr/*cache {}))))

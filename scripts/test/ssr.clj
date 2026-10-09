@@ -16,14 +16,16 @@
         responses (mapv #(json/parse-string % true) (str/split-lines (:out result)))]
     (check! (not (re-find #"Subscribe was called outside|localStorage is not available" (:err result)))
             "Renderer accessed browser-only state")
-    (check! (and (= (count snapshots) (count responses)) (every? :html responses))
+    (check! (and (= (count snapshots) (count responses)) (every? #(and (:html %) (map? (:module-views %))
+                                                 (seq (get-in % [:module-views :user]))) responses))
             "Node worker did not return all pages")
     responses))
 
 (defn fixture! [name snapshot response]
   (fs/create-dirs "resources/public/js/tests/js")
   (spit (str "resources/public/js/tests/js/" name "-ssr.json")
-        (json/generate-string {:snapshot snapshot :html (:html response)})))
+        (json/generate-string {:snapshot (assoc snapshot :module-views (:module-views response))
+                               :html (:html response)})))
 
 (defn contains-all? [html strings] (every? #(str/includes? html %) strings))
 

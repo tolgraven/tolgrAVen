@@ -2,7 +2,6 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.react :as rf]
-    [tolgraven.content.contract :as content-contract]
     [tolgraven.modules.main.layout :as layout]
     [tolgraven.modules.home.sections :as home]
     [tolgraven.components.media :as media]
@@ -67,30 +66,31 @@
    :av :just-about-company })
 
 (defn section-dependencies
-  "The section owns its content declaration; the same resources can be acquired
-   before its module is mounted and by its defc data lifecycle."
+  "Direct sections acquire their content normally; module activation owns its data."
   [_ {:keys [depends content content-deps module]}]
-  (into (vec depends)
-        (when-let [keys (seq (or content-deps
-                                (when content [content])
-                                (get content-contract/module-content module)))]
-          [{:source :strapi :keys (vec keys)}])))
+  (if module
+    []
+    (into (vec depends)
+          (when-let [keys (seq (or content-deps (when content [content])))]
+            [{:source :strapi :keys (vec keys)}]))))
 
 (m/defc <get-component> "Get component, and its init event runner, if any."
   {:depends section-dependencies :loading-tag :section :loading-prefab :text}
   [id section-map]
-  (let [{:keys [module <comp> <loading> content content-deps args dep init]} section-map
-        view (if module
-               (m/<> {:module module :view (or <comp> :view)
-                      :defer? true :<loading> <loading>})
-               [<comp>])]
+  (let [{:keys [module <comp> <loading> content args dep init]} section-map
+        arguments (cond-> []
+                    content (conj @(rf/subscribe [:content [content]]))
+                    args (conj args))]
     [:<>
-     (when (or init module)
+     (when (and init (not module))
        [<run-init> id init dep])
-     (cond-> view
-         content (conj @(rf/subscribe [:content [content]]))
-         args    (conj args)
-         true    vec)]))
+     (if module
+       (l/component-vector {:module module
+                            :view (or <comp> :view)
+                            :load-on :view
+                            :<loading> <loading>}
+                           arguments)
+       (into [<comp>] arguments))]))
 
 (m/defc <get-section> "Get a section, from either a vector (with args) or a straight keyword"
   [section]

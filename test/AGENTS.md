@@ -24,6 +24,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Regenerate Node-rendered fixtures before the browser suite. Check final assertion
   results, running Shadow warnings and browser logs; successful compilation is not
   a passing browser test or proof of live CMS integration.
+- Viewport module tests cover offscreen/no acquisition, earlier triggers, manual
+  intent, shared CSS/code/init, observer/listener cleanup and delayed silent retry.
+  Selective SSR tests preserve native identity through outer re-frame updates and
+  await the actual inner commit; renderer metadata stays paired with cached HTML.
 - Module CSS checks cover request initiation before Shadow, shared acquisition,
   readiness/failure/retry, inline SSR styles, budget/link fallback and no duplicate
   initial downloads. Hydration preload hints must match Shadow's request kind,

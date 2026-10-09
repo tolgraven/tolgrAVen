@@ -107,12 +107,13 @@
 (defn use-motion
   "Merge appearance/visibility/exit state onto this component's native root."
   [form options presence]
-  (let [appear (:appear options) seen (:seen options) exit (:exit options)
+  (let [hydrating? (rf/use-context restore/hydrating-context)
+        appear (:appear options) seen (:seen options) exit (:exit options)
         appearance (config (or seen appear)) exit-options (config exit)
         remember-key (:remember-key appearance)
         remembered? (when remember-key @(rf/subscribe [:state [:motion-seen remember-key]]))
         [skip-enter?] (rf/use-state #(boolean (and (not= false (:restore? appearance))
-                                                  (or remembered? (restore/skip-enter?)))))
+                                                  (or hydrating? remembered? (restore/skip-enter?)))))
         [visible? set-visible!] (rf/use-state skip-enter?)
         [reduced? set-reduced!] (rf/use-state reduced-motion?)
         *element (rf/use-ref nil)

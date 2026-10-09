@@ -63,7 +63,8 @@
       (.on "line"
            (fn [line]
              (let [response (try
-                              {:html (render! (js->clj (js/JSON.parse line) :keywordize-keys true))}
+                              {:html (render! (js->clj (js/JSON.parse line) :keywordize-keys true))
+                               :module-views (render/module-views modules)}
                               (catch :default error
                                 (.write (.-stderr js/process) (str (.-stack error) "\n"))
                                 {:error "Page rendering failed"}))]
