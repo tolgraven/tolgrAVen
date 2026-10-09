@@ -36,8 +36,8 @@ component definition.
 
 ## Rendering and hydration
 
-Both environments render `views/page.cljs`, the ordinary application shell.
-The blog uses `blog/views.cljs`; the landing page uses `views/auto.cljs` and its
+Both environments render `components/page.cljs`, the ordinary application shell.
+The blog uses `modules/blog/views.cljs`; the landing page uses `modules/main/sections.cljs` and its
 existing home/media components. There are no SSR-only copies of the header,
 footer, post markup, Markdown configuration, pagination or landing sections.
 
@@ -112,7 +112,7 @@ are `no-store`: CSRF and request-specific layout data are never cached with publ
 `supabase/query.cljc` defines the public table/field mappings, projections, filters,
 ordering, limits, batching keys and reply-count relation. The JVM reader and browser
 SDK adapter consume those same plans and the existing shared row-to-app-db contract.
-`blog/data.cljc` declares the graph of summaries, selected posts, bounded roots,
+`modules/blog/data.cljc` declares the graph of summaries, selected posts, bounded roots,
 immediate children and public authors. The module’s page spec carries that plan;
 `ssr.clj` has no blog SQL/REST predicates or blog snapshot branch.
 
