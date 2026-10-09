@@ -26,6 +26,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   chunk responses receive immutable caching; plain names and errors must not.
 - Streaming uses Hiccup document parts and the existing flush-aware Ring body;
   do not split serialized pages by marker strings. Headers cannot change after flush.
+  Compress that body directly with sync-flush gzip when accepted; do not convert
+  it to the generic middleware's buffered InputStream.
 - A return cookie alone never bypasses network SSR. Only the local worker's
   explicit `X-Page-Render: state` fallback requests browser state restoration.
 - Validate/coerce requests at the Ring boundary; handlers consume parsed parameters.

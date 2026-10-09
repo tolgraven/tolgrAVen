@@ -4,6 +4,7 @@
     [cognitect.transit :as transit]
     [clojure.tools.logging :as log]
     [tolgraven.layout :as layout :refer [error-page]]
+    [tolgraven.streaming :as streaming]
     [tolgraven.middleware.formats :as formats]
     [tolgraven.config :refer [env]]
     [muuntaja.middleware :refer [wrap-format wrap-params]]
@@ -122,12 +123,13 @@
 (defn wrap-gzip-content-aware
   "Needed presumably because optimus confuses the gzip middleware due to not raw files or whatever? At least it tries to gzip inappropriate stuff..."
   [handler]
-  (fn [{:keys [headers] :as req}]
-    (if (some->> (get headers "sec-fetch-dest") ; could also look at content-type?
-                 (re-find #"image|video")
-                 some?)
-      (handler req)
-      ((gzip/wrap-gzip handler) req))))
+  (let [compressed (gzip/wrap-gzip handler)]
+    (fn [{:keys [headers] :as req}]
+      (if (some->> (get headers "sec-fetch-dest") ; could also look at content-type?
+                   (re-find #"image|video")
+                   some?)
+        (handler req)
+        (streaming/gzip-response req (compressed req))))))
 
 (defn wrap-module-cache [handler]
   (fn [request]

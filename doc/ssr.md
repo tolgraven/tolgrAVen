@@ -232,7 +232,9 @@ a fresh snapshot (with startup CMS sections supplied from memory).
 The flush-aware response body implements the installed Undertow adapter's
 `RespondBody` protocol as well as Ring's streaming protocol. Plain InputStream
 responses are buffered by this adapter until its output buffer fills. The custom
-body flushes the shell explicitly and bypasses the buffering gzip middleware;
+body flushes the shell explicitly. When the client accepts gzip, it compresses
+directly into Undertow with sync flush, preserving progressive decompression;
+it never passes through the generic middleware's buffered InputStream.
 `X-Accel-Buffering: no` requests unbuffered delivery from compatible proxies.
 Verify first-byte/chunk delivery through the deployed proxy before claiming
 production streaming timings.
