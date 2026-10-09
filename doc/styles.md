@@ -76,10 +76,11 @@ retries a failed CSS/code request once after three seconds before showing an err
 
 ## Icon fonts
 
-The deferred `icons.css` bundle combines vendored Font Awesome selectors with
-`icons.scss`. Optimus fingerprints the sheet and rewrites all of its font URLs,
-so repeat visits can reuse font bytes without caching mutable original paths.
-Development links the same selectors/faces as individual watched sheets.
+The deferred `icons.css` bundle uses `icons.scss`, which imports the vendored Font
+Awesome selectors and generated font faces into one compressed Sass output.
+Development links that same watched output. Optimus fingerprints the sheet and
+rewrites all of its font URLs, so repeat visits can reuse font bytes without
+caching mutable original paths.
 
 `bb fonts:icons` regenerates small WOFF2 faces from the vendored originals. It
 collects literal `fa-*` names from application source and the CMS-driven names in

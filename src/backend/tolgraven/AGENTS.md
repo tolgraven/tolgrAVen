@@ -26,7 +26,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   preserving its original timestamp, but must render their own paired HTML/state.
 - Optimus fingerprints the shell and each declared module stylesheet independently;
   shared styles keep one URL across consumer modules. A separate deferred icon
-  bundle fingerprints its fonts and rewrites CSS references through Optimus. Development-only inspector
+  bundle uses one Sass-compressed selector/font-face sheet; Optimus fingerprints
+  its fonts and rewrites CSS references. Development-only inspector
   rules use a separate unbundled sheet; normal and error documents share the shell
   stylesheet policy. Emit
   route dependency styles and User control styles in the first head. Home owns

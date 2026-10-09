@@ -334,7 +334,7 @@
                     "tolgrAVen audiovisual by Joen Tolgraven")
    :pre-pre [["media/fog-3d-small.mp4" "video"]]
    :css-paths (if (:dev env)
-                ["/css/fontawesome.css" "/css/tolgraven/icons.min.css"]
+                ["/css/tolgraven/icons.min.css"]
                 (olink/bundle-paths request ["icons.css"]))
    :js-paths [{:src (if (:dev env) "/vendor/supabase.js"
                         (or (first (olink/bundle-paths request ["supabase.js"])) "/vendor/supabase.js"))

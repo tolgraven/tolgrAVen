@@ -78,8 +78,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   and check optional dependency ownership without overwriting watched output.
   It also writes a source-map-based `report.html`/`report.json` identifying each
   source's actual optimized contribution.
-- `npm run build`: produce shared CSS, a development-only inspector sheet, and
-  independent feature sheets. Module
+- `npm run build`: produce shared CSS, a development-only inspector sheet, a
+  compressed icon selector/font-face sheet, and independent feature sheets. Module
   specs declare literal `:styles`; CSS starts alongside JS acquisition. SSR emits
   route styles in the initial head, inlining small feature sheets within a bounded
   budget; Optimus fingerprints each bundle separately.
