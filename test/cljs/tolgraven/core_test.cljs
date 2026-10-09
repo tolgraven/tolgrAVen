@@ -1,13 +1,9 @@
 (ns tolgraven.core-test
   (:require [cljs.test :refer-macros [is are deftest testing]]
-            [pjstadig.humane-test-output]
             [tolgraven.components.iframe :as iframe]
             [tolgraven.events :as events]
-            [tolgraven.link-preview.util :as link-preview]
-            [tolgraven.routes :as routes]))
-
-(deftest test-home
-  (is (= true true)))
+            [tolgraven.modules.link-preview.util :as link-preview]
+            [tolgraven.navigation.routes :as routes]))
 
 (deftest external-http-url-test
   (testing "only cross-origin HTTP(S) links are previewable"

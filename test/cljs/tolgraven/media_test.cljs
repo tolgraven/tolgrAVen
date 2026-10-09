@@ -1,18 +1,28 @@
 (ns tolgraven.media-test
-  (:require [cljs.test :refer-macros [deftest is testing]]
-            [reagent.dom.server :as server]
-            [tolgraven.components.media :as media]
-            [tolgraven.video :as video]))
+  (:require
+    [cljs.test :refer-macros [deftest is testing]]
+    [reagent.dom.server :as server]
+    [tolgraven.components.media :as media]
+    [tolgraven.components.image :as image]
+    [tolgraven.components.video :as video]))
 
 (defn- render-element [component]
   (let [element (.createElement js/document "div")]
     (set! (.-innerHTML element) (server/render-to-static-markup component))
     element))
 
+(deftest responsive-picture-preserves-uppercase-original-and-selects-sized-variants
+  (let [element (render-element [image/<picture> {:src "img/crowd-lbp.JPG"}])
+        img (.querySelector element "img")
+        avif (.querySelector element "source[type='image/avif']")]
+    (is (= "img/crowd-lbp.JPG" (.getAttribute img "src")))
+    (is (= "540" (.getAttribute img "width")))
+    (is (.includes (.getAttribute avif "srcset") "img/crowd-lbp-400w.avif 400w"))))
+
 (deftest interlude-media-type
   (testing "an image interlude renders an image, not an undecodable video"
     (let [element (render-element
-                    [media/interlude [{:bg {:src "img/collage-strips.jpg"}}] 0])
+                    [media/<interlude> [{:bg {:src "img/collage-strips.jpg"}}] 0])
           image (.querySelector element "img")]
       (is (nil? (.querySelector element "video")))
       (is (= "img/collage-strips.jpg" (.getAttribute image "src")))
@@ -20,7 +30,7 @@
 
 (deftest interlude-video-background
   (let [element (render-element
-                  [media/interlude [{:bg {:src "media/fog-3d-small.mp4"
+                  [media/<interlude> [{:bg {:src "media/fog-3d-small.mp4"
                                          :poster "media/fog-3d-small.jpg"}}] 0])
         video (.querySelector element "video")
         poster (.querySelector element "picture img")]
@@ -34,7 +44,7 @@
 
 (deftest video-preserves-caller-attributes
   (let [element (render-element
-                  [video/video-with-picture-poster
+                  [video/<video-with-picture-poster>
                    {:src "media/fog-3d-small.mp4"
                     :poster "media/fog-3d-small.jpg"
                     :class "media-as-bg"

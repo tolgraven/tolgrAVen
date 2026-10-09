@@ -7,9 +7,9 @@
             [tolgraven.component :as component]
             [tolgraven.component.data :as data]
             [tolgraven.component.loading :as loading]
-            [tolgraven.blog.module]
+            [tolgraven.modules.blog.module]
             [tolgraven.loader :as loader]
-            [tolgraven.blog.views :as blog]
+            [tolgraven.modules.blog.views :as blog]
             [tolgraven.macros :refer-macros [defc]]))
 
 (defonce *root (atom nil))
@@ -28,8 +28,8 @@
 (def resources [{:source :url :url "/fixtures/component-data.json" :into [:fixture :url]}])
 (defc <remote-content> {:depends resources} []
   :let [_ (swap! *created inc)]
-  [:section [:h3 (get-in @rfdb/app-db [:fixture :url :title])]
-   [:p (get-in @rfdb/app-db [:fixture :url :body])]])
+  [:section [:h3 @(rf/subscribe [:get :fixture :url :title])]
+   [:p @(rf/subscribe [:get :fixture :url :body])]])
 
 (defonce *cards (r/atom [{:id "one" :title "Remove me, then bring me back"}]))
 (defonce *card-unmounts (r/atom 0))

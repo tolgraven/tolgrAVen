@@ -1,0 +1,15 @@
+(ns tolgraven.modules.user.module
+  {:bundle/depends-on #{:main :link-preview}}
+  (:require
+    [tolgraven.content.contract :as content-contract]
+    [tolgraven.modules.user.events]
+    [tolgraven.modules.user.subs]
+    [tolgraven.modules.user.views :as view]))
+
+(def spec
+  {:depends (get content-contract/module-dependencies :user [])
+   :id :user
+   :styles ["/css/tolgraven/modules/user.min.css"]
+   :view {:view #'view/<user-section>
+          :btn #'view/<user-btn>
+          :avatar #'view/<user-avatar>}})

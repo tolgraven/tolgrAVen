@@ -15,12 +15,15 @@ Use Java 21 or newer, Leiningen, and Node.js 22. Install the lockfile and build 
 ```sh
 npm ci
 npm run build
+make hooks
 lein repl
 ```
 
 The development server runs at http://localhost:4000. Run `npm run dev` in a
 second terminal to watch CSS. In the Clojure REPL, `(cljs-repl)` selects the
-`:app-dev` browser runtime. `(restart-handler)` reloads the Ring handler after
+`:app-dev` browser runtime and watches the `:ssr` Node target. SSR is enabled by
+default; configure `:ssr {:enabled true :render-workers 2 :worker "target/ssr/site.js"
+:node-binary "node"}` in `config/local.dev.edn`. See [SSR configuration](doc/ssr.md). `(restart-handler)` reloads the Ring handler after
 reloading changed backend namespaces.
 
 Set `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY` and server-only
@@ -35,7 +38,7 @@ credentials remain ignored and are not needed to run the site.
 lein with-profile +test test
 lein with-profile +test run -m shadow.cljs.devtools.cli compile supabase-test
 lein with-profile +test run -m shadow.cljs.devtools.cli compile app-test
-python3 scripts/serve-browser-tests.py
+bb test:browser
 ```
 
 Open http://localhost:4002 to run the browser tests. They cover the split route
@@ -53,8 +56,8 @@ lein with-profile -dev,+prod run -m shadow.cljs.devtools.cli release app --confi
 Both browser builds use the same lazy module graph. Pull requests validate CSS;
 the deployment job runs only for pushes to `master`.
 
-See [the integration and recovery notes](doc/integration-20260909.md) for the
-preserved local work and the changes brought together in this branch.
+See [component authoring](doc/components.md), [page rendering](doc/ssr.md),
+and [testing](doc/testing.md) for current architecture and verification workflows.
 
 ## License
 
@@ -72,3 +75,11 @@ Secret** under Coolify **Configuration → Webhooks**. Enable **Preview Deployme
 for that application, with repository `tolgraven/tolgrAVen` and base branch `master`.
 The workflow signs the original PR payload and checks that Coolify queues it.
 Repository PRs deploy automatically; fork PRs run validation without the staging job.
+
+See [test boundaries and workflow verification](doc/testing.md) for the full browser suite, unmocked live application checks, and database/infrastructure tests.
+
+Source organization: [ownership and platform boundaries](doc/source-layout.md).
+
+Shared data and declaration contracts: [Malli schemas and validation](doc/schemas.md).
+
+Build, media and test commands are listed by `bb tasks`; see [tool ownership](doc/tooling.md) and [local configuration](config/README.md).

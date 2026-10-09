@@ -1,0 +1,252 @@
+
+footer {
+  position: relative;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  margin-top: calc(0px - var(--line-width));
+  font-size: 0.85rem;
+
+  border-left: var(--line-width-vert) solid var(--line-color); /* connect bottom to main on left side */
+  background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
+
+  transition: max-height var(--header-expand-time) ease;
+  z-index: 20;
+
+  a {
+    p {
+      &:after {
+        content: "";
+      }
+    }
+  }
+
+  &.hide {
+    transition: max-height var(--header-expand-time) ease,
+                bottom var(--header-expand-time) ease;
+  }
+  &.bottomed {
+    bottom: calc(0px - var(--line-width));
+  }
+
+  &.full {
+    padding-top: var(--space);
+    padding-left: calc(0.5 * var(--space))
+  }
+  
+  &:before, &:after {
+    content: "";
+    height: 100%;
+    position: absolute;
+    bottom: 0px;
+    z-index: -1;
+    border-top: var(--line-width) solid var(--line-color);
+  }
+  &:before {  
+    background: linear-gradient(35deg, var(--bg-1), var(--blue) 335%);
+    width: var(--space-edges);
+    left: calc(0px - var(--space-edges) - var(--line-width-vert));
+  }
+  &.adjust-for-fullscreen {
+    &:after {
+      background: var(--bg-1);
+      right: calc(0px - var(--space-edges));
+      width: var(--space-edges);
+    }
+    // XXX WANT THIS EFFECT. Make it an elem cause out of ::before/::afters lol
+    // &:after {
+    //   content: "";
+    //   background: linear-gradient(35deg, var(--bg-1), var(--blue) 335%);
+    //   width: calc(var(--space-sides) - var(--line-width));
+    //   height: 100%;
+    //   position: absolute;
+    //   bottom: 0px;
+    //   right: calc(0px - var(--space-sides));
+    //   z-index: -1;
+    //   border-top: var(--line-width) solid var(--line-color);
+    // }
+  }
+  border-top: var(--line-width) solid var(--line-color);
+}
+
+.footer-sticky {
+  position: fixed;
+  z-index: 101;
+  max-height: calc(var(--footer-height-current) + env(safe-area-inset-bottom, 0px));
+  left: var(--space-edges);
+  bottom: var(--footer-bottom);
+  width: calc(100% - 2 * var(--space-edges));
+  transition: opacity var(--header-expand-time) ease,
+              max-height var(--header-expand-time) ease,
+              margin-top var(--header-expand-time) ease;
+
+  &.hide {
+    .footer-content {
+      // margin-top: var(--space);
+      transition: opacity var(--header-expand-time) ease;
+      opacity: 0;
+    }
+  }
+}
+
+.footer-full {
+  animation: fade-in 1.0s ease-in;
+  max-height: var(--footer-height-full);
+  margin-bottom: -8px; // no clue why but get a gap otherwise
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  flex-flow: row wrap;
+
+  padding: calc(0.2 * var(--space)) calc(1.00 * var(--space)) calc(0.2 * var(--space)) calc(0.5 * var(--space));
+
+  button i {
+    vertical-align: middle;
+  }
+}
+
+img.img-icon {
+  margin: calc(0.5 * var(--space));
+  height: 2em;
+  filter: saturate(0.6);
+}
+
+.post-footer-content {
+  // margin-top: var(--space);
+
+  .footer-column {
+    margin: var(--space) var(--space-lg) 0.0rem 0.5em;
+    flex: 1 0 auto;
+
+    &:last-of-type {
+      margin-bottom: var(--space-lg);
+    }
+  }
+
+  .footer-links {
+    display: flex;
+    flex-direction: column;
+
+    > a {
+      min-height: 2rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .footer-link-with-text {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+
+      p:last-of-type {
+        font-weight: 300;
+      }
+    }
+  }
+  
+  .footer-title, .contact-ways {
+    display: inline;
+    position: relative;
+  }
+  .footer-title:after, .contact-ways:after {
+    content: "";
+    height: 0.1em;
+    background: linear-gradient(to right, rgba(216, 187, 182, 0.63), var(--fg-2) 185%);
+    width: 98%;
+    transform: skew(-30deg);
+    position: absolute;
+    bottom: 2px;
+    left: 0px;
+    z-index: -1;
+  }
+}
+
+.footer-column {
+  .footer-title {
+    font-size: 1em;
+  }
+
+  .footer-note {
+    font-size: 0.83em;
+    font-weight: 600;
+  }
+
+  &#footer-left {
+    display: flex;
+
+    .img-icon {
+      margin-top: 0.25em;
+      border-radius: 50%;
+    }
+  }
+
+  > div {
+    flex: 1 0 auto;
+  }
+}
+.footer-icons {
+  text-align: end;
+  > a {
+    padding: 0 0.45rem;
+    font-size: 2.0em;
+
+    &:focus, &:hover {
+      filter: brightness(130%) saturate(95%);
+      background: var(--bg-1);
+      text-shadow: -1px 2px 4px var(--box-regular-color-flip);
+    }
+
+    i {
+      transition: transform 0.3s;
+      &:hover {
+        transform: scale(1.4) rotate(-7deg); // why no work??
+      }
+    }
+  }
+}
+.fa-soundcloud { text-shadow: 2px 2px 1px #ff9533; }
+.fa-twitter {    text-shadow: 2px 2px 1px #1DA1F2; }
+.fa-facebook {   text-shadow: 2px 2px 2px #3b5998; }
+.fa-instagram {  text-shadow: 2px 2px 3px #8134af; }
+.fa-linkedin {   text-shadow: 2px 2px 1px #0077b5; }
+.fa-github {     text-shadow: 1px 1px 3px var(--fg-2); }
+.fa-google {     text-shadow: 1px 1px 3px var(--fg-2); }
+
+.md-icon {
+  width:  var(--space-lg);
+  height: var(--space-lg);
+}
+.sm-icon {
+  width:  var(--space);
+  height: var(--space);
+}
+h3::first-letter { /* nice looking fancy. why isnt applying within category?? */
+  font-size: 120%;
+  filter: brightness(110%);
+}
+
+#footer-middle {
+}
+#footer-right { /* can change to just last then no worry bout ids */
+  flex: 1 4 auto;
+}
+
+
+.to-top {
+  min-width: 2rem;
+  min-height: 2rem;
+  text-align: center;
+  position: fixed;
+  left:  calc(var(--space-sides) + 0.75 * var(--space));
+  bottom: calc(0.33 * var(--space) + var(--footer-height-current) + env(safe-area-inset-bottom, 0px));
+  color: var(--fg-2);
+  font-size: 1.2rem;
+  /* z-index: -1; */
+  z-index: 200;
+  text-shadow: 1px 1px 1.0rem var(--fg-2);
+  opacity: 0.6;
+  transition: bottom 0.5s ease;
+}
+#to-top-bg {
+  /* filter: brightness(150%); */
+}

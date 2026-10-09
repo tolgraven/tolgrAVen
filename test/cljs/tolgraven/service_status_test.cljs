@@ -2,7 +2,8 @@
   (:require [cljs.test :refer-macros [deftest is async]]
             [reagent.dom.client :as dom]
             [re-frame.core :as rf]
-            [tolgraven.service-status :as status]))
+            [tolgraven.service-status :as status]
+            [tolgraven.components.service-status :as notices]))
 
 (deftest notice-renders-and-retry-clears-it-on-recovery
   (async done
@@ -12,7 +13,7 @@
       (.appendChild (.-body js/document) container)
       (set! rf/dispatch #(swap! events conj %))
       (status/fail! :test "Strapi unavailable" "Please retry loading content." #(status/recover! :test))
-      (dom/render root [status/<notices>])
+      (dom/render root [notices/<notices>])
       (js/setTimeout
        (fn []
          (try

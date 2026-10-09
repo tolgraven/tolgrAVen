@@ -1,0 +1,405 @@
+(ns tolgraven.ssr-test
+  (:require [clojure.test :refer [deftest is]]
+            [clojure.data.json :as json]
+            [clojure.string :as string]
+            [tolgraven.ssr :as ssr]
+            [tolgraven.page-router :as pages]
+            [tolgraven.page :as page]
+            [tolgraven.layout :as layout]
+            [tolgraven.config :as config]
+            [optimus.html :as optimus-html]
+            [tolgraven.content.service :as content]
+            [tolgraven.platform.supabase :as supabase]
+            [tolgraven.supabase.query :as query]
+            [tolgraven.concurrent :as concurrent]
+            [tolgraven.supabase.reader :as reader]
+            [tolgraven.supabase.plan :as plan]
+            [tolgraven.modules.blog.comments :as comments]
+            [tolgraven.modules.blog.data :as blog-data]))
+
+(defn projected-response [select rows]
+  ;; REST projections include selected SQL NULLs. Preserve extra fields here
+  ;; so the public-reader tests still prove the allowlist removes them.
+  (mapv #(merge (zipmap (map keyword (string/split select #",")) (repeat nil)) %) rows))
+
+(deftest comment-expansion-opens-two-levels-and-preserves-explicit-folds
+  (is (comments/expanded? {} [42 "root"]))
+  (is (comments/expanded? {} [42 "root" "child"]))
+  (is (false? (comments/expanded? {} [42 "root" "child" "grandchild"])))
+  (is (false? (comments/expanded? {[42 "root" "child"] false} [42 "root" "child"])))
+  (is (comments/expanded? {[42 "root" "child" "grandchild"] true}
+                          [42 "root" "child" "grandchild" "reply"]))
+  (is (false? (comments/expanded? {[42 "root" "child" "grandchild"] true
+                                 [42 "root" "child" "grandchild" "reply"] false}
+                                [42 "root" "child" "grandchild" "reply"]))))
+
+(deftest reply-reveal-plan-acquires-two-levels-and-respects-folds
+  (let [path [42 "root" "child" "folded"]
+        replies [{:id "reply" :reply-count 1 :user "writer"}]
+        requested (atom [])
+        read! (fn [queries]
+                (swap! requested into queries)
+                (mapv (fn [opts]
+                        {:docs (mapv #(hash-map :id (:id %) :data %)
+                                     (if (= opts (comments/thread-query 42 "folded")) replies []))}) queries))]
+    (plan/evaluate comments/reveal-plan {:path path :expanded {path true}} read!)
+    (is (some #{(comments/thread-query 42 "reply")} @requested)
+        "The second visible level is acquired before its component mounts")
+    (reset! requested [])
+    (plan/evaluate comments/reveal-plan
+                   {:path path :expanded {path true (conj path "reply") false}} read!)
+    (is (not (some #{(comments/thread-query 42 "reply")} @requested))
+        "An explicit child fold prevents the second read")
+    (is (< (comments/reveal-duration-ms 1) (comments/reveal-duration-ms 8)))
+    (is (= 280 (comments/reveal-duration-ms 100)))))
+
+(deftest scoped-blog-plans-filter-at-the-database
+  (is (= [{:seed-key :blog_posts :table "blog_posts"
+           :select (query/public-columns "blog_posts") :filters [[:id "eq" 42]]}]
+         (query/seed-load-plan {:scoped? true :path-collection [:blog-posts] :where [[:id :== 42]]})))
+  (is (= [[:parent_post "eq" 42] [:parent_comment "is" nil]]
+         (:filters (first (query/seed-load-plan
+                            {:scoped? true :path-collection [:blog-comments]
+                             :where [[:parent-post :== 42] [:parent-comment :== nil]]})))))
+  (is (not (some #{"text"} (string/split (:select (first (query/seed-load-plan
+                                                         {:scoped? true :summary? true
+                                                          :path-collection [:blog-posts]}))) #",")))))
+
+(deftest render-cache-compares-fresh-snapshots-and-does-not-cache-errors
+  (let [*snapshot (atom {:posts [{:id 1 :text "First"}]}) *renders (atom 0)]
+    (reset! ssr/*cache {})
+    (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}
+                  ssr/snapshot! (fn [_ _] @*snapshot)
+                  ssr/render! (fn [snapshot] (swap! *renders inc) (str snapshot))]
+      (is (= :miss (:cache (ssr/page! "/blog"))))
+      (is (= :hit (:cache (ssr/page! "/blog"))))
+      (swap! *snapshot assoc-in [:posts 0 :text] "Edited")
+      (is (= :miss (:cache (ssr/page! "/blog"))))
+      (swap! *snapshot assoc :posts [])
+      (is (= :miss (:cache (ssr/page! "/blog"))))
+      (is (= 3 @*renders)))
+    (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}
+                  ssr/snapshot! (fn [_ _] (throw (ex-info "Offline" {})))]
+      (is (thrown? Exception (ssr/page! "/blog"))))
+    (reset! ssr/*cache {})))
+
+(deftest public-cache-freshness-bounds-reads-and-expires-without-validating-errors
+  (let [*reads (atom 0)
+        *renders (atom 0)
+        *build (atom 1)
+        *offline? (atom false)
+        *text (atom "First")
+        age! (fn [seconds]
+               (swap! ssr/*cache assoc-in [["/blog" nil] :at]
+                      (- (System/nanoTime) (* seconds 1000000000))))
+        expire! #(age! 3601)]
+    (reset! ssr/*cache {})
+    (try
+      (with-redefs [config/env {}
+                    ssr/renderer-build (fn [] @*build)
+                    ssr/snapshot! (fn [_ _]
+                                    (swap! *reads inc)
+                                    (when @*offline? (throw (ex-info "Offline" {})))
+                                    {:path "/blog" :posts [{:text @*text}]})
+                    ssr/render! (fn [snapshot] (swap! *renders inc) (str snapshot))]
+        (is (= :miss (:cache (ssr/page! "/blog"))))
+        (is (ssr/cached? "/blog" nil))
+        (is (not (ssr/cached? "/blog" {:tag "other"})) "Query keys remain isolated")
+        (is (= :hit (:cache (ssr/page! "/blog"))))
+        (is (= [1 1] [@*reads @*renders]) "A fresh hit performs neither I/O nor rendering")
+        (doseq [seconds [15 3540]]
+          (age! seconds)
+          (is (ssr/cached? "/blog" nil))
+          (is (= :hit (:cache (ssr/page! "/blog"))))
+          (is (= [1 1] [@*reads @*renders]) "The default avoids reads and renders within one hour"))
+        (expire!)
+        (is (not (ssr/cached? "/blog" nil)) "Expired data may stream the shell")
+        (is (= :hit (:cache (ssr/page! "/blog"))))
+        (is (= [2 1] [@*reads @*renders]) "Unchanged snapshots renew freshness without rendering")
+        (is (ssr/cached? "/blog" nil))
+        (swap! *build inc)
+        (is (not (ssr/cached? "/blog" nil)))
+        (is (= :miss (:cache (ssr/page! "/blog"))))
+        (is (= [3 2] [@*reads @*renders]) "A renderer change invalidates both data and HTML")
+        (expire!)
+        (reset! *offline? true)
+        (is (thrown? Exception (ssr/page! "/blog")))
+        (is (not (ssr/cached? "/blog" nil)) "A failed read cannot renew the old entry")
+        (reset! *offline? false)
+        (reset! *text "Edited")
+        (is (= :miss (:cache (ssr/page! "/blog"))))
+        (is (= "Edited" (get-in (ssr/page! "/blog") [:snapshot :posts 0 :text])))
+        (is (= [5 3] [@*reads @*renders]) "Retry reads fresh content and saves its exact HTML"))
+      (finally (reset! ssr/*cache {})))))
+
+(deftest post-snapshot-reads-only-selected-post-threads-and-public-columns
+  (let [*calls (atom [])]
+    (with-redefs [content/fresh-bundle! (fn [_] {:content {:header {:text ["Test" []]}}})
+                  supabase/request! (fn [_ table {:keys [query-params]}]
+                                      (swap! *calls conj [table query-params])
+                                      {:body (projected-response (get query-params "select" "") (case table
+                                               "blog_posts" [{:id 42 :doc_id "42" :user_id "u1" :title "Hi"
+                                                              :text "Body" :ts 0 :tags "one two"
+                                                              :secret "never serialize"}]
+                                               "blog_comments" (if (= "is.null" (get query-params "parent_comment")) [{:id "c1" :parent_post 42 :user_id "u1" :text "SSR comment" :ts 0 :secret "private"}] [])
+                                               "site_users" [{:id "u1" :name "Name" :email "private"}]
+                                               "auth_roles" []))})]
+      (let [snapshot (ssr/snapshot! "/blog/post/hi-42" {:post-id 42})]
+        (is (some #(= "eq.42" (get-in % [1 "id"])) @*calls))
+        (is (= {"blog_posts" 2 "blog_comments" 2 "site_users" 1 "auth_roles" 1} (frequencies (map first @*calls))))
+        (is (some #(= "eq.42" (get-in % [1 "parent_post"])) @*calls))
+        (is (= "SSR comment" (get-in snapshot [:comments 0 :text])))
+        (is (some #(and (= "blog_posts" (first %)) (not (string/includes? (get-in % [1 "select"]) "text"))) @*calls)
+            "Pagination and tags use only summaries, never every post body")
+        (is (= {:id "u1" :name "Name"} (get-in snapshot [:posts 0 :author])))
+        (is (not (string/includes? (pr-str snapshot) "secret")))
+        (is (= "1970-01-01" (get-in snapshot [:posts 0 :date])))))))
+
+(deftest route-parsing-is-bounded-and-does-not-intercept-other-blog-pages
+  (is (= {:post-id 42} (ssr/route "/blog/post/hello-42")))
+  (is (= {:page 2} (ssr/route "/blog/page/2")))
+  (doseq [uri ["/blog/new-post" "/blog/archive" "/blog/page/0" "/blog/page/99999999"
+               "/blog/post/no-id" "/blog/post/foo/42"]]
+    (is (nil? (ssr/route uri)))))
+
+(deftest jvm-worker-protocol-renders-successive-isolated-requests
+  (let [snapshot (json/read-str (slurp "test/browser/blog-ssr-input.json") :key-fn keyword)]
+    (try
+      (is (string/includes? (ssr/render! snapshot) "Server-rendered blog"))
+      (is (not (string/includes? (ssr/render! (assoc snapshot :posts [])) "Server-rendered blog")))
+      (is (string/includes? (ssr/render! snapshot) "<strong>article</strong>"))
+      (finally (ssr/stop-worker!)))))
+
+(deftest layout-escapes-post-titles-and-embeds-the-matching-public-snapshot
+  (with-redefs [config/env {:dev true :ssr {:streaming false}}
+                ssr/enabled? (constantly true)
+                ssr/page! (fn [& _] {:html "<article>Safe rendered content</article>"
+                                   :snapshot {:posts [{:title "</title><script>bad()</script>"}]
+                                              :content {}}})
+                optimus-html/link-to-js-bundles (fn [& _] "")]
+    (let [response (layout/render-home {:uri "/blog/post/test-1"})
+          html (:body response)]
+      (is (= 200 (:status response)))
+      (is (= "no-store" (get-in response [:headers "Cache-Control"])))
+      (is (string/includes? html "data-hydrate=\"true\""))
+      (is (string/includes? html "<article>Safe rendered content</article>"))
+      (is (string/includes? html "&lt;/title&gt;&lt;script&gt;"))
+      (is (not (string/includes? html "<script>bad()"))))))
+
+(deftest landing-routes-load-complete-cms-content-without-supabase
+  (let [*requested (atom []) *title (atom "Landing")]
+    (reset! ssr/*cache {})
+    (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}
+                  supabase/request! (fn [& _] (throw (ex-info "Landing must not read Supabase" {})))
+                  content/fresh-bundle! (fn [keys]
+                                          (swap! *requested conj (set keys))
+                                          {:content {:intro {:title @*title}}})
+                  ssr/render! (fn [snapshot] (get-in snapshot [:content :intro :title]))]
+      (doseq [path ["/" "/about" "/services" "/hire"]]
+        (is (= {:kind :landing} (ssr/route path)))
+        (is (= :landing (:kind (ssr/snapshot! path (ssr/route path))))))
+      (is (every? #(every? % [:intro :services :story :moneyshot :gallery :header :footer]) @*requested))
+      (is (= :miss (:cache (ssr/page! "/"))))
+      (is (= :hit (:cache (ssr/page! "/"))))
+      (reset! *title "Edited in Strapi")
+      (is (= "Edited in Strapi" (:html (ssr/page! "/"))))
+      (is (nil? (ssr/route "/user/private"))))
+    (reset! ssr/*cache {})))
+
+(deftest registered-pages-share-the-render-cache-without-page-type-branches
+  (let [*renders (atom 0) *value (atom "First")
+        spec {:ssr true :module :example :data-source ::example}]
+    (defmethod ssr/page-data! ::example [_ uri selection]
+      {:content {} :app-db-edn (pr-str {:example {:value @*value}})})
+    (reset! ssr/*cache {})
+    (try
+      (with-redefs [config/env {:ssr {:cache-ttl-ms 0}}
+                    pages/match (fn [_] {:data spec :path-params {}})
+                    ssr/render! (fn [snapshot] (swap! *renders inc) (:app-db-edn snapshot))]
+        (is (= {} (ssr/route "/example")))
+        (is (= :miss (:cache (ssr/page! "/example"))))
+        (is (= :hit (:cache (ssr/page! "/example"))))
+        (is (= 1 @*renders))
+        (reset! *value "Changed")
+        (is (= :miss (:cache (ssr/page! "/example"))))
+        (is (= 2 @*renders)))
+      (finally (remove-method ssr/page-data! ::example) (reset! ssr/*cache {})))))
+
+(deftest additional-module-routes-declare-ssr-and-bound-their-inputs
+  (is (= {} (ssr/route "/cv")))
+  (is (= {:doc "index"} (ssr/route "/docs")))
+  (is (= {:doc "tolgraven.core"} (ssr/route "/docs/codox/tolgraven.core")))
+  (is (nil? (ssr/route "/docs/codox/.."))))
+
+(deftest page-selection-does-not-depend-on-server-rendering
+  (let [match (pages/match "/blog/post/hi-42")]
+    (is (= {:post-id 42} (page/selection (assoc-in match [:data :ssr] false))))))
+
+(deftest bounded-comments-and-bulk-authors
+  (let [calls (atom [])
+        roots (mapv #(hash-map :id (str "r" %) :parent_post 42 :user_id (str "u" %) :ts % :text "root") (range 11))
+        children (mapv #(hash-map :id (str "c" %) :parent_post 42 :parent_comment (str "r" (inc %)) :user_id (str "v" %) :ts % :text "child") (range 10))]
+    (with-redefs [content/fresh-bundle! (fn [_] {:content {}})
+                  supabase/request! (fn [_ table {:keys [query-params]}]
+                                      (swap! calls conj [table query-params])
+                                      {:body (projected-response (get query-params "select" "") (case table
+                                               "blog_posts" [{:id 42 :doc_id "42" :user_id "author"}]
+                                               "blog_comments" (cond
+                                                                 (= "is.null" (get query-params "parent_comment")) roots
+                                                                 (= "id,parent_comment" (get query-params "select"))
+                                                                 (if (string/includes? (get query-params "parent_comment") "c0")
+                                                                   [{:id "deep" :parent_comment "c0"}]
+                                                                   (mapv #(select-keys % [:id :parent_comment]) children))
+                                                                 (string/includes? (get query-params "parent_comment") "c0")
+                                                                 [{:id "deep" :parent_post 42 :parent_comment "c0"
+                                                                   :user_id "deep-author" :text "grandchild" :ts 12}]
+                                                                 :else children)
+                                               "site_users" [{:id "author" :name "Author"}]
+                                               "auth_roles" []))})]
+      (let [snapshot (ssr/snapshot! "/blog/post/test-42" {:post-id 42})
+            user-reads (filter #(= "site_users" (first %)) @calls)
+            root-read (second (first (filter #(= "is.null" (get-in % [1 "parent_comment"])) @calls)))]
+        (is (= 1 (count user-reads)) "Authors are fetched together, not once per commenter")
+        (is (string/starts-with? (get-in (first user-reads) [1 "id"]) "in.("))
+        (is (= 11 (get root-read "limit")))
+        (is (= "ts.desc,id.desc" (get root-read "order")))
+        (is (= 22 (count (:comments snapshot))))
+        (is (some #(= "deep" (:id %)) (:comments snapshot)))
+        (is (string/includes? (get-in (first user-reads) [1 "id"]) "deep-author"))
+        (is (= 1 (:reply-count (first (filter #(= "c0" (:id %)) (:comments snapshot))))))))))
+
+(deftest saved-return-uses-client-restoration-without-server-data-reads
+  (with-redefs [config/env {:dev true :ssr {:streaming false}} ssr/enabled? (constantly true)
+                ssr/page! (fn [& _] (throw (ex-info "Must not render" {})))
+                content/bundle! (fn [] (throw (ex-info "Must not fetch CMS" {})))
+                optimus-html/link-to-js-bundles (fn [& _] "")]
+    (let [response (layout/render-home {:uri "/blog" :headers {"x-page-render" "state"}
+                                       :cookies {"tolgraven-return" {:value "%2Fblog"}}})]
+      (is (= 200 (:status response)))
+      (is (string/includes? (:body response) "data-restore=\"true\""))
+      (is (not (string/includes? (:body response) "data-hydrate")))
+      (is (= "no-store" (get-in response [:headers "Cache-Control"]))))))
+
+(deftest saved-return-hints-cover-recent-paths-and-reject-invalid-values
+  (is (not (layout/returning-page? {:uri "/blog" :headers {"x-page-render" "ssr"}
+                                  :cookies {"tolgraven-return" {:value "%2Fblog"}}})))
+  (is (not (layout/returning-page? {:uri "/blog" :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}}))
+      "An ordinary reload with a saved cookie still gets SSR")
+  (is (layout/returning-page? {:uri "/blog" :headers {"x-page-render" "state"}
+                              :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}}))
+  (is (not (layout/returning-page? {:uri "/cv" :headers {"x-page-render" "state"}
+                                  :cookies {"tolgraven-return" {:value "[\"/\",\"/blog\"]"}}})))
+  (is (not (layout/returning-page? {:uri "/blog" :headers {"x-page-render" "state"}
+                                  :cookies {"tolgraven-return" {:value "%invalid"}}}))))
+
+(deftest concurrent-pages-share-identical-flights-without-serializing-other-pages
+  (let [entered (java.util.concurrent.CountDownLatch. 2)
+        release (promise) snapshots (atom []) renders (atom [])]
+    (reset! ssr/*cache {})
+    (try
+      (with-redefs [ssr/snapshot! (fn [uri _] (swap! snapshots conj uri) {:path uri :posts []})
+                    ssr/render! (fn [snapshot]
+                                  (swap! renders conj (:path snapshot))
+                                  (.countDown entered)
+                                  (deref release 5000 nil)
+                                  (:path snapshot))]
+        (let [a (ssr/page-async! "/blog") duplicate (ssr/page-async! "/blog")
+              b (ssr/page-async! "/blog/page/2")]
+          (is (identical? a duplicate))
+          (is (.await entered 3 java.util.concurrent.TimeUnit/SECONDS)
+              "Two different paths reach rendering before either completes")
+          (deliver release true)
+          (is (= "/blog" (:html (concurrent/await! a))))
+          (is (= "/blog/page/2" (:html (concurrent/await! b))))
+          (is (= 2 (count @snapshots)))
+          (is (= 2 (count @renders)))
+          (is (= :hit (:cache (ssr/page! "/blog"))))))
+      (finally (deliver release true) (reset! ssr/*cache {})))))
+
+(deftest async-ring-boundary-returns-before-work-and-preserves-bindings
+  (let [entered (promise) release (promise) response (promise)
+        handler (concurrent/wrap-async (fn [_] (deliver entered true) @release {:status 200 :body *print-length*}))]
+    (try
+      (binding [*print-length* 17]
+        (is (nil? (handler {} #(deliver response %) #(deliver response %)))))
+      (is (= true (deref entered 1000 :timeout)))
+      (is (not (realized? response)))
+      (deliver release true)
+      (is (= {:status 200 :body 17} (deref response 1000 {})))
+      (finally (deliver release true)))))
+
+(deftest shared-read-plan-batches-independent-nodes-before-dependent-reads
+  (let [calls (atom [])
+        nodes [{:id :left :queries (fn [_] [{:path-collection [:users]}])}
+               {:id :right :queries (fn [_] [{:path-collection [:blog-posts]}])}
+               {:id :child :depends [:left :right]
+                :queries (fn [_] [{:path-collection [:blog-comments]}])}]
+        result (plan/evaluate nodes {} (fn [queries] (swap! calls conj queries)
+                                         (mapv (constantly {:docs []}) queries)))]
+    (is (= [2 1] (mapv count @calls)))
+    (is (:ready? result))
+    (is (= {:left [] :right [] :child []} (:values result)))
+    (is (not (:ready? (plan/evaluate nodes {} #(mapv (constantly nil) %)))))))
+
+(deftest independent-public-reads-run-concurrently
+  (let [entered (java.util.concurrent.CountDownLatch. 2) release (promise)]
+    (try
+      (with-redefs [supabase/request! (fn [& _] (.countDown entered) (deref release 5000 nil) {:body []})]
+        (let [task (concurrent/submit! #(reader/read-many! [{:scoped? true :path-collection [:blog-posts]}
+                                                           (query/profile-query "u")]))]
+          (is (.await entered 3 java.util.concurrent.TimeUnit/SECONDS))
+          (deliver release true)
+          (is (= [{:docs []} {:docs []}] (concurrent/await! task)))))
+      (finally (deliver release true)))))
+
+(deftest ssr-is-enabled-by-default-and-configurable-through-edn
+  (with-redefs [config/env {}]
+    (is (ssr/enabled?))
+    (is (= 3600000 (:cache-ttl-ms (ssr/settings))))
+    (is (= "target/ssr/site.js" (ssr/worker-path))))
+  (with-redefs [config/env {:ssr {:enabled false
+                                :worker "/configured/site.js"
+                                :render-workers 3
+                                :cache-ttl-ms 10000}}]
+    (is (false? (ssr/enabled?)))
+    (is (= "/configured/site.js" (ssr/worker-path)))
+    (is (= 3 (:render-workers (ssr/settings))))
+    (is (= 10000 (:cache-ttl-ms (ssr/settings))))))
+
+
+(deftest blog-pages-and-tags-use-filtered-bulk-queries
+  (let [page (first (query/seed-load-plan (blog-data/page-query 2 3)))
+        tag (first (query/seed-load-plan (blog-data/tag-query "cljs")))
+        contract {"blog-posts" {"1" {:id 1 :tags "cljs clojure"}
+                               "2" {:id 2 :tags "cljs-more"}
+                               "3" {:id 3 :tags "work\tcljs"}
+                               "4" {:id 4 :tags "work"}}}]
+    (is (= 6 (:offset page)))
+    (is (= 3 (:limit page)))
+    (is (= [[:id :desc]] (:order-by page)))
+    (is (= [[:tags "match" "(^|\\s)cljs(\\s|$)"]] (:filters tag)))
+    (is (= [3 1] (mapv (comp :id :data) (:docs (query/query-contract contract (blog-data/tag-query "cljs"))))))
+    (is (= [2 1] (mapv (comp :id :data) (:docs (query/query-contract contract (blog-data/page-query 1 2))))))
+    (is (= "(^|\\s)c\\+\\+(\\s|$)" (query/tag-pattern "c++")))
+    (is (empty? (query/document-caches {:summary? true :path-collection [:blog-posts]}
+                                     {:docs [{:id "1" :data {:id 1}}]})))
+    (is (= {:docs [{:id "1" :data {:id 1 :text "Ready"}}]}
+           (get (query/document-caches (blog-data/page-query 0 3)
+                                      {:docs [{:id "1" :data {:id 1 :text "Ready"}}]})
+                (pr-str (query/normalize-query (blog-data/post-query 1))))))))
+
+(deftest already-completed-first-render-skips-the-intermediate-shell
+  (let [result {:html "<article>Ready now</article>"
+                :snapshot {:posts [] :content {}}}
+        pending (java.util.concurrent.CompletableFuture/completedFuture result)]
+    (with-redefs [config/env {:dev true :ssr {:streaming true}}
+                  ssr/enabled? (constantly true)
+                  ssr/cached? (constantly false)
+                  ssr/page-async! (fn [& _] pending)
+                  ssr/shell! (fn [& _] {:html "<p>Pending</p>"})
+                  optimus-html/link-to-js-bundles (fn [& _] "")]
+      (let [response (layout/render-home {:uri "/blog/post/test-42" :query-params {}})]
+        (is (string? (:body response)))
+        (is (string/includes? (:body response) "Ready now"))
+        (is (not (string/includes? (:body response) "id=\"ssr-shell\"")))
+        (is (not (string/includes? (:body response) "id=\"ssr-complete\"")))))))

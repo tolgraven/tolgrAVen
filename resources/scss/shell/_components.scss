@@ -1,0 +1,918 @@
+  /*************************/
+ /* GENERAL UI COMPONENTS */
+/*************************/
+
+/* TODO: line border cross pattern for eg images, in same way as site main, connecting to main borders... */
+/* together with similar for topnav and feels "almost" proper design language ish */
+/* could also run along down connecting to next section... */
+.line { /* i guess x overflow only important on ios, so we hype -edges by media query */
+  width: calc(var(--space-edges) + 100%); /* extend out one margin */
+  background-color: var(--line-color);
+  --height: var(--line-width);
+  height: var(--height);
+}
+.line-sm {
+  --height: var(--line-width-sm);
+}
+
+.line.line-header {
+  position: sticky; /* starts between header and main, turns into demarcation */
+  z-index: 100;
+  top: var(--header-height-current);
+  transition: top var(--header-expand-time) ease;
+  margin-top: var(--space-top); /* space before sticky starts */
+
+  &.hide {
+    // top: 0;
+    transition: top var(--header-expand-time) ease;
+  }
+}
+.line.line-footer {
+  position: absolute;
+  top: 0; /* if attach at top of footer instead of bottom of main */
+  right: 0; /* extend on left instead of right width already good */
+  z-index: 100;
+}
+.line-left  { border-left:  var(--line-width-vert) solid var(--line-color); }
+.line-right { border-right: var(--line-width-vert) solid var(--line-color); }
+.line-left-sm  { border-left:  var(--line-width-vert) solid var(--line-color); }
+.line-right-sm { border-right: var(--line-width-vert) solid var(--line-color); }
+.lined-container {
+  // position: relative; /* need to be able to attach lines around */
+  border: var(--line-width) solid var(--line-color);
+}
+.lined-container-sm {
+  border: var(--line-width-sm) solid var(--line-color);
+}
+
+.fill-above-line-header {
+  position: sticky;
+  top: 0;
+  width: calc(100% - 0 * var(--line-width-vert));
+  height: 0;
+  // transition: height 0.25s;
+  transition: height var(--header-expand-time) ease;
+
+  &.fill {
+    height: calc(var(--header-height-current) + var(--line-width));
+    background: var(--bg-1);
+    z-index: 10;
+    border-right: var(--line-width-vert) solid var(--line-color);
+  }
+}
+
+.close-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  
+  &:hover {
+    outline: 0;
+    transform: scale(1.1);
+  }
+}
+
+.progressive-picture {
+  animation: fade-in 0.25s ease 0.017s;
+}
+
+.media {
+  width: 100%;
+  margin: var(--space) calc(0.5 * var(--space)) 0.2rem calc(0.5 * var(--space));
+  user-select: none;
+}
+.image-sm {
+  width: calc(0.5 * var(--media-width-main));
+  max-height: 300px;
+  object-fit: cover; /* since we're setting max-height we must also ensure zooms instead of stretching */
+}
+.image-flex {
+  flex: 1 0 auto;
+  max-width: 200px; /* tho then should actually INCREASE on small screens when 1col... */
+}
+.image-inset {
+  margin-top: 0;
+  margin-left: 0;
+  border-radius: 0.15rem;
+}
+.media-as-bg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: -1;
+  width: 100%;
+  max-width: unset;
+  object-fit: cover;
+  margin: 0;
+  transform: scale(1.125)
+             translateY(5.5%);
+
+  transition: transform 4.0s ease;
+}
+.section-with-media-bg-wrapper { /* like section-bg-wrapper but NOT using background for img/video */
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  -webkit-transform: translate3d(0,0,0); // for safari, work around z-index bug by creating new stacking context
+  /* border-top: var(--line-width) solid; */
+  
+  &:hover .media-as-bg {
+    transform: scale(1.2);
+  }
+}
+.media-container {
+  position: relative;
+  display: flex;
+  flex-flow: column;
+  align-items: center; /* align-items instead of justify-content because flow by column */
+  justify-content: center;
+  text-align: center;
+
+  p { /* img/video caption... */
+    font-size: 0.85em; /* small captions */
+    margin-top: 0.3em;
+    width: var(--media-width-main);
+    text-align: left;
+  }
+}
+
+.bg-static-section {
+  position: relative;
+  overflow-y: hidden;
+}
+
+.fading-bg-heading {
+  h1 {
+    padding: 2.25rem 0;
+  }
+}
+
+.md-rendered {
+  img {
+    padding: 0.75em 0;
+    width: 100%;
+  }
+  > pre {
+
+    > pre {
+      width: 99.75%;
+      padding: 0;
+      margin: 0;
+
+      > code {
+        > span:first-of-type {
+          > span {
+            padding-top: calc(0.33 * var(--space));
+          }
+        }
+        > span:last-of-type {
+          > span {
+            padding-bottom: calc(0.33 * var(--space));
+          }
+        }
+      }
+    }
+  }
+}
+
+.column {
+  margin: var(--space);
+  text-align: left;
+}
+
+
+.carousel {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  // align-items: center; // causes some offsetting of wrapped elem so avoid
+  overflow: hidden;
+}
+.carousel-btn {
+  min-width: 2rem;
+  min-height: 2rem;
+  border: none;
+  padding: 0;
+  margin: 0;
+  z-index: 10;
+}
+.carousel-prev-btn, .carousel-next-btn {
+  position: absolute;
+  top: 50%;
+}
+.carousel-prev-btn {
+  left: var(--space);
+}
+.carousel-next-btn {
+  right: var(--space);
+}
+
+.carousel-idxs {
+  position: absolute;
+  bottom: var(--space);
+  display: flex;
+  
+  .carousel-idx { // idea use large index bobbles same bg blur as category bg, looks nice
+    background: none;
+    border-radius: 20%;
+    opacity: 70%;
+
+    margin-right: 0.5rem;
+    font-size: 0.8em;
+
+    &.carousel-idx-current {
+      opacity: 100%;
+      font-size: 1.25em;
+    }
+  }
+}
+.carousel-three {
+  background-color: rgba(30, 30, 45, 0.8);
+}
+.carousel-items {
+
+  .carousel-item-min {
+    object-fit: cover;
+    opacity: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    transition: left 0.5s ease, opacity 0.5s ease;
+    width: 100%;
+    height: 100%;
+    display: none;
+
+    .media {
+      margin: 0;
+      width: unset;
+    }
+  }
+  .carousel-item-main {
+    opacity: 100%;
+    position: relative;
+    z-index: 5;
+    display: initial;
+  }
+  .carousel-item-prev, .carousel-item-next {
+    position: absolute;
+    opacity: 50%;
+    z-index: -1;
+    display: initial;
+  }
+  .carousel-item-prev {
+    left: -105%;
+  }
+  .carousel-item-next {
+    left: 105%;
+  }
+
+  
+  .carousel-item-middle {
+    // transition: all 0.5s;
+    // transform: scale(1.2);
+    z-index: 10;
+    // transform: translateZ(10px);
+    
+    &.from-left, &.from-right { transition: transform 0.0s; }
+    &.from-left  { transform: scale(0.90) translateX(100%); }
+    &.from-right { transform: scale(0.90) translateX(-100%); }
+  }
+  
+  .carousel-item-left, .carousel-item-right {
+    transition: 0.5s;
+    // transform: scale(0.8);
+
+    &.from-left, &.from-right { transition: transform 0.0s; }
+  }
+  .carousel-item-left {
+    // transform: rotateY(-30deg) scale(0.7);
+    &.from-left  { transform: translateX(100%) scale(1.0); }
+    &.from-right { transform: translateX(100%) scale(0.0); }
+  }
+  .carousel-item-right {
+    // transform: rotateY(30deg) scale(0.7);
+    &.from-left  { transform: translateX(100%) scale(0.0); }
+    &.from-right { transform: translateX(-100%) scale(1.0); }
+  }
+  
+  .carousel-item-left-pseudo, .carousel-item-right-pseudo {
+    position: absolute; // PROBLEM: this causes its sizing to be entirely oio
+    top: -10%;
+    z-index: -1;
+    transition: 1.0s;
+    // transform: scale(0.0);
+    &.from-left, &.from-right { transition: 0.0s; }
+  }
+  .carousel-item-left-pseudo {
+    left: 0;
+    transform: translateX(-75%) scale(0.0);
+    &.from-left {
+      transform: translateX(-0%) scale(0.5);
+    }
+  }
+  .carousel-item-right-pseudo {
+    right: 0;
+    transform: translateX(75%) scale(0.0);
+    &.from-right {
+      transform: translateX(0%) scale(0.5);
+    }
+  }
+}
+
+@supports(scroll-margin-top: 0px) { /* compensate for our sticky header. */
+  .link-anchor { scroll-margin-top: var(--header-height-current); } }
+@supports not (scroll-margin-top: 0px) {
+  .link-anchor::before { /* have to compensate due to our sticky header. */
+    display: block;      /* on about section not working was due to overflow: auto clearfix... */
+    content: " ";        /* also various safari vs chrome diff in behavior */
+    margin-top: calc(-1.0 * var(--header-height-current));
+    height: calc(1.0 * var(--header-height-current));
+    visibility: hidden;
+    pointer-events: none;
+    z-index: -1;
+  }
+}
+
+.component-failed { /* DEV: react error boundary triggered */
+  padding: var(--space);
+  color: var(--red-1);
+  width: 100%;
+}
+.component-failed > * { /* DEV: react error boundary triggered */
+  margin: var(--space);
+}
+
+/* FLOAT STUFF */
+.caption-inset { /* caption overlaying media */
+  margin: 0.8em;
+  font-size: 0.65rem; /* weird ass size when iphone landscape, and webkit-text-size-adjust doesnt seem to help... */
+  opacity: 0.65;
+  position: absolute;
+}
+.caption-inset.right {
+  right: 0;
+  text-align: right;
+}
+.caption-inset.left   { left:   0; }
+.caption-inset.top    { top:    0; }
+.caption-inset.bottom { bottom: 0; }
+
+.float-with-caption {
+  width: 20%; // just a default, for animation
+  margin: var(--space) 0;
+
+  transition: 0.3s;
+  cursor: pointer; 
+
+  &.zoomed {
+    width: 80%;
+    margin: var(--space-lg) 10%;
+  }
+
+  &:first-of-type  { /* keep top of first inset level with top of text. */
+    margin-top: 0;
+  }
+  
+  > .media {
+    margin: 0;
+    width: 100%; /* and then set on parent div */
+  }
+  
+  &.left {
+    float: left;
+    margin-right: calc(1.0 * var(--space-lg)); /* using reg space becomes bit wrong when very slim... too tight. */
+  }
+  &.right {
+    float: right;
+    margin-left: calc(1.0 * var(--space-lg));
+  }
+}
+figcaption, .float-with-caption {
+  font-size: 0.8rem;
+}
+.float-wrapper { overflow: auto; } /* clearfix */
+
+
+.float-wrapper {
+  overflow: hidden;
+} /* clearfix */
+
+.float-wrapper::after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+
+.md-icon {
+  width:  var(--space-lg);
+  height: var(--space-lg);
+}
+.sm-icon {
+  width:  var(--space);
+  height: var(--space);
+}
+
+
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  // position: absolute;
+  // top: calc(1 * var(--space-lg)); // wiggles so move down
+  // right: calc(2.5 * var(--space-lg));
+}
+.loading-wiggle {
+  animation: 0.9s linear 0.2s infinite both alternate running wiggle;
+}
+.loading-wiggle-z {
+  animation: 1.3s ease-in 0.0s infinite both alternate running wiggle-z;
+}
+.loading-wiggle-y {
+  animation: 0.7s ease 0.0s infinite both alternate running wiggle-y;
+}
+.loading-spinner, .loading-spinner-massive {
+  opacity: 0.8;
+  transition: transform 0.5s;
+  animation: fade-in 9.25s ease 0.017s;
+  position: relative;
+  font-size: 150%;
+  // text-shadow: 1px 1px 4px white;
+  text-shadow: .04em .04em .2em white;
+  padding: 1em;
+}
+.loading-spinner-massive { // full page size
+  // Reserve the icon box before Font Awesome arrives, including its padding.
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(20rem + 1em);
+  height: calc(20rem + 1em);
+  line-height: 1;
+  // position: absolute;
+  padding: 10rem;
+  font-size: 900%;
+  animation: fade-in 3.5s ease 0.7s;
+  // animation: 1.0s ease 1.0s infinite both alternate running wiggle;
+  // animation: wiggle 1.0s ease;
+  /* @keyframes duration | timing-function | delay | iteration-count | direction | fill-mode | play-state | name */
+}
+@keyframes fade-in {
+  0%     { opacity: 0; }
+  30%    { opacity: 0; }
+  100%   { opacity: 1; }
+}
+@keyframes zoom-in-y {
+  from { transform: scaleY(0); }
+  to   { transform: none; }
+}
+@keyframes zoom-in-x {
+  from { transform: scaleX(0); }
+  to   { transform: none; }
+}
+@keyframes zoom-in {
+  from { transform: scale(0); }
+  to   { transform: none; }
+}
+@keyframes wiggle {
+  from { transform: translateX(-0.4em); }
+  to   { transform: translateX(0.5em); }
+}
+@keyframes wiggle-z {
+  from { transform:  translateZ(0.24em); }
+  to   { transform:  translateZ(-0.20em); }
+}
+@keyframes wiggle-y {
+  from { transform:  translateY(0.35em); }
+  to   { transform:  translateY(-0.23em); }
+}
+
+.loading-text-line {
+  position: relative;
+  overflow: hidden;
+  height: 1em;
+  margin: 0.5em;
+  animation: pulse 1s infinite ease-in-out;
+  
+  &:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 50%;
+    z-index: 1;
+    width: 500%;
+    margin-left: -250%;
+    animation: sweep 1.8s linear infinite;
+    // background: linear-gradient(to right, rgba($ph-bg, 0) 46%, rgba($ph-bg, .35) 50%, rgba($ph-bg, 0) 54%) 50% 50%;
+  }
+}
+@keyframes sweep {
+     0% { transform: translate3d(-30%, 0, 0);
+  } 100% { transform: translate3d(30%, 0, 0); }
+}
+@keyframes pulse {
+     0% { background-color: rgba(165, 165, 165, 0.12);
+  } 37% { background-color: rgba(165, 165, 165, 0.3);
+  } 45% { background-color: rgba(165, 165, 165, 0.35);
+  } 50% { background-color: rgba(165, 165, 165, 0.25);
+  } 100% { background-color: rgba(165, 165, 165, 0.12);
+  }
+}
+// @mixin nth-children($points...) {
+//   @each $point in $points {
+//     &:nth-child(#{$point}) {
+//       @content;
+//     }
+//   }
+// }
+// // width seems way more reasonable just doing in js tho
+// // or would we repeat same ten like
+// @include nth-children(1, 2, 7, 9) { width: 90%; }
+// @include nth-children(5, 6, 10) { width: 70%; }
+// @include nth-children(3, 7) { width: 50%; }
+// @include nth-children(4, 10) { width: 60%; }
+
+
+
+#modal-container {
+  opacity: 0.0;
+  transition: opacity 0.3s;
+}
+#modal-container.modal-is-open {
+  opacity: 1.0;
+  transition: opacity 0.3s;
+}
+.modal-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 30, 45, 0.0);
+  z-index: 200;
+  transition: background 0.5s;
+}
+.modal-bg-open {
+  background: rgba(30, 30, 45, 0.8);
+}
+#modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 201;
+}
+.modal-zoom {
+  // needs to, _after being created in place_, break out (w absolute or fixed)
+  // but for now just do a generic zoom...
+  right: 0;
+  bottom: 0;
+  padding: max(0.5rem, env(safe-area-inset-top, 0px))
+           max(0.5rem, env(safe-area-inset-right, 0px))
+           max(0.5rem, env(safe-area-inset-bottom, 0px))
+           max(0.5rem, env(safe-area-inset-left, 0px));
+  transform: scale(0.0);
+  opacity: 0.5;
+  transition: transform 0.5s;
+}
+.modal-zoomed {
+  opacity: 1.0;
+  transform: scale(1.0);
+}
+.modal-zoomed-item {
+  max-width: 100%;
+  max-height: 100%;
+  border: var(--line-width) solid var(--line-color);
+  box-shadow: 0px 0px 85px 3px rgba(150, 150, 250, 0.55);
+}
+
+.hud {
+  position: fixed;
+  z-index: 100;
+  transition: bottom var(--header-expand-time) ease;
+  bottom: calc(var(--footer-height-current) + env(safe-area-inset-bottom, 0px) + 0.25rem); /* ;actually, footer, if sticky... */
+  right: calc(var(--space-edges) + 0.05rem);
+  max-width: min(50em, calc(100% - var(--space-edges) - 3rem));
+  max-height: 50%;
+  // overflow-x: break-word;
+  overflow-y: scroll;
+  -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0.0) 0%, rgba(0,0,0,1) 15%);
+}
+.hud-message {
+  margin: var(--space);
+  padding: 0.3rem 0.7rem;
+  border: 1px solid rgba(170, 170, 250, 0.6);
+  // box-shadow: 0px 12px 15px 3px inset rgba(150, 150, 250, 0.5);
+  box-shadow: 0px 12px 15px 3px inset rgba(150, 150, 250, 0.15);
+  // box-shadow: 0px 2px 10px 2px rgba(230, 220, 250, 0.3);
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.325rem;
+  color: var(--bg-3);
+  opacity: 0.90; 
+
+  // &.error   { background: var(--red-3); }
+  &.error   {
+    background: linear-gradient(0deg, var(--red), var(--red-2));
+  }
+  // &.error   { background: linear-gradient(0deg, var(--red-1), var(--red-2)); }
+  &.warning {
+    background: var(--orange);
+  }
+  &.info    {
+    background: var(--bg-3);
+    color: var(--fg-1);
+  }
+
+  pre {
+    padding: 0.5em 0.5em;
+    margin: 0 -0.5em 0 -0.5em;
+  }
+
+  .hud-message-top {
+    display: flex;
+    justify-content: space-between;
+    
+    .hud-message-title {
+      font-size: 1em;
+      font-weight: bold;
+      padding-right: var(--space-lg);
+      padding-bottom: calc(0.33 * var(--space));
+      // max-width: calc(100% - var(--space-lg));
+    }
+    
+    .close-btn {
+      // top: -0.5em;
+      // right: -0.75em;
+      position: relative;
+      margin: 0;
+      padding: 0;
+      padding-bottom: calc(0.33 * var(--space));
+    }
+  }
+
+  .hud-message-button {
+    min-height: 2rem;
+    min-width: 2rem;
+  }
+}
+
+.hud-modal-main {
+  padding: 0.75rem 2rem;
+  > * {
+    padding: 0.75rem;
+  }
+}
+
+// neded for full width for some reason. dont remember that from cue-db ghmm
+.log-container {
+  padding: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  
+  table, thead, tbody, tr {
+    width: 100%;
+  }
+}
+#log-container {
+  // all this specific stuff really should go elsewhere, akin to main-page
+  z-index: 11;
+  border-top: none;
+}
+.log {
+  background: var(--bg-3);
+  
+  .log-messages {
+    > td {
+      padding: 0.05em 0.025em;
+      font-size: 80%;
+      max-width: 55vw;
+      overflow-wrap: break-word;
+      
+      > pre {
+        border: none;
+        padding: 0.2em 0.2em;
+        margin: 0;
+        white-space: pre-wrap;
+        overflow-x: auto;
+        // overflow-x: break-word;
+        // overflow-wrap: break-word;
+      }
+    }
+  }
+}
+.log-time { text-align: right }
+.log-level, .log-title { text-align: center }
+.log-level.error   { color: var(--red); }
+.log-level.warning { color: var(--orange); }
+.log-level.debug   { color: var(--green); }
+
+
+.soundcloud {
+  background: #fc4c02; //XXX fix real
+  position: relative;
+  height: 50vh;
+
+  .soundcloud-players { /* EXT IN IFRAME CANT BE STYLED */
+    background: #fc4c02; //XXX fix real
+    border: var(--line-width-sm) solid #bc6c52;
+
+    > div {
+      position: sticky;
+      top: 0;
+
+      > .oembed {
+        background: #fc4c02; //XXX fix real
+        border: var(--line-width-sm) solid #bc6c52;
+        //transform: rotateX(-40deg);
+        transition: transform 0.3s;
+
+        &.hovered {
+          transform: rotateX(0deg);
+        }
+      }
+    }
+
+    .soundcloud-player-loading {
+      // display: flex;
+      //height: calc(148px - var(--space)); // same as widget
+      padding: var(--space);
+      border: var(--line-width) solid #bc6c52; //XXX fix real
+      background-color: var(--orange);
+      color: #24160f;
+
+      .track-title { font-size: 1.17em; }
+      .track-artist { font-weight: bold; }
+
+      img {
+        height: 3rem;
+      }
+    }
+  }
+}
+
+.contact-form-popup {
+  position: fixed;
+  width: calc(100% - 2 * var(--space-sides)); // - 2 * var(--line-width-vert));
+  max-height: 0%;
+  opacity: 0%;
+  left: calc(var(--space-sides)); // + var(--line-width-vert));
+  bottom: calc(0px - var(--line-width));
+  overflow: hidden;
+
+  transition: bottom 0.5s ease, max-height 0.5s ease, opacity 0.8s ease;
+
+  color: var(--light-3);
+  background: linear-gradient(180deg, rgba(65, 20, 160, 0.3),
+                                      rgba(80, 20, 200, 0.8) 50%,
+                                      rgba(30, 10, 120, 0.36));
+  backdrop-filter: blur(4px); // remember firefox lacks this so need fallback there when using this...
+  box-shadow: 0px 0px 29px 3px rgba(150, 150, 250, 0.15);
+  padding: var(--space) 0.15em;
+                                    
+  input, textarea {
+    opacity: 85%;
+    padding: 1em;
+  }
+
+  button {
+    // margin: none;
+    // padding: none;
+    font-size: 150%;
+  }
+                                    
+  > h2 {
+    text-align: center;
+    text-decoration-color: var(--purple);
+    font-size: 250%;
+    margin-bottom: calc(1 * var(--space));
+  }
+  p {
+    font-size: 120%;
+    margin: var(--space) var(--space-lg);
+  }
+
+  &.inited {
+    max-height: 80%;
+    bottom: calc(var(--footer-height-current) + env(safe-area-inset-bottom, 0px) - var(--line-width));
+    opacity: 100%;
+  }
+  &.result {
+    max-height: 20%;
+    opacity: 100%;
+  }
+  &.closing {
+    max-height: 0%;
+    opacity: 0%;
+  }
+
+  .contact-form-form {
+    margin-top: 0.2em;
+    overflow: hidden;
+    transition: all 1.8s ease;
+    // position: relative;
+
+    input {
+      border-radius: 0;
+      margin: 0;
+
+      &[type="submit"] {
+        margin-top: -0.6em;
+        width: 100%;
+        background-color: var(--bg-2);
+      }
+    }
+
+    > div {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    label {
+      color: var(--red-2);
+      margin-top: 0.4em;
+      font-size: 75%;
+    }
+  }
+}
+
+.settings-panel {
+  background: var(--gradient-bg-main);
+  width: calc(100vw - 2 * var(--space-sides));
+  left: calc(var(--space-sides));
+  top: calc(var(--header-height-current) + var(--line-width));
+  opacity: 80%;
+  height: 0;
+  overflow: hidden;
+  transition: height var(--header-expand-time) ease;
+  font-size: 0.8em;
+
+  &.opened {
+    height: auto;
+    padding: var(--space);
+
+    &:before {
+      content: "";
+      display: block;
+      position: absolute;
+      height: 100%;
+      width: var(--line-width-vert);
+      background: linear-gradient(180deg, var(--line-color), var(--purple) 70%, var(--purple) 100%);
+      top: 0;
+      right: 0;
+    }
+
+    &:after {
+      content: "";
+      display: block;
+      position: absolute;
+      height: var(--line-width);
+      width: 100%;
+      background: linear-gradient(90deg, transparent, var(--purple) 70%, var(--purple) 100%);
+      bottom: 0;
+      right: calc(0px - var(--space));
+    }
+  }
+
+  .settings-numbers {
+    display: flex;
+    flex-wrap: wrap;
+    // align-items: center;
+
+    .settings-number {
+      display: flex;
+      flex: 1 0 auto;
+
+      label {
+        margin-left: 0.4em;
+        display: flex;
+        align-items: center;
+        // vertical-align:bottom;
+      }
+    }
+  }
+}
+
+.scrollbar {
+  position: absolute;
+  height: 100%;
+  width: calc(2.5 * var(--line-width-vert));
+  overflow: visible;
+  background-color: color-mix(in srgb, var(--bg-6) 25%, transparent);
+  top: 0;
+  right: calc(0rem - var(--space-sides));
+  opacity: var(--page-scroll-opacity);
+  transition: opacity calc(1.5 * var(--header-expand-time));
+
+  .scrollbar-thumb {
+    --thumb-height: var(--space-lg);
+    position: fixed;
+    top: #{'max(0px, var(--page-scroll-percent) - var(--thumb-height))'};
+    right: 0;
+    transition: top calc(0.25 * var(--header-expand-time));
+    height: var(--thumb-height);
+    width: calc(2 * var(--line-width-vert));
+    /* ^ though should be custom by page height */
+    background-color: var(--line-color);
+
+  }
+}

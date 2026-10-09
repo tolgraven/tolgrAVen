@@ -37,7 +37,7 @@ Coolify 4.3.23. Re-run the transactional probe after upgrading Coolify.
 
 ```sh
 make provision-plan SITE=.local-wip/my-site.json
-python3 scripts/provision-site.py probe .local-wip/my-site.json
+python3 scripts/ops/provision-site.py probe .local-wip/my-site.json
 make provision-site SITE=.local-wip/my-site.json
 ```
 
@@ -56,12 +56,12 @@ so use `status` before retrying an interrupted `up`. For an already running site
 use the individual phases below rather than restarting the entire stack.
 
 ```sh
-python3 scripts/provision-site.py prepare .local-wip/my-site.json
-python3 scripts/provision-site.py start .local-wip/my-site.json
-python3 scripts/provision-site.py schema .local-wip/my-site.json
-python3 scripts/provision-site.py wire .local-wip/my-site.json
-python3 scripts/provision-site.py deploy .local-wip/my-site.json
-python3 scripts/provision-site.py verify .local-wip/my-site.json
+python3 scripts/ops/provision-site.py prepare .local-wip/my-site.json
+python3 scripts/ops/provision-site.py start .local-wip/my-site.json
+python3 scripts/ops/provision-site.py schema .local-wip/my-site.json
+python3 scripts/ops/provision-site.py wire .local-wip/my-site.json
+python3 scripts/ops/provision-site.py deploy .local-wip/my-site.json
+python3 scripts/ops/provision-site.py verify .local-wip/my-site.json
 ```
 
 New web applications have PR previews and automatic deployments disabled, so
@@ -114,7 +114,7 @@ service to the existing staging project/environment/application, including PR 45
 It does not create or modify production resources. This is an explicit data-copy
 operation separate from provisioning empty sites.
 
-The server-side `scripts/seed-staging-supabase.py` helper requires distinct
+The server-side `scripts/ops/host/seed-staging-supabase.py` helper requires distinct
 source/target service UUIDs, the same server/team, a provisioner-owned target in
 an environment named `staging`, and empty destination site/Auth tables. It allows
 only the identical empty `avatars` bucket created by schema bootstrap, retaining
@@ -140,36 +140,13 @@ Tolgraven's source currently has no Supabase storage objects, so no object-file
 transfer is needed. Existing external media URLs remain as stored in the copied
 content. New sites continue to use schema-only provisioning.
 
-## Verified tolgraven staging cutover (2026-10-03)
+## Runtime capacity and deployment scope
 
-The staging Supabase service is `fqaammdsestcbglokp8ewao0` in the existing
-staging environment. Its API/Studio origin is
-https://supabase-staging.bux.tolgraven.se. The deployed staging web application
-now returns that origin and its separate anon key from `/api/supabase/settings`.
-Both normal and PR-preview runtime scopes were updated; no Supabase key is a
-build argument. Production rejects the staging anon key with HTTP 401.
-
-The one-time seed copied 11 posts, 75 comments, 14 profiles, 14 Auth accounts and
-identities, plus the remaining site tables and the empty avatar bucket. All nine
-site-table checksums matched the source. Disposable live checks passed password
-login, owner-document reads, anonymous denial of private documents/email fields,
-and image upload/download/delete through the new storage service. Test accounts,
-profiles, documents and objects were removed afterward.
-
-A complete new project with two environments, two web apps and two Supabase
-stacks also passed the transactional `probe`; zero probe projects remained.
-The existing scoped deploy helper stopped the old staging runtime, deployed the
-already-built image with the new environment values, checked the HTTP endpoints
-and restored its Git build settings. Exactly one staging runtime remained.
-
-Bux had about 2.8 GiB available RAM after the initial cutover; a later idle
-sample showed about 3.4 GiB available. These are snapshots, not a site-count
-limit. Local image builds avoid server-side compiler peaks, and stopping inactive
-staging environments can make room for additional sites. Each running full
-Supabase stack still has a persistent footprint: the later sample measured about
-1.46 GiB resident for staging Supabase and 456 MiB for its web app. PR-close
-cleanup stops the web preview; the on-demand lifecycle policy now also stops
-staging Supabase after the idle grace period (see below).
+Measure actual available memory and workload before provisioning. Local builds
+avoid server compiler peaks, but running web and Supabase stacks retain a memory
+footprint. The staging lifecycle policy suspends idle stacks. Inspect swap-in/out
+and service latency as well as available memory; historical host measurements
+are not a site-count limit.
 
 The 3 GiB-per-environment provisioning budget is deliberately conservative, not
 a measurement of idle consumption; a new production/staging pair currently
@@ -184,7 +161,7 @@ turning on automatic deployment rather than reusing tolgraven's secrets.
 
 `make docker` remains deliberately scoped to tolgraven's existing staging app;
 it refuses a checkout whose `origin` is another repository. A new site's deploy
-command is `python3 scripts/provision-site.py deploy <site.json>`. `docker-build`
+command is `python3 scripts/ops/provision-site.py deploy <site.json>`. `docker-build`
 and `docker-push` do not change a Coolify application. Do not reuse the shared
 builder alias for a different architecture/toolchain; use a matching dependency
 hash tag or the self-contained builder for that server.

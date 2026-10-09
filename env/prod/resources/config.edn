@@ -1,2 +1,7 @@
 {:prod true
- :port 3000}
+ :port 3000
+ :image-converter "/app/scripts/media/images.clj"
+ :ssr {:enabled true
+       :render-workers 2
+       :worker "/app/ssr/site.js"
+       :node-binary "node"}}

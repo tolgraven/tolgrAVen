@@ -34,7 +34,7 @@ The server setup script reuses the existing `hetzner` S3 record inside Coolify.
 Credentials are supplied to the registry at runtime, never Docker build arguments.
 Removing the registry container does not delete its S3 image data.
 
-Required locally: Docker/BuildKit, Python 3, make, a registry login, and working
+Required locally: Docker/BuildKit, Babashka, make, a registry login, and working
 `ssh bux` authentication. This Mac's Docker login is already configured through
 Docker's credential store. Other machines need their own authorized credentials:
 
@@ -46,11 +46,12 @@ No additional Coolify API token or SSH key is created.
 
 ## Prefab builder
 
-`Dockerfile.builder` combines pinned Node 22, Temurin Java 21, and Leiningen images,
-then installs exactly `package-lock.json` and downloads production Maven artifacts.
+`Dockerfile.builder` combines pinned Babashka 1.13.225, Node 22, Temurin Java 21, and Leiningen images,
+then installs exactly `package-lock.json` and downloads build and documentation
+Maven artifacts.
 The prefab includes the complete project `node_modules` directory, including
-Sass, PostCSS, and Shadow CLI tools. Sass/PostCSS
-symlinks support the existing login-shell Sass command without global npm installs.
+Sass, PostCSS, and Shadow CLI tools. npm scripts use these local executables;
+no global CSS-tool installs or compatibility symlinks are needed.
 
 `make docker-prefab` publishes a dependency-hash tag and the compatibility alias
 `registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v1` (the server uses
@@ -72,7 +73,40 @@ with `Dockerfile.builder` when changing toolchain setup.
 
 Application builds reuse prefab npm/Maven dependencies and a BuildKit cache for
 Shadow release analysis. Application source changes no longer reinstall Node,
-Leiningen, or npm packages. The final image contains the JRE and application jar,
+Leiningen, or npm packages.
+BuildKit runs three independent branches concurrently: the frontend builds CSS
+and releases the Shadow targets (`app`, `ssr`, and `return-worker`) in one invocation; the backend
+resolves Clojure dependencies and AOT-compiles; a third stage generates Codox
+documentation. The packaging stage waits for all three, copies the completed
+browser assets, and
+creates the uberjar without repeating prep tasks or cleaning compiled classes.
+Separate stage filesystems prevent target-directory and Maven download races.
+Codox analyzes source without the custom `:browser` reader feature. The loader's
+`.cljc` reader conditional therefore omits lazy-loadable declarations during
+documentation analysis and SSR; browser builds explicitly enable that feature.
+The npm imports use the supported `$default`/`:as` form, which Codox can parse,
+and the namespace filter matches `tolgraven.*` names rather than file extensions.
+The prefab still supplies most dependencies, so ordinary builds gain primarily
+from overlapping compilation rather than downloading dependencies.
+
+The independent `media-tools` runtime stage copies the pinned Babashka runtime and installs ImageMagick and `cwebp`, then
+encodes and decodes a tiny WebP/AVIF fixture during the image build. Check only
+these runtime codecs with `docker build --target media-tools .`; this does not
+compile the application or refresh the prefab. Uploads use the copied
+`/app/scripts/media/images.clj`. Persistent image objects live in Supabase's
+mounted Storage backend; see [upload storage](supabase-provisioning.md).
+
+The Shadow JVM defaults to a 1536 MB heap (`BUILD_JAVA_OPTIONS`), while the
+concurrent backend JVM defaults to 768 MB (`BUILD_CLJ_JAVA_OPTIONS`) and Codox to
+512 MB (`BUILD_DOCS_JAVA_OPTIONS`). These are
+build arguments; actual peak memory also includes Lein launchers, native memory
+and CSS tooling. Parallel compilation trades additional peak memory for elapsed
+time; adjust the build arguments to the builder's capacity. Parallel stages do
+not change npm or Maven dependencies. The corrected Codox configuration changes
+`project.clj`, which is part of the prefab hash; local build tooling will select
+the new hash even though its dependency contents are unchanged.
+
+The final image contains the JRE and application jar,
 not source checkout, node_modules, Maven cache, or compiler tools. Runtime JVM
 memory bounds are preserved.
 
@@ -111,10 +145,10 @@ one; ordinary cross-PR Git deployments still use that service's reconciliation.
 ```sh
 # On bux, after copying the scripts from this checkout:
 # Use an existing bcrypt htpasswd file; keep it out of Git.
-REGISTRY_HTPASSWD_FILE=/secure/registry.htpasswd bash scripts/setup-build-registry.sh
-sudo install -D -m 755 scripts/deploy-image.py /usr/local/lib/tolgraven/deploy-image.py
-sudo install -D -m 755 scripts/staging_supabase.py /usr/local/lib/tolgraven/staging_supabase.py
-sudo install -D -m 755 scripts/coolify-site-runtime-policy.py /usr/local/lib/tolgraven/coolify-site-runtime-policy.py
+REGISTRY_HTPASSWD_FILE=/secure/registry.htpasswd bash scripts/ops/host/setup-build-registry.sh
+sudo install -D -m 755 scripts/ops/host/deploy-image.py /usr/local/lib/tolgraven/deploy-image.py
+sudo install -D -m 755 scripts/ops/host/staging_supabase.py /usr/local/lib/tolgraven/staging_supabase.py
+sudo install -D -m 755 scripts/ops/host/coolify-site-runtime-policy.py /usr/local/lib/tolgraven/coolify-site-runtime-policy.py
 sudo systemctl restart tolgraven-runtime-policy
 ```
 
@@ -149,28 +183,13 @@ Do not run registry garbage collection during pushes; image retention/garbage
 collection is intentionally a separate operation. Old versions remain available
 for rollback in S3.
 
-## Verification on 2026-10-03
-
-The prefab was published successfully. An unauthenticated request for its S3
-manifest link returned HTTP 403; authenticated S3 access succeeded. The final
-ARM64 runtime image was 419 MiB versus the preceding staging image's 1.32 GB.
-Homepage, CSS and compiled JavaScript served successfully from the local image.
-The end-to-end `make docker` run with a warm local build cache completed in
-42 seconds, including the server's first runtime-image pull and Coolify rollout.
-The deployed homepage and public settings endpoint both returned HTTP 200, and
-production remained available. These timings are measurements of this run,
-not a guarantee for source changes or the initial prefab build/upload.
+## Build cache behavior
 
 Coolify writes a release-specific `docker-compose.yaml` into the checkout before
 building. Docker's context excludes that generated manifest (and the ignore file
 itself), so deployment metadata and documentation/tooling-only changes do not
 invalidate `COPY . .` and force a new application compilation. Application source
 changes still compile normally.
-
-Cache validation on the Mac (2026-10-03): the first local image build after the
-context change took 54.82 seconds. Two subsequent builds with different generated
-Compose image references took 2.17 and 0.85 seconds; the `lein uberjar` layer was
-cached in both. These are local image-build times, excluding push and deployment.
 
 ## PR preview cleanup
 

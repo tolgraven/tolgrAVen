@@ -6,6 +6,24 @@
             [tolgraven.env :as env]
             [tolgraven.middleware :as middleware]))
 
+(deftest only-successful-production-fingerprinted-modules-are-immutable
+  (doseq [[dev? status uri mime cache?]
+          [[false 200 "/js/compiled/out/blog.0123456789abcdef0123456789abcdef.js" "text/javascript" true]
+           [false 200 "/js/compiled/out/blog.0123456789ABCDEF0123456789ABCDEF.js" "text/javascript" true]
+           [false 200 "/js/compiled/out/blog.0123456789abcdef0123456789abcdef.js" "text/html" false]
+           [false 404 "/js/compiled/out/blog.0123456789abcdef0123456789abcdef.js" "text/javascript" false]
+           [true 200 "/js/compiled/out/blog.0123456789abcdef0123456789abcdef.js" "text/javascript" false]
+           [false 200 "/js/compiled/out/blog.js" "text/javascript" false]
+           [false 200 "/api/content/bootstrap" "application/json" false]]]
+    (with-redefs [config/env {:dev dev?}]
+      (let [handler (middleware/wrap-module-cache
+                      (constantly {:status status
+                                   :headers {"Content-Type" mime}
+                                   :body "content"}))
+            response (handler {:uri uri})]
+        (is (= (when cache? "public, max-age=31536000, immutable")
+               (get-in response [:headers "Cache-Control"])))))))
+
 (deftest optimized-image-responses
   (testing "production asset middleware preserves image bytes and MIME types"
     ;; Stage permits local HTTP while retaining frozen, optimized assets.

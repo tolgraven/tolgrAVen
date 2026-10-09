@@ -1,16 +1,32 @@
 (ns tolgraven.supabase-client-test
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [cljs.test :refer-macros [deftest is async use-fixtures]]
             [ajax.core :as ajax]
+            [clojure.string :as string]
             [reagent.ratom :as ratom]
             [re-frame.core :as rf]
+            [re-frame.db :as rfdb]
             [tolgraven.service-status :as status]
             [tolgraven.supabase.client :as client]
             [tolgraven.supabase.realtime :as realtime]))
 
 (defn tick! [] (js/Promise. (fn [resolve _] (js/setTimeout resolve 0))))
 
+(defn await-value! [reference predicate]
+  ;; SDK completion queues a re-frame event. Observe the delivered value rather
+  ;; than assuming that one zero-delay timer also commits that event.
+  (js/Promise.
+    (fn [resolve reject]
+      (let [deadline (+ (.now js/performance) 2000)]
+        (letfn [(check! []
+                  (ratom/flush!)
+                  (cond
+                    (predicate @reference) (resolve nil)
+                    (> (.now js/performance) deadline) (reject (js/Error. "Query value did not settle"))
+                    :else (js/requestAnimationFrame check!)))]
+          (check!))))))
+
 (defn mock-client []
-  (let [*rows (atom {}) *selects (atom []) *channels (atom {})
+  (let [*rows (atom {}) *selects (atom []) *filters (atom []) *channels (atom {})
         *removed (atom []) *auth-change (atom nil) *deferred (atom nil)
         auth #js {:getSession #(js/Promise.resolve #js {:data #js {:session @client/*session}})
                   :onAuthStateChange (fn [callback]
@@ -18,17 +34,26 @@
                                        #js {:data #js {:subscription #js {:unsubscribe (fn [])}}})}
         sdk #js {:auth auth
                  :from (fn [table]
-                         (let [*offset (atom 0)
+                         (let [*columns (atom [])
                                q #js {}]
-                           (aset q "select" (fn [_] q))
+                           (aset q "select" (fn [columns] (reset! *columns (mapv keyword (string/split columns #","))) q))
                            (aset q "order" (fn [_] q))
-                           (aset q "eq" (fn [_ _] q))
-                           (aset q "range" (fn [start end]
-                                             (swap! *selects conj [table start end])
-                                             (if-let [pending @*deferred]
-                                               pending
-                                               (js/Promise.resolve
-                                                (clj->js {:data (vec (take 500 (drop start (get @*rows table []))))})))))
+                           (doseq [op ["eq" "is" "in"]]
+                             (aset q op (fn [field value]
+                                          (swap! *filters conj [table field op (if (= op "in") (vec value) value)]) q)))
+                           (aset q "range"
+                             (fn [start end]
+                               (swap! *selects conj [table start end])
+                               (-> (or @*deferred
+                                       (js/Promise.resolve
+                                        (clj->js {:data (vec (take (inc (- end start)) (drop start (get @*rows table []))))})))
+                                   (.then (fn [reply]
+                                            ;; PostgREST includes every selected column, including
+                                            ;; SQL NULLs. Keep extra fields to test the allowlist.
+                                            (let [result (js->clj reply :keywordize-keys true)]
+                                              (clj->js
+                                               (update result :data
+                                                 #(mapv (fn [row] (merge (zipmap @*columns (repeat nil)) row)) %)))))))))
                            q))
                  :channel (fn [name]
                             (let [*change (atom nil) *status (atom nil)
@@ -38,11 +63,12 @@
                               (swap! *channels assoc name {:channel channel :change *change :status *status})
                               channel))
                  :removeChannel (fn [channel] (swap! *removed conj channel) (js/Promise.resolve "ok"))}]
-    {:sdk sdk :rows *rows :selects *selects :channels *channels :removed *removed
+    {:sdk sdk :rows *rows :filters *filters :selects *selects :channels *channels :removed *removed
      :auth-change *auth-change :deferred *deferred}))
 
 (defn reset-client! [mock]
   (doseq [entry (vals @client/*tables)]
+    (when-let [monitor (some-> entry :*connection deref)] ((:close! monitor)))
     (when @(:*retry entry) (js/clearTimeout @(:*retry entry))))
   (reset! client/*queries {})
   (reset! client/*tables {})
@@ -50,6 +76,29 @@
   (reset! client/*loaded #{})
   (reset! client/*seed realtime/empty-seed)
   (reset! client/*client (:sdk mock)))
+
+(defonce *restore-test (atom nil))
+(use-fixtures :each
+  {:before (fn []
+             (let [restore-db! (rf/make-restore-fn)
+                   snapshots (mapv (fn [state] [state @state])
+                                   [client/*client client/*settings client/*session
+                                    client/*seed client/*loaded client/*auth-listener
+                                    client/*preloads status/*failures])]
+               (reset! *restore-test
+                 (fn []
+                   ;; Dispose through the adapter even when an assertion/callback
+                   ;; fails before the test's happy-path disposal is reached.
+                   (doseq [entry (vals @client/*queries)]
+                     (ratom/dispose! (:*state entry)))
+                   (when-let [listener @client/*auth-listener] (.unsubscribe listener))
+                   (when-let [tick @client/*query-tick] (js/clearTimeout tick))
+                   (reset! client/*query-tick nil)
+                   (reset-client! {:sdk nil})
+                   (doseq [[state value] snapshots] (reset! state value))
+                   (restore-db!)))))
+   :after (fn [] (when-let [restore! @*restore-test] (restore!))
+                  (reset! *restore-test nil))})
 
 (defn status! [mock name status]
   (client/drain-queries!)
@@ -74,18 +123,23 @@
                      (is (= "Before" (get-in @one [:data :name])))
                      (is (nil? (get-in @one [:data :email])))
                      (change! mock "store-site_users" {:table "site_users" :eventType "UPDATE" :new {:id "u" :name "After"}})
+                     (tick!)))
+            (.then (fn []
                      (ratom/flush!)
+                     (is (= "After" (get-in @rfdb/app-db [:store :snapshot :seed :users 0 :name])))
                      (is (= "After" (get-in @one [:data :name])))
                      (is (= 1 (count (:docs @all))))
                      (is (= 1 (count @(:selects mock))))
                      (change! mock "store-site_users" {:table "site_users" :eventType "DELETE" :old {:id "u"}})
+                     (tick!)))
+            (.then (fn []
                      (ratom/flush!)
                      (is (nil? @one))
                      (is (= [] (:docs @all)))
                      ;; Rejoining fetches once to catch changes missed offline.
                      (reset! (:rows mock) {"site_users" [{:id "v" :name "Offline insert"}]})
                      (status! mock "store-site_users" "SUBSCRIBED")
-                     (tick!)))
+                     (await-value! all #(= "v" (get-in % [:docs 0 :id])))))
             (.then (fn []
                      (ratom/flush!)
                      (is (= "v" (get-in @all [:docs 0 :id])))
@@ -163,10 +217,12 @@
                      (status! mock "store-user_documents" "SUBSCRIBED")
                      (swap! client/*seed assoc :store_documents [{:owner_id "a" :collection "gpt-threads" :doc_id "t" :data {:messages ["secret"]}}])
                      (swap! client/*loaded conj "user_documents")
+                     (tick!)))
+            (.then (fn []
                      (is (= 1 (count (:docs @private))))
                      (@(:auth-change mock) "SIGNED_OUT" nil)
                      (ratom/flush!)
-                     (is (= [] (:docs @private)))
+                     (is (empty? (:docs @private)) "Auth change immediately hides private data")
                      (is (= [] (:store_documents @client/*seed)))
                      (@*resolve #js {:data #js [#js {:owner_id "a" :collection "gpt-threads" :doc_id "t" :data #js {:messages #js ["late secret"]}}]})
                      (tick!)))
@@ -228,7 +284,7 @@
       (reset! status/*failures {})
       (reset! (:rows mock) {"site_users" [{:id "u" :name "Available over HTTP"}]})
       (let [all (client/ensure-query! {:path-collection [:users]})]
-        (status! mock "store-site_users" "CHANNEL_ERROR")
+        (status! mock "store-site_users" "TIMED_OUT")
         (-> (tick!)
             (.then (fn []
                      (is (contains? @status/*failures [:supabase-stream "site_users"]))
@@ -275,7 +331,7 @@
           before (.-supabase js/globalThis)]
       (reset-client! mock)
       (reset! status/*failures {})
-      (aset (.-auth (:sdk mock)) "getSession"
+      (aset (.-auth ^js (:sdk mock)) "getSession"
             #(js/Promise.resolve #js {:error #js {:message "Do not expose raw details"}}))
       (set! (.-supabase js/globalThis) #js {:createClient (fn [& _] (:sdk mock))})
       (client/init! {:url "https://example.invalid" :anon-key "public"} (fn [_]) (fn [_]))
@@ -311,3 +367,19 @@
             (.then (fn [_] (is (= 1 (count @(:selects mock))) "Cache survives reader cleanup")))
             (.catch #(is false (str %)))
             (.finally done))))))
+
+(deftest bounded-comment-read-and-reply-counts-use-two-bulk-requests
+  (async done
+    (let [mock (mock-client)]
+      (reset-client! mock)
+      (reset! (:rows mock) {"blog_comments" (mapv #(hash-map :id (str %) :parent_post 42 :ts %) (range 50))})
+      (client/read-once! {:scoped? true :reply-counts? true :path-collection [:blog-comments]
+                         :where [[:parent-post :== 42] [:parent-comment :== nil]]
+                         :order-by [[:ts :desc] [:id :desc]] :limit 11}
+        (fn [result]
+          (is (= 11 (count (:docs result))))
+          (is (= [["blog_comments" 0 10] ["blog_comments" 0 499]] @(:selects mock)))
+          (is (= 1 (count (filter #(= "in" (nth % 2)) @(:filters mock)))))
+          (is (= 11 (count (last (last @(:filters mock))))) "One IDs query counts all replies")
+          (done))
+        (fn [error] (is false (str error)) (done))))))

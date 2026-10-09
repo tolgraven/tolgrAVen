@@ -1,0 +1,12 @@
+/* BLOG STUFF */
+// should be somewhere globally accessible
+@mixin rounded-bottom($left: 2em, $ratio: 2.5) {
+  border-bottom-left-radius: $left;
+  border-bottom-right-radius: calc($left / $ratio);
+}
+@mixin lined-soft($width: 1px) {
+  border: var(--line-width-md) solid;
+  box-shadow: 0 0 4px 1px var(--fg-4); // looks nice on sep line but no go here
+}
+  
+

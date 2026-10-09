@@ -67,12 +67,81 @@
    (cond-> (entry seed-key table)
      (seq filters) (assoc :filters filters))))
 
+(def schemas
+  {"blog-posts" {:table "blog_posts" :seed-key :blog_posts :document-key :doc_id
+                 :fields {:id :id :user :user_id :ts :ts :permalink :permalink :tags :tags}
+                 :summary "doc_id,id,permalink,user_id,title,tags,score,ts" :batch-field :id
+                 :cache-document-field :id}
+   "blog-comments" {:table "blog_comments" :seed-key :blog_comments :document-key :id
+                    :fields {:id :id :user :user_id :ts :ts :parent-post :parent_post :parent-comment :parent_comment}
+                    :batch-field :parent-comment
+                    :reply-count {:table "blog_comments" :select "id,parent_comment" :parent-field :parent_comment}}
+   "users" {:table "site_users" :seed-key :users :document-key :id
+             :fields {:id :id :name :name} :batch-field :id}})
+
+(defn scoped-query? [opts]
+  (and (:scoped? opts) (contains? schemas (path-collection-name opts))))
+
+(defn tag-pattern [tag]
+  (str "(^|\\s)" (string/replace (str tag) #"[\\.\[\]{}()*+?^$|]" #(str "\\" %)) "(\\s|$)"))
+
+(defn- scoped-plan [opts collection doc-id]
+  (let [{:keys [table seed-key document-key fields summary]} (schemas collection)
+        column! (fn [field]
+                  (or (fields (keyword (path-part field)))
+                      (throw (ex-info "Unsupported scoped field" {:field field}))))
+        filters (mapv (fn [[field op value]]
+                        (let [operator ({:== "eq" := "eq" :> "gt" :>= "gte" :< "lt" :<= "lte" :in "in" :tag "match"}
+                                        (keyword (path-part op)))]
+                          (when-not operator (throw (ex-info "Unsupported scoped predicate" {:op op})))
+                          [(column! field) (if (and (= operator "eq") (nil? value)) "is" operator)
+                           (if (= operator "match") (tag-pattern value) value)]))
+                      (:where opts))]
+    [(cond-> (entry seed-key table (cond-> filters doc-id (conj [document-key "eq" doc-id])))
+       (:limit opts) (assoc :limit (:limit opts))
+       (:offset opts) (assoc :offset (:offset opts))
+       (seq (:order-by opts)) (assoc :order-by (mapv (fn [[field direction]] [(column! field) direction]) (:order-by opts)))
+       (and summary (:summary? opts)) (assoc :select summary))]))
+
+(defn profile-query [id]
+  {:path-collection [:users] :scoped? true :where [[:id :== id]]})
+
+(defn batch-key [opts]
+  (let [field (:batch-field (schemas (path-collection-name opts)))
+        value (some #(when (and (= field (first %)) (= :== (second %))) (nth % 2)) (:where opts))]
+    (if (and field (some? value) (nil? (:limit opts)) (nil? (:offset opts)))
+      (update opts :where #(filterv (fn [predicate] (not= field (first predicate))) %))
+      opts)))
+
+(defn batch-query [queries]
+  (let [base (first queries) field (:batch-field (schemas (path-collection-name base)))]
+    (if (= 1 (count queries)) base
+      (update base :where
+        #(mapv (fn [[f _ _ :as predicate]]
+                 (if (= f field)
+                   [field :in (mapv (fn [opts] (some (fn [[f _ v]] (when (= f field) v)) (:where opts))) queries)]
+                   predicate)) %)))))
+
+(defn reply-count-plan [opts value]
+  (when-let [{:keys [table select parent-field]} (and (:reply-counts? opts)
+                                                    (:reply-count (schemas (path-collection-name opts))))]
+    (when (seq (:docs value))
+      {:table table :select select :filters [[parent-field "in" (mapv :id (:docs value))]]})))
+
+(defn with-reply-counts [opts value rows]
+  (let [parent-field (get-in schemas [(path-collection-name opts) :reply-count :parent-field])
+        counts (frequencies (map parent-field rows))]
+    (update value :docs #(mapv (fn [doc] (assoc-in doc [:data :reply-count] (get counts (:id doc) 0))) %))))
+
 (defn seed-load-plan [opts]
   (let [{:keys [path-document path-collection] :as query-map} (normalize-query opts)
         collection (path-collection-name query-map)
         doc-id (second path-document)
         post-id (some-> doc-id parse-long-safe)]
     (cond
+      (scoped-query? query-map)
+      (scoped-plan query-map collection doc-id)
+
       (= collection "blog-posts")
       (cond-> [(if path-document
                  (entry :blog_posts "blog_posts" [[:doc_id "eq" (str doc-id)]])
@@ -130,6 +199,8 @@
 
 (defn- compare-op [op left right]
   (case (keyword (path-part op))
+    :tag (boolean (some #{right} (if (string? left) (string/split left #"\s+") left)))
+    :in (boolean (some #{left} right))
     :== (= left right)
     := (= left right)
     :> (> left right)
@@ -164,7 +235,7 @@
        vec))
 
 (defn query-contract [contract opts]
-  (let [{:keys [path-document path-collection where order-by limit]} (normalize-query opts)]
+  (let [{:keys [path-document path-collection where order-by limit offset]} (normalize-query opts)]
    (cond
     path-document
     (let [[collection doc-id] path-document]
@@ -176,7 +247,22 @@
           docs (as-> (contract-docs contract collection) docs
                  (if (seq where) (apply-where docs where) docs)
                  (if (seq order-by) (vec (apply-order-by docs order-by)) docs)
+                 (if offset (vec (drop offset docs)) docs)
                  (if limit (vec (take limit docs)) docs))]
       {:docs docs})
 
     :else nil)))
+
+
+(defn document-caches
+  "Full collection results seed document readers declared by the shared schema."
+  [opts value]
+  (let [collection (path-collection-name opts)
+        field (:cache-document-field (schemas collection))]
+    (when (and field (not (:summary? opts)))
+      (into {} (keep (fn [{:keys [data] :as doc}]
+                       (when-some [id (get data field)]
+                         [(pr-str (normalize-query
+                                   {:path-collection [collection] :scoped? true
+                                    :where [[field :== id]] :doc-changes true}))
+                          {:docs [doc]}]))) (:docs value)))))

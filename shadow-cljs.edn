@@ -1,50 +1,54 @@
 ;; shadow-cljs configuration
 {;:lein {:profile "+dev"}
- :source-paths ["src/clj" "src/cljs" "src/cljc"]
+ :source-paths ["src/backend" "src/frontend" "src/cljc"]
 
  :builds
- {:supabase-test {:target :node-test
+ ;; SSR is an eager Node program, deliberately without browser :modules.
+ ;; The worker entry requires all supported page implementations at startup.
+ {:ssr {:target :node-script
+             :build-hooks [(tolgraven.build.compat/rrb-vector) (tolgraven.build.ssr/revision)]
+             :devtools {:enabled false}
+             :compiler-options {:reader-features #{:ssr :node}}
+             :prepend-js "globalThis.XMLHttpRequest = class { constructor() { throw new Error('SSR views must use supplied request data, not browser HTTP'); } };"
+             :main tolgraven.ssr.worker/main
+             :output-to "target/ssr/site.js"
+             :js-options {:js-provider :shadow :keep-native-requires true
+                          ;; Use DOM-free worker exports for Markdown's entity
+                          ;; decoder; React's browser server renderer supports
+                          ;; renderToString in Node without native npm modules.
+                          :export-conditions ["worker" "browser" "require" "default"]}}
+
+  :return-worker {:target :browser
+                  :devtools {:enabled false}
+                  :output-dir "resources/public/js/return"
+                  :asset-path "/js/return"
+                  :modules {:return-worker {:init-fn tolgraven.ssr.return-worker/init!
+                                            :web-worker true}}}
+
+  :supabase-test {:target :node-test
+             :build-hooks [(tolgraven.build.compat/rrb-vector)]
                   :output-to "target/supabase-tests.js"
                   :ns-regexp "tolgraven\\.supabase-.*-test$"
                   :autorun true}
 
   :app-test {:target :browser-test
+             :module-loader true
+             :compiler-options {:reader-features #{:browser :dev}}
+             :build-hooks [(tolgraven.build.compat/rrb-vector)
+                           (tolgraven.build.browser/test-modules)]
              :test-dir "resources/public/js/tests"
              :ns-regexp "tolgraven\\..*-test$"}
 
   :app-dev
   {:lein true
+   :compiler-options {:reader-features #{:browser :dev}}
    :jvm-opts ["-Ddev=true"]
    ; :dev-http {4001 "resources/public"}
-   :target :browser
+   :target tolgraven.build.browser/process
+             :build-hooks [(tolgraven.build.compat/rrb-vector)]
    :module-loader true
-   :modules {:main      {:entries [tolgraven.app]
-                         :init-fn tolgraven.app/init!}
-             :search    {:entries    [tolgraven.search.module]
-                         :depends-on #{:main :link-preview}}
-             :user      {:entries    [tolgraven.user.module]
-                         :depends-on #{:main :link-preview}}
-             :link-preview
-                        {:entries    [tolgraven.link-preview.module]
-                         :depends-on #{:main}}
-             :chat      {:entries    [tolgraven.chat.module]
-                         :depends-on #{:main :user :link-preview}}
-             :github    {:entries    [tolgraven.github.module]
-                         :depends-on #{:main}}
-             :docs      {:entries    [tolgraven.docs.module]
-                         :depends-on #{:main}}
-             :gpt       {:entries    [tolgraven.gpt.module]
-                         :depends-on #{:main :user}}
-             :cv        {:entries    [tolgraven.cv.module]
-                         :depends-on #{:main}}
-             :strava    {:entries    [tolgraven.strava.module]
-                         :depends-on #{:main}}
-             :instagram {:entries    [tolgraven.instagram.module]
-                         :depends-on #{:main}}
-             :test      {:entries    [tolgraven.experiments]
-                         :depends-on #{:main}}
-             :blog      {:entries    [tolgraven.blog.module]
-                         :depends-on #{:main :user :link-preview}}}
+   :modules {:main {:entries [tolgraven.app]
+                    :init-fn tolgraven.app/init!}}
    :js-options {}
    :output-dir "resources/public/js/compiled/out"
    :asset-path "/js/compiled/out"
@@ -59,10 +63,6 @@
    :closure-warnings {:externs-validation :off
                       :non-standard-jsdoc :off}
    :recompile-dependents false
-   :preloads [devtools.preload ;can remove devtools preload cause have in app.cljs?
-              re-frisk.preload-hidden
-              day8.re-frame-10x.preload
-              #_re-frisk.preload #_re-frisk-remote.preload]
    :external-config
    {:devtools/config
     {;:features-to-install [:formatters :hints] ;add exception hints
@@ -77,40 +77,20 @@
      :print-config-overrides false} }
    :source-map true
    :source-map-timestamp true
-   :devtools {:watch-dir   "resources/public"
+   ;; Legacy inspectors are opt-in; see doc/re-frame-pair.md.
+   :devtools {:preloads [devtools.preload]
+              :watch-dir   "resources/public"
               :repl-pprint true
               :after-load  tolgraven.core/mount-components}}
 
   :app
-  {:target               :browser
+  {:build-hooks [(tolgraven.build.compat/rrb-vector)]
+   :compiler-options {:reader-features #{:browser}}
+   :target               tolgraven.build.browser/process
    :module-loader true
-   :modules {:main      {:entries [tolgraven.app]
-                         :init-fn tolgraven.app/init!}
-             :search    {:entries    [tolgraven.search.module]
-                         :depends-on #{:main :link-preview}}
-             :user      {:entries    [tolgraven.user.module]
-                         :depends-on #{:main :link-preview}}
-             :link-preview
-                        {:entries    [tolgraven.link-preview.module]
-                         :depends-on #{:main}}
-             :chat      {:entries    [tolgraven.chat.module]
-                         :depends-on #{:main :user :link-preview}}
-             :github    {:entries    [tolgraven.github.module]
-                         :depends-on #{:main}}
-             :docs      {:entries    [tolgraven.docs.module]
-                         :depends-on #{:main}}
-             :gpt       {:entries    [tolgraven.gpt.module]
-                         :depends-on #{:main :user}}
-             :cv        {:entries    [tolgraven.cv.module]
-                         :depends-on #{:main}}
-             :strava    {:entries    [tolgraven.strava.module]
-                         :depends-on #{:main}}
-             :instagram {:entries    [tolgraven.instagram.module]
-                         :depends-on #{:main}}
-             :test      {:entries    [tolgraven.experiments]
-                         :depends-on #{:main}}
-             :blog      {:entries    [tolgraven.blog.module]
-                         :depends-on #{:main :user :link-preview}}}
+   :module-hash-names true
+   :modules {:main {:entries [tolgraven.app]
+                    :init-fn tolgraven.app/init!}}
    :output-dir           "resources/public/js/compiled/out"
    :asset-path           "/js/compiled/out"
    :optimizations        :advanced

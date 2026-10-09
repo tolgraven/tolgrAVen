@@ -34,7 +34,7 @@ The page contains a link to the compiled ClojureScript found in the `target/cljs
 {% script "/js/app.js" %}
 ```
 
-The rest of this page is rendered by ClojureScript found in the `src/cljs/tolgraven/core.cljs` file.
+The rest of this page is rendered by ClojureScript found in the `src/frontend/tolgraven/core.cljs` file.
 
 
 
