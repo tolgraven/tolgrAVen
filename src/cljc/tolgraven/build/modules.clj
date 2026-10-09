@@ -1,6 +1,7 @@
 (ns tolgraven.build.modules
   "Read module declarations without loading their browser implementation."
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io]
+            [clojure.string :as string]))
 
 (def root "src/frontend/tolgraven/modules")
 
@@ -48,13 +49,29 @@
                [id {:entries [entry] :depends-on depends-on}]))
         (discover)))
 
+(defn- track-declarations! [env declarations]
+  (when (:ns env)
+    ;; Shadow retains analysis between compiler processes too. Track each source
+    ;; resource so changed metadata invalidates both baked runtime inventories.
+    ;; JVM runtime expansion must not require the compiler dependency.
+    (let [read-resource! (requiring-resolve 'shadow.resource/slurp-resource)]
+      (doseq [{:keys [entry]} declarations]
+        (read-resource! env (str (-> (str entry)
+                                    (string/replace "-" "_")
+                                    (string/replace "." "/"))
+                                ".cljs"))))))
+
 (defmacro loadables []
-  `(hash-map
-     ~@(mapcat (fn [{:keys [id entry]}]
-                 [id `(shadow.lazy/loadable ~(symbol (str entry) "spec"))])
-               (discover))))
+  (let [declarations (discover)]
+    (track-declarations! &env declarations)
+    `(hash-map
+       ~@(mapcat (fn [{:keys [id entry]}]
+                   [id `(shadow.lazy/loadable ~(symbol (str entry) "spec"))])
+                 declarations))))
 
 (defmacro style-definitions []
   ;; Bake this inventory into both runtimes. Packaged servers have no source tree.
-  (into {} (map (fn [{:keys [id styles depends-on]}]
-                 [id {:paths (vec styles) :depends-on depends-on}])) (discover)))
+  (let [declarations (discover)]
+    (track-declarations! &env declarations)
+    (into {} (map (fn [{:keys [id styles depends-on]}]
+                   [id {:paths (vec styles) :depends-on depends-on}])) declarations)))

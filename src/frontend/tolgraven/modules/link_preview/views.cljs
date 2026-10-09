@@ -243,6 +243,9 @@
   (when (and element observer (seq candidate-urls))
     (let [handlers (container-handlers id)
           expected (set (mapcat util/href-variants candidate-urls))]
+      ;; A real link container owns activation of the deferred global controller.
+      ;; Loading User controls or rendering a plain page must not acquire it.
+      (rf/dispatch [:loader/activate {:module :link-preview}])
       (swap! *containers assoc id
              {:element element
               :handlers handlers

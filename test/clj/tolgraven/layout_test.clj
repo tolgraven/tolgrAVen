@@ -247,3 +247,16 @@
               "/js/compiled/out/blog.hash.js"]
              (layout/hydration-script-paths "/blog")))
       (is (= [] (layout/hydration-script-paths "/not-a-page"))))))
+
+(deftest optional-preview-styles-follow-rendered-route-ownership
+  (with-redefs [config/env {:dev true :ssr {:enabled false}}
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (let [links (fn [uri] (re-seq #"<link[^>]+>" (:body (layout/render-home {:uri uri}))))
+          cv (links "/cv")
+          home (links "/")
+          blog (links "/blog")]
+      (is (not-any? #(re-find #"modules/(link-preview|markdown|monospace)\.min\.css" %) cv))
+      (is (some #(.contains % "modules/markdown.min.css") home))
+      (is (some #(.contains % "modules/monospace.min.css") home))
+      (is (not-any? #(.contains % "modules/link-preview.min.css") home))
+      (is (some #(.contains % "modules/link-preview.min.css") blog)))))
