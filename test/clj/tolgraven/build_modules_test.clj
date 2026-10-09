@@ -9,7 +9,7 @@
     (is (every? #(contains? by-id %) [:blog :cv :docs :test :user :link-preview]))
     (is (not (contains? by-id :main)))
     (is (= 'tolgraven.modules.experiments.module (get-in by-id [:test :entry])))
-    (is (= #{:main :user :link-preview :highlight} (get-in by-id [:blog :depends-on])))
+    (is (= #{:main :user :link-preview} (get-in by-id [:blog :depends-on])))
     (is (= #{:main} (get-in by-id [:cv :depends-on])))
     (is (= (set (keys by-id)) (set (keys (modules/bundles)))))))
 
