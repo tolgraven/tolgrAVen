@@ -155,6 +155,9 @@
 }
 
 .blog-posts-with-tag {
+  // Keep the lower navigation out of view while a full post query is pending.
+  > .blog-post[aria-busy="true"] { min-height: 75svh; }
+
   > h2 {
     position: sticky;
     top: calc(var(--header-height-current) - 3.5 * var(--space));

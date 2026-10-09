@@ -443,6 +443,13 @@ figcaption, .float-with-caption {
   padding: 1em;
 }
 .loading-spinner-massive { // full page size
+  // Reserve the icon box before Font Awesome arrives, including its padding.
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(20rem + 1em);
+  height: calc(20rem + 1em);
+  line-height: 1;
   // position: absolute;
   padding: 10rem;
   font-size: 900%;
