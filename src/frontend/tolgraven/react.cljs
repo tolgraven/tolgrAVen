@@ -29,6 +29,7 @@
 (def profiler                  react/Profiler)
 (def use-state                 react/useState)
 (def use-ref                   react/useRef)
+(def use-memo                  react/useMemo)
 (def create-context            react/createContext)
 (def use-context               react/useContext)
 (defn context-provider [context] (.-Provider context))

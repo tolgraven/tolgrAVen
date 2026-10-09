@@ -124,4 +124,6 @@
      [:page-return] (c/optional-map {:status [:enum :ready :unavailable :saving]
                                     :url :string
                                     :message :string})
-     [:loader] (c/optional-map {:code-ready [:map-of :keyword :boolean] :errors :map})}))
+     [:loader] (c/optional-map {:code-ready [:map-of :keyword :boolean]
+                              :requested [:map-of :keyword :boolean]
+                              :errors :map})}))

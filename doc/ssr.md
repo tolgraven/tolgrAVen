@@ -333,6 +333,17 @@ Responses without server-rendered content keep ordinary script priority.
 Lazy chunks use `as="fetch"` and `crossorigin="anonymous"` to match Shadow's
 XHR acquisition. The main bundle uses `as="script"` to match its deferred tag.
 
+Module references also use completed Suspense boundaries when the renderer has
+the export. The worker returns HTML together with its module/export inventory;
+Ring saves this metadata with the exact snapshot, including cached presentation
+variants and shell renders. Local return captures carry the same inventory.
+The browser observes the existing section root through a transient template ref
+and releases hydration on proximity or intent. Ancestor re-frame updates retain
+pending SSR through the shared transition batching owner. Code acquisition
+releases promise gates independently of React commits, avoiding a suspended
+ancestor waiting on its own effect. Inner commit and unmount release ownership;
+late hydration does not replay initial appearances.
+
 Node renders highlighted code inside completed React Suspense boundaries. The
 browser hydrates the page and small Copy/wrapping controls first, preserving the
 server's native code nodes while the formatter remains suspended. The common

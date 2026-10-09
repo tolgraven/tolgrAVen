@@ -24,7 +24,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Render state through `tolgraven.react` subscriptions and change it through events.
   Effects/source adapters own I/O; view functions remain pure.
 - Use `<component>` names, `defc` features and `defpage` boundaries. `m/<>` selects
-  direct or lazy module exports; it does not add a permanent wrapper.
+  direct or lazy module exports; it does not add a permanent wrapper. Module
+  exports default to proximity activation; `:load-on` and `loader/<trigger>`
+  configure intent/earlier triggers. Hidden panels use explicit intent. Completed
+  SSR boundaries retain native nodes until activation and inner hydration commit.
+  CSS/code failures retry silently once after three seconds before a local error.
 - Module `:styles` metadata is available before code acquisition. The shared loader
   starts CSS and JS together and waits for both before readiness; React owns
   stylesheet insertion. Initial inlined route styles already satisfy readiness

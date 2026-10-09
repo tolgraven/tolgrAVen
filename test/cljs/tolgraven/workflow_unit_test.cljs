@@ -1357,14 +1357,16 @@
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 
-(deftest loaded-module-vectors-use-the-component-directly
+(deftest module-vectors-retain-native-ssr-roots
   (let [<target> (fn [spec] [:section (:title spec)])
         module-spec {:id :vector-test :view {:post <target>}}]
     (binding [context/*server?* true context/*modules* {:vector-test module-spec}]
-      (is (= [<target> {:title "SSR"}]
-             (m/<> {:module :vector-test :view :post} {:title "SSR"})))
-      (is (= [<target> {:title "Keyword"}]
-             (m/<> :vector-test/post {:title "Keyword"})))
+      (is (re-find #"<!--\$--><section>SSR</section><!--/\$-->"
+                   (server/render-to-string
+                     (m/<> {:module :vector-test :view :post} {:title "SSR"}))))
+      (is (re-find #"<!--\$--><section>Keyword</section><!--/\$-->"
+                   (server/render-to-string
+                     (m/<> :vector-test/post {:title "Keyword"}))))
       (is (= [<target> {:title "Direct"}]
              (m/<> <target> {:title "Direct"}))))))
 
@@ -1397,7 +1399,7 @@
 (m/defc <lazy-vector-target> [{:keys [title]}]
   [:p {:data-lazy-vector-target true} title])
 (m/defc <lazy-vector-consumer> [module]
-  [:section (m/<> (keyword (name module) "view") {:title "Vector target"})])
+  [:section (m/<> {:module module :load-on :immediate} {:title "Vector target"})])
 
 (deftest mounted-consumers-share-code-acquisition-and-promote-direct-vectors
   (async done
@@ -1433,7 +1435,8 @@
               (finally
                 (support/unmount! root) (.remove element)
                 (set! loader/modules original-modules) (set! loader/load-code! original-load)
-                (shim/dispatch [:component-data/remove [:loader :code-ready module]])))))
+                (shim/dispatch [:component-data/remove [:loader :code-ready module]])
+                (shim/dispatch [:component-data/remove [:loader :requested module]])))))
         (.catch #(is false (str %)))
         (.finally done))))
 

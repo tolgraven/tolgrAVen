@@ -6,6 +6,7 @@
             [tolgraven.react :as rf]
             [clojure.string :as string]))
 
+(defonce hydrating-context (rf/create-context false))
 (defonce readiness-context (rf/create-context false))
 (defonce *pending-layout (atom #{}))
 (defonce *layout-listeners (atom #{}))
@@ -42,6 +43,14 @@
   []
   (binding [ratom/*ratom-context* nil]
     (boolean (:hydrate? @*context))))
+(defn install-module-views! [views]
+  (swap! *context assoc :module-views
+         (into {} (map (fn [[id exports]]
+                         [(keyword id) (set (map keyword exports))]) views))))
+(defn rendered-view? [module view]
+  (binding [ratom/*ratom-context* nil]
+    (contains? (get-in @*context [:module-views module]) view)))
+
 (defn page-key [] (if (exists? js/location) (str (.-pathname js/location) (.-search js/location)) "/"))
 (defn begin! [{:keys [hydrate? back?]}]
   (reset! *context {:hydrate? (boolean hydrate?) :back? (boolean back?)

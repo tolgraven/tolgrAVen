@@ -119,3 +119,7 @@ body:has(#ssr-complete) #ssr-shell { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .component-loading-reveal__exit { animation: none; backdrop-filter: none; }
 }
+
+// Temporary proximity markers reserve no permanent module wrapper.
+.module-load-trigger { display: block; height: .0625rem; pointer-events: none; }
+.module-load-placeholder { min-width: 0; }

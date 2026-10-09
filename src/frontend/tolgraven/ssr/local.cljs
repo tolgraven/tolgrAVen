@@ -150,6 +150,7 @@
       ;; is required for its first render, even if it was reached via a reload.
       (restore/begin! {:hydrate? true :back? true})
       (swap! restore/*context assoc :local? true)
+      (restore/install-module-views! (:module-views snapshot))
       (rf/dispatch-sync [:page-return/install state])
       (reset! context/*interactive? false)
       snapshot)))

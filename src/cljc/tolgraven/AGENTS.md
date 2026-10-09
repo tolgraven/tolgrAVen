@@ -11,6 +11,8 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
   subscriptions consume the same filters, projections, batching and row shape.
 - Preserve EDN keys/types in persistence contracts. JSON is converted and normalized
   only at transport boundaries. Never include credentials in public snapshots.
+- `ssr/contract_schema.cljc` owns paired renderer responses and module/export
+  metadata; the browser and JVM consume the same snapshot contract.
 - Keep schemas composable by module/app-db section; avoid a second global inventory
   of declarations already owned by modules. Tests should consume the same schemas.
 - Component/form/event/browser-state contracts live beside their frontend owner in

@@ -99,7 +99,8 @@
                 (let [nodes (vec (array-seq (.querySelectorAll element ".blog-comment-title")))
                       snapshot {:version 1 :build "test-build" :saved-at (.now js/Date)
                                 :url (str (.-origin js/location) (.-pathname js/location) (.-search js/location))
-                                :state-edn (pr-str saved) :modules [:user]}]
+                                :state-edn (pr-str saved) :modules [:user]
+                                :module-views (render/module-views {:user module})}]
                   (set! (.-id script) "local-page-bootstrap")
                   (set! (.-type script) "application/json")
                   (set! (.-textContent script) (js/JSON.stringify (clj->js snapshot)))

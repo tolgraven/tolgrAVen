@@ -76,7 +76,7 @@
           (reset! slot worker)
           worker))))
 
-(defn render! [snapshot]
+(defn render-page! [snapshot]
   ;; Each lease owns one isolated Node process. Different pages can render at
   ;; once; no React/re-frame state is shared between those processes.
   (let [{:keys [workers available]} (pool!)]
@@ -91,15 +91,21 @@
                             (json/read-str line :key-fn keyword))))]
           (try
             (let [result (concurrent/await! work 10000)]
-              (when-not (string? (:html result))
+              (when-not (and (string? (:html result)) (map? (:module-views result)))
                 (throw (ex-info "Page renderer unavailable" {:status 503})))
-              (:html result))
+              (when (config/validation-enabled?)
+                (validation/check! "Renderer response" schema/render-response result))
+              {:html (:html result)
+               :snapshot (assoc snapshot :module-views (:module-views result))})
             (catch Exception e
               (stop-slot! slot)
               (.cancel ^Future work true)
               (throw (ex-info "Page renderer unavailable" {:status 503} e)))))
         (finally (.offer ^ArrayBlockingQueue available index))))
     (throw (ex-info "Page renderer queue is busy" {:status 503})))))
+
+(defn render! [snapshot]
+  (:html (render-page! snapshot)))
 
 (defmulti page-data!
   "Public data adapters for registered pages. Rendering/cache logic is page-agnostic."
@@ -180,21 +186,23 @@
       (assoc cached :cache :hit)
       (let [reused (fresh-page-data uri selection)
             public-data (if reused
-                          (dissoc (:snapshot reused) :query-params :document-title)
+                          (dissoc (:snapshot reused) :query-params :document-title :module-views)
                           (snapshot! uri selection))
             snapshot (cond-> public-data
                        (seq query-params) (assoc :query-params query-params))
             title (page/document-title (:data (router/match uri)) snapshot)
             snapshot (cond-> snapshot (some? title) (assoc :document-title title))
             unchanged? (and (= (:build cached) (renderer-build))
-                            (= snapshot (:snapshot cached)))
+                            (= snapshot (dissoc (:snapshot cached) :module-views)))
             ;; Renew freshness only after a successful public snapshot read.
             ;; An unchanged snapshot also validates its paired HTML again.
-            entry {:snapshot snapshot
-                   :selection selection
-                   :html (if unchanged? (:html cached) (render! snapshot))
-                   :build (renderer-build)
-                   :at (or (:at reused) (System/nanoTime))}]
+            rendered (if unchanged?
+                       (select-keys cached [:snapshot :html])
+                       (render-page! snapshot))
+            entry (assoc rendered
+                         :selection selection
+                         :build (renderer-build)
+                         :at (or (:at reused) (System/nanoTime)))]
         (cache-entry! key entry)
         (assoc entry :cache (if unchanged? :hit :miss))))))
 
@@ -242,6 +250,6 @@
     ;; No network work and no worker lease while upstream data is pending.
     ;; Links and active navigation are route-specific, even in the loading shell.
     (or (get @*shell-cache key)
-        (let [result {:snapshot snapshot :html (render! snapshot)}]
+        (let [result (render-page! snapshot)]
           (swap! *shell-cache (fn [cache] (assoc (if (> (count cache) 32) {} cache) key result)))
           result))))

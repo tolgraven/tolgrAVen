@@ -439,17 +439,34 @@ It enables a layout container and always supplies an error boundary, including w
 tries to disable one. Page boundaries reset on a route path or query change;
 ordinary component boundaries keep their existing explicit recovery behavior.
 
-Use `(m/<> :user/avatar user)` for a lazy exported view, or
-`(m/<> <avatar> user)` for a direct reference. A qualified keyword is equivalent
-to `{:module :user :view :avatar}`; computed keywords work too. Keep the map form
-when specifying options such as `:defer?`, `:<before>` or a custom loading view.
-This macro yields a Hiccup vector,
-not a component wrapping the target. A shared module subscription acquires the
-code and initialization through events/effects. Once code is available, the
-containing render uses the actual component descriptor directly; pending data
-belongs to that component's `:depends` and loading/error views. SSR resolves the
-same vector from its bundled module specs without browser acquisition. External
-module assets belong to the page's `loader/<loaded-assets>` component.
+Use `(m/<> :user/avatar user)` for a module export, or `(m/<> <avatar> user)`
+for a direct component. A qualified keyword is equivalent to
+`{:module :user :view :avatar}`; computed keywords work too. A module reference
+uses a stable component boundary without a permanent native wrapper. Its default
+`:load-on :view` starts acquisition within two viewport heights, with focus,
+hover and click also expressing immediate intent. CSS starts synchronously
+alongside Shadow code; data activation and module init share that request.
+Direct component references keep their ordinary lifecycle.
+
+The map form accepts `:load-on` as `:view`, `:hover`, `:click`, `:event`,
+`:immediate`, or a set/vector of these triggers. `:lead-pages` changes proximity;
+`:root-margin` supplies an explicit IntersectionObserver margin. Use
+`[loader/<trigger> {:module :strava :lead-pages 3}]` in an earlier section to
+activate a later module. Dispatch `[:loader/activate {:module :strava}]` from
+external controls; existing `[:scope/init :strava]` also acquires its module.
+`:defer?` remains manual, and `:<before>` keeps its immediately hydrated intent
+control. Hidden shell panels must use explicit intent rather than visibility.
+
+When Node has the export, SSR renders its real view in a completed Suspense
+boundary. A transient template ref observes the existing native root. The browser
+keeps that markup visible until proximity or intent releases hydration, then
+removes the marker after the inner commit. The paired snapshot records the
+renderer’s available module exports; browser-only modules use the normal section
+placeholder. Observers and native intent listeners belong to the mounted boundary
+and are removed on activation/unmount. Offscreen sections do not block page
+readiness or deferred analytics. Failed CSS/code acquisition retries once after
+three seconds before exposing the section’s error/Retry view. Module assets
+belong to the page’s `loader/<loaded-assets>` component.
 
 Declare module data in `:depends`, rather than the legacy `:content` loading path.
 Page specs declare the first-paint content; section/component declarations own
@@ -505,7 +522,7 @@ Module activation (`:scope/inited?`) can precede code arrival. Shadow's
 `lazy/ready?` remains the authority for code availability, but is not a reactive
 value. `:loader/module` acquires the shared code/init adapter and observes its
 completion event. `load-code!` returns as soon as code arrives; `load!` also waits
-for declared data and optional initialization. Both share one Shadow acquisition.
+for declared data and optional initialization. Both share one CSS/Shadow acquisition and its delayed silent retry.
 
 First-document motion distinguishes a streamed shell from direct SSR. The shell
 owns the page-container entrance; completing it reveals article/comment motion

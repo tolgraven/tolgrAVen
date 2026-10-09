@@ -4,6 +4,8 @@
     [tolgraven.validation.runtime :as validation]
     [tolgraven.loader.code :as module-code]
     [tolgraven.loader.styles :as styles]
+    [tolgraven.loader.activation :as activation]
+    [tolgraven.component.hydration :as hydration]
     [tolgraven.react :as rf]
     [tolgraven.render-context :as context]
     [tolgraven.component.restore :as restore]
@@ -27,31 +29,55 @@
 (defonce *loads (atom {}))
 (defonce *code-loads (atom {}))
 (defonce *installed (atom #{}))
+(defonce ^:private *code-listeners (atom {}))
+(def retry-delay-ms 3000)
+
+(defn- listen-code! [module started!]
+  ;; These callbacks belong to mounted Suspense boundaries, not application state.
+  ;; Acquisition releases their promise gates even if React is retaining an older
+  ;; tree during an ancestor transition; no effect waits on that transition.
+  (swap! *code-listeners update module (fnil conj #{}) started!)
+  (when (get @*code-loads module) (started!))
+  #(swap! *code-listeners
+          (fn [listeners]
+            (let [remaining (disj (get listeners module) started!)]
+              (if (seq remaining)
+                (assoc listeners module remaining)
+                (dissoc listeners module))))))
+
+(defn- retry-later! [attempt!]
+  (-> (js/Promise. (fn [resolve _] (js/setTimeout resolve retry-delay-ms)))
+      (.then (fn [_] (attempt!)))))
+
+(defn- acquire-attempt! [module]
+  (let [css (styles/acquire! module)
+        code (try
+               (if-let [loadable (get modules module)]
+                 (js/Promise.resolve (if (lazy/ready? loadable) @loadable (lazy/load loadable)))
+                 (js/Promise.reject (ex-info "Unknown module" {:module module})))
+               (catch :default error (js/Promise.reject error)))]
+    (-> (js/Promise.all #js [code css])
+        (.then (fn [results]
+                 (let [spec (aget results 0)]
+                   (validation/module! spec)
+                   (-> (js/Promise.resolve (when-let [install! (:install spec)] (install!)))
+                       (.then (fn [_]
+                                (swap! *installed conj module)
+                                (rf/dispatch [:loader/code-ready module])
+                                spec)))))))))
 
 (defn acquire-code!
-  "One parallel CSS/Shadow acquisition shared by navigation and subscribers.
-   The completion event makes Shadow readiness observable through re-frame."
+  "Share parallel CSS/Shadow acquisition, silently retrying once after a delay.
+   Publish readiness only after both assets and the install hook complete."
   [module]
   (or (get @*code-loads module)
-      (let [css (styles/acquire! module)
-            code (try
-                   (if-let [loadable (get modules module)]
-                     (js/Promise.resolve (if (lazy/ready? loadable) @loadable (lazy/load loadable)))
-                     (js/Promise.reject (ex-info "Unknown module" {:module module})))
-                   (catch :default error (js/Promise.reject error)))
-            promise (-> (js/Promise.all #js [code css])
-                        (.then (fn [results]
-                                 (let [spec (aget results 0)]
-                                   (validation/module! spec)
-                                   (-> (js/Promise.resolve (when-let [install! (:install spec)] (install!)))
-                                       (.then (fn [_]
-                                                (swap! *installed conj module)
-                                                (rf/dispatch [:loader/code-ready module])
-                                                spec))))))
+      (let [promise (-> (acquire-attempt! module)
+                        (.catch (fn [_] (retry-later! #(acquire-attempt! module))))
                         (.catch (fn [error]
                                   (swap! *code-loads dissoc module)
                                   (throw error))))]
         (swap! *code-loads assoc module promise)
+        (doseq [started! (get @*code-listeners module)] (started!))
         promise)))
 
 (defn ready? [module]
@@ -136,7 +162,10 @@
   (fn [db [_ module]] (-> db (assoc-in [:loader :code-ready module] true)
                          (update-in [:loader :errors] (fnil dissoc {}) module))))
 (rf/reg-event-db :loader/code-failed
-  (fn [db [_ module error]] (assoc-in db [:loader :errors module] error)))
+  (fn [db [_ module error]]
+    (-> db
+        (assoc-in [:loader :errors module] error)
+        (update-in [:loader :requested] (fnil dissoc {}) module))))
 (rf/reg-sub :loader/code-error
   (fn [db query]
     (let [[_ module] (or (:re-frame/query-v query) query)]
@@ -147,14 +176,29 @@
       (get-in db [:loader :code-ready module]))))
 (rf/reg-sub :loader/code-modules
   (fn [db _] (keys (get-in db [:loader :code-ready]))))
+(defn- request-module [db module effect]
+  (when-not (get-in db [:loader :requested module])
+    {:db (-> db
+             (assoc-in [:loader :requested module] true)
+             (update-in [:loader :errors] (fnil dissoc {}) module))
+     :fx effect}))
+
 (rf/reg-event-fx :loader/acquire
   (fn [{:keys [db]} [_ module]]
-    {:db (update-in db [:loader :errors] (fnil dissoc {}) module) :loader/acquire module}))
+    (request-module db module [[:loader/acquire module]])))
+(rf/reg-event-fx :loader/activate
+  {:args [:cat activation/options-schema]}
+  (fn [{:keys [db]} [_ {:keys [module args] :as options}]]
+    (request-module db module
+                    [[:dispatch [:scope/init module args]]
+                     [:loader/acquire options]])))
 (rf/reg-fx :loader/acquire
-  (fn [module]
+  (fn [value]
     ;; Initialization failures are reported by load-code!'s managed status path.
-    (-> (load-code! {:module module})
-        (.catch (fn [error] (rf/dispatch [:loader/code-failed module error]))))))
+    (let [options (if (keyword? value) {:module value} value)
+          module (:module options)]
+      (-> (load-code! options)
+          (.catch (fn [error] (rf/dispatch [:loader/code-failed module error])))))))
 (rf/reg-sub-raw :loader/module
   (fn [_ query]
     (let [[_ module] (or (:re-frame/query-v query) query)]
@@ -190,68 +234,141 @@
       [loading/<rendered> {:form form :class (when (map? skeleton) (:class skeleton))}]
       form)))
 
+(defn- fallback-form [{:keys [<before> <loading>]} args pending?]
+  (cond
+    <before> [:div.before-loading-container
+              (if (vector? <before>) <before> (into [<before>] args))]
+    <loading> (if (vector? <loading>) <loading> (into [<loading>] args))
+    pending? [:div.loading-container [loading/<spinner>]]
+    :else [loading/<placeholder> {:loading-tag :section :loading-prefab :text}]))
+
+(m/defc <trigger>
+  "An optional earlier section can activate a later module through the same loader."
+  [options :- activation/options-schema]
+  (let [*element (rf/use-ref nil)
+        active? @(rf/subscribe [:scope/inited? (:module options)])]
+    (rf/use-effect
+      (fn []
+        (if (and (not context/*server?*) (not active?))
+          (or (activation/setup! (.-current *element) options) js/undefined)
+          js/undefined))
+      #js [options active?])
+    (when-not active?
+      [:span.module-load-trigger {:ref *element :aria-hidden true}])))
+
+(m/defc ^:private <module-content>
+  [{:keys [module view <missing>] :as options} args complete! hydrating?]
+  (let [_ (when-not context/*server?* @(rf/subscribe [:loader/code-ready module]))
+        failure (when-not context/*server?* @(rf/subscribe [:loader/code-error module]))
+        loaded (if context/*server?* (get context/*modules* module) (code-spec module))
+        resolved (get-in loaded [:view (or view :view)])]
+    (rf/use-layout-effect
+      (fn [] (when (or resolved failure loaded) (complete!)) js/undefined)
+      #js [(boolean (or resolved failure loaded))])
+    [:r> (rf/context-provider restore/hydrating-context) #js {:value hydrating?}
+     (cond
+       failure [error/<failure> "module" (name module)
+                {:title "This section could not be loaded" :error failure}
+                #(rf/dispatch [:loader/activate (assoc options :args args)])]
+       resolved (component-form resolved args options)
+       loaded (if <missing>
+                (if (vector? <missing>) <missing> (into [<missing>] args))
+                [<default-missing> module view])
+       :else (fallback-form options args true))]))
+
+(defn- make-boundary [module]
+  (let [*release (atom nil)
+        gate (js/Promise. (fn [resolve _] (reset! *release resolve)))
+        content #js {:default (rf/reactify-component
+                               (fn [{:keys [options args complete! hydrating?]}]
+                                 [<module-content> options args complete! hydrating?]))}]
+    {:release! #(@*release nil)
+     :view (rf/lazy
+             (fn []
+               (-> gate
+                   (.then (fn [_] (acquire-code! module)))
+                   (.then (fn [_] content))
+                   (.catch (fn [error]
+                             ;; A failed module owns its Retry view; never reject
+                             ;; through the entire page's error boundary.
+                             (rf/dispatch [:loader/code-failed module error])
+                             content)))))}))
+
+(m/defc ^:private <module-boundary>
+  [{:keys [module view defer? <before>] :as options} args]
+  (let [active? (boolean @(rf/subscribe [:scope/inited? module]))
+        hidden? (and (or defer? <before>)
+                     (or (and (not @context/*interactive?) (not (restore/local-document?)))
+                         (not active?)))
+        [ssr?] (rf/use-state
+                 #(boolean (and (not hidden?)
+                                (or (and context/*server?*
+                                         (get-in context/*modules* [module :view (or view :view)]))
+                                    (and (restore/initial-hydration?)
+                                         (restore/rendered-view? module (or view :view)))))))
+        [initial?] (rf/use-state #(and (not context/*server?*) ssr? (restore/initial-hydration?)))
+        [committed? set-committed!] (rf/use-state false)
+        *trigger (rf/use-ref nil)
+        release! (hydration/use-deferred! initial?)
+        complete! (rf/use-callback (fn [] (release!) (set-committed! true)) #js [release!])
+        boundary (rf/use-memo #(make-boundary module) #js [module])
+        ready? (or context/*server?* (boolean @(rf/subscribe [:loader/code-ready module])))
+        failure (when-not context/*server?* @(rf/subscribe [:loader/code-error module]))
+        modes (activation/triggers options)
+        requested? (and (not hidden?) active?)]
+    (restore/use-readiness! (or (not requested?) ready? (some? failure)))
+    (rf/use-layout-effect
+      (fn []
+        (if (and (not context/*server?*) ssr?)
+          (listen-code! module (:release! boundary))
+          js/undefined))
+      #js [module ssr? boundary])
+    (rf/use-effect
+      (fn []
+        (if (and (not context/*server?*) (not hidden?) (or active? (modes :immediate)))
+          (do
+            (rf/dispatch [:loader/activate (assoc options :args args)])
+            ((:release! boundary))
+            js/undefined)
+          js/undefined))
+      #js [module active? hidden? boundary])
+    (rf/use-layout-effect
+      (fn []
+        (if (and (not context/*server?*) (not active?) (not committed?) (.-current *trigger))
+          (let [marker (.-current *trigger)
+                target (if ssr? (.-nextElementSibling marker) marker)]
+            (or (activation/setup! target (assoc options :args args)) js/undefined))
+          js/undefined))
+      #js [module options args active? committed? ssr?])
+    (cond
+      hidden? (when <before>
+                [:div.before-loading-container
+                 {:ref *trigger
+                  :on-click #(rf/dispatch [:loader/activate (assoc options :args args)])}
+                 (if (vector? <before>) <before> (into [<before>] args))])
+      ssr? [:<>
+            (when-not committed? ^{:key :module-marker}
+              [:template {:ref *trigger :data-module-boundary (name module)}])
+            ^{:key :module-content}
+            [rf/suspense {:fallback (rf/as-element (fallback-form options args true))}
+             (if context/*server?*
+               [<module-content> options args (fn []) true]
+               (rf/create-element (:view boundary)
+                 #js {:options options :args args :complete! complete!
+                      :hydrating? (and initial? (not committed?))}))]]
+      (and requested? (or ready? failure)) [<module-content> options args complete! false]
+      :else [:section.module-load-placeholder {:ref *trigger}
+             (fallback-form options args requested?)])))
+
 (defn component-vector
-  "Pure vector selection, reactive to shared module-code acquisition. Data stays
-   with the component's ordinary declared bindings, never delays this selection."
+  "Module boundaries own activation and preserve completed SSR until hydration.
+   Direct component references keep their ordinary native root."
   [reference args]
   (let [reference (if (qualified-keyword? reference)
                     {:module (keyword (namespace reference)) :view (keyword (name reference))}
                     reference)]
     (if-not (or (map? reference) (vector? reference))
       (component-form reference args nil)
-      (let [{:keys [module view defer? <before>] :as options}
-            (if (vector? reference) {:module (first reference) :view (second reference)} reference)
-            deferred? (and (or defer? <before>)
-                           (or (and (not @context/*interactive?) (not (restore/local-document?)))
-                               (and (or (not context/*server?*) (restore/local-document?))
-                                    (not @(rf/subscribe [:scope/inited? module])))))
-            _ (when (and (not context/*server?*) (not deferred?))
-                @(rf/subscribe [:loader/module module]))
-            spec (if context/*server?* (get context/*modules* module) (code-spec module))
-            resolved (when-not deferred? (get-in spec [:view (or view :view)]))]
-        (if resolved
-          (component-form resolved args options)
-          (into [<> options] args))))))
-
-(m/defc ^:private <pending-module>
-  "Temporary fallback only. Acquisition belongs to the shared source adapter;
-   renders contain no Promise chains or imperative initialization."
-  [spec & args]
-  (let [{:keys [module view defer? <before> <loading> <missing>] :as options}
-        (if (vector? spec) {:module (first spec) :view (second spec)} spec)
-        deferred? (and (or defer? <before>)
-                       (or (and (not @context/*interactive?) (not (restore/local-document?)))
-                           (not @(rf/subscribe [:scope/inited? module]))))
-        _ (when-not deferred? @(rf/subscribe [:loader/module module]))
-        failure @(rf/subscribe [:loader/code-error module])
-        loaded (when-not deferred? (code-spec module))
-        resolved (get-in loaded [:view (or view :view)])
-        _ (restore/use-readiness! (boolean (or deferred? resolved failure loaded)))]
-    (cond
-      deferred? (when <before>
-                  [:div.before-loading-container
-                   {:on-click #(rf/dispatch [:scope/init module args])}
-                   (if (vector? <before>) <before> (into [<before>] args))])
-      resolved (component-form resolved args options)
-      failure [error/<failure> "module" (name module)
-               {:title "This section could not be loaded" :error failure}
-               #(rf/dispatch [:loader/acquire module])]
-      loaded (if <missing>
-               (if (vector? <missing>) <missing> (into [<missing>] args))
-               [<default-missing> module view])
-      <loading> (if (vector? <loading>) <loading> (into [<loading>] args))
-      :else [:div.loading-container [:div.loading-spinner]])))
-
-(m/defc ^:private <>
-  "Internal pending/deferred fallback. Application views use m/<>."
-  [& initial]
-  (if context/*server?*
-    (fn [spec & args]
-      (let [{:keys [module view defer? <before>]} (if (vector? spec)
-                                                    {:module (first spec) :view (second spec)} spec)]
-        (cond
-          (or defer? <before>) (when <before> [:div.before-loading-container
-                                             (if (vector? <before>) <before> (into [<before>] args))])
-          :else (when-let [view (get-in context/*modules* [module :view (or view :view)])]
-                  (into [(component/resolve-view view)] args)))))
-    (into [<pending-module>] initial)))
+      (let [options (if (vector? reference)
+                      {:module (first reference) :view (second reference)} reference)]
+        [<module-boundary> options (vec args)]))))

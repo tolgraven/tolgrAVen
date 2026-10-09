@@ -11,6 +11,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   page-specific SQL/REST predicates or duplicate component markup.
 - Source acquisition runs concurrently under bounded limits; identical requests
   share an in-flight task. Node workers perform isolated React rendering only.
+- The Node response pairs HTML with its module/export inventory. Keep that
+  inventory in the matching snapshot/cache entry so selective hydration knows
+  which exports rendered real SSR views.
 - Cache public HTML with its exact data snapshot. Never cache a request's CSRF token
   or personalized shell as a shared response. Errors cannot validate old cache entries.
   Successful page snapshots are fresh for `:ssr :cache-ttl-ms` (one hour by

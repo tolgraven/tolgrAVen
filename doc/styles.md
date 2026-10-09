@@ -61,3 +61,8 @@ and retry, both navigation directions, hydration and document/history returns.
 Use a separate production server with advanced compiled browser assets and the
 Node renderer for performance measurements; port 4000's development assets are
 not representative. See [testing.md](testing.md).
+
+Module references defer code/data activation until proximity or explicit intent;
+SSR styles remain available for the static view before hydration. CSS acquisition
+starts directly when the module request starts, shares its in-flight promise, and
+retries a failed CSS/code request once after three seconds before showing an error.

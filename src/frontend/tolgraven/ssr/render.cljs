@@ -13,6 +13,9 @@
             [tolgraven.component.restore :as restore]
             [tolgraven.render-context :as context]))
 
+(defn module-views [modules]
+  (into {} (map (fn [[id spec]] [id (vec (keys (:view spec)))]) modules)))
+
 (defn html! [db form {:keys [modules href snapshot restored? interactive?]}]
   (when @validation/*enabled?
     (doseq [[id spec] modules]

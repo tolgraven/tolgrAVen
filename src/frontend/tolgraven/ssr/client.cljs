@@ -36,6 +36,7 @@
         (throw (js/Error. "Invalid page hydration snapshot")))
       (rf/dispatch-sync [:page/install-public-state (contract/snapshot-state snapshot)])
       (reset! *snapshot snapshot)
+      (restore/install-module-views! (:module-views snapshot))
       (rf/dispatch-sync [:page/install-metadata snapshot])
       (reset! context/*interactive? false)
       snapshot)))
