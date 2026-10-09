@@ -27,6 +27,8 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
   explicit and retain open maps where migration is incomplete.
 - `schema/http.cljc` is shared by page and API routers; use those typed parameters
   in handlers/controllers and use the same schemas for accepted/rejected fixtures.
+  Upstream service path allowlists require full-string matches before credentials
+  or transport are acquired; Malli `:re` alone matches substrings.
   Its JVM adapter supports API documentation; CLJS uses the smaller page coercion
   adapter. Shared schema composition emits native Malli `[:merge ...]` data,
   without importing the interpreter into the production browser shell.
