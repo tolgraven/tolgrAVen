@@ -12,6 +12,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Cold/expired SSR streams a component-derived skeleton then the completed page.
   Fresh cached SSR skips the skeleton (`:ssr :cache-ttl-ms`, default one hour).
   Hydration preserves the existing DOM and does not replay entrances.
+- Analytics initialization and script acquisition belong to the browser lifecycle
+  after hydration and page readiness; SSR emits no analytics markup or bootstrap.
 - After hydration, navigation is entirely SPA: commit the destination immediately, then acquire code/data through shared bindings. Related blog routes retain their shell.
 - Local external returns may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
 - Read `src/frontend/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/backend/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
