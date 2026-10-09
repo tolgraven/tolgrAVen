@@ -9,5 +9,6 @@
 (def spec
   {:depends (get content-contract/module-dependencies :instagram [])
    :id :instagram
+   :styles ["/css/tolgraven/modules/instagram.min.css"]
    :view {:view #'view/<instagram>}
    :init #(rf/dispatch [:instagram/init])})

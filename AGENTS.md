@@ -55,7 +55,10 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `npm run dev`: watch SCSS and PostCSS outputs for local development.
 - `bb audit <label>`: measure isolated production bundles
   and check optional dependency ownership without overwriting watched output.
-- `npm run build`: produce compressed CSS assets for production.
+- `npm run build`: produce the shared CSS and independent feature sheets. Module
+  specs declare literal `:styles`; CSS starts alongside JS acquisition. SSR emits
+  route styles in the initial head; Optimus fingerprints each bundle separately.
+  See `doc/styles.md` for source ownership and loading behavior.
 - `npm run init`: bootstrap CSS output, locked local npm tools, and the vendored SDK.
 - `make hooks`: install the tracked pre-commit hook; staged public JPG/PNG images
   generate staged WebP/AVIF variants without including unstaged source edits.

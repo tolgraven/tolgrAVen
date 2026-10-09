@@ -10,6 +10,7 @@
 (def spec
   {:depends (get content-contract/module-dependencies :search [])
    :id :search
+   :styles ["/css/tolgraven/modules/search.min.css"]
    :view {:view #'view/<ui>
           :button #'view/<button>}
    :init #(rf/dispatch [:search/init])})

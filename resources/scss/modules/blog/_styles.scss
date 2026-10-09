@@ -1,14 +1,4 @@
-/* BLOG STUFF */
-// should be somewhere globally accessible
-@mixin rounded-bottom($left: 2em, $ratio: 2.5) {
-  border-bottom-left-radius: $left;
-  border-bottom-right-radius: calc($left / $ratio);
-}
-@mixin lined-soft($width: 1px) {
-  border: var(--line-width-md) solid;
-  box-shadow: 0 0 4px 1px var(--fg-4); // looks nice on sep line but no go here
-}
-  
+@use "../../tools/blog-mixins" as mixins;
 
 .blog {
   background: var(--gradient-bg-main); // needed to cover heading
@@ -92,7 +82,7 @@
 .blog-post-preview {
   margin-top: calc(1 * var(--space-lg));
   margin-bottom: calc(2 * var(--space-lg));
-  @include rounded-bottom;
+  @include mixins.rounded-bottom;
 }
 
 .blog-post-tags {
@@ -188,7 +178,7 @@
   box-shadow: 2px 5px 11px 3px rgba(200, 200, 255, 0.10) inset;
   font-size: 90%;
   font-family: Helvetica;
-  @include rounded-bottom;
+  @include mixins.rounded-bottom;
   
   .blog-collapse-btn {
     font-size: 80%;

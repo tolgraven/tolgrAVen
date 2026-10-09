@@ -9,4 +9,5 @@
 (def spec
   {:depends (get content-contract/module-dependencies :link-preview [])
    :id :link-preview
+   :styles ["/css/tolgraven/modules/link-preview.min.css"]
    :view {:view #'view/<link-preview>}})

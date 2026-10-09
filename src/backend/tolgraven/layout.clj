@@ -13,6 +13,7 @@
     [tolgraven.ssr :as ssr]
     [tolgraven.page-router :as pages]
     [tolgraven.page :as page]
+    [tolgraven.loader.style-catalog :as styles]
     [tolgraven.validation.markup :as validation-markup]
     [tolgraven.components.image.sources :as image-sources]
     [tolgraven.concurrent :as concurrent]
@@ -34,6 +35,17 @@
 (defn- js-preload  [path] [:link {:rel "preload" :as "script" :href path}])
 (defn- img-preload [path] [:link {:rel "preload" :as "image" :href path}])
 (defn- css-preload [path] [:link {:rel "preload" :as "style" :type "text/css" :href path}])
+
+(defn module-styles [request]
+  (into {} (map (fn [[id {:keys [paths]}]]
+                  [id (if (or (:dev env) (empty? paths)) paths
+                          (vec (olink/bundle-paths request [(styles/bundle-name id)])))]))
+        styles/modules))
+
+(defn initial-styles [request manifest]
+  (vec (distinct
+         (mapcat #(styles/paths manifest %)
+                 [:user :link-preview (get-in (pages/match (or (:uri request) "/")) [:data :module])]))))
 
 (defn- img-preload-modern
   "Prioritize the same first source as the shared picture component.
@@ -94,6 +106,7 @@
 (defn- home
   [request & {:keys [loading-content title description link-pre css-paths js-paths
                      js-raw css-pre js-pre img-pre anti-forgery title-img]}]
+  (let [style-manifest (module-styles request)]
   [:html {:lang "en"}
    [:head
     [:meta {:charset "UTF-8"}]
@@ -135,7 +148,12 @@
     (for [path (if (:dev env)
                  ["css/tolgraven/main.min.css"]
                  (olink/bundle-paths request ["styles.css"]))]
-      [:link {:href path :rel "stylesheet" :type "text/css"}])
+      [:link {:href path :rel "stylesheet" :type "text/css" :data-precedence "shell"}])
+    ;; Route CSS is blocking on direct/streamed SSR loads, before either shell paints.
+    (for [path (when-not (:local-return? request) (initial-styles request style-manifest))]
+      [:link {:href path :rel "stylesheet" :type "text/css" :data-precedence "modules"}])
+    (when (:local-return? request) "__LOCAL_PAGE_STYLES__")
+    [:script#module-styles {:type "application/json"} (content/hydration-json style-manifest)]
     (for [href css-paths]
       (css href))
 
@@ -167,7 +185,7 @@
     (when-let [bundle (:site-content request)]
       [:script#site-content-bootstrap {:type "application/json"} (content/hydration-json bundle)])
     (when (:streamed? request) [:span#ssr-complete {:hidden true}])
-    (ohtml/link-to-js-bundles request ["main.js"]) ]])
+    (ohtml/link-to-js-bundles request ["main.js"]) ]]))
 
 (defn- hiccup-response [page & args]
   (-> (apply page args) ok (content-type "text/html; charset=utf-8")))

@@ -1,5 +1,6 @@
 (ns tolgraven.layout-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.data.json :as json]
             [optimus.html :as ohtml]
             [ring.core.protocols :as protocols]
             [optimus.link :as olink]
@@ -40,7 +41,8 @@
                     olink/bundle-paths (fn [_ bundles]
                                         (case (first bundles)
                                           "styles.css" [stylesheet]
-                                          "main.js" ["/bundles/main.hash.js"]))
+                                          "main.js" ["/bundles/main.hash.js"]
+                                          []))
                     ohtml/link-to-js-bundles (fn [& _] nil)]
         (let [body (:body (layout/render-home {}))
               links (re-seq #"<link[^>]+>" body)
@@ -58,7 +60,8 @@
                 olink/bundle-paths (fn [_ bundles]
                                     (case (first bundles)
                                       "main.js" ["/bundles/main.hash.js"]
-                                      "styles.css" ["/bundles/styles.hash.css"]))
+                                      "styles.css" ["/bundles/styles.hash.css"]
+                                      []))
                 ohtml/link-to-js-bundles (fn [& _] [:script {:src "/bundles/main.hash.js"}])]
     (let [{:keys [body headers]} (layout/render-home {:uri "/"})]
       (is (= "</bundles/main.hash.js>; rel=preload; as=script" (get headers "Link")))
@@ -124,3 +127,17 @@
         (let [path (str "/js/compiled/out/" module ".js")]
           (is (.contains (get headers "Link") path))
           (is (< (.indexOf body path) (.indexOf body "<body"))))))))
+
+(deftest route-css-is-in-the-initial-head-and-lazy-css-stays-in-the-manifest
+  (with-redefs [config/env {:dev true :ssr {:enabled false}}
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (doseq [[uri present absent] [["/" "user" "blog"] ["/blog" "blog" "cv"] ["/cv" "cv" "blog"]]]
+      (let [body (:body (layout/render-home {:uri uri}))
+            links (re-seq #"<link[^>]+>" body)]
+        (is (some #(.contains % (str "modules/" present ".min.css")) links))
+        (is (not-any? #(.contains % (str "modules/" absent ".min.css")) links))
+        (is (< (.indexOf body (str "modules/" present ".min.css")) (.indexOf body "<body")))
+        (is (.contains body "id=\"module-styles\""))
+        (is (= [(str "/css/tolgraven/modules/" absent ".min.css")]
+               (get (json/read-str
+                      (second (re-find #"<script[^>]*id=\"module-styles\"[^>]*>(.*?)</script>" body))) absent)))))))
