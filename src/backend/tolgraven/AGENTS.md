@@ -35,6 +35,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Lazy chunks use `as=fetch` with anonymous CORS to match Shadow's XHR loader;
   the main script uses `as=script`.
   Image preloads must use the same responsive candidates as rendered pictures.
+- Image/video catalog macros track their EDN resources through Shadow during
+  CLJS compilation; JVM runtime reads do not require the compiler dependency.
 - Production Shadow chunks use content-hashed names from `manifest.edn`; the
   Optimus main bundle resolves that manifest too. Only successful fingerprinted
   chunk responses receive immutable caching; plain names and errors must not.

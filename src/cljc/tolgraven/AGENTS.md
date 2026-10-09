@@ -45,7 +45,8 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
   Fingerprint each declared stylesheet once; shared dependencies retain one URL
   across module manifests. Reject colliding output names rather than merging them.
 - `components/image/sources.cljc` shares responsive candidates/dimensions with
-  server preloads. The resource catalog is compiled into CLJS; regenerate sized
+  server preloads. The catalog macros register Shadow resource dependencies so
+  incremental builds refresh changed EDN catalogs. Regenerate sized
   AVIF/WebP files with `bb images:responsive`.
 - `components/video/sources.cljc` bakes the responsive video catalog into source
   declarations. Native media queries select smaller renditions; preserve full-size fallbacks.
