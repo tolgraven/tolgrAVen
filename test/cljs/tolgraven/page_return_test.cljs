@@ -15,6 +15,7 @@
             [tolgraven.loader :as loader]
             [tolgraven.component.restore :as restore]
             [tolgraven.render-context :as context]
+            [tolgraven.browser-resources :as browser-resources]
             [tolgraven.supabase.scoped :as scoped]
             [tolgraven.ssr.return-contract :as contract]
             [tolgraven.ssr.render :as render]
@@ -30,9 +31,12 @@
     (let [restore! (re-frame/make-restore-fn)
           schedule! local/schedule!
           connect! local/connect!
+          after-page! browser-resources/after-page!
           *scheduled (atom 0)]
       (set! local/schedule! #(swap! *scheduled inc))
       (set! local/connect! #(js/Promise.resolve nil))
+      ;; Timing of the shared adapter is covered in browser-resources-test.
+      (set! browser-resources/after-page! (fn [start!] (start!) (fn [])))
       (-> (go-promise
             (let [element (.createElement js/document "div")
                   root (await! (support/create-root! element))]
@@ -54,6 +58,7 @@
           (.finally (fn []
                       (set! local/schedule! schedule!)
                       (set! local/connect! connect!)
+                      (set! browser-resources/after-page! after-page!)
                       (restore!)
                       (done)))))))
 

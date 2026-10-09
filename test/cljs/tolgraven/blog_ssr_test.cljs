@@ -16,12 +16,13 @@
     [tolgraven.ssr.client :as client]
     [tolgraven.components.page :as page]
     [tolgraven.modules.blog.module :as blog]
+    [tolgraven.modules.home.module :as home]
     [tolgraven.modules.cv.module :as cv]
     [tolgraven.modules.docs.module :as docs]
     [tolgraven.modules.user.module :as user]
     [tolgraven.modules.link-preview.module :as link-preview]))
 
-(def modules {:cv cv/spec :docs docs/spec :blog blog/spec :user user/spec :link-preview link-preview/spec})
+(def modules {:home home/spec :cv cv/spec :docs docs/spec :blog blog/spec :user user/spec :link-preview link-preview/spec})
 
 (r/defc <hydration-check> [on-commit]
   (react/use-effect (fn [] (on-commit) js/undefined) #js [])

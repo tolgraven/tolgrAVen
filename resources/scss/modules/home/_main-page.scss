@@ -64,7 +64,7 @@
 
   h1 {
     color: var(--light-3);
-    text-shadow: 3px 3px 9px white;
+    text-shadow: 0.1875rem 0.1875rem 0.5625rem white;
   }
   img {
     opacity: 0.3;
@@ -108,11 +108,11 @@
 }
 #byline > img {
   border-radius: 0.5em;
-  border: 1px solid;
+  border: 0.0625rem solid;
 }
 #multimeter, #story-image-multimeter {
   width: 30%;
-  min-width: 150px;
+  min-width: 9.375rem;
 }
 
 #building-tools {
@@ -176,7 +176,7 @@
   
   text-align: left;
   font-size: 1.1rem;
-  backdrop-filter: blur(3.0px);
+  backdrop-filter: blur(0.1875rem);
   background: hsla(var(--hue-3), 70%, var(--lum-light-6), 0.10);
   transition: backdrop-filter 0.5s,
               background 0.5s,
@@ -186,7 +186,7 @@
               height 0.2s,
               margin 0.2s,
               padding 0.2s;
-  box-shadow: 1px -0px 17px 3px var(--box-bright-heavy);
+  box-shadow: 0.0625rem 0 1.0625rem 0.1875rem var(--box-bright-heavy);
 
   cursor:  pointer;
   
@@ -231,7 +231,7 @@
       margin-bottom: calc(0.5 * var(--space));
 
       ~ li { /* suddenly started making the icons... weird inner shadow. so skip the header. */
-        text-shadow: 1px 1px 2px var(--bg-1);
+        text-shadow: 0.0625rem 0.0625rem 0.125rem var(--bg-1);
       }
     }
   }
@@ -253,13 +253,13 @@
       width: 98%;
       transform: skew(-30deg);
       position: absolute;
-      bottom: -1px;
-      left: -2px;
+      bottom: -0.0625rem;
+      left: -0.125rem;
       z-index: -1;
     }
   }
 }
-@media screen and (max-width: 400px) {
+@media screen and (max-width: 25rem) {
   .categories ul {
     /* min-width: 45%; /1* ensure no awkward two on one row, one on rest... not exactly universal solution tho :/ *1/ */
     /* /1* oh and doesnt work for like if font small enough that two fit nicely gah *1/ /1* easy enough with js tho.. *1/ */
@@ -267,12 +267,12 @@
     /* max-width: 55%; */
   }
 }
-@media screen and (min-width: 500px) {
+@media screen and (min-width: 31.25rem) {
   .categories ul {
     font-size: calc(1.0rem + 0.5vw);
   }
 }
-@media screen and (min-width: 800px) {
+@media screen and (min-width: 50rem) {
   .categories ul {
     font-size: calc(1.1rem + 0.3vw);
   }

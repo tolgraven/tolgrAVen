@@ -3,6 +3,7 @@
 
 (def spec
   {:id :markdown
-   :styles ["/css/tolgraven/modules/markdown.min.css"]
+   :styles ["/css/tolgraven/modules/monospace.min.css"
+            "/css/tolgraven/modules/markdown.min.css"]
    :view {:code-block #'code/<code-block>
           :parse #'code/<parse-markdown-components>}})

@@ -21,8 +21,7 @@
     [tolgraven.components.page-shell :as shell]
     [tolgraven.component.restore :as restore]
     [tolgraven.components.ui :as ui]
-    [tolgraven.modules.main.pages :as home]
-    [tolgraven.modules.main.views :as auto]
+    [tolgraven.modules.home.pages :as home]
     [tolgraven.components.not-found :as a404]))
 
 (defpage <log-page>
@@ -47,7 +46,7 @@
                                 (false nil) (rf/dispatch [:state [:settings :panel-open] false]))) ; well this being on start it wouldn't be open anyways
                      :stop (fn [{:keys [query]}]    ; why is this being run without leaving page?
                              )}]}]
-          (concat (mapv #(update % 1 assoc :module nil :view #'auto/<auto>) home/spec)
+          (concat home/spec
                   [(into [""] cv/spec)
                    (into [""] docs/spec)
                    (into [""] blog/spec)

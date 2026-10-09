@@ -6,7 +6,7 @@
             [tolgraven.schema.app-db :as app-db]
             [tolgraven.schema.http :as http]
             [tolgraven.page-router :as pages]
-            [tolgraven.modules.main.pages :as main]
+            [tolgraven.modules.home.pages :as main]
             [tolgraven.modules.blog.pages :as blog]
             [tolgraven.modules.docs.pages :as docs]
             [tolgraven.modules.cv.pages :as cv]))

@@ -1,6 +1,6 @@
 (ns tolgraven.modules.main.layout
   (:require [tolgraven.content.contract :as content]
-            [tolgraven.modules.main.pages :as main-pages]
+            [tolgraven.modules.home.pages :as main-pages]
             [reitit.core :as reitit]))
 
 (def landing-paths

@@ -79,8 +79,8 @@
   .styled-caret {
     opacity: 0.35;
     transition: color 0.2s ease, opacity 0.3s ease;
-    border: 2px solid var(--yellow-2);
-    box-shadow: 0px 0px 5px 5px hsla(0, 10%, 70%, 0.2);
+    border: 0.125rem solid var(--yellow-2);
+    box-shadow: 0 0 0.3125rem 0.3125rem hsla(0, 10%, 70%, 0.2);
     z-index: -1;
   }
   .styled-caret-under {

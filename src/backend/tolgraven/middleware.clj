@@ -69,9 +69,7 @@
                        "styles.css"
                        ["/css/tolgraven/main.min.css"])
    (assets/load-bundles "public"
-                        (into {} (keep (fn [[id {:keys [paths]}]]
-                                         (when (seq paths) [(styles/bundle-name id) paths])))
-                              styles/modules))
+                        styles/stylesheet-bundles)
    (assets/load-bundles "public"
                         {"main.js" [(str "/js/compiled/out/"
                                          (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))]

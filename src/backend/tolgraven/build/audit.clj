@@ -26,7 +26,7 @@
           (spit (str directory "/bundles.json") (json/write-str names))
           ;; Keep the important boundaries reviewable in every future audit.
           (doseq [source (:main graph)
-                  :when (re-find #"dev_console/|reitit/dev/pretty|expound/|modules/blog/cache|react-dom-server|highlight[_-]|refractor/|react_leaflet|leaflet/"
+                  :when (re-find #"dev_console/|reitit/dev/pretty|expound/|modules/blog/cache|modules/home/(views|sections|module)|modules/styled_input/(views|module)|react-dom-server|highlight[_-]|refractor/|react_leaflet|leaflet/"
                                  (:resource-name source ""))]
             (throw (ex-info "An optional dependency entered the main bundle" source)))
           (println "Bundle audit output:" directory))))))

@@ -1,0 +1,4 @@
+@use "sass:meta";
+
+@include meta.load-css("home/hero");
+@include meta.load-css("home/main-page");

@@ -25,6 +25,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   CORS mode and priority in both the response header and document head.
   Analytics checks cover absence from SSR HTML and browser acquisition only after
   hydration, load, painted idle frames and page binding readiness.
+  Check that landing code/styles and FiraCode stay absent on unrelated cold routes;
+  opening Search acquires its font, and visible code consumers retain typography.
+  Idle prefetch checks include offscreen/hidden hints and restricted connections.
   Compression checks must decode the shell before final data
   is ready. Initial SSR visibility alone
   does not prove hydration; let pending link intent settle before repeating clicks.

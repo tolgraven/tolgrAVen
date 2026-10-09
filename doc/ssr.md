@@ -37,7 +37,7 @@ component definition.
 ## Rendering and hydration
 
 Both environments render `components/page.cljs`, the ordinary application shell.
-The blog uses `modules/blog/views.cljs`; the landing page uses `modules/main/sections.cljs` and its
+The blog uses `modules/blog/views.cljs`; the landing page uses `modules/home/sections.cljs` and its
 existing home/media components. There are no SSR-only copies of the header,
 footer, post markup, Markdown configuration, pagination or landing sections.
 
