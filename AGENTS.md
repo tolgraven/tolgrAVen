@@ -18,6 +18,9 @@ Do not retain completed investigation diaries or historical test counts as curre
   Hydration preserves the existing DOM and does not replay entrances.
 - Analytics initialization and script acquisition belong to the browser lifecycle
   after hydration and page readiness; SSR emits no analytics markup or bootstrap.
+- Readable link previews belong to content containers, acquire text/image data only
+  on activation, and delay optional sandboxed miniatures until the card paints.
+  Frame policy controls embedding; menu navigation does not opt into previews.
 - After hydration, navigation is entirely SPA: commit the destination immediately, then acquire code/data through shared bindings. Related blog routes retain their shell.
 - `boot.cljs` owns ordered document listeners, committed UI setup and deferred
   background hosts. Register browser listeners through effects with an owner and

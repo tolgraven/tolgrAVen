@@ -17,7 +17,7 @@ async function build() {
     const file = path.join(output, entry.replace(/\.scss$/, '.css'));
     await fs.mkdir(path.dirname(file), {recursive: true});
     if (!postcssOnly) {
-      const result = sass.compile(path.join(root, entry), {style: 'compressed'});
+      const result = sass.compile(path.join(root, entry), {style: 'compressed', charset: false});
       await fs.writeFile(file, entry === 'modules/maps.scss'
         ? result.css.replaceAll('url(images/', 'url(/vendor/leaflet/images/') : result.css);
     }

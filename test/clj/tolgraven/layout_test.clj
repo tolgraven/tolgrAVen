@@ -177,7 +177,7 @@
                 {:path (str "/bundles/hash/module-" module ".css")
                  :bundle (str "module-" module ".css")
                  :contents css})
-        blog-css ".blog-post{color:red}/* </style> */"
+        blog-css "\uFEFF.blog-post{color:red}/* </style> */"
         cv-css (str ".cv{" (apply str (repeat 16385 " ")) "}")
         request {:optimus-assets [(asset "blog" blog-css)
                                   (asset "cv" cv-css)
@@ -191,6 +191,7 @@
             cv (render "/cv")]
         (is (.contains blog "data-module-style=\"/bundles/hash/module-blog.css\""))
         (is (.contains blog ".blog-post{color:red}"))
+        (is (not (.contains blog "\uFEFF")) "A UTF-8 marker cannot become part of the first selector")
         (is (.contains blog "<\\/style>") "CSS cannot terminate the style element")
         (is (not (re-find #"<link[^>]*module-(blog|user|link-preview|markdown)\.css" blog)))
         (is (< (.indexOf blog "data-module-style") (.indexOf blog "<body")))

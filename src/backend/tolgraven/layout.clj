@@ -78,9 +78,11 @@
         (let [asset (when-not (:dev env) (assets/get-asset-by-path request path))
               contents (when asset
                          (let [content (assets/get-contents asset)]
-                           (if (string? content) content
-                               (with-open [reader (clojure.java.io/reader content)]
-                                 (slurp reader)))))
+                           (string/replace
+                             (if (string? content) content
+                                 (with-open [reader (clojure.java.io/reader content)]
+                                   (slurp reader)))
+                             #"^\uFEFF" "")))
               size (when contents (alength (.getBytes ^String contents "UTF-8")))
               inline? (and size (<= size remaining))
               tag (if inline?

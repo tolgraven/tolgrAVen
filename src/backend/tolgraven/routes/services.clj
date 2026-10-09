@@ -16,6 +16,8 @@
     [tolgraven.middleware.formats :as formats]
     [tolgraven.middleware.exception :as exception]
     [tolgraven.modules.gpt.service :as gpt]
+    [tolgraven.modules.link-preview.service :as link-preview]
+    [tolgraven.modules.link-preview.article :as preview-contract]
     [tolgraven.content.service :as content]
     [tolgraven.supabase.api :as supabase-api]
     [tolgraven.supabase.auth :as supabase-auth]
@@ -65,6 +67,13 @@
                         (string/replace #"^[\s\S]*<body[^\>]*>([\s\S]*)<\/body>[\s\S]*$" "$1") ; strip html and head body tags
                         response/ok
                         plain-text-header)))}]
+
+   ["/link-preview"
+    {:get {:summary "Readable public article preview"
+           :parameters {:query preview-contract/query}
+           :responses {200 {:body preview-contract/result}}
+           :handler (fn [request]
+                      (link-preview/response! (get-in request [:parameters :query :url])))}}]
 
    ["/oembed"
     {:get {:summary "Get oembed data for a URL"

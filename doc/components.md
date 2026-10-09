@@ -666,3 +666,37 @@ routes/modules are not all downloaded merely because a header links to them.
 Deferred controls must preserve the activation's intent before loading their
 module. Search records its open state through the shared state event, then its
 mounted input owns focus and cleanup; loading never requires a second click.
+
+
+### Readable link previews
+
+Opening a candidate-bearing link acquires `/api/link-preview` through a component
+`:depends` URL binding. The shared source deduplicates and bounds its cache; there
+is no article parser in browser code and no page fetch just from importing the
+module. The JVM adapter selects article/main content and returns bounded headings,
+paragraphs, quotes, code, list items and image metadata. React renders these as
+text in site typography; foreign HTML, scripts and styles never enter the card.
+
+The readable body scrolls independently and contains a generous excerpt. A small,
+sandboxed page miniature starts after the body commits and two paint frames, only
+when the response's frame policy permits embedding from the current parent origin.
+Restrictive or unknown policies suppress it. JavaScript-only documents may provide
+only metadata; the card says so rather than promising article content it cannot
+extract. Upstream refusal/non-HTML content has a normal link fallback. Metadata-only
+cards use a shorter surface when they have no image.
+
+![Metadata-only preview](screenshots/readable-link-preview.png)
+
+Following the title or card expands the surface, and an available miniature grows
+to fill it before the common departure capture runs. Escape cancels pending
+navigation; reduced motion skips the delay. Returning closes the transient surface
+and retains visited-link suppression. Document prefetch is best effort: browser
+cache partitioning means an embedded cross-origin page does not guarantee warmed
+resources for a later top-level visit.
+
+Public preview acquisition rejects non-HTTP(S), credentials and unusual ports;
+DNS at actual connection time rejects private/reserved addresses. Each redirect is
+checked again, with no ambient cookies/proxy credentials. Reads have redirect,
+body, socket and total-read bounds, four concurrent acquisitions, and a bounded
+shared cache. Failures receive a short cache interval. These limits apply to the
+backend document read, independently of browser sandboxing.

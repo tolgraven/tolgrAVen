@@ -17,6 +17,7 @@
                  [org.postgresql/postgresql "42.7.13"]
                  [cprop "0.1.21"] ;env loading
                  [clj-http "3.13.1"]
+                 [org.jsoup/jsoup "1.23.2"]
                  [cheshire "6.2.0"] ; clj-http's :as :json / JSON request adapter
 
                  [luminus-transit "0.1.6"]

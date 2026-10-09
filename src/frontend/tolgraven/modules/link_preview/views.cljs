@@ -6,6 +6,8 @@
     [tolgraven.component.registry]
     [reagent.core :as r]
     [tolgraven.component :as component]
+    [tolgraven.component.data :as data]
+    [tolgraven.modules.link-preview.article :as article]
     [tolgraven.render-context :as context]
     [tolgraven.ssr.local :as local-page]
     [tolgraven.components.iframe :as iframe]
@@ -372,12 +374,99 @@
         :trust (:trust options)}
        [ui/<md->div> md options]])))
 
-(defc ^:private <default-preview> [{:keys [title trust url]} on-load]
-  [iframe/<iframe>
-   {:label (str "Preview of " (if (string/blank? title) url title))
-    :on-load on-load
-    :src url
-    :trust trust}])
+(defn article-dependency [url]
+  {:source :url
+   :url (str "/api/link-preview?url=" (js/encodeURIComponent url))
+   :ttl-ms 3600000})
+
+(defn frame-allowed? [result parent-url]
+  (case (:frame-policy result)
+    "none" true
+    "same-origin" (= (.-origin (js/URL. (:url result)))
+                     (.-origin (js/URL. parent-url)))
+    false))
+
+(defc <miniature> [{:keys [url trust]}]
+  (let [*element (rf/use-ref nil)
+        [scale set-scale!] (rf/use-state nil)]
+    (rf/use-effect
+     (fn []
+       (let [measure! #(when-let [element (.-current *element)]
+                        (set-scale! (/ (.-clientWidth element) (.-innerWidth js/window))))
+             observer (when (exists? js/ResizeObserver)
+                        (js/ResizeObserver. measure!))]
+         (measure!)
+         (when (and observer (.-current *element))
+           (.observe observer (.-current *element)))
+         (.addEventListener js/window "resize" measure!)
+         #(do (when observer (.disconnect observer))
+              (.removeEventListener js/window "resize" measure!)))) #js [])
+    [:div.link-preview__miniature
+     {:ref *element
+      :aria-hidden true
+      :style (when scale {"--preview-miniature-scale" scale})}
+     [:div.link-preview__miniature-page
+      [iframe/<iframe> {:label "Page miniature"
+                        :src url
+                        :trust trust}]]]))
+
+(defc <readable-content> [result :- article/result candidate on-load]
+  (let [[miniature? set-miniature!] (rf/use-state false)
+        allowed? (and (exists? js/window)
+                      (= "ready" (:status result))
+                      (frame-allowed? result (.-href js/window.location)))]
+    (rf/use-effect
+     (fn []
+       (on-load)
+       ;; The article commits and paints before an optional page adds work.
+       (let [*frame (atom nil)]
+         (when allowed?
+           (reset! *frame
+                   (js/requestAnimationFrame
+                    #(reset! *frame
+                             (js/requestAnimationFrame
+                              (fn [] (set-miniature! true)))))))
+         #(when @*frame (js/cancelAnimationFrame @*frame))))
+     #js [(:url result) allowed?])
+    [:div.link-preview__readable
+     {:class (when (empty? (:blocks result)) "link-preview__readable--metadata")}
+     [:article.link-preview__article
+      (when-let [image (:image result)]
+        [:img.link-preview__image {:src image
+                                  :alt ""
+                                  :referrer-policy "no-referrer"
+                                  :decoding "async"}])
+      (when-not (string/blank? (:title result)) [:h2 (:title result)])
+      (when-not (string/blank? (:description result))
+        [:p.link-preview__description (:description result)])
+      (map-indexed
+       (fn [index {:keys [kind text level]}]
+         (with-meta
+           (case kind
+             "heading" [(keyword (str "h" (min 4 (inc (or level 1))))) text]
+             "quote" [:blockquote text]
+             "code" [:pre [:code text]]
+             "item" [:p.link-preview__item text]
+             [:p text])
+           {:key index}))
+       (:blocks result))
+      (when (and (= "ready" (:status result)) (empty? (:blocks result)))
+        [:p.link-preview__more "Only page metadata is available here. Open the page to read its contents."])
+      (when (:truncated? result)
+        [:p.link-preview__more "Continue reading on the linked page…"])]
+     (when (and allowed? miniature?)
+       [<miniature> (assoc candidate :url (:url result))])]))
+
+(defc <readable-preview>
+  {:depends (fn [candidate _] [(article-dependency (:url candidate))])
+   :loading-tag :div.link-preview__article
+   :loading-prefab :text}
+  [candidate on-load]
+  (let [result (:value (data/snapshot (article-dependency (:url candidate))))]
+    [<readable-content> result candidate on-load]))
+
+(defc ^:private <default-preview> [candidate on-load]
+  [<readable-preview> candidate on-load])
 
 (defc ^:private <preview-content> [data on-load]
   (let [host (.-host (js/URL. (:url data)))
@@ -500,7 +589,8 @@
          js/undefined))
          (let [active (:active @state)
                {:keys [status title url]} active
-               expanded? (= :expanded status)]
+               expanded? (= :expanded status)
+               custom? (and url (contains? @*preview-providers (.-host (js/URL. url))))]
            [:<>
             (when (and (exists? js/document) @*anchor-selector)
               [portal/<portal> js/document.head
@@ -519,9 +609,11 @@
               {:aria-label (str "Preview of "
                                 (if (string/blank? title) url title))
                :class "link-preview"
+               :scaled? false
                :expanded? expanded?
                :on-click (fn [event]
                            (when (and (unmodified-primary-click? event)
+                                      (string/blank? (str (.getSelection js/window)))
                                       (not (closest (.-target event)
                                                     "[data-popover-direct]")))
                              (.preventDefault event)
@@ -546,7 +638,7 @@
                   :on-click (fn [event]
                               (when (unmodified-primary-click? event)
                                 (.preventDefault event)
-                                (leave! active)))}
+                                (navigate! active)))}
                  (if (string/blank? title) url title)]
                 [:span.link-preview__hint "Click to open"]
                 [:button.link-preview__close
@@ -556,8 +648,7 @@
                  "×"]]
                [:div.link-preview__viewport
                 [<preview-content> active #(reset! *loaded-url url)]
-                (when-not (= @*loaded-url url)
+                (when (and custom? (not= @*loaded-url url))
                   [:div.link-preview__loading
                    [:i.fa.fa-spinner.fa-spin]
-                   [:span "Loading preview"]])
-                [:div.link-preview__shield {:aria-hidden true}]]]])]))))
+                   [:span "Loading preview"]])]]])]))))
