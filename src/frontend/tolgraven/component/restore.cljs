@@ -40,8 +40,6 @@
                     :initial-document? (boolean (and hydrate? (not back?))) :page (page-key)}))
 (defn skip-enter? []
   (and (= (:page @*context) (page-key)) (or (:hydrate? @*context) (:back? @*context))))
-(defn initial-enter? []
-  (and (skip-enter?) (:hydrate? @*context) (not (:back? @*context))))
 (defn document-enter? []
   (and (= (:page @*context) (page-key)) (:initial-document? @*context)))
 (defn local-document? [] (boolean (:local? @*context)))

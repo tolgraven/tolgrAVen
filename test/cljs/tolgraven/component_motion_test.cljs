@@ -268,7 +268,7 @@
                                (.catch #(is false (str %)))
                                (.finally (fn [] (close!) (done))))))
              (.catch (fn [error] (is false (str error)) (done))))))
-(deftest streamed-motion-marker-survives-hydration-but-not-spa-or-history-mounts
+(deftest restored-motion-roots-stay-visible-through-hydration-and-spa-mounts-enter
   (async
     done
     (-> (go-promise
@@ -277,12 +277,14 @@
             (try (restore/begin! {:hydrate? true})
                  (await! (render! root (with-meta [<item> {:id 1, :title "SSR"}] {:key :initial})))
                  (let [node (.querySelector element "button")]
-                   (is (= "true" (.getAttribute node "data-stream-enter")))
+                   (is (nil? (.getAttribute node "data-stream-enter")))
                    (is (.contains (.-classList node) "appeared"))
+                   (restore/hydrated!)
                    (await!
                      (render! root (with-meta [<item> {:id 1, :title "Hydrated"}] {:key :initial})))
                    (is (identical? node (.querySelector element "button")))
-                   (is (= "true" (.getAttribute node "data-stream-enter"))))
+                   (is (nil? (.getAttribute node "data-stream-enter")))
+                   (is (.contains (.-classList node) "appeared")))
                  (restore/navigate! "/another-page")
                  (await! (render! root (with-meta [<item> {:id 2, :title "SPA"}] {:key :spa})))
                  (let [node (.querySelector element "button")]

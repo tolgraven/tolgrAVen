@@ -107,7 +107,6 @@
                   {:min-height (str height "px")})
          :data-debug-hydrated (when @(rf/subscribe [:state [:debug :hydration-token]]) true)
          :data-restored (when ext-back? true)
-         :data-stream-enter (when (restore/document-enter?) true)
          :class (str (when (and (not ext-back?) (not (restore/document-enter?))
                                      (= (:page @restore/*context) (restore/page-key)))
                             "animate ")

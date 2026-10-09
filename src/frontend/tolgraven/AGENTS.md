@@ -34,6 +34,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   duplicate transport reads in pages or component render functions.
 - Reuse appearance/presence/loading features. Hydration and restored data bypass
   loading and entrances; later SPA navigation must restore ordinary motion.
+  Appearance classes merge onto native roots; `appear-wrapper` is only a CSS
+  class. SSR roots paint visible, without separate child/page entrance keyframes.
 - Shared Markdown, full syntax highlighting and mapping code live in the
   `:markdown`, `:highlight` and `:maps` bundles. Keep the full highlighter out of
   Markdown so link previews do not acquire every language. Declare bundle

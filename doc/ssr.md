@@ -210,12 +210,11 @@ React render produces the shell, using the ordinary header, footer, heading and
 skeleton components. Its HTML is flushed before waiting for page data. The same
 HTTP response then carries the complete ordinary page root and its public
 hydration snapshot. CSS displays that root only after both have arrived; React unmounts the temporary loading root after its exit animation. Elements
-with `data-stream-enter` use their ordinary appearance style (page fade,
-article zoom, comment zoom/fade) when the completed HTML becomes visible,
-respecting reduced motion. These markers match across SSR and hydration and do
-not depend on the temporary shell remaining populated. Hydration neither replaces
-the selected page with a code-loading shell nor restarts its animation. Cached
-SSR responses use the same first-appearance behavior without the skeleton step.
+paint fully visible with the same root-merged `defc` appearance classes on the
+server and browser. The completed page does not replay page/child entrances;
+the temporary shell owns its dissolve, respecting reduced motion. Hydration
+neither replaces the selected page with a code-loading shell nor starts another
+animation. Cached SSR responses paint immediately without a skeleton step.
 
 This first stage streams two complete React renders, not suspended component
 renders. It preserves request isolation in the existing renderer pool: no Node

@@ -113,7 +113,6 @@
         remembered? (when remember-key @(rf/subscribe [:state [:motion-seen remember-key]]))
         [skip-enter?] (rf/use-state #(boolean (and (not= false (:restore? appearance))
                                                   (or remembered? (restore/skip-enter?)))))
-        [initial-enter?] (rf/use-state #(boolean (and (not= false (:restore? appearance)) (restore/initial-enter?))))
         [visible? set-visible!] (rf/use-state skip-enter?)
         [reduced? set-reduced!] (rf/use-state reduced-motion?)
         *element (rf/use-ref nil)
@@ -193,8 +192,7 @@
                                                (when (and (not exiting?) (or visible? reduced? skip-enter?)) "appeared")
                                                (when exiting? (str "exiting " (class-text (:class exit-options))))]))]
         (with-attrs form
-          (cond-> (assoc base :class classes :ref capture!
-                                :data-stream-enter (when initial-enter? true))
+          (cond-> (assoc base :class classes :ref capture!)
             reduced? (update :style merge {:transition "none" :animation "none"})
             exiting? (assoc :aria-hidden true :inert true)))))))
 
