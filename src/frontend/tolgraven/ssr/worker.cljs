@@ -38,7 +38,9 @@
 (defn render! [snapshot]
   (let [snapshot (update snapshot :content content/normalize-content)
         _ (validation/check! :ssr/snapshot schema/snapshot snapshot)
-        match (assoc (reitit/match-by-path routes/router (:path snapshot)) :query-params (:query-params snapshot))
+        match (cond-> (assoc (reitit/match-by-path routes/router (:path snapshot))
+                             :query-params (:query-params snapshot))
+                (:route-parameters snapshot) (assoc :parameters (:route-parameters snapshot)))
         view (if (:shell? snapshot)
                (fn [] [shell/<page> (get-in match [:data :shell])])
                (or (get-in match [:data :view])

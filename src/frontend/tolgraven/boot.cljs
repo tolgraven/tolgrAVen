@@ -9,6 +9,9 @@
             [tolgraven.component.restore :as restore]
             [tolgraven.render-context :as context]
             [tolgraven.browser-resources :as resources]
+            [tolgraven.loader :as loader]
+            [tolgraven.validation :as validation]
+            [tolgraven.validation.runtime :as validation-runtime]
             [tolgraven.navigation.preload :as preload]
             [tolgraven.ssr.local :as local-page]))
 
@@ -104,11 +107,31 @@
 ;; Compatibility for explicitly invoked old callers; startup uses the lifecycle.
 (rf/reg-event-fx :init/init (fn [_ _] {:dispatch [:boot/interactive]}))
 
+(defn start-validation! []
+  ;; Keep restoration attached to engine readiness even if acquisition fails and
+  ;; is retried from the shared loader notification later.
+  (let [restored (-> (validation/when-ready!)
+                     (.then (fn [_]
+                              (validation-runtime/install!)
+                              (storage/ready!)))
+                     (.then (fn [_] (storage/restore-public-cache!))))]
+    (-> (if (validation/ready?)
+          (js/Promise.resolve nil)
+          (loader/load-code! {:module :coercion}))
+        (.then (fn [_] restored))
+        (.catch (fn [_] nil)))))
+
+(defc <coercion> {:profile false} []
+  (rf/use-effect
+    (fn [] (resources/after-page! start-validation!))
+    #js [])
+  [:<>])
+
 (defc <lifecycle> {:profile false} []
   (rf/use-effect
     (fn []
       (rf/dispatch-sync [:boot/interactive])
       #(rf/dispatch-sync [:boot/stop]))
     #js [])
-  [:<> [preload/<background>] [local-page/<capture>]
+  [:<> [<coercion>] [preload/<background>] [local-page/<capture>]
    (when @context/*interactive? [resources/<deferred>])])

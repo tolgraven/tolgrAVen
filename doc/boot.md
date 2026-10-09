@@ -27,3 +27,9 @@ native listener before adding its replacement. `:boot/stop` removes document/sit
 listeners and the scroll callback registry; unmount also cancels the background
 hosts' observers, timers and pending acquisitions. Component-owned focus,
 measurement and animation listeners remain in their own ref/effect adapters.
+
+The `:coercion` module shares the after-page gate for network SSR. Its engine and
+Reitit adapter are installed once per document. Initial typed parameters come from
+the server pair; pending disk reads cannot overwrite that paired state. Client-only
+startup/local returns acquire the engine before using persisted state, and early
+SPA navigation acquires it before route controllers. See [schemas.md](schemas.md).

@@ -14,15 +14,21 @@
        distinct
        vec))
 
+(defn- integer-input [value]
+  ;; UI/route events accept whole numeric strings too. Normalize at this existing
+  ;; domain boundary so typed SSR controllers do not acquire a schema interpreter.
+  (if (and (string? value) (re-matches #"[+]?[0-9]+" value))
+    (js/Number value)
+    value))
+
 (defn page-size [value]
-  (if (and (int? value) (pos? value)) value 1))
+  (let [value (integer-input value)]
+    (if (and (int? value) (pos? value)) value 1)))
 
 (defn page-index [number]
   ;; Routes are one-based; app-db stores a zero-based index. Reject partial
   ;; numbers, NaN and negatives instead of letting them reach partitioning.
-  (let [number (if (and (string? number) (re-matches #"[0-9]+" number))
-                 (js/Number number)
-                 number)]
+  (let [number (integer-input number)]
     (if (and (js/Number.isSafeInteger number) (pos? number)) (dec number) 0)))
 
 (defn page-ids [ids index size]

@@ -7,6 +7,8 @@
             [reagent.ratom :as ratom]
             [tolgraven.react :as rf]
             [tolgraven.component.storage :as storage]
+            [tolgraven.component.restore :as restore]
+            [tolgraven.render-context :as context]
             [tolgraven.supabase.query :as query]))
 
 (def options {:scope :public :ttl-ms 1800000})
@@ -83,4 +85,10 @@
     (start!)))
 
 (defn install! []
-  (-> (storage/ready!) (.then (fn [_] (restore!)))))
+  (let [pending (-> (storage/ready!) (.then (fn [_] (restore!))))]
+    (if (and (:hydrate? @restore/*context)
+             (:route-parameters @context/*snapshot))
+      ;; Paired server query/state is authoritative. Publish code now; missing
+      ;; disk entries can fill later, after validation, without replacing it.
+      (do (start!) (-> pending (.catch (fn [_] nil))) nil)
+      pending)))

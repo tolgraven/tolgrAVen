@@ -72,3 +72,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Snapshot transport checks use a local HTTP server to prove TCP reuse across
   bound tasks, fresh request credentials and pool closure after success/failure.
   Live provider timing checks perform public GETs only and never log payloads/keys.
+
+- Deferred coercion checks compare native data merge expressions with Malli's
+  eager merges, exercise the same router before/after adapter installation and
+  preserve invalid-route/redacted-error/query round trips. Production checks must
+  withhold the coercion chunk, prove SSR hydrates without it, then test early
+  navigation and retries. Audit every Malli namespace out of the main bundle.

@@ -26,23 +26,41 @@ the browser/restart the server after changing deployment configuration.
 
 Disabled internal checks do not install the app-db interceptor or validate
 component/module declarations. The schema code remains available in optimized
-builds so a deployment can enable it without rebuilding. This is runtime gating,
-not complete removal of Malli from the bundle.
+builds so a deployment can enable it without rebuilding. The interpreter lives in
+the deferred `:coercion` browser bundle, with the same runtime policy after
+installation.
 
 Browser releases set `malli.registry/type` to `"custom"` and install the types in
-`schema/registry.cljs` before schema composition. The registry uses Malli's
+`schema/registry.cljc` when the interpreter loads. The registry uses Malli's
 extension constructors; unused function instrumentation and named branching
 constructors can be eliminated. Predicate, scalar and sequence types remain
 available for the application's declaration/input contracts. Browser tests use
 this same registry; ordinary development and the Node/JVM renderer retain the
 full one. Add a constructor when introducing an additional schema type.
 
-CLJS page routers use `schema/page_coercion.cljs`, implementing Reitit's coercion
-protocol with Malli validators, explainers and string decoders/encoders. It retains
+CLJS page routers use the eager `schema/page_coercion.cljc` dispatcher and the
+lazy `schema/malli_coercion.cljs` adapter, implementing Reitit's coercion protocol
+with Malli validators, explainers and string decoders/encoders. It retains
 open query maps, boolean false and redacted humanized errors. The JVM uses the
 standard Reitit Malli adapter for Ring/API documentation and response coercion.
 Swagger, JSON Schema, EDN schema serialization and lite-schema conversion are not
 needed by the page adapter and stay out of the production browser graph.
+
+Schema composition returns Malli's native `[:merge base extension ...]` data.
+The interpreter resolves recursive map refinements when a contract is used;
+namespace loading does not construct Malli schemas. JVM, Node SSR and development
+retain eager interpretation.
+
+The server supplies typed `:route-parameters` beside raw query parameters in each
+network SSR pair. Initial hydration consumes them only for the matching path and
+query. Production boot acquires `:coercion` after hydration, page readiness, window
+load and painted idle frames. An earlier SPA navigation shares that acquisition,
+then coerces before committing controllers/data; a newer URL supersedes older
+pending requests. The router stays the same object. Client-only loads, local return
+pairs and explicitly enabled internal validation acquire the engine during startup.
+Disk envelopes wait for that engine and are always validated before restoration;
+network SSR uses the already validated paired state rather than waiting on disk.
+Later CMS responses also wait for the engine before validation/installation.
 
 Request coercion is always active for declared HTTP and page parameters, including
 production. Malformed external input must not reach handlers. Response checking

@@ -6,6 +6,9 @@
             [reitit.frontend :as frontend]
             [tolgraven.navigation.routes :as routes]
             [tolgraven.schema.http :as schemas]
+            [tolgraven.schema.page-coercion :as page]
+            [tolgraven.schema.declarations :as declarations]
+            [malli.util :as mu]
             [tolgraven.validation.runtime :as validation]))
 
 (deftest production-registry-retains-owned-contracts
@@ -48,3 +51,36 @@
     (is (= #{:humanized} (set (keys encoded))))
     (is (.includes (pr-str encoded) "should be an integer"))
     (is (not (.includes (pr-str encoded) "private-invalid-value")))))
+
+(deftest composed-schemas-stay-data-until-interpreted
+  (let [base [:map [:nested [:map [:base :int] [:refined :string]]]]
+        extra [:map [:nested [:map [:extension {:optional true} :boolean]
+                                  [:refined :int]]]]
+        schema (declarations/compose base extra)
+        eager (mu/merge base extra)]
+    (is (= :merge (first schema)))
+    (doseq [value [{:nested {:base 1 :refined 2}}
+                   {:nested {:base 1 :refined 2 :extension false :other "kept"}}
+                   {:nested {:base 1 :refined "invalid"}}
+                   {:nested {:refined 2}}]]
+      (is (= (m/validate eager value) (m/validate schema value))))))
+
+(deftest stable-router-dispatchers-acquire-the-adapter-later
+  (let [adapter @page/*adapter]
+    (try
+      (page/install! nil)
+      (let [raw (frontend/match-by-path routes/router "/blog/page/2?userBox=false&extra=kept")]
+        (is (= "2" (get-in raw [:parameters :path :nr])))
+        (is (= "false" (get-in raw [:parameters :query :userBox])))
+        (is (= {:path {:nr 2} :query {:userBox false :extra "kept"}}
+               (routes/initial-parameters raw
+                 {:path "/blog/page/2" :query-params {:userBox "false" :extra "kept"}
+                  :route-parameters {:path {:nr 2} :query {:userBox false :extra "kept"}}}
+                 true true)))
+        (is (nil? (routes/initial-parameters raw
+                    {:path "/blog/page/2" :route-parameters {:path {:nr 2}}} true true)))
+        (page/install! adapter)
+        (is (= 2 (get-in (coercion/coerce! raw) [:path :nr])))
+        (is (false? (get-in (coercion/coerce! raw) [:query :userBox])))
+        (is (= "kept" (get-in (coercion/coerce! raw) [:query :extra]))))
+      (finally (page/install! adapter)))))

@@ -7,6 +7,7 @@
     [tolgraven.react :as rf]
     [reagent.core :as r]
     [tolgraven.content.contract :as contract]
+    [tolgraven.validation :as validation]
     [tolgraven.service-status :as status]
     [tolgraven.component.storage :as storage]
     [tolgraven.component.restore :as restore]))
@@ -33,7 +34,7 @@
 
 (declare ensure! prefetch!)
 
-(defn request! [ks]
+(defn- request-ready! [ks]
   (js/Promise.
    (fn [resolve reject]
      (ajax/GET (if (= (set ks) (set contract/sections)) "/api/content/bootstrap"
@@ -49,6 +50,10 @@
                                  (resolve bundle))
                              (reject (js/Error. "Invalid content response"))))
                 :error-handler (fn [_] (reject (js/Error. "Content is temporarily unavailable")))}))))
+
+(defn request! [ks]
+  (-> (validation/when-ready!)
+      (.then (fn [_] (request-ready! ks)))))
 
 (defn drain!
   "One network request for all sections requested during this tick."
@@ -117,6 +122,17 @@
                     "The initial content response was invalid. Reload the page to try again."
                     #(.reload js/location))
       (js/Promise.reject error))))
+
+(defn bootstrap-server!
+  "Install content supplied with the validated network SSR pair.
+   Browser disk/transport responses still pass through their own validation."
+  [snapshot]
+  (rf/dispatch-sync [:content/install
+                     {:version contract/version :content (:content snapshot)}])
+  (storage/track! :public-content
+                  #(hash-map :version contract/version :content (cached-content)) cache-options)
+  (-> (ensure! (keys (:content snapshot)))
+      (.then (fn [result] (status/recover! :strapi-bootstrap) result))))
 
 (defn bootstrap! []
   (-> (storage/ready!) (.then (fn [_] (bootstrap-ready!)))))

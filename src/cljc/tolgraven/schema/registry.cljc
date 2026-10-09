@@ -1,10 +1,11 @@
 (ns tolgraven.schema.registry
   "Malli's custom registry removes unused schema constructors from releases.
-   Install before owners compose schemas; development keeps the full registry."
+   Install before interpretation; development keeps the full registry."
   (:require [malli.core :as m]
-            [malli.registry :as mr]))
+            [malli.registry :as mr]
+            [malli.util :as mu]))
 
-(when (= mr/type "custom")
+(if (= mr/type "custom")
   ;; These are Malli's documented extension constructors, not another validator.
   ;; Keep sequence/predicate types available for declaration and argument schemas.
   (mr/set-default-registry!
@@ -12,6 +13,7 @@
            (m/comparator-schemas)
            (m/type-schemas)
            (m/sequence-schemas)
+           (mu/schemas)
            {:and (m/-and-schema)
             :or (m/-or-schema)
             :map (m/-map-schema)
@@ -33,4 +35,6 @@
             :fn (m/-fn-schema)
             :ref (m/-ref-schema)
             :schema (m/-schema-schema nil)
-            :malli.core/schema (m/-schema-schema {:raw true})})))
+            :malli.core/schema (m/-schema-schema {:raw true})}))
+  (mr/set-default-registry!
+    (mr/composite-registry (mu/schemas) (m/default-schemas) (mr/var-registry))))

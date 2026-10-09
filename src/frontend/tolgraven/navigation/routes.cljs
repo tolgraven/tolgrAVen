@@ -4,6 +4,9 @@
     [tolgraven.validation :as validation]
     [tolgraven.validation.runtime :as validation-runtime]
     [tolgraven.schema.http :as schemas]
+    [tolgraven.schema.page-coercion :as page-coercion]
+    [reitit.coercion :as coercion]
+    [tolgraven.service-status :as status]
     [tolgraven.navigation.transition]
     [tolgraven.macros :refer-macros [defc defpage]]
     [tolgraven.ssr.client :as ssr] [tolgraven.react :as rf]
@@ -155,12 +158,44 @@
 
       :else (navigate! nil))))
 
-(defn on-nav [match _history]
-  ;; Only same-document routing takes ownership from native restoration.
-  (when (pos? @*navigation)
-    (set! (.-scrollRestoration js/history) "manual"))
-  (when-let [path (:path match)] (ssr/leave! path))
-  (navigate! *navigation rf/dispatch l/load-code! match))
+(defonce *route-request (atom 0))
+(declare coercion-failed!)
+
+(defn initial-parameters
+  "Only the first matching network SSR route may use the server's typed values."
+  [match snapshot initial? hydrating?]
+  (when (and initial? hydrating?
+             (= (:path match) (:path snapshot))
+             (= (or (:query-params match) {}) (or (:query-params snapshot) {})))
+    (:route-parameters snapshot)))
+
+(defn on-nav [match route-history]
+  (let [request (swap! *route-request inc)
+        commit! (fn [match]
+                  (when (= request @*route-request)
+                    (status/recover! :route-coercion)
+                    ;; Only same-document routing takes ownership from native restoration.
+                    (when (pos? @*navigation)
+                      (set! (.-scrollRestoration js/history) "manual"))
+                    (when-let [path (:path match)] (ssr/leave! path))
+                    (navigate! *navigation rf/dispatch l/load-code! match)))
+        parameters (initial-parameters match @ssr/*snapshot
+                                       (zero? @*navigation) (:hydrate? @restore/*context))]
+    (cond
+      parameters (commit! (assoc match :parameters parameters))
+      (or (nil? match) (page-coercion/ready?)) (commit! match)
+      :else
+      (-> (l/acquire-code! :coercion)
+          (.then (fn [_]
+                   (when (= request @*route-request)
+                     (try
+                       (commit! (assoc match :parameters (coercion/coerce! match)))
+                       (catch :default error (coercion-failed! match error))))))
+          (.catch (fn [_]
+                    (when (= request @*route-request)
+                      (status/fail! :route-coercion "Page navigation could not initialize"
+                                    "Check your connection and retry this page address."
+                                    #(on-nav match route-history)))))))))
 
 (defn ignore-anchor-click? [router event element ^goog.Uri uri]
   ;; Only intercepted internal links may update the pending fragment.

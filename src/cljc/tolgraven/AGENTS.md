@@ -28,8 +28,10 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
 - `schema/http.cljc` is shared by page and API routers; use those typed parameters
   in handlers/controllers and use the same schemas for accepted/rejected fixtures.
   Its JVM adapter supports API documentation; CLJS uses the smaller page coercion
-  adapter. Shared schema owners require `schema/common` before eager composition,
-  which installs the browser release registry.
+  adapter. Shared schema composition emits native Malli `[:merge ...]` data,
+  without importing the interpreter into the production browser shell.
+  `validation.cljc` is a stable boundary; its engine/registry are eager on JVM,
+  development and Node SSR, and installed by the browser `:coercion` module.
 
 - Define meaningful new contracts alongside their owner and use them across both
   runtimes. CMS bundles and normalized app-db/provider content have different

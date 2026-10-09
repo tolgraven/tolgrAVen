@@ -12,6 +12,7 @@
                 {:kind c/named :content content/content :posts [:sequential store/post]
                  :summaries [:sequential store/post] :comments [:sequential store/comment-record]
                  :page [:maybe c/positive] :post-id [:maybe c/id] :shell? :boolean :missing? [:maybe :boolean]
+                 :route-parameters (c/optional-map {:path c/query-params :query c/query-params})
                  :app-db-edn :string :module-views module-views :query-params c/query-params :document-title :string
                  :trusted-author-ids [:maybe [:sequential c/id]]}))))
 (def settings

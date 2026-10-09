@@ -1,8 +1,7 @@
 (ns tolgraven.schema.app-db
   "Partial sections assemble without closing the rest of app-db. Owners can add
    sections; the event adapter checks only changed section references."
-  (:require [malli.util :as mu]
-            [tolgraven.validation :as validation]))
+  (:require [tolgraven.validation :as validation]))
 
 (defonce ^:private *assembled (atom nil))
 (defn schema
@@ -13,7 +12,7 @@
       assembled
       (let [assembled (reduce-kv
                        (fn [schema path section]
-                         (mu/merge schema
+                         (vector :merge schema
                            (reduce (fn [child key] [:map [key {:optional true} child]])
                                    section (reverse path))))
                        [:map] sections)]

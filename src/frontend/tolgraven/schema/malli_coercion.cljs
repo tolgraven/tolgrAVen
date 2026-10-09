@@ -1,4 +1,4 @@
-(ns tolgraven.schema.page-coercion
+(ns tolgraven.schema.malli-coercion
   "Reitit's frontend protocol backed by Malli, without server API documentation.
    Page routers use string parameters and query encoding; Ring keeps its adapter."
   (:require [tolgraven.schema.registry]

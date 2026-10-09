@@ -1,8 +1,7 @@
 (ns tolgraven.modules.blog.schema
   (:require [tolgraven.schema.common :as c]
             [tolgraven.schema.declarations :as declarations]
-            [tolgraven.supabase.schema :as store]
-            [malli.util :as mu]))
+            [tolgraven.supabase.schema :as store]))
 
 (def state
   [:map
@@ -19,10 +18,10 @@
 
 (def post-header-spec [:map [:children [:sequential :any]]])
 (def displayed-post
-  (mu/merge store/post [:map [:user {:optional true} [:maybe [:or c/id store/profile]]]]))
+  (vector :merge store/post [:map [:user {:optional true} [:maybe [:or c/id store/profile]]]]))
 (def post-spec (declarations/extend-spec [:map [:post displayed-post]]))
 (def displayed-comment
-  (mu/merge store/comment-record [:map [:user {:optional true} [:maybe [:or c/id store/profile]]]]))
+  (vector :merge store/comment-record [:map [:user {:optional true} [:maybe [:or c/id store/profile]]]]))
 (def comment-spec (declarations/extend-spec [:map [:path c/path] [:comment displayed-comment]
                                             [:visible? {:optional true} [:maybe c/derefable]]]))
 (def parent-spec (declarations/extend-spec [:map [:parent-path c/path]]))
@@ -54,15 +53,18 @@
    [:loading? :boolean]
    [:more? :boolean]])
 
+(def positive-input
+  [:or c/positive [:and :string [:re #"^[+]?0*[1-9][0-9]*$"]]])
+
 (def event-args
   {:blog/init no-args
    :blog/init-posting no-args
    :blog/edit-post [:tuple displayed-post]
    :blog/cancel-edit no-args
    :blog/state [:tuple c/path :any]
-   :blog/set-posts-per-page [:tuple c/positive]
+   :blog/set-posts-per-page [:tuple positive-input]
    :blog/nav-action [:tuple navigation-action]
-   :blog/nav-page [:tuple c/positive]
+   :blog/nav-page [:tuple positive-input]
    :blog/submit [:tuple post-fields [:maybe displayed-post]]
    :blog/post-saved [:tuple post-fields :map]
    :blog/edit-comment [:tuple c/path displayed-comment]
