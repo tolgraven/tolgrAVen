@@ -51,6 +51,12 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   renderer. HTML and state are inseparable. Do not copy DOM or replay init before
   hydration; retain exact query caches and fold/window state.
 - Browser-only APIs belong in lifecycle/effect adapters with cleanup and SSR guards.
+  `boot.cljs` installs document persistence/history listeners after app-db setup,
+  then site listeners/preferences from the committed root lifecycle. Deferred
+  resources, route prefetch and local-return capture share that lifecycle host.
+  `listener.cljs` replaces named registrations and removes them by owner on stop;
+  do not install browser listeners in `defonce` or other import-time forms.
+  See `doc/boot.md` for the stage boundaries.
   Deferred Search owns focus while open and releases it on close/unmount; hidden
   input focus must not drive scrolling during later navigation.
 - `browser_resources.cljs` acquires analytics and necessary compatibility scripts

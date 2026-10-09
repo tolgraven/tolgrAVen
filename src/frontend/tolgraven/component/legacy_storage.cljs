@@ -55,9 +55,3 @@
           (reset! *loaded? true))))
     ;; Accessing localStorage can itself throw when browser storage is blocked.
     (catch :default _ nil)))
-
-(defonce listeners
-  (when (exists? js/window)
-    (.addEventListener js/window "storage" storage-event!)
-    ;; Preserve the last queued cookie/form update even if timers are frozen.
-    (.addEventListener js/window "pagehide" (fn [_] (drain!)))))

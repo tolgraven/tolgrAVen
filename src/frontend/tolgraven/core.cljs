@@ -10,7 +10,7 @@
     [reagent.core :as r]
     [reagent.dom.client :as rdomc]
     [tolgraven.ajax :as ajax]
-    [tolgraven.browser-resources :as browser-resources]
+    [tolgraven.boot :as boot]
     [tolgraven.content.client :as content]
     [tolgraven.ssr.client :as ssr]
     [tolgraven.ssr.local :as local-page]
@@ -23,7 +23,6 @@
     [tolgraven.macros :as m :include-macros true]
     [tolgraven.component.registry]
     [tolgraven.navigation.routes :as routes]
-    [tolgraven.navigation.preload :as page-preload]
     [tolgraven.subs]
     [tolgraven.util :as util]
     [tolgraven.components.page :as page-view]))
@@ -70,8 +69,7 @@
 
 ;; Profiling this host would include console commits and create capture feedback.
 (m/defc <root-page> {:profile false} []
-  [:<> [ssr/<hydrate> [page]] [page-preload/<background>] [local-page/<capture>]
-   (when @context/*interactive? [browser-resources/<deferred>])
+  [:<> [ssr/<hydrate> [page]] [boot/<lifecycle>]
    (when (and ^boolean goog.DEBUG @context/*interactive?) [dev-console/<console>])])
 
 (defn render []
@@ -125,6 +123,7 @@
       (restore/begin! {:back? (and (restore/back-navigation?) (not hydrate?))
                        :hydrate? hydrate?}))
     (rf/dispatch-sync [:init/app-db])
+    (rf/dispatch-sync [:boot/document])
     (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
     (ajax/load-interceptors!)
     (letfn [(start! []
@@ -152,8 +151,7 @@
                   (.then (fn []
                            (-> (mount-components)
                                (.then (fn [_]
-                                        (rf/dispatch [:state [:page-init] {:status :ready}])
-                                        (js/setTimeout #(rf/dispatch [:init/init]) 16))))))
+                                        (rf/dispatch [:state [:page-init] {:status :ready}]))))))
                   (.catch (fn [_]
                             (service-status/fail! :page-init "Page initialization failed"
                                                   "The page could not initialize. Existing server content is retained."

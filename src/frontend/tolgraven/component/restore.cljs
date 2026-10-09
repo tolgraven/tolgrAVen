@@ -52,16 +52,9 @@
 (defn back-navigation? []
   (or (= "back_forward" (some-> js/performance (.getEntriesByType "navigation") (aget 0) .-type))
       (= 2 (some-> js/performance .-navigation .-type))))
-(defonce listener
-  (when (exists? js/window)
-    (.addEventListener js/window "pageshow"
-                       (fn [event]
-                         (when (.-persisted event)
-                           (begin! {:back? true}))))))
+(defn resumed! [event]
+  (when (.-persisted event) (begin! {:back? true})))
 
-(defonce native-history-listener
-  (when (exists? js/window)
-    ;; The current entry may have been created by SPA navigation. Hand it back
-    ;; to the browser before leaving the document, including a BFCache freeze.
-    (.addEventListener js/window "pagehide"
-                       (fn [_] (set! (.-scrollRestoration js/history) "auto")))))
+(defn release-history! []
+  ;; Hand SPA history back to the browser before leaving, including BFCache.
+  (set! (.-scrollRestoration js/history) "auto"))

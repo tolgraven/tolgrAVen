@@ -186,11 +186,13 @@
       #js [identity]))
   (rf/use-effect
     (fn []
-      (-> (connect!) (.catch (fn [_] nil)))
-      (.addEventListener js/document "click" external-click! true)
-      (.addEventListener js/window "pageshow" resumed!)
-      (fn []
-        (.removeEventListener js/document "click" external-click! true)
-        (.removeEventListener js/window "pageshow" resumed!)
-        (when @*pending (js/clearTimeout @*pending) (reset! *pending nil)))) #js [])
+      (let [cancel-connect! (browser-resources/after-page!
+                             #(-> (connect!) (.catch (fn [_] nil))))]
+        (.addEventListener js/document "click" external-click! true)
+        (.addEventListener js/window "pageshow" resumed!)
+        (fn []
+          (cancel-connect!)
+          (.removeEventListener js/document "click" external-click! true)
+          (.removeEventListener js/window "pageshow" resumed!)
+          (when @*pending (js/clearTimeout @*pending) (reset! *pending nil))))) #js [])
   nil)

@@ -10,7 +10,6 @@
     [tolgraven.component.storage :as storage]
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
-    [breaking-point.core :as bp]
     [tolgraven.util :as util]
     [tolgraven.listener]
     [tolgraven.modules.user.events]
@@ -589,28 +588,6 @@
       :dispatch-n [[:->css-var! "header-height-current" header-height]
                    (when-not (get-in db [:state :scroll :at-bottom]) ; wait what
                      [:->css-var! "footer-height-current" footer-height])]})))
-
-(rf/reg-event-fx :init/init  [] ;; Init stuff in order and depending on how page reloads (that's still very dev-related tho...)
- (fn [{:keys [db]} [_ _]]
-  {:dispatch-n [[:listener/load]
-                [:ls/get-path [:scroll-position] [:state :scroll-position]]
-                [:listener/scroll]
-                [:scroll/update-direction]
-                [:scroll/update-css-var]
-                [:listener/popstate-back]
-                ; [:listener/global-click]
-                [:listener/visibility-change]
-                [:listener/before-unload-save-scroll]
-                [:ls/get-path [:form-field] [:state :form-field]] ; restore any active form-fields
-                [:ls/get-path [:cv-visited] [:state :cv :visited]] ; should rather spec which paths to load and then do that (in one op)
-                [:cookie/show-notice]
-                [::bp/set-breakpoints
-                 :breakpoints [:mobile 560
-                               :tablet 992
-                               :small-monitor 1200
-                               :large-monitor]
-                 :debounce-ms 250]
-                [:booted :site]]})) ; should work, main page specific init events won't get queued unless on main so...
 
 ; generic helpers for rapid prototyping.
 ; NOT FOR LONG-TERM USE if straight to data path not viable

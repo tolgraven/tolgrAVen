@@ -2,10 +2,45 @@
   (:require
     [clojure.string :as string]
     [tolgraven.react :as rf]
+    [tolgraven.validation.runtime :as validation]
     [tolgraven.util :as util]
     [cljs-time.core :as ct]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
+
+(def binding-schema
+  [:map
+   [:id :any]
+   [:owner :keyword]
+   [:target :any]
+   [:event :string]
+   [:handler fn?]
+   [:capture? {:optional true} :boolean]])
+(defonce *bindings (atom {}))
+(defonce scroll-listeners (atom {}))
+
+(defn- native-target [value]
+  (case value "document" js/document "window" js/window value))
+
+(defn remove! [id]
+  (when-let [{:keys [target event handler capture?]} (get @*bindings id)]
+    (.removeEventListener target event handler (boolean capture?))
+    (swap! *bindings dissoc id)))
+
+(defn register! [{:keys [id target event handler capture?] :as binding}]
+  (when (exists? js/window)
+    (validation/check! "document listener" binding-schema binding)
+    (remove! id)
+    (let [element (native-target target)]
+      (.addEventListener element event handler (boolean capture?))
+      (swap! *bindings assoc id (assoc binding :target element)))))
+
+(defn stop! [owner]
+  (doseq [[id binding] @*bindings :when (= owner (:owner binding))] (remove! id))
+  (when (= owner :site) (reset! scroll-listeners {})))
+
+(rf/reg-fx :listener/register (fn [bindings] (doseq [binding bindings] (register! binding))))
+(rf/reg-fx :listener/stop stop!)
 
 (rf/reg-event-fx :listener/add!  [debug]
  (fn [{:keys [db]} [_ el event f]]
@@ -13,11 +48,11 @@
 
 (rf/reg-fx :listener/add-fx 
  (fn [[el event f]]
-   (let [el (case el
-              "document" js/document
-              "window" js/window
-              el)]
-     (util/on-event el event f))))
+   (register! {:id [:site el event]
+               :owner :site
+               :target el
+               :event event
+               :handler f})))
 
 
 (defn- get-height
@@ -27,8 +62,6 @@
          js/getComputedStyle
          .-paddingBottom
          js/parseFloat)))
-
-(defonce scroll-listeners (atom {}))
 
 (rf/reg-fx :scroll/register-update-fn
   (fn [[id f]]
@@ -131,7 +164,7 @@
                       (if (> @cnt throttle)
                         (reset! cnt 0)
                         (swap! cnt inc))))]
-     {:dispatch [:listener/add! "document" "scroll" callback]})))
+     {:listener/add-fx ["document" "scroll" callback]})))
 
 ; TODO some things. apparently beforeunload is not recommended and doesn't fire reliably.
 ; especially on mobile if swapping apps and then page gets killed in bg etc.
@@ -159,7 +192,7 @@
  (fn [{:keys [db]} [_ ]]
    (let [f (fn [e]
              (rf/dispatch-sync [:history/popped e]))] ; which will actually have fresh db and can do stuff ugh
-    {:dispatch [:listener/add! "window" "popstate" f]})))
+    {:listener/add-fx ["window" "popstate" f]})))
 
 (rf/reg-event-fx :listener/load
  (fn [{:keys [db]} [_ _]]
@@ -188,5 +221,3 @@
    (when-let [{:keys [hidden visibility-change]} (visibility-props)]
      {:dispatch [:listener/add! "document" visibility-change
                  #(rf/dispatch [:handle-visibility-change hidden])]})))
-
-
