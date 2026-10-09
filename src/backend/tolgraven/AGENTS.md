@@ -18,8 +18,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   route dependency styles in the first head, inlining small optimized sheets
   within a 16 KiB document budget, and all URLs in `#module-styles`;
   local return documents carry their saved modules' styles before first paint.
-- Keep SDK and app scripts ordered and deferred. Analytics metadata/queue is
-  local; the browser lifecycle acquires its remote script after initial rendering.
+- Keep SDK and app scripts ordered and deferred. Emit no analytics metadata,
+  queue or scripts; the browser initializes it only after hydration and page readiness.
   SSR hydration preloads use low fetch priority in both HTTP and HTML hints so
   they share bandwidth behind the first-paint stylesheet and fonts.
   Lazy chunks use `as=fetch` with anonymous CORS to match Shadow's XHR loader;

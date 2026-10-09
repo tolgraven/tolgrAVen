@@ -163,7 +163,6 @@
     [:meta {:name "theme-color" :content "#edc"
             :media "(prefers-color-scheme: light)"}]    ; for mobile safari status bar
     [:meta {:name "mobile-web-app-capable" :content "yes"}]
-    (when-not (:dev env) [:meta {:name "analytics-id" :content "G-Y8H6RLZX3V"}])
     #_[:meta {:name "apple-mobile-web-app-status-bar-style"
             :content "black-translucent"}] ; ought to be theme dependent tho
     [:base {:href "/"}]
@@ -336,12 +335,6 @@
                         (or (first (olink/bundle-paths request ["supabase.js"])) "/vendor/supabase.js"))
                :async false
                :defer true}]
-   :js-raw (when-not (:dev env)
-             ["window.dataLayer = window.dataLayer || [];
-               function gtag(){dataLayer.push(arguments);}
-               gtag('js', new Date());
-
-               gtag('config', 'G-Y8H6RLZX3V');"])
    :css-pre ["css/solid.css"]
    :js-pre script-paths
    :img-pre (page/critical-images (some-> (:uri request) pages/match :data)

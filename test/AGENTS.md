@@ -21,6 +21,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   readiness/failure/retry, inline SSR styles, budget/link fallback and no duplicate
   initial downloads. Hydration preload hints must match Shadow's request kind,
   CORS mode and priority in both the response header and document head.
+  Analytics checks cover absence from SSR HTML and browser acquisition only after
+  hydration, load, painted idle frames and page binding readiness.
   Compression checks must decode the shell before final data
   is ready. Initial SSR visibility alone
   does not prove hydration; let pending link intent settle before repeating clicks.
