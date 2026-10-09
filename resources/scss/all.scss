@@ -1,4 +1,7 @@
 @use "main";
+@use "modules/home";
+@use "modules/monospace";
+@use "modules/styled-input";
 @use "modules/maps";
 @use "modules/blog";
 @use "modules/user";

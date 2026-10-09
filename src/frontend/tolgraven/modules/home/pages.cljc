@@ -1,4 +1,4 @@
-(ns tolgraven.modules.main.pages
+(ns tolgraven.modules.home.pages
   "Page declarations independent of the module implementation."
   #?(:cljs (:require [tolgraven.react :as rf])))
 
@@ -14,7 +14,7 @@
 
 (def spec
   ;; Native Reitit routes, with shared data inherited by each child page.
-  [["" {:module :main :page :page :ssr true :data-source :content :kind :landing
+  [["" {:module :home :page :page :ssr true :data-source :content :kind :landing
          :depends [{:source :strapi :availability :startup
                     :keys [:document :header :common :footer :post-footer]}]
          :preload-images [[:intro :bg 0 :src]]}

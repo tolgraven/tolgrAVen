@@ -2,6 +2,7 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.modules.link-preview.views :as link-preview]
+    [tolgraven.modules.styled-input.views :as styled-input]
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [clojure.string :as string]
@@ -74,7 +75,7 @@
                (.blur input))))
          js/undefined))
      #js [open?])
-   [ui/<input-text-styled>
+   [styled-input/<input-text-styled>
     :id "search-input"
     :query-by query-by
     :model model

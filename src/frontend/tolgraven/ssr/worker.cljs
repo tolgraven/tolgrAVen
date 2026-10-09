@@ -9,10 +9,11 @@
     [tolgraven.component :as component]
     [tolgraven.navigation.routes :as routes]
     [tolgraven.components.page :as page]
-    [tolgraven.modules.main.views :as auto]
+    [tolgraven.modules.home.module :as home]
     [tolgraven.modules.blog.module :as blog]
     [tolgraven.modules.markdown.module :as markdown]
     [tolgraven.modules.highlight.module :as highlight]
+    [tolgraven.modules.styled-input.module :as styled-input]
     [tolgraven.modules.cv.module :as cv]
     [tolgraven.modules.docs.module :as docs]
     [tolgraven.ssr.contract :as contract]
@@ -22,8 +23,10 @@
     [tolgraven.modules.link-preview.module :as link-preview]
     [tolgraven.subs]))
 
-(def modules {:markdown markdown/spec
+(def modules {:home home/spec
+              :markdown markdown/spec
               :highlight highlight/spec
+              :styled-input styled-input/spec
               :cv cv/spec
               :docs docs/spec
               :blog blog/spec

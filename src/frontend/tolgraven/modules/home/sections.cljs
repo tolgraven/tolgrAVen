@@ -1,4 +1,4 @@
-(ns tolgraven.modules.main.sections
+(ns tolgraven.modules.home.sections
   (:require
     [tolgraven.component.registry]
     [clojure.string :as string]

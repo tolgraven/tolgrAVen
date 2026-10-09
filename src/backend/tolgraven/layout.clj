@@ -51,7 +51,7 @@
 (defn module-styles [request]
   (into {} (map (fn [[id {:keys [paths]}]]
                   [id (if (or (:dev env) (empty? paths)) paths
-                          (vec (olink/bundle-paths request [(styles/bundle-name id)])))]))
+                          (vec (olink/bundle-paths request (styles/bundle-names id))))]))
         styles/modules))
 
 (defn initial-styles [request manifest]

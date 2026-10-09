@@ -10,6 +10,7 @@
             [tolgraven.render-context :as context]
             [tolgraven.component.restore :as restore]
             [tolgraven.component.storage :as storage]
+            [tolgraven.browser-resources :as browser-resources]
             [tolgraven.ssr.contract :as ssr-contract]
             [tolgraven.ssr.return-contract :as contract]))
 
@@ -175,7 +176,7 @@
   (let [source @(rf/subscribe [:page-return/source])
         identity @storage/*identity
         *previous-identity (rf/use-ref identity)]
-    (rf/use-effect (fn [] (schedule!) js/undefined) #js [source])
+    (rf/use-effect (fn [] (browser-resources/after-page! schedule!)) #js [source])
     (rf/use-effect
       (fn []
         (when (not= identity (.-current *previous-identity))

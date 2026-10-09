@@ -5,6 +5,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 
 - Feature-owned server adapters live under `modules/<feature>/`; shared platform
   adapters retain their `content/`, `supabase/`, and `ssr/` ownership.
+  Landing routes come from `modules/home/pages.cljc`; their code/CSS assets use
+  the same lazy `:home` bundle as SPA navigation.
 - Use shared CLJC data contracts and page declarations. Generic SSR must not grow
   page-specific SQL/REST predicates or duplicate component markup.
 - Source acquisition runs concurrently under bounded limits; identical requests
@@ -14,7 +16,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Successful page snapshots are fresh for `:ssr :cache-ttl-ms` (one hour by
   default; zero always revalidates). Expired/build-changed entries stream the shell
   while revalidating; only fresh entries bypass it.
-- Optimus fingerprints the shared and per-module CSS bundles independently. Emit
+- Optimus fingerprints the shell and each declared module stylesheet independently;
+  shared styles keep one URL across consumer modules. Emit
   route dependency styles in the first head, inlining small optimized sheets
   within a 16 KiB document budget, and all URLs in `#module-styles`;
   local return documents carry their saved modules' styles before first paint.

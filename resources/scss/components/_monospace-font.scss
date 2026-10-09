@@ -1,0 +1,7 @@
+// Consumers share the same URL; the browser downloads it only for used glyphs.
+@font-face {
+  font-family: 'Fira Code';
+  font-display: swap;
+  src: url('/webfonts/FiraCode-Retina.woff2') format('woff2'),
+       url('/webfonts/FiraCode-Retina.woff') format('woff');
+}

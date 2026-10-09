@@ -87,7 +87,7 @@
      :close! #(scoped/connect! (:client previous) (:read! previous))}))
 (deftest route-matching
   (doseq [[path route-name module]
-            [["/" :home nil] ["/about" :about nil] ["/services" :services nil] ["/hire" :hire nil]
+            [["/" :home :home] ["/about" :about :home] ["/services" :services :home] ["/hire" :hire :home]
              ["/cv" :cv :cv] ["/docs" :docs :docs] ["/docs/codox/index" :docs-codox-page :docs]
              ["/blog" :blog :blog] ["/blog/page/2" :blog-page :blog]
              ["/blog/post/example-1" :blog-post :blog] ["/blog/tag/clojure" :blog-tag :blog]

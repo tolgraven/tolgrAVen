@@ -1,10 +1,10 @@
-(ns tolgraven.modules.main.views
+(ns tolgraven.modules.home.views
   (:require
     [tolgraven.component.registry]
     [tolgraven.react :as rf]
     [tolgraven.content.contract :as content-contract]
     [tolgraven.modules.main.layout :as layout]
-    [tolgraven.modules.main.sections :as home]
+    [tolgraven.modules.home.sections :as home]
     [tolgraven.components.media :as media]
     [tolgraven.components.oembed :as oembed]
     [tolgraven.loader :as l]

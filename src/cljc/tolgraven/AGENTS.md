@@ -37,6 +37,8 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
 
 - `loader/style_catalog.cljc` bakes literal module `:styles` and bundle dependencies
   into both runtimes at compile time. Packaged servers do not read a source tree.
+  Fingerprint each declared stylesheet once; shared dependencies retain one URL
+  across module manifests. Reject colliding output names rather than merging them.
 - `components/image/sources.cljc` shares responsive candidates/dimensions with
   server preloads. The resource catalog is compiled into CLJS; regenerate sized
   AVIF/WebP files with `bb images:responsive`.

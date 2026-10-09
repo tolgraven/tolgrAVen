@@ -2,7 +2,18 @@
   (:require [cljs.test :refer-macros [deftest is async]]
             [shadow.lazy :as lazy]
             [tolgraven.loader :as loader]
+            [tolgraven.loader.style-catalog :as catalog]
             [tolgraven.loader.styles :as styles]))
+
+(deftest shared-font-stylesheet-has-one-bundle-across-consumers
+  (let [font "/css/tolgraven/modules/monospace.min.css"
+        bundle (catalog/stylesheet-bundle font)]
+    (is (= [font] (get catalog/stylesheet-bundles bundle)))
+    (is (some #{bundle} (catalog/bundle-names :markdown)))
+    (is (some #{bundle} (catalog/bundle-names :styled-input)))
+    (is (= 1 (count (filter #{font}
+                           (catalog/paths (into {} (map (fn [[id spec]] [id (:paths spec)])) catalog/modules)
+                                          :search)))))))
 
 (deftest css-starts-before-shadow-and-both-must-settle-before-install
   (async done

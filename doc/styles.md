@@ -14,6 +14,11 @@ that rely on ordering between equally specific selectors across features.
 Keep mixins in CSS-free `scss/tools` partials: importing a
 feature for a mixin would duplicate its selectors in another module's output.
 `all.scss` remains an explicit combined preview entry, outside the normal build.
+The `:home` sheet owns landing hero/page rules. The optional `:styled-input`
+module owns the custom field used by Search and blog editing. It and Markdown
+declare the independent monospace sheet, containing FiraCode's font declaration.
+The common shell contains neither. Browsers acquire the font URL only when a rendered consumer uses
+its glyphs; do not preload it merely because a Markdown module is loaded.
 
 Each feature's literal module spec declares `:styles` with its local output URLs.
 The existing module declaration reader generates the shared stylesheet catalog
@@ -21,7 +26,7 @@ at compile time, including transitive bundle dependencies. No browser feature
 code must load to discover its CSS. Restart Shadow watches after changing this
 metadata so their compile-time inventories agree.
 
-Optimus bundles each feature separately and publishes content-addressed asset
+Optimus bundles each declared stylesheet separately and publishes content-addressed asset
 URLs with long cache lifetimes. The shared shell sheet stays a blocking,
 cacheable link. Small initial route/dependency sheets are inlined from Optimus's
 optimized contents, within a 16 KiB document budget, eliminating separate
@@ -31,6 +36,9 @@ associates each inline sheet with its immutable URL in the small `#module-styles
 JSON inventory. The loader treats that sheet as already ready, avoiding duplicate
 requests. Streamed skeletons and completed SSR pages share the initial head.
 Local return documents include their saved modules' CSS as links in the head.
+When modules share a stylesheet, their manifest entries reference the same bundle;
+the initial head and browser loader deduplicate that URL. Keep declared output
+names distinct: the catalog rejects stylesheet bundle-name collisions.
 
 The browser module loader starts CSS acquisition synchronously before calling
 Shadow's JavaScript loader. React DOM `preinit` owns insertion and deduplication;

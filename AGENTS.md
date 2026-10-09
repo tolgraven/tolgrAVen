@@ -58,6 +58,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   module entry files; the runtime loadable map comes from the same discovery.
 - Production `:app` uses content-hashed chunk names; server bundle/preload paths
   come from Shadow's output manifest. Development keeps plain watched filenames.
+- Landing routes use the lazy `:home` module; keep its views and styles out of
+  bootstrap/router imports. Node SSR uses the same views eagerly.
   SSR hydration preloads use low fetch priority so CSS and fonts load first.
   Lazy chunks use `as=fetch` hints matching Shadow's XHR loader.
 - `npm run dev`: watch SCSS and PostCSS outputs for local development.

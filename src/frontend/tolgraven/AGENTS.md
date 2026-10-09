@@ -81,6 +81,12 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Idle navigation prefetch is limited to adjacent (`rel=prev/next`) and explicit
   `data-preload=true` links. Other internal links acquire on pointer/keyboard
   intent, through the same loader and bindings; never prefetch the whole navbar.
+  Start speculation after hydration, page readiness, load and painted idle frames.
+  Only visible hints participate; skip hidden tabs, Data Saver and 2G connections.
+  The `:home` bundle owns landing views and CSS; the router imports its portable
+  pages only. `:styled-input` owns the optional custom field; Search depends on it,
+  blog editing acquires it when opened. Markdown and styled-input share one
+  independent monospace sheet; font bytes load only for used glyphs.
 - After edits check watched Shadow errors and the actual routes in the browser.
 
 - `validation/runtime.cljs` owns declaration checks, module section registration
