@@ -25,6 +25,9 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `boot.cljs` owns ordered document listeners, committed UI setup and deferred
   background hosts. Register browser listeners through effects with an owner and
   cleanup; importing a namespace must not install document listeners.
+- Shared local-return view state is opt-in through shell/navigation/module owner
+  declarations; scroll measurements, header visibility, timers and boot flags are
+  rebuilt for each document.
 - Local returns and reloads may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
 - Read `src/frontend/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/backend/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
 - Markdown code, including untagged blocks and inline snippets, shares the deferred

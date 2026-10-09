@@ -2,6 +2,8 @@
   (:require [tolgraven.schema.common :as c]
             [tolgraven.supabase.schema :as store]))
 
+(def return-state-keys [:active-user :user :user-section])
+
 (def options (c/optional-map {:auto-open? :boolean}))
 (def login-fields (c/optional-map {:email :string, :password :string}))
 (def password-fields (c/optional-map {:current :string, :new :string}))
