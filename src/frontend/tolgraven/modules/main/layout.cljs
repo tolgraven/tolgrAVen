@@ -22,4 +22,3 @@
 
 (defn page-spec [uri]
   (when (landing-paths uri) landing-spec))
-
