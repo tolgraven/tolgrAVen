@@ -1,5 +1,5 @@
 (ns tolgraven.modules.blog.cache
-  "Restore public query results and display state before mounting any blog view.
+  "Restore public caches before client mounts, or after network SSR hydration.
    All persistence uses the shared envelope; no component performs disk IO."
   (:require [cljs.reader :as reader]
             [tolgraven.component.legacy-storage :as legacy]
@@ -8,6 +8,7 @@
             [tolgraven.react :as rf]
             [tolgraven.component.storage :as storage]
             [tolgraven.component.restore :as restore]
+            [tolgraven.browser-resources :as resources]
             [tolgraven.render-context :as context]
             [tolgraven.supabase.query :as query]
             [tolgraven.schema.common :as c]))
@@ -48,8 +49,12 @@
     (into queries (map vector state-paths display))))
 
 (defonce *tracking (atom nil))
+(defonce *restore-cleanup (atom nil))
 
 (defn stop! []
+  (when-let [cleanup! @*restore-cleanup]
+    (reset! *restore-cleanup nil)
+    (cleanup!))
   (when-let [{:keys [reaction paths]} @*tracking]
     (ratom/dispose! reaction)
     (doseq [path @paths] (storage/untrack! [:state path]))
@@ -57,11 +62,11 @@
 
 (defn start! []
   (stop!)
-  (let [values (rf/subscribe [:blog/cache-values])
-        *paths (atom #{})
+  (let [*paths (atom #{})
         reaction (r/track!
                    (fn []
-                     (let [current @values]
+                     (let [values (rf/subscribe [:blog/cache-values])
+                           current @values]
                        (doseq [path (keys current) :when (not (contains? @*paths path))]
                          (swap! *paths conj path)
                          (storage/track! [:state path] #(get @values path storage/missing) options))
@@ -106,10 +111,19 @@
     (start!)))
 
 (defn install! []
-  (let [pending (-> (storage/ready!) (.then (fn [_] (restore!))))]
+  (stop!)
+  (let [ready (storage/ready!)]
     (if (and (:hydrate? @restore/*context)
              (:route-parameters @context/*snapshot))
-      ;; Hydrate the server pair first. Restore validated disk choices afterwards,
-      ;; retaining server query data and interactions made while it was pending.
-      (do (start!) (-> pending (.catch (fn [_] nil))) nil)
-      pending)))
+      ;; Do not track server defaults while disk choices are waiting: tracking
+      ;; could persist those defaults over the very choices we intend to restore.
+      ;; The shared gate lets the SSR page commit before changing its display.
+      (let [*active? (atom true)
+            cancel! (resources/after-page!
+                      (fn []
+                        (-> ready
+                            (.then (fn [_] (when @*active? (restore!))))
+                            (.catch (fn [_] nil)))))]
+        (reset! *restore-cleanup #(do (reset! *active? false) (cancel!)))
+        nil)
+      (-> ready (.then (fn [_] (restore!)))))))

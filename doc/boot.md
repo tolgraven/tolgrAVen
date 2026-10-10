@@ -21,6 +21,11 @@ The same host owns route prefetch, local-return capture and optional script
 acquisition. Their shared `after-page!` boundary waits for hydration, pending page
 bindings, window load, two paint frames and idle time. Local worker registration
 also uses this boundary; an explicit external return may still request a save.
+Blog cache installation uses it on network SSR too: hydrate the captured server
+state first, then restore validated disk display choices and start persistence
+together. Saved choices never replace interactions made while waiting, and disk
+query results never replace server data. Client-only and paired local startup
+continue to install their caches before rendering.
 
 Listener registrations have an ID and owner. Re-registering an ID removes the old
 native listener before adding its replacement. `:boot/stop` removes document/site
