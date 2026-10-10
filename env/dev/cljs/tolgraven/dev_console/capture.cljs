@@ -4,6 +4,7 @@
             [clojure.string :as string]
             [re-frame.tooling :as tooling]
             [reagent.core :as r]
+            [reagent.ratom :as ratom]
             [tolgraven.react :as rf]
             [tolgraven.render-context :as context]
             [tolgraven.dev-console.state]
@@ -24,6 +25,26 @@
 (defn resolve-instance [record]
   (merge (dissoc record :resolve!) (when-let [resolve! (:resolve! record)] (resolve!))))
 (declare drain!)
+
+(defn use-host-state
+  "The console's concurrent host subscribes only after commit. Reagent's render
+   reactions can otherwise invalidate a discarded initial React render when the
+   startup buffer drains. Observe the same re-frame subscriptions, with an owned
+   tracking reaction; no app-db watch, second store or application event path."
+  []
+  (let [*snapshot (rf/use-ref nil)
+        snapshot (rf/use-callback #(.-current *snapshot) [])
+        subscribe! (rf/use-callback
+                     (fn [changed!]
+                       (let [reaction (r/track!
+                                        (fn []
+                                          (let [value {:options @(rf/subscribe [:dev-console/options])
+                                                       :debug @(rf/subscribe [:dev-console/data])}]
+                                            (when (not= value (.-current *snapshot))
+                                              (set! (.-current *snapshot) value)
+                                              (changed!)))))]
+                         #(ratom/dispose! reaction))) [])]
+    (rf/use-sync-external-store subscribe! snapshot snapshot)))
 
 (defn connect!
   "Enable queued instance tracking only while its console consumer is mounted."

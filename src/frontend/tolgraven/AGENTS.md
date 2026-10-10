@@ -255,5 +255,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   with `:value nil`; lookup sentinels stay private. Preserve equality across
   unrelated db writes while distinguishing stored nil/false from absence.
 
-- Startup diagnostic capture buffers observations until its console host commits.
+- Startup diagnostic capture buffers observations until its console host mounts.
+  Its passive connection effect publishes the buffer; a layout-effect dispatch
+  can queue a Reagent update before React finishes mounting the consumer. The
+  concurrent console host uses React external-store subscription ownership over
+  the existing re-frame queries: acquire in commit, dispose on unmount. Ordinary
+  application components keep their Reagent subscriptions.
   Do not publish debug records into subscriptions owned by an uncommitted host.
