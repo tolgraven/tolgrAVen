@@ -2,6 +2,8 @@
   (:require [cljs.test :refer-macros [deftest is]]
             [clojure.string :as string]
             [reagent.dom.server :as server]
+            [malli.core :as m]
+            [tolgraven.components.code-block :as code-block]
             [tolgraven.components.markdown :as markdown]
             [tolgraven.modules.highlight.module :as highlight]
             [tolgraven.modules.highlight.views :as highlight-view]
@@ -36,7 +38,7 @@
           container (.createElement js/document "div")]
       (set! (.-innerHTML container) html)
       (is (= 2 (.-length (.querySelectorAll container ".code-block"))))
-      (is (= 3 (.-length (.querySelectorAll container "p > code.code-highlight"))))
+      (is (= 3 (.-length (.querySelectorAll container "p > .code-snippet > code.code-highlight"))))
       (is (= 0 (.-length (.querySelectorAll container "p pre, pre pre, pre div"))))
       (is (.querySelector container "pre code.language-clojure span"))
       (is (.querySelector container "pre code.language-cpp span"))
@@ -75,3 +77,35 @@
       (is (.querySelector container ".code-block pre code.language-clojure span"))
       (is (zero? (.-length (.querySelectorAll container "pre pre, pre div"))))
       (is (not (string/includes? html "data-tolgraven-code-block"))))))
+
+(deftest code-presentation-options-apply-during-ssr-and-inline-stays-small
+  (binding [context/*server?* true
+            context/*modules* {:highlight highlight/spec}]
+    (let [html (server/render-to-string
+                 [code/<parse-markdown-components>
+                  "Inline `echo \"hello\"`.\n\n```clojure\n(inc 1)\n(inc 2)\n(inc 3)\n```"
+                  {:code-options {:line-numbers? true
+                                  :starting-line-number 7
+                                  :foldable? true
+                                  :folded? true
+                                  :fold-lines 2}}])
+          container (.createElement js/document "div")]
+      (set! (.-innerHTML container) html)
+      (is (.querySelector container ".code-block-folded"))
+      (is (= "Show all 4 lines" (.-textContent (.querySelector container "button[aria-expanded=false]"))))
+      (is (= ["7" "8" "9" "10"]
+             (mapv #(.-textContent %) (array-seq (.querySelectorAll container ".react-syntax-highlighter-line-number")))))
+      (is (.querySelector container ".code-snippet .code-copy[aria-label='Copy code']"))
+      (is (.querySelector container ".code-snippet code span[style]"))
+      (is (not (.querySelector container ".code-snippet pre, .code-snippet .react-syntax-highlighter-line-number")))
+      (is (= "echo \"hello\"" (.-textContent (.querySelector container ".code-snippet code")))))))
+
+(deftest code-options-share-map-and-keyword-contracts
+  (is (m/validate code-block/args-schema ["code" {:line-numbers? true :fold-lines 3}]))
+  (is (m/validate code-block/args-schema ["code" :line-numbers? true :fold-lines 3]))
+  (is (m/validate code-block/args-schema ["code"]))
+  (is (m/validate code-block/args-schema ["code" :style {:hljs {:color "red"}}]))
+  (is (m/validate code-block/args-schema ["code" :style #js {:hljs #js {:color "red"}}]))
+  (is (not (m/validate code-block/args-schema ["code" :fold-lines 0])))
+  (is (not (m/validate code-block/args-schema ["code" {:starting-line-number -1}])))
+  (is (not (m/validate code-block/args-schema ["code" :line-numbers? "true"]))))

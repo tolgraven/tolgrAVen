@@ -142,8 +142,59 @@ div > pre[class*="language-"] {
 .code-block-controls {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.5em;
   font-size: 0.8em;
+}
+.code-block-content > pre {
+  line-height: 1.5 !important;
+}
+.code-block-folded .code-block-content > pre {
+  max-height: calc(var(--code-fold-lines) * 1.5em + 2em);
+  overflow: hidden;
+}
+.code-snippet {
+  display: inline;
+}
+.code-snippet > code {
+  background-color: var(--bg-2);
+  font-weight: 500;
+  color: var(--fg-6);
+  padding: 0.125em 0.3em;
+  border-radius: 0.2rem;
+  border: 0.03125rem solid var(--bg-6);
+}
+.code-snippet .code-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: baseline;
+  margin-inline-start: 0.15em;
+  padding: 0.05em 0.2em;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  font-size: 0.75em;
+  line-height: 1;
+  color: var(--fg-2);
+  background: var(--bg-2);
+  border: 0;
+  border-radius: 0.2em;
+  cursor: pointer;
+}
+.code-copy:focus-visible {
+  outline: 0.125rem solid var(--blue);
+  outline-offset: 0.125rem;
+}
+.code-copy-status {
+  position: absolute;
+  width: 0.0625rem;
+  height: 0.0625rem;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.react-syntax-highlighter-line-number {
+  user-select: none;
 }
 .code-block-wrapped code,
 .code-block-wrapped code span {

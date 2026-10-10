@@ -700,3 +700,53 @@ checked again, with no ambient cookies/proxy credentials. Reads have redirect,
 body, socket and total-read bounds, four concurrent acquisitions, and a bounded
 shared cache. Failures receive a short cache interval. These limits apply to the
 backend document read, independently of browser sandboxing.
+
+
+## Code presentation and copying
+
+`tolgraven.components.highlight/<code-block>` accepts either an option map or
+keyword/value options. Markdown forwards its `:code-options` map to this same
+component. Fenced blocks keep their language tag and inline snippets use generic
+Bash highlighting by default, with the shared Bruvbox palette. An explicit tag
+always wins; `:inline-language` changes only the untagged inline default.
+
+```clojure
+[highlight/<code-block> source
+ {:language "clojure"
+  :line-numbers? true
+  :starting-line-number 1
+  :foldable? true
+  :folded? true
+  :fold-lines 8}]
+
+[markdown/<parse-markdown-components> text
+ {:code-options {:line-numbers? true
+                 :foldable? true
+                 :fold-lines 8}}]
+```
+
+Line numbers and folding are opt-in. Folding previews the first `:fold-lines`
+(default eight) visual lines of a longer block; Show all/Fold changes its clipping
+without replacing highlighted nodes. `:folded?` chooses its initial state and
+`:wrap?` chooses initial wrapping. Copy always writes the complete original
+source, including hidden lines and excluding numbers/controls. Inline snippets
+ignore block-only controls and show a compact copy indicator at the end.
+
+A primary-pointer tap anywhere on non-interactive code copies it. Selection,
+dragging, leaving the container (even when returning), cancellation and touch
+scrolling cancel that gesture. The explicit Copy button also works from the
+keyboard; clipboard feedback resets automatically and is announced through a
+live status. Clipboard callbacks and feedback timers are owned by the component.
+Controls hydrate before the formatter's after-page gate and preserve pending SSR
+nodes. React holds events aimed at suspended children, so the owned native pointer
+adapter captures intent above its event root through the shared listener registry;
+only an active press installs movement/up listeners, and unmount removes them all.
+Optional line numbers are present in SSR when requested.
+
+Editable code is a separate, future opt-in capability. Keep its acquisition behind
+an explicit Edit action in an independent Monaco module, including its workers,
+CSS and language support. The static component should remain the initial/SSR
+view; pass its source, language, wrapping, numbers and Bruvbox palette to the editor
+so switching modes keeps typography and dimensions. Static code must never acquire
+an editor merely because it is rendered. Monaco's syntax-aware range folding can
+extend the static whole-block preview when that editing capability is implemented.

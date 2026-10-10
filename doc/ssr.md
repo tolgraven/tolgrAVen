@@ -359,10 +359,11 @@ subscription to the later completion flag. New SPA code acquires the formatter t
 the normal loader immediately. Paired local documents also render completed
 boundaries, and skip `:highlight` during bootstrap. Markdown delegates ownership of
 the native `pre` to the code component, avoiding parser repairs of nested blocks.
-Untagged blocks and inline snippets use the same formatter boundary; inline code
-retains an inline `code` root without block controls. Explicit tags take priority,
-otherwise Lowlight detects a language. The blog's Markdown wrapper supplies a
-Clojure fallback when detection finds none, and a focused automatic detection set
+Untagged blocks and inline snippets use the same formatter boundary. Inline code
+uses a phrasing-only wrapper with a small Copy button after its `code` element;
+block controls remain outside `pre`. Explicit tags take priority. Untagged inline
+snippets use Bash (or the owner's `:inline-language`); blocks use detection. The
+blog's Markdown wrapper supplies a Clojure fallback when detection finds none, and a focused automatic detection set
 that excludes Lisp-family false positives. Explicit tags retain the full registry;
 other consumers remain neutral and may supply their own `:auto-languages`.
 Both runtimes use `modules/highlight/theme.cljs`, adapted from
