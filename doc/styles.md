@@ -123,7 +123,10 @@ names; computed dependencies and missing glyphs fail generation.
 
 `bb fonts:icons` reads these declarations without requiring browser namespaces.
 It exports original glyph outlines, advance widths and baselines to committed
-`resources/public/img/icons/generated/` SVGs and generated SCSS. Shared masks
+`resources/public/img/icons/generated/` SVGs and generated SCSS. Viewports contain
+transformed ink bounds, including overhangs. Expanded mask boxes use compensating
+relative margins to retain the original advance, line-box height and baseline.
+Shared masks
 compile into the shell; feature masks get an automatically catalogued
 `icons-<module>.min.css` dependency. Shared icons satisfy feature declarations
 without duplicating their masks. Small SVGs are inline CSS data URLs, so selected

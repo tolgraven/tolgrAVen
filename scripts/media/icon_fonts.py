@@ -1,6 +1,7 @@
 """Export declared SVG icons and small fonts, retaining full-font fallbacks."""
 import io
 import json
+import math
 import re
 import subprocess
 from urllib.parse import quote
@@ -10,6 +11,7 @@ from fontTools import subset
 from fontTools.ttLib import TTFont
 from fontTools.pens.recordingPen import DecomposingRecordingPen
 from fontTools.pens.svgPathPen import SVGPathPen
+from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.transformPen import TransformPen
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -60,9 +62,23 @@ def svg_icon(font, name):
     commands = pen.getCommands()
     if width <= 0 or height <= 0 or not commands:
         raise ValueError(f"Icon has no usable geometry: {name}")
-    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:g} {height:g}">'
+    bounds = BoundsPen(glyphs)
+    glyphs[name].draw(TransformPen(bounds, (1, 0, 0, -1, 0, ascent)))
+    left, top, right, bottom = bounds.bounds
+    # Round outward so serialized curve coordinates cannot overhang the viewport.
+    left, top = min(0, math.floor(left)), min(0, math.floor(top))
+    right, bottom = max(width, math.ceil(right)), max(height, math.ceil(bottom))
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" '
+           f'viewBox="{left:g} {top:g} {right-left:g} {bottom-top:g}">'
            f'<path d="{commands}"/></svg>')
-    return svg, width / height, descent / height
+    # Expand the painted box, then restore the original advance/height with margins.
+    # The empty inline block's baseline is its bottom margin edge, as before.
+    layout = {"width": (right-left) / height,
+              "height": (bottom-top) / height,
+              "baseline": descent / height,
+              "margins": (top / height, (width-right) / height,
+                          (height-bottom) / height, left / height)}
+    return svg, layout
 
 
 def svg_outputs(mapping):
@@ -81,7 +97,8 @@ def svg_outputs(mapping):
             code = mapping.get(name)
             if code not in cmap:
                 raise ValueError(f"Icon absent from its declared font family: {icon}")
-            svg, ratio, baseline = svg_icon(font, cmap[code])
+            svg, layout = svg_icon(font, cmap[code])
+            margins = " ".join(f"{value:g}em" for value in layout["margins"])
             outputs[PUBLIC / "img/icons/generated" / family / f"{name}.svg"] = (
                 "<!-- Font Awesome Free; https://fontawesome.com/license/free -->\n" + svg + "\n"
             ).encode()
@@ -94,8 +111,9 @@ def svg_outputs(mapping):
             before = ", ".join(part + "::before" for part in selector.split(", "))
             rules.append(f"{selector} {{ font-family: inherit; font-weight: inherit; }}\n"
                          f"{before} {{\n"
-                         f"  content: \"\"; display: inline-block; width: {ratio:g}em; height: 1em;\n"
-                         f"  vertical-align: {baseline:g}em; background-color: currentColor;\n"
+                         f"  content: \"\"; display: inline-block; width: {layout['width']:g}em; "
+                         f"height: {layout['height']:g}em; margin: {margins};\n"
+                         f"  vertical-align: {layout['baseline']:g}em; background-color: currentColor;\n"
                          f"  mask: url(\"{uri}\") center / 100% 100% no-repeat;\n"
                          f"}}\n")
         outputs[ROOT / "resources/scss/generated/icons" / f"_{module}.scss"] = "\n".join(rules).encode()
