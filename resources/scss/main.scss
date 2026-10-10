@@ -18,4 +18,5 @@
 @include meta.load-css("../public/css/opensans.css");
 @include meta.load-css("components/error");
 @include meta.load-css("components/loading");
+@include meta.load-css("components/font-transition");
 @include meta.load-css("shell/base");

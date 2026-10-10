@@ -98,6 +98,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   fingerprints each bundle separately.
   Literal component/module `:icons` export SVG masks into the same style inventory;
   `bb fonts:icons` regenerates committed glyph assets without browser font swaps.
+  Text faces stay consumer-scoped; `defc`'s `:font` feature owns controlled late
+  upgrades independently of stylesheet/module readiness.
   See `doc/styles.md` for source ownership and loading behavior.
 - `bb images:responsive`: rebuild the opt-in image catalog's sized AVIF/WebP assets.
 - `bb videos:responsive`: rebuild the opt-in video catalog's mobile renditions.

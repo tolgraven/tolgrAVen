@@ -37,7 +37,7 @@
 
   .styled-query-visible {
     position: relative;
-    font-family: 'Fira Code', monospace;
+    font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace);
     margin-top: 0.5em;
     margin-left: 0.8em;
     width: 100%;
@@ -47,7 +47,7 @@
     }
 
     span, div {
-      font-family: 'Fira Code', monospace;
+      font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace);
       // flex: 1 0;
 
     }
@@ -61,7 +61,7 @@
     margin: 0;
     background: transparent;
     color: var(--fg-1);
-    font-family: 'Fira Code', monospace;
+    font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace);
     z-index: 2;
 
 
@@ -97,7 +97,7 @@
       z-index: 1;
       color: var(--fg-6);
       opacity: 0.7;
-      font-family: 'Fira Code', monospace;
+      font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace);
 
       &.first-char {
         animation: darken 2.0s infinite 0.25s;

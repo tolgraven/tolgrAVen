@@ -19,7 +19,7 @@
   transition: max-height 0.5s ease;
   max-height: 0;
   overflow: hidden;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace);
 
   &.search-autocomplete-open {
     background-color: var(--bg-2);

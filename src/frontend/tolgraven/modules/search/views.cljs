@@ -1,6 +1,7 @@
 (ns tolgraven.modules.search.views
   (:require
     [tolgraven.component.registry]
+    [tolgraven.component.font :as font]
     [tolgraven.modules.link-preview.views :as link-preview]
     [tolgraven.modules.styled-input.views :as styled-input]
     [reagent.core :as r]
@@ -89,6 +90,7 @@
 
 
 (m/defc <suggestions> "Display a dropdown of suggested further terms"
+  {:features [[:font (fn [& _] (when @(rf/subscribe [:search/open?]) font/fira))]]}
   [collections]
   (let [suggestions (rf/subscribe [:search/autocomplete-multi collections])
         last-suggestions (atom nil)

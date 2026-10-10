@@ -5,7 +5,7 @@
 (def spec-keys
   #{:props :classes :features :depends :appear :seen :on-seen :exit :presence
     :loading :loading-prefab :loading-tag :loading-props :loading-args :skeleton
-    :page :module :spec :profile :capture-root? :init :state})
+    :font :page :module :spec :profile :capture-root? :init :state})
 
 (defn attrs [tag value]
   (let [base (apply dissoc value spec-keys)

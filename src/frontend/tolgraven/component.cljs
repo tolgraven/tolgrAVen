@@ -10,6 +10,7 @@
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [tolgraven.component.motion :as motion]
+    [tolgraven.component.font :as font]
     [tolgraven.component.restore :as restore]
     [tolgraven.component.visibility :as visibility]
     [tolgraven.component.persistent-state :as state-store]
@@ -212,7 +213,11 @@
                  (root-props form {:capture-root? true} false capture-ref) form)
           options (into {} (map (fn [[id default _]] [id (feature-config id default spec args)]) features))
           form (if (some ids [:appear :seen :exit]) (motion/use-motion form options presence) form)
-          form (if (ids :presence) (motion/use-presence form exit-config) form)]
+          form (if (ids :presence) (motion/use-presence form exit-config) form)
+          font-options (:font options)
+          _ (when (and (ids :font) font-options)
+              (validation/check! "component font" font/options-schema font-options))
+          form (if (ids :font) (font/use-font form font-options) form)]
       (instrumentation/instrument definition form args state-key))))
 
 (r/defc <function-body> [definition args presence state-key]
@@ -370,6 +375,7 @@
 (register-feature! :lifecycle {})
 (register-feature! :appear {})
 (register-feature! :seen {})
+(register-feature! :font {})
 (register-feature! :on-seen visibility/feature)
 (register-feature! :exit {})
 (register-feature! :presence {})

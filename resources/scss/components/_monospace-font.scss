@@ -1,7 +1,24 @@
 // Consumers share the same URL; the browser downloads it only for used glyphs.
 @font-face {
   font-family: 'Fira Code';
-  font-display: swap;
+  font-display: optional;
   src: url('/webfonts/FiraCode-Retina.woff2') format('woff2'),
        url('/webfonts/FiraCode-Retina.woff') format('woff');
+}
+
+// Separate family so a controlled upgrade can change glyphs only while faded.
+@font-face {
+  font-family: 'Fira Code Ready';
+  font-display: block;
+  src: url('/webfonts/FiraCode-Retina.woff2') format('woff2'),
+       url('/webfonts/FiraCode-Retina.woff') format('woff');
+}
+// Match Fira Code Retina's advance and vertical metrics using Courier New.
+@font-face {
+  font-family: 'Fira Code Fallback';
+  src: local('Courier New');
+  size-adjust: 99.918633035%;
+  ascent-override: 99.1040754784202%;
+  descent-override: 32.203937741754885%;
+  line-gap-override: 0%;
 }

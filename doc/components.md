@@ -757,3 +757,34 @@ view; pass its source, language, wrapping, numbers and Bruvbox palette to the ed
 so switching modes keeps typography and dimensions. Static code must never acquire
 an editor merely because it is rendered. Monaco's syntax-aware range folding can
 extend the static whole-block preview when that editing capability is implemented.
+
+## Controlled text fonts
+
+Declare `:features [[:font font/fira]]` after requiring
+`[tolgraven.component.font :as font]`. A feature option function may return nil
+until intent makes the consumer visible. The root must be ordinary native Hiccup;
+its markup, children, refs, caller classes/style and animation handler are retained.
+No wrapper or imperative DOM replacement is added.
+
+For another face, use an options map:
+
+```clojure
+{:family "Brand Ready"
+ :initial-family "Brand"
+ :fallback "Arial, sans-serif"
+ :property "--brand-font"
+ :fade-ms 100}
+```
+
+The consumer's CSS must use `font-family: var(--brand-font, ...)` and declare both
+faces. Give the initial face `font-display: optional` and the ready alias the same
+source; otherwise the browser can swap glyphs before the component can fade.
+The feature owns opacity and keyframe animation on its root during the upgrade.
+Choose a text root without a competing root entrance/exit animation; ordinary
+layout/color transitions and child animations remain independent.
+
+Font instances live in transient `:fonts` state, outside scoped persistence.
+Committed owners attach/detach through events; the shared face request is retained
+for reuse. A native FontFaceSet adapter owns the Promise. A layout effect owns only
+the cancellable paint frames between replacement and reveal. See [styles.md](styles.md)
+for first-paint policy, fallback metrics and failure behavior.

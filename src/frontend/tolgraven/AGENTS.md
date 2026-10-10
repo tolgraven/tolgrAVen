@@ -72,6 +72,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   on a component/module exports font glyphs as SVG masks in the owner’s CSS.
   Feature ownership comes from its module folder or explicit `:module`; shared
   components use the shell. Regenerate assets with `bb fonts:icons`. See `doc/styles.md`.
+- The root-merged `:font` feature keeps initial text visible and uses re-frame
+  readiness/fade events for a late face. Own the font CSS in its consumer module;
+  use an optional initial face plus a separately named ready face to prevent an
+  uncontrolled browser swap. Font phases are transient, never persisted. Reduced
+  motion and local returns bypass fades. See `doc/styles.md` and `doc/components.md`.
 - A module `:install` hook may restore browser-local caches after code acquisition.
   The loader shares/awaits it before publishing code readiness; ordinary `:init`
   still owns data activation. SSR adapters must not install disk caches or watches.

@@ -68,6 +68,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   Compression checks must decode the shell before final data
   is ready. Initial SSR visibility alone
   does not prove hydration; let pending link intent settle before repeating clicks.
+- Font checks mount native roots, gate the load effect, then release the actual
+  FontFaceSet request. Verify shared acquisition, visible fallback, replacement
+  only while transparent, native node identity and fallback dimensions. Include
+  failure/stale completion, disabled intent, reduced motion and local returns.
 - Live motion checks assert simultaneous 250ms linear fades and an opaque sticky
   footer. `motion.html?fallback` removes only the optional native transition API
   in the test driver so the ordinary page-root fallback can be checked too.

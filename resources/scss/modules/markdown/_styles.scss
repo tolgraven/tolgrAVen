@@ -2,7 +2,7 @@
 
 .hljs {
 	display: block;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace);
 	overflow-x: auto;
   padding: 1.00em;
   background: linear-gradient(100deg,
@@ -110,7 +110,7 @@
 
 /* Override react-syntax-highlighter default styles */
 .react-syntax-highlighter-line-number {
-  font-family: 'Fira Code', monospace ;
+  font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace) ;
   border-right: 0.03125rem solid var(--blue);
   margin-right: calc(0.5 * var(--space));
   padding-left: 0.5em;
@@ -122,7 +122,7 @@
 
 pre[class*="language-"] {
 	display: block;
-  font-family: 'Fira Code', monospace !important;
+  font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace) !important;
 	overflow-x: auto;
   padding: 1.00em !important;
   background: linear-gradient(100deg,
@@ -145,6 +145,11 @@ div > pre[class*="language-"] {
   flex-wrap: wrap;
   gap: 0.5em;
   font-size: 0.8em;
+}
+.code-block-content > pre,
+.code-block-content > pre code,
+.code-snippet > code {
+  font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace);
 }
 .code-block-content > pre {
   line-height: 1.5 !important;

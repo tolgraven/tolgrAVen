@@ -1,0 +1,16 @@
+// Keyframes leave existing layout/color transitions intact.
+.font-transition[data-font-phase='out'] {
+  animation: font-fade-out var(--font-fade-time, 100ms) linear both;
+}
+.font-transition[data-font-phase='swapped'] {
+  animation: none;
+  opacity: 0;
+}
+.font-transition[data-font-phase='in'] {
+  animation: font-fade-in var(--font-fade-time, 100ms) linear both;
+}
+@keyframes font-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes font-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .font-transition { animation: none; opacity: 1; }
+}
