@@ -1,5 +1,6 @@
 (ns tolgraven.modules.styled-input.views
-  (:require [tolgraven.component.registry]
+  (:require [tolgraven.component]
+            [tolgraven.component.font :as font]
             [reagent.core :as r]
             [tolgraven.macros :as m :include-macros true]
             [tolgraven.components.ui :as ui]
@@ -11,6 +12,8 @@
   [:div [:span.styled-letter letter]])
 
 (m/defc <input-text-styled> "Custom text field with individual elements for each letter, and styled caret"
+  {:features [[:font (fn [& {:keys [open?] :or {open? true}}]
+                       (when open? font/fira))]]}
   [& {:as args :keys [model completion-fn]}]
  (let [internal-model (r/atom (or @model ""))
        char-width 0.61225

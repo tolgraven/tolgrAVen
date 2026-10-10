@@ -80,6 +80,38 @@ SSR styles remain available for the static view before hydration. CSS acquisitio
 starts directly when the module request starts, shares its in-flight promise, and
 retries a failed CSS/code request once after three seconds before showing an error.
 
+## Text font upgrades
+
+Fira Code belongs to the independent monospace sheet. Its initial face uses
+`font-display: optional`: a font unavailable within the browser's short initial
+period does not later swap over visible SSR text automatically. The separate
+`Fira Code Ready` family shares the same immutable font URL and is loaded through
+`document.fonts.load` by the owning component. This adds no font to plain routes
+or closed Search. Search's field/suggestions activate the feature only when open;
+fenced blocks and inline snippets own it when rendered.
+
+A pending face keeps the original font stack visible. Once the ready face has
+loaded, the native root fades out for 100ms, changes its font variable at zero
+opacity, paints for two frames, and fades in for 100ms. Readiness and phases are
+re-frame events; animation completion uses Reagent event props with guarded
+`:dispatch-later` deadlines. Already loaded initial faces retain the browser's
+first-paint choice without animation. Reduced motion and local-return documents
+skip the fade. Failure or the ten-second load deadline leaves readable fallback
+text; stale completions cannot revive an expired attempt or an unmounted owner.
+Font loading never blocks hydration or the page-ready gate.
+
+`Fira Code Fallback` uses locally installed Courier New. Its `size-adjust` is the
+Retina font's advance ratio (1228/1229); its ascent/descent overrides divide the
+Retina metrics by that ratio. This preserves monospace advances and line height
+on systems with Courier New. Other systems use generic monospace, so exact metric
+matching is not guaranteed there. The fade smooths the visual replacement; it
+cannot interpolate kerning or glyph shapes. Open Sans retains its existing shell
+policy; the Fira change does not fade the whole document.
+
+The resulting code typography and controls:
+
+![Fira Code with Bruvbox and copy/wrap controls](images/code-font.webp)
+
 ## Declared SVG icons
 
 Declare literal dependencies beside their rendered owner, for example

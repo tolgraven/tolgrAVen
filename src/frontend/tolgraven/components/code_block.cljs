@@ -2,6 +2,7 @@
   "Controls hydrate immediately; the formatter hydrates after the page is ready."
   (:require [clojure.string :as string]
             [tolgraven.component.registry]
+            [tolgraven.component.font :as font]
             [tolgraven.component.restore :as restore]
             [tolgraven.component.hydration :as hydration]
             [tolgraven.browser-resources :as resources]
@@ -247,7 +248,8 @@
       copy! (merge handlers))))
 
 (defc <code-block>
-  {:args-schema args-schema}
+  {:args-schema args-schema
+   :features [[:font font/fira]]}
   [code & options]
   (let [options (options-map options)
         [wrap? set-wrap!] (rf/use-state (boolean (:wrap? options)))

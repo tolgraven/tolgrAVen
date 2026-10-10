@@ -2,6 +2,7 @@
   "Application state assembly. Feature contracts live with their owners; native
    events, refs and exceptions remain intentionally opaque."
   (:require [tolgraven.schema.common :as c]
+            [tolgraven.component.font :as font]
             [tolgraven.modules.blog.schema :as blog]
             [tolgraven.modules.chat.schema :as chat]
             [tolgraven.content.schema :as content]
@@ -123,6 +124,7 @@
      [:page-return] (c/optional-map {:status [:enum :ready :unavailable :saving]
                                     :url :string
                                     :message :string})
+     [:fonts] font/state-schema
      [:loader] (c/optional-map {:code-ready [:map-of :keyword :boolean]
                               :requested [:map-of :keyword :boolean]
                               :errors :map})}))
