@@ -191,6 +191,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   policy permits the parent origin. Following a preview expands it before departure;
   visited URLs and transient-surface restoration keep their existing owner policy.
 
+- Markdown marks generated code blocks before parsing trusted raw HTML. Only
+  generated pre wrappers defer to the code component; raw pre retains its own
+  attributes and whitespace, without nested block wrappers.
+
 - oEmbed provider HTML belongs only in an opaque-origin `srcDoc` iframe. Known
   HTTPS player endpoints may use a direct cross-origin iframe with provider-origin
   access; derive/check that URL through the shared oEmbed contract on both sides.

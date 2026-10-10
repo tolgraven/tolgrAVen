@@ -53,3 +53,25 @@
     (let [html (server/render-to-string [code/<parse-markdown-components> "Plain text" nil])]
       (is (string/includes? html "Plain text"))
       (is (not (string/includes? html "component-error"))))))
+
+(deftest trusted-raw-pre-retains-attributes-and-whitespace-alongside-markdown-blocks
+  (binding [context/*server?* true
+            context/*modules* {:highlight highlight/spec}]
+    (let [html (server/render-to-string
+                 [code/<parse-markdown-components>
+                  "<pre id=\"raw-pre\" class=\"custom-pre\" title=\"Spacing\">first\n  second\n</pre>\n\n<pre id=\"raw-code\"><code>(inc 1)</code></pre>\n\n```clojure\n(inc 2)\n```"
+                  {:allow-raw? true
+                   :default-language "clojure"}])
+          container (.createElement js/document "div")]
+      (set! (.-innerHTML container) html)
+      (let [plain (.querySelector container "pre#raw-pre")
+            raw-code (.querySelector container "pre#raw-code")]
+        (is (some? plain))
+        (is (= "custom-pre" (some-> plain .-className)))
+        (is (= "Spacing" (some-> plain (.getAttribute "title"))))
+        (is (= "first\n  second\n" (some-> plain .-textContent)))
+        (is (.querySelector raw-code "code span")))
+      (is (= 1 (.-length (.querySelectorAll container ".code-block"))))
+      (is (.querySelector container ".code-block pre code.language-clojure span"))
+      (is (zero? (.-length (.querySelectorAll container "pre pre, pre div"))))
+      (is (not (string/includes? html "data-tolgraven-code-block"))))))

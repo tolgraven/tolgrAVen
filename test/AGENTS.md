@@ -37,7 +37,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   await the actual inner commit; renderer metadata stays paired with cached HTML.
 - Module CSS checks cover request initiation before Shadow, shared acquisition,
   readiness/failure/retry, inline SSR styles, budget/link fallback and no duplicate
-  initial downloads. Hydration preload hints must match Shadow's request kind,
+  initial downloads. Layout fixtures load the module's declared stylesheet
+  dependencies, rather than relying on the shell sheet or earlier tests.
+  Hydration preload hints must match Shadow's request kind,
   CORS mode and priority in both the response header and document head.
   Analytics checks cover absence from SSR HTML and browser acquisition only after
   hydration, load, painted idle frames and page binding readiness.
