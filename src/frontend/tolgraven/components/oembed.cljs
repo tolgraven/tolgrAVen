@@ -29,7 +29,7 @@
     [:iframe.oembed-inner
      (if source
        (assoc attrs :sandbox "allow-scripts allow-same-origin"
-                    :allow "autoplay; encrypted-media"
+                    :allow "autoplay; encrypted-media; fullscreen"
                     :src source)
        (assoc attrs :sandbox "allow-scripts"
                     :src-doc (str "<!doctype html><html><head><meta name='viewport' content='width=device-width'>"

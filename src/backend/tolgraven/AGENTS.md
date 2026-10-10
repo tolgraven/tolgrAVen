@@ -105,3 +105,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   resolved only when the server development flag is true. Catalog allowed source
   roots, reject symlinks/traversal/oversized files and recheck canonical ownership.
   Never expose configuration files or accept arbitrary filesystem paths.
+
+- URL preview/oEmbed caches acquire bounded promise entries through
+  `tolgraven.cache.inflight`; pending work is never expired or evicted. If only
+  pending entries fill the cache, return the existing unavailable/retry response.

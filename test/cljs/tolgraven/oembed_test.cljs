@@ -59,3 +59,31 @@
                   "https://w.soundcloud.com/redirect"
                   "https://tolgraven.se/" "javascript:alert(1)"]]
     (is (nil? (contract/player-url source)))))
+
+(deftest recognized-video-players-delegate-fullscreen-permission
+  (async done
+    (let [source (get @data/*sources :url)
+          element (.createElement js/document "div")
+          url "https://example.test/video/fullscreen"]
+      (.appendChild (.-body js/document) element)
+      (data/register-source! :url
+        {:load! (fn [_]
+                  (js/Promise.resolve
+                    {:title "Video player"
+                     :height 360
+                     :html ""
+                     :player-src "https://www.youtube-nocookie.com/embed/ABCDEFGHIJK"}))})
+      (-> (go-promise
+            (let [root (await! (support/create-root! element))]
+              (try
+                (await! (support/render! root [oembed/<oembed-view> url nil]))
+                (await! (support/wait-for! #(.querySelector element "iframe.oembed-inner")))
+                (let [frame (.querySelector element "iframe.oembed-inner")]
+                  (is (.includes (.getAttribute frame "allow") "fullscreen"))
+                  (is (= "allow-scripts allow-same-origin" (.getAttribute frame "sandbox"))))
+                (finally (support/unmount! root)))))
+          (.catch #(is false (str %)))
+          (.finally #(do (.remove element)
+                         (data/invalidate! (fn [resource] (= (:url resource) (:url (oembed/dependency url)))))
+                         (data/register-source! :url source)
+                         (done)))))))
