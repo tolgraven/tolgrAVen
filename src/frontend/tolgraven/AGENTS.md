@@ -72,7 +72,14 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Markdown code, including untagged blocks and inline snippets, shares the deferred
   formatter boundary. Node SSR renders Bruvbox-highlighted tokens immediately;
   browser acquisition waits for the existing after-page gate. The blog supplies
-  its Clojure fallback and detection set; reusable Markdown has no site-specific default.
+  its Clojure fallback and detection set; untagged inline snippets use Bash unless
+  their owner specifies `:inline-language`. Explicit tags take precedence.
+  Copy gestures and optional folding belong to the outer component; cancel copying
+  on selection, drag, pointer exit/cancellation and interactive controls. A ref/effect
+  adapter uses the shared listener registry above React's event root while SSR
+  formatter children are suspended; movement listeners exist only during a press.
+  Copy the source, excluding line numbers/buttons. Markdown passes `:code-options` through
+  the shared component contract; line numbers are opt-in and rendered by SSR too.
   Bruvbox palette/token ownership lives in `modules/highlight/theme.cljs`.
 - Pretty data and expanded error details live in `:data-inspector`; keep pprint
   out of initial browser code. Rendered Markdown uses ReactMarkdown in its module; keep

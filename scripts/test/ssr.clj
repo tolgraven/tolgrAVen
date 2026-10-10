@@ -46,7 +46,7 @@
                            :missing? true :posts [] :comments [])
         [missing-html] (render! worker [missing])
         code-blog (update-in blog [:posts 0 :text]
-                             str "\n\nInline `42` and `(inc 1)`.\n\n```\n(defn untagged [x] (inc x))\n```\n\n```clojure\n(defn greet [name] (str \"Hello \" name))\n```\n\n```cpp\n// Retain the language during hydration\nint answer = 42;\n```\n")
+                             str "\n\nInline `42`, `(inc 1)` and `echo \"$HOME\"`.\n\n```\n(defn untagged [x] (inc x))\n```\n\n```clojure\n(defn greet [name] (str \"Hello \" name))\n```\n\n```cpp\n// Retain the language during hydration\nint answer = 42;\n```\n")
         [code-html] (render! worker [code-blog])
         shells (render! worker (mapv #(assoc % :shell? true :posts [] :query-params {})
                                      [home (assoc blog :path "/blog/post/42") cv]))]

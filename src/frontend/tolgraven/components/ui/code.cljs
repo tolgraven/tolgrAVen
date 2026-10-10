@@ -5,6 +5,7 @@
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [tolgraven.components.highlight :as highlight]
+    [tolgraven.components.code-block :as code-block]
     ["react-markdown$default" :as ReactMarkdown]
     ["remark-gfm$default" :as remarkGfm]
     ["rehype-raw$default" :as rehypeRaw]
@@ -17,7 +18,8 @@
     [:allow-images? {:optional true} :boolean]
     [:allow-raw? {:optional true} :boolean]
     [:default-language {:optional true} [:maybe :string]]
-    [:auto-languages {:optional true} [:maybe [:vector :string]]]]])
+    [:auto-languages {:optional true} [:maybe [:vector :string]]]
+    [:code-options {:optional true} code-block/options-schema]]])
 
 (def block-context (rf/create-context false))
 
@@ -30,17 +32,17 @@
 
 (defc <markdown-code-component>
   "Custom code component for react-markdown that uses our syntax highlighter"
-  [{:keys [children className default-language auto-languages]}]
+  [{:keys [children className default-language auto-languages code-options]}]
   ;; reactify-component supplies a Clojure map. ReactMarkdown's code children
   ;; are text; do not recursively convert React elements or inspect their props.
   (let [code (if (string? children) children "")
         language (some->> className (re-find #"language-([\w-]+)") second)
         block? (rf/use-context block-context)]
     [<code-block> code
-     :language language
-     :default-language default-language
-     :auto-languages auto-languages
-     :inline? (not block?)]))
+     (merge {:default-language default-language
+             :auto-languages auto-languages}
+       code-options
+       (cond-> {:inline? (not block?)} language (assoc :language language)))]))
 
 (defn- mark-markdown-blocks []
   ;; Before rehype-raw, only Markdown code blocks have native pre nodes.
@@ -65,7 +67,7 @@
 (defc <parse-markdown-components>
   "Parse markdown into pure React components using react-markdown"
   {:args-schema [:cat [:maybe :string] [:? options-schema]]}
-  [md-text & [{:keys [allow-images? allow-raw? default-language auto-languages]
+  [md-text & [{:keys [allow-images? allow-raw? default-language auto-languages code-options]
               :or {allow-images? false
                    allow-raw? false}}]]
   (let [code-component (rf/use-memo
@@ -73,8 +75,9 @@
                             (fn [props]
                               [<markdown-code-component>
                                (assoc props :default-language default-language
-                                            :auto-languages auto-languages)]))
-                         #js [default-language auto-languages])]
+                                            :auto-languages auto-languages
+                                            :code-options code-options)]))
+                         #js [default-language auto-languages code-options])]
     [react-markdown
      {:children md-text
       :remarkPlugins [remarkGfm]

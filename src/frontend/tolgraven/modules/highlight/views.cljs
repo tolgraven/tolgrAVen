@@ -32,10 +32,13 @@
 
 (defc <code-block>
   "Full language support and Bruvbox are acquired only by code consumers."
-  [code & {:keys [language default-language auto-languages style basic? inline?]
+  [code & {:keys [language default-language auto-languages style basic? inline? inline-language
+                 line-numbers? starting-line-number]
            :or {basic? true
                 style theme/bruvbox}}]
-  (let [tree (rf/use-memo #(code-tree code language default-language auto-languages)
+  (let [language (or language (when inline? (or inline-language "bash")))
+        numbered? (and (not inline?) (if (nil? line-numbers?) (not basic?) line-numbers?))
+        tree (rf/use-memo #(code-tree code language default-language auto-languages)
                          #js [code language default-language auto-languages])
         ;; Reuse the selected AST instead of running auto-detection twice.
         generator (rf/use-memo
@@ -46,9 +49,11 @@
      (cond-> {:language (or (.-language tree) language "text")
               :astGenerator generator
               :style style
-              :showLineNumbers (and (not inline?) (not basic?))
+              :showLineNumbers numbered?
+              :startingLineNumber (or starting-line-number 1)
+              :lineNumberStyle {:userSelect "none"}
               :children code
-              :wrapLines (and (not inline?) (not basic?))}
+              :wrapLines numbered?}
        inline? (assoc :PreTag "code"
                       :CodeTag "span"
                       :className "code-highlight"
