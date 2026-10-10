@@ -15,6 +15,7 @@
 (defonce *tick (atom nil))
 (defonce *cleanup (atom nil))
 (defonce *connected? (r/atom false))
+(defonce *publishing? (atom false))
 (defonce *recording? (atom false))
 (defonce *flash? (atom false))
 ;; Probe lifecycles begin during hydration, before the interactive console mounts.
@@ -22,14 +23,19 @@
 (defonce *component-parents (r/atom {}))
 (defn resolve-instance [record]
   (merge (dissoc record :resolve!) (when-let [resolve! (:resolve! record)] (resolve!))))
+(declare drain!)
+
 (defn connect!
   "Enable queued instance tracking only while its console consumer is mounted."
   []
   (reset! *connected? true)
+  (reset! *publishing? true)
+  (drain!)
   (when (seq @*instances)
     (rf/dispatch [:dev-console/records (mapv resolve-instance (vals @*instances))]))
   (fn []
     (reset! *connected? false)
+    (reset! *publishing? false)
     (reset! consumer/*enabled? false)
     (when @*tick (js/clearTimeout @*tick))
     (reset! *tick nil) (reset! *pending [])
@@ -39,9 +45,14 @@
                      (and (string? %) (string/starts-with? % "tolgraven.dev-console")))
                  (tree-seq coll? seq event))))
 (defn drain! []
-  (let [batch @*pending]
-    (reset! *pending []) (reset! *tick nil)
-    (when (seq batch) (rf/dispatch [:dev-console/records batch]))))
+  (when @*tick (js/clearTimeout @*tick))
+  (reset! *tick nil)
+  ;; Early capture may precede the console's commit during selective hydration.
+  ;; Buffer observations without invalidating its not-yet-mounted subscriptions.
+  (when @*publishing?
+    (let [batch @*pending]
+      (reset! *pending [])
+      (when (seq batch) (rf/dispatch [:dev-console/records batch])))))
 (defn emit! [record]
   (when (and ^boolean goog.DEBUG (not context/*server?*))
     (case (:kind record)
@@ -54,7 +65,8 @@
       nil))
   (when (and ^boolean goog.DEBUG @*connected? (not context/*server?*))
     (swap! *pending #(vec (take-last 500 (conj % (if (= :mount (:kind record)) (resolve-instance record) record)))))
-    (when-not @*tick (reset! *tick (js/setTimeout drain! 200)))))
+    (when (and @*publishing? (nil? @*tick))
+      (reset! *tick (js/setTimeout drain! 200)))))
 (defn public-db [db]
   (-> db (dissoc :dev-console)
       (update :component dissoc "tolgraven.dev-console.views")))

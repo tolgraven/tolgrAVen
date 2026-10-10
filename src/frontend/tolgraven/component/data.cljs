@@ -42,8 +42,11 @@
 (rf/reg-sub :component-data/installed
   (fn [db query]
     (let [[_ path] (or (:re-frame/query-v query) query)
-          missing (js-obj) value (get-in db path missing)]
-      {:present? (not (identical? missing value)) :value value})))
+          missing (js-obj)
+          value (get-in db path missing)
+          present? (not (identical? missing value))]
+      {:present? present?
+       :value (when present? value)})))
 
 (rf/reg-event-db :component-data/install
   (fn [db [_ path value]] (assoc-in db path value)))

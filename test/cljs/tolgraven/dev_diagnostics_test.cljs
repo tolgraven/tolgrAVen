@@ -4,6 +4,7 @@
             [cljs.test :refer-macros [deftest is async]]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as rf]
+            [re-frame.core :as re-frame]
             [tolgraven.dev.values :as values]
             [tolgraven.dev.stack :as stack]
             [tolgraven.dev.source-links :as source]
@@ -159,3 +160,22 @@
     (is (= ["frame"] (components/native-roots active "frame")))
     (is (empty? (components/native-roots active "cycle")))
     (is (empty? (components/native-roots active "missing")))))
+
+(deftest early-capture-buffers-until-the-console-owner-commits
+  (let [*events (atom [])
+        record {:kind :view, :component ["diagnostic-test" "early"], :duration 1}]
+    (with-redefs [capture/*pending (atom [])
+                  capture/*tick (atom nil)
+                  capture/*publishing? (atom false)
+                  capture/*connected? (r/atom true)
+                  capture/*instances (atom {})
+                  consumer/*enabled? (atom true)
+                  re-frame/dispatch #(swap! *events conj %)]
+      (capture/emit! record)
+      (capture/drain!)
+      (is (empty? @*events) "Startup observations do not write into an uncommitted inspector")
+      (let [stop! (capture/connect!)]
+        (try
+          (is (= [[:dev-console/records [record]]] @*events)
+              "The committing owner publishes the original early observations")
+          (finally (stop!)))))))

@@ -247,3 +247,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   measurement and WeakMap ownership adapters must release their lifecycle resources.
   Source/stack and actual-value details stay behind `:dev` reader boundaries.
   See `doc/dev-console.md` for capture, source links and diagnostic limitations.
+
+- Missing scoped-state and installed-data subscriptions return `:present? false`
+  with `:value nil`; lookup sentinels stay private. Preserve equality across
+  unrelated db writes while distinguishing stored nil/false from absence.
+
+- Startup diagnostic capture buffers observations until its console host commits.
+  Do not publish debug records into subscriptions owned by an uncommitted host.

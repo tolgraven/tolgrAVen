@@ -17,8 +17,13 @@
 
 (rf/reg-sub :component-state/entry
   (fn [db [_ path]]
-    (let [absent (js-obj) value (get-in db path absent)]
-      {:present? (not (identical? absent value)) :value value
+    (let [absent (js-obj)
+          value (get-in db path absent)
+          present? (not (identical? absent value))]
+      ;; Missing entries must compare equal across unrelated db updates. The
+      ;; private lookup sentinel must never escape into subscription results.
+      {:present? present?
+       :value (when present? value)
        :revision (get-in db [:component-revisions path] 0)})))
 (rf/reg-event-db :component-state/init
   (fn [db [_ path value]]
