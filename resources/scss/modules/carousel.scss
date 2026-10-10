@@ -28,7 +28,7 @@
   position: absolute;
   bottom: var(--space);
   display: flex;
-  
+
   .carousel-idx { // idea use large index bobbles same bg blur as category bg, looks nice
     background: none;
     border-radius: 20%;
@@ -84,18 +84,18 @@
     left: 105%;
   }
 
-  
+
   .carousel-item-middle {
     // transition: all 0.5s;
     // transform: scale(1.2);
     z-index: 10;
     // transform: translateZ(0.625rem);
-    
+
     &.from-left, &.from-right { transition: transform 0.0s; }
     &.from-left  { transform: scale(0.90) translateX(100%); }
     &.from-right { transform: scale(0.90) translateX(-100%); }
   }
-  
+
   .carousel-item-left, .carousel-item-right {
     transition: 0.5s;
     // transform: scale(0.8);
@@ -112,7 +112,7 @@
     &.from-left  { transform: translateX(100%) scale(0.0); }
     &.from-right { transform: translateX(-100%) scale(1.0); }
   }
-  
+
   .carousel-item-left-pseudo, .carousel-item-right-pseudo {
     position: absolute; // PROBLEM: this causes its sizing to be entirely oio
     top: -10%;
@@ -136,4 +136,3 @@
     }
   }
 }
-

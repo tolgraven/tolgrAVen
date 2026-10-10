@@ -24,4 +24,3 @@
   (fn [{:keys [db]} [_ id direction]]
     {:dispatch-later {:ms 500
                       :dispatch [:carousel/set-index id direction]}}))
-

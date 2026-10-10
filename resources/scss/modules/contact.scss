@@ -16,7 +16,7 @@
   backdrop-filter: blur(0.25rem); // remember firefox lacks this so need fallback there when using this...
   box-shadow: 0rem 0rem 1.8125rem 0.1875rem rgba(150, 150, 250, 0.15);
   padding: var(--space) 0.15em;
-                                    
+
   input, textarea {
     opacity: 85%;
     padding: 1em;
@@ -27,7 +27,7 @@
     // padding: none;
     font-size: 150%;
   }
-                                    
+
   > h2 {
     text-align: center;
     text-decoration-color: var(--purple);
