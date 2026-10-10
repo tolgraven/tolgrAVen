@@ -4,6 +4,7 @@
             [cljs.test :refer-macros [deftest is async]]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as rf]
+            [re-frame.core :as re-frame]
             [tolgraven.dev.values :as values]
             [tolgraven.dev.stack :as stack]
             [tolgraven.dev.source-links :as source]
@@ -169,7 +170,7 @@
                   capture/*connected? (r/atom true)
                   capture/*instances (atom {})
                   consumer/*enabled? (atom true)
-                  rf/dispatch #(swap! *events conj %)]
+                  re-frame/dispatch #(swap! *events conj %)]
       (capture/emit! record)
       (capture/drain!)
       (is (empty? @*events) "Startup observations do not write into an uncommitted inspector")
