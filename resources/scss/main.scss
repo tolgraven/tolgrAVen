@@ -1,5 +1,7 @@
 @use "sass:meta";
 
+@include meta.load-css("generated/icons/main");
+
 // Shared shell and reusable components. Feature sheets are loaded by the module loader.
 @include meta.load-css("shell/burger");
 @include meta.load-css("shell/peripheral");

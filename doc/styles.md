@@ -80,6 +80,32 @@ SSR styles remain available for the static view before hydration. CSS acquisitio
 starts directly when the module request starts, shares its in-flight promise, and
 retries a failed CSS/code request once after three seconds before showing an error.
 
+## Declared SVG icons
+
+Declare literal dependencies beside their rendered owner, for example
+`{:icons ["brands/github" "solid/copy"]}` in a `defc`, module spec or page route
+data. Component/page declarations in a module folder belong to that module;
+shared declarations belong to `:main`. An explicit `:module` may select another
+known owner. Declarations must use literal vectors and known Font Awesome family
+names; computed dependencies and missing glyphs fail generation.
+
+`bb fonts:icons` reads these declarations without requiring browser namespaces.
+It exports original glyph outlines, advance widths and baselines to committed
+`resources/public/img/icons/generated/` SVGs and generated SCSS. Shared masks
+compile into the shell; feature masks get an automatically catalogued
+`icons-<module>.min.css` dependency. Shared icons satisfy feature declarations
+without duplicating their masks. Small SVGs are inline CSS data URLs, so selected
+icons incur neither a separate image request nor a font download/swap. Existing
+Reagent `:i.fab.fa-github`/`:i.fas.fa-copy` markup and `currentColor` remain usable.
+Regenerate after changing declarations; commit generated SVGs and SCSS together.
+The generator removes stale files only in its owned generated paths. Normal CSS
+(and Docker) builds use these committed outputs, without Python/fontTools.
+
+Shadow tracks existing icon declaration sources for incremental changes. Restart
+the watch after introducing an icon declaration in a previously untracked source.
+The source adapter is `.cljc` for the JVM/Babashka reader boundary; it does not
+execute frontend code or create a runtime schema inventory.
+
 ## Icon fonts
 
 The deferred `icons.css` bundle uses `icons.scss`, which imports the vendored Font

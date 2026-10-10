@@ -80,7 +80,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   they do not establish live Storage behavior. Hook tests use disposable Git indices:
   `bb test:scripts`.
 
-- Icon font checks preserve selected glyph outlines/metrics, verify disjoint core
+- Icon SVG checks cover literal/reader-safe declarations, shared/module ownership,
+  original glyph geometry/baseline and font-free masks. Python checks require the
+  optional authoring fontTools environment described in `doc/styles.md`.
+  Icon font checks preserve selected glyph outlines/metrics, verify disjoint core
   and full-font acquisition in a fresh browser, and test real Optimus rewriting,
   font-byte preservation and fingerprinted-only long cache headers.
 

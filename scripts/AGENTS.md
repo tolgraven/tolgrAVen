@@ -28,6 +28,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   codecs in disposable Git repositories.
 
 - `bb fonts:icons` uses the optional pinned Python/fontTools authoring tool to
-  regenerate small icon fonts and their disjoint Unicode ranges. Source literals
+  export literal component/module `:icons` as SVG masks in the owning CSS and
+  regenerate small icon fonts with disjoint Unicode ranges. The shared source
+  reader supplies both generation and Shadow style inventories. Source literals
   and `resources/icon-fonts.json` own glyph selection; keep full-font fallbacks.
-  Commit catalog, generated SCSS and fonts together; see `doc/styles.md`.
+  Commit declared SVGs, catalog, generated SCSS and fonts together; see `doc/styles.md`.

@@ -1,7 +1,8 @@
 (ns tolgraven.build.modules
   "Read module declarations without loading their browser implementation."
   (:require [clojure.java.io :as io]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [tolgraven.build.icons :as icons]))
 
 (def root "src/frontend/tolgraven/modules")
 
@@ -14,6 +15,7 @@
             attrs (first (filter map? (drop 2 ns-form)))
             id (:id spec)
             styles (:styles spec)
+            icon-dependencies (:icons spec)
             ssr-styles (:ssr-styles spec)
             dependencies (get attrs :bundle/depends-on #{:main})]
         (when-not (and (= 'ns (first ns-form)) (symbol? (second ns-form))
@@ -24,12 +26,16 @@
                       (and (vector? styles) (every? string? styles)))
           (throw (ex-info "Module :styles must be a literal vector of stylesheet paths"
                           {:file (str file)})))
+        (when (and (contains? spec :icons) (not (icons/valid-icons? icon-dependencies)))
+          (throw (ex-info "Module :icons must be literal brands/name or solid/name strings"
+                          {:file (str file)})))
         (when (and (contains? spec :ssr-styles)
                    (not (#{:initial :deferred} ssr-styles)))
           (throw (ex-info "Module :ssr-styles must be literal :initial or :deferred"
                           {:file (str file)})))
         (cond-> {:id id :entry (second ns-form) :depends-on dependencies}
           (seq styles) (assoc :styles styles)
+          (seq icon-dependencies) (assoc :icons icon-dependencies)
           ssr-styles (assoc :ssr-styles ssr-styles))))))
 
 (defn discover
@@ -48,6 +54,9 @@
              :when (and (not= id :main) (not (contains? (set ids) dependency)))]
        (throw (ex-info "Unknown bundle dependency" {:module id :dependency dependency})))
      (vec (remove #(= :main (:id %)) declarations)))))
+
+(defn icon-definitions []
+  (icons/definitions (conj (discover) (declaration (io/file root "main/module.cljs")))))
 
 (defn bundles []
   (into (sorted-map)
@@ -77,9 +86,21 @@
 
 (defmacro style-definitions []
   ;; Bake this inventory into both runtimes. Packaged servers have no source tree.
-  (let [declarations (discover)]
+  (let [declarations (discover)
+        icon-definitions (icon-definitions)]
     (track-declarations! &env declarations)
+    (when (:ns &env)
+      (let [read-resource! (requiring-resolve 'shadow.resource/slurp-resource)
+            entries (set (map #(str (-> (str (:entry %))
+                                       (string/replace "-" "_")
+                                       (string/replace "." "/")) ".cljs") declarations))]
+        (doseq [file (:sources (meta icon-definitions))
+                :let [path (icons/source-path file)]
+                :when (and path (not (entries path)))]
+          (read-resource! &env path))))
     (into {} (map (fn [{:keys [id styles depends-on ssr-styles]}]
-                   [id (cond-> {:paths (vec styles)
+                   [id (cond-> {:paths (cond-> (vec styles)
+                                           (seq (get icon-definitions id))
+                                           (conj (icons/stylesheet-path id)))
                                 :depends-on depends-on}
                          ssr-styles (assoc :ssr-styles ssr-styles))])) declarations)))

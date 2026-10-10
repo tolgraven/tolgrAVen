@@ -37,7 +37,9 @@
    [ui/<toggle> [:state :login-show-password] "show"]])
 
 
-(defc <sign-in> "Sign in or go to reg page" []
+(defc <sign-in> "Sign in or go to reg page"
+  {:icons ["brands/google" "brands/github" "brands/facebook"]}
+  []
   (let [disabled? (not @(rf/subscribe [:login/valid-input?]))
         providers @(rf/subscribe [:option [:supabase :providers]])
         with (fn [provider]
@@ -227,7 +229,8 @@
                   (nil? src) (assoc :visibility "hidden")
                   zoom? (assoc :cursor "pointer"))}]])))
 
-(defc <user-btn> [model]
+(defc <user-btn> {:icons ["solid/user"]}
+  [model]
   [:a.button.user-btn.noborder
    {:href @(rf/subscribe [:href-add-query
                           {:userBox (not @(rf/subscribe [:user/ui-open?]))}])

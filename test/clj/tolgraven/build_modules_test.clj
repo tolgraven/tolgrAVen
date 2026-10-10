@@ -51,7 +51,11 @@
       (let [styles (expand-styles nil env)
             resources (map second @*reads)]
         (is (= (set (keys styles)) (set (map :id (modules/discover)))))
-        (is (= (count styles) (count resources)))
+        (is (= (+ 3 (count styles)) (count resources)))
+        (is (some #{"tolgraven/modules/main/module.cljs"} resources))
+        (is (some #{"tolgraven/components/shell.cljs"} resources))
+        (is (some #{"tolgraven/modules/user/views.cljs"} resources))
+        (is (some #{"/css/tolgraven/modules/icons-user.min.css"} (:paths (:user styles))))
         (is (every? io/resource resources) "Every tracked entry resolves on the source classpath")
         (is (every? #(= env (first %)) @*reads)))
       (reset! *reads [])
