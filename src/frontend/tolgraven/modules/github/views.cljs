@@ -92,7 +92,7 @@
 
 (defc ^:private <commit-row>
   {:features [[:appear "slide-in slow"]]}
-  [{:keys [from sha main-view-position view author date clock html_url sha7 info title subtitle]}]
+  [{:keys [from sha main-view-position view author date ts html_url sha7 info title subtitle]}]
   [:div.github-commit.flex
          {:on-click #(do (rf/dispatch [:github/fetch-commit (first @from) (second @from) sha])
                          (reset! main-view-position
@@ -103,7 +103,7 @@
                        :class "user-avatar center-content"}]
          [:div.github-commit-details
           [:span.github-commit-time date]
-          [:span.github-commit-time (util/local-time clock)]
+          [:span.github-commit-time (util/local-time ts)]
           [:a {:href html_url}
            [:span.github-commit-sha sha7]]
 

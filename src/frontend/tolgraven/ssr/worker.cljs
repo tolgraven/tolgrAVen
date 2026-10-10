@@ -16,6 +16,7 @@
     [tolgraven.modules.styled-input.module :as styled-input]
     [tolgraven.modules.data-inspector.module :as inspector]
     [tolgraven.modules.cv.module :as cv]
+    [tolgraven.modules.carousel.module :as carousel]
     [tolgraven.modules.docs.module :as docs]
     [tolgraven.ssr.contract :as contract]
     [tolgraven.components.page-shell :as shell]
@@ -30,6 +31,7 @@
               :styled-input styled-input/spec
               :data-inspector inspector/spec
               :cv cv/spec
+              :carousel carousel/spec
               :docs docs/spec
               :blog blog/spec
               :user user/spec

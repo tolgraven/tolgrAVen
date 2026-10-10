@@ -65,7 +65,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Module `:styles` metadata is available before code acquisition. The shared loader
   starts CSS and JS together and waits for both before readiness; React owns
   stylesheet insertion. Parse the document style manifest once per element/text
-  revision and retain readiness for installed React resources. Initial inlined route styles already satisfy readiness
+  revision and retain readiness for installed React resources. Initial inlined
+  route styles already satisfy readiness
   and must not trigger duplicate external requests. Popup-only `:ssr-styles :deferred`
   sheets stay out of the SSR head but still start before Shadow acquisition. Keep
   feature CSS in `resources/scss/modules` and preserve
@@ -127,8 +128,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   formatting. Shared clocks/relative dates and calendar-month ranges use native Date
   and epoch milliseconds; do not reintroduce cljs-time/Closure locale tables for these
   small formatting cases. The optional Java-time Transit codec stays behind `:dev`;
-  normal browser APIs use JSON or standard Transit, and backend codecs stay native. Carousel implementations, events, index subscription and CSS belong to `:carousel`;
+  normal browser APIs use JSON or standard Transit, and backend codecs stay native.
+  Carousel implementations, events, index subscription and CSS belong to `:carousel`;
   Home/CV/Strava declare that bundle dependency, and shared UI keeps lazy exports.
+  Include newly split SSR components in the eager Node worker spec map and verify
+  their actual markup in fixtures before checking hydration identity.
   Landing story/float helpers belong to `:home`, with lazy compatibility
   exports in shared UI. Preserve prototype implementations when moving ownership.
 - Saved local HTML/state pairs also restore reload and address-bar document

@@ -85,7 +85,7 @@
     ""))
 
 (defn local-time
-  "Format a provider ISO clock as local HH:mm:ss plus its UTC offset."
+  "Format a full provider ISO timestamp as local HH:mm:ss plus its UTC offset."
   [clock]
   (let [date (js/Date. clock)
         pad #(str (when (< % 10) "0") %)]

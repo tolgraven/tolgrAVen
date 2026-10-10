@@ -11,6 +11,7 @@
     [tolgraven.db :as db]
     [tolgraven.navigation.routes :as routes]
     [tolgraven.loader :as loader]
+    [tolgraven.loader.styles :as styles]
     [tolgraven.browser-resources :as resources]
     [tolgraven.test-support :as support]
     [tolgraven.render-context :as context]
@@ -20,6 +21,7 @@
     [tolgraven.modules.blog.module :as blog]
     [tolgraven.modules.home.module :as home]
     [tolgraven.modules.cv.module :as cv]
+    [tolgraven.modules.carousel.module :as carousel]
     [tolgraven.modules.docs.module :as docs]
     [tolgraven.modules.user.module :as user]
     [tolgraven.modules.highlight.module :as highlight]
@@ -29,6 +31,7 @@
 (def modules
   {:home home/spec
    :cv cv/spec
+   :carousel carousel/spec
    :docs docs/spec
    :blog blog/spec
    :user user/spec
@@ -72,6 +75,13 @@
     ;; cached HTML from a previous component graph.
     (-> (js/fetch (str "/js/" fixture "-ssr.json") #js {:cache "no-store"})
         (.then #(.json %))
+        (.then (fn [payload]
+                 (let [snapshot (:snapshot (js->clj payload :keywordize-keys true))
+                       match (reitit/match-by-path routes/router (:path snapshot))]
+                   ;; Production installs route dependency styles in the head.
+                   ;; Await the same catalog here before hydrating its HTML.
+                   (-> (styles/acquire! (get-in match [:data :module]))
+                       (.then (fn [_] payload))))))
         (.then (fn [payload]
                  (let [{:keys [snapshot html]} (js->clj payload :keywordize-keys true)
                        match (reitit/match-by-path routes/router (:path snapshot))
