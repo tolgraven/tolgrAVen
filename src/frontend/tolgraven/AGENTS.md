@@ -153,11 +153,12 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   See `doc/boot.md` for the stage boundaries.
   Deferred Search owns focus while open and releases it on close/unmount; hidden
   input focus must not drive scrolling during later navigation.
-- `browser_resources.cljs` acquires analytics and necessary compatibility scripts
+- `browser_resources.cljs` acquires analytics
   after hydration, window load, two paint frames and idle with no pending page
   bindings. Production analytics initializes its queue/configuration there too;
-  keep its ID, bootstrap, remote scripts and preconnects out of SSR HTML. Modern browsers
-  use native smooth scrolling without downloading its polyfill.
+  keep its ID, bootstrap, remote scripts and preconnects out of SSR HTML. Browsers
+  use native smooth scrolling without a compatibility script (Safari 15.4+).
+  Older browsers retain instant scrolling as progressive enhancement.
   Lazy videos omit sources until visible; their observer owns cleanup, React owns markup.
   Use Shadow reader features for build-specific dependencies, not runtime imports.
 - Development console and React profiling implementations live in `env/dev/cljs`.

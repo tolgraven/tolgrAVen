@@ -54,11 +54,6 @@
       ((aget js/window "gtag") "js" (js/Date.))
       ((aget js/window "gtag") "config" "G-Y8H6RLZX3V")
       (react-dom/preinit "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"
-                        #js {:as "script" :fetchPriority "low"}))
-    ;; Native smooth scrolling needs no compatibility download. Older browsers
-    ;; acquire the existing polyfill through React's resource API after paint.
-    (when-not (some? (.-scrollBehavior (.-style (.-documentElement js/document))))
-      (react-dom/preinit "https://unpkg.com/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"
                         #js {:as "script" :fetchPriority "low"}))))
 
 (defn start! []
