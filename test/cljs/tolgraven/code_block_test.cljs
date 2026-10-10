@@ -147,6 +147,10 @@
                     (fn [] #js {:left 0 :right 200 :top 0 :bottom 200}))
                   (pointer! token "pointerdown" 10 10)
                   (pointer! token "pointerup" 10 10)
+                  ;; A completed tap stays valid when the released pointer moves
+                  ;; away during the multi-click confirmation window.
+                  (pointer! token "pointermove" 30 10)
+                  (pointer! box "pointerout" 30 10)
                   (await! (support/wait-for! #(= 1 (count @*copies))))
                   (is (= [text] @*copies) "Copies full source, excluding line numbers and folded presentation")
                   (pointer! token "pointerdown" 10 10)
@@ -234,7 +238,9 @@
                         x (+ (.-left bounds) 2)
                         y (+ (.-top bounds) 2)]
                     (pointer! token "pointerdown" x y)
-                    (pointer! token "pointerup" x y))
+                    (pointer! token "pointerup" x y)
+                    (pointer! token "pointermove" (+ x 20) y)
+                    (pointer! box "pointerout" (+ x 20) y))
                   (await! (support/wait-for! #(seq @*copies)))
                   (is (= ["(inc 1)"] @*copies))
                   (.click (.querySelector element ".code-copy"))

@@ -169,8 +169,9 @@
                                           :y (.-clientY event)})))
              :on-pointer-move
              (fn [event]
-               (when-let [{:keys [id x y]} (.-current *press)]
-                 (when (and (= id (.-pointerId event))
+               (when-let [{:keys [id x y released?]} (.-current *press)]
+                 (when (and (not released?)
+                            (= id (.-pointerId event))
                             ;; Pointer coordinates use the browser's CSS-pixel
                             ;; measurement API; this is not a style dimension.
                             (or (> (js/Math.hypot (- x (.-clientX event))
@@ -180,10 +181,12 @@
                    (cancel!))))
              :on-pointer-leave
              (fn [event]
-               (let [target (.-relatedTarget event)]
-                 (when-not (and (some-> target .-nodeType)
-                                (.contains (.-current *element) target))
-                   (cancel!))))
+               (when-let [{:keys [released?]} (.-current *press)]
+                 (let [target (.-relatedTarget event)]
+                   (when (and (not released?)
+                              (not (and (some-> target .-nodeType)
+                                        (.contains (.-current *element) target))))
+                     (cancel!)))))
              :on-pointer-cancel (fn [_] (cancel!))
              :on-double-click (fn [_] (cancel!))
              :on-select (fn [_] (when (selected? (.-current *element)) (cancel!)))

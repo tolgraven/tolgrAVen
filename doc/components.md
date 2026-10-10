@@ -738,8 +738,9 @@ ignore block-only controls and show a compact copy indicator at the end.
 A primary-pointer tap anywhere on non-interactive code copies it after a brief
 multi-click window. Selection, double-clicking,
 dragging, leaving the container (even when returning), cancellation and touch
-scrolling cancel that gesture. The explicit Copy button also works from the
-keyboard; clipboard feedback resets automatically and is announced through a
+scrolling during the press cancel that gesture. Movement after release preserves
+a completed tap; selection or double-clicking can still cancel its confirmation.
+The explicit Copy button also works from the keyboard; clipboard feedback resets automatically and is announced through a
 live status. Inline code inside links keeps navigation and omits its copy button.
 Clipboard callbacks and feedback timers are owned by the component.
 Controls hydrate before the formatter's after-page gate and preserve pending SSR
