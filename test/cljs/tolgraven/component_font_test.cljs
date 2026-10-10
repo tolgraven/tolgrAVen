@@ -56,7 +56,8 @@
                                      :let [node (.-target change)]
                                      :when (= "swapped" (phase node))]
                                (swap! *hidden conj (.-opacity (js/getComputedStyle node))))))
-                *ended (atom 0)]
+                *ended (atom 0)
+                *adjusted? (atom false)]
             (.add (.-fonts js/document) face)
             (set! (.-rel sheet) "stylesheet")
             (set! (.-href sheet) "/css/tolgraven/main.min.css")
@@ -68,7 +69,10 @@
                                     (set! (.-onload monospace) resolve)
                                     (set! (.-onerror monospace) reject)
                                     (.appendChild (.-head js/document) monospace))))
-              (await! (.load (.-fonts js/document) "1em 'Fira Code Fallback'"))
+              (reset! *adjusted?
+                      (await! (-> (.load (.-fonts js/document) "1em 'Fira Code Fallback'")
+                                  (.then #(pos? (.-length %)))
+                                  (.catch (constantly false)))))
               (with-redefs [motion/reduced-motion? (constantly false)]
                 (await! (support/render! root
                           [:section [<sample> opts {:class [:caller "other"]
@@ -103,10 +107,13 @@
                   (is (seq @*hidden) "The swapped phase was committed before revealing")
                   (is (every? #{"0"} @*hidden) "New glyphs are painted only while transparent")
                   (is (.includes (.-fontFamily (js/getComputedStyle span)) (:family opts)))
-                  (is (< (js/Math.abs (- original-width (.-width (.getBoundingClientRect span)))) 0.2)
-                      "The adjusted fallback keeps monospace advances stable")
-                  (is (< (js/Math.abs (- original-height (.-height (.getBoundingClientRect span)))) 0.5)
-                      "The adjusted fallback keeps vertical metrics stable")
+                  ;; Courier New is optional, particularly on Linux browser runners.
+                  ;; The native load/fade/identity assertions still run without it.
+                  (when @*adjusted?
+                    (is (< (js/Math.abs (- original-width (.-width (.getBoundingClientRect span)))) 0.2)
+                        "The adjusted fallback keeps monospace advances stable")
+                    (is (< (js/Math.abs (- original-height (.-height (.getBoundingClientRect span)))) 0.5)
+                        "The adjusted fallback keeps vertical metrics stable"))
                   (is (identical? code (.querySelector node "code")))
                   (is (identical? span (.querySelector node "span")))
                   (is (.contains (.-classList node) "caller"))
