@@ -120,7 +120,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Saved local HTML/state pairs also restore reload and address-bar document
   navigation at the exact URL/build, once. With no usable pair, network SSR
   hydrates first; validated disk display choices restore afterwards, preserving
-  interactions made since startup. Server content/query results retain priority.
+  interactions made since startup. Blog disk restoration and persistence tracking
+  start together behind the shared after-page gate for network SSR; tracking
+  server defaults earlier can overwrite saved display choices. Server content/query
+  results retain priority.
   Paired shell markup suppresses default header/menu/footer entrances; explicit
   menu intent resumes ordinary motion. Temporary preview surfaces do not enter
   saved markup/state: owners declare retained return keys, such as visited URLs.
