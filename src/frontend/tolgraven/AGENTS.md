@@ -133,6 +133,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Home/CV/Strava declare that bundle dependency, and shared UI keeps lazy exports.
   Include newly split SSR components in the eager Node worker spec map and verify
   their actual markup in fixtures before checking hydration identity.
+  Contact email/toggle markup stays in the shell; the popup view/styles belong
+  to `:contact` and mount with immediate activation only after the toggle opens.
   Landing story/float helpers belong to `:home`, with lazy compatibility
   exports in shared UI. Preserve prototype implementations when moving ownership.
 - Saved local HTML/state pairs also restore reload and address-bar document

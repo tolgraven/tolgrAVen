@@ -137,3 +137,10 @@
         (set! js/JSON.parse parse)
         (.remove element)
         (when existing (set! (.-id existing) original-id))))))
+
+(deftest hidden-contact-popup-keeps-code-and-styles-out-of-the-shell
+  (let [manifest (into {} (map (fn [[id spec]] [id (:paths spec)])) catalog/modules)
+        sheet "/css/tolgraven/modules/contact.min.css"]
+    (is (not (some #{:contact} (catalog/dependencies :main))))
+    (is (empty? (catalog/initial-paths manifest :contact)))
+    (is (some #{sheet} (catalog/paths manifest :contact)))))
