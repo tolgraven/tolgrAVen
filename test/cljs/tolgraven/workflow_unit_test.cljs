@@ -565,11 +565,16 @@
           (-> (load! {:query [:test/preload-ready], :timeout-ms 2000})
               (.then (fn [ready]
                        (is (true? ready))
-                       (is (true? (:ready (values)))
-                           "Mounted owner remains reactive after preload releases")
-                       (is (some #{[:test/preload-ready]} (tooling/live-query-vs)))
-                       (unmount!)
-                       (wait-for! #(not (some #{[:test/preload-ready]} (tooling/live-query-vs))))))
+                       ;; Source readiness precedes the mounted React commit.
+                       ;; Await that commit to test retained ownership reliably.
+                       (-> (wait-for! #(true? (:ready (values))))
+                           (.then (fn [_]
+                                    (is (true? (:ready (values)))
+                                        "Mounted owner remains reactive after preload releases")
+                                    (is (some #{[:test/preload-ready]} (tooling/live-query-vs)))
+                                    (unmount!)
+                                    (wait-for! #(not (some #{[:test/preload-ready]}
+                                                         (tooling/live-query-vs)))))))))
               (.then (fn [_] (is (not (some #{[:test/preload-ready]} (tooling/live-query-vs))))))
               (.catch #(is false (str %)))
               (.finally (fn [] (unmount!) (restore!) (done))))

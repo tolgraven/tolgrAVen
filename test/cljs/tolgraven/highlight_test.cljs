@@ -8,6 +8,7 @@
             [tolgraven.modules.highlight.module :as highlight]
             [tolgraven.modules.highlight.views :as highlight-view]
             [tolgraven.components.ui.code :as code]
+            [tolgraven.components.ui :as ui]
             [tolgraven.modules.blog.views :as blog]
             [tolgraven.render-context :as context]))
 
@@ -52,16 +53,17 @@
 
 (deftest explicit-nil-options-preserve-the-neutral-markdown-api
   (binding [context/*server?* true]
-    (let [html (server/render-to-string [code/<parse-markdown-components> "Plain text" nil])]
-      (is (string/includes? html "Plain text"))
-      (is (not (string/includes? html "component-error"))))))
+    (doseq [options [nil {:code-options nil}]]
+      (let [html (server/render-to-string [code/<parse-markdown-components> "Plain text" options])]
+        (is (string/includes? html "Plain text"))
+        (is (not (string/includes? html "component-error")))))))
 
 (deftest trusted-raw-pre-retains-attributes-and-whitespace-alongside-markdown-blocks
   (binding [context/*server?* true
             context/*modules* {:highlight highlight/spec}]
     (let [html (server/render-to-string
                  [code/<parse-markdown-components>
-                  "<pre id=\"raw-pre\" class=\"custom-pre\" title=\"Spacing\">first\n  second\n</pre>\n\n<pre id=\"raw-code\"><code>(inc 1)</code></pre>\n\n```clojure\n(inc 2)\n```"
+                  "<pre id=\"raw-pre\" class=\"custom-pre\" title=\"Spacing\">first\n  second\n</pre>\n\n<pre id=\"raw-code\" data-tolgraven-code-block=\"true\"><code>(inc 1)</code></pre>\n\n```clojure\n(inc 2)\n```"
                   {:allow-raw? true
                    :default-language "clojure"}])
           container (.createElement js/document "div")]
@@ -76,7 +78,7 @@
       (is (= 1 (.-length (.querySelectorAll container ".code-block"))))
       (is (.querySelector container ".code-block pre code.language-clojure span"))
       (is (zero? (.-length (.querySelectorAll container "pre pre, pre div"))))
-      (is (not (string/includes? html "data-tolgraven-code-block"))))))
+      (is (= "true" (.getAttribute (.querySelector container "#raw-code") "data-tolgraven-code-block"))))))
 
 (deftest code-presentation-options-apply-during-ssr-and-inline-stays-small
   (binding [context/*server?* true
@@ -109,3 +111,31 @@
   (is (not (m/validate code-block/args-schema ["code" :fold-lines 0])))
   (is (not (m/validate code-block/args-schema ["code" {:starting-line-number -1}])))
   (is (not (m/validate code-block/args-schema ["code" :line-numbers? "true"]))))
+
+(deftest linked-inline-code-retains-navigation-without-nested-controls
+  (binding [context/*server?* true
+            context/*modules* {:highlight highlight/spec}]
+    (let [html (server/render-to-string
+                 [code/<parse-markdown-components> "[`name`](https://example.com) and `standalone`"])
+          container (.createElement js/document "div")]
+      (set! (.-innerHTML container) html)
+      (is (= "https://example.com" (.getAttribute (.querySelector container "a") "href")))
+      (is (= "name" (.-textContent (.querySelector container "a code"))))
+      (is (nil? (.querySelector container "a button")))
+      (is (= 1 (.-length (.querySelectorAll container ".code-copy")))))))
+
+(deftest normal-markdown-wrapper-forwards-code-presentation-options
+  (binding [context/*server?* true
+            context/*modules* {:highlight highlight/spec
+                              :markdown {:view {:parse code/<parse-markdown-components>}}}]
+    (let [html (server/render-to-string
+                 [ui/<md->div> "```clojure\n(inc 1)\n(inc 2)\n```"
+                  {:code-options {:line-numbers? true
+                                  :wrap? true
+                                  :foldable? true
+                                  :folded? true
+                                  :fold-lines 1}}])
+          container (.createElement js/document "div")]
+      (set! (.-innerHTML container) html)
+      (is (.querySelector container ".code-block-wrapped.code-block-folded"))
+      (is (.querySelector container ".react-syntax-highlighter-line-number")))))

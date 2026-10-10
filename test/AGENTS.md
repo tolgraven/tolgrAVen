@@ -54,7 +54,12 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   including control/ancestor updates while suspended and the actual inner commit.
   Include untagged blocks, explicit C/Clojure tags and generic inline snippets;
   check Bruvbox tokens, phrasing-only copy controls and the blog-only fallback.
-  Code gestures must cancel selection, drag, pointer exit/reentry and touch scroll;
+  Code gestures must cancel selection, multi-click, drag, pointer exit/reentry and
+  touch scroll during the press. A completed tap must survive post-release motion
+  while selection/multi-click can still cancel its confirmation. Cover both normal
+  Reagent handlers and the temporary SSR bridge; verify bridge removal on commit.
+  Linked snippets must retain navigation without nested controls. Test raw-pre
+  provenance collisions and option forwarding through the normal Markdown wrapper;
   copying folded/numbered blocks must preserve the full original source.
   Verify temporary transition batching is released on unmount and early navigation.
   Formatter acquisition waits for

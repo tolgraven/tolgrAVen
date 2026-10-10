@@ -29,14 +29,46 @@
 (def profiler                  react/Profiler)
 (def use-state                 react/useState)
 (def use-ref                   react/useRef)
-(def use-memo                  react/useMemo)
 (def create-context            react/createContext)
 (def use-context               react/useContext)
 (defn context-provider [context] (.-Provider context))
-(def use-effect                react/useEffect)
-(def use-layout-effect         react/useLayoutEffect)
-(def use-callback              react/useCallback)
 (def use-reducer               react/useReducer)
+
+(defn- hook-dependencies [dependencies]
+  ;; Convert only the container: maps, refs and functions must keep their identity
+  ;; so React's Object.is dependency comparison retains its native semantics.
+  (if (sequential? dependencies) (to-array dependencies) dependencies))
+
+(defn- effect-setup [setup!]
+  (fn []
+    (let [cleanup! (setup!)]
+      ;; Clojure's implicit nil means no cleanup. Preserve other results so React
+      ;; still diagnoses accidental Promise/non-function returns.
+      (if (nil? cleanup!) js/undefined cleanup!))))
+
+(defn use-effect
+  "Owned React effect; accepts Clojure dependency sequences and implicit nil cleanup."
+  ([setup!] (react/useEffect (effect-setup setup!)))
+  ([setup! dependencies]
+   (react/useEffect (effect-setup setup!) (hook-dependencies dependencies))))
+
+(defn use-layout-effect
+  "Layout effect with the same Clojure dependency/cleanup contract as use-effect."
+  ([setup!] (react/useLayoutEffect (effect-setup setup!)))
+  ([setup! dependencies]
+   (react/useLayoutEffect (effect-setup setup!) (hook-dependencies dependencies))))
+
+(defn use-memo
+  "Native memoization with shallow conversion of Clojure dependency sequences."
+  ([calculate] (react/useMemo calculate))
+  ([calculate dependencies]
+   (react/useMemo calculate (hook-dependencies dependencies))))
+
+(defn use-callback
+  "Native callback identity/return values with Clojure dependency sequences."
+  ([callback] (react/useCallback callback))
+  ([callback dependencies]
+   (react/useCallback callback (hook-dependencies dependencies))))
 (defn component-argv
   "Recover Reagent's original Hiccup and metadata for function or class views."
   []

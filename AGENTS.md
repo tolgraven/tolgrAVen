@@ -141,6 +141,38 @@ Do not retain completed investigation diaries or historical test counts as curre
 ## Frontend Architecture: React, Reagent, Re-frame, and Shadow
 These are required principles for new code and changes to existing code. Follow the frameworks' lifecycle and data-flow models, and use the application's existing abstractions before introducing another mechanism.
 
+### Reagent and re-frame first
+
+- Treat ordinary Reagent Hiccup and re-frame as the default implementation, including
+  for performance work. Start with `defc`, declarative specifications, subscriptions,
+  registered events and effects; reuse their existing lifecycle capabilities.
+- Keep the flow inspectable: user intent -> event -> app-db update/effect -> result
+  event -> subscription -> Hiccup. A reviewer should be able to trace that flow
+  without reconstructing Promise chains, mirrored stores or hidden callbacks.
+- Express DOM events with Reagent attributes (`:on-click`, `:on-pointer-down`,
+  `:on-change`, etc.). Do not replace them with native listeners when Reagent can
+  handle the interaction. Use Clojure props through stable Reagent adapters for
+  third-party React components too.
+- Prefer scoped `<sub`/`>reset`/`>update` state and layer-2/3 derived subscriptions
+  over custom cursors, app-db watches or broad subscriptions with manual filtering.
+  Compose subscribed inputs so unrelated updates do not recompute the view's data.
+- Schedule delayed application events with `:dispatch-later` in event effects.
+  Use existing loading, visibility, appearance and presence declarations for
+  deferred work; do not build parallel timer/Promise orchestration in views.
+- Modern React features (hooks, memoization, Suspense, transitions and portals)
+  have a place when an existing abstraction cannot express the required lifecycle,
+  interoperability or measured performance improvement. Explain the concrete need
+  beside the adapter or in the PR; do not introduce them merely as an alternative
+  style. A React mechanism must still respect declarative markup and re-frame's
+  ownership of application state/effects.
+- Keep justified browser adapters small, guarded for SSR and owned by a lifecycle
+  with cleanup. A transient, high-frequency gesture may own refs and cancellable
+  local timers; its resulting application action still dispatches an event. This
+  exception does not justify putting network, persistence or business state in hooks.
+- Read `doc/reagent-re-frame.md` for examples and the decision checklist, and the
+  `src/frontend/tolgraven/AGENTS.md` for concrete adapter contracts. Review the entire diff against
+  these principles before merging, including tests and failure paths.
+
 ### Data sourcing and state
 - Read application state through re-frame subscriptions, using the existing subscription helpers and `tolgraven.react` shim. Change state through registered events and the existing update helpers. Do not dereference or mutate `re-frame.db/app-db` directly from views, routing code, or page preparation helpers.
 - Keep subscription computations and event-db handlers pure. Put HTTP, Supabase, Strapi, localStorage, timers, and other external side effects in registered effects or dedicated lifecycle adapters. Pass results back through events that update app-db; components then observe them through subscriptions.
@@ -168,6 +200,10 @@ These are required principles for new code and changes to existing code. Follow 
 - Prefer Clojure maps, vectors, destructuring and sequence functions within application code. Do not recursively convert Reagent props that are already Clojure values, or inspect React element internals to recover data.
 - Convert JSON/SDK payloads once at the boundary using standard `js->clj`/`clj->js` options. Native events, DOM measurements, React refs and SDK objects legitimately require property access; keep that access in the adapter that owns it.
 - Keep native Promises where a JavaScript API or shared asynchronous adapter requires them. Page/component code should declare dependencies and dispatch events rather than duplicate transport queries and Promise chains. Do not introduce an async library or thin wrappers solely to hide `js/Promise` syntax.
+- `tolgraven.react/use-effect` and `use-layout-effect` accept implicit nil for no
+  cleanup. Hook dependency lists accept Clojure vectors/sequences; conversion is
+  shallow so dependency identities remain intact. Memo/callback return values stay
+  unchanged. Prefer these wrappers over raw React hook imports.
 - Keep adapted React component identities stable across renders. Use Clojure props with Reagent adapters; reserve `#js` containers for APIs that actually require JavaScript values.
 
 ### Toolchain and verification

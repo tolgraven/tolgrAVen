@@ -21,6 +21,7 @@
    [:style {:optional true} [:or :map [:fn object?]]]
    [:basic? {:optional true} :boolean]
    [:inline? {:optional true} :boolean]
+   [:copy? {:optional true} :boolean]
    [:wrap? {:optional true} :boolean]
    [:line-numbers? {:optional true} :boolean]
    [:starting-line-number {:optional true} [:int {:min 1}]]
@@ -43,7 +44,7 @@
     (apply hash-map options)))
 
 (defc <formatted> [component args committed!]
-  (rf/use-layout-effect (fn [] (committed!) js/undefined) #js [])
+  (rf/use-layout-effect (fn [] (committed!)) [])
   (into [component] args))
 
 (defn- make-formatter [committed!]
@@ -63,9 +64,12 @@
                                               (fn [{:keys [args]}]
                                                 [<formatted> component args committed!]))}))))))}))
 
-(defc <formatter> [code options]
+(defc <formatter> [code options on-ready!]
   (let [[defer? _] (rf/use-state #(and (not context/*server?*) (restore/initial-hydration?)))
-        committed! (hydration/use-deferred! defer?)
+        release-hydration! (hydration/use-deferred! defer?)
+        committed! (rf/use-callback
+                     (fn [] (release-hydration!) (on-ready!))
+                     [release-hydration! on-ready!])
         [formatter _] (rf/use-state #(make-formatter committed!))
         args (into [code] (mapcat identity options))
         fallback (if (:inline? options) [:code.code-highlight code] [:pre [:code code]])]
@@ -73,8 +77,8 @@
       (fn []
         (if defer?
           (resources/after-page! (:release! formatter))
-          (do ((:release! formatter)) js/undefined)))
-      #js [])
+          ((:release! formatter))))
+      [])
     ;; Reagent defc memoizes this boundary independently of outer controls.
     [rf/suspense {:fallback (rf/as-element fallback)}
      (if context/*server?*
@@ -105,7 +109,7 @@
         (fn []
           (js/clearTimeout (:timer (.-current *owner)))
           (set! (.-current *owner) nil)))
-      #js [code])
+      [code])
     [label
      (rf/use-callback
        (fn []
@@ -125,7 +129,7 @@
                       (set-label! result)
                       (set! (.-current *owner)
                         (assoc current :timer (js/setTimeout #(set-label! "Copy") 1800))))))]))))
-       #js [code])]))
+       [code])]))
 
 (defn- inside? [element x y]
   (let [bounds (.getBoundingClientRect element)]
@@ -142,74 +146,104 @@
 (defn- control-target? [target]
   (some-> target (.closest "button, a, input, textarea, select, [contenteditable=true]")))
 
-(defn- use-copy-gesture [copy!]
-  (let [*element (rf/use-ref nil)]
+(defn- use-copy-gesture [copy! ssr-pending?]
+  (let [*element (rf/use-ref nil)
+        *press (rf/use-ref nil)
+        cancel! (rf/use-callback
+                  (fn []
+                    (js/clearTimeout (:timer (.-current *press)))
+                    (set! (.-current *press) nil))
+                  [])
+        handlers
+        (rf/use-memo
+          (fn []
+            {:on-pointer-down
+             (fn [event]
+               (cancel!)
+               (when (and (.contains (.-current *element) (.-target event))
+                          (.-isPrimary event)
+                          (zero? (.-button event))
+                          (not (control-target? (.-target event))))
+                 (set! (.-current *press) {:id (.-pointerId event)
+                                          :x (.-clientX event)
+                                          :y (.-clientY event)})))
+             :on-pointer-move
+             (fn [event]
+               (when-let [{:keys [id x y released?]} (.-current *press)]
+                 (when (and (not released?)
+                            (= id (.-pointerId event))
+                            ;; Pointer coordinates use the browser's CSS-pixel
+                            ;; measurement API; this is not a style dimension.
+                            (or (> (js/Math.hypot (- x (.-clientX event))
+                                                 (- y (.-clientY event))) 4)
+                                (not (inside? (.-current *element)
+                                              (.-clientX event) (.-clientY event)))))
+                   (cancel!))))
+             :on-pointer-leave
+             (fn [event]
+               (when-let [{:keys [released?]} (.-current *press)]
+                 (let [target (.-relatedTarget event)]
+                   (when (and (not released?)
+                              (not (and (some-> target .-nodeType)
+                                        (.contains (.-current *element) target))))
+                     (cancel!)))))
+             :on-pointer-cancel (fn [_] (cancel!))
+             :on-double-click (fn [_] (cancel!))
+             :on-select (fn [_] (when (selected? (.-current *element)) (cancel!)))
+             :on-pointer-up
+             (fn [event]
+               (when-let [{:keys [id x y released?] :as press} (.-current *press)]
+                 (when (and (= id (.-pointerId event)) (not released?))
+                   (if (and (not (control-target? (.-target event)))
+                            (<= (js/Math.hypot (- x (.-clientX event))
+                                              (- y (.-clientY event))) 4)
+                            (inside? (.-current *element) (.-clientX event) (.-clientY event))
+                            (not (selected? (.-current *element))))
+                     ;; A local, cancellable gesture window distinguishes a tap
+                     ;; from selection. The actual clipboard write is an rf effect.
+                     (set! (.-current *press)
+                       (assoc press :released? true
+                              :timer (js/setTimeout
+                                       (fn []
+                                         (cancel!)
+                                         (when-not (selected? (.-current *element)) (copy!)))
+                                       500)))
+                     (cancel!)))))})
+          [copy! cancel!])]
+    (rf/use-effect (fn [] cancel!) [copy! cancel!])
     (rf/use-effect
       (fn []
-        (when-let [element (.-current *element)]
-          ;; React holds events aimed at an unhydrated Suspense child. Capture
-          ;; native pointer intent above its root so SSR text can be copied
-          ;; without releasing the formatter gate. React still owns all markup.
-          (let [token (gensym "code-pointer")
-                *press (atom nil)
-                gesture-events ["pointermove" "pointerout" "pointerup" "pointercancel"]
-                cancel! (fn []
-                          (reset! *press nil)
-                          (doseq [event gesture-events] (listener/remove! [token event])))
-                register! (fn [event handler]
-                            (listener/register! {:id [token event]
-                                                 :owner :code-block
-                                                 :target js/document
-                                                 :event event
-                                                 :handler handler
-                                                 :capture? true}))
-                handlers
-                {"pointermove"
-                 (fn [event]
-                   (when-let [{:keys [id x y]} @*press]
-                     (when (and (= id (.-pointerId event))
-                                ;; CSS-pixel tolerance is pointer measurement,
-                                ;; not styling. Any exit/drag cancels on reentry.
-                                (or (> (js/Math.hypot (- x (.-clientX event))
-                                                     (- y (.-clientY event))) 4)
-                                    (not (inside? element (.-clientX event) (.-clientY event)))))
-                       (cancel!))))
-                 "pointerout"
-                 (fn [event]
-                   (when (and (= (:id @*press) (.-pointerId event))
-                              (.contains element (.-target event))
-                              (not (.contains element (.-relatedTarget event))))
-                     (cancel!)))
-                 "pointercancel" (fn [_] (cancel!))
-                 "pointerup"
-                 (fn [event]
-                   (when-let [{:keys [id x y]} @*press]
-                     (when (= id (.-pointerId event))
-                       (cancel!)
-                       (when (and (not (control-target? (.-target event)))
-                                  (<= (js/Math.hypot (- x (.-clientX event))
-                                                    (- y (.-clientY event))) 4)
-                                  (inside? element (.-clientX event) (.-clientY event))
-                                  (not (selected? element)))
-                         (copy!)))))}]
-            (register! "pointerdown"
-              (fn [event]
-                (when (or @*press (.contains element (.-target event)))
-                  (cancel!)
-                  (when (and (.contains element (.-target event))
-                             (.-isPrimary event)
-                             (zero? (.-button event))
-                             (not (control-target? (.-target event))))
-                    (reset! *press {:id (.-pointerId event)
-                                   :x (.-clientX event)
-                                   :y (.-clientY event)})
-                    ;; Movement/up listeners exist only during this press.
-                    (doseq [[event handler] handlers] (register! event handler))))))
+        (when (and copy! ssr-pending?)
+          ;; React holds events targeting an unhydrated Suspense child. Only
+          ;; during that initial interval, bridge native intent to the same
+          ;; Reagent handlers. Stop replay so a handled tap cannot copy twice.
+          (let [token (gensym "ssr-code-pointer")
+                events {:on-pointer-down "pointerdown"
+                        :on-pointer-move "pointermove"
+                        :on-pointer-leave "pointerout"
+                        :on-pointer-up "pointerup"
+                        :on-pointer-cancel "pointercancel"
+                        :on-double-click "dblclick"
+                        :on-select "selectionchange"}]
+            (doseq [[attribute event] events]
+              (listener/register!
+                {:id [token attribute]
+                 :owner :code-block
+                 :target js/document
+                 :event event
+                 :capture? true
+                 :handler (fn [event]
+                            (let [element (.-current *element)
+                                  inside? (.contains element (.-target event))]
+                              (when (or inside? (.-current *press))
+                                (when (and inside? (not (control-target? (.-target event))))
+                                  (.stopPropagation event))
+                                ((handlers attribute) event))))}))
             (fn []
-              (cancel!)
-              (listener/remove! [token "pointerdown"])))))
-      #js [copy!])
-    *element))
+              (doseq [attribute (keys events)] (listener/remove! [token attribute]))))))
+      [copy! ssr-pending? handlers])
+    (cond-> {:ref *element}
+      copy! (merge handlers))))
 
 (defc <code-block>
   {:args-schema args-schema}
@@ -218,11 +252,14 @@
         [wrap? set-wrap!] (rf/use-state (boolean (:wrap? options)))
         [folded? set-folded!] (rf/use-state (boolean (:folded? options)))
         [copy-label copy!] (use-copy-feedback code)
-        *element (use-copy-gesture copy!)
+        [ssr-pending? set-ssr-pending!]
+        (rf/use-state #(and (not context/*server?*) (restore/initial-hydration?)))
+        on-ready! (rf/use-callback #(set-ssr-pending! false) [])
+        gesture-props (use-copy-gesture (when (not= false (:copy? options)) copy!) ssr-pending?)
         inline? (:inline? options)
         line-count (rf/use-memo
                      #(count (string/split code #"\n" -1))
-                     #js [code])
+                     [code])
         fold-lines (get options :fold-lines 8)
         foldable? (and (:foldable? options) (> line-count fold-lines))
         copy-button [:button.code-copy
@@ -240,18 +277,18 @@
         feedback [:span.code-copy-status {:role "status" :aria-live "polite"}
                   (when (not= copy-label "Copy") copy-label)]]
     (if inline?
-      [:span.code-snippet {:ref *element}
-       [<formatter> code options]
-       copy-button
+      [:span.code-snippet gesture-props
+       [<formatter> code options on-ready!]
+       (when (not= false (:copy? options)) copy-button)
        feedback]
       [:div.code-block
-       {:ref *element
+       (assoc gesture-props
         :class (string/join " " (cond-> []
                                    wrap? (conj "code-block-wrapped")
                                    (and foldable? folded?) (conj "code-block-folded")))
-        :style {"--code-fold-lines" fold-lines}}
+        :style {"--code-fold-lines" fold-lines})
        [:div.code-block-controls
-        copy-button
+        (when (not= false (:copy? options)) copy-button)
         [:button {:type "button"
                   :aria-pressed wrap?
                   :on-click (fn [_] (set-wrap! (not wrap?)))}
@@ -261,5 +298,5 @@
                     :aria-expanded (not folded?)
                     :on-click (fn [_] (set-folded! (not folded?)))}
            (if folded? (str "Show all " line-count " lines") "Fold")])]
-       [:div.code-block-content [<formatter> code options]]
+       [:div.code-block-content [<formatter> code options on-ready!]]
        feedback])))

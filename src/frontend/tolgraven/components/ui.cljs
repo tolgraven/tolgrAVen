@@ -54,7 +54,8 @@
     {:allow-images? (= :trusted (:trust options))
      :allow-raw? (= :trusted (:trust options))
      :default-language (:default-language options)
-     :auto-languages (:auto-languages options)}]])
+     :auto-languages (:auto-languages options)
+     :code-options (:code-options options)}]])
 
 (m/defc <observe-sticky> "Check if sticky element has stuck."
   [event]

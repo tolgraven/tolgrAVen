@@ -38,6 +38,8 @@
                 (await! (support/wait-for! #(seq @*calls)))
                 (await! (support/settle!))
                 (is (= [:highlight] @*calls))
+                (is (empty? (filter #(= :code-block (:owner %)) (vals @listener/*bindings)))
+                    "SPA code uses Reagent handlers without native document bindings")
                 (let [pre (.querySelector element "pre")
                       buttons (.querySelectorAll element "button")]
                   (.click (aget buttons 0))
@@ -145,8 +147,19 @@
                     (fn [] #js {:left 0 :right 200 :top 0 :bottom 200}))
                   (pointer! token "pointerdown" 10 10)
                   (pointer! token "pointerup" 10 10)
+                  ;; A completed tap stays valid when the released pointer moves
+                  ;; away during the multi-click confirmation window.
+                  (pointer! token "pointermove" 30 10)
+                  (pointer! box "pointerout" 30 10)
                   (await! (support/wait-for! #(= 1 (count @*copies))))
                   (is (= [text] @*copies) "Copies full source, excluding line numbers and folded presentation")
+                  (pointer! token "pointerdown" 10 10)
+                  (pointer! token "pointerup" 10 10)
+                  (pointer! token "pointerdown" 10 10)
+                  (pointer! token "pointerup" 10 10)
+                  (.dispatchEvent token (js/MouseEvent. "dblclick" #js {:bubbles true :detail 2}))
+                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 550))))
+                  (is (= 1 (count @*copies)) "A double-click selection never copies either click")
                   (doseq [[kind pointer-type] [[:drag "mouse"] [:leave "mouse"] [:cancel "mouse"] [:drag "touch"] [:leave "touch"]]]
                     (pointer! token "pointerdown" 10 10 pointer-type)
                     (case kind
@@ -156,6 +169,7 @@
                       :cancel (pointer! token "pointercancel" 10 10 pointer-type))
                     (pointer! token "pointerup" 10 10 pointer-type))
                   (await! (support/settle!))
+                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 550))))
                   (is (= 1 (count @*copies)) "Cancelled gestures remain cancelled after reentry")
                   (let [selection (.getSelection js/window)
                         range (.createRange js/document)]
@@ -224,10 +238,24 @@
                         x (+ (.-left bounds) 2)
                         y (+ (.-top bounds) 2)]
                     (pointer! token "pointerdown" x y)
-                    (pointer! token "pointerup" x y))
+                    (pointer! token "pointerup" x y)
+                    (pointer! token "pointermove" (+ x 20) y)
+                    (pointer! box "pointerout" (+ x 20) y))
                   (await! (support/wait-for! #(seq @*copies)))
                   (is (= ["(inc 1)"] @*copies))
+                  (.click (.querySelector element ".code-copy"))
+                  (await! (support/wait-for! #(= 2 (count @*copies))))
+                  (is (= ["(inc 1)" "(inc 1)"] @*copies)
+                      "The sibling Copy button hydrates before the formatter")
                   (is (empty? @*calls) "Copying does not acquire the deferred formatter")
+                  (is (identical? token (.querySelector element "code span")))
+                  (@*release)
+                  (await! (support/wait-for!
+                            #(and (seq @*calls)
+                                  (empty? (filter (fn [binding] (= :code-block (:owner binding)))
+                                                  (vals @listener/*bindings))))))
+                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 550))))
+                  (is (= ["(inc 1)" "(inc 1)"] @*copies) "Hydration never replays an already handled copy gesture")
                   (is (identical? token (.querySelector element "code span")))
                   (finally (dom/unmount root) (.remove element)))
                 (is (empty? (filter #(= :code-block (:owner %)) (vals @listener/*bindings)))
