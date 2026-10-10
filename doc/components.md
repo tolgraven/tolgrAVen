@@ -732,11 +732,13 @@ without replacing highlighted nodes. `:folded?` chooses its initial state and
 source, including hidden lines and excluding numbers/controls. Inline snippets
 ignore block-only controls and show a compact copy indicator at the end.
 
-A primary-pointer tap anywhere on non-interactive code copies it. Selection,
+A primary-pointer tap anywhere on non-interactive code copies it after a brief
+multi-click window. Selection, double-clicking,
 dragging, leaving the container (even when returning), cancellation and touch
 scrolling cancel that gesture. The explicit Copy button also works from the
 keyboard; clipboard feedback resets automatically and is announced through a
-live status. Clipboard callbacks and feedback timers are owned by the component.
+live status. Inline code inside links keeps navigation and omits its copy button.
+Clipboard callbacks and feedback timers are owned by the component.
 Controls hydrate before the formatter's after-page gate and preserve pending SSR
 nodes. React holds events aimed at suspended children, so the owned native pointer
 adapter captures intent above its event root through the shared listener registry;

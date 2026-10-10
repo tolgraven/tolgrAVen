@@ -75,9 +75,12 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   its Clojure fallback and detection set; untagged inline snippets use Bash unless
   their owner specifies `:inline-language`. Explicit tags take precedence.
   Copy gestures and optional folding belong to the outer component; cancel copying
-  on selection, drag, pointer exit/cancellation and interactive controls. A ref/effect
+  on selection, multi-click, drag, pointer exit/cancellation and interactive controls.
+  Linked inline code suppresses its copy control instead of nesting a button in a
+  link. A ref/effect
   adapter uses the shared listener registry above React's event root while SSR
-  formatter children are suspended; movement listeners exist only during a press.
+  formatter children are suspended; gesture listeners last through the press and
+  its short multi-click confirmation window.
   Copy the source, excluding line numbers/buttons. Markdown passes `:code-options` through
   the shared component contract; line numbers are opt-in and rendered by SSR too.
   Bruvbox palette/token ownership lives in `modules/highlight/theme.cljs`.
@@ -198,7 +201,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   policy permits the parent origin. Following a preview expands it before departure;
   visited URLs and transient-surface restoration keep their existing owner policy.
 
-- Markdown marks generated code blocks before parsing trusted raw HTML. Only
+- Markdown marks generated code with a private pass-through HAST node type before
+  parsing trusted raw HTML; HTML attributes cannot forge that provenance. Only
   generated pre wrappers defer to the code component; raw pre retains its own
   attributes and whitespace, without nested block wrappers.
 

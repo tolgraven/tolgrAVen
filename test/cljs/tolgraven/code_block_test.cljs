@@ -147,6 +147,13 @@
                   (pointer! token "pointerup" 10 10)
                   (await! (support/wait-for! #(= 1 (count @*copies))))
                   (is (= [text] @*copies) "Copies full source, excluding line numbers and folded presentation")
+                  (pointer! token "pointerdown" 10 10)
+                  (pointer! token "pointerup" 10 10)
+                  (pointer! token "pointerdown" 10 10)
+                  (pointer! token "pointerup" 10 10)
+                  (.dispatchEvent token (js/MouseEvent. "dblclick" #js {:bubbles true :detail 2}))
+                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 550))))
+                  (is (= 1 (count @*copies)) "A double-click selection never copies either click")
                   (doseq [[kind pointer-type] [[:drag "mouse"] [:leave "mouse"] [:cancel "mouse"] [:drag "touch"] [:leave "touch"]]]
                     (pointer! token "pointerdown" 10 10 pointer-type)
                     (case kind
@@ -156,6 +163,7 @@
                       :cancel (pointer! token "pointercancel" 10 10 pointer-type))
                     (pointer! token "pointerup" 10 10 pointer-type))
                   (await! (support/settle!))
+                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 550))))
                   (is (= 1 (count @*copies)) "Cancelled gestures remain cancelled after reentry")
                   (let [selection (.getSelection js/window)
                         range (.createRange js/document)]
