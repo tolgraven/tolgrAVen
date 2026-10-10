@@ -112,3 +112,28 @@
     (is (some #{markdown} (catalog/initial-paths manifest :blog)))
     (is (some #{popup} (catalog/paths manifest :blog)))
     (is (some #{popup} (catalog/paths manifest :link-preview)))))
+
+(deftest document-style-manifest-is-parsed-once-and-refreshes-on-replacement
+  (let [existing (.getElementById js/document "module-styles")
+        original-id (when existing (.-id existing))
+        element (.createElement js/document "script")
+        parse js/JSON.parse
+        *parses (atom 0)]
+    (when existing (set! (.-id existing) "test-preserved-module-styles"))
+    (set! (.-id element) "module-styles")
+    (set! (.-type element) "application/json")
+    (set! (.-textContent element) "{\"fixture\":[\"/first.css\"]}")
+    (.appendChild (.-head js/document) element)
+    (set! js/JSON.parse (fn [text] (swap! *parses inc) (parse text)))
+    (try
+      (let [first (styles/manifest)]
+        (is (= {:fixture ["/first.css"]} first))
+        (is (identical? first (styles/manifest)))
+        (is (= 1 @*parses))
+        (set! (.-textContent element) "{\"fixture\":[\"/second.css\"]}")
+        (is (= {:fixture ["/second.css"]} (styles/manifest)))
+        (is (= 2 @*parses)))
+      (finally
+        (set! js/JSON.parse parse)
+        (.remove element)
+        (when existing (set! (.-id existing) original-id))))))

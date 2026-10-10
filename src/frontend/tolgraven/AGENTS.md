@@ -64,7 +64,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   mounted boundaries own acquisition and preserve static SSR until activation.
 - Module `:styles` metadata is available before code acquisition. The shared loader
   starts CSS and JS together and waits for both before readiness; React owns
-  stylesheet insertion. Initial inlined route styles already satisfy readiness
+  stylesheet insertion. Parse the document style manifest once per element/text
+  revision and retain readiness for installed React resources. Initial inlined route styles already satisfy readiness
   and must not trigger duplicate external requests. Popup-only `:ssr-styles :deferred`
   sheets stay out of the SSR head but still start before Shadow acquisition. Keep
   feature CSS in `resources/scss/modules` and preserve
