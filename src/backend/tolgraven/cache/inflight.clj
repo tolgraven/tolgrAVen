@@ -30,3 +30,13 @@
             (let [entry {:value (promise), :expires-at (+ now ttl-ms)}]
               (reset! *cache (assoc entries cache-key entry))
               [true entry])))))))
+
+(defn shorten!
+  "Shorten only this acquisition's expiry, serialized with entry pruning."
+  [*cache cache-key entry expires-at]
+  (locking *cache
+    (swap! *cache
+      (fn [entries]
+        (if (identical? (:value entry) (get-in entries [cache-key :value]))
+          (update-in entries [cache-key :expires-at] min expires-at)
+          entries)))))

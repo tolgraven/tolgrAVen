@@ -262,11 +262,7 @@
                           (finally (.release slots)))
                      (unavailable url))]
         (when (= "unavailable" (:status result))
-          (swap! *cache
-                 (fn [cache]
-                   (if (identical? (:value entry) (get-in cache [url :value]))
-                     (assoc-in cache [url :expires-at] (+ now 60000))
-                     cache))))
+          (inflight/shorten! *cache url entry (+ now 60000)))
         (deliver (:value entry) result)))
     (if entry (deref (:value entry) 12000 (unavailable url)) (unavailable url))))
 

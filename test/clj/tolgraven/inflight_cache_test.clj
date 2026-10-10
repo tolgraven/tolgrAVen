@@ -25,3 +25,18 @@
     (let [[owner? next-entry] (inflight/acquire! cache :first 100 10 1)]
       (is owner?)
       (is (not (identical? (:value first-entry) (:value next-entry)))))))
+
+(deftest failure-expiry-cannot-lengthen-or-recreate-a-replaced-entry
+  (let [cache (atom {})
+        [_ entry] (inflight/acquire! cache :url 10 100 1)]
+    (inflight/shorten! cache :url entry 40)
+    (is (= 40 (get-in @cache [:url :expires-at])))
+    (inflight/shorten! cache :url entry 90)
+    (is (= 40 (get-in @cache [:url :expires-at])))
+    (deliver (:value entry) :done)
+    (let [[_ replacement] (inflight/acquire! cache :url 100 100 1)]
+      (inflight/shorten! cache :url entry 110)
+      (is (= replacement (get @cache :url))))
+    (reset! cache {})
+    (inflight/shorten! cache :url entry 110)
+    (is (empty? @cache))))

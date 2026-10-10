@@ -60,10 +60,7 @@
     (when owner?
       (let [response (acquire! url)]
         (when-not (= 200 (:status response))
-          (swap! *cache (fn [cache]
-                         (if (identical? (:value entry) (get-in cache [url :value]))
-                           (assoc-in cache [url :expires-at]
-                                     (+ (System/currentTimeMillis) failure-ttl-ms))
-                           cache))))
+          (inflight/shorten! *cache url entry
+                             (+ (System/currentTimeMillis) failure-ttl-ms)))
         (deliver (:value entry) response)))
     (if entry (deref (:value entry) 8500 (unavailable)) (unavailable))))
