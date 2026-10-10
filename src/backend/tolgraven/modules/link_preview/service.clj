@@ -1,6 +1,7 @@
 (ns tolgraven.modules.link-preview.service
   "Bounded public HTML acquisition and readable extraction. No browser parser."
-  (:require [clj-http.client :as http]
+  (:require [tolgraven.cache.inflight :as inflight]
+            [clj-http.client :as http]
             [clj-http.conn-mgr :as connections]
             [clojure.string :as string])
   (:import [java.io ByteArrayOutputStream InputStream]
@@ -252,18 +253,7 @@
   (checked-uri url)
   (let [now (System/currentTimeMillis)
         [owner? entry]
-        (locking *cache
-          (if-let [entry (let [entry (get @*cache url)]
-                          (when (> (:expires-at entry 0) now) entry))]
-            [false entry]
-            (let [entry {:value (promise) :expires-at (+ now cache-ttl-ms)}]
-              (swap! *cache #(->> %
-                                 (filter (fn [[_ v]] (> (:expires-at v) now)))
-                                 (sort-by (comp :expires-at val))
-                                 (take-last 127)
-                                 (into {})
-                                 ((fn [entries] (assoc entries url entry)))))
-              [true entry])))]
+        (inflight/acquire! *cache url now cache-ttl-ms 128)]
     (when owner?
       (let [acquired? (.tryAcquire slots)
             result (if acquired?
@@ -278,7 +268,7 @@
                      (assoc-in cache [url :expires-at] (+ now 60000))
                      cache))))
         (deliver (:value entry) result)))
-    (deref (:value entry) 12000 (unavailable url))))
+    (if entry (deref (:value entry) 12000 (unavailable url)) (unavailable url))))
 
 (defn response! [url]
   (try

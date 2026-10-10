@@ -1,5 +1,7 @@
 (ns tolgraven.oembed
   (:require [clj-http.client :as http]
+            [clojure.string :as string]
+            [tolgraven.cache.inflight :as inflight]
             [tolgraven.components.oembed.contract :as contract])
   (:import [org.jsoup Jsoup]
            [java.util.concurrent Semaphore]))
@@ -14,7 +16,8 @@
         source (some-> (.selectFirst document "iframe[src]") (.attr "src") contract/player-url)]
     (cond-> (assoc (select-keys response [:html :title :height])
                    :html html
-                   :title (if (string? (:title response)) (:title response) "Embedded player")
+                   :title (if (and (string? (:title response)) (not (string/blank? (:title response))))
+                            (:title response) "Embedded player")
                    :height (if (and (number? (:height response)) (pos? (:height response)))
                              (:height response) 166))
       source (assoc :player-src source))))
@@ -53,19 +56,7 @@
   [url]
   (let [now (System/currentTimeMillis)
         [owner? entry]
-        (locking *cache
-          (if-let [entry (let [entry (get @*cache url)]
-                          (when (> (:expires-at entry 0) now) entry))]
-            [false entry]
-            (let [entry {:value (promise)
-                         :expires-at (+ now cache-ttl-ms)}]
-              (swap! *cache #(->> %
-                                 (filter (fn [[_ value]] (> (:expires-at value) now)))
-                                 (sort-by (comp :expires-at val))
-                                 (take-last (dec cache-limit))
-                                 (into {})
-                                 ((fn [entries] (assoc entries url entry)))))
-              [true entry])))]
+        (inflight/acquire! *cache url now cache-ttl-ms cache-limit)]
     (when owner?
       (let [response (acquire! url)]
         (when-not (= 200 (:status response))
@@ -75,4 +66,4 @@
                                      (+ (System/currentTimeMillis) failure-ttl-ms))
                            cache))))
         (deliver (:value entry) response)))
-    (deref (:value entry) 8500 (unavailable))))
+    (if entry (deref (:value entry) 8500 (unavailable)) (unavailable))))

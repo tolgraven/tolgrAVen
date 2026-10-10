@@ -377,7 +377,7 @@
 (defn article-dependency [url]
   {:source :url
    :url (str "/api/link-preview?url=" (js/encodeURIComponent url))
-   :ttl-ms 3600000})
+   :ttl-ms 60000})
 
 (defn frame-allowed? [result parent-url]
   (case (:frame-policy result)
