@@ -48,7 +48,9 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
   into both runtimes at compile time, including literal `:ssr-styles` policy.
   Initial head paths exclude deferred owners; runtime paths retain every dependency.
   Declaration macros track the module entry
-  resources in Shadow so metadata changes invalidate cached inventories. JVM
+  resources and icon-owning component sources in Shadow so metadata changes
+  invalidate cached inventories. `build/icons.cljc` reads literal `:icons` data
+  without evaluating browser code; common icons satisfy feature dependencies. JVM
   expansion stays independent of the compiler. Packaged servers do not read a source tree.
   Fingerprint each declared stylesheet once; shared dependencies retain one URL
   across module manifests. Reject colliding output names rather than merging them.

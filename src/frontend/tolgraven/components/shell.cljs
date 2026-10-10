@@ -79,7 +79,8 @@
       ] ]))
 
 
-(defc <header> {:features [:error-boundary]}
+(defc <header> {:features [:error-boundary]
+                 :icons ["solid/cog" "solid/pen-fancy"]}
   [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   (let [menu-open? @(rf/subscribe [:state [:menu]])
         initial-menu (rf/use-ref menu-open?)
@@ -228,7 +229,9 @@
      [<post-footer> @(rf/subscribe [:content [:post-footer]])]]))
 
 
-(defc <to-top> "A silly arrow, and twice lol. why." [icon]
+(defc <to-top> "A silly arrow, and twice lol. why."
+  {:icons ["solid/angle-double-up"]}
+  [icon]
  (let [icon (or icon "angle-double-up")
        i [:i {:class (str "fas fa-" icon)}]]
     [:a {:id "to-top"

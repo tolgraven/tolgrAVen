@@ -68,7 +68,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   and must not trigger duplicate external requests. Popup-only `:ssr-styles :deferred`
   sheets stay out of the SSR head but still start before Shadow acquisition. Keep
   feature CSS in `resources/scss/modules` and preserve
-  ordinary selector specificity. See `doc/styles.md`.
+  ordinary selector specificity. Literal `:icons ["brands/name" "solid/name"]`
+  on a component/module exports font glyphs as SVG masks in the owner’s CSS.
+  Feature ownership comes from its module folder or explicit `:module`; shared
+  components use the shell. Regenerate assets with `bb fonts:icons`. See `doc/styles.md`.
 - A module `:install` hook may restore browser-local caches after code acquisition.
   The loader shares/awaits it before publishing code readiness; ordinary `:init`
   still owns data activation. SSR adapters must not install disk caches or watches.

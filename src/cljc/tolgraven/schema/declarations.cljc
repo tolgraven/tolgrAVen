@@ -40,6 +40,8 @@
     [:props {:optional true} :map]
     [:view {:optional true} :any]
     [:form {:optional true} [:vector {:min 1} :any]]]])
+(def icons [:vector [:re "^(?:brands|solid)/[a-z0-9-]+$"]])
+
 (def component
   [:map
    [:schema {:optional true} :any]
@@ -50,6 +52,7 @@
    [:page {:optional true} :boolean]
    [:container {:optional true} container]
    [:profile {:optional true} :boolean]
+   [:icons {:optional true} icons]
    [:features {:optional true} [:sequential feature]]
    [:depends {:optional true} [:or dependencies fn?]]
    [:loading-prefab {:optional true} :keyword]
@@ -65,6 +68,7 @@
    [:name {:optional true} :keyword]
    [:module {:optional true} [:maybe :keyword]]
    [:page {:optional true} :keyword]
+   [:icons {:optional true} icons]
    [:ssr {:optional true} :boolean]
    [:streaming {:optional true} :boolean]
    [:depends {:optional true} dependencies]
@@ -86,6 +90,7 @@
    [:init {:optional true} fn?]
    [:install {:optional true} fn?]
    [:styles {:optional true} c/strings]
+   [:icons {:optional true} icons]
    [:ssr-styles {:optional true} [:enum :initial :deferred]]
    [:depends {:optional true} dependencies]
    [:preload-modules {:optional true} [:sequential :keyword]]

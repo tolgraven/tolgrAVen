@@ -96,6 +96,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   route styles in the initial head, inlining small feature sheets within a bounded
   budget. Popup-only modules may declare `:ssr-styles :deferred`; Optimus
   fingerprints each bundle separately.
+  Literal component/module `:icons` export SVG masks into the same style inventory;
+  `bb fonts:icons` regenerates committed glyph assets without browser font swaps.
   See `doc/styles.md` for source ownership and loading behavior.
 - `bb images:responsive`: rebuild the opt-in image catalog's sized AVIF/WebP assets.
 - `bb videos:responsive`: rebuild the opt-in video catalog's mobile renditions.
