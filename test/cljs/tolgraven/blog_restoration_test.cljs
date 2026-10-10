@@ -22,6 +22,7 @@
             [tolgraven.modules.user.views :as user]
             [tolgraven.modules.user.module :as user-module]
             [tolgraven.loader :as loader]
+            [tolgraven.loader.style-catalog :as style-catalog]
             [shadow.lazy :as lazy]
             [tolgraven.modules.user.events]
             [tolgraven.events]
@@ -225,7 +226,12 @@
   (async done
     (-> (go-promise
           (let [element (.createElement js/document "div")
-                stylesheet (.createElement js/document "link")
+                stylesheets (mapv (fn [path] [path (.createElement js/document "link")])
+                                  (into ["/css/tolgraven/main.min.css"]
+                                        (style-catalog/paths
+                                          (into {} (map (fn [[id spec]] [id (:paths spec)]))
+                                                style-catalog/modules)
+                                          :blog)))
                 before @rfdb/app-db
                 fallback "/img/tolgrav-square.png"
                 converted-stem (str "/storage/v1/object/public/avatars/test/"
@@ -234,13 +240,18 @@
             (.appendChild (.-body js/document) element)
             (try
               (swap! rfdb/app-db assoc-in [:content :common :user-avatar-fallback] fallback)
-              (await! (js/Promise.
-                        (fn [resolve reject]
-                          (set! (.-rel stylesheet) "stylesheet")
-                          (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
-                          (set! (.-onload stylesheet) #(resolve nil))
-                          (set! (.-onerror stylesheet) #(reject (js/Error. "Avatar CSS unavailable")))
-                          (.appendChild (.-head js/document) stylesheet))))
+              (await! (js/Promise.all
+                        (into-array
+                          (map (fn [[path stylesheet]]
+                                 (js/Promise.
+                                   (fn [resolve reject]
+                                     (set! (.-rel stylesheet) "stylesheet")
+                                     (set! (.-href stylesheet) path)
+                                     (set! (.-onload stylesheet) #(resolve nil))
+                                     (set! (.-onerror stylesheet)
+                                           #(reject (js/Error. "Avatar CSS unavailable")))
+                                     (.appendChild (.-head js/document) stylesheet))))
+                               stylesheets))))
               (doseq [[avatar selected expected]
                       [["/missing-avatar.svg" "/missing-avatar.svg" fallback]
                        ["/missing-avatar.png" "/missing-avatar.png" fallback]
@@ -270,7 +281,8 @@
                         (is (= 1 (.-length (.querySelectorAll element "img"))))
                         (finally (dom/unmount root)))))))
               (finally
-                (.remove stylesheet) (.remove element)
+                (doseq [[_ stylesheet] stylesheets] (.remove stylesheet))
+                (.remove element)
                 (reset! rfdb/app-db before)))))
         (.catch #(is false (str %)))
         (.finally done))))
