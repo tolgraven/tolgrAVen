@@ -33,7 +33,7 @@
 (defc <code-block>
   "Full language support and Bruvbox are acquired only by code consumers."
   [code & {:keys [language default-language auto-languages style basic? inline? inline-language
-                 line-numbers? starting-line-number]
+                 line-numbers? starting-line-number line-props]
            :or {basic? true
                 style theme/bruvbox}}]
   (let [language (or language (when inline? (or inline-language "bash")))
@@ -53,7 +53,8 @@
               :startingLineNumber (or starting-line-number 1)
               :lineNumberStyle {:userSelect "none"}
               :children code
-              :wrapLines numbered?}
+              :wrapLines (or numbered? (boolean line-props))}
+       line-props (assoc :lineProps line-props)
        inline? (assoc :PreTag "code"
                       :CodeTag "span"
                       :className "code-highlight"

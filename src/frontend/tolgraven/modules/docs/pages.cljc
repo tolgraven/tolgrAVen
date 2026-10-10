@@ -1,6 +1,7 @@
 (ns tolgraven.modules.docs.pages
   "Page declarations independent of the module implementation."
   (:require [tolgraven.schema.http :as schemas]
+            #?(:clj [tolgraven.env :as environment])
             #?(:cljs [tolgraven.react :as rf])))
 
 (defn document-dependency
@@ -21,12 +22,30 @@
      :docs-codox-page [{:parameters {:path [:doc]}
                        :start (fn [{:keys [path]}] (activate! (:doc path)))}]})))
 
-(def spec
+(def development? #?(:clj (:development? environment/defaults) :dev true :default false))
+
+(def ordinary-spec
   ;; Native Reitit routes, with shared data inherited by each child page.
   [["/docs" {:module :docs :page :page :ssr true :streaming false :data-source :docs
             :depends [{:source :strapi :keys [:docs]}]}
     ["" {:name :docs :selection {:doc "index"}
          #?@(:cljs [:controllers (:docs controllers)])}]
-    ["/codox/:doc" {:parameters {:path schemas/docs-page} :name :docs-codox-page
-                    :ssr-parameters {:doc {:from :doc :type :document}}
+    ["/codox/:doc" {:parameters {:path schemas/docs-page}
+                    :name :docs-codox-page
+                    :ssr-parameters {:doc {:from :doc, :type :document}}
                     #?@(:cljs [:controllers (:docs-codox-page controllers)])}]]])
+
+(def spec
+  (if development?
+    (update ordinary-spec 0 into
+      [["/source/*file" {:name :docs-source
+                         :page :source
+                         :ssr false
+                         :depends []
+                         :data-source nil}]
+       ["/source" {:name :docs-source-index
+                    :page :source
+                    :ssr false
+                    :depends []
+                    :data-source nil}]])
+    ordinary-spec))

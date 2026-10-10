@@ -8,7 +8,8 @@
 (rf/reg-event-fx :docs/init
  (fn [{:keys [db]} [_ ]]
    (let [page (get-in db [:state :docs :current-page])] ;this shouldn't be needed, but early get from controller somehow doesn't ever continue its chain
-     (when-not (get-in db [:docs])
+     (when-not (or (get-in db [:docs])
+                   (= :source (get-in db [:common/route :data :page])))
        {:dispatch-n
         [[:docs/get (or page "index")]
          [:docs/set-page (or page "index")]]}))))

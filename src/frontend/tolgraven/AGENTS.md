@@ -152,7 +152,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Development console and React profiling implementations live in `env/dev/cljs`.
   Inspector styles compile into `dev.min.css`, linked only by development documents.
   Only builds with the `:dev` reader feature import them; production and SSR use
-  small diagnostics/instrumentation boundaries. Debug instrumentation is bounded and inactive when closed. Keep diagnostics out
+  small diagnostics/instrumentation boundaries. Timing capture is bounded and inactive without a console, picker, or explicit page-capture owner. Keep diagnostics out
   of persistence snapshots and do not let diagnostic events trigger page renders.
 - Page navigation uses a brief simultaneous opacity crossfade. Native View Transitions
   and the page-root fallback share duration/easing; neither delays the incoming fade.
@@ -239,3 +239,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   access; derive/check that URL through the shared oEmbed contract on both sides.
   Never give arbitrary markup same-origin access or insert it into application DOM.
   Acquisition uses the shared managed URL source.
+
+- Development diagnostics observe existing component/query ownership through the
+  shim and native trace/Profiler APIs. Keep render-body and inclusive React times
+  separate, and label observed reasons rather than claiming complete React causes.
+  UI selection, capture options and bounded records use re-frame; native window,
+  measurement and WeakMap ownership adapters must release their lifecycle resources.
+  Source/stack and actual-value details stay behind `:dev` reader boundaries.
+  See `doc/dev-console.md` for capture, source links and diagnostic limitations.

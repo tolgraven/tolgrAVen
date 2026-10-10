@@ -100,3 +100,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   URLs as origin-enabled players. Other markup requires an opaque browser sandbox.
   The bounded cache shares in-flight requests, keeps success for fifteen minutes
   and failure for one minute, and retains only consumed provider fields.
+
+- Development source documentation is acquired through `tolgraven.dev.source`,
+  resolved only when the server development flag is true. Catalog allowed source
+  roots, reject symlinks/traversal/oversized files and recheck canonical ownership.
+  Never expose configuration files or accept arbitrary filesystem paths.

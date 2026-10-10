@@ -6,13 +6,17 @@
             [reagent.core :as r]
             [tolgraven.react :as rf]
             [tolgraven.render-context :as context]
-            [tolgraven.dev-console.state]))
+            [tolgraven.dev-console.state]
+            [tolgraven.dev-console.components :as components]
+            [tolgraven.dev.consumer :as consumer]
+            [tolgraven.dev.values :as values]))
 
 (defonce *pending (atom []))
 (defonce *tick (atom nil))
 (defonce *cleanup (atom nil))
 (defonce *connected? (r/atom false))
 (defonce *recording? (atom false))
+(defonce *flash? (atom false))
 ;; Probe lifecycles begin during hydration, before the interactive console mounts.
 (defonce *instances (atom {}))
 (defonce *component-parents (r/atom {}))
@@ -26,11 +30,12 @@
     (rf/dispatch [:dev-console/records (mapv resolve-instance (vals @*instances))]))
   (fn []
     (reset! *connected? false)
+    (reset! consumer/*enabled? false)
     (when @*tick (js/clearTimeout @*tick))
     (reset! *tick nil) (reset! *pending [])
     (rf/dispatch [:dev-console/disconnected])))
 (defn own? [event]
-  (boolean (some #(or (and (keyword? %) (= "dev-console" (namespace %)))
+  (boolean (some #(or (and (keyword? %) (or (= :dev-console %) (contains? #{"dev-console" "dev-stack" "dev-source"} (namespace %))))
                      (and (string? %) (string/starts-with? % "tolgraven.dev-console")))
                  (tree-seq coll? seq event))))
 (defn drain! []
@@ -61,7 +66,7 @@
    (cond
      (> depth 7) :debug/elided
      (string? value) (if (> (count value) 8000) (str (subs value 0 8000) "…") value)
-     (map? value) (into {} (map (fn [[k v]] [k (preview v (inc depth))])) (take 40 value))
+     (map? value) (into {} (map (fn [[k v]] [k (if (values/sensitive? k) :debug/redacted (preview v (inc depth)))])) (take 40 value))
      (vector? value) (mapv #(preview % (inc depth)) (take 40 value))
      (set? value) (into #{} (map #(preview % (inc depth))) (take 40 value))
      (sequential? value) (doall (map #(preview % (inc depth)) (take 40 value)))
@@ -95,6 +100,8 @@
                                  (public-db (:app-db/after epoch)))]
     (-> (select-keys epoch [:event :event/original :dispatch-id :parent-dispatch-id
                            :start :end :duration :interceptors :event/source])
+        (update :event preview)
+        (cond-> (contains? epoch :event/original) (update :event/original preview))
         (update :interceptors preview)
         (assoc :kind :epoch :effects (preview (dissoc (:effects epoch) :db))
                :removed (preview removed) :added (preview added)))))
@@ -137,6 +144,7 @@
   []
   (when-let [cleanup! @*cleanup] (cleanup!))
   (reset! *recording? true)
+  (reset! consumer/*enabled? true)
   (when (and ^boolean goog.DEBUG (not context/*server?*))
     ;; Writing debug records must not recursively capture its own subscription
     ;; recomputations. Collect raw traces only in batches with an app event;
@@ -146,7 +154,16 @@
                                    (not (own? (get-in trace [:tags :event]))))) %)
          (doseq [record (trace-records %)] (emit! record))))
     (tooling/register-epoch-cb :tolgraven-console
-      #(doseq [epoch % :when (not (own? (:event epoch)))] (emit! (epoch-record epoch))))
+      #(doseq [epoch % :when (not (own? (:event epoch)))]
+         (let [record (epoch-record epoch)]
+           (emit! record)
+           (when @*flash?
+             (let [instances (vec (for [[id {:keys [path]}] @*instances
+                                        :when (and (seq path)
+                                                   (not= (get-in (:app-db/before epoch) path)
+                                                         (get-in (:app-db/after epoch) path)))] id))]
+               (when (seq instances)
+                 (rf/dispatch [:dev-console/flash-instances instances])))))))
     (let [observer (when (and (exists? js/PerformanceObserver)
                              (some #{"layout-shift"} (array-seq (.-supportedEntryTypes js/PerformanceObserver))))
                      (js/PerformanceObserver.
@@ -160,9 +177,24 @@
       (when observer (.observe observer #js {:type "layout-shift" :buffered false}))
       (let [cleanup! (fn []
                        (reset! *recording? false)
+                       (reset! consumer/*enabled? false)
                        (tooling/remove-trace-cb :tolgraven-console)
                        (tooling/remove-epoch-cb :tolgraven-console)
                        (when observer (.disconnect observer))
                        ;; Lifecycle records still drain while timing capture is paused.
                        (reset! *cleanup nil))]
         (reset! *cleanup cleanup!) cleanup!))))
+
+(defn bootstrap! []
+  ;; Explicit development capture before the first application render. The host
+  ;; adopts this lifecycle on mount and owns its eventual stop/cleanup.
+  (when (= "1" (.get (js/URLSearchParams. (.-search js/location)) "diagnostics"))
+    (reset! tolgraven.dev-console.state/*startup-capture? true)
+    (reset! *connected? true)
+    (reset! consumer/*enabled? true)
+    (start!)))
+
+(rf/reg-fx :dev-console/flash-component
+  (fn [instance]
+    (when-let [roots (seq (components/native-roots @*instances instance))]
+      (rf/dispatch [:dev-console/flash-instances (vec roots)]))))

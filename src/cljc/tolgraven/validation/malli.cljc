@@ -4,7 +4,8 @@
             [malli.core :as m]
             [malli.error :as me]
             [malli.transform :as mt]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            #?(:dev [tolgraven.dev.values :as details])))
 
 (defonce ^:private *compiled (atom {}))
 (def compiled-cache-limit 256)
@@ -32,10 +33,14 @@
     (throw (ex-info "Unknown schema coercion" {:coercion coercion}))))
 
 (defn problems [explanation]
-  ;; Never retain input values: state and request bodies can contain credentials.
-  (mapv (fn [error] {:path (vec (:in error))
-                     :message (me/error-message error)})
-        (:errors explanation)))
+  ;; Public issue maps omit values. Only development metadata includes bounded,
+  ;; redacted details for the local schema inspector.
+  (let [issues (mapv (fn [error] {:path (vec (:in error))
+                                 :message (me/error-message error)})
+                     (:errors explanation))]
+    #?(:dev (with-meta issues {:dev/issues (mapv #(details/issue % (m/form (:schema %)))
+                                               (take 20 (:errors explanation)))})
+       :default issues)))
 
 (defn explain [schema value]
   (let [{:keys [valid? explain]} (compiled schema)]
@@ -46,9 +51,10 @@
                            (str (pr-str path) " — " message)) issues)))
 
 (defn check! [contract schema value]
-  (when-let [issues (seq (explain schema value))]
-    (throw (ex-info (str "Invalid " contract "\n" (message issues))
-                    {:type :validation/failed :contract contract :issues (vec issues)})))
+  (let [issues (explain schema value)]
+    (when (seq issues)
+      (throw (ex-info (str "Invalid " contract "\n" (message issues))
+                      {:type :validation/failed :contract contract :issues issues}))))
   value)
 
 (defn enabled?

@@ -1,6 +1,7 @@
 (ns tolgraven.app
   (:require
     [tolgraven.core :as core]
+    [tolgraven.dev-console.capture :as diagnostics]
     [cljs.spec.alpha :as s]
     ;[portal.web :as p]
     [expound.alpha :as expound]))
@@ -20,6 +21,7 @@
   []
   (configure!)
 
+  (diagnostics/bootstrap!)
   (core/init!)
   
   ;(add-tap #'p/submit)

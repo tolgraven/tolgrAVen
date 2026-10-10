@@ -6,6 +6,7 @@
     [tolgraven.schema.http :as schemas]
     [tolgraven.supabase.schema :as store-schema]
     [tolgraven.config :as config]
+    [tolgraven.env :as environment]
     [tolgraven.oembed :as oembed]
     [tolgraven.components.oembed.contract :as oembed-contract]
     [reitit.ring.middleware.muuntaja :as muuntaja]
@@ -32,7 +33,7 @@
 (defn plain-text-header [resp]
   (response/header resp "Content-Type" "text/plain; charset=utf-8"))
 
-(defn service-routes []
+(defn- ordinary-service-routes []
   ["/api"
    {:coercion schemas/coercion
     :muuntaja formats/instance
@@ -233,3 +234,8 @@
                         :body (-> "public/img/warning_clojure.png"
                                   (io/resource)
                                   (io/input-stream))})}}]]])
+
+(defn service-routes []
+  (cond-> (ordinary-service-routes)
+    (:development? environment/defaults)
+    (into ((requiring-resolve 'tolgraven.dev.source/routes)))))

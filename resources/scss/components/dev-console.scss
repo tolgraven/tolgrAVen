@@ -138,3 +138,60 @@
     border-radius: .4rem; background: var(--dev-row); }
   h4 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; }
 }
+
+@keyframes dev-component-flash-0 { from { outline-color: var(--aqua-3); } to { outline-color: transparent; } }
+@keyframes dev-component-flash-1 { from { outline-color: var(--aqua-3); } to { outline-color: transparent; } }
+.dev-component--flash-0, .dev-component--flash-1 { outline: .125rem solid transparent; outline-offset: .125rem; }
+.dev-component--flash-0 { animation: dev-component-flash-0 .45s ease-out; }
+.dev-component--flash-1 { animation: dev-component-flash-1 .45s ease-out; }
+.dev-selection-highlight { position: fixed; pointer-events: none; outline: .15rem solid var(--aqua-3); background: color-mix(in srgb, var(--aqua-3) 8%, transparent); z-index: 100000; }
+.dev-console {
+  &__tools { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .2rem; }
+  &__tools label { display: inline-flex; align-items: center; }
+  &--popout { position: static; }
+  &--popout .dev-console__panel { inset: .5rem; height: auto; }
+}
+.dev-picking-hint { position: fixed; inset: 1rem auto auto 50%; translate: -50%; background: var(--dev-bg); padding: .8rem; border: .125rem solid var(--aqua-3); pointer-events: none; }
+.dev-component-inspector {
+  position: fixed; inset: auto 1rem 4rem auto; width: min(35rem, 90vw); max-height: min(65vh, 45rem);
+  overflow: auto; overscroll-behavior: contain; padding: 1rem; border: .125rem solid var(--aqua-3);
+  border-radius: .5rem; background: var(--dev-bg); box-shadow: 0 .5rem 2rem #0009;
+  &__heading { display: flex; align-items: start; gap: 1rem; justify-content: space-between; overflow-wrap: anywhere; }
+  &__heading strong { min-width: 0; }
+  &__heading button { flex: none; }
+  &__namespace { display: block; color: var(--aqua-3); overflow-wrap: anywhere; }
+  h4 { margin-top: 1rem; }
+  @supports (top: anchor(bottom)) {
+    inset: auto; top: anchor(bottom); left: anchor(left); margin-top: .5rem;
+    position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline, --dev-inspector-corner;
+  }
+}
+.dev-profile__table { overflow: auto; max-height: 28rem; }
+.dev-profile table { border-collapse: collapse; width: 100%; }
+.dev-profile th, .dev-profile td { text-align: left; padding: .5rem; border-bottom: .0625rem solid var(--dev-line); }
+.dev-profile thead { position: sticky; top: 0; background: var(--dev-bg); }
+.dev-validation { border: .0625rem solid var(--aqua-3); border-radius: .4rem; padding: .75rem; background: var(--dark-2); }
+.dev-validation__issue { padding: .5rem; }
+.dev-validation dl { display: grid; grid-template-columns: 6rem minmax(0, 1fr); gap: .5rem; }
+.dev-validation dt { font-weight: bold; }
+.dev-validation dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dev-validation__type { display: inline-block; border: .0625rem solid currentColor; border-radius: .3rem; padding: .1rem .3rem; }
+.dev-stack { overflow-wrap: anywhere; font: .85rem/1.6 ui-monospace, monospace; }
+.dev-stack a { color: var(--aqua-3); }
+.dev-source { display: grid; grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr); gap: 1.5rem; }
+.dev-source aside { overflow: auto; max-height: 80vh; position: sticky; top: 4rem; }
+.dev-source input { width: 100%; }
+.dev-source__tree { list-style: none; padding-left: .8rem; font: .85rem/1.6 ui-monospace, monospace; }
+.dev-source__tree a { overflow-wrap: anywhere; }
+.dev-source__tree a[aria-current=page] { color: var(--aqua-3); font-weight: bold; }
+.dev-source__listing { min-width: 0; }
+.dev-source__listing .react-syntax-highlighter-line:target { background: color-mix(in srgb, var(--aqua-3) 22%, transparent); }
+.dev-source__listing [id^=L]:target, .dev-source__listing .dev-source__line--target { background: color-mix(in srgb, var(--aqua-3) 22%, transparent); scroll-margin-top: 5rem; }
+@media (max-width: 45rem) { .dev-source { grid-template-columns: minmax(0, 1fr); } .dev-source aside { position: static; max-height: 15rem; } }
+@media (prefers-reduced-motion: reduce) { .dev-component--flash-0, .dev-component--flash-1 { animation: none; } }
+.dev-component-inspector.dev-component-inspector--detached { inset: auto 1rem 4rem auto; position-anchor: auto; margin: 0; }
+
+@position-try --dev-inspector-corner {
+  inset: auto 1rem 4rem auto;
+  margin: 0;
+}

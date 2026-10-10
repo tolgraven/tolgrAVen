@@ -213,6 +213,10 @@ These are required principles for new code and changes to existing code. Follow 
 - `:app` and `:app-dev` share output. Isolate production build output during a dev watch, or pause the watch and restore its assets before browser checks.
 - Verify behavior in the browser, not just successful compilation: cold direct loads, hydration, SPA navigation in both directions, cached/history return, and relevant empty/error/recovery states. For hydration or transition changes, check for spinners, flashes, layout jumps, missing content, and console errors. Never report a check as passed without actually running it.
 
+- Development source documentation, on-page picking and profiling are described in
+  `doc/dev-console.md`. Keep them behind build/environment boundaries; use normal
+  Reagent/re-frame UI and the existing instrumentation adapters for observation.
+
 ### Code symbol naming
 All of the below are targets, not facts, so do not rely on them as hard rules, but
 rather as guidelines to help make code more readable and maintainable. If you have a good reason to deviate, do so, but be sure to explain the rationale in comments or PR descriptions. Generally use these for new code, and feel free to update existing code towards this style when you have the chance, but do not feel obligated to refactor large amounts of existing code just to fit these guidelines.

@@ -266,9 +266,12 @@
                              (fn ~args (let [~@helper-bindings ~@loading-bindings ~@bindings] (fn ~args ~@body))))]
              ~(if plain?
                 (let [render `(tolgraven.component.instrumentation/instrument ~descriptor
-                               ~@(if (seq (concat loading-bindings bindings))
-                                   [`(reagent.core/with-let [~@loading-bindings ~@bindings] ~@body)]
-                                   [`(do ~@body)]))]
+                               (tolgraven.component.instrumentation/render! ~descriptor
+                                 (vec (rest (tolgraven.react/component-argv)))
+                                 (fn []
+                                   ~(if (seq (concat loading-bindings bindings))
+                                      `(reagent.core/with-let [~@loading-bindings ~@bindings] ~@body)
+                                      `(do ~@body)))))]
                   (if (or (:args-schema options) (:spec-schema options))
                     `(reagent.core/defc ~(with-meta name metadata) [& argv#]
                        (tolgraven.component.registry/validate-args! ~descriptor argv#)

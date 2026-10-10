@@ -3,9 +3,18 @@
   (:require [clojure.string :as string]
             [tolgraven.react :as rf]))
 
-(def defaults {:recording? true :hydration-highlight? true :limit 500})
+(defonce *startup-capture? (atom false))
+
+(def defaults
+  {:recording? true
+   :hydration-highlight? true
+   :limit 500
+   :page-capture? false
+   :event-flash? false})
 (defn options [db]
-  (-> (merge (update defaults :hydration-highlight? #(and ^boolean goog.DEBUG %))
+  (-> (merge (assoc defaults
+                    :page-capture? @*startup-capture?
+                    :hydration-highlight? (and ^boolean goog.DEBUG (:hydration-highlight? defaults)))
              (get-in db [:options :dev-console]))
       (update :limit #(if (number? %) (max 50 (min 2000 %)) 500))))
 (defn snapshot [db]
@@ -36,7 +45,14 @@
     (reduce (fn [db {:keys [kind instance] :as record}]
               (case kind
                 :mount (assoc-in db [:dev-console :active instance] (dissoc record :kind))
-                :unmount (update-in db [:dev-console :active] dissoc instance)
+                :unmount (-> (cond-> db
+                               (and (= instance (get-in db [:dev-console :selected-instance]))
+                                    (get-in db [:dev-console :active instance]))
+                               (assoc-in [:dev-console :selected-record]
+                                         (get-in db [:dev-console :active instance])))
+                             (update-in [:dev-console :active] dissoc instance))
+                :metadata (if (get-in db [:dev-console :active instance])
+                            (update-in db [:dev-console :active instance] merge (dissoc record :kind)) db)
                 (update-in db [:dev-console :records]
                            #(bounded (:limit (options db)) % [record])))) db records)))
 (rf/reg-event-db :dev-console/disconnected
@@ -55,3 +71,36 @@
       (let [token (random-uuid)]
         {:dispatch [:dev-console/hydration-start token]
          :dispatch-later [{:ms 150 :dispatch [:dev-console/hydration-end token]}]}))))
+
+(rf/reg-sub :dev-console/flash
+  (fn [db [_ instance]] (get-in db [:dev-console :flashes instance])))
+(rf/reg-event-fx :dev-console/flash-instances
+  (fn [{:keys [db]} [_ instances]]
+    (let [token (inc (or (get-in db [:dev-console :flash-token]) 0))]
+      {:db (-> db
+               (assoc-in [:dev-console :flash-token] token)
+               (update-in [:dev-console :flashes] #(merge % (zipmap instances (repeat token)))))
+       :dispatch-later [{:ms 450 :dispatch [:dev-console/clear-flashes token]}]})))
+(rf/reg-event-db :dev-console/clear-flashes
+  (fn [db [_ token]]
+    (update-in db [:dev-console :flashes]
+      #(into {} (remove (fn [[_ value]] (= value token))) %))))
+(rf/reg-event-db :dev-console/pick
+  (fn [db [_ instance]]
+    (-> db (assoc-in [:dev-console :selected-instance] instance)
+        (assoc-in [:dev-console :selected-record]
+                  (or (get-in db [:dev-console :active instance])
+                      (when instance
+                        (last (filter #(= instance (:instance %))
+                                      (get-in db [:dev-console :records]))))))
+        (assoc-in [:dev-console :picking?] false))))
+(rf/reg-event-db :dev-console/picking
+  (fn [db [_ value]] (assoc-in db [:dev-console :picking?] value)))
+
+(rf/reg-event-db :dev-console/open
+  (fn [db [_ value]] (assoc-in db [:dev-console :open?] value)))
+(rf/reg-event-db :dev-console/toggle-open
+  (fn [db _] (update-in db [:dev-console :open?] not)))
+
+(rf/reg-event-fx :dev-console/flash-component
+  (fn [_ [_ instance]] {:dev-console/flash-component instance}))

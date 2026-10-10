@@ -14,17 +14,18 @@
         (.catch #(a/put! channel {:error %})))
     channel))
 (defn wait-for!
-  [predicate]
+  ([predicate] (wait-for! predicate "Mounted view did not settle"))
+  ([predicate label]
   (js/Promise. (fn [resolve reject]
                  (let [deadline (+ (.now js/Date) 3000)]
                    (letfn [(check! []
                              (try (if-let [value (predicate)]
                                     (resolve value)
                                     (if (> (.now js/Date) deadline)
-                                      (reject (js/Error. "Mounted view did not settle"))
+                                      (reject (js/Error. label))
                                       (r/after-render check!)))
                                   (catch :default error (reject error))))]
-                     (r/after-render check!))))))
+                     (r/after-render check!)))))))
 (defn create-root!
   [element]
   (let [root (dom/create-root element)
