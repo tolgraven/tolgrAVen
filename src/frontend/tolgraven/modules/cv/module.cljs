@@ -1,4 +1,5 @@
 (ns tolgraven.modules.cv.module
+  {:bundle/depends-on #{:main :carousel}}
   (:require
     [tolgraven.modules.cv.pages :as pages]
     [tolgraven.content.contract :as content-contract]

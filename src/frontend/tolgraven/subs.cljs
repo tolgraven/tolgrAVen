@@ -117,12 +117,6 @@
   (fn [[_ last?]]  (rf/subscribe [:common/route last?]))
   (fn [route [_ _]] (-> route :data :view)))
 
-(rf/reg-sub :carousel/index
-  :<- [:state [:carousel]]
-  (fn [carousel [_ id]]
-    (prn carousel id)
-    (get-in carousel [id :index] 0)))
-
 (rf/reg-sub :get-css-var
   (fn [db [_ var-name]]
     (get-in db [:state :css-var var-name])))

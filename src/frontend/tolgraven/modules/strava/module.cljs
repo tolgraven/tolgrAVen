@@ -1,5 +1,5 @@
 (ns tolgraven.modules.strava.module
-  {:bundle/depends-on #{:main :maps}}
+  {:bundle/depends-on #{:main :maps :carousel}}
   (:require
     [tolgraven.content.contract :as content-contract]
     [tolgraven.react :as rf]
