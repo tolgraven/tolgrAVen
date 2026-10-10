@@ -9,6 +9,7 @@
     [tolgraven.config :refer [env]]
     [muuntaja.middleware :refer [wrap-format wrap-params]]
     [clojure.java.io :as io]
+    [clojure.string :as string]
     [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
     [ring.middleware.flash :refer [wrap-flash]]
     [ring.middleware.file :refer [wrap-file]]
@@ -84,8 +85,19 @@
                        ["/sitemap.xml" "/robots.txt"])))
 
 
+(defn module-source-maps
+  "Keep Shadow maps reachable when Optimus relocates a module into /bundles/."
+  [loaded-assets]
+  (map (fn [{:keys [path contents] :as asset}]
+         (if (and (string? contents) (string/starts-with? (or path "") "/js/compiled/out/"))
+           (update asset :contents string/replace
+                   #"(?m)(//# sourceMappingURL=)([^/\s]+\.js\.map)$"
+                   "$1/js/compiled/out/$2")
+           asset)) loaded-assets))
+
 (defn optimize-all [assets options]
   (-> assets
+      module-source-maps
       (optimizations/minify-js-assets options)
       ; (optimizations/minify-css-assets options) ;my css breaks it ofc ; not anymore apparently ; well it's already minified by autoprefixer or? could anyways
       (optimizations/inline-css-imports)

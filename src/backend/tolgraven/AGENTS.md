@@ -52,7 +52,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - Image/video catalog macros track their EDN resources through Shadow during
   CLJS compilation; JVM runtime reads do not require the compiler dependency.
 - Production Shadow chunks use content-hashed names from `manifest.edn`; the
-  Optimus main bundle resolves that manifest too. Only successful fingerprinted
+  Optimus main bundle resolves that manifest too. Its source-map comment uses the
+  absolute Shadow output path so relocation into `/bundles/` cannot break it. Only successful fingerprinted
   chunk responses receive immutable caching; plain names and errors must not.
 - Streaming uses Hiccup document parts and the existing flush-aware Ring body;
   do not split serialized pages by marker strings. Headers cannot change after flush.
