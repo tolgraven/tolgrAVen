@@ -16,24 +16,52 @@ spec.loader.exec_module(icons)
 
 class SvgIconsTest(unittest.TestCase):
     def test_geometry_and_baseline_match_original_glyphs(self):
-        font = TTFont(icons.PUBLIC / "webfonts/fa-brands-400.woff2")
-        glyphs = font.getGlyphSet()
-        for code in (0xF09B, 0xF1A0):  # GitHub and Google: asymmetric outlines
-            name = font.getBestCmap()[code]
-            svg, ratio, baseline = icons.svg_icon(font, name)
-            root = ElementTree.fromstring(svg)
-            width, height = map(float, root.attrib["viewBox"].split()[2:])
-            original = BoundsPen(glyphs)
-            glyphs[name].draw(original)
-            exported = BoundsPen(None)
-            parse_path(root[0].attrib["d"], exported)
-            left, bottom, right, top = original.bounds
-            expected = (left, font["hhea"].ascent - top, right, font["hhea"].ascent - bottom)
-            for actual, wanted in zip(exported.bounds, expected):
-                self.assertAlmostEqual(actual, wanted, places=3)
-            self.assertEqual(width, font["hmtx"][name][0])
-            self.assertEqual(ratio, width / height)
-            self.assertEqual(baseline, font["hhea"].descent / height)
+        for family, weight, codes in [("brands", 400, (0xF09B, 0xF1A0)),
+                                     ("solid", 900, (0xF102, 0xF5AC))]:
+            font = TTFont(icons.PUBLIC / "webfonts" / f"fa-{family}-{weight}.woff2")
+            glyphs = font.getGlyphSet()
+            for code in codes:
+                name = font.getBestCmap()[code]
+                svg, layout = icons.svg_icon(font, name)
+                root = ElementTree.fromstring(svg)
+                width, height = map(float, root.attrib["viewBox"].split()[2:])
+                original = BoundsPen(glyphs)
+                glyphs[name].draw(original)
+                exported = BoundsPen(None)
+                parse_path(root[0].attrib["d"], exported)
+                left, bottom, right, top = original.bounds
+                expected = (left, font["hhea"].ascent - top, right, font["hhea"].ascent - bottom)
+                for actual, wanted in zip(exported.bounds, expected):
+                    self.assertAlmostEqual(actual, wanted, places=3)
+                top, right, bottom, left = layout["margins"]
+                font_height = font["hhea"].ascent - font["hhea"].descent
+                self.assertAlmostEqual(layout["width"] + left + right,
+                                       font["hmtx"][name][0] / font_height)
+                self.assertAlmostEqual(layout["height"] + top + bottom, 1)
+                self.assertEqual(layout["baseline"], font["hhea"].descent / font_height)
+
+    def test_every_declared_outline_fits_its_viewport(self):
+        css = (icons.PUBLIC / "css/fontawesome.css").read_text()
+        mapping = {name: int(code, 16) for name, code in icons.re.findall(
+            r'\.fa-([a-z0-9-]+):before\s*\{\s*content:\s*["\']\\([0-9a-f]+)', css
+        )}
+        outputs = icons.svg_outputs(mapping)
+        checked = []
+        for file, data in outputs.items():
+            if file.suffix != ".svg":
+                continue
+            root = ElementTree.fromstring(data)
+            x, y, width, height = map(float, root.attrib["viewBox"].split())
+            pen = BoundsPen(None)
+            parse_path(root[0].attrib["d"], pen)
+            left, top, right, bottom = pen.bounds
+            self.assertGreaterEqual(left, x - 0.001, file.name)
+            self.assertGreaterEqual(top, y - 0.001, file.name)
+            self.assertLessEqual(right, x + width + 0.001, file.name)
+            self.assertLessEqual(bottom, y + height + 0.001, file.name)
+            checked.append(file.stem)
+        self.assertIn("angle-double-up", checked)
+        self.assertIn("pen-fancy", checked)
 
     def test_module_masks_do_not_need_font_or_svg_requests(self):
         with patch.object(icons, "icon_definitions", return_value={"main": ["brands/github"], "user": ["brands/google"]}):
