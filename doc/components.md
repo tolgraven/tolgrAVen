@@ -1,5 +1,8 @@
 # Composable components with `defc`
 
+Follow [Reagent and re-frame first](reagent-re-frame.md) for state, events,
+effects, deferral and justified React adapters.
+
 Reusable rendered UI lives in `tolgraven.components.*`; feature views live under
 `tolgraven.modules.<feature>.*`. `tolgraven.component.*` implements declaration,
 lifecycle, data and state capabilities. Import the owning namespace directly;
@@ -740,9 +743,10 @@ keyboard; clipboard feedback resets automatically and is announced through a
 live status. Inline code inside links keeps navigation and omits its copy button.
 Clipboard callbacks and feedback timers are owned by the component.
 Controls hydrate before the formatter's after-page gate and preserve pending SSR
-nodes. React holds events aimed at suspended children, so the owned native pointer
-adapter captures intent above its event root through the shared listener registry;
-only an active press installs movement/up listeners, and unmount removes them all.
+nodes. Ordinary gestures use Reagent event attributes. React holds events aimed at
+suspended SSR children, so a temporary pointer adapter feeds those same handlers
+through the shared listener registry and prevents duplicate replay. The adapter
+is removed when the formatter hydrates; it never changes rendered markup.
 Optional line numbers are present in SSR when requested.
 
 Editable code is a separate, future opt-in capability. Keep its acquisition behind

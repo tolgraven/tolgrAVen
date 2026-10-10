@@ -3,6 +3,33 @@
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.
 
+## Implementation priority: Reagent and re-frame
+
+- Apply the root guide's Reagent/re-frame-first principles to every frontend change,
+  including lazy loading and performance optimizations. See
+  `doc/reagent-re-frame.md` for the event flow, examples and justified exceptions.
+- Render ordinary Hiccup with `defc`; handlers belong in Reagent attribute maps.
+  Use the existing declarative dependency/loading/visibility/presence capabilities
+  before adding hooks, custom scheduling or native listeners.
+- Read scoped state with `<sub` and dispatch writes with `>reset`/`>update` or
+  registered domain events. Compose layer-2/3 subscriptions from their actual
+  input subscriptions; keep derivations pure and narrow. Application state must
+  remain visible in app-db and application IO in registered effects/source adapters.
+- Delayed application work uses event effects such as `:dispatch-later`. Native
+  Promise code belongs at SDK/module-loader boundaries. A local pointer gesture
+  can own a cancellable timer/ref when feeding every movement into app-db would
+  add noise; explain that exception and dispatch the resulting application action.
+- Reach for modern React features only for a concrete lifecycle/interoperability
+  need or demonstrated performance benefit. Keep them behind small shared adapters,
+  preserve normal re-frame event tracing, and document the reason. Do not create a
+  second state machine/store merely to use a React API.
+- Through `tolgraven.react`, effects may return implicit nil; cleanup functions run
+  on dependency changes/unmount. Hook dependencies accept ordinary Clojure vectors
+  without recursively converting their contents. Memo/callback values are preserved.
+  Browser adapters must release their listeners/observers/timers and guard SSR.
+
+## Ownership and feature contracts
+
 - Feature caches observe re-frame subscriptions through owned, disposable
   reactions. Persistence belongs in the storage lifecycle adapter; do not add
   feature watches to app-db or perform IO in subscription computations.
@@ -77,10 +104,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Copy gestures and optional folding belong to the outer component; cancel copying
   on selection, multi-click, drag, pointer exit/cancellation and interactive controls.
   Linked inline code suppresses its copy control instead of nesting a button in a
-  link. A ref/effect
-  adapter uses the shared listener registry above React's event root while SSR
-  formatter children are suspended; gesture listeners last through the press and
-  its short multi-click confirmation window.
+  link. Normal gestures use Reagent event props. Only while the SSR formatter is
+  suspended, a ref/effect adapter bridges native intent to those same handlers
+  through the shared listener registry. It prevents duplicate event replay and
+  releases its bindings on the inner hydration commit.
   Copy the source, excluding line numbers/buttons. Markdown passes `:code-options` through
   the shared component contract; line numbers are opt-in and rendered by SSR too.
   Bruvbox palette/token ownership lives in `modules/highlight/theme.cljs`.
