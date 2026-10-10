@@ -126,7 +126,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   unused Markdown-clj imports out of the shell. Shared numeric display uses native fixed decimal
   formatting. Shared clocks/relative dates and calendar-month ranges use native Date
   and epoch milliseconds; do not reintroduce cljs-time/Closure locale tables for these
-  small formatting cases. Carousel implementations, events, index subscription and CSS belong to `:carousel`;
+  small formatting cases. The optional Java-time Transit codec stays behind `:dev`;
+  normal browser APIs use JSON or standard Transit, and backend codecs stay native. Carousel implementations, events, index subscription and CSS belong to `:carousel`;
   Home/CV/Strava declare that bundle dependency, and shared UI keeps lazy exports.
   Landing story/float helpers belong to `:home`, with lazy compatibility
   exports in shared UI. Preserve prototype implementations when moving ownership.

@@ -1,7 +1,7 @@
 (ns tolgraven.ajax
   (:require
     [ajax.core :as ajax]
-    [luminus-transit.time :as time]
+    [tolgraven.ajax.time :as time]
     [cognitect.transit :as transit]
     [tolgraven.react :as rf]))
 
@@ -19,8 +19,8 @@
   (merge {:raw             false
           :format          :transit
           :response-format :transit
-          :reader          (transit/reader :json time/time-deserialization-handlers)
-          :writer          (transit/writer :json time/time-serialization-handlers)}
+          :reader          (transit/reader :json time/read-options)
+          :writer          (transit/writer :json time/write-options)}
          opts))
 
 (defn load-interceptors! []
