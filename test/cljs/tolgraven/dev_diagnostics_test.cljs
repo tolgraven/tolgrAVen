@@ -179,3 +179,35 @@
           (is (= [[:dev-console/records [record]]] @*events)
               "The committing owner publishes the original early observations")
           (finally (stop!)))))))
+
+(r/defc <host-consumer> [*renders]
+  (swap! *renders inc)
+  [:pre (pr-str (capture/use-host-state))])
+
+(deftest console-host-owns-queries-after-commit-and-releases-them
+  (async done
+    (-> (go-promise
+          (let [restore-db! (re-frame/make-restore-fn)
+                element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                *renders (atom 0)]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root [<host-consumer> *renders]))
+              (rf/dispatch [:dev-console/option :recording? false])
+              (rf/dispatch [:dev-console/records [{:kind :view :duration 7}]])
+              (await! (support/settle!))
+              (is (re-find #":recording\? false" (.-textContent element)))
+              (is (re-find #":duration 7" (.-textContent element))
+                  "Committed host observes the ordinary re-frame record events")
+              (support/unmount! root)
+              (await! (support/settle!))
+              (let [renders @*renders]
+                (rf/dispatch [:dev-console/option :recording? true])
+                (await! (support/settle!))
+                (is (= renders @*renders) "Unmounted host no longer observes its queries"))
+              (finally
+                (.remove element)
+                (restore-db!)))))
+        (.catch #(is false (str %)))
+        (.finally done))))

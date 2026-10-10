@@ -34,6 +34,7 @@
 (def use-context               react/useContext)
 (defn context-provider [context] (.-Provider context))
 (def use-reducer               react/useReducer)
+(def use-sync-external-store   react/useSyncExternalStore)
 
 (defn- hook-dependencies [dependencies]
   ;; Convert only the container: maps, refs and functions must keep their identity

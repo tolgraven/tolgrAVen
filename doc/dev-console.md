@@ -72,6 +72,12 @@ are excluded, and the console's root host is not profiled, preventing capture lo
 results rather than making the rendering page depend on the entire app-db;
 storing debug history therefore does not trigger more page renders.
 
+Startup capture buffers observations until the console's passive connection effect.
+The concurrent root host acquires its existing re-frame queries through an owned
+tracking reaction in React's external-store subscription lifecycle, preventing
+discarded initial renders from receiving buffered updates. It never watches
+app-db directly; unmount releases the tracking reaction.
+
 Records drain in batches every 200 ms. History defaults to 500 entries, capped at
 2000; queued records and retained payloads are also bounded. Whole app-db snapshots,
 reactions and SDK objects are not retained in trace/settled-event records. Diffs are

@@ -845,12 +845,14 @@
                                                          [kind (into {} (map (fn [[id handler]] [id (meta handler)]) handlers))]))} 0])]]))
 
 (defc <console> []
-  (let [options @(rf/subscribe [:dev-console/options])
-        debug @(rf/subscribe [:dev-console/data])
+  (let [{:keys [options debug]} (capture/use-host-state)
         open? (boolean (:open? debug))
         [popout set-popout!] (rf/use-state nil)
         active? (boolean (or open? popout (:page-capture? options) (:picking? debug) (:selected-instance debug)))]
-    (rf/use-layout-effect #(when active? (capture/connect!)) [active?])
+    ;; Publish buffered records after the host has completed its commit. A
+    ;; layout-effect dispatch can queue a Reagent forceUpdate before React has
+    ;; finished mounting this very subscription consumer.
+    (rf/use-effect #(when active? (capture/connect!)) [active?])
     (rf/use-effect #(when (and active? (:recording? options)) (capture/start!))
                    [active? (:recording? options)])
     (rf/use-effect (fn [] (reset! capture/*flash? (boolean (:event-flash? options))) nil) [(:event-flash? options)])
