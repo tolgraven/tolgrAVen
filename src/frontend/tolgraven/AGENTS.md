@@ -101,8 +101,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   browser acquisition waits for the existing after-page gate. The blog supplies
   its Clojure fallback and detection set; untagged inline snippets use Bash unless
   their owner specifies `:inline-language`. Explicit tags take precedence.
-  Copy gestures and optional folding belong to the outer component; cancel copying
-  on selection, multi-click, drag, pointer exit/cancellation and interactive controls.
+  Copy gestures and optional folding belong to the outer component; selection and
+  multi-click cancel copying, as do drag, pointer exit/cancellation during the press
+  and interactive controls. Movement after release preserves the completed tap.
   Linked inline code suppresses its copy control instead of nesting a button in a
   link. Normal gestures use Reagent event props. Only while the SSR formatter is
   suspended, a ref/effect adapter bridges native intent to those same handlers
