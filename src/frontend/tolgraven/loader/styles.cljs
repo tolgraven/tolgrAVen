@@ -9,14 +9,22 @@
 (defonce *requests (atom {}))
 (defonce *attempts (atom {}))
 (defonce *ready (atom #{}))
+(defonce ^:private *manifests (js/WeakMap.))
+(def fallback-manifest
+  (into {} (map (fn [[id spec]] [id (:paths spec)])) catalog/modules))
 
 (defn manifest []
   (if-let [element (when (exists? js/document)
                     (.getElementById js/document "module-styles"))]
-    (let [value (js->clj (js/JSON.parse (.-textContent element)) :keywordize-keys true)]
-      (validation/check! "module stylesheet manifest" manifest-schema value)
-      value)
-    (into {} (map (fn [[id spec]] [id (:paths spec)])) catalog/modules)))
+    (let [text (.-textContent element)
+          cached (.get *manifests element)]
+      (if (= text (:text cached))
+        (:value cached)
+        (let [value (js->clj (js/JSON.parse text) :keywordize-keys true)]
+          (validation/check! "module stylesheet manifest" manifest-schema value)
+          (.set *manifests element {:text text, :value value})
+          value)))
+    fallback-manifest))
 
 (defn- link [href]
   (let [absolute (.-href (js/URL. href (.-baseURI js/document)))]
@@ -31,8 +39,13 @@
 
 (defn ready? [module]
   (or context/*server?*
-      (every? #(or (contains? @*ready %) (some-> (inline-style %) .-sheet)
-                  (some-> (link %) .-sheet))
+      (every? #(or (contains? @*ready %)
+                  (when (or (some-> (inline-style %) .-sheet)
+                            (some-> (link %) .-sheet))
+                    ;; React keeps installed resources for this document. Once
+                    ;; observed, readiness needs no repeated DOM/URL scan.
+                    (swap! *ready conj %)
+                    true))
               (catalog/paths (manifest) module))))
 
 (defn acquire-path! [path]

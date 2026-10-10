@@ -64,7 +64,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   mounted boundaries own acquisition and preserve static SSR until activation.
 - Module `:styles` metadata is available before code acquisition. The shared loader
   starts CSS and JS together and waits for both before readiness; React owns
-  stylesheet insertion. Initial inlined route styles already satisfy readiness
+  stylesheet insertion. Parse the document style manifest once per element/text
+  revision and retain readiness for installed React resources. Initial inlined
+  route styles already satisfy readiness
   and must not trigger duplicate external requests. Popup-only `:ssr-styles :deferred`
   sheets stay out of the SSR head but still start before Shadow acquisition. Keep
   feature CSS in `resources/scss/modules` and preserve
@@ -123,7 +125,17 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Pretty data and expanded error details live in `:data-inspector`; keep pprint
   out of initial browser code. Rendered Markdown uses ReactMarkdown in its module; keep
   unused Markdown-clj imports out of the shell. Shared numeric display uses native fixed decimal
-  formatting. Landing story/float helpers belong to `:home`, with lazy compatibility
+  formatting. Shared clocks/relative dates and calendar-month ranges use native Date
+  and epoch milliseconds; do not reintroduce cljs-time/Closure locale tables for these
+  small formatting cases. The optional Java-time Transit codec stays behind `:dev`;
+  normal browser APIs use JSON or standard Transit, and backend codecs stay native.
+  Carousel implementations, events, index subscription and CSS belong to `:carousel`;
+  Home/CV/Strava declare that bundle dependency, and shared UI keeps lazy exports.
+  Include newly split SSR components in the eager Node worker spec map and verify
+  their actual markup in fixtures before checking hydration identity.
+  Contact email/toggle markup stays in the shell; the popup view/styles belong
+  to `:contact` and mount with immediate activation only after the toggle opens.
+  Landing story/float helpers belong to `:home`, with lazy compatibility
   exports in shared UI. Preserve prototype implementations when moving ownership.
 - Saved local HTML/state pairs also restore reload and address-bar document
   navigation at the exact URL/build, once. With no usable pair, network SSR
@@ -153,11 +165,12 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   See `doc/boot.md` for the stage boundaries.
   Deferred Search owns focus while open and releases it on close/unmount; hidden
   input focus must not drive scrolling during later navigation.
-- `browser_resources.cljs` acquires analytics and necessary compatibility scripts
+- `browser_resources.cljs` acquires analytics
   after hydration, window load, two paint frames and idle with no pending page
   bindings. Production analytics initializes its queue/configuration there too;
-  keep its ID, bootstrap, remote scripts and preconnects out of SSR HTML. Modern browsers
-  use native smooth scrolling without downloading its polyfill.
+  keep its ID, bootstrap, remote scripts and preconnects out of SSR HTML. Browsers
+  use native smooth scrolling without a compatibility script (Safari 15.4+).
+  Older browsers retain instant scrolling as progressive enhancement.
   Lazy videos omit sources until visible; their observer owns cleanup, React owns markup.
   Use Shadow reader features for build-specific dependencies, not runtime imports.
 - Development console and React profiling implementations live in `env/dev/cljs`.

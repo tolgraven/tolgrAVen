@@ -38,3 +38,11 @@ Reitit adapter are installed once per document. Initial typed parameters come fr
 the server pair; pending disk reads cannot overwrite that paired state. Client-only
 startup/local returns acquire the engine before using persisted state, and early
 SPA navigation acquires it before route controllers. See [schemas.md](schemas.md).
+
+Smooth scrolling uses the native browser APIs. Safari 15.4 added `scroll-behavior`
+and JavaScript `ScrollOptions`; older browsers retain instant scrolling. There is
+no third-party scroll compatibility script. See [WebKit’s release notes](https://webkit.org/blog/12445/new-webkit-features-in-safari-15-4/).
+
+Clock coeffects and scroll throttling use epoch milliseconds. Log/chat UTC clocks,
+relative timestamps, provider-local clock offsets and UTC calendar month ranges use
+native Date helpers. No production browser/Node consumer requires cljs-time.

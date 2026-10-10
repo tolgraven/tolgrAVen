@@ -3,9 +3,7 @@
     [reagent.core :as r]
     [tolgraven.react :as rf]
     [clojure.string :as string]
-    [clojure.walk :as walk]
-    [cljs-time.core :as ct]
-    [cljs-time.coerce :as ctc]))
+    [clojure.walk :as walk]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 

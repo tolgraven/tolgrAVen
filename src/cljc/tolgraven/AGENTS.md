@@ -75,3 +75,7 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
   decoding, received-value details and profiling registrations leave production
   and Node graphs. Public validation issue maps remain value-redacting; bounded
   development details may use metadata without changing transport contracts.
+
+The thin `ajax/time.cljc` Shadow adapter lives beside its browser consumer and
+retains Java-time Transit codecs only under `:dev`. Production uses standard Transit;
+server format handlers retain their native JVM Java-time support.

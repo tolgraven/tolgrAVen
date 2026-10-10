@@ -2,8 +2,7 @@
   (:require
     [clojure.walk :as walk]
     [tolgraven.react :as rf]
-    [cljs-time.core :as ct]
-    [cljs-time.format :as ctf]))
+    [tolgraven.util :as util]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
@@ -120,10 +119,9 @@
 
 (rf/reg-event-fx :intervals/fetch-summary
   (fn [{:keys [db]} [_ ]]
-    (let [start (ctf/unparse {:format-str "yyyy-MM-dd"}
-                             (ct/minus (ct/today) (ct/months 1)))
-          end (ctf/unparse {:format-str  "yyyy-MM-dd"}
-                             (ct/today))]
+    (let [now (js/Date.now)
+          start (util/previous-month-date now)
+          end (util/unix->ts now :date)]
       {:dispatch-n
        [[:intervals/get (str "athlete-summary{ext}?start=" start "&end=" end)
          [:summary]]]})))

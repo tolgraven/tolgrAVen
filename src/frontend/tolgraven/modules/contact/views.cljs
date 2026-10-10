@@ -4,7 +4,8 @@
             [tolgraven.react :as rf]
             [reagent.core :as r]
             [clojure.string :as string]
-            [tolgraven.components.ui :as ui]))
+            [tolgraven.components.ui :as ui]
+            [tolgraven.components.contact :as contact]))
 
 (defc ^:private <contact-confirmation>
   {:features [[:appear "slide-in"]]}
@@ -34,7 +35,7 @@
                  "Must enter at least email and message"])
 
 (defc <contact-form-popup>
-  [_]
+  [show? :- :boolean]
   (let [*inited? (r/atom nil)
         *submit-hovered? (r/atom false)]
     (fn [show?]
@@ -96,18 +97,5 @@
              [:p "Whether for work, collaboration or something else, I'll do my best to accomodate you.
                   NOTE! Currently out of order, please just email me for now haha."]])]])))))
 
-(defc <contact-ways> [email]
-  (let [show-mail-form? @(rf/subscribe [:state [:contact-form :show?]])]
-    [:div
-     [<contact-form-popup> show-mail-form?]
-     [:div.contact-ways
-      [:span [:a {:href (str "mailto:" email)
-                  :style {:font-size "85%"}}
-              email]]
-      [:span {:style {:color "var(--fg-6)"}}
-       " | "]
-      [:button.nomargin.nopadding.noborder
-       {:title "Contact us by form"
-        :on-click #(rf/dispatch (if show-mail-form? [:contact/close] [:contact/open]))
-        :style {:color "var(--fg-5)"}}
-       [:i.fas.fa-envelope]]]]))
+(defn <contact-ways> [email]
+  [contact/<contact-ways> email])

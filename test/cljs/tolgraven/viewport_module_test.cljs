@@ -62,7 +62,11 @@
         code (js/Promise. (fn [resolve _] (reset! *code resolve)))
         loadable (reify lazy/ILoadable (ready? [_] @*ready?) IDeref (-deref [_] spec))]
     (set! loader/modules (assoc original-modules module loadable))
-    (set! styles/acquire! (fn [_] (swap! *started conj :css) css))
+    (set! styles/acquire!
+      (fn [id]
+        (if (= id module)
+          (do (swap! *started conj :css) css)
+          (original-css id))))
     (set! lazy/load (fn
                      ([_] (swap! *started conj :js)
                           (.then code (fn [value] (reset! *ready? true) value)))

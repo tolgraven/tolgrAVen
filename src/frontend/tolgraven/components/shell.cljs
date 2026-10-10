@@ -9,7 +9,7 @@
     [clojure.string :as string]
     [tolgraven.loader]
     [tolgraven.components.ui :as ui]
-    [tolgraven.modules.contact.views :as contact]
+    [tolgraven.components.contact :as contact]
     [tolgraven.components.image :as img]
     [tolgraven.components.image.sources :as image-sources]
     [tolgraven.db :as db]

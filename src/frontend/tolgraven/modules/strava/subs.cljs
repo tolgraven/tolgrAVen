@@ -1,9 +1,6 @@
 (ns tolgraven.modules.strava.subs
   (:require
     [tolgraven.react :as rf]
-    [cljs-time.core :as ct]
-    [cljs-time.format :as ctf]
-    [cljs-time.coerce :as ctc]
     [tolgraven.util :as util]))
 
 

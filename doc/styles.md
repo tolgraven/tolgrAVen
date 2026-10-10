@@ -170,3 +170,11 @@ fallback and cache headers after changing it.
 Build CSS as UTF-8 without a byte-order marker (`charset: false` in Sass). The
 server also strips a leading marker before inlining third-party/optimized sheets;
 a marker inside an HTML style element becomes part of its first selector.
+
+Carousel controls/views and their independent sheet belong to `:carousel`. Home, CV
+and Strava declare the bundle dependency; Blog and Search acquire neither its code
+nor its stylesheet. Shared UI compatibility exports delegate to that owner.
+
+The footer's email/toggle remains eager. The closed contact form contributes no
+initial code or CSS; opening it mounts the `:contact` boundary and starts both
+resources. Its popup sheet is deferred in ordinary SSR documents.

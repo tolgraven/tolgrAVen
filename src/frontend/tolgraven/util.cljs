@@ -2,9 +2,6 @@
   (:require
     [tolgraven.react :as rf]
     [reitit.frontend.easy :as rfe]
-    [cljs-time.core :as ct]
-    [cljs-time.format :as ctf]
-    [cljs-time.coerce :as ctc]
     [clojure.string :as string]
     [clojure.walk :as walk]))
 
@@ -76,25 +73,51 @@
            plural thing))))
 
 
-(defn timestamp "Use 0-59 mins ago, 1-24 hrs ago, datestamp..."
-  [ts]
-  (if-let [ts (ctc/from-long ts)]
-    (let [mins (ct/mins-ago ts)]
-      (if (zero? mins)
-        "now"
-        (if (< mins 60)
-        (str (pluralize mins "minute") " ago")
-        (let [day-ago (ct/minus (ct/now) (ct/hours 24))]
-          (if (ct/after? ts day-ago)
-            (str (pluralize (int (/ mins 60)) "hour") " ago")
-            (ctf/unparse (ctf/formatters :date) ts))))))
+(defn unix->ts
+  "Format epoch milliseconds in UTC, matching the original log/chat formatter."
+  [ms & [format]]
+  (if (and (number? ms) (js/Number.isFinite ms))
+    (let [iso (.toISOString (js/Date. ms))]
+      (case (or format :hour-minute-second)
+        :hour-minute-second (subs iso 11 19)
+        :date (subs iso 0 10)
+        (throw (ex-info "Unsupported timestamp format" {:format format}))))
     ""))
 
-(defn unix->ts "Convert unix time to human-readable"
-  [ms & [custom-format]]
-  (let [custom-format (or custom-format :hour-minute-second)]
-    (ctf/unparse (ctf/formatters custom-format)
-                 (ctc/from-long ms))))
+(defn local-time
+  "Format a full provider ISO timestamp as local HH:mm:ss plus its UTC offset."
+  [clock]
+  (let [date (js/Date. clock)
+        pad #(str (when (< % 10) "0") %)]
+    (if (js/Number.isFinite (.getTime date))
+      (let [offset (.getTimezoneOffset date)
+            absolute (abs offset)]
+        (str (pad (.getHours date)) ":" (pad (.getMinutes date)) ":" (pad (.getSeconds date))
+             (if (pos? offset) "-" "+") (pad (int (/ absolute 60))) ":" (pad (mod absolute 60))))
+      "")))
+
+(defn previous-month-date
+  "UTC calendar subtraction, clamped to the preceding month's last day."
+  [ms]
+  (let [date (js/Date. ms)
+        year (.getUTCFullYear date)
+        month (.getUTCMonth date)
+        last-day (.getUTCDate (js/Date. (js/Date.UTC year month 0)))
+        day (min (.getUTCDate date) last-day)]
+    (unix->ts (js/Date.UTC year (dec month) day) :date)))
+
+(defn timestamp
+  "Use minutes ago, hours ago, then a UTC date. Optional now keeps this pure in tests."
+  ([ms] (timestamp ms (js/Date.now)))
+  ([ms now]
+   (if (and (number? ms) (js/Number.isFinite ms))
+     (let [mins (max 0 (js/Math.floor (/ (- now ms) 60000)))]
+       (cond
+         (zero? mins) "now"
+         (< mins 60) (str (pluralize mins "minute") " ago")
+         (< (- now ms) 86400000) (str (pluralize (int (/ mins 60)) "hour") " ago")
+         :else (unix->ts ms :date)))
+     "")))
 
 
 (defn format-number [n & [precision]]

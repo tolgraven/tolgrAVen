@@ -1,4 +1,5 @@
 (ns tolgraven.modules.home.module
+  {:bundle/depends-on #{:main :carousel}}
   (:require [tolgraven.modules.home.pages :as pages]
             [tolgraven.modules.home.views :as views]
             [tolgraven.modules.home.layout :as layout]))

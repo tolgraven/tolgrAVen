@@ -1,8 +1,6 @@
 (ns tolgraven.modules.instagram.subs
   (:require
-    [tolgraven.react :as rf]
-    [cljs-time.coerce :as ctc]
-    [cljs-time.core :as ct]))
+    [tolgraven.react :as rf]))
 
 (rf/reg-sub :instagram/data
  (fn [db [_ path]]
@@ -17,10 +15,9 @@
  :<- [:instagram/content [:posts]]
  (fn [posts-map [_ amount]]
    (some->> posts-map
-            (reduce (fn [m [k v]]
-                      (assoc m (ctc/from-string (:timestamp v)) v))
-                    (sorted-map-by ct/after?)) ; dumb but sort-by was giving me shit
             vals
+            (sort-by #(let [ms (js/Date.parse (:timestamp %))]
+                        (if (js/Number.isFinite ms) ms 0)) >)
             (take amount))))
 
 (rf/reg-sub :instagram/posts-urls

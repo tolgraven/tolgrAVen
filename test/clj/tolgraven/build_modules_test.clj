@@ -6,11 +6,15 @@
 (deftest module-build-and-runtime-catalog-have-one-owner
   (let [found (modules/discover)
         by-id (into {} (map (juxt :id identity)) found)]
-    (is (every? #(contains? by-id %) [:blog :cv :docs :test :user :link-preview]))
+    (is (every? #(contains? by-id %) [:blog :cv :docs :test :user :link-preview :carousel :contact]))
     (is (not (contains? by-id :main)))
     (is (= 'tolgraven.modules.experiments.module (get-in by-id [:test :entry])))
     (is (= #{:main :user :link-preview} (get-in by-id [:blog :depends-on])))
-    (is (= #{:main} (get-in by-id [:cv :depends-on])))
+    (doseq [id [:cv :home]]
+      (is (= #{:main :carousel} (get-in by-id [id :depends-on]))))
+    (is (= #{:main :maps :carousel} (get-in by-id [:strava :depends-on])))
+    (doseq [id [:carousel :contact]]
+      (is (= #{:main} (get-in by-id [id :depends-on]))))
     (is (= #{:main} (get-in by-id [:user :depends-on])))
     (is (= #{:main :markdown} (get-in by-id [:link-preview :depends-on])))
     (is (= (set (keys by-id)) (set (keys (modules/bundles)))))))
