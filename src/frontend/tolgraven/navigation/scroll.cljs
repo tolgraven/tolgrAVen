@@ -4,9 +4,7 @@
     [tolgraven.react :as rf]
     [tolgraven.navigation.transition :as page-transition]
     [clojure.string :as string]
-    [tolgraven.util :as util]
-    [cljs-time.core :as ct]
-    [cljs-time.coerce :as ctc]))
+    [tolgraven.util :as util]))
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 

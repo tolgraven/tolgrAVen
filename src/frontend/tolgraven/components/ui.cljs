@@ -11,10 +11,7 @@
     [tolgraven.components.heading :as heading]
     [tolgraven.component.restore :as restore]
     [clojure.string :as string]
-    [tolgraven.components.markdown :as code]
-    [cljs-time.core :as ct]
-    [cljs-time.coerce :as ctc]
-    [cljs-time.format :as ctf]))
+    [tolgraven.components.markdown :as code]))
 
 ;; GENERAL WRAPPER COMPONENT
 ;; * Error boundary
@@ -327,8 +324,7 @@
 
 (m/defc ^:private <log-line> [{:keys [time level title message]}]
   [:tr.log-messages
-   [:td.log-time (ctf/unparse (ctf/formatters :hour-minute-second)
-                            (ctc/from-long time))]
+   [:td.log-time (util/unix->ts time)]
    [:td.log-level {:class (name level)} (name level)]
    [:td.log-title title]
    [:td.log-message [:pre (format-log-message message)]]])

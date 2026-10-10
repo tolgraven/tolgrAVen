@@ -2,7 +2,6 @@
   (:require
     [tolgraven.content.schema :as schema]
     [tolgraven.component.registry]
-    [cljs-time.core :as ct]
     [clojure.string :as string]
     [tolgraven.react :as rf]
     [reagent.core :as r]
@@ -122,7 +121,7 @@
         first-year (apply min (map :from (mapcat :things timeline)))
         last-year  (apply max (map #(if (number? %)
                                       %
-                                      (+ 3 (ct/year (ct/now))))
+                                      (+ 3 (.getUTCFullYear (js/Date.))))
                                    (map :to (mapcat :things timeline))))
         get-pos (fn [start end]
                   (str (* 95
@@ -130,7 +129,7 @@
                              (- last-year first-year)))
                        "%"))
         get-size (fn [start end]
-                   (let [end (if (number? end) end (inc (ct/year (ct/now))))]
+                   (let [end (if (number? end) end (inc (.getUTCFullYear (js/Date.))))]
                      (str (* 92
                              (/ (- end start)
                                 (- last-year first-year)))

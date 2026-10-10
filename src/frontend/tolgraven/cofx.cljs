@@ -2,13 +2,12 @@
   (:require
     [reagent.core :as r]
     [tolgraven.react :as rf]
-    [tolgraven.util :as util]
-    [cljs-time.core :as ct]
-    [cljs-time.coerce :as ctc]))
+    [tolgraven.util :as util]))
 
 
-(rf/reg-cofx :now         #(assoc % :now (ctc/to-long (ct/now))))
-(rf/reg-cofx :now-ct      #(assoc % :now-ct (ct/now)))
+(rf/reg-cofx :now         #(assoc % :now (js/Date.now)))
+;; Legacy timer coeffect is also epoch milliseconds; its only consumers subtract.
+(rf/reg-cofx :now-ct      #(assoc % :now-ct (js/Date.now)))
 
 (rf/reg-cofx :user/gen-color
              #(assoc % :bg-color (util/css-str "hsla"

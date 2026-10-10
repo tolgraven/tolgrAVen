@@ -7,10 +7,7 @@
     [clojure.string :as string]
     [tolgraven.components.ui :as ui]
     [tolgraven.components.image :as img]
-    [tolgraven.util :as util :refer [at]]
-    [cljs-time.core :as ct]
-    [cljs-time.coerce :as ctc]
-    [cljs-time.format :as ctf]))
+    [tolgraven.util :as util :refer [at]]))
 
 
 (defc <commit> "Show a single commit with highlighted diff etc..."
@@ -106,8 +103,7 @@
                        :class "user-avatar center-content"}]
          [:div.github-commit-details
           [:span.github-commit-time date]
-          [:span.github-commit-time (ctf/unparse (ctf/formatters :time-no-ms)
-                                                 (ct/to-default-time-zone (ctc/from-string clock)))]
+          [:span.github-commit-time (util/local-time clock)]
           [:a {:href html_url}
            [:span.github-commit-sha sha7]]
 

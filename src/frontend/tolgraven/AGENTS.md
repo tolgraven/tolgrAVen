@@ -123,7 +123,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Pretty data and expanded error details live in `:data-inspector`; keep pprint
   out of initial browser code. Rendered Markdown uses ReactMarkdown in its module; keep
   unused Markdown-clj imports out of the shell. Shared numeric display uses native fixed decimal
-  formatting. Landing story/float helpers belong to `:home`, with lazy compatibility
+  formatting. Shared clocks/relative dates and calendar-month ranges use native Date
+  and epoch milliseconds; do not reintroduce cljs-time/Closure locale tables for these
+  small formatting cases. Landing story/float helpers belong to `:home`, with lazy compatibility
   exports in shared UI. Preserve prototype implementations when moving ownership.
 - Saved local HTML/state pairs also restore reload and address-bar document
   navigation at the exact URL/build, once. With no usable pair, network SSR
