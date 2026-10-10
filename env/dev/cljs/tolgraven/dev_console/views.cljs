@@ -14,6 +14,7 @@
             [tolgraven.dev-console.layout :as layout]
             [tolgraven.dev-console.components :as components]
             [tolgraven.dev-console.state]
+            [tolgraven.dev.source-links :as source]
             [tolgraven.loader :as loader]
             [tolgraven.navigation.routes :as routes]))
 
@@ -431,20 +432,21 @@
 (defn timing-lanes [records]
   (let [index (into {} (map (juxt :id identity)) (filter #(= :trace (:kind %)) records))]
     (->> records
-         (group-by #(if (= :trace (:kind %)) [:trace (trace-depth index %)] [(:kind %) 0]))
+         (group-by #(if (= :trace (:kind %)) [:trace (trace-depth index %)] [(:kind %) (or (:instance %) "")]))
          (sort-by key))))
 
 (defc <flamegraph>
-  {:state {:initial {:epoch nil :selected nil}}}
+  {:state {:initial {:epoch nil :selected nil :window 250 :offset 0}}}
   [records query-text]
-  :let [*epoch (<sub :comp [:epoch]) *selected (<sub :comp [:selected])]
+  :let [*epoch (<sub :comp [:epoch]) *selected (<sub :comp [:selected])
+        *window (<sub :comp [:window]) *offset (<sub :comp [:offset])]
   (let [epochs (vec (take-last 30 (filter #(and (= :epoch (:kind %)) (vector-matches? query-text (:event %))) records)))
         epoch (or (some #(when (= @*epoch (str (:dispatch-id %))) %) epochs) (last epochs))
         timings (filter #(and (number? (:start %)) (number? (:end %)) (number? (:duration %))) records)
         ;; Show one event and its following commits, rather than compressing minutes
         ;; of unrelated activity into bars too small to inspect.
-        start (or (:start epoch) (when (string/blank? query-text) (some-> timings last :start)))
-        end (when start (+ (or (:end epoch) start) 250))
+        start (some-> (or (:start epoch) (when (string/blank? query-text) (some-> timings last :start))) (+ @*offset))
+        end (when start (+ start @*window))
         timings (vec (take-last 100 (filter #(and (not= :epoch (:kind %)) start
                                                  (<= start (:start %) end)) timings)))
         span (when start (max 1 (- end start)))]
@@ -457,7 +459,13 @@
           (str (:dispatch-id epoch) " · " (short-value (:event epoch)))])]]
      (when (and (not (string/blank? query-text)) (empty? epochs))
        [:p "No captured event matches this vector. Choose a recorded event or clear the filter."])
-     [:p "Nested re-frame traces and React commit durations, followed by 250 ms of rendering. Click a bar to inspect it. Profiler durations include child work."]
+     [:div
+      [:button {:on-click #(>reset *offset (- @*offset (/ @*window 2)))} "Pan earlier"]
+      [:button {:on-click #(>reset *window (max 10 (/ @*window 2)))} "Zoom in"]
+      [:button {:on-click #(>reset *window (min 10000 (* @*window 2)))} "Zoom out"]
+      [:button {:on-click #(>reset *offset (+ @*offset (/ @*window 2)))} "Pan later"]
+      [:button {:on-click #(do (>reset *offset 0) (>reset *window 250))} "Reset window"]]
+     [:p "Nested re-frame traces, measured view bodies and React commit durations. Click a component bar to inspect/highlight it on the page. Profiler durations include child work; temporal proximity does not establish causation."]
      [:div.dev-flamegraph
       (if (empty? timings) [:p "No timing records in this window. Navigate or interact with a component."]
         (for [[lane traces] (timing-lanes timings)] ^{:key (pr-str lane)}
@@ -466,7 +474,9 @@
            [:div.dev-flamegraph__track
             (for [[i trace] (map-indexed vector traces)] ^{:key i}
               [:button.dev-flamegraph__bar
-               {:on-click #(>reset *selected trace)
+               {:on-click #(do (>reset *selected trace)
+                                (when (:instance trace)
+                                  (rf/dispatch [:dev-console/pick (:instance trace)])))
                 :style {:left (str (* 100 (/ (- (:start trace) start) span)) "%")
                         :width (str (max 0.5 (* 100 (/ (:duration trace) span))) "%")}
                 :title (str (or (:operation trace) (:component trace)) " · " (:duration trace) "ms")}
@@ -576,7 +586,9 @@
          {:title (if mounted? "Live mounted instance" (if observed? "Loaded declaration at a previously observed parent" "Loaded declaration; no unambiguous parent has been observed"))}
          (if mounted? "mounted" "ready · unmounted")])
       (when-not namespace?
-        [:button {:on-click #(>update *details not) :aria-expanded (boolean @*details)} "Details"])]
+        [:button {:on-click #(>update *details not) :aria-expanded (boolean @*details)} "Details"])
+      (when mounted?
+        [:button {:on-click #(rf/dispatch [:dev-console/pick id])} "Show on page"])]
      (when @*details
        [:div.dev-component-tree__details
         (when path [:button {:on-click #(inspect! path)} "Inspect state path"])
@@ -587,10 +599,15 @@
        [<component-branches> id children (inc depth) inspect!])]))
 
 (defc <component-tree> [active inspect!]
+  :let [*search (<sub :comp [:search] {:initial ""})]
   (let [catalog @(rf/subscribe [:dev-console/catalog])
+        active (into {} (filter #(layout/matches? @*search (val %))) active)
+        catalog (into {} (filter #(layout/matches? @*search (key %))) catalog)
         parents @(rf/subscribe [:dev-console/component-parents])
         {:keys [mounted ready mounted-count ready-count]} (components/tree active catalog parents)]
     [:section.dev-component-tree {:aria-label "Component hierarchy"}
+     [:label "Find component " [:input {:type "search" :value @*search
+                                        :on-change #(>reset *search (.. % -target -value))}]]
      [:p (str mounted-count " mounted instances · " ready-count " loaded, unmounted declarations. Native DOM nodes are omitted.")]
      [:h4 "Mounted hierarchy"]
      [<component-branches> :mounted-roots mounted 0 inspect!]
@@ -612,6 +629,156 @@
                                  (catch :default error (rf/dispatch [:dev-console/result {:error (str error)}])))} "Set through state event"]]
        [:p "Enter a vector path."])]))
 
+
+(defc <event-history> [records]
+  :let [*search (<sub :comp [:search] {:initial ""})]
+  [:section
+   [:label "Search captured events " [:input {:type "search" :value @*search
+                                              :on-change #(>reset *search (.. % -target -value))}]]
+   [<record-groups> :epochs (filterv #(and (= :epoch (:kind %))
+                                          (layout/matches? @*search (:event %))) records)]])
+
+(defc <profile-summary> [records]
+  :let [*search (<sub :comp [:search] {:initial ""})]
+  (let [groups (layout/metrics records @*search)]
+    [:section.dev-profile
+     [:h3 "Where time goes"]
+     [:label "Find component or subscription " [:input {:type "search" :value @*search
+                                                       :on-change #(>reset *search (.. % -target -value))}]]
+     [:p "Measured development work, sorted by total time. View is the component body; render includes descendants. Counts and averages cover the bounded captured window, not the entire session. Mount/update counts belong to React commits. Inspect source to distinguish processing and DOM interop from required lifecycle adapters."]
+     [:div.dev-profile__table
+      [:table
+       [:thead [:tr (for [label ["Kind / owner" "Runs" "Mount / update" "Total" "Average" "Maximum" "Inspect"]]
+                      ^{:key label} [:th label])]]
+       [:tbody (for [{:keys [id count total average maximum mounts updates latest]} (take 100 groups)]
+                 ^{:key (pr-str id)}
+                 [:tr [:td [:code (pr-str id)]] [:td count] [:td (str mounts " / " updates)]
+                  [:td (duration-label total)] [:td (duration-label average)] [:td (duration-label maximum)]
+                  [:td (when (:instance latest)
+                         [:button {:on-click #(rf/dispatch [:dev-console/pick (:instance latest)])} "Show on page"])]])]]]]))
+
+(defn element-for-instance [instance]
+  (some #(when (= instance (.getAttribute % "data-dev-instance")) %)
+        (array-seq (.querySelectorAll js/document "[data-dev-instance]"))))
+(defn picking! []
+  ;; Capture listeners prevent the selection click from activating the real UI.
+  ;; Measurement and pointer intent are the only imperative DOM work here.
+  (let [click! (fn [event]
+                 (when-not (.closest (.-target event) "[data-dev-console]")
+                   (when-let [element (.closest (.-target event) "[data-dev-instance]")]
+                     (.preventDefault event) (.stopPropagation event)
+                     (rf/dispatch [:dev-console/pick (.getAttribute element "data-dev-instance")]))))
+        escape! #(when (= "Escape" (.-key %)) (rf/dispatch [:dev-console/picking false]))]
+    (.addEventListener js/document "click" click! true)
+    (.addEventListener js/document "keydown" escape!)
+    #(do (.removeEventListener js/document "click" click! true)
+         (.removeEventListener js/document "keydown" escape!))))
+
+(defc <selection-highlight> [instance]
+  (let [[rect set-rect!] (rf/use-state nil)]
+    (rf/use-layout-effect
+      (fn []
+        (let [measure! (fn []
+                         (if-let [element (element-for-instance instance)]
+                           (let [rect (.getBoundingClientRect element)
+                                 unit (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))]
+                             (set-rect! {:left (str (/ (.-left rect) unit) "rem")
+                                         :top (str (/ (.-top rect) unit) "rem")
+                                         :width (str (/ (.-width rect) unit) "rem")
+                                         :height (str (/ (.-height rect) unit) "rem")}))
+                           (set-rect! nil)))
+              observer (when (exists? js/ResizeObserver) (js/ResizeObserver. measure!))]
+          (measure!)
+          (when-let [element (element-for-instance instance)] (when observer (.observe observer element)))
+          (.addEventListener js/window "scroll" measure! true)
+          (.addEventListener js/window "resize" measure!)
+          #(do (when observer (.disconnect observer))
+               (.removeEventListener js/window "scroll" measure! true)
+               (.removeEventListener js/window "resize" measure!)))) [instance])
+    (when rect [:div.dev-selection-highlight {:style rect :aria-hidden true}])))
+
+(defc <component-inspector>
+  {:depends [source/catalog-resource]
+   :loading-tag :section.dev-component-inspector}
+  [instance record records]
+  (let [catalog (:value @(rf/subscribe [:component-data/installed source/catalog-path]))
+        {:keys [component path queries]} record
+        queries (remove #(contains? #{:get :state :debug :component-state/scoped-value} (first %)) queries)
+        declaration (get @(rf/subscribe [:dev-console/catalog]) component)
+        anchor (:anchor-instance record)
+        location (or (:source record) (get-in declaration [:options :source]))
+        file (or (source/resolve-file catalog (:file location))
+                 (source/resolve-file catalog (first component)))
+        recent (vec (take-last 8 (filter #(= instance (:instance %)) records)))]
+    [:section.dev-component-inspector
+     {:aria-label "Selected component"
+      :class (when-not anchor "dev-component-inspector--detached")
+      :style (when anchor {:position-anchor (str "--dev-instance-" anchor)})}
+     [:div.dev-component-inspector__heading
+      [:strong {:title (string/join "/" component)} (or (last component) "Unmounted component")]
+      [:button {:on-click #(rf/dispatch [:dev-console/pick nil]) :aria-label "Close selected component"} "×"]]
+     [:small.dev-component-inspector__namespace (first component)]
+     (if record
+       [:<>
+        (when (:unmounted? record) [:p {:role "status"} "This instance has unmounted; its last declaration and retained state are shown."])
+        (when (and (not (:unmounted? record)) (nil? anchor))
+          [:p {:role "status"} "This component currently has no native anchor."])
+        (when file [:a {:href (source/source-url file (:line location))} "Open definition in source browser"])
+        (if path [:<> [:h4 "Automatic app-db path"] [<value> [:picked-path instance] path 0]
+                     [<value> [:picked-state instance] @(rf/subscribe [:dev-console/path path]) 0]]
+            [:p "This view has no automatic scoped state."])
+        [:h4 "Subscriptions acquired by this view"]
+        (when (empty? queries) [:p "No subscriptions captured for this view."])
+        (for [query queries]
+          ^{:key (pr-str query)}
+          [:details [:summary [:code (pr-str query)]] [<query-result> query]])
+        [:h4 "Recent renders and observed reasons"]
+        (if (seq recent) [<value> [:picked-renders instance] recent 0]
+            [:p "No retained render samples for this instance."])
+        [:small "Reasons compare arguments and cached query results. Other changes remain unclassified."]]
+       [:p "This instance has unmounted. Select another component."])]))
+
+(defc <page-diagnostics> [debug]
+  (let [picking? (:picking? debug)
+        instance (:selected-instance debug)
+        anchor (first (components/native-roots (:active debug) instance))]
+    (rf/use-effect #(when picking? (picking!)) [picking?])
+    [:<>
+     (when picking? [:div.dev-picking-hint {:role "status"} "Click a component to inspect it · Escape cancels"])
+     (when instance
+       [:<> (when anchor [<selection-highlight> anchor])
+        [<component-inspector> instance
+         (some-> (or (get (:active debug) instance)
+                     (some-> (:selected-record debug) (assoc :unmounted? true)))
+                 (assoc :anchor-instance anchor))
+         (:records debug)]])]))
+
+(declare <panel>)
+
+(defn open-popout! []
+  ;; The second document is a portal host. It shares this runtime and is never
+  ;; bootstrapped as another app or fed a copied app-db.
+  (js/window.open "about:blank" "tolgraven-dev-console" "popup,width=1100,height=760"))
+(defc <popout> [window close!]
+  (rf/use-effect
+    (fn []
+      (let [document (.-document window)]
+        (set! (.-title document) "tolgrAVen · development diagnostics")
+        (.addEventListener window "beforeunload" close!)
+        #(do (.removeEventListener window "beforeunload" close!)
+             (when-not (.-closed window) (.close window))))) [window])
+  [:<>
+   (rf/create-portal
+     (rf/as-element
+       [:<> (for [[index element] (map-indexed vector (array-seq (.querySelectorAll js/document "link[rel=stylesheet],style")))]
+              ^{:key index}
+              (if (= "STYLE" (.-tagName element))
+                [:style (.-textContent element)]
+                [:link {:rel "stylesheet" :href (.-href element)}]))]) (.-head (.-document window)))
+   (rf/create-portal
+     (rf/as-element [:aside.dev-console.dev-console--popout {:data-dev-console true}
+                      [<panel> {:close! close!}]]) (.-body (.-document window)))])
+
 (defc <panel>
   {:state {:initial {:tab :page :path "[:state]"
                      :value "nil" :event "[:page/preload-links]" :dry-run? false}}}
@@ -625,14 +792,10 @@
         route @(rf/subscribe [:common/route])
         tab-value @*tab
         records (:records debug)]
-    ;; Layout effect enables the consumer before child probe mount effects run.
-    (rf/use-layout-effect (fn [] (capture/connect!)) #js [])
-    (rf/use-effect
-      (fn [] (if (:recording? options) (capture/start!) js/undefined))
-      #js [(:recording? options)])
     [:section.dev-console__panel {:aria-label "Re-frame inspector"}
      [:div.dev-console__header
       [:strong "tolgrAVen · re-frame inspector"]
+      [:a {:href "/docs/source"} "Source browser"]
       [:span.dev-console__metrics (str (count (:active debug)) " components · " (count records) " records")]
       [:label [:input {:type "checkbox" :checked (boolean (:recording? options))
                        :on-change #(rf/dispatch [:dev-console/option :recording? (.. % -target -checked)])}] "Record"]
@@ -668,10 +831,10 @@
                   "Stub common network/navigation/storage effects (other effects still run)"]
                  [:button {:on-click #(rf/dispatch [:dev-console/dispatch {:event @*event :dry-run? @*dry-run}])} "Dispatch and trace"]
                  [<value> [:dispatch-result] (:result debug) 0]
-                 [<record-groups> :epochs (filterv #(= :epoch (:kind %)) records)]]
+                 [<event-history> records]]
         :errors [:<> [validation/<reports>]
                  [<value> [:errors] (dissoc @(rf/subscribe [:dev-console/path [:diagnostics]]) :validation) 0]]
-        :timings [<timings> records]
+        :timings [:<> [<profile-summary> records] [<timings> records]]
         :layout [:<>
                  (if (and (exists? js/PerformanceObserver)
                           (some #{"layout-shift"} (array-seq (.-supportedEntryTypes js/PerformanceObserver))))
@@ -681,19 +844,36 @@
                                 :registrations (into {} (for [[kind handlers] @(rf/subscribe [:dev-console/handlers])]
                                                          [kind (into {} (map (fn [[id handler]] [id (meta handler)]) handlers))]))} 0])]]))
 
-(defc <console>
-  {:state {:initial {:open? false}}}
-  []
-  :let [*open (<sub :comp [:open?])]
-  (rf/use-effect
-    (fn []
-      (let [handler (fn [event]
-                      (when (and (= "D" (string/upper-case (.-key event)))
-                                 (.-altKey event) (.-shiftKey event))
-                        (.preventDefault event) (scoped/>update *open not)))]
-        (.addEventListener js/window "keydown" handler)
-        #(.removeEventListener js/window "keydown" handler))) #js [])
-  [:aside.dev-console {:aria-label "Development console" :data-dev-console true}
-   [:button.dev-console__toggle {:on-click #(>update *open not) :aria-expanded (boolean @*open)}
-    "Dev " (if @*open "×" "⌘")]
-   (when @*open [<panel> {:close! #(>reset *open false)}])])
+(defc <console> []
+  (let [options @(rf/subscribe [:dev-console/options])
+        debug @(rf/subscribe [:dev-console/data])
+        open? (boolean (:open? debug))
+        [popout set-popout!] (rf/use-state nil)
+        active? (boolean (or open? popout (:page-capture? options) (:picking? debug) (:selected-instance debug)))]
+    (rf/use-layout-effect #(when active? (capture/connect!)) [active?])
+    (rf/use-effect #(when (and active? (:recording? options)) (capture/start!))
+                   [active? (:recording? options)])
+    (rf/use-effect (fn [] (reset! capture/*flash? (boolean (:event-flash? options))) nil) [(:event-flash? options)])
+    (rf/use-effect
+      (fn []
+        (let [handler (fn [event]
+                        (when (and (= "D" (string/upper-case (.-key event)))
+                                   (.-altKey event) (.-shiftKey event))
+                          (.preventDefault event) (rf/dispatch [:dev-console/toggle-open])))]
+          (.addEventListener js/window "keydown" handler)
+          #(.removeEventListener js/window "keydown" handler))) [])
+    [:aside.dev-console {:aria-label "Development console" :data-dev-console true}
+     [:div.dev-console__tools
+      [:button.dev-console__toggle {:on-click #(rf/dispatch [:dev-console/toggle-open]) :aria-expanded (boolean open?)}
+       "Dev " (if open? "×" "⌘")]
+      [:button {:on-click #(rf/dispatch [:dev-console/picking (not (:picking? debug))])
+                :aria-pressed (boolean (:picking? debug))} "Pick component"]
+      [:button {:on-click #(rf/dispatch [:dev-console/option :page-capture? (not (:page-capture? options))])
+                :aria-pressed (boolean (:page-capture? options))} (if (:page-capture? options) "Stop capture" "Capture page")]
+      [:label [:input {:type "checkbox" :checked (boolean (:event-flash? options))
+                       :on-change #(rf/dispatch [:dev-console/option :event-flash? (.. % -target -checked)])}] "Event flashes"]
+      [:button {:on-click #(if popout (.focus popout)
+                              (when-let [window (open-popout!)] (set-popout! window)))} "Pop out"]]
+     [<page-diagnostics> debug]
+     (when (and open? (nil? popout)) [<panel> {:close! #(rf/dispatch [:dev-console/open false])}])
+     (when popout [<popout> popout #(do (set-popout! nil) (rf/dispatch [:dev-console/open true]))])]))

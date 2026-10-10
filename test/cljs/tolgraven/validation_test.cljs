@@ -173,7 +173,8 @@
                         [component/<boundary> {:ns-name "test" :component-name "positional"}
                          [<positional> {:title "Count"} "private-invalid-value"]]))
               (is (.includes (.-textContent element) "should be an integer"))
-              (is (not (.includes (.-textContent element) "private-invalid-value")))
+              (is (.includes (.-textContent element) "private-invalid-value")
+                  "Development details show non-sensitive received values; public issue maps remain redacted")
               (await! (support/render! root [<typed-spec> {:label "Spec" :props "invalid"}]))
               (is (some? (.querySelector element "[role=alert]")))
               (is (.includes (.-textContent element) "[:props]"))

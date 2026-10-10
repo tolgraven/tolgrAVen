@@ -98,3 +98,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   public-address DNS enforcement, redirect bounds, deduplication and frame policies.
   Mounted browser checks render text safely, delay miniatures and suppress blocked
   frames; live review must distinguish static article extraction from JS-only pages.
+
+- Development diagnostics checks must cover source catalog ownership and disabled
+  production endpoints, exact source-map positions without generated fallbacks,
+  bounded/redacted actual values, native query ownership, capture feedback and
+  lifecycle cleanup. Verify picker/pop-out/source navigation in an isolated dev
+  instance, and audit development namespaces out of browser/Node release graphs.

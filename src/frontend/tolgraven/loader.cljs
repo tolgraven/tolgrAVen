@@ -1,6 +1,7 @@
 (ns tolgraven.loader
   (:require
     [tolgraven.component.registry]
+    [tolgraven.component.instrumentation]
     [tolgraven.validation.runtime :as validation]
     [tolgraven.loader.code :as module-code]
     [tolgraven.loader.styles :as styles]

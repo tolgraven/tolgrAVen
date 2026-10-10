@@ -24,6 +24,7 @@
    [:copy? {:optional true} :boolean]
    [:wrap? {:optional true} :boolean]
    [:line-numbers? {:optional true} :boolean]
+   [:line-props {:optional true} fn?]
    [:starting-line-number {:optional true} [:int {:min 1}]]
    [:foldable? {:optional true} :boolean]
    [:folded? {:optional true} :boolean]

@@ -10,6 +10,7 @@
             [tolgraven.loader.activation :as activation]
             [tolgraven.loader.styles :as styles]
             [tolgraven.component.restore :as restore]
+            [tolgraven.dev-console.capture :as capture]
             [tolgraven.render-context :as context]
             [tolgraven.test-support :as support]
             [tolgraven.events]
@@ -105,7 +106,7 @@
                 (await! (support/settle!))
                 (is (empty? @(:started transport)))
                 ((:fire! observer) true))
-              (await! (support/wait-for! #(seq @(:started transport))))
+              (await! (support/wait-for! #(seq @(:started transport)) "Module trigger did not start assets"))
               (is (= [:css :js] @(:started transport)) "The proximity trigger starts CSS directly before JS")
               ((:code! transport))
               (await! (support/settle!))
@@ -141,7 +142,7 @@
               (is (empty? @(:observers observers)))
               ;; Existing externally defined controls still use the normal event.
               (rf/dispatch [:scope/init module])
-              (await! (support/wait-for! #(seq @(:started transport))))
+              (await! (support/wait-for! #(seq @(:started transport)) "SSR intent did not start assets"))
               ((:css! transport)) ((:code! transport))
               (await! (support/wait-for! #(.querySelector element "[data-viewport-target]")))
               (is (= [:css :js] @(:started transport)))
@@ -165,7 +166,9 @@
                 before @restore/*context
                 previous (await! (support/state-at! [:state :viewport-fixture]))
                 observers (observer-fixture!)
-                transport (transport-fixture! module spec)]
+                transport (transport-fixture! module spec)
+                stop-capture! (capture/connect!)
+                stop-record! (capture/start!)]
             (.appendChild (.-body js/document) element)
             (try
               (rf/dispatch [:state [:viewport-fixture] nil])
@@ -182,17 +185,17 @@
                 (is (empty? @(:started transport)))
                 (is (identical? article (.querySelector element "article")))
                 (.click (.querySelector element "button"))
-                (await! (support/wait-for! #(= "Changed" (.-textContent (.querySelector element "button")))))
+                (await! (support/wait-for! #(= "Changed" (.-textContent (.querySelector element "button"))) "SSR button event did not render"))
                 (is (identical? strong (.querySelector element "strong")) "An outer re-frame event preserves unhydrated SSR")
                 (restore/hydrated!)
                 (await! (support/settle!))
                 (.click strong)
-                (await! (support/wait-for! #(seq @(:started transport))))
+                (await! (support/wait-for! #(seq @(:started transport)) "SSR intent did not start assets"))
                 ((:code! transport)) ((:css! transport))
                 (await! (js/Promise.race #js [inner
                                              (js/Promise. (fn [_ reject]
                                                             (js/setTimeout #(reject (js/Error. "Inner module did not hydrate")) 3000)))]))
-                (await! (support/wait-for! #(nil? (.querySelector element "template"))))
+                (await! (support/wait-for! #(nil? (.querySelector element "template")) "SSR template did not disappear"))
                 (is (identical? article (.querySelector element "article")))
                 (is (identical? strong (.querySelector element "strong")))
                 (is (= "Server section" (.-textContent article)))
@@ -202,6 +205,7 @@
                 (when @*root (dom/unmount @*root)) (.remove element)
                 (rf/dispatch [:state [:viewport-fixture] previous])
                 (reset! restore/*context before)
+                (stop-record!) (stop-capture!)
                 ((:restore! transport)) ((:restore! observers))))))
         (.catch #(is false (str %)))
         (.finally done))))
@@ -225,7 +229,7 @@
                 (is (empty? @(:started transport)) "Removed intent listeners cannot acquire a module"))
               (set! js/IntersectionObserver js/undefined)
               (let [stop! (activation/setup! element {:module module})]
-                (await! (support/wait-for! #(seq @(:started transport))))
+                (await! (support/wait-for! #(seq @(:started transport)) "Observer fallback did not start assets"))
                 (is (= [:css :js] @(:started transport)) "Browsers without observers still acquire usable content")
                 ((:code! transport)) ((:css! transport))
                 (await! (loader/acquire-code! module))

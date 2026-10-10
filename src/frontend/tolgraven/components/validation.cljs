@@ -1,10 +1,12 @@
 (ns tolgraven.components.validation
   (:require [tolgraven.react :as rf]
             [tolgraven.validation.markup :as markup]
+            [tolgraven.diagnostics.issues :as details]
             [tolgraven.component.registry]
             [tolgraven.macros :refer-macros [defc]]))
 
-(defc <issues> [issues] (markup/issues issues))
+(defc <issues> [issues]
+  [:<> (markup/issues issues) [details/<details> issues]])
 
 (defc <reports> []
   (when-let [reports (seq @(rf/subscribe [:validation/errors]))]

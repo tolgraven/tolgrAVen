@@ -68,3 +68,8 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
 
 - `components/oembed/contract.cljc` owns the recognized player endpoint allowlist
   and normalized response consumed by both the JVM proxy and browser frame.
+
+- Diagnostics adapters use `:dev` reader boundaries so source browsers, source-map
+  decoding, received-value details and profiling registrations leave production
+  and Node graphs. Public validation issue maps remain value-redacting; bounded
+  development details may use metadata without changing transport contracts.

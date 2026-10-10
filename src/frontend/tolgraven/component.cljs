@@ -204,7 +204,7 @@
           mounted? (when lifecycle? (use-lifecycle! definition args features *element))
           form (decorate
                  (binding [state-store/*component* definition state-store/*args* args state-store/*react-key* state-key]
-                   (render-body! *render args))
+                   (instrumentation/render! definition args #(render-body! *render args)))
                  (if (and (ids :container) (not (false? (:container spec))))
                    (remove #(= :props (first %)) features) features)
                  spec mounted? capture-ref)
@@ -241,7 +241,7 @@
             state (.-state this)]
         (r/as-element
          (if-let [exception (.-error state)]
-           [error/<failure> ns-name component-name {:error exception :stack (.-stack state)}
+           [error/<failure> ns-name component-name {:error exception :stack (str (.-stack exception) "\n" (.-stack state))}
             (fn [] (.setState this (fn [previous _]
                                     #js {:error nil :stack nil :attempt (inc (.-attempt previous))})))]
            (with-meta [:<> form] {:key (.-attempt state)})))))}))

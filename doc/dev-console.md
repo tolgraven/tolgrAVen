@@ -130,7 +130,9 @@ bb pair eval-cljs \
 
 The snapshot includes the route, options, mounted instances/resolved paths and
 bounded records. **Copy snapshot** copies the same EDN to the local clipboard.
-Closing the panel disposes inspector subscriptions, unregisters trace/epoch
+Closing the panel disposes its inspector subscriptions. When the last panel,
+picker, selected popup and explicit page-capture owner closes, the host unregisters
+trace/epoch
 callbacks, disconnects the layout observer, disables Profiler callbacks and clears
 the pending drain timer/queue. A small mounted-instance index and the toggle's
 keyboard shortcut remain; dependency details resolve only when opened. Reopening
@@ -144,3 +146,84 @@ The console uses native `re-frame.tooling` trace/epoch callbacks and
 `re-frame-pair` itself installs an error-capture bridge once per browser runtime.
 Re-frame may log “overwriting :error handler for :event-handler” when it replaces
 its default handler. That warning is not an application handler exception.
+
+
+## Diagnostics on the page
+
+**Pick component** selects the nearest instrumented native root without activating
+its normal click action. Escape cancels selection mode. Its persistent popup uses
+CSS anchor positioning, flips when it needs room, and remains open without hover.
+It shows the resolved scoped app-db path, live state, acquired query vectors,
+recent timings and observed render reasons. **Show on page** in profiling and
+component flamegraph bars selects the same instance. A measurement adapter owns
+the outline and releases its scroll/resize listeners and ResizeObserver on close.
+Views with fragment or React interop roots highlight their nearest native descendants;
+the inspector does not insert wrappers to manufacture a root.
+
+**Capture page** records while the panel is closed. Add `?diagnostics=1` to a
+development URL to start capture before the first application render. **Record**
+pauses timing capture without losing component metadata. Capture is bounded by
+**limit** (500 by default, at most 2000 records); its own events, subscriptions
+and component state are excluded. **Event flashes** adds a short CSS class
+animation to scoped containers changed by an event, and to views whose observed
+subscription results changed. No diagnostic code mutates application DOM classes.
+Reduced-motion preferences disable those animations.
+
+The timings summary separates **view** body execution from inclusive React subtree
+**render** work and exact **subscription** query vectors. It shows run counts,
+total, average, maximum, and React mount/update counts over the retained window.
+Subscription samples come from trace batches containing an application event;
+standalone recomputations outside those batches may be absent. This excludes
+diagnostic-only invalidations and prevents the capture from feeding itself.
+Search owners/queries to find expensive processing, then open their source.
+Flamegraph controls zoom and pan the event window; clicking a component bar
+opens its page inspector. These are instrumented development timings, not CPU
+sampling or production measurements. View-body samples exclude separate
+declaration/lifecycle setup, and Profiler samples cover the returned subtree.
+Child work appears in multiple inclusive
+Profiler durations, so do not sum those durations as elapsed wall time.
+
+Observed render reasons compare bounded argument and subscription result previews.
+They identify changed arguments/results or report an unclassified change. Local
+state, context and parent updates are not fully explained by this evidence.
+Queries acquired in a component's `:let` are retained with their native reactions;
+conditional queries can remain listed until unmount. Acquisition metadata retains
+at most 100 query identities per owner. Starting capture establishes a baseline
+rather than claiming arguments changed. The dev adapter reads Reagent 2 cached
+reaction state without dereferencing it: ordinary deref outside tracking can flush
+pending renders or revive stale queries. Unknown reaction types remain unresolved.
+No extra app-db watches or
+application store are introduced. Explicitly expanding a query result mounts a
+normal managed subscription and therefore adds observer overhead.
+
+**Pop out** opens the console only on explicit button intent. React portals render
+into its document while sharing the parent application's registry, records and
+re-frame runtime. It never bootstraps a second application. Closing that window
+opens the panel on the page; closing the parent releases the window/listeners.
+The component tree and captured event history have text search; event-vector
+completion remains available for exact argument-prefix filtering.
+
+## Source documentation and schema failures
+
+![Source tree and highlighted original stack-frame line](images/dev-source-browser.webp)
+
+Development docs include `/docs/source` and `/docs/source/<repository-path>#L42`,
+with a searchable file tree, Bruvbox-highlighted listings and line numbers. Only
+CLJ/CLJC/CLJS files under the explicit source roots enter the backend catalog.
+Configuration/resources, symlinks, traversal paths and files over 512 KiB are
+excluded. Both `/api/dev/source-catalog` and `/api/dev/source` exist only when
+the server's development flag is true; source routes and implementation imports
+are absent from production and Node graphs.
+
+Fallback stacks resolve same-origin Shadow `cljs-runtime/*.js` source maps using
+the installed ClojureScript decoder. Mapped repository frames link to their
+original line. Missing maps, external frames and ambiguous catalog paths remain
+plain text; generated JavaScript line numbers are never presented as source lines.
+Source files/maps use normal managed dependencies and their bounded cache;
+subscriptions expose those results without duplicating file/map payloads in app-db. Map decoding is shared by a derived subscription per URL. A line revealed after the
+formatter loads requests the normal page positioning event from its ref adapter.
+
+Development Malli issues include bounded received values/types and the required
+schema, styled by value type. Password/token/secret/credential fields are redacted.
+Details live in development-only vector metadata; ordinary issue maps retain only
+path/message, and release/Node validation never imports this implementation.

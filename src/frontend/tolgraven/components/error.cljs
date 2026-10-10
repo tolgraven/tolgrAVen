@@ -2,6 +2,7 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.components.validation :as validation]
+    [tolgraven.diagnostics.stack :as diagnostics]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.loader.view :as loader-view]
     [reagent.core :as r]
@@ -22,7 +23,7 @@
       (if-let [issues (:issues (ex-data error))]
         [validation/<issues> issues]
         [:pre (or (ex-message error) (str error))])
-      (when (seq stack) [:pre stack])])])
+      (when (seq stack) [diagnostics/<stack> stack])])])
 
 (defn <error-full> [ns-name comp-name *error spec]
   (loader-view/form :data-inspector :error [ns-name comp-name *error spec]

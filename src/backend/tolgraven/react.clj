@@ -13,8 +13,10 @@
   (apply @#'instrumented/dispatch-sync &form &env args))
 
 (defmacro subscribe [& args]
-  (apply @#'instrumented/subscribe &form &env
-         (cons `(tolgraven.validation.bindings/query ~(first args)) (rest args))))
+  (let [query (gensym "query")]
+    `(let [~query (tolgraven.validation.bindings/query ~(first args))]
+       (tolgraven.react/observe-subscription! ~query
+         ~(apply @#'instrumented/subscribe &form &env (cons query (rest args)))))))
 
 (defn- contract? [value]
   (and (map? value) (some #(contains? value %) [:args :result :coerce :result-coerce :on-error])))

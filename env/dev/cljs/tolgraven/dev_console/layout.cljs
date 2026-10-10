@@ -1,5 +1,6 @@
 (ns tolgraven.dev-console.layout
-  "Pure, bounded pagination and layout timeline projections.")
+  "Pure, bounded pagination and layout timeline projections."
+  (:require [clojure.string]))
 
 (def page-size 10)
 (defn page
@@ -62,3 +63,23 @@
                                   (some-> latest :tags :event rest vec))
                  :occurrences (vec occurrences)})))
        (sort-by #(or (:end %) 0) >) vec))
+
+(defn matches? [needle value]
+  (clojure.string/includes? (clojure.string/lower-case (pr-str value))
+                           (clojure.string/lower-case (or needle ""))))
+(defn metrics [records needle]
+  (->> records
+       (filter #(and (or (= :view (:kind %)) (= :render (:kind %))
+                         (and (= :trace (:kind %)) (= :sub/run (:op-type %))))
+                     (number? (:duration %))
+                     (matches? needle (or (:component %) (get-in % [:tags :query-v])))))
+       (group-by #(if (= :trace (:kind %)) [:subscription (get-in % [:tags :query-v])]
+                      [(:kind %) (:component %)]))
+       (map (fn [[id values]]
+              (let [total (reduce + (map :duration values))]
+                {:id id :count (count values) :total total :average (/ total (count values))
+                 :maximum (reduce max (map :duration values))
+                 :mounts (count (filter #(= "mount" (:phase %)) values))
+                 :updates (count (filter #(contains? #{"update" "nested-update"} (:phase %)) values))
+                 :latest (last values)})))
+       (sort-by :total >) vec))

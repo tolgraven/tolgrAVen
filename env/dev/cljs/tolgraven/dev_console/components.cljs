@@ -41,3 +41,18 @@
                     (sort-by key (group-by #(first (:component %))
                                          (filter #(= :ready (:status %)) (get children nil)))))
        :mounted-count (count active) :ready-count (count ready)})))
+
+(defn native-roots
+  "Nearest committed native descendants of a logical component, without wrappers."
+  [active instance]
+  (let [children (group-by :parent (vals active))]
+    (loop [pending [instance] seen #{} result []]
+      (if-let [id (first pending)]
+        (let [record (get active id)
+              remaining (subvec pending 1)]
+          (cond
+            (or (seen id) (nil? record)) (recur remaining (conj seen id) result)
+            (:native? record) (recur remaining (conj seen id) (conj result id))
+            :else (recur (into remaining (map :instance (get children id)))
+                         (conj seen id) result)))
+        result))))
