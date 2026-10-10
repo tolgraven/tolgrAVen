@@ -1,5 +1,6 @@
 (ns tolgraven.components.oembed
   (:require
+    [tolgraven.component]
     [tolgraven.component.registry]
     [tolgraven.component.data :as data]
     [tolgraven.components.oembed.contract :as schema]

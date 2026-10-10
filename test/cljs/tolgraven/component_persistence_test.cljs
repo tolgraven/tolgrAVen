@@ -629,3 +629,41 @@
                         (reset! storage/*identity previous)
                         (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))
+
+(deftest missing-state-and-data-entries-do-not-invalidate-mounted-consumers
+  (async done
+    (-> (go-promise
+          (let [path [:persist-test :stable-missing]
+                *runs (atom {:state 0, :data 0})
+                state-entry (rf/subscribe [:component-state/entry path])
+                data-entry (rf/subscribe [:component-data/installed path])
+                mounted (await! (support/mount-subscriptions!
+                                 {:state [:component-state/entry path]
+                                  :data [:component-data/installed path]}))]
+            (try
+              ;; Track the mounted values through normal derived reactions.
+              (let [state-result (r/track! #(do (swap! *runs update :state inc) @state-entry))
+                    data-result (r/track! #(do (swap! *runs update :data inc) @data-entry))]
+                (try
+                  (is (= {:present? false, :value nil, :revision 0} @state-result))
+                  (is (= {:present? false, :value nil} @data-result))
+                  (let [before @*runs]
+                    (rf/dispatch [:component-data/install [:persist-test :unrelated] :changed])
+                    (await! (support/settle!))
+                    (is (= before @*runs) "Unchanged absence does not rerun derived consumers"))
+                  (doseq [value [nil false 42]]
+                    (rf/dispatch [:component-data/install path value])
+                    (await! (support/settle!))
+                    (is (= {:present? true, :value value, :revision 0} @state-result))
+                    (is (= {:present? true, :value value} @data-result)))
+                  (rf/dispatch [:component-data/remove path])
+                  (await! (support/settle!))
+                  (is (false? (:present? @state-result)))
+                  (is (false? (:present? @data-result)))
+                  (finally (r/dispose! state-result) (r/dispose! data-result))))
+              (finally
+                ((:unmount! mounted))
+                (rf/dispatch [:component-data/remove path])
+                (rf/dispatch [:component-data/remove [:persist-test :unrelated]])))))
+        (.catch #(is false (str %)))
+        (.finally done))))

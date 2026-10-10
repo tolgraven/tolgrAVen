@@ -161,7 +161,9 @@ Views with fragment or React interop roots highlight their nearest native descen
 the inspector does not insert wrappers to manufacture a root.
 
 **Capture page** records while the panel is closed. Add `?diagnostics=1` to a
-development URL to start capture before the first application render. **Record**
+development URL to start capture before the first application render. Early records
+remain in the bounded adapter queue until the console host commits; capturing
+startup must not publish app-db updates into an uncommitted inspector. **Record**
 pauses timing capture without losing component metadata. Capture is bounded by
 **limit** (500 by default, at most 2000 records); its own events, subscriptions
 and component state are excluded. **Event flashes** adds a short CSS class
