@@ -14,9 +14,12 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `ops/`: isolated site provisioning and Coolify adapters. `ops/coolify/*.php`
   executes inside the existing Laravel container. Preserve persisted ownership
   markers even when their historical script names differ from current paths.
-- `ops/host/`: installed server programs. Keep the staging-only scope, recovery
+- `ops/host/`: installed server programs. Keep each program's declared host/service scope, recovery
   metadata, locks, graceful suspension and rollback protections intact. Relocation
   does not authorize running provisioning, seeding, deployment or installation.
+  Crawl adapters own only `/robots.txt` on `bux.tolgraven.se`, `box.tolgraven.se`
+  and their descendants. Default inspection must not write; explicit apply backs
+  up private configuration and restores prior files on failure. See `doc/crawl-policy.md`.
 - `media/images.clj` also runs in the web runtime. Keep it standalone, bounded by
   the JVM upload adapter; Docker copies and smoke-tests it with pinned Babashka.
 - `bb images:responsive` rebuilds the opt-in resource catalog's sized AVIF/WebP
