@@ -14,7 +14,10 @@
     (cond-> state
       (= :configure stage)
       (update-in [::build/config :modules]
-                 #(merge (modules/bundles) %)))))
+                 #(merge (modules/bundles) %))
+      (= :configure stage)
+      (assoc-in [:js-options :export-conditions]
+                ["worker" "browser" "require" "default"]))))
 
 (defn test-modules
   {:shadow.build/stage :configure}

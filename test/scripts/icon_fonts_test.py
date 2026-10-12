@@ -77,6 +77,18 @@ class SvgIconsTest(unittest.TestCase):
         self.assertNotRegex(feature, r"url\([^)]*(?:woff|/img/)")
         self.assertNotIn("px", common + feature)
 
+    def test_generated_selectors_match_the_runtime_catalog(self):
+        selected = (ROOT / "resources/scss/generated/_icon-selectors.scss").read_text()
+        runtime = (ROOT / "src/frontend/tolgraven/components/icon_catalog.cljs").read_text()
+        names = set(icons.re.findall(r'"([a-z0-9-]+)"', runtime))
+        selectors = set(icons.re.findall(r"\.fa-([a-z0-9-]+):before", selected))
+        self.assertEqual(names, selectors)
+        self.assertIn("github", names)
+        self.assertIn("spinner", names)
+        self.assertNotIn("500px", names)
+        self.assertIn(".fa-spin", selected)
+        self.assertNotIn("@font-face", selected)
+
     def test_wrong_font_family_fails(self):
         with patch.object(icons, "icon_definitions", return_value={"main": ["solid/github"]}):
             with self.assertRaisesRegex(ValueError, "declared font family"):

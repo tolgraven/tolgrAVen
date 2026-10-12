@@ -21,6 +21,7 @@
             [tolgraven.ssr.return-contract :as contract]
             [tolgraven.ssr.render :as render]
             [tolgraven.ssr.local :as local]
+            [tolgraven.ssr.capture :as capture]
             [tolgraven.ssr.return-worker :as worker]))
 
 (r/defc <check> [form committed!]
@@ -185,7 +186,7 @@
           *published (atom [])
           *rendered (atom [])]
       (set! local/connect! #(js/Promise.resolve {:worker :worker}))
-      (set! loader/acquire-code! (fn [id] (is (= :page-render id)) pending))
+      (set! loader/acquire-code! (fn [id] (is (= :page-capture id)) pending))
       (set! local/message! (fn [_ pair]
                             (swap! *published conj pair)
                             (js/Promise.resolve nil)))
@@ -263,3 +264,75 @@
                   (finally (support/unmount! root))))))
           (.catch (fn [error] (is false (str error))))
           (.finally (fn [] (restore-db!) (done)))))))
+
+(deftest capture-orders-the-real-manifest-dependencies-once
+  (is (= [{:id "main" :url "/main.js"}
+          {:id "markdown" :url "/markdown.js"}
+          {:id "blog" :url "/blog.js"}
+          {:id "page-render" :url "/page-render.js"}]
+         (capture/asset-plan
+           {:main {:url "/main.js" :depends []}
+            :markdown {:url "/markdown.js" :depends [:main]}
+            :blog {:url "/blog.js" :depends [:main :markdown]}
+            :page-render {:url "/page-render.js" :depends [:main]}}
+           #{:blog :page-render}))))
+
+(deftest asynchronous-rendering-discards-an-overtaken-pair
+  (async done
+    (let [restore! (re-frame/make-restore-fn)
+          connect! local/connect!
+          acquire! loader/acquire-code!
+          message! local/message!
+          *resolve (atom {})
+          *published (atom [])
+          spec {:pair! (fn [db _]
+                         (js/Promise. (fn [resolve _]
+                                        (swap! *resolve assoc (:version db) resolve))))}]
+      (set! local/connect! #(js/Promise.resolve {:worker :worker}))
+      (set! loader/acquire-code! (fn [_] (js/Promise.resolve spec)))
+      (set! local/message! (fn [_ pair] (swap! *published conj pair) (js/Promise.resolve nil)))
+      (-> (go-promise
+            (let [first-save (local/save! {:version :old} false)]
+              (await! (support/settle!))
+              (let [second-save (local/save! {:version :current} false)]
+                (await! (support/settle!))
+                ((get @*resolve :current) {:op "save" :url "current"})
+                (await! second-save)
+                ((get @*resolve :old) {:op "save" :url "old"})
+                (await! first-save)
+                (is (= ["current"] (mapv :url @*published))))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (set! local/connect! connect!)
+                      (set! loader/acquire-code! acquire!)
+                      (set! local/message! message!)
+                      (restore!)
+                      (done)))))))
+
+(deftest browser-capture-waits-for-page-readiness-without-a-worker-manifest
+  (async done
+    (let [modules local/modules
+          acquire! loader/acquire-code!
+          after-page! browser-resources/after-page!
+          *ready (atom nil)
+          *acquired (atom [])]
+      (set! local/modules (fn [] {}))
+      (set! browser-resources/after-page!
+            (fn [ready!] (reset! *ready ready!) (fn [])))
+      (set! loader/acquire-code!
+            (fn [id]
+              (swap! *acquired conj id)
+              (js/Promise.resolve {:pair! (fn [db _] {:state db})})))
+      (let [pending (capture/pair! {:version :current} {})]
+        (is (empty? @*acquired) "Optional rendering waits for hydration and painted idle")
+        (@*ready)
+        (-> pending
+            (.then (fn [pair]
+                     (is (= [:page-render] @*acquired))
+                     (is (= {:state {:version :current}} pair))))
+            (.catch (fn [error] (is false (str error))))
+            (.finally (fn []
+                        (set! local/modules modules)
+                        (set! loader/acquire-code! acquire!)
+                        (set! browser-resources/after-page! after-page!)
+                        (done))))))))

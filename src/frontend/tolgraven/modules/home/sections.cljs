@@ -1,5 +1,6 @@
 (ns tolgraven.modules.home.sections
   (:require
+    [tolgraven.components.icon :as icon]
     [tolgraven.component.registry]
     [clojure.string :as string]
     [tolgraven.react :as rf]
@@ -73,7 +74,7 @@
    (into [:ul {:class (cond (= full-screened? title) "service-fullscreen"
                             full-screened? "service-minimized")
                :on-click on-click}
-          [:li [:i {:class (str "fas fa-" icon-name)}] [:h2.service-title title]]]
+          [:li [icon/<icon> "fas" icon-name {}] [:h2.service-title title]]]
          (for [line lines] ^{:key (str "service-" title "-" line)} [:li line]))])
 
 (defc <service-categories> [{:keys [categories] :as spec}]
@@ -103,7 +104,7 @@
            :let [id (str "service-" title)]] ^{:key id}
        (into [:ul
                [:li
-                [:i {:class (str "fas " "fa-" icon-name)}]
+                [icon/<icon> "fas" icon-name {}]
                 [:h3 title]]]
               (for [line lines] ^{:key (str "service-" title "-" line)}
                 [:li line])))]))

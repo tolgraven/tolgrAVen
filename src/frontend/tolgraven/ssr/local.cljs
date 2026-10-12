@@ -80,18 +80,7 @@
                   (when (loader/ready? id) [id @loadable]))) loader/modules))
 
 (defn- renderer! []
-  (-> (loader/acquire-code! :page-render)
-      (.then (fn [spec]
-               (if (.querySelector js/document "#app .code-block, #app .code-highlight")
-                 ;; Even an early external click cannot pull the formatter into
-                 ;; initial hydration. A capture waits for the same page gate.
-                 (js/Promise.
-                   (fn [resolve reject]
-                     (browser-resources/after-page!
-                       #(-> (loader/acquire-code! :highlight)
-                            (.then (fn [_] (resolve spec)))
-                            (.catch reject)))))
-                 spec)))))
+  (loader/acquire-code! :page-capture))
 
 (defn pair! [db config]
   (-> (renderer!) (.then (fn [spec] ((:pair! spec) db config)))))
@@ -100,13 +89,19 @@
 
 (defn- publish! [db arm? current? worker config spec]
   (when (current?)
-    (let [pair ((:pair! spec) db config)]
-      (-> (message! worker (assoc (dissoc pair :state) :arm arm?))
-          (.then (fn [_]
-                   (when (current?)
-                     (rf/dispatch [:page-return/status {:status :ready :url (:url pair)}]))))))))
+    (-> (js/Promise.resolve ((:pair! spec) db config))
+        (.then (fn [pair]
+                 (when (current?)
+                   (-> (message! worker (assoc (dissoc pair :state) :arm arm?))
+                       (.then (fn [_]
+                                (when (current?)
+                                  (rf/dispatch [:page-return/status {:status :ready :url (:url pair)}])))))))))))
 
 (defn save! [db arm?]
+  ;; A queued background save must not overtake the fresh departure pair.
+  (when (and arm? @*pending)
+    (js/clearTimeout @*pending)
+    (reset! *pending nil))
   ;; Loading the renderer is asynchronous. Discard a save overtaken by another
   ;; save or a route change, rather than pairing old state with a new URL.
   (let [generation (swap! *save-generation inc)
@@ -163,11 +158,14 @@
     (into-array (map loader/acquire-code! (remove #{:highlight} (:modules snapshot))))))
 
 (defn schedule! []
+  (swap! *save-generation inc)
   (when @*pending (js/clearTimeout @*pending))
   (reset! *pending
     (js/setTimeout (fn [] (reset! *pending nil) (rf/dispatch [:page-return/save false])) 500)))
 
 (defn clear! []
+  (swap! *save-generation inc)
+  (when-let [spec (loader/code-spec :page-capture)] ((:stop! spec)))
   (-> (connect!) (.then (fn [{:keys [worker]}] (when worker (message! worker {:op "clear"}))))
       (.catch (fn [_] nil))))
 
@@ -177,11 +175,30 @@
         (.then (fn [{:keys [worker]}] (when worker (message! worker {:op "disarm"}))))
         (.catch (fn [_] nil)))))
 
+(rf/reg-event-fx :page-return/depart
+  (fn [{:keys [db]} [_ url]] {:page-return/depart {:db db :url url}}))
+
+(rf/reg-fx :page-return/depart
+  (fn [{:keys [db url]}]
+    (storage/save-navigation!)
+    ;; A fresh pair must reach the cache before leaving. Bound optional capture
+    ;; so worker/network failure never traps an ordinary external navigation.
+    (let [*timeout (atom nil)
+          source-url (.-href js/location)
+          deadline (js/Promise. (fn [resolve _]
+                                 (reset! *timeout (js/setTimeout resolve 1000))))]
+      (-> (js/Promise.race #js [(save! db true) deadline])
+          (.then (fn [_]
+                   (js/clearTimeout @*timeout)
+                   (when (= source-url (.-href js/location))
+                     (.assign js/location url))))))))
+
 (defn departure!
   "Capture the same exact page for native links and programmatic departures."
-  []
-  (storage/save-navigation!)
-  (rf/dispatch-sync [:page-return/save true]))
+  ([]
+   (storage/save-navigation!)
+   (rf/dispatch-sync [:page-return/save true]))
+  ([url] (rf/dispatch [:page-return/depart url])))
 
 (defn external-click! [event]
   (when (and (= 0 (.-button event)) (not (.-defaultPrevented event))
@@ -192,13 +209,18 @@
                    (#{"http:" "https:"} (.-protocol url))
                    (not= (.-origin url) (.-origin js/location))
                    (or (= "" (.-target anchor)) (= "_self" (.-target anchor))))
-          (departure!))))))
+          (.preventDefault event)
+          (departure! (.-href url)))))))
 
 (defc <capture> {:profile false} []
   (let [source @(rf/subscribe [:page-return/source])
         identity @storage/*identity
         *previous-identity (rf/use-ref identity)]
-    (rf/use-effect (fn [] (browser-resources/after-page! schedule!)) #js [source])
+    (rf/use-effect
+      (fn []
+        ;; Invalidate an in-flight pair immediately, before the debounce gate.
+        (swap! *save-generation inc)
+        (browser-resources/after-page! schedule!)) [source])
     (rf/use-effect
       (fn []
         (when (not= identity (.-current *previous-identity))
@@ -210,11 +232,12 @@
     (fn []
       (let [cancel-connect! (browser-resources/after-page!
                              #(-> (connect!) (.catch (fn [_] nil))))]
-        (.addEventListener js/document "click" external-click! true)
+        (.addEventListener js/document "click" external-click! false)
         (.addEventListener js/window "pageshow" resumed!)
         (fn []
           (cancel-connect!)
-          (.removeEventListener js/document "click" external-click! true)
+          (.removeEventListener js/document "click" external-click! false)
           (.removeEventListener js/window "pageshow" resumed!)
-          (when @*pending (js/clearTimeout @*pending) (reset! *pending nil))))) #js [])
+          (when @*pending (js/clearTimeout @*pending) (reset! *pending nil))
+          (when-let [spec (loader/code-spec :page-capture)] ((:stop! spec)))))) #js [])
   nil)

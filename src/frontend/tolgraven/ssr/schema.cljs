@@ -14,3 +14,17 @@
   [:map [:version [:= 1]] [:schema c/positive] [:expires-at c/milliseconds] [:value :any]])
 (def storage-envelope [:map-of :any storage-snapshot])
 (def state (c/optional-map {:hydrating? :boolean, :dates [:map-of number? :string]}))
+
+(def capture-request
+  [:map
+   [:state :map]
+   [:route [:map [:path :string] [:query-params {:optional true} :map]
+                 [:parameters {:optional true} :map]]]
+   [:modules [:vector :keyword]]
+   [:snapshot [:maybe :map]]
+   [:styles :map]
+   [:template :string]
+   [:build [:or :int :string]]
+   [:owner :any]
+   [:url :string]
+   [:title :string]])

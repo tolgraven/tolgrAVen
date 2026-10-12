@@ -151,7 +151,7 @@
   (let [{:keys [id permalink title text user ts]} document]
     [:<>
      [:div.blog-post-header-main
-      [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
+      [:a {:href @(rf/subscribe [:href :blog-post {:permalink (or permalink id)}])}
        [:h2.blog-post-title title]]
       (m/<> :blog/posted-by {:id id :user user :ts ts})
       (m/<> :blog/tags-list {:post document})]

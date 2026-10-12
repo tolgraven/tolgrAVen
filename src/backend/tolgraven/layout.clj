@@ -244,9 +244,16 @@
 (defn render-hiccup [page & args]
   (update (apply hiccup-response page args) :body render-document))
 
+(declare browser-modules)
+
 (defn return-template [request]
   ;; No page data acquisition: the browser supplies both markup and its state.
   {:version 1 :build (str (ssr/renderer-build))
+   :scripts (into {}
+                  (map (fn [[id module]]
+                         [id {:url (str "/js/compiled/out/" (:output-name module))
+                              :depends (vec (sort (:depends-on module)))}]))
+                  (browser-modules))
    :template (render-document
               (home (assoc request :local-return? true :restore? true)
                     :loading-content "__LOCAL_PAGE_HTML__"

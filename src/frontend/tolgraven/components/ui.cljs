@@ -1,5 +1,6 @@
 (ns tolgraven.components.ui
   (:require
+    [tolgraven.components.icon :as icon]
     [tolgraven.component.registry]
     [tolgraven.loader.view :as loader-view]
     [reagent.core :as r]
@@ -153,11 +154,8 @@
 (m/defc <material-toggle>
  [model-path [on-state off-state & [prefix]]]
  (let [model (rf/subscribe (into [:get] model-path))]
-  [:i.fa
-   {:class (str "fa-"
-                (when prefix (str prefix "-"))
-                (if @model on-state off-state))
-    :style {:margin "0.1em 0.2em"}
+  [icon/<icon> "fa" (str (when prefix (str prefix "-")) (if @model on-state off-state))
+   {:style {:margin "0.1em 0.2em"}
     :on-click #(rf/dispatch [:toggle model-path])}]))
 
 (m/defc <minimize> [model-path]

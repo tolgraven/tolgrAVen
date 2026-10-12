@@ -120,3 +120,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
   Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
   Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.
+
+- Local-return templates include the actual browser module manifest and ordered
+  dependencies for isolated worker capture; do not maintain a second module list.
+  Browser builds prefer worker-compatible package exports so Markdown does not
+  require a DOM during capture. The worker reuses fingerprinted browser chunks.

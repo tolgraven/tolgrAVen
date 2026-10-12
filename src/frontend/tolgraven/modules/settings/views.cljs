@@ -9,8 +9,8 @@
   []
   (rf/use-effect (fn [] (rf/dispatch [:settings/read-css-vars]) js/undefined) #js [])
   (let [open? @(rf/subscribe [:state [:settings :panel-open]])
-        vars {:line-width         {:unit "px"   :min 0     :max 15}
-              :line-width-vert    {:unit "px"   :min 0     :max 15}
+        vars {:line-width         {:unit "rem"  :min 0     :max 1 :step 0.0625}
+              :line-width-vert    {:unit "rem"  :min 0     :max 1 :step 0.0625}
               :section-rounded    {:unit "%"    :min 0     :max 10}
               :space              {:unit "rem"  :min 0.0   :max 4.0 :step 0.1}
               :space-lg           {:unit "rem"  :min 0.0   :max 6.0 :step 0.1}
