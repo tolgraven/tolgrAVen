@@ -2,6 +2,8 @@
 
 Follow [Reagent and re-frame first](reagent-re-frame.md) for state, events,
 effects, deferral and justified React adapters.
+For the classic/Reagent 2 comparison and the reasons behind the current runtime,
+read [Reagent 2 and React 19](reagent-2-react-19-guide.md).
 
 Reusable rendered UI lives in `tolgraven.components.*`; feature views live under
 `tolgraven.modules.<feature>.*`. `tolgraven.component.*` implements declaration,

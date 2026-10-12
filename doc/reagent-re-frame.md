@@ -1,5 +1,12 @@
 # Reagent and re-frame first
 
+For the library comparison, hook semantics and assessment of our adapters, read
+[Classic Reagent and Reagent 2 with React 19](reagent-2-react-19-guide.md).
+The [native Reagent refactor brief](../features/reagent-native-refactor.md) records
+the requested migration from the current custom hook wrappers to upstream
+`reagent.hooks`; the current hook contract below remains accurate until that
+implementation lands.
+
 The default frontend flow is ordinary Reagent Hiccup backed by re-frame. This
 applies to performance changes, lazy components and third-party React packages as
 well as everyday UI. An explicit event, app-db change and called effect are easier

@@ -58,6 +58,10 @@ the deployment job runs only for pushes to `master`.
 
 See [component authoring](doc/components.md), [page rendering](doc/ssr.md),
 and [testing](doc/testing.md) for current architecture and verification workflows.
+For a detailed comparison with classic Reagent and an assessment of this
+project's choices, read [Reagent 2 and React 19](doc/reagent-2-react-19-guide.md).
+The [native Reagent refactor brief](features/reagent-native-refactor.md) lists
+the planned cleanup for future implementation.
 
 ## License
 
