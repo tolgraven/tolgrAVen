@@ -40,7 +40,9 @@
           (let [body (:body response)]
             (when (> (count (.getBytes body "UTF-8")) max-bytes)
               (throw (ex-info "Strapi site config exceeds the size limit" {})))
-            (let [{:keys [version config]} (json/parse-string body true)]
+            (let [{:keys [version config]} (try (json/parse-string body true)
+                                            (catch Exception _
+                                              (throw (ex-info "Strapi site config is not valid JSON" {}))))]
               (when-not (= version 1) (throw (ex-info "Unsupported site config version" {})))
               (site/validate! (merge {:modules {}} config)))))))))
 
