@@ -136,14 +136,35 @@
 (defc <comment-fade> {:features [:props [:appear "opacity"]]} [spec]
   [:div.fade-to-black.bottom {:style {:z-index "0"}}])
 
+(defn- measure-comment-text! [element *full? *fade-style]
+  (when (and element (not (true? @*full?)))
+    (let [truncated? (> (util/px-to-rem (.-scrollHeight element)) 24)
+          bounds (.getBoundingClientRect element)
+          bottom (.-bottom bounds)
+          code-bounds (when truncated?
+                        (some (fn [code]
+                                (let [box (.getBoundingClientRect code)]
+                                  (when (< (.-top box) bottom (.-bottom box)) box)))
+                              (array-seq (.querySelectorAll element ".code-block"))))]
+      (reset! *full? (when truncated? false))
+      ;; Browser measurements stay at the ref/observer boundary. Reagent owns
+      ;; the resulting fade attributes, including code's horizontal margins.
+      (reset! *fade-style
+        (when code-bounds
+          {:left (str (util/px-to-rem (- (.-left code-bounds) (.-left bounds))) "rem")
+           :right (str (util/px-to-rem (- (.-right bounds) (.-right code-bounds))) "rem")
+           :width "auto"})))))
+
 (defc <comment-post> "Render a comment and its replies; defer hidden threads until needed."
   {:features [:error-boundary]}
   [{:keys [path visible?] {:keys [id ts user title text score] :as post} :comment :as spec} :- schema/comment-spec]
   :let [*full? (r/atom nil) ; nil: not measured, false: truncated, true: expanded
         *interacted? (r/atom false)
+        *fade-style (r/atom nil)
+        *text-element (atom nil)
         capture-height! (fn [element]
-                          (when (and element (> (util/element-height-rem element) 24))
-                            (reset! *full? false)))]
+                          (reset! *text-element element)
+                          (measure-comment-text! element *full? *fade-style))]
   (let [[show-expand? show-expand! hide-expand!] (timer/use-delayed-hide 2000)
         showing? (timer/use-delayed-visible? (or (nil? visible?) @visible?) 250)
         is-preview? (= [:new-comment] path)
@@ -152,6 +173,17 @@
                     (rf/subscribe [:comments/visible-thread (first path) (last path)
                                    (boolean (and showing? @*expanded?
                                                  (or (nil? (:reply-count post)) (pos? (:reply-count post))))) path]))]
+    (rf/use-effect
+      (fn []
+        (when-let [element (when showing? @*text-element)]
+          (when (exists? js/ResizeObserver)
+            (let [observer (js/ResizeObserver.
+                             #(measure-comment-text! element *full? *fade-style))]
+              ;; The unclipped Markdown root changes size even when its text
+              ;; viewport is capped, including late formatting/font upgrades.
+              (.observe observer (or (.querySelector element ".md-rendered") element))
+              (fn [] (.disconnect observer))))))
+      [showing? text])
     (when showing?
       (let [active-user @(rf/subscribe [:user/active-user])
             user @(rf/subscribe [:user/user user])
@@ -177,12 +209,11 @@
                            (rf/dispatch [:blog/expand-comment-thread path
                                          (not @*expanded?)]))}]
             [:section.blog-comment
-             {:class (when @*full?
-                       "blog-comment-full")
+             {:class (cond @*full? "blog-comment-full"
+                           (false? @*full?) "blog-comment-truncated")
               :data-link-trust (name (link-trust user))
               :style (when is-preview? {:background-color "var(--bg-2-2)"
-                                        :opacity 0.8})
-              :ref capture-height!}
+                                        :opacity 0.8})}
 
              [:div
               (m/<> :user/avatar user)
@@ -194,11 +225,17 @@
                  [:span.blog-comment-vote [<vote-btn> {:user user :active-user active-user :path path :vote :up}]
                                           [<vote-btn> {:user user :active-user active-user :path path :vote :down}]])
                [:div.blog-comment-text
-                {:style {:filter (when (neg? score)
+                {:ref capture-height!
+                 :style {:filter (when (neg? score)
                                    (str "brightness(calc(1 + "
                                         (max -0.7 (* 0.1 score)) "))"))}}
                 [<markdown> text
-                 {:trust (link-trust user)}]]]
+                 {:trust (link-trust user)}]
+                (when (false? @*full?)
+                  [<comment-fade>
+                   {:props {:style @*fade-style
+                            :on-mouse-over show-expand!
+                            :on-mouse-leave hide-expand!}}])]]
 
              [:div.blog-comment-actions
                (when (and active-user (= (:id active-user) (:id user)))
@@ -209,9 +246,6 @@
              [:div.blog-comment-expansion
               (when (false? @*full?)
                 [:<>
-                 [<comment-fade>
-                  {:props {:on-mouse-over show-expand!
-                           :on-mouse-leave hide-expand!}}]
                  (when show-expand?
                    [:button.blog-comment-view-full-btn
                     {:on-click #(reset! *full? true)}

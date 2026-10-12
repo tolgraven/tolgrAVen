@@ -214,11 +214,15 @@
     
     .blog-comment { // line up top-level comments with line above
       z-index: 2;
-      max-height: 25rem;
+      // Truncation belongs to the text so its fade shares the code/text width.
 
-      &.blog-comment-full {
+      &:not(.blog-comment-full) .blog-comment-text {
+        max-height: 24rem;
+        overflow: clip;
+      }
+      &.blog-comment-full .blog-comment-text {
         max-height: 150em;
-        overflow: scroll;
+        overflow: auto;
       }
       
       &:hover {
@@ -357,6 +361,9 @@
       &::first-letter { font-size: inherit; line-height: inherit; filter: none; }
     }
     .blog-comment-text {
+      position: relative;
+      // Keep the avatar float outside this clip without making it scrollable.
+      display: flow-root;
       // margin-top: calc(0.25 * var(--space));
       margin-top: 0.20em;
     }

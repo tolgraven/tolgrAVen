@@ -247,7 +247,10 @@
       copy! (merge handlers))))
 
 (defc <code-block>
-  {:args-schema args-schema}
+  {:args-schema args-schema
+   :module :markdown
+   :icons ["solid/copy" "solid/check" "solid/ellipsis-h" "solid/exclamation"
+           "solid/align-left" "solid/angle-down" "solid/angle-up"]}
   [code & options]
   (let [options (options-map options)
         [wrap? set-wrap!] (rf/use-state (boolean (:wrap? options)))
@@ -263,7 +266,7 @@
                      [code])
         fold-lines (get options :fold-lines 8)
         foldable? (and (:foldable? options) (> line-count fold-lines))
-        copy-button [:button.code-copy
+        copy-button [:button.code-copy.blog-btn.noborder
                      {:type "button"
                       :title copy-label
                       :aria-label (if (= copy-label "Copy") "Copy code" copy-label)
@@ -274,7 +277,12 @@
                      (if inline?
                        [:span {:aria-hidden true}
                         (case copy-label "Copy" "⧉" "Copied" "✓" "Copying…" "…" "!")]
-                       copy-label)]
+                       [:i.fas {:aria-hidden true
+                                :class (case copy-label
+                                         "Copy" "fa-copy"
+                                         "Copied" "fa-check"
+                                         "Copying…" "fa-ellipsis-h"
+                                         "fa-exclamation")}])]
         feedback [:span.code-copy-status {:role "status" :aria-live "polite"}
                   (when (not= copy-label "Copy") copy-label)]]
     (if inline?
@@ -287,17 +295,25 @@
         :class (string/join " " (cond-> []
                                    wrap? (conj "code-block-wrapped")
                                    (and foldable? folded?) (conj "code-block-folded")))
+        :tab-index 0
         :style {"--code-fold-lines" fold-lines})
        [:div.code-block-controls
         (when (not= false (:copy? options)) copy-button)
-        [:button {:type "button"
-                  :aria-pressed wrap?
-                  :on-click (fn [_] (set-wrap! (not wrap?)))}
-         "Wrap lines"]
+        [:button.code-wrap.blog-btn.noborder
+         {:type "button"
+          :title "Wrap lines"
+          :aria-label "Wrap lines"
+          :aria-pressed wrap?
+          :on-click (fn [_] (set-wrap! (not wrap?)))}
+         [:i.fas.fa-align-left {:aria-hidden true}]]
         (when foldable?
-          [:button {:type "button"
-                    :aria-expanded (not folded?)
-                    :on-click (fn [_] (set-folded! (not folded?)))}
-           (if folded? (str "Show all " line-count " lines") "Fold")])]
+          [:button.code-fold.blog-btn.noborder
+           {:type "button"
+            :title (if folded? (str "Show all " line-count " lines") "Fold")
+            :aria-label (if folded? (str "Show all " line-count " lines") "Fold")
+            :aria-expanded (not folded?)
+            :on-click (fn [_] (set-folded! (not folded?)))}
+           [:i.fas {:aria-hidden true
+                    :class (if folded? "fa-angle-down" "fa-angle-up")}]])]
        [:div.code-block-content [<formatter> code options on-ready!]]
        feedback])))

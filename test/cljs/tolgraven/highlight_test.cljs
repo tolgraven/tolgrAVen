@@ -94,7 +94,7 @@
           container (.createElement js/document "div")]
       (set! (.-innerHTML container) html)
       (is (.querySelector container ".code-block-folded"))
-      (is (= "Show all 4 lines" (.-textContent (.querySelector container "button[aria-expanded=false]"))))
+      (is (= "Show all 4 lines" (.getAttribute (.querySelector container "button[aria-expanded=false]") "aria-label")))
       (is (= ["7" "8" "9" "10"]
              (mapv #(.-textContent %) (array-seq (.querySelectorAll container ".react-syntax-highlighter-line-number")))))
       (is (.querySelector container ".code-snippet .code-copy[aria-label='Copy code']"))
