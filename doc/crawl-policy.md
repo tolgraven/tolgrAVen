@@ -64,7 +64,10 @@ Private recovery files live under
 each original path, backup filename, mode and whether the file originally
 existed. The directory is owner-only and files are mode `0600`. Validation or
 persistence failures restore generated files, templates and shared includes;
-if persistence began, nginx reloads the restored configuration.
+if persistence began, nginx reloads the restored configuration. If a control-plane
+restart was attempted, rollback restarts it again against the restored templates.
+Recovery failures retain the original apply failure and report the recovery error
+as its cause; inspect the backup manifest before any manual repair.
 
 ## Verification
 

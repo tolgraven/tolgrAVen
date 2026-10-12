@@ -97,6 +97,7 @@ def apply_policy(config_path, override, generated, shared, original, updated,
     } for i, (path, state) in enumerate(saved.items())}, indent=2) + '\n')
     shared.mkdir(parents=True, exist_ok=True)
     persisted = False
+    restart_attempted = False
     try:
         (shared / 'http.conf').write_text(HTTP)
         (shared / 'server.conf').write_text(SERVER)
@@ -111,16 +112,33 @@ def apply_policy(config_path, override, generated, shared, original, updated,
         private_write(config_path, json.dumps(updated, indent=2) + '\n')
         private_write(override, updated_override)
         command('docker', 'exec', nginx, 'nginx', '-s', 'reload')
+        restart_attempted = True
         command('docker', 'service', 'update', '--force', 'captain-captain')
         print('Applied; private recovery backup: ' + str(backup))
-    except Exception:
+    except Exception as original_error:
+        rollback_errors = []
         for path, state in saved.items():
             # A concurrent CapRover edit detected before our write belongs to it.
             if path == config_path and not persisted:
                 continue
-            restore(path, state)
+            try:
+                restore(path, state)
+            except Exception as error:
+                rollback_errors.append(error)
         if persisted:
-            command('docker', 'exec', nginx, 'nginx', '-s', 'reload')
+            try:
+                command('docker', 'exec', nginx, 'nginx', '-s', 'reload')
+            except Exception as error:
+                rollback_errors.append(error)
+        if restart_attempted:
+            # A failed service update can still have replaced captain's process.
+            # Reinitialize it against restored templates, after nginx is restored.
+            try:
+                command('docker', 'service', 'update', '--force', 'captain-captain')
+            except Exception as error:
+                rollback_errors.append(error)
+        if rollback_errors:
+            raise original_error from rollback_errors[0]
         raise
 
 

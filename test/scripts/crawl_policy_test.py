@@ -113,6 +113,33 @@ class CrawlPolicyTest(unittest.TestCase):
             self.assertEqual({p: state for p, state in saved.items() if p != args[0]},
                              {p: policy.snapshot(p) for p in saved if p != args[0]})
 
+    def test_failed_control_plane_restart_reinitializes_restored_templates(self):
+        for recovery_failure in [False, True]:
+            with self.subTest(recovery_failure=recovery_failure), tempfile.TemporaryDirectory() as directory:
+                args, saved = self.apply_fixture(Path(directory))
+                calls = []
+                restarts = []
+
+                def command(*argv):
+                    calls.append(argv)
+                    if argv[1:3] == ('service', 'update'):
+                        restarts.append(argv)
+                        if len(restarts) == 1:
+                            raise RuntimeError('initial restart failed after replacement began')
+                        self.assertEqual(saved, {p: policy.snapshot(p) for p in saved})
+                        if recovery_failure:
+                            raise OSError('recovery restart failed')
+                    return ''
+
+                with patch.object(policy, 'command', command):
+                    with self.assertRaisesRegex(RuntimeError, 'initial restart failed') as raised:
+                        policy.apply_policy(*args)
+                self.assertEqual(2, len(restarts))
+                self.assertEqual(('docker', 'exec', 'fixture-nginx', 'nginx', '-s', 'reload'), calls[-2])
+                self.assertEqual(saved, {p: policy.snapshot(p) for p in saved})
+                if recovery_failure:
+                    self.assertIsInstance(raised.exception.__cause__, OSError)
+
     def test_coolify_plan_only_inspects_docker(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
