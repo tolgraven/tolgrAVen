@@ -104,8 +104,12 @@ Structural wrappers (`:container`, `:error-boundary`, `:data`, or custom `:wrap`
 can be selected by the initial instance spec. Changing their membership after
 mount requires an explicit Hiccup key/remount; the runtime reports a clear error
 instead of silently losing form state. A transform that changes the native root
-structure under a feature toggle has the same constraint. Configuration-only
-changes must preserve wrapper/component identity. Full pages retain their required
+structure under a feature toggle has the same constraint. The wrapper guard checks
+membership, not every returned wrapper shape. Custom
+configuration-only changes must preserve wrapper/component identity. Legacy
+container template/tag/view switches retain their established React remount
+behavior; callers should explicitly key deliberate structural changes. Full pages
+retain their required
 recovery boundary; declaration-owned dependencies retain their data boundary.
 `:presence` can use a native parent or fragment and evaluates each child's actual
 instance `:exit` options, including the retained form during removal.
