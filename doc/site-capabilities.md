@@ -80,12 +80,31 @@ runtime environment variables. Public/config/content responses never return them
 Actions forward credentials only to their exact provisioned HTTPS URL, reject
 redirects, and return acceptance without claiming deployment has completed.
 
-Provision `cms_webhooks` per environment with `rebuild` and `reprovision` objects
-containing `url` and `token`. Rebuild should deploy the web application; reprovision
-should redeploy the CMS or invoke an infrastructure runner for new service needs.
-Use a deploy-only Coolify credential. Save features, update the editor, fill newly
-visible content, then publish the site. The main site's future admin UI can invoke
-the same protected action contract; it does not need Coolify access or raw secrets.
+CMS `prepare` automatically creates separate deploy-only Coolify API credentials
+for Publish site (the web application) and Update editor (the CMS service). It derives
+the HTTPS webhook origin from Coolify's instance settings, associates credentials
+with an existing owner/admin of the resource team, and copies each URL/token into
+the CMS's `CMS_REBUILD_WEBHOOK_*` / `CMS_REPROVISION_WEBHOOK_*` runtime variables.
+Strapi bootstrap copies them into private site-config fields for its authenticated
+admin actions. Credentials never enter build snapshots, browser bundles or script
+output. Coolify deploy permission is team-wide; the CMS action fixes the resource URL.
+
+Enable Coolify API access and configure its public HTTPS origin before `prepare`.
+An API IP allowlist must also admit the CMS host. The provisioner does not change
+these instance-wide controls. Managed tokens have no explicit expiration to keep
+unattended admin actions working; revoke them in Coolify's API Tokens page when
+needed. `prepare` reuses valid tokens and replaces revoked, expired or otherwise
+invalid managed tokens atomically. Each environment gets its own credentials.
+Run `start` after preparing an existing CMS to load the updated environment.
+
+Optional `cms_webhooks` per environment override either action with an HTTPS `url`
+and `token` (standalone CMS manifests use `webhooks`). An explicit override replaces
+that action's managed token. Use `reprovision` to target an infrastructure runner
+when configuration changes require new services or schema migrations. The default
+Update editor redeploys Strapi and preserves its data; it does not run infrastructure
+provisioning. Save features, update the editor, fill newly visible content, then
+publish the site. The future site admin UI can invoke the same protected action
+contract; it does not need Coolify access or raw secrets.
 
 Operations resolve the same optional CMS override snapshot before selecting their
 schema. Run environment-specific provisioning with that environment's existing
