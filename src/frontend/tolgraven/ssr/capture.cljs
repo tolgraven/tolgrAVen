@@ -79,7 +79,8 @@
 
 (defn pair! [db {:keys [scripts template build] :as config}]
   (let [modules (vec (remove #{:page-capture :page-render :coercion} (keys (local/modules))))
-        code? (boolean (.querySelector js/document "#app .code-block, #app .code-highlight"))]
+        code? (and (contains? loader/modules :highlight)
+                   (boolean (.querySelector js/document "#app .code-block, #app .code-highlight")))]
     (if (or ^boolean goog.DEBUG (not (exists? js/Worker)) (some #{:maps} modules))
       (browser-pair! db config code?)
       (let [scripts' (into {} (map (fn [[id asset]] [id (update asset :depends #(mapv keyword %))])) scripts)

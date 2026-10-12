@@ -16,7 +16,6 @@
     [tolgraven.listener]
     #?(:module/user [tolgraven.modules.user.events])
     #?(:module/contact [tolgraven.modules.contact.events])
-    #?(:module/main [tolgraven.modules.settings.events])
     #?(:module/user [tolgraven.modules.user.subs])
     [tolgraven.loader :as l]
     [tolgraven.navigation.transition :as page-transition]

@@ -1,5 +1,6 @@
 (ns tolgraven.boot
   "Ordered document setup, committed UI setup and deferred background hosts."
+  (:require-macros [tolgraven.build.site :refer [when-enabled]])
   (:require [breaking-point.core :as bp]
             [tolgraven.react :as rf]
             [tolgraven.macros :refer-macros [defc]]
@@ -133,5 +134,6 @@
       (rf/dispatch-sync [:boot/interactive])
       #(rf/dispatch-sync [:boot/stop]))
     #js [])
-  [:<> [<coercion>] [preload/<background>] [local-page/<capture>]
+  [:<> [<coercion>] [preload/<background>]
+   (when-enabled :page-capture nil [local-page/<capture>])
    (when @context/*interactive? [resources/<deferred>])])

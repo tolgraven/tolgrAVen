@@ -105,3 +105,15 @@
                   {:modules {:blog {:enabled false}}}]]
     (is (thrown? clojure.lang.ExceptionInfo
                  (modules/select-declarations (modules/all-declarations) config)))))
+
+(deftest local-capture-requires-its-renderer-without-a-browser-bundle-dependency
+  (let [declarations (modules/all-declarations)
+        capture (first (filter #(= :page-capture (:id %)) declarations))]
+    (is (= #{:main} (:depends-on capture)))
+    (is (= #{:page-render} (get-in capture [:server :requires])))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"module dependency"
+                         (modules/select-declarations
+                           declarations {:modules {:page-render {:enabled false}}})))
+    (is (seq (modules/select-declarations
+               declarations {:modules {:page-render {:enabled false}
+                                       :page-capture {:enabled false}}})))))
