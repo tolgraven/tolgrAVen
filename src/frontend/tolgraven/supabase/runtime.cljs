@@ -58,17 +58,23 @@
     (if-let [api @*api]
       ((:ensure-query! api) opts)
       (let [*reader (ratom/atom nil)
-            *active? (atom true)]
-        (-> code
-            (.then (fn [_]
-                     (when @*active?
-                       (reset! *reader ((:ensure-query! @*api) opts)))))
-            (.catch (fn [_] nil)))
-        ;; Acquisition stays outside derived computation. Disposed bindings do
-        ;; not create late readers; mounted bindings retain their restored data.
+            owner (gensym "supabase-reader")
+            install! (fn [_ _ _ api]
+                       (when (and api (nil? @*reader))
+                         (let [reader ((:ensure-query! api) opts)]
+                           ;; Own the pooled reader before the outer reaction's
+                           ;; next render, including disposal during that gap.
+                           (add-watch reader owner (fn [& _]))
+                           (reset! *reader reader))))]
+        ;; A failed chunk may later load through the module's Retry action.
+        ;; Observe API installation so the original mounted binding recovers.
+        (add-watch *api owner install!)
+        (-> code (.catch (fn [_] nil)))
         (ratom/make-reaction
           #(if-let [reader @*reader] @reader (restored-value opts))
-          :on-dispose #(reset! *active? false))))))
+          :on-dispose (fn []
+                        (remove-watch *api owner)
+                        (when-let [reader @*reader] (remove-watch reader owner))))))))
 
 (defn- invoke! [method args]
   (-> (ensure!) (.then (fn [_] (apply (get @*api method) args)))))
