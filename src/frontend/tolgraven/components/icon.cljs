@@ -6,9 +6,11 @@
 
 (defc <icon>
   "Known glyphs use the small sheet; new CMS names acquire the full catalog."
-  [family name attrs]
+  [family :- [:enum "fa" "fas" "fab" "far"]
+   name :- :?string
+   attrs :- :?map]
   [:<>
    (when-enabled :icon-catalog nil
-     (when-not (catalog/names name)
+     (when (and (seq name) (not (catalog/names name)))
        (loader-view/form :icon-catalog :empty [] nil)))
    [:i (update attrs :class #(str family " fa-" name (when % (str " " %))))]])

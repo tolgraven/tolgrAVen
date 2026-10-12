@@ -63,7 +63,7 @@
     :form-field form-fields
     :scroll-position [:map-of [:maybe c/named] number?]
     :scroll (optional-map {:at-bottom :boolean, :past-top :boolean, :block :boolean})
-:settings #?(:module/settings settings/state :default nil)
+    :settings #?(:module/settings settings/state :default nil)
     :document (optional-map {:title :?string})
     :content content/state
     :search #?(:module/search search/state :default nil)

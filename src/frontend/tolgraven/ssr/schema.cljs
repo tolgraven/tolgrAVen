@@ -21,7 +21,7 @@
    [:route [:map [:path :string] [:query-params {:optional true} :map]
                  [:parameters {:optional true} :map]]]
    [:modules [:vector :keyword]]
-   [:snapshot [:maybe :map]]
+   [:snapshot :?map]
    [:styles :map]
    [:template :string]
    [:build [:or :int :string]]
