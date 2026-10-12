@@ -3,6 +3,7 @@
             [clojure.java.shell :as shell]
             [clojure.test :refer [deftest is]]
             [malli.core :as m]
+            [tolgraven.schema.dsl :as dsl]
             [tolgraven.config :as config]
             [tolgraven.components.image.sources :as sources]
             [tolgraven.media.image :as image])
@@ -24,7 +25,7 @@
 (deftest real-upload-codecs-produce-decodable-images
   (let [png (png-bytes)
         variants (image/variants! png)]
-    (is (m/validate image/variants-schema variants))
+    (is (m/validate (dsl/->malli image/variants-schema) variants))
     (is (= (vec png) (vec (:png variants))) "Keep the normalized PNG fallback")
     (doseq [[format bytes] variants]
       (let [file (File/createTempFile "tolgraven-image-decode-" (str "." (name format)))]
@@ -43,7 +44,7 @@
          (is (= 503 (:auth/status (ex-data error))))
          (is (not (.contains (.getMessage error) "private")))
          (is (not (.exists ^File @*directory)))))
-    (is (m/validate image/variants-schema (image/variants! (png-bytes))))))
+    (is (m/validate (dsl/->malli image/variants-schema) (image/variants! (png-bytes))))))
 
 (deftest missing-and-stalled-encoders-fail-safely
   (with-redefs [config/env {:image-converter "/nonexistent/converter.clj"}]

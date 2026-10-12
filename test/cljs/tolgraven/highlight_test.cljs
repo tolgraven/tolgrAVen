@@ -3,6 +3,7 @@
             [clojure.string :as string]
             [reagent.dom.server :as server]
             [malli.core :as m]
+            [tolgraven.schema.dsl :as dsl]
             [tolgraven.components.code-block :as code-block]
             [tolgraven.components.markdown :as markdown]
             [tolgraven.modules.highlight.module :as highlight]
@@ -103,14 +104,14 @@
       (is (= "echo \"hello\"" (.-textContent (.querySelector container ".code-snippet code")))))))
 
 (deftest code-options-share-map-and-keyword-contracts
-  (is (m/validate code-block/args-schema ["code" {:line-numbers? true :fold-lines 3}]))
-  (is (m/validate code-block/args-schema ["code" :line-numbers? true :fold-lines 3]))
-  (is (m/validate code-block/args-schema ["code"]))
-  (is (m/validate code-block/args-schema ["code" :style {:hljs {:color "red"}}]))
-  (is (m/validate code-block/args-schema ["code" :style #js {:hljs #js {:color "red"}}]))
-  (is (not (m/validate code-block/args-schema ["code" :fold-lines 0])))
-  (is (not (m/validate code-block/args-schema ["code" {:starting-line-number -1}])))
-  (is (not (m/validate code-block/args-schema ["code" :line-numbers? "true"]))))
+  (is (m/validate (dsl/->malli code-block/args-schema) ["code" {:line-numbers? true :fold-lines 3}]))
+  (is (m/validate (dsl/->malli code-block/args-schema) ["code" :line-numbers? true :fold-lines 3]))
+  (is (m/validate (dsl/->malli code-block/args-schema) ["code"]))
+  (is (m/validate (dsl/->malli code-block/args-schema) ["code" :style {:hljs {:color "red"}}]))
+  (is (m/validate (dsl/->malli code-block/args-schema) ["code" :style #js {:hljs #js {:color "red"}}]))
+  (is (not (m/validate (dsl/->malli code-block/args-schema) ["code" :fold-lines 0])))
+  (is (not (m/validate (dsl/->malli code-block/args-schema) ["code" {:starting-line-number -1}])))
+  (is (not (m/validate (dsl/->malli code-block/args-schema) ["code" :line-numbers? "true"]))))
 
 (deftest linked-inline-code-retains-navigation-without-nested-controls
   (binding [context/*server?* true

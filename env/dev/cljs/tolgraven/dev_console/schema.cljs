@@ -13,21 +13,21 @@
   (c/optional-map
     {:instance :string
      :component component-id
-     :parent [:maybe :string]
+     :parent :?string
      :parent-component [:maybe component-id]
      :path [:maybe c/path]
-     :page [:maybe :string]
+     :page :?string
      :key :any
      :native? :boolean
-     :depends [:maybe [:sequential :map]]
+     :depends [:?sequential :map]
      :queries queries
-     :source [:maybe :map]}))
+     :source :?map}))
 (def rect
   (c/optional-map (zipmap [:x :y :top :left :bottom :right :width :height] (repeat number?))))
 (def source
   (c/optional-map
-    {:component [:maybe :string]
-     :element [:maybe :string]
+    {:component :?string
+     :element :?string
      :inspector? :boolean
      :before [:maybe rect]
      :after [:maybe rect]}))
@@ -46,22 +46,22 @@
      :event c/event
      :event/original c/event
      :interceptors :any
-     :effects [:maybe :map]
+     :effects :?map
      :tags :map
      :value number?
      :scope [:enum :unknown :inspector :mixed :page]
-     :path [:maybe :string]
+     :path :?string
      :user-input? :boolean
      :last-input [:maybe c/milliseconds]
      :since-input [:maybe number?]
      :sources [:sequential source]
-     :source [:maybe :map]
+     :source :?map
      :reasons [:vector {:max 100} reason]}))
 (def state
   (c/optional-map
-    {:active [:maybe [:map-of :string instance]]
+    {:active [:?map-of :string instance]
      :records [:vector {:max 2000} record]
-     :selected-instance [:maybe :string]
+     :selected-instance :?string
      :selected-record [:maybe instance]
      :open? :boolean
      :picking? :boolean

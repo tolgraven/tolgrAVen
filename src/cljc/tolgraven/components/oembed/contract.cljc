@@ -31,4 +31,4 @@
    [:html :string]
    [:title :string]
    [:height [:and number? [:> 0]]]
-   [:player-src {:optional true} [:and :string [:fn player-url]]]])
+   [:?player-src [:and :string [:fn player-url]]]])

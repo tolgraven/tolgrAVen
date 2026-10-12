@@ -13,13 +13,12 @@
 
 
 (def options-schema
-  [:maybe
-   [:map
-    [:allow-images? {:optional true} :boolean]
-    [:allow-raw? {:optional true} :boolean]
-    [:default-language {:optional true} [:maybe :string]]
-    [:auto-languages {:optional true} [:maybe [:vector :string]]]
-    [:code-options {:optional true} [:maybe code-block/options-schema]]]])
+  [:?map
+   [:?allow-images? :boolean]
+   [:?allow-raw? :boolean]
+   [:?default-language :?string]
+   [:?auto-languages [:?vector :string]]
+   [:?code-options [:maybe code-block/options-schema]]])
 
 (def block-context (rf/create-context false))
 (def link-context (rf/create-context false))
@@ -85,7 +84,7 @@
 
 (defc <parse-markdown-components>
   "Parse markdown into pure React components using react-markdown"
-  {:args-schema [:cat [:maybe :string] [:? options-schema]]}
+  {:args-schema [:cat :?string [:? options-schema]]}
   [md-text & [{:keys [allow-images? allow-raw? default-language auto-languages code-options]
               :or {allow-images? false
                    allow-raw? false}}]]

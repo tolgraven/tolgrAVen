@@ -1,6 +1,7 @@
 (ns tolgraven.validation.malli
   "Shared, value-redacting Malli validation. Runtime policy belongs to adapters."
   (:require [tolgraven.schema.registry]
+            [tolgraven.schema.dsl :as dsl]
             [malli.core :as m]
             [malli.error :as me]
             [malli.transform :as mt]
@@ -11,7 +12,7 @@
 (def compiled-cache-limit 256)
 (defn compiled [schema]
   (or (get @*compiled schema)
-      (let [schema* (m/schema schema)
+      (let [schema* (m/schema (dsl/->malli schema))
             compiled {:valid? (m/validator schema*)
                       :explain (m/explainer schema*)
                       :string-decoder (delay (m/decoder schema* mt/string-transformer))

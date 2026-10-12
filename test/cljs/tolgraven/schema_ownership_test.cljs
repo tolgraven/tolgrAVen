@@ -1,6 +1,7 @@
 (ns tolgraven.schema-ownership-test
   (:require [cljs.test :refer-macros [deftest is]]
             [malli.core :as m]
+            [tolgraven.schema.dsl :as dsl]
             [tolgraven.modules.blog.schema :as blog]
             [tolgraven.modules.link-preview.schema :as link-preview]
             [tolgraven.validation.schema :as state]
@@ -17,10 +18,10 @@
             {:pages-fetched ["1"]} {:github {:pages-fetched ["1"]}}]
            [link-preview/state {:containers nil, :active nil, :prefetch-queue []}
             {:prefetch {"/blog" :failed}} {:link-preview {:prefetch {"/blog" :failed}}}]]]
-    (is (m/validate schema value))
-    (is (not (m/validate schema invalid)))
-    (is (not (m/validate state/state assembled))))
-  (is (m/validate state/state {:form-field {:post-blog nil, :login {}}
+    (is (m/validate (dsl/->malli schema) value))
+    (is (not (m/validate (dsl/->malli schema) invalid)))
+    (is (not (m/validate (dsl/->malli state/state) assembled))))
+  (is (m/validate (dsl/->malli state/state) {:form-field {:post-blog nil, :login {}}
                                :github {:pages-fetched []}
                                :link-preview {:active nil}})))
 

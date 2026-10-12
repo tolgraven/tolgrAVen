@@ -2,7 +2,7 @@
   "Consumed provider fields and UI state; provider extension fields remain open."
   (:require [tolgraven.schema.common :as c]))
 
-(def state (c/optional-map {:activity-expanded [:maybe :int]}))
+(def state (c/optional-map {:activity-expanded :?int}))
 
 (def activity
   (c/optional-map {:id [:or :int :string]
@@ -14,11 +14,11 @@
                    :elapsed_time number?
                    :start_date :string
                    :start_date_local :string
-                   :gear_id [:maybe :string]
+                   :gear_id :?string
                    :total_elevation_gain number?
                    :average_speed number?
-                   :map (c/optional-map {:summary_polyline [:maybe :string]
-                                         :polyline [:maybe :string]})}))
+                   :map (c/optional-map {:summary_polyline :?string
+                                         :polyline :?string})}))
 (def content
   (c/optional-map {:activities [:sequential activity]
                    :activity [:map-of c/id activity]

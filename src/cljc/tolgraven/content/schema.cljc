@@ -18,7 +18,7 @@
 (def link (c/optional-map {:id c/id :name :string :href :string :info :string :icon :string}))
 (def menu-item [:and vector? [:cat :string :string [:? [:maybe c/named]]]])
 (def timeline-item
-  (c/optional-map {:from [:or number? :string] :to [:maybe [:or number? :string]]
+  (c/optional-map {:from [:or number? :string] :to [:?or number? :string]
                    :what :string :where :string :how c/strings :logo :string :color :string}))
 (def timeline-column
   (c/optional-map {:category c/named :icon :string :height-ratio number?
@@ -55,6 +55,6 @@
 (def content (into [:map {:closed true}]
                    (map (fn [[key schema]] [key {:optional true} schema])) sections))
 (def bundle [:map [:version [:= 1]] [:content content]
-             [:deferred? {:optional true} :boolean]])
+             [:?deferred? :boolean]])
 
 (def state (c/optional-map {:status [:enum :idle :loading :ready :error]}))

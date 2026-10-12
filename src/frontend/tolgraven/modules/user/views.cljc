@@ -192,7 +192,7 @@
 (defc <user-avatar>
   "Render one avatar. Reserve its space while the profile is pending; use the
    default only for a resolved profile without an avatar or a failed image."
-  [user-map :- [:maybe schema/profile] & [extra-class] :- [:maybe :string]]
+  [user-map :- [:maybe schema/profile] & [extra-class] :- :?string]
   (r/with-let [*failed-sources (r/atom #{})]
     (let [fallback @(rf/subscribe [:user/default-avatar])
           avatar (:avatar user-map)

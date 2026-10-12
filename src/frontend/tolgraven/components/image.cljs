@@ -11,10 +11,10 @@
 (def attrs-schema
   ;; Pending avatars intentionally reserve their box without an image request.
   ;; CMS media uses a concrete source; a mounted image may temporarily omit it.
-  (vector :merge content/media [:map [:src {:optional true} [:maybe :string]]
-                               [:on-error {:optional true} [:maybe fn?]]
-                               [:on-load {:optional true} [:maybe fn?]]
-                               [:style {:optional true} [:maybe :map]]]))
+  (vector :merge content/media [:map [:?src :?string]
+                               [:?on-error [:maybe fn?]]
+                               [:?on-load [:maybe fn?]]
+                               [:?style :?map]]))
 
 (def get-src-variants sources/get-src-variants)
 

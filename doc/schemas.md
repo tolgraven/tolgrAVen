@@ -11,6 +11,49 @@ See [source layout](source-layout.md) for ownership boundaries.
 Maps are open by default: a partially migrated section does not reject unrelated
 application data. Make a map closed explicitly when unknown keys are an error.
 
+## Schema shorthand
+
+Schemas remain ordinary data. `tolgraven.schema.dsl/->malli` expands the local
+shorthand into standard Malli before validation or coercion:
+
+```clojure
+(def options-schema
+  [:map
+   [:?language :?string]
+   [:?auto-languages [:?vector :string]]
+   [:?basic? :boolean]
+   [:?starting-line-number [:int {:min 1}]]])
+
+(dsl/->malli options-schema)
+;; => [:map
+;;     [:language {:optional true} [:maybe :string]]
+;;     [:auto-languages {:optional true} [:maybe [:vector :string]]]
+;;     [:basic? {:optional true} :boolean]
+;;     [:starting-line-number {:optional true} [:int {:min 1}]]]
+```
+
+Prefix the **name** of a map-entry keyword with `?` to allow its absence;
+`:account/?name` expands to optional `:account/name`. A trailing question mark
+stays part of the actual key (`:?basic?` becomes `:basic?`). Prefix a schema type
+with `?` to allow nil, including vector constructors and their properties:
+`[:?int {:min 1}]` becomes `[:maybe [:int {:min 1}]]`. Optional and nullable are
+independent: `[:?count :int]` allows omission but rejects explicit nil.
+
+Native Malli forms remain supported. Use explicit `{:optional true}` for string
+or computed keys and `[:maybe schema-var]` / `[:maybe predicate?]` for values
+without a literal type keyword. Shorthand entries can carry other properties;
+the prefix sets `:optional true`. Malli's standalone `[:? schema]` still means
+an optional **sequence element**. Enum/equality values, reference IDs, tagged
+branch names and ordinary properties are literal data; only local `:registry`
+values are recursively expanded as schemas.
+
+The existing validation engine and JVM/browser Reitit adapters expand at their
+Malli boundaries, including query encoding. Composition with `[:merge ...]`
+remains data and does not load Malli into the production browser shell. Direct
+Malli consumers must expand explicitly, for example
+`(m/validate (dsl/->malli options-schema) value)`. Helpers deriving literal keys
+or entries must also read the expanded form. Expansion is pure and idempotent.
+
 ## Runtime policy
 
 Internal checks default on in development and off in production. Configure:
@@ -90,8 +133,8 @@ For example, an owner can expose its state schema with its module:
 
 ```clojure
 ;; src/frontend/my_site/catalog/schema.cljs
-(def filters [:map [:search {:optional true} :string]
-                   [:page {:optional true} [:int {:min 0}]]])
+(def filters [:map [:?search :string]
+                   [:?page [:int {:min 0}]]])
 (def sections {[:state :catalog] filters})
 
 ;; src/frontend/my_site/catalog/module.cljs
@@ -359,7 +402,7 @@ omits the exception payload because it can contain credentials/request bodies.
 
 ## Tests and extending coverage
 
-Use `validation/check!`, `validation/explain` or Malli directly with the production
+Use `validation/check!`, `validation/explain` or Malli with `dsl/->malli` and the production
 schema; do not duplicate fixture contracts in tests. Add both accepted and rejected
 examples and verify coercion through the actual router/handler. Browser tests
 should dispatch real events and mount subscriptions, including the diagnostic
