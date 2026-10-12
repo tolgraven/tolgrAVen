@@ -96,16 +96,17 @@ search, and that SPA navigation retains the document. No test functions are
 loaded into the application's CLJS runtime. The proxy forwards the application's
 response bytes and flushes streaming chunks without replacing them.
 
-`/__tests/motion.html` measures entrances, comment layout, simultaneous 250ms
-linear page fades and the opaque sticky footer. Add `?fallback` to remove the
-optional native transition API in the test driver and exercise ordinary fallback
+`/__tests/motion.html` checks visible SSR/paired document restoration without
+entrance replay, comment layout, simultaneous 250ms linear page fades and the
+opaque sticky footer. Add `?fallback` to remove the optional native transition API in the test driver and exercise ordinary fallback
 navigation with the same content. `__tests/scroll.html` checks SPA and document
 Back restoration. Run these on separate test origins if they overlap in time.
 
 The separate localhost origin is exclusively for these tests; the runner clears
-that origin's storage before a run. It does not clear your regular port-4000
-session. Published blog content with a tagged post is required. Missing content
-or an unavailable service fails the check; do not substitute a fixture to make
+that origin's storage before a run, including saved return documents through the
+worker's serialized clear protocol after the outgoing page closes. It does not
+clear your regular port-4000 session. Published blog content with a tagged post
+is required. Missing content or an unavailable service fails the check; do not substitute a fixture to make
 it pass. These are read-only public workflows: they do not publish posts, submit
 comments/votes, log in, or alter live records.
 

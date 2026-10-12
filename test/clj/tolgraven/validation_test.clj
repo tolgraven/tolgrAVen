@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [malli.core :as m]
             [tolgraven.validation :as validation]
+            [tolgraven.validation.malli :as validation-engine]
             [tolgraven.schema.declarations :as declarations]
             [tolgraven.schema.app-db :as app-db]
             [tolgraven.schema.http :as http]
@@ -60,7 +61,7 @@
   (let [first-schema [:map [:first-generation :int]]
         first-compiled (validation/compiled first-schema)]
     (is (identical? first-compiled (validation/compiled first-schema)))
-    (dotimes [index validation/compiled-cache-limit]
+    (dotimes [index validation-engine/compiled-cache-limit]
       (validation/compiled [:map [:cache-generation [:= index]]]))
     (let [recompiled (validation/compiled first-schema)]
       (is (not (identical? first-compiled recompiled)))

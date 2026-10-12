@@ -21,6 +21,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urlsplit(self.path).path
         assets = {'/__tests/': 'live.html', '/__tests/live.js': 'live.js',
+                  '/__tests/reset.js': 'reset.js',
                   '/__tests/scroll.html': 'scroll.html', '/__tests/scroll.js': 'scroll.js',
                   '/__tests/motion.html': 'motion.html', '/__tests/motion.js': 'motion.js',
                   '/__tests/away.html': 'away.html'}

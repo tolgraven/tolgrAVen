@@ -59,11 +59,7 @@ const navigate = async (anchor, path) => {
 button.onclick = async () => {
   button.disabled = true; results.replaceChildren();
   try {
-    // Finish the previous app's pagehide before clearing this test-only origin.
-    frame.src = 'about:blank';
-    await waitFor(() => doc()?.URL === 'about:blank', 'previous document closes');
-    localStorage.clear(); sessionStorage.clear();
-    document.cookie = 'tolgraven-return=; Max-Age=0; Path=/';
+    await resetTestOrigin(frame, waitFor);
     const bootstrap = await fetch('/api/content/bootstrap', {cache: 'no-store'});
     check(bootstrap.ok, 'Public content bootstrap succeeds');
     check(bootstrap.headers.get('X-Content-Source') === 'strapi',
@@ -76,7 +72,11 @@ button.onclick = async () => {
     // A deferred button must retain its first click while its code loads.
     await waitFor(() => {
       const root = app();
-      if (root?.querySelector('.settings-panel.opened')) return true;
+      const settings = root?.querySelector('a.settings-btn');
+      // Header and panel are separate subscribers. Wait for the actual closing
+      // href too; the panel can commit while its link still expresses open.
+      if (root?.querySelector('.settings-panel.opened') && settings &&
+          new URL(settings.href).searchParams.get('settingsBox') === 'false') return true;
       // SSR can be visible before hydration. Its first link may perform a
       // document navigation; let that pending intent hydrate instead of clicking
       // it repeatedly and interrupting every reload before JavaScript can start.
@@ -85,6 +85,7 @@ button.onclick = async () => {
       }
       return false;
     }, 'hydrated settings control');
+    await settled();
     app().querySelector('a.settings-btn').click();
     await waitFor(() => !app().querySelector('.settings-panel.opened'), 'settings closes');
     app().querySelector('button.search-ui-btn').click();

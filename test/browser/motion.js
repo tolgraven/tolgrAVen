@@ -6,7 +6,7 @@ const wait = async predicate => {
   while (performance.now() < end) {
     const failed = doc()?.querySelector('main .component-failed');
     if (failed) throw new Error(failed.textContent);
-    if (predicate()) return;
+    if (await predicate()) return;
     await sleep(20);
   }
   throw new Error('Application did not settle');
@@ -33,7 +33,7 @@ const settleLayout = async element => {
 };
 // Sample the real document from its first paint through interactive startup.
 // Do not substitute data or manipulate application-owned markup.
-const entrance = async path => {
+const sampleStartup = async path => {
   const samples = [], end = performance.now() + 45000;
   frame.src = path;
   let completeAt = null;
@@ -41,8 +41,8 @@ const entrance = async path => {
     await new Promise(resolve => requestAnimationFrame(resolve));
     const mains = doc()?.querySelectorAll('#ssr-shell main, #app main');
     if (mains?.length && frame.contentWindow.location.pathname === '/') {
-      // A cache miss animates its flushed shell; a cache hit animates #app.
-      // Sampling only #app incorrectly misses the entire streaming entrance.
+      // Include the flushed shell and completed page to check visibility
+      // through their handoff, including a streamed cache miss.
       for (const main of mains) {
         const style = frame.contentWindow.getComputedStyle(main);
         samples.push({animation: style.animationName, opacity: Number(style.opacity),
@@ -60,24 +60,31 @@ const entrance = async path => {
       if (completeAt && performance.now() - completeAt > 600) return samples;
     }
   }
-  throw new Error('First-load entrance did not reach interactive startup');
+  throw new Error('Page did not reach interactive startup');
 };
 document.querySelector('#run').onclick = async () => {
   results.replaceChildren();
   try {
+    await resetTestOrigin(frame, wait);
     const path = '/?motion-entrance';
-    const cold = await entrance(path);
-    check(cold.some(value => value.animation === 'fade-in-site' && value.opacity > 0 && value.opacity < .99),
-          'Initial landing page visibly animates before hydration without needing a mount replay');
-    // Finish pagehide/persistence before the next request. Starting it directly
-    // from the old document can race the return cookie sent with that request.
+    const cold = await sampleStartup(path);
+    check(!!doc().querySelector('#ssr-bootstrap'), 'Cold motion check receives a real SSR snapshot');
+    check(cold.length && cold.every(value => value.animation === 'none' && value.opacity === 1),
+          'Cold SSR landing stays visible through hydration without replaying a root entrance');
+    // Observe the real return worker output before exercising its document pair.
+    await wait(async () => {
+      for (const name of await caches.keys()) {
+        if (name.startsWith('tolgraven-return-v1-') &&
+            await (await caches.open(name)).match(new URL(path, location.href).href)) return true;
+      }
+      return false;
+    });
     frame.src = 'about:blank';
     await wait(() => doc()?.URL === 'about:blank');
-    const repeated = await entrance(path);
-    // A normal repeat request uses network SSR when the return worker is active.
-    // Saved HTML is armed by an external-link departure, covered by scroll.js.
-    check(repeated.some(value => value.animation === 'fade-in-site' && value.opacity > 0 && value.opacity < .99),
-          'Normal repeat document load retains the page entrance (not mistaken for browser Back)');
+    const repeated = await sampleStartup(path);
+    check(!!doc().querySelector('#local-page-bootstrap'), 'Repeat document load uses the saved HTML/state pair');
+    check(repeated.length && repeated.every(value => value.animation === 'none' && value.opacity === 1),
+          'Paired document restoration stays visible without replaying its entrance');
     frame.src = '/blog/post/New-features-27';
     await wait(() => doc()?.querySelector('.blog-comment-collapsed-placeholder'));
     await wait(() => {

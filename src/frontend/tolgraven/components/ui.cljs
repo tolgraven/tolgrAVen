@@ -478,7 +478,7 @@
   "Standard heading component with fade and title."
   [heading-path component & [override]]
   [:<>
-   [<fading-bg-heading> (merge @(rf/subscribe [:content heading-path])
+   [<fading-bg-heading> (merge {} @(rf/subscribe [:content heading-path])
                                 override)]
    component])
 

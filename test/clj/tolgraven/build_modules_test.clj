@@ -1,7 +1,8 @@
 (ns tolgraven.build-modules-test
   (:require [clojure.test :refer [deftest is testing]]
             [tolgraven.build.modules :as modules]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [clojure.string :as string]))
 
 (deftest module-build-and-runtime-catalog-have-one-owner
   (let [found (modules/discover)
@@ -55,7 +56,13 @@
       (let [styles (expand-styles nil env)
             resources (map second @*reads)]
         (is (= (set (keys styles)) (set (map :id (modules/discover)))))
-        (is (= (+ 3 (count styles)) (count resources)))
+        (is (= (count resources) (count (distinct resources)))
+            "Declaration and icon owners are tracked once")
+        (doseq [{:keys [entry]} (modules/discover)]
+          (let [path (str (-> (str entry)
+                             (string/replace "." "/")
+                             (string/replace "-" "_")) ".cljs")]
+            (is (some #{path} resources) "Every discovered declaration is tracked")))
         (is (some #{"tolgraven/modules/main/module.cljs"} resources))
         (is (some #{"tolgraven/components/shell.cljs"} resources))
         (is (some #{"tolgraven/modules/user/views.cljs"} resources))
