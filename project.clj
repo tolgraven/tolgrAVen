@@ -125,7 +125,8 @@
                                  :init (start)
                                  :nrepl-middleware [cider.piggieback/wrap-cljs-repl
                                                     shadow.cljs.devtools.server.nrepl/middleware]
-                                 :timeout 30000}
+                                 ;; Cold namespaces and initial watches precede the nREPL acknowledgement.
+                                 :timeout 180000}
                   }
    :project/test {:dependencies [[ring/ring-mock "0.6.2"]]
                   :source-paths ["test/cljs"]

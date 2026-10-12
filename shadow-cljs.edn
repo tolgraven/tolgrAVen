@@ -1,5 +1,6 @@
 ;; shadow-cljs configuration
 {;:lein {:profile "+dev"}
+ :nrepl {:middleware [cider.piggieback/wrap-cljs-repl]}
  :source-paths ["src/backend" "src/frontend" "src/cljc"]
 
  :builds

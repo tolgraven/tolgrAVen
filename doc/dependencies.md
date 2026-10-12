@@ -40,10 +40,20 @@ ClojureScript changes.
 
 The development CIDER Lein plugin injects its middleware automatically. The
 REPL handler explicitly lists Piggieback and Shadow to satisfy their middleware
-ordering dependencies. CIDER 0.57.0 also constructs its own handler when its
-namespace loads, and Shadow starts a separate nREPL server from `user/start`;
-both can still emit missing-Piggieback warnings with nREPL 1.8.0. That version
-automatically adds the missing middleware after warning.
+ordering dependencies. Shadow's separate nREPL server explicitly includes
+Piggieback through `shadow-cljs.edn` too; keep both server configurations aligned.
+CIDER 0.57.0 eagerly constructs an internal handler without Piggieback and can
+still emit ten missing-middleware warnings with nREPL 1.8.0. nREPL adds the
+missing middleware after warning; changing the configured Lein or Shadow stacks
+cannot fix CIDER's internal handler. Its middleware list needs an upstream fix;
+do not filter the warnings globally or upgrade CIDER solely to hide them.
+The development REPL allows three minutes for cold namespace loading and the
+initial browser, SSR and return-worker compilations before its server is ready.
+
+On newer local JDKs, JBoss Threads 3.5.0.Final can still warn about its use of
+`sun.misc.Unsafe.objectFieldOffset`. This comes from Undertow's runtime graph,
+not the REPL middleware. The prefab uses Java 21; do not suppress the warning
+or change the HTTP server dependency graph solely to quiet local startup.
 
 Default development starts the custom console and keeps re-frame tracing
 available to re-frame-pair. 10x and re-frisk are opt-in with `:legacy-debug`;
