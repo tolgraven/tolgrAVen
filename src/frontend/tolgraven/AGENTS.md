@@ -160,6 +160,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   inputs and stateful child components outside its duplicated text. Incoming
   text is decorative until the outgoing layer is declaratively removed; SSR,
   cached initial faces, reduced motion and local returns use one text layer.
+- Code controls stay outside the highlighted/font text layers, with Markdown-owned
+  icon CSS. Capped comment text uses non-scrolling clipping; an owned resize
+  adapter measures code boundaries and React renders the corresponding fade.
 - Browser-only APIs belong in lifecycle/effect adapters with cleanup and SSR guards.
   `boot.cljs` installs document persistence/history listeners after app-db setup,
   then site listeners/preferences from the committed root lifecycle. Deferred

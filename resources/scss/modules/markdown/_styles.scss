@@ -139,12 +139,54 @@ div > pre[class*="language-"] {
   margin: 0;
 }
 
+.code-block {
+  position: relative;
+  margin: 0.125em 0.5em;
+}
 .code-block-controls {
+  position: absolute;
+  z-index: 2;
+  top: calc(0.5 * var(--space));
+  right: calc(0.5 * var(--space));
   display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 0.5em;
+  gap: 0.25em;
   font-size: 0.8em;
+  opacity: 0.8;
+  transition: right 0.3s ease;
+
+  > button {
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+    min-width: 2rem;
+    min-height: 2rem;
+    background-color: var(--bg-2);
+    border-radius: 0;
+    transition: 0.15s;
+
+    &:hover {
+      opacity: 1;
+      background-color: var(--bg-4);
+      outline: 0;
+    }
+  }
+}
+// Match comment reply actions: parent intent reveals the children, and the
+// action group moves to the right edge. Keyboard focus has the same treatment.
+.code-block:hover,
+.code-block:active,
+.code-block:focus-within {
+  > .code-block-controls {
+    right: 0;
+
+    > button {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+}
+.code-block-content {
+  position: relative;
 }
 .code-block-content > pre,
 .code-block-content > pre code,
@@ -152,11 +194,21 @@ div > pre[class*="language-"] {
   font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace);
 }
 .code-block-content > pre {
+  margin: 0 !important;
   line-height: 1.5 !important;
 }
-.code-block-folded .code-block-content > pre {
+.code-block-folded .code-block-content {
   max-height: calc(var(--code-fold-lines) * 1.5em + 2em);
-  overflow: hidden;
+  overflow: clip;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 3em;
+    background: linear-gradient(0deg, var(--bg-2), transparent);
+    pointer-events: none;
+  }
 }
 .code-snippet {
   display: inline;
@@ -186,7 +238,8 @@ div > pre[class*="language-"] {
   border-radius: 0.2em;
   cursor: pointer;
 }
-.code-copy:focus-visible {
+.code-copy:focus-visible,
+.code-block-controls > button:focus-visible {
   outline: 0.125rem solid var(--blue);
   outline-offset: 0.125rem;
 }

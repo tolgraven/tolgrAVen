@@ -116,9 +116,20 @@ matching is not guaranteed there. The fade smooths the visual replacement; it
 cannot interpolate kerning or glyph shapes. Open Sans retains its existing shell
 policy; the Fira change does not fade the whole document.
 
+Fenced code controls overlap the block's top-right corner. Like comment reply
+buttons, they fade in on parent hover/active intent; keyboard focus reveals the
+same controls. Copy, wrap and fold use declared SVG icons with accessible names
+and hover labels. Their generated icon sheet belongs to Markdown and loads with
+that module. Inline copy indicators remain at the end of the snippet.
+
+Long comments constrain their text area, rather than the avatar/metadata/actions.
+Their fade ends at the clipped text edge; when that edge crosses code, its width
+matches the code rectangle. Non-scrolling clipping prevents focus/scroll intent
+from moving the fade upward and revealing code underneath. Folded code has its own bounded fade.
+
 The resulting code typography and controls:
 
-![Fira Code with Bruvbox and copy/wrap controls](images/code-font.webp)
+![Fira Code with Bruvbox and copy/wrap controls](images/code-controls.png)
 
 ## Declared SVG icons
 
