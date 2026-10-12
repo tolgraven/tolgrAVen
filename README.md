@@ -10,7 +10,8 @@ You will need [Leiningen][1] 2.0 or above installed.
 
 ## Setup and development
 
-Use Java 21 or newer, Leiningen, and Node.js 22. Install the lockfile and build CSS:
+Use Java 21 or newer, Leiningen, and Node.js 22.12 or newer. Install the lockfile
+and build CSS:
 
 ```sh
 npm ci
