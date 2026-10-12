@@ -131,3 +131,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
   Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
   Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.
+
+- CMS deploy-action provisioning checks run `test/scripts/cms_actions_test.php`
+  inside the installed Coolify container with helper, CMS UUID and web UUID arguments.
+  They roll back all credential/environment writes and never trigger deployments.
