@@ -33,9 +33,20 @@ older `master`, when provisioning directly from tolgraven/tolgrAVen.
 
 Point DNS at the resource server and configure its HTTPS proxy before starting.
 The existing wildcard `*.bux.tolgraven.se` can be used for sites on bux.
-The provisioner uses existing root SSH access; it does not create or retain a
-Coolify API token. It calls the installed Coolify models/actions, verified against
-Coolify 4.3.23. Re-run the transactional probe after upgrading Coolify.
+The provisioner uses existing root SSH access to call the installed Coolify
+models/actions. CMS preparation also creates deploy-only API tokens and stores
+them in the CMS's private action settings; see [Site capabilities](site-capabilities.md).
+Enable Coolify API access and configure the instance's public HTTPS origin first.
+The provisioner preserves API access/IP allowlist settings. Re-run the transactional
+probe and `test/scripts/cms_actions_test.php` inside Coolify after upgrades. Copy the
+helper and test to temporary paths inside the controller, then run:
+
+```sh
+docker exec coolify php /tmp/cms_actions_test.php /tmp/provision-strapi.php CMS_UUID WEB_UUID
+```
+
+This test requires an existing CMS/web pair in one environment. It rolls back all
+writes and exercises token permissions without invoking deployment endpoints.
 
 ```sh
 make provision-plan SITE=.local-wip/my-site.json

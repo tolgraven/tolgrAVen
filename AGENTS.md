@@ -49,6 +49,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `test/clj`, `test/cljs`: backend and frontend tests.
 - `env/`: environment-specific source/resources (dev/test/prod).
 - `resources/supabase/`: schema, native operations and account import SQL.
+- CMS provisioning creates team-bound deploy-only tokens for private Strapi admin actions; preserve server-only credential wiring and transactional retries.
 - `scripts/`: grouped Babashka build/media/dev/test tasks and explicit operations adapters; `bb.edn` is the task catalog. See `doc/tooling.md`.
 - `config/`: private local overrides and tracked examples; environment classpath defaults remain in `env/`.
 - `doc/`: project documentation.
