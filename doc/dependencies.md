@@ -42,18 +42,19 @@ The development CIDER Lein plugin injects its middleware automatically. The
 REPL handler explicitly lists Piggieback and Shadow to satisfy their middleware
 ordering dependencies. Shadow's separate nREPL server explicitly includes
 Piggieback through `shadow-cljs.edn` too; keep both server configurations aligned.
-CIDER 0.57.0 eagerly constructs an internal handler without Piggieback and can
-still emit ten missing-middleware warnings with nREPL 1.8.0. nREPL adds the
-missing middleware after warning; changing the configured Lein or Shadow stacks
-cannot fix CIDER's internal handler. Its middleware list needs an upstream fix;
-do not filter the warnings globally or upgrade CIDER solely to hide them.
+CIDER 0.63.1 includes Piggieback when constructing its internal handler, avoiding
+its former missing-middleware warnings without filtering startup output.
 The development REPL allows three minutes for cold namespace loading and the
 initial browser, SSR and return-worker compilations before its server is ready.
 
-On newer local JDKs, JBoss Threads 3.5.0.Final can still warn about its use of
-`sun.misc.Unsafe.objectFieldOffset`. This comes from Undertow's runtime graph,
-not the REPL middleware. The prefab uses Java 21; do not suppress the warning
-or change the HTTP server dependency graph solely to quiet local startup.
+`luminus-undertow` supplies the Ring HTTP server through its Undertow adapter.
+Undertow's XNIO workers use JBoss Threads for execution. Managed Undertow 2.3.26
+and JBoss Threads 3.10.1 retain the adapter's 2.3 API family and replace the old
+executor's `sun.misc.Unsafe.objectFieldOffset` implementation. Align JBoss Logging
+with the executor's required version too. The prefab uses Java 21; local startup
+also checks the newer JDK rather than suppressing its warnings. JDK 27 still
+reports an independent Unsafe call in Closure Compiler's bundled protobuf code;
+this belongs to the compiler graph, not the HTTP executor.
 
 Default development starts the custom console and keeps re-frame tracing
 available to re-frame-pair. 10x and re-frisk are opt-in with `:legacy-debug`;
