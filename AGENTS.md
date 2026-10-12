@@ -6,6 +6,10 @@ instructions concise; detailed schemas, examples and user guides belong in `doc/
 Do not retain completed investigation diaries or historical test counts as current guidance.
 
 ## Current architecture
+- Keep the full-featured `defc` based on upstream `reagent.core/defc`. The requested
+  hook migration and caller inventory live in `features/reagent-native-refactor.md`;
+  use upstream `reagent.hooks` through the existing shim when implementing it.
+  See `doc/reagent-2-react-19-guide.md` for the library comparison and design rationale.
 - Reagent 2 / React 19 components use `defc`; full pages use `defpage` and always have an error boundary. Application re-frame calls go through `tolgraven.react`.
 - Module-local `pages.cljc` files contain native Reitit route trees. Module specs expose these declarations; browser and server routers compose them.
 - JVM adapters acquire public data with snapshot-owned, bounded Supabase REST
