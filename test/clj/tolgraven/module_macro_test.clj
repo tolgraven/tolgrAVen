@@ -54,3 +54,12 @@
             (tree-seq coll? seq
                       (macroexpand-1 '(tolgraven.macros/defc <shell>
                                         {:page true :container false} [] [:<> "Shell"]))))))
+
+(deftest only-spec-capable-components-plan-instance-features
+  (let [runtime? (fn [form]
+                   (some #{'tolgraven.component/render-component}
+                         (tree-seq coll? seq (macroexpand-1 form))))]
+    (is (runtime? '(tolgraven.macros/defc <instance> [spec] [:article "Instance"])))
+    (is (runtime? '(tolgraven.macros/defc <destructured> [{:keys [features]}] [:article "Instance"])))
+    (is (not (runtime? '(tolgraven.macros/defc <primitive> [data] [:p data]))))
+    (is (not (runtime? '(tolgraven.macros/defc <domain> {:spec false} [spec] [:p (:features spec)]))))))

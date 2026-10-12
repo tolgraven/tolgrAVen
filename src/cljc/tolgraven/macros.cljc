@@ -223,7 +223,7 @@
               ;; Keep extension fields from the declaration for its composed
               ;; schema and tooling. Symbol metadata is still explicitly scoped.
               options (merge (select-keys (meta name) [:page :spec :profile :features :depends :loading :loading-prefab :loading-tag :loading-props :loading-args :state :module :schema :spec-schema :args-schema]) attrs)
-              options (merge (loading-root (last body)) options)
+              options' (merge (loading-root (last body)) options)
               loading-helper? (and (some #{'<loading>} (tree-seq coll? seq (concat bindings body)))
                                    (not (get-in &env [:ns :defs '<loading>]))
                                    (not (get-in &env [:ns :uses '<loading>]))
@@ -236,10 +236,10 @@
               loading-bindings (when loading-helper?
                                  ['<loading> `(fn [& [overrides#]]
                                                (tolgraven.component/loading-view
-                                                (merge ~(select-keys options [:loading-prefab :loading-tag :loading-props]) overrides#)))])
-              options (assoc options :source {:file (or (:file (meta &form)) (:file &env) *file*)
+                                                (merge ~(select-keys options' [:loading-prefab :loading-tag :loading-props]) overrides#)))])
+              options'' (assoc options' :source {:file (or (:file (meta &form)) (:file &env) *file*)
                                                :line (:line (meta &form))})
-              options (if (and scoped-helpers? (nil? (:state options))) (assoc options :state {}) options)
+              options''' (if (and scoped-helpers? (nil? (:state options''))) (assoc options'' :state {}) options'')
               helper-bindings (when scoped-helpers?
                                 ['<sub 'tolgraven.component/<sub
                                  '>reset 'tolgraven.component/>reset
@@ -248,11 +248,11 @@
               spec? (or (and (symbol? spec-arg) (#{"spec" "opts" "options"} (clojure.core/name spec-arg)))
                         (and (map? spec-arg)
                              (or (#{'spec 'opts 'options} (:as spec-arg))
-                                 (some #{'props 'classes 'depends 'appear 'seen 'links}
+                                 (some #{'props 'classes 'features 'depends 'appear 'seen 'links}
                                        (:keys spec-arg))
-                                 (some #{:props :classes :depends :appear :seen :links} (vals spec-arg)))))
-              options (assoc options :spec (if (contains? options :spec) (:spec options) (boolean spec?)))
-              plain? (and (empty? (:features options)) (nil? (:depends options)) (nil? (:state options)))
+                                 (some #{:props :classes :features :depends :appear :seen :links} (vals spec-arg)))))
+              options'''' (assoc options''' :spec (if (contains? options''' :spec) (:spec options''') (boolean spec?)))
+              plain? (and (not (:spec options'''')) (empty? (:features options'''')) (nil? (:depends options'''')) (nil? (:state options'''')))
               descriptor (gensym "definition")]
           `(do
              (declare ~name)
@@ -261,7 +261,7 @@
              ((fn []
              (let [~descriptor (tolgraven.component.registry/definition
                              ~(str ns-name) ~(str name)
-                             (cond-> ~options ^boolean goog.DEBUG
+                             (cond-> ~options'''' ^boolean goog.DEBUG
                                (assoc :code ~(pr-str (list* 'defc name source-decls))))
                              (fn ~args (let [~@helper-bindings ~@loading-bindings ~@bindings] (fn ~args ~@body))))]
              ~(if plain?
@@ -272,7 +272,7 @@
                                    ~(if (seq (concat loading-bindings bindings))
                                       `(reagent.core/with-let [~@loading-bindings ~@bindings] ~@body)
                                       `(do ~@body)))))]
-                  (if (or (:args-schema options) (:spec-schema options))
+                  (if (or (:args-schema options'''') (:spec-schema options''''))
                     `(reagent.core/defc ~(with-meta name metadata) [& argv#]
                        (tolgraven.component.registry/validate-args! ~descriptor argv#)
                        (apply (fn ~args ~render) argv#))

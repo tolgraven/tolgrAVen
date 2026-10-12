@@ -79,3 +79,8 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
 The thin `ajax/time.cljc` Shadow adapter lives beside its browser consumer and
 retains Java-time Transit codecs only under `:dev`. Production uses standard Transit;
 server format handlers retain their native JVM Java-time support.
+
+- `defc` recognizes a spec's ordered `:features` overrides without another usage
+  macro. Explicit `:spec false` and ordinary non-spec primitives retain the direct
+  Reagent path; per-instance ownership and protected page/data contracts are
+  documented in `doc/components.md` and implemented by the browser/Node runtime.

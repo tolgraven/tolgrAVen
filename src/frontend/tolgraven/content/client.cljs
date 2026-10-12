@@ -2,6 +2,7 @@
   (:require
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.component.registry]
+    [tolgraven.component.visibility :as visibility]
     [ajax.core :as ajax]
     [clojure.string :as string]
     [tolgraven.react :as rf]
@@ -141,21 +142,7 @@
   (-> (ensure! ks) (.catch (fn [_] nil)))) ; optional; initialization can retry
 
 (defc <prefetch> [ks]
-  (r/with-let [*observer (atom nil)
-               attach! (fn [element]
-                         (when-let [observer @*observer] (.disconnect observer))
-                         (reset! *observer nil)
-                         (when element
-                           (if (exists? js/IntersectionObserver)
-                             (let [observer (js/IntersectionObserver.
-                                             (fn [entries observer]
-                                               (when (some #(.-isIntersecting %) (array-seq entries))
-                                                 (.disconnect observer)
-                                                 (prefetch! ks)))
-                                             #js {:rootMargin "800px 0px" :threshold 0})]
-                               (reset! *observer observer)
-                               (.observe observer element))
-                             (prefetch! ks))))]
-    [:div {:aria-hidden true :style {:height "1px" :margin-bottom "-1px" :pointer-events "none"}
-           :ref attach!}]
-    (finally (when-let [observer @*observer] (.disconnect observer)))))
+  [visibility/<sentinel> {:event [:content/load ks]
+                        :once? true
+                        :threshold 0
+                        :root-margin "800px 0px"}])

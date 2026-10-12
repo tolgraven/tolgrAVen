@@ -3,7 +3,8 @@
   (:require [reagent.core :as r]
             [tolgraven.validation.runtime :as validation]
             [tolgraven.schema.declarations :as schemas]
-            [tolgraven.component.instrumentation]))
+            [tolgraven.component.instrumentation]
+            [tolgraven.component.features :as features]))
 
 (defonce ^:private *definitions (js/WeakMap.))
 (defonce *catalog (r/atom {}))
@@ -21,12 +22,11 @@
 (defn definition [ns-name component-name options make-render]
   (validation/check! (str ns-name "/" component-name)
                      (schemas/extend-component (:schema options)) options)
-  (let [features (->> (:features options)
-                      (map #(if (keyword? %) [% true] %))
-                      (remove #(false? (second %)))
-                      vec)]
-    {:ns ns-name :name component-name :options options :features features
-     :make-render make-render}))
+  {:ns ns-name
+   :name component-name
+   :options options
+   :features (features/entries (:features options))
+   :make-render make-render})
 
 
 (defn validate-args! [{:keys [ns name options]} args]

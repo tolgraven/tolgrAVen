@@ -30,6 +30,16 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 ## Ownership and feature contracts
 
+- Spec-capable `defc` instances resolve declaration defaults and ordered `:features`
+  overrides through the shared runtime. Disabled entries must skip config functions
+  and resource acquisition. Root capabilities reconcile owned setup/cleanup without
+  conditional hooks or body remounts; initial structural wrappers stay stable unless
+  the caller explicitly changes the Hiccup key. Full-page boundaries and declaration
+  dependencies remain required. See `doc/components.md` for precedence and adapters.
+- Normal visibility/prefetch UI uses `defc :on-seen` and event vectors. Core source
+  namespaces that cannot depend on the full runtime use the lean shared visibility
+  sentinel; do not duplicate its IntersectionObserver algorithm.
+
 - Feature caches observe re-frame subscriptions through owned, disposable
   reactions. Persistence belongs in the storage lifecycle adapter; do not add
   feature watches to app-db or perform IO in subscription computations.
