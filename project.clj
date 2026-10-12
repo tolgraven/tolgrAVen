@@ -11,10 +11,10 @@
                  [org.clojure/core.async "1.9.865"]
                  [hiccup "2.0.0"]
                  [expound "0.9.0"]
-                 [metosin/malli "0.20.2"]
+                 [metosin/malli "0.20.3"]
 
                  [org.clojure/java.jdbc "0.7.12"]
-                 [org.postgresql/postgresql "42.7.13"]
+                 [org.postgresql/postgresql "42.7.14"]
                  [cprop "0.1.21"] ;env loading
                  [clj-http "3.13.1"]
                  [org.jsoup/jsoup "1.23.2"]
@@ -25,7 +25,7 @@
 
                  [markdown-clj "1.12.10"]
 
-                 [metosin/jsonista "1.0.1"]
+                 [metosin/jsonista "1.0.2"]
                  [metosin/muuntaja "0.6.12"]
                  [metosin/reitit-core "0.11.0"]
                  [metosin/reitit-ring "0.11.0"]
@@ -56,20 +56,23 @@
                  [sitemap "0.4.0"]]
 
   ;; Align shared transitive families rather than depending on traversal order.
-  :managed-dependencies [;; Codox injects an old analyzer: align it with Shadow 3.5.5.
+  :managed-dependencies [[io.undertow/undertow-core "2.3.26.Final"]
+                         [org.jboss.threads/jboss-threads "3.10.1"]
+                         [org.jboss.logging/jboss-logging "3.6.3.Final"]
+                         ;; Codox injects an old analyzer: align it with Shadow 3.5.7.
                          [org.clojure/clojurescript "1.12.145"]
                          [org.clojure/core.rrb-vector "0.2.1"]
-                         [commons-io "2.21.0"]
-                         [org.clojure/core.memoize "1.1.266"]
-                         [org.clojure/core.cache "1.1.234"]
-                         [org.clojure/data.priority-map "1.2.0"]
+                         [commons-io "2.22.0"]
+                         [org.clojure/core.memoize "1.2.281"]
+                         [org.clojure/core.cache "1.2.999"]
+                         [org.clojure/data.priority-map "1.2.1"]
                          [cheshire "6.2.0"]
-                         [com.fasterxml.jackson.core/jackson-core "2.22.2"]
-                         [com.fasterxml.jackson.core/jackson-databind "2.22.2"]
+                         [com.fasterxml.jackson.core/jackson-core "2.22.3"]
+                         [com.fasterxml.jackson.core/jackson-databind "2.22.3"]
                          [com.fasterxml.jackson.core/jackson-annotations "2.22"]
-                         [com.fasterxml.jackson.dataformat/jackson-dataformat-smile "2.22.2"]
-                         [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor "2.22.2"]
-                         [com.fasterxml.jackson.datatype/jackson-datatype-jsr310 "2.22.2"]]
+                         [com.fasterxml.jackson.dataformat/jackson-dataformat-smile "2.22.3"]
+                         [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor "2.22.3"]
+                         [com.fasterxml.jackson.datatype/jackson-datatype-jsr310 "2.22.3"]]
 
   :min-lein-version "2.0.0"
 
@@ -99,7 +102,7 @@
    :source-uri "https://github.com/tolgraven/tolgraven/blob/master/{filepath}#L{line}"}
 
   :profiles
-  {:provided {:dependencies [[thheller/shadow-cljs "3.5.5"]
+  {:provided {:dependencies [[thheller/shadow-cljs "3.5.7"]
                              [com.cognitect/transit-cljs "0.8.280"]
                              [cljs-ajax "0.8.4"]
                              [com.andrewmcveigh/cljs-time "0.5.2"]
@@ -115,7 +118,7 @@
                   :dependencies [[binaryage/devtools "1.0.7"]
                                  [prone "2021-04-23"]
                                  [ring/ring-devel "1.15.5"]]
-                  :plugins      [[cider/cider-nrepl "0.57.0"]]
+                  :plugins      [[cider/cider-nrepl "0.63.1"]]
 
                   :source-paths ["env/dev/clj" "env/dev/cljs"]
                   :resource-paths ["env/dev/resources"]
@@ -151,7 +154,7 @@
 
    ;; Optional tools/experiments remain available without burdening every build.
    :s3-publish {:plugins [[s3-wagon-private "1.3.5"]]}
-   :legacy-debug {:managed-dependencies [[mvxcvi/puget "1.3.2"]]
+   :legacy-debug {:managed-dependencies [[mvxcvi/puget "1.3.4"]]
                   :dependencies [[re-frisk "1.7.1"]
                                  [day8.re-frame/re-frame-10x "1.12.3" :exclusions [superstructor/re-highlight]]]}
    :experiments {:source-paths ["experiments/clj"]
