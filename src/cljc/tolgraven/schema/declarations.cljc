@@ -2,7 +2,8 @@
   "Extensible contracts for the existing declaration language, shared by tooling
    and both runtimes. Extension keys stay open; declared keys have real types."
   (:require [tolgraven.schema.common :as c]
-            [tolgraven.supabase.schema :as store]))
+            [tolgraven.supabase.schema :as store]
+            [tolgraven.supabase.catalog :as catalog]))
 
 (def path [:vector {:min 1} :any])
 (def event [:cat :keyword [:* :any]])
@@ -85,6 +86,14 @@
    [:sequential [:ref ::route]]])
 (def module
   [:map [:id :keyword]
+   [:content {:optional true} [:vector :keyword]]
+   [:server {:optional true} [:map
+                             [:routes {:optional true} :symbol]
+                             [:requires {:optional true} [:set :keyword]]
+                             [:requires-features {:optional true} [:map-of :keyword [:set :keyword]]]
+                             [:sql {:optional true} c/strings]
+                             [:sql-without-comments {:optional true} c/strings]]]
+   [:storage {:optional true} [:vector catalog/table]]
    [:pages {:optional true} routes]
    [:view {:optional true} [:map-of :keyword :any]]
    [:init {:optional true} fn?]

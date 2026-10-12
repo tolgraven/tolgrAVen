@@ -1,5 +1,5 @@
 (ns tolgraven.ssr.worker
-  (:require
+  #?(:cljs (:require
     [tolgraven.validation.runtime :as validation]
     [tolgraven.ssr.schema :as schema]
     ["node:readline" :as readline]
@@ -9,35 +9,37 @@
     [tolgraven.component :as component]
     [tolgraven.navigation.routes :as routes]
     [tolgraven.components.page :as page]
-    [tolgraven.modules.home.module :as home]
-    [tolgraven.modules.blog.module :as blog]
-    [tolgraven.modules.markdown.module :as markdown]
-    [tolgraven.modules.highlight.module :as highlight]
-    [tolgraven.modules.styled-input.module :as styled-input]
-    [tolgraven.modules.data-inspector.module :as inspector]
-    [tolgraven.modules.cv.module :as cv]
-    [tolgraven.modules.carousel.module :as carousel]
-    [tolgraven.modules.contact.module :as contact]
-    [tolgraven.modules.docs.module :as docs]
+    #?(:module/home [tolgraven.modules.home.module :as home])
+    #?(:module/blog [tolgraven.modules.blog.module :as blog])
+    #?(:module/markdown [tolgraven.modules.markdown.module :as markdown])
+    #?(:module/highlight [tolgraven.modules.highlight.module :as highlight])
+    #?(:module/styled-input [tolgraven.modules.styled-input.module :as styled-input])
+    #?(:module/data-inspector [tolgraven.modules.data-inspector.module :as inspector])
+    #?(:module/cv [tolgraven.modules.cv.module :as cv])
+    #?(:module/carousel [tolgraven.modules.carousel.module :as carousel])
+    #?(:module/contact [tolgraven.modules.contact.module :as contact])
+    #?(:module/docs [tolgraven.modules.docs.module :as docs])
     [tolgraven.ssr.contract :as contract]
     [tolgraven.components.page-shell :as shell]
     [tolgraven.ssr.render :as render]
-    [tolgraven.modules.user.module :as user]
-    [tolgraven.modules.link-preview.module :as link-preview]
-    [tolgraven.subs]))
+    #?(:module/user [tolgraven.modules.user.module :as user])
+    #?(:module/link-preview [tolgraven.modules.link-preview.module :as link-preview])
+    [tolgraven.subs] )))
 
-(def modules {:home home/spec
-              :markdown markdown/spec
-              :highlight highlight/spec
-              :styled-input styled-input/spec
-              :data-inspector inspector/spec
-              :cv cv/spec
-              :carousel carousel/spec
-              :contact contact/spec
-              :docs docs/spec
-              :blog blog/spec
-              :user user/spec
-              :link-preview link-preview/spec})
+#?(:cljs
+   (do
+(def modules (into {} (remove (comp nil? val)) {:home #?(:module/home home/spec :default nil)
+              :markdown #?(:module/markdown markdown/spec :default nil)
+              :highlight #?(:module/highlight highlight/spec :default nil)
+              :styled-input #?(:module/styled-input styled-input/spec :default nil)
+              :data-inspector #?(:module/data-inspector inspector/spec :default nil)
+              :cv #?(:module/cv cv/spec :default nil)
+              :carousel #?(:module/carousel carousel/spec :default nil)
+              :contact #?(:module/contact contact/spec :default nil)
+              :docs #?(:module/docs docs/spec :default nil)
+              :blog #?(:module/blog blog/spec :default nil)
+              :user #?(:module/user user/spec :default nil)
+              :link-preview #?(:module/link-preview link-preview/spec :default nil)}))
 
 (defn render! [snapshot]
   (let [snapshot (update snapshot :content content/normalize-content)
@@ -75,3 +77,4 @@
                                 (.write (.-stderr js/process) (str (.-stack error) "\n"))
                                 {:error "Page rendering failed"}))]
                (.write (.-stdout js/process) (str (js/JSON.stringify (clj->js response)) "\n")))))))
+))

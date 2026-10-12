@@ -1,3 +1,5 @@
+-- Legacy full-site snapshot retained for reference; not a provisioning input.
+-- Canonical feature SQL lives in modules/. Generate the selected plan with bb site:manifest sql.
 -- Backend-only RPCs. The web server validates the access token with Supabase Auth
 -- and selects the actor from administrator-controlled profile linkage.
 create table if not exists public.comment_votes (

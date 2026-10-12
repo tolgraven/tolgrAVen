@@ -5,7 +5,8 @@
    [tolgraven.store.contract :as contract]
    [clj-http.client :as http]
    [clojure.tools.logging :as log]
-   [tolgraven.supabase.query :as query]))
+   [tolgraven.supabase.query :as query]
+   [tolgraven.site :as site]))
 
 (defn- environment-value [key]
   (System/getenv key))
@@ -27,12 +28,14 @@
     ;; not make the entire site depend on a privileged request or Auth uptime.
     (assoc settings
            :trusted-author-ids
-           (try
+           (if-not (site/enabled? :user)
+             []
+             (try
              (mapv :user_id (:body (platform/request! :get "auth_roles"
                                       {:query-params {"role" "eq.admins" "select" "user_id"}})))
              (catch Exception _
                (log/warn "Supabase trusted authors unavailable; links remain untrusted")
-               []))
+               [])))
            :providers
            (try
              (:external (:body (http/get (str (:url settings) "/auth/v1/settings")

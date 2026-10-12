@@ -1,5 +1,5 @@
 (ns tolgraven.supabase.auth
-  (:require [clj-http.client :as http]
+  (:require [tolgraven.build.site :refer [when-enabled]] [clj-http.client :as http]
             [clojure.string :as string]
             [clojure.edn :as edn]
             [tolgraven.platform.supabase :as platform]
@@ -36,6 +36,7 @@
       (fail! 403 "Invalid profile linkage"))
     id))
 
+(when-enabled :blog :comments
 (defn legacy-comment-votes [voted]
   (reduce-kv
    (fn [votes path direction]
@@ -60,8 +61,9 @@
       (if (seq rows)
         (recur (+ offset (count rows))
                (reduce (fn [result row] (assoc result (:comment_id row) (:vote row))) votes rows))
-        votes))))
+        votes)))))
 
+(when-enabled :user nil
 (defn ensure-profile! [user]
   (let [id (profile-id user)]
     (platform/request! :post "site_users"
@@ -79,7 +81,7 @@
     (assoc (if row
              (get-in (contract/seed->contract {:users [row]}) ["users" id])
              {:id id :name "" :avatar nil :bg-color nil :comment-count 0 :karma 0})
-           :comment-votes (comment-votes! id (:voted row))
+           :comment-votes (or (when-enabled :blog :comments (comment-votes! id (:voted row))) {})
            :roles (mapv :role (:body (platform/request! :get "auth_roles"
                                     {:query-params {"user_id" (str "eq." id) "select" "role"}}))))))
 
@@ -100,6 +102,8 @@
                         :form-params (assoc fields :id id)
                         :query-params {"on_conflict" "id"}})
     (profile! user)))
+
+)
 
 (defn response! [request action]
   (try

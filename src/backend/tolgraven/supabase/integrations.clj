@@ -1,5 +1,6 @@
 (ns tolgraven.supabase.integrations
-  (:require [clj-http.client :as http]
+  (:require [tolgraven.build.site :refer [when-enabled]]
+            [clj-http.client :as http]
             [tolgraven.validation :as validation]
             [tolgraven.schema.http :as schema]
             [clojure.string :as string]
@@ -32,12 +33,15 @@
     (throw (ex-info (validation/message issues) {:status 400})))
   path)
 
-(defn settings! []
+(when-enabled :strava nil
+  (defn settings! []
   (let [strava (config! "strava/auth")]
-    {:strava (select-keys strava [:athlete_id :intervals_athlete_id])}))
+    {:strava (select-keys strava [:athlete_id :intervals_athlete_id])})))
 
-(defonce *strava-refresh-lock (Object.))
-(defn- strava-token! []
+(when-enabled :strava nil
+  (defonce *strava-refresh-lock (Object.)))
+(when-enabled :strava nil
+  (defn- strava-token! []
   (locking *strava-refresh-lock
     (let [config (config! "strava/auth")]
       (if (< (+ (quot (System/currentTimeMillis) 1000) 60) (or (:expires_at config) 0))
@@ -49,22 +53,25 @@
           (platform/request! :patch "service_configs"
             {:query-params {"service" "eq.strava/auth"} :content-type :json
              :form-params {:config updated}})
-          (:access_token updated))))))
+          (:access_token updated)))))))
 
-(defn strava! [path]
+(when-enabled :strava nil
+  (defn strava! [path]
   (path! path schema/strava-path)
   (upstream! :get (str "https://www.strava.com/api/v3/" path)
-             {:headers {"Authorization" (str "Bearer " (strava-token!))}}))
+             {:headers {"Authorization" (str "Bearer " (strava-token!))}})))
 
-(defn intervals! [path]
+(when-enabled :strava nil
+  (defn intervals! [path]
   (path! path schema/intervals-path)
   (let [{:keys [intervals_athlete_id intervals_api_key]} (config! "strava/auth")]
     (upstream! :get (str "https://intervals.icu/api/v1/athlete/" intervals_athlete_id "/"
                         (string/replace path "{ext}" ""))
       {:headers {"Authorization" (str "Basic " (.encodeToString (Base64/getEncoder)
-                                              (.getBytes (str "API_KEY:" intervals_api_key) "UTF-8")))}})))
+                                              (.getBytes (str "API_KEY:" intervals_api_key) "UTF-8")))}}))))
 
-(defn instagram! []
+(when-enabled :instagram nil
+  (defn instagram! []
   (let [auth (config! "instagram/auth")
         cached (delay {:posts (config! "instagram/posts")})]
     (if (seq (:access_token auth))
@@ -76,16 +83,18 @@
         ;; Imported media remains available when an old token expires or the
         ;; upstream endpoint is unavailable. No credential is returned publicly.
         (catch Exception _ @cached))
-      @cached)))
+      @cached))))
 
-(defn- positive-number! [value default maximum]
+(when-enabled :search nil
+  (defn- positive-number! [value default maximum]
   (let [value (if (nil? value) default
                  (try (Long/parseLong (str value)) (catch Exception _ 0)))]
     (when-not (<= 1 value maximum)
       (throw (ex-info "Invalid search paging" {:status 400})))
-    value))
+    value)))
 
-(defn search! [collection parameters]
+(when-enabled :search nil
+  (defn search! [collection parameters]
   (when-not (and (#{"blog-posts" "blog-comments"} collection)
                  (string? (get parameters "q"))
                  (<= 1 (count (get parameters "q")) 200))
@@ -94,8 +103,9 @@
            {:content-type :json
             :form-params {:p_collection collection :p_query (get parameters "q")
                           :p_page (positive-number! (get parameters "page") 1 10000)
-                          :p_per_page (positive-number! (get parameters "per_page") 15 100)}})))
+                          :p_per_page (positive-number! (get parameters "per_page") 15 100)}}))))
 
+(when-enabled :main :services
 (defn strapi! [path]
   (path! path schema/strapi-path)
   (let [{:keys [url read-api-key]} (config! "strapi/auth")]
@@ -127,3 +137,5 @@
                                       (.doFinal mac (.getBytes path "UTF-8")))]
       {:status 302 :headers {"Location" (str (string/replace host #"/+$" "") "/" signature "/" path)}
        :body ""})))
+
+)

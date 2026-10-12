@@ -1,19 +1,13 @@
 (ns tolgraven.content.contract
   (:require [tolgraven.content.schema :as schema]
-            [tolgraven.validation :as validation]))
+            #?(:clj [tolgraven.build.modules :refer [content-definitions]])
+            [tolgraven.validation :as validation])
+  #?(:cljs (:require-macros [tolgraven.build.modules :refer [content-definitions]])))
 
 (def version 1)
-(def sections [:document :header :intro :services :moneyshot :story :strava :interlude
-               :cv :soundcloud :gallery :blog :docs :common :footer :post-footer])
+(def module-content (content-definitions))
+(def sections (vec (distinct (mapcat val module-content))))
 
-;; Available to the backend before any JavaScript module is loaded. Module specs
-;; reference this same manifest, so SSR and browser initialization cannot drift.
-(def module-content
-  {:main [:document :header :common :footer :post-footer]
-   :blog [:blog :common] :cv [:cv] :docs [:docs] :strava [:strava]
-   :user [:common] :instagram [] :chat [] :github [] :gpt []
-   :search [] :link-preview [] :test [] :home [] :styled-input []
-   :data-inspector []})
 (def module-dependencies
   (into {} (map (fn [[id keys]] [id (if (seq keys) [{:source :strapi :keys keys}] [])]) module-content)))
 
@@ -23,7 +17,7 @@
    :about [:story] :services [:services] :hire [] :cv [:cv] :docs [:docs] :blog [:blog]})
 
 (defn keys-for-route [route]
-  (vec (distinct (concat shell-content (get route-content route [])))))
+  (vec (distinct (concat shell-content (filter (set sections) (get route-content route []))))))
 
 (defn validate-keys [requested]
   (let [ks (if (nil? requested) sections (mapv keyword requested))]

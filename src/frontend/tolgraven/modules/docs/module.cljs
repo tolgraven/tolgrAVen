@@ -9,7 +9,9 @@
     [tolgraven.modules.docs.views :as view]))
 
 (def spec
-  {:depends (get content-contract/module-dependencies :docs [])
+  {:content [:docs]
+   :server {:routes 'tolgraven.modules.docs.api/routes}
+   :depends (get content-contract/module-dependencies :docs [])
    :id :docs
    :styles ["/css/tolgraven/modules/docs.min.css"]
    :pages pages/spec

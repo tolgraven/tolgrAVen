@@ -1,5 +1,6 @@
 (ns tolgraven.supabase.storage
-  (:require [clj-http.client :as http]
+  (:require [tolgraven.build.site :refer [when-enabled]]
+            [clj-http.client :as http]
             [clojure.string :as string]
             [tolgraven.media.image :as image]
             [tolgraven.platform.supabase :as platform]
@@ -8,6 +9,7 @@
            [java.io ByteArrayOutputStream]
            [java.security MessageDigest]))
 
+(when-enabled :user nil
 (defn- fail! [status message]
   (throw (ex-info message {:auth/status status})))
 
@@ -62,3 +64,5 @@
                                [:avif "image/avif"]]]
       (upload! base (str stem "." (name format)) mime-type (variants format)))
     (auth/save-profile! user {:avatar (str base "/storage/v1/object/public/" stem ".png")})))
+
+)

@@ -1,4 +1,4 @@
-{:paths ["scripts"]
+{:paths ["scripts" "src/cljc" "src/frontend" "resources"]
  :tasks
  {:requires ([babashka.process :as process]
              [media.images :as images]
@@ -36,6 +36,10 @@
                     :task (apply dev/integration! *command-line-args*)}
   test:scripts {:doc "Run isolated Babashka/media/operations tests"
                 :task (dev/test!)}
+  site:resolve {:doc "Resolve optional CMS capability overrides from the configured Strapi origin"
+                :task (do (require 'build.resolve-site) (apply (resolve 'build.resolve-site/-main) *command-line-args*))}
+  site:manifest {:doc "Print declaration-derived site/schema JSON, or SQL [sql]"
+                 :task (do (require 'build.site) (apply (resolve 'build.site/-main) *command-line-args*))}
   supabase {:doc "Run the native JVM provisioner [schema|import|all args...]"
             :task (apply dev/supabase! *command-line-args*)}
   docker {:doc "Docker [registry|prefab|build|push|deploy|clean]"

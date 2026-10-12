@@ -1,5 +1,7 @@
 (ns tolgraven.events
-  (:require [tolgraven.render-context :as render-context]
+  #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
+  #?(:cljs (:require [tolgraven.render-context :as render-context]
+    [tolgraven.site :as site]
 
     [tolgraven.react :as rf]
     [re-frame.std-interceptors :as interceptor]
@@ -12,10 +14,10 @@
     [reitit.frontend.controllers :as rfc]
     [tolgraven.util :as util]
     [tolgraven.listener]
-    [tolgraven.modules.user.events]
-    [tolgraven.modules.contact.events]
-    [tolgraven.modules.settings.events]
-    [tolgraven.modules.user.subs]
+    #?(:module/user [tolgraven.modules.user.events])
+    #?(:module/contact [tolgraven.modules.contact.events])
+    #?(:module/main [tolgraven.modules.settings.events])
+    #?(:module/user [tolgraven.modules.user.subs])
     [tolgraven.loader :as l]
     [tolgraven.navigation.transition :as page-transition]
     [tolgraven.navigation.scroll]
@@ -25,7 +27,10 @@
     [tolgraven.doc-fx]
     [tolgraven.effects]
     [tolgraven.cofx :as cofx]
-    [goog.object :as gobj]))
+    [goog.object :as gobj])))
+
+#?(:cljs
+   (do
 
 (def debug (when ^boolean goog.DEBUG rf/debug))
 
@@ -266,9 +271,11 @@
   (fn [[id attr value]]
     (util/set-attr! id attr value)))
 
+(when-enabled :gpt nil
 (rf/reg-fx :supabase/write
   (fn [[path data merge-fields]]
     (supabase-client/write! path data merge-fields)))
+)
 
 (rf/reg-event-fx :store->
   (fn [{:keys [db]} [_ path data merge-fields]]
@@ -320,6 +327,7 @@
      #(rf/dispatch (conj on-success %))
      #(rf/dispatch (conj on-error %)))))
 
+(when-enabled :user nil
 (rf/reg-event-fx :supabase/profile-fetch
   (fn [_ _]
     {:supabase/request {:method :get :uri "/api/supabase/profile"
@@ -347,6 +355,8 @@
     {:dispatch [:diag/new :error "Sign in"
                 (or (get-in error [:response :error]) (:message error) "Authentication failed")]}))
 
+)
+
 (rf/reg-fx :supabase/initialize
   (fn [[attempt settings]]
     (try
@@ -370,9 +380,12 @@
 
 (rf/reg-event-fx :store/init
   (fn [{:keys [db]} _]
-    (when-not (#{:loading :ready} (get-in db [:state :supabase-init]))
-      {:db (assoc-in db [:state :supabase-init] :loading)
-       :dispatch [:supabase/fetch-settings]})))
+    (if-not site/uses-supabase?
+      {:db (assoc-in db [:state :supabase-init] :ready)
+       :dispatch [:booted :store]}
+      (when-not (#{:loading :ready} (get-in db [:state :supabase-init]))
+        {:db (assoc-in db [:state :supabase-init] :loading)
+         :dispatch [:supabase/fetch-settings]}))))
 
 (rf/reg-event-fx :<-cms
   (fn [_ [_ path]]
@@ -761,3 +774,5 @@
         (assoc-in db [:common/route :controllers]
                   (rfc/apply-controllers (:controllers match) match))
         db))))
+
+))

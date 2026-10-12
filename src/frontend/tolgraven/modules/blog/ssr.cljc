@@ -1,9 +1,12 @@
 (ns tolgraven.modules.blog.ssr
   "Public blog snapshot compatibility, shared by Node rendering and browser hydration."
-  (:require [tolgraven.modules.blog.comments :as comments]
+  #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
+  #?(:cljs (:require #?(:feature/blog-comments [tolgraven.modules.blog.comments :as comments])
             [tolgraven.modules.blog.data :as data]
-            [tolgraven.supabase.query :as query]))
+            [tolgraven.supabase.query :as query] )))
 
+#?(:cljs
+   (do
 (defn- records [rows]
   (into {} (keep (fn [row] (when (:id row) [(str (:id row)) (dissoc row :author :date)]))) rows))
 
@@ -20,7 +23,7 @@
     (into {}
           (concat
             (when (:summaries snapshot) [[(query-key data/summaries-query) (result (:summaries snapshot))]])
-            (when (contains? snapshot :comments)
+            (when-enabled :blog :comments (when (contains? snapshot :comments)
               (for [{:keys [post-id parent-id]}
                     (concat (map #(hash-map :post-id (:id %) :parent-id nil) (:posts snapshot))
                             (or (:comment-parents snapshot)
@@ -30,7 +33,7 @@
                                    (comments/root-query post-id comments/page-size))]]
                 [(query-key opts)
                  (result (filter #(and (= post-id (:parent-post %)) (= parent-id (:parent-comment %)))
-                                 (:comments snapshot)))]))
+                                 (:comments snapshot)))])))
             (when (and (:missing? snapshot) (:post-id snapshot))
               [[(query-key (data/post-query (:post-id snapshot))) {:docs []}]])
             (when (and (:page snapshot) (not (:post-id snapshot)))
@@ -55,3 +58,4 @@
                            :comment-thread-expanded {}
                            :page (dec (or (:page snapshot) 1))
                            :current-post-id (or (:post-id snapshot) (get-in snapshot [:posts 0 :id]))}}))))
+))

@@ -1,9 +1,12 @@
 (ns tolgraven.modules.main.module
-  (:require [tolgraven.content.contract :as content]
+  (:require [tolgraven.modules.main.storage :as storage]
+            [tolgraven.content.contract :as content]
             [tolgraven.modules.main.layout :as layout]))
 
 (def spec
-  {:id :main
+  {:content [:document :header :common :footer :post-footer]
+   :storage storage/tables
+   :id :main
    :assets {}
    :icons ["brands/facebook" "brands/github" "brands/instagram"
            "brands/linkedin" "brands/soundcloud" "brands/twitter"]

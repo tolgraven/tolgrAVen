@@ -1,5 +1,5 @@
 (ns tolgraven.modules.user.views
-  (:require
+  #?(:cljs (:require
     [tolgraven.supabase.schema :as schema]
     [tolgraven.component.registry]
     [reagent.core :as r]
@@ -8,7 +8,9 @@
     [tolgraven.macros :as m :refer-macros [defc]]
     [tolgraven.components.image :as img]
     [tolgraven.loader :as l]
-    [tolgraven.components.ui :as ui]))
+    [tolgraven.components.ui :as ui])))
+
+#?(:cljs (do
 
 (defc <back-btn> [] ;tho ideally we push states and pop them... so becomes, yeah
   (when (< 1 (count @(rf/subscribe [:user/active-section])))
@@ -92,7 +94,7 @@
    (when heading [:h2 heading])
    (into [:section] components)])
 
-(defc <comments> "User comments page" [user]
+#?(:feature/blog-comments (defc <comments> "User comments page" [user]
   [<section> "User comments" ;will need to save comment id's to user when make new ones.
    (let [comments @(rf/subscribe [:comments/for-user-q (:id user)])]
      (doall (for [{:keys [id title text ts score] :as comment} (vals comments)] ^{:key (str "user-" (:id user) "-comment-" id)}
@@ -100,7 +102,7 @@
                [:h4.blog-comment-title title]
                (m/<> :blog/posted-by {:id id :user user :ts ts :score score})
                [:div.blog-comment-text
-                (m/<> :link-preview/md text)]]))) ])
+                (m/<> :link-preview/md text)]]))) ]))
 
 
 (defc <change-password> "Change user password" [user]
@@ -169,11 +171,11 @@
            [:span {:style {:font-size "80%"}}
             "admin"])
         [:span [:em (:email user)]]
-        [:p {:style {:font-size "80%"}}
-         (:karma user) " karma"]
-        [:button
+        #?(:feature/blog-comments [:p {:style {:font-size "80%"}}
+         (:karma user) " karma"])
+        #?(:feature/blog-comments [:button
          {:on-click #(rf/dispatch [:user/active-section :comments])}
-         (str (or (:comment-count user) 0) " comments (view)")]]]]
+         (str (or (:comment-count user) 0) " comments (view)")])]]]
 
      [:div.user-change-options
       {:style {:position :relative}}
@@ -261,7 +263,7 @@
        :login <sign-in>
        :register <register>
        :admin <admin>
-       :comments <comments>
+       :comments #?(:feature/blog-comments <comments> :default :none)
        :change-avatar <change-avatar>
        :change-password <change-password>
        :change-username <change-username>
@@ -275,3 +277,5 @@
        ;; Presence retains these inputs while closing, so the outgoing panel
        ;; keeps its contents without a second app-db transition or timer event.
        ^{:key :user-panel} [<user-panel> {:section (last sections) :user user}])]))
+
+))

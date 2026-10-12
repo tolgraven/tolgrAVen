@@ -63,3 +63,6 @@ src/cljs
 
 # Private overrides are never Docker build inputs.
 config/local*.edn
+
+!scripts/build/resolve_site.clj
+resources/site.overrides.edn

@@ -35,7 +35,7 @@
          after (contract/contract->seed updated)
          ;; Realize all validation before the first mutation.
          changes (mapv (fn [table] [table (changed-rows before after table)])
-                       supabase/table-order)]
+                       (supabase/table-order))]
      (when (= "blog-post-ids" (first path))
        (throw (ex-info "Post IDs are derived from blog_posts and cannot be written" {})))
      (when (and (= "blog-posts" (first path)) (contains? data :comments))

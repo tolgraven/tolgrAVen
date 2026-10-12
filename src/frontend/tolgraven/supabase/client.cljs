@@ -1,4 +1,5 @@
 (ns tolgraven.supabase.client
+  (:require-macros [tolgraven.build.site :refer [when-enabled]])
   (:require [tolgraven.validation.runtime :as validation]
             [tolgraven.supabase.schema :as schema]
             [ajax.core :as ajax]
@@ -331,6 +332,7 @@
           (.catch #(fail! {:message (.-message %)}))))
     (on-error {:message "Supabase is not initialized"})))
 
+(when-enabled :user nil
 (defn sign-in! [method email password on-error]
   (if-let [auth (some-> @*client (gobj/get "auth"))]
     (-> (if (= method :email)
@@ -381,6 +383,8 @@
                   (on-error {:message (.-message error)})))
         (.catch #(on-error {:message (.-message %)})))))
 
+)
+
 (add-watch *client ::scoped
   (fn [_ _ old client]
     (when-not (identical? old client) (scoped/connect! client read-once!))))
@@ -396,7 +400,9 @@
     (reset! *loaded #{})
     (reset! *settings settings)
     (reset! *client ((.-createClient js/supabase) url anon-key
-                    #js {:auth #js {:persistSession true :autoRefreshToken true}}))
+                    #js {:auth #js {:persistSession (boolean (when-enabled :user nil true))
+                                    :autoRefreshToken (boolean (when-enabled :user nil true))}}))
+    (when-enabled :user nil
     (reset! *auth-listener
             (-> (call-method (gobj/get @*client "auth") "onAuthStateChange"
                   (fn [_ session]
@@ -429,12 +435,16 @@
                       (status/fail! :supabase-session "Supabase session unavailable"
                                     "Your account session could not be restored. Reload to retry."
                                     #(.reload js/location)))))))
+    )
     (doseq [entry (vals @*queries), table (query/realtime-tables (:opts entry))]
       (ensure-table! table))))
 
+(when-enabled :gpt nil
 (defn write! [path data merge-fields]
   (authenticated-request!
    :post "/api/supabase/documents" {:path path :data data :merge-fields merge-fields}
    (fn [_] (status/recover! :supabase-write))
    #(status/fail! :supabase-write "Supabase save failed"
                   "Your changes could not be saved. Please try saving again." nil)))
+
+)

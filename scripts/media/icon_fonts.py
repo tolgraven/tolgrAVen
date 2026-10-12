@@ -46,7 +46,7 @@ def face(family, weight, file, points, fallback=None):
 def icon_definitions():
     # The same source reader supplies Shadow's CSS inventory; never evaluate
     # browser namespaces or keep a second list of component/module icons here.
-    command = ["bb", "--classpath", "src/cljc", "-e",
+    command = ["bb", "--classpath", "src/cljc:src/frontend:resources", "-e",
                "(require '[tolgraven.build.modules :as modules] '[cheshire.core :as json]) "
                "(println (json/generate-string (modules/icon-definitions)))"]
     return json.loads(subprocess.check_output(command, cwd=ROOT, text=True))

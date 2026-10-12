@@ -1,11 +1,12 @@
 (ns tolgraven.modules.blog.views
-  (:require
+  #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
+  #?(:cljs (:require #?(:clj [tolgraven.build.site :refer [when-enabled]])
     [reagent.core :as r]
     [tolgraven.components.timer :as timer]
     [tolgraven.modules.blog.model :as model]
     [tolgraven.modules.blog.schema :as schema]
     [tolgraven.modules.blog.data :as data]
-    [tolgraven.modules.blog.comments :as comments]
+    #?(:feature/blog-comments [tolgraven.modules.blog.comments :as comments])
     [tolgraven.react :as rf]
     [clojure.string :as string]
     [tolgraven.loader]
@@ -15,8 +16,10 @@
     [tolgraven.component.loading :as loading]
     [tolgraven.modules.link-preview.views :as link-preview]
     [tolgraven.util :as util]
-    [tolgraven.components.ui :as ui]))
+    [tolgraven.components.ui :as ui] )))
 
+#?(:cljs
+   (do
 (def code-languages
   ;; Keep Lisp-family false positives out of this Clojure-centric blog.
   ["clojure" "cpp" "javascript" "json" "bash" "css" "xml" "python" "sql" "diff"])
@@ -37,7 +40,8 @@
 
 ;; View inputs use one spec map; nested :post/:comment values keep domain data
 ;; separate from component options. Exported module views use the same contract.
-(defc <preview-comment> "Render the current comment draft as Markdown."
+(when-enabled :blog :comments
+  (defc <preview-comment> "Render the current comment draft as Markdown."
   {:features [[:appear nil]]}
   [{:keys [model] :as spec}]
   (let [{:keys [user title text]} @model]
@@ -45,7 +49,7 @@
      {:style {:min-height "7.35rem"}}
      (when title
        [:h3.blog-comment-title title])
-     [<markdown> text {:trust (link-trust user)}]]))
+     [<markdown> text {:trust (link-trust user)}]])))
 
 (declare <add-comment>)
 (declare <blog-container>)
@@ -70,7 +74,8 @@
                     (neg? score) "")
         score])])) ;todo both score and upvote should fade in next to reply btn. but iffy now cause it's absolute etc
 
-(defc <add-comment-btn> "Open or cancel the comment editor."
+(when-enabled :blog :comments
+  (defc <add-comment-btn> "Open or cancel the comment editor."
   [{:keys [parent-path kind] :as spec} :- schema/parent-spec]
   (let [adding-comment? @(rf/subscribe [:comments/adding? parent-path])
         attrs {:on-click
@@ -86,26 +91,30 @@
       :cancel  (when adding-comment?
                  [:button.blog-btn.bottomborder
                   {:on-click #(rf/dispatch [:blog/cancel-comment parent-path])}
-                  "Cancel"]))))
+                  "Cancel"])))))
 
-(defc <edit-comment>
+(when-enabled :blog :comments
+  (defc <edit-comment>
   [{:keys [path comment] :as spec}]
   [:button.blog-btn.blog-comment-edit-btn.noborder
    {:on-click #(rf/dispatch [:blog/edit-comment path comment])}
-   [:i.fa.fa-edit]])
+   [:i.fa.fa-edit]]))
 
-(defc <delete-comment> ; Unfinished delete UI; retain for later implementation.
+(when-enabled :blog :comments
+  (defc <delete-comment> ; Unfinished delete UI; retain for later implementation.
   [{:keys [path] :as spec}]
-  [:div "whua"])
+  [:div "whua"]))
 
-(defn- get-id-str [path]
+(when-enabled :blog :comments
+  (defn- get-id-str [path]
   (reduce (fn [s i]
             (str s "-" i))
           (str "blog-post-" (first path) "-comment")
-          (rest path)))
+          (rest path))))
 
 
-(defc <vote-btn> [{:keys [user active-user path vote] :as spec}]
+(when-enabled :blog :comments
+  (defc <vote-btn> [{:keys [user active-user path vote] :as spec}]
   (when active-user
     (let [voted @(rf/subscribe [:blog/vote path])]
       [:button.blog-btn.blog-comment-vote-btn
@@ -115,9 +124,10 @@
         :disabled @(rf/subscribe [:state [:supabase-writes [:vote (str (last path))]]])
         :on-click #(rf/dispatch [:blog/comment-vote
                                  user active-user path vote])}
-       (case vote :up "+" :down "-")])))
+       (case vote :up "+" :down "-")]))))
 
-(defc <collapsed-reply-view>
+(when-enabled :blog :comments
+  (defc <collapsed-reply-view>
   {:features [[:appear "zoom-y"]]}
   [{:keys [path comments reply-count loading?] :as spec}]
   [:div.blog-comment-reply.flex
@@ -128,14 +138,17 @@
    [:div.blog-comment-border]
    [:section.blog-comment.blog-comment-collapsed-placeholder
     {:aria-busy (boolean loading?)}
-    (if loading? "Loading replies…" (util/pluralize (or reply-count (count comments)) " hidden reply"))]])
+    (if loading? "Loading replies…" (util/pluralize (or reply-count (count comments)) " hidden reply"))]]))
 
-(defc <comment-frame> {:features [:props [:appear nil]]} [{:keys [children] :as spec}]
-  (into [:div.flex.blog-comment-around] children))
+(when-enabled :blog :comments
+  (defc <comment-frame> {:features [:props [:appear nil]]} [{:keys [children] :as spec}]
+  (into [:div.flex.blog-comment-around] children)))
 
-(defc <comment-fade> {:features [:props [:appear "opacity"]]} [spec]
-  [:div.fade-to-black.bottom {:style {:z-index "0"}}])
+(when-enabled :blog :comments
+  (defc <comment-fade> {:features [:props [:appear "opacity"]]} [spec]
+  [:div.fade-to-black.bottom {:style {:z-index "0"}}]))
 
+(when-enabled :blog :comments
 (defn- measure-comment-text! [element *full? *fade-style]
   (when (and element (not (true? @*full?)))
     (let [truncated? (> (util/px-to-rem (.-scrollHeight element)) 24)
@@ -154,8 +167,10 @@
           {:left (str (util/px-to-rem (- (.-left code-bounds) (.-left bounds))) "rem")
            :right (str (util/px-to-rem (- (.-right bounds) (.-right code-bounds))) "rem")
            :width "auto"})))))
+)
 
-(defc <comment-post> "Render a comment and its replies; defer hidden threads until needed."
+(when-enabled :blog :comments
+  (defc <comment-post> "Render a comment and its replies; defer hidden threads until needed."
   {:features [:error-boundary]}
   [{:keys [path visible?] {:keys [id ts user title text score] :as post} :comment :as spec} :- schema/comment-spec]
   :let [*full? (r/atom nil) ; nil: not measured, false: truncated, true: expanded
@@ -275,9 +290,10 @@
                 [<collapsed-reply-view> {:path path :comments @*comments :reply-count (:reply-count post)
                                          :expand! (fn [] (reset! *interacted? true)
                                                     (rf/dispatch [:blog/expand-comment-thread path true]))
-                                         :loading? (and @*expanded? (nil? @*comments))}])])]))))
+                                         :loading? (and @*expanded? (nil? @*comments))}])])])))))
 
-(defc <comments-section> "Comments section!"
+(when-enabled :blog :comments
+  (defc <comments-section> "Comments section!"
   {:features [[:appear "zoom-y"]]}
   [{{:keys [id] :as post} :post :as spec} :- schema/post-spec]
   (let [{:keys [records loading? more?]} @(rf/subscribe [:comments/root-page id])
@@ -297,10 +313,11 @@
 
      (when @(rf/subscribe [:user/active-user])
        [<add-comment-btn> {:parent-path [id] :kind :comment}])
-     [<add-comment> {:parent-path [id]}]]))
+     [<add-comment> {:parent-path [id]}]])))
 
 
-(defc <submit-comment-btn> [{:keys [parent-path model editing?] :as spec}]
+(when-enabled :blog :comments
+  (defc <submit-comment-btn> [{:keys [parent-path model editing?] :as spec}]
   (let [valid? (pos? (count (:text model)))]
     [:button.blog-btn.noborder
      {:class (when valid? "topborder")
@@ -308,9 +325,10 @@
                     @(rf/subscribe [:state [:supabase-writes [:comment parent-path]]]))
       :on-click #(when valid?
                    (rf/dispatch [:blog/comment-submit parent-path model editing?]))}
-     "Submit"]))
+     "Submit"])))
 
-(defc <comment-input> "Retained experimental comment field, currently unused."
+(when-enabled :blog :comments
+  (defc <comment-input> "Retained experimental comment field, currently unused."
   [{:keys [parent-path field kind model style ui-name] :as spec}]
   :let [*element (r/atom nil)]
   (let [id (str "blog-adding-comment-" kind)
@@ -332,9 +350,10 @@
       :on-change #(rf/dispatch-sync [:form-field [:write-comment parent-path field]
                                     (-> % .-target .-value)])
       :on-blur #(rf/dispatch-sync [:form-field [:write-comment parent-path field]
-                                  (get model field) :blur])}]))
+                                  (get model field) :blur])}])))
 
-(defc <add-comment> "Edit or submit a comment with a live preview."
+(when-enabled :blog :comments
+  (defc <add-comment> "Edit or submit a comment with a live preview."
   {:features [:error-boundary]}
   [{:keys [parent-path] :as spec} :- schema/parent-spec]
   :let [*preview? (r/atom false)]
@@ -368,7 +387,7 @@
          ;; Future shortcut: submit on Alt-Enter.
          [<submit-comment-btn> {:parent-path parent-path :model @*model
                                 :editing? @(rf/subscribe [:blog/state [:editing-comment parent-path]])}]
-         [<add-comment-btn> {:parent-path parent-path :kind :cancel}]]]])))
+         [<add-comment-btn> {:parent-path parent-path :kind :cancel}]]]]))))
 
 (defc <preview-blog> "Render new post preview"
   [{{:keys [title text]} :post :as spec}]
@@ -460,7 +479,8 @@
       [<markdown> text
        {:id (str "blog-post-" id)
         :trust (link-trust user)}]]
-     [<comments-section> {:post post :appear {:class "zoom-y" :remember-key [:blog/comments id]}}]]))
+     (when-enabled :blog :comments
+       [<comments-section> {:post post :appear {:class "zoom-y" :remember-key [:blog/comments id]}}])]))
 
 (defc <blog-post>
   {:loading-prefab :article :loading-tag :section.blog-post}
@@ -622,3 +642,4 @@
        :archive [<blog-archive>]
        :new-post [<post-blog>]
        [<blog-container> {:section [<blog-feed>]}])]))
+))

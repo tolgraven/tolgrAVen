@@ -56,6 +56,28 @@ class ManifestSafetyTest(unittest.TestCase):
         self.assertEqual(provision.capacity_budget(state, ['supabase-db-prod', 'webprod-123', 'supabase-db-stage']), 1024)
         self.assertEqual(provision.capacity_budget(state, ['supabase-db-prod', 'webprod-123', 'supabase-db-stage', 'webstage-pr-45']), 0)
 
+    def test_storage_free_site_needs_no_supabase_origin(self):
+        self.manifest['site'] = {'tables': []}
+        for config in self.manifest['environments'].values():
+            del config['supabase_url']
+        plan = provision.plan(provision.validate(self.manifest))
+        self.assertTrue(all(item['supabase'] is None for item in plan['environments'].values()))
+
+    def test_retained_database_has_capacity_to_apply_revocations(self):
+        state = {'environments': {'staging': {'database_container': None,
+                 'retained_database_container': 'supabase-db-stage', 'application_uuid': 'webstage'}}}
+        self.assertEqual(provision.capacity_budget(state, []), 3072)
+        self.assertEqual(provision.capacity_budget(state, ['supabase-db-stage', 'webstage']), 0)
+
+    def test_schema_uses_one_resolved_snapshot_and_retained_database(self):
+        selected = {'sql': 'REVOKE;', 'tables': []}
+        state = {'environments': {'staging': {'retained_database_container': 'supabase-db-stage'}}}
+        with patch.object(provision, 'site_schema', side_effect=AssertionError('Must not resolve twice')):
+            with patch.object(provision, 'sql', side_effect=['t', '']) as execute:
+                provision.schema(self.manifest, state, selected)
+                self.assertEqual(execute.call_args.args[1], 'supabase-db-stage')
+                self.assertIn('REVOKE;', execute.call_args.args[2])
+
     def test_php_input_is_encoded_not_interpolated(self):
         self.manifest['name'] = "x');system('evil');"
         rendered = provision.php_script(self.manifest, 'status')

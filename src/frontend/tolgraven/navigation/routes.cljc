@@ -1,6 +1,7 @@
 (ns tolgraven.navigation.routes
-  (:require
+  #?(:cljs (:require
     [tolgraven.component.registry]
+    [tolgraven.site :as site]
     [tolgraven.validation :as validation]
     [tolgraven.validation.runtime :as validation-runtime]
     [tolgraven.schema.http :as schemas]
@@ -14,9 +15,9 @@
     [reitit.frontend.history :as rfh]
     [reitit.frontend.easy :as rfe]
     [tolgraven.diagnostics.routes :as diagnostics]
-    [tolgraven.modules.blog.pages :as blog]
-    [tolgraven.modules.cv.pages :as cv]
-    [tolgraven.modules.docs.pages :as docs]
+    #?(:module/blog [tolgraven.modules.blog.pages :as blog])
+    #?(:module/cv [tolgraven.modules.cv.pages :as cv])
+    #?(:module/docs [tolgraven.modules.docs.pages :as docs])
     [tolgraven.loader :as l]
     [tolgraven.component.data :as data]
     [tolgraven.content.contract :as content]
@@ -24,9 +25,11 @@
     [tolgraven.components.page-shell :as shell]
     [tolgraven.component.restore :as restore]
     [tolgraven.components.ui :as ui]
-    [tolgraven.modules.home.pages :as home]
-    [tolgraven.components.not-found :as a404]))
+    #?(:module/home [tolgraven.modules.home.pages :as home])
+    [tolgraven.components.not-found :as a404] )))
 
+#?(:cljs
+   (do
 (defpage <log-page>
   {:depends [{:source :strapi :keys [:common]}]}
   []
@@ -49,12 +52,13 @@
                                 (false nil) (rf/dispatch [:state [:settings :panel-open] false]))) ; well this being on start it wouldn't be open anyways
                      :stop (fn [{:keys [query]}]    ; why is this being run without leaving page?
                              )}]}]
-          (concat home/spec
-                  [(into [""] cv/spec)
-                   (into [""] docs/spec)
-                   (into [""] blog/spec)
+          (remove nil?)
+          (site/routes (concat #?(:module/home home/spec :default nil)
+                  [#?(:module/cv (into [""] cv/spec))
+                   #?(:module/docs (into [""] docs/spec))
+                   #?(:module/blog (into [""] blog/spec))
                    ["/log" {:name :log :view #'<log-page>}]
-                   ["/test"
+                   #?(:module/test ["/test"
       ["" {:name :test
            :module :test
            :page :page}]
@@ -65,7 +69,7 @@
        :controllers [{:parameters {:path [:tab]} ; seems like a nice middle ground of using routing and urls but not fully integrating (needing these views available/known here for example). So, keep doing sub tabs like this?
                       :start (fn [{:keys [path]}]
                                (rf/dispatch [:state [:experiments] (keyword (:tab path))])
-                               (rf/dispatch [:exception [:experiments] nil]))}]}]]
+                               (rf/dispatch [:exception [:experiments] nil]))}]}]])
                    ["/client-oauth" ; for client OAuth callbacks
                     {:view #'a404/<not-found-page>}
                     ["" {:name :client-oauth
@@ -88,7 +92,7 @@
                                                  (:oauth_token_secret query)])
                                    (rf/dispatch [:diag/new :error "Twitter auth"
                                                  "Error authenticating"])))}]}]]
-                   ["/not-found" {:name :not-found :view #'a404/<not-found-page>}]]))
+                   ["/not-found" {:name :not-found :view #'a404/<not-found-page>}]])))
     (merge diagnostics/options {:validate validation-runtime/validate-routes!})))
 
 ;; A late module response must never navigate back over a newer URL.
@@ -238,3 +242,4 @@
            (not= (.-origin url) (.-origin base))))
     (catch :default _
       false)))
+))

@@ -1,3 +1,5 @@
+See [Site capabilities](site-capabilities.md) for merged file/CMS config, optional infrastructure, private action credentials and retained feature data.
+
 # Provisioning a complete site in Coolify
 
 Each site gets one Coolify project with `production` and `staging` environments.
@@ -44,7 +46,7 @@ make provision-site SITE=.local-wip/my-site.json
 `plan` is local and read-only. `probe` exercises project, environment, service
 and web-app creation in a Coolify database transaction, then rolls it back;
 no containers start and returned UUIDs are discarded. `up` prepares resources,
-starts Supabase, applies schema transactionally, checks all nine application
+starts Supabase, applies schema transactionally, checks all selected application
 tables have RLS, wires runtime-only Supabase variables, deploys the web apps,
 waits for those deployments, then checks REST, Auth, homepage and the public
 settings endpoint. The service role key stays in Coolify and the backend.

@@ -1,15 +1,17 @@
 (ns tolgraven.ssr.return-contract
   "Versioned page/state pair. Transport objects and credentials never belong in
    a render snapshot; persistent component data retains EDN keys and types."
-  (:require [clojure.string :as string]
+  #?(:cljs (:require [clojure.string :as string]
             [tolgraven.validation :as validation]
             [tolgraven.ssr.schema :as schema]
-            [tolgraven.modules.link-preview.schema :as preview]
-            [tolgraven.modules.blog.schema :as blog]
-            [tolgraven.modules.user.schema :as user]
+            #?(:module/link-preview [tolgraven.modules.link-preview.schema :as preview])
+            #?(:module/blog [tolgraven.modules.blog.schema :as blog])
+            #?(:module/user [tolgraven.modules.user.schema :as user])
             [tolgraven.navigation.schema :as navigation]
-            [tolgraven.components.shell-schema :as shell]))
+            [tolgraven.components.shell-schema :as shell])))
 
+#?(:cljs
+   (do
 (def version 1)
 (def ttl-ms 1800000)
 (def max-bytes (* 2 1024 1024))
@@ -27,11 +29,12 @@
     (seq? value) (doall (map without-credentials value))
     :else value))
 (def return-state-keys
-  (into [:motion-seen] (concat shell/return-state-keys user/return-state-keys
+  (into [:motion-seen] (concat shell/return-state-keys #?(:module/user user/return-state-keys :default [])
                                navigation/return-state-keys)))
 (def return-state-sections
-  {:blog blog/return-state-keys
-   :link-preview preview/return-state-keys})
+  (into {} (remove (comp nil? val))
+        {:blog #?(:module/blog blog/return-state-keys :default nil)
+         :link-preview #?(:module/link-preview preview/return-state-keys :default nil)}))
 
 (defn restored-view-state [state]
   ;; Shared state is opt-in. Runtime measurements, pending work and temporary
@@ -70,3 +73,5 @@
      "__LOCAL_PAGE_STYLES__" (or styles "")
      "__LOCAL_PAGE_TITLE__" (-> title (string/replace "&" "&amp;")
                                (string/replace "<" "&lt;") (string/replace "\"" "&quot;"))}))
+
+))

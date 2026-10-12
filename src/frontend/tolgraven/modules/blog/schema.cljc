@@ -1,8 +1,11 @@
 (ns tolgraven.modules.blog.schema
-  (:require [tolgraven.schema.common :as c]
+  #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
+  #?(:cljs (:require #?(:clj [tolgraven.build.site :refer [when-enabled]]) [tolgraven.schema.common :as c]
             [tolgraven.schema.declarations :as declarations]
-            [tolgraven.supabase.schema :as store]))
+            [tolgraven.supabase.schema :as store] )))
 
+#?(:cljs
+   (do
 (def return-state-keys
   [:current-post-id :viewing-tag :page :comment-limit :comments-expanded
    :comment-thread-expanded :adding-comment])
@@ -26,11 +29,14 @@
 (def displayed-post
   (vector :merge store/post [:map [:user {:optional true} [:maybe [:or c/id store/profile]]]]))
 (def post-spec (declarations/extend-spec [:map [:post displayed-post]]))
-(def displayed-comment
-  (vector :merge store/comment-record [:map [:user {:optional true} [:maybe [:or c/id store/profile]]]]))
-(def comment-spec (declarations/extend-spec [:map [:path c/path] [:comment displayed-comment]
-                                            [:visible? {:optional true} [:maybe c/derefable]]]))
-(def parent-spec (declarations/extend-spec [:map [:parent-path c/path]]))
+(when-enabled :blog :comments
+  (def displayed-comment
+  (vector :merge store/comment-record [:map [:user {:optional true} [:maybe [:or c/id store/profile]]]])))
+(when-enabled :blog :comments
+  (def comment-spec (declarations/extend-spec [:map [:path c/path] [:comment displayed-comment]
+                                            [:visible? {:optional true} [:maybe c/derefable]]])))
+(when-enabled :blog :comments
+  (def parent-spec (declarations/extend-spec [:map [:parent-path c/path]])))
 (def posted-by-spec
   (declarations/extend-spec
    (c/optional-map {:id [:maybe c/id] :user [:maybe [:or c/id store/profile]]
@@ -40,11 +46,13 @@
 (def post-fields [:maybe (c/optional-map {:title :string
                                           :text :string
                                           :tags [:or :string c/strings]})])
-(def comment-fields [:map-of c/path [:maybe (c/optional-map {:title [:maybe :string]
-                                                             :text [:maybe :string]})]])
+(when-enabled :blog :comments
+  (def comment-fields [:map-of c/path [:maybe (c/optional-map {:title [:maybe :string]
+                                                             :text [:maybe :string]})]]))
 
 (def post-records [:maybe [:map-of c/id displayed-post]])
-(def comment-records [:maybe [:map-of c/id displayed-comment]])
+(when-enabled :blog :comments
+  (def comment-records [:maybe [:map-of c/id displayed-comment]]))
 (def post-list [:maybe [:sequential displayed-post]])
 (def navigation-action [:or [:enum :prev :next] c/positive])
 (def no-args [:tuple])
@@ -53,17 +61,18 @@
 (def path-args [:tuple c/path])
 (def thread-args [:cat c/id [:? [:maybe c/id]]])
 (def page-args [:tuple c/nonnegative c/positive])
-(def root-page
+(when-enabled :blog :comments
+  (def root-page
   [:map
    [:records comment-records]
    [:loading? :boolean]
-   [:more? :boolean]])
+   [:more? :boolean]]))
 
 (def positive-input
   [:or c/positive [:and :string [:re #"^[+]?0*[1-9][0-9]*$"]]])
 
 (def event-args
-  {:blog/init no-args
+  (into {} (remove (comp nil? val)) {:blog/init no-args
    :blog/init-posting no-args
    :blog/edit-post [:tuple displayed-post]
    :blog/cancel-edit no-args
@@ -73,14 +82,15 @@
    :blog/nav-page [:tuple positive-input]
    :blog/submit [:tuple post-fields [:maybe displayed-post]]
    :blog/post-saved [:tuple post-fields :map]
-   :blog/edit-comment [:tuple c/path displayed-comment]
-   :blog/cancel-comment path-args
-   :blog/comment-submit [:tuple c/path [:map [:text :string]] [:maybe displayed-comment]]
-   :blog/comment-saved [:tuple c/path :map :map]
+   :blog/edit-comment (when-enabled :blog :comments [:tuple c/path displayed-comment])
+   :blog/cancel-comment (when-enabled :blog :comments path-args)
+   :blog/comment-submit (when-enabled :blog :comments [:tuple c/path [:map [:text :string]] [:maybe displayed-comment]])
+   :blog/comment-saved (when-enabled :blog :comments [:tuple c/path :map :map])
    :blog/write-failed [:tuple [:or :keyword c/path] :map]
-   :blog/comment-vote [:tuple [:maybe [:or c/id store/profile]] store/profile c/path [:enum :up :down]]
-   :blog/vote-saved [:tuple :string [:map [:vote [:enum -1 0 1]]]]
+   :blog/comment-vote (when-enabled :blog :comments [:tuple [:maybe [:or c/id store/profile]] store/profile c/path [:enum :up :down]])
+   :blog/vote-saved (when-enabled :blog :comments [:tuple :string [:map [:vote [:enum -1 0 1]]]])
    :blog/cache-state-changed no-args
-   :blog/expand-comment-thread [:tuple c/path :boolean]
-   :blog/adding-comment [:tuple c/path [:maybe :boolean]]
-   :blog/load-more-comments id-args})
+   :blog/expand-comment-thread (when-enabled :blog :comments [:tuple c/path :boolean])
+   :blog/adding-comment (when-enabled :blog :comments [:tuple c/path [:maybe :boolean]])
+   :blog/load-more-comments (when-enabled :blog :comments id-args)}))
+))

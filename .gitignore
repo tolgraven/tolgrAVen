@@ -51,3 +51,6 @@ resources/docs/codox/
 /src/cljs
 
 /config/local*.edn
+
+# Sanitized build-time CMS override snapshot; recreated for each build.
+resources/site.overrides.edn

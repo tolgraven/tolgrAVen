@@ -1,16 +1,19 @@
 (ns tolgraven.modules.blog.subs
-  (:require
+  #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
+  #?(:cljs (:require #?(:clj [tolgraven.build.site :refer [when-enabled]])
     [tolgraven.react :as rf]
     [reagent.ratom :as ratom]
     [tolgraven.modules.blog.model :as model]
     [tolgraven.modules.blog.schema :as schema]
     [tolgraven.schema.common :as c]
-    [tolgraven.modules.blog.comments :as comments]
+    #?(:feature/blog-comments [tolgraven.modules.blog.comments :as comments])
     [tolgraven.modules.blog.data :as data]
     [tolgraven.supabase.scoped :as scoped]
     [tolgraven.util :as util]
-    [clojure.string :as string]))
+    [clojure.string :as string] )))
 
+#?(:cljs
+   (do
 (rf/reg-sub :blog
   (fn [[_ path]]
     (case (first path)
@@ -150,18 +153,21 @@
   :<- [:blog/post-ids]
   (fn [ids [_ index size]] (model/page-ids ids index size)))
 
-(rf/reg-sub :comments/all
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/all
   {:args schema/no-args, :result schema/comment-records} ; legacy cached lookup
   :<- [:<-store-2 :blog-comments]
   (fn [comments _]
-    comments))
+    comments)))
 
 ;; Legacy cached lookups remain available alongside query-backed subscriptions.
-(rf/reg-sub :comments/for-user
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/for-user
   (fn [[_ user-id]] (rf/subscribe [:comments/all]))
-  (fn [comments [_ user-id]] (filter #(= user-id (:user %)) (vals comments))))
+  (fn [comments [_ user-id]] (filter #(= user-id (:user %)) (vals comments)))))
 
-(rf/reg-sub :comments/for-user-q
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/for-user-q
   {:args schema/id-args, :result schema/comment-records}
   (fn [[_ user-id]]
     (rf/subscribe [:<-store-q {:path-collection [:blog-comments]
@@ -169,14 +175,16 @@
                               :where [[:user :== user-id]]
                               :order-by [[:ts :desc]]
                               :doc-changes true}]))
-  (fn [comments _] comments))
+  (fn [comments _] comments)))
 
-(rf/reg-sub :comments/count-for-user
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/count-for-user
   {:args schema/id-args, :result c/nonnegative}
   (fn [[_ user-id]] (rf/subscribe [:comments/for-user-q user-id]))
-  (fn [comments _] (count comments)))
+  (fn [comments _] (count comments))))
 
-(rf/reg-sub :comments/for-post
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/for-post
   (fn [[_ blog-id]]
     [(rf/subscribe [:comments/all])
      (rf/subscribe [:blog/post blog-id])])
@@ -184,18 +192,21 @@
     (let [comment-ids (if (sequential? (:comments post)) ; support old style (store )
                         (:comments post)
                         (keys (:comments post)))]
-      (vals (select-keys comments comment-ids)))))
+      (vals (select-keys comments comment-ids))))))
 
-(rf/reg-sub :comments/for-post-q
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/for-post-q
   (fn [[_ blog-id]] (rf/subscribe [:blog/post blog-id]))
-  (fn [post _] (:comments post)))
+  (fn [post _] (:comments post))))
 
-(rf/reg-sub :comments/limit
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/limit
   {:args schema/id-args, :result c/positive}
   :<- [:blog/state [:comment-limit]]
-  (fn [limits [_ id]] (data/comment-limit limits id)))
+  (fn [limits [_ id]] (data/comment-limit limits id))))
 
-(rf/reg-sub-raw :comments/root-page
+(when-enabled :blog :comments
+  (rf/reg-sub-raw :comments/root-page
   {:args schema/selected-id-args, :result schema/root-page}
   (fn [_ [_ id]]
     (ratom/make-reaction
@@ -214,39 +225,44 @@
                ids (set (map :id (take (if value amount (or cached-amount 0)) rows)))]
            {:records (when (or value cached) (into {} (filter (fn [[_ row]] (ids (:id row)))) (or value cached)))
             :loading? (nil? value)
-            :more? (or (nil? value) (> (count rows) amount))}))))))
+            :more? (or (nil? value) (> (count rows) amount))})))))))
 
-(rf/reg-sub :comments/thread-records
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/thread-records
   {:args schema/thread-args, :result schema/comment-records}
   (fn [[_ blog-id parent-id]]
     (if parent-id
       (rf/subscribe [:<-store-q (comments/thread-query blog-id parent-id)])
       (rf/subscribe [:comments/root-page blog-id])))
-  (fn [value [_ _ parent-id]] (if parent-id value (:records value))))
+  (fn [value [_ _ parent-id]] (if parent-id value (:records value)))))
 
 ;; Folded threads retain their cached children for the exit transition without
 ;; owning a remote reader. Each child removes its DOM after delayed visibility.
-(rf/reg-sub :comments/cached-thread
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/cached-thread
   {:args schema/thread-args, :result schema/comment-records}
   (fn [[_ post-id parent-id]]
     (rf/subscribe [:store/scoped (scoped/query-key (comments/thread-query post-id parent-id))]))
-  (fn [result _] (some-> result util/normalize-store-result)))
+  (fn [result _] (some-> result util/normalize-store-result))))
 
-(rf/reg-sub :comments/for-q-flat
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/for-q-flat
   {:args schema/thread-args, :result schema/comment-records}
   (fn [[_ blog-id parent-id]] (rf/subscribe [:comments/thread-records blog-id parent-id]))
-  (fn [comments _] (when (seq comments) comments)))
+  (fn [comments _] (when (seq comments) comments))))
 
-(rf/reg-sub-raw :comments/reveal-thread
+(when-enabled :blog :comments
+  (rf/reg-sub-raw :comments/reveal-thread
   {:args schema/path-args, :result schema/comment-records}
   (fn [_ [_ path]]
     (ratom/make-reaction
       #(let [expanded @(rf/subscribe [:blog/state [:comment-thread-expanded]])
              {:keys [ready? values]} @(rf/subscribe [:store/plan comments/reveal-plan
                                                     {:path path :expanded expanded}])]
-         (when ready? (into {} (map (juxt :id identity)) (:replies values)))))))
+         (when ready? (into {} (map (juxt :id identity)) (:replies values))))))))
 
-(rf/reg-sub :comments/visible-thread
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/visible-thread
   (fn [[_ post-id parent-id acquire? path]]
     [(rf/subscribe [:comments/cached-thread post-id parent-id])
      (rf/subscribe (if acquire?
@@ -256,23 +272,26 @@
   (fn [[cached live] _]
     ;; Acquiring/releasing a live reader must not temporarily remove cached
     ;; children. An authoritative empty map still replaces stale cached rows.
-    (if (some? live) live cached)))
+    (if (some? live) live cached))))
 
 ;; Reserved for direct comment lookup; keep the unfinished subscription visible.
-(rf/reg-sub :comments/for-id
-  (fn [db [_ comment-id]]))
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/for-id
+  (fn [db [_ comment-id]])))
 
-(rf/reg-sub :comments/thread-expanded?
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/thread-expanded?
   {:args schema/path-args, :result :boolean}
   :<- [:blog/state [:comment-thread-expanded]]
   (fn [expanded [_ path]]
-    (comments/expanded? expanded path)))
+    (comments/expanded? expanded path))))
 
-(rf/reg-sub :comments/adding?
+(when-enabled :blog :comments
+  (rf/reg-sub :comments/adding?
   {:args schema/path-args, :result [:maybe :boolean]}
   :<- [:blog/state [:adding-comment]]
   (fn [adding [_ path]]
-    (get adding path))) ; entire path is the key, hence get not get-in
+    (get adding path)))) ; entire path is the key, hence get not get-in
 
 (rf/reg-sub :blog/vote
   {:args schema/path-args, :result [:maybe [:enum :up :down]]}
@@ -294,3 +313,4 @@
   {:args schema/id-args, :result :boolean}
   (fn [[_ id]] (rf/subscribe [:blog/post-records id]))
   (fn [records _] (some? records)))
+))

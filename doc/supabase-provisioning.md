@@ -188,7 +188,7 @@ Only explicitly owned legacy threads are copied from the archive. The new public
 only the verified server upload endpoint chooses filenames. The endpoint accepts
 images up to 5 MB and 4096 pixels per dimension.
 
-Reapply `operations.sql` when upgrading an existing installation: the avatar
+Reapply the selected `bb site:manifest sql` plan when upgrading an existing installation: the avatar
 bucket must allow `image/png`, `image/webp`, and `image/avif`. Browser writes remain
 denied. Converted objects use `avatars/<verified-profile-id>/<sha256>.{png,webp,avif}`;
 the profile points to the PNG and the shared picture component selects modern
@@ -284,12 +284,12 @@ editing compares profile IDs and now opens the existing text in the form.
 
 ### Install the additive operations on an existing instance
 
-`schema` bootstrap now includes `resources/supabase/operations.sql`. For an
+`schema` bootstrap includes declaration-selected SQL from `resources/supabase/modules/`. For an
 already provisioned database, apply that file inside a transaction from the
 trusted database environment, without an import/reset:
 
 ```sh
-psql -v ON_ERROR_STOP=1 --single-transaction -f resources/supabase/operations.sql
+bb site:manifest sql | psql -v ON_ERROR_STOP=1 --single-transaction
 ```
 
 Then deploy the application branch with the URL, anon key and server service key

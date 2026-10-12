@@ -7,7 +7,7 @@ function cmsRequire($ok,$message) { if (!$ok) throw new RuntimeException($messag
 function cmsEnv($resource,$key,$value,$preview=false) {
     $relation=$resource instanceof App\Models\Application && $preview ? $resource->environment_variables_preview() : $resource->environment_variables();
     $fields=['value'=>$value,'is_literal'=>true,'is_multiline'=>false];
-    if ($resource instanceof App\Models\Application) $fields+=['is_buildtime'=>false,'is_runtime'=>true];
+    if ($resource instanceof App\Models\Application) $fields+=['is_buildtime'=>in_array($key,['STRAPI_URL','STRAPI_READ_TOKEN'],true),'is_runtime'=>true];
     $relation->updateOrCreate(['key'=>$key,'is_preview'=>$preview],$fields);
 }
 try {
@@ -51,10 +51,34 @@ try {
     if ($input['action']==='prepare') {
         $compose=Symfony\Component\Yaml\Yaml::parse($service->docker_compose_raw);
         $compose['services']['cms']['image']=$image;
+        $keys=['CMS_SITE_MANIFEST','CMS_REBUILD_WEBHOOK_URL','CMS_REBUILD_WEBHOOK_TOKEN',
+               'CMS_REPROVISION_WEBHOOK_URL','CMS_REPROVISION_WEBHOOK_TOKEN'];
+        foreach ($keys as $key) {
+            $declaration=$key.'=${'.$key.'}';
+            if (!in_array($declaration,$compose['services']['cms']['environment'],true))
+                $compose['services']['cms']['environment'][]=$declaration;
+        }
+
         $service->docker_compose_raw=Symfony\Component\Yaml\Yaml::dump($compose,20,2);
         $service->save();
         foreach(['APP_KEYS','ADMIN_JWT_SECRET','API_TOKEN_SALT','TRANSFER_TOKEN_SALT','ENCRYPTION_KEY','JWT_SECRET','CMS_READ_TOKEN','CMS_ADMIN_PASSWORD'] as $key) {
             if (!$service->environment_variables()->where('key',$key)->first()?->value) cmsEnv($service,$key,bin2hex(random_bytes(32)));
+        }
+        if (isset($input['site'])) {
+            $site=$input['site'];
+            cmsEnv($service,'CMS_SITE_MANIFEST',json_encode(['config'=>$site['config'],
+                'availableModules'=>$site['available-modules'],'pages'=>$site['pages']]));
+        }
+        foreach (['rebuild','reprovision'] as $actionName) {
+            $webhook=$input['webhooks'][$actionName]??null;
+            if ($webhook) {
+                $destination=parse_url($webhook['url']);
+                cmsRequire(($destination['scheme']??null)==='https' && isset($destination['host'])
+                    && !isset($destination['user']) && !isset($destination['pass']), 'Invalid HTTPS webhook destination');
+                cmsRequire(is_string($webhook['token']) && strlen($webhook['token'])>0, 'Webhook credential required');
+                cmsEnv($service,'CMS_'.strtoupper($actionName).'_WEBHOOK_URL',$webhook['url']);
+                cmsEnv($service,'CMS_'.strtoupper($actionName).'_WEBHOOK_TOKEN',$webhook['token']);
+            }
         }
         cmsEnv($service,'CMS_ADMIN_EMAIL',$input['admin_email']);
         cmsEnv($service,'CMS_SEED_CONTENT',($input['seed']??false)?'true':'false');
@@ -66,6 +90,7 @@ try {
     }
     $token=$service->environment_variables()->where('key','CMS_READ_TOKEN')->firstOrFail()->value;
     if ($input['action']==='wire') {
+        $web->settings()->update(['use_build_secrets'=>true,'disable_build_cache'=>true]);
         foreach([false,true] as $preview) {
             cmsEnv($web,'STRAPI_URL',$url,$preview);
             cmsEnv($web,'STRAPI_READ_TOKEN',$token,$preview);
@@ -74,7 +99,7 @@ try {
     if ($input['action']==='start') App\Actions\Service\StartService::dispatch($service);
     if ($input['action']==='verify') {
         $response=Illuminate\Support\Facades\Http::withToken($token)->timeout(15)->get($url.'/api/site-content');
-        cmsRequire($response->successful() && $response->json('version')===1 && count($response->json('content')??[])===16,'CMS content verification failed');
+        cmsRequire($response->successful() && $response->json('version')===1 && !array_diff($input['site']['content']??[],array_keys($response->json('content')??[])) && !array_diff(array_keys($response->json('content')??[]),$input['site']['content']??[]),'CMS content verification failed');
         cmsRequire(Illuminate\Support\Facades\Http::timeout(10)->get($url.'/api/site-content')->status()===401,'CMS endpoint must require a server token');
     }
     echo json_encode(['uuid'=>$service->uuid,'url'=>$url,'action'=>$input['action'],'status'=>$service->status,'environment'=>$environment->name]).PHP_EOL;

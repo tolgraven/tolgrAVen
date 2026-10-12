@@ -31,7 +31,7 @@
       ;; never silently replaces the editor's content with the original seed.
       (select-keys (:content (contract/checked-bundle
                               {:version contract/version
-                               :content (json/read-str (slurp (io/resource "content-seed.json")) :key-fn keyword)} ks)) ks))))
+                               :content (select-keys (json/read-str (slurp (io/resource "content-seed.json")) :key-fn keyword) ks)} ks)) ks))))
 
 (defonce *immediate (atom nil))
 

@@ -30,6 +30,11 @@ COPY package.json package-lock.json ./
 RUN if ! cmp -s package-lock.json /opt/prefab-package-lock.json \
         || ! cmp -s package.json /opt/prefab-package.json; then npm ci --no-audit --no-fund; fi
 COPY . .
+ARG STRAPI_URL
+# Provisioning forces a fresh build so unchanged source still observes CMS edits.
+RUN --mount=type=secret,id=STRAPI_URL,env=STRAPI_URL \
+    --mount=type=secret,id=STRAPI_READ_TOKEN,env=STRAPI_READ_TOKEN \
+    bb -cp scripts:src/cljc:resources -m build.resolve-site
 # BuildKit runs these independent branches concurrently. Each has its own target
 # directory and Maven cache, so Lein's prep/cleanup cannot erase Shadow outputs.
 FROM source AS frontend
@@ -48,7 +53,7 @@ RUN JAVA_TOOL_OPTIONS="${BUILD_CLJ_JAVA_OPTIONS}" \
 FROM source AS docs
 ARG BUILD_DOCS_JAVA_OPTIONS="-Xms64m -Xmx512m -XX:ReservedCodeCacheSize=96m"
 RUN JAVA_TOOL_OPTIONS="${BUILD_DOCS_JAVA_OPTIONS}" \
-    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :prep-tasks '^:replace []' -- codox > /tmp/codox.log 2>&1; \
+    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :prep-tasks '^:replace []' -- docs > /tmp/codox.log 2>&1; \
     result=$?; cat /tmp/codox.log; \
     test "$result" -eq 0 && ! grep -q 'Could not generate' /tmp/codox.log
 

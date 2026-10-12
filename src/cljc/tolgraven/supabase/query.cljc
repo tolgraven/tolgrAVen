@@ -1,10 +1,11 @@
 (ns tolgraven.supabase.query
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [tolgraven.supabase.catalog :as catalog]))
 
 (def ^:private direct-read-collections
-  #{"blog-comments" "blog-post-ids" "blog-posts" "chat" "users"})
+  (set (mapcat :collections (mapcat val catalog/definitions))))
 
-(def ^:private user-document-collections #{"gpt" "gpt-threads"})
+(def ^:private user-document-collections (set (mapcat :user-collections (mapcat val catalog/definitions))))
 
 (def ^:private private-collections
   #{"auth" "imagor" "instagram" "secrets" "strapi" "strava" "typesense"})
@@ -24,11 +25,9 @@
           opts [:path-document :path-collection]))
 
 (def public-columns
-  {"site_users" "id,seq_id,name,avatar,bg_color,comment_count,karma"
-   "blog_posts" "doc_id,id,permalink,user_id,title,text,tags,score,ts"
-   "blog_comments" "id,seq_id,parent_post,parent_comment,user_id,title,text,score,path,ts"
-   "chat_messages" "message_id,ts,user_id,text"
-   "user_documents" "owner_id,collection,doc_id,data,updated_at"})
+  (into {} (keep (fn [{:keys [table public-columns]}]
+                   (when public-columns [(name table) public-columns])))
+        (mapcat val catalog/definitions)))
 
 (defn- parse-long-safe [value]
   (cond
@@ -68,16 +67,13 @@
      (seq filters) (assoc :filters filters))))
 
 (def schemas
-  {"blog-posts" {:table "blog_posts" :seed-key :blog_posts :document-key :doc_id
-                 :fields {:id :id :user :user_id :ts :ts :permalink :permalink :tags :tags}
-                 :summary "doc_id,id,permalink,user_id,title,tags,score,ts" :batch-field :id
-                 :cache-document-field :id}
-   "blog-comments" {:table "blog_comments" :seed-key :blog_comments :document-key :id
-                    :fields {:id :id :user :user_id :ts :ts :parent-post :parent_post :parent-comment :parent_comment}
-                    :batch-field :parent-comment
-                    :reply-count {:table "blog_comments" :select "id,parent_comment" :parent-field :parent_comment}}
-   "users" {:table "site_users" :seed-key :users :document-key :id
-             :fields {:id :id :name :name} :batch-field :id}})
+  (into {}
+        (mapcat (fn [{:keys [table seed-key queries]}]
+                  (map (fn [[collection spec]]
+                         [collection (cond-> (assoc spec :table (name table) :seed-key seed-key)
+                                       (:reply-count spec) (assoc-in [:reply-count :table] (name table)))])
+                       queries)))
+        (mapcat val catalog/definitions)))
 
 (defn scoped-query? [opts]
   (and (:scoped? opts) (contains? schemas (path-collection-name opts))))
@@ -133,7 +129,7 @@
         counts (frequencies (map parent-field rows))]
     (update value :docs #(mapv (fn [doc] (assoc-in doc [:data :reply-count] (get counts (:id doc) 0))) %))))
 
-(defn seed-load-plan [opts]
+(defn- legacy-load-plan [opts]
   (let [{:keys [path-document path-collection] :as query-map} (normalize-query opts)
         collection (path-collection-name query-map)
         doc-id (second path-document)
@@ -146,7 +142,7 @@
       (cond-> [(if path-document
                  (entry :blog_posts "blog_posts" [[:doc_id "eq" (str doc-id)]])
                  (entry :blog_posts "blog_posts"))]
-        true (conj (if (and path-document post-id)
+        (contains? public-columns "blog_comments") (conj (if (and path-document post-id)
                      (entry :blog_comments "blog_comments" [[:parent_post "eq" post-id]])
                      (entry :blog_comments "blog_comments"))))
 
@@ -181,6 +177,10 @@
          (entry :service_configs "service_configs" [[:collection "eq" collection]]))]
 
       :else [])))
+
+(defn seed-load-plan [opts]
+  (let [tables (set (map (comp name :table) (mapcat val catalog/definitions)))]
+    (filterv #(contains? tables (:table %)) (legacy-load-plan opts))))
 
 (defn realtime-tables [query-map]
   (->> (seed-load-plan query-map)

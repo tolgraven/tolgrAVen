@@ -12,38 +12,27 @@
 (defn reset-data!
   ([] (reset-data! nil))
   ([db]
-   (if (supabase/jdbc-available?)
-     (jdbc/db-do-commands
-      (or db (supabase/database-spec))
-      (str "truncate table "
-           (string/join ", "
-                        ["auth_roles"
-                         "blog_comments"
-                         "blog_posts"
-                         "chat_messages"
-                         "service_configs"
-                         "store_documents"
-                         "site_users"])
-           " restart identity cascade"))
-     (doseq [table supabase/delete-order]
-       (supabase/reset-table-rest! table)))))
+   (let [tables (supabase/delete-order)]
+     (when (seq tables)
+       (if (supabase/jdbc-available?)
+         (jdbc/db-do-commands
+          (or db (supabase/database-spec))
+          (str "truncate table " (string/join ", " (map name tables))
+               " restart identity"))
+         (doseq [table tables]
+           (supabase/reset-table-rest! table)))))))
 
 (defn import-seed!
   ([seed] (import-seed! nil seed))
   ([db seed]
    (if (supabase/jdbc-available?)
-     (doseq [[table rows] [[:site_users (:users seed)]
-                           [:auth_roles (:roles seed)]
-                           [:blog_posts (:blog_posts seed)]
-                           [:blog_comments (:blog_comments seed)]
-                           [:chat_messages (:chat_messages seed)]
-                           [:service_configs (:service_configs seed)]
-                           [:store_documents (:store_documents seed)]]]
+     (doseq [table (supabase/table-order)
+             :let [rows (get seed (:seed-key (supabase/table-config table)))]]
        (when (seq rows)
          (jdbc/insert-multi! (or db (supabase/database-spec))
                              table
-                             (map supabase/prepare-row rows))))
-     (doseq [table supabase/table-order
+                             (map #(supabase/prepare-row table %) rows))))
+     (doseq [table (supabase/table-order)
              :let [rows (get seed (:seed-key (supabase/table-config table)))]]
        (supabase/upsert-rest! table rows)))
    seed))
@@ -75,7 +64,7 @@
 (defn- upsert-rows! [db table rows]
   (if db
     (doseq [row rows
-            :let [prepared (supabase/prepare-row row)
+            :let [prepared (supabase/prepare-row table row)
                   columns (vec (keys prepared))
                   column-names (map name columns)
                   sql (str "insert into " (name table) " ("
@@ -106,7 +95,7 @@
      (let [before (contract/contract->seed current)
            after (contract/contract->seed updated)
            changes (mapv (fn [table] [table (interop/changed-rows before after table)])
-                         supabase/table-order)
+                         (supabase/table-order))
            apply! (fn [db]
                     (doseq [[table rows] changes :when (seq rows)]
                       (upsert-rows! db table rows)))]

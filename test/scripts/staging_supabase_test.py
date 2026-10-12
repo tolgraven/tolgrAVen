@@ -92,7 +92,8 @@ class Entrypoint(unittest.TestCase):
                      'SUPABASE_PUBLIC_URL':'https://example.invalid', 'SUPABASE_ANON_KEY':'test-only'},
                 capture_output=True, text=True, check=True)
             self.assertIn('/auth/v1/health', log.read_text())
-            self.assertIn('/rest/v1/blog_posts', log.read_text())
+            self.assertIn('/rest/v1/', log.read_text())
+            self.assertNotIn('blog_posts', log.read_text())
             self.assertTrue(result.stdout.endswith('Staging Supabase ready.\nstarted\n'))
 
     def test_unready_database_times_out_without_starting_web(self):

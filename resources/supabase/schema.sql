@@ -1,3 +1,5 @@
+-- Legacy full-site snapshot retained for reference; not a provisioning input.
+-- Canonical feature SQL lives in modules/. Generate the selected plan with bb site:manifest sql.
 create table if not exists site_users (
   id text primary key,
   seq_id bigint,

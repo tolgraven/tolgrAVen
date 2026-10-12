@@ -6,16 +6,17 @@
             [tolgraven.validation-server :as validation]
             [tolgraven.page :as page]
             [tolgraven.content.contract :as content]
-            [tolgraven.modules.home.pages :as main]
-            [tolgraven.modules.blog.pages :as blog]
-            [tolgraven.modules.cv.pages :as cv]
-            [tolgraven.modules.docs.pages :as docs]))
+            [tolgraven.site-catalog :as catalog]
+            [tolgraven.site :as site]))
 
 (def router
   (reitit/router
    (into ["" {:coercion schemas/coercion :parameters {:query schemas/page-query}
              :depends [{:source :strapi :availability :startup :keys content/shell-content}]}]
-         (concat main/spec blog/spec cv/spec docs/spec))
+         (comp (mapcat (fn [[_ {:keys [pages]}]]
+                   (when pages (site/routes (var-get (requiring-resolve pages))))))
+               (remove nil?))
+         (sort-by key catalog/modules))
    {:compile coercion/compile-request-coercers :validate validation/validate-routes!}))
 
 (defn match [path] (reitit/match-by-path router path))

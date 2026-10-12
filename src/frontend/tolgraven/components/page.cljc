@@ -1,5 +1,5 @@
 (ns tolgraven.components.page
-  (:require
+  #?(:cljs (:require
     [tolgraven.component.registry]
     [tolgraven.macros :as m :refer-macros [defc defpage]]
     [tolgraven.react :as rf]
@@ -11,7 +11,10 @@
     [tolgraven.loader :as l]
     [tolgraven.components.ui :as ui]
     [tolgraven.components.shell :as common]
-    [tolgraven.modules.settings.views :as settings]))
+    #?(:module/main [tolgraven.modules.settings.views :as settings]))))
+
+#?(:cljs
+   (do
 
 (def spec main-module/spec)
 
@@ -94,7 +97,7 @@
    [ui/<zoom-to-modal> :fullscreen]
    (m/<> {:module :link-preview :defer? true})
    (m/<> {:module :user, :defer? true})
-   [settings/<settings>]
+   #?(:module/main [settings/<settings>])
    (m/<> {:module :search, :defer? true})
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
@@ -133,3 +136,5 @@
    ;                       "px - " 5 "em)")}}]common/scrollbar {}]
 
    [:a {:name "bottom" :id "bottom"}]]))
+
+))

@@ -1,11 +1,12 @@
 (ns tolgraven.modules.main.layout
   (:require [tolgraven.content.contract :as content]
-            [tolgraven.modules.home.pages :as main-pages]
+            #?(:module/home [tolgraven.modules.home.pages :as home])
+            [tolgraven.site :as site]
             [reitit.core :as reitit]))
 
 (def landing-paths
   (into #{} (comp (filter #(= :landing (:kind (second %)))) (map first))
-        (reitit/routes (reitit/router main-pages/spec))))
+        (reitit/routes (reitit/router (site/routes #?(:module/home home/spec :clj [] :default []))))))
 
 ;; The ordinary client layout and SSR use the same ordering. :init entries are
 ;; browser lifecycle instructions, not extra server-rendered DOM.

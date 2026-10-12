@@ -1,0 +1,2 @@
+;; Build-time capabilities. Omitted modules/options retain their defaults.
+{:modules {}}
