@@ -4,6 +4,8 @@
     [tolgraven.macros :refer-macros [defc]]
     [reagent.core :as r]
     [tolgraven.react :as rf]
+    [tolgraven.modules.github.message :as message]
+    [tolgraven.modules.github.schema :as schema]
     [clojure.string :as string]
     [tolgraven.components.ui :as ui]
     [tolgraven.components.image :as img]
@@ -90,9 +92,32 @@
              :on-click #(do (rf/dispatch [:github/fetch-commits-next user repo]))}
     "...or you can click here"]]))
 
+(defc <commit-message>
+  [[info subtitle title] :- schema/parsed-message]
+  [:<>
+   [:div.github-commit-message
+    [:div.info info]]
+   (when subtitle
+     [:div.github-commit-titles
+      [:span {:class (if title "subtitle" "title")
+              :style {:cursor "pointer"}
+              :on-click (fn [e]
+                          (.stopPropagation e)
+                          (rf/dispatch [:form-field [:github :search] subtitle]))}
+       subtitle]
+      (when title
+        [:<>
+         [:i.fa.fa-solid.fa-arrow-left]
+         [:span.title
+          {:style {:cursor "pointer"}
+           :on-click (fn [e]
+                       (.stopPropagation e)
+                       (rf/dispatch [:form-field [:github :search] title]))}
+          title]])])])
+
 (defc ^:private <commit-row>
   {:features [[:appear "slide-in slow"]]}
-  [{:keys [from sha main-view-position view author date ts html_url sha7 info title subtitle]}]
+  [{:keys [from sha main-view-position view author date ts html_url sha7 commit]}]
   [:div.github-commit.flex
          {:on-click #(do (rf/dispatch [:github/fetch-commit (first @from) (second @from) sha])
                          (reset! main-view-position
@@ -107,28 +132,9 @@
           [:a {:href html_url}
            [:span.github-commit-sha sha7]]
 
-          [:div.github-commit-message
-           [:div.info info]]]
-          (if title
-             [:div.github-commit-titles
-              [:span.subtitle
-               {:style {:cursor "pointer"}
-                :on-click (fn [e] (.stopPropagation e)
-                            (rf/dispatch [:form-field [:github :search] subtitle]))}
-               subtitle]
-              [:i.fa.fa-solid.fa-arrow-left]
-              [:span.title
-               {:style {:cursor "pointer"}
-                :on-click (fn [e] (.stopPropagation e)
-                            (rf/dispatch [:form-field [:github :search] title]))}
-               title]]
-             (when subtitle
-               [:div.github-commit-titles
-                [:span.title
-                 {:style {:cursor "pointer"}
-                  :on-click (fn [e] (.stopPropagation e)
-                              (rf/dispatch [:form-field [:github :search] subtitle]))}
-                 subtitle]]))])
+          ;; Parse the provider text here too so restored, previously parsed
+          ;; cache entries immediately use the current presentation rules.
+          [<commit-message> (message/parse-message (:message commit))]]])
 
 (defc <commits> "List Github commits for this repo"
   []
@@ -168,11 +174,12 @@
                        :color "var(--fg-5)"}}
           "Press a commit for details and diff"])
       (if (= @view :commits)
-       (for [{:keys [commit author html_url sha sha7 message date clock ts] :as item} @commits
-              :let [[info subtitle title] message]]
-            ^{:key (str "github-commit-" ts)}
-        [<commit-row> (assoc item :from from :main-view-position main-view-position :view view
-                            :info info :title title :subtitle subtitle)])
+       (for [{:keys [sha] :as item} @commits]
+            ^{:key (str "github-commit-" sha)}
+        [<commit-row> (assoc item
+                            :from from
+                            :main-view-position main-view-position
+                            :view view)])
 
           [:div
             [<commit> @view [ui/<close> #(reset! view :commits)]]])
