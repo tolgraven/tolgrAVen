@@ -122,7 +122,10 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Release builds reject development inspectors in their resolved source graph.
   Periodically remove completed isolated `.shadow-cljs/builds/audit-*` caches;
   inspect active workers first and retain watched caches and useful audit reports.
-- The CIDER Lein plugin supplies CIDER middleware; list Piggieback and Shadow explicitly in the development REPL handler. See `doc/dependencies.md` for upstream startup warnings.
+- The CIDER Lein plugin supplies CIDER middleware; list Piggieback and Shadow
+  explicitly in the development REPL handler, and
+  Piggieback in Shadow's separate nREPL configuration. Keep the cold-start timeout
+  large enough for the initial watches; see `doc/dependencies.md`.
 - Keep Ring mocks in `:project/test`, prototype dependencies/source paths in `:experiments`, and the S3 wagon in `:s3-publish`.
 - The personal `deploy-private` alias uses `lein-shell` and AWS CLI with a seeded local Maven staging repository; see `doc/dependencies.md` and `doc/lein-profiles.clj`.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
