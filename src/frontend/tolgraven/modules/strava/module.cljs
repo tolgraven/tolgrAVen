@@ -8,7 +8,10 @@
     [tolgraven.modules.strava.views :as view]))
 
 (def spec
-  {:depends (get content-contract/module-dependencies :strava [])
+  {:content [:strava]
+   :server {:routes 'tolgraven.modules.strava.api/routes
+            :requires-features {:main #{:services}}}
+   :depends (get content-contract/module-dependencies :strava [])
    :id :strava
    :styles ["/css/tolgraven/modules/strava.min.css"]
    :view {:view #'view/<strava>}

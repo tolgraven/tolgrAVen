@@ -1,6 +1,7 @@
 (ns tolgraven.macros
   #?(:clj (:refer-clojure :exclude [for tap>]))
   (:require [clojure.string :as string]
+            #?(:clj [tolgraven.build.site :as site])
             #?@(:clj [[malli.core :as m]
                       [malli.error :as me]])
             #?@(:cljs [[reagent.core :as r]
@@ -55,7 +56,12 @@
    Use (<> <component> spec), (<> :blog/post spec), or
    (<> {:module :blog :view :post} spec)."
   [component & args]
-  `(tolgraven.loader/component-vector ~component [~@args]))
+  (let [module (cond
+                 (and (keyword? component) (namespace component)) (keyword (namespace component))
+                 (map? component) (:module component))]
+    (site/track! &env)
+    (when (or (nil? module) (site/enabled? module))
+      `(tolgraven.loader/component-vector ~component [~@args]))))
 
 (defmacro defpage
   "A defc page declaration with a mandatory error boundary. Other features and

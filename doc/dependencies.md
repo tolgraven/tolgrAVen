@@ -171,3 +171,10 @@ Finally run `make docker-prefab` and verify the published dependency-hash image
 and compatibility tag. Keep the fallback prefab stage aligned with
 `Dockerfile.builder`. Run a final image build to check AOT, documentation and
 packaging together. Ordinary source-only changes reuse the prefab.
+
+Supabase's SDK is bundled in the ordinary lazy `:supabase` Shadow module. The
+vendored UMD file is preserved for reference and excluded from runtime jars;
+server HTML does not include it. Phoenix 0.4.5 emits two npm JSDoc parse notices
+for TypeScript-style `@template [T=PresenceState]` comments. These do not change
+executable code; configuration audits still require zero CLJS compiler warnings
+and recognize only those specific upstream comment notices.

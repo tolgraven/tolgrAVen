@@ -5,60 +5,40 @@
    [clojure.data.json :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as string]
-   [tolgraven.config :as config])
+   [tolgraven.config :as config]
+   [tolgraven.supabase.catalog :as catalog]
+   [tolgraven.validation :as validation]
+   [tolgraven.site :as site])
   (:import
    [java.net URLEncoder]
    [org.postgresql.util PGobject]))
 
-(def table-order
-  [:site_users
-   :auth_roles
-   :blog_posts
-   :blog_comments
-   :chat_messages
-   :service_configs
-   :store_documents])
+(defn table-definitions []
+  (let [options (merge-with merge (select-keys (:modules site/config) (keys catalog/definitions))
+                            (get-in config/env [:supabase :modules]))]
+    (validation/check! "Supabase module options" catalog/module-options (or options {}))
+    (doseq [[owner settings] options]
+      (when-not (contains? catalog/definitions owner)
+        (throw (ex-info "Unknown Supabase storage owner" {:owner owner})))
+      (let [features (conj (set (concat (keep :feature (get catalog/definitions owner))
+                                        (keys (get-in site/config [:modules owner])))) :enabled)]
+        (doseq [feature (keys settings) :when (not (contains? features feature))]
+          (throw (ex-info "Unknown Supabase storage feature" {:owner owner :feature feature})))))
+    (let [tables (catalog/selected-tables catalog/definitions options)]
+      (doseq [table tables]
+        (validation/check! "Supabase table declaration" catalog/table (dissoc table :owner)))
+      tables)))
 
-(def delete-order
-  [:auth_roles
-   :blog_comments
-   :blog_posts
-   :chat_messages
-   :service_configs
-   :store_documents
-   :site_users])
+(defn table-order []
+  (mapv :table (filter :seed-key (table-definitions))))
 
-(def delete-filters
-  {:site_users "id=not.is.null"
-   :auth_roles "role=not.is.null"
-   :blog_posts "id=not.is.null"
-   :blog_comments "id=not.is.null"
-   :chat_messages "message_id=not.is.null"
-   :service_configs "service=not.is.null"
-   :store_documents "collection=not.is.null"})
+(defn delete-order []
+  (mapv :table (reverse (table-definitions))))
 
-(def table-config
-  {:site_users {:seed-key :users
-                :order "id.asc"
-                :on-conflict "id"}
-   :auth_roles {:seed-key :roles
-                :order "role.asc,user_id.asc"
-                :on-conflict "role,user_id"}
-   :blog_posts {:seed-key :blog_posts
-                :order "id.asc"
-                :on-conflict "id"}
-   :blog_comments {:seed-key :blog_comments
-                   :order "ts.asc,id.asc"
-                   :on-conflict "id"}
-   :chat_messages {:seed-key :chat_messages
-                   :order "message_id.asc"
-                   :on-conflict "message_id"}
-   :service_configs {:seed-key :service_configs
-                     :order "service.asc"
-                     :on-conflict "service"}
-   :store_documents {:seed-key :store_documents
-                     :order "collection.asc,doc_id.asc"
-                     :on-conflict "collection,doc_id"}})
+(defn table-config [table]
+  (if-let [declaration (some #(when (= table (:table %)) %) (table-definitions))]
+    (catalog/table-config declaration)
+    (throw (ex-info "Supabase table is disabled or undeclared" {:table table}))))
 
 (defn- env [k]
   (System/getenv k))
@@ -222,22 +202,16 @@
     (.setType "jsonb")
     (.setValue (json/write-str value))))
 
-(def jsonb-columns
-  #{:comments :voted :raw :path :config :data})
-
-(defn prepare-row [row]
-  (reduce-kv
-   (fn [acc k v]
-     (assoc acc
-            k
-            (if (contains? jsonb-columns k)
-              (->jsonb v)
-              v)))
-   {}
-   row))
+(defn prepare-row [table row]
+  (let [jsonb-columns (:jsonb (table-config table))]
+    (reduce-kv
+     (fn [acc k v]
+       (assoc acc k (if (contains? jsonb-columns k) (->jsonb v) v)))
+     {}
+     row)))
 
 (defn reset-table-rest! [table]
-  (let [[field value] (string/split (delete-filters table) #"=" 2)]
+  (let [[field value] (string/split (:delete-filter (table-config table)) #"=" 2)]
     (request! :delete
               (name table)
               {:query-params {"select" "*"
@@ -255,25 +229,24 @@
       :query-params {"on_conflict" (:on-conflict (table-config table))}})))
 
 (defn fetch-table-rest [table]
-  (let [{:keys [seed-key order]} (table-config table)]
+  (let [{:keys [seed-key order select]} (table-config table)]
     [seed-key
      (loop [offset 0 rows []]
        (let [page (:body (request! :get (name table)
-                                  {:query-params {"select" "*" "order" order
+                                  {:query-params {"select" select "order" order
                                                   "offset" offset "limit" 500}}))]
          (if (seq page)
            (recur (+ offset (count page)) (into rows page))
            rows)))]))
 
 (defn fetch-seed []
-  (if (jdbc-available?)
-    {:users (jdbc/query (database-spec) ["select * from site_users order by id"])
-     :roles (jdbc/query (database-spec) ["select role, user_id from auth_roles order by role, user_id"])
-     :blog_posts (jdbc/query (database-spec) ["select * from blog_posts order by id"])
-     :blog_comments (jdbc/query (database-spec) ["select * from blog_comments order by ts, id"])
-     :chat_messages (jdbc/query (database-spec) ["select * from chat_messages order by message_id"])
-     :service_configs (jdbc/query (database-spec) ["select * from service_configs order by service"])
-     :store_documents (jdbc/query (database-spec) ["select * from store_documents order by collection, doc_id"])}
-    (into {}
-          (map fetch-table-rest)
-          table-order)))
+  (into {}
+        (map (fn [table]
+               (if (jdbc-available?)
+                 (let [{:keys [seed-key select order]} (table-config table)
+                       sql-order (string/replace order #"\.(asc|desc)" " $1")]
+                   [seed-key (jdbc/query (database-spec)
+                                        [(str "select " select " from " (name table)
+                                              " order by " sql-order)])])
+                 (fetch-table-rest table))))
+        (table-order)))

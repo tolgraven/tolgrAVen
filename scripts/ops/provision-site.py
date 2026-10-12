@@ -11,8 +11,11 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[2]
-TABLES = ('site_users', 'auth_roles', 'blog_posts', 'blog_comments', 'chat_messages',
-          'service_configs', 'store_documents', 'comment_votes', 'user_documents')
+def site_schema():
+    subprocess.run(['bb', 'site:resolve'], cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
+    result = subprocess.run(['bb', 'site:manifest'], cwd=ROOT, text=True,
+                            capture_output=True, check=True)
+    return json.loads(result.stdout)
 
 
 def validate(spec):
@@ -33,7 +36,8 @@ def validate(spec):
         raise ValueError('environments must contain production and/or staging')
     urls = set()
     for config in environments.values():
-        for key in ('web_url', 'supabase_url') + (('cms_url',) if config.get('cms_url') else ()):
+        uses_supabase = bool(spec.get('site', {'tables': [True]})['tables'])
+        for key in ('web_url',) + (('supabase_url',) if uses_supabase else ()) + (('cms_url',) if config.get('cms_url') else ()):
             url = urlparse(config[key])
             if (url.scheme != 'https' or not url.hostname or url.port or url.username or url.password
                     or url.path not in ('', '/') or url.query or url.fragment):
@@ -83,7 +87,11 @@ def capacity_budget(state, running):
     for env in state['environments'].values():
         if env.get('cms_container') and env['cms_container'] not in running:
             required += 768
-        if env['database_container'] not in running:
+        database = env.get('database_container') or env.get('retained_database_container')
+        if not database:
+            if not any(name.startswith(env['application_uuid']) for name in running):
+                required += 1024
+        elif database not in running:
             required += 3072  # Full Supabase stack plus its web app, before starting either.
         elif not any(re.fullmatch(re.escape(env['application_uuid']) + r'(?:-\d+|-pr-\d+)?', name)
                      for name in running):
@@ -112,11 +120,12 @@ def sql(spec, database, query):
                       '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', 'postgres'], query)
 
 
-def schema(spec, state):
-    script = '\n'.join((ROOT / 'resources/supabase' / name).read_text()
-                       for name in ('schema.sql', 'operations.sql'))
+def schema(spec, state, selected):
+    script, tables = selected['sql'], selected['tables']
     for name, env in state['environments'].items():
-        database = env['database_container']
+        database = env.get('database_container') or env.get('retained_database_container')
+        if not database:
+            continue
         for attempt in range(120):
             try:
                 ready = sql(spec, database, "select to_regclass('auth.users') is not null;").strip() == 't'
@@ -131,8 +140,8 @@ def schema(spec, state):
         result = sql(spec, database,
                      "select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace "
                      "where n.nspname='public' and c.relname in (" +
-                     ','.join("'" + table + "'" for table in TABLES) + ') and c.relrowsecurity;').strip()
-        if result != str(len(TABLES)):
+                     ','.join("'" + table + "'" for table in tables) + ') and c.relrowsecurity;').strip() if tables else '0'
+        if result != str(len(tables)):
             raise RuntimeError(f'{name}: schema verification failed')
         print(f'{name}: schema, RPCs and RLS verified ({result} tables)', flush=True)
 
@@ -147,6 +156,8 @@ def provision_cms(spec, state, action):
                 'environment_uuid': env['environment_uuid'], 'application_uuid': env['application_uuid'],
                 'url': config['cms_url'], 'admin_email': config['cms_admin_email'],
                 'seed': config.get('cms_seed_content', False),
+                'site': spec.get('site'),
+                'webhooks': config.get('cms_webhooks', {}),
                 'image': spec.get('cms_image', '127.0.0.1:5005/tolgraven/strapi:content-v2')}
         payload = base64.b64encode(json.dumps(data).encode()).decode()
         source = "<?php $input=json_decode(base64_decode('" + payload + "'),true); ?>\n"
@@ -160,7 +171,7 @@ def provision_cms(spec, state, action):
 def plan(spec):
     return {'project': spec.get('project_uuid', spec['name']), 'server': spec['server_uuid'],
             'data': 'empty: schema and policies only; no production data or users are copied',
-            'environments': {name: {'web': config['web_url'], 'supabase': config['supabase_url'],
+            'environments': {name: {'web': config['web_url'], 'supabase': config.get('supabase_url') if spec.get('site', {'tables': [True]})['tables'] else None,
                                     'git_branch': config['branch'], 'separate_database_and_storage': True,
                                     'cms': config.get('cms_url'), 'cms_seed': config.get('cms_seed_content', False)}
                              for name, config in spec['environments'].items()}}
@@ -172,13 +183,16 @@ def main():
     parser.add_argument('manifest', type=Path)
     parser.add_argument('--emit-php', action='store_true', help='Render a Coolify-container script without executing it')
     args = parser.parse_args()
-    spec = validate(json.loads(args.manifest.read_text()))
+    spec = json.loads(args.manifest.read_text())
+    selected = site_schema()
+    spec['site'] = {key: selected[key] for key in ('config', 'available-modules', 'pages', 'modules', 'tables', 'content')}
+    spec = validate(spec)
     if args.action == 'plan':
         print(json.dumps(plan(spec), indent=2))
         return
     if args.emit_php:
-        if any(config.get('supabase_env') for config in spec['environments'].values()):
-            parser.error('--emit-php is disabled for manifests with Supabase configuration values')
+        if any(config.get('supabase_env') or config.get('cms_webhooks') for config in spec['environments'].values()):
+            parser.error('--emit-php is disabled for manifests containing credential configuration')
         if args.action in ('schema', 'up'):
             parser.error('--emit-php is supported only for individual Coolify actions')
         print(php_script(spec, args.action))
@@ -190,7 +204,7 @@ def main():
         check_capacity(spec, state)
         remote(spec, 'start')
         provision_cms(spec, state, 'start')
-        schema(spec, state)
+        schema(spec, state, selected)
         print('Waiting for Supabase HTTPS, REST and Auth readiness...', flush=True)
         deadline = time.monotonic() + 600
         while True:
@@ -231,7 +245,7 @@ def main():
         result = remote(spec, 'start')
     elif args.action == 'schema':
         state = remote(spec, 'status')
-        schema(spec, state)
+        schema(spec, state, selected)
         result = state
     else:
         result = remote(spec, args.action)

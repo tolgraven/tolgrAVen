@@ -122,3 +122,12 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   bounded/redacted actual values, native query ownership, capture feedback and
   lifecycle cleanup. Verify picker/pop-out/source navigation in an isolated dev
   instance, and audit development namespaces out of browser/Node release graphs.
+
+- Supabase catalog checks cover default/disabled owners, optional comments,
+  custom table discovery, dependency ordering, JSONB ownership, REST/JDBC parity
+  and explicit reset scope. Replacement transports do not establish live DB/RLS
+  behavior; use a disposable PostgreSQL database for actual reset/import checks.
+
+- Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
+  Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
+  Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.

@@ -51,8 +51,10 @@
   (let [put-links (fn [links]
                     (doall
                      (for [[title url page] links
-                           :let [id (str "menu-link-" (string/lower-case title))]]  ^{:key id}
-                          [:li [:a {:href @(rf/subscribe [:href (keyword page)])
+                           :let [id (str "menu-link-" (string/lower-case title))
+                                 href @(rf/subscribe [:href (keyword page)])]
+                           :when (seq href)]  ^{:key id}
+                          [:li [:a {:href href
                                     :name title :id id
                                     :class (when (= (keyword page)
                                                     @(rf/subscribe [:common/page-id]))

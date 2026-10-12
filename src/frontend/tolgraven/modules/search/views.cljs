@@ -11,7 +11,8 @@
     [tolgraven.components.ui :as ui]
     [tolgraven.components.image :as img]
     [tolgraven.util :as util :refer [at]])
-  (:require-macros [tolgraven.macros :as m]))
+  (:require-macros [tolgraven.macros :as m]
+                   [tolgraven.build.site :refer [when-enabled]]))
 
 (m/defc <button> "Search button, press to show input field..."
   []
@@ -157,6 +158,7 @@
      (m/for [highlight highlights]
        [link-preview/<md> (:snippet highlight)])]))
 
+(when-enabled :blog :comments
 (m/defc <blog-comment-results> "Show hits that are blog post comments"
   [highlights document]
   (let [{:keys [id title text user ts]} document]
@@ -171,6 +173,8 @@
          [:div.blog-comment-text
           [link-preview/<md> (:snippet highlight)]])]]]))
 
+)
+
 (m/defc <instant-results> "Show results while searching"
   [open?]
   (let []
@@ -179,11 +183,14 @@
       [:div.search-instant-results
        [:div.blog
         [<instant-result-category> "blog-posts" <blog-post-results> "blog-post" "zoom-y"]]
-       [:div.blog-comments>div.blog-comments-inner
-        [<instant-result-category> "blog-comments" <blog-comment-results> "blog-comment-around flex" "zoom"]]])))
+       (when-enabled :blog :comments
+         [:div.blog-comments>div.blog-comments-inner
+          [<instant-result-category> "blog-comments" <blog-comment-results> "blog-comment-around flex" "zoom"]])])))
 
 (m/defc <full-results> "More full complete and whatnot"
   [collection query])
+
+(def collections (into ["blog-posts"] (when-enabled :blog :comments ["blog-comments"])))
 
 (m/defc <ui> "The search ui. Initially runs over blog-posts and comments, but should later also search docs and hence source-code."
   {:features [:error-boundary]}
@@ -195,10 +202,10 @@
        {:class (when @open? "search-ui-open")
         :ref #(when % (rf/dispatch [:search/init]))}
 
-       [<box> ["blog-posts" "blog-comments"]
+       [<box> collections
         :model (rf/subscribe [:search/get-query "blog-posts"])
         :open? @open?
         :height (if @open? "2em" "2em")]
-       [<suggestions> ["blog-posts" "blog-comments"]]
+       [<suggestions> collections]
        [<instant-results> @open?]
        ])))

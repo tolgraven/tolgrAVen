@@ -7,7 +7,9 @@
     [tolgraven.modules.instagram.views :as view]))
 
 (def spec
-  {:depends (get content-contract/module-dependencies :instagram [])
+  {:server {:routes 'tolgraven.modules.instagram.api/routes
+            :requires-features {:main #{:services}}}
+   :depends (get content-contract/module-dependencies :instagram [])
    :id :instagram
    :styles ["/css/tolgraven/modules/instagram.min.css"]
    :view {:view #'view/<instagram>}

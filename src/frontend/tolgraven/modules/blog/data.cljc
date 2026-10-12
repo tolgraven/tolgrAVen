@@ -1,8 +1,12 @@
 (ns tolgraven.modules.blog.data
   "Shared public read declarations for blog subscriptions, route preloading and SSR."
-  (:require [clojure.string :as string]
-            [tolgraven.modules.blog.comments :as comments]
+  #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
+  (:require #?(:clj [tolgraven.build.site :refer [when-enabled]]) [clojure.string :as string]
+            #?(:feature/blog-comments [tolgraven.modules.blog.comments :as comments])
             [tolgraven.supabase.query :as query]))
+
+#?(:clj (when-enabled :blog :comments
+           (require '[tolgraven.modules.blog.comments :as comments])))
 
 (def page-size 3)
 (def summaries-query {:path-collection [:blog-posts] :scoped? true :summary? true})
@@ -22,21 +26,25 @@
     (->> summaries (map :id) (sort >)
          (drop (* (or size page-size) (dec (or page 1)))) (take (or size page-size)) vec)))
 
-(defn comment-limit [limits id]
+(when-enabled :blog :comments
+  (defn comment-limit [limits id]
   (let [amount (get limits id)]
-    (if (and (int? amount) (pos? amount)) (max comments/page-size amount) comments/page-size)))
+    (if (and (int? amount) (pos? amount)) (max comments/page-size amount) comments/page-size))))
 
-(defn visible-roots [{:keys [roots comment-limits]}]
+(when-enabled :blog :comments
+  (defn visible-roots [{:keys [roots comment-limits]}]
   (mapcat (fn [[id rows]]
             (take (comment-limit comment-limits id) (reverse (sort-by (juxt :ts :id) rows))))
-          (sort-by key (group-by :parent-post roots))))
+          (sort-by key (group-by :parent-post roots)))))
 
 (def plan
-  [{:id :summaries :queries (fn [_] [summaries-query])}
+  (vec (concat [{:id :summaries :queries (fn [_] [summaries-query])}
    {:id :posts :queries (fn [{:keys [post-id page size]}]
                          [(if post-id (post-query post-id)
                               (page-query (dec (or page 1)) (or size page-size)))])}
-   {:id :roots :depends [:posts]
+   ]
+   (when-enabled :blog :comments
+     [   {:id :roots :depends [:posts]
     :queries (fn [{:keys [posts comment-limits]}]
                (mapv #(comments/root-query (:id %) (comment-limit comment-limits (:id %))) posts))}
    {:id :children :depends [:roots]
@@ -52,9 +60,11 @@
                                    (comments/expanded? thread-expanded
                                                        [(:parent-post %) (:parent-comment %) (:id %)]))
                              children)))}
-   {:id :authors :depends [:posts :roots :children :grandchildren]
+])
+   [
+   {:id :authors :depends (into [:posts] (when-enabled :blog :comments [:roots :children :grandchildren]))
     :queries (fn [{:keys [posts roots children grandchildren]}]
-               (mapv query/profile-query (sort (distinct (keep :user (concat posts roots children grandchildren))))))}])
+               (mapv query/profile-query (sort (distinct (keep :user (concat posts roots children grandchildren))))))}])))
 
 (defn- display-date [ts now]
   (when ts
@@ -81,8 +91,9 @@
      :posts (mapv #(-> % decorate (update :tags (fn [tags] (vec (distinct (remove string/blank? (if (string? tags) (string/split tags #"\s+") tags))))))) posts)
      :comments (mapv decorate (concat roots children grandchildren))
      :summaries summaries
-     :comment-parents (mapv #(hash-map :post-id (:parent-post %) :parent-id (:id %))
+     :comment-parents (or (when-enabled :blog :comments
+                       (mapv #(hash-map :post-id (:parent-post %) :parent-id (:id %))
                            (concat (visible-roots values)
                                    (filter #(comments/expanded? thread-expanded
-                                                                [(:parent-post %) (:parent-comment %) (:id %)]) children)))
+                                                                [(:parent-post %) (:parent-comment %) (:id %)]) children)))) [])
      :app-db-edn (pr-str {:store {:scoped cache}})}))

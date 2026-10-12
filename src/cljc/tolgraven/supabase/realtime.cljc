@@ -1,13 +1,13 @@
 (ns tolgraven.supabase.realtime
   (:require [clojure.string :as string]
-            [tolgraven.supabase.query :as query]))
+            [tolgraven.supabase.query :as query]
+            [tolgraven.supabase.catalog :as catalog]))
 
 (def tables
-  {"site_users" {:seed-key :users :key [:id]}
-   "blog_posts" {:seed-key :blog_posts :key [:id]}
-   "blog_comments" {:seed-key :blog_comments :key [:id]}
-   "chat_messages" {:seed-key :chat_messages :key [:message_id]}
-   "user_documents" {:seed-key :store_documents :key [:owner_id :collection :doc_id]}})
+  (into {} (keep (fn [{:keys [table seed-key cache-key key public-columns]}]
+                   (when public-columns
+                     [(name table) {:seed-key (or cache-key seed-key table), :key key}])))
+        (mapcat val catalog/definitions)))
 
 (def empty-seed (zipmap (map :seed-key (vals tables)) (repeat [])))
 

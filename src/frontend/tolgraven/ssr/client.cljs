@@ -52,7 +52,6 @@
           (when @*active?
             (reset! context/*interactive? true)
             (r/flush)
-            (rf/dispatch [:store/init])
             (when (and ^boolean goog.DEBUG (:hydrate? @restore/*context))
               (rf/dispatch [:dev-console/hydrated]))
             (rf/dispatch [:page/hydrated])

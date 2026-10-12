@@ -7,7 +7,8 @@
     [tolgraven.modules.link-preview.views :as view]))
 
 (def spec
-  {:depends (get content-contract/module-dependencies :link-preview [])
+  {:server {:routes 'tolgraven.modules.link-preview.api/routes}
+   :depends (get content-contract/module-dependencies :link-preview [])
    :id :link-preview
    :ssr-styles :deferred
    :styles ["/css/tolgraven/modules/link-preview.min.css"]

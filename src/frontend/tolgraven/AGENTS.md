@@ -300,3 +300,16 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   the existing re-frame queries: acquire in commit, dispose on unmount. Ordinary
   application components keep their Reagent subscriptions.
   Do not publish debug records into subscriptions owned by an uncommitted host.
+
+- Module specs expose `:storage storage/tables` from portable owner declarations.
+  Keep table keys, projections and persistence metadata there, independent of
+  browser implementation code. See `doc/supabase-tables.md`.
+
+- Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
+  Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
+  Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.
+
+- Supabase transport and npm SDK belong to the ordinary `:supabase` module.
+  Shared bindings/account actions acquire it through `supabase/runtime.cljs`;
+  do not initialize it globally or add an SDK script to server HTML. Keep restored
+  public state renderable while the module is loading.

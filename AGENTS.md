@@ -117,7 +117,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 ## Dependency ownership
 
 - Shadow owns the CLJS/Closure compiler graph in `:provided`; explicit production build commands include that profile, while runtime packaging excludes it. Keep the managed Codox analyzer version aligned with Shadow.
-- Use locked local npm tools and run `npm run vendor:sync` after Supabase SDK updates.
+- Use locked local npm tools. Supabase uses its npm SDK inside the lazy `:supabase` module;
+  `npm run vendor:sync` maintains only the preserved legacy UMD reference.
 - 10x/re-frisk are opt-in through `:legacy-debug`; default development retains the custom console and re-frame-pair tracing. See `doc/re-frame-pair.md`.
 - Release builds reject development inspectors in their resolved source graph.
   Periodically remove completed isolated `.shadow-cljs/builds/audit-*` caches;
@@ -266,3 +267,15 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 
 ## Deploy
 - Follow `doc/docker-builds.md` for `make docker` and PR preview cleanup; `doc/site-provisioning.md` covers separate sites and production/staging services.
+
+- Module specs expose portable `:storage` declarations. Supabase seed tooling,
+  public projections and realtime identities derive from that catalog; runtime
+  `:supabase :modules` options select seed/reset owners and feature groups.
+  SQL provisioning remains separate; see `doc/supabase-tables.md`.
+
+- Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
+  Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
+  Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.
+
+- `lein with-profile uberjar,provided docs` stages selected source namespaces before
+  Codox reads them; use this alias instead of invoking Codox directly.

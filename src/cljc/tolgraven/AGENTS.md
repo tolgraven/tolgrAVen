@@ -84,3 +84,12 @@ server format handlers retain their native JVM Java-time support.
   macro. Explicit `:spec false` and ordinary non-spec primitives retain the direct
   Reagent path; per-instance ownership and protected page/data contracts are
   documented in `doc/components.md` and implemented by the browser/Node runtime.
+
+- `supabase/catalog.cljc` bakes module-owned portable `:storage` declarations via
+  existing module discovery. Keys/projections/JSONB columns have one owner;
+  query/realtime and JVM seed tooling consume that data. Track portable sources
+  with module entries in Shadow. See `doc/supabase-tables.md`.
+
+- Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
+  Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
+  Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.

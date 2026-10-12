@@ -9,7 +9,7 @@ if [ "${SUPABASE_WAIT_FOR_READY:-false}" = true ]; then
   until curl --fail --silent --output /dev/null --max-time 5 \
       --header "apikey: $SUPABASE_ANON_KEY" "${SUPABASE_PUBLIC_URL%/}/auth/v1/health" && \
     curl --fail --silent --output /dev/null --max-time 5 \
-      --header "apikey: $SUPABASE_ANON_KEY" "${SUPABASE_PUBLIC_URL%/}/rest/v1/blog_posts?select=id&limit=1"; do
+      --header "apikey: $SUPABASE_ANON_KEY" "${SUPABASE_PUBLIC_URL%/}/rest/v1/"; do
     if [ "$(date +%s)" -ge "$deadline" ]; then
       echo 'Staging Supabase did not become ready; refusing to serve the web app.' >&2
       exit 1

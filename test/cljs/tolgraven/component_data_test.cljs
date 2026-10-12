@@ -11,7 +11,7 @@
             [tolgraven.component.data :as data]
             [tolgraven.component.sources]
             [tolgraven.content.client :as content]
-            [tolgraven.supabase.client :as supabase]
+            [tolgraven.modules.supabase.client :as supabase]
             [tolgraven.service-status :as status]
             [tolgraven.macros :refer-macros [defc]]))
 (defonce *created (atom 0))

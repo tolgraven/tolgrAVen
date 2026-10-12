@@ -8,7 +8,11 @@
     [tolgraven.modules.search.views :as view]))
 
 (def spec
-  {:depends (get content-contract/module-dependencies :search [])
+  {:server {:routes 'tolgraven.modules.search.api/routes
+            :requires #{:blog}
+            :sql ["supabase/modules/search.sql"]
+            :sql-without-comments ["supabase/modules/search_posts.sql"]}
+   :depends (get content-contract/module-dependencies :search [])
    :id :search
    :styles ["/css/tolgraven/modules/search.min.css"]
    :view {:view #'view/<ui>

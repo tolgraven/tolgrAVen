@@ -1,6 +1,7 @@
 (ns tolgraven.supabase.reader
   "JVM transport for the same public query plans used by the browser adapter."
   (:require [tolgraven.config :as config]
+            [tolgraven.site :as site]
             [tolgraven.validation :as validation]
             [tolgraven.supabase.schema :as schema]
             [clojure.data.json :as json]
@@ -61,7 +62,10 @@
     (mapv results queries)))
 
 (defn public-context! []
-  ;; The trusted-author list is server-owned configuration, also exposed by the
-  ;; public settings endpoint. Page declarations cannot read private role rows.
-  {:trusted-author-ids (concurrent/upstream! #(mapv :user_id (:body (platform/request! :get "auth_roles"
-                                            {:query-params {"role" "eq.admins" "select" "user_id"}}))))})
+  ;; The trusted-author list is server-owned configuration, never private plan data.
+  {:trusted-author-ids
+   (if-not (site/enabled? :user)
+     []
+     (concurrent/upstream!
+      #(mapv :user_id (:body (platform/request! :get "auth_roles"
+                               {:query-params {"role" "eq.admins", "select" "user_id"}})))))})

@@ -1,13 +1,14 @@
 (ns tolgraven.build-modules-test
   (:require [clojure.test :refer [deftest is testing]]
             [tolgraven.build.modules :as modules]
+            [tolgraven.build.site :as site]
             [clojure.java.io :as io]
             [clojure.string :as string]))
 
 (deftest module-build-and-runtime-catalog-have-one-owner
   (let [found (modules/discover)
         by-id (into {} (map (juxt :id identity)) found)]
-    (is (every? #(contains? by-id %) [:blog :cv :docs :test :user :link-preview :carousel :contact]))
+    (is (every? #(contains? by-id %) [:blog :cv :docs :test :user :link-preview :carousel :contact :supabase]))
     (is (not (contains? by-id :main)))
     (is (= 'tolgraven.modules.experiments.module (get-in by-id [:test :entry])))
     (is (= #{:main :user :link-preview} (get-in by-id [:blog :depends-on])))
@@ -56,6 +57,7 @@
       (let [styles (expand-styles nil env)
             resources (map second @*reads)]
         (is (= (set (keys styles)) (set (map :id (modules/discover)))))
+        (is (some #{site/resource} resources))
         (is (= (count resources) (count (distinct resources)))
             "Declaration and icon owners are tracked once")
         (doseq [{:keys [entry]} (modules/discover)]
@@ -65,13 +67,13 @@
             (is (some #{path} resources) "Every discovered declaration is tracked")))
         (is (some #{"tolgraven/modules/main/module.cljs"} resources))
         (is (some #{"tolgraven/components/shell.cljs"} resources))
-        (is (some #{"tolgraven/modules/user/views.cljs"} resources))
+        (is (some #{"tolgraven/modules/user/views.cljc"} resources))
         (is (some #{"/css/tolgraven/modules/icons-user.min.css"} (:paths (:user styles))))
         (is (every? io/resource resources) "Every tracked entry resolves on the source classpath")
         (is (every? #(= env (first %)) @*reads)))
       (reset! *reads [])
       (expand-loadables nil env)
-      (is (= (count (modules/discover)) (count @*reads))))))
+      (is (= (+ 1 (count (modules/discover)) (if (io/resource site/overrides-resource) 1 0)) (count @*reads))))))
 
 (deftest deferred-ssr-styles-remain-in-the-runtime-catalog
   (let [file (java.io.File/createTempFile "module-style-policy" ".cljs")]
@@ -82,3 +84,24 @@
       (spit file "(ns example.module)\n(def spec {:id :example :ssr-styles (identity :deferred)})")
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"literal" (modules/declaration file)))
       (finally (.delete file)))))
+
+(deftest site-overrides-preserve-unspecified-file-options
+  (is (= {:modules {:blog {:enabled true :comments false} :chat {:enabled false}}
+          :pages {:home true :cv false}}
+         (site/merge-config {:modules {:blog {:enabled true :comments true} :chat {:enabled false}}
+                             :pages {:home true :cv true}}
+                            {:modules {:blog {:comments false}} :pages {:cv false}})))
+  (doseq [config [{:modules {:main {:enabled false}}}
+                  {:modules {:coercion {:enabled false}}}
+                  {:modules {:blog {:comments "false"}}}
+                  {:modules {} :secrets {}}]]
+    (is (thrown? clojure.lang.ExceptionInfo (site/validate! config)))))
+
+(deftest invalid-site-selections-fail-before-building
+  (doseq [config [{:modules {:supabase {:enabled false}}}
+                  {:modules {:missing {:enabled true}}}
+                  {:modules {:blog {:comment false}}}
+                  {:modules {:user {:enabled false}}}
+                  {:modules {:blog {:enabled false}}}]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (modules/select-declarations (modules/all-declarations) config)))))

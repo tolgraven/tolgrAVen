@@ -76,8 +76,7 @@
                        ["/css/tolgraven/icons.min.css"])
    (assets/load-bundles "public"
                         {"main.js" [(str "/js/compiled/out/"
-                                         (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))]
-                         "supabase.js" ["/vendor/supabase.js"]})
+                                         (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))]})
    (assets/load-assets "public"
                        [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?|webp|avif)$"
                         #"/media/.*\.(jpg?|jpeg?|webp|avif|mp4|webm)$"])

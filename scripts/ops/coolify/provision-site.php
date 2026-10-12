@@ -94,9 +94,10 @@ try {
             $environment = $project->environments()->create(['name' => $name]);
         }
         $resourceMarker = "$marker/$name";
+        $usesSupabase = !array_key_exists('site', $spec) || count($spec['site']['tables'] ?? []) > 0;
         $serviceName = $spec['name'].'-'.$name.'-supabase';
         $service = $environment->services()->where('name', $serviceName)->first();
-        if (!$service) {
+        if (!$service && $usesSupabase) {
             requireThat($action === 'prepare', 'Run prepare first');
             $domainCheck = checkIfDomainIsAlreadyUsedViaAPI(collect([$config['supabase_url']]), $server->team_id);
             requireThat(!($domainCheck['hasConflicts'] ?? false), 'Supabase domain is already used');
@@ -112,11 +113,12 @@ try {
             $service->parse(isNew: true);
             applyServiceApplicationPrerequisites($service);
         }
-        requireThat($service->description === $resourceMarker && $service->server_id === $server->id, 'Refusing unrelated Supabase resource');
+        if ($service) requireThat($service->description === $resourceMarker && $service->server_id === $server->id, 'Refusing unrelated Supabase resource');
         $application = isset($config['application_uuid'])
             ? $environment->applications()->where('uuid', $config['application_uuid'])->firstOrFail()
             : $environment->applications()->where('name', $spec['name'].'-'.$name.'-web')->first();
         if ($action === 'prepare') {
+            if ($usesSupabase) {
             // Keep configuration stable across retries. Regenerating JWTs would invalidate users.
             $kong = $service->applications()->where('name', 'supabase-kong')->firstOrFail();
             $kong->fqdn = $config['supabase_url'].':8000';
@@ -129,6 +131,7 @@ try {
             foreach (($config['supabase_env'] ?? []) as $key => $value) {
                 requireThat(preg_match('/^(SMTP_|MAILER_|ENABLE_EMAIL_|GOTRUE_EXTERNAL_)[A-Z0-9_]+$/', $key), 'Unsupported Supabase configuration override');
                 setEnv($service, $key, $value);
+            }
             }
             if (!$application) {
                 $domainCheck = checkIfDomainIsAlreadyUsedViaAPI(collect([$config['web_url']]), $server->team_id);
@@ -159,21 +162,21 @@ try {
         }
         requireThat($application !== null, 'Web application missing');
         if (!isset($config['application_uuid'])) requireThat($application->description === $resourceMarker, 'Refusing unrelated web application');
-        if ($action === 'start') App\Actions\Service\StartService::dispatch($service);
-        if (in_array($action, ['wire', 'ready', 'verify'])) {
+        if ($action === 'start' && $service) App\Actions\Service\StartService::dispatch($service);
+        if ($usesSupabase && in_array($action, ['wire', 'ready', 'verify'])) {
             // Check the new endpoint before replacing an existing app's runtime configuration.
             $response = Illuminate\Support\Facades\Http::timeout(15)->withHeaders([
                 'apikey' => envValue($service, 'SERVICE_SUPABASEANON_KEY'),
-            ])->get($config['supabase_url'].'/rest/v1/blog_posts?select=id&limit=1');
+            ])->get($config['supabase_url'].'/rest/v1/');
             requireThat($response->successful(), 'Supabase REST/schema check failed: HTTP '.$response->status());
             $health = Illuminate\Support\Facades\Http::timeout(15)->withHeaders([
                 'apikey' => envValue($service, 'SERVICE_SUPABASEANON_KEY'),
             ])->get($config['supabase_url'].'/auth/v1/health');
             requireThat($health->successful(), 'Supabase Auth check failed');
         }
-        if (in_array($action, ['wire', 'verify', 'deploy'])) $runtimeEnv = webSupabaseEnv($service, $config, $name);
-        if (in_array($action, ['verify', 'deploy'])) verifyWebSupabaseEnv($application, $runtimeEnv);
-        if ($action === 'verify') {
+        if ($usesSupabase && in_array($action, ['wire', 'verify', 'deploy'])) $runtimeEnv = webSupabaseEnv($service, $config, $name);
+        if ($usesSupabase && in_array($action, ['verify', 'deploy'])) verifyWebSupabaseEnv($application, $runtimeEnv);
+        if ($action === 'verify' && $usesSupabase) {
             $settings = Illuminate\Support\Facades\Http::timeout(15)->get($config['web_url'].'/api/supabase/settings');
             requireThat($settings->successful(), 'Web Supabase settings check failed');
             requireThat($settings->json('url') === $runtimeEnv['SUPABASE_PUBLIC_URL'], 'Web app still points to a different Supabase instance');
@@ -181,7 +184,7 @@ try {
             requireThat(!str_contains($settings->body(), $runtimeEnv['SUPABASE_SERVICE_KEY']), 'Server-only Supabase key leaked into frontend settings');
             requireThat(Illuminate\Support\Facades\Http::timeout(15)->get($config['web_url'])->successful(), 'Web homepage check failed');
         }
-        if ($action === 'wire') {
+        if ($action === 'wire' && $usesSupabase) {
             if ($name === 'staging') { $application->health_check_start_period = 360; $application->save(); }
             foreach ([false, true] as $preview) {
                 foreach ($runtimeEnv as $key => $value) setEnv($application, $key, $value, $preview);
@@ -189,8 +192,9 @@ try {
             verifyWebSupabaseEnv($application, $runtimeEnv);
         }
         $entry = ['environment_uuid' => $environment->uuid, 'application_uuid' => $application->uuid,
-            'supabase_uuid' => $service->uuid, 'supabase_url' => $config['supabase_url'],
-            'database_container' => 'supabase-db-'.$service->uuid, 'status' => $service->status,
+            'supabase_uuid' => $service?->uuid, 'supabase_url' => $usesSupabase ? $config['supabase_url'] : null,
+            'database_container' => $usesSupabase ? 'supabase-db-'.$service->uuid : null,
+            'retained_database_container' => !$usesSupabase && $service ? 'supabase-db-'.$service->uuid : null, 'status' => $service?->status,
             'latest_deployment' => $application->deployment_queue()->latest()->first()?->only(['deployment_uuid','status'])];
         if ($action === 'deploy') {
             requireThat(!$application->deployment_queue()->whereIn('status', ['queued','in_progress'])->exists(), 'Application already has a deployment in progress');

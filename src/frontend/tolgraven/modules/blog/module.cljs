@@ -1,6 +1,8 @@
 (ns tolgraven.modules.blog.module
   {:bundle/depends-on #{:main :user :link-preview}}
-  (:require [tolgraven.modules.blog.pages :as pages]
+  (:require-macros [tolgraven.build.site :refer [when-enabled]])
+  (:require [tolgraven.modules.blog.storage :as storage]
+            [tolgraven.modules.blog.pages :as pages]
             [tolgraven.modules.blog.schema :as schema]
 
     [tolgraven.content.contract :as content-contract]
@@ -11,7 +13,10 @@
     [tolgraven.modules.blog.views :as view]))
 
 (def spec
-  {:pages pages/spec
+  {:content [:blog :common]
+   :server {:routes 'tolgraven.modules.blog.api/routes}
+   :storage storage/tables
+   :pages pages/spec
    :depends (get content-contract/module-dependencies :blog [])
    :id :blog
    :styles ["/css/tolgraven/modules/blog.min.css"]
@@ -25,5 +30,5 @@
           :posted-by #'view/<posted-by>
           :post-content #'view/<post-content>
           :tags-list #'view/<tags-list>
-          :comments #'view/<comments-section>}
+          :comments (when-enabled :blog :comments #'view/<comments-section>)}
    :init #(rf/dispatch [:on-booted :store [:blog/init]])})

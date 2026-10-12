@@ -5,7 +5,8 @@
             [tolgraven.modules.home.layout :as layout]))
 
 (def spec
-  {:id :home
+  {:content [:intro :services :moneyshot :story :interlude :soundcloud :gallery]
+   :id :home
    :pages pages/spec
    :styles ["/css/tolgraven/modules/home.min.css"
             "/css/tolgraven/modules/monospace.min.css"
