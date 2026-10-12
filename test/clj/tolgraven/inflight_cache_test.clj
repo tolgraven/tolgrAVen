@@ -1,6 +1,7 @@
 (ns tolgraven.inflight-cache-test
   (:require [clojure.test :refer [deftest is]]
             [malli.core :as m]
+            [tolgraven.schema.dsl :as dsl]
             [tolgraven.cache.inflight :as inflight]))
 
 (deftest cache-pressure-preserves-pending-and-rejects-excess-work
@@ -10,7 +11,7 @@
                      :completed {:value completed, :expires-at 100}})
         [owner? entry :as acquisition] (inflight/acquire! cache :new 10 100 2)]
     (is owner?)
-    (is (m/validate inflight/acquisition-schema acquisition))
+    (is (m/validate (dsl/->malli inflight/acquisition-schema) acquisition))
     (is (identical? pending (get-in @cache [:pending :value])))
     (is (not (contains? @cache :completed)))
     (is (= [false entry] (inflight/acquire! cache :new 20 100 2)))

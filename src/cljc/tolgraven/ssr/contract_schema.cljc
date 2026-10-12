@@ -12,10 +12,10 @@
         (rest (c/optional-map
                 {:kind c/named :content content/content :posts [:sequential (or (when-enabled :blog nil store/post) :map)]
                  :summaries [:sequential (or (when-enabled :blog nil store/post) :map)] :comments [:sequential (or (when-enabled :blog :comments store/comment-record) :map)]
-                 :page [:maybe c/positive] :post-id [:maybe c/id] :shell? :boolean :missing? [:maybe :boolean]
+                 :page [:maybe c/positive] :post-id [:maybe c/id] :shell? :boolean :missing? :?boolean
                  :route-parameters (c/optional-map {:path c/query-params :query c/query-params})
                  :app-db-edn :string :module-views module-views :query-params c/query-params :document-title :string
-                 :trusted-author-ids [:maybe [:sequential c/id]]}))))
+                 :trusted-author-ids [:?sequential c/id]}))))
 (def settings
   (c/optional-map {:enabled :boolean :streaming :boolean :render-workers [:int {:min 1 :max 4}]
                    :worker c/text :node-binary c/text :shell-refresh-seconds c/positive

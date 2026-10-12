@@ -6,14 +6,14 @@
   [:map
    [:kind [:enum "heading" "paragraph" "quote" "code" "item"]]
    [:text [:string {:min 1 :max 3000}]]
-   [:level {:optional true} [:int {:min 1 :max 4}]]])
+   [:?level [:int {:min 1 :max 4}]]])
 (def result
   [:map
    [:status [:enum "ready" "unavailable"]]
    [:url :string]
    [:title [:string {:max 300}]]
    [:description [:string {:max 600}]]
-   [:image {:optional true} :string]
+   [:?image :string]
    [:blocks [:vector {:max 32} block]]
    [:truncated? :boolean]
    [:frame-policy [:enum "none" "same-origin" "blocked"]]])

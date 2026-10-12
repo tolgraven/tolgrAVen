@@ -14,15 +14,15 @@
                    :persist [:or :boolean persistence]}))
 (def dependency-base
   [:map [:source :keyword]
-   [:keys {:optional true} [:vector :keyword]]
-   [:path {:optional true} path] [:into {:optional true} path]
-   [:query {:optional true} [:or :map [:vector {:min 1} :any]]]
-   [:url {:optional true} :string]
-   [:ttl-ms {:optional true} [:and number? [:> 0]]]
-   [:timeout-ms {:optional true} [:and number? [:> 0]]]
-   [:availability {:optional true} [:enum :startup]]
-   [:format {:optional true} [:enum :json :text]]
-   [:persist {:optional true} [:or :boolean persistence]]])
+   [:?keys [:vector :keyword]]
+   [:?path path] [:?into path]
+   [:?query [:or :map [:vector {:min 1} :any]]]
+   [:?url :string]
+   [:?ttl-ms [:and number? [:> 0]]]
+   [:?timeout-ms [:and number? [:> 0]]]
+   [:?availability [:enum :startup]]
+   [:?format [:enum :json :text]]
+   [:?persist [:or :boolean persistence]]])
 (def dependency
   [:and dependency-base
    [:multi {:dispatch :source}
@@ -37,48 +37,48 @@
 (def container
   [:or [:= false] [:vector {:min 1} :any]
    [:map
-    [:tag {:optional true} [:or :keyword :string]]
-    [:props {:optional true} :map]
-    [:view {:optional true} :any]
-    [:form {:optional true} [:vector {:min 1} :any]]]])
+    [:?tag [:or :keyword :string]]
+    [:?props :map]
+    [:?view :any]
+    [:?form [:vector {:min 1} :any]]]])
 (def icons [:vector [:re "^(?:brands|solid)/[a-z0-9-]+$"]])
 
 (def component
   [:map
-   [:schema {:optional true} :any]
-   [:args-schema {:optional true} :any]
-   [:spec-schema {:optional true} :any]
-   [:state {:optional true} state-options]
-   [:spec {:optional true} :boolean]
-   [:page {:optional true} :boolean]
-   [:container {:optional true} container]
-   [:profile {:optional true} :boolean]
-   [:icons {:optional true} icons]
-   [:features {:optional true} [:sequential feature]]
-   [:depends {:optional true} [:or dependencies fn?]]
-   [:loading-prefab {:optional true} :keyword]
-   [:loading-tag {:optional true} :keyword]
-   [:loading-props {:optional true} :map]
-   [:module {:optional true} :keyword]])
+   [:?schema :any]
+   [:?args-schema :any]
+   [:?spec-schema :any]
+   [:?state state-options]
+   [:?spec :boolean]
+   [:?page :boolean]
+   [:?container container]
+   [:?profile :boolean]
+   [:?icons icons]
+   [:?features [:sequential feature]]
+   [:?depends [:or dependencies fn?]]
+   [:?loading-prefab :keyword]
+   [:?loading-tag :keyword]
+   [:?loading-props :map]
+   [:?module :keyword]])
 (def data-plan
   [:sequential [:map [:id :keyword] [:queries fn?]
-                [:depends {:optional true} [:or [:sequential :keyword] fn?]]
-                [:transform {:optional true} fn?]]])
+                [:?depends [:or [:sequential :keyword] fn?]]
+                [:?transform fn?]]])
 (def route-data
   [:map
-   [:name {:optional true} :keyword]
-   [:module {:optional true} [:maybe :keyword]]
-   [:page {:optional true} :keyword]
-   [:icons {:optional true} icons]
-   [:ssr {:optional true} :boolean]
-   [:streaming {:optional true} :boolean]
-   [:depends {:optional true} dependencies]
-   [:preload-depends {:optional true} [:or dependencies fn?]]
-   [:parameters {:optional true} :map]
-   [:controllers {:optional true} [:sequential :map]]
-   [:data-plan {:optional true} data-plan]
-   [:snapshot {:optional true} fn?]
-   [:document-title {:optional true} fn?]])
+   [:?name :keyword]
+   [:?module :?keyword]
+   [:?page :keyword]
+   [:?icons icons]
+   [:?ssr :boolean]
+   [:?streaming :boolean]
+   [:?depends dependencies]
+   [:?preload-depends [:or dependencies fn?]]
+   [:?parameters :map]
+   [:?controllers [:sequential :map]]
+   [:?data-plan data-plan]
+   [:?snapshot fn?]
+   [:?document-title fn?]])
 
 ;; Native Reitit trees, including path-only and data-less parent nodes.
 (def routes
@@ -86,36 +86,36 @@
    [:sequential [:ref ::route]]])
 (def module
   [:map [:id :keyword]
-   [:client {:optional true} [:map-of :keyword fn?]]
-   [:content {:optional true} [:vector :keyword]]
-   [:server {:optional true} [:map
-                             [:routes {:optional true} :symbol]
-                             [:requires {:optional true} [:set :keyword]]
-                             [:requires-features {:optional true} [:map-of :keyword [:set :keyword]]]
-                             [:sql {:optional true} c/strings]
-                             [:sql-without-comments {:optional true} c/strings]]]
-   [:storage {:optional true} [:vector catalog/table]]
-   [:pages {:optional true} routes]
-   [:view {:optional true} [:map-of :keyword :any]]
-   [:init {:optional true} fn?]
-   [:install {:optional true} fn?]
-   [:styles {:optional true} c/strings]
-   [:icons {:optional true} icons]
-   [:ssr-styles {:optional true} [:enum :initial :deferred]]
-   [:depends {:optional true} dependencies]
-   [:preload-modules {:optional true} [:sequential :keyword]]
-   [:route-depends {:optional true} fn?]
-   [:assets {:optional true} (c/optional-map {:css c/strings :js c/strings})]
-   [:db-schema {:optional true} [:map-of path :any]]])
+   [:?client [:map-of :keyword fn?]]
+   [:?content [:vector :keyword]]
+   [:?server [:map
+                             [:?routes :symbol]
+                             [:?requires [:set :keyword]]
+                             [:?requires-features [:map-of :keyword [:set :keyword]]]
+                             [:?sql c/strings]
+                             [:?sql-without-comments c/strings]]]
+   [:?storage [:vector catalog/table]]
+   [:?pages routes]
+   [:?view [:map-of :keyword :any]]
+   [:?init fn?]
+   [:?install fn?]
+   [:?styles c/strings]
+   [:?icons icons]
+   [:?ssr-styles [:enum :initial :deferred]]
+   [:?depends dependencies]
+   [:?preload-modules [:sequential :keyword]]
+   [:?route-depends fn?]
+   [:?assets (c/optional-map {:css c/strings :js c/strings})]
+   [:?db-schema [:map-of path :any]]])
 
 
 (def component-spec
   "The map supplied to a component instance, distinct from its declaration."
-  [:map [:props {:optional true} :map]
-        [:features {:optional true} [:sequential feature]]
-        [:container {:optional true} container]
-        [:depends {:optional true} dependencies]
-        [:classes {:optional true} [:or :string [:sequential :string]]]])
+  [:map [:?props :map]
+        [:?features [:sequential feature]]
+        [:?container container]
+        [:?depends dependencies]
+        [:?classes [:or :string [:sequential :string]]]])
 
 (def compose
   "Recursively merge Malli maps. Extension fields refine/replace base fields;

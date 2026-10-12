@@ -6,10 +6,10 @@
 (def options (c/optional-map {:user :string, :repo :string}))
 
 (def author
-  (c/optional-map {:name [:maybe :string]
-                   :date [:maybe :string]
-                   :email [:maybe :string]}))
-(def parsed-message [:tuple :string [:maybe :string] [:maybe :string]])
+  (c/optional-map {:name :?string
+                   :date :?string
+                   :email :?string}))
+(def parsed-message [:tuple :string :?string :?string])
 
 (def commit
   (c/optional-map {:sha :string

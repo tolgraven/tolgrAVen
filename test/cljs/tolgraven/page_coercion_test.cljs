@@ -1,6 +1,7 @@
 (ns tolgraven.page-coercion-test
   (:require [cljs.test :refer-macros [deftest is]]
             [malli.core :as m]
+            [tolgraven.schema.dsl :as dsl]
             [malli.registry :as registry]
             [reitit.coercion :as coercion]
             [reitit.frontend :as frontend]
@@ -15,8 +16,8 @@
 (deftest production-registry-retains-owned-contracts
   (is (= "custom" registry/type) "Browser tests exercise the release registry")
   (is (nil? (registry/-schema m/default-registry :function)))
-  (is (m/validate [:cat :keyword [:? :int] [:* :string]] [:event 2 "a" "b"]))
-  (is (not (m/validate [:cat :keyword [:? :int] [:* :string]] [:event "a" 2]))))
+  (is (m/validate (dsl/->malli [:cat :keyword [:? :int] [:* :string]]) [:event 2 "a" "b"]))
+  (is (not (m/validate (dsl/->malli [:cat :keyword [:? :int] [:* :string]]) [:event "a" 2]))))
 
 (deftest route-coercion-remains-active-with-internal-checks-disabled
   (let [enabled? @validation/*enabled?]
@@ -64,7 +65,7 @@
                    {:nested {:base 1 :refined 2 :extension false :other "kept"}}
                    {:nested {:base 1 :refined "invalid"}}
                    {:nested {:refined 2}}]]
-      (is (= (m/validate eager value) (m/validate schema value))))))
+      (is (= (m/validate (dsl/->malli eager) value) (m/validate (dsl/->malli schema) value))))))
 
 (deftest stable-router-dispatchers-acquire-the-adapter-later
   (let [adapter @page/*adapter]

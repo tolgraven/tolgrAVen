@@ -4,7 +4,8 @@
             [tolgraven.ssr.return-contract :as contract]
             [tolgraven.ssr.schema :as ssr]
             [tolgraven.ssr.contract :as snapshot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [tolgraven.schema.dsl :as dsl]))
 
 (deftest render-state-preserves-typed-content-and-view-state-without-runtime-or-credentials
   (let [db {:content {:blog {:heading "Saved heading" :session-title "A recording session"}}
@@ -56,10 +57,10 @@
     (is (not (.includes result "\"</script>\"")))))
 
 (deftest storage-envelope-contract
-  (is (m/validate ssr/storage-snapshot {:version 1 :schema 2 :expires-at 100 :value {:a []}}))
+  (is (m/validate (dsl/->malli ssr/storage-snapshot) {:version 1 :schema 2 :expires-at 100 :value {:a []}}))
   (doseq [value [nil [] {:version 1 :schema 1 :expires-at "later" :value {}}
                        {:version 1 :schema 1 :expires-at 100}]]
-    (is (not (m/validate ssr/storage-snapshot value)))))
+    (is (not (m/validate (dsl/->malli ssr/storage-snapshot) value)))))
 
 (deftest hydration-and-node-share-module-owned-snapshot-state
   (let [post {:id 42 :title "Portable" :text "Body"}

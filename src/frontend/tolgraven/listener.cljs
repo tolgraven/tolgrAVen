@@ -14,7 +14,7 @@
    [:target :any]
    [:event :string]
    [:handler fn?]
-   [:capture? {:optional true} :boolean]])
+   [:?capture? :boolean]])
 (defonce *bindings (atom {}))
 (defonce scroll-listeners (atom {}))
 

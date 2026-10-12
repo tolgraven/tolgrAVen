@@ -9,11 +9,11 @@
                    :resolve! fn?
                    :transition-id c/nonnegative
                    :fallback? :boolean
-                   :outgoing-height [:maybe [:and number? [:>= 0]]]
+                   :outgoing-height [:?and number? [:>= 0]]
                    :outgoing-top [:maybe number?]}))
 
 (def commit
-  (c/optional-map {:target [:maybe [:or number? :string]]
+  (c/optional-map {:target [:?or number? :string]
                    :completion [:maybe completion]}))
 
 (def route
@@ -23,4 +23,4 @@
                            :path-params :map
                            :query-params [:maybe c/query-params]
                            :parameters :map
-                           :controllers [:maybe [:sequential :map]]})])
+                           :controllers [:?sequential :map]})])

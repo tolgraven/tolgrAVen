@@ -5,6 +5,7 @@
             [tolgraven.ssr :as ssr]
             [tolgraven.ssr.contract-schema :as contract-schema]
             [malli.core :as m]
+            [tolgraven.schema.dsl :as dsl]
             [tolgraven.page-router :as pages]
             [tolgraven.page :as page]
             [tolgraven.layout :as layout]
@@ -457,12 +458,12 @@
         (is (not (string/includes? (:body response) "id=\"ssr-complete\"")))))))
 
 (deftest renderer-response-validates-export-metadata-with-its-html
-  (is (m/validate contract-schema/render-response
+  (is (m/validate (dsl/->malli contract-schema/render-response)
                   {:html "<article>SSR</article>" :module-views {:blog [:view :posted-by]}}))
   (doseq [response [{:html "SSR"}
                     {:html "SSR" :module-views {:blog [:view 17]}}
                     {:html "SSR" :module-views {:blog "view"}}]]
-    (is (not (m/validate contract-schema/render-response response)))))
+    (is (not (m/validate (dsl/->malli contract-schema/render-response) response)))))
 
 (deftest cached-html-keeps-its-rendered-export-inventory
   (reset! ssr/*cache {})

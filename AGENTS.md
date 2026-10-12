@@ -55,6 +55,10 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `doc/`: project documentation.
 
 ## Shared schemas
+- `schema/dsl.cljc` expands `:?key` optional map entries and nullable `:?type` /
+  `[:?type ...]` forms before Malli interpretation. Keep schemas as data; validate
+  through the existing adapters or call `dsl/->malli` before direct Malli APIs.
+  See `doc/schemas.md` for native syntax and literal-value rules.
 - Browser schema declarations stay eager data; compose with native `[:merge ...]`
   expressions. The `:coercion` module owns Malli interpretation and the custom
   registry. Network SSR supplies typed route parameters; boot acquires the engine

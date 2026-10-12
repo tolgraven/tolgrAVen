@@ -149,7 +149,7 @@
           nil)))))
 
 (rf/reg-sub :blog/ids-for-page
-  {:args schema/page-args, :result [:maybe [:sequential c/id]]}
+  {:args schema/page-args, :result [:?sequential c/id]}
   :<- [:blog/post-ids]
   (fn [ids [_ index size]] (model/page-ids ids index size)))
 
@@ -288,13 +288,13 @@
 
 (when-enabled :blog :comments
   (rf/reg-sub :comments/adding?
-  {:args schema/path-args, :result [:maybe :boolean]}
+  {:args schema/path-args, :result :?boolean}
   :<- [:blog/state [:adding-comment]]
   (fn [adding [_ path]]
     (get adding path)))) ; entire path is the key, hence get not get-in
 
 (rf/reg-sub :blog/vote
-  {:args schema/path-args, :result [:maybe [:enum :up :down]]}
+  {:args schema/path-args, :result [:?enum :up :down]}
   (fn [db [_ path]]
     (case (get-in db [:state :active-user :comment-votes (keyword (str (last path)))] 0)
       1 :up -1 :down nil)))

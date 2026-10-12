@@ -12,27 +12,26 @@
 (def table
   [:map {:closed true}
    [:table identifier]
-   [:sql {:optional true} :string]
-   [:seed-key {:optional true} :keyword]
-   [:cache-key {:optional true} :keyword]
-   [:collections {:optional true} [:set :string]]
-   [:user-collections {:optional true} [:set :string]]
-   [:queries {:optional true}
-    [:map-of :string
+   [:?sql :string]
+   [:?seed-key :keyword]
+   [:?cache-key :keyword]
+   [:?collections [:set :string]]
+   [:?user-collections [:set :string]]
+   [:?queries [:map-of :string
      [:map
       [:document-key identifier]
       [:fields [:map-of :keyword identifier]]
-      [:batch-field {:optional true} :keyword]
-      [:cache-document-field {:optional true} identifier]
-      [:summary {:optional true} :string]
-      [:reply-count {:optional true} [:map [:select :string] [:parent-field identifier]]]]]]
+      [:?batch-field :keyword]
+      [:?cache-document-field identifier]
+      [:?summary :string]
+      [:?reply-count [:map [:select :string] [:parent-field identifier]]]]]]
    [:key [:vector {:min 1} identifier]]
    [:order [:vector {:min 1} [:tuple identifier [:enum :asc :desc]]]]
-   [:select {:optional true} [:vector {:min 1} identifier]]
-   [:jsonb {:optional true} [:set :keyword]]
-   [:references {:optional true} [:set :keyword]]
-   [:feature {:optional true} :keyword]
-   [:public-columns {:optional true} :string]])
+   [:?select [:vector {:min 1} identifier]]
+   [:?jsonb [:set :keyword]]
+   [:?references [:set :keyword]]
+   [:?feature :keyword]
+   [:?public-columns :string]])
 
 (def module-options
   [:map-of :keyword [:map-of :keyword :boolean]])

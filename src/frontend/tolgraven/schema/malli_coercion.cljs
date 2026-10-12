@@ -2,6 +2,7 @@
   "Reitit's frontend protocol backed by Malli, without server API documentation.
    Page routers use string parameters and query encoding; Ring keeps its adapter."
   (:require [tolgraven.schema.registry]
+            [tolgraven.schema.dsl :as dsl]
             [malli.core :as m]
             [malli.error :as me]
             [malli.transform :as mt]
@@ -20,7 +21,7 @@
       (throw (ex-info "Page coercion does not generate API documentation"
                       {:specification specification})))
     (-compile-model [_ models _]
-      (reduce mu/merge models))
+      (reduce mu/merge (map dsl/->malli models)))
     (-open-model [_ schema] schema)
     (-encode-error [_ error]
       (-> error
@@ -30,7 +31,7 @@
       (when schema
         (when-not (= type :string)
           (throw (ex-info "Page parameters require string coercion" {:type type})))
-        (let [schema* (m/schema schema)
+        (let [schema* (m/schema (dsl/->malli schema))
               decode (m/decoder schema* mt/string-transformer)
               valid? (m/validator schema*)
               explain (m/explainer schema*)]
@@ -44,5 +45,5 @@
       (throw (ex-info "Response coercion belongs to the Ring router" {})))
     (-query-string-coercer [_ schema]
       (when schema
-        (let [encode (m/encoder (mu/open-schema schema) mt/string-transformer)]
+        (let [encode (m/encoder (mu/open-schema (dsl/->malli schema)) mt/string-transformer)]
           (fn [value _format] (encode value)))))))

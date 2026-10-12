@@ -12,7 +12,7 @@
 
 (def state
   (c/optional-map {:visited [:set :string]
-                   :containers [:maybe [:map-of c/id [:map [:candidates [:sequential link-candidate]] [:count c/nonnegative]]]]
+                   :containers [:?map-of c/id [:map [:candidates [:sequential link-candidate]] [:count c/nonnegative]]]
                    :active [:maybe link-candidate]
-                   :prefetch [:maybe [:map-of :string [:enum :queued :prefetched]]]
+                   :prefetch [:?map-of :string [:enum :queued :prefetched]]
                    :prefetch-queue [:sequential link-candidate]}))

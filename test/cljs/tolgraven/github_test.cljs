@@ -4,6 +4,7 @@
             [cljs.test :refer-macros [async deftest is testing]]
             [clojure.string :as string]
             [malli.core :as m]
+            [tolgraven.schema.dsl :as dsl]
             [tolgraven.modules.github.message :as message]
             [tolgraven.modules.github.schema :as schema]
             [tolgraven.modules.github.views :as views]
@@ -31,7 +32,7 @@
     (testing (str input)
       (let [parsed (message/parse-message input)]
         (is (= expected parsed))
-        (is (m/validate schema/parsed-message parsed))))))
+        (is (m/validate (dsl/->malli schema/parsed-message) parsed))))))
 
 (deftest commit-messages-fit-narrow-and-wide-containers
   (async done

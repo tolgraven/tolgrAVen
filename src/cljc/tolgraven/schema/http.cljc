@@ -1,14 +1,17 @@
 (ns tolgraven.schema.http
   #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
-  (:require #?(:clj [tolgraven.build.site :refer [when-enabled]])
+  (:require [tolgraven.schema.dsl :as dsl]
+            #?(:clj [tolgraven.build.site :refer [when-enabled]])
             #?(:clj [reitit.coercion.malli :as malli]
                :cljs [tolgraven.schema.page-coercion :as page])))
 
 ;; Open maps preserve application extension/query keys. Only declared fields are
 ;; coerced; do not strip OAuth/debug query parameters or untyped operation bodies.
+;; Reitit lite parses before :compile; use native syntax so our DSL expands first.
 (def coercion
   #?(:cljs page/coercion
-     :clj (malli/create {:compile (fn [schema _] schema)
+     :clj (malli/create {:lite false
+                        :compile (fn [schema _] (dsl/->malli schema))
                         :strip-extra-keys false
                         :error-keys #{:type :in :humanized}})))
 (when-enabled :blog nil
@@ -21,8 +24,8 @@
                       [:fn {:error/message "must name a documentation page"} #(not= ".." %)]])
   (def docs-page [:map [:doc document-name]])
   (def docs-query [:map [:path document-name]]))
-(def page-query [:map [:userBox {:optional true} :boolean]
-                     [:settingsBox {:optional true} :boolean]])
+(def page-query [:map [:?userBox :boolean]
+                     [:?settingsBox :boolean]])
 (def url-query [:map [:url [:string {:min 1}]]])
 (when-enabled :gpt nil
   (def messages [:map [:messages [:sequential :string]]]))
@@ -53,10 +56,10 @@
   (def strapi-path (service-path #"/api/[A-Za-z0-9/_-]+(?:\?[A-Za-z0-9_=&%\[\].,-]*)?"))
   (def image-query
     [:map [:url [:string {:min 1}]]
-     [:transforms {:optional true} [:and :string [:re #"(?:fit-in/)?[1-9][0-9]{0,3}x[1-9][0-9]{0,3}|"]]]]))
+     [:?transforms [:and :string [:re #"(?:fit-in/)?[1-9][0-9]{0,3}x[1-9][0-9]{0,3}|"]]]]))
 (when-enabled :search nil
   (def search-query
     [:map [:collection (into [:enum "blog-posts"] (when-enabled :blog :comments ["blog-comments"]))]
      [:q [:string {:min 1 :max 200}]]
-     [:page {:optional true} [:int {:min 1 :max 10000}]]
-     [:per_page {:optional true} [:int {:min 1 :max 100}]]]))
+     [:?page [:int {:min 1 :max 10000}]]
+     [:?per_page [:int {:min 1 :max 100}]]]))

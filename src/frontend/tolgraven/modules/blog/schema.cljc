@@ -12,34 +12,33 @@
 
 (def state
   [:map
-   [:restore-edits {:optional true}
-    [:set [:tuple [:enum :comment-thread-expanded :comment-limit :adding-comment :comments-expanded]
+   [:?restore-edits [:set [:tuple [:enum :comment-thread-expanded :comment-limit :adding-comment :comments-expanded]
            :any]]]
-   [:current-post-id {:optional true} [:maybe c/id]]
-   [:viewing-tag {:optional true} [:maybe :string]]
-   [:comments-expanded {:optional true} [:map-of c/id :boolean]]
-   [:adding-comment {:optional true} [:map-of c/path [:maybe :boolean]]]
-   [:page {:optional true} [:int {:min 0}]]
-   [:comment-limit {:optional true} [:map-of :any [:int {:min 1}]]]
-   [:comment-thread-expanded {:optional true} [:map-of :any :boolean]]])
-(def options [:map [:posts-per-page {:optional true} [:int {:min 1}]]])
+   [:?current-post-id [:maybe c/id]]
+   [:?viewing-tag :?string]
+   [:?comments-expanded [:map-of c/id :boolean]]
+   [:?adding-comment [:map-of c/path :?boolean]]
+   [:?page [:int {:min 0}]]
+   [:?comment-limit [:map-of :any [:int {:min 1}]]]
+   [:?comment-thread-expanded [:map-of :any :boolean]]])
+(def options [:map [:?posts-per-page [:int {:min 1}]]])
 (def sections {[:state :blog] state [:options :blog] options})
 
 (def post-header-spec [:map [:children [:sequential :any]]])
 (def displayed-post
-  (vector :merge store/post [:map [:user {:optional true} [:maybe [:or c/id store/profile]]]]))
+  (vector :merge store/post [:map [:?user [:?or c/id store/profile]]]))
 (def post-spec (declarations/extend-spec [:map [:post displayed-post]]))
 (when-enabled :blog :comments
   (def displayed-comment
-  (vector :merge store/comment-record [:map [:user {:optional true} [:maybe [:or c/id store/profile]]]])))
+  (vector :merge store/comment-record [:map [:?user [:?or c/id store/profile]]])))
 (when-enabled :blog :comments
   (def comment-spec (declarations/extend-spec [:map [:path c/path] [:comment displayed-comment]
-                                            [:visible? {:optional true} [:maybe c/derefable]]])))
+                                            [:?visible? [:maybe c/derefable]]])))
 (when-enabled :blog :comments
   (def parent-spec (declarations/extend-spec [:map [:parent-path c/path]])))
 (def posted-by-spec
   (declarations/extend-spec
-   (c/optional-map {:id [:maybe c/id] :user [:maybe [:or c/id store/profile]]
+   (c/optional-map {:id [:maybe c/id] :user [:?or c/id store/profile]
                     :ts [:maybe number?] :score [:maybe number?]})))
 (def tag-spec [:map [:tag :string]])
 
@@ -47,13 +46,13 @@
                                           :text :string
                                           :tags [:or :string c/strings]})])
 (when-enabled :blog :comments
-  (def comment-fields [:map-of c/path [:maybe (c/optional-map {:title [:maybe :string]
-                                                             :text [:maybe :string]})]]))
+  (def comment-fields [:map-of c/path [:maybe (c/optional-map {:title :?string
+                                                             :text :?string})]]))
 
-(def post-records [:maybe [:map-of c/id displayed-post]])
+(def post-records [:?map-of c/id displayed-post])
 (when-enabled :blog :comments
-  (def comment-records [:maybe [:map-of c/id displayed-comment]]))
-(def post-list [:maybe [:sequential displayed-post]])
+  (def comment-records [:?map-of c/id displayed-comment]))
+(def post-list [:?sequential displayed-post])
 (def navigation-action [:or [:enum :prev :next] c/positive])
 (def no-args [:tuple])
 (def id-args [:tuple c/id])
@@ -87,10 +86,10 @@
    :blog/comment-submit (when-enabled :blog :comments [:tuple c/path [:map [:text :string]] [:maybe displayed-comment]])
    :blog/comment-saved (when-enabled :blog :comments [:tuple c/path :map :map])
    :blog/write-failed [:tuple [:or :keyword c/path] :map]
-   :blog/comment-vote (when-enabled :blog :comments [:tuple [:maybe [:or c/id store/profile]] store/profile c/path [:enum :up :down]])
+   :blog/comment-vote (when-enabled :blog :comments [:tuple [:?or c/id store/profile] store/profile c/path [:enum :up :down]])
    :blog/vote-saved (when-enabled :blog :comments [:tuple :string [:map [:vote [:enum -1 0 1]]]])
    :blog/cache-state-changed no-args
    :blog/expand-comment-thread (when-enabled :blog :comments [:tuple c/path :boolean])
-   :blog/adding-comment (when-enabled :blog :comments [:tuple c/path [:maybe :boolean]])
+   :blog/adding-comment (when-enabled :blog :comments [:tuple c/path :?boolean])
    :blog/load-more-comments (when-enabled :blog :comments id-args)}))
 ))

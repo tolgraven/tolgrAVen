@@ -39,19 +39,19 @@
 
 (def feature-schema
   [:map
-   [:root? {:optional true} :boolean]
-   [:transform {:optional true} [:fn fn?]]
-   [:wrap {:optional true} [:fn fn?]]
-   [:setup {:optional true} [:fn fn?]]
-   [:mount {:optional true} [:fn fn?]]
-   [:reconfigure {:optional true} [:fn fn?]]
-   [:unmount {:optional true} [:fn fn?]]
-   [:render {:optional true} [:fn fn?]]])
+   [:?root? :boolean]
+   [:?transform [:fn fn?]]
+   [:?wrap [:fn fn?]]
+   [:?setup [:fn fn?]]
+   [:?mount [:fn fn?]]
+   [:?reconfigure [:fn fn?]]
+   [:?unmount [:fn fn?]]
+   [:?render [:fn fn?]]])
 
 (def feature-render-schema
   [:map
    [:form :any]
-   [:commit! {:optional true} [:maybe [:fn fn?]]]])
+   [:?commit! [:?fn fn?]]])
 
 (defonce *features (atom {}))
 
