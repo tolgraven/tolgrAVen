@@ -114,8 +114,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Capture their initial restoration decision without subscribing to completion.
   New SPA code uses the normal loader immediately. Paired local
   returns render completed boundaries too and skip the formatter during bootstrap.
-  Local-return rendering uses the lazy `:page-render` bundle;
-  the installer remains eager to restore state before the first commit.
+  Local-return capture uses lazy `:page-capture` transport and renders in an
+  isolated worker using cached browser chunks and the `:page-render` bundle;
+  development and DOM-dependent Leaflet pages retain browser rendering.
+  The installer remains eager to restore state before the first commit.
 - Markdown code, including untagged blocks and inline snippets, shares the deferred
   formatter boundary. Node SSR renders Bruvbox-highlighted tokens immediately;
   browser acquisition waits for the existing after-page gate. The blog supplies
@@ -141,6 +143,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   normal browser APIs use JSON or standard Transit, and backend codecs stay native.
   Carousel implementations, events, index subscription and CSS belong to `:carousel`;
   Home/CV/Strava declare that bundle dependency, and shared UI keeps lazy exports.
+  Closed Settings contributes no DOM or CSS-variable reads; its view and styles
+  belong to `:settings` and activate on open intent. Dynamic glyph consumers use
+  `components.icon/<icon>`; unknown CMS names acquire the full `:icon-catalog`
+  sheet, while known selectors and subset fonts remain in the small icon sheet.
   Include newly split SSR components in the eager Node worker spec map and verify
   their actual markup in fixtures before checking hydration identity.
   Contact email/toggle markup stays in the shell; the popup view/styles belong

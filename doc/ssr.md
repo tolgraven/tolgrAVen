@@ -466,3 +466,27 @@ survive; scroll-derived header/footer visibility, scroll measurements, pending
 work, timers and boot flags do not. A new shared-state field is transient until
 its owner explicitly declares it. This policy is separate from scoped component
 state and opt-in disk persistence.
+
+Local document capture loads the small `:page-capture` transport after page readiness.
+An isolated worker imports the same content-hashed browser chunks from the compiler
+manifest and renders the shared page tree against exact retained state. The main
+entry detects the absence of `window` and does not start a browser lifecycle.
+Worker-compatible package exports use the same DOM-free Markdown decoder as Node.
+The heavy React server renderer and optional highlighting run in the worker;
+previously fetched chunks reuse the browser HTTP cache. Site selections retain
+`:page-render` whenever `:page-capture` is enabled; their capability dependency
+does not acquire the renderer in the window. Disable both to omit local capture.
+A disabled optional highlighter does not enter the capture asset plan. Development and pages with
+Leaflet retain the browser renderer because those entries require a real DOM.
+
+A source change invalidates an in-flight pair immediately and schedules a fresh
+capture once page bindings settle. Publication checks both generation and URL;
+identity changes clear the cache and stop the render worker. Ordinary external
+links and preview departures wait for cache publication, bounded to one second
+when optional capture is unavailable. Native modifiers/downloads/new windows retain
+their ordinary behavior. Reading live HTML alone would include transient shell
+attributes and uncontrolled form properties that do not match retained state.
+
+Disabling `:page-capture` also omits the capture lifecycle owner and external-link
+interception. The eager installer still checks any matching saved HTML/state pair
+before hydration; disabled capture cannot create new pairs.

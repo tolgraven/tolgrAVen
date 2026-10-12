@@ -19,6 +19,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   Test browser/Node-only schemas in `test/cljs`; JVM tests exercise portable/server
   contracts and generic composition helpers.
   Include malformed input, missing/empty content, failure/retry and stale responses.
+- Cached public-data checks read through the native alpha subscription before
+  ordinary subscriptions can warm their shared cache; verify the first render
+  while the SDK is still unavailable.
 - Reload checks cover worker-paired exact layout and network fallback display
   restoration, including explicit interaction while disk restoration is pending.
   Preview returns retain visited URLs but discard active surfaces/DOM registrations;

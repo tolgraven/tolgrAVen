@@ -24,6 +24,7 @@ profiles.clj
 .claude
 .firebase
 /resources/public/js/*
+!/resources/public/js/page-render-worker.js
 .vscode/
 /resources/public/css/*
 /resources/public/img/uploads/*

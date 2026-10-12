@@ -32,7 +32,9 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 
 - `bb fonts:icons` uses the optional pinned Python/fontTools authoring tool to
   export literal component/module `:icons` as SVG masks in the owning CSS and
-  regenerate small icon fonts with disjoint Unicode ranges. The shared source
+  regenerate small icon fonts with disjoint Unicode ranges and selected selectors.
+  Generate the browser name catalog from those same selected glyphs; dynamic
+  unknown names acquire the retained full catalog through its module. The shared source
   reader supplies both generation and Shadow style inventories. Source literals
   and `resources/icon-fonts.json` own glyph selection; keep full-font fallbacks.
   SVG viewports must contain transformed outlines; compensate expanded mask boxes

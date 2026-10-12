@@ -8,7 +8,7 @@
             [tolgraven.content.schema :as content]
             #?(:module/cv [tolgraven.modules.cv.schema :as cv])
             #?(:module/contact [tolgraven.modules.contact.schema :as contact])
-            #?(:module/main [tolgraven.modules.settings.schema :as settings])
+            #?(:module/settings [tolgraven.modules.settings.schema :as settings])
             [tolgraven.diagnostics.schema :as dev-console]
             #?(:module/docs [tolgraven.modules.docs.schema :as docs])
             #?(:module/github [tolgraven.modules.github.schema :as github])
@@ -63,7 +63,7 @@
     :form-field form-fields
     :scroll-position [:map-of [:maybe c/named] number?]
     :scroll (optional-map {:at-bottom :boolean, :past-top :boolean, :block :boolean})
-    :settings #?(:module/main settings/state :default nil)
+    :settings #?(:module/settings settings/state :default nil)
     :document (optional-map {:title :?string})
     :content content/state
     :search #?(:module/search search/state :default nil)
@@ -88,7 +88,7 @@
   (optional-map
    {:auto-save-vars :boolean
     :transition (optional-map {:time c/milliseconds, :style :keyword})
-    :theme #?(:module/main settings/theme :default nil)
+    :theme #?(:module/settings settings/theme :default nil)
     :github #?(:module/github github/options :default nil)
     :user #?(:module/user user/options :default nil)
     :hud (optional-map {:timeout c/milliseconds, :level :keyword})

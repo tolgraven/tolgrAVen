@@ -1,5 +1,7 @@
 (ns tolgraven.components.shell
+  (:require-macros [tolgraven.build.site :refer [when-enabled]])
   (:require
+    [tolgraven.components.icon :as icon]
     [tolgraven.component.registry]
     [tolgraven.component.restore :as restore]
     [reagent.core :as r]
@@ -122,12 +124,13 @@
          :aria-label "My blog"
          :title "My blog"}
         [:i.fa.fa-pen-fancy]]
-      [:a.button.settings-btn.noborder.nomargin
+      (when-enabled :settings nil
+       [:a.button.settings-btn.noborder.nomargin
        {:href @(rf/subscribe [:href-add-query
                               {:settingsBox (not @(rf/subscribe [:state [:settings :panel-open]]))}])
         :aria-label "Settings"
         :title "Settings"}
-       [:i.settings-btn {:class "fa fa-cog"}]]
+       [:i.settings-btn {:class "fa fa-cog"}]])
 
       (m/<> {:module :search
              :view :button
@@ -187,7 +190,7 @@
       (when links [:div.footer-icons
                    (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
                      [:a {:href href :name name :aria-label name}
-                      [:i.fab {:class (str "fa-" icon)}]])])])])
+                      [icon/<icon> "fab" icon {}]])])])])
 
 
 (defc <post-footer> "Extra stuff after the basic footer. Not very useful for me but for other sites."
@@ -235,7 +238,7 @@
   {:icons ["solid/angle-double-up"]}
   [icon]
  (let [icon (or icon "angle-double-up")
-       i [:i {:class (str "fas fa-" icon)}]]
+       i [icon/<icon> "fas" icon {}]]
     [:a {:id "to-top"
          :class "to-top"
          :href @(rf/subscribe [:href "#main"])

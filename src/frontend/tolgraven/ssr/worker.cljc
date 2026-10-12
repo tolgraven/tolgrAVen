@@ -18,6 +18,7 @@
     #?(:module/cv [tolgraven.modules.cv.module :as cv])
     #?(:module/carousel [tolgraven.modules.carousel.module :as carousel])
     #?(:module/contact [tolgraven.modules.contact.module :as contact])
+    #?(:module/settings [tolgraven.modules.settings.module :as settings])
     #?(:module/docs [tolgraven.modules.docs.module :as docs])
     [tolgraven.ssr.contract :as contract]
     [tolgraven.components.page-shell :as shell]
@@ -36,6 +37,7 @@
               :cv #?(:module/cv cv/spec :default nil)
               :carousel #?(:module/carousel carousel/spec :default nil)
               :contact #?(:module/contact contact/spec :default nil)
+              :settings #?(:module/settings settings/spec :default nil)
               :docs #?(:module/docs docs/spec :default nil)
               :blog #?(:module/blog blog/spec :default nil)
               :user #?(:module/user user/spec :default nil)

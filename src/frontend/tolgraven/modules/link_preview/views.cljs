@@ -548,8 +548,7 @@
           (rf/dispatch-sync [:link-preview/visited (:url data)])
           (close-preview!)
           ;; Commit the closed surface before BFCache can freeze the document.
-          (r/after-render #(do (local-page/departure!)
-                               (.assign js/window.location (:url data)))))
+          (r/after-render #(local-page/departure! (:url data))))
         navigate!
         (fn [data]
           (clear-interaction-timer! :open)

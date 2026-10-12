@@ -613,62 +613,6 @@ figcaption, .float-with-caption {
 
 
 
-.settings-panel {
-  background: var(--gradient-bg-main);
-  width: calc(100vw - 2 * var(--space-sides));
-  left: calc(var(--space-sides));
-  top: calc(var(--header-height-current) + var(--line-width));
-  opacity: 80%;
-  height: 0;
-  overflow: hidden;
-  transition: height var(--header-expand-time) ease;
-  font-size: 0.8em;
-
-  &.opened {
-    height: auto;
-    padding: var(--space);
-
-    &:before {
-      content: "";
-      display: block;
-      position: absolute;
-      height: 100%;
-      width: var(--line-width-vert);
-      background: linear-gradient(180deg, var(--line-color), var(--purple) 70%, var(--purple) 100%);
-      top: 0;
-      right: 0;
-    }
-
-    &:after {
-      content: "";
-      display: block;
-      position: absolute;
-      height: var(--line-width);
-      width: 100%;
-      background: linear-gradient(90deg, transparent, var(--purple) 70%, var(--purple) 100%);
-      bottom: 0;
-      right: calc(0px - var(--space));
-    }
-  }
-
-  .settings-numbers {
-    display: flex;
-    flex-wrap: wrap;
-    // align-items: center;
-
-    .settings-number {
-      display: flex;
-      flex: 1 0 auto;
-
-      label {
-        margin-left: 0.4em;
-        display: flex;
-        align-items: center;
-        // vertical-align:bottom;
-      }
-    }
-  }
-}
 
 .scrollbar {
   position: absolute;

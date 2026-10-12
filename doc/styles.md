@@ -162,8 +162,8 @@ execute frontend code or create a runtime schema inventory.
 
 ## Icon fonts
 
-The deferred `icons.css` bundle uses `icons.scss`, which imports the vendored Font
-Awesome selectors and generated font faces into one compressed Sass output.
+The deferred `icons.css` bundle uses generated selectors for source/catalog glyphs,
+shared Font Awesome utilities and generated font faces in one compressed output.
 Development links that same watched output. Optimus fingerprints the sheet and
 rewrites all of its font URLs, so repeat visits can reuse font bytes without
 caching mutable original paths.
@@ -175,7 +175,10 @@ The generated faces have disjoint Unicode ranges: known glyphs use the small
 fonts, while other glyphs acquire the original full font when actually rendered.
 A failed subset request can also fall back to the full font through native CSS
 source selection.
-Keep full originals and selectors available for new CMS icons. Regenerate after
+Keep full originals available for regeneration. Dynamic icon consumers use
+`components.icon/<icon>`; an unknown name acquires the full selector catalog
+through `:icon-catalog`, including its CSS-before-code readiness. Known names
+never load that compatibility sheet. Regenerate after
 adding literal icons, changing catalog names, or replacing the vendored fonts.
 
 Generation uses Python with `fonttools==4.60.2` and `Brotli==1.2.0`. These are
@@ -197,3 +200,6 @@ nor its stylesheet. Shared UI compatibility exports delegate to that owner.
 The footer's email/toggle remains eager. The closed contact form contributes no
 initial code or CSS; opening it mounts the `:contact` boundary and starts both
 resources. Its popup sheet is deferred in ordinary SSR documents.
+
+The closed Settings panel has no DOM, CSS-variable reads or view code in bootstrap.
+Opening it acquires `:settings` and its sheet before mounting its controls.
