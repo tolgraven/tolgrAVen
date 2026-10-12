@@ -39,7 +39,9 @@ can retain their API during a migration.
 
 The registry is deliberately independent of the component runtime. Leaf views
 such as the error fallback can declare lean components without loading the runtime
-that uses them. Only opt-in features require `tolgraven.component`.
+that uses them. Spec-capable components and explicit capabilities use `tolgraven.component`;
+non-spec primitives keep the direct Reagent path. `{:spec false}` explicitly
+treats the first argument as domain data, including a domain `:features` key.
 
 A `defc` value is a React component descriptor, not an ordinary callable function.
 Use `[<component> value]` even inside threading/helper code. At a native React
@@ -65,6 +67,63 @@ Features are explicit, ordered and registered independently of the macro:
  "An article"]
 ```
 
+Instance specs use the same ordered feature notation as declarations:
+
+```clojure
+(defc <article>
+  {:features [:props [:appear {:class "opacity", :once? true}]]}
+  [spec title]
+  [:article title])
+
+[<article> {:features [[:appear false]]} "Already visible"]
+[<article> {:features [[:appear {:class "slide-in"}]
+                       [:seen {:threshold 0.25}]]} "Approaching the viewport"]
+[<article> {:features [[:on-seen {:event [:article/load 42], :once? true}]]}
+ "Load the article when seen"]
+```
+
+Missing entries inherit defaults. `false` and `nil` disable; `true` inherits an
+active default or enables an absent/disabled declaration. Maps shallow-merge with
+the default map; scalars replace it. Declaration positions remain stable and new
+IDs append in instance order. Repeating an ID keeps its position and last value.
+Nested `:features` entries take precedence over legacy top-level feature options.
+Legacy top-level options only refine declared IDs; they do not promote unrelated
+domain keys into capabilities. Legacy `:container` template and map overrides
+retain the declared native attrs/classes/styles; nested `:features` container maps
+follow the ordinary shallow merge rule.
+
+A disabled entry does not evaluate its configuration function or call its
+transform, wrapper, setup, observer, listener, or subscription code. Options are
+resolved once for each component argument render; lifecycle state has one owner
+per mounted instance and remains separate from those pure options. Root features
+may be added, configured, or removed on the same mounted instance without
+remounting its body. Removal releases the current owner; unmount releases all
+current owners in reverse feature order, even if another cleanup throws.
+
+Structural wrappers (`:container`, `:error-boundary`, `:data`, or custom `:wrap`)
+can be selected by the initial instance spec. Changing their membership after
+mount requires an explicit Hiccup key/remount; the runtime reports a clear error
+instead of silently losing form state. A transform that changes the native root
+structure under a feature toggle has the same constraint. Configuration-only
+changes must preserve wrapper/component identity. Full pages retain their required
+recovery boundary; declaration-owned dependencies retain their data boundary.
+`:presence` can use a native parent or fragment and evaluates each child's actual
+instance `:exit` options, including the retained form during removal.
+
+This is runtime gating, not compiler pruning: a dynamic override cannot remove
+shared code from a JavaScript bundle. The spec runtime uses six fixed direct hooks
+(one composition ref, one body ref, one hydration context, one refresh state, two
+layout effects) regardless of active feature IDs; optional owners do not add
+conditional hooks. Non-spec primitives incur none of these added runtime hooks; existing instrumentation
+is unchanged. Inactive
+hooks still execute; the resource-heavy feature work stays unacquired. No timing
+claim follows from the hook count.
+
+`(when enabled? ...)` is appropriate inside a pure transform or owned setup/effect.
+It cannot conditionally call hooks or insert/remove React ancestors around a live
+body: hook ordering and component identity still have to remain stable. The shared
+runtime provides that stable ownership, so normal usage stays ordinary Hiccup.
+
 | Feature | Behavior | Adds a class? |
 | --- | --- | --- |
 | none | Native Reagent function component | No |
@@ -76,14 +135,16 @@ Features are explicit, ordered and registered independently of the macro:
 | `:links` | Existing link-preview discovery, update and cleanup | No |
 | `:appear` | Enter animation merged onto the native root | No |
 | `:seen` | Viewport visibility merged onto the native root | No |
+| `:on-seen` | Dispatch an event/callback from shared native-root visibility | No |
+| `:font` | Shared font acquisition and an owned text crossfade | No |
 | `:exit` | Exit animation when removed by a presence-enabled parent | No |
 | `:presence` | Retain keyed direct children until exit completion | No |
 
 Definition-level `:depends` automatically enables data handling. The macro recognizes a first argument named `spec`, `opts` or `options`, or a map
-destructuring feature keys such as `props`, `classes`, `depends`, `appear`, `seen`
+destructuring feature keys such as `props`, `classes`, `features`, `depends`, `appear`, `seen`
 or `links`. Other arguments are domain data, even if their map happens to contain
 keys named `:props` or `:depends`. No spec argument needs to be added when absent.
-A feature may be `[id config]`; `[id false]` disables it.
+A feature may be `[id config]`; `[id false]` or `[id nil]` disables it.
 Require the namespace that registers a feature (for links,
 `tolgraven.modules.link-preview.views`) before using it.
 
@@ -98,9 +159,15 @@ Register a feature with `component/register-feature!`:
 - `:wrap (fn [hiccup definition config] ...)` wraps the composed body; the first
   declared wrapper is outermost.
 - DOM features supply `:setup (fn [config] state)`, `:mount (fn [state element])`
-  and `:unmount (fn [state])`. They run as layout effects in the function component, refresh when configuration
-  or root changes, and clean up on unmount. The instance spec may override the
-  feature's configuration using its registered ID.
+  and `:unmount (fn [state])`. They run after commit. Rootless owners declare
+  `:root? false`; DOM owners wait for the native root. Changing configuration or
+  root replaces the owner unless `:reconfigure (fn [state config] state)` updates
+  its existing ownership. Returning the identical state avoids an extra refresh.
+- A stateful native-root renderer may supply `:render (fn [hiccup config state]
+  {:form hiccup, :commit! (fn [element] ...)})`. Render stays pure; the commit runs
+  only for the owner state used by that render. Built-in motion, presence and font
+  adapters use this path rather than installing their own conditional hooks.
+  Commit work must be idempotent and own cancellation through `:unmount`.
 
 No macro edit is needed to add another feature. Select the boundary outside
 features whose failures should be contained.

@@ -9,6 +9,7 @@
             [re-frame.core :as rf]
             [re-frame.tooling :as tooling]
             [tolgraven.component :as component]
+            [tolgraven.events]
             [tolgraven.component.data :as data]
             [tolgraven.component.storage :as storage]
             [tolgraven.component.restore :as restore]

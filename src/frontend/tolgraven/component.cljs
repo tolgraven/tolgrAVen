@@ -4,6 +4,7 @@
     [clojure.walk :as walk]
     [tolgraven.render-context :as context]
     [tolgraven.component.registry :as registry]
+    [tolgraven.component.features :as feature-options]
     [tolgraven.schema.declarations :as schemas]
     [tolgraven.validation.runtime :as validation]
     [tolgraven.component.instrumentation :as instrumentation]
@@ -36,10 +37,27 @@
   [view]
   (if (var? view) @view view))
 
+(def feature-schema
+  [:map
+   [:root? {:optional true} :boolean]
+   [:transform {:optional true} [:fn fn?]]
+   [:wrap {:optional true} [:fn fn?]]
+   [:setup {:optional true} [:fn fn?]]
+   [:mount {:optional true} [:fn fn?]]
+   [:reconfigure {:optional true} [:fn fn?]]
+   [:unmount {:optional true} [:fn fn?]]
+   [:render {:optional true} [:fn fn?]]])
+
+(def feature-render-schema
+  [:map
+   [:form :any]
+   [:commit! {:optional true} [:maybe [:fn fn?]]]])
+
 (defonce *features (atom {}))
 
 (defn register-feature!
   [id lifecycle]
+  (validation/check! "component feature" [:tuple :keyword feature-schema] [id lifecycle])
   (swap! *features assoc id lifecycle))
 
 (defn feature
@@ -118,110 +136,203 @@
     (let [form (apply @*render args)]
       (if (fn? form) (do (reset! *render form) (recur)) form))))
 
-(defn- resolved-features [definition]
-  (mapv (fn [[id config]]
-          [id config (or (feature id)
-                         (throw (ex-info "Component feature is not registered" {:feature id})))])
-        (:features definition)))
-
 (defn- current-spec [definition args]
   (or (spec-for (not= false (get-in definition [:options :spec])) args) {}))
 
-(defn- feature-config [id config spec args]
-  (let [value (get spec id config)]
-    (if (fn? value) (apply value args) value)))
+(defn- resolved-features [definition args]
+  (let [options (feature-options/resolve-options (:features definition)
+                                                (current-spec definition args) args)
+        ;; A page's recovery boundary is a required contract, not an optional
+        ;; behavior that an individual use may discard.
+        options' (if (get-in definition [:options :page])
+                  (let [position (first (keep-indexed #(when (= :error-boundary (first %2)) %1)
+                                                      (:features definition)))]
+                    (if (some #(= :error-boundary (first %)) options)
+                      options
+                      (let [position' (min (or position 0) (count options))]
+                        (into (conj (subvec options 0 position') [:error-boundary true])
+                              (subvec options position')))))
+                  options)]
+    (mapv (fn [[id config]]
+            [id config (or (feature id)
+                           (throw (ex-info "Component feature is not registered" {:feature id})))])
+          options')))
 
 (defn- decorate [form features spec mounted? capture-ref]
   (reduce (fn [form [id config implementation]]
             (cond
               (= :props id) (root-props form spec mounted? capture-ref)
               (:transform implementation) ((:transform implementation) form spec config)
-              :else form))
-          form features))
+              :else form)) form features))
 
-(defn- exit-config [component]
-  (some #(when (= :exit (first %)) (second %)) (:features (component-spec component))))
+(defn- exit-config [form]
+  (when (vector? form)
+    (when-let [definition (component-spec (first form))]
+      (let [args (vec (rest form))
+            args' (if (motion/presence? (last args)) (pop args) args)
+            spec (current-spec definition args')
+            defaults (filterv #(= :exit (first %)) (:features definition))
+            spec' (assoc spec :features
+                        (filterv #(= :exit (first %)) (feature-options/entries (:features spec))))]
+        (some #(when (= :exit (first %)) (second %))
+              (feature-options/resolve-options defaults spec' args'))))))
 
-(defn- use-lifecycle! [definition args features *element]
-  (let [[mounted? set-mounted!] (rf/use-state false)
-        *active (rf/use-ref {})
-        *latest (rf/use-ref args)
-        this (r/current-component)
+(defonce ^:private motion-owner (js-obj))
+(defonce ^:private lifecycle-owner (js-obj))
+
+(def lifecycle-feature
+  {:root? false
+   :setup (fn [options] (atom options))
+   :reconfigure (fn [state options] (reset! state options) state)
+   :mount (fn [state _] (when-let [init (:init @state)] (init (:component @state))))
+   :unmount (fn [state] (when-let [exit (:exit @state)] (exit (:component @state))))})
+
+(defn- use-lifecycle! [owners instance]
+  (let [[version refresh!] (rf/use-state 0)
+        *active (:active instance)
+        *element (:element instance)
         cleanup! (fn [id]
-                   (when-let [{:keys [implementation state]} (get (.-current *active) id)]
-                     (set! (.-current *active) (dissoc (.-current *active) id))
-                     (when state (when-let [unmount (:unmount implementation)] (unmount state)))))
-        lifecycle? (some #(= :lifecycle (first %)) features)]
-    (set! (.-current *latest) args)
+                   (when-let [{:keys [implementation state]} (get @*active id)]
+                     (swap! *active dissoc id)
+                     (when (some? state)
+                       (when-let [unmount (:unmount implementation)] (unmount state)))))]
     (rf/use-layout-effect
-     (fn []
-       (let [spec (current-spec definition args)]
-         (doseq [[id default implementation] features :when (:setup implementation)]
-           (let [config (feature-config id default spec args)
-                 old (get (.-current *active) id)]
-             (when (or (not= config (:config old))
-                       (not= @*element (:element old))
-                       (not= implementation (:implementation old)))
-               (cleanup! id)
-               (when (and config @*element)
-                 (let [state ((:setup implementation) config)]
-                   (set! (.-current *active)
-                         (assoc (.-current *active) id {:implementation implementation :state state
-                                                       :config config :element @*element}))
-                   (when state (when-let [mount (:mount implementation)] (mount state @*element)))))))))
-       js/undefined))
+      (fn []
+        (fn []
+          ;; Additions and removals may happen after mount. Always release the
+          ;; current owners, never a feature list captured by the first render.
+          (let [*error (atom nil)]
+            (doseq [id (reverse @(:order instance))]
+              (try (cleanup! id)
+                   (catch :default error
+                     (when-not @*error (reset! *error error)))))
+            (when @*error (throw @*error))))) [])
     (rf/use-layout-effect
-     (fn []
-       (set-mounted! true)
-       (when lifecycle?
-         (when-let [init (:init (current-spec definition (.-current *latest)))] (init this)))
-       (fn []
-         (try (doseq [id (reverse (map first features))] (cleanup! id))
-              (finally
-                (when lifecycle?
-                  (when-let [exit (:exit (current-spec definition (.-current *latest)))] (exit this)))))))
-     #js [])
-    mounted?))
+      (fn []
+        (let [ids (into #{} (map first) owners)
+              *changed? (atom false)]
+          (doseq [id (reverse @(:order instance)) :when (not (ids id))]
+            (cleanup! id)
+            (reset! *changed? true))
+          (doseq [[id config implementation] owners :when (:setup implementation)]
+            (let [old (get @*active id)
+                  element @*element
+                  eligible? (or (false? (:root? implementation)) element)]
+              (when (or (not= config (:config old))
+                        (not= element (:element old))
+                        (not= implementation (:implementation old)))
+                (if (and old eligible? (:reconfigure implementation)
+                         (= element (:element old)) (= implementation (:implementation old)))
+                  (let [state ((:reconfigure implementation) (:state old) config)]
+                    (swap! *active assoc id (assoc old :config config :state state))
+                    (when-not (identical? state (:state old)) (reset! *changed? true)))
+                  (do
+                    (when (or old eligible?) (reset! *changed? true))
+                    (cleanup! id)
+                    (when eligible?
+                      (let [state ((:setup implementation) config)]
+                        (swap! *active assoc id {:implementation implementation
+                                                :state state
+                                                :config config
+                                                :element element})
+                        (swap! (:order instance) #(conj (vec (remove #{id} %)) id))
+                        (when (some? state)
+                          (when-let [mount (:mount implementation)] (mount state element))))))))))
+          (reset! (:order instance) (into [] (comp (map first) (filter #(contains? @*active %))) owners))
+          ;; Render callbacks describe work for the exact owner state used by
+          ;; that render. A replaced/disposed owner cannot commit stale work.
+          (doseq [[id state commit!] @(:commits instance)
+                  :when (identical? state (get-in @*active [id :state]))]
+            (commit! @*element))
+          (when-let [commit! @(:commit-shape instance)] (commit!))
+          (when @*changed? (refresh! inc)))))
+    (pos? version)))
 
-(defn- render-function [definition args presence state-key]
+(defn- render-function [definition args presence state-key supplied-features]
   (registry/validate-args! definition args)
-  (let [*instance (rf/use-ref nil)]
+  (let [*instance (rf/use-ref nil)
+        hydrating? (rf/use-context restore/hydrating-context)]
     (when-not (.-current *instance)
       (let [*element (atom nil)]
         (set! (.-current *instance)
-              {:render (atom (binding [state-store/*component* definition state-store/*args* args state-store/*react-key* state-key]
+              {:render (atom (binding [state-store/*component* definition
+                                      state-store/*args* args
+                                      state-store/*react-key* state-key]
                                (apply (:make-render definition) args)))
                :element *element
+               :active (atom {})
+               :order (atom [])
+               :commits (atom [])
+               :commit-shape (atom nil)
+               :shape (atom nil)
                :capture-ref (memoize (fn [base caller]
                                       (fn [element]
                                         (reset! *element element)
-                                        (doseq [ref (distinct [base caller])]
-                                          (set-ref! ref element)))))})))
-    (let [{*render :render *element :element capture-ref :capture-ref} (.-current *instance)
-          features (resolved-features definition)
+                                        (doseq [ref (distinct [base caller])] (set-ref! ref element)))))})))
+    (let [{*render :render *element :element capture-ref :capture-ref :as instance} (.-current *instance)
+          features (or supplied-features (resolved-features definition args))
           ids (set (map first features))
           spec (current-spec definition args)
-          lifecycle? (some #(or (= :lifecycle (first %)) (:setup (nth % 2))) features)
-          mounted? (when lifecycle? (use-lifecycle! definition args features *element))
-          form (decorate
-                 (binding [state-store/*component* definition state-store/*args* args state-store/*react-key* state-key]
-                   (instrumentation/render! definition args #(render-body! *render args)))
-                 (if (and (ids :container) (not (false? (:container spec))))
-                   (remove #(= :props (first %)) features) features)
-                 spec mounted? capture-ref)
-          form (if lifecycle?
-                 (root-props form {:capture-root? true} false capture-ref) form)
-          options (into {} (map (fn [[id default _]] [id (feature-config id default spec args)]) features))
-          form (if (some ids [:appear :seen :exit]) (motion/use-motion form options presence) form)
-          form (if (ids :presence) (motion/use-presence form exit-config) form)
-          font-options (:font options)
-          _ (when (and (ids :font) font-options)
-              (validation/check! "component font" font/options-schema font-options))
-          form (if (ids :font) (font/use-font form font-options) form)]
-      (instrumentation/instrument definition form args state-key))))
+          options (into {} (map (fn [[id config _]] [id config])) features)
+          _ (when (ids :font)
+              (validation/check! "component font" font/options-schema (:font options)))
+          appearance (or (:seen options) (:appear options))
+          remember-key (when (map? appearance) (:remember-key appearance))
+          remembered? (when remember-key @(rf/subscribe [:state [:motion-seen remember-key]]))
+          motion? (or (some ids [:appear :seen :exit]) (= :exiting (:phase presence)))
+          raw-form (binding [state-store/*component* definition
+                             state-store/*args* args
+                             state-store/*react-key* state-key]
+                     (instrumentation/render! definition args #(render-body! *render args)))
+          owners (cond-> (vec (filter #(and (:setup (nth % 2))
+                                               (or raw-form (and (not= :presence (first %))
+                                                                 (false? (:root? (nth % 2)))))) features))
+                   (ids :lifecycle)
+                   (conj [lifecycle-owner {:init (:init spec), :exit (:exit spec), :component (r/current-component)}
+                          lifecycle-feature])
+                   (and motion? raw-form)
+                   (conj [motion-owner (assoc options :presence presence :hydrating? hydrating?
+                                        :server? context/*server?* :remembered? remembered?)
+                          motion/motion-feature]))
+          mounted? (use-lifecycle! owners instance)
+          form (decorate raw-form
+                         (if (ids :container) (remove #(= :props (first %)) features) features)
+                         spec (and (ids :lifecycle) mounted?) capture-ref)
+          rendered (reduce
+                     (fn [{:keys [form commits]} [id config implementation]]
+                       (if-let [render (:render implementation)]
+                         (let [state (get-in @(:active instance) [id :state])
+                               result (render form config state)
+                               _ (validation/check! "component feature render" feature-render-schema result)
+                               {rendered-form :form commit! :commit!} result]
+                           {:form rendered-form
+                            :commits (cond-> commits commit! (conj [id state commit!]))})
+                         {:form form, :commits commits}))
+                     {:form form, :commits []}
+                     (cond-> (vec (filter #(and (:render (nth % 2))
+                                               (not (#{:font :presence} (first %)))) features))
+                       (and motion? raw-form) (conj [motion-owner (second (last owners)) motion/motion-feature])
+                       (ids :presence) (conj [:presence exit-config motion/presence-feature])
+                       (ids :font) (conj [:font (:font options) font/feature])))
+          ;; Rendering precedence matches existing native-root motion, then
+          ;; presence retention, then the font text surface.
+          form' (:form rendered)
+          root? (some #(and (:setup (nth % 2)) (not (false? (:root? (nth % 2))))) owners)
+          form'' (if root? (root-props form' {:capture-root? true} false capture-ref) form')
+          shape {:features (mapv (fn [[id config _]] [id config]) features)
+                 :raw (when (vector? raw-form) (first raw-form))
+                 :root (when (vector? form'') (first form''))}
+          previous @(:shape instance)]
+      (when (and previous (not= (:features previous) (:features shape))
+                 (= (:raw previous) (:raw shape)) (not= (:root previous) (:root shape)))
+        (throw (ex-info "Changing a feature's root structure requires an intentional Hiccup key/remount"
+                        {:component (:name definition)})))
+      (reset! (:commits instance) (:commits rendered))
+      (reset! (:commit-shape instance) #(reset! (:shape instance) shape))
+      (instrumentation/instrument definition form'' args state-key))))
 
-(r/defc <function-body> [definition args presence state-key]
-  (render-function definition args presence state-key))
+(r/defc <function-body> [definition args presence state-key features]
+  (render-function definition args presence state-key features))
 
 (def <boundary>
   (r/create-class
@@ -285,9 +396,9 @@
                                    {:props (when (and (contains? spec :container) (map? supplied))
                                              (:props supplied))}
                                    false capture-ref)
-            attrs-form (root-props attrs-form spec false capture-ref)
-            attrs-form (root-props attrs-form {:props navigation-props} false capture-ref)
-            attrs (second attrs-form)]
+            attrs-form' (root-props attrs-form spec false capture-ref)
+            attrs-form'' (root-props attrs-form' {:props navigation-props} false capture-ref)
+            attrs (second attrs-form'')]
         (cond
           (:view options) [(resolve-view (:view options)) {:props attrs} children]
           (motion/dom-root? form) (root-props form {:props attrs} false capture-ref)
@@ -311,9 +422,9 @@
       view (into [(resolve-view view)] args)
       (= :rendered (:loading-prefab options))
       (let [sample (:loading-args options)
-            sample (if (fn? sample) (apply sample args) sample)
-            args (cond (map? sample) [sample] (sequential? sample) sample :else args)]
-        [loading/<rendered> {:form [<function-body> definition args nil nil]}])
+            sample' (if (fn? sample) (apply sample args) sample)
+            args' (cond (map? sample') [sample'] (sequential? sample') sample' :else args)]
+        [loading/<rendered> {:form [<function-body> definition args' nil nil nil]}])
       :else (loading-view options))))
 
 (declare <loading-reveal>)
@@ -349,36 +460,41 @@
   (rf/component-argv))
 
 (defn render-component [definition raw-args]
-  (let [state-key (some-> (current-argv) meta :key)
+  (let [*composition (rf/use-ref nil)
+        state-key (some-> (current-argv) meta :key)
         presence (when (motion/presence? (last raw-args)) (last raw-args))
         args (if presence (butlast raw-args) raw-args)
-        features (resolved-features definition)
-        data? (or (get-in definition [:options :depends]) (some #(= :data (first %)) features))
-        wrapped? (some #(get-in % [2 :wrap]) features)]
-    ;; Merge-only features run in the original defc function, adding neither
-    ;; React component nodes nor DOM wrappers. Wrappers are explicit opt-ins.
-    (if-not (or data? wrapped?)
-      (render-function definition args presence state-key)
-      (let [body [<function-body> definition args presence state-key]
-            body (if data? [<data-body> definition args body] body)]
-        (reduce (fn [form [id config feature]]
-                  (if-let [wrap (:wrap feature)]
-                    (wrap form definition
-                          (if (= id :container)
-                            {:options config :spec (current-spec definition args)}
-                            config))
-                    form))
-                body (reverse features))))))
+        features (resolved-features definition args)
+        data? (boolean (or (get-in definition [:options :depends])
+                           (some #(= :data (first %)) features)))
+        wrappers (filterv #(get-in % [2 :wrap]) features)
+        composition {:data? data?, :wrappers (mapv first wrappers)}]
+    (when-not (.-current *composition) (set! (.-current *composition) composition))
+    (when (not= composition (.-current *composition))
+      (throw (ex-info "Changing structural component features requires an intentional Hiccup key/remount"
+                      {:component (:name definition)})))
+    (if-not (or data? (seq wrappers))
+      (render-function definition args presence state-key features)
+      (let [body [<function-body> definition args presence state-key features]
+            body' (if data? [<data-body> definition args body] body)]
+        (reduce (fn [form [id config implementation]]
+                  ((:wrap implementation) form definition
+                   (if (= id :container)
+                     (let [defaults (:container-defaults (meta config))
+                           spec (dissoc (current-spec definition args) :container)]
+                       {:options (or defaults config)
+                        :spec (cond-> spec defaults (assoc :container config))})
+                     config))) body' (reverse wrappers))))))
 
 (register-feature! :data {})
 (register-feature! :props {})
 (register-feature! :lifecycle {})
 (register-feature! :appear {})
 (register-feature! :seen {})
-(register-feature! :font {})
+(register-feature! :font font/feature)
 (register-feature! :on-seen visibility/feature)
 (register-feature! :exit {})
-(register-feature! :presence {})
+(register-feature! :presence motion/presence-feature)
 (register-feature! :container
                    {:wrap (fn [form _ {:keys [options spec]}]
                             [<container> options spec form])})
@@ -416,26 +532,15 @@
    (when-not ready?
      ^{:key :skeleton} [<skeleton-layer> {:form skeleton}])])
 
-(r/defc <prefetch>
-  "An optional viewport sentinel for any source; fetching needs no component DOM."
+(defc <prefetch>
+  "Optional source sentinel; shared visibility owns acquisition and cleanup."
+  {:features [[:on-seen (fn [resources]
+                         {:event [:component-data/load resources]
+                          :once? true
+                          :threshold 0
+                          :root-margin "800px 0px"})]]}
   [resources]
-  (r/with-let [*observer (atom nil)
-               *resources (atom resources)
-               attach! (fn [element]
-                         (when-let [observer @*observer] (.disconnect observer))
-                         (reset! *observer nil)
-                         (when element
-                           (if (exists? js/IntersectionObserver)
-                             (let [observer (js/IntersectionObserver.
-                                             (fn [entries observer]
-                                               (when (some #(.-isIntersecting %) (array-seq entries))
-                                                 (.disconnect observer)
-                                                 (data/prefetch! @*resources)))
-                                             #js {:rootMargin "800px 0px" :threshold 0})]
-                               (reset! *observer observer)
-                               (.observe observer element))
-                             (data/prefetch! @*resources))))]
-    (reset! *resources resources)
-    [:div {:key resources :aria-hidden true :style {:height "1px" :margin-bottom "-1px" :pointer-events "none"}
-           :ref attach!}]
-    (finally (when-let [observer @*observer] (.disconnect observer)))))
+  [:div {:aria-hidden true
+         :style {:height "0.0625rem"
+                 :margin-bottom "-0.0625rem"
+                 :pointer-events "none"}}])

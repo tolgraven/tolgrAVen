@@ -102,6 +102,7 @@
 (def component-spec
   "The map supplied to a component instance, distinct from its declaration."
   [:map [:props {:optional true} :map]
+        [:features {:optional true} [:sequential feature]]
         [:container {:optional true} container]
         [:depends {:optional true} dependencies]
         [:classes {:optional true} [:or :string [:sequential :string]]]])

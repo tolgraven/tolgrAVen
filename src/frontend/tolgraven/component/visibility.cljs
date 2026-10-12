@@ -1,7 +1,9 @@
 (ns tolgraven.component.visibility
   "Visibility effects for a component's existing native root. React owns markup;
    this lifecycle adapter owns the observer, delay and teardown."
-  (:require [tolgraven.react :as rf]))
+  (:require [tolgraven.react :as rf]
+            [tolgraven.component.registry]
+            [tolgraven.macros :refer-macros [defc]]))
 
 (defn setup [{:keys [event callback once? threshold root-margin delay-ms]
               :or {once? true threshold 0.5 root-margin "0px" delay-ms 0}}]
@@ -40,3 +42,34 @@
   {:setup setup
    :mount (fn [state element] ((:mount! state) element))
    :unmount (fn [state] ((:stop! state)))})
+
+
+(defc <sentinel>
+  "Lean sentinel for source adapters that cannot import the full component
+   runtime (component.sources imports them). Normal UI uses defc :on-seen.
+   Both paths share setup; this boundary never owns another observer algorithm."
+  {:spec false}
+  [options]
+  (let [*element (rf/use-ref nil)
+        *owner (rf/use-ref nil)]
+    (rf/use-layout-effect
+      (fn []
+        (fn []
+          (let [old (.-current *owner)]
+            (set! (.-current *owner) nil)
+            (when-let [state (:state old)] ((:stop! state)))))) [])
+    (rf/use-layout-effect
+      (fn []
+        (let [element (.-current *element)
+              old (.-current *owner)]
+          (when (or (not= options (:options old)) (not= element (:element old)))
+            (when-let [state (:state old)] ((:stop! state)))
+            (let [state (when element (setup options))]
+              (set! (.-current *owner) {:options options, :element element, :state state})
+              (when state ((:mount! state) element)))))
+        nil))
+    [:div {:aria-hidden true
+           :ref (fn [element] (set! (.-current *element) element))
+           :style {:height "0.0625rem"
+                   :margin-bottom "-0.0625rem"
+                   :pointer-events "none"}}]))

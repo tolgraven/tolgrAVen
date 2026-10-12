@@ -120,40 +120,15 @@
     (if (= :crossfade (get-in db [:fonts :instances owner :phase]))
       (assoc-in db [:fonts :instances owner :phase] :ready) db)))
 
-(defn use-font
-  "Overlap two declarative text layers inside a native root. Only apply this
-   feature to presentational text: inputs, controls and component lifecycles must
-   stay outside its children. SSR and hydration start with one original layer."
-  [form options]
-  (when options
-    (when (and form (not (motion/dom-root? form)))
-      (throw (js/Error. "Font transitions require a native text root."))))
-  (let [;; Option functions may construct an equal Clojure map on every render.
-        ;; Stabilize its primitive contract fields before assigning ownership.
-        options (rf/use-memo (constantly options)
-                             (mapv #(get options %) [:family :initial-family :fallback
-                                                     :property :sample :fade-ms]))
-        owner (rf/use-memo random-uuid [options])
-        instance @(rf/subscribe [:font/instance owner])
-        phase (get instance :phase :initial)
-        enabled? (and options (boolean form))
-        attrs (when (map? (second form)) (second form))
+(defn- render-font
+  "Overlap declarative text layers inside the native root. Inputs, controls and
+   stateful child components belong outside this presentational text surface.
+   SSR and hydration start with the original layer; the ready layer keeps its key."
+  [form options owner phase]
+  (when (and form (not (motion/dom-root? form)))
+    (throw (js/Error. "Font transitions require a native text root.")))
+  (let [attrs (when (map? (second form)) (second form))
         children (if (map? (second form)) (nnext form) (next form))]
-    (rf/use-effect
-      (fn []
-        (when (and enabled? (not context/*server?*))
-          (rf/dispatch [:font/attach owner options])
-          #(rf/dispatch [:font/detach owner])))
-      [owner options enabled?])
-    (rf/use-layout-effect
-      (fn []
-        (when (= :prepared phase)
-          ;; Commit the loaded-font layer behind the visible original, then start
-          ;; both opacity animations on the same painted frame.
-          (motion/next-frame! #(rf/dispatch [:font/reveal owner]))))
-      [owner phase])
-    (if-not enabled?
-      form
       (let [ready? (= :ready phase)
             changing? (#{:prepared :crossfade} phase)
             family (fn [name] (str (js/JSON.stringify name) ", " (:fallback options)))
@@ -180,4 +155,29 @@
         ;; After the fade the incoming key survives, and React removes the old
         ;; text layer. The native root, its handlers and neighbouring controls
         ;; never unmount. No cloneNode or inspection of React elements is needed.
-        (with-meta [(first form) attributes text] (meta form))))))
+        (with-meta [(first form) attributes text] (meta form)))))
+
+
+(def feature
+  {:setup (fn [options]
+            {:owner (random-uuid), :options options, :phase (atom nil), :stop (atom nil)})
+   :mount (fn [state _]
+            (rf/dispatch [:font/attach (:owner state) (:options state)]))
+   :unmount (fn [state]
+              (when-let [stop! @(:stop state)] (stop!))
+              (rf/dispatch [:font/detach (:owner state)]))
+   :render (fn [form options state]
+             ;; An inactive :font never calls this renderer or acquires this
+             ;; subscription. The owner appears only after its committed setup.
+             (let [owner (:owner state)
+                   instance (when (and owner form) @(rf/subscribe [:font/instance owner]))
+                   phase (get instance :phase :initial)]
+               {:form (when form (render-font form options owner phase))
+                :commit! (when state
+                           (fn [_]
+                             (when (not= phase @(:phase state))
+                               (when-let [stop! @(:stop state)] (stop!))
+                               (reset! (:phase state) phase)
+                               (reset! (:stop state)
+                                       (when (= :prepared phase)
+                                         (motion/next-frame! #(rf/dispatch [:font/reveal owner])))))))}))})

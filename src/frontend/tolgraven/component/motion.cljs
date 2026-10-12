@@ -1,6 +1,7 @@
 (ns tolgraven.component.motion
   "Root-merged motion and parent-owned exit retention. No wrapper components."
   (:require [clojure.string :as string]
+            [reagent.core :as r]
             [tolgraven.react :as rf]
             [tolgraven.component.restore :as restore]))
 
@@ -104,168 +105,197 @@
          (js/cancelAnimationFrame frame)
          (when @*timer (js/clearTimeout @*timer)))))
 
-(defn use-motion
-  "Merge appearance/visibility/exit state onto this component's native root."
-  [form options presence]
-  (let [hydrating? (rf/use-context restore/hydrating-context)
-        appear (:appear options) seen (:seen options) exit (:exit options)
-        appearance (config (or seen appear)) exit-options (config exit)
-        remember-key (:remember-key appearance)
-        remembered? (when remember-key @(rf/subscribe [:state [:motion-seen remember-key]]))
-        [skip-enter?] (rf/use-state #(boolean (and (not= false (:restore? appearance))
-                                                  (or hydrating? remembered? (restore/skip-enter?)))))
-        [visible? set-visible!] (rf/use-state skip-enter?)
-        [reduced? set-reduced!] (rf/use-state reduced-motion?)
-        *element (rf/use-ref nil)
-        base-ref (:ref (attrs form))
-        capture! (rf/use-callback
-                  (fn [element] (set! (.-current *element) element) (set-ref! base-ref element) js/undefined)
-                  #js [base-ref])
-        exiting? (= :exiting (:phase presence))
+(defn- skip-enter? [options]
+  (let [appearance (config (or (:seen options) (:appear options)))]
+    (boolean (and (not= false (:restore? appearance))
+                  (or (:hydrating? options) (:server? options)
+                      (:remembered? options) (restore/skip-enter?))))))
+
+(defn- stop! [state id]
+  (when-let [cleanup! (get @(:stops state) id)]
+    (swap! (:stops state) dissoc id)
+    (cleanup!)))
+
+(defn- stop-all! [state]
+  (reset! (:active? state) false)
+  (doseq [id (keys @(:stops state))] (stop! state id)))
+
+(defn- ensure-media! [state options]
+  ;; Exiting children still acknowledge completion after an instance disables
+  ;; motion. That completion alone must not acquire a media query/listener.
+  (let [enabled? (some options [:appear :seen :exit])]
+    (when-not enabled? (stop! state :media))
+    (when (and enabled? (not (get @(:stops state) :media))
+               (exists? js/window) (.-matchMedia js/window))
+      (let [query (.matchMedia js/window "(prefers-reduced-motion: reduce)")
+            change! #(reset! (:reduced? state) (.-matches query))]
+        (.addEventListener query "change" change!)
+        (swap! (:stops state) assoc :media
+               #(.removeEventListener query "change" change!))))))
+
+(defn- commit-motion! [state element options]
+  (ensure-media! state options)
+  (let [appearance (config (or (:seen options) (:appear options)))
+        seen (:seen options)
         threshold (or (:threshold appearance) 0.5)
         once? (boolean (:once? appearance))
-        root-margin (or (:root-margin appearance) "0px")]
-    (rf/use-effect
-     (fn []
-       (when (and remember-key visible? (not remembered?))
-         (rf/dispatch [:component-motion/seen remember-key]))
-       js/undefined) #js [remember-key visible? remembered?])
-    (rf/use-effect
-     (fn []
-       (if-not (and (exists? js/window) (.-matchMedia js/window))
-         js/undefined
-         (let [query (.matchMedia js/window "(prefers-reduced-motion: reduce)")
-               change! #(set-reduced! (.-matches query))]
-           (.addEventListener query "change" change!)
-           #(.removeEventListener query "change" change!)))) #js [])
-    ;; Run after every commit, but only restart when root/options change.
-    ;; A ref replacement with the same DOM element does not reset visibility.
-    (let [*watch (rf/use-ref nil)]
-      (rf/use-layout-effect
-       (fn []
-         (let [element (.-current *element)
-               signature [element (boolean seen) threshold once? root-margin reduced? skip-enter? (:force appearance)]
-               old (.-current *watch)]
-           (when (not= signature (:signature old))
-             (when-let [stop! (:stop! old)] (stop!))
-             (let [stop! (when element
-                           (cond
-                             (or skip-enter? reduced? (:force appearance) (not (or appear seen)))
-                             (do (set-visible! true) nil)
-                             (and seen (exists? js/IntersectionObserver))
-                             (let [*seen? (atom false)
-                                   observer (js/IntersectionObserver.
-                                             (fn [entries observer]
-                                               (doseq [entry (array-seq entries)]
-                                                 (let [in-view? (and (.-isIntersecting entry)
-                                                                     (>= (.-intersectionRatio entry) threshold))]
-                                                   (when-not (and once? @*seen?)
-                                                     (set-visible! in-view?)
-                                                     (when in-view? (reset! *seen? true)))
-                                                   (when (and once? in-view?) (.disconnect observer)))))
-                                             #js {:threshold threshold :rootMargin root-margin})]
-                               (.observe observer element)
-                               #(.disconnect observer))
-                             :else (next-frame! #(set-visible! true))))]
-               (set! (.-current *watch) {:signature signature :stop! stop!}))))
-         js/undefined))
-      (rf/use-layout-effect (fn [] (fn []
-                                      (when-let [stop! (:stop! (.-current *watch))] (stop!))
-                                      (set! (.-current *watch) nil))) #js []))
-    (rf/use-layout-effect
-     (fn []
-       (if-not (and exiting? (:finish! presence))
-         js/undefined
-         (if (or reduced? (nil? (.-current *element)))
-           ;; Parent's commit must finish before its child can acknowledge exit.
-           (let [*active? (atom true)]
-             (js/queueMicrotask #(when @*active? ((:finish! presence))))
-             #(reset! *active? false))
-           (finish-animation! (.-current *element) exit-options (:finish! presence)))))
-     #js [presence reduced?])
-    (when (and form (not (dom-root? form)))
-      (throw (js/Error. "Motion features require a native DOM root; they never add a wrapper.")))
-    (when form
-      (let [base (attrs form)
-            classes (string/join " " (remove string/blank?
-                                              [(class-text (:class base))
-                                               "appear-wrapper" (class-text (:class appearance))
-                                               (when (and (not exiting?) (or visible? reduced? skip-enter?)) "appeared")
-                                               (when exiting? (str "exiting " (class-text (:class exit-options))))]))]
-        (with-attrs form
-          (cond-> (assoc base :class classes :ref capture!)
-            reduced? (update :style merge {:transition "none" :animation "none"})
-            exiting? (assoc :aria-hidden true :inert true)))))))
+        margin (or (:root-margin appearance) "0px")
+        reduced? @(:reduced? state)
+        skip? (:skip-enter? state)
+        signature [element (boolean seen) (boolean (:appear options)) threshold once? margin reduced? skip? (:force appearance)]]
+    (when (not= signature @(:signature state))
+      (stop! state :watch)
+      (reset! (:signature state) signature)
+      (let [cleanup! (when element
+                       (cond
+                         (or skip? reduced? (:force appearance)
+                             (not (or (:appear options) seen)))
+                         (do (reset! (:visible? state) true) nil)
+                         (and seen (exists? js/IntersectionObserver))
+                         (let [*seen? (atom false)
+                               observer (js/IntersectionObserver.
+                                          (fn [entries observer]
+                                            (when @(:active? state)
+                                              (doseq [entry (array-seq entries)]
+                                                (let [visible? (and (.-isIntersecting entry)
+                                                                    (>= (.-intersectionRatio entry) threshold))]
+                                                  (when-not (and once? @*seen?)
+                                                    (reset! (:visible? state) visible?)
+                                                    (when visible? (reset! *seen? true)))
+                                                  (when (and once? visible?) (.disconnect observer))))))
+                                          (clj->js {:threshold threshold, :rootMargin margin}))]
+                           (.observe observer element)
+                           #(.disconnect observer))
+                         :else (next-frame! #(when @(:active? state)
+                                               (reset! (:visible? state) true)))))]
+        (when cleanup! (swap! (:stops state) assoc :watch cleanup!))))
+    (when (and (:remember-key appearance) @(:visible? state)
+               (not (:remembered? options)))
+      (rf/dispatch [:component-motion/seen (:remember-key appearance)]))
+    (let [presence (:presence options)
+          signature [presence (:exit options) reduced? element]]
+      (when (not= signature @(:presence state))
+        (stop! state :exit)
+        (reset! (:presence state) signature)
+        (when (and (= :exiting (:phase presence)) (:finish! presence))
+          (let [cleanup! (if (or reduced? (nil? element) (not (:exit options)))
+                           (let [*active? (atom true)]
+                             (js/queueMicrotask #(when @*active? ((:finish! presence))))
+                             #(reset! *active? false))
+                           (finish-animation! element (config (:exit options)) (:finish! presence)))]
+            (swap! (:stops state) assoc :exit cleanup!)))))))
+
+(def motion-feature
+  {:setup (fn [options]
+            (let [skip? (skip-enter? options)]
+              {:options options
+               :skip-enter? skip?
+               :visible? (r/atom skip?)
+               :reduced? (r/atom (boolean (and (some options [:appear :seen :exit])
+                                              (reduced-motion?))))
+               :active? (atom true)
+               :signature (atom nil)
+               :presence (atom nil)
+               :stops (atom {})}))
+   ;; Changes are committed through the render callback. Keep the original
+   ;; hydration/entrance decision and live owner when only configuration changes.
+   :mount (fn [state element] (commit-motion! state element (:options state)))
+   :reconfigure (fn [state _] state)
+   :unmount stop-all!
+   :render (fn [form options state]
+             (when (and form (not (dom-root? form)))
+               (throw (js/Error. "Motion features require a native DOM root; they never add a wrapper.")))
+             (let [appearance (config (or (:seen options) (:appear options)))
+                   exiting? (= :exiting (get-in options [:presence :phase]))
+                   visible? (if state @(:visible? state) (skip-enter? options))
+                   reduced? (boolean (and state @(:reduced? state)))
+                   base (attrs form)
+                   classes (string/join " " (remove string/blank?
+                                                  [(class-text (:class base))
+                                                   "appear-wrapper" (class-text (:class appearance))
+                                                   (when (and (not exiting?) (or visible? reduced?)) "appeared")
+                                                   (when exiting? (str "exiting " (class-text (:class (config (:exit options))))))]))]
+               {:form (when form
+                        (with-attrs form
+                          (cond-> (assoc base :class classes)
+                            reduced? (update :style merge {:transition "none", :animation "none"})
+                            exiting? (assoc :aria-hidden true :inert true))))
+                :commit! (when state #(commit-motion! state % options))}))})
 
 (defn- flatten-children [forms]
   (mapcat #(if (and (sequential? %) (not (vector? %))) (flatten-children %) [%]) forms))
 
-(defn use-presence
-  "Retain removed keyed direct children in their existing parent until they exit.
-   eligible? identifies defc children opting into :exit; no virtual/DOM wrappers."
-  [form eligible?]
-  (let [*committed (rf/use-ref [])
-        *mounted? (rf/use-ref true)
-        *deadlines (rf/use-ref {})
-        [_ refresh!] (rf/use-reducer inc 0)
-        current (vec (flatten-children (children form)))
-        keyed (fn [child] (when (and (vector? child) (eligible? (first child)))
-                           (or (:key (meta child))
-                               (throw (js/Error. "Presence children with :exit need stable, unique Hiccup keys.")))))
+(defn- retained-children [form eligible? state]
+  (let [current (vec (flatten-children (children form)))
+        keyed (fn [child]
+                (when (and (vector? child) (eligible? child))
+                  (or (:key (meta child))
+                      (throw (js/Error. "Presence children with :exit need stable, unique Hiccup keys.")))))
         keys (keep keyed current)
-        previous (.-current *committed)
+        ;; A child whose exit feature was disabled is still present. Never keep
+        ;; a duplicate of its old, eligible form just because eligibility changed.
+        present-keys (into #{} (keep #(when (vector? %) (:key (meta %)))) current)
+        previous (if state @(:committed state) [])
         next (mapv (fn [child]
                      (let [key (keyed child)]
-                       {:key key :form child :presence (when key present)})) current)
+                       {:key key, :form child, :presence (when key present)})) current)
         removed (keep-indexed (fn [index entry]
-                                (when (and (:key entry) (not (some #{(:key entry)} keys))) [index entry])) previous)
-        retained (reduce
-                  (fn [entries [index entry]]
-                    (let [key (:key entry)
-                          control (if (= :exiting (get-in entry [:presence :phase])) (:presence entry)
-                                    (let [token (js-obj)]
-                                      (->Presence :exiting token
-                                                  (fn []
-                                                    (when (and (.-current *mounted?)
-                                                               (some #(and (= key (:key %))
-                                                                           (identical? token (get-in % [:presence :token])))
-                                                                     (.-current *committed)))
-                                                      (set! (.-current *committed)
-                                                            (vec (remove #(= key (:key %)) (.-current *committed))))
-                                                      (refresh!))))))
-                          index (min index (count entries))]
-                      (into (conj (subvec entries 0 index) (assoc entry :presence control)) (subvec entries index))))
-                  next removed)]
+                                (when (and (:key entry) (not (present-keys (:key entry))))
+                                  [index entry])) previous)]
     (when (not= (count keys) (count (set keys)))
       (throw (js/Error. "Presence children require unique keys.")))
-    (when-not (or (dom-root? form) (= :<> (first form)))
-      (throw (js/Error. "The :presence feature needs a native parent root or fragment.")))
-    (rf/use-layout-effect
-     (fn []
-       (set! (.-current *committed) retained)
-       (let [exiting (into {} (keep (fn [entry]
-                                     (when (= :exiting (get-in entry [:presence :phase]))
-                                       [(:key entry) entry])) retained))]
-         (doseq [[key {:keys [token timer]}] (.-current *deadlines)
-                 :when (not (identical? token (get-in exiting [key :presence :token])))]
-           (js/clearTimeout timer)
-           (set! (.-current *deadlines) (dissoc (.-current *deadlines) key)))
-         (doseq [[key entry] exiting :when (not (contains? (.-current *deadlines) key))]
-           (let [control (:presence entry)
-                 options (config (eligible? (first (:form entry))))
-                 ;; This deadline also covers loading/error roots that cannot
-                 ;; acknowledge an exit themselves. It owns no DOM or wrapper.
-                 timeout (if (reduced-motion?) 0 (min 10000 (or (:timeout-ms options) 10000)))
-                 timer (js/setTimeout (:finish! control) timeout)]
-             (set! (.-current *deadlines)
-                   (assoc (.-current *deadlines) key {:token (:token control) :timer timer})))))
-       js/undefined))
-    (rf/use-layout-effect (fn [] (set! (.-current *mounted?) true)
-                             (fn [] (set! (.-current *mounted?) false)
-                               (doseq [[_ {:keys [timer]}] (.-current *deadlines)] (js/clearTimeout timer))
-                               (set! (.-current *deadlines) {})
-                               (set! (.-current *committed) []))) #js [])
-    (with-meta
-      (into [(first form) (attrs form)]
-            (map (fn [{:keys [form presence]}] (if presence (conj form presence) form)) retained))
-      (meta form))))
+    (reduce
+      (fn [entries [index entry]]
+        (let [key (:key entry)
+              control (if (= :exiting (get-in entry [:presence :phase]))
+                        (:presence entry)
+                        (let [token (js-obj)]
+                          (->Presence :exiting token
+                                      (fn []
+                                        (when (and @(:active? state)
+                                                   (some #(and (= key (:key %))
+                                                               (identical? token (get-in % [:presence :token])))
+                                                         @(:committed state)))
+                                          (swap! (:committed state)
+                                                 #(vec (remove (fn [entry] (= key (:key entry))) %))))))))
+              index' (min index (count entries))]
+          (into (conj (subvec entries 0 index') (assoc entry :presence control))
+                (subvec entries index')))) next removed)))
+
+(defn- commit-presence! [state retained eligible?]
+  (reset! (:committed state) retained)
+  (let [exiting (into {} (keep (fn [entry]
+                               (when (= :exiting (get-in entry [:presence :phase]))
+                                 [(:key entry) entry]))) retained)]
+    (doseq [[key {:keys [token timer]}] @(:deadlines state)
+            :when (not (identical? token (get-in exiting [key :presence :token])))]
+      (js/clearTimeout timer)
+      (swap! (:deadlines state) dissoc key))
+    (doseq [[key entry] exiting :when (not (contains? @(:deadlines state) key))]
+      (let [control (:presence entry)
+            options (config (eligible? (:form entry)))
+            timeout (if (reduced-motion?) 0 (min 10000 (or (:timeout-ms options) 10000)))
+            timer (js/setTimeout (:finish! control) timeout)]
+        (swap! (:deadlines state) assoc key {:token (:token control), :timer timer})))))
+
+(def presence-feature
+  {:root? false
+   :reconfigure (fn [state _] state)
+   :setup (fn [_]
+            {:committed (r/atom [])
+             :active? (atom true)
+             :deadlines (atom {})})
+   :unmount (fn [state]
+              (reset! (:active? state) false)
+              (doseq [[_ {:keys [timer]}] @(:deadlines state)] (js/clearTimeout timer))
+              (reset! (:deadlines state) {}))
+   :render (fn [form eligible? state]
+             (when (and form (not (or (dom-root? form) (= :<> (first form)))))
+               (throw (js/Error. "The :presence feature needs a native parent root or fragment.")))
+             (let [retained (when form (retained-children form eligible? state))]
+               {:form (when form (with-meta
+                        (into [(first form) (attrs form)]
+                              (map (fn [{:keys [form presence]}]
+                                     (if presence (conj form presence) form)) retained))
+                        (meta form)))
+                :commit! (when (and state form) (fn [_] (commit-presence! state retained eligible?)))}))})
