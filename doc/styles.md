@@ -87,17 +87,25 @@ Fira Code belongs to the independent monospace sheet. Its initial face uses
 period does not later swap over visible SSR text automatically. The separate
 `Fira Code Ready` family shares the same immutable font URL and is loaded through
 `document.fonts.load` by the owning component. This adds no font to plain routes
-or closed Search. Search's field/suggestions activate the feature only when open;
-fenced blocks and inline snippets own it when rendered.
+or closed Search. Search's visible letters/suggestions activate the feature only
+when open; fenced blocks and inline snippets own it when rendered.
 
-A pending face keeps the original font stack visible. Once the ready face has
-loaded, the native root fades out for 100ms, changes its font variable at zero
-opacity, paints for two frames, and fades in for 100ms. Readiness and phases are
-re-frame events; animation completion uses Reagent event props with guarded
-`:dispatch-later` deadlines. Already loaded initial faces retain the browser's
-first-paint choice without animation. Reduced motion and local-return documents
-skip the fade. Failure or the ten-second load deadline leaves readable fallback
-text; stale completions cannot revive an expired attempt or an unmounted owner.
+A pending face keeps the original text visible. Once the ready face has loaded,
+a decorative copy using that face is rendered behind it at zero opacity. After
+two painted frames, both layers crossfade simultaneously for 100ms with linear
+easing. The outgoing layer supplies layout during the fade; at completion React
+removes it and retains the incoming layer as the sole accessible text. Neither
+controls nor container backgrounds fade. The feature belongs on text-only roots;
+do not duplicate inputs, IDs, component lifecycles or interactive descendants.
+The highlighter supplies its already-generated native text tree to a stable
+Reagent `PreTag` adapter, so crossfading does not mount a second formatter.
+
+Readiness and phases are re-frame events; Reagent animation completion and a
+bounded `:dispatch-later` deadline remove the old layer. Already loaded initial
+faces retain the browser's first-paint choice without animation. Reduced motion
+and local-return documents use one layer and skip the fade. Failure or the
+ten-second load deadline leaves readable fallback text; stale completions cannot
+revive an expired attempt or an unmounted owner.
 Font loading never blocks hydration or the page-ready gate.
 
 `Fira Code Fallback` uses locally installed Courier New. Its `size-adjust` is the

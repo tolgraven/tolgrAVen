@@ -156,6 +156,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - The local return adapter renders an isolated state snapshot using the shared
   renderer. HTML and state are inseparable. Do not copy DOM or replay init before
   hydration; retain exact query caches and fold/window state.
+- The `:font` feature owns a simultaneous text-only crossfade. Keep controls,
+  inputs and stateful child components outside its duplicated text. Incoming
+  text is decorative until the outgoing layer is declaratively removed; SSR,
+  cached initial faces, reduced motion and local returns use one text layer.
 - Browser-only APIs belong in lifecycle/effect adapters with cleanup and SSR guards.
   `boot.cljs` installs document persistence/history listeners after app-db setup,
   then site listeners/preferences from the committed root lifecycle. Deferred

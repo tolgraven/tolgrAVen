@@ -1,6 +1,7 @@
 (ns tolgraven.modules.highlight.views
   (:require
     [tolgraven.component.registry]
+    [tolgraven.component.font :as font]
     [tolgraven.macros :refer-macros [defc]]
     [reagent.core :as r]
     [tolgraven.react :as rf]
@@ -10,6 +11,21 @@
    ; ["react-syntax-highlighter/dist/esm/languages/hljs/clojure" :as clj-lang]
    ; ["react-syntax-highlighter/dist/esm/languages/hljs/javascript" :as js-lang]
     ))
+
+(defc <font-pre>
+  {:features [[:font font/fira]]}
+  [{:keys [children] :as props}]
+  [:pre (update (dissoc props :children) :style #(when % (js->clj % :keywordize-keys true))) children])
+
+(defc <font-inline>
+  {:features [[:font font/fira]]}
+  [{:keys [children] :as props}]
+  [:code (update (dissoc props :children) :style #(when % (js->clj % :keywordize-keys true))) children])
+
+;; PreTag is an ordinary React interop boundary. Its children are the native
+;; highlighted text tree; duplicating them mounts no highlighter or effects.
+(def font-pre (rf/reactify-component (fn [props] [<font-pre> props])))
+(def font-inline (rf/reactify-component (fn [props] [<font-inline> props])))
 
 (def syntax-highlighter (r/adapt-react-class SyntaxHighlighter))
 
@@ -53,9 +69,10 @@
               :startingLineNumber (or starting-line-number 1)
               :lineNumberStyle {:userSelect "none"}
               :children code
+              :PreTag font-pre
               :wrapLines (or numbered? (boolean line-props))}
        line-props (assoc :lineProps line-props)
-       inline? (assoc :PreTag "code"
+       inline? (assoc :PreTag font-inline
                       :CodeTag "span"
                       :className "code-highlight"
                       :customStyle {:display "inline"
