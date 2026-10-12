@@ -1,14 +1,19 @@
 (ns tolgraven.component.sources
   "Adapters use existing application clients; credentials stay in those clients."
-  (:require [ajax.core :as ajax]
+  #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
+  #?(:cljs (:require [ajax.core :as ajax]
             [goog.object :as gobj]
             [reagent.ratom :as ratom]
             [tolgraven.component.data :as data]
             [tolgraven.component.storage :as storage]
             [tolgraven.react :as rf]
+            [tolgraven.service-status :as status]
             [tolgraven.content.client :as content]
             [tolgraven.content.contract :as contract]
-            [tolgraven.supabase.client :as supabase]))
+            #?(:module/supabase [tolgraven.supabase.runtime :as supabase]))))
+
+#?(:cljs
+(do
 
 (rf/reg-sub :component-data/path
   (fn [db query]
@@ -20,8 +25,9 @@
     (let [[_ keys] (or (:re-frame/query-v query) query)]
       {:ready? (every? #(contains? (:content db) %) keys)
        :value (select-keys (:content db) keys)})))
-(rf/reg-sub :component-data/supabase-cache
-  (fn [_ q] (supabase/cached-query (second (or (:re-frame/query-v q) q)))))
+(when-enabled :supabase nil
+  (rf/reg-sub :component-data/supabase-cache
+    (fn [_ q] (supabase/cached-query (second (or (:re-frame/query-v q) q))))))
 
 (defn- db-value [path]
   @(rf/sub [:component-data/path path]))
@@ -60,6 +66,7 @@
                              :handler resolve
                              :error-handler (fn [_] (reject (js/Error. "URL dependency unavailable")))}))))})
 
+(when-enabled :supabase nil
 (defonce *auth-generation (atom 0))
 (defn- invalidate-auth-data! [& _]
   (swap! *auth-generation inc)
@@ -82,13 +89,13 @@
   :read (fn [{:keys [query]}] @(rf/sub [:component-data/supabase-cache query]))
   :load! (fn [{:keys [query timeout-ms]}]
            (let [generation @*auth-generation]
-             (-> (data/wait-for! supabase/*client
-                                #(hash-map :ready? (some? @supabase/*client) :value @supabase/*client)
-                                (or timeout-ms 15000))
+             (-> (status/within! (supabase/ensure!) (or timeout-ms 15000))
                  (.then (fn [_]
                           (when-not (= generation @*auth-generation)
                             (throw (js/Error. "Supabase session changed")))
                           (supabase/preload-query! query))))))})
+
+)
 
 ;; Promise interop ends at this adapter. Page declarations describe subscriptions,
 ;; not transport requests. Dispose only our reaction, never a shared subscription.
@@ -100,3 +107,5 @@
                                 #(let [value @*value] {:ready? (true? value) :value value})
                                 (or timeout-ms 15000))
                  (.finally #(ratom/dispose! *value)))))})
+
+))

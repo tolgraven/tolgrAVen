@@ -8,7 +8,7 @@
 (deftest module-build-and-runtime-catalog-have-one-owner
   (let [found (modules/discover)
         by-id (into {} (map (juxt :id identity)) found)]
-    (is (every? #(contains? by-id %) [:blog :cv :docs :test :user :link-preview :carousel :contact]))
+    (is (every? #(contains? by-id %) [:blog :cv :docs :test :user :link-preview :carousel :contact :supabase]))
     (is (not (contains? by-id :main)))
     (is (= 'tolgraven.modules.experiments.module (get-in by-id [:test :entry])))
     (is (= #{:main :user :link-preview} (get-in by-id [:blog :depends-on])))
@@ -98,7 +98,8 @@
     (is (thrown? clojure.lang.ExceptionInfo (site/validate! config)))))
 
 (deftest invalid-site-selections-fail-before-building
-  (doseq [config [{:modules {:missing {:enabled true}}}
+  (doseq [config [{:modules {:supabase {:enabled false}}}
+                  {:modules {:missing {:enabled true}}}
                   {:modules {:blog {:comment false}}}
                   {:modules {:user {:enabled false}}}
                   {:modules {:blog {:enabled false}}}]]

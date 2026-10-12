@@ -4,7 +4,7 @@
    [re-frame.std-interceptors :refer [path]]
    ; [day8.re-frame.tracing :refer-macros [fn-traced]]
    [tolgraven.util :as util]
-   [tolgraven.supabase.client :as supabase]
+   [tolgraven.supabase.runtime :as supabase]
    [clojure.walk :as walk]
    [ajax.core :as ajax]))
 
@@ -85,10 +85,11 @@
 (rf/reg-event-db :user/close-ui
   (fn [db _] (assoc-in db [:state :user-section] [:closed])))
 
-(rf/reg-event-db :user/open-ui
-  (fn [db [_ page]]
-    (assoc-in db [:state :user-section]
-              [(or page (if (get-in db [:state :active-user]) :admin :login))])))
+(rf/reg-event-fx :user/open-ui
+  (fn [{:keys [db]} [_ page]]
+    {:db (assoc-in db [:state :user-section]
+                   [(or page (if (get-in db [:state :active-user]) :admin :login))])
+     :dispatch [:store/init]}))
 
 (rf/reg-event-fx :user/request-close-ui ;just updates query like
  (fn [{:keys [db]} [_ ]]

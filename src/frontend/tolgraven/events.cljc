@@ -21,7 +21,7 @@
     [tolgraven.loader :as l]
     [tolgraven.navigation.transition :as page-transition]
     [tolgraven.navigation.scroll]
-    [tolgraven.supabase.client :as supabase-client]
+    #?(:module/supabase [tolgraven.supabase.runtime :as supabase-client])
     [tolgraven.supabase.schema :as supabase-schema]
     [tolgraven.service-status :as service-status]
     [tolgraven.doc-fx]
@@ -271,6 +271,7 @@
   (fn [[id attr value]]
     (util/set-attr! id attr value)))
 
+(when-enabled :supabase nil
 (when-enabled :gpt nil
 (rf/reg-fx :supabase/write
   (fn [[path data merge-fields]]
@@ -281,7 +282,7 @@
   (fn [{:keys [db]} [_ path data merge-fields]]
     (if (get-in db [:state :booted :store])
       {:supabase/write [path data merge-fields]}
-      {:dispatch [:on-booted :store [:store-> path data merge-fields]]})))
+      {:dispatch-n [[:store/init] [:on-booted :store [:store-> path data merge-fields]]]})))
 
 (rf/reg-fx :supabase/load-query
   (fn [[opts on-success on-failure]]
@@ -294,7 +295,7 @@
     (if (get-in db [:state :booted :store])
       {:supabase/load-query [{(if (even? (count path)) :path-document :path-collection) path}
                              on-success on-failure]}
-      {:dispatch [:on-booted :store [:<-store path on-success on-failure]]})))
+      {:dispatch-n [[:store/init] [:on-booted :store [:<-store path on-success on-failure]]]})))
 
 (def init-attempt [:enum 0 1])
 
@@ -359,14 +360,13 @@
 
 (rf/reg-fx :supabase/initialize
   (fn [[attempt settings]]
-    (try
-      (supabase-client/init! settings
-                            #(rf/dispatch [:supabase/profile %])
-                            #(rf/dispatch [:supabase/auth-error %]))
-      (service-status/recover! :supabase-init)
-      (rf/dispatch [:supabase/initialized settings])
-      (catch :default error
-        (rf/dispatch [:supabase/error attempt nil])))))
+    (-> (supabase-client/init! settings
+                              #(rf/dispatch [:supabase/profile %])
+                              #(rf/dispatch [:supabase/auth-error %]))
+        (.then (fn [_]
+                 (service-status/recover! :supabase-init)
+                 (rf/dispatch [:supabase/initialized settings])))
+        (.catch (fn [_] (rf/dispatch [:supabase/error attempt nil]))))))
 
 (rf/reg-event-fx :supabase/init
   {:args [:cat init-attempt supabase-schema/options]}
@@ -386,6 +386,8 @@
       (when-not (#{:loading :ready} (get-in db [:state :supabase-init]))
         {:db (assoc-in db [:state :supabase-init] :loading)
          :dispatch [:supabase/fetch-settings]}))))
+
+)
 
 (rf/reg-event-fx :<-cms
   (fn [_ [_ path]]

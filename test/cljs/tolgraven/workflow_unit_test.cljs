@@ -17,7 +17,7 @@
     [reagent.core :as r]
     [reagent.dom.client :as dom]
     [reagent.dom.server :as server]
-    [tolgraven.supabase.client :as supabase]
+    [tolgraven.modules.supabase.client :as supabase]
     [tolgraven.supabase.query :as supabase-query]
     [tolgraven.store.contract :as store-contract]
     [reitit.core :as reitit]
@@ -701,7 +701,7 @@
                               {:current? (constantly false), :resolve! #(swap! *completed inc)}))
     (is (= 1 @*completed) "Release the skipped native transition")
     (is (zero? @*flushed) "Do not commit or reposition an obsolete page")))
-(deftest store-startup-is-shared-by-return-preload-and-hydration
+(deftest store-startup-is-shared-by-managed-bindings
   (doseq [status [:loading :ready]]
     (is (nil? (:dispatch
                 (event-effects :store/init {:db {:state {:supabase-init status}}} [:store/init])))))

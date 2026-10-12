@@ -5,7 +5,7 @@
             [tolgraven.react :as rf]
             [tolgraven.events]
             [tolgraven.service-status :as status]
-            [tolgraven.supabase.client :as client]
+            [tolgraven.modules.supabase.client :as client]
             [tolgraven.test-support :as support]))
 
 (deftest startup-retries-once-and-releases-queued-content-after-recovery
@@ -17,6 +17,7 @@
           *retry (atom nil)
           *initialized (atom 0)]
       (rf/reg-fx :http-xhrio #(swap! *requests conj %))
+      (status/recover! :supabase-init)
       (rf/reg-fx :dispatch-later #(when-let [retry (first (filter (fn [item] (= :supabase/fetch-settings (first (:dispatch item)))) %))]
                                    (reset! *retry retry)))
       (set! client/init! (fn [& _] (swap! *initialized inc)))
@@ -49,6 +50,7 @@
           init! client/init!
           failures @status/*failures
           *retry (atom [])]
+      (status/recover! :supabase-init)
       (rf/reg-fx :dispatch-later #(swap! *retry into (filter (fn [item] (= :supabase/fetch-settings (first (:dispatch item)))) %)))
       (set! client/init! (fn [& _] (throw (js/Error. "private SDK detail"))))
       (-> (go-promise

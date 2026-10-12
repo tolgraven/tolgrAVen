@@ -1,18 +1,23 @@
 (ns tolgraven.subs
-  (:require [tolgraven.react :as rf]
+  #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
+  #?(:cljs (:require [tolgraven.react :as rf]
             [tolgraven.render-context :as context]
             [re-frame.db :as rfdb]
             [reagent.ratom :as ratom]
             [tolgraven.content.client :as content]
             [tolgraven.content.contract :as content-contract]
             [tolgraven.util :as util]
-            [tolgraven.supabase.client :as supabase-client]
+            #?(:module/supabase [tolgraven.supabase.runtime :as supabase-client])
             [tolgraven.supabase.query :as query]
             [tolgraven.supabase.plan :as plan]
             [clojure.walk :as walk]
             [clojure.string :as string]
-            [reitit.frontend.easy :as rfe]))
+            [reitit.frontend.easy :as rfe])))
 
+#?(:cljs
+(do
+
+(when-enabled :supabase nil
 (rf/reg-sub-raw :store/on-snapshot
   (fn [db [_ opts]]
     (if context/*server?*
@@ -27,6 +32,8 @@
     (ratom/make-reaction
      #(plan/evaluate nodes context
                      (fn [queries] (mapv (fn [opts] @(rf/subscribe [:store/on-snapshot opts])) queries))))))
+
+)
 
 (rf/reg-sub :get ;should this be discontinued? or only used transiently like migrate everything away once got a comp working?
  (fn [db [_ & path]]
@@ -260,3 +267,5 @@
   :<- [:state [:ssr]]
   (fn [ssr [_ ts]]
     (or (when (:hydrating? ssr) (get-in ssr [:dates ts])) (util/timestamp ts))))
+
+))

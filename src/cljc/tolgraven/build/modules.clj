@@ -70,6 +70,8 @@
         (sort-by str)
         (mapv declaration))))
 
+(declare storage-data)
+
 (defn select-declarations [declarations settings]
   (let [settings (site/validate! settings)
         ids (map :id declarations)
@@ -87,6 +89,11 @@
             option (keys (get-in settings [:modules id]))
             :when (not (allowed option))]
       (throw (ex-info "Unknown site module option" {:module id :option option})))
+    (when (and (not (selected-ids :supabase))
+               (some (fn [{:keys [id] :as module}]
+                       (some #(not= false (get-in settings [:modules id (:feature %)]))
+                             (storage-data module))) selected))
+      (throw (ex-info "Enabled storage requires the Supabase module" {})))
     (doseq [{:keys [id depends-on server]} selected
             dependency (concat (when (not= id :main) depends-on) (:requires server))
             :when (not (selected-ids dependency))]
@@ -105,7 +112,10 @@
                 (select-declarations (all-declarations directory) (site/settings))))))
 
 (defn icon-definitions []
-  (icons/definitions (conj (discover) (declaration (io/file root "main/module.cljs")))))
+  (let [definitions (icons/definitions (all-declarations))
+        selected (conj (mapv :id (discover)) :main)]
+    ;; Shared components can declare icons for an installed but disabled owner.
+    (with-meta (select-keys definitions selected) (meta definitions))))
 
 (defn bundles []
   (into (sorted-map)

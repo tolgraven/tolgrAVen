@@ -44,7 +44,12 @@
      :available-modules (mapv (fn [{:keys [id entry content depends-on server]}]
                                 {:id id
                                  :entry entry
-                                 :requires (vec (sort (distinct (concat (when (not= id :main) depends-on) (:requires server)))))
+                                 :requires (vec (sort (distinct
+                                                      (concat (when (not= id :main) depends-on)
+                                                              (:requires server)
+                                                              (when (some #(nil? (:feature %)) (get definitions id)) [:supabase])))))
+                                 :requires-options (into {} (for [feature (distinct (keep :feature (get definitions id)))]
+                                                             [feature [:supabase]]))
                                  :requires-features (:requires-features server)
                                  :content (vec content)
                                  :options (vec (sort (cond-> (set (keep :feature (get definitions id)))

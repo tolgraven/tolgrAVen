@@ -1,6 +1,8 @@
-(ns tolgraven.supabase.client
+(ns tolgraven.modules.supabase.client
   (:require-macros [tolgraven.build.site :refer [when-enabled]])
-  (:require [tolgraven.validation.runtime :as validation]
+  (:require ["@supabase/supabase-js" :as sdk]
+            [tolgraven.supabase.state :as state]
+            [tolgraven.validation.runtime :as validation]
             [tolgraven.supabase.schema :as schema]
             [ajax.core :as ajax]
             [tolgraven.react :as rf]
@@ -13,13 +15,13 @@
             [tolgraven.supabase.scoped :as scoped]
             [tolgraven.supabase.connection :as connection]))
 
-(defonce *client (atom nil))
+(def *client state/*client)
 (defonce *settings (atom nil))
 (defonce *queries (atom {}))
 (defonce *tables (atom {}))
 (defonce *seed (ratom/atom realtime/empty-seed))
 (defonce *loaded (ratom/atom #{}))
-(defonce *session (ratom/atom nil))
+(def *session state/*session)
 (defonce *auth-listener (atom nil))
 
 (defn- call-method
@@ -389,6 +391,9 @@
   (fn [_ _ old client]
     (when-not (identical? old client) (scoped/connect! client read-once!))))
 
+(defn create-client! [url anon-key options]
+  (sdk/createClient url anon-key options))
+
 (defn init! [{:keys [url anon-key anonKey] :as settings} on-profile on-error]
   (let [anon-key (or anon-key anonKey)]
     (when-not (and (seq url) (seq anon-key))
@@ -399,7 +404,7 @@
     (reset! *seed realtime/empty-seed)
     (reset! *loaded #{})
     (reset! *settings settings)
-    (reset! *client ((.-createClient js/supabase) url anon-key
+    (reset! *client (create-client! url anon-key
                     #js {:auth #js {:persistSession (boolean (when-enabled :user nil true))
                                     :autoRefreshToken (boolean (when-enabled :user nil true))}}))
     (when-enabled :user nil
@@ -448,3 +453,16 @@
                   "Your changes could not be saved. Please try saving again." nil)))
 
 )
+
+(def api
+  (merge {:cached-query cached-query
+          :ensure-query! ensure-query!
+          :preload-query! preload-query!
+          :init! (fn [& args] (apply init! args))
+          :authenticated-request! authenticated-request!}
+         (when-enabled :gpt nil {:write! write!})
+         (when-enabled :user nil
+           {:sign-in! sign-in!
+            :sign-up! sign-up!
+            :sign-out! sign-out!
+            :change-password! change-password!})))

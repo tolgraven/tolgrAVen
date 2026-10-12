@@ -79,9 +79,7 @@
       (is (re-find #"<link[^>]*href=\"/bundles/main.hash.js\"[^>]*rel=\"preload\"" body))
       (is (< (.indexOf body "/bundles/main.hash.js") (.indexOf body "<body")))
       (is (re-find #"<script[^>]*defer[^>]*src=\"/bundles/main.hash.js\"" body))
-      (is (re-find #"<script[^>]*defer[^>]*src=\"/vendor/supabase.js\"" body))
-      (is (< (.indexOf body "src=\"/vendor/supabase.js\"")
-             (.indexOf body "src=\"/bundles/main.hash.js\"")))
+      (is (not (.contains body "/vendor/supabase.js")))
       (is (re-find #"<link[^>]*href=\"/webfonts/hash/OpenSans-v29-latin.woff2\"[^>]*rel=\"preload\"" body))
       (is (not (.contains body "analytics-id")))
       (is (not (.contains body "G-Y8H6RLZX3V")))
@@ -265,21 +263,14 @@
       (is (not-any? #(.contains % "modules/link-preview.min.css") blog))
       (is (some #(.contains % "modules/markdown.min.css") blog)))))
 
-(deftest local-return-template-preserves-sdk-before-app-execution
-  (doseq [[dev? sdk-path] [[true "/vendor/supabase.js"]
-                          [false "/bundles/supabase.hash.js"]]]
-    (with-redefs [config/env {:dev dev?}
-                  ssr/renderer-build (constantly "return-test")
-                  olink/bundle-paths (fn [_ bundles]
-                                      (case (first bundles)
-                                        "supabase.js" [sdk-path]
-                                        "main.js" ["/bundles/main.hash.js"]
-                                        []))]
-      (let [html (:template (layout/return-template {:uri "/api/page-return-template"}))
-            sdk-tags (filter #(.contains % (str "src=\"" sdk-path "\""))
-                             (re-seq #"<script[^>]+>" html))]
-        (is (= 1 (count sdk-tags)))
-        (is (.contains (first sdk-tags) "defer"))
-        (is (not (.contains (first sdk-tags) "async")))
-        (is (< (.indexOf html sdk-path) (.indexOf html "/bundles/main.hash.js")))
-        (is (not (.contains html "googletagmanager")))))))
+(deftest pages-and-local-returns-leave-sdk-acquisition-to-shadow
+  (with-redefs [config/env {:dev true :ssr {:enabled false}}
+                content/immediate-content (constantly {})
+                ssr/renderer-build (constantly "lazy-sdk-test")
+                olink/bundle-paths (fn [_ bundles]
+                                    (when (= ["main.js"] bundles) ["/bundles/main.hash.js"]))
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (doseq [html [(:body (layout/render-home {:uri "/"}))
+                 (:template (layout/return-template {:uri "/api/page-return-template"}))]]
+      (is (not (.contains html "/vendor/supabase.js")))
+      (is (.contains html "/bundles/main.hash.js")))))

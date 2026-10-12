@@ -48,6 +48,15 @@ before Codox enumerates them. Sources for disabled modules and unfinished exampl
 repository for subsequent re-enabling. Superseded monolithic SQL files are retained
 as frozen reference snapshots and excluded from packaged runtime resources.
 
+Supabase is an ordinary `:supabase` Shadow module. Its npm SDK and transport
+are acquired by the existing managed data bindings or account actions, not by
+site startup or a global script. Routes with no such consumers do not request
+that chunk. Disable the module alongside its storage consumers to omit its code
+through the same discovery and pruning as other modules. Storage declarations
+validate the dependency and export it to the CMS, including optional main
+services/documents. The legacy vendored UMD copy remains a reference artifact
+and is excluded from jars.
+
 `bb site:manifest` exports the resolved configuration, all available module toggles,
 route names, selected content fields/tables and SQL resources. `bb site:manifest sql`
 exports transactional provisioning input. The same schema plan runs in the JVM

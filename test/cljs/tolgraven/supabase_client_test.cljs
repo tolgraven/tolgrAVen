@@ -6,7 +6,7 @@
             [re-frame.core :as rf]
             [re-frame.db :as rfdb]
             [tolgraven.service-status :as status]
-            [tolgraven.supabase.client :as client]
+            [tolgraven.modules.supabase.client :as client]
             [tolgraven.supabase.realtime :as realtime]))
 
 (defn tick! [] (js/Promise. (fn [resolve _] (js/setTimeout resolve 0))))
@@ -204,9 +204,9 @@
   (async done
     (let [mock (mock-client) *resolve (atom nil)
           profiles (atom [])
-          sdk-before (.-supabase js/globalThis)]
+          sdk-before client/create-client!]
       (reset-client! mock)
-      (set! (.-supabase js/globalThis) #js {:createClient (fn [& _] (:sdk mock))})
+      (set! client/create-client! (fn [& _] (:sdk mock)))
       (client/init! {:url "https://example.invalid" :anon-key "public"} #(swap! profiles conj %) (fn [_]))
       (reset! (:deferred mock) (js/Promise. (fn [resolve _] (reset! *resolve resolve))))
       (let [private (client/ensure-query! {:path-collection [:gpt-threads]})]
@@ -231,7 +231,7 @@
                      (is (not (contains? @client/*loaded "user_documents")))
                      (ratom/dispose! private)))
             (.catch #(is false (str %)))
-            (.finally (fn [] (set! (.-supabase js/globalThis) sdk-before) (done))))))))
+            (.finally (fn [] (set! client/create-client! sdk-before) (done))))))))
 
 (deftest private-one-off-reads-do-not-return-after-an-account-switch
   (async done
@@ -328,19 +328,19 @@
 (deftest auth-session-initialization-error-is-visible
   (async done
     (let [mock (mock-client) failures @status/*failures
-          before (.-supabase js/globalThis)]
+          before client/create-client!]
       (reset-client! mock)
       (reset! status/*failures {})
       (aset (.-auth ^js (:sdk mock)) "getSession"
             #(js/Promise.resolve #js {:error #js {:message "Do not expose raw details"}}))
-      (set! (.-supabase js/globalThis) #js {:createClient (fn [& _] (:sdk mock))})
+      (set! client/create-client! (fn [& _] (:sdk mock)))
       (client/init! {:url "https://example.invalid" :anon-key "public"} (fn [_]) (fn [_]))
       (-> (tick!)
           (.then (fn []
                    (is (= "Supabase session unavailable" (get-in @status/*failures [:supabase-session :title])))
                    (is (not (.includes (pr-str @status/*failures) "Do not expose raw details")))))
           (.catch #(is false (str %)))
-          (.finally (fn [] (set! (.-supabase js/globalThis) before)
+          (.finally (fn [] (set! client/create-client! before)
                       (reset! status/*failures failures) (done)))))))
 
 (deftest preload-populates-subscription-cache-without-live-channels

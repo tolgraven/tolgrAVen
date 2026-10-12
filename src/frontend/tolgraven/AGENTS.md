@@ -308,3 +308,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
   Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
   Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.
+
+- Supabase transport and npm SDK belong to the ordinary `:supabase` module.
+  Shared bindings/account actions acquire it through `supabase/runtime.cljs`;
+  do not initialize it globally or add an SDK script to server HTML. Keep restored
+  public state renderable while the module is loading.

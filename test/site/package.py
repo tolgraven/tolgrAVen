@@ -32,7 +32,8 @@ def main():
                 assert not any(n.startswith('tolgraven/modules/blog/comments') for n in names)
                 assert 'supabase/modules/blog_comments.sql' not in names
                 if label == 'home-only':
-                    for helper in ('auth$profile_', 'auth$ensure_profile_', 'auth$save_profile_', 'storage$png_bytes_', 'storage$save_avatar_', 'integrations$strapi_', 'integrations$image_response_'):
+                    assert 'public/vendor/supabase.js' not in names
+                    for helper in ('auth$profile_BANG_', 'auth$ensure_profile_BANG_', 'auth$save_profile_BANG_', 'storage$png_bytes_BANG_', 'storage$save_avatar_BANG_', 'integrations$strapi_BANG_', 'integrations$image_response_BANG_'):
                         assert not any(n.startswith('tolgraven/supabase/'+helper) for n in names), helper
                     for owner in ('blog','user','chat','gpt','search','strava','instagram'):
                         assert not any(n.startswith('tolgraven/modules/'+owner+'/') for n in names), owner

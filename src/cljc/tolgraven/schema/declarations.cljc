@@ -86,6 +86,7 @@
    [:sequential [:ref ::route]]])
 (def module
   [:map [:id :keyword]
+   [:client {:optional true} [:map-of :keyword fn?]]
    [:content {:optional true} [:vector :keyword]]
    [:server {:optional true} [:map
                              [:routes {:optional true} :symbol]
