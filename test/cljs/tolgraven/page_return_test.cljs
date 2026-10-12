@@ -338,6 +338,32 @@
                         (set! browser-resources/after-page! after-page!)
                         (done))))))))
 
+(deftest departure-captures-state-after-synchronous-navigation-save
+  (async done
+    (let [restore! (re-frame/make-restore-fn)
+          save! local/save!
+          navigate! local/navigate!
+          save-navigation! storage/save-navigation!
+          *captured (atom nil)]
+      (set! storage/save-navigation!
+            #(rf/dispatch-sync [:set [:page-return-test] :fresh]))
+      (set! local/save! (fn [db arm?]
+                         (reset! *captured [(:page-return-test db) arm?])
+                         (js/Promise.resolve nil)))
+      (set! local/navigate! (fn [_] nil))
+      (local/departure! "https://example.com/departure")
+      (-> (support/settle!)
+          (.then (fn [_]
+                   (is (= [:fresh true] @*captured)
+                       "Queued departure reads the updated history state")))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (set! local/save! save!)
+                      (set! local/navigate! navigate!)
+                      (set! storage/save-navigation! save-navigation!)
+                      (restore!)
+                      (done)))))))
+
 (deftest timed-out-departure-discards-a-late-render-at-the-same-url
   (async done
     (let [restore! (re-frame/make-restore-fn)

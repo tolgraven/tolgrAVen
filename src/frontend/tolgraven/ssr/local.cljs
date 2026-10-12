@@ -184,7 +184,6 @@
 (defn navigate! [url] (.assign js/location url))
 
 (defn depart! [{:keys [db url]}]
-  (storage/save-navigation!)
   ;; A fresh pair must reach the cache before leaving. Bound optional capture
   ;; so worker/network failure never traps an ordinary external navigation.
   (let [generation (swap! *departure-generation inc)
@@ -210,7 +209,11 @@
   ([]
    (storage/save-navigation!)
    (rf/dispatch-sync [:page-return/save true]))
-  ([url] (rf/dispatch [:page-return/depart url])))
+  ([url]
+   ;; Saving scroll history dispatches synchronously, outside event handling;
+   ;; the queued departure then receives that updated state.
+   (storage/save-navigation!)
+   (rf/dispatch [:page-return/depart url])))
 
 (defn external-click! [event]
   (when (and (= 0 (.-button event)) (not (.-defaultPrevented event))
