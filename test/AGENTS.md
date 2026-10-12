@@ -77,6 +77,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   FontFaceSet request. Verify shared acquisition, visible fallback, replacement
   only while transparent, native node identity and fallback dimensions. Include
   failure/stale completion, disabled intent, reduced motion and local returns.
+- Live drivers share the test-origin reset adapter: close the outgoing frame,
+  then clear saved documents through the worker's serialized protocol before
+  clearing browser storage. Cold SSR and paired restoration stay visible without
+  root entrance replay; ordinary SPA motion remains enabled.
 - Live motion checks assert simultaneous 250ms linear fades and an opaque sticky
   footer. `motion.html?fallback` removes only the optional native transition API
   in the test driver so the ordinary page-root fallback can be checked too.

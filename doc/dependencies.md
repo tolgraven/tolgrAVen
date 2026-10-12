@@ -24,7 +24,7 @@ ClojureScript changes.
   cache/memoize/priority-map/rrb-vector families. These prevent older transitive
   requirements from winning by classpath traversal order. Recheck pins on upgrade.
 - React and React DOM must use the same version. Shadow's npm launcher matches
-  its JVM version. Node 22 or newer is required.
+  its JVM version. Node 22.12 or newer is required by the development tooling.
 - The Supabase browser UMD file comes from the exact locked npm package.
   `npm run vendor:sync` verifies the installed version and copies it;
   `npm run init` and `npm run build` include this step. Do not update the checked-in

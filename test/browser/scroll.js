@@ -43,10 +43,7 @@ const interactive = async () => {
 run.onclick = async () => {
   run.disabled = true; results.replaceChildren();
   try {
-    frame.src = 'about:blank';
-    await waitFor(() => doc()?.URL === 'about:blank', 'empty test frame');
-    localStorage.clear(); sessionStorage.clear();
-    document.cookie = 'tolgraven-return=; Max-Age=0; Path=/';
+    await resetTestOrigin(frame, waitFor);
     frame.src = '/blog/post/17';
     await interactive();
     check(win().history.scrollRestoration === 'auto', 'Initial SSR leaves native restoration enabled');

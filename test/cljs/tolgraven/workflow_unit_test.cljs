@@ -423,6 +423,29 @@
                         (finally (support/unmount! root) (.remove element))))))
              (.catch (fn [error] (is false (str error))))
              (.finally done))))
+(deftest heading-mounts-before-content-and-updates-reactively
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                path [:heading-regression]]
+            (try
+              (rf/dispatch-sync [:content path nil])
+              (await! (support/render! root [ui/<with-heading> path [:p "Page body"]]))
+              (is (= "" (.-textContent (.querySelector element "h1")))
+                  "Missing CMS content supplies a valid empty heading")
+              (is (.includes (.-textContent element) "Page body"))
+              (rf/dispatch-sync [:content path {:title "Loaded heading"}])
+              (await! (wait-for! #(= "Loaded heading" (.-textContent (.querySelector element "h1")))))
+              (is (= "Loaded heading" (.-textContent (.querySelector element "h1"))))
+              (await! (support/render! root [ui/<with-heading> path [:p "Page body"] {:title "Override"}]))
+              (is (= "Override" (.-textContent (.querySelector element "h1"))))
+              (finally
+                (support/unmount! root)
+                (rf/dispatch-sync [:content path nil])))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
 (deftest tag-view-mounts-before-content-and-updates-reactively
   (async done
          (-> (go-promise
