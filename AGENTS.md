@@ -137,6 +137,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 
 ## Coding Style & Naming Conventions
 - Clojure/ClojureScript: follow standard idioms (2-space indentation, align threading macros), use kebab-case for vars/functions, and keep namespaces aligned with file paths.
+- In `let`, never redeclare a binding name for a transformed value. Use `original-name'`, then `original-name''` for successive stages, so each immutable binding is explicit. Apply this when updating existing bindings as well as writing new code.
 - Maps: keep all entries on one line only when the whole map fits comfortably, separating entries with commas. Otherwise put each key/value entry on its own line, aligning keys; never pack several entries onto a line of a multiline map. Apply this to new and changed code while preserving comments.
 - Re-frame: do not use ns-scoped keywords, but rather simple ns based on module name.
 - CLJS: features live under `modules/`, with events.cljs, subs.cljs, views.cljs and module.cljs as needed. Keep their portable declarations beside the implementation.
