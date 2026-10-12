@@ -274,3 +274,12 @@
                  (:template (layout/return-template {:uri "/api/page-return-template"}))]]
       (is (not (.contains html "/vendor/supabase.js")))
       (is (.contains html "/bundles/main.hash.js")))))
+
+(deftest local-return-assets-follow-the-browser-manifest
+  (with-redefs [ssr/renderer-build (constantly "return-test")
+                layout/browser-modules (constantly
+                                         {:main {:output-name "main.hash.js" :depends-on #{}}
+                                          :blog {:output-name "blog.hash.js" :depends-on #{:main :user}}})]
+    (is (= {:main {:url "/js/compiled/out/main.hash.js" :depends []}
+            :blog {:url "/js/compiled/out/blog.hash.js" :depends [:main :user]}}
+           (:scripts (layout/return-template {:uri "/api/page-return-template"}))))))

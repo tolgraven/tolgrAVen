@@ -15,6 +15,7 @@
             [tolgraven.modules.user.module :as user]
             [tolgraven.loader :as loader]
             [tolgraven.component.restore :as restore]
+            [tolgraven.component.storage :as storage]
             [tolgraven.render-context :as context]
             [tolgraven.browser-resources :as browser-resources]
             [tolgraven.supabase.scoped :as scoped]
@@ -336,3 +337,91 @@
                         (set! loader/acquire-code! acquire!)
                         (set! browser-resources/after-page! after-page!)
                         (done))))))))
+
+(deftest timed-out-departure-discards-a-late-render-at-the-same-url
+  (async done
+    (let [restore! (re-frame/make-restore-fn)
+          connect! local/connect!
+          acquire! loader/acquire-code!
+          message! local/message!
+          navigate! local/navigate!
+          save-navigation! storage/save-navigation!
+          set-timeout (.-setTimeout js/window)
+          *deadline (atom nil)
+          *render (atom nil)
+          *published (atom [])
+          *navigated (atom [])]
+      (set! local/connect! #(js/Promise.resolve {:worker :worker}))
+      (set! loader/acquire-code!
+            (fn [_] (js/Promise.resolve
+                       {:pair! (fn [_ _] (js/Promise. (fn [resolve _] (reset! *render resolve))))})))
+      (set! local/message! (fn [_ pair] (swap! *published conj pair) (js/Promise.resolve nil)))
+      (set! local/navigate! #(swap! *navigated conj %))
+      (set! storage/save-navigation! (fn [] nil))
+      (set! (.-setTimeout js/window)
+            (fn [callback delay]
+              (if (= 1000 delay) (do (reset! *deadline callback) 0)
+                (.call set-timeout js/window callback delay))))
+      (-> (go-promise
+            (let [departure (local/depart! {:db {} :url "https://example.com/departure"})]
+              (await! (support/settle!))
+              (@*deadline)
+              (await! departure)
+              (is (= ["https://example.com/departure"] @*navigated))
+              ;; The document URL deliberately stays unchanged, as on BFCache return.
+              (@*render {:op "save" :url (.-href js/location)})
+              (await! (support/settle!))
+              (is (empty? (filter #(= "save" (:op %)) @*published)))
+              (is (some #(= "clear" (:op %)) @*published))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (set! local/connect! connect!)
+                      (set! loader/acquire-code! acquire!)
+                      (set! local/message! message!)
+                      (set! local/navigate! navigate!)
+                      (set! storage/save-navigation! save-navigation!)
+                      (set! (.-setTimeout js/window) set-timeout)
+                      (restore!)
+                      (done)))))))
+
+(deftest a-later-departure-intent-owns-the-navigation
+  (async done
+    (let [save! local/save!
+          navigate! local/navigate!
+          save-navigation! storage/save-navigation!
+          *save (atom {})
+          *navigated (atom [])]
+      (set! local/save! (fn [db _] (js/Promise. (fn [resolve _] (swap! *save assoc (:click db) resolve)))))
+      (set! local/navigate! #(swap! *navigated conj %))
+      (set! storage/save-navigation! (fn [] nil))
+      (-> (go-promise
+            (let [first-departure (local/depart! {:db {:click :first} :url "https://example.com/first"})
+                  last-departure (local/depart! {:db {:click :last} :url "https://example.com/last"})]
+              ((get @*save :first) nil)
+              (await! first-departure)
+              (is (empty? @*navigated))
+              ((get @*save :last) nil)
+              (await! last-departure)
+              (is (= ["https://example.com/last"] @*navigated))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (set! local/save! save!)
+                      (set! local/navigate! navigate!)
+                      (set! storage/save-navigation! save-navigation!)
+                      (done)))))))
+
+(deftest stopping-browser-capture-cancels-its-readiness-owner
+  (async done
+    (let [modules local/modules
+          after-page! browser-resources/after-page!
+          *cancelled (atom 0)]
+      (set! local/modules (fn [] {}))
+      (set! browser-resources/after-page! (fn [_] #(swap! *cancelled inc)))
+      (let [pending (-> (capture/pair! {} {})
+                        (.then (fn [_] (is false "Cancelled capture must reject")))
+                        (.catch (fn [_] (is (= 1 @*cancelled)))))]
+        (capture/stop!)
+        (.finally pending (fn []
+                            (set! local/modules modules)
+                            (set! browser-resources/after-page! after-page!)
+                            (done)))))))

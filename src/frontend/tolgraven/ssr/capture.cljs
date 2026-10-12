@@ -16,8 +16,9 @@
 (defn stop! []
   (when-let [worker @*worker] (.terminate worker))
   (reset! *worker nil)
-  (doseq [[_ {:keys [reject timeout]}] @*pending]
+  (doseq [[_ {:keys [reject timeout cancel]}] @*pending]
     (js/clearTimeout timeout)
+    (when cancel (cancel))
     (reject (js/Error. "Local page rendering stopped")))
   (reset! *pending {}))
 
@@ -52,12 +53,29 @@
 (defn- browser-pair! [db config code?]
   ;; Leaflet's browser entry needs a real DOM. Development's entry additionally
   ;; starts debugging tools. Preserve capture for these cases in painted idle.
-  (-> (js/Promise. (fn [resolve _] (browser-resources/after-page! resolve)))
-      (.then (fn [_]
-               (js/Promise.all
-                 (into-array (cond-> [(loader/acquire-code! :page-render)]
-                               code? (conj (loader/acquire-code! :highlight)))))))
-      (.then (fn [specs] ((:pair! (aget specs 0)) db config)))))
+  (js/Promise.
+    (fn [resolve reject]
+      (let [id (swap! *request inc)
+            finish! (fn [value error]
+                      (when-let [{:keys [timeout cancel]} (get @*pending id)]
+                        (swap! *pending dissoc id)
+                        (js/clearTimeout timeout)
+                        (when cancel (cancel))
+                        (if error (reject error) (resolve value))))
+            timeout (js/setTimeout #(finish! nil (js/Error. "Local page rendering timed out")) 10000)]
+        (swap! *pending assoc id {:reject reject :timeout timeout})
+        (let [cancel (browser-resources/after-page!
+                       #(when (contains? @*pending id)
+                          (-> (js/Promise.all
+                                (into-array (cond-> [(loader/acquire-code! :page-render)]
+                                              code? (conj (loader/acquire-code! :highlight)))))
+                              (.then (fn [specs]
+                                       (when (contains? @*pending id)
+                                         ((:pair! (aget specs 0)) db config))))
+                              (.then #(finish! % nil))
+                              (.catch #(finish! nil %)))))]
+          (when (contains? @*pending id)
+            (swap! *pending update id assoc :cancel cancel)))))))
 
 (defn pair! [db {:keys [scripts template build] :as config}]
   (let [modules (vec (remove #{:page-capture :page-render :coercion} (keys (local/modules))))

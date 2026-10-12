@@ -117,7 +117,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Local-return capture uses lazy `:page-capture` transport and renders in an
   isolated worker using cached browser chunks and the `:page-render` bundle;
   development and DOM-dependent Leaflet pages retain browser rendering.
-  the installer remains eager to restore state before the first commit.
+  The installer remains eager to restore state before the first commit.
 - Markdown code, including untagged blocks and inline snippets, shares the deferred
   formatter boundary. Node SSR renders Bruvbox-highlighted tokens immediately;
   browser acquisition waits for the existing after-page gate. The blog supplies

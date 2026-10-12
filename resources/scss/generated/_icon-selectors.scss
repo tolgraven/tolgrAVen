@@ -191,6 +191,7 @@
 /* Font Awesome uses the Unicode Private Use Area (PUA) to ensure screen
 readers do not read off random characters that represent icons */
 
+.fa-align-left:before { content: "\f036"; }
 .fa-angle-double-up:before { content: "\f102"; }
 .fa-angle-down:before { content: "\f107"; }
 .fa-angle-left:before { content: "\f104"; }
@@ -203,13 +204,17 @@ readers do not read off random characters that represent icons */
 .fa-award:before { content: "\f559"; }
 .fa-bug:before { content: "\f188"; }
 .fa-calculator:before { content: "\f1ec"; }
+.fa-check:before { content: "\f00c"; }
 .fa-chevron-left:before { content: "\f053"; }
 .fa-chevron-right:before { content: "\f054"; }
 .fa-circle:before { content: "\f111"; }
 .fa-code:before { content: "\f121"; }
 .fa-cog:before { content: "\f013"; }
+.fa-copy:before { content: "\f0c5"; }
 .fa-edit:before { content: "\f044"; }
+.fa-ellipsis-h:before { content: "\f141"; }
 .fa-envelope:before { content: "\f0e0"; }
+.fa-exclamation:before { content: "\f12a"; }
 .fa-facebook:before { content: "\f09a"; }
 .fa-feather-alt:before { content: "\f56b"; }
 .fa-github:before { content: "\f09b"; }

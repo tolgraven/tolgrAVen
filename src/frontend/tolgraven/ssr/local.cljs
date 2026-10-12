@@ -16,6 +16,7 @@
 
 (defonce *connection (atom nil))
 (defonce *pending (atom nil))
+(defonce *departure-generation (atom 0))
 (declare clear!)
 
 (defn active! [registration]
@@ -171,6 +172,8 @@
 
 (defn resumed! [event]
   (when (.-persisted event)
+    (swap! *save-generation inc)
+    (swap! *departure-generation inc)
     (-> (connect!)
         (.then (fn [{:keys [worker]}] (when worker (message! worker {:op "disarm"}))))
         (.catch (fn [_] nil)))))
@@ -178,20 +181,29 @@
 (rf/reg-event-fx :page-return/depart
   (fn [{:keys [db]} [_ url]] {:page-return/depart {:db db :url url}}))
 
-(rf/reg-fx :page-return/depart
-  (fn [{:keys [db url]}]
-    (storage/save-navigation!)
-    ;; A fresh pair must reach the cache before leaving. Bound optional capture
-    ;; so worker/network failure never traps an ordinary external navigation.
-    (let [*timeout (atom nil)
-          source-url (.-href js/location)
-          deadline (js/Promise. (fn [resolve _]
-                                 (reset! *timeout (js/setTimeout resolve 1000))))]
-      (-> (js/Promise.race #js [(save! db true) deadline])
-          (.then (fn [_]
-                   (js/clearTimeout @*timeout)
-                   (when (= source-url (.-href js/location))
-                     (.assign js/location url))))))))
+(defn navigate! [url] (.assign js/location url))
+
+(defn depart! [{:keys [db url]}]
+  (storage/save-navigation!)
+  ;; A fresh pair must reach the cache before leaving. Bound optional capture
+  ;; so worker/network failure never traps an ordinary external navigation.
+  (let [generation (swap! *departure-generation inc)
+        *timeout (atom nil)
+        source-url (.-href js/location)
+        deadline (js/Promise. (fn [resolve _]
+                               (reset! *timeout (js/setTimeout #(resolve :timeout) 1000))))
+        save (-> (save! db true) (.then (fn [_] :saved)))]
+    (-> (js/Promise.race #js [save deadline])
+        (.then (fn [result]
+                 (js/clearTimeout @*timeout)
+                 (when (and (= generation @*departure-generation)
+                            (= source-url (.-href js/location)))
+                   ;; A timed-out render must never publish if BFCache returns to
+                   ;; this same URL while its older asynchronous work completes.
+                   (when (= :timeout result) (clear!))
+                   (navigate! url)))))))
+
+(rf/reg-fx :page-return/depart depart!)
 
 (defn departure!
   "Capture the same exact page for native links and programmatic departures."

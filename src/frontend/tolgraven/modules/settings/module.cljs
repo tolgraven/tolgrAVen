@@ -1,5 +1,6 @@
 (ns tolgraven.modules.settings.module
-  (:require [tolgraven.modules.settings.views :as views]))
+  (:require [tolgraven.modules.settings.views :as views]
+            [tolgraven.modules.settings.events]))
 
 (def spec
   {:id :settings
