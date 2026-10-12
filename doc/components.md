@@ -763,8 +763,9 @@ extend the static whole-block preview when that editing capability is implemente
 Declare `:features [[:font font/fira]]` after requiring
 `[tolgraven.component.font :as font]`. A feature option function may return nil
 until intent makes the consumer visible. The root must be ordinary native Hiccup;
-its markup, children, refs, caller classes/style and animation handler are retained.
-No wrapper or imperative DOM replacement is added.
+its identity, refs, caller classes/style and animation handler are retained.
+Children are text-only: the feature renders a small text stack inside that root.
+Keep inputs, IDs, controls and stateful child components outside the stack.
 
 For another face, use an options map:
 
@@ -779,12 +780,14 @@ For another face, use an options map:
 The consumer's CSS must use `font-family: var(--brand-font, ...)` and declare both
 faces. Give the initial face `font-display: optional` and the ready alias the same
 source; otherwise the browser can swap glyphs before the component can fade.
-The feature owns opacity and keyframe animation on its root during the upgrade.
-Choose a text root without a competing root entrance/exit animation; ordinary
-layout/color transitions and child animations remain independent.
+The feature overlaps an inert, accessibility-hidden ready-font layer with the
+original text. After painted frames, their 100ms linear fades run simultaneously.
+At completion the original layer unmounts and the ready layer becomes the sole
+accessible text. Root animations, layout/color transitions and controls remain
+independent; the root itself never fades.
 
 Font instances live in transient `:fonts` state, outside scoped persistence.
 Committed owners attach/detach through events; the shared face request is retained
 for reuse. A native FontFaceSet adapter owns the Promise. A layout effect owns only
-the cancellable paint frames between replacement and reveal. See [styles.md](styles.md)
-for first-paint policy, fallback metrics and failure behavior.
+the cancellable paint frames between layer insertion and simultaneous reveal.
+See [styles.md](styles.md) for first-paint policy, fallback metrics and failure behavior.

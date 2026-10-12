@@ -1,16 +1,33 @@
-// Keyframes leave existing layout/color transitions intact.
-.font-transition[data-font-phase='out'] {
-  animation: font-fade-out var(--font-fade-time, 100ms) linear both;
+// Decorative text layers overlap; controls and backgrounds stay opaque.
+.font-text-stack {
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  vertical-align: baseline;
+  max-width: 100%;
 }
-.font-transition[data-font-phase='swapped'] {
-  animation: none;
+.font-text-current {
+  position: relative;
+  z-index: 1;
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.font-text-next {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
   opacity: 0;
+  pointer-events: none;
+  user-select: none;
 }
-.font-transition[data-font-phase='in'] {
-  animation: font-fade-in var(--font-fade-time, 100ms) linear both;
+[data-font-phase='crossfade'] > .font-text-stack {
+  > .font-text-current { animation: font-fade-out var(--font-fade-time, 100ms) linear both; }
+  > .font-text-next { animation: font-fade-in var(--font-fade-time, 100ms) linear both; }
 }
+pre[data-font-phase] > .font-text-stack { display: grid; }
 @keyframes font-fade-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes font-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .font-transition { animation: none; opacity: 1; }
+  .font-text-current { animation: none !important; opacity: 1; }
+  .font-text-next { animation: none !important; }
 }

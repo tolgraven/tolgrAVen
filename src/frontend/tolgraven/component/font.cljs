@@ -18,7 +18,7 @@
 (def instance-schema
   [:map
    [:options options-schema]
-   [:phase [:enum :initial :native :fallback :out :swapped :in :ready :failed]]
+   [:phase [:enum :initial :native :fallback :prepared :crossfade :ready :failed]]
    [:reduced? {:optional true} :boolean]])
 (def state-schema
   [:map
@@ -69,9 +69,7 @@
       (update-in db [:fonts :instances] dissoc owner) db)))
 
 (defn- ready-instance [instance]
-  (assoc instance :phase (if (:reduced? instance) :ready :out)))
-(defn- out-deadline [owner instance]
-  {:ms (+ 50 (fade-ms (:options instance))), :dispatch [:font/swap owner]})
+  (assoc instance :phase (if (:reduced? instance) :ready :prepared)))
 
 (rf/reg-event-fx :font/probed
   (fn [{:keys [db]} [_ owner native? supported? reduced?]]
@@ -85,8 +83,7 @@
           (or native? (not supported?))
           {:db (assoc-in db [:fonts :instances owner] (assoc instance :phase :native))}
           (= :ready status)
-          {:db (assoc-in db [:fonts :instances owner] (ready-instance instance))
-           :dispatch-later [(out-deadline owner instance)]}
+          {:db (assoc-in db [:fonts :instances owner] (ready-instance instance))}
           :else
           (cond-> {:db (assoc-in db [:fonts :instances owner] (assoc instance :phase :fallback))}
             (not= :loading status)
@@ -108,33 +105,29 @@
             instances (into {} (map (fn [[owner instance]]
                                       [owner (if success? (ready-instance instance)
                                                  (assoc instance :phase :failed))])) affected)]
-        (cond-> {:db (-> db
-                        (assoc-in [:fonts :faces key :status] (if success? :ready :failed))
-                        (update-in [:fonts :instances] merge instances))}
-          success? (assoc :dispatch-later (mapv (fn [[owner instance]] (out-deadline owner instance)) instances)))))))
-(rf/reg-event-db :font/swap
-  (fn [db [_ owner]]
-    (if (= :out (get-in db [:fonts :instances owner :phase]))
-      (assoc-in db [:fonts :instances owner :phase] :swapped) db)))
+        {:db (-> db
+                 (assoc-in [:fonts :faces key :status] (if success? :ready :failed))
+                 (update-in [:fonts :instances] merge instances))}))))
 (rf/reg-event-fx :font/reveal
   (fn [{:keys [db]} [_ owner]]
     (when-let [instance (get-in db [:fonts :instances owner])]
-      (when (= :swapped (:phase instance))
-        {:db (assoc-in db [:fonts :instances owner :phase] :in)
+      (when (= :prepared (:phase instance))
+        {:db (assoc-in db [:fonts :instances owner :phase] :crossfade)
          :dispatch-later [{:ms (+ 50 (fade-ms (:options instance)))
                            :dispatch [:font/done owner]}]}))))
 (rf/reg-event-db :font/done
   (fn [db [_ owner]]
-    (if (= :in (get-in db [:fonts :instances owner :phase]))
+    (if (= :crossfade (get-in db [:fonts :instances owner :phase]))
       (assoc-in db [:fonts :instances owner :phase] :ready) db)))
 
 (defn use-font
-  "Merge a font feature onto a native root. Initial SSR markup/font choice stays
-   unchanged; only a face pending at commit gets a controlled late upgrade."
+  "Overlap two declarative text layers inside a native root. Only apply this
+   feature to presentational text: inputs, controls and component lifecycles must
+   stay outside its children. SSR and hydration start with one original layer."
   [form options]
   (when options
     (when (and form (not (motion/dom-root? form)))
-      (throw (js/Error. "Font transitions require a native root; they add no wrapper."))))
+      (throw (js/Error. "Font transitions require a native text root."))))
   (let [;; Option functions may construct an equal Clojure map on every render.
         ;; Stabilize its primitive contract fields before assigning ownership.
         options (rf/use-memo (constantly options)
@@ -154,28 +147,37 @@
       [owner options enabled?])
     (rf/use-layout-effect
       (fn []
-        (when (= :swapped phase)
-          ;; Paint the new glyphs while still fully transparent before revealing.
+        (when (= :prepared phase)
+          ;; Commit the loaded-font layer behind the visible original, then start
+          ;; both opacity animations on the same painted frame.
           (motion/next-frame! #(rf/dispatch [:font/reveal owner]))))
       [owner phase])
     (if-not enabled?
       form
-      (let [target? (#{:swapped :in :ready} phase)
-            changing? (#{:out :swapped :in} phase)
-            ended! (:on-animation-end attrs)
-            family (str (js/JSON.stringify (if target? (:family options) (:initial-family options)))
-                        ", " (:fallback options))
-            style (cond-> (assoc (:style attrs) (:property options) family)
-                    changing? (assoc "--font-fade-time" (str (fade-ms options) "ms")))
-            attributes (r/merge-props attrs
-                                     (cond-> {:data-font-phase (name phase), :style style}
-                                       changing? (assoc :class "font-transition")))
-            attributes (assoc attributes :on-animation-end
-                              (fn [event]
-                                (when ended! (ended! event))
-                                (when (identical? (.-target event) (.-currentTarget event))
-                                  (case (.-animationName event)
-                                    "font-fade-out" (rf/dispatch [:font/swap owner])
-                                    "font-fade-in" (rf/dispatch [:font/done owner])
-                                    nil))))]
-        (with-meta (into [(first form) attributes] children) (meta form))))))
+      (let [ready? (= :ready phase)
+            changing? (#{:prepared :crossfade} phase)
+            family (fn [name] (str (js/JSON.stringify name) ", " (:fallback options)))
+            style (assoc (:style attrs)
+                         (:property options) (family (if ready? (:family options) (:initial-family options)))
+                         "--font-fade-time" (str (fade-ms options) "ms"))
+            attributes (r/merge-props attrs {:data-font-phase (name phase), :style style})
+            incoming (with-meta
+                       (into [:span {:class (if ready? "font-text-current" "font-text-next")
+                                     :aria-hidden (when-not ready? true)
+                                     :inert (when-not ready? true)
+                                     :style {(:property options) (family (:family options))
+                                             :font-family (str "var(" (:property options) ")")}
+                                     :on-animation-end
+                                     (fn [event]
+                                       (when (and (identical? (.-target event) (.-currentTarget event))
+                                                  (= "font-fade-in" (.-animationName event)))
+                                         (rf/dispatch [:font/done owner])))}] children)
+                       {:key :ready})
+            outgoing (with-meta (into [:span.font-text-current] children) {:key :initial})
+            text [:span.font-text-stack
+                  (when-not ready? outgoing)
+                  (when (or ready? changing?) incoming)]]
+        ;; After the fade the incoming key survives, and React removes the old
+        ;; text layer. The native root, its handlers and neighbouring controls
+        ;; never unmount. No cloneNode or inspection of React elements is needed.
+        (with-meta [(first form) attributes text] (meta form))))))

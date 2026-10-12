@@ -26,11 +26,16 @@
                            :filter "var(--light-to-dark)"}}]]))
 
 (m/defc ^:private <completion-letter>
-  {:features [[:appear "slide-in faster"]]}
+  {:features [[:appear "slide-in faster"] [:font (fn [& _] (when @(rf/subscribe [:search/open?]) font/fira))]]}
   [height letter]
   [:div [:span
            {:style {:min-height height}}
            letter]])
+
+(m/defc ^:private <completion-prefix>
+  {:features [[:font (fn [& _] (when @(rf/subscribe [:search/open?]) font/fira))]]}
+  [letter]
+  [:span.first-char letter])
 
 (m/defc <completion>
   [query suggestion height]
@@ -42,7 +47,7 @@
       [:span.styled-input-autocomplete
        {:style {:white-space :pre-wrap
                 :display :inline-flex}}
-       [:span.first-char char1]
+       [<completion-prefix> char1]
        (m/for [letter others] ; causes issues with spacing? nice lil zoom effect though, figure out.
          [<completion-letter> height letter])])))
 
@@ -89,8 +94,16 @@
     :suggestions suggestions]))
 
 
-(m/defc <suggestions> "Display a dropdown of suggested further terms"
+(m/defc ^:private <suggestion>
   {:features [[:font (fn [& _] (when @(rf/subscribe [:search/open?]) font/fira))]]}
+  [collections {:keys [match rest query]}]
+  [:div.search-autocomplete-item
+   {:on-click (fn [_]
+                (doseq [coll collections]
+                  (rf/dispatch [:search/search coll (str match rest) ["text" "title"]])))}
+   [:b query] rest])
+
+(m/defc <suggestions> "Display a dropdown of suggested further terms"
   [collections]
   (let [suggestions (rf/subscribe [:search/autocomplete-multi collections])
         last-suggestions (atom nil)
@@ -103,16 +116,11 @@
          {:class (when (and @(rf/subscribe [:search/open?])
                             (not (string/blank? @query)))
                    "search-autocomplete-open")}
-         (m/for [suggestion (drop 1 suggestions') ; rework as map-indexed so can highhlight and pick by keyboard
-               :let [{:keys [text html rest match query]} suggestion
-                     without-query rest
-                     #_(string/replace-first text (re-pattern (str "(?i)" @query)) "")]]
-           [:div.search-autocomplete-item
-            {:on-click (fn [e]
-                         (doseq [coll collections]
-                           (rf/dispatch [:search/search coll (str match rest) ["text" "title"]])))}
-
-            [:b query] without-query])]))))
+         (m/for [suggestion (drop 1 suggestions') ; rework as map-indexed so can highlight and pick by keyboard
+                 :let [{:keys [text html rest match query]} suggestion
+                       without-query rest
+                       #_(string/replace-first text (re-pattern (str "(?i)" @query)) "")]]
+           [<suggestion> collections suggestion])]))))
 
 
 (m/defc ^:private <instant-result>

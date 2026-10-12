@@ -7,13 +7,11 @@
             [clojure.string :as string]))
 
 (m/defc ^:private <styled-letter>
-  {:features [[:appear "zoom fast"]]}
-  [letter]
+  {:features [[:appear "zoom fast"] [:font (fn [_ open?] (when open? font/fira))]]}
+  [letter open?]
   [:div [:span.styled-letter letter]])
 
 (m/defc <input-text-styled> "Custom text field with individual elements for each letter, and styled caret"
-  {:features [[:font (fn [& {:keys [open?] :or {open? true}}]
-                       (when open? font/fira))]]}
   [& {:as args :keys [model completion-fn]}]
  (let [internal-model (r/atom (or @model ""))
        char-width 0.61225
@@ -66,7 +64,7 @@
                        :display :inline-flex}}
         (for [[i letter] (map-indexed vector @internal-model)] ; causes issues with spacing? nice lil zoom effect though, figure out.
           ^{:key i}
-          [<styled-letter> letter])])
+          [<styled-letter> letter open?])])
 
      (when completion-fn
        [completion-fn @internal-model suggestion height])]
