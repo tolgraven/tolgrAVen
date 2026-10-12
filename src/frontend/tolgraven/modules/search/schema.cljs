@@ -12,8 +12,8 @@
                    :hits [:sequential
                           [:map
                            [:document :map]
-                           [:highlights {:optional true} [:sequential :map]]]]}))
+                           [:?highlights [:sequential :map]]]]}))
 (def results
-  (c/optional-map {:query [:map-of c/named [:maybe :string]]
-                   :previous-query [:map-of c/named [:maybe :string]]
+  (c/optional-map {:query [:map-of c/named :?string]
+                   :previous-query [:map-of c/named :?string]
                    :results [:map-of c/named [:map-of :string search-result]]}))

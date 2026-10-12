@@ -2,6 +2,7 @@
   (:require [clj-http.client :as http]
             [clojure.test :refer [deftest is]]
             [malli.core :as m]
+            [tolgraven.schema.dsl :as dsl]
             [tolgraven.oembed :as oembed]
             [tolgraven.components.oembed.contract :as contract]))
 
@@ -23,13 +24,13 @@
                                          :player-src "https://attacker.example/"
                                          :height 400})]
     (is (= source (:player-src result)))
-    (is (m/validate contract/result result)))
+    (is (m/validate (dsl/->malli contract/result) result)))
   (let [result (oembed/normalize-result {:html "<iframe src='https://attacker.example/'></iframe>"
                                          :player-src "https://w.soundcloud.com/player/"
                                          :height "400"})]
     (is (not (contains? result :player-src)))
     (is (= 166 (:height result)))
-    (is (m/validate contract/result result))))
+    (is (m/validate (dsl/->malli contract/result) result))))
 
 (deftest concurrent-player-requests-share-one-read-and-subsequent-cache-hits
   (let [cache @#'oembed/*cache

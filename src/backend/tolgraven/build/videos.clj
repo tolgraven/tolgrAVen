@@ -1,7 +1,8 @@
 (ns tolgraven.build.videos
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [tolgraven.schema.dsl :as dsl]))
 
 (def catalog-schema
   [:map-of :string [:map [:width pos-int?] [:media :string]]])
@@ -13,6 +14,6 @@
                     ;; the baked catalog. Shadow is compiler-only on the JVM.
                     ((requiring-resolve 'shadow.resource/slurp-resource) &env "responsive-videos.edn")
                     (slurp (io/resource "responsive-videos.edn"))))]
-    (when-not (m/validate catalog-schema catalog)
+    (when-not (m/validate (dsl/->malli catalog-schema) catalog)
       (throw (ex-info "Invalid responsive video catalog" {})))
     catalog))

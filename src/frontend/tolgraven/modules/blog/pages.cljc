@@ -7,8 +7,7 @@
             [tolgraven.schema.http :as schemas]))
 
 (def page-extension
-  [:map [:selection {:optional true}
-         [:map [:page {:optional true} [:int {:min 1}]]]]])
+  [:map [:?selection [:map [:?page [:int {:min 1}]]]]])
 
 #?(:cljs (def controllers
   {:blog [{:start (fn [_]

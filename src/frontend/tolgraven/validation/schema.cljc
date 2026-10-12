@@ -38,7 +38,7 @@
                    :write-comment #?(:feature/blog-comments blog/comment-fields :default nil)}))
 (def link-candidate #?(:module/link-preview link-preview/link-candidate :default nil))
 (def link-preview #?(:module/link-preview link-preview/state :default nil))
-(def init-entry (optional-map {:inited? :boolean, :args [:maybe [:sequential :any]]}))
+(def init-entry (optional-map {:inited? :boolean, :args [:?sequential :any]}))
 (def state
   (optional-map
    {:link-preview #?(:module/link-preview [:maybe link-preview] :default nil)
@@ -51,9 +51,9 @@
     :user #?(:module/user user/user-id :default nil)
     :active-user #?(:module/user user/active-user :default nil)
     :user-section #?(:module/user user/section :default nil)
-    :experiments [:maybe :keyword]
-    :fragment [:maybe :string]
-    :soft-path [:maybe :string]
+    :experiments :?keyword
+    :fragment :?string
+    :soft-path :?string
     :tab-visible :boolean
     :cookies-allowed :boolean
     :login-show-password :boolean
@@ -64,7 +64,7 @@
     :scroll-position [:map-of [:maybe c/named] number?]
     :scroll (optional-map {:at-bottom :boolean, :past-top :boolean, :block :boolean})
     :settings #?(:module/main settings/state :default nil)
-    :document (optional-map {:title [:maybe :string]})
+    :document (optional-map {:title :?string})
     :content content/state
     :search #?(:module/search search/state :default nil)
     :chat #?(:module/chat chat/state :default nil)
@@ -76,8 +76,8 @@
     :window (optional-map {:fullscreen? :boolean})
     :hidden flags
     :browser-nav (optional-map {:got-nav :boolean
-                                  :nav-type [:maybe [:or c/named :int]]
-                                  :referrer [:maybe :string]})
+                                  :nav-type [:?or c/named :int]
+                                  :referrer :?string})
     :contact-form #?(:module/contact contact/state :default nil)
     :carousel [:map-of c/id (optional-map {:index :int
                                            :direction [:or :keyword :string]})]

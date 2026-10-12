@@ -1,6 +1,7 @@
 (ns tolgraven.validation-test
   (:require [clojure.test :refer [deftest is testing]]
             [malli.core :as m]
+            [tolgraven.schema.dsl :as dsl]
             [tolgraven.validation :as validation]
             [tolgraven.validation.malli :as validation-engine]
             [tolgraven.schema.declarations :as declarations]
@@ -47,15 +48,15 @@
 
 (deftest declarations-compose-base-and-owner-contracts
   (let [extended (declarations/extend-module [:map [:cache-limit [:int {:min 1}]]])]
-    (is (m/validate extended {:id :catalog :cache-limit 20}))
-    (is (not (m/validate extended {:cache-limit 20})))
-    (is (not (m/validate extended {:id :catalog :cache-limit 0}))))
+    (is (m/validate (dsl/->malli extended) {:id :catalog :cache-limit 20}))
+    (is (not (m/validate (dsl/->malli extended) {:cache-limit 20})))
+    (is (not (m/validate (dsl/->malli extended) {:id :catalog :cache-limit 0}))))
   (let [extended (declarations/extend-spec [:map [:label :string]])]
-    (is (m/validate extended {:label "Title" :props {:class "title"}}))
-    (is (not (m/validate extended {:label "Title" :props "wrong"}))))
+    (is (m/validate (dsl/->malli extended) {:label "Title" :props {:class "title"}}))
+    (is (not (m/validate (dsl/->malli extended) {:label "Title" :props "wrong"}))))
   (let [extended (declarations/extend-page [:map [:permission :keyword]])]
-    (is (m/validate extended {:name :account :permission :signed-in :ssr true}))
-    (is (not (m/validate extended {:name :account :permission :signed-in :ssr "yes"})))))
+    (is (m/validate (dsl/->malli extended) {:name :account :permission :signed-in :ssr true}))
+    (is (not (m/validate (dsl/->malli extended) {:name :account :permission :signed-in :ssr "yes"})))))
 
 (deftest schema-caches-release-historical-generations
   (let [first-schema [:map [:first-generation :int]]
@@ -72,7 +73,7 @@
     (app-db/schema {[:second-generation] :string})
     (let [reassembled (app-db/schema sections)]
       (is (not (identical? assembled reassembled)))
-      (is (m/validate reassembled {:first-generation {:count 1}})))))
+      (is (m/validate (dsl/->malli reassembled) {:first-generation {:count 1}})))))
 
 (deftest dynamic-contracts-follow-explicit-state-deletions
   (let [path [:component "example" "<counter>" "one"]

@@ -7,9 +7,9 @@
 (def return-snapshot
   [:map [:version [:= 1]] [:url :string] [:build [:or :int :string]]
    [:saved-at c/milliseconds] [:state-edn :string]
-   [:modules {:optional true} [:sequential c/named]]
-   [:module-views {:optional true} contract/module-views]
-   [:title {:optional true} :string] [:html {:optional true} :string]])
+   [:?modules [:sequential c/named]]
+   [:?module-views contract/module-views]
+   [:?title :string] [:?html :string]])
 (def storage-snapshot
   [:map [:version [:= 1]] [:schema c/positive] [:expires-at c/milliseconds] [:value :any]])
 (def storage-envelope [:map-of :any storage-snapshot])

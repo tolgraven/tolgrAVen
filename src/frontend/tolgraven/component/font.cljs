@@ -13,18 +13,17 @@
    [:initial-family :string]
    [:fallback :string]
    [:property [:re "^--[a-z][a-z0-9-]*$"]]
-   [:sample {:optional true} :string]
-   [:fade-ms {:optional true} [:int {:min 1, :max 500}]]])
+   [:?sample :string]
+   [:?fade-ms [:int {:min 1, :max 500}]]])
 (def instance-schema
   [:map
    [:options options-schema]
    [:phase [:enum :initial :native :fallback :prepared :crossfade :ready :failed]]
-   [:reduced? {:optional true} :boolean]])
+   [:?reduced? :boolean]])
 (def state-schema
   [:map
-   [:instances {:optional true} [:map-of :uuid instance-schema]]
-   [:faces {:optional true}
-    [:map-of :string [:map [:status [:enum :loading :ready :failed]] [:token :uuid]]]]])
+   [:?instances [:map-of :uuid instance-schema]]
+   [:?faces [:map-of :string [:map [:status [:enum :loading :ready :failed]] [:token :uuid]]]]])
 
 (def fira
   {:family "Fira Code Ready"

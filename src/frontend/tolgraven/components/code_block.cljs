@@ -1,6 +1,7 @@
 (ns tolgraven.components.code-block
   "Controls hydrate immediately; the formatter hydrates after the page is ready."
   (:require [clojure.string :as string]
+            [tolgraven.schema.dsl :as dsl]
             [tolgraven.component.registry]
             [tolgraven.component.restore :as restore]
             [tolgraven.component.hydration :as hydration]
@@ -14,21 +15,21 @@
 
 (def options-schema
   [:map
-   [:language {:optional true} [:maybe :string]]
-   [:default-language {:optional true} [:maybe :string]]
-   [:auto-languages {:optional true} [:maybe [:vector :string]]]
-   [:inline-language {:optional true} [:maybe :string]]
-   [:style {:optional true} [:or :map [:fn object?]]]
-   [:basic? {:optional true} :boolean]
-   [:inline? {:optional true} :boolean]
-   [:copy? {:optional true} :boolean]
-   [:wrap? {:optional true} :boolean]
-   [:line-numbers? {:optional true} :boolean]
-   [:line-props {:optional true} fn?]
-   [:starting-line-number {:optional true} [:int {:min 1}]]
-   [:foldable? {:optional true} :boolean]
-   [:folded? {:optional true} :boolean]
-   [:fold-lines {:optional true} [:int {:min 1}]]])
+   [:?language :?string]
+   [:?default-language :?string]
+   [:?auto-languages [:?vector :string]]
+   [:?inline-language :?string]
+   [:?style [:or :map [:fn object?]]]
+   [:?basic? :boolean]
+   [:?inline? :boolean]
+   [:?copy? :boolean]
+   [:?wrap? :boolean]
+   [:?line-numbers? :boolean]
+   [:?line-props fn?]
+   [:?starting-line-number [:int {:min 1}]]
+   [:?foldable? :boolean]
+   [:?folded? :boolean]
+   [:?fold-lines [:int {:min 1}]]])
 
 ;; Preserve the public keyword/value API, with the same contracts as map options.
 (def args-schema
@@ -37,7 +38,7 @@
     [:cat options-schema]
     [:* (into [:alt]
           (map (fn [[key _ schema]] [:cat [:= key] schema])
-               (rest options-schema)))]]])
+               (rest (dsl/->malli options-schema))))]]])
 
 (defn options-map [options]
   (if (and (= 1 (count options)) (map? (first options)))

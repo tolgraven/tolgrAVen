@@ -7,11 +7,11 @@
 (def options-schema
   [:map
    [:module :keyword]
-   [:load-on {:optional true} [:or trigger [:set trigger] [:vector trigger]]]
-   [:lead-pages {:optional true} [:and number? [:>= 0] [:<= 10]]]
-   [:root-margin {:optional true} :string]
-   [:args {:optional true} [:sequential :any]]
-   [:event {:optional true} [:cat :keyword [:* :any]]]])
+   [:?load-on [:or trigger [:set trigger] [:vector trigger]]]
+   [:?lead-pages [:and number? [:>= 0] [:<= 10]]]
+   [:?root-margin :string]
+   [:?args [:sequential :any]]
+   [:?event [:cat :keyword [:* :any]]]])
 
 (defn triggers [options]
   (let [value (or (:load-on options)

@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clj-http.client :as http]
             [malli.core :as m]
+            [tolgraven.schema.dsl :as dsl]
             [tolgraven.modules.link-preview.article :as contract]
             [tolgraven.modules.link-preview.service :as service])
   (:import [java.net InetAddress ProxySelector]
@@ -23,7 +24,7 @@
                                  "<ul><li>First item</li></ul><script>alert(1)</script></article>"
                                  "<footer>Footer</footer>")
                             {"x-frame-options" "SAMEORIGIN"}))]
-      (is (m/validate contract/result result))
+      (is (m/validate (dsl/->malli contract/result) result))
       (is (= "Title" (:title result)))
       (is (= "Summary" (:description result)))
       (is (= "https://example.com/hero.webp" (:image result)))
@@ -35,7 +36,7 @@
 (deftest extraction-is-bounded-and-recovers-malformed-documents
   (let [result (service/extract (document (str "<main><h2>Broken<p>Still readable"
                                               (apply str (repeat 80 (str "<p>" (apply str (repeat 300 "a"))))))))]
-    (is (m/validate contract/result result))
+    (is (m/validate (dsl/->malli contract/result) result))
     (is (<= (count (:blocks result)) 32))
     (is (<= (reduce + (map (comp count :text) (:blocks result))) service/max-text))
     (is (:truncated? result)))
@@ -128,7 +129,7 @@
   (let [result (service/extract (document (str "<article><p>" (apply str (repeat 5000 "x")) "</p></article>")))]
     (is (= 3000 (count (get-in result [:blocks 0 :text]))))
     (is (:truncated? result))
-    (is (m/validate contract/result result))))
+    (is (m/validate (dsl/->malli contract/result) result))))
 
 (deftest deeply-nested-fallback-content-is-scored-with-bounded-work
   (let [work (future

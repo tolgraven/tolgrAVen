@@ -21,6 +21,9 @@ implementation in `src/frontend/tolgraven/modules/<module>/`, also on the JVM so
 - Reader conditionals must work for CLJ tooling/Codox as well as browser and Node
   Shadow builds. Do not make JVM documentation scan browser-only namespaces.
 
+- `schema/dsl.cljc` expands optional-key and nullable-type shorthand without
+  importing Malli. Validation and JVM/browser coercion adapters expand forms
+  before interpretation; schema composition stays data. See `doc/schemas.md`.
 - `schema/declarations.cljc` defines declaration shapes; module-local schemas own
   domain fields. `schema/app_db.cljc` supplies generic composition/change-validation helpers;
   frontend `validation/schema.cljs` assembles browser/Node sections. Keep coverage
