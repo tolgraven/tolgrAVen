@@ -1,4 +1,5 @@
 (ns tolgraven.components.shell
+  (:require-macros [tolgraven.build.site :refer [when-enabled]])
   (:require
     [tolgraven.components.icon :as icon]
     [tolgraven.component.registry]
@@ -123,12 +124,13 @@
          :aria-label "My blog"
          :title "My blog"}
         [:i.fa.fa-pen-fancy]]
-      [:a.button.settings-btn.noborder.nomargin
+      (when-enabled :settings nil
+       [:a.button.settings-btn.noborder.nomargin
        {:href @(rf/subscribe [:href-add-query
                               {:settingsBox (not @(rf/subscribe [:state [:settings :panel-open]]))}])
         :aria-label "Settings"
         :title "Settings"}
-       [:i.settings-btn {:class "fa fa-cog"}]]
+       [:i.settings-btn {:class "fa fa-cog"}]])
 
       (m/<> {:module :search
              :view :button

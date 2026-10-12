@@ -21,13 +21,13 @@
 
 (defn- render-pair! [{:keys [state route modules snapshot styles template build owner url title]}]
   (let [encoded (pr-str state)
-        _ (when (or (> (contract/byte-count encoded) contract/max-bytes)
+        _state-valid (when (or (> (contract/byte-count encoded) contract/max-bytes)
                     (not= state (reader/read-string encoded)))
             (throw (js/Error. "Page state cannot be cached")))
         match (merge (reitit/match-by-path routes/router (:path route)) route)
         view (or (get-in match [:data :view])
                  (get-in modules [(get-in match [:data :module]) :view (get-in match [:data :page])]))
-        _ (when-not view (throw (js/Error. "Local page view unavailable")))
+        _view-ready (when-not view (throw (js/Error. "Local page view unavailable")))
         saved {:version contract/version
                :url url
                :build build

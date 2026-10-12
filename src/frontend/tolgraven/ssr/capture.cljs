@@ -72,8 +72,8 @@
                               (.then (fn [specs]
                                        (when (contains? @*pending id)
                                          ((:pair! (aget specs 0)) db config))))
-                              (.then #(finish! % nil))
-                              (.catch #(finish! nil %)))))]
+                              (.then (fn [value] (finish! value nil)))
+                              (.catch (fn [error] (finish! nil error))))))]
           (when (contains? @*pending id)
             (swap! *pending update id assoc :cancel cancel)))))))
 
@@ -82,7 +82,7 @@
         code? (boolean (.querySelector js/document "#app .code-block, #app .code-highlight"))]
     (if (or ^boolean goog.DEBUG (not (exists? js/Worker)) (some #{:maps} modules))
       (browser-pair! db config code?)
-      (let [scripts (into {} (map (fn [[id asset]] [id (update asset :depends #(mapv keyword %))])) scripts)
+      (let [scripts' (into {} (map (fn [[id asset]] [id (update asset :depends #(mapv keyword %))])) scripts)
             request {:state (contract/state-for db)
                      :route (select-keys (:common/route db) [:path :query-params :parameters])
                      :modules modules
@@ -94,7 +94,7 @@
                      :url (str (.-origin js/location) (.-pathname js/location) (.-search js/location))
                      :title (.-title js/document)}
             encoded (pr-str request)
-            assets (asset-plan scripts (cond-> (conj (set modules) :page-render) code? (conj :highlight)))]
+            assets (asset-plan scripts' (cond-> (conj (set modules) :page-render) code? (conj :highlight)))]
         (when (> (contract/byte-count encoded) (* 2 contract/max-bytes))
           (throw (js/Error. "Local page request exceeds cache budget")))
         (js/Promise.

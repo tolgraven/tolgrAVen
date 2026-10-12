@@ -96,8 +96,9 @@
    [ui/<zoom-to-modal> :fullscreen]
    (m/<> {:module :link-preview :defer? true})
    (m/<> {:module :user, :defer? true})
-   (when @(rf/subscribe [:state [:settings :panel-open]])
-     (m/<> {:module :settings :load-on :immediate}))
+   #?(:module/settings
+      (when @(rf/subscribe [:state [:settings :panel-open]])
+        (m/<> {:module :settings :load-on :immediate})))
    (m/<> {:module :search, :defer? true})
    (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
