@@ -186,7 +186,15 @@
       (preconnect link))
 
     (for [path img-pre]
-      (img-preload-modern path))
+      (list
+       (when (image-sources/progressive? path)
+         (when-let [preview (image-sources/preview path)]
+           [:link {:rel "preload"
+                   :as "image"
+                   :href (:avif preview)
+                   :type "image/avif"
+                   :fetchpriority "high"}]))
+       (img-preload-modern path)))
 
     (for [path css-pre]
       (css-preload path))

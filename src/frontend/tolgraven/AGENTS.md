@@ -321,3 +321,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Shared bindings/account actions acquire it through `supabase/runtime.cljs`;
   do not initialize it globally or add an SDK script to server HTML. Keep restored
   public state renderable while the module is loading.
+
+- Catalog images marked `:progressive?` render a blurred decorative smallest candidate
+  underneath their normal responsive picture. Both layers acquire natively in SSR;
+  final decode paints over the preview before hydration. The common root owns media
+  styles/identity; caller refs/load handlers still belong to the final image.

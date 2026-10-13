@@ -6,7 +6,7 @@
 
 (def catalog-schema
   [:map-of :string
-   [:map [:width pos-int?] [:height pos-int?] [:sizes [:vector pos-int?]]]])
+   [:map [:width pos-int?] [:height pos-int?] [:sizes [:vector pos-int?]] [:?progressive? :boolean]]])
 
 (defmacro responsive-images []
   (let [catalog (edn/read-string

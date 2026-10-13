@@ -21,6 +21,18 @@
       (is (not (.contains body "img/blog.webp")))
       (is (not (.contains body "img/blog.jpg"))))))
 
+(deftest progressive-hero-preloads-preview-and-responsive-final
+  (with-redefs [config/env {:dev true :ssr {:enabled false}}
+                content/immediate-content (constantly {:intro {:bg [{:src "img/foggy-shit-small.jpg"}]}})
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (let [body (:body (layout/render-home {:uri "/"}))
+          links (filter #(.contains % "as=\"image\"") (re-seq #"<link[^>]+>" body))]
+      (is (= 2 (count links)))
+      (is (.contains (first links) "href=\"img/foggy-shit-small-400w.avif\""))
+      (is (.contains (second links) "imagesrcset=\"img/foggy-shit-small-400w.avif 400w, img/foggy-shit-small-800w.avif 800w, img/foggy-shit-small.avif 1189w\""))
+      (is (.contains (second links) "imagesizes=\"100vw\""))
+      (is (< (.indexOf body "foggy-shit-small-400w.avif") (.indexOf body "<body"))))))
+
 (deftest ssr-failure-status
   (doseq [[error status] [[(ex-info "Missing document" {:status 404}) 404]
                          [(ex-info "Renderer unavailable" {}) 503]]]

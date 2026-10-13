@@ -130,3 +130,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Keep its mount-container marker outside the React tree; streamed skeletons
   remain visible until the completed page can start its original entrance.
   Local returns and JavaScript-disabled documents must remain usable.
+
+- Progressive image catalog entries preload the smallest AVIF preview alongside
+  the final responsive AVIF set. Final `imagesrcset`/`imagesizes` match rendered
+  sources so phones select only their appropriate final candidate.

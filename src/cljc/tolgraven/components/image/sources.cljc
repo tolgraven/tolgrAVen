@@ -6,6 +6,19 @@
 
 (def responsive (responsive-images))
 
+(defn preview
+  "Smallest catalog candidate for a progressive image. Explicit component intent
+   may opt other responsive images in; the catalog selects document preloads."
+  [src]
+  (when-let [{:keys [sizes width]} (get responsive (string/replace (or src "") #"^/" ""))]
+    (when-let [size (first (sort (filter #(< % width) sizes)))]
+      {:width size
+       :avif (string/replace src #"(?i)\.(jpe?g|png)$" (str "-" size "w.avif"))
+       :webp (string/replace src #"(?i)\.(jpe?g|png)$" (str "-" size "w.webp"))})))
+
+(defn progressive? [src]
+  (true? (:progressive? (get responsive (string/replace (or src "") #"^/" "")))))
+
 (defn dimensions [src]
   (select-keys (get responsive (string/replace (or src "") #"^/" "")) [:width :height]))
 

@@ -96,3 +96,7 @@ server format handlers retain their native JVM Java-time support.
 - Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
   Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
   Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.
+
+- The responsive image catalog may opt into progressive display with `:progressive?`.
+  Its smallest sized candidate is shared by preview markup and document preloads;
+  final sources retain the complete responsive set.

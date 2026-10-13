@@ -5,6 +5,7 @@
     [reagent.dom.client :as dom]
     [reagent.dom.server :as server]
     [tolgraven.components.image :as image]
+    [tolgraven.components.image.sources :as sources]
     [tolgraven.components.shell :as shell]
     [tolgraven.component.markup :as markup]))
 
@@ -65,6 +66,7 @@
     ;; Force the selected modern format to fail even when its decoder works.
     ;; In Safari Lockdown Mode, the AVIF error happens naturally instead.
     (reset! *attrs {:src src
+                   :progressive? false
                    :alt "Fallback portrait"
                    :class "portrait"
                    :on-load loaded!
@@ -89,7 +91,7 @@
 (deftest hydration-recovers-a-modern-image-that-failed-before-react-attached
   (async done
     (let [container (.createElement js/document "div")
-          form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
+          form [image/<picture> {:src "/img/foggy-shit-small.jpg" :progressive? false}]]
       ;; Test fixture models the browser's already-failed SSR image. No error
       ;; event will arrive after hydration, so the ref adapter must detect it.
       (set! (.-innerHTML container) (server/render-to-string form))
@@ -124,3 +126,95 @@
     (is (.includes html "loading=\"lazy\""))
     (is (.includes html "loading=\"eager\""))
     (is (not (.includes html "<div loading=")))))
+
+
+(deftest progressive-pictures-reserve-one-layout-and-share-responsive-final-candidates
+  (let [html (server/render-to-string
+               [image/<picture> {:src "/img/foggy-shit-small.jpg"
+                                 :id "top-banner"
+                                 :class "media media-as-bg"
+                                 :alt "Foggy forest"
+                                 :loading "eager"
+                                 :fetchPriority "high"}])]
+    (is (.includes html "class=\"progressive-image media media-as-bg\""))
+    (is (.includes html "data-image-preview=\"true\""))
+    (is (.includes html "data-image-final=\"true\""))
+    (is (.includes html "aria-hidden=\"true\""))
+    (is (.includes html "srcSet=\"/img/foggy-shit-small-400w.avif\""))
+    (is (.includes html (str "srcSet=\"" (sources/srcset "/img/foggy-shit-small.jpg" "avif") "\"")))
+    (is (.includes html "width=\"1189\""))
+    (is (not (.includes html "progressive?=")))
+    (is (not (.includes html "preview?=")))))
+
+(deftest progressive-hydration-preserves-both-native-image-nodes
+  (async done
+    (let [container (.createElement js/document "div")
+          form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
+      (set! (.-innerHTML container) (server/render-to-string form))
+      (.appendChild (.-body js/document) container)
+      (let [preview (.querySelector container "[data-image-preview]")
+            final (.querySelector container "[data-image-final]")
+            root (dom/hydrate-root container form)]
+        (js/setTimeout
+          (fn []
+            (is (identical? preview (.querySelector container "[data-image-preview]")))
+            (is (identical? final (.querySelector container "[data-image-final]")))
+            (is (= "" (.. final -style -visibility)))
+            (dom/unmount root)
+            (.remove container)
+            (done))
+          100)))))
+
+(deftest progressive-final-failure-retains-the-preview
+  (async done
+    (let [container (.createElement js/document "div")
+          root (dom/create-root container)
+          *errors (atom 0)]
+      (.appendChild (.-body js/document) container)
+      (dom/render root [image/<picture> {:src "/img/foggy-shit-small.jpg"
+                                       :on-error (fn [_] (swap! *errors inc))}])
+      (js/setTimeout
+        (fn []
+          (let [final (.querySelector container "[data-image-final]")
+                preview (.querySelector container "[data-image-preview]")]
+            ;; Modern-source failure first selects the original.
+            (.dispatchEvent final (js/Event. "error"))
+            (js/setTimeout
+              (fn []
+                (.dispatchEvent final (js/Event. "error"))
+                (js/setTimeout
+                  (fn []
+                    (is (= "hidden" (.. final -style -visibility)))
+                    (is (identical? preview (.querySelector container "[data-image-preview]")))
+                    (is (= 1 @*errors))
+                    (dom/unmount root)
+                    (.remove container)
+                    (done))
+                  100))
+              100)))
+        300))))
+
+
+(deftest progressive-hydration-keeps-preview-after-an-original-failed-before-attachment
+  (async done
+    (let [container (.createElement js/document "div")
+          form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
+      (set! (.-innerHTML container) (server/render-to-string form))
+      (.appendChild (.-body js/document) container)
+      (let [final (.querySelector container "[data-image-final]")
+            preview (.querySelector container "[data-image-preview]")]
+        ;; Model a browser that selected but failed the original before handlers
+        ;; attached, while keeping SSR and first-client markup identical.
+        (do
+          (doseq [[property value] [["complete" true] ["naturalWidth" 0]
+                                   ["currentSrc" (str (.-origin js/location) "/img/foggy-shit-small.jpg")]]]
+            (js/Object.defineProperty final property #js {:configurable true :value value}))
+          (let [root (dom/hydrate-root container form)]
+            (js/setTimeout
+              (fn []
+                (is (identical? preview (.querySelector container "[data-image-preview]")))
+                (is (= "hidden" (.. final -style -visibility)))
+                (dom/unmount root)
+                (.remove container)
+                (done))
+              100)))))))

@@ -203,3 +203,12 @@ resources. Its popup sheet is deferred in ordinary SSR documents.
 
 The closed Settings panel has no DOM, CSS-variable reads or view code in bootstrap.
 Opening it acquires `:settings` and its sheet before mounting its controls.
+
+Progressive catalog images (`:progressive? true`) paint the smallest AVIF/WebP
+candidate, blurred by the shared image styles, below the native responsive final
+picture. The two requests start together; final decoded pixels replace the preview
+without waiting for application code or hydration. The shared root retains the
+caller’s media styles and dimensions, and the decorative preview is hidden from
+assistive technology. Explicit `:progressive? false` opts out; `true` enables other
+images with sized catalog candidates. Final modern-format errors retry the original,
+and a final original failure leaves the preview visible.

@@ -14,7 +14,8 @@
   (vector :merge content/media [:map [:?src :?string]
                                [:?on-error [:maybe fn?]]
                                [:?on-load [:maybe fn?]]
-                               [:?style :?map]]))
+                               [:?style :?map]
+                               [:?progressive? :boolean]]))
 
 (def get-src-variants sources/get-src-variants)
 
@@ -23,7 +24,7 @@
     (and (seq current-src)
          (not= current-src (.-href (js/URL. src (.-baseURI image)))))))
 
-(defc <picture>
+(defc ^:private <source-picture>
   "Generate a <picture> element with WebP and AVIF sources and fallback to original.
 
    Usage:
@@ -40,22 +41,27 @@
    Browsers select the first supported format. If requesting or decoding that
    source fails, retry the original JPEG/PNG. Call the caller's on-error only when the
    original image fails too."
-  [{:keys [src on-error ref] :as attrs} :- attrs-schema]
+  [{:keys [src on-error ref preview? on-attached-error] :as attrs} :- attrs-schema]
   (r/with-let [*fallback-sources (r/atom #{})]
-    (let [attrs (merge {:decoding "async"} (sources/dimensions src) attrs)
+    (let [attrs' (merge {:decoding "async"} (sources/dimensions src)
+                        (dissoc attrs :preview? :progressive? :on-attached-error))
+          preview (when preview? (sources/preview src))
           capture! (react/use-callback
                     (fn [image]
                       ;; A server-rendered image may fail before React attaches
                       ;; on-error. Inspect it at attachment without changing DOM;
                       ;; state removes the modern sources through normal rendering.
-                      (when (and image (sources/should-use-modern-formats? src)
-                                 (.-complete image) (zero? (.-naturalWidth image))
+                      (when (and image (seq src) (seq (.-currentSrc image))
+                                 (.-complete image) (zero? (.-naturalWidth image)))
+                        (if (and (sources/should-use-modern-formats? src)
                                  (modern-source-selected? image src))
-                        (swap! *fallback-sources conj src))
+                          (swap! *fallback-sources conj src)
+                          (when on-attached-error
+                            (on-attached-error #js {:currentTarget image}))))
                       (cond (fn? ref) (ref image)
                             ref (set! (.-current ^js ref) image))
                       js/undefined)
-                    #js [src ref])]
+                    [src ref on-attached-error])]
      (if (sources/should-use-modern-formats? src)
       (let [avif-src (sources/replace-extension src "avif")
             webp-src (sources/replace-extension src "webp")
@@ -71,17 +77,55 @@
         [:picture
          (when-not fallback?
            [:source {:key avif-src
-                     :srcSet (or (sources/srcset src "avif") avif-src)
-                     :sizes (or (:sizes attrs) "100vw")
+                     :srcSet (or (:avif preview) (sources/srcset src "avif") avif-src)
+                     :sizes (or (:sizes attrs') "100vw")
                      :type "image/avif"}])
          (when-not fallback?
            [:source {:key webp-src
-                     :srcSet (or (sources/srcset src "webp") webp-src)
-                     :sizes (or (:sizes attrs) "100vw")
+                     :srcSet (or (:webp preview) (sources/srcset src "webp") webp-src)
+                     :sizes (or (:sizes attrs') "100vw")
                      :type "image/webp"}])
-         [:img (assoc attrs :on-error retry! :ref capture!)]])
+         [:img (assoc attrs' :on-error retry! :ref capture!)]])
       ;; No modern format available, just use img directly.
-      [:img attrs]))))
+      [:img attrs']))))
+
+(defc <picture>
+  "Render responsive modern sources with original-format recovery. Catalog-owned
+   progressive images paint a decorative blurred preview beneath the final image.
+   Both native pictures load together; decoded final pixels cover the preview even
+   before hydration attaches. Set :progressive? explicitly to override the catalog."
+  [{:keys [src class style id progressive? on-error] :as attrs} :- attrs-schema]
+  (r/with-let [*failed-sources (r/atom #{})]
+    (let [failed! (react/use-callback
+                   (fn [event]
+                     (when-not (contains? @*failed-sources src)
+                       (swap! *failed-sources conj src)
+                       (when on-error (on-error event))))
+                   [src on-error])]
+      (if (and (if (contains? attrs :progressive?) progressive? (sources/progressive? src))
+               (sources/preview src))
+        (let [failed? (contains? @*failed-sources src)
+              final-attrs (-> attrs
+                              (dissoc :class :style :id :progressive?)
+                              (assoc :class "progressive-image__final"
+                                     :data-image-final true
+                                     :style {:visibility (when failed? "hidden")}
+                                     :on-error failed!
+                                     :on-attached-error failed!))]
+          [:span.progressive-image
+           {:id id
+            :class class
+            :style style}
+           [<source-picture> {:src src
+                              :alt ""
+                              :aria-hidden true
+                              :preview? true
+                              :class "progressive-image__preview"
+                              :data-image-preview true
+                              :loading (or (:loading attrs) "eager")
+                              :fetchPriority (or (:fetchPriority attrs) "auto")}]
+           [<source-picture> final-attrs]])
+        [<source-picture> attrs]))))
 
 (defc <img>
   "Smart img component that automatically uses modern formats when available.
