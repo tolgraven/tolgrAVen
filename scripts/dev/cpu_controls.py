@@ -20,6 +20,8 @@ import time
 import uuid
 
 STATE = Path.home() / 'Library/Application Support/tolgraven/cpu-controls'
+BUILD_SLOTS = 2
+BUILD_CPUS = 1.5  # Two kernel-capped workers share a maximum of three Docker cores.
 JVM_POOLS = '-XX:ActiveProcessorCount=1 -XX:CICompilerCount=2 -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1'
 
 
@@ -378,12 +380,34 @@ def monitor(args):
         (STATE / 'monitor.json').unlink(missing_ok=True)
 
 
+def build_records():
+    """Read independent reservations, including an already-running legacy build."""
+    for path in STATE.glob('docker-active*.json'):
+        try:
+            yield path, json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+
+
+def reservation_path(name):
+    return STATE / ('docker-active-' + name + '.json')
+
+
+def release_reservation(name):
+    for path, record in build_records():
+        if record.get('name') == name:
+            path.unlink(missing_ok=True)
+
+
 def active_docker_quota(proc):
-    try:
-        record = json.loads((STATE / 'docker-active.json').read_text())
-        return record['cpus'] if proc.same(record['owner']) or (record.get('guardian') and proc.same(record['guardian'])) else 0.0
-    except (OSError, ValueError, KeyError):
-        return 0.0
+    total = 0.0
+    for _, record in build_records():
+        try:
+            if proc.same(record['owner']) or (record.get('guardian') and proc.same(record['guardian'])):
+                total += record['cpus']
+        except (KeyError, TypeError):
+            continue
+    return total
 
 
 def docker_environment():
@@ -455,7 +479,12 @@ def guardian_protocol(argv, record):
 
 def recover_build(args):
     proc = MacProcesses()
-    record = json.loads((STATE / 'docker-active.json').read_text())
+    records = [(path, record) for path, record in build_records()
+               if not args.name or record.get('name') == args.name]
+    if len(records) != 1:
+        names = ', '.join(record.get('name', '<unknown>') for _, record in records)
+        raise RuntimeError('Select exactly one recorded build with --name. Recorded: ' + names)
+    _, record = records[0]
     if same_birth(proc.identity(record['owner']['pid']), record['owner']):
         raise RuntimeError('Build owner is alive; refusing to recover its slot.')
     guardian = proc.identity(record['guardian']['pid'])
@@ -474,26 +503,18 @@ def recover_build(args):
         time.sleep(0.05)
     if same_birth(proc.identity(guardian['pid']), guardian):
         raise RuntimeError('Guardian has not exited; slot remains owned.')
-    try:
-        latest = json.loads((STATE / 'docker-active.json').read_text())
-        if latest['name'] == record['name']:
-            (STATE / 'docker-active.json').unlink(missing_ok=True)
-    except (OSError, ValueError):
-        pass
+    release_reservation(record['name'])
     print('Recovered confirmed orphan:', record['name'], 'guardian', guardian['pid'])
 
 
 def repair_legacy_reservation(proc, owner, name, token, endpoint):
-    try:
-        record = json.loads((STATE / 'docker-active.json').read_text())
+    for path, record in build_records():
         guardian = record.get('guardian')
         if record.get('name') == name and guardian and guardian['pid'] == os.getpid() and same_birth(record['owner'], owner):
             stable = proc.identity(os.getpid())
             if record.get('endpoint') != endpoint or guardian != stable:
                 record.update(guardian=stable, endpoint=endpoint, token=token)
-                save_json(STATE / 'docker-active.json', record)
-    except (OSError, ValueError, KeyError):
-        pass
+                save_json(path, record)
 
 
 def docker_watchdog(owner, name, token, endpoint=None, ready_fd=None):
@@ -516,12 +537,7 @@ def docker_watchdog(owner, name, token, endpoint=None, ready_fd=None):
     while True:
         try:
             if stop_container(name, token, endpoint):
-                try:
-                    record = json.loads((STATE / 'docker-active.json').read_text())
-                    if record.get('name') == name:
-                        (STATE / 'docker-active.json').unlink(missing_ok=True)
-                except (OSError, ValueError):
-                    pass
+                release_reservation(name)
                 return
         except subprocess.SubprocessError:
             pass
@@ -622,12 +638,27 @@ def host_run(args, command, lock, extra_env=None):
             print('Host family cleanup pending; watchdog retains ownership and any build lock.', file=sys.stderr)
 
 
-def build_lock():
+def try_build_lock():
+    """Acquire one of two OS locks; guardians inherit the selected descriptor."""
     STATE.mkdir(parents=True, exist_ok=True)
-    handle = (STATE / 'build.lock').open('w')
-    print('Waiting for the shared agent build slot…', flush=True)
-    fcntl.flock(handle, fcntl.LOCK_EX)
-    return handle
+    for index in range(BUILD_SLOTS):
+        filename = 'build.lock' if index == 0 else 'build-' + str(index) + '.lock'
+        handle = (STATE / filename).open('a')
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return handle
+        except BlockingIOError:
+            handle.close()
+    return None
+
+
+def build_lock():
+    print('Waiting for one of two shared agent build slots…', flush=True)
+    while True:
+        handle = try_build_lock()
+        if handle:
+            return handle
+        time.sleep(0.25)
 
 
 CONFIG_EXAMPLES = (('config/dev.example.edn', 'env/dev/resources/config.edn'),
@@ -678,16 +709,17 @@ def buildkit_run(args, command, lock):
     expected_memory = parse_memory(args.memory)
     if expected_memory < 6 * 1024 * 1024 or round(args.cpus * 100000) < 1000:
         raise RuntimeError('BuildKit requires at least 6 MiB memory and 0.01 CPU.')
-    policy = json.dumps([os.getuid(), endpoint, args.cpus, args.memory])
+    # Each admitted slot owns a separate reusable daemon and cache volume.
+    policy = json.dumps([os.getuid(), endpoint, args.cpus, args.memory, str(lock.name)])
     builder = 'tolgraven-cpu-' + hashlib.sha256(policy.encode()).hexdigest()[:12]
     name = 'buildx_buildkit_' + builder + '0'
     prefix = ['docker', '--host', endpoint]
     owner = MacProcesses().identity(os.getpid())
     record = {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint,
               'token': builder}
-    save_json(STATE / 'docker-active.json', record)
+    save_json(reservation_path(name), record)
     guardian, identity = start_docker_guardian(owner, name, builder, endpoint, lock)
-    save_json(STATE / 'docker-active.json', dict(record, guardian=identity))
+    save_json(reservation_path(name), dict(record, guardian=identity))
     try:
         config = STATE / (builder + '.toml')
         config.write_text('[worker.oci]\n  max-parallelism = 1\n')
@@ -738,7 +770,7 @@ def buildkit_run(args, command, lock):
         if confirmed:
             guardian.terminate()
             guardian.wait(timeout=3)
-            (STATE / 'docker-active.json').unlink(missing_ok=True)
+            release_reservation(name)
         else:
             print('BuildKit cleanup pending; guardian retains the quota and slot.', file=sys.stderr)
 
@@ -767,6 +799,8 @@ def run(args):
         raise RuntimeError('Pass a command after --.')
     if args.action == 'runtime':
         return host_run(args, command, None)
+    if args.cpus > BUILD_CPUS:
+        raise RuntimeError('Each of two build slots permits at most 1.5 CPUs; the shared Docker ceiling is 3 CPUs.')
     with build_lock() as lock:
         if args.mode == 'host':
             return host_run(args, command, lock)
@@ -783,9 +817,9 @@ def run(args):
         token = uuid.uuid4().hex
         endpoint = docker_endpoint()
         owner = MacProcesses().identity(os.getpid())
-        save_json(STATE / 'docker-active.json', {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
+        save_json(reservation_path(name), {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
         guardian, guardian_identity = start_docker_guardian(owner, name, token, endpoint, lock)
-        save_json(STATE / 'docker-active.json', {'owner': owner, 'guardian': guardian_identity, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
+        save_json(reservation_path(name), {'owner': owner, 'guardian': guardian_identity, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
         bootstrap = docker_bootstrap(args.node_deps)
         cmd = ['docker', '--host', endpoint, 'run', '--rm', '--init', '--name', name, '--cpus', str(args.cpus),
                '--memory', args.memory, '--memory-swap', args.memory, '--pids-limit', '512',
@@ -804,7 +838,7 @@ def run(args):
             except subprocess.SubprocessError:
                 confirmed = False
             if confirmed:
-                (STATE / 'docker-active.json').unlink(missing_ok=True)
+                release_reservation(name)
                 guardian.terminate()
                 guardian.wait(timeout=3)
             else:
@@ -860,11 +894,11 @@ def main():
     mon.add_argument('--cpus', type=positive, default=1.5)
     mon.add_argument('--java-cpus', type=positive, default=1.5)
     mon.add_argument('--app-cpus', type=positive, default=1.0)
-    runner = commands.add_parser('run', help='Serialize one isolated Docker build or low-priority host command.')
+    runner = commands.add_parser('run', help='Run in one of two bounded, isolated build slots (3 Docker CPUs combined).')
     runner.add_argument('--mode', choices=['docker', 'host', 'buildkit'], default='docker')
     runner.add_argument('--checkout', default=os.getcwd())
     runner.add_argument('--java-heap', default='1024m')
-    runner.add_argument('--cpus', type=positive, default=1.0)
+    runner.add_argument('--cpus', type=positive, default=BUILD_CPUS)
     runner.add_argument('--memory', default='2g')
     runner.add_argument('--image', default='registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v1')
     runner.add_argument('--node-deps', choices=['auto', 'skip'], default='auto',
@@ -877,6 +911,7 @@ def main():
     installer.add_argument('--project', required=True)
     installer.add_argument('--cpus', type=positive, default=1.5)
     recovery = commands.add_parser('recover-build', help='Recover only a recorded orphan after exact endpoint/container/guardian confirmation.')
+    recovery.add_argument('--name', help='Exact recorded build name when more than one reservation exists.')
     recovery.add_argument('--endpoint', help='Required original local Docker endpoint for legacy reservations.')
     commands.add_parser('status')
     commands.add_parser('stop', help='Stop only the recorded monitor; watchdog resumes its owned paused targets.')

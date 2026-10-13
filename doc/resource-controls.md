@@ -1,8 +1,11 @@
 # CPU controls for agent work
 
 Use `bb cpu run -- <command>` from a checkout, or the installed
-`~/.local/bin/tolgraven-cpu run -- <command>`. The default is a serialized,
-isolated Docker build using the existing prefab with **1 CPU and 2 GiB RAM**.
+`~/.local/bin/tolgraven-cpu run -- <command>`. The default admits **two builds at once**, each in an isolated Docker snapshot
+using the existing prefab with **1.5 CPUs and 2 GiB RAM**. The combined Docker
+ceiling is **3 CPUs**. A third build waits for either inherited-lock slot.
+A smaller `--cpus` value is allowed; values above 1.5 are rejected so concurrent
+builds cannot exceed that ceiling.
 JVMs see one logical processor, two JIT compiler threads, one parallel/concurrent
 GC worker each, and a 1 GiB heap. For a measured larger build:
 
@@ -51,7 +54,7 @@ an explicitly capped BuildKit container:
 tolgraven-cpu run --mode buildkit -- make docker-prefab
 ```
 
-This uses a dedicated Docker `docker-container` builder with a one-CPU CFS quota,
+This uses a dedicated Docker `docker-container` builder per build slot with a 1.5-CPU CFS quota,
 2 GiB memory/no additional swap, one concurrent BuildKit step, and automatic image
 loading so existing publishing commands work. The standard BuildKit daemon uses
 privileged mode inside the existing Docker VM; it does not install a privileged
@@ -70,7 +73,7 @@ For host-only watches, nREPL and browser interoperability:
 tolgraven-cpu runtime -- lein repl
 ```
 
-The `runtime` mode starts a supervised host process without holding the compiler queue. Short host build commands use `run --mode host`, which serializes work and starts it with nice 10 and supplies bounded JVM defaults
+The `runtime` mode starts a supervised host process without holding the compiler queue. Short host build commands use `run --mode host`, which acquires one of the two slots and starts it with nice 10 and supplies bounded JVM defaults
 while preserving unrelated `JAVA_TOOL_OPTIONS` and explicit heap sizing. Worker
 bounds are always appended, so preexisting options cannot silently bypass them. It does not itself impose a kernel CPU quota.
 The installed native monitor owns enforcement. Shells inherit priority for child
@@ -93,10 +96,10 @@ its own helpers, and controller ancestors. Those exclusions keep the control pat
 and human input responsive; they are not an application-wide CPU quota.
 
 The default **aggregate budget is 1.5 cores**, with Java limited to at most 1.5 and
-renderers to at most 1.0 within that shared total. A verified active default Docker
-build reserves 1.0 from the same budget, leaving 0.5 for the native families.
-Explicit larger Docker overrides retain a native floor of 0.25; the status report
-shows the resulting budgets rather than silently treating them as 1.5 overall.
+renderers to at most 1.0 within that shared total. Verified active Docker reservations are summed, including an older one-slot
+build that was already running during an upgrade. Native enforcement retains a
+0.25-core floor while Docker is active; the status report shows the resulting
+budgets rather than treating the Docker and native totals as 1.5 overall.
 Other Docker containers are outside this project's budget.
 
 Native enforcement samples cumulative CPU time through libproc, converting Mach
@@ -180,3 +183,7 @@ The native layouts are checked against the installed macOS SDK `sys/proc_info.h`
 Python is the small native lifecycle/ctypes adapter here because microsecond libproc
 identity, independent signal recovery and inherited sockets belong at this OS boundary;
 Babashka remains the project's task entry point. No dependencies were added.
+
+Each build has its own reservation. If more than one orphan is recorded, use
+`recover-build --name <exact-recorded-container-name>` to select it; recovery
+still checks the original endpoint, guardian identity and container label.
