@@ -1,7 +1,7 @@
 (ns tolgraven.modules.chat.subs
-  (:require [tolgraven.react :as rf]))
+  (:require [tolgraven.react :as r]))
 
-(rf/reg-sub :chat/content
+(r/reg-sub :chat/content
   :<- [:<-store :chat :messages]
   (fn [content]
     (->> content

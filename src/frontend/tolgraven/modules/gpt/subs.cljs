@@ -1,17 +1,17 @@
 (ns tolgraven.modules.gpt.subs
   (:require
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [clojure.string :as string]))
 
-(rf/reg-sub :gpt/thread
+(r/reg-sub :gpt/thread
   (fn [[_ id]]
-   (rf/subscribe [:<-store-2 :gpt-threads (keyword (str id))]))
+   (r/subscribe [:<-store-2 :gpt-threads (keyword (str id))]))
   (fn [thread [_ id]]
     (first (vals thread))))
 
-(rf/reg-sub :gpt/user-short
+(r/reg-sub :gpt/user-short
   (fn [[_ user]]
-   (rf/subscribe [:user/user user]))
+   (r/subscribe [:user/user user]))
   (fn [user [_ id]]
     (let [split (string/split (or (:name user) "anon") #"\s|-|_")]
       (if (< 1 (count split))
@@ -22,5 +22,5 @@
              (apply str))
         (or (:name user) "anon"))) ))
 
-(rf/reg-sub :gpt/thread-ids :<- [:<-store-2 :gpt-threads]
+(r/reg-sub :gpt/thread-ids :<- [:<-store-2 :gpt-threads]
   (fn [documents _] (sort (map name (keys documents)))))

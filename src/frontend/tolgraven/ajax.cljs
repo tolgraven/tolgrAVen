@@ -3,7 +3,7 @@
     [ajax.core :as ajax]
     [tolgraven.ajax.time :as time]
     [cognitect.transit :as transit]
-    [tolgraven.react :as rf]))
+    [tolgraven.react :as r]))
 
 (defn local-uri? [{:keys [uri]}]
   (not (re-find #"^\w+?://" uri)))

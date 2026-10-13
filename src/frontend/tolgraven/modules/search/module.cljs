@@ -2,7 +2,7 @@
   {:bundle/depends-on #{:main :link-preview :styled-input :user}}
   (:require
     [tolgraven.content.contract :as content-contract]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.modules.search.events]
     [tolgraven.modules.search.subs]
     [tolgraven.modules.search.views :as view]))
@@ -17,4 +17,4 @@
    :styles ["/css/tolgraven/modules/search.min.css"]
    :view {:view #'view/<ui>
           :button #'view/<button>}
-   :init #(rf/dispatch [:search/init])})
+   :init #(r/dispatch [:search/init])})

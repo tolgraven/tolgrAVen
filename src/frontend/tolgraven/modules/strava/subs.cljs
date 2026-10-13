@@ -1,27 +1,27 @@
 (ns tolgraven.modules.strava.subs
   (:require
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.util :as util]))
 
 
-(rf/reg-sub :strava/content
+(r/reg-sub :strava/content
  :<- [:content [:strava]]
  (fn [strava [_ path]]
    (get-in strava path)))
 
-(rf/reg-sub :strava/state
+(r/reg-sub :strava/state
  :<- [:state [:strava]]
  (fn [strava [_ path]]
    (get-in strava path)))
 
-(rf/reg-sub :strava/activity-expanded
+(r/reg-sub :strava/activity-expanded
  :<- [:strava/state [:activity-expanded]]
  (fn [id [_ _]]
    (or id -1)))
 
 
 ; XXX only currently works with latlng!!
-(rf/reg-sub :strava/activity-stream ; get an activity stream, also downsample it
+(r/reg-sub :strava/activity-stream ; get an activity stream, also downsample it
             ; but we should actually request a resolution so becomes common, like 100 points.
  :<- [:strava/content [:activity-stream]]
   (fn [activities [_ id stream-type downsampling subrange]] ;subrange like [0.25 0.33] for a partial view...
@@ -46,8 +46,8 @@
         (reducing (fn [l v]
                     (conj l (/ (apply + v) downsampling))))))))
 
-; (ct/week-number-of-year @(rf/subscribe [:now-ct]))
-(rf/reg-sub :strava/activities-for
+; (ct/week-number-of-year @(r/subscribe [:now-ct]))
+(r/reg-sub :strava/activities-for
   :<- [:strava/content [:activities]]
   :<- [:now-ct]
   (fn [[activities now] [_ period-type period-num]]
@@ -57,7 +57,7 @@
     ; filter
     ))
 
-(rf/reg-sub :intervals/content
+(r/reg-sub :intervals/content
  :<- [:content [:intervals]]
  (fn [intervals [_ path]]
    (get-in intervals path)))

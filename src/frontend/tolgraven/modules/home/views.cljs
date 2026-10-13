@@ -1,7 +1,7 @@
 (ns tolgraven.modules.home.views
   (:require
     [tolgraven.component.registry]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.modules.main.layout :as layout]
     [tolgraven.modules.home.sections :as home]
     [tolgraven.components.media :as media]
@@ -79,7 +79,7 @@
   [id section-map]
   (let [{:keys [module <comp> <loading> content args dep init]} section-map
         arguments (cond-> []
-                    content (conj @(rf/subscribe [:content [content]]))
+                    content (conj @(r/subscribe [:content [content]]))
                     args (conj args))]
     [:<>
      (when (and init (not module))

@@ -1,12 +1,12 @@
 (ns tolgraven.util
   (:require
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [reitit.frontend.easy :as rfe]
     [clojure.string :as string]
     [clojure.walk :as walk]))
 
 (defn <-store [& coll-docs]
-  (-> @(rf/subscribe [:store/on-snapshot {:path-document coll-docs}])
+  (-> @(r/subscribe [:store/on-snapshot {:path-document coll-docs}])
       :data
       (walk/keywordize-keys)))
 
@@ -55,7 +55,7 @@
                 :info js/console.log)]
    ; (println (string/capitalize (name level)) "\t" message)
    (.call js-fn msg)
-   (rf/dispatch [:diag/new level title msg]))))
+   (r/dispatch [:diag/new level title msg]))))
 
 (defn log-errors [errors]
  (when (seq errors)
@@ -278,7 +278,7 @@
             (.pause video))) ;sometimes get uncaught exceptions about call to play interrupted by pause yada...
         (when (some #{:to-play :to-pause} [@state])
           (js/setTimeout #(play-pause-updater action) time-per-step) ; at least until impl handling conflicts and freezing pending events, no need for dispatch...
-          #_(rf/dispatch [:run-in! :play-pauser time-per-step
+          #_(r/dispatch [:run-in! :play-pauser time-per-step
                         play-pause-updater action]))))))
 
 (defn md->normal

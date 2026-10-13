@@ -1,5 +1,5 @@
 (ns tolgraven.components.validation
-  (:require [tolgraven.react :as rf]
+  (:require [tolgraven.react :as r]
             [tolgraven.validation.markup :as markup]
             [tolgraven.diagnostics.issues :as details]
             [tolgraven.component.registry]
@@ -9,10 +9,10 @@
   [:<> (markup/issues issues) [details/<details> issues]])
 
 (defc <reports> []
-  (when-let [reports (seq @(rf/subscribe [:validation/errors]))]
+  (when-let [reports (seq @(r/subscribe [:validation/errors]))]
     [:section.validation-reports
      [:header [:h3 "Schema validation"]
-      [:button {:type "button" :on-click #(rf/dispatch [:validation/dismiss])} "Clear"]]
+      [:button {:type "button" :on-click #(r/dispatch [:validation/dismiss])} "Clear"]]
      [:p "Invalid state changes are rejected before their effects run. Values are omitted from reports."]
      (for [[index {:keys [contract event issues count]}] (map-indexed vector (reverse reports))]
        ^{:key index}

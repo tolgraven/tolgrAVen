@@ -3,10 +3,10 @@
   (:require [cljs.core.async]
             [tolgraven.test-support :as support]
             [cljs.test :refer-macros [async deftest is]]
-            [reagent.core :as r]
-            [reagent.dom.client :as rdom]
-            [re-frame.core :as rf]
-            [re-frame.db :as db]
+            [tolgraven.react :as r]
+
+
+
             [tolgraven.modules.link-preview.module]
             [tolgraven.link-preview-fixture]
             [tolgraven.modules.link-preview.views :as preview]
@@ -17,22 +17,22 @@
 (defn- flush! [] (support/settle!))
 (defc <link-example> {:features [:props :links]} [spec url] [:div [:a {:href url} "Example link"]])
 (deftest queued-prefetch-lifecycle
-  (let [before @db/app-db
+  (let [before @r/*app-db
         data
           {:container-id "test", :candidate-id 0, :url "https://example.invalid/a", :trust :user}]
-    (try (rf/dispatch-sync [:link-preview/visible (assoc data :trust :untrusted)])
-         (is (empty? (get-in @db/app-db [:state :link-preview :prefetch-queue])))
-         (rf/dispatch-sync [:link-preview/visible data])
-         (rf/dispatch-sync [:link-preview/visible data])
-         (is (= [data] (get-in @db/app-db [:state :link-preview :prefetch-queue])))
-         (rf/dispatch-sync [:link-preview/unregister "test"])
-         (is (nil? (get-in @db/app-db [:state :link-preview :prefetch (:url data)])))
-         (rf/dispatch-sync [:link-preview/visible data])
-         (is (= [data] (get-in @db/app-db [:state :link-preview :prefetch-queue])))
-         (rf/dispatch-sync [:link-preview/close])
-         (rf/dispatch-sync [:link-preview/status :preview])
-         (is (nil? (get-in @db/app-db [:state :link-preview :active])))
-         (finally (reset! db/app-db before)))))
+    (try (r/dispatch-sync [:link-preview/visible (assoc data :trust :untrusted)])
+         (is (empty? (get-in @r/*app-db [:state :link-preview :prefetch-queue])))
+         (r/dispatch-sync [:link-preview/visible data])
+         (r/dispatch-sync [:link-preview/visible data])
+         (is (= [data] (get-in @r/*app-db [:state :link-preview :prefetch-queue])))
+         (r/dispatch-sync [:link-preview/unregister "test"])
+         (is (nil? (get-in @r/*app-db [:state :link-preview :prefetch (:url data)])))
+         (r/dispatch-sync [:link-preview/visible data])
+         (is (= [data] (get-in @r/*app-db [:state :link-preview :prefetch-queue])))
+         (r/dispatch-sync [:link-preview/close])
+         (r/dispatch-sync [:link-preview/status :preview])
+         (is (nil? (get-in @r/*app-db [:state :link-preview :active])))
+         (finally (reset! r/*app-db before)))))
 (deftest defc-keeps-root-ref-and-updates-link-discovery
   (async
     done
@@ -99,7 +99,7 @@
                                                         (clj->js (merge {:bubbles true,
                                                                          :pointerType "mouse"}
                                                                         props)))))
-              active #(get-in @db/app-db [:state :link-preview :active])]
+              active #(get-in @r/*app-db [:state :link-preview :active])]
           (preview/register-provider! "example.invalid" (fn [_ _] [:p "Local preview provider"]))
           (await! (render! root
                            [:<>
@@ -179,7 +179,7 @@
 
 (deftest returning-from-a-visited-preview-does-not-reopen-on-hover-or-focus
   (async done
-    (let [restore! (rf/make-restore-fn)
+    (let [restore! (r/make-restore-fn)
           storage-key "tolgraven.modules.link-preview.transition"
           old-token (.getItem js/sessionStorage storage-key)]
       (-> (go-promise
@@ -192,7 +192,7 @@
               (.appendChild js/document.body element)
               (try
                 (.setItem js/sessionStorage storage-key (js/JSON.stringify (clj->js data)))
-                (rf/dispatch-sync [:link-preview/open data])
+                (r/dispatch-sync [:link-preview/open data])
                 (await! (render! root
                                 [:<>
                                  [preview/<link-container>
@@ -200,22 +200,22 @@
                                   [:a {:href url :ref #(reset! *link %)} "Visited link"]]
                                  [preview/<link-preview>]]))
                 (await! (flush!))
-                (is (nil? (get-in @db/app-db [:state :link-preview :active])))
-                (is (contains? (get-in @db/app-db [:state :link-preview :visited]) url))
+                (is (nil? (get-in @r/*app-db [:state :link-preview :active])))
+                (is (contains? (get-in @r/*app-db [:state :link-preview :visited]) url))
                 (is (nil? (.getItem js/sessionStorage storage-key)))
                 (.dispatchEvent @*link (js/PointerEvent. "pointerover"
                                         #js {:bubbles true :pointerType "mouse"}))
                 (.dispatchEvent @*link (js/FocusEvent. "focusin" #js {:bubbles true}))
                 (await! (tick 350))
                 (await! (flush!))
-                (is (nil? (get-in @db/app-db [:state :link-preview :active])))
+                (is (nil? (get-in @r/*app-db [:state :link-preview :active])))
                 (is (nil? (.querySelector js/document "[data-popover]")))
                 ;; A frozen document's pageshow also closes transient presentation.
-                (rf/dispatch-sync [:link-preview/open (assoc data :url "https://unvisited.invalid/read")])
+                (r/dispatch-sync [:link-preview/open (assoc data :url "https://unvisited.invalid/read")])
                 (await! (flush!))
                 (.dispatchEvent js/window (js/PageTransitionEvent. "pageshow" #js {:persisted true}))
                 (await! (flush!))
-                (is (nil? (get-in @db/app-db [:state :link-preview :active])))
+                (is (nil? (get-in @r/*app-db [:state :link-preview :active])))
                 (finally
                   (support/unmount! root)
                   (.remove element)))))

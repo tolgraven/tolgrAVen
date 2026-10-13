@@ -2,7 +2,7 @@
   {:bundle/depends-on #{:main :maps :carousel}}
   (:require
     [tolgraven.content.contract :as content-contract]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.modules.strava.events]
     [tolgraven.modules.strava.subs]
     [tolgraven.modules.strava.views :as view]))
@@ -15,4 +15,4 @@
    :id :strava
    :styles ["/css/tolgraven/modules/strava.min.css"]
    :view {:view #'view/<strava>}
-   :init #(rf/dispatch [:strava/init])})
+   :init #(r/dispatch [:strava/init])})

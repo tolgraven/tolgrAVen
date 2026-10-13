@@ -1,10 +1,12 @@
 (ns tolgraven.modules.contact.views
   (:require [tolgraven.component.registry]
             [tolgraven.macros :refer-macros [defc]]
-            [tolgraven.react :as rf]
-            [reagent.core :as r]
+            [tolgraven.react :as r]
+
             [clojure.string :as string]
-            [tolgraven.components.ui :as ui]
+            [tolgraven.components.ui.controls :as ui-controls]
+    [tolgraven.components.ui.inputs :as ui-inputs]
+    [tolgraven.components.ui.loading :as ui-loading]
             [tolgraven.components.contact :as contact]))
 
 (defc ^:private <contact-confirmation>
@@ -20,7 +22,7 @@
 (defc ^:private <contact-message>
   {:features [[:appear "slide-in slow"]]}
   []
-  [:div [ui/<input-text>
+  [:div [ui-inputs/<input-text>
             :placeholder "Message"
             :input-type :textarea
             :width "100%"
@@ -40,9 +42,9 @@
         *submit-hovered? (r/atom false)]
     (fn [show?]
       (when show?
-        (let [*loading? (rf/subscribe [:loading :post]) ; seems bit bruteforcy haha
-              *contents (rf/subscribe [:form-field [:contact]])
-              *contact-form-state (rf/subscribe [:state [:contact-form]])
+        (let [*loading? (r/subscribe [:loading :post]) ; seems bit bruteforcy haha
+              *contents (r/subscribe [:form-field [:contact]])
+              *contact-form-state (r/subscribe [:state [:contact-form]])
               {:keys [show? sent? closing?]} @*contact-form-state]
         [:section.contact-form-popup
          {:class (str
@@ -50,7 +52,7 @@
                   (when (or sent? @*loading?) "result ")
                   (when @*inited? "inited"))
           :ref #(when % (reset! *inited? true))}
-         [ui/<close> #(rf/dispatch [:contact/close])]
+         [ui-controls/<close> #(r/dispatch [:contact/close])]
          [:h2 "Get in touch"]
 
          (when sent?
@@ -59,20 +61,20 @@
             [<contact-confirmation>]
             [:br]
             [<contact-followup>]])
-         [ui/<loading-spinner> *loading? :massive]
+         [ui-loading/<loading-spinner> *loading? :massive]
 
          [:form.contact-form-form
           {:style {:height (when (or sent? @*loading?) 0)}}
-          [ui/<input-text>
+          [ui-inputs/<input-text>
            :placeholder "Name"
            :width "50%"
            :path [:form-field [:contact :name]]]
-          [ui/<input-text>
+          [ui-inputs/<input-text>
            :input-type :input.email
            :type "email" :placeholder "Email"
            :width "50%"
            :path [:form-field [:contact :email]]]
-          [ui/<input-text>
+          [ui-inputs/<input-text>
            :placeholder "Title"
            :width "100%"
            :path [:form-field [:contact :title]]]
@@ -90,7 +92,7 @@
                :title (when-not disabled? "Ready to go!")
                :on-click (fn [e]
                            (.preventDefault e)
-                           (rf/dispatch [:contact/send-request]))}]
+                           (r/dispatch [:contact/send-request]))}]
              (if (and disabled? @*submit-hovered?) ; mouseLeave never fires (wtf??) but still good enough I suppose
                [<contact-submit-hint>]
                [:br])

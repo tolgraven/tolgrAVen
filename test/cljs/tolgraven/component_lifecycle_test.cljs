@@ -1,8 +1,8 @@
 (ns tolgraven.component-lifecycle-test
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
-            [reagent.core :as r]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
+
             [tolgraven.components.popover :as popover]
             [tolgraven.components.timer :as timer]
             [tolgraven.test-support :as support]))
@@ -26,7 +26,7 @@
                   root (await! (support/create-root! element))]
               (try
                 (await! (support/render! root
-                          [rf/suspense {:fallback (r/as-element [:p "Waiting"])}
+                          [r/suspense {:fallback (r/as-element [:p "Waiting"])}
                            [:<>
                             [popover/<popover> {:open? true} [:p "Abandoned"]]
                             [<suspended> gate]]]))
@@ -35,16 +35,16 @@
                 (await! (support/render! root [popover/<popover> {:open? false} [:p "Closed"]]))
                 (is (empty? @*created) "Closed surfaces own no observer")
                 (await! (support/render! root
-                          [:> rf/strict-mode
+                          [:> r/strict-mode
                            [popover/<popover> {:open? true} [:p "Open"]]]))
                 (is (>= (count @*created) 2) "StrictMode repeats setup with fresh owners")
                 (is (= 1 (count (remove @*stopped @*created))))
                 (await! (support/render! root
-                          [:> rf/strict-mode
+                          [:> r/strict-mode
                            [popover/<popover> {:open? false} [:p "Closed"]]]))
                 (is (every? @*stopped @*created) "Closing releases every committed owner")
                 (await! (support/render! root
-                          [:> rf/strict-mode
+                          [:> r/strict-mode
                            [popover/<popover> {:open? true} [:p "Reopened"]]]))
                 (is (= 1 (count (remove @*stopped @*created))))
                 (finally (support/unmount! root)))

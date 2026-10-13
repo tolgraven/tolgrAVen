@@ -1,7 +1,7 @@
 (ns tolgraven.modules.carousel.events
-  (:require [tolgraven.react :as rf]))
+  (:require [tolgraven.react :as r]))
 
-(rf/reg-event-fx :carousel/rotate
+(r/reg-event-fx :carousel/rotate
   (fn [{:keys [db]} [_ id content direction]]
     (let [curr-idx (get-in db [:state :carousel id :index] 0)]
       {:dispatch [:carousel/set-index id (case direction
@@ -12,15 +12,15 @@
                                                          (inc curr-idx)
                                                          0))]})))
 
-(rf/reg-event-db :carousel/set-direction
+(r/reg-event-db :carousel/set-direction
   (fn [db [_ id direction-class]]
     (assoc-in db [:state :carousel id :direction] direction-class)))
 
-(rf/reg-event-db :carousel/set-index
+(r/reg-event-db :carousel/set-index
   (fn [db [_ id idx]]
     (assoc-in db [:state :carousel id :index] idx)))
 
-(rf/reg-event-fx :carousel/request-index
+(r/reg-event-fx :carousel/request-index
   (fn [{:keys [db]} [_ id direction]]
     {:dispatch-later {:ms 500
                       :dispatch [:carousel/set-index id direction]}}))

@@ -2,8 +2,8 @@
   "Map current same-origin Shadow frames using ClojureScript's source-map decoder."
   (:require [clojure.string :as string]
             [cljs.source-map :as source-map]
-            [tolgraven.react :as rf]
-            [reagent.core :as r]
+            [tolgraven.react :as r]
+
             [ajax.core :as ajax]
             [tolgraven.component.data :as data]
             [tolgraven.dev.source-links :as links]))
@@ -30,10 +30,10 @@
         {:file (:source segment) :line (inc (:line segment))
          :column (inc (:col segment))}))))
 (defn map-resource [url] {:source :dev-source-map :url url :ttl-ms 1})
-(rf/reg-sub-raw :dev-stack/map
-  (fn [_ [_ url]] (rf/make-reaction #(:value (data/snapshot (map-resource url))))))
-(rf/reg-sub :dev-stack/decoded
-  (fn [[_ url] _] (rf/subscribe [:dev-stack/map url]))
+(r/reg-sub-raw :dev-stack/map
+  (fn [_ [_ url]] (r/make-reaction #(:value (data/snapshot (map-resource url))))))
+(r/reg-sub :dev-stack/decoded
+  (fn [[_ url] _] (r/subscribe [:dev-stack/map url]))
   (fn [payload _]
     (when payload
       (try (source-map/decode (clj->js payload))
@@ -46,7 +46,7 @@
 (r/defc <frame> [catalog text]
   (let [parsed (frame text)
         url (when parsed (map-url (:file parsed) (.-origin js/location)))
-        decoded (when url @(rf/subscribe [:dev-stack/decoded url]))
+        decoded (when url @(r/subscribe [:dev-stack/decoded url]))
         position (when (and parsed decoded) (original-position decoded parsed))
         file (links/resolve-file catalog (:file position))]
     [:li (if file
@@ -65,9 +65,9 @@
                                :handler resolve :error-handler (fn [_] (resolve nil))}))))})
 
 (r/defc <stack> [stack]
-  (let [catalog (:value @(rf/subscribe [:component-data/installed links/catalog-path]))]
-    (rf/use-effect
-      #(rf/dispatch [:component-data/load (resources stack (.-origin js/location))]) [stack])
+  (let [catalog (:value @(r/subscribe [:component-data/installed links/catalog-path]))]
+    (r/use-effect
+      #(r/dispatch [:component-data/load (resources stack (.-origin js/location))]) [stack])
     [:ol.dev-stack
      (for [[index text] (map-indexed vector (string/split-lines stack))]
        ^{:key index} [<frame> catalog text])]))

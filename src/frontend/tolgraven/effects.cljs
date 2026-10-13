@@ -1,16 +1,16 @@
 (ns tolgraven.effects
   (:require
-   [tolgraven.react :as rf]
-   [re-frame.registrar :as rfr]
-   [re-frame.router :as router]
-   [re-frame.interop :refer [set-timeout!]]))
+   [tolgraven.react :as r]
+
+
+   ))
 
 (defn clear-timeout! [id]
    (js/clearTimeout id))
 
 (def kind :fx)
 (assert (re-frame.registrar/kinds kind))
-(def register  (partial rfr/register-handler kind))
+(def register  (partial r/register-handler kind))
 ;; from https://github.com/day8/re-frame/pull/258/commits/642f9b6aeb423a7fd4725e14b197b6d4d402cf7f#diff-126dcfb8f966c442fd6aab13d47ad3777888e90f5a3483fef2b908374064125b
 ;; :dispatch-throttle
  ;;
@@ -45,7 +45,7 @@
    (if-let [{:keys [leading? deferred-dispatch]} (id @throttled-events)]
      (if leading?
        (do
-         (router/dispatch deferred-dispatch)
+         (r/queue-dispatch deferred-dispatch)
          (swap! throttled-events update-in [id] dissoc :deferred-dispatch)))))
 
  (defn- on-trailing-edge
@@ -53,7 +53,7 @@
    (if-let [{:keys [trailing? deferred-dispatch]} (id @throttled-events)]
      (do
        (if (and trailing? deferred-dispatch)
-         (router/dispatch deferred-dispatch))
+         (r/queue-dispatch deferred-dispatch))
        (swap! throttled-events dissoc id))))
 
  (register
@@ -75,7 +75,7 @@
                                                      (assoc-in [id :trailing?] trailing?)))
                         (if new-event?
                           (do
-                            (swap! throttled-events assoc-in [id :timeout] (set-timeout! #(on-trailing-edge id) window-duration))
+                            (swap! throttled-events assoc-in [id :timeout] (r/set-timeout! #(on-trailing-edge id) window-duration))
                             (on-leading-edge id)))))
 
           :cancel (do

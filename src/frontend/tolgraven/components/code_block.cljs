@@ -6,7 +6,7 @@
             [tolgraven.component.restore :as restore]
             [tolgraven.component.hydration :as hydration]
             [tolgraven.browser-resources :as resources]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.render-context :as context]
             [tolgraven.loader :as loader]
@@ -46,7 +46,7 @@
     (apply hash-map options)))
 
 (defc <formatted> [component args committed!]
-  (rf/use-layout-effect (fn [] (committed!)) [])
+  (r/use-layout-effect (fn [] (committed!)) [])
   (into [component] args))
 
 (defn- make-formatter [committed!]
@@ -55,45 +55,45 @@
   (let [*release (atom nil)
         gate (js/Promise. (fn [resolve _] (reset! *release resolve)))]
     {:release! #(@*release nil)
-     :view (rf/lazy
+     :view (r/lazy
              (fn []
                (-> gate
                    (.then (fn [_] (loader/acquire-code! :highlight)))
                    (.then (fn [spec]
                             (let [component (get-in spec [:view :code-block])
                                   component (if (var? component) @component component)]
-                              #js {:default (rf/reactify-component
+                              #js {:default (r/reactify-component
                                               (fn [{:keys [args]}]
                                                 [<formatted> component args committed!]))}))))))}))
 
 (defc <formatter> [code options on-ready!]
-  (let [[defer? _] (rf/use-state #(and (not context/*server?*) (restore/initial-hydration?)))
+  (let [[defer? _] (r/use-state #(and (not context/*server?*) (restore/initial-hydration?)))
         release-hydration! (hydration/use-deferred! defer?)
-        committed! (rf/use-callback
+        committed! (r/use-callback
                      (fn [] (release-hydration!) (on-ready!))
                      [release-hydration! on-ready!])
-        [formatter _] (rf/use-state #(make-formatter committed!))
+        [formatter _] (r/use-state #(make-formatter committed!))
         args (into [code] (mapcat identity options))
         fallback (if (:inline? options) [:code.code-highlight code] [:pre [:code code]])]
-    (rf/use-effect
+    (r/use-effect
       (fn []
         (if defer?
           (resources/after-page! (:release! formatter))
           ((:release! formatter))))
       [])
     ;; Reagent defc memoizes this boundary independently of outer controls.
-    [rf/suspense {:fallback (rf/as-element fallback)}
+    [r/suspense {:fallback (r/as-element fallback)}
      (if context/*server?*
        (view/form :highlight :code-block args fallback)
        ;; Keep Clojure arguments opaque at this native React boundary.
-       (rf/create-element (:view formatter) #js {:args args}))]))
+       (r/create-element (:view formatter) #js {:args args}))]))
 
-(rf/reg-event-fx :code-block/copy
+(r/reg-event-fx :code-block/copy
   {:args [:cat :string fn?]}
   (fn [_ [_ text complete!]]
     {:code-block/copy {:text text
                        :complete! complete!}}))
-(rf/reg-fx :code-block/copy
+(r/reg-fx :code-block/copy
   (fn [{:keys [text complete!]}]
     (if-let [clipboard (when (exists? js/navigator) (.-clipboard js/navigator))]
       (-> (.writeText clipboard text)
@@ -102,9 +102,9 @@
       (complete! "Copy unavailable"))))
 
 (defn- use-copy-feedback [code]
-  (let [[label set-label!] (rf/use-state "Copy")
-        *owner (rf/use-ref nil)]
-    (rf/use-effect
+  (let [[label set-label!] (r/use-state "Copy")
+        *owner (r/use-ref nil)]
+    (r/use-effect
       (fn []
         (set! (.-current *owner) {:token (gensym "copy") :request 0 :timer nil})
         (set-label! "Copy")
@@ -113,14 +113,14 @@
           (set! (.-current *owner) nil)))
       [code])
     [label
-     (rf/use-callback
+     (r/use-callback
        (fn []
          (when-let [{:keys [token request timer] :as owner} (.-current *owner)]
            (let [request (inc request)]
              (js/clearTimeout timer)
              (set! (.-current *owner) (assoc owner :request request :timer nil))
              (set-label! "Copying…")
-             (rf/dispatch
+             (r/dispatch
                [:code-block/copy code
                 (fn [result]
                   ;; Ignore stale clipboard completions after another copy, new
@@ -149,15 +149,15 @@
   (some-> target (.closest "button, a, input, textarea, select, [contenteditable=true]")))
 
 (defn- use-copy-gesture [copy! ssr-pending?]
-  (let [*element (rf/use-ref nil)
-        *press (rf/use-ref nil)
-        cancel! (rf/use-callback
+  (let [*element (r/use-ref nil)
+        *press (r/use-ref nil)
+        cancel! (r/use-callback
                   (fn []
                     (js/clearTimeout (:timer (.-current *press)))
                     (set! (.-current *press) nil))
                   [])
         handlers
-        (rf/use-memo
+        (r/use-memo
           (fn []
             {:on-pointer-down
              (fn [event]
@@ -212,8 +212,8 @@
                                        500)))
                      (cancel!)))))})
           [copy! cancel!])]
-    (rf/use-effect (fn [] cancel!) [copy! cancel!])
-    (rf/use-effect
+    (r/use-effect (fn [] cancel!) [copy! cancel!])
+    (r/use-effect
       (fn []
         (when (and copy! ssr-pending?)
           ;; React holds events targeting an unhydrated Suspense child. Only
@@ -254,15 +254,15 @@
            "solid/align-left" "solid/angle-down" "solid/angle-up"]}
   [code & options]
   (let [options (options-map options)
-        [wrap? set-wrap!] (rf/use-state (boolean (:wrap? options)))
-        [folded? set-folded!] (rf/use-state (boolean (:folded? options)))
+        [wrap? set-wrap!] (r/use-state (boolean (:wrap? options)))
+        [folded? set-folded!] (r/use-state (boolean (:folded? options)))
         [copy-label copy!] (use-copy-feedback code)
         [ssr-pending? set-ssr-pending!]
-        (rf/use-state #(and (not context/*server?*) (restore/initial-hydration?)))
-        on-ready! (rf/use-callback #(set-ssr-pending! false) [])
+        (r/use-state #(and (not context/*server?*) (restore/initial-hydration?)))
+        on-ready! (r/use-callback #(set-ssr-pending! false) [])
         gesture-props (use-copy-gesture (when (not= false (:copy? options)) copy!) ssr-pending?)
         inline? (:inline? options)
-        line-count (rf/use-memo
+        line-count (r/use-memo
                      #(count (string/split code #"\n" -1))
                      [code])
         fold-lines (get options :fold-lines 8)

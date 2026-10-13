@@ -1,7 +1,7 @@
 (ns tolgraven.modules.home.layout
   (:require [tolgraven.component.registry]
             [tolgraven.macros :as m :include-macros true]
-            [reagent.core :as r]
+            [tolgraven.react :as r]
             [clojure.string :as string]
             [tolgraven.util :as util]
             [tolgraven.components.image :as img]))

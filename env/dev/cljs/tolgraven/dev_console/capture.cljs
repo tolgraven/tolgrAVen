@@ -2,10 +2,10 @@
   "Lifecycle adapters only: bounded queued traces, Profiler commits and layout shifts."
   (:require [clojure.data :as data]
             [clojure.string :as string]
-            [re-frame.tooling :as tooling]
-            [reagent.core :as r]
-            [reagent.ratom :as ratom]
-            [tolgraven.react :as rf]
+
+            [tolgraven.react :as r]
+
+
             [tolgraven.render-context :as context]
             [tolgraven.dev-console.state]
             [tolgraven.dev-console.components :as components]
@@ -32,19 +32,19 @@
    startup buffer drains. Observe the same re-frame subscriptions, with an owned
    tracking reaction; no app-db watch, second store or application event path."
   []
-  (let [*snapshot (rf/use-ref nil)
-        snapshot (rf/use-callback #(.-current *snapshot) [])
-        subscribe! (rf/use-callback
+  (let [*snapshot (r/use-ref nil)
+        snapshot (r/use-callback #(.-current *snapshot) [])
+        subscribe! (r/use-callback
                      (fn [changed!]
                        (let [reaction (r/track!
                                         (fn []
-                                          (let [value {:options @(rf/subscribe [:dev-console/options])
-                                                       :debug @(rf/subscribe [:dev-console/data])}]
+                                          (let [value {:options @(r/subscribe [:dev-console/options])
+                                                       :debug @(r/subscribe [:dev-console/data])}]
                                             (when (not= value (.-current *snapshot))
                                               (set! (.-current *snapshot) value)
                                               (changed!)))))]
-                         #(ratom/dispose! reaction))) [])]
-    (rf/use-sync-external-store subscribe! snapshot snapshot)))
+                         #(r/dispose! reaction))) [])]
+    (r/use-sync-external-store subscribe! snapshot snapshot)))
 
 (defn connect!
   "Enable queued instance tracking only while its console consumer is mounted."
@@ -53,14 +53,14 @@
   (reset! *publishing? true)
   (drain!)
   (when (seq @*instances)
-    (rf/dispatch [:dev-console/records (mapv resolve-instance (vals @*instances))]))
+    (r/dispatch [:dev-console/records (mapv resolve-instance (vals @*instances))]))
   (fn []
     (reset! *connected? false)
     (reset! *publishing? false)
     (reset! consumer/*enabled? false)
     (when @*tick (js/clearTimeout @*tick))
     (reset! *tick nil) (reset! *pending [])
-    (rf/dispatch [:dev-console/disconnected])))
+    (r/dispatch [:dev-console/disconnected])))
 (defn own? [event]
   (boolean (some #(or (and (keyword? %) (or (= :dev-console %) (contains? #{"dev-console" "dev-stack" "dev-source"} (namespace %))))
                      (and (string? %) (string/starts-with? % "tolgraven.dev-console")))
@@ -73,7 +73,7 @@
   (when @*publishing?
     (let [batch @*pending]
       (reset! *pending [])
-      (when (seq batch) (rf/dispatch [:dev-console/records batch])))))
+      (when (seq batch) (r/dispatch [:dev-console/records batch])))))
 (defn emit! [record]
   (when (and ^boolean goog.DEBUG (not context/*server?*))
     (case (:kind record)
@@ -182,11 +182,11 @@
     ;; Writing debug records must not recursively capture its own subscription
     ;; recomputations. Collect raw traces only in batches with an app event;
     ;; Profiler commits/layout shifts are captured independently below.
-    (tooling/register-trace-cb :tolgraven-console
+    (r/register-trace-cb :tolgraven-console
       #(when (some (fn [trace] (and (= :event (:op-type trace))
                                    (not (own? (get-in trace [:tags :event]))))) %)
          (doseq [record (trace-records %)] (emit! record))))
-    (tooling/register-epoch-cb :tolgraven-console
+    (r/register-epoch-cb :tolgraven-console
       #(doseq [epoch % :when (not (own? (:event epoch)))]
          (let [record (epoch-record epoch)]
            (emit! record)
@@ -196,7 +196,7 @@
                                                    (not= (get-in (:app-db/before epoch) path)
                                                          (get-in (:app-db/after epoch) path)))] id))]
                (when (seq instances)
-                 (rf/dispatch [:dev-console/flash-instances instances])))))))
+                 (r/dispatch [:dev-console/flash-instances instances])))))))
     (let [observer (when (and (exists? js/PerformanceObserver)
                              (some #{"layout-shift"} (array-seq (.-supportedEntryTypes js/PerformanceObserver))))
                      (js/PerformanceObserver.
@@ -211,8 +211,8 @@
       (let [cleanup! (fn []
                        (reset! *recording? false)
                        (reset! consumer/*enabled? false)
-                       (tooling/remove-trace-cb :tolgraven-console)
-                       (tooling/remove-epoch-cb :tolgraven-console)
+                       (r/remove-trace-cb :tolgraven-console)
+                       (r/remove-epoch-cb :tolgraven-console)
                        (when observer (.disconnect observer))
                        ;; Lifecycle records still drain while timing capture is paused.
                        (reset! *cleanup nil))]
@@ -227,7 +227,7 @@
     (reset! consumer/*enabled? true)
     (start!)))
 
-(rf/reg-fx :dev-console/flash-component
+(r/reg-fx :dev-console/flash-component
   (fn [instance]
     (when-let [roots (seq (components/native-roots @*instances instance))]
-      (rf/dispatch [:dev-console/flash-instances (vec roots)]))))
+      (r/dispatch [:dev-console/flash-instances (vec roots)]))))

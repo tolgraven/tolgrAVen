@@ -1,7 +1,6 @@
 (ns tolgraven.component.hydration
   "Reagent batching during selective hydration of completed SSR boundaries."
-  (:require [reagent.impl.batching :as batching]
-            [tolgraven.react :as rf]))
+  (:require [tolgraven.react :as r]))
 
 (defonce ^:private *owners (atom #{}))
 (defonce ^:private *previous-flush (atom nil))
@@ -11,8 +10,8 @@
   []
   (reset! *owners #{})
   (when (and @*previous-flush
-             (identical? batching/react-flush rf/start-transition))
-    (set! batching/react-flush @*previous-flush))
+             (identical? (r/batching-flush) r/start-transition))
+    (r/set-batching-flush! @*previous-flush))
   (reset! *previous-flush nil))
 
 (defn- hold! []
@@ -21,8 +20,8 @@
       ;; Reagent 2 exposes this batching adapter and hydrate-root sets it to
       ;; flushSync. Urgent ancestor updates would discard unhydrated Suspense
       ;; content. React transitions let those boundaries finish hydrating first.
-      (reset! *previous-flush batching/react-flush)
-      (set! batching/react-flush rf/start-transition))
+      (reset! *previous-flush (r/batching-flush))
+      (r/set-batching-flush! r/start-transition))
     (swap! *owners conj owner)
     (fn []
       (when (contains? @*owners owner)
@@ -33,8 +32,8 @@
   "Own one initial boundary until its inner layout commits or it unmounts.
    Returns the inner component's stable completion callback."
   [defer?]
-  (let [[*owner] (rf/use-state #(atom {:complete? false, :release! nil}))
-        complete! (rf/use-callback
+  (let [[*owner] (r/use-state #(atom {:complete? false, :release! nil}))
+        complete! (r/use-callback
                     (fn []
                       ;; Child layout effects precede their parent's. A cached
                       ;; formatter can complete before hold! has run at all.
@@ -42,7 +41,7 @@
                         (swap! *owner assoc :complete? true :release! nil)
                         (when release! (release!))))
                     [])]
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn []
         (when (and defer? (not (:complete? @*owner)))
           (let [release! (hold!)]

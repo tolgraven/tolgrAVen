@@ -3,8 +3,8 @@
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
     [clojure.string :as string]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]))
+    [tolgraven.react :as r]
+    ))
 
 (def char-width 0.61225)
 
@@ -51,7 +51,7 @@
    (fn [model suggestions-query on-change &
         {:keys [on-enter placeholder width height open? opts]
          :or {height "2em" on-enter on-change }}]
-     (let [suggestions @(rf/subscribe suggestions-query)
+     (let [suggestions @(r/subscribe suggestions-query)
            suggestion (first suggestions)
            caret-pos (str (* char-width @caret) "em")
            selection-len (* char-width (abs (- @caret @selection-end)))

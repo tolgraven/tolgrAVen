@@ -5,14 +5,14 @@
             [tolgraven.supabase.query :as query]
             [tolgraven.supabase.state :as state]
             [tolgraven.component.data :as data]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [tolgraven.service-status :as status]
-            [reagent.ratom :as ratom]
+
             [shadow.lazy :as lazy]))
 
 (def *client state/*client)
 (def *session state/*session)
-(defonce *api (ratom/atom nil))
+(defonce *api (r/atom nil))
 (defonce *loading (atom nil))
 
 (defn ensure-code! []
@@ -39,14 +39,14 @@
       (.then (fn [_]
                (if @*client
                  @*client
-                 (do (rf/dispatch [:store/init])
+                 (do (r/dispatch [:store/init])
                      (data/wait-for! *client #(hash-map :ready? (some? @*client) :value @*client) 15000)))))))
 
 (defn cached-query [query]
   (if-let [api @*api] ((:cached-query api) query) {:ready? false}))
 
 (defn- restored-value [opts]
-  (let [store @(rf/sub [:get :store])]
+  (let [store @(r/sub [:get :store])]
     (if (query/scoped-query? opts)
       (get-in store [:scoped (pr-str (query/normalize-query opts))])
       (query/query-contract (:public store) opts))))
@@ -57,7 +57,7 @@
     (-> (ensure!) (.catch (fn [_] nil)))
     (if-let [api @*api]
       ((:ensure-query! api) opts)
-      (let [*reader (ratom/atom nil)
+      (let [*reader (r/atom nil)
             owner (gensym "supabase-reader")
             install! (fn [_ _ _ api]
                        (when (and api (nil? @*reader))
@@ -70,7 +70,7 @@
         ;; Observe API installation so the original mounted binding recovers.
         (add-watch *api owner install!)
         (-> code (.catch (fn [_] nil)))
-        (ratom/make-reaction
+        (r/make-reaction
           #(if-let [reader @*reader] @reader (restored-value opts))
           :on-dispose (fn []
                         (remove-watch *api owner)

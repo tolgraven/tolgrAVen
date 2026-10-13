@@ -1,8 +1,8 @@
 (ns tolgraven.modules.gpt.events
-  (:require [tolgraven.react :as rf]
+  (:require [tolgraven.react :as r]
             [clojure.string :as string]))
 
-(rf/reg-event-fx :gpt/new-thread [(rf/inject-cofx :now)]
+(r/reg-event-fx :gpt/new-thread [(r/inject-cofx :now)]
   (fn [{:keys [now]} _]
     {:supabase/request {:method :post :uri "/api/supabase/documents"
                         :data {:path ["gpt-threads" (str (random-uuid))]
@@ -10,9 +10,9 @@
                         :on-success [:gpt/thread-created]
                         :on-error [:supabase/auth-error]}}))
 
-(rf/reg-event-fx :gpt/thread-created (fn [_ _] {}))
+(r/reg-event-fx :gpt/thread-created (fn [_ _] {}))
 
-(rf/reg-event-fx :gpt/post-in-thread
+(r/reg-event-fx :gpt/post-in-thread
   (fn [{:keys [db]} [_ id history]]
     (let [text (get-in db [:state :form-field :gpt-thread id])]
       (when (and (not (string/blank? text))
@@ -23,7 +23,7 @@
                             :on-success [:gpt/on-response-thread id history text]
                             :on-error [:gpt/write-error id]}}))))
 
-(rf/reg-event-fx :gpt/on-response-thread [(rf/inject-cofx :now)]
+(r/reg-event-fx :gpt/on-response-thread [(r/inject-cofx :now)]
   (fn [{:keys [now]} [_ id history text response]]
     (if-let [message (get-in response [:choices 0 :message :content])]
       {:supabase/request {:method :post :uri "/api/supabase/documents"
@@ -34,13 +34,13 @@
                           :on-error [:gpt/write-error id]}}
       {:dispatch [:gpt/write-error id {:message "No response returned"}]})))
 
-(rf/reg-event-db :gpt/thread-saved
+(r/reg-event-db :gpt/thread-saved
   (fn [db [_ id text _]]
     (cond-> (assoc-in db [:state :supabase-writes :gpt id] false)
       (= text (get-in db [:state :form-field :gpt-thread id]))
       (update-in [:state :form-field :gpt-thread] dissoc id))))
 
-(rf/reg-event-fx :gpt/write-error
+(r/reg-event-fx :gpt/write-error
   (fn [{:keys [db]} [_ id error]]
     {:db (assoc-in db [:state :supabase-writes :gpt id] false)
      :dispatch [:supabase/write-error error]}))

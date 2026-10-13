@@ -1,7 +1,7 @@
 (ns tolgraven.component-ref-test
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [tolgraven.component]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.test-support :as support]))
@@ -42,7 +42,7 @@
         reference (fn [element]
                     (swap! *events conj [:attach element])
                     #(swap! *events conj [:release element]))
-        callback (rf/compose-refs reference reference nil)
+        callback (r/compose-refs reference reference nil)
         first-element (js-obj)
         second-element (js-obj)
         release-first! (callback first-element)
@@ -58,7 +58,7 @@
 (deftest plain-ref-callbacks-use-the-normal-node-and-nil-contract
   (let [*element (atom nil)
         reference #js {:current nil}
-        callback (rf/compose-refs #(reset! *element %) reference)
+        callback (r/compose-refs #(reset! *element %) reference)
         element (js-obj)]
     (is (nil? (callback element)) "Plain callbacks do not opt into React 19 cleanup")
     (is (identical? element @*element))

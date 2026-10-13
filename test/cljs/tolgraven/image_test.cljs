@@ -3,9 +3,9 @@
   (:require
     [cljs.core.async]
     [cljs.test :refer-macros [async deftest is]]
-    [reagent.core :as r]
-    [reagent.dom.client :as dom]
-    [reagent.dom.server :as server]
+    [tolgraven.react :as r]
+
+
     [tolgraven.components.image :as image]
     [tolgraven.listener :as listener]
     [tolgraven.components.image.sources :as sources]
@@ -14,7 +14,7 @@
 
 (defn- check-original-fallback! [src done]
   (let [container (.createElement js/document "div")
-        root (dom/create-root container)
+        root (r/create-root container)
         *attrs (r/atom {})
         *errors (atom 0)
         *finished? (atom false)
@@ -30,7 +30,7 @@
                   (when (compare-and-set! *finished? false true)
                     (js/clearTimeout @*timeout)
                     (.disconnect observer)
-                    (dom/unmount root)
+                    (r/unmount root)
                     (.remove container)
                     (done)))
         fail-image! (fn [element]
@@ -74,7 +74,7 @@
                    :class "portrait"
                    :on-load loaded!
                    :on-error (fn [_] (swap! *errors inc))})
-    (dom/render root [(fn [] [image/<picture> @*attrs])])))
+    (r/render root [(fn [] [image/<picture> @*attrs])])))
 
 (deftest picture-falls-back-to-png
   (async done
@@ -97,21 +97,21 @@
           form [image/<picture> {:src "/img/foggy-shit-small.jpg" :progressive? false}]]
       ;; Test fixture models the browser's already-failed SSR image. No error
       ;; event will arrive after hydration, so the ref adapter must detect it.
-      (set! (.-innerHTML container) (server/render-to-string form))
+      (set! (.-innerHTML container) (r/render-to-string form))
       (let [img (.querySelector container "img")]
         (doseq [[property value] [["complete" true] ["naturalWidth" 0]
                                  ["currentSrc" (str (.-origin js/location) "/img/foggy-shit-small.avif")]]]
           (js/Object.defineProperty img property #js {:configurable true :value value})))
-      (let [root (dom/hydrate-root container form)]
+      (let [root (r/hydrate-root container form)]
         (js/setTimeout
           (fn []
             (r/flush)
             (is (zero? (.-length (.querySelectorAll container "source")))))
           50)
-        (js/setTimeout (fn [] (dom/unmount root) (done)) 100)))))
+        (js/setTimeout (fn [] (r/unmount root) (done)) 100)))))
 
 (deftest footer-image-reserves-dimensions-and-uses-native-lazy-loading
-  (let [html (server/render-to-string
+  (let [html (r/render-to-string
                [shell/<footer-content> [{:id :left
                                          :logo {:src "img/tolgrav-square.png"
                                                 :alt "Site logo"}}]])]
@@ -121,7 +121,7 @@
     (is (.includes html "loading=\"lazy\""))))
 
 (deftest native-loading-attributes-survive-component-markup-normalization
-  (let [html (server/render-to-string
+  (let [html (r/render-to-string
                (markup/normalize-form
                  [:div {:loading [:p "Component placeholder"]}
                   [:iframe {:src "about:blank" :props {:loading "lazy"}}]
@@ -132,7 +132,7 @@
 
 
 (deftest progressive-pictures-reserve-one-layout-and-share-responsive-final-candidates
-  (let [html (server/render-to-string
+  (let [html (r/render-to-string
                [image/<picture> {:src "/img/foggy-shit-small.jpg"
                                  :id "top-banner"
                                  :class "media media-as-bg"
@@ -153,20 +153,20 @@
   (async done
     (let [container (.createElement js/document "div")
           form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
-      (set! (.-innerHTML container) (server/render-to-string form))
+      (set! (.-innerHTML container) (r/render-to-string form))
       (.appendChild (.-body js/document) container)
       (let [preview (.querySelector container "[data-image-preview]")
             final (.querySelector container "[data-image-final]")]
         ;; Keep the adapter's native decode boundary pending during attachment.
         (doseq [[property value] [["complete" false] ["naturalWidth" 0]]]
           (js/Object.defineProperty final property #js {:configurable true :value value}))
-        (let [root (dom/hydrate-root container form)]
+        (let [root (r/hydrate-root container form)]
           (js/setTimeout
             (fn []
               (is (identical? preview (.querySelector container "[data-image-preview]")))
               (is (identical? final (.querySelector container "[data-image-final]")))
               (is (= "" (.. final -style -visibility)))
-              (dom/unmount root)
+              (r/unmount root)
               (.remove container)
               (done))
             100))))))
@@ -177,11 +177,11 @@
           *final (atom nil)
           *finished? (atom false)
           *timeout (atom nil)
-          root (dom/create-root container)
+          root (r/create-root container)
           finish! (fn []
                     (when (compare-and-set! *finished? false true)
                       (js/clearTimeout @*timeout)
-                      (dom/unmount root)
+                      (r/unmount root)
                       (.remove container)
                       (done)))
           loaded! (fn [event]
@@ -199,7 +199,7 @@
                         (finish!))
                       150))]
       (.appendChild (.-body js/document) container)
-      (dom/render root [image/<picture> {:src "/img/wide-spot-ctrl-small.jpg"
+      (r/render root [image/<picture> {:src "/img/wide-spot-ctrl-small.jpg"
                                        :progressive? true
                                        :sizes "10vw"
                                        :on-load loaded!}])
@@ -213,10 +213,10 @@
 (deftest progressive-final-failure-retains-the-preview
   (async done
     (let [container (.createElement js/document "div")
-          root (dom/create-root container)
+          root (r/create-root container)
           *errors (atom 0)]
       (.appendChild (.-body js/document) container)
-      (dom/render root [image/<picture> {:src "/img/foggy-shit-small.jpg"
+      (r/render root [image/<picture> {:src "/img/foggy-shit-small.jpg"
                                        :on-error (fn [_] (swap! *errors inc))}])
       (js/setTimeout
         (fn []
@@ -234,7 +234,7 @@
                     (is (= 1 @*errors))
                     (.dispatchEvent final (js/Event. "error"))
                     (is (= 1 @*errors) "Repeated original errors do not duplicate notification")
-                    (dom/unmount root)
+                    (r/unmount root)
                     (.remove container)
                     (done))
                   100))
@@ -246,7 +246,7 @@
   (async done
     (let [container (.createElement js/document "div")
           form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
-      (set! (.-innerHTML container) (server/render-to-string form))
+      (set! (.-innerHTML container) (r/render-to-string form))
       (.appendChild (.-body js/document) container)
       (let [final (.querySelector container "[data-image-final]")
             preview (.querySelector container "[data-image-preview]")]
@@ -256,12 +256,12 @@
           (doseq [[property value] [["complete" true] ["naturalWidth" 0]
                                    ["currentSrc" (str (.-origin js/location) "/img/foggy-shit-small.jpg")]]]
             (js/Object.defineProperty final property #js {:configurable true :value value}))
-          (let [root (dom/hydrate-root container form)]
+          (let [root (r/hydrate-root container form)]
             (js/setTimeout
               (fn []
                 (is (identical? preview (.querySelector container "[data-image-preview]")))
                 (is (= "hidden" (.. final -style -visibility)))
-                (dom/unmount root)
+                (r/unmount root)
                 (.remove container)
                 (done))
               100)))))))
@@ -271,19 +271,19 @@
   (async done
     (let [container (.createElement js/document "div")
           form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
-      (set! (.-innerHTML container) (server/render-to-string form))
+      (set! (.-innerHTML container) (r/render-to-string form))
       (.appendChild (.-body js/document) container)
       (let [final (.querySelector container "[data-image-final]")]
         (doseq [[property value] [["complete" false] ["naturalWidth" 0]
                                  ["currentSrc" (str (.-origin js/location) "/img/foggy-shit-small-400w.avif")]]]
           (js/Object.defineProperty final property #js {:configurable true :value value}))
-        (let [root (dom/hydrate-root container form)]
+        (let [root (r/hydrate-root container form)]
           (js/setTimeout
             (fn []
               (is (= 1 (.-length (.querySelectorAll container "img"))))
               (is (identical? final (.querySelector container "[data-image-final]")))
               (is (false? (.-complete final)) "No decoded asset is required to eliminate a duplicate")
-              (dom/unmount root)
+              (r/unmount root)
               (.remove container)
               (done))
             100))))))
@@ -291,7 +291,7 @@
 (deftest decoded-phase-belongs-only-to-the-current-source
   (async done
     (let [container (.createElement js/document "div")
-          root (dom/create-root container)
+          root (r/create-root container)
           *src (r/atom "/img/foggy-shit-small.jpg")
           *first? (atom true)
           capture! (fn [element]
@@ -306,7 +306,7 @@
                          (js/Object.defineProperty element "decode"
                            #js {:configurable true :value (fn [] (js/Promise.resolve nil))}))))]
       (.appendChild (.-body js/document) container)
-      (dom/render root [(fn [] [image/<picture> {:src @*src
+      (r/render root [(fn [] [image/<picture> {:src @*src
                                                :progressive? true
                                                :ref capture!}])])
       (js/setTimeout
@@ -321,7 +321,7 @@
                 (fn []
                   (is (= 2 (.-length (.querySelectorAll container "img")))
                       "Returning to A cannot reuse its old decoded phase while the resource is pending")
-                  (dom/unmount root)
+                  (r/unmount root)
                   (.remove container)
                   (done))
                 100))
@@ -343,7 +343,7 @@
       (.setAttribute container "data-document-image-owner" "native")
       (.setAttribute container "data-document-image-phase" "upgrading")
       (.setAttribute container "data-document-image-src" src)
-      (set! (.-innerHTML container) (server/render-to-string form))
+      (set! (.-innerHTML container) (r/render-to-string form))
       (.appendChild (.-body js/document) container)
       (let [hero (.querySelector container "#top-banner")
             preview (.querySelector hero "[data-image-preview]")
@@ -353,7 +353,7 @@
                                  ["currentSrc" (str (.-origin js/location) "/img/foggy-shit-small-800w.avif")]
                                  ["decode" #(js/Promise.resolve)]]]
           (js/Object.defineProperty final property #js {:configurable true :value value}))
-        (let [root (dom/hydrate-root container form)]
+        (let [root (r/hydrate-root container form)]
           (js/setTimeout
             (fn []
               (is (identical? preview (.querySelector hero "[data-image-preview]")))
@@ -373,7 +373,7 @@
                                       (identical? container (:target %)))
                                 (vals @listener/*bindings))
                       "Terminal adoption releases the owned listener registry acquisition")
-                  (dom/unmount root)
+                  (r/unmount root)
                   (is (= [[:attach final] [:release final]] @*references)
                       "Both image adapters forward React19 cleanup exactly once")
                   (.remove container)
@@ -397,7 +397,7 @@
                           (set! (.-onload stylesheet) resolve)
                           (set! (.-onerror stylesheet) reject)
                           (.appendChild (.-head js/document) stylesheet))))
-              (set! (.-innerHTML container) (server/render-to-string form))
+              (set! (.-innerHTML container) (r/render-to-string form))
               (let [preview (.querySelector container "[data-image-preview]")
                     final (.querySelector container "[data-image-final]")]
                 (doseq [[image property value] [[final "complete" false]
@@ -406,7 +406,7 @@
                                               [final "decode" #(js/Promise.resolve)]
                                               [preview "naturalWidth" 400]]]
                   (js/Object.defineProperty image property #js {:configurable true :value value}))
-                (reset! *root (dom/hydrate-root container form))
+                (reset! *root (r/hydrate-root container form))
                 (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 100))))
                 (let [hero (.querySelector container ".progressive-image")]
                   (is (= "waiting" (.getAttribute hero "data-image-phase")))
@@ -433,7 +433,7 @@
                   (is (= 1 (.-length (.querySelectorAll hero "img"))))
                   (is (= "decoded" (.getAttribute hero "data-image-phase")))))
               (finally
-                (when @*root (dom/unmount @*root))
+                (when @*root (r/unmount @*root))
                 (.remove stylesheet)
                 (.remove container)))))
         (.catch (fn [error] (is false (str error))))

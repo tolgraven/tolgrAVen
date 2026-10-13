@@ -4,9 +4,8 @@
             #?(:clj [tolgraven.build.site :as site])
             #?@(:clj [[malli.core :as m]
                       [malli.error :as me]])
-            #?@(:cljs [[reagent.core :as r]
-                       [tolgraven.component.registry]
-                       [tolgraven.react :as rf]
+            #?@(:cljs [[tolgraven.component.registry]
+                       [tolgraven.react :as r]
                        [shadow.lazy]
                        [tolgraven.util :as util]]))
   #?(:cljs (:require-macros [tolgraven.macros])))
@@ -132,7 +131,7 @@
 (defmacro defc
   "Define a lean Reagent 2 function component with optional composed features.
 
-   Plain definitions delegate directly to reagent.core/defc. An optional spec
+   Plain definitions delegate directly to r/defc. An optional spec
    declaration map after the optional docstring declares :features and :depends. Features
    include :error-boundary, :props, :lifecycle, :links, and registered extensions.
    Merge-only features run inline with hooks; only error boundaries need classes.
@@ -161,7 +160,7 @@
    Use components in Hiccup, not as ordinary functions (Reagent 2 convention).
 
    (defc <counter> {:features [:props :error-boundary]} [{:keys [label] :as spec}]
-     :let [*count (reagent.core/atom 0)]
+     :let [*count (r/atom 0)]
      [:button {:on-click #(swap! *count inc)} label @*count])"
   [name & decls]
   (let [source-decls decls
@@ -222,10 +221,10 @@
         `(let [~descriptor (tolgraven.component.registry/definition
                            ~(str ns-name) ~(str name) ~(assoc options :spec false) (fn ~name ~@decls))]
            ~(if (or (:args-schema options) (:spec-schema options))
-              `(reagent.core/defc ~(with-meta name metadata) [& argv#]
+              `(tolgraven.react/defc ~(with-meta name metadata) [& argv#]
                  (tolgraven.component.registry/validate-args! ~descriptor argv#)
                  (apply (fn ~name ~@decls) argv#))
-              `(reagent.core/defc ~(with-meta name metadata) ~@decls))
+              `(tolgraven.react/defc ~(with-meta name metadata) ~@decls))
            (tolgraven.component.registry/register-component!
             ~name ~descriptor)))
       (do
@@ -286,14 +285,14 @@
                                  (vec (rest (tolgraven.react/component-argv)))
                                  (fn []
                                    ~(if (seq (concat loading-bindings bindings))
-                                      `(reagent.core/with-let [~@loading-bindings ~@bindings] ~@body)
+                                      `(r/with-let [~@loading-bindings ~@bindings] ~@body)
                                       `(do ~@body)))))]
                   (if (or (:args-schema options'''') (:spec-schema options''''))
-                    `(reagent.core/defc ~(with-meta name metadata) [& argv#]
+                    `(tolgraven.react/defc ~(with-meta name metadata) [& argv#]
                        (tolgraven.component.registry/validate-args! ~descriptor argv#)
                        (apply (fn ~args ~render) argv#))
-                    `(reagent.core/defc ~(with-meta name metadata) ~args ~render)))
-                `(reagent.core/defc ~(with-meta name metadata) [& argv#]
+                    `(tolgraven.react/defc ~(with-meta name metadata) ~args ~render)))
+                `(tolgraven.react/defc ~(with-meta name metadata) [& argv#]
                    (tolgraven.component/render-component ~descriptor argv#)))
              (tolgraven.component.registry/register-component! ~name ~descriptor))))))))))
 
@@ -325,7 +324,7 @@
        ~args
        (let [spec#   ~spec-sym
              ~@(when lets [lets])]
-         (reagent.core/create-class
+         (r/create-class
           {:display-name ~(str name)
            :component-did-mount
            (fn [this#]

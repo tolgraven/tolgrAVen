@@ -1,7 +1,7 @@
 (ns tolgraven.navigation.transition
   "Browser lifecycle adapter for CSS page transitions. React owns all page markup."
-  (:require [reagent.core :as r]
-            [tolgraven.react :as rf]
+  (:require [tolgraven.react :as r]
+
             [tolgraven.listener :as listener]
             [tolgraven.render-context :as context]
             [tolgraven.component.restore :as restore]
@@ -11,7 +11,7 @@
 (defonce *generation (atom 0))
 (defonce *destination (atom nil))
 
-(rf/reg-cofx :page/destination
+(r/reg-cofx :page/destination
   (fn [coeffects] (assoc coeffects :page/destination @*destination)))
 
 (defn latest-match
@@ -35,11 +35,11 @@
                   (select-keys (:match pending) [:path :path-params :query-params])))
         (assoc pending :match match)
         pending))))
-(rf/reg-fx :page/replace-destination replace-destination!)
+(r/reg-fx :page/replace-destination replace-destination!)
 (defonce *restore-cleanup (atom nil))
 
 (defonce *restored-position (atom nil))
-(rf/reg-cofx :scroll/restoring?
+(r/reg-cofx :scroll/restoring?
   (fn [coeffects]
     (assoc coeffects :scroll/restoring?
            (boolean (or @*restore-cleanup
@@ -174,7 +174,7 @@
                   (js/Promise.
                    (fn [resolve! _]
                      (if (= generation @*generation)
-                       (rf/dispatch [:common/navigate (:match @*destination)
+                       (r/dispatch [:common/navigate (:match @*destination)
                                      {:current? #(= generation @*generation)
                                       :resolve! resolve!
                                       :transition-id generation
@@ -201,10 +201,10 @@
         (.finally (.-finished transition)
                   #(when (identical? transition @*transition)
                      (reset! *transition nil)
-                     (rf/dispatch [:page/transition-finished generation]))))
+                     (r/dispatch [:page/transition-finished generation]))))
       (update!))))
 
-(rf/reg-event-db :page/transition-finished
+(r/reg-event-db :page/transition-finished
   (fn [db [_ generation]]
     (if (= generation (get-in db [:page/commit :completion :transition-id]))
       (update-in db [:page/commit :completion] dissoc :outgoing-height)
@@ -232,8 +232,8 @@
   "Complete navigation after React commits the subscribed route and its shell.
    Releasing a height reservation must not replay scrolling or route completion."
   [commit]
-  (let [*handled (rf/use-ref nil)]
-    (rf/use-layout-effect
+  (let [*handled (r/use-ref nil)]
+    (r/use-layout-effect
       (fn []
         (let [navigation (when commit (update commit :completion dissoc :outgoing-height))]
           (when (and navigation (not= navigation (.-current *handled)))
@@ -242,7 +242,7 @@
         nil)
       [commit])))
 
-(rf/reg-event-fx :page/navigate
+(r/reg-event-fx :page/navigate
   (fn [{:keys [db]} [_ match]]
     {:page/transition
      [match (and @context/*interactive?
@@ -253,13 +253,13 @@
                  (not= (:path match) (get-in db [:common/route :path])))
       (boolean (get-in db [:state :browser-nav :got-nav]))]}))
 
-(rf/reg-fx :page/transition (fn [[match animate? back?]] (navigate! match animate? back?)))
-(rf/reg-event-fx :page/ready
+(r/reg-fx :page/transition (fn [[match animate? back?]] (navigate! match animate? back?)))
+(r/reg-event-fx :page/ready
   (fn [{:keys [db]} [_ target complete!]]
     {:db (assoc db :page/commit {:target target :completion complete!})
      :page/flush nil}))
 
-(rf/reg-fx :page/flush
+(r/reg-fx :page/flush
   (fn [_]
     ;; Reagent normally batches updates on requestAnimationFrame. A native
     ;; transition can suspend those frames until its update promise resolves.

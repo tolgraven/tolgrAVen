@@ -1,6 +1,6 @@
 (ns tolgraven.loader.styles
   "React owns stylesheet insertion; this adapter observes load/error and retries."
-  (:require [react-dom :as dom]
+  (:require [tolgraven.react :as r]
             [tolgraven.render-context :as context]
             [tolgraven.loader.style-catalog :as catalog]
             [tolgraven.validation.runtime :as validation]))
@@ -62,7 +62,7 @@
                              (str (if (.includes path "?") "&" "?") "css-retry=" attempt)))
             promise (js/Promise.
                       (fn [resolve reject]
-                        (dom/preinit href #js {:as "style" :precedence "modules"})
+                        (r/preinit href #js {:as "style" :precedence "modules"})
                         (if-let [element (link href)]
                           (let [*timeout (atom nil)]
                             (letfn [(finish! [error]

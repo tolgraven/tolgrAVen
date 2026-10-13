@@ -1,11 +1,11 @@
 (ns tolgraven.dev-console.views
   (:require [tolgraven.components.validation :as validation] [cljs.reader :as reader]
             [clojure.string :as string]
-            [reagent.core :as r]
-            [re-frame.tooling :as tooling]
+            [tolgraven.react :as r]
+
             [reitit.core :as reitit]
             [tolgraven.macros :refer-macros [defc]]
-            [tolgraven.react :as rf]
+
             [tolgraven.listener :as listener]
             [tolgraven.component.registry :as registry]
             [tolgraven.component.persistent-state :as scoped]
@@ -19,41 +19,41 @@
             [tolgraven.loader :as loader]
             [tolgraven.navigation.routes :as routes]))
 
-(rf/reg-sub-raw :dev-console/component-parents (fn [_ _] (rf/make-reaction #(deref capture/*component-parents))))
-(rf/reg-sub-raw :dev-console/catalog (fn [_ _] (rf/make-reaction #(deref registry/*catalog))))
-(rf/reg-sub-raw :dev-console/resources (fn [_ _] (rf/make-reaction #(deref data/*entries))))
-(rf/reg-sub-raw :dev-console/handlers
+(r/reg-sub-raw :dev-console/component-parents (fn [_ _] (r/make-reaction #(deref capture/*component-parents))))
+(r/reg-sub-raw :dev-console/catalog (fn [_ _] (r/make-reaction #(deref registry/*catalog))))
+(r/reg-sub-raw :dev-console/resources (fn [_ _] (r/make-reaction #(deref data/*entries))))
+(r/reg-sub-raw :dev-console/handlers
   (fn [_ _]
-    (let [*handlers (r/atom @tooling/kind->id->handler)
+    (let [*handlers (r/atom @r/kind->id->handler)
           watch-id (random-uuid)]
-      (add-watch tooling/kind->id->handler watch-id (fn [_ _ _ handlers] (reset! *handlers handlers)))
-      (rf/make-reaction #(deref *handlers)
-        :on-dispose #(remove-watch tooling/kind->id->handler watch-id)))))
-(rf/reg-sub-raw :dev-console/dependency-status
+      (add-watch r/kind->id->handler watch-id (fn [_ _ _ handlers] (reset! *handlers handlers)))
+      (r/make-reaction #(deref *handlers)
+        :on-dispose #(remove-watch r/kind->id->handler watch-id)))))
+(r/reg-sub-raw :dev-console/dependency-status
   (fn [_ [_ resource]]
-    (rf/make-reaction #(or (:status (data/snapshot resource)) :unrequested))))
+    (r/make-reaction #(or (:status (data/snapshot resource)) :unrequested))))
 
-(rf/reg-fx :dev-console/dispatch
+(r/reg-fx :dev-console/dispatch
   (fn [{:keys [event dry-run?]}]
     (try
       (let [event (reader/read-string event)]
         (when-not (and (vector? event) (keyword? (first event)))
           (throw (js/Error. "Enter an EDN event vector beginning with a keyword")))
         (if dry-run?
-          (tooling/dispatch-with event
+          (r/dispatch-with event
             (into {} (for [id [:http-xhrio :http/fetch :http/get :http/post :http/put :local-storage :navigate]]
                        [id (fn [value] (capture/emit! {:kind :stub :effect id :value value}))])))
-          (-> (tooling/dispatch-and-settle event)
-              (.then #(rf/dispatch [:dev-console/result (capture/settled-result %)]))
-              (.catch #(rf/dispatch [:dev-console/result {:error (str %)}])))))
-      (catch :default error (rf/dispatch [:dev-console/result {:error (str error)}])))))
-(rf/reg-fx :dev-console/copy
+          (-> (r/dispatch-and-settle event)
+              (.then #(r/dispatch [:dev-console/result (capture/settled-result %)]))
+              (.catch #(r/dispatch [:dev-console/result {:error (str %)}])))))
+      (catch :default error (r/dispatch [:dev-console/result {:error (str error)}])))))
+(r/reg-fx :dev-console/copy
   (fn [text]
     (-> (.writeText (.-clipboard js/navigator) text)
-        (.catch #(rf/dispatch [:dev-console/result {:error (str %)}])))))
-(rf/reg-event-fx :dev-console/copy (fn [_ [_ text]] {:dev-console/copy text}))
-(rf/reg-event-fx :dev-console/dispatch (fn [_ [_ opts]] {:dev-console/dispatch opts}))
-(rf/reg-event-db :dev-console/result (fn [db [_ value]] (assoc-in db [:dev-console :result] value)))
+        (.catch #(r/dispatch [:dev-console/result {:error (str %)}])))))
+(r/reg-event-fx :dev-console/copy (fn [_ [_ text]] {:dev-console/copy text}))
+(r/reg-event-fx :dev-console/dispatch (fn [_ [_ opts]] {:dev-console/dispatch opts}))
+(r/reg-event-db :dev-console/result (fn [db [_ value]] (assoc-in db [:dev-console :result] value)))
 
 (defn value-type [value]
   (cond (nil? value) "nil" (boolean? value) "boolean" (number? value) "number"
@@ -221,8 +221,8 @@
   {:features [:error-boundary]}
   [query]
   (try
-    (if (contains? (get @(rf/subscribe [:dev-console/handlers]) :sub) (first query))
-      (let [value @(rf/subscribe query)]
+    (if (contains? (get @(r/subscribe [:dev-console/handlers]) :sub) (first query))
+      (let [value @(r/subscribe query)]
         [:section {:aria-label "Subscription result"}
          [:h4 "Result · " (pr-str query)]
          (when (nil? value) [:p "The subscription returned nil. Check its arguments or loading status."])
@@ -315,10 +315,10 @@
   {:state {:initial {:filter "" :page 0 :selected nil}}}
   [inspect!]
   :let [*filter (<sub :comp [:filter]) *page (<sub :comp [:page]) *selected (<sub :comp [:selected])]
-  (let [debug @(rf/subscribe [:dev-console/data])
-        _ @(rf/subscribe [:common/route])
+  (let [debug @(r/subscribe [:dev-console/data])
+        _ @(r/subscribe [:common/route])
         modules (keep (fn [[id _]] (when (loader/ready? id) [id (loader/code-spec id)])) loader/modules)
-        targets (scoped-targets (restore/page-key) (:active debug) modules (tooling/live-query-vs))
+        targets (scoped-targets (restore/page-key) (:active debug) modules (r/live-query-vs))
         needle (string/lower-case @*filter)
         filtered (filterv #(string/includes? (string/lower-case (:label %)) needle) targets)
         {:keys [index items offset more?]} (layout/page filtered (or @*page 0))
@@ -345,7 +345,7 @@
            [<value> [:owner-dependencies (:id selected)]
             (mapv (fn [resource]
                     {:resource resource
-                     :status @(rf/subscribe [:dev-console/dependency-status resource])})
+                     :status @(r/subscribe [:dev-console/dependency-status resource])})
                   (:depends selected)) 0]
            [:div.dev-subscriptions__suggestions
             (for [query (take 10 (distinct (mapcat dependency-queries (:depends selected))))]
@@ -358,11 +358,11 @@
   []
   :let [*draft (<sub :comp [:draft]) *query (<sub :comp [:query])
         *path (<sub :comp [:path-draft]) *error (<sub :comp [:error])]
-  (let [handlers @(rf/subscribe [:dev-console/handlers])
-        live (vec (distinct (tooling/live-query-vs)))
+  (let [handlers @(r/subscribe [:dev-console/handlers])
+        live (vec (distinct (r/live-query-vs)))
         suggestions (query-suggestions @*draft handlers live)
         {:keys [parent needle]} (path-completion @*path)
-        keys (when parent @(rf/subscribe [:dev-console/path-keys parent needle]))
+        keys (when parent @(r/subscribe [:dev-console/path-keys parent needle]))
         run! (fn []
                (if-let [query (parse-query @*draft)]
                  (do (>reset *error nil) (>reset *query query))
@@ -482,7 +482,7 @@
               [:button.dev-flamegraph__bar
                {:on-click #(do (>reset *selected trace)
                                 (when (:instance trace)
-                                  (rf/dispatch [:dev-console/pick (:instance trace)])))
+                                  (r/dispatch [:dev-console/pick (:instance trace)])))
                 :style {:left (str (* 100 (/ (- (:start trace) start) span)) "%")
                         :width (str (max 0.5 (* 100 (/ (:duration trace) span))) "%")}
                 :title (str (or (:operation trace) (:component trace)) " · " (:duration trace) "ms")}
@@ -496,7 +496,7 @@
   {:state {:initial {:event "" :hide-subs? true}}}
   [records]
   :let [*event (<sub :comp [:event]) *hide (<sub :comp [:hide-subs?])]
-  (let [handlers @(rf/subscribe [:dev-console/handlers])
+  (let [handlers @(r/subscribe [:dev-console/handlers])
         visible (timing-records records @*hide)]
     [:<>
      [<event-completion> "Timing event vector" "dev-timing-events" *event handlers records]
@@ -597,13 +597,13 @@
       (when-not namespace?
         [:button {:on-click #(>update *details not) :aria-expanded (boolean @*details)} "Details"])
       (when mounted?
-        [:button {:on-click #(rf/dispatch [:dev-console/pick id])} "Show on page"])]
+        [:button {:on-click #(r/dispatch [:dev-console/pick id])} "Show on page"])]
      (when @*details
        [:div.dev-component-tree__details
         (when path [:button {:on-click #(inspect! path)} "Inspect state path"])
         [<value> [:component id] (dissoc node :children) 0]
         (when (and mounted? path)
-          [<value> [:component-state id] @(rf/subscribe [:dev-console/path path]) 0])])
+          [<value> [:component-state id] @(r/subscribe [:dev-console/path path]) 0])])
      (when (and branch? @*open)
        [<component-branches> id children (inc depth) inspect!])]))
 
@@ -611,10 +611,10 @@
   {:state {:initial {:search ""}}}
   [active inspect!]
   :let [*search (<sub :comp [:search])]
-  (let [catalog @(rf/subscribe [:dev-console/catalog])
+  (let [catalog @(r/subscribe [:dev-console/catalog])
         active (into {} (filter #(layout/matches? @*search (val %))) active)
         catalog (into {} (filter #(layout/matches? @*search (key %))) catalog)
-        parents @(rf/subscribe [:dev-console/component-parents])
+        parents @(r/subscribe [:dev-console/component-parents])
         {:keys [mounted ready mounted-count ready-count]} (components/tree active catalog parents)]
     [:section.dev-component-tree {:aria-label "Component hierarchy"}
      [:label "Find component " [:input {:type "search" :value @*search
@@ -633,11 +633,11 @@
      (if (vector? path)
        [:<>
         [:code "Subscription: " (pr-str [:dev-console/path path])]
-        [<value> [:path path] @(rf/subscribe [:dev-console/path path]) 0]
+        [<value> [:path path] @(r/subscribe [:dev-console/path path]) 0]
         [:label "New value (EDN) " [:input {:value @value-text :on-change #(scoped/>reset value-text (.. % -target -value))}]]
         [:button {:on-click #(try (scoped/>reset (with-meta path {:component-path true :component-root path})
                                                 (reader/read-string @value-text))
-                                 (catch :default error (rf/dispatch [:dev-console/result {:error (str error)}])))} "Set through state event"]]
+                                 (catch :default error (r/dispatch [:dev-console/result {:error (str error)}])))} "Set through state event"]]
        [:p "Enter a vector path."])]))
 
 
@@ -670,7 +670,7 @@
                  [:tr [:td [:code (pr-str id)]] [:td count] [:td (str mounts " / " updates)]
                   [:td (duration-label total)] [:td (duration-label average)] [:td (duration-label maximum)]
                   [:td (when (:instance latest)
-                         [:button {:on-click #(rf/dispatch [:dev-console/pick (:instance latest)])} "Show on page"])]])]]]]))
+                         [:button {:on-click #(r/dispatch [:dev-console/pick (:instance latest)])} "Show on page"])]])]]]]))
 
 (defn element-for-instance [instance]
   (some #(when (= instance (.getAttribute % "data-dev-instance")) %)
@@ -682,15 +682,15 @@
                  (when-not (.closest (.-target event) "[data-dev-console]")
                    (when-let [element (.closest (.-target event) "[data-dev-instance]")]
                      (.preventDefault event) (.stopPropagation event)
-                     (rf/dispatch [:dev-console/pick (.getAttribute element "data-dev-instance")]))))
-        escape! #(when (= "Escape" (.-key %)) (rf/dispatch [:dev-console/picking false]))]
+                     (r/dispatch [:dev-console/pick (.getAttribute element "data-dev-instance")]))))
+        escape! #(when (= "Escape" (.-key %)) (r/dispatch [:dev-console/picking false]))]
     (listener/listen! :dev-picker
       [{:target "document", :event "click", :handler click!, :capture? true}
        {:target "document", :event "keydown", :handler escape!}])))
 
 (defc <selection-highlight> [instance]
-  (let [[rect set-rect!] (rf/use-state nil)]
-    (rf/use-layout-effect
+  (let [[rect set-rect!] (r/use-state nil)]
+    (r/use-layout-effect
       (fn []
         (let [measure! (fn []
                          (if-let [element (element-for-instance instance)]
@@ -715,10 +715,10 @@
   {:depends [source/catalog-resource]
    :loading-tag :section.dev-component-inspector}
   [instance record records]
-  (let [catalog (:value @(rf/subscribe [:component-data/installed source/catalog-path]))
+  (let [catalog (:value @(r/subscribe [:component-data/installed source/catalog-path]))
         {:keys [component path queries]} record
         queries (remove #(contains? #{:get :state :debug :component-state/scoped-value} (first %)) queries)
-        declaration (get @(rf/subscribe [:dev-console/catalog]) component)
+        declaration (get @(r/subscribe [:dev-console/catalog]) component)
         anchor (:anchor-instance record)
         location (or (:source record) (get-in declaration [:options :source]))
         file (or (source/resolve-file catalog (:file location))
@@ -730,7 +730,7 @@
       :style (when anchor {:position-anchor (str "--dev-instance-" anchor)})}
      [:div.dev-component-inspector__heading
       [:strong {:title (string/join "/" component)} (or (last component) "Unmounted component")]
-      [:button {:on-click #(rf/dispatch [:dev-console/pick nil]) :aria-label "Close selected component"} "×"]]
+      [:button {:on-click #(r/dispatch [:dev-console/pick nil]) :aria-label "Close selected component"} "×"]]
      [:small.dev-component-inspector__namespace (first component)]
      (if record
        [:<>
@@ -739,7 +739,7 @@
           [:p {:role "status"} "This component currently has no native anchor."])
         (when file [:a {:href (source/source-url file (:line location))} "Open definition in source browser"])
         (if path [:<> [:h4 "Automatic app-db path"] [<value> [:picked-path instance] path 0]
-                     [<value> [:picked-state instance] @(rf/subscribe [:dev-console/path path]) 0]]
+                     [<value> [:picked-state instance] @(r/subscribe [:dev-console/path path]) 0]]
             [:p "This view has no automatic scoped state."])
         [:h4 "Subscriptions acquired by this view"]
         (when (empty? queries) [:p "No subscriptions captured for this view."])
@@ -756,7 +756,7 @@
   (let [picking? (:picking? debug)
         instance (:selected-instance debug)
         anchor (first (components/native-roots (:active debug) instance))]
-    (rf/use-effect #(when picking? (picking!)) [picking?])
+    (r/use-effect #(when picking? (picking!)) [picking?])
     [:<>
      (when picking? [:div.dev-picking-hint {:role "status"} "Click a component to inspect it · Escape cancels"])
      (when instance
@@ -774,7 +774,7 @@
   ;; bootstrapped as another app or fed a copied app-db.
   (js/window.open "about:blank" "tolgraven-dev-console" "popup,width=1100,height=760"))
 (defc <popout> [window close!]
-  (rf/use-effect
+  (r/use-effect
     (fn []
       (let [document (.-document window)
             stop-listeners! (listener/listen! :dev-popout
@@ -783,15 +783,15 @@
         #(do (stop-listeners!)
              (when-not (.-closed window) (.close window))))) [window])
   [:<>
-   (rf/create-portal
-     (rf/as-element
+   (r/create-portal
+     (r/as-element
        [:<> (for [[index element] (map-indexed vector (array-seq (.querySelectorAll js/document "link[rel=stylesheet],style")))]
               ^{:key index}
               (if (= "STYLE" (.-tagName element))
                 [:style (.-textContent element)]
                 [:link {:rel "stylesheet" :href (.-href element)}]))]) (.-head (.-document window)))
-   (rf/create-portal
-     (rf/as-element [:aside.dev-console.dev-console--popout {:data-dev-console true}
+   (r/create-portal
+     (r/as-element [:aside.dev-console.dev-console--popout {:data-dev-console true}
                       [<panel> {:close! close!}]]) (.-body (.-document window)))])
 
 (defc <panel>
@@ -801,10 +801,10 @@
   :let [*tab (<sub :comp [:tab])
         *path (<sub :comp [:path]) *value (<sub :comp [:value])
         *event (<sub :comp [:event]) *dry-run (<sub :comp [:dry-run?])]
-  (let [options @(rf/subscribe [:dev-console/options])
-        debug @(rf/subscribe [:dev-console/data])
-        snapshot @(rf/subscribe [:dev-console/snapshot])
-        route @(rf/subscribe [:common/route])
+  (let [options @(r/subscribe [:dev-console/options])
+        debug @(r/subscribe [:dev-console/data])
+        snapshot @(r/subscribe [:dev-console/snapshot])
+        route @(r/subscribe [:common/route])
         tab-value @*tab
         records (:records debug)]
     [:section.dev-console__panel {:aria-label "Re-frame inspector"}
@@ -813,11 +813,11 @@
       [:a {:href "/docs/source"} "Source browser"]
       [:span.dev-console__metrics (str (count (:active debug)) " components · " (count records) " records")]
       [:label [:input {:type "checkbox" :checked (boolean (:recording? options))
-                       :on-change #(rf/dispatch [:dev-console/option :recording? (.. % -target -checked)])}] "Record"]
+                       :on-change #(r/dispatch [:dev-console/option :recording? (.. % -target -checked)])}] "Record"]
       [:label [:input {:type "checkbox" :checked (boolean (:hydration-highlight? options))
-                       :on-change #(rf/dispatch [:dev-console/option :hydration-highlight? (.. % -target -checked)])}] "Hydration flash"]
-      [:button {:on-click #(rf/dispatch [:dev-console/clear])} "Clear"]
-      [:button {:on-click #(rf/dispatch [:dev-console/copy (pr-str snapshot)])} "Copy snapshot"]
+                       :on-change #(r/dispatch [:dev-console/option :hydration-highlight? (.. % -target -checked)])}] "Hydration flash"]
+      [:button {:on-click #(r/dispatch [:dev-console/clear])} "Clear"]
+      [:button {:on-click #(r/dispatch [:dev-console/copy (pr-str snapshot)])} "Copy snapshot"]
       [:button.dev-console__close {:aria-label "Close inspector" :on-click close!} "×"]]
      [:div.dev-console__tabs {:role "group" :aria-label "Inspector sections"}
       (for [tab [:page :components :modules :state :subs :loads :events :errors :timings :layout :code]]
@@ -826,71 +826,71 @@
      [:div.dev-console__body
       (case @*tab
         :page [<value> [:page] {:route route :spec (:data route)
-                              :page-state @(rf/subscribe [:dev-console/path [:page (restore/page-key)]])} 0]
+                              :page-state @(r/subscribe [:dev-console/path [:page (restore/page-key)]])} 0]
         :components [<component-tree> (:active debug)
                      (fn [path] (>reset *path (pr-str path)) (>reset *tab :state))]
         :modules [<value> [:modules]
                   {:pages (reitit/routes routes/router)
                    :modules (into {} (for [[id loadable] loader/modules]
                                        [id (if (loader/ready? id) @loadable :code-not-loaded)]))
-                   :module-state @(rf/subscribe [:dev-console/path [:module]])} 0]
-        :state [:<> [<path-inspector> *path *value] [<value> [:app-db] @(rf/subscribe [:dev-console/db]) 0]]
+                   :module-state @(r/subscribe [:dev-console/path [:module]])} 0]
+        :state [:<> [<path-inspector> *path *value] [<value> [:app-db] @(r/subscribe [:dev-console/db]) 0]]
         :subs [<subscriptions>]
-        :loads [<value> [:loads] {:resources @(rf/subscribe [:dev-console/resources])
-                                 :loading @(rf/subscribe [:loading])
-                                 :store @(rf/subscribe [:dev-console/path [:store]])} 0]
+        :loads [<value> [:loads] {:resources @(r/subscribe [:dev-console/resources])
+                                 :loading @(r/subscribe [:loading])
+                                 :store @(r/subscribe [:dev-console/path [:store]])} 0]
         :events [:<>
                  [<event-completion> "Event vector" "dev-dispatch-events" *event
-                  @(rf/subscribe [:dev-console/handlers]) records]
+                  @(r/subscribe [:dev-console/handlers]) records]
                  [:label [:input {:type "checkbox" :checked (boolean @*dry-run) :on-change #(>reset *dry-run (.. % -target -checked))}]
                   "Stub common network/navigation/storage effects (other effects still run)"]
-                 [:button {:on-click #(rf/dispatch [:dev-console/dispatch {:event @*event :dry-run? @*dry-run}])} "Dispatch and trace"]
+                 [:button {:on-click #(r/dispatch [:dev-console/dispatch {:event @*event :dry-run? @*dry-run}])} "Dispatch and trace"]
                  [<value> [:dispatch-result] (:result debug) 0]
                  [<event-history> records]]
         :errors [:<> [validation/<reports>]
-                 [<value> [:errors] (dissoc @(rf/subscribe [:dev-console/path [:diagnostics]]) :validation) 0]]
+                 [<value> [:errors] (dissoc @(r/subscribe [:dev-console/path [:diagnostics]]) :validation) 0]]
         :timings [:<> [<profile-summary> records] [<timings> records]]
         :layout [:<>
                  (if (and (exists? js/PerformanceObserver)
                           (some #{"layout-shift"} (array-seq (.-supportedEntryTypes js/PerformanceObserver))))
                    [<layout-graph> records]
                    [:p "This browser does not provide layout-shift observation. React render timings are still available."])]
-        :code [<value> [:code] {:components @(rf/subscribe [:dev-console/catalog])
-                                :registrations (into {} (for [[kind handlers] @(rf/subscribe [:dev-console/handlers])]
+        :code [<value> [:code] {:components @(r/subscribe [:dev-console/catalog])
+                                :registrations (into {} (for [[kind handlers] @(r/subscribe [:dev-console/handlers])]
                                                          [kind (into {} (map (fn [[id handler]] [id (meta handler)]) handlers))]))} 0])]]))
 
 (defc <console> []
   (let [{:keys [options debug]} (capture/use-host-state)
         open? (boolean (:open? debug))
-        [popout set-popout!] (rf/use-state nil)
+        [popout set-popout!] (r/use-state nil)
         active? (boolean (or open? popout (:page-capture? options) (:picking? debug) (:selected-instance debug)))]
     ;; Publish buffered records after the host has completed its commit. A
     ;; layout-effect dispatch can queue a Reagent forceUpdate before React has
     ;; finished mounting this very subscription consumer.
-    (rf/use-effect #(when active? (capture/connect!)) [active?])
-    (rf/use-effect #(when (and active? (:recording? options)) (capture/start!))
+    (r/use-effect #(when active? (capture/connect!)) [active?])
+    (r/use-effect #(when (and active? (:recording? options)) (capture/start!))
                    [active? (:recording? options)])
-    (rf/use-effect (fn [] (reset! capture/*flash? (boolean (:event-flash? options))) nil) [(:event-flash? options)])
-    (rf/use-effect
+    (r/use-effect (fn [] (reset! capture/*flash? (boolean (:event-flash? options))) nil) [(:event-flash? options)])
+    (r/use-effect
       (fn []
         (let [handler (fn [event]
                         (when (and (= "D" (string/upper-case (.-key event)))
                                    (.-altKey event) (.-shiftKey event))
-                          (.preventDefault event) (rf/dispatch [:dev-console/toggle-open])))]
+                          (.preventDefault event) (r/dispatch [:dev-console/toggle-open])))]
           (listener/listen! :dev-console
             [{:target "window", :event "keydown", :handler handler}]))) [])
     [:aside.dev-console {:aria-label "Development console" :data-dev-console true}
      [:div.dev-console__tools
-      [:button.dev-console__toggle {:on-click #(rf/dispatch [:dev-console/toggle-open]) :aria-expanded (boolean open?)}
+      [:button.dev-console__toggle {:on-click #(r/dispatch [:dev-console/toggle-open]) :aria-expanded (boolean open?)}
        "Dev " (if open? "×" "⌘")]
-      [:button {:on-click #(rf/dispatch [:dev-console/picking (not (:picking? debug))])
+      [:button {:on-click #(r/dispatch [:dev-console/picking (not (:picking? debug))])
                 :aria-pressed (boolean (:picking? debug))} "Pick component"]
-      [:button {:on-click #(rf/dispatch [:dev-console/option :page-capture? (not (:page-capture? options))])
+      [:button {:on-click #(r/dispatch [:dev-console/option :page-capture? (not (:page-capture? options))])
                 :aria-pressed (boolean (:page-capture? options))} (if (:page-capture? options) "Stop capture" "Capture page")]
       [:label [:input {:type "checkbox" :checked (boolean (:event-flash? options))
-                       :on-change #(rf/dispatch [:dev-console/option :event-flash? (.. % -target -checked)])}] "Event flashes"]
+                       :on-change #(r/dispatch [:dev-console/option :event-flash? (.. % -target -checked)])}] "Event flashes"]
       [:button {:on-click #(if popout (.focus popout)
                               (when-let [window (open-popout!)] (set-popout! window)))} "Pop out"]]
      [<page-diagnostics> debug]
-     (when (and open? (nil? popout)) [<panel> {:close! #(rf/dispatch [:dev-console/open false])}])
-     (when popout [<popout> popout #(do (set-popout! nil) (rf/dispatch [:dev-console/open true]))])]))
+     (when (and open? (nil? popout)) [<panel> {:close! #(r/dispatch [:dev-console/open false])}])
+     (when popout [<popout> popout #(do (set-popout! nil) (r/dispatch [:dev-console/open true]))])]))

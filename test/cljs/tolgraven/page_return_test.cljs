@@ -3,11 +3,11 @@
    as local documents. Shadow code splitting is the only adapted boundary."
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
-            [reagent.core :as r]
-            [reagent.dom.client :as dom]
+            [tolgraven.react :as r]
+
             [shadow.lazy :as lazy]
-            [re-frame.core :as re-frame]
-            [tolgraven.react :as rf]
+
+
             [tolgraven.test-support :as support]
             [tolgraven.components.shell :as shell]
             [tolgraven.modules.blog.views :as blog]
@@ -27,12 +27,12 @@
             [tolgraven.ssr.return-worker :as worker]))
 
 (r/defc <check> [form committed!]
-  (rf/use-effect (fn [] (committed!) nil) [])
+  (r/use-effect (fn [] (committed!) nil) [])
   form)
 
 (deftest capture-observes-native-source-and-releases-it-on-unmount
   (async done
-    (let [restore! (re-frame/make-restore-fn)
+    (let [restore! (r/make-restore-fn)
           schedule! local/schedule!
           connect! local/connect!
           after-page! browser-resources/after-page!
@@ -47,14 +47,14 @@
               (try
                 (await! (support/render! root [local/<capture>]))
                 (let [initial @*scheduled]
-                  (rf/dispatch [:component-state/reset [:state :menu] true])
+                  (r/dispatch [:component-state/reset [:state :menu] true])
                   (await! (support/settle!))
                   (is (= (inc initial) @*scheduled))
-                  (rf/dispatch [:page-return/status {:status :ready :url "/blog"}])
+                  (r/dispatch [:page-return/status {:status :ready :url "/blog"}])
                   (await! (support/settle!))
                   (is (= (inc initial) @*scheduled) "Capture status does not trigger another capture")
                   (await! (support/render! root nil))
-                  (rf/dispatch [:component-state/reset [:state :menu] false])
+                  (r/dispatch [:component-state/reset [:state :menu] false])
                   (await! (support/settle!))
                   (is (= (inc initial) @*scheduled) "Unmount releases the source subscription"))
                 (finally (support/unmount! root)))))
@@ -69,7 +69,7 @@
 (deftest local-rendered-expanded-comments-hydrate-with-the-same-state-and-nodes
   (async done
     (-> (go-promise
-          (let [restore-db! (re-frame/make-restore-fn)
+          (let [restore-db! (r/make-restore-fn)
                 original-context @restore/*context
                 original-interactive @context/*interactive?
                 element (.createElement js/document "div")
@@ -86,11 +86,11 @@
             (.setAttribute element "data-page-build" "test-build")
             (.appendChild (.-body js/document) element)
             (try
-              (rf/dispatch-sync [:init/app-db])
-              (rf/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] true])
+              (r/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] true])
               (doseq [parent [nil "root" "child" "grandchild" "deep"]]
                 (let [query (if parent (comments/thread-query 42 parent) (comments/root-query 42 comments/page-size))]
-                  (rf/dispatch-sync [:store/scoped (scoped/query-key query)
+                  (r/dispatch-sync [:store/scoped (scoped/query-key query)
                                      {:docs (mapv #(hash-map :id (:id %) :data %)
                                                   (filter #(= parent (:parent-comment %)) rows))}])))
               (let [db (await! (support/state-at! []))
@@ -110,14 +110,14 @@
                   (set! (.-textContent script) (js/JSON.stringify (clj->js snapshot)))
                   (.appendChild (.-body js/document) script)
                   ;; A competing initial state must be replaced by the paired state.
-                  (rf/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] false])
+                  (r/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] false])
                   (local/install!)
-                  (with-redefs [loader/modules {:user (reify lazy/ILoadable (ready? [_] true)
+                  (r/with-framework-bindings [loader/modules {:user (reify lazy/ILoadable (ready? [_] true)
                                                             IDeref (-deref [_] module))}]
                     (await! (js/Promise.
                               (fn [resolve _]
                                 (reset! *root
-                                  (dom/hydrate-root element [<check> form #(resolve nil)]
+                                  (r/hydrate-root element [<check> form #(resolve nil)]
                                                     {:on-recoverable-error #(swap! *errors conj (str %))}))))))
                   (is (empty? @*errors) (pr-str @*errors))
                   (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title"))))
@@ -207,7 +207,7 @@
 
 (deftest lazy-renderer-discards-saves-overtaken-while-code-loads
   (async done
-    (let [restore! (re-frame/make-restore-fn)
+    (let [restore! (r/make-restore-fn)
           connect! local/connect!
           acquire! loader/acquire-code!
           message! local/message!
@@ -240,7 +240,7 @@
 
 (deftest restored-shell-resumes-motion-on-menu-intent
   (async done
-    (let [restore-db! (re-frame/make-restore-fn)
+    (let [restore-db! (r/make-restore-fn)
           original-context @restore/*context]
       (-> (go-promise
             (let [element (.createElement js/document "div")
@@ -248,16 +248,16 @@
                   form [:<> [shell/<header> {:menu {:work [] :personal []}}]
                         [shell/<footer-full> []]]]
               (try
-                (rf/dispatch-sync [:init/app-db])
-                (rf/dispatch-sync [:state [:menu] false])
+                (r/dispatch-sync [:init/app-db])
+                (r/dispatch-sync [:state [:menu] false])
                 (reset! restore/*context {:local? true})
                 (await! (support/render! root form))
                 (is (= "true" (.getAttribute (.querySelector element "header") "data-restored-motion")))
                 (is (= "true" (.getAttribute (.querySelector element ".footer-full") "data-restored-motion")))
-                (rf/dispatch-sync [:state [:menu] true])
+                (r/dispatch-sync [:state [:menu] true])
                 (await! (support/settle!))
                 (is (= "false" (.getAttribute (.querySelector element "header") "data-restored-motion")))
-                (rf/dispatch-sync [:state [:menu] false])
+                (r/dispatch-sync [:state [:menu] false])
                 (await! (support/settle!))
                 (is (= "false" (.getAttribute (.querySelector element "header") "data-restored-motion"))
                     "Closing the menu retains ordinary motion")
@@ -270,12 +270,12 @@
 
 (deftest collapsed-shell-is-not-captured-as-a-display-choice
   (async done
-    (let [restore-db! (re-frame/make-restore-fn)
+    (let [restore-db! (r/make-restore-fn)
           form [shell/<header> {:menu {:work [] :personal []}}]]
       (-> (go-promise
-            (rf/dispatch-sync [:init/app-db])
-            (rf/dispatch-sync [:state [:hidden] {:header true :footer true}])
-            (rf/dispatch-sync [:state [:scroll] {:past-top true :at-bottom true}])
+            (r/dispatch-sync [:init/app-db])
+            (r/dispatch-sync [:state [:hidden] {:header true :footer true}])
+            (r/dispatch-sync [:state [:scroll] {:past-top true :at-bottom true}])
             (let [saved (contract/state-for (await! (support/state-at! [])))
                   html (render/html! saved form {:restored? true :interactive? true})
                   element (.createElement js/document "div")]
@@ -284,8 +284,8 @@
               (is (nil? (get-in saved [:state :scroll])))
               (is (not (.contains (.-classList (.querySelector element "header")) "hide")))
               ;; Installing legacy saved state must apply the same owner policy.
-              (rf/dispatch-sync [:init/app-db])
-              (rf/dispatch-sync [:page-return/install
+              (r/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:page-return/install
                                  (assoc-in saved [:state :hidden :header] true)])
               (let [root (await! (support/create-root! element))]
                 (try
@@ -309,7 +309,7 @@
 
 (deftest asynchronous-rendering-discards-an-overtaken-pair
   (async done
-    (let [restore! (re-frame/make-restore-fn)
+    (let [restore! (r/make-restore-fn)
           connect! local/connect!
           acquire! loader/acquire-code!
           message! local/message!
@@ -369,13 +369,13 @@
 
 (deftest departure-captures-state-after-synchronous-navigation-save
   (async done
-    (let [restore! (re-frame/make-restore-fn)
+    (let [restore! (r/make-restore-fn)
           save! local/save!
           navigate! local/navigate!
           save-navigation! storage/save-navigation!
           *captured (atom nil)]
       (set! storage/save-navigation!
-            #(rf/dispatch-sync [:set [:page-return-test] :fresh]))
+            #(r/dispatch-sync [:set [:page-return-test] :fresh]))
       (set! local/save! (fn [db arm?]
                          (reset! *captured [(:page-return-test db) arm?])
                          (js/Promise.resolve nil)))
@@ -395,7 +395,7 @@
 
 (deftest timed-out-departure-discards-a-late-render-at-the-same-url
   (async done
-    (let [restore! (re-frame/make-restore-fn)
+    (let [restore! (r/make-restore-fn)
           connect! local/connect!
           acquire! loader/acquire-code!
           message! local/message!

@@ -3,10 +3,11 @@
     [tolgraven.content.schema :as schema]
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
-    [tolgraven.react :as rf]
-    [reagent.core :as r]
+    [tolgraven.react :as r]
+
     [tolgraven.components.image :as img]
-    [tolgraven.components.ui :as ui]
+    [tolgraven.components.ui.layout :as ui-layout]
+    [tolgraven.components.ui.media :as ui-media]
     [tolgraven.util :as util]
     [tolgraven.components.video :as vid]))
 
@@ -126,13 +127,13 @@
                  :opacity (when-not (zero? @in-view)
                             "0.4")}}
         [:h1.h-responsive title]]
-       [ui/<inset> caption nr]]))))
+       [ui-layout/<inset> caption nr]]))))
 
 (defc <gallery> "Stupid css thing slides sidewayus x) Make it go out left side would be cool"
   [img-attrs :- [:sequential schema/media]]
   [:section#gallery.covering.fullwide
    [:div.sideways
-    (when @(rf/subscribe [:state [:gallery :loaded]])
+    (when @(r/subscribe [:state [:gallery :loaded]])
       (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
          [img/<picture> (merge img {:class "media"})]))]]) ; TODO add captions and other features etc...
 
@@ -140,7 +141,7 @@
   [img-attrs :- [:sequential schema/media]]
   [:section#gallery-2.covering.fullwide {:style {:z-index 12}}
    [:div "test carousel-normal"]
-   [ui/<carousel-normal> :gallery-2-normal {:style {:height "40vh"} }
+   [ui-media/<carousel-normal> :gallery-2-normal {:style {:height "40vh"} }
     (into []
           (for [img img-attrs] ^{:key (str "gallery-2-normal-" (:src img))}
             [img/<picture> (merge img {:class "media"})]))]])
@@ -149,7 +150,7 @@
   [img-attrs :- [:sequential schema/media]]
   [:section#gallery-2.covering.fullwide {:style {:z-index 12}}
    [:div "test carousel"]
-   [ui/<carousel> :gallery-2 {:style {:height "30vh"} }
+   [ui-media/<carousel> :gallery-2 {:style {:height "30vh"} }
     (into []
           (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
          [img/<picture> (merge img {:class "media"})]))]])
@@ -176,5 +177,5 @@
                     :transition "transform 8.5s ease"
                     #_:transform #_(str "translateZ(" (* 14 @frac) "px)")}}
            title]] ;ideally want this also growing (and moving quicker upwards)]
-         [ui/<inset> caption 3]
-         [ui/<fading>]])))
+         [ui-layout/<inset> caption 3]
+         [ui-layout/<fading>]])))

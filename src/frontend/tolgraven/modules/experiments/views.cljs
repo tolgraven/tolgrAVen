@@ -2,10 +2,11 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :as m :refer-macros [defc defpage]]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [tolgraven.loader]
-    [tolgraven.components.ui :as ui]
+    [tolgraven.components.ui.boundary :as ui-boundary]
+    [tolgraven.components.ui.layout :as ui-layout]
     [react-leaflet]
     [leaflet]))
 
@@ -47,7 +48,7 @@
 
 (defc <parallax> []
   [:<>
-   (let [elems (or (rf/subscribe [:state [:elems]]) [1 2 3])]
+   (let [elems (or (r/subscribe [:state [:elems]]) [1 2 3])]
      [:div.parallax-ui ;.fullwide
       [:div "Pure CSS parallax scroll demo #3 by Keith Clark -> tolgraven"]
       [<element-group> elems]
@@ -57,13 +58,13 @@
         (doall (for [el @elems] ^{:key el}
           [<experiment-element> el]))]
 
-      [:button {:on-click #(rf/dispatch [:conj [:state :elems]
+      [:button {:on-click #(r/dispatch [:conj [:state :elems]
                                                (inc (first @elems))])}
        "more"]
 
       [:label [:input {:type "checkbox"
-                       :checked (boolean @(rf/subscribe [:state [:debug :parallax]]))
-                       :on-change #(rf/dispatch [:debug [:parallax] (.. % -target -checked)])}]
+                       :checked (boolean @(r/subscribe [:state [:debug :parallax]]))
+                       :on-change #(r/dispatch [:debug [:parallax] (.. % -target -checked)])}]
        "Debug"]])
 
    [:div.parallax
@@ -399,18 +400,18 @@
 (defpage <test-page>
   {:depends [{:source :strapi :keys [:common]}]}
   []
-  [ui/<with-heading> [:common :banner-heading]
+  [ui-layout/<with-heading> [:common :banner-heading]
    (let [routes {:parallax <parallax>
                  :model-viewer <model-viewer>
                  :leaflet <leaflet>
                  :search (m/<> :search/view "blog-posts")
                  :broken [:div]}
-         tab @(rf/subscribe [:state [:experiments]])]
+         tab @(r/subscribe [:state [:experiments]])]
      [:section.experiments.solid-bg.fullwide.noborder
       [:ul.tabs-container.flex
        (for [tab-key (keys routes)] ^{:key tab-key}
-                                    [:li [:a {:href @(rf/subscribe [:href :test-tab {:tab tab-key}])}
+                                    [:li [:a {:href @(r/subscribe [:href :test-tab {:tab tab-key}])}
                                           [:button {:class (if (= tab tab-key) "bottomborder" "topborder")}
                                            tab-key]]])]
-      [ui/<safe> :experiments [(tab routes)]]])
+      [ui-boundary/<safe> :experiments [(tab routes)]]])
    {:title "Experiments" :tint "green"}])

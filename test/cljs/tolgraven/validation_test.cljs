@@ -1,9 +1,9 @@
 (ns tolgraven.validation-test
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
-            [re-frame.core :as re-frame]
+            [tolgraven.react :as r]
             [reitit.frontend :as frontend]
-            [tolgraven.react :as rf]
+
             [tolgraven.navigation.routes :as routes]
             [tolgraven.component :as component]
             [tolgraven.component.registry :as registry]
@@ -17,30 +17,30 @@
             [tolgraven.components.validation :as views]))
 
 (defonce *effects (atom 0))
-(rf/reg-fx :validation-test/external (fn [_] (swap! *effects inc)))
-(rf/reg-event-fx :validation-test/invalid
+(r/reg-fx :validation-test/external (fn [_] (swap! *effects inc)))
+(r/reg-event-fx :validation-test/invalid
   (fn [{:keys [db]} _]
     {:db (assoc-in db [:options :blog :posts-per-page] -5)
      :validation-test/external true}))
 
 (deftest rejected-and-effect-only-events-do-not-enqueue-persistence
-  (let [restore! (re-frame/make-restore-fn)
+  (let [restore! (r/make-restore-fn)
         enabled? @validation/*enabled?
         *scheduled (atom 0)]
     (try
-      (rf/dispatch-sync [:init/app-db])
+      (r/dispatch-sync [:init/app-db])
       (reset! validation/*enabled? true)
-      (rf/reg-global-interceptor
-        (rf/->interceptor :id :validation/app-db :after validation/intercept))
-      (rf/reg-event-fx :validation-test/effect-only (fn [_ _] {}))
-      (with-redefs [storage/schedule! #(swap! *scheduled inc)]
-        (rf/dispatch-sync [:validation-test/invalid])
-        (rf/dispatch-sync [:validation-test/effect-only])
+      (r/reg-global-interceptor
+        (r/->interceptor :id :validation/app-db :after validation/intercept))
+      (r/reg-event-fx :validation-test/effect-only (fn [_ _] {}))
+      (r/with-framework-bindings [storage/schedule! #(swap! *scheduled inc)]
+        (r/dispatch-sync [:validation-test/invalid])
+        (r/dispatch-sync [:validation-test/effect-only])
         (is (zero? @*scheduled) "Rejected transactions have no persistence effects")
-        (rf/dispatch-sync [:component-state/reset [:state :persist-event-test] false])
+        (r/dispatch-sync [:component-state/reset [:state :persist-event-test] false])
         (is (= 1 @*scheduled) "Accepted state transactions enqueue the shared persistence effect"))
       (finally
-        (rf/clear-global-interceptor :validation/app-db)
+        (r/clear-global-interceptor :validation/app-db)
         (reset! validation/*enabled? enabled?)
         (restore!)))))
 
@@ -67,29 +67,29 @@
 (deftest invalid-transaction-preserves-mounted-state-and-reports-the-path
   (async done
     (-> (go-promise
-          (let [restore! (re-frame/make-restore-fn)
+          (let [restore! (r/make-restore-fn)
                 enabled? @validation/*enabled?
                 element (.createElement js/document "div")
                 root (await! (support/create-root! element))]
             (.appendChild (.-body js/document) element)
             (try
               (reset! validation/*enabled? true)
-              (rf/reg-global-interceptor (rf/->interceptor :id :validation/app-db :after validation/intercept))
-              (rf/dispatch [:init/app-db])
+              (r/reg-global-interceptor (r/->interceptor :id :validation/app-db :after validation/intercept))
+              (r/dispatch [:init/app-db])
               (await! (support/render! root [views/<reports>]))
               (reset! *effects 0)
-              (rf/dispatch [:validation-test/invalid])
+              (r/dispatch [:validation-test/invalid])
               (await! (support/settle!))
               (is (= 3 (await! (support/state-at! [:options :blog :posts-per-page]))))
               (is (zero? @*effects))
               (is (.includes (.-textContent element) "[:options :blog :posts-per-page]"))
               (is (not (.includes (.-textContent element) "-5")))
-              (rf/dispatch [:validation-test/invalid])
+              (r/dispatch [:validation-test/invalid])
               (await! (support/settle!))
               (is (.includes (.-textContent element) "× 2"))
               (finally
                 (support/unmount! root) (.remove element)
-                (rf/clear-global-interceptor :validation/app-db)
+                (r/clear-global-interceptor :validation/app-db)
                 (reset! validation/*enabled? enabled?)
                 (restore!)))))
         (.catch (fn [error] (is false (str error))))
@@ -99,7 +99,7 @@
 (deftest editing-and-clearing-drafts-use-valid-app-state
   (async done
     (-> (go-promise
-          (let [restore! (re-frame/make-restore-fn)
+          (let [restore! (r/make-restore-fn)
                 enabled? @validation/*enabled?
                 consumer (await! (support/mount-subscriptions!
                                    {:draft [:form-field [:post-blog]]
@@ -107,26 +107,26 @@
                                     :errors [:validation/errors]}))]
             (try
               (reset! validation/*enabled? true)
-              (rf/reg-global-interceptor (rf/->interceptor :id :validation/app-db :after validation/intercept))
+              (r/reg-global-interceptor (r/->interceptor :id :validation/app-db :after validation/intercept))
               ;; This unit test exercises registered events/subscriptions; disk
               ;; persistence is covered separately by the storage tests.
-              (rf/reg-fx :ls (fn [_]))
-              (rf/reg-fx :blog/cache-state (fn [_]))
-              (rf/dispatch [:init/app-db])
-              (rf/dispatch [:form-field [:post-blog] {:title "Draft" :text "Body" :tags ["cljs"]}])
-              (rf/dispatch [:blog/adding-comment [27] true])
+              (r/reg-fx :ls (fn [_]))
+              (r/reg-fx :blog/cache-state (fn [_]))
+              (r/dispatch [:init/app-db])
+              (r/dispatch [:form-field [:post-blog] {:title "Draft" :text "Body" :tags ["cljs"]}])
+              (r/dispatch [:blog/adding-comment [27] true])
               (await! (support/settle!))
               (is (= ["cljs"] (get-in ((:values consumer)) [:draft :tags])))
               (is (true? (get-in ((:values consumer)) [:adding [27]])))
-              (rf/dispatch [:blog/cancel-edit])
-              (rf/dispatch [:blog/adding-comment [27] nil])
+              (r/dispatch [:blog/cancel-edit])
+              (r/dispatch [:blog/adding-comment [27] nil])
               (await! (support/settle!))
               (is (nil? (:draft ((:values consumer)))))
               (is (nil? (get-in ((:values consumer)) [:adding [27]])))
               (is (empty? (:errors ((:values consumer)))))
               (finally
                 ((:unmount! consumer))
-                (rf/clear-global-interceptor :validation/app-db)
+                (r/clear-global-interceptor :validation/app-db)
                 (reset! validation/*enabled? enabled?)
                 (restore!)))))
         (.catch (fn [error] (is false (str error))))
@@ -192,15 +192,15 @@
 (deftest component-owned-state-rejects-invalid-updates-and-retains-rendered-value
   (async done
     (-> (go-promise
-          (let [restore! (re-frame/make-restore-fn)
+          (let [restore! (r/make-restore-fn)
                 enabled? @validation/*enabled? sections @validation/*sections
                 element (.createElement js/document "div")
                 root (await! (support/create-root! element))]
             (.appendChild (.-body js/document) element)
             (try
               (reset! validation/*enabled? true)
-              (rf/reg-global-interceptor (rf/->interceptor :id :validation/app-db :after validation/intercept))
-              (rf/dispatch [:init/app-db])
+              (r/reg-global-interceptor (r/->interceptor :id :validation/app-db :after validation/intercept))
+              (r/dispatch [:init/app-db])
               (await! (support/settle!))
               (await! (support/render! root [:<> [<scoped-counter>] [views/<reports>]]))
               (is (= "0" (.-textContent (.querySelector element "button"))))
@@ -211,7 +211,7 @@
               (is (.includes (.-textContent element) ":count"))
               (finally
                 (support/unmount! root) (.remove element)
-                (rf/clear-global-interceptor :validation/app-db)
+                (r/clear-global-interceptor :validation/app-db)
                 (reset! validation/*sections sections)
                 (reset! validation/*enabled? enabled?)
                 (restore!)))))

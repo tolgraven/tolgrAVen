@@ -1,6 +1,6 @@
 (ns tolgraven.validation.runtime
   "Runtime policy, declaration checks and transactional app-db validation."
-  (:require [tolgraven.react :as rf]
+  (:require [tolgraven.react.runtime :as r]
             [tolgraven.validation :as validation]
             [tolgraven.validation.bindings :as bindings]
             [tolgraven.schema.app-db :as app-db]
@@ -36,14 +36,14 @@
 (defn- forget-sections! [paths]
   (swap! *sections #(apply dissoc % paths))
   (swap! *dynamic-paths #(apply disj % paths)))
-(rf/reg-fx :validation/forget-sections forget-sections!)
+(r/reg-fx :validation/forget-sections forget-sections!)
 
 (defn module! [spec]
   (check! (str "module " (:id spec)) (declarations/extend-module (:schema spec)) spec)
   (when-let [sections (:db-schema spec)] (register-sections! sections))
   spec)
 
-(rf/reg-event-fx :validation/report
+(r/reg-event-fx :validation/report
   (fn [{:keys [db]} [_ report]]
     (let [history (vec (get-in db [:diagnostics :validation]))
           duplicate? (= report (dissoc (peek history) :count))]
@@ -56,15 +56,15 @@
         (assoc :dispatch [:diag/new (or (:severity report) :error) (str "Schema validation: " (:contract report))
                           (validation/message (:issues report))
                           {:custom-id [:validation (:contract report) (:event report)] :sticky? true}])))))
-(rf/reg-event-db :validation/dismiss
+(r/reg-event-db :validation/dismiss
   (fn [db _] (update db :diagnostics dissoc :validation)))
-(rf/reg-sub :validation/errors
+(r/reg-sub :validation/errors
   (fn [db _] (get-in db [:diagnostics :validation])))
 
 (defn intercept [context]
-  (let [before (rf/get-coeffect context :db)
-        after (rf/get-effect context :db)
-        event (first (rf/get-coeffect context :event))]
+  (let [before (r/get-coeffect context :db)
+        after (r/get-effect context :db)
+        event (first (r/get-coeffect context :event))]
     (if (and @*enabled? (contains? (:effects context) :db) (not= event :validation/report))
       (if-let [issues (seq (app-db/changed-errors @*sections before after))]
         ;; Reject the whole transaction: running its network/timer effects with
@@ -85,13 +85,13 @@
   (swap! *sections merge schema/sections)
   ;; Hot reload replaces by ID. Disabled builds do no per-event validation work.
   (if @*enabled?
-    (do (rf/reg-global-interceptor
-         (rf/->interceptor :id :validation/app-db :after intercept))
+    (do (r/reg-global-interceptor
+         (r/->interceptor :id :validation/app-db :after intercept))
         (reset! *installed? true))
     (do
       (forget-sections! @*dynamic-paths)
       (when @*installed?
-        (rf/clear-global-interceptor :validation/app-db)
+        (r/clear-global-interceptor :validation/app-db)
         (reset! *installed? false)))))
 
 (defn validate-routes! [routes _]

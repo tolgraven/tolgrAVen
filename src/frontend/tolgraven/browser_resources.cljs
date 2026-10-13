@@ -3,14 +3,14 @@
   (:require [tolgraven.component.restore :as restore]
             [tolgraven.component]
             [tolgraven.macros :refer-macros [defc]]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [tolgraven.listener :as listener]
             [tolgraven.render-context :as context]
             [tolgraven.browser-resources.schema :as schema]))
 
 (defonce *started? (atom false))
 
-(rf/reg-sub :browser-resources/settings
+(r/reg-sub :browser-resources/settings
   {:result schema/settings}
   (fn [db _] (get-in db [:browser-resources :settings])))
 
@@ -68,11 +68,11 @@
               :into [:browser-resources :settings]}]
    :loading [:div {:hidden true}]}
   []
-  (let [settings @(rf/subscribe [:browser-resources/settings])
+  (let [settings @(r/subscribe [:browser-resources/settings])
         google-id (get-in settings [:analytics :google-id])]
     ;; The layout commit configures the SDK queue before the browser can execute
     ;; the async script. This setup never downloads or changes rendered markup.
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn [] (when google-id (configure-analytics! google-id)))
       [google-id])
     (if google-id
@@ -82,8 +82,8 @@
       [:div {:hidden true}])))
 
 (defc <deferred> [content]
-  :let [*ready? (rf/atom false)]
-  (rf/use-effect
+  :let [*ready? (r/atom false)]
+  (r/use-effect
     (fn []
       (let [*timer (atom nil)
             cancel-page! (after-page!

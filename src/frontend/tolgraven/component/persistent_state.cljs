@@ -4,9 +4,9 @@
             [tolgraven.validation :as value-validation]
             [clojure.string :as string]
             [tolgraven.content.contract :as content]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [tolgraven.render-context :as context]
-            [reagent.ratom :as ratom]
+
             [tolgraven.schema.declarations :as declarations]
             [tolgraven.component.restore :as restore]
             [tolgraven.component.storage :as storage]))
@@ -26,17 +26,17 @@
      :value (when present? (get parent (peek path)))
      :revision (get-in db [:component-revisions path] 0)}))
 
-(rf/reg-sub :component-state/entry (fn [db [_ path]] (entry-at db path)))
-(rf/reg-event-db :component-state/init
+(r/reg-sub :component-state/entry (fn [db [_ path]] (entry-at db path)))
+(r/reg-event-db :component-state/init
   (fn [db [_ path value]]
     (if (:present? (entry-at db path)) db (assoc-in db path value))))
-(rf/reg-event-db :component-state/restore
+(r/reg-event-db :component-state/restore
   (fn [db [_ path revision value]]
     (if (= revision (get-in db [:component-revisions path] 0)) (assoc-in db path value) db)))
-(rf/reg-sub :component-state/value (fn [db [_ path]] (get-in db path)))
+(r/reg-sub :component-state/value (fn [db [_ path]] (get-in db path)))
 (defn- edited [db path]
   (update-in db [:component-revisions (or (:component-root (meta path)) path)] (fnil inc 0)))
-(rf/reg-event-db :component-state/set
+(r/reg-event-db :component-state/set
   (fn [db [_ path value]] (edited (assoc-in db path value) path)))
 (defn declared-options [definition args]
   (let [configuration (get-in definition [:options :state])]
@@ -75,10 +75,10 @@
    (when-not (vector? path) (throw (js/Error. "Component paths must be vectors")))
    (if (:component-path (meta path)) path
        (into (path-for options) path))))
-(rf/reg-event-db :component-state/update
+(r/reg-event-db :component-state/update
   (fn [db [_ path f args]]
     (if (accessible-path? path) (edited (apply update-in db path f args) path) db)))
-(rf/reg-event-db :component-state/reset
+(r/reg-event-db :component-state/reset
   (fn [db [_ path value]]
     (if (accessible-path? path) (edited (assoc-in db path value) path) db)))
 (defn- module-id [options]
@@ -127,12 +127,12 @@
         (with-meta target {:component-path true :component-root target})
         :else (expand-path target)))))
 (defn >reset [target value]
-  (rf/dispatch [:component-state/reset (path-of target) value]))
+  (r/dispatch [:component-state/reset (path-of target) value]))
 (defn >update [target f & args]
   (when-not (ifn? f) (throw (js/Error. "State update requires a callable function")))
-  (rf/dispatch [:component-state/update (path-of target) f args]))
+  (r/dispatch [:component-state/update (path-of target) f args]))
 
-(rf/reg-fx :component-state/initialize
+(r/reg-fx :component-state/initialize
   (fn [{:keys [path options restore? revision]}]
     (when-let [schema (:schema options)]
       (validation/register-sections! {path schema} {:dynamic? true}))
@@ -151,7 +151,7 @@
                              (storage/remove! id persistence')
                              ;; Complete restoration before following readiness
                              ;; callbacks (including autosaves) observe defaults.
-                             (rf/dispatch-sync [:component-state/restore path revision (:value saved)]))))))))))))
+                             (r/dispatch-sync [:component-state/restore path revision (:value saved)]))))))))))))
 
 (defn- initialization-effects [{:keys [db]} [_ path options]]
   (when (accessible-path? path)
@@ -166,7 +166,7 @@
                                     :revision revision}})))
 
 (doseq [event [:component-state/initialize :component-state/load]]
-  (rf/reg-event-fx event
+  (r/reg-event-fx event
     {:args [:cat declarations/path declarations/state-options]}
     initialization-effects))
 
@@ -179,8 +179,8 @@
         path (when initialize?
                (binding [*component* definition *args* args *react-key* react-key]
                  (path-for options)))]
-    (rf/use-effect
-      (fn [] (when path (rf/dispatch [:component-state/initialize path options])))
+    (r/use-effect
+      (fn [] (when path (r/dispatch [:component-state/initialize path options])))
       [path options])))
 
 (def scoped-query-options
@@ -188,7 +188,7 @@
    [:?initial :any]
    [:?load [:map [:path declarations/path] [:options declarations/state-options]]]])
 
-(rf/reg-sub-raw :component-state/scoped-value
+(r/reg-sub-raw :component-state/scoped-value
   {:args [:cat declarations/path [:? scoped-query-options]]}
   (fn [*db query]
     (let [[_ path fallback] (or (:re-frame/query-v query) query)]
@@ -197,8 +197,8 @@
       ;; SSR observes supplied state rather than loading browser storage.
       (when-let [{load-path :path options :options} (:load fallback)]
         (when-not context/*server?*
-          (rf/dispatch [:component-state/load load-path options])))
-      (ratom/make-reaction
+          (r/dispatch [:component-state/load load-path options])))
+      (r/make-reaction
         #(when (accessible-path? path)
            (let [entry (entry-at @*db path)]
              (if (:present? entry) (:value entry) (:initial fallback))))))))
@@ -228,7 +228,7 @@
                      (:persist root-options')
                      (assoc :load {:path root, :options root-options'}))
          query (cond-> [:component-state/scoped-value full] (seq fallback') (conj fallback'))
-         subscription (rf/subscribe query)]
+         subscription (r/subscribe query)]
      (.set state-paths subscription full)
      subscription)))
 

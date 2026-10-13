@@ -3,10 +3,10 @@
   (:require [cljs.core.async]
             [tolgraven.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
-            [reagent.core :as r]
-            [reagent.dom.client :as dom]
-            [re-frame.db :as rfdb]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
+
+
+
             [tolgraven.component :as component]
             [tolgraven.component.data :as data]
             [tolgraven.component.sources]
@@ -22,7 +22,7 @@
   [id]
   :let
   [_ (swap! *created inc)]
-  [:p @(rf/subscribe [:get :fixture id])])
+  [:p @(r/subscribe [:get :fixture id])])
 (defn- flush! [] (support/settle!))
 (defn- tick! [] (js/Promise. (fn [resolve _] (js/setTimeout resolve 20))))
 (defn- clean!
@@ -35,7 +35,7 @@
     done
     (->
       (go-promise
-        (let [before @rfdb/app-db
+        (let [before @r/*app-db
               *calls (atom [])
               *resolve (atom {})
               container (.createElement js/document "div")
@@ -67,39 +67,39 @@
                                      (is (= "First resource" (.-textContent container)))
                                      (is (= 1 @*created))
                                      (is (= "First resource"
-                                            (get-in @rfdb/app-db [:fixture :one]))))))
+                                            (get-in @r/*app-db [:fixture :one]))))))
                 (.catch #(is false (str %)))
                 (.finally
-                  (fn [] (support/unmount! root) (clean!) (reset! rfdb/app-db before) (done)))))))
+                  (fn [] (support/unmount! root) (clean!) (reset! r/*app-db before) (done)))))))
       (.catch (fn [error] (is false (str error)) (done))))))
 (deftest app-db-can-wait-before-mount-and-load-through-strapi
   (async done
          (-> (go-promise
-               (let [before @rfdb/app-db
+               (let [before @r/*app-db
                      original content/ensure!
                      *calls (atom [])
                      resource {:source :app-db,
                                :path [:content :blog],
                                :load {:source :strapi, :keys [:blog]}}]
-                 (reset! rfdb/app-db {})
+                 (reset! r/*app-db {})
                  (set! content/ensure!
                        (fn [keys]
                          (swap! *calls conj keys)
-                         (swap! rfdb/app-db assoc-in [:content :blog] {:title "From CMS"})
+                         (swap! r/*app-db assoc-in [:content :blog] {:title "From CMS"})
                          (js/Promise.resolve nil)))
                  (-> (data/ensure! resource)
                      (.then (fn [value]
                               (is (= {:title "From CMS"} value))
                               (is (= [[:blog]] @*calls))
                               (let [pending (data/ensure! {:source :app-db, :path [:flag]})]
-                                (swap! rfdb/app-db assoc :flag false)
+                                (swap! r/*app-db assoc :flag false)
                                 pending)))
                      (.then (fn [value] (is (false? value) "False is loaded data, not missing")))
                      (.catch #(is false (str %)))
                      (.finally (fn []
                                  (set! content/ensure! original)
                                  (clean!)
-                                 (reset! rfdb/app-db before)
+                                 (reset! r/*app-db before)
                                  (done))))))
              (.catch (fn [error] (is false (str error)) (done))))))
 (deftest failures-are-visible-retryable-and-late-responses-cannot-install
@@ -107,7 +107,7 @@
     done
     (->
       (go-promise
-        (let [before @rfdb/app-db
+        (let [before @r/*app-db
               *calls (atom 0)
               *late (atom nil)
               resource {:source :fixture, :id :failure, :into [:fixture :value], :timeout-ms 25}
@@ -137,7 +137,7 @@
                           (tick!))))
               (.then (fn [_] (@*late "stale") (tick!)))
               (.then (fn [_]
-                       (go-promise (is (= "fresh" (get-in @rfdb/app-db [:fixture :value])))
+                       (go-promise (is (= "fresh" (get-in @r/*app-db [:fixture :value])))
                                    (is (= :ready (data/state [resource])))
                                    (is (= 2 @*calls))
                                    (await! (flush!))
@@ -145,12 +145,12 @@
                                    (is (= "Recovered content" (.-textContent element))))))
               (.catch #(is false (str %)))
               (.finally
-                (fn [] (support/unmount! root) (clean!) (reset! rfdb/app-db before) (done))))))
+                (fn [] (support/unmount! root) (clean!) (reset! r/*app-db before) (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))
 (deftest supabase-adapter-does-not-install-old-account-data
   (async done
          (-> (go-promise
-               (let [before @rfdb/app-db
+               (let [before @r/*app-db
                      original supabase/read-once!
                      original-client @supabase/*client
                      *resolve (atom nil)
@@ -169,19 +169,19 @@
                                 (reset! supabase/*client #js {})
                                 (@*resolve {:secret "old account"})
                                 rejected))
-                       (.then (fn [_] (is (nil? (get-in @rfdb/app-db [:fixture :private])))))
+                       (.then (fn [_] (is (nil? (get-in @r/*app-db [:fixture :private])))))
                        (.catch #(is false (str %)))
                        (.finally (fn []
                                    (set! supabase/read-once! original)
                                    (reset! supabase/*client original-client)
                                    (clean!)
-                                   (reset! rfdb/app-db before)
+                                   (reset! r/*app-db before)
                                    (done)))))))
              (.catch (fn [error] (is false (str error)) (done))))))
 (deftest newest-request-owns-a-shared-destination
   (async done
          (-> (go-promise
-               (let [before @rfdb/app-db
+               (let [before @r/*app-db
                      *resolve (atom {})
                      old {:source :fixture, :id :old, :into [:fixture :shared]}
                      new (assoc old :id :new)]
@@ -194,16 +194,16 @@
                    (-> (tick!)
                        (.then (fn [_] ((get @*resolve :new) "new") new-load))
                        (.then (fn [_] ((get @*resolve :old) "old") old-load))
-                       (.then (fn [_] (is (= "new" (get-in @rfdb/app-db [:fixture :shared])))))
+                       (.then (fn [_] (is (= "new" (get-in @r/*app-db [:fixture :shared])))))
                        (.catch #(is false (str %)))
-                       (.finally (fn [] (clean!) (reset! rfdb/app-db before) (done)))))))
+                       (.finally (fn [] (clean!) (reset! r/*app-db before) (done)))))))
              (.catch (fn [error] (is false (str error)) (done))))))
 (deftest url-data-is-installed-and-errors-render-a-retry
   (async
     done
     (->
       (go-promise
-        (let [before @rfdb/app-db
+        (let [before @r/*app-db
               container (.createElement js/document "div")
               root (await! (support/create-root! container))
               *attempt (atom 0)
@@ -234,8 +234,8 @@
                                                   :into [:fixture :url]}))))
               (.then (fn [value]
                        (is (= "Preloaded URL content" (:title value)))
-                       (is (= value (get-in @rfdb/app-db [:fixture :url])))))
+                       (is (= value (get-in @r/*app-db [:fixture :url])))))
               (.catch #(is false (str %)))
               (.finally
-                (fn [] (support/unmount! root) (clean!) (reset! rfdb/app-db before) (done))))))
+                (fn [] (support/unmount! root) (clean!) (reset! r/*app-db before) (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))

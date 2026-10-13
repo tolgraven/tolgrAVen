@@ -25,6 +25,7 @@
                           :export-conditions ["worker" "browser" "require" "default"]}}
 
   :return-worker {:target :browser
+                  :compiler-options {:reader-features #{:return-worker}}
                   :build-hooks [(tolgraven.build.modules/configure-site)
                            (tolgraven.build.modules/clean-site-output)
                            (tolgraven.build.modules/check-site-sources)

@@ -1,9 +1,9 @@
 (ns tolgraven.component-fixture
   "Interactive local fixture: real blog views and local data, no remote writes."
-  (:require [reagent.core :as r]
-            [reagent.dom.client :as dom]
-            [re-frame.core :as rf]
-            [re-frame.db :as rfdb]
+  (:require [tolgraven.react :as r]
+
+
+
             [tolgraven.component :as component]
             [tolgraven.component.data :as data]
             [tolgraven.component.loading :as loading]
@@ -37,8 +37,8 @@
 (def resources [{:source :url :url "/fixtures/component-data.json" :into [:fixture :url]}])
 (defc <remote-content> {:depends resources} []
   :let [_ (swap! *created inc)]
-  [:section [:h3 @(rf/subscribe [:get :fixture :url :title])]
-   [:p @(rf/subscribe [:get :fixture :url :body])]])
+  [:section [:h3 @(r/subscribe [:get :fixture :url :title])]
+   [:p @(r/subscribe [:get :fixture :url :body])]])
 
 (defonce *cards (r/atom [{:id "one" :title "Remove me, then bring me back"}]))
 (defonce *card-unmounts (r/atom 0))
@@ -115,8 +115,8 @@
   ;; to production or changing the real application's event/sub definitions.
   (doseq [event [:user/active-user :user/trusted? :history/back-nav-from-external?
                  :comments/adding? :blog/state]]
-    (rf/reg-sub event (fn [_ _] nil)))
-  (rf/reg-sub :comments/for-q-flat
+    (r/reg-sub event (fn [_ _] nil)))
+  (r/reg-sub :comments/for-q-flat
     (fn [_ [_ _ parent]]
       (case parent
         nil {:root {:id "root" :user "author" :ts 1 :score 0
@@ -124,14 +124,14 @@
         "root" {:reply {:id "reply" :user "author" :ts 2 :score 0
                         :title "Fixture reply" :text "Reply survives rapid re-expansion."}}
         nil)))
-  (rf/reg-sub :comments/thread-expanded? (fn [_ _] @*replies-expanded?))
-  (rf/reg-sub :user/user (fn [_ _] {:id "author" :name "Local fixture author"}))
-  (rf/reg-sub :href (fn [_ _] "#fixture"))
-  (rf/reg-sub :blog/permalink-for-path (fn [_ _] "#fixture-post"))
-  (rf/reg-event-fx :run-highlighter! (fn [_ _] {}))
-  (rf/reg-sub :scope/inited? (fn [_ _] false))
+  (r/reg-sub :comments/thread-expanded? (fn [_ _] @*replies-expanded?))
+  (r/reg-sub :user/user (fn [_ _] {:id "author" :name "Local fixture author"}))
+  (r/reg-sub :href (fn [_ _] "#fixture"))
+  (r/reg-sub :blog/permalink-for-path (fn [_ _] "#fixture-post"))
+  (r/reg-event-fx :run-highlighter! (fn [_ _] {}))
+  (r/reg-sub :scope/inited? (fn [_ _] false))
   (swap! loader/*loads assoc :user
          (js/Promise.resolve {:view {:avatar (fn [_] [:span {:aria-label "Author avatar"} "JT"])}}))
   (when-not @*root
-    (reset! *root (dom/create-root (.getElementById js/document "app"))))
-  (dom/render @*root [<fixture>]))
+    (reset! *root (r/create-root (.getElementById js/document "app"))))
+  (r/render @*root [<fixture>]))

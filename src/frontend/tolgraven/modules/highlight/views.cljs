@@ -3,8 +3,8 @@
     [tolgraven.component.registry]
     [tolgraven.component.font :as font]
     [tolgraven.macros :refer-macros [defc]]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [tolgraven.modules.highlight.theme :as theme]
     ["lowlight" :as lowlight]
     ["react-syntax-highlighter/dist/esm/default-highlight$default" :as SyntaxHighlighter]
@@ -24,8 +24,8 @@
 
 ;; PreTag is an ordinary React interop boundary. Its children are the native
 ;; highlighted text tree; duplicating them mounts no highlighter or effects.
-(def font-pre (rf/reactify-component (fn [props] [<font-pre> props])))
-(def font-inline (rf/reactify-component (fn [props] [<font-inline> props])))
+(def font-pre (r/reactify-component (fn [props] [<font-pre> props])))
+(def font-inline (r/reactify-component (fn [props] [<font-inline> props])))
 
 (def syntax-highlighter (r/adapt-react-class SyntaxHighlighter))
 
@@ -54,10 +54,10 @@
                 style theme/bruvbox}}]
   (let [language (or language (when inline? (or inline-language "bash")))
         numbered? (and (not inline?) (if (nil? line-numbers?) (not basic?) line-numbers?))
-        tree (rf/use-memo #(code-tree code language default-language auto-languages)
+        tree (r/use-memo #(code-tree code language default-language auto-languages)
                          [code language default-language auto-languages])
         ;; Reuse the selected AST instead of running auto-detection twice.
-        generator (rf/use-memo
+        generator (r/use-memo
                     #(clj->js {:listLanguages (fn [] #js [])
                                :highlightAuto (fn [_] tree)})
                     [tree])]

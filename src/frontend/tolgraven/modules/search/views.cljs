@@ -5,11 +5,11 @@
     [tolgraven.component.motion :as motion]
     [tolgraven.modules.link-preview.views :as link-preview]
     [tolgraven.modules.styled-input.views :as styled-input]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [clojure.string :as string]
     [tolgraven.loader]
-    [tolgraven.components.ui :as ui]
+    [tolgraven.components.ui.loading :as ui-loading]
     [tolgraven.components.image :as img]
     [tolgraven.util :as util :refer [at]])
   (:require-macros [tolgraven.macros :as m]
@@ -17,25 +17,25 @@
 
 (m/defc <button> "Search button, press to show input field..."
   []
-  (let [open? (rf/subscribe [:search/open?])]
+  (let [open? (r/subscribe [:search/open?])]
     [:button.search-ui-btn.noborder.nomargin
      {:name "Search"
       :title "Search site"
-      :on-click #(rf/dispatch [:search/state [:open?] (not @open?)])}
+      :on-click #(r/dispatch [:search/state [:open?] (not @open?)])}
      [img/<picture> {:src "svg/search-ico.svg"
                    :alt "Search"
                    :style {:width "1.2em" :height "1.2em"
                            :filter "var(--light-to-dark)"}}]]))
 
 (m/defc ^:private <completion-letter>
-  {:features [[:appear "slide-in faster"] [:font (fn [& _] (when @(rf/subscribe [:search/open?]) font/fira))]]}
+  {:features [[:appear "slide-in faster"] [:font (fn [& _] (when @(r/subscribe [:search/open?]) font/fira))]]}
   [height letter]
   [:div [:span
            {:style {:min-height height}}
            letter]])
 
 (m/defc ^:private <completion-prefix>
-  {:features [[:font (fn [& _] (when @(rf/subscribe [:search/open?]) font/fira))]]}
+  {:features [[:font (fn [& _] (when @(r/subscribe [:search/open?]) font/fira))]]}
   [letter]
   [:span.first-char letter])
 
@@ -57,16 +57,16 @@
  [collections & {:as args :keys [query-by model height open? opts]
                  :or {height "2em"
                       query-by ["text" "title"]}}]
- (let [suggestions @(rf/subscribe [:search/autocomplete-multi collections])
-       query @(rf/subscribe [:search/get-query (first collections)])
+ (let [suggestions @(r/subscribe [:search/autocomplete-multi collections])
+       query @(r/subscribe [:search/get-query (first collections)])
        on-change #(doseq [coll collections]
-                    (rf/dispatch [:search/search coll % query-by opts false]))
+                    (r/dispatch [:search/search coll % query-by opts false]))
        on-enter #(doseq [coll collections]
-                   (rf/dispatch [:search/search coll (:text (first suggestions)) query-by opts false]))
-       on-esc #(rf/dispatch [:search/state [:open?] false])]
+                   (r/dispatch [:search/search coll (:text (first suggestions)) query-by opts false]))
+       on-esc #(r/dispatch [:search/state [:open?] false])]
    ;; The input may first mount already open after a deferred button click.
    ;; Own focus here so code loading does not consume that first interaction.
-   (rf/use-effect
+   (r/use-effect
      (fn []
        (if (and open? (exists? js/document))
          (let [input (util/elem-by-id "search-input")
@@ -98,25 +98,25 @@
 
 
 (m/defc ^:private <suggestion>
-  {:features [[:font (fn [& _] (when @(rf/subscribe [:search/open?]) font/fira))]]}
+  {:features [[:font (fn [& _] (when @(r/subscribe [:search/open?]) font/fira))]]}
   [collections {:keys [match rest query]}]
   [:div.search-autocomplete-item
    {:on-click (fn [_]
                 (doseq [coll collections]
-                  (rf/dispatch [:search/search coll (str match rest) ["text" "title"]])))}
+                  (r/dispatch [:search/search coll (str match rest) ["text" "title"]])))}
    [:b query] rest])
 
 (m/defc <suggestions> "Display a dropdown of suggested further terms"
   [collections]
-  (let [suggestions (rf/subscribe [:search/autocomplete-multi collections])
+  (let [suggestions (r/subscribe [:search/autocomplete-multi collections])
         last-suggestions (atom nil)
-        query (rf/subscribe [:search/get-query "blog-posts"])]
+        query (r/subscribe [:search/get-query "blog-posts"])]
     (fn [collections]
       (let [suggestions' (or @suggestions
                              @last-suggestions)]
         (reset! last-suggestions suggestions')
         [:div.search-autocomplete
-         {:class (when (and @(rf/subscribe [:search/open?])
+         {:class (when (and @(r/subscribe [:search/open?])
                             (not (string/blank? @query)))
                    "search-autocomplete-open")}
          (m/for [suggestion (drop 1 suggestions') ; rework as map-indexed so can highlight and pick by keyboard
@@ -135,7 +135,7 @@
 
 (m/defc <instant-result-category> "Wrapper for type of results/collection"
   [collection component inner-class appear-class]
-  (if-let [hits (:hits @(rf/subscribe [:search/results-for-query collection]))]
+  (if-let [hits (:hits @(r/subscribe [:search/results-for-query collection]))]
     [:<>
      (when (seq hits)
        (m/for [hit hits
@@ -144,7 +144,7 @@
          [<instant-result> {:appear (str appear-class " fast") :inner-class inner-class
                             :component component :highlights highlights :document document}]))]
 
-    [ui/<loading-spinner> true]))
+    [ui-loading/<loading-spinner> true]))
 
 ; these should be provided by blog probably? and other respective modules
 ; could generalize a tiny bit but tricky due to css structure
@@ -153,7 +153,7 @@
   (let [{:keys [id permalink title text user ts]} document]
     [:<>
      [:div.blog-post-header-main
-      [:a {:href @(rf/subscribe [:href :blog-post {:permalink (or permalink id)}])}
+      [:a {:href @(r/subscribe [:href :blog-post {:permalink (or permalink id)}])}
        [:h2.blog-post-title title]]
       (m/<> :blog/posted-by {:id id :user user :ts ts})
       (m/<> :blog/tags-list {:post document})]
@@ -167,7 +167,7 @@
     [:div
      [:div.blog-comment-border]
      [:section.blog-comment
-      (m/<> :user/avatar @(rf/subscribe [:user/user user]))
+      (m/<> :user/avatar @(r/subscribe [:user/user user]))
       [:div.blog-comment-main
        [:h4.blog-comment-title title]
        (m/<> :blog/posted-by {:id id :user user :ts ts})
@@ -181,7 +181,7 @@
   [open?]
   (let []
     (when (and open?
-               (not (string/blank? @(rf/subscribe [:search/get-query "blog-posts"]))))
+               (not (string/blank? @(r/subscribe [:search/get-query "blog-posts"]))))
       [:div.search-instant-results
        [:div.blog
         [<instant-result-category> "blog-posts" <blog-post-results> "blog-post" "zoom-y"]]
@@ -197,15 +197,15 @@
 (m/defc <ui> "The search ui. Initially runs over blog-posts and comments, but should later also search docs and hence source-code."
   {:features [:error-boundary]}
   [collection]
-  (let [open? (rf/subscribe [:search/open?])
-        results-open? (rf/subscribe [:search/results-open?])]
+  (let [open? (r/subscribe [:search/open?])
+        results-open? (r/subscribe [:search/results-open?])]
     (fn [collection]
       [:section.search-ui
        {:class (when @open? "search-ui-open")
-        :ref #(when % (rf/dispatch [:search/init]))}
+        :ref #(when % (r/dispatch [:search/init]))}
 
        [<box> collections
-        :model (rf/subscribe [:search/get-query "blog-posts"])
+        :model (r/subscribe [:search/get-query "blog-posts"])
         :open? @open?
         :height (if @open? "2em" "2em")]
        [<suggestions> collections]

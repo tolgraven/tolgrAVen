@@ -1,8 +1,8 @@
 (ns tolgraven.carousel-test
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
-            [re-frame.core :as re-frame]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
+
             [tolgraven.events]
             [tolgraven.subs]
             [tolgraven.modules.carousel.module]
@@ -22,11 +22,11 @@
 (deftest real-carousel-controls-cycle-and-instance-subscriptions-stay-scoped
   (async done
     (-> (go-promise
-          (let [restore-db! (re-frame/make-restore-fn)
+          (let [restore-db! (r/make-restore-fn)
                 element (.createElement js/document "div")
                 root (await! (support/create-root! element))]
             (try
-              (rf/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:init/app-db])
               (await! (support/render! root
                        [views/<carousel-normal> :test {} [[:p "One"] [:p "Two"] [:p "Three"]]]))
               (await! (support/wait-for! #(.querySelector element ".carousel-item-main")))
@@ -41,7 +41,7 @@
                 (.click (.querySelector element ".carousel-prev-btn"))
                 (await! (support/settle!))
                 (is (= "Three" (current)))
-                (rf/dispatch-sync [:carousel/set-index :other 1])
+                (r/dispatch-sync [:carousel/set-index :other 1])
                 (await! (support/settle!))
                 (is (= "Three" (current)) "Another carousel's index never changes this instance"))
               (finally (support/unmount! root) (restore-db!)))))

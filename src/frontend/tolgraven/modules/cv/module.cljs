@@ -3,7 +3,7 @@
   (:require
     [tolgraven.modules.cv.pages :as pages]
     [tolgraven.content.contract :as content-contract]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.modules.cv.views :as view]))
 
 (def spec

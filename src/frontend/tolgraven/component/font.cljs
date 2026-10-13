@@ -1,11 +1,11 @@
 (ns tolgraven.component.font
   "Committed font ownership; re-frame owns readiness and each transient fade."
   (:require [clojure.string :as string]
-            [reagent.core :as r]
+            [tolgraven.react :as r]
             [tolgraven.component.motion :as motion]
             [tolgraven.component.restore :as restore]
             [tolgraven.render-context :as context]
-            [tolgraven.react :as rf]))
+            ))
 
 (def options-schema
   [:map
@@ -40,29 +40,29 @@
 (defn native-ready? [options]
   (boolean (some #(= "loaded" (.-status %)) (faces (:initial-family options)))))
 
-(rf/reg-sub :font/instance
+(r/reg-sub :font/instance
   (fn [db [_ owner]] (get-in db [:fonts :instances owner])))
-(rf/reg-fx :font/probe
+(r/reg-fx :font/probe
   (fn [[owner options]]
-    (rf/dispatch [:font/probed owner
+    (r/dispatch [:font/probed owner
                   (native-ready? options)
                   (boolean (seq (faces (:family options))))
                   (boolean (or (motion/reduced-motion?) (restore/local-document?)))])))
-(rf/reg-fx :font/load
+(r/reg-fx :font/load
   (fn [[options token]]
     (let [key (request options)]
       (try
         (-> (.load (.-fonts js/document) key (get options :sample "MWiw0123456789"))
             (.then (fn [loaded]
-                     (rf/dispatch [:font/loaded key token (pos? (.-length loaded))])))
-            (.catch (fn [_] (rf/dispatch [:font/loaded key token false]))))
-        (catch :default _ (rf/dispatch [:font/loaded key token false]))))))
+                     (r/dispatch [:font/loaded key token (pos? (.-length loaded))])))
+            (.catch (fn [_] (r/dispatch [:font/loaded key token false]))))
+        (catch :default _ (r/dispatch [:font/loaded key token false]))))))
 
-(rf/reg-event-fx :font/attach
+(r/reg-event-fx :font/attach
   (fn [{:keys [db]} [_ owner options]]
     {:db (assoc-in db [:fonts :instances owner] {:options options, :phase :initial})
      :font/probe [owner options]}))
-(rf/reg-event-db :font/detach
+(r/reg-event-db :font/detach
   (fn [db [_ owner]]
     (if (get-in db [:fonts :instances owner])
       (update-in db [:fonts :instances] dissoc owner) db)))
@@ -70,7 +70,7 @@
 (defn- ready-instance [instance]
   (assoc instance :phase (if (:reduced? instance) :ready :prepared)))
 
-(rf/reg-event-fx :font/probed
+(r/reg-event-fx :font/probed
   (fn [{:keys [db]} [_ owner native? supported? reduced?]]
     (when-let [instance (get-in db [:fonts :instances owner])]
       (let [options (:options instance)
@@ -93,7 +93,7 @@
                    :dispatch-later [{:ms load-timeout-ms
                                      :dispatch [:font/loaded key token false]}])))))))
 
-(rf/reg-event-fx :font/loaded
+(r/reg-event-fx :font/loaded
   (fn [{:keys [db]} [_ key token success?]]
     ;; A timeout, retry, unmount or replaced owner must not revive an old fade.
     (when (= {:status :loading, :token token} (get-in db [:fonts :faces key]))
@@ -107,14 +107,14 @@
         {:db (-> db
                  (assoc-in [:fonts :faces key :status] (if success? :ready :failed))
                  (update-in [:fonts :instances] merge instances))}))))
-(rf/reg-event-fx :font/reveal
+(r/reg-event-fx :font/reveal
   (fn [{:keys [db]} [_ owner]]
     (when-let [instance (get-in db [:fonts :instances owner])]
       (when (= :prepared (:phase instance))
         {:db (assoc-in db [:fonts :instances owner :phase] :crossfade)
          :dispatch-later [{:ms (+ 50 (fade-ms (:options instance)))
                            :dispatch [:font/done owner]}]}))))
-(rf/reg-event-db :font/done
+(r/reg-event-db :font/done
   (fn [db [_ owner]]
     (if (= :crossfade (get-in db [:fonts :instances owner :phase]))
       (assoc-in db [:fonts :instances owner :phase] :ready) db)))
@@ -145,7 +145,7 @@
                                      (fn [event]
                                        (when (and (identical? (.-target event) (.-currentTarget event))
                                                   (= "font-fade-in" (.-animationName event)))
-                                         (rf/dispatch [:font/done owner])))}] children)
+                                         (r/dispatch [:font/done owner])))}] children)
                        {:key :ready})
             outgoing (with-meta (into [:span.font-text-current] children) {:key :initial})
             text [:span.font-text-stack
@@ -161,15 +161,15 @@
   {:setup (fn [options]
             {:owner (random-uuid), :options options, :phase (atom nil), :stop (atom nil)})
    :mount (fn [state _]
-            (rf/dispatch [:font/attach (:owner state) (:options state)]))
+            (r/dispatch [:font/attach (:owner state) (:options state)]))
    :unmount (fn [state]
               (when-let [stop! @(:stop state)] (stop!))
-              (rf/dispatch [:font/detach (:owner state)]))
+              (r/dispatch [:font/detach (:owner state)]))
    :render (fn [form options state]
              ;; An inactive :font never calls this renderer or acquires this
              ;; subscription. The owner appears only after its committed setup.
              (let [owner (:owner state)
-                   instance (when (and owner form) @(rf/subscribe [:font/instance owner]))
+                   instance (when (and owner form) @(r/subscribe [:font/instance owner]))
                    phase (get instance :phase :initial)]
                {:form (when form (render-font form options owner phase))
                 :commit! (when state
@@ -179,4 +179,4 @@
                                (reset! (:phase state) phase)
                                (reset! (:stop state)
                                        (when (= :prepared phase)
-                                         (motion/next-frame! #(rf/dispatch [:font/reveal owner])))))))}))})
+                                         (motion/next-frame! #(r/dispatch [:font/reveal owner])))))))}))})

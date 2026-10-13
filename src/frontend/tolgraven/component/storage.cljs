@@ -4,16 +4,16 @@
     [cljs.reader :as reader]
     [tolgraven.validation :as validation]
     [tolgraven.ssr.schema :as schema]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [tolgraven.service-status :as status]))
 
 (def missing (js-obj))
-(rf/reg-sub :component-storage/value
+(r/reg-sub :component-storage/value
   (fn [db query]
     (let [[_ path] (or (:re-frame/query-v query) query)]
       (get-in db path missing))))
-(defn state-value [path] @(rf/sub [:component-storage/value path]))
+(defn state-value [path] @(r/sub [:component-storage/value path]))
 (def prefix "tolgraven.component.v2:")
 (defonce *public-saved? (atom false))
 (defonce *identity (r/atom nil))
@@ -245,7 +245,7 @@
   ;; Capture the current page before serializing tracked state. A separate
   ;; visibility listener may run after this flush, leaving the previous offset
   ;; in the snapshot used by a full-document browser Back.
-  (rf/dispatch-sync [:scroll/save-history])
+  (r/dispatch-sync [:scroll/save-history])
   (flush! :navigation)
   (drain!)
   ;; Only mark a return after the consolidated public write succeeds.
@@ -280,7 +280,7 @@
               ;; Disk IO still belongs to the shared write queue.
               (write! id value (or (get-in @*tracked [id :options]) options)))))))))
 
-(rf/reg-fx :component-storage/commit
+(r/reg-fx :component-storage/commit
   (fn [{:keys [before after]}]
     (when (exists? js/window)
       (mirror-deletions! before after)
@@ -288,8 +288,8 @@
                   [:component :module :page :state])
         (schedule!)))))
 
-(rf/reg-global-interceptor
-  (rf/->interceptor
+(r/reg-global-interceptor
+  (r/->interceptor
     :id :component-storage/commit
     :after (fn [context]
              ;; Validation can reject a transaction by discarding its effects.
@@ -297,15 +297,15 @@
              (if (contains? (:effects context) :db)
                (update-in context [:effects :fx] (fnil conj [])
                           [:component-storage/commit
-                           {:before (rf/get-coeffect context :db)
-                            :after (rf/get-effect context :db)}])
+                           {:before (r/get-coeffect context :db)
+                            :after (r/get-effect context :db)}])
                context))))
 
 
 (def public-cache-paths [[:store :public] [:state :motion-seen]])
 (def public-cache-options {:scope :public :ttl-ms 1800000})
 
-(rf/reg-event-db :component-storage/restore-public
+(r/reg-event-db :component-storage/restore-public
   {:args [:tuple [:vector [:tuple [:vector :keyword] :any]]]}
   (fn [db [_ snapshots]]
     (reduce (fn [db [path value]]
@@ -316,7 +316,7 @@
   "Restore shared caches after bootstrap state installation. Feature caches
    install with their own modules, before those modules become renderable."
   []
-  (rf/dispatch-sync
+  (r/dispatch-sync
     [:component-storage/restore-public
      (vec (keep (fn [path]
                   (when-let [saved (read! [:state path] public-cache-options)]

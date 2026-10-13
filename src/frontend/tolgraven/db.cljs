@@ -1,6 +1,6 @@
 (ns tolgraven.db
-  (:require [reagent.core :as r]
-            [tolgraven.react :as rf]
+  (:require [tolgraven.react :as r]
+
             [cljs.reader]))
 
 
@@ -49,6 +49,6 @@
    :cookie-notice {:a :map}})
 
 
-(rf/reg-event-db :init/app-db
+(r/reg-event-db :init/app-db
   (fn [db _]
     data))

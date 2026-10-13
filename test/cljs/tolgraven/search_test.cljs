@@ -2,7 +2,7 @@
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.core.async]
             [cljs.test :refer-macros [async deftest is]]
-            [reagent.core :as r]
+            [tolgraven.react :as r]
             [tolgraven.test-support :as support]
             [tolgraven.modules.search.module]
             [tolgraven.modules.search.views :as search]))

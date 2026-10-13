@@ -1,7 +1,7 @@
 (ns tolgraven.link-preview-fixture
   "Manual browser fixture using real preview components, isolated from Firebase."
-  (:require [reagent.core :as r]
-            [reagent.dom.client :as rdom]
+  (:require [tolgraven.react :as r]
+
             [tolgraven.modules.link-preview.module]
             [tolgraven.modules.link-preview.views :as preview]
             [tolgraven.macros :refer-macros [defc]]))
@@ -33,5 +33,5 @@
 
 (defn ^:export init []
   (when-not @*root
-    (reset! *root (rdom/create-root (.getElementById js/document "app"))))
-  (rdom/render @*root [<fixture>]))
+    (reset! *root (r/create-root (.getElementById js/document "app"))))
+  (r/render @*root [<fixture>]))

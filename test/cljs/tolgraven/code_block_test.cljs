@@ -1,13 +1,13 @@
 (ns tolgraven.code-block-test
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
-            [re-frame.core :as re-frame]
-            [reagent.impl.batching :as batching]
-            [reagent.dom.client :as dom]
-            [reagent.dom.server :as server]
+            [tolgraven.react :as r]
+
+
+
             [tolgraven.render-context :as context]
             [tolgraven.modules.highlight.module :as highlight]
-            [tolgraven.react :as rf]
+
             [tolgraven.components.code-block :as code]
             [tolgraven.modules.highlight.views :as highlighter]
             [tolgraven.loader :as loader]
@@ -18,7 +18,7 @@
 
 (deftest spa-code-acquires-immediately-and-controls-preserve-content
   (async done
-    (let [restore! (re-frame/make-restore-fn)
+    (let [restore! (r/make-restore-fn)
           old-acquire loader/acquire-code!
           before @restore/*context
           *calls (atom [])
@@ -28,7 +28,7 @@
         (fn [id]
           (swap! *calls conj id)
           (js/Promise.resolve {:view {:code-block (fn [text & _] [:pre [:code text]])}})))
-      (rf/reg-fx :code-block/copy
+      (r/reg-fx :code-block/copy
         (fn [{:keys [text complete!]}] (reset! *copied text) (complete! "Copied")))
       (-> (go-promise
             (let [element (.createElement js/document "div")
@@ -67,7 +67,7 @@
     (let [old-after-page resources/after-page!
           old-acquire loader/acquire-code!
           before @restore/*context
-          before-flush batching/react-flush
+          before-flush (r/batching-flush)
           *cancelled? (atom false)
           *calls (atom [])]
       (reset! restore/*context {:hydrate? true})
@@ -79,10 +79,10 @@
               (try
                 (await! (support/render! root [code/<code-block> "(inc 1)"]))
                 (is (empty? @*calls))
-                (is (identical? batching/react-flush rf/start-transition))
+                (is (identical? (r/batching-flush) r/start-transition))
                 (finally (support/unmount! root)))
               (is @*cancelled?)
-              (is (identical? batching/react-flush before-flush))))
+              (is (identical? (r/batching-flush) before-flush))))
           (.catch #(is false (str %)))
           (.finally (fn [] (set! resources/after-page! old-after-page)
                       (set! loader/acquire-code! old-acquire)
@@ -92,7 +92,7 @@
   (async done
     (let [old-after-page resources/after-page!
           before @restore/*context
-          before-flush batching/react-flush]
+          before-flush (r/batching-flush)]
       (restore/begin! {:hydrate? true})
       (set! resources/after-page! (fn [_] (fn [])))
       (-> (go-promise
@@ -100,11 +100,11 @@
                   root (await! (support/create-root! element))]
               (try
                 (await! (support/render! root [code/<code-block> "(inc 1)"]))
-                (is (identical? batching/react-flush rf/start-transition))
+                (is (identical? (r/batching-flush) r/start-transition))
                 (restore/navigate! "/different-page")
-                (is (identical? batching/react-flush before-flush))
+                (is (identical? (r/batching-flush) before-flush))
                 (finally (support/unmount! root)))
-              (is (identical? batching/react-flush before-flush))))
+              (is (identical? (r/batching-flush) before-flush))))
           (.catch #(is false (str %)))
           (.finally (fn []
                       (set! resources/after-page! old-after-page)
@@ -123,14 +123,14 @@
 
 (deftest copy-gestures-cancel-selection-drag-exit-and-touch-scroll
   (async done
-    (let [restore! (re-frame/make-restore-fn)
+    (let [restore! (r/make-restore-fn)
           old-acquire loader/acquire-code!
           before @restore/*context
           *copies (atom [])]
       (reset! restore/*context {:hydrate? false})
       (set! loader/acquire-code!
         (fn [_] (js/Promise.resolve {:view {:code-block highlighter/<code-block>}})))
-      (rf/reg-fx :code-block/copy
+      (r/reg-fx :code-block/copy
         (fn [{:keys [text complete!]}] (swap! *copies conj text) (complete! "Copied")))
       (-> (go-promise
             (let [element (.createElement js/document "div")
@@ -208,7 +208,7 @@
 
 (deftest copying-server-tokens-does-not-wait-for-the-formatter
   (async done
-    (let [restore! (re-frame/make-restore-fn)
+    (let [restore! (r/make-restore-fn)
           old-acquire loader/acquire-code!
           old-after-page resources/after-page!
           before @restore/*context
@@ -223,7 +223,7 @@
         (fn [id]
           (swap! *calls conj id)
           (js/Promise.resolve {:view {:code-block highlighter/<code-block>}})))
-      (rf/reg-fx :code-block/copy
+      (r/reg-fx :code-block/copy
         (fn [{:keys [text complete!]}] (swap! *copies conj text) (complete! "Copied")))
       (-> (go-promise
             (let [element (.createElement js/document "div")
@@ -232,9 +232,9 @@
               (set! (.-innerHTML element)
                 (binding [context/*server?* true
                           context/*modules* {:highlight highlight/spec}]
-                  (server/render-to-string view)))
+                  (r/render-to-string view)))
               (let [token (.querySelector element "code span")
-                    root (dom/hydrate-root element view)]
+                    root (r/hydrate-root element view)]
                 (try
                   (await! (support/wait-for! #(some? @*release)))
                   (await! (support/settle!))
@@ -262,7 +262,7 @@
                   (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 550))))
                   (is (= ["(inc 1)" "(inc 1)"] @*copies) "Hydration never replays an already handled copy gesture")
                   (is (identical? token (.querySelector element "code span")))
-                  (finally (dom/unmount root) (.remove element)))
+                  (finally (r/unmount root) (.remove element)))
                 (is (empty? (filter #(= :code-block (:owner %)) (vals @listener/*bindings)))
                     "Unmount releases the native SSR pointer adapter"))))
           (.catch #(is false (str %)))
@@ -275,14 +275,14 @@
 
 (deftest copy-feedback-reports-failure-resets-and-discards-old-source-results
   (async done
-    (let [restore! (re-frame/make-restore-fn)
+    (let [restore! (r/make-restore-fn)
           old-acquire loader/acquire-code!
           before @restore/*context
           *requests (atom [])]
       (reset! restore/*context {:hydrate? false})
       (set! loader/acquire-code!
         (fn [_] (js/Promise.resolve {:view {:code-block highlighter/<code-block>}})))
-      (rf/reg-fx :code-block/copy #(swap! *requests conj %))
+      (r/reg-fx :code-block/copy #(swap! *requests conj %))
       (-> (go-promise
             (let [element (.createElement js/document "div")
                   root (await! (support/create-root! element))]

@@ -1,17 +1,17 @@
 (ns tolgraven.modules.instagram.subs
   (:require
-    [tolgraven.react :as rf]))
+    [tolgraven.react :as r]))
 
-(rf/reg-sub :instagram/data
+(r/reg-sub :instagram/data
  (fn [db [_ path]]
    (get-in db (into [:instagram] path))))
 
-(rf/reg-sub :instagram/content
+(r/reg-sub :instagram/content
  :<- [:content [:instagram]]
  (fn [content [_ path]]
    (get-in content path)))
 
-(rf/reg-sub :instagram/posts
+(r/reg-sub :instagram/posts
  :<- [:instagram/content [:posts]]
  (fn [posts-map [_ amount]]
    (some->> posts-map
@@ -20,18 +20,18 @@
                         (if (js/Number.isFinite ms) ms 0)) >)
             (take amount))))
 
-(rf/reg-sub :instagram/posts-urls
+(r/reg-sub :instagram/posts-urls
  :<- [:instagram/posts]
  (fn [posts [_ amount page]]
    (->> posts
         (map :media_url)
         (take amount))))
 
-(rf/reg-sub :instagram/prev-page-url
+(r/reg-sub :instagram/prev-page-url
  :<- [:instagram [:paging]]
  (fn [paging [_]]
    (get paging :prev)))
-(rf/reg-sub :instagram/next-page-url
+(r/reg-sub :instagram/next-page-url
  :<- [:instagram [:paging]]
  (fn [paging [_]]
    (get paging :next)))

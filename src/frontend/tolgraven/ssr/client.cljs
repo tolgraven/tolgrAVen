@@ -1,7 +1,7 @@
 (ns tolgraven.ssr.client
   (:require [clojure.string :as string]
-            [reagent.core :as r]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
+
             [tolgraven.component.restore :as restore]
             [tolgraven.render-context :as context]
             [tolgraven.ssr.contract :as contract]
@@ -11,10 +11,10 @@
 
 (def *snapshot context/*snapshot)
 
-(rf/reg-event-db :page/install-public-state
+(r/reg-event-db :page/install-public-state
   (fn [db [_ value]] (contract/merge-state db value)))
 
-(rf/reg-event-fx :page/install-metadata
+(r/reg-event-fx :page/install-metadata
   (fn [_ [_ snapshot]]
     (when-let [title (:document-title snapshot)]
       {:document/set-title title})))
@@ -34,15 +34,15 @@
                      (= (.-pathname js/location) (:path snapshot))
                      (vector? (:posts snapshot)))
         (throw (js/Error. "Invalid page hydration snapshot")))
-      (rf/dispatch-sync [:page/install-public-state (contract/snapshot-state snapshot)])
+      (r/dispatch-sync [:page/install-public-state (contract/snapshot-state snapshot)])
       (reset! *snapshot snapshot)
       (restore/install-module-views! (:module-views snapshot))
-      (rf/dispatch-sync [:page/install-metadata snapshot])
+      (r/dispatch-sync [:page/install-metadata snapshot])
       (reset! context/*interactive? false)
       snapshot)))
 
 (r/defc <hydrate> [form]
-  (rf/use-layout-effect
+  (r/use-layout-effect
    (fn []
      ;; Run after the hydration commit, before the browser's next paint. Reagent
      ;; flushes with React.flushSync, which cannot run inside a React lifecycle.
@@ -53,8 +53,8 @@
             (reset! context/*interactive? true)
             (r/flush)
             (when (and ^boolean goog.DEBUG (:hydrate? @restore/*context))
-              (rf/dispatch [:dev-console/hydrated]))
-            (rf/dispatch [:page/hydrated])
+              (r/dispatch [:dev-console/hydrated]))
+            (r/dispatch [:page/hydrated])
             (restore/hydrated!))))
        #(reset! *active? false))) [])
   form)

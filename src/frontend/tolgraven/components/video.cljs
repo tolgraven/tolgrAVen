@@ -4,19 +4,19 @@
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
     [clojure.string :as string]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [tolgraven.content.schema :as content]
     [tolgraven.components.video.sources :as sources]
     [tolgraven.components.image :as img]))
 
 (defn- use-source-attrs [attrs]
   (let [lazy? (= "lazy" (:loading attrs))
-        [visible? show!] (rf/use-state false)
-        *element (rf/use-ref nil)
+        [visible? show!] (r/use-state false)
+        *element (r/use-ref nil)
         caller-ref (:ref attrs)
-        capture! (rf/use-memo #(rf/compose-refs *element caller-ref) [*element caller-ref])]
-    (rf/use-effect
+        capture! (r/use-memo #(r/compose-refs *element caller-ref) [*element caller-ref])]
+    (r/use-effect
      (fn []
        (if (and lazy? (not visible?) (.-current *element))
          (if (exists? js/IntersectionObserver)

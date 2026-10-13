@@ -1,6 +1,6 @@
 (ns tolgraven.render-context
   "Request context shared by ordinary views during SSR and initial hydration."
-  (:require [reagent.core :as r]))
+  (:require [tolgraven.react :as r]))
 
 (def ^:dynamic *server?* false)
 (def ^:dynamic *modules* nil)

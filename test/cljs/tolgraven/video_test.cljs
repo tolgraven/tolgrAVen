@@ -2,12 +2,12 @@
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.core.async]
             [cljs.test :refer-macros [async deftest is]]
-            [reagent.dom.server :as server]
+            [tolgraven.react :as r]
             [tolgraven.components.video :as video]
             [tolgraven.test-support :as support]))
 
 (deftest responsive-video-retains-full-size-codec-fallbacks
-  (let [html (server/render-to-string
+  (let [html (r/render-to-string
                [video/<video> {:src "media/fog-3d-small.mp4"}])]
     (is (.includes html "media=\"(max-width: 43.75em)\""))
     (is (< (.indexOf html "fog-3d-small-800w-av1.webm")
@@ -16,7 +16,7 @@
     (is (.includes html "src=\"media/fog-3d-small.mp4\""))))
 
 (deftest distant-autoplay-video-keeps-its-poster-without-requesting-sources
-  (let [html (server/render-to-string
+  (let [html (r/render-to-string
                [video/<video> {:src "/media/clip.mp4"
                                :poster "/img/poster.jpg"
                                :loading "lazy"

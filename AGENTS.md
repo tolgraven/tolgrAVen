@@ -12,7 +12,7 @@ Do not retain completed investigation diaries or historical test counts as curre
   and ownership instructions live in `features/reagent-native-refactor.md`.
   See `doc/reagent-2-react-19-guide.md` for the library comparison and design rationale.
 - Reagent 2 / React 19 components use `defc`; spec-capable instances accept map
-  specs or feature-vector shorthand. Full pages use `defpage` and always have an error boundary. Application re-frame calls go through `tolgraven.react`.
+  specs or feature-vector shorthand. Full pages use `defpage` and always have an error boundary. Application React, Reagent and re-frame calls go through `tolgraven.react` as `r`; raw framework imports belong to its runtime boundary.
 - Module-local `pages.cljc` files contain native Reitit route trees. Module specs expose these declarations; browser and server routers compose them.
 - JVM adapters acquire public data with snapshot-owned, bounded Supabase REST
   connections; the eager Shadow `:ssr` Node build renders the same page components as the browser. `:ssr` in config controls streaming and worker settings.
@@ -47,6 +47,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 
 ## Project Structure & Module Organization
 - `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code, and shared CLJC infrastructure. Feature implementations and their portable declarations live in `src/frontend/tolgraven/modules/<module>/`.
+- `components/ui/` groups shared UI by component type; `components/ui.cljs` keeps
+  compatibility identities. New consumers import their focused owner directly.
 - `src/frontend/tolgraven/components/`: reusable rendered UI and site shell;
   `component/` contains the declaration/lifecycle runtime.
 - `experiments/clj`: preserved JVM prototypes, compiled only with `:experiments`.

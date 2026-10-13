@@ -3,12 +3,12 @@
   (:require [cljs.core.async]
             [tolgraven.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
-            [reagent.core :as r]
-            [reagent.ratom :as ratom]
-            [reagent.dom.client :as dom]
-            [re-frame.db :as rfdb]
-            [re-frame.core :as rf]
-            [re-frame.tooling :as tooling]
+            [tolgraven.react :as r]
+
+
+
+
+
             [tolgraven.component :as component]
             [tolgraven.events]
             [tolgraven.component.data :as data]
@@ -21,7 +21,7 @@
 (defn- tick! [] (js/Promise. (fn [resolve _] (js/setTimeout resolve 35))))
 (defn- fixture
   []
-  (go-promise (let [before @rfdb/app-db
+  (go-promise (let [before @r/*app-db
                     context @restore/*context
                     tracked @storage/*tracked
                     element (.createElement js/document "div")
@@ -31,7 +31,7 @@
                  :element element,
                  :close! #(do (do (support/unmount! root))
                               (.remove element)
-                              (reset! rfdb/app-db before)
+                              (reset! r/*app-db before)
                               (reset! restore/*context context)
                               (reset! storage/*tracked tracked))})))
 (defc <counter>
@@ -42,7 +42,7 @@
   {:features [[:appear "opacity"]],
    :depends [{:source :url, :url "/never-needed", :into [:persist-test :content]}]}
   []
-  [:article @(rf/subscribe [:get :persist-test :content])])
+  [:article @(r/subscribe [:get :persist-test :content])])
 (defc <pending> {:depends [{:source :persist-test}]} [] [:article "Loaded"])
 (defc <skeleton>
   {:depends [{:source :persist-test}],
@@ -67,7 +67,7 @@
                                           (is (= "1" (.-textContent element)))
                                           (state/dump!)
                                           (await! (render! root [:p "New document"]))
-                                          (rf/dispatch-sync [:unset [:component]])
+                                          (r/dispatch-sync [:unset [:component]])
                                           (await! (render! root [<counter>]))
                                           (is (= "0" (.-textContent element))
                                               "Explicit deletion invalidates the local snapshot"))))
@@ -103,7 +103,7 @@
          (-> (go-promise
                (let [{:keys [root element close!]} (await! (fixture))]
                  (restore/begin! {:hydrate? true})
-                 (rf/dispatch-sync [:component-data/install [:persist-test :content]
+                 (r/dispatch-sync [:component-data/install [:persist-test :content]
                                     "Server content"])
                  (await! (render! root [<ready>]))
                  (is (= "Server content" (.-textContent element)))
@@ -126,7 +126,7 @@
                                :persist {:scope :public},
                                :into [:persist-test :cached]}
                      id [:resource (dissoc resource :persist)]
-                     before @rfdb/app-db
+                     before @r/*app-db
                      *calls (atom 0)]
                  (storage/write! id "Cached" {:scope :public})
                  (data/register-source! :persist-test {:load! (fn [_] (swap! *calls inc) "Fresh")})
@@ -134,18 +134,18 @@
                      (.then (fn [value]
                               (is (= "Cached" value))
                               (is (= 0 @*calls))
-                              (is (= "Cached" (get-in @rfdb/app-db [:persist-test :cached])))
+                              (is (= "Cached" (get-in @r/*app-db [:persist-test :cached])))
                               (data/retry! [resource])))
                      (.then (fn [_]
                               (is (= 1 @*calls))
-                              (is (= "Fresh" (get-in @rfdb/app-db [:persist-test :cached])))))
+                              (is (= "Fresh" (get-in @r/*app-db [:persist-test :cached])))))
                      (.catch #(is false (str %)))
                      (.finally (fn []
                                  (data/invalidate! #{resource})
                                  (storage/remove! id {:scope :public})
                                  (swap! storage/*tracked dissoc id)
                                  (swap! data/*sources dissoc :persist-test)
-                                 (reset! rfdb/app-db before)
+                                 (reset! r/*app-db before)
                                  (done))))))
              (.catch (fn [error] (is false (str error)) (done))))))
 (deftest placeholder-and-skeleton-are-only-shown-for-missing-data
@@ -176,16 +176,16 @@
   (async
     done
     (-> (go-promise
-          (let [before @rfdb/app-db
+          (let [before @r/*app-db
                 context @restore/*context
                 element (.createElement js/document "div")]
             (.appendChild (.-body js/document) element)
             (set! (.-innerHTML element)
                   "<article class=\"appear-wrapper opacity appeared\">Server content</article>")
             (restore/begin! {:hydrate? true})
-            (rf/dispatch-sync [:component-data/install [:persist-test :content] "Server content"])
+            (r/dispatch-sync [:component-data/install [:persist-test :content] "Server content"])
             (let [server-node (.-firstElementChild element)
-                  root (dom/hydrate-root element [<ready>])]
+                  root (r/hydrate-root element [<ready>])]
               (-> (tick!)
                   (.then (fn [_]
                            (r/flush)
@@ -197,7 +197,7 @@
                               (support/unmount! root)
                               (.remove element)
                               (data/invalidate! #(= "/never-needed" (:url %)))
-                              (reset! rfdb/app-db before)
+                              (reset! r/*app-db before)
                               (reset! restore/*context context)
                               (done)))))))
         (.catch (fn [error] (is false (str error)) (done))))))
@@ -207,7 +207,7 @@
     (->
       (go-promise
         (let [{:keys [root element close!]} (await! (fixture))]
-          (rf/dispatch-sync [:unset [:component]])
+          (r/dispatch-sync [:unset [:component]])
           (doseq [key ["first" "second"]]
             (storage/remove! [:state
                               [:component "tolgraven.component-persistence-test" :persist-test key]]
@@ -232,7 +232,7 @@
                                        (and (#{:component-state/scoped-value :component-state/entry}
                                              (first query))
                                             (= :persist-test (nth (second query) 2 nil))))
-                                     (tooling/live-query-vs))
+                                     (r/live-query-vs))
                            "Unmount releases both re-frame subscriptions, not their cached values")
                          (await! (render! root
                                           [:div (with-meta [<counter>] {:key "first"})
@@ -306,7 +306,7 @@
           (let [{:keys [root element close!]} (await! (fixture))
                 base [:component "tolgraven.component-persistence-test" "<scoped-toggle>"]]
             (await! (render! root [:div [<scoped-toggle>] [<scoped-toggle>]]))
-            (is (false? (get-in @rfdb/app-db (into base [:opts :setting]))))
+            (is (false? (get-in @r/*app-db (into base [:opts :setting]))))
             (.click (aget (.querySelectorAll element "button") 0))
             (-> (tick!)
                 (.then (fn [_]
@@ -321,8 +321,8 @@
                            (is (not-any? (fn [query]
                                            (and (= :component-state/scoped-value (first query))
                                                 (= "<scoped-toggle>" (nth (second query) 2 nil))))
-                                         (tooling/live-query-vs)))
-                           (is (true? (get-in @rfdb/app-db (into base [:opts :setting]))))
+                                         (r/live-query-vs)))
+                           (is (true? (get-in @r/*app-db (into base [:opts :setting]))))
                            (await! (render! root [:div [<scoped-toggle>] [<scoped-toggle>]]))
                            (is (= ["true" "true"]
                                   (mapv #(.-textContent %)
@@ -355,7 +355,7 @@
                      (.then (fn [_]
                               (r/flush)
                               (is (= "12" (.-textContent element)))
-                              (is (= 12 (get-in @rfdb/app-db path)))))
+                              (is (= 12 (get-in @r/*app-db path)))))
                      (.catch #(is false (str %)))
                      (.finally (fn [] (close!) (done))))))
              (.catch (fn [error] (is false (str error)) (done))))))
@@ -397,9 +397,9 @@
                        (r/flush)
                        (is (= "true" (.-textContent element))
                            (str "disk=" (pr-str (get @storage/*buckets owner))
-                                " state=" (pr-str (get-in @rfdb/app-db (subvec root-path 0 3)))
-                                " revisions=" (pr-str (:component-revisions @rfdb/app-db))))
-                       (is (true? (get-in @rfdb/app-db (into root-path [:opts :setting]))))))
+                                " state=" (pr-str (get-in @r/*app-db (subvec root-path 0 3)))
+                                " revisions=" (pr-str (:component-revisions @r/*app-db))))
+                       (is (true? (get-in @r/*app-db (into root-path [:opts :setting]))))))
               (.catch #(is false (str %)))
               (.finally (fn []
                           (set! storage/read-disk! original)
@@ -412,17 +412,17 @@
                           (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))
 (deftest late-restoration-preserves-explicit-edits-even-when-equal-to-default
-  (let [before @rfdb/app-db
+  (let [before @r/*app-db
         root (binding [state/*component* {:ns "restore-test", :name "setting"}] (state/path-for {}))
         leaf (into root [:opts :setting])]
-    (try (rf/dispatch-sync [:component-state/init root nil])
-         (rf/dispatch-sync [:component-state/init leaf false])
-         (rf/dispatch-sync [:component-state/restore root 0 {:opts {:setting true}}])
-         (is (true? (get-in @rfdb/app-db leaf)) "Cached content replaces initialization defaults")
-         (rf/dispatch-sync [:component-state/reset leaf false])
-         (rf/dispatch-sync [:component-state/restore root 0 {:opts {:setting true}}])
-         (is (false? (get-in @rfdb/app-db leaf)) "An explicit edit wins over a late disk read")
-         (finally (reset! rfdb/app-db before)))))
+    (try (r/dispatch-sync [:component-state/init root nil])
+         (r/dispatch-sync [:component-state/init leaf false])
+         (r/dispatch-sync [:component-state/restore root 0 {:opts {:setting true}}])
+         (is (true? (get-in @r/*app-db leaf)) "Cached content replaces initialization defaults")
+         (r/dispatch-sync [:component-state/reset leaf false])
+         (r/dispatch-sync [:component-state/restore root 0 {:opts {:setting true}}])
+         (is (false? (get-in @r/*app-db leaf)) "An explicit edit wins over a late disk read")
+         (finally (reset! r/*app-db before)))))
 (defc <wrapped-key-setting>
   {:features [:error-boundary],
    :depends [],
@@ -443,8 +443,8 @@
                            (-> (tick!)
                                (.then (fn [_]
                                         (r/flush)
-                                        (is (= 1 (get-in @rfdb/app-db (conj base 0))))
-                                        (is (nil? (get-in @rfdb/app-db (conj base "manual"))))
+                                        (is (= 1 (get-in @r/*app-db (conj base 0))))
+                                        (is (nil? (get-in @r/*app-db (conj base "manual"))))
                                         (is (= "1" (.-textContent element)))))
                                (.catch #(is false (str %)))
                                (.finally (fn [] (close!) (done))))))
@@ -454,7 +454,7 @@
     done
     (->
       (go-promise
-        (let [before @rfdb/app-db
+        (let [before @r/*app-db
               tracked @storage/*tracked
               old-owner @storage/*identity
               owner (random-uuid)
@@ -462,13 +462,13 @@
               path [:component "deletion-test" "panel"]
               id [:state path]]
           (reset! storage/*identity owner)
-          (rf/dispatch-sync [:component-state/reset path {:keep false, :remove "Old value"}])
+          (r/dispatch-sync [:component-state/reset path {:keep false, :remove "Old value"}])
           (storage/track! id #(storage/state-value path) options)
           (storage/write! id {:keep false, :remove "Old value"} options)
-          (rf/dispatch-sync [:unset (conj path :remove)])
+          (r/dispatch-sync [:unset (conj path :remove)])
           (is (= {:keep false} (:value (storage/read! id options)))
               "Nested deletion preserves siblings")
-          (rf/dispatch-sync [:unset path])
+          (r/dispatch-sync [:unset path])
           (is (nil? (storage/read! id options)))
           (storage/flush!)
           (-> (tick!)
@@ -481,7 +481,7 @@
               (.finally (fn []
                           (.removeItem js/localStorage (storage/storage-key id options))
                           (reset! storage/*tracked tracked)
-                          (reset! rfdb/app-db before)
+                          (reset! r/*app-db before)
                           (swap! storage/*buckets dissoc owner)
                           (swap! storage/*reads dissoc owner)
                           (swap! storage/*ready disj owner)
@@ -494,7 +494,7 @@
     done
     (->
       (go-promise
-        (let [before @rfdb/app-db
+        (let [before @r/*app-db
               old-owner @storage/*identity
               owner (random-uuid)
               options {:scope :user}
@@ -506,8 +506,8 @@
                             :value "Deleted before loading storage"}}]
           (reset! storage/*identity owner)
           (storage/write-disk! (storage/storage-key id options) (pr-str snapshot))
-          (rf/dispatch-sync [:component-state/reset path "Deleted before loading storage"])
-          (rf/dispatch-sync [:unset path])
+          (r/dispatch-sync [:component-state/reset path "Deleted before loading storage"])
+          (r/dispatch-sync [:unset path])
           (-> (storage/ready! options)
               (.then (fn [_] (tick!)))
               (.then (fn [_]
@@ -517,7 +517,7 @@
               (.catch #(is false (str %)))
               (.finally (fn []
                           (.removeItem js/localStorage (storage/storage-key id options))
-                          (reset! rfdb/app-db before)
+                          (reset! r/*app-db before)
                           (swap! storage/*buckets dissoc owner)
                           (swap! storage/*reads dissoc owner)
                           (swap! storage/*ready disj owner)
@@ -549,7 +549,7 @@
           (doseq [[path initial] [[[:module :blog :handle-test] 10]
                                   [[:page :test-page :handle-test] 20]
                                   [[:state :handle-test] 30]]]
-            (rf/dispatch-sync [:component-state/initialize path {:initial initial}]))
+            (r/dispatch-sync [:component-state/initialize path {:initial initial}]))
           (await! (render! root [<scope-controls>]))
           (let [[*comp *module *page *global] @*scope-handles]
             (is (= [0 10 20 30] (mapv deref @*scope-handles)))
@@ -558,7 +558,7 @@
             (is (= [:module :blog :handle-test] (component/path-of *module)))
             (is (= [:page :test-page :handle-test] (component/path-of *page)))
             (is (= [:state :handle-test] (component/path-of *global)))
-            (is (identical? *comp (rf/subscribe [:component-state/scoped-value (component/path-of *comp) {:initial 0}]))
+            (is (identical? *comp (r/subscribe [:component-state/scoped-value (component/path-of *comp) {:initial 0}]))
                 "The state handle is the native re-frame subscription")
             (component/>reset *comp 4)
             (component/>update *comp inc)
@@ -583,7 +583,7 @@
                                              (and (= :component-state/scoped-value (first query))
                                                   (some #{(second query)}
                                                         (map component/path-of @*scope-handles))))
-                                           (tooling/live-query-vs)))
+                                           (r/live-query-vs)))
                                      (await! (render! root [<scope-controls>]))
                                      (is (= "[8 42 23 34]" (.-textContent element))
                                          "Unmount retains state for every scope"))))
@@ -645,8 +645,8 @@
     (-> (go-promise
           (let [path [:persist-test :stable-missing]
                 *runs (atom {:state 0, :data 0})
-                state-entry (rf/subscribe [:component-state/entry path])
-                data-entry (rf/subscribe [:component-data/installed path])
+                state-entry (r/subscribe [:component-state/entry path])
+                data-entry (r/subscribe [:component-data/installed path])
                 mounted (await! (support/mount-subscriptions!
                                  {:state [:component-state/entry path]
                                   :data [:component-data/installed path]}))]
@@ -658,43 +658,43 @@
                   (is (= {:present? false, :value nil, :revision 0} @state-result))
                   (is (= {:present? false, :value nil} @data-result))
                   (let [before @*runs]
-                    (rf/dispatch [:component-data/install [:persist-test :unrelated] :changed])
+                    (r/dispatch [:component-data/install [:persist-test :unrelated] :changed])
                     (await! (support/settle!))
                     (is (= before @*runs) "Unchanged absence does not rerun derived consumers"))
                   (doseq [value [nil false 42]]
-                    (rf/dispatch [:component-data/install path value])
+                    (r/dispatch [:component-data/install path value])
                     (await! (support/settle!))
                     (is (= {:present? true, :value value, :revision 0} @state-result))
                     (is (= {:present? true, :value value} @data-result)))
-                  (rf/dispatch [:component-data/remove path])
+                  (r/dispatch [:component-data/remove path])
                   (await! (support/settle!))
                   (is (false? (:present? @state-result)))
                   (is (false? (:present? @data-result)))
                   (finally (r/dispose! state-result) (r/dispose! data-result))))
               (finally
                 ((:unmount! mounted))
-                (rf/dispatch [:component-data/remove path])
-                (rf/dispatch [:component-data/remove [:persist-test :unrelated]])))))
+                (r/dispatch [:component-data/remove path])
+                (r/dispatch [:component-data/remove [:persist-test :unrelated]])))))
         (.catch #(is false (str %)))
         (.finally done))))
 
 (deftest nonpersistent-value-reads-do-not-initialize-state
-  (let [before @rfdb/app-db
+  (let [before @r/*app-db
         path [:state :read-only-default]
         *value (state/<sub :global [:read-only-default] {:initial false})]
     (try
       (is (false? @*value))
-      (is (= before @rfdb/app-db) "A fallback is a value, not a write")
-      (rf/dispatch-sync [:component-state/initialize path {:initial false}])
-      (rf/dispatch-sync [:component-state/reset path true])
-      (rf/dispatch-sync [:component-state/initialize path {:initial false}])
+      (is (= before @r/*app-db) "A fallback is a value, not a write")
+      (r/dispatch-sync [:component-state/initialize path {:initial false}])
+      (r/dispatch-sync [:component-state/reset path true])
+      (r/dispatch-sync [:component-state/initialize path {:initial false}])
       (is (true? @*value) "Repeated initialization preserves edits")
-      (finally (ratom/dispose! *value) (reset! rfdb/app-db before)))))
+      (finally (r/dispose! *value) (reset! r/*app-db before)))))
 
 (deftest persistent-value-source-and-eager-owner-share-idempotent-loading
   (async done
     (-> (go-promise
-          (let [before @rfdb/app-db
+          (let [before @r/*app-db
                 tracked @storage/*tracked
                 original-ready storage/ready!
                 original-read storage/read!
@@ -711,13 +711,13 @@
               (try
                 (is (= 0 @*value) "Subscription immediately supplies its fallback")
                 (await! (tick!))
-                (is (= 0 (get-in @rfdb/app-db path)) "Acquisition dispatches the load event")
-                (rf/dispatch-sync [:component-state/initialize path options])
-                (rf/dispatch-sync [:component-state/load path options])
-                (rf/dispatch-sync [:component-state/reset edited-path 12])
+                (is (= 0 (get-in @r/*app-db path)) "Acquisition dispatches the load event")
+                (r/dispatch-sync [:component-state/initialize path options])
+                (r/dispatch-sync [:component-state/load path options])
+                (r/dispatch-sync [:component-state/reset edited-path 12])
                 (let [restored (-> ready
                                    (.then (fn [_]
-                                            (is (= 7 (get-in @rfdb/app-db path))
+                                            (is (= 7 (get-in @r/*app-db path))
                                                 "Storage readiness cannot expose defaults to a following autosave"))))]
                   (@*release nil)
                   (await! restored))
@@ -725,15 +725,15 @@
                 (is (= 7 @*value) "Storage returns through a result event into app-db")
                 (is (= 12 @*edited) "Late restoration preserves intervening edits")
                 (is (= 2 @*reads) "One snapshot read per path, shared with eager initialization")
-                (rf/dispatch-sync [:component-state/load path options])
+                (r/dispatch-sync [:component-state/load path options])
                 (await! (tick!))
                 (is (= 2 @*reads) "Already loaded state does not acquire storage again")
                 (finally
-                  (ratom/dispose! *value)
-                  (ratom/dispose! *edited)
+                  (r/dispose! *value)
+                  (r/dispose! *edited)
                   (set! storage/ready! original-ready)
                   (set! storage/read! original-read)
                   (reset! storage/*tracked tracked)
-                  (reset! rfdb/app-db before))))))
+                  (reset! r/*app-db before))))))
         (.catch #(is false (str %)))
         (.finally done))))

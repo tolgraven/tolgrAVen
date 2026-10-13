@@ -3,8 +3,8 @@
    subscribed, and coalesce invalidations before issuing filtered HTTP reads."
   (:require [tolgraven.validation.runtime :as validation]
             [tolgraven.supabase.schema :as schema]
-            [tolgraven.react :as rf]
-            [reagent.ratom :as ratom]
+            [tolgraven.react :as r]
+
             [tolgraven.supabase.query :as query]
             [tolgraven.supabase.connection :as connection]
             [tolgraven.service-status :as status]))
@@ -15,20 +15,20 @@
 (defonce *transport (atom nil))
 
 (defn query-key [opts] (pr-str (query/normalize-query opts)))
-(rf/reg-sub :store/scoped (fn [db [_ key]] (get-in db [:store :scoped key])))
-(rf/reg-event-db :store/scoped
+(r/reg-sub :store/scoped (fn [db [_ key]] (get-in db [:store :scoped key])))
+(r/reg-event-db :store/scoped
   (fn [db [_ key value]] (assoc-in db [:store :scoped key] value)))
 
 (declare queue! load! drain!)
 
-(rf/reg-event-db :store/scoped-batch
+(r/reg-event-db :store/scoped-batch
   (fn [db [_ values]]
     (-> db (update-in [:store :scoped] merge values)
         (update-in [:store :query-errors] #(apply dissoc % (keys values))))))
 
-(rf/reg-event-db :store/scoped-error
+(r/reg-event-db :store/scoped-error
   (fn [db [_ key error]] (assoc-in db [:store :query-errors key] error)))
-(rf/reg-sub :store/query-error
+(r/reg-sub :store/query-error
   (fn [db [_ opts]] (get-in db [:store :query-errors (query-key opts)])))
 
 (defn- active? [key entry transport]
@@ -55,13 +55,13 @@
                                            {(query/path-part (first (:path-collection opts)))
                                             (into {} (map (juxt :id :data)) (:docs value))} opts))]))) entries)]
             (when (seq values)
-              (rf/dispatch [:store/scoped-batch
+              (r/dispatch [:store/scoped-batch
                             (merge (query/document-caches opts value) values)]))))
         (fn [_]
           (doseq [[key {:keys [*loading *retry] :as entry} :as pair] entries
                   :when (active? key entry transport)]
             (reset! *loading false)
-            (rf/dispatch [:store/scoped-error key
+            (r/dispatch [:store/scoped-error key
                           {:title "Content unavailable"
                            :message "The requested content could not load. Try again."}])
             (status/fail! [:supabase-scoped key] "Content unavailable"
@@ -114,7 +114,7 @@
         (load! entries)))))
 
 (defn queue! []
-  (when-not @*tick (reset! *tick (js/setTimeout #(rf/dispatch [:store/drain-readers]) 0))))
+  (when-not @*tick (reset! *tick (js/setTimeout #(r/dispatch [:store/drain-readers]) 0))))
 
 (defn connect! [client read!]
   (doseq [table (keys @*channels)] (close-channel! table))
@@ -129,9 +129,9 @@
   (validation/check! :supabase/query schema/query opts)
   (let [key (query-key opts)]
     (or (get-in @*readers [key :*state])
-        (let [state (ratom/make-reaction
+        (let [state (r/make-reaction
                      ;; nil means pending; {:docs []} is a completed empty result.
-                     #(deref (rf/subscribe [:store/scoped key]))
+                     #(deref (r/subscribe [:store/scoped key]))
                      :on-dispose
                      (fn []
                        (when-let [entry (get @*readers key)]
@@ -144,5 +144,5 @@
           (queue!)
           state))))
 
-(rf/reg-fx :store/drain-readers (fn [_] (drain!)))
-(rf/reg-event-fx :store/drain-readers (fn [_ _] {:store/drain-readers true}))
+(r/reg-fx :store/drain-readers (fn [_] (drain!)))
+(r/reg-event-fx :store/drain-readers (fn [_ _] {:store/drain-readers true}))

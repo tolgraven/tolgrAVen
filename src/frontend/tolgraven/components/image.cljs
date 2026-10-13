@@ -5,9 +5,9 @@
     [tolgraven.content.schema :as content]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.components.image.sources :as sources]
-    [tolgraven.react :as react]
+    [tolgraven.react :as r]
     [tolgraven.listener :as listener]
-    [reagent.core :as r]))
+    ))
 
 (def attrs-schema
   ;; Pending avatars intentionally reserve their box without an image request.
@@ -47,8 +47,8 @@
     (let [attrs' (merge {:decoding "async"} (sources/dimensions src)
                         (dissoc attrs :preview? :progressive? :on-attached-error :on-source-error))
           preview (when preview? (sources/preview src))
-          capture! (react/use-memo
-                    #(react/compose-refs
+          capture! (r/use-memo
+                    #(r/compose-refs
                       (fn [image]
                         ;; A server-rendered image may fail before React attaches
                         ;; on-error. Inspect it at attachment without changing DOM;
@@ -139,31 +139,31 @@
    The initial document owns its upgrade through hydration, without replay."
   [{:keys [src class style id progressive? on-error on-load ref on-transition-end on-transition-cancel] :as attrs} :- attrs-schema]
   (r/with-let [*image-phase (r/atom {:src src, :phase nil})]
-    (let [*final-image (react/use-ref nil)
-          *preview-image (react/use-ref nil)
-          *active? (react/use-ref true)
+    (let [*final-image (r/use-ref nil)
+          *preview-image (r/use-ref nil)
+          *active? (r/use-ref true)
           preview (sources/preview src)
           progressive?' (and preview (if (contains? attrs :progressive?)
                                       progressive? (sources/progressive? src)))
           sizes (or (:sizes attrs) "100vw")
           phase (when (= src (:src @*image-phase)) (:phase @*image-phase))
-          failed! (react/use-callback
+          failed! (r/use-callback
                     (fn [event]
                       (when-not (= {:src src, :phase :failed} @*image-phase)
                         (reset! *image-phase {:src src, :phase :failed})
                         (when on-error (on-error event))))
                     [src on-error])
-          pending! (react/use-callback
+          pending! (r/use-callback
                      #(when-not (= {:src src, :phase :failed} @*image-phase)
                         (reset! *image-phase {:src src, :phase :retry}))
                      [src])
-          single! (react/use-callback
+          single! (r/use-callback
                     (fn [image]
                       (when (and progressive?' (not (document-owner image src))
                                  (same-preview-candidate? image (.-current *preview-image) preview sizes))
                         (reset! *image-phase {:src src, :phase :single})))
                     [src progressive?' sizes (:width preview) (:avif preview) (:webp preview)])
-          decoded! (react/use-callback
+          decoded! (r/use-callback
                      (fn [image upgrade?]
                        ;; No fetch or application timer: native decode readiness
                        ;; starts declarative opacity/presence on this mounted source.
@@ -198,8 +198,8 @@
                              (-> (.decode image) (.then ready!) (.catch (fn [_] nil)))
                              (ready!)))))
                      [src])
-          capture! (react/use-memo
-                     #(react/compose-refs
+          capture! (r/use-memo
+                     #(r/compose-refs
                        (fn [image]
                          (set! (.-current *final-image) image)
                          (if (document-owner image src)
@@ -214,13 +214,13 @@
                          nil)
                        ref)
                      [src ref single! decoded!])
-          loaded! (react/use-callback
+          loaded! (r/use-callback
                     (fn [event]
                       (single! (.-currentTarget event))
                       (decoded! (.-currentTarget event) true)
                       (when on-load (on-load event)))
                     [src on-load single! decoded!])
-          upgraded! (react/use-callback
+          upgraded! (r/use-callback
                       (fn [event]
                         (when (and (= "opacity" (.-propertyName event))
                                    (identical? (.-currentTarget event) (.-current *final-image))
@@ -235,7 +235,7 @@
                                              nil)]
                           (handler event)))
                       [src on-transition-end on-transition-cancel])]
-      (react/use-effect
+      (r/use-effect
         (fn []
           (set! (.-current *active?) true)
           (when-not (= src (:src @*image-phase))

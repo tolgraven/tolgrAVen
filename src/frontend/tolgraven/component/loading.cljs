@@ -1,7 +1,7 @@
 (ns tolgraven.component.loading
-  (:require [reagent.core :as r]
+  (:require [tolgraven.react :as r]
             [clojure.string]
-            [tolgraven.react :as rf]
+
             [tolgraven.supabase.query :as query]
             [tolgraven.components.error :as error]))
 
@@ -11,13 +11,13 @@
    [:span.sr-only "Loading content…"]])
 (declare <placeholder>)
 
-(defonce render-context (rf/create-context false))
+(defonce render-context (r/create-context false))
 
 (r/defc <rendered>
   "Render the ordinary component tree as an inert, CSS-shaped skeleton.
    Sample arguments supply text lengths when content is not available yet."
   [{:keys [form class]}]
-  [:> (rf/context-provider render-context) {:value true}
+  [:> (r/context-provider render-context) {:value true}
    [:div {:class (str "component-render-skeleton " class)
           :aria-busy true :aria-label "Loading content" :inert true}
     form]])
@@ -25,9 +25,9 @@
 (r/defc <query-fallback>
   "Use the shared component fallback after a real managed-query failure."
   [opts & [placeholder]]
-  (if-let [failure @(rf/subscribe [:store/query-error opts])]
+  (if-let [failure @(r/subscribe [:store/query-error opts])]
     [error/<failure> "content" "query" failure
-     #(rf/dispatch [:service-status/retry
+     #(r/dispatch [:service-status/retry
                     [:supabase-scoped (pr-str (query/normalize-query opts))]])]
     (or placeholder [<placeholder> {}])))
 

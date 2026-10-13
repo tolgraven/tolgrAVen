@@ -2,7 +2,7 @@
   "Ordered document setup, committed UI setup and deferred background hosts."
   (:require-macros [tolgraven.build.site :refer [when-enabled]])
   (:require [breaking-point.core :as bp]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.listener :as listener]
             [tolgraven.component.storage :as storage]
@@ -20,7 +20,7 @@
   ;; Capture history before flushing either disk queue. Native history ownership
   ;; is released afterwards by pagehide, so BFCache keeps the final offset.
   (storage/save-navigation!)
-  (rf/dispatch-sync [:ls/store-path [:scroll-position] [:state :scroll-position]])
+  (r/dispatch-sync [:ls/store-path [:scroll-position] [:state :scroll-position]])
   (legacy/drain!))
 
 (defn page-hidden! [_]
@@ -28,7 +28,7 @@
   (restore/release-history!))
 
 (defn visibility-changed! [_]
-  (rf/dispatch [:handle-visibility-change "hidden"])
+  (r/dispatch [:handle-visibility-change "hidden"])
   (when (.-hidden js/document) (save!)))
 
 (defn document-bindings []
@@ -53,35 +53,35 @@
     :event "visibilitychange"
     :handler visibility-changed!}])
 
-(rf/reg-fx :boot/load
+(r/reg-fx :boot/load
   (fn [_]
     (if (= "complete" (.-readyState js/document))
-      (rf/dispatch [:booted :load])
+      (r/dispatch [:booted :load])
       (listener/register! {:id :boot/load
                            :owner :document
                            :target "window"
                            :event "load"
                            :handler (fn [_]
                                       (listener/remove! :boot/load)
-                                      (rf/dispatch [:booted :load]))}))))
+                                      (r/dispatch [:booted :load]))}))))
 
-(rf/reg-event-fx :boot/document
+(r/reg-event-fx :boot/document
   (fn [_ _]
     {:fx [[:listener/register (document-bindings)]
           [:boot/load true]]}))
 
 (def breakpoints [:mobile 560 :tablet 992 :small-monitor 1200 :large-monitor])
-(rf/reg-fx :boot/breakpoints
+(r/reg-fx :boot/breakpoints
   (fn [_]
     ;; The library's set-breakpoints installs an anonymous resize listener with
     ;; no teardown. Reuse its subscriptions/events with our owned listener.
     (bp/register-subs breakpoints)
-    (rf/dispatch [::bp/set-screen-dimensions])
+    (r/dispatch [::bp/set-screen-dimensions])
     (listener/register! {:id :boot/resize
                          :owner :site
                          :target "window"
                          :event "resize"
-                         :handler #(rf/dispatch [::bp/set-screen-dimensions-debounced 250])})))
+                         :handler #(r/dispatch [::bp/set-screen-dimensions-debounced 250])})))
 
 (def interactive-events
   [[:ls/get-path [:scroll-position] [:state :scroll-position]]
@@ -94,19 +94,19 @@
    [:cookie/show-notice]
    [:booted :site]])
 
-(rf/reg-event-fx :boot/interactive
+(r/reg-event-fx :boot/interactive
   (fn [_ _]
     {:fx [[:listener/register (document-bindings)]
           [:boot/breakpoints true]
           [:dispatch-n interactive-events]]}))
 
-(rf/reg-event-fx :boot/stop
+(r/reg-event-fx :boot/stop
   (fn [_ _]
     {:fx [[:listener/stop :site]
           [:listener/stop :document]]}))
 
 ;; Compatibility for explicitly invoked old callers; startup uses the lifecycle.
-(rf/reg-event-fx :init/init (fn [_ _] {:dispatch [:boot/interactive]}))
+(r/reg-event-fx :init/init (fn [_ _] {:dispatch [:boot/interactive]}))
 
 (defn start-validation! []
   ;; Keep restoration attached to engine readiness even if acquisition fails and
@@ -123,16 +123,16 @@
         (.catch (fn [_] nil)))))
 
 (defc <coercion> {:profile false} []
-  (rf/use-effect
+  (r/use-effect
     (fn [] (resources/after-page! start-validation!))
     [])
   [:<>])
 
 (defc <lifecycle> {:profile false} []
-  (rf/use-effect
+  (r/use-effect
     (fn []
-      (rf/dispatch-sync [:boot/interactive])
-      #(rf/dispatch-sync [:boot/stop]))
+      (r/dispatch-sync [:boot/interactive])
+      #(r/dispatch-sync [:boot/stop]))
     [])
   [:<> [<coercion>] [preload/<background>]
    (when-enabled :page-capture nil [local-page/<capture>])

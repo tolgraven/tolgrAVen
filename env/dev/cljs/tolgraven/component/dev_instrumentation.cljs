@@ -1,8 +1,8 @@
 (ns tolgraven.component.dev-instrumentation
   "Development-only React profiling. Adds no DOM wrappers or application store."
   (:require [clojure.string :as string]
-            [reagent.core :as r]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
+
             [tolgraven.component.markup :as markup]
             [tolgraven.component.restore :as restore]
             [tolgraven.render-context :as context]
@@ -11,7 +11,7 @@
 
 (defonce *path-resolver (atom nil))
 (defonce *dependencies-resolver (atom nil))
-(defonce parent-context (rf/create-context nil))
+(defonce parent-context (r/create-context nil))
 (defn register-dependencies-resolver! [resolve!] (reset! *dependencies-resolver resolve!))
 (defn register-path-resolver! [resolve!] (reset! *path-resolver resolve!))
 (defn identity-for [definition] [(:ns definition) (:name definition)])
@@ -21,23 +21,23 @@
            (and (keyword? (first form)) (not (#{:<> :> :r> :f>} (first form)))))))
 
 (r/defc <probe> [definition args instance-key form owner]
-  (let [*id (rf/use-ref nil)
-        *details (rf/use-ref nil)
-        *identity (rf/use-ref nil)
-        *last-body (rf/use-ref nil)
-        *committed (rf/use-ref false)
-        [*client-commit] (rf/use-state #(r/atom false))
-        hydration-context? (rf/use-context restore/hydrating-context)
-        [hydrating?] (rf/use-state #(or hydration-context? (restore/initial-hydration?)))
+  (let [*id (r/use-ref nil)
+        *details (r/use-ref nil)
+        *identity (r/use-ref nil)
+        *last-body (r/use-ref nil)
+        *committed (r/use-ref false)
+        [*client-commit] (r/use-state #(r/atom false))
+        hydration-context? (r/use-context restore/hydrating-context)
+        [hydrating?] (r/use-state #(or hydration-context? (restore/initial-hydration?)))
         _ @*client-commit
-        parent (rf/use-context parent-context)
+        parent (r/use-context parent-context)
         interactive? @context/*interactive?
         attributed? (and (native-root? form) (.-current *committed) interactive?)
         _ (when-not (.-current *id) (set! (.-current *id) (str (random-uuid))))
         qualified (string/join "/" (identity-for definition))
         path (when-let [resolve! @*path-resolver] (resolve! definition args instance-key))
         connected? @capture/*connected?
-        flash @(rf/subscribe [:dev-console/flash (.-current *id)])
+        flash @(r/subscribe [:dev-console/flash (.-current *id)])
         resolve-dependencies! (fn []
                                 (when-let [resolve! @*dependencies-resolver]
                                   (try (capture/preview (resolve! definition args))
@@ -47,7 +47,7 @@
     ;; ancestor update can stall selective hydration while its lazy child waits.
     ;; Readiness/capture or the next normal render supplies SSR attributes.
     ;; Ordinary client mounts can reveal attributes immediately after commit.
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn []
         (set! (.-current *committed) true)
         (when-not hydrating? (reset! *client-commit true))
@@ -58,7 +58,7 @@
              :component (identity-for definition)}))
     ;; Opening the inspector backfills current details; closed probes avoid
     ;; resolving dependencies on each render.
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn []
         ;; Backfill the committed resolver only. An abandoned render must not
         ;; replace details for the still-mounted diagnostic instance.
@@ -66,7 +66,7 @@
               (fn [] {:depends (if connected? dependencies (resolve-dependencies!))
                       :queries (capture/preview (:queries (consumer/snapshot owner)))
                       :source (get-in definition [:options :source])}))))
-    (rf/use-effect
+    (r/use-effect
       (fn []
         (capture/emit! {:kind :mount
                         :instance (.-current *id)
@@ -99,8 +99,8 @@
       ;; :> recursively converts props, including :value, into JS. Raw provider
       ;; props keep the diagnostic identity itself a Clojure map for consumers;
       ;; only React's outer props envelope is native.
-      [:r> (rf/context-provider parent-context) #js {:value (.-current *identity)}
-       [:> rf/profiler
+      [:r> (r/context-provider parent-context) #js {:value (.-current *identity)}
+       [:> r/profiler
         {:id qualified
          :onRender
          (when (and connected? (not= false (get-in definition [:options :profile])))
@@ -116,7 +116,7 @@
                                    :source (:source body)})
                    (when (and @capture/*flash?
                               (some #(= :subscription-results (:cause %)) (:reasons body)))
-                     (rf/dispatch [:dev-console/flash-component (.-current *id)]))
+                     (r/dispatch [:dev-console/flash-component (.-current *id)]))
                    (capture/emit!
                      (merge (dissoc body :values :queries)
                             {:kind :view
@@ -137,7 +137,7 @@
 
 (defn instrument
   ([definition form]
-   (let [argv (rf/component-argv)]
+   (let [argv (r/component-argv)]
      (instrument definition form (vec (rest argv)) (:key (meta argv)))))
   ([definition form args key]
    (let [form (if (fn? form) form (markup/normalize-form form))]

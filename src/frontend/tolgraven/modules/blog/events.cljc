@@ -1,8 +1,8 @@
 (ns tolgraven.modules.blog.events
   #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
   #?(:cljs (:require #?(:feature/blog-comments [tolgraven.modules.blog.comments :as comments])
-    [tolgraven.react :as rf]
-    [re-frame.std-interceptors :refer [path]]
+    [tolgraven.react :as r]
+
     [tolgraven.modules.blog.model :as model]
     [tolgraven.modules.blog.schema :as schema]
     [tolgraven.component.storage :as storage]
@@ -10,41 +10,41 @@
 
 #?(:cljs
    (do
-(rf/reg-event-fx :blog/init
+(r/reg-event-fx :blog/init
   {:args (get schema/event-args :blog/init)}
   (fn [{:keys [db]} _]
     (when-not (get-in db [:state :booted :blog])
       {:dispatch-n [[:blog/set-posts-per-page 3]
                     [:booted :blog]]})))
 
-(rf/reg-event-fx :blog/init-posting
+(r/reg-event-fx :blog/init-posting
   {:args (get schema/event-args :blog/init-posting)}
   (fn [_ _] {:dispatch [:user/close-ui]}))
 
-(rf/reg-event-fx :blog/edit-post
+(r/reg-event-fx :blog/edit-post
   {:args (get schema/event-args :blog/edit-post)}
   (fn [_ [_ post]]
     {:dispatch-n [[:form-field [:post-blog] post :blur]
                   [:blog/state [:editing] post]
                   [:common/navigate! :new-post]]}))
 
-(rf/reg-event-fx :blog/cancel-edit
+(r/reg-event-fx :blog/cancel-edit
   {:args (get schema/event-args :blog/cancel-edit)}
   (fn [_ _]
     {:dispatch-n [[:form-field [:post-blog] nil :blur]
                   [:blog/state [:editing] nil]]}))
 
-(rf/reg-event-db :blog/state
+(r/reg-event-db :blog/state
   {:args (get schema/event-args :blog/state)}
-  [(path [:state :blog])]
+  [(r/path [:state :blog])]
   (fn [blog [_ state-path value]] (assoc-in blog state-path value)))
 
-(rf/reg-event-db :blog/set-posts-per-page
+(r/reg-event-db :blog/set-posts-per-page
   {:args (get schema/event-args :blog/set-posts-per-page)}
-  [(path [:options :blog])]
+  [(r/path [:options :blog])]
   (fn [options [_ size]] (assoc options :posts-per-page (model/page-size size))))
 
-(rf/reg-event-fx :blog/nav-action
+(r/reg-event-fx :blog/nav-action
   {:args (get schema/event-args :blog/nav-action)}
   (fn [{:keys [db]} [_ action]]
     (let [stored (get-in db [:state :blog :page])
@@ -52,12 +52,12 @@
           number (case action :prev index :next (+ index 2) action)]
       {:dispatch [:blog/nav-page number]})))
 
-(rf/reg-event-db :blog/nav-page
+(r/reg-event-db :blog/nav-page
   {:args (get schema/event-args :blog/nav-page)}
-  [(path [:state :blog :page])]
+  [(r/path [:state :blog :page])]
   (fn [_ [_ number]] (model/page-index number)))
 
-(rf/reg-event-fx :blog/submit
+(r/reg-event-fx :blog/submit
   {:args (get schema/event-args :blog/submit)}
   (fn [{:keys [db]} [_ input editing]]
     (when-not (get-in db [:state :supabase-writes :post])
@@ -68,7 +68,7 @@
                           :on-success [:blog/post-saved input]
                           :on-error [:blog/write-failed :post]}})))
 
-(rf/reg-event-fx :blog/post-saved
+(r/reg-event-fx :blog/post-saved
   {:args (get schema/event-args :blog/post-saved)}
   (fn [{:keys [db]} [_ submitted _]]
     {:db (update-in db [:state :supabase-writes] dissoc :post)
@@ -78,7 +78,7 @@
                    (conj [:form-field [:post-blog] nil :blur]))}))
 
 (when-enabled :blog :comments
-  (rf/reg-event-fx :blog/edit-comment
+  (r/reg-event-fx :blog/edit-comment
   {:args (get schema/event-args :blog/edit-comment)}
   (fn [_ [_ path comment]]
     (let [parent-path (vec (butlast path))]
@@ -87,7 +87,7 @@
                     [:blog/adding-comment parent-path true]]}))))
 
 (when-enabled :blog :comments
-  (rf/reg-event-fx :blog/cancel-comment
+  (r/reg-event-fx :blog/cancel-comment
   {:args (get schema/event-args :blog/cancel-comment)}
   (fn [_ [_ path]]
     {:dispatch-n [[:blog/adding-comment path false]
@@ -95,7 +95,7 @@
                   [:form-field [:write-comment path] nil :blur]]})))
 
 (when-enabled :blog :comments
-  (rf/reg-event-fx :blog/comment-submit
+  (r/reg-event-fx :blog/comment-submit
   {:args (get schema/event-args :blog/comment-submit)} [debug]
   (fn [{:keys [db]} [_ path input editing]]
     (when-not (get-in db [:state :supabase-writes [:comment path]])
@@ -109,7 +109,7 @@
         :on-error [:blog/write-failed [:comment path]]}}))))
 
 (when-enabled :blog :comments
-  (rf/reg-event-fx :blog/comment-saved
+  (r/reg-event-fx :blog/comment-saved
   {:args (get schema/event-args :blog/comment-saved)}
   (fn [{:keys [db]} [_ path submitted _]]
     {:db (update-in db [:state :supabase-writes] dissoc [:comment path])
@@ -120,14 +120,14 @@
                           [:blog/state [:editing-comment path] nil]
                           [:blog/adding-comment path nil]]))})))
 
-(rf/reg-event-fx :blog/write-failed
+(r/reg-event-fx :blog/write-failed
   {:args (get schema/event-args :blog/write-failed)}
   (fn [{:keys [db]} [_ operation error]]
     {:db (update-in db [:state :supabase-writes] dissoc operation)
      :dispatch [:supabase/write-error error]}))
 
 (when-enabled :blog :comments
-  (rf/reg-event-fx :blog/comment-vote
+  (r/reg-event-fx :blog/comment-vote
   {:args (get schema/event-args :blog/comment-vote)} [debug]
   (fn [{:keys [db]} [_ _ _ path vote]]
     (let [id (str (last path))
@@ -141,7 +141,7 @@
                             :on-error [:blog/write-failed [:vote id]]}})))))
 
 (when-enabled :blog :comments
-  (rf/reg-event-fx :blog/vote-saved
+  (r/reg-event-fx :blog/vote-saved
   {:args (get schema/event-args :blog/vote-saved)}
   (fn [{:keys [db]} [_ id result]]
     {:db (-> db
@@ -149,8 +149,8 @@
              (assoc-in [:state :active-user :comment-votes (keyword id)] (:vote result)))
      :dispatch-n [[:supabase/profile-fetch]]})))
 
-(rf/reg-fx :blog/cache-state (fn [_] (storage/schedule!)))
-(rf/reg-event-fx :blog/cache-state-changed
+(r/reg-fx :blog/cache-state (fn [_] (storage/schedule!)))
+(r/reg-event-fx :blog/cache-state-changed
   {:args (get schema/event-args :blog/cache-state-changed)} (fn [_ _] {:blog/cache-state true}))
 
 (when-enabled :blog :comments
@@ -161,19 +161,19 @@
    :dispatch [:blog/cache-state-changed]}))
 
 (when-enabled :blog :comments
-  (rf/reg-event-fx :blog/expand-comment-thread
+  (r/reg-event-fx :blog/expand-comment-thread
   {:args (get schema/event-args :blog/expand-comment-thread)}
   (fn [{:keys [db]} [_ comment-path expanded?]]
     (persist-comment-state db :comment-thread-expanded comment-path expanded?))))
 
 (when-enabled :blog :comments
-  (rf/reg-event-fx :blog/adding-comment
+  (r/reg-event-fx :blog/adding-comment
   {:args (get schema/event-args :blog/adding-comment)}
   (fn [{:keys [db]} [_ parent-path adding?]]
     (persist-comment-state db :adding-comment parent-path adding?))))
 
 (when-enabled :blog :comments
-  (rf/reg-event-fx :blog/load-more-comments
+  (r/reg-event-fx :blog/load-more-comments
   {:args (get schema/event-args :blog/load-more-comments)}
   (fn [{:keys [db]} [_ id]]
     {:db (-> db

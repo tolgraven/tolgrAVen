@@ -2,10 +2,10 @@
   "Shared, mount-independent resource loading. Adapters are registered separately."
   (:require [tolgraven.validation.runtime :as validation]
             [tolgraven.schema.declarations :as schemas]
-            [reagent.core :as r]
-            [reagent.ratom :as ratom]
+            [tolgraven.react :as r]
+
             [tolgraven.render-context :as context]
-            [tolgraven.react :as rf]
+
             [tolgraven.service-status :as status]
             [tolgraven.component.storage :as storage]
             [tolgraven.component.restore :as restore]))
@@ -41,7 +41,7 @@
 (defn resource-key [resource]
   [resource (when-let [scope (:scope (adapter resource))] (scope))])
 
-(rf/reg-sub :component-data/installed
+(r/reg-sub :component-data/installed
   (fn [db query]
     (let [[_ path] (or (:re-frame/query-v query) query)
           missing (js-obj)
@@ -50,9 +50,9 @@
       {:present? present?
        :value (when present? value)})))
 
-(rf/reg-event-db :component-data/install
+(r/reg-event-db :component-data/install
   (fn [db [_ path value]] (assoc-in db path value)))
-(rf/reg-event-db :component-data/remove
+(r/reg-event-db :component-data/remove
   (fn [db [_ path]]
     (if (= 1 (count path)) (dissoc db (first path))
         (update-in db (vec (butlast path)) dissoc (last path)))))
@@ -80,7 +80,7 @@
   "Install a valid opt-in snapshot synchronously, before the loading branch."
   [resource]
   (let [key (resource-key resource)
-        hydrated (when (:into resource) @(rf/sub [:component-data/installed (:into resource)]))]
+        hydrated (when (:into resource) @(r/sub [:component-data/installed (:into resource)]))]
     (when (and (restore/skip-enter?) (:present? hydrated) (nil? (get @*entries key)))
       (swap! *entries assoc key {:resource resource :status :ready :value (:value hydrated)
                                 :expires-at (+ (.now js/Date) (or (:ttl-ms resource) 60000))
@@ -91,7 +91,7 @@
           (try
           (when-let [restore! (:restore! (adapter resource))] (restore! resource value))
           (when-let [path (:into resource)]
-            (rf/dispatch-sync [:component-data/install path value])
+            (r/dispatch-sync [:component-data/install path value])
             (swap! *installed assoc path {:resource resource :value value}))
           (swap! *entries assoc key {:resource resource :status :ready :value value
                                     :expires-at expires-at :accessed-at (.now js/Date)})
@@ -112,7 +112,7 @@
     (swap! *installed dissoc path)
     ;; Do not remove a value another producer has since replaced.
     (when (= value (storage/state-value path))
-      (rf/dispatch-sync [:component-data/remove path]))))
+      (r/dispatch-sync [:component-data/remove path]))))
 
 (defn ensure!
   "Queue immediately, independent of React. Return a shared Promise for one resource.
@@ -150,7 +150,7 @@
                                       ;; A newer request targeting this path wins even if
                                       ;; this older, different resource finishes last.
                                       (when (identical? token (get @*targets path))
-                                        (rf/dispatch-sync [:component-data/install path value])
+                                        (r/dispatch-sync [:component-data/install path value])
                                         (swap! *installed assoc path {:resource resource :value value})))
                                     (swap! *entries update key merge
                                            {:status :ready :value value :installed? (boolean (:into resource))
@@ -219,7 +219,7 @@
       (every? #(= :ready (:status %)) states) :ready
       :else :loading)))
 
-(rf/reg-sub-raw :component-data/status
+(r/reg-sub-raw :component-data/status
   {:args [:cat [:vector schemas/dependency]]
    :result [:enum :loading :ready :error]}
   (fn [_ query]
@@ -228,7 +228,7 @@
       ;; and CMS subscriptions. Preloads use this same deduplicated queue. The
       ;; derived reaction only reads status; SSR must use supplied snapshots.
       (when-not context/*server?* (prefetch! resources))
-      (ratom/make-reaction #(state resources)))))
+      (r/make-reaction #(state resources)))))
 
 (defn wait-for!
   "Observe a ratom without creating a React subscription. Always remove the watch."
@@ -247,8 +247,8 @@
                                     timeout-ms))
        (check!)))))
 
-(rf/reg-fx :component-data/load prefetch!)
-(rf/reg-event-fx :component-data/load
+(r/reg-fx :component-data/load prefetch!)
+(r/reg-event-fx :component-data/load
   (fn [_ [_ resources]] {:component-data/load resources}))
 
 (defn failure [resources]

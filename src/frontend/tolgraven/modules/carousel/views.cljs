@@ -1,8 +1,8 @@
 (ns tolgraven.modules.carousel.views
   (:require [tolgraven.component]
             [tolgraven.macros :as m :include-macros true]
-            [tolgraven.react :as rf]
-            [reagent.core :as r]
+            [tolgraven.react :as r]
+
             [tolgraven.util :as util]))
 
 (m/defc <carousel-idx-btns>
@@ -14,7 +14,7 @@
              {:aria-label (str "Show slide " (inc idx))
               :aria-current (when (= @idx-model idx) "true")
               :class (when (= @idx-model idx) "carousel-idx-current")
-              :on-click #(rf/dispatch [:carousel/set-index id idx])}
+              :on-click #(r/dispatch [:carousel/set-index id idx])}
              [:i.fas.fa-circle]]))])
 
 (m/defc <carousel> "Three-showing carousel with zoom up of center item, and animating changes.
@@ -22,12 +22,12 @@
                 or we just make two."
   [id :- [:or :keyword :string] options :- :map content :- [:sequential :any]]
   (let [num-items-shown 3
-        index (rf/subscribe [:state [:carousel id :index]])
+        index (r/subscribe [:state [:carousel id :index]])
         dec-fn (fn [] ; remove duplication here by only dispatching and index being generic "roll arounder"
-                 (rf/dispatch [:carousel/rotate id content :dec]))
+                 (r/dispatch [:carousel/rotate id content :dec]))
         inc-fn (fn []
-                 (rf/dispatch [:carousel/rotate id content :inc]))
-        moving (rf/subscribe [:state [:carousel id :direction]])
+                 (r/dispatch [:carousel/rotate id content :inc]))
+        moving (r/subscribe [:state [:carousel id :direction]])
         left-content #(if (pos? %)
                        (get content (dec %))
                        (last content))
@@ -72,15 +72,15 @@
 (m/defc <carousel-normal> "Don't fuck up with fancy hot swaps for transitions, just stuff everything in."
   [id :- [:or :keyword :string] attrs :- :map content :- [:sequential :any] & {:keys [autoplay seconds-autoplay]
                        :or {seconds-autoplay 10}}]
-  (let [index (rf/subscribe [:carousel/index id])
+  (let [index (r/subscribe [:carousel/index id])
         dec-wrap #(if (neg? (dec %))
                     (dec (count content))
                     (dec %))
-        dec-fn #(rf/dispatch [:carousel/rotate id content :dec])
+        dec-fn #(r/dispatch [:carousel/rotate id content :dec])
         inc-wrap #(if (< (inc %) (count content))
                     (inc %)
                     0)
-        inc-fn #(rf/dispatch [:carousel/rotate id content :inc])
+        inc-fn #(r/dispatch [:carousel/rotate id content :inc])
         left-content #(if (pos? %)
                         (get content (dec %))
                         (last content))
@@ -88,9 +88,9 @@
                          (get content (inc %))
                          (first content))
         ref-f #(when %
-                 (rf/dispatch [:carousel/set-index id 0])
+                 (r/dispatch [:carousel/set-index id 0])
                  (when autoplay
-                   (rf/dispatch [:dispatch-in/set {:ms (* 1000 seconds-autoplay)
+                   (r/dispatch [:dispatch-in/set {:ms (* 1000 seconds-autoplay)
                                                    :repeat true
                                                    :k id
                                                    :dispatch [:carousel/rotate id content :inc]}]))     )

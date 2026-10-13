@@ -2,8 +2,8 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [tolgraven.components.highlight :as highlight]
     [tolgraven.components.code-block :as code-block]
     ["react-markdown$default" :as ReactMarkdown]
@@ -20,8 +20,8 @@
    [:?auto-languages [:?vector :string]]
    [:?code-options [:maybe code-block/options-schema]]])
 
-(def block-context (rf/create-context false))
-(def link-context (rf/create-context false))
+(def block-context (r/create-context false))
+(def link-context (r/create-context false))
 
 (def react-markdown (r/adapt-react-class ReactMarkdown))
 (def omit-markdown-component
@@ -37,8 +37,8 @@
   ;; are text; do not recursively convert React elements or inspect their props.
   (let [code (if (string? children) children "")
         language (some->> className (re-find #"language-([\w-]+)") second)
-        block? (rf/use-context block-context)
-        linked? (rf/use-context link-context)]
+        block? (r/use-context block-context)
+        linked? (r/use-context link-context)]
     [<code-block> code
      (merge {:default-language default-language
              :auto-languages auto-languages}
@@ -70,7 +70,7 @@
   (r/reactify-component
     (fn [{:keys [children] :as props}]
       [:a (dissoc props :node :children)
-       [:> (rf/context-provider link-context) {:value true} children]])))
+       [:> (r/context-provider link-context) {:value true} children]])))
 
 (def markdown-pre-react
   (r/reactify-component
@@ -78,7 +78,7 @@
       (if (true? (some-> node (aget "data") (aget "tolgravenCodeBlock")))
         ;; The generated code component owns its pre. Nested pre/div content
         ;; would make the HTML parser repair SSR markup before hydration.
-        [:> (rf/context-provider block-context) {:value true} children]
+        [:> (r/context-provider block-context) {:value true} children]
         ;; Trusted raw pre keeps its own attributes and whitespace semantics.
         [:pre (dissoc props :node :children) children]))))
 
@@ -88,7 +88,7 @@
   [md-text & [{:keys [allow-images? allow-raw? default-language auto-languages code-options]
               :or {allow-images? false
                    allow-raw? false}}]]
-  (let [code-component (rf/use-memo
+  (let [code-component (r/use-memo
                          #(r/reactify-component
                             (fn [props]
                               [<markdown-code-component>

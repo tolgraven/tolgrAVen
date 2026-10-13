@@ -2,7 +2,7 @@
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
-            [re-frame.tooling :as tooling]
+
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.component :as component]
             [tolgraven.component.data :as data]
@@ -16,7 +16,7 @@
             [tolgraven.dev-console.views :as views]
             [tolgraven.dev-console-fixture :as fixture]
             [tolgraven.render-context :as context]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [tolgraven.test-support :as support]))
 
 (defn <loading> [] [:span "Namespace-owned loading"])
@@ -101,12 +101,12 @@
                                    {:token [:dev-console/path [:state :debug :hydration-token]]}))
                 first-token (random-uuid) second-token (random-uuid)]
             (try
-              (rf/dispatch [:dev-console/hydration-start first-token])
-              (rf/dispatch [:dev-console/hydration-start second-token])
-              (rf/dispatch [:dev-console/hydration-end first-token])
+              (r/dispatch [:dev-console/hydration-start first-token])
+              (r/dispatch [:dev-console/hydration-start second-token])
+              (r/dispatch [:dev-console/hydration-end first-token])
               (await! (support/settle!))
               (is (= second-token (:token ((:values consumer)))))
-              (rf/dispatch [:dev-console/hydration-end second-token])
+              (r/dispatch [:dev-console/hydration-end second-token])
               (await! (support/settle!))
               (is (nil? (:token ((:values consumer)))))
               (finally ((:unmount! consumer))))))
@@ -124,19 +124,19 @@
                 root (await! (support/create-root! element))]
             (.appendChild (.-body js/document) element)
             (try
-              (rf/dispatch [:component-data/install path "first"])
+              (r/dispatch [:component-data/install path "first"])
               (await! (support/settle!))
               (await! (support/render! root [<consumer>]))
               (let [before @*renders]
-                (rf/dispatch [:dev-console/records [{:kind :render :component ["test" "consumer"]}]])
+                (r/dispatch [:dev-console/records [{:kind :render :component ["test" "consumer"]}]])
                 (await! (support/settle!))
                 (is (= before @*renders) "Recording telemetry does not render a dependency consumer")
-                (rf/dispatch [:component-data/install path "second"])
+                (r/dispatch [:component-data/install path "second"])
                 (await! (support/settle!))
                 (is (> @*renders before) "Changing the actual dependency renders its consumer")
                 (is (re-find #"second" (.-textContent element))))
               (finally (support/unmount! root) (.remove element)
-                       (rf/dispatch [:component-data/remove path])))))
+                       (r/dispatch [:component-data/remove path])))))
         (.catch #(is false (str %))) (.finally done))))
 
 (deftest complete-inline-collections-do-not-hide-data
@@ -172,14 +172,14 @@
               (is (nil? (.querySelector element "button")) "Fully visible values cannot expand")
               (is (re-find #":id" (.-textContent element)))
               (await! (support/render! root [views/<query-result> [:dev-console/path [:test :query-result]]]))
-              (rf/dispatch [:component-data/install [:test :query-result] {:answer 42}])
+              (r/dispatch [:component-data/install [:test :query-result] {:answer 42}])
               (await! (support/settle!))
               (is (re-find #":answer" (.-textContent element)))
               (is (re-find #"42" (.-textContent element)))
               (await! (support/render! root [views/<query-result> [:nonexistent-subscription]]))
               (is (re-find #"No registered subscription" (.-textContent element)))
               (finally (support/unmount! root) (.remove element)
-                       (rf/dispatch [:component-data/remove [:test :query-result]])))))
+                       (r/dispatch [:component-data/remove [:test :query-result]])))))
         (.catch #(is false (str %))) (.finally done))))
 
 (deftest bounded-pagination-and-layout-correlation
@@ -303,8 +303,8 @@
                 root (await! (support/create-root! element))
                 snapshot-mounted? (fn []
                                     (some #(= [:dev-console/snapshot]
-                                              (tooling/query-v-for-reaction %))
-                                          (vals @tooling/query->reaction)))]
+                                              (r/query-v-for-reaction %))
+                                          (vals @r/query->reaction)))]
             (.appendChild (.-body js/document) element)
             (try
               (await! (support/render! root [views/<console>]))

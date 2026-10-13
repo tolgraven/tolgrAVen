@@ -1,7 +1,7 @@
 (ns tolgraven.highlight-test
   (:require [cljs.test :refer-macros [deftest is]]
             [clojure.string :as string]
-            [reagent.dom.server :as server]
+            [tolgraven.react :as r]
             [malli.core :as m]
             [tolgraven.schema.dsl :as dsl]
             [tolgraven.components.code-block :as code-block]
@@ -9,14 +9,14 @@
             [tolgraven.modules.highlight.module :as highlight]
             [tolgraven.modules.highlight.views :as highlight-view]
             [tolgraven.components.ui.code :as code]
-            [tolgraven.components.ui :as ui]
+            [tolgraven.components.ui.markdown :as ui-markdown]
             [tolgraven.modules.blog.views :as blog]
             [tolgraven.render-context :as context]))
 
 (deftest shared-code-boundary-renders-full-language-support-during-ssr
   (binding [context/*server?* true
             context/*modules* {:highlight highlight/spec}]
-    (let [html (server/render-to-string
+    (let [html (r/render-to-string
                  [markdown/<code-block> "(defn hello [] :world)" :language "clojure"])]
       (is (.includes html "<code"))
       (is (.includes html "<span"))
@@ -32,7 +32,7 @@
 (deftest untagged-blocks-and-inline-snippets-render-highlighted-during-ssr
   (binding [context/*server?* true
             context/*modules* {:highlight highlight/spec}]
-    (let [html (server/render-to-string
+    (let [html (r/render-to-string
                  [code/<parse-markdown-components>
                   "Inline `42` and `(inc 1)`. <code class=\"language-clojure\">(inc 2)</code>\n\n```\n(defn greet [x] (inc x))\n```\n\n```cpp\nint answer = 42;\n```"
                   {:default-language "clojure"
@@ -55,14 +55,14 @@
 (deftest explicit-nil-options-preserve-the-neutral-markdown-api
   (binding [context/*server?* true]
     (doseq [options [nil {:code-options nil}]]
-      (let [html (server/render-to-string [code/<parse-markdown-components> "Plain text" options])]
+      (let [html (r/render-to-string [code/<parse-markdown-components> "Plain text" options])]
         (is (string/includes? html "Plain text"))
         (is (not (string/includes? html "component-error")))))))
 
 (deftest trusted-raw-pre-retains-attributes-and-whitespace-alongside-markdown-blocks
   (binding [context/*server?* true
             context/*modules* {:highlight highlight/spec}]
-    (let [html (server/render-to-string
+    (let [html (r/render-to-string
                  [code/<parse-markdown-components>
                   "<pre id=\"raw-pre\" class=\"custom-pre\" title=\"Spacing\">first\n  second\n</pre>\n\n<pre id=\"raw-code\" data-tolgraven-code-block=\"true\"><code>(inc 1)</code></pre>\n\n```clojure\n(inc 2)\n```"
                   {:allow-raw? true
@@ -84,7 +84,7 @@
 (deftest code-presentation-options-apply-during-ssr-and-inline-stays-small
   (binding [context/*server?* true
             context/*modules* {:highlight highlight/spec}]
-    (let [html (server/render-to-string
+    (let [html (r/render-to-string
                  [code/<parse-markdown-components>
                   "Inline `echo \"hello\"`.\n\n```clojure\n(inc 1)\n(inc 2)\n(inc 3)\n```"
                   {:code-options {:line-numbers? true
@@ -116,7 +116,7 @@
 (deftest linked-inline-code-retains-navigation-without-nested-controls
   (binding [context/*server?* true
             context/*modules* {:highlight highlight/spec}]
-    (let [html (server/render-to-string
+    (let [html (r/render-to-string
                  [code/<parse-markdown-components> "[`name`](https://example.com) and `standalone`"])
           container (.createElement js/document "div")]
       (set! (.-innerHTML container) html)
@@ -129,8 +129,8 @@
   (binding [context/*server?* true
             context/*modules* {:highlight highlight/spec
                               :markdown {:view {:parse code/<parse-markdown-components>}}}]
-    (let [html (server/render-to-string
-                 [ui/<md->div> "```clojure\n(inc 1)\n(inc 2)\n```"
+    (let [html (r/render-to-string
+                 [ui-markdown/<md->div> "```clojure\n(inc 1)\n(inc 2)\n```"
                   {:code-options {:line-numbers? true
                                   :wrap? true
                                   :foldable? true

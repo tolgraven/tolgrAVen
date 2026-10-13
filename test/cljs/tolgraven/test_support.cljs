@@ -3,9 +3,9 @@
    updates use a stable reactive form, never raw React root renders or flushSync."
   (:require [cljs.reader :as reader]
             [cljs.core.async :as a]
-            [tolgraven.react :as rf]
-            [reagent.core :as r]
-            [reagent.dom.client :as dom]))
+            [tolgraven.react :as r]
+
+            ))
 (defn result-channel
   [promise]
   (let [channel (a/promise-chan)]
@@ -28,24 +28,24 @@
                      (r/after-render check!)))))))
 (defn create-root!
   [element]
-  (let [root (dom/create-root element)
+  (let [root (r/create-root element)
         *form (r/atom nil)
         *mounted? (atom false)
         <fixture> (r/create-class {:component-did-mount (fn [_] (reset! *mounted? true)),
                                    :reagent-render (fn [] @*form)})]
-    (dom/render root [<fixture>])
+    (r/render root [<fixture>])
     (-> (wait-for! #(deref *mounted?))
         (.then (fn [_] {:root root, :form *form}))
-        (.catch (fn [error] (dom/unmount root) (throw error))))))
+        (.catch (fn [error] (r/unmount root) (throw error))))))
 (defn settle! [] (js/Promise. (fn [resolve _] (r/after-render #(r/after-render resolve)))))
 (defn render! [{:keys [form]} value] (reset! form value) (settle!))
-(defn unmount! [root] (dom/unmount (if (map? root) (:root root) root)))
+(defn unmount! [root] (r/unmount (if (map? root) (:root root) root)))
 (defn mount-subscriptions!
   [queries]
   (let [element (.createElement js/document "div")
         *mounted? (atom true)
         <consumer> (fn [] [:pre
-                           (pr-str (into {} (map (fn [[k q]] [k @(rf/subscribe q)])) queries))])]
+                           (pr-str (into {} (map (fn [[k q]] [k @(r/subscribe q)])) queries))])]
     (.appendChild (.-body js/document) element)
     (-> (create-root! element)
         (.then (fn [root]

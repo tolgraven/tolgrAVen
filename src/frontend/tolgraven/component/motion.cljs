@@ -1,11 +1,11 @@
 (ns tolgraven.component.motion
   "Root-merged motion and parent-owned exit retention. No wrapper components."
   (:require [clojure.string :as string]
-            [reagent.core :as r]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
+
             [tolgraven.component.restore :as restore]))
 
-(rf/reg-event-db :component-motion/seen
+(r/reg-event-db :component-motion/seen
   (fn [db [_ key]] (assoc-in db [:state :motion-seen key] true)))
 
 ;; Internal argument, never confused with a caller's spec or domain-data map.
@@ -175,7 +175,7 @@
         (when cleanup! (swap! (:stops state) assoc :watch cleanup!))))
     (when (and (:remember-key appearance) @(:visible? state)
                (not (:remembered? options)))
-      (rf/dispatch [:component-motion/seen (:remember-key appearance)]))
+      (r/dispatch [:component-motion/seen (:remember-key appearance)]))
     (let [presence (:presence options)
           signature [presence (:exit options) reduced? element]]
       (when (not= signature @(:presence state))

@@ -2,7 +2,7 @@
   "Page declarations independent of the module implementation."
   (:require [tolgraven.schema.http :as schemas]
             #?(:clj [tolgraven.env :as environment])
-            #?(:cljs [tolgraven.react :as rf])))
+            #?(:cljs [tolgraven.react :as r])))
 
 (defn document-dependency
   "Generated Codox HTML comes from our backend, independently of CMS framing.
@@ -15,8 +15,8 @@
 
 #?(:cljs (do
   (defn- activate! [page]
-    (rf/dispatch [:docs/get page])
-    (rf/dispatch [:docs/set-page page]))
+    (r/dispatch [:docs/get page])
+    (r/dispatch [:docs/set-page page]))
   (def controllers
     {:docs [{:start (fn [_] (activate! "index"))}]
      :docs-codox-page [{:parameters {:path [:doc]}

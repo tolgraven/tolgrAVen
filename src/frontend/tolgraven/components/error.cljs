@@ -5,7 +5,7 @@
     [tolgraven.diagnostics.stack :as diagnostics]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.loader.view :as loader-view]
-    [reagent.core :as r]
+    [tolgraven.react :as r]
     [tolgraven.components.portal :as portal]))
 
 (defc <failure>

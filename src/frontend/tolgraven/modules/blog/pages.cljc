@@ -1,6 +1,6 @@
 (ns tolgraven.modules.blog.pages
   "Page declarations independent of the module implementation."
-  (:require #?(:cljs [tolgraven.react :as rf])
+  (:require #?(:cljs [tolgraven.react :as r])
             [clojure.string :as string]
             [tolgraven.modules.blog.data :as data]
             [tolgraven.page :as page]
@@ -11,27 +11,27 @@
 
 #?(:cljs (def controllers
   {:blog [{:start (fn [_]
-                    (rf/dispatch [:blog/nav-page 1])
+                    (r/dispatch [:blog/nav-page 1])
                     ;; Preserve the existing blog framing on enter/leave.
-                    (rf/dispatch [:->css-var! "line-width" "0.0625rem"])
-                    (rf/dispatch [:->css-var! "line-width-vert" "0.0625rem"]))
+                    (r/dispatch [:->css-var! "line-width" "0.0625rem"])
+                    (r/dispatch [:->css-var! "line-width-vert" "0.0625rem"]))
            :stop (fn []
-                   (rf/dispatch [:->css-var! "line-width" "0.125rem"])
-                   (rf/dispatch [:->css-var! "line-width-vert" "0.125rem"]))}]
+                   (r/dispatch [:->css-var! "line-width" "0.125rem"])
+                   (r/dispatch [:->css-var! "line-width-vert" "0.125rem"]))}]
    :blog-page [{:parameters {:path [:nr]}
-                :start (fn [{:keys [path]}] (rf/dispatch [:blog/nav-action (:nr path)]))}]
+                :start (fn [{:keys [path]}] (r/dispatch [:blog/nav-action (:nr path)]))}]
    :blog-post [{:parameters {:path [:permalink]}
                 :start (fn [{:keys [path]}]
                          (let [id (-> path :permalink (string/split "-") last js/parseInt)]
-                           (rf/dispatch [:blog/state [:current-post-id] id])
-                           #_(rf/dispatch [:common/set-title "Blog post title: not implemented"])))
+                           (r/dispatch [:blog/state [:current-post-id] id])
+                           #_(r/dispatch [:common/set-title "Blog post title: not implemented"])))
                 :stop (fn [_]
-                        (rf/dispatch [:common/set-title nil]))}]
+                        (r/dispatch [:common/set-title nil]))}]
    :blog-tag [{:parameters {:path [:tag]}
-               :start (fn [{:keys [path]}] (rf/dispatch [:blog/state [:viewing-tag] (:tag path)]))
-               :stop (fn [_] (rf/dispatch [:blog/state [:viewing-tag] nil]))}]
-   :new-post [{:start (fn [_] (rf/dispatch [:blog/init-posting]))}
-              {:stop (fn [_] (rf/dispatch [:blog/cancel-edit]))}]}))
+               :start (fn [{:keys [path]}] (r/dispatch [:blog/state [:viewing-tag] (:tag path)]))
+               :stop (fn [_] (r/dispatch [:blog/state [:viewing-tag] nil]))}]
+   :new-post [{:start (fn [_] (r/dispatch [:blog/init-posting]))}
+              {:stop (fn [_] (r/dispatch [:blog/cancel-edit]))}]}))
 
 (def spec
   ;; Native Reitit routes, with shared data inherited by each child page.

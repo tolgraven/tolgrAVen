@@ -1,45 +1,45 @@
 (ns tolgraven.modules.strava.events
   (:require
     [clojure.walk :as walk]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.util :as util]))
 
-(def debug (when ^boolean goog.DEBUG rf/debug))
+(def debug (when ^boolean goog.DEBUG r/debug))
 
-(rf/reg-event-fx :strava/init
+(r/reg-event-fx :strava/init
   (fn [_ _]
     {:dispatch [:http/get {:uri "/api/integrations/settings"}
                 [:strava/store-client] [:strava/on-error]]}))
 
-(rf/reg-event-fx :strava/store-client
+(r/reg-event-fx :strava/store-client
   (fn [{:keys [db]} [_ data]]
     {:db (assoc db :strava {:auth (:strava data)}) :dispatch [:strava/fetch]}))
 
-(rf/reg-event-fx :strava/state
+(r/reg-event-fx :strava/state
   (fn [{:keys [db]} [_ path value]]
     {:db (assoc-in db (into [:state :strava] path) value)}))
 
-(rf/reg-event-fx :strava/save
+(r/reg-event-fx :strava/save
   (fn [{:keys [db]} [_ path content]]
     {:db (assoc-in db (into [:content :strava] path) content)}))
 
-(rf/reg-event-fx :strava/get
+(r/reg-event-fx :strava/get
   (fn [{:keys [db]} [_ path save-to]]
     {:dispatch [:strava/get-and-dispatch
                 path
                 [:strava/save save-to] ]}))
 
-(rf/reg-event-fx :strava/get-and-dispatch
+(r/reg-event-fx :strava/get-and-dispatch
   (fn [_ [_ path event]]
     {:dispatch [:http/get {:uri "/api/integrations/strava" :url-params {:path path}}
                 event [:strava/on-error]]}))
 
-(rf/reg-event-fx :strava/on-error ;TODO parse error and refresh token if that's the issue
+(r/reg-event-fx :strava/on-error ;TODO parse error and refresh token if that's the issue
   (fn [{:keys [db]} [_ error]]
     {:db (update-in db [:content :strava :error] conj error)
      :dispatch [:diag/new :error "Strava error" error]}))
 
-(rf/reg-event-fx :strava/fetch
+(r/reg-event-fx :strava/fetch
   (fn [{:keys [db]} [_ ]]
     {:dispatch-n
       [[:strava/get (str  "athletes/" (-> db :strava :auth :athlete_id) "/stats") 
@@ -52,37 +52,37 @@
         [:starred]]
        [:intervals/fetch-summary]]}))
 
-(rf/reg-event-fx :strava/store-activities
+(r/reg-event-fx :strava/store-activities
   (fn [{:keys [db]} [_ data]]
     (let [gear (->> data (map :gear_id) set (filter identity))]
       {:db (assoc-in db [:content :strava :activities] data)
        :dispatch-n (mapv (fn [id] [:strava/fetch-gear id]) gear)})))
 
-(rf/reg-event-fx :strava/fetch-gear ;needs calling after activities using gear in activities, hmm...
+(r/reg-event-fx :strava/fetch-gear ;needs calling after activities using gear in activities, hmm...
   (fn [{:keys [db]} [_ id]]         ;bit redundant since detailed activity includes, hmm
     {:dispatch-n [(when-not (get-in db [:content :strava :gear id])
                     [:strava/get (str "gear/" id)
                      [:gear id]])]}))
 
-(rf/reg-event-fx :strava/fetch-stream
+(r/reg-event-fx :strava/fetch-stream
   (fn [{:keys [db]} [_ id data-type]]
     {:dispatch-n [(when-not (get-in db [:content :strava :activity-stream id])
                     [:strava/get (str "activities/" id "/streams" "?keys=" data-type "&key_by_type=")
                      [:activity-stream id]])]}))
 
-(rf/reg-event-fx :strava/fetch-segment-stream
+(r/reg-event-fx :strava/fetch-segment-stream
   (fn [{:keys [db]} [_ id data-type]]
     {:dispatch-n [(when-not (get-in db [:content :strava :segment-stream id])
                     [:strava/get (str "segments/" id "/streams" "?keys=" data-type "&key_by_type=")
                      [:segment-stream id]])]}))
 
-(rf/reg-event-fx :strava/fetch-activity
+(r/reg-event-fx :strava/fetch-activity
   (fn [{:keys [db]} [_ id ]]
     {:dispatch-n [(when-not (get-in db [:content :strava :activity id])
                     [:strava/get (str "activities/" id  "?include_all_efforts=")
                      [:activity id]])]}))
 
-(rf/reg-event-fx :strava/fetch-kudos
+(r/reg-event-fx :strava/fetch-kudos
   (fn [{:keys [db]} [_ id ]]
     {:dispatch-n [(when-not (get-in db [:content :strava :kudos id])
                     [:strava/get (str "activities/" id "/kudos")
@@ -91,7 +91,7 @@
 
 ; OTHER STRAVA EVENTS
 
-(rf/reg-event-fx :strava/activity-expand
+(r/reg-event-fx :strava/activity-expand
   (fn [{:keys [db]} [_ id-or-action]]
     (let [curr-id (get-in db [:state :strava :activity-expanded] -1)
           num-activities (count (get-in db [:content :strava :activities]))
@@ -106,18 +106,18 @@
 
 ; INTERVALS FETCHES
  
-(rf/reg-event-fx :intervals/get
+(r/reg-event-fx :intervals/get
   (fn [{:keys [db]} [_ path save-to]]
     {:dispatch [:intervals/get-and-dispatch
                 path
                 [:content (into [:intervals] save-to)] ]}))
 
-(rf/reg-event-fx :intervals/get-and-dispatch
+(r/reg-event-fx :intervals/get-and-dispatch
   (fn [_ [_ path event]]
     {:dispatch [:http/get {:uri "/api/integrations/intervals" :url-params {:path path}}
                 event [:strava/on-error]]}))
 
-(rf/reg-event-fx :intervals/fetch-summary
+(r/reg-event-fx :intervals/fetch-summary
   (fn [{:keys [db]} [_ ]]
     (let [now (js/Date.now)
           start (util/previous-month-date now)

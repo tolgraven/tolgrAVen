@@ -1,6 +1,6 @@
 (ns tolgraven.component.registry
   "Lightweight component declarations shared by leaf views and the runtime."
-  (:require [reagent.core :as r]
+  (:require [tolgraven.react :as r]
             [tolgraven.validation.runtime :as validation]
             [tolgraven.schema.declarations :as schemas]
             [tolgraven.component.instrumentation]

@@ -7,7 +7,7 @@
     [tolgraven.loader.styles :as styles]
     [tolgraven.loader.activation :as activation]
     [tolgraven.component.hydration :as hydration]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.render-context :as context]
     [tolgraven.component.restore :as restore]
     [tolgraven.content.contract :as content-contract]
@@ -16,7 +16,7 @@
     [tolgraven.component.data :as data]
     [tolgraven.components.error :as error]
     [tolgraven.service-status :as status]
-    [reagent.ratom :as ratom]
+
     [shadow.lazy :as lazy])
   (:require-macros
     [tolgraven.macros :as m]))
@@ -64,7 +64,7 @@
                    (-> (js/Promise.resolve (when-let [install! (:install spec)] (install!)))
                        (.then (fn [_]
                                 (swap! *installed conj module)
-                                (rf/dispatch [:loader/code-ready module])
+                                (r/dispatch [:loader/code-ready module])
                                 spec)))))))))
 
 (defn acquire-code!
@@ -105,7 +105,7 @@
   [{:keys [module view init-evt pre-fn post-fn args route]}]
   (if-let [loadable (get modules module)]
     (do
-      (when init-evt (rf/dispatch init-evt))
+      (when init-evt (r/dispatch init-evt))
       (when pre-fn (apply pre-fn args))
       (-> (or (get @*loads module)
                (let [known-data (prepare-data! (get content-contract/module-dependencies module []))
@@ -117,7 +117,7 @@
                                                  #js [(prepare-data! (:depends spec))
                                                       (prepare-view! spec view args)])
                                                 (.then (fn []
-                                                         (rf/dispatch [:scope/init module args])
+                                                         (r/dispatch [:scope/init module args])
                                                          (-> (js/Promise.resolve
                                                               (when-let [init (:init spec)]
                                                                 (apply init args)))
@@ -159,23 +159,23 @@
                                 #(load-code! options)))))
     (acquire-code! module)))
 
-(rf/reg-event-db :loader/code-ready
+(r/reg-event-db :loader/code-ready
   (fn [db [_ module]] (-> db (assoc-in [:loader :code-ready module] true)
                          (update-in [:loader :errors] (fnil dissoc {}) module))))
-(rf/reg-event-db :loader/code-failed
+(r/reg-event-db :loader/code-failed
   (fn [db [_ module error]]
     (-> db
         (assoc-in [:loader :errors module] error)
         (update-in [:loader :requested] (fnil dissoc {}) module))))
-(rf/reg-sub :loader/code-error
+(r/reg-sub :loader/code-error
   (fn [db query]
     (let [[_ module] (or (:re-frame/query-v query) query)]
       (get-in db [:loader :errors module]))))
-(rf/reg-sub :loader/code-ready
+(r/reg-sub :loader/code-ready
   (fn [db query]
     (let [[_ module] (or (:re-frame/query-v query) query)]
       (get-in db [:loader :code-ready module]))))
-(rf/reg-sub :loader/code-modules
+(r/reg-sub :loader/code-modules
   (fn [db _] (keys (get-in db [:loader :code-ready]))))
 (defn- request-module [db module effect]
   (when-not (get-in db [:loader :requested module])
@@ -184,29 +184,29 @@
              (update-in [:loader :errors] (fnil dissoc {}) module))
      :fx effect}))
 
-(rf/reg-event-fx :loader/acquire
+(r/reg-event-fx :loader/acquire
   (fn [{:keys [db]} [_ module]]
     (request-module db module [[:loader/acquire module]])))
-(rf/reg-event-fx :loader/activate
+(r/reg-event-fx :loader/activate
   {:args [:cat activation/options-schema]}
   (fn [{:keys [db]} [_ {:keys [module args] :as options}]]
     (request-module db module
                     [[:dispatch [:scope/init module args]]
                      [:loader/acquire options]])))
-(rf/reg-fx :loader/acquire
+(r/reg-fx :loader/acquire
   (fn [value]
     ;; Initialization failures are reported by load-code!'s managed status path.
     (let [options (if (keyword? value) {:module value} value)
           module (:module options)]
       (-> (load-code! options)
-          (.catch (fn [error] (rf/dispatch [:loader/code-failed module error])))))))
-(rf/reg-sub-raw :loader/module
+          (.catch (fn [error] (r/dispatch [:loader/code-failed module error])))))))
+(r/reg-sub-raw :loader/module
   (fn [_ query]
     (let [[_ module] (or (:re-frame/query-v query) query)]
       ;; :scope/inited? records activation, which may precede code arrival.
       ;; One cached subscription acquires code/init; its reaction only reads db.
-      (rf/dispatch [:loader/acquire module])
-      (ratom/make-reaction #(deref (rf/subscribe [:loader/code-ready module]))))))
+      (r/dispatch [:loader/acquire module])
+      (r/make-reaction #(deref (r/subscribe [:loader/code-ready module]))))))
 
 (m/defc <assets>
   "Inject external assets"
@@ -223,7 +223,7 @@
 (m/defc <loaded-assets>
   "The page owns external module assets; direct vectors need no asset wrapper."
   [page-assets]
-  (let [loaded @(rf/subscribe [:loader/code-modules])
+  (let [loaded @(r/subscribe [:loader/code-modules])
         assets (cons page-assets (map #(get (code-spec %) :assets) loaded))]
     [<assets> {:css (vec (distinct (mapcat :css assets)))
                :js (vec (distinct (mapcat :js assets)))}]))
@@ -246,9 +246,9 @@
 (m/defc <trigger>
   "An optional earlier section can activate a later module through the same loader."
   [options :- activation/options-schema]
-  (let [*element (rf/use-ref nil)
-        active? @(rf/subscribe [:scope/inited? (:module options)])]
-    (rf/use-effect
+  (let [*element (r/use-ref nil)
+        active? @(r/subscribe [:scope/inited? (:module options)])]
+    (r/use-effect
       (fn []
         (if (and (not context/*server?*) (not active?))
           (or (activation/setup! (.-current *element) options) nil)
@@ -259,18 +259,18 @@
 
 (m/defc ^:private <module-content>
   [{:keys [module view <missing>] :as options} args complete! hydrating?]
-  (let [_ (when-not context/*server?* @(rf/subscribe [:loader/code-ready module]))
-        failure (when-not context/*server?* @(rf/subscribe [:loader/code-error module]))
+  (let [_ (when-not context/*server?* @(r/subscribe [:loader/code-ready module]))
+        failure (when-not context/*server?* @(r/subscribe [:loader/code-error module]))
         loaded (if context/*server?* (get context/*modules* module) (code-spec module))
         resolved (get-in loaded [:view (or view :view)])]
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn [] (when (or resolved failure loaded) (complete!)) nil)
       [(boolean (or resolved failure loaded))])
-    [:r> (rf/context-provider restore/hydrating-context) #js {:value hydrating?}
+    [:r> (r/context-provider restore/hydrating-context) #js {:value hydrating?}
      (cond
        failure [error/<failure> "module" (name module)
                 {:title "This section could not be loaded" :error failure}
-                #(rf/dispatch [:loader/activate (assoc options :args args)])]
+                #(r/dispatch [:loader/activate (assoc options :args args)])]
        resolved (component-form resolved args options)
        loaded (if <missing>
                 (if (vector? <missing>) <missing> (into [<missing>] args))
@@ -280,11 +280,11 @@
 (defn- make-boundary [module]
   (let [*release (atom nil)
         gate (js/Promise. (fn [resolve _] (reset! *release resolve)))
-        content #js {:default (rf/reactify-component
+        content #js {:default (r/reactify-component
                                (fn [{:keys [options args complete! hydrating?]}]
                                  [<module-content> options args complete! hydrating?]))}]
     {:release! #(@*release nil)
-     :view (rf/lazy
+     :view (r/lazy
              (fn []
                (-> gate
                    (.then (fn [_] (acquire-code! module)))
@@ -292,48 +292,48 @@
                    (.catch (fn [error]
                              ;; A failed module owns its Retry view; never reject
                              ;; through the entire page's error boundary.
-                             (rf/dispatch [:loader/code-failed module error])
+                             (r/dispatch [:loader/code-failed module error])
                              content)))))}))
 
 (m/defc ^:private <module-boundary>
   [{:keys [module view defer? <before>] :as options} args]
-  (let [active? (boolean @(rf/subscribe [:scope/inited? module]))
+  (let [active? (boolean @(r/subscribe [:scope/inited? module]))
         hidden? (and (or defer? <before>)
                      (or (and (not @context/*interactive?) (not (restore/local-document?)))
                          (not active?)))
-        [ssr?] (rf/use-state
+        [ssr?] (r/use-state
                  #(boolean (and (not hidden?)
                                 (or (and context/*server?*
                                          (get-in context/*modules* [module :view (or view :view)]))
                                     (and (restore/initial-hydration?)
                                          (restore/rendered-view? module (or view :view)))))))
-        [initial?] (rf/use-state #(and (not context/*server?*) ssr? (restore/initial-hydration?)))
-        [committed? set-committed!] (rf/use-state false)
-        *trigger (rf/use-ref nil)
+        [initial?] (r/use-state #(and (not context/*server?*) ssr? (restore/initial-hydration?)))
+        [committed? set-committed!] (r/use-state false)
+        *trigger (r/use-ref nil)
         release! (hydration/use-deferred! initial?)
-        complete! (rf/use-callback (fn [] (release!) (set-committed! true)) [release!])
-        boundary (rf/use-memo #(make-boundary module) [module])
-        ready? (or context/*server?* (boolean @(rf/subscribe [:loader/code-ready module])))
-        failure (when-not context/*server?* @(rf/subscribe [:loader/code-error module]))
+        complete! (r/use-callback (fn [] (release!) (set-committed! true)) [release!])
+        boundary (r/use-memo #(make-boundary module) [module])
+        ready? (or context/*server?* (boolean @(r/subscribe [:loader/code-ready module])))
+        failure (when-not context/*server?* @(r/subscribe [:loader/code-error module]))
         modes (activation/triggers options)
         requested? (and (not hidden?) active?)]
     (restore/use-readiness! (or (not requested?) ready? (some? failure)))
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn []
         (if (and (not context/*server?*) ssr?)
           (listen-code! module (:release! boundary))
           nil))
       [module ssr? boundary])
-    (rf/use-effect
+    (r/use-effect
       (fn []
         (if (and (not context/*server?*) (not hidden?) (or active? (modes :immediate)))
           (do
-            (rf/dispatch [:loader/activate (assoc options :args args)])
+            (r/dispatch [:loader/activate (assoc options :args args)])
             ((:release! boundary))
             nil)
           nil))
       [module active? hidden? boundary])
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn []
         (if (and (not context/*server?*) (not active?) (not committed?) (.-current *trigger))
           (let [marker (.-current *trigger)
@@ -345,16 +345,16 @@
       hidden? (when <before>
                 [:div.before-loading-container
                  {:ref *trigger
-                  :on-click #(rf/dispatch [:loader/activate (assoc options :args args)])}
+                  :on-click #(r/dispatch [:loader/activate (assoc options :args args)])}
                  (if (vector? <before>) <before> (into [<before>] args))])
       ssr? [:<>
             (when-not committed? ^{:key :module-marker}
               [:template {:ref *trigger :data-module-boundary (name module)}])
             ^{:key :module-content}
-            [rf/suspense {:fallback (rf/as-element (fallback-form options args true))}
+            [r/suspense {:fallback (r/as-element (fallback-form options args true))}
              (if context/*server?*
                [<module-content> options args (fn []) true]
-               (rf/create-element (:view boundary)
+               (r/create-element (:view boundary)
                  #js {:options options :args args :complete! complete!
                       :hydrating? (and initial? (not committed?))}))]]
       (and requested? (or ready? failure)) [<module-content> options args complete! false]

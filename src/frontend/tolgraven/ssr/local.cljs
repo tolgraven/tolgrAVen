@@ -3,8 +3,8 @@
    ordinary document; React owns its markup from hydration onward."
   (:require [ajax.core :as ajax]
             [cljs.reader :as reader]
-            [reagent.core :as r]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
+
             [tolgraven.listener :as listener]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.loader :as loader]
@@ -97,7 +97,7 @@
                    (-> (message! worker (assoc (dissoc pair :state) :arm arm?))
                        (.then (fn [_]
                                 (when (current?)
-                                  (rf/dispatch [:page-return/status {:status :ready :url (:url pair)}])))))))))))
+                                  (r/dispatch [:page-return/status {:status :ready :url (:url pair)}])))))))))))
 
 (defn save! [db arm?]
   ;; A queued background save must not overtake the fresh departure pair.
@@ -118,21 +118,21 @@
         (.catch (fn [error]
                   (when (current?)
                     (when arm? (clear!))
-                    (rf/dispatch [:page-return/status {:status :unavailable :message (str error)}])))))))
+                    (r/dispatch [:page-return/status {:status :unavailable :message (str error)}])))))))
 
-(rf/reg-event-fx :page-return/save
+(r/reg-event-fx :page-return/save
   (fn [{:keys [db]} [_ arm?]] {:page-return/save {:db db :arm? arm?}}))
-(rf/reg-fx :page-return/save (fn [{:keys [db arm?]}] (save! db arm?)))
-(rf/reg-event-fx :page-return/install
+(r/reg-fx :page-return/save (fn [{:keys [db arm?]}] (save! db arm?)))
+(r/reg-event-fx :page-return/install
   (fn [{:keys [db]} [_ state]]
     {:db (ssr-contract/merge-state db (update state :state contract/restored-view-state))
      :page-return/consume state}))
-(rf/reg-fx :page-return/consume storage/consume-restored!)
-(rf/reg-event-db :page-return/status (fn [db [_ status]] (assoc db :page-return status)))
-(rf/reg-sub :page-return/status (fn [db _] (:page-return db)))
-(rf/reg-sub :page-return/source (fn [db _] (contract/source-for db)))
-(rf/reg-event-fx :page-return/clear (fn [_ _] {:page-return/clear true}))
-(rf/reg-fx :page-return/clear (fn [_] (clear!)))
+(r/reg-fx :page-return/consume storage/consume-restored!)
+(r/reg-event-db :page-return/status (fn [db [_ status]] (assoc db :page-return status)))
+(r/reg-sub :page-return/status (fn [db _] (:page-return db)))
+(r/reg-sub :page-return/source (fn [db _] (contract/source-for db)))
+(r/reg-event-fx :page-return/clear (fn [_ _] {:page-return/clear true}))
+(r/reg-fx :page-return/clear (fn [_] (clear!)))
 
 (defn install! []
   (when-let [element (.getElementById js/document "local-page-bootstrap")]
@@ -149,7 +149,7 @@
       (restore/begin! {:hydrate? true :back? true})
       (swap! restore/*context assoc :local? true)
       (restore/install-module-views! (:module-views snapshot))
-      (rf/dispatch-sync [:page-return/install state])
+      (r/dispatch-sync [:page-return/install state])
       (reset! context/*interactive? false)
       snapshot)))
 
@@ -163,7 +163,7 @@
   (swap! *save-generation inc)
   (when @*pending (js/clearTimeout @*pending))
   (reset! *pending
-    (js/setTimeout (fn [] (reset! *pending nil) (rf/dispatch [:page-return/save false])) 500)))
+    (js/setTimeout (fn [] (reset! *pending nil) (r/dispatch [:page-return/save false])) 500)))
 
 (defn clear! []
   (swap! *save-generation inc)
@@ -179,7 +179,7 @@
         (.then (fn [{:keys [worker]}] (when worker (message! worker {:op "disarm"}))))
         (.catch (fn [_] nil)))))
 
-(rf/reg-event-fx :page-return/depart
+(r/reg-event-fx :page-return/depart
   (fn [{:keys [db]} [_ url]] {:page-return/depart {:db db :url url}}))
 
 (defn navigate! [url] (.assign js/location url))
@@ -203,18 +203,18 @@
                    (when (= :timeout result) (clear!))
                    (navigate! url)))))))
 
-(rf/reg-fx :page-return/depart depart!)
+(r/reg-fx :page-return/depart depart!)
 
 (defn departure!
   "Capture the same exact page for native links and programmatic departures."
   ([]
    (storage/save-navigation!)
-   (rf/dispatch-sync [:page-return/save true]))
+   (r/dispatch-sync [:page-return/save true]))
   ([url]
    ;; Saving scroll history dispatches synchronously, outside event handling;
    ;; the queued departure then receives that updated state.
    (storage/save-navigation!)
-   (rf/dispatch [:page-return/depart url])))
+   (r/dispatch [:page-return/depart url])))
 
 (defn external-click! [event]
   (when (and (= 0 (.-button event)) (not (.-defaultPrevented event))
@@ -229,22 +229,22 @@
           (departure! (.-href url)))))))
 
 (defc <capture> {:profile false} []
-  (let [source @(rf/subscribe [:page-return/source])
+  (let [source @(r/subscribe [:page-return/source])
         identity @storage/*identity
-        *previous-identity (rf/use-ref identity)]
-    (rf/use-effect
+        *previous-identity (r/use-ref identity)]
+    (r/use-effect
       (fn []
         ;; Invalidate an in-flight pair immediately, before the debounce gate.
         (swap! *save-generation inc)
         (browser-resources/after-page! schedule!)) [source])
-    (rf/use-effect
+    (r/use-effect
       (fn []
         (when (not= identity (.-current *previous-identity))
           (set! (.-current *previous-identity) identity)
           (clear!))
         nil)
       [identity]))
-  (rf/use-effect
+  (r/use-effect
     (fn []
       (let [cancel-connect! (browser-resources/after-page!
                              #(-> (connect!) (.catch (fn [_] nil))))

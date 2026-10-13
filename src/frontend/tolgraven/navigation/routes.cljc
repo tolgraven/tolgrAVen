@@ -10,7 +10,7 @@
     [tolgraven.service-status :as status]
     [tolgraven.navigation.transition]
     [tolgraven.macros :refer-macros [defc defpage]]
-    [tolgraven.ssr.client :as ssr] [tolgraven.react :as rf]
+    [tolgraven.ssr.client :as ssr] [tolgraven.react :as r]
     [reitit.frontend :as reitit]
     [reitit.frontend.history :as rfh]
     [reitit.frontend.easy :as rfe]
@@ -24,7 +24,8 @@
     [tolgraven.components.error :as error-view]
     [tolgraven.components.page-shell :as shell]
     [tolgraven.component.restore :as restore]
-    [tolgraven.components.ui :as ui]
+    [tolgraven.components.ui.diagnostics :as ui-diagnostics]
+    [tolgraven.components.ui.layout :as ui-layout]
     #?(:module/home [tolgraven.modules.home.pages :as home])
     [tolgraven.components.not-found :as a404] )))
 
@@ -33,9 +34,9 @@
 (defpage <log-page>
   {:depends [{:source :strapi :keys [:common]}]}
   []
-  [ui/<with-heading> [:common :banner-heading]
-   [ui/<log> (rf/subscribe [:option [:log]])
-    (rf/subscribe [:get :diagnostics])]
+  [ui-layout/<with-heading> [:common :banner-heading]
+   [ui-diagnostics/<log> (r/subscribe [:option [:log]])
+    (r/subscribe [:get :diagnostics])]
    {:title "Log" :tint "blue"}])
 
 (def router
@@ -44,12 +45,12 @@
                :controllers [{:parameters {:query [:userBox :settingsBox]} ; ok so this how done. but surely will get unwieldy af?
                      :start (fn [{:keys [query]}]    ; and how get to update url with changes...
                               (case (:userBox query) ; was thinking "have :user/open-ui passing true/false and no case but would be spammy"
-                               true (rf/dispatch [:user/open-ui])
-                               (false nil) (rf/dispatch [:user/close-ui]))
+                               true (r/dispatch [:user/open-ui])
+                               (false nil) (r/dispatch [:user/close-ui]))
                               (case (:settingsBox query)
-                                true (do (rf/dispatch [:state [:settings :panel-open] true])
-                                           (rf/dispatch [:scroll/to-top-and-arm-restore]))
-                                (false nil) (rf/dispatch [:state [:settings :panel-open] false]))) ; well this being on start it wouldn't be open anyways
+                                true (do (r/dispatch [:state [:settings :panel-open] true])
+                                           (r/dispatch [:scroll/to-top-and-arm-restore]))
+                                (false nil) (r/dispatch [:state [:settings :panel-open] false]))) ; well this being on start it wouldn't be open anyways
                      :stop (fn [{:keys [query]}]    ; why is this being run without leaving page?
                              )}]}]
           (remove nil?)
@@ -68,8 +69,8 @@
         :page :page
        :controllers [{:parameters {:path [:tab]} ; seems like a nice middle ground of using routing and urls but not fully integrating (needing these views available/known here for example). So, keep doing sub tabs like this?
                       :start (fn [{:keys [path]}]
-                               (rf/dispatch [:state [:experiments] (keyword (:tab path))])
-                               (rf/dispatch [:exception [:experiments] nil]))}]}]])
+                               (r/dispatch [:state [:experiments] (keyword (:tab path))])
+                               (r/dispatch [:exception [:experiments] nil]))}]}]])
                    ["/client-oauth" ; for client OAuth callbacks
                     {:view #'a404/<not-found-page>}
                     ["" {:name :client-oauth
@@ -87,10 +88,10 @@
                                              :oauth_callback_confirmed]}
                         :start (fn [{:keys [query]}]
                                  (if (:oauth_callback_confirmed query)
-                                   (rf/dispatch [:oauth/store-token-twitter
+                                   (r/dispatch [:oauth/store-token-twitter
                                                  (:oauth_token query)
                                                  (:oauth_token_secret query)])
-                                   (rf/dispatch [:diag/new :error "Twitter auth"
+                                   (r/dispatch [:diag/new :error "Twitter auth"
                                                  "Error authenticating"])))}]}]]
                    ["/not-found" {:name :not-found :view #'a404/<not-found-page>}]])))
     (merge diagnostics/options {:validate validation-runtime/validate-routes!})))
@@ -182,7 +183,7 @@
                     (when (pos? @*navigation)
                       (set! (.-scrollRestoration js/history) "manual"))
                     (when-let [path (:path match)] (ssr/leave! path))
-                    (navigate! *navigation rf/dispatch l/load-code! match)))
+                    (navigate! *navigation r/dispatch l/load-code! match)))
         parameters (initial-parameters match @ssr/*snapshot
                                        (zero? @*navigation) (:hydrate? @restore/*context))]
     (cond
@@ -205,7 +206,7 @@
   ;; Only intercepted internal links may update the pending fragment.
   (let [ignore? (rfh/ignore-anchor-click? router event element uri)]
     (when ignore?
-      (rf/dispatch [:state [:fragment] (.getFragment uri)]))
+      (r/dispatch [:state [:fragment] (.getFragment uri)]))
     ignore?))
 
 (defn coercion-failed! [match error]
@@ -213,8 +214,8 @@
   (swap! *navigation inc)
   (let [issues (validation/problems (ex-data error))
         message (validation/message issues)]
-    (rf/dispatch [:validation/report {:contract :route :issues issues}])
-    (rf/dispatch [:state [:error-page]
+    (r/dispatch [:validation/report {:contract :route :issues issues}])
+    (r/dispatch [:state [:error-page]
                   (fn [] [error-view/<failure> "route" (:path match)
                           {:title "Invalid page address" :message message}
                           #(rfe/replace-state :home)])])))

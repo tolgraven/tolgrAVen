@@ -3,10 +3,12 @@
     [tolgraven.content.schema :as schema]
     [tolgraven.component.registry]
     [clojure.string :as string]
-    [tolgraven.react :as rf]
-    [reagent.core :as r]
+    [tolgraven.react :as r]
+
     [tolgraven.components.image :as img]
-    [tolgraven.components.ui :as ui]
+    [tolgraven.components.ui.controls :as ui-controls]
+    [tolgraven.components.ui.layout :as ui-layout]
+    [tolgraven.components.ui.media :as ui-media]
     [tolgraven.util :as util])
   (:require-macros
     [tolgraven.macros :as m]))
@@ -65,7 +67,7 @@
     [:div.cv-skills
      {:style {:min-height "20em"}}
      [:h1 "Skills"]
-     [ui/<carousel-normal> :cv/skills {} [software digital general language]]]))
+     [ui-media/<carousel-normal> :cv/skills {} [software digital general language]]]))
 
 (m/defc ^:private <intro-logo>
   {:features [[:seen "slide-in zoom opacity extra-slow"]]}
@@ -77,7 +79,7 @@
 
 (m/defc <intro>
   [cv :- schema/cv-body]
-  (let [win-fullscreen? @(rf/subscribe [:state [:window :fullscreen?]])]
+  (let [win-fullscreen? @(r/subscribe [:state [:window :fullscreen?]])]
     [:div.cv-intro
      [<intro-logo>]
      [:p (:intro cv)]
@@ -91,7 +93,7 @@
          "Scroll sideways to look back, or click "
          "Done snooping? Click ")
        [:button#fullscreen-btn
-        {:on-click #(rf/dispatch [:window/fullscreen! (not win-fullscreen?)])}
+        {:on-click #(r/dispatch [:window/fullscreen! (not win-fullscreen?)])}
         (if-not win-fullscreen?
           "Fullscreen"
           "Exit fullscreen")]
@@ -103,18 +105,18 @@
  ;; XXX TODO take out stuff specific to me (including categories, skill categories, logo etc) so is fully adaptable for others...
 (m/defc <cv> "Main cv component"
   []
-  (let [;_ (rf/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
-        visited (rf/subscribe [:state [:cv :visited]])
+  (let [;_ (r/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
+        visited (r/subscribe [:state [:cv :visited]])
         ref-fn (fn [el]
                  (when el
-                   (rf/dispatch [:ls/store-val [:cv-visited] true])
-                   (rf/dispatch [:dispatch-in/ms 2000 [:state [:fullscreen :cv] true]])
+                   (r/dispatch [:ls/store-val [:cv-visited] true])
+                   (r/dispatch [:dispatch-in/ms 2000 [:state [:fullscreen :cv] true]])
                    (when (not @visited)
-                     (rf/dispatch [:dispatch-in/ms 3000 [:scroll/by 50]])
-                     (rf/dispatch [:dispatch-in/ms 4500 [:scroll/by -37]])
-                     (rf/dispatch [:dispatch-in/ms 5500 [:focus-element "fullscreen-btn"]]))))]
+                     (r/dispatch [:dispatch-in/ms 3000 [:scroll/by 50]])
+                     (r/dispatch [:dispatch-in/ms 4500 [:scroll/by -37]])
+                     (r/dispatch [:dispatch-in/ms 5500 [:focus-element "fullscreen-btn"]]))))]
    (fn []
-    (let [{:keys [title caption cv]} @(rf/subscribe [:content [:cv]])
+    (let [{:keys [title caption cv]} @(r/subscribe [:content [:cv]])
         {:keys [timeline skills]} cv
         total-width "200em"
         base-height 9
@@ -152,7 +154,7 @@
                              (get-pos from to)
                              (get-size from to)
                              (or level @overlap-level)])))
-        fullscreen? (when @(rf/subscribe [:fullscreen/get :cv])
+        fullscreen? (when @(r/subscribe [:fullscreen/get :cv])
                       "fullscreen")]
     [:section#cv.cv.nopadding.noborder
      {:class fullscreen?
@@ -161,7 +163,7 @@
      [:div.cv-boxes
       {:ref #(when %
                (set! (.-scrollLeft %) (.-scrollWidth %)))}
-      [ui/<close> #(rf/dispatch [:state [:fullscreen :cv] false])]
+      [ui-controls/<close> #(r/dispatch [:state [:fullscreen :cv] false])]
       [:div.cv-decade-lines
        {:style {:width total-width}}
        (for [decade decades]
@@ -183,7 +185,7 @@
                                           ", var(--bg-" (get (:background-color-indexes cv) i) "))")}}
                 [:h1 [:i {:class icon}] (name category)]
                 (gen-items things)]))]
-      [ui/<fading> :dir "bottom"]
+      [ui-layout/<fading> :dir "bottom"]
 
      [<capabilities> skills]]))))
 
@@ -191,4 +193,4 @@
   {:depends [{:source :strapi :keys [:cv]}]
    :loading-prefab :lines :loading-tag :section.cv}
   []
-  [ui/<with-heading> [:cv :heading] [<cv>]])
+  [ui-layout/<with-heading> [:cv :heading] [<cv>]])

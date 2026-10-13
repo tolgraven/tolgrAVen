@@ -2,14 +2,16 @@
   #?(:cljs (:require
     [tolgraven.component.registry]
     [tolgraven.macros :as m :refer-macros [defc defpage]]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.component :as component]
     [tolgraven.component.restore :as restore]
     [tolgraven.component.motion :as motion]
     [tolgraven.navigation.transition :as transition]
     [tolgraven.modules.main.module :as main-module]
     [tolgraven.loader :as l]
-    [tolgraven.components.ui :as ui]
+    [tolgraven.components.ui.loading :as ui-loading]
+    [tolgraven.components.ui.notifications :as ui-notifications]
+    [tolgraven.components.ui.overlays :as ui-overlays]
     [tolgraven.components.shell :as common])))
 
 #?(:cljs
@@ -24,13 +26,13 @@
         current-key (page-key current)
         previous-key (page-key previous)
         token [transition-id previous-key current-key]
-        [running set-running!] (rf/use-state nil)
-        [finished set-finished!] (rf/use-state nil)
-        [offset set-offset!] (rf/use-state nil)
-        *incoming (rf/use-ref nil)
-        *outgoing (rf/use-ref nil)
+        [running set-running!] (r/use-state nil)
+        [finished set-finished!] (r/use-state nil)
+        [offset set-offset!] (r/use-state nil)
+        *incoming (r/use-ref nil)
+        *outgoing (r/use-ref nil)
         force? (or (not animate?) (nil? outgoing) (= current-key previous-key))]
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn []
         (if force?
           nil
@@ -42,7 +44,7 @@
                                  0)])
             (motion/next-frame! #(set-running! token)))))
       [token force? outgoing-top])
-    (rf/use-effect
+    (r/use-effect
       (fn []
         (if (and (not force?) (= token running) (.-current *outgoing))
           ;; Release the outgoing page when its CSS fade ends, not on a second
@@ -59,7 +61,7 @@
                                 (and (not force?) (not= token finished))
                                 (conj [previous-key false outgoing]))]
        ^{:key (pr-str key)}
-       [:r> (rf/context-provider component/page-root-context)
+       [:r> (r/context-provider component/page-root-context)
         #js {:value {:ref (if active? *incoming *outgoing)
                  :style (when (and (not active?) (= token (first offset)))
                           {:translate (str "0 " (second offset) "px")})
@@ -73,44 +75,44 @@
 (defpage <page> "Render active page inbetween header, footer and general stuff."
   {:container false}
   []
-  (let [commit @(rf/subscribe [:get :page/commit])
+  (let [commit @(r/subscribe [:get :page/commit])
         _ (transition/use-ready! commit)
         ext-back? (restore/skip-enter?)
         document-enter? (restore/document-enter?)
-        debug @(rf/subscribe [:state [:debug]])
-        click-evt @(rf/subscribe [:state [:global-clicked]])
-        page @(rf/subscribe [:common/page])
-        previous @(rf/subscribe [:common/page :last])
+        debug @(r/subscribe [:state [:debug]])
+        click-evt @(r/subscribe [:state [:global-clicked]])
+        page @(r/subscribe [:common/page])
+        previous @(r/subscribe [:common/page :last])
         layers (use-page-crossfade
                  (when page [(component/resolve-view page)])
                  (when previous [(component/resolve-view previous)])
-                 @(rf/subscribe [:common/route]) @(rf/subscribe [:common/route :last])
+                 @(r/subscribe [:common/route]) @(r/subscribe [:common/route :last])
                  (and (not ext-back?) (get-in commit [:completion :fallback?]))
                  (get-in commit [:completion :transition-id])
                  (get-in commit [:completion :outgoing-top]))]
   [:<>
    [l/<loaded-assets> (:assets spec)]
 
-   [common/<header> @(rf/subscribe [:content [:header]])]
+   [common/<header> @(r/subscribe [:content [:header]])]
    [:a {:name "linktotop" :id "linktotop"}]
 
-   [ui/<zoom-to-modal> :fullscreen]
+   [ui-overlays/<zoom-to-modal> :fullscreen]
    (m/<> {:module :link-preview :defer? true})
    (m/<> {:module :user, :defer? true})
    #?(:module/settings
-      (when @(rf/subscribe [:state [:settings :panel-open]])
+      (when @(r/subscribe [:state [:settings :panel-open]])
         (m/<> {:module :settings :load-on :immediate})))
    (m/<> {:module :search, :defer? true})
-   (if-let [error-page @(rf/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
+   (if-let [error-page @(r/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
       [error-page]]
      (if page
-       [:r> (rf/context-provider restore/readiness-context) #js {:value true}
+       [:r> (r/context-provider restore/readiness-context) #js {:value true}
         [:main.main-content.perspective-top
         {:id    "main"
          :style (when-let [height (get-in commit [:completion :outgoing-height])]
                   {:min-height (str height "px")})
-         :data-debug-hydrated (when @(rf/subscribe [:state [:debug :hydration-token]]) true)
+         :data-debug-hydrated (when @(r/subscribe [:state [:debug :hydration-token]]) true)
          :data-restored (when (and ext-back? (not document-enter?)) true)
          :class (str (when (or document-enter?
                                  (and (not ext-back?)
@@ -119,13 +121,13 @@
                      (when (:layers debug) "debug-layers ")
                      (when (:parallax debug) "debug-on"))}
         layers]]
-       [ui/<loading-spinner> true :massive]))                 ; removed since jars now that have hero in original html
+       [ui-loading/<loading-spinner> true :massive]))                 ; removed since jars now that have hero in original html
 
    [:div#error-portal]
 
-   [common/<footer-full> @(rf/subscribe [:content [:footer]])]
-   [common/<footer> @(rf/subscribe [:content [:footer]])]
-   [ui/<hud> (rf/subscribe [:hud])]
+   [common/<footer-full> @(r/subscribe [:content [:footer]])]
+   [common/<footer> @(r/subscribe [:content [:footer]])]
+   [ui-notifications/<hud> (r/subscribe [:hud])]
    [common/<to-top>]
    ; [[:div.ripple-on-click
    ;    {:class (when click-evt "ripple")

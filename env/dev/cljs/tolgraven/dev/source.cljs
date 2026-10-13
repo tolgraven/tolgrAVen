@@ -2,7 +2,7 @@
   "Source documentation uses normal component data bindings and the module loader."
   (:require [clojure.string :as string]
             [tolgraven.dev.source-links :as links]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [tolgraven.macros :refer-macros [defc defpage]]
             [tolgraven.component :as component]
             [tolgraven.component.instrumentation]
@@ -17,11 +17,11 @@
 (defn file-resource [file]
   {:source :url
    :url (str "/api/dev/source?file=" (js/encodeURIComponent file))})
-(rf/reg-sub-raw :dev-source/file
+(r/reg-sub-raw :dev-source/file
   (fn [_ [_ file]]
-    (rf/make-reaction #(:value (data/snapshot (file-resource file))))))
+    (r/make-reaction #(:value (data/snapshot (file-resource file))))))
 
-(rf/reg-event-fx :dev-source/reveal-line
+(r/reg-event-fx :dev-source/reveal-line
   (fn [{:keys [db]} [_ file target]]
     (when (and (= :source (get-in db [:common/route :data :page]))
                (= file (get-in db [:common/route :path-params :file])))
@@ -51,8 +51,8 @@
   {:depends (fn [file] [(file-resource file)])
    :loading-tag :section.dev-source__listing}
   [file :- contract/file-path]
-  (let [*revealed (rf/use-ref nil)
-        source @(rf/subscribe [:dev-source/file file])]
+  (let [*revealed (r/use-ref nil)
+        source @(r/subscribe [:dev-source/file file])]
     [:section.dev-source__listing
      [:h2 (:path source)]
      [:p (:namespace source)]
@@ -67,7 +67,7 @@
                                         (when (and element (= target (.-hash js/location))
                                                    (not= [file target] (.-current *revealed)))
                                           (set! (.-current *revealed) [file target])
-                                          (rf/dispatch [:dev-source/reveal-line file (str "L" line)]))))}))}]]))
+                                          (r/dispatch [:dev-source/reveal-line file (str "L" line)]))))}))}]]))
 
 (defpage <page>
   {:depends [catalog-resource]
@@ -75,8 +75,8 @@
    :loading-tag :section.dev-source}
   []
   :let [*filter (<sub :comp [:filter])]
-  (let [catalog (:value @(rf/subscribe [:component-data/installed catalog-path]))
-        route @(rf/subscribe [:common/route])
+  (let [catalog (:value @(r/subscribe [:component-data/installed catalog-path]))
+        route @(r/subscribe [:common/route])
         file (or (get-in route [:path-params :file]) (:path (first catalog)))
         entries (filterv #(string/includes? (string/lower-case (:path %))
                                            (string/lower-case @*filter)) catalog)]

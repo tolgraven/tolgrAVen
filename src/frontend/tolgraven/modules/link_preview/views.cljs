@@ -1,11 +1,11 @@
 (ns tolgraven.modules.link-preview.views
   (:require
     [clojure.string :as string]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.listener :as listener]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.component.registry]
-    [reagent.core :as r]
+
     [tolgraven.component :as component]
     [tolgraven.component.data :as data]
     [tolgraven.modules.link-preview.article :as article]
@@ -17,7 +17,7 @@
     [tolgraven.component.motion :as motion]
     [tolgraven.modules.link-preview.subs]
     [tolgraven.modules.link-preview.util :as util]
-    [tolgraven.components.ui :as ui]))
+    [tolgraven.components.ui.markdown :as ui-markdown]))
 
 (def ^:private open-delay-ms 300)
 (def ^:private close-delay-ms 180)
@@ -35,7 +35,7 @@
 (defn- preview-state []
   ;; Browser interaction callbacks read through the safe subscription lifecycle;
   ;; the controller itself owns an ordinary reactive subscription while mounted.
-  @(rf/sub [:link-preview/state]))
+  @(r/sub [:link-preview/state]))
 
 (defn register-provider!
   "Register a host renderer receiving preview data and an on-load callback."
@@ -85,7 +85,7 @@
                   data (get-in @*containers
                                [id :candidates-by-element link])]
             :when data]
-      (rf/dispatch [:link-preview/visible data])
+      (r/dispatch [:link-preview/visible data])
       (.unobserve observer link)))
     #js {:rootMargin "25%"})))
 
@@ -144,13 +144,13 @@
   (when-not (visited? data)
     (detach-anchor! (active-link))
     (attach-anchor! link)
-    (rf/dispatch [:link-preview/open data])))
+    (r/dispatch [:link-preview/open data])))
 
 (defn- close-preview! []
   (clear-interaction-timer! :open)
   (clear-interaction-timer! :close)
   (detach-anchor! (active-link))
-  (rf/dispatch [:link-preview/close]))
+  (r/dispatch [:link-preview/close]))
 
 (defn- schedule-close! []
   (clear-interaction-timer! :open)
@@ -235,10 +235,10 @@
                 (and (active-candidate? data)
                      (unmodified-primary-click? event))
                 (do (.preventDefault event)
-                    (rf/dispatch [:link-preview/status :navigate]))
+                    (r/dispatch [:link-preview/status :navigate]))
 
                 (unmodified-primary-click? event)
-                (rf/dispatch-sync [:link-preview/visited (:url data)]))))
+                (r/dispatch-sync [:link-preview/visited (:url data)]))))
           (reset! *touch-open-link nil))]
     {"pointerover" pointer-over
      "pointerout" pointer-out
@@ -276,7 +276,7 @@
           expected (set (mapcat util/href-variants candidate-urls))]
       ;; A real link container owns activation of the deferred global controller.
       ;; Loading User controls or rendering a plain page must not acquire it.
-      (rf/dispatch [:loader/activate {:module :link-preview}])
+      (r/dispatch [:loader/activate {:module :link-preview}])
       (swap! *containers assoc id
              {:element element
               :handlers handlers
@@ -298,7 +298,7 @@
                   links)]
         (swap! *containers assoc-in [id :candidates-by-element]
                (into {} candidates))
-        (rf/dispatch [:link-preview/register id (mapv second candidates)]))
+        (r/dispatch [:link-preview/register id (mapv second candidates)]))
       #(unregister-container! id))))
 
 (defn unregister-container!
@@ -314,10 +314,10 @@
     (swap! *link-elements
            #(into {} (remove (fn [[[container-id _] _]]
                               (= id container-id)) %)))
-    (rf/dispatch [:link-preview/unregister id])))
+    (r/dispatch [:link-preview/unregister id])))
 
 (defn- setup-link-feature [{:keys [id text] :as options}]
-  (let [candidates @(rf/subscribe
+  (let [candidates @(r/subscribe
                       [:link-preview/candidates
                        text
                        (.-href js/window.location)])]
@@ -346,7 +346,7 @@
 (defc ^:private <observed-link-container>
   [{:keys [candidates id trust]} content]
   :let [*element (atom nil)]
-  (rf/use-effect
+  (r/use-effect
     (fn []
       (when (and @*element (seq candidates))
         (let [observer (candidate-observer id)
@@ -366,7 +366,7 @@
   [{:keys [id text trust]} content]
   (let [base-url (if (exists? js/window) (.-href js/window.location)
                       (str "https://tolgraven.se" (:path @context/*snapshot)))
-        candidates @(rf/subscribe
+        candidates @(r/subscribe
                       [:link-preview/candidates text base-url])]
     (if (seq candidates)
       (with-meta
@@ -389,7 +389,7 @@
        {:id id
         :text md
         :trust (:trust options)}
-       [ui/<md->div> md options]])))
+       [ui-markdown/<md->div> md options]])))
 
 (defn article-dependency [url]
   {:source :url
@@ -404,9 +404,9 @@
     false))
 
 (defc <miniature> [{:keys [url trust]}]
-  (let [*element (rf/use-ref nil)
-        [scale set-scale!] (rf/use-state nil)]
-    (rf/use-effect
+  (let [*element (r/use-ref nil)
+        [scale set-scale!] (r/use-state nil)]
+    (r/use-effect
      (fn []
        (let [measure! #(when-let [element (.-current *element)]
                         (set-scale! (/ (.-clientWidth element) (.-innerWidth js/window))))
@@ -429,11 +429,11 @@
                         :trust trust}]]]))
 
 (defc <readable-content> [result :- article/result candidate on-load]
-  (let [[miniature? set-miniature!] (rf/use-state false)
+  (let [[miniature? set-miniature!] (r/use-state false)
         allowed? (and (exists? js/window)
                       (= "ready" (:status result))
                       (frame-allowed? result (.-href js/window.location)))]
-    (rf/use-effect
+    (r/use-effect
      (fn []
        (on-load)
        ;; The article commits and paints before an optional page adds work.
@@ -512,7 +512,7 @@
   ;; Older departures stored a reverse-animation token. Consume only the visit;
   ;; the document/SPA restoration adapter owns scroll and layout restoration.
   (when-let [data (stored-transition)]
-    (rf/dispatch-sync [:link-preview/visited (:url data)])
+    (r/dispatch-sync [:link-preview/visited (:url data)])
     data))
 
 (defn- clear-transition! []
@@ -523,7 +523,7 @@
 (defc <link-preview>
   "Top-level renderer and transition/prefetch controller for link containers."
   []
-  (let [state (rf/subscribe [:link-preview/state])
+  (let [state (r/subscribe [:link-preview/state])
         *loaded-url (r/atom nil)
         *prefetch-timer (atom nil)
         *prefetches (r/atom #{})
@@ -551,8 +551,8 @@
             (do
               ;; React owns prefetch links and removes them on completion/unmount.
               (swap! *prefetches conj url)
-              (rf/dispatch [:link-preview/prefetched url])
-              (rf/dispatch [:link-preview/prefetch-next])
+              (r/dispatch [:link-preview/prefetched url])
+              (r/dispatch [:link-preview/prefetch-next])
               (reset! *prefetch-timer
                       (js/setTimeout prefetch-next!
                                      (get util/prefetch-delay-ms trust))))
@@ -563,7 +563,7 @@
         leave!
         (fn [data]
           (save-transition! data)
-          (rf/dispatch-sync [:link-preview/visited (:url data)])
+          (r/dispatch-sync [:link-preview/visited (:url data)])
           (close-preview!)
           ;; Commit the closed surface before BFCache can freeze the document.
           (r/after-render #(local-page/departure! (:url data))))
@@ -572,7 +572,7 @@
           (clear-interaction-timer! :open)
           (clear-interaction-timer! :close)
           (when @*navigation-timer (js/clearTimeout @*navigation-timer))
-          (rf/dispatch [:link-preview/status :expanded])
+          (r/dispatch [:link-preview/status :expanded])
           (reset! *navigation-timer
                   (js/setTimeout #(leave! data)
                                  (if (reduced-motion?) 0 navigation-delay-ms))))
@@ -587,7 +587,7 @@
                          "keydown" on-key-down
                          "pointerdown" on-pointer-down}]
     (fn []
-      (rf/use-effect
+      (r/use-effect
        (fn []
          (let [stop-listeners! (listener/listen! :link-preview
                                  (mapv (fn [[event handler]]
@@ -599,7 +599,7 @@
               (close-preview!)
               (doseq [timer [*prefetch-timer *navigation-timer]]
                 (when @timer (js/clearTimeout @timer)))))) [])
-      (rf/use-effect
+      (r/use-effect
        (fn []
          (maybe-prefetch!)
          (when (= :navigate (get-in @state [:active :status]))

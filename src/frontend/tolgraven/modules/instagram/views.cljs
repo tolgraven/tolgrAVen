@@ -2,10 +2,10 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [clojure.string :as string]
-    [tolgraven.components.ui :as ui]
+
     [tolgraven.components.image :as img]
     [tolgraven.util :as util :refer [at]]))
 
@@ -15,7 +15,7 @@
   (let [hover? (r/atom false)]
     (fn [post item]
       [:div.instagram-item
-        {:on-click #(rf/dispatch [:modal-zoom :fullscreen :open item])
+        {:on-click #(r/dispatch [:modal-zoom :fullscreen :open item])
          :on-mouse-enter #(reset! hover? true)
          :on-mouse-leave #(reset! hover? false)}
         item
@@ -27,7 +27,7 @@
 (defc <instagram> "Instagram gallery"
   []
   (let [amount (r/atom 24)
-        posts (rf/subscribe [:instagram/posts @amount])
+        posts (r/subscribe [:instagram/posts @amount])
         fallback-url "img/logo/instagram-fallback-logo.png"
         fallback (r/atom nil)] ; would need to be a map of ids to status, so it's per img
     (fn []
@@ -38,7 +38,7 @@
         [:<>
          (doall
           (for [post (or @posts (range @amount)) ; empty seq triggers fallbacks
-                :let [url @(rf/subscribe [:href-external-img
+                :let [url @(r/subscribe [:href-external-img
                                           (:media_url post)
                                           "fit-in" "800x800"])
                       item [img/<picture> {:class (when (or (not (:media_url post))
@@ -54,7 +54,7 @@
                                                      ;; Preserve the fallback without dispatching its obsolete event.
                                                      (reset! fallback fallback-url)
                                                      #_(if-not @fallback
-                                                         (rf/dispatch [:instagram/fetch-from-insta [(:id post)]]) ; dispatch on failed fetch due to url expiry
+                                                         (r/dispatch [:instagram/fetch-from-insta [(:id post)]]) ; dispatch on failed fetch due to url expiry
                                                          (reset! fallback fallback-url)))}]]] ; in the meantime (til fetch comes through to sub) use fallback ratom
             ^{:key (str "instagram-" (or (:id post) (random-uuid)))}
             [<instagram-post> post item]))]]])))

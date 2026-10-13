@@ -4,12 +4,14 @@
     [tolgraven.components.icon :as icon]
     [tolgraven.component.registry]
     [tolgraven.component.restore :as restore]
-    [reagent.core :as r]
+    [tolgraven.react :as r]
     [tolgraven.macros :as m :refer-macros [defc]]
-    [tolgraven.react :as rf]
+
     [reitit.frontend.easy :as rfe]
     [clojure.string :as string]
     [tolgraven.loader]
+    [tolgraven.components.ui.controls :as ui-controls]
+    [tolgraven.components.ui.loading :as ui-loading]
     [tolgraven.components.ui :as ui]
     [tolgraven.components.contact :as contact]
     [tolgraven.components.image :as img]
@@ -29,20 +31,20 @@
 
 (defc <component> "Standard wrapper for component. Would have fallback loading thing, appear anim, disappear anim somehow..."
   [id attrs model component]
-  (let [state @(rf/subscribe [:state [:component id]])
+  (let [state @(r/subscribe [:state [:component id]])
         stage (:stage state)
         hovered? (r/atom nil)
         ]
     (if (at model)
       (when-not (= :closed stage)
         [<stage> component stage])
-      [ui/<loading-spinner> model])))
+      [ui-loading/<loading-spinner> model])))
 
 ;; TODO curr 1px gap between outer lines and img. Fix whatever causing this by mistake (think lines are half-width)
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
 (defc <header-logo> [[text subtitle]]
   [:div.header-logo
-   [:a {:href @(rf/subscribe [:href :home])} ;works w/o reitit fiddle
+   [:a {:href @(r/subscribe [:href :home])} ;works w/o reitit fiddle
     [:h1 text]]
    [:div.header-logo-text ; if I want this to do its flip when changes text, do I need to make a whole componentDidChange dance with it? :I
     (for [line subtitle] ^{:key (str "header-text-" line)}
@@ -54,12 +56,12 @@
                     (doall
                      (for [[title url page] links
                            :let [id (str "menu-link-" (string/lower-case title))
-                                 href @(rf/subscribe [:href (keyword page)])]
+                                 href @(r/subscribe [:href (keyword page)])]
                            :when (seq href)]  ^{:key id}
                           [:li [:a {:href href
                                     :name title :id id
                                     :class (when (= (keyword page)
-                                                    @(rf/subscribe [:common/page-id]))
+                                                    @(r/subscribe [:common/page-id]))
                                              "is-active")}
                                 (string/upper-case title)]])))]
     [:menu ; XXX put bg stuff in mwnu not nav...
@@ -86,48 +88,48 @@
 (defc <header> {:features [:error-boundary]
                  :icons ["solid/cog" "solid/pen-fancy"]}
   [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
-  (let [menu-open? @(rf/subscribe [:state [:menu]])
-        initial-menu (rf/use-ref menu-open?)
-        [restored? set-restored!] (rf/use-state #(restore/local-document?))
+  (let [menu-open? @(r/subscribe [:state [:menu]])
+        initial-menu (r/use-ref menu-open?)
+        [restored? set-restored!] (r/use-state #(restore/local-document?))
         initial-menu? (= menu-open? (.-current initial-menu))]
     ;; A restored shell is already visible. The first menu intent resumes motion.
-    (rf/use-effect
+    (r/use-effect
      (fn []
        (when-not initial-menu? (set-restored! false))
        nil)
      [initial-menu?])
     [:<>
-     [ui/<input-toggle> "nav-menu-open" [:menu] :class "burger-check"]
-     (when @(rf/subscribe [:fullscreen/any?])
+     [ui-controls/<input-toggle> "nav-menu-open" [:menu] :class "burger-check"]
+     (when @(r/subscribe [:fullscreen/any?])
        [:div.header-before
-        {:class (when @(rf/subscribe [:state [:scroll :past-top]])
+        {:class (when @(r/subscribe [:state [:scroll :past-top]])
                   "past-top")}])
      [:header
       {:data-restored-motion (and restored? initial-menu?)
-       :class (when @(rf/subscribe [:state [:hidden :header] ])
+       :class (when @(r/subscribe [:state [:hidden :header] ])
                 "hide")}
       [:div.cover.cover-clip] ;covers around lines and that... XXX breaks when very wide tho.
-      [<header-logo> @(rf/subscribe [:header-text])]
+      [<header-logo> @(r/subscribe [:header-text])]
       [<header-nav> menu]
 
-      (when @(rf/subscribe [:state [:menu]])
+      (when @(r/subscribe [:state [:menu]])
         [:div.line])
 
-      (when-let [loading @(rf/subscribe [:loading])]
-        [ui/<loading-spinner> (rf/subscribe [:loading]) :still
+      (when-let [loading @(r/subscribe [:loading])]
+        [ui-loading/<loading-spinner> (r/subscribe [:loading]) :still
          {:style {:position :absolute
                   :left     "-2.65em"                                   ; puts it to left of header-logo, only partly visible. looks nice.
                   :top      "0%"}}])
       [:div.header-icons
        [:a.button.blog-link-btn.noborder.nomargin
-        {:href @(rf/subscribe [:href :blog])
+        {:href @(r/subscribe [:href :blog])
          :aria-label "My blog"
          :title "My blog"}
         [:i.fa.fa-pen-fancy]]
       (when-enabled :settings nil
        [:a.button.settings-btn.noborder.nomargin
-       {:href @(rf/subscribe [:href-add-query
-                              {:settingsBox (not @(rf/subscribe [:state [:settings :panel-open]]))}])
+       {:href @(r/subscribe [:href-add-query
+                              {:settingsBox (not @(r/subscribe [:state [:settings :panel-open]]))}])
         :aria-label "Settings"
         :title "Settings"}
        [:i.settings-btn {:class "fa fa-cog"}]])
@@ -140,7 +142,7 @@
                            :title "Search site"
                            ;; Preserve the click's intent while the parent acquires
                            ;; Search. Its module events do not exist yet.
-                           :on-click #(rf/dispatch [:state [:search :open?] true])}
+                           :on-click #(r/dispatch [:state [:search :open?] true])}
                           [img/<picture> {:src   "svg/search-ico.svg"
                                         :alt   "Search"
                                         :style {:width  "1.2em" :height "1.2em"
@@ -150,17 +152,17 @@
 
      [:div.fill-side-top
       [:div
-       {:class (str (when-not @(rf/subscribe [:state [:scroll :past-top]])
+       {:class (str (when-not @(r/subscribe [:state [:scroll :past-top]])
                       "hide ")
-                    (when @(rf/subscribe [:fullscreen/any?])
+                    (when @(r/subscribe [:fullscreen/any?])
                       "adjust-for-fullscreen"))}]]
 
      [:div.fill-above-line-header
-      {:class (when @(rf/subscribe [:state [:hidden :header]])
+      {:class (when @(r/subscribe [:state [:hidden :header]])
               "fill ")}]
 
      [:div.line.line-header
-      {:class (when @(rf/subscribe [:state [:hidden :header]])
+      {:class (when @(r/subscribe [:state [:hidden :header]])
                "hide")}]]))
 
 
@@ -216,22 +218,22 @@
 (defc <footer> "The sticky footer visible at load or when scrolling up."
   [content]
   [:footer#footer-sticky.footer-sticky
-   {:class (str (when @(rf/subscribe [:state [:hidden :footer]])
+   {:class (str (when @(r/subscribe [:state [:hidden :footer]])
                   "hide ")
-                (when @(rf/subscribe [:state [:scroll :at-bottom]])
+                (when @(r/subscribe [:state [:scroll :at-bottom]])
                   "bottomed ")
-                (when @(rf/subscribe [:fullscreen/any?])
+                (when @(r/subscribe [:fullscreen/any?])
                    "adjust-for-fullscreen"))}
    [<footer-content> content]])
 
 (defc <footer-full> "Render the full footer at bottom of page"
   [content]
-  (let [[restored?] (rf/use-state #(restore/local-document?))]
+  (let [[restored?] (r/use-state #(restore/local-document?))]
     [:footer#footer-end.footer-full
      {:class "full"
       :data-restored-motion restored?}
      [<footer-content> content]
-     [<post-footer> @(rf/subscribe [:content [:post-footer]])]]))
+     [<post-footer> @(r/subscribe [:content [:post-footer]])]]))
 
 
 (defc <to-top> "A silly arrow, and twice lol. why."
@@ -241,7 +243,7 @@
        i [icon/<icon> "fas" icon {}]]
     [:a {:id "to-top"
          :class "to-top"
-         :href @(rf/subscribe [:href "#main"])
+         :href @(r/subscribe [:href "#main"])
          :aria-label "Back to top"} i]))
 
 (defc <scrollbar> "Basic custom scroll indicator. Add full functionality later..."

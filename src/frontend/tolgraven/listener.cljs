@@ -1,11 +1,11 @@
 (ns tolgraven.listener
   (:require
     [clojure.string :as string]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.validation.runtime :as validation]
     [tolgraven.util :as util]))
 
-(def debug (when ^boolean goog.DEBUG rf/debug))
+(def debug (when ^boolean goog.DEBUG r/debug))
 
 (def binding-schema
   [:map
@@ -62,14 +62,14 @@
   (doseq [[id binding] @*bindings :when (= owner (:owner binding))] (remove! id))
   (when (= owner :site) (reset! scroll-listeners {})))
 
-(rf/reg-fx :listener/register (fn [bindings] (doseq [binding bindings] (register! binding))))
-(rf/reg-fx :listener/stop stop!)
+(r/reg-fx :listener/register (fn [bindings] (doseq [binding bindings] (register! binding))))
+(r/reg-fx :listener/stop stop!)
 
-(rf/reg-event-fx :listener/add!  [debug]
+(r/reg-event-fx :listener/add!  [debug]
  (fn [{:keys [db]} [_ el event f]]
    {:listener/add-fx [el event f]}))
 
-(rf/reg-fx :listener/add-fx 
+(r/reg-fx :listener/add-fx
  (fn [[el event f]]
    (register! {:id [:site el event]
                :owner :site
@@ -86,11 +86,11 @@
          .-paddingBottom
          js/parseFloat)))
 
-(rf/reg-fx :scroll/register-update-fn
+(r/reg-fx :scroll/register-update-fn
   (fn [[id f]]
     (swap! scroll-listeners assoc id f)))
 
-(rf/reg-event-fx :scroll/update-css-var
+(r/reg-event-fx :scroll/update-css-var
  (fn [{:keys [_]} [_ _]]
    (let [f (fn update-css-var [e]
              (let [new-pos    (.-scrollY js/window)
@@ -108,13 +108,13 @@
                               (> percent 90) 0
                               :else          1)]
                (when-not (.isNaN js/Number percent)
-                 (rf/dispatch [:->css-var! "page-scroll-percent" (str percent "%")])
-                 (rf/dispatch [:->css-var! "page-scroll-opacity" opacity]))))]
+                 (r/dispatch [:->css-var! "page-scroll-percent" (str percent "%")])
+                 (r/dispatch [:->css-var! "page-scroll-opacity" opacity]))))]
      {:scroll/register-update-fn [:update-css-var f]})))
 
-(rf/reg-event-fx :scroll/update-direction   [(rf/inject-cofx :css-var [:header-height])
-                                             (rf/inject-cofx :css-var [:space-top])
-                                             (rf/inject-cofx :css-var [:space-lg])]
+(r/reg-event-fx :scroll/update-direction   [(r/inject-cofx :css-var [:header-height])
+                                             (r/inject-cofx :css-var [:space-top])
+                                             (r/inject-cofx :css-var [:space-lg])]
  (fn [{:keys [_ css-var]} [_ _]]
    (let [scroll-pos (atom 0)
          last-direction (atom :up)
@@ -158,14 +158,14 @@
                                                #_(= @last-direction :up)))) ; always post when at bottom, regardless of accum
                             (reset! accum-in-direction 0)
                             (reset! triggered-at (js/Date.now))
-                            (rf/dispatch [:scroll/direction
+                            (r/dispatch [:scroll/direction
                                           new-direction new-pos new-height at-top? at-bottom?]))
                           (reset! scroll-pos new-pos)
                           (reset! last-direction new-direction))
                         (reset! page-height new-height)))]
      {:scroll/register-update-fn [:direction callback]})))
 
-(rf/reg-event-fx :listener/scroll   []
+(r/reg-event-fx :listener/scroll   []
  (fn [{:keys [_]} [_ _]]
    (let [ticking? (atom false)
          cnt      (atom 0)
@@ -199,33 +199,33 @@
 ;   }
 ; });
 
-(rf/reg-event-fx :listener/before-unload-save-scroll ; gets called even when link to save page, silly results.
+(r/reg-event-fx :listener/before-unload-save-scroll ; gets called even when link to save page, silly results.
                  ;; might make sense to just store each pushstate tbh?
  (fn [{:keys [db]} [_ ]]
   (let [scroll-to-ls
         (fn []
           (when (= js/document.visibilityState "hidden")
-            (rf/dispatch-sync [:scroll/save-history])
-            (rf/dispatch-sync [:ls/store-path [:scroll-position]
+            (r/dispatch-sync [:scroll/save-history])
+            (r/dispatch-sync [:ls/store-path [:scroll-position]
                                [:state :scroll-position]])))]
     {:dispatch [:listener/add! "window" "visibilitychange" scroll-to-ls]})))
 
-(rf/reg-event-fx :listener/popstate-back ; gets called on browser back. or if we nanually pop state, so keep track of that if end up doing it...
+(r/reg-event-fx :listener/popstate-back ; gets called on browser back. or if we nanually pop state, so keep track of that if end up doing it...
  (fn [{:keys [db]} [_ ]]
    (let [f (fn [e]
-             (rf/dispatch-sync [:history/popped e]))] ; which will actually have fresh db and can do stuff ugh
+             (r/dispatch-sync [:history/popped e]))] ; which will actually have fresh db and can do stuff ugh
     {:listener/add-fx ["window" "popstate" f]})))
 
-(rf/reg-event-fx :listener/load
+(r/reg-event-fx :listener/load
  (fn [{:keys [db]} [_ _]]
    (let [f (fn [e]
-             (rf/dispatch [:booted :load]))] ; which will actually have fresh db and can do stuff ugh
+             (r/dispatch [:booted :load]))] ; which will actually have fresh db and can do stuff ugh
     {:dispatch [:listener/add! "window" "load" f]})))
 
-(rf/reg-event-fx :listener/global-click
+(r/reg-event-fx :listener/global-click
  (fn [{:keys [db]} [_ _]]
    {:dispatch [:listener/add! "document" "click"
-               #(rf/dispatch [:global-clicked %])]}))
+               #(r/dispatch [:global-clicked %])]}))
 
 (defn visibility-props "Get the name of the hidden property and the change event for visibility"
   []
@@ -238,8 +238,8 @@
                                       :visibility-change "webkitvisibilitychange"}
     :else (js/console.error "visibility prop not found in visibility-props fn")))
 
-(rf/reg-event-fx :listener/visibility-change
+(r/reg-event-fx :listener/visibility-change
  (fn [{db :db} _]
    (when-let [{:keys [hidden visibility-change]} (visibility-props)]
      {:dispatch [:listener/add! "document" visibility-change
-                 #(rf/dispatch [:handle-visibility-change hidden])]})))
+                 #(r/dispatch [:handle-visibility-change hidden])]})))

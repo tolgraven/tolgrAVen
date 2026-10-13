@@ -8,8 +8,8 @@
     [tolgraven.schema.declarations :as schemas]
     [tolgraven.validation.runtime :as validation]
     [tolgraven.component.instrumentation :as instrumentation]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [tolgraven.component.motion :as motion]
     [tolgraven.component.font :as font]
     [tolgraven.component.restore :as restore]
@@ -102,7 +102,7 @@
       (with-meta (into [tag merged] (if attrs? children (rest form))) (meta form)))
     form))
 
-(defonce page-root-context (rf/create-context nil))
+(defonce page-root-context (r/create-context nil))
 
 (def component-spec registry/component-spec)
 (def register-component! registry/register-component!)
@@ -192,7 +192,7 @@
                      (swap! *active dissoc id)
                      (when (some? state)
                        (when-let [unmount (:unmount implementation)] (unmount state)))))]
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn []
         (fn []
           ;; Additions and removals may happen after mount. Always release the
@@ -203,7 +203,7 @@
                    (catch :default error
                      (when-not @*error (reset! *error error)))))
             (when @*error (throw @*error))))) [])
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn []
         (let [ids (into #{} (map first) owners)
               *changed? (atom false)]
@@ -245,9 +245,9 @@
 
 (defn- render-function [definition raw-args presence state-key supplied-features]
   (let [args (registry/validate-args! definition raw-args)
-        *instance (rf/use-ref nil)
-        [version refresh!] (rf/use-state 0)
-        hydrating? (rf/use-context restore/hydrating-context)]
+        *instance (r/use-ref nil)
+        [version refresh!] (r/use-state 0)
+        hydrating? (r/use-context restore/hydrating-context)]
     (state-store/use-initialization! definition args state-key)
     (when-not (.-current *instance)
       (let [*element (atom nil)]
@@ -261,7 +261,7 @@
                :order (atom [])
                :shape (atom nil)
                :capture-ref (memoize (fn [base caller]
-                                      (rf/compose-refs
+                                      (r/compose-refs
                                         (fn [element] (reset! *element element) nil)
                                         base caller)))})))
     (let [{*render :render *element :element capture-ref :capture-ref :as instance} (.-current *instance)
@@ -273,7 +273,7 @@
               (validation/check! "component font" font/options-schema (:font options)))
           appearance (or (:seen options) (:appear options))
           remember-key (when (map? appearance) (:remember-key appearance))
-          remembered? (when remember-key @(rf/subscribe [:state [:motion-seen remember-key]]))
+          remembered? (when remember-key @(r/subscribe [:state [:motion-seen remember-key]]))
           motion? (or (some ids [:appear :seen :exit]) (= :exiting (:phase presence)))
           raw-form (binding [state-store/*component* definition
                              state-store/*args* args
@@ -363,8 +363,8 @@
    Custom views accept a spec with :props and content forms. :container/content
    places content inside a template; without a slot it is appended at the root."
   [defaults spec content]
-  (let [navigation-props (rf/use-context page-root-context)
-        *capture-ref (rf/use-ref nil)
+  (let [navigation-props (r/use-context page-root-context)
+        *capture-ref (r/use-ref nil)
         supplied (get spec :container defaults)
         _ (when (contains? spec :container)
             (validation/check! "component container" schemas/container supplied))
@@ -374,10 +374,10 @@
                              :else {}))]
     (when-not (.-current *capture-ref)
       (set! (.-current *capture-ref)
-            (memoize rf/compose-refs)))
+            (memoize r/compose-refs)))
     (if (false? supplied)
       content
-      (let [children [:r> (rf/context-provider page-root-context) #js {:value nil} content]
+      (let [children [:r> (r/context-provider page-root-context) #js {:value nil} content]
             template (or (:form options) [(or (:tag options) :div)])
             slotted? (some #{:container/content} (tree-seq coll? seq template))
             form (if slotted?
@@ -429,9 +429,9 @@
 (declare <loading-reveal>)
 
 (r/defc <data-body> [definition args form]
-  (let [skeleton? (rf/use-context loading/render-context)
+  (let [skeleton? (r/use-context loading/render-context)
         resources (dependencies definition args)]
-    (let [status (if skeleton? :ready @(rf/subscribe [:component-data/status resources]))
+    (let [status (if skeleton? :ready @(r/subscribe [:component-data/status resources]))
           _ (restore/use-readiness! (not= :loading status))
           rendered? (= :rendered (:loading-prefab (merge (:options definition)
                                                        (current-spec definition args))))]
@@ -453,10 +453,10 @@
   ;; subvec drops metadata, but retains the original Hiccup vector as its backing
   ;; vector. Read that metadata before introducing any defc wrappers. Class-based
   ;; runtime components still expose the original vector through r/argv.
-  (rf/component-argv))
+  (r/component-argv))
 
 (defn render-component [definition raw-args]
-  (let [*composition (rf/use-ref nil)
+  (let [*composition (r/use-ref nil)
         state-key (some-> (current-argv) meta :key)
         presence (when (motion/presence? (last raw-args)) (last raw-args))
         args (registry/normalize-args definition (if presence (butlast raw-args) raw-args))
@@ -498,7 +498,7 @@
                    {:wrap (fn [form definition _]
                             [<boundary> {:ns-name (:ns definition) :component-name (:name definition)
                                          :reset-key (when (get-in definition [:options :page])
-                                                      (select-keys @(rf/subscribe [:common/route])
+                                                      (select-keys @(r/subscribe [:common/route])
                                                                    [:path :query-params]))} form])})
 
 (r/defc <dynamic-component> [definition args]

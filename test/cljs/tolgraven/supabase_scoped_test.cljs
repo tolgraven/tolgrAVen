@@ -1,7 +1,7 @@
 (ns tolgraven.supabase-scoped-test
   (:require [cljs.test :refer-macros [deftest is async]]
-            [reagent.ratom :as ratom]
-            [re-frame.db :as db]
+            [tolgraven.react :as r]
+
             [tolgraven.supabase.scoped :as scoped]
             [tolgraven.supabase.query :as query]
             [tolgraven.supabase.connection :as connection]
@@ -10,7 +10,7 @@
 
 (deftest readers-coalesce-refreshes-and-release-streams-without-evicting-content
   (async done
-    (let [mock (mocks/mock-client) before @db/app-db
+    (let [mock (mocks/mock-client) before @r/*app-db
           *reads (atom []) *callbacks (atom [])
           opts {:scoped? true :path-collection [:blog-posts] :where [[:id :== 42]]}
           old @scoped/*transport]
@@ -29,7 +29,7 @@
                        (change #js {}) (change #js {}))
                      (scoped/drain!)
                      (is (= 2 (count @*reads)) "Invalidations in one tick share one filtered read")
-                     (ratom/dispose! reader)
+                     (r/dispose! reader)
                      (scoped/drain!)
                      (is (= 1 (count @(:removed mock))))
                      ;; A late response from an unmounted reader cannot overwrite
@@ -37,12 +37,12 @@
                      ((first (second @*callbacks)) {:docs []})
                      (mocks/tick!)))
             (.then (fn [_]
-                     (is (= "Ready" (get-in @db/app-db [:store :scoped (scoped/query-key opts)
+                     (is (= "Ready" (get-in @r/*app-db [:store :scoped (scoped/query-key opts)
                                                        :docs 0 :data :title])))))
             (.catch #(is false (str %)))
-            (.finally (fn [] (ratom/dispose! reader)
+            (.finally (fn [] (r/dispose! reader)
                         (scoped/connect! (:client old) (:read! old))
-                        (reset! db/app-db before) (done))))))))
+                        (reset! r/*app-db before) (done))))))))
 
 (deftest connection-negotiation-is-quiet-until-failure-or-a-live-loss
   (let [id [:test-connection (random-uuid)]
@@ -78,7 +78,7 @@
 
 (deftest different-reply-readers-share-a-bulk-query
   (async done
-    (let [mock (mocks/mock-client) before @db/app-db old @scoped/*transport
+    (let [mock (mocks/mock-client) before @r/*app-db old @scoped/*transport
           reads (atom []) callbacks (atom [])
           opts (fn [parent] {:scoped? true :path-collection [:blog-comments]
                             :where [[:parent-post :== 42] [:parent-comment :== parent]]})]
@@ -96,13 +96,13 @@
                      (is (= ["b1"] (mapv :id (:docs @b))))
                      (is (identical? a (scoped/ensure-query! (opts "a"))))))
             (.catch #(is false (str %)))
-            (.finally (fn [] (ratom/dispose! a) (ratom/dispose! b)
+            (.finally (fn [] (r/dispose! a) (r/dispose! b)
                         (scoped/connect! (:client old) (:read! old))
-                        (reset! db/app-db before) (done))))))))
+                        (reset! r/*app-db before) (done))))))))
 
 (deftest profile-readers-use-one-filtered-batch-and-retain-distinct-results
   (async done
-    (let [mock (mocks/mock-client) before @db/app-db old @scoped/*transport
+    (let [mock (mocks/mock-client) before @r/*app-db old @scoped/*transport
           reads (atom []) callback (atom nil)]
       (scoped/connect! (:sdk mock) (fn [query success _] (swap! reads conj query) (reset! callback success)))
       (let [a (scoped/ensure-query! (query/profile-query "a"))
@@ -119,6 +119,6 @@
                      (is (= "Bob" (get-in @b [:docs 0 :data :name])))
                      (is (identical? a (scoped/ensure-query! (query/profile-query "a"))))))
             (.catch #(is false (str %)))
-            (.finally (fn [] (ratom/dispose! a) (ratom/dispose! b)
+            (.finally (fn [] (r/dispose! a) (r/dispose! b)
                         (scoped/connect! (:client old) (:read! old))
-                        (reset! db/app-db before) (done))))))))
+                        (reset! r/*app-db before) (done))))))))

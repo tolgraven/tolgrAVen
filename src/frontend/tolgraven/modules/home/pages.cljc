@@ -1,16 +1,16 @@
 (ns tolgraven.modules.home.pages
   "Page declarations independent of the module implementation."
-  #?(:cljs (:require [tolgraven.react :as rf])))
+  #?(:cljs (:require [tolgraven.react :as r])))
 
 #?(:cljs (def controllers
   {:home [{:start (fn [_]
-                    (rf/dispatch [:state [:is-personal] false])
-                    (rf/dispatch [:page/init-home]))}]
-   :about [{:start (fn [_] (rf/dispatch [:scroll/to "about" 700]))}]
+                    (r/dispatch [:state [:is-personal] false])
+                    (r/dispatch [:page/init-home]))}]
+   :about [{:start (fn [_] (r/dispatch [:scroll/to "about" 700]))}]
    :services [{:start (fn [_]
-                        (rf/dispatch [:scroll/to "main" 700])
-                        (rf/dispatch [:scroll/to "section-services" 1300]))}]
-   :hire [{:start (fn [_] (rf/dispatch [:scroll/to "bottom" 700]))}]}))
+                        (r/dispatch [:scroll/to "main" 700])
+                        (r/dispatch [:scroll/to "section-services" 1300]))}]
+   :hire [{:start (fn [_] (r/dispatch [:scroll/to "bottom" 700]))}]}))
 
 (def spec
   ;; Native Reitit routes, with shared data inherited by each child page.

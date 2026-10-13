@@ -1,12 +1,12 @@
 (ns tolgraven.modules.github.events
   (:require
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [tolgraven.modules.github.message :as message]
     [clojure.string :as string]))
 
 
-(rf/reg-event-fx :github/init
+(r/reg-event-fx :github/init
  (fn [{:keys [db]} [_ user repo]]
    (let [user "tolgraven"
          repo "tolgraven"] ; TODO should be injected from options
@@ -14,7 +14,7 @@
      {:dispatch-n [[:github/fetch-commits user repo 1]
                    [:github/fetch-commit-count user repo]]}))))
 
-(rf/reg-event-fx :github/fetch-commits
+(r/reg-event-fx :github/fetch-commits
  (fn [{:keys [db]} [_ user repo page]]
    (let [url "https://api.github.com/repos/"]
      (when (and page
@@ -24,7 +24,7 @@
                                  :params {:page page}}
                       [:github/save-commits page]]]}))))
 
-(rf/reg-event-fx :github/save-commits
+(r/reg-event-fx :github/save-commits
  (fn [{:keys [db]} [_ page data]]
    (let [commits (for [{:keys [commit author html_url sha] :as item} data
                        :let [ts (get-in commit [:author :date])
@@ -39,14 +39,14 @@
               (update-in [:content :github :commits] concat commits)
               (update-in [:state :github :pages-fetched] conj page))})))
 
-(rf/reg-event-fx :github/fetch-commits-next
+(r/reg-event-fx :github/fetch-commits-next
  (fn [{:keys [db]} [_ user repo]]
    (when-let [page (some->> (get-in db [:state :github :pages-fetched])
                             (apply max)
                             inc)]
      {:dispatch [:github/fetch-commits user repo page]})))
 
-(rf/reg-event-fx :github/fetch-commit-count
+(r/reg-event-fx :github/fetch-commit-count
  (fn [{:keys [db]} [_ user repo]]
    (let [url "https://api.github.com/repos/"]
      (when-not (get-in db [:content :github :repo-headers])
@@ -61,7 +61,7 @@
                    [:content [:github :repo-headers]] ]}))))
 
 
-(rf/reg-event-fx :github/fetch-commit
+(r/reg-event-fx :github/fetch-commit
  (fn [{:keys [db]} [_ user repo sha]]
    (let [url "https://api.github.com/repos/"]
      (when (and sha
@@ -71,7 +71,7 @@
                       [:github/save-commit sha]
                       [:content [:github :errors]]]]}))))
 
-(rf/reg-event-fx :github/save-commit
+(r/reg-event-fx :github/save-commit
  (fn [{:keys [db]} [_ sha data]]
    {:db (-> db
             (assoc-in [:content :github :commit sha] data)

@@ -3,8 +3,8 @@
   #?(:cljs (:require [tolgraven.render-context :as render-context]
     [tolgraven.site :as site]
 
-    [tolgraven.react :as rf]
-    [re-frame.std-interceptors :as interceptor]
+    [tolgraven.react :as r]
+
     [ajax.core :as ajax]
     [day8.re-frame.http-fx]
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
@@ -31,19 +31,19 @@
 #?(:cljs
    (do
 
-(def debug (when ^boolean goog.DEBUG rf/debug))
+(def debug (when ^boolean goog.DEBUG r/debug))
 
 ; re-frisk occasionally throws 10MB long "trace while storing" errors so def dont try to display that shit.
-; (rf/set-loggers!  {:warn  (fn [& args]
+; (r/set-loggers!  {:warn  (fn [& args]
 ;                               (util/log :warning "Warning" (apply str args)))   
 ;                    :error   (fn [& args]
 ;                               (util/log :error "Error" (apply str args))) })
 
 
-(rf/reg-event-fx :common/navigate   [debug
-                                     (rf/inject-cofx :page/destination)
-                                     (rf/inject-cofx :scroll-position)
-                                     (rf/inject-cofx :gen-id [:navigations])]
+(r/reg-event-fx :common/navigate   [debug
+                                     (r/inject-cofx :page/destination)
+                                     (r/inject-cofx :scroll-position)
+                                     (r/inject-cofx :gen-id [:navigations])]
   (fn [{:as cofx :keys [db scroll-position id]} [_ match complete!]]
     (let [match (page-transition/latest-match match complete! (:page/destination cofx))
           navigation-count (get-in id [:id :navigations])
@@ -91,24 +91,24 @@
             [:page/ready nil complete!]]}
           {:dispatch [:page/ready nil complete!]}))))))
 
-(rf/reg-fx :common/navigate-fx!
+(r/reg-fx :common/navigate-fx!
   (fn [[k & [params query]]]
     (rfe/push-state k params query)))
 
-(rf/reg-event-fx :common/navigate!
+(r/reg-event-fx :common/navigate!
   (fn [_ [_ url-key params query]]
     {:common/navigate-fx! [url-key params query]}))
 
-(rf/reg-event-fx :common/set-title [debug]
+(r/reg-event-fx :common/set-title [debug]
   (fn [{:keys [db]} [_ title]]
     (cond-> {:db (assoc-in db [:state :document :title] title)}
       (:common/route db) (assoc :dispatch [:document/set-title! (:common/route db)]))))
 
-(rf/reg-event-fx :later/dispatch
+(r/reg-event-fx :later/dispatch
   (fn [{:keys [db]} [_ m]]
     {:dispatch-later m}))
 
-(rf/reg-event-fx :href/update-current
+(r/reg-event-fx :href/update-current
   (fn [{:keys [db]} [_ {:keys [path query]}]]
     (let [k (get-in db [:common/route :data :name])
           p (get-in db [:common/route :parameters :path])
@@ -116,51 +116,51 @@
       {:dispatch
        [:common/navigate! k (merge p path) (merge q query)]})))
 
-(rf/reg-event-fx :loader/on-init
+(r/reg-event-fx :loader/on-init
   (fn [{:keys [db]} [_ module- & args]]
     (js/console.warn "Unhandled loader init event - no op" module- args)
     {:db (assoc-in db [:state :init :loader module-] {:inited? true :args args})})) ; although inited would get set in some further down finishing callback event likely
 
-(rf/reg-fx :loader/init!
+(r/reg-fx :loader/init!
   (fn [[spec]]
     (l/load! spec)))
 
-(rf/reg-event-fx :scope/init
+(r/reg-event-fx :scope/init
   (fn [{:keys [db]} [_ scope- & args]]
     (cond-> {:db (assoc-in db [:state :init :scope scope-] {:inited? true :args args})}
       (and (contains? l/modules scope-)
            (not (get-in db [:loader :requested scope-])))
       (assoc :dispatch [:loader/activate {:module scope- :args args}]))))
 
-(rf/reg-event-fx :history/popped
+(r/reg-event-fx :history/popped
   (fn [{:keys [db]} [_ e]]
     (let [nav-action? true  #_(.-isNavigation e)] ; by fact we getting the event heh
       (if nav-action?  ; bona fide back (or fwd??) event! ; set a flag affecting next common/navigate event
         {:db (assoc-in db [:state :browser-nav :got-nav] true)}))))
 
-(rf/reg-event-fx :history/set-referrer
+(r/reg-event-fx :history/set-referrer
   (fn [{:keys [db]} [_ referrer nav-type]]
     {:db (-> db
              (assoc-in [:state :browser-nav :referrer] referrer)
              (assoc-in [:state :browser-nav :nav-type] nav-type))}))
 
-(rf/reg-event-fx :history/pop!
+(r/reg-event-fx :history/pop!
   (fn [{:keys [db]} [_ _]]
     {:history/pop _}))
-(rf/reg-fx :history/pop
+(r/reg-fx :history/pop
   (fn [_]
     (.back js/window.history)))
 
 
-(rf/reg-event-fx :dispatch-in/ms     debug
+(r/reg-event-fx :dispatch-in/ms     debug
   (fn [{:keys [db]} [_ ms & events]]
     {:dispatch [:dispatch-in/set {:k :in
                                   :ms ms
                                   :dispatch-n events}]}))
 
 
-(rf/reg-event-fx :dispatch-in/set      [(rf/inject-cofx :gen-id [:dispatch-later])
-                                        (rf/inject-cofx :now-ct)
+(r/reg-event-fx :dispatch-in/set      [(r/inject-cofx :gen-id [:dispatch-later])
+                                        (r/inject-cofx :now-ct)
                                         debug]
   (fn [{:keys [db id now-ct]} [_ {:keys [k ms dispatch dispatch-n]}]]
     (let [id (get-in id [:id :dispatch-later])
@@ -172,12 +172,12 @@
                                                     :js-id nil}) ;not yet running
        :dispatch-in/set [k id ms events]})))
 
-(rf/reg-event-fx :dispatch-in/save-timeout-id
+(r/reg-event-fx :dispatch-in/save-timeout-id
   (fn [{:keys [db]} [_ k id js-id]]
     {:db (assoc-in db [:state :dispatch-in k id :js-id] js-id)}))
 
-(rf/reg-event-fx
- :dispatch-in/cancel      [(interceptor/path [:state :dispatch-in])]
+(r/reg-event-fx
+ :dispatch-in/cancel      [(r/path [:state :dispatch-in])]
  (fn [{:keys [db]} [_ k & [id]]]
    (let [ids (or id (-> db k keys))]
      (if (= 1 (count ids))
@@ -187,9 +187,9 @@
        {:dispatch-n (for [single-id ids]
                       [:dispatch-in/cancel k single-id])}))))
 
-(rf/reg-event-fx
- :dispatch-in/pause     [(rf/inject-cofx :now-ct)
-                         (interceptor/path [:state :dispatch-in])]
+(r/reg-event-fx
+ :dispatch-in/pause     [(r/inject-cofx :now-ct)
+                         (r/path [:state :dispatch-in])]
  (fn [{:keys [db now-ct]} [_ k & [id]]]
    (let [id (or id (-> db
                        (select-keys k)
@@ -201,8 +201,8 @@
                         (- now-ct (get-in db [k id :started]))))
       :dispatch-in/stop [k id js-id]})))
 
-(rf/reg-event-fx
- :dispatch-in/resume      [(interceptor/path [:state :dispatch-in])]
+(r/reg-event-fx
+ :dispatch-in/resume      [(r/path [:state :dispatch-in])]
  (fn [{:keys [db]} [_ k & [id]]]
    (let [id (or id (-> db
                        (select-keys k)
@@ -212,18 +212,18 @@
      {:db (assoc-in db [k :ms] ms)
       :dispatch-in/set [k id ms events]})))
 
-#_(rf/reg-event-fx :dispatch-in/ignore ; keep em running just ignore them. useful?
+#_(r/reg-event-fx :dispatch-in/ignore ; keep em running just ignore them. useful?
   (fn [{:keys [db]} [_ [k id]]]
     {:db nil }))
 
-(rf/reg-fx :dispatch-in/set
+(r/reg-fx :dispatch-in/set
   (fn [[k id ms events]]
     (let [js-id (js/setTimeout #(doseq [event events]
-                                  (rf/dispatch event))
+                                  (r/dispatch event))
                                ms)]
-     (rf/dispatch [:dispatch-in/save-timeout-id k id js-id]))))
+     (r/dispatch [:dispatch-in/save-timeout-id k id js-id]))))
 
-(rf/reg-fx :dispatch-in/stop
+(r/reg-fx :dispatch-in/stop
   (fn [[k id js-id]]
     (js/clearTimeout js-id)))
 
@@ -233,17 +233,17 @@
   (fn [db [_ path value]]
     (assoc-in db (into base-path path) value)))
 
-(rf/reg-event-db :content (assoc-in-factory [:content]))
-(rf/reg-event-db :state   (assoc-in-factory [:state]))
-(rf/reg-event-db :option  (assoc-in-factory [:option]))
+(r/reg-event-db :content (assoc-in-factory [:content]))
+(r/reg-event-db :state   (assoc-in-factory [:state]))
+(r/reg-event-db :option  (assoc-in-factory [:option]))
 
-(rf/reg-event-db :debug
+(r/reg-event-db :debug
   (fn [db [_ path value]]
     (assoc-in db (into [:state :debug] path) value)))
 
-(rf/reg-event-db :exception (assoc-in-factory [:state :exception]))
+(r/reg-event-db :exception (assoc-in-factory [:state :exception]))
 
-(rf/reg-event-fx :form-field []
+(r/reg-event-fx :form-field []
   (fn [{:keys [db]} [_ path value blur?]]
     (merge
      {:db (assoc-in db (into [:state :form-field] path) value)}
@@ -251,45 +251,45 @@
        {:dispatch [:ls/store-val (into [:form-field] path) value]})))) ; XXX slows down everything dont do it use beforeunload
 
 
-(rf/reg-event-fx :reloaded
+(r/reg-event-fx :reloaded
  (fn [db [_ _]]
    {:dispatch-n [[:exception nil]
                  [:diag/new :debug "JS" "Reloaded"]]}))
 
-(rf/reg-event-fx :html/toggle-class!
+(r/reg-event-fx :html/toggle-class!
  (fn [db [_ id class]]
    {:html/toggle-class [id class]}))
-(rf/reg-fx :html/toggle-class
+(r/reg-fx :html/toggle-class
   (fn [[id class]]
     (util/toggle-class! id class)))
 
-(rf/reg-event-fx :html/set-attr!
+(r/reg-event-fx :html/set-attr!
  (fn [db [_ id attr value]]
    {:html/set-attr [id attr value]}))
-(rf/reg-fx :html/set-attr
+(r/reg-fx :html/set-attr
   (fn [[id attr value]]
     (util/set-attr! id attr value)))
 
 (when-enabled :supabase nil
 (when-enabled :gpt nil
-(rf/reg-fx :supabase/write
+(r/reg-fx :supabase/write
   (fn [[path data merge-fields]]
     (supabase-client/write! path data merge-fields)))
 )
 
-(rf/reg-event-fx :store->
+(r/reg-event-fx :store->
   (fn [{:keys [db]} [_ path data merge-fields]]
     (if (get-in db [:state :booted :store])
       {:supabase/write [path data merge-fields]}
       {:dispatch-n [[:store/init] [:on-booted :store [:store-> path data merge-fields]]]})))
 
-(rf/reg-fx :supabase/load-query
+(r/reg-fx :supabase/load-query
   (fn [[opts on-success on-failure]]
     (-> (supabase-client/preload-query! opts)
-        (.then #(when on-success (rf/dispatch (conj on-success (util/normalize-store-result %)))))
-        (.catch #(rf/dispatch (conj (or on-failure [:default-http-error]) %))))))
+        (.then #(when on-success (r/dispatch (conj on-success (util/normalize-store-result %)))))
+        (.catch #(r/dispatch (conj (or on-failure [:default-http-error]) %))))))
 
-(rf/reg-event-fx :<-store
+(r/reg-event-fx :<-store
   (fn [{:keys [db]} [_ path on-success on-failure]]
     (if (get-in db [:state :booted :store])
       {:supabase/load-query [{(if (even? (count path)) :path-document :path-collection) path}
@@ -298,7 +298,7 @@
 
 (def init-attempt [:enum 0 1])
 
-(rf/reg-event-fx :supabase/fetch-settings
+(r/reg-event-fx :supabase/fetch-settings
   {:args [:cat [:? init-attempt]]}
   (fn [{:keys [db]} [_ attempt]]
     {:db (assoc-in db [:state :supabase-init] :loading)
@@ -306,12 +306,12 @@
                 [:supabase/init (or attempt 0)]
                 [:supabase/error (or attempt 0)]]}))
 
-(rf/reg-fx :supabase/report-init-error
+(r/reg-fx :supabase/report-init-error
   (fn [_]
     (service-status/fail! :supabase-init "Supabase could not initialize"
                           "Account and database content are unavailable. Check your connection and retry."
-                          #(rf/dispatch [:supabase/fetch-settings]))))
-(rf/reg-event-fx :supabase/error
+                          #(r/dispatch [:supabase/fetch-settings]))))
+(r/reg-event-fx :supabase/error
   {:args [:cat init-attempt :any]}
   (fn [{:keys [db]} [_ attempt _]]
     (if (zero? attempt)
@@ -320,26 +320,26 @@
       {:db (assoc-in db [:state :supabase-init] :failed)
        :supabase/report-init-error true})))
 
-(rf/reg-fx :supabase/request
+(r/reg-fx :supabase/request
   (fn [{:keys [method uri data on-success on-error]}]
     (supabase-client/authenticated-request!
      method uri data
-     #(rf/dispatch (conj on-success %))
-     #(rf/dispatch (conj on-error %)))))
+     #(r/dispatch (conj on-success %))
+     #(r/dispatch (conj on-error %)))))
 
 (when-enabled :user nil
-(rf/reg-event-fx :supabase/profile-fetch
+(r/reg-event-fx :supabase/profile-fetch
   (fn [_ _]
     {:supabase/request {:method :get :uri "/api/supabase/profile"
                         :on-success [:supabase/profile]
                         :on-error [:supabase/auth-error]}}))
 
-(rf/reg-event-fx :supabase/write-error
+(r/reg-event-fx :supabase/write-error
   (fn [_ [_ error]]
     {:dispatch [:diag/new :error "Unable to save"
                 (or (get-in error [:response :error]) (:message error) "Request failed")]}))
 
-(rf/reg-event-db :supabase/profile
+(r/reg-event-db :supabase/profile
   (fn [db [_ profile]]
     (cond-> (assoc-in db [:state :active-user] profile)
       (not= (:id profile) (get-in db [:state :active-user :id]))
@@ -350,34 +350,34 @@
            (not= :closed (last (get-in db [:state :user-section]))))
       (assoc-in [:state :user-section] [(if profile :admin :login)]))))
 
-(rf/reg-event-fx :supabase/auth-error
+(r/reg-event-fx :supabase/auth-error
   (fn [_ [_ error]]
     {:dispatch [:diag/new :error "Sign in"
                 (or (get-in error [:response :error]) (:message error) "Authentication failed")]}))
 
 )
 
-(rf/reg-fx :supabase/initialize
+(r/reg-fx :supabase/initialize
   (fn [[attempt settings]]
     (-> (supabase-client/init! settings
-                              #(rf/dispatch [:supabase/profile %])
-                              #(rf/dispatch [:supabase/auth-error %]))
+                              #(r/dispatch [:supabase/profile %])
+                              #(r/dispatch [:supabase/auth-error %]))
         (.then (fn [_]
                  (service-status/recover! :supabase-init)
-                 (rf/dispatch [:supabase/initialized settings])))
-        (.catch (fn [_] (rf/dispatch [:supabase/error attempt nil]))))))
+                 (r/dispatch [:supabase/initialized settings])))
+        (.catch (fn [_] (r/dispatch [:supabase/error attempt nil]))))))
 
-(rf/reg-event-fx :supabase/init
+(r/reg-event-fx :supabase/init
   {:args [:cat init-attempt supabase-schema/options]}
   (fn [_ [_ attempt settings]] {:supabase/initialize [attempt settings]}))
 
-(rf/reg-event-fx :supabase/initialized
+(r/reg-event-fx :supabase/initialized
   (fn [{:keys [db]} [_ settings]]
     {:db (-> db (assoc-in [:options :supabase] settings)
                (assoc-in [:state :supabase-init] :ready))
      :dispatch [:booted :store]}))
 
-(rf/reg-event-fx :store/init
+(r/reg-event-fx :store/init
   (fn [{:keys [db]} _]
     (if-not site/uses-supabase?
       {:db (assoc-in db [:state :supabase-init] :ready)
@@ -388,24 +388,24 @@
 
 )
 
-(rf/reg-event-fx :<-cms
+(r/reg-event-fx :<-cms
   (fn [_ [_ path]]
     {:dispatch [:http/get {:uri "/api/integrations/strapi" :url-params {:path path}}
                 [:content [:cms]] [:supabase/write-error]]}))
 
-(rf/reg-event-fx :page/init-home ;[debug] ; really should do the fetch from wherever it is content eventually comes from...
+(r/reg-event-fx :page/init-home ;[debug] ; really should do the fetch from wherever it is content eventually comes from...
  (fn [{:keys [db]} _]
    {:db (assoc-in db [:state :is-personal] false)}))
 
-(rf/reg-event-fx :appear
+(r/reg-event-fx :appear
   (fn [{:keys [db]} [_ id value]]  ; would just set something in state that then sets css class.
     {:db (if value
            (assoc-in db [:state :appear id] value)
            (update-in db [:state :appear] dissoc id))})) ; now just generic
 
 
-(rf/reg-event-fx :menu    [(rf/inject-cofx :css-var [:header-with-menu-height])
-                           (rf/inject-cofx :css-var [:header-height])]
+(r/reg-event-fx :menu    [(r/inject-cofx :css-var [:header-with-menu-height])
+                           (r/inject-cofx :css-var [:header-height])]
   (fn [{:as cofx :keys [db css-var]} [_ state]]
     (let [open-height   (:header-with-menu-height css-var)
           closed-height (:header-height css-var) ;TODO should rather be set from here with data-attr? ideally depends on content
@@ -433,7 +433,7 @@
             {:dispatch [(-> [wrapped-event] ;or just flatten lol
                             (into args)
                             (into result))]})]
-    (rf/reg-event-fx wrapper-key f)
+    (r/reg-event-fx wrapper-key f)
     wrapper-key))
 
 ; stuff could do
@@ -472,25 +472,25 @@
 ; with a simple destructuring anything with :state / :content etc input
 ; would work same as before (but no extra features), then optionally make use of second.
 
-(rf/reg-event-fx :id-counters/handle
+(r/reg-event-fx :id-counters/handle
   (fn [{:keys [db]} [_ state]]
     {:dispatch [:diag/new :debug "ID-counters" (str "Restored to " state)]
      :id-counters/set! state}))
 
-(rf/reg-event-db :loading/on ;; TODO should queue up a (cancelable) timeout event that will trigger unless category confirmed loading finished
+(r/reg-event-db :loading/on ;; TODO should queue up a (cancelable) timeout event that will trigger unless category confirmed loading finished
  (fn [db [_ category id]]
    (update-in db [:state :is-loading category] (comp set conj) (or id :default))))
-(rf/reg-event-db :loading/off ;; TODO also gen unique ID so can have nultiple loads same cat not interfering
+(r/reg-event-db :loading/off ;; TODO also gen unique ID so can have nultiple loads same cat not interfering
  (fn [db [_ category id]]
    (update-in db [:state :is-loading category] (comp set disj) (or id :default))))
 
-(rf/reg-event-fx :on-booted ; queue event up to fire once init complete
+(r/reg-event-fx :on-booted ; queue event up to fire once init complete
   (fn [{:keys [db]} [_ id event]]
     (if (or (nil? id) (get-in db [:state :booted id]))
       {:dispatch event} ; just send it if already booted
       {:db (update-in db [:state :on-booted id] (comp set conj) event)})))
 
-(rf/reg-event-fx :booted [debug]
+(r/reg-event-fx :booted [debug]
  (fn [{:keys [db]} [_ id]]
    (when id
      (let [ids (vec (get-in db [:state :on-booted id]))]
@@ -502,19 +502,19 @@
 
 
 
-(rf/reg-fx :ls localstore/write!)
-(rf/reg-cofx :ls
+(r/reg-fx :ls localstore/write!)
+(r/reg-cofx :ls
   (fn [coeffects] (assoc coeffects :ls (localstore/read!))))
 
-(rf/reg-event-fx :ls/store-path   [(rf/inject-cofx :ls)]
+(r/reg-event-fx :ls/store-path   [(r/inject-cofx :ls)]
  (fn [{:keys [db ls]} [_ ls-path db-path]] ;map of keys to paths I guess?
    {:ls (assoc-in ls ls-path (get-in db db-path))}))
 
-(rf/reg-event-fx :ls/store-val    [(rf/inject-cofx :ls)]
+(r/reg-event-fx :ls/store-val    [(r/inject-cofx :ls)]
  (fn [{:keys [ls]} [_ ls-path v]]
    {:ls (assoc-in ls ls-path v)}))
 
-(rf/reg-event-fx :ls/dissoc       [(rf/inject-cofx :ls)] ; keep localstorage reasonably clean... doesn't appear to work!!
+(r/reg-event-fx :ls/dissoc       [(r/inject-cofx :ls)] ; keep localstorage reasonably clean... doesn't appear to work!!
  (fn [{:keys [ls]} [_ ls-path]]
    {:ls (update-in ls (butlast ls-path) dissoc (last ls-path))})) ; investigate why won't take.
 
@@ -524,27 +524,27 @@
       (if (seq child) (assoc saved key child) (dissoc saved key)))
     (dissoc saved key)))
 
-(rf/reg-cofx :ls/restored
+(r/reg-cofx :ls/restored
   (fn [{:keys [event] :as cofx} _]
     (assoc cofx :ls/restored (storage/read! [:state (nth event 2)] {:scope :public}))))
 
-(rf/reg-fx :ls/track
+(r/reg-fx :ls/track
   (fn [path]
     (storage/track! [:state path] #(storage/state-value path) {:scope :public})))
 
-(rf/reg-event-fx :ls/get-path [(rf/inject-cofx :ls) (rf/inject-cofx :ls/restored)]
+(r/reg-event-fx :ls/get-path [(r/inject-cofx :ls) (r/inject-cofx :ls/restored)]
   (fn [{:keys [db ls] :ls/keys [restored]} [_ ls-path db-path]]
     (let [value (if restored (:value restored) (get-in ls ls-path))]
       (cond-> {:ls (remove-saved-path ls ls-path) :ls/track db-path}
         (some? value) (assoc :db (update-in db db-path
                                   #(if (and (map? %) (map? value)) (merge % value) value)))))))
 
-(rf/reg-event-fx :ls/get-path-as-event [(rf/inject-cofx :ls)]
+(r/reg-event-fx :ls/get-path-as-event [(r/inject-cofx :ls)]
   (fn [{:keys [ls]} [_ ls-path event]]
     {:ls (remove-saved-path ls ls-path)
      :dispatch (conj event (get-in ls ls-path))}))
 
-(rf/reg-event-fx :cookie/show-notice   [(rf/inject-cofx :ls)]
+(r/reg-event-fx :cookie/show-notice   [(r/inject-cofx :ls)]
  (fn [{:keys [db ls]} [_ ]] ;map of keys to paths I guess?
    (let [id :cookie-notice]
      (when-not (get-in ls [:cookie-notice-accepted])
@@ -563,16 +563,16 @@
                                :text "No, never!"
                                :action [:cookie/accept-notice false]}]}]}))))
 
-(rf/reg-event-fx :cookie/accept-notice
+(r/reg-event-fx :cookie/accept-notice
  (fn [{:keys [db]} [_ accepted?]]
    {:dispatch-n [[:diag/unhandled :remove :cookie-notice]
                  (if accepted? ; TODO else should also refrain from cookies obviously hah
                    [:ls/store-val [:cookie-notice-accepted] true]
                    [:state [:cookies-allowed] false])]})) ; and then try to make google and shit actually not. how haha?
 
-(rf/reg-event-fx :hide-header-footer  [(rf/inject-cofx :css-var [:header-with-menu-height])
-                                       (rf/inject-cofx :css-var [:header-height])
-                                       (rf/inject-cofx :css-var [:footer-height])]
+(r/reg-event-fx :hide-header-footer  [(r/inject-cofx :css-var [:header-with-menu-height])
+                                       (r/inject-cofx :css-var [:header-height])
+                                       (r/inject-cofx :css-var [:footer-height])]
  (fn [{:keys [db css-var]} [_ hide-header? hide-footer?]]
    (let [header-height (if hide-header?
                          "var(--space)"
@@ -593,24 +593,24 @@
 
 ; generic helpers for rapid prototyping.
 ; NOT FOR LONG-TERM USE if straight to data path not viable
-(rf/reg-event-db :set
+(r/reg-event-db :set
  (fn [db [_ path value]]
   (assoc-in db path value)))
-(rf/reg-event-db :unset
+(r/reg-event-db :unset
  (fn [db [_ path]]
   (if-let [parent (seq (butlast path))]
     (update-in db parent dissoc (last path))
     (dissoc db (last path)))))
-(rf/reg-event-db :toggle
+(r/reg-event-db :toggle
  (fn [db [_ path]]
   (update-in db path not)))
-(rf/reg-event-db :conj
+(r/reg-event-db :conj
  (fn [db [_ path value]]
   (update-in db path conj value)))
-(rf/reg-event-db :pop
+(r/reg-event-db :pop
  (fn [db [_ path]]
   (update-in db path pop)))
-(rf/reg-event-db :update-in
+(r/reg-event-db :update-in
  (fn [db [_ path & args]]
   (apply update-in db path args)))
 
@@ -634,50 +634,50 @@
         (dissoc opts :background?))}
         (not background?) (assoc :dispatch [:loading/on loading-key id])))))
 
-(rf/reg-event-fx :http/get-internal
+(r/reg-event-fx :http/get-internal
   (get-http-fn :get))
 
-(rf/reg-event-fx :http/get
+(r/reg-event-fx :http/get
   (get-http-fn :get
                {:response-format (ajax/json-response-format {:keywords? true})}))
 
-(rf/reg-event-fx :http/post [debug]
+(r/reg-event-fx :http/post [debug]
   (get-http-fn :post
                {:format (ajax/json-request-format)
                 :response-format (ajax/json-response-format {:keywords? true})}))
 
-(rf/reg-event-fx :http/put [debug]
+(r/reg-event-fx :http/put [debug]
   (get-http-fn :put
                {:multipart-params :something})) ;file upload..
 
 
-(rf/reg-event-fx :default-http-result
+(r/reg-event-fx :default-http-result
  (fn [db [_ res]]
    {:dispatch [:diag/new :debug "HTTP" (str res)]}))
-(rf/reg-event-fx :default-http-error
+(r/reg-event-fx :default-http-error
  (fn [db [_ {:as res :keys [uri status status-text failure]}]]
    {:dispatch [:diag/new :error "HTTP" (str status
                                             (some-> status-text (str " "))
                                             ": " uri)]}))
 
-(rf/reg-fx :http/callback
+(r/reg-fx :http/callback
   (fn [[handler result]] (handler result)))
 
-(rf/reg-event-fx :http-result-wrapper
+(r/reg-event-fx :http-result-wrapper
   (fn [_ [_ handler cleanup result]]
     {:fx (cond-> []
            cleanup (conj [:dispatch cleanup])
            (sequential? handler) (conj [:dispatch (conj (vec handler) result)])
            (fn? handler) (conj [:http/callback [handler result]]))}))
 
-(rf/reg-event-fx :handle-visibility-change
+(r/reg-event-fx :handle-visibility-change
  (fn [{db :db} [_ hidden-prop-name]]
    (let [visible? (not (gobj/get js/document hidden-prop-name))]
      {:db (assoc-in db [:state :tab-visible] visible?)})))
 
-(rf/reg-event-fx :diag/new  ;this needs a throttle lol
- [(rf/inject-cofx :now)
-  (rf/inject-cofx :gen-id [:diag])]
+(r/reg-event-fx :diag/new  ;this needs a throttle lol
+ [(r/inject-cofx :now)
+  (r/inject-cofx :gen-id [:diag])]
  (fn [{:keys [db now id]} [_ level title message {:keys [sticky? actions buttons custom-id]}]] ;error, warning, info
   (let [id (or custom-id (-> id :id :diag))]
     (merge
@@ -696,21 +696,21 @@
            {:dispatch  [:diag/unhandled :remove id]
             :ms (* 1000 (get-in db [:options :hud :timeout]))})]}))))) ;tho can always get removed earlier by us...
 
-(rf/reg-event-db :diag/unhandled
+(r/reg-event-db :diag/unhandled
  (fn [db [_ action id]]
   (case action
    :add    (update-in db [:diagnostics :unhandled] #(conj (set %) id))
    ; :closing ;however this'd be achieved. nice fade-out. but if enough things call for it might as well go figure transition-group
    :remove (update-in db [:diagnostics :unhandled] #(-> % set (disj id))))))
 
-(rf/reg-event-db :hud
+(r/reg-event-db :hud
  (fn [db [_ action id]]
   (case action
     :modal (if (= id :remove)
              (update db :hud dissoc :modal)
              (assoc-in db [:hud :modal] id)))))
 
-(rf/reg-event-fx :modal-zoom
+(r/reg-event-fx :modal-zoom
  (fn [{:keys [db]} [_ id action item]]
   (case action
     :close {:db (update-in db [:state :modal-zoom id] dissoc :opened)
@@ -722,7 +722,7 @@
                    (assoc-in [:state :modal-zoom id :opened] true))}
     :loaded {:db (assoc-in db [:state :modal-zoom id :loaded] true)})))
 
-(rf/reg-event-fx :text-effect-char-by-char/start ; this is super dumb plus obviously didnt work so well. keep things local unless necessary dammit
+(r/reg-event-fx :text-effect-char-by-char/start ; this is super dumb plus obviously didnt work so well. keep things local unless necessary dammit
  (fn [{:keys [db]} [_ path text ms]]
    (when-not (get-in db path)
      {:db (assoc-in db path {:text-full text
@@ -730,7 +730,7 @@
     :dispatch-later {:ms ms
                      :dispatch [:text-effect-char-by-char/tick path text 0 ms]}})))
 
-(rf/reg-event-fx :text-effect-char-by-char/tick
+(r/reg-event-fx :text-effect-char-by-char/tick
  (fn [{:keys [db]} [_ path text num-chars ms]]
    (when-not (= text (:text-out (get-in db path)))
      (let [text-out (apply str (take (inc num-chars) (seq text)))]
@@ -739,15 +739,15 @@
                          :dispatch [:text-effect-char-by-char/tick path text (inc num-chars) ms]}}))))
 
 
-(rf/reg-event-fx :log/write
+(r/reg-event-fx :log/write
   (fn [{:keys [db]} [_ level title message]]
     {:log/write! [level title message]}))
-(rf/reg-fx :log/write!
+(r/reg-fx :log/write!
   (fn [[level title message]]
     (util/log level title message)))
 
 
-(rf/reg-event-fx :darken/but-element
+(r/reg-event-fx :darken/but-element
  (fn [{:keys [db]} [_ id-or-class timeout]]
    {:db (assoc-in db [:state :darken-but] id-or-class)
     :dispatch-n [[:html/toggle-class! id-or-class "darken-fadeout-restore"]
@@ -755,20 +755,20 @@
     :dispatch-later {:ms timeout
                      :dispatch [:darken/restore id-or-class]}}))
 
-(rf/reg-event-fx :darken/restore
+(r/reg-event-fx :darken/restore
  (fn [{:keys [db]} [_ id-or-class]]
    {:db (update-in db [:state] dissoc :darken-but)
     :dispatch-n [[:html/toggle-class! id-or-class "darken-fadeout-restore"]
                  [:html/toggle-class! nil "darken-fadeout"]]}))
 
 
-(rf/reg-event-fx :global-clicked [debug]
+(r/reg-event-fx :global-clicked [debug]
  (fn [{:keys [db]} [_ e]]
    {:db (assoc-in db [:state :global-clicked] e)
     :dispatch-later {:ms 300
                      :dispatch [:state [:global-clicked] nil]}}))
 
-(rf/reg-event-db :page/hydrated
+(r/reg-event-db :page/hydrated
   (fn [db _]
     (let [db (assoc-in db [:state :ssr :hydrating?] false)]
       (if-let [match (:common/route db)]

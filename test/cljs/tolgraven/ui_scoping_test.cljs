@@ -2,8 +2,8 @@
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
             [cljs.reader :as reader]
-            [reagent.core :as r]
-            [tolgraven.components.ui :as ui]
+            [tolgraven.react :as r]
+            [tolgraven.components.ui.diagnostics :as ui-diagnostics]
             [tolgraven.components.error :as error]
             [tolgraven.util :as util]
             [tolgraven.test-support :as support]))
@@ -25,7 +25,7 @@
                 value {:nested {:values [1 2 3] :label "Preserved"}}
                 *error (r/atom {:error (ex-info "Readable error" {})})]
             (try
-              (await! (support/render! root [ui/<formatted-data> "Data" value]))
+              (await! (support/render! root [ui-diagnostics/<formatted-data> "Data" value]))
               (await! (support/wait-for!
                         #(some-> (.querySelector element "pre") .-textContent
                                  (.includes "Preserved"))))

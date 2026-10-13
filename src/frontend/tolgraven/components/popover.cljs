@@ -2,9 +2,9 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
-    [tolgraven.react :as react]
+    [tolgraven.react :as r]
     [tolgraven.listener :as listener]
-    [reagent.core :as r]
+
     [tolgraven.components.portal :as portal]))
 
 (def anchor-name "--active-popover-anchor")
@@ -20,7 +20,7 @@
         capture! (fn [element] (reset! *element element) nil)]
   ;; Measurement belongs to the committed open surface. Closed/abandoned renders
   ;; allocate no observer/listener; reopening and StrictMode acquire fresh owners.
-  (react/use-layout-effect
+  (r/use-layout-effect
     (fn []
       (when (and open? scaled? (exists? js/window) @*element)
         (let [element @*element

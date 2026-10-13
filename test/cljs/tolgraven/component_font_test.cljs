@@ -2,15 +2,15 @@
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
-            [re-frame.registrar :as registrar]
+            [tolgraven.react :as r]
             [tolgraven.component]
             [tolgraven.subs]
-            [reagent.core :as r]
+
             [tolgraven.modules.styled-input.views :as styled-input]
             [tolgraven.component.font :as font]
             [tolgraven.component.motion :as motion]
             [tolgraven.component.restore :as restore]
-            [tolgraven.react :as rf]
+
             [tolgraven.test-support :as support]
             [tolgraven.macros :refer-macros [defc]]))
 
@@ -36,12 +36,12 @@
   (let [name (str "font-test-" (random-uuid))]
     (assoc font/fira :family name :initial-family (str name "-initial") :fade-ms 200)))
 (defn- capture-loads! []
-  (let [original (registrar/get-handler :fx :font/load)
+  (let [original (r/get-handler :fx :font/load)
         *loads (atom [])]
-    (rf/reg-fx :font/load #(swap! *loads conj %))
+    (r/reg-fx :font/load #(swap! *loads conj %))
     {:loads *loads
      :original original
-     :restore! #(rf/reg-fx :font/load original)}))
+     :restore! #(r/reg-fx :font/load original)}))
 
 (deftest actual-font-load-crossfades-in-place-and-removes-original-text
   (async done
@@ -69,7 +69,7 @@
                       (await! (-> (.load (.-fonts js/document) "1em 'Fira Code Fallback'")
                                   (.then #(pos? (.-length %)))
                                   (.catch (constantly false)))))
-              (with-redefs [motion/reduced-motion? (constantly false)]
+              (r/with-framework-bindings [motion/reduced-motion? (constantly false)]
                 (await! (support/render! root
                           [:section [<sample> opts {:class [:caller "other"]
                                                     :style {:color "rgb(10, 20, 30)"}
@@ -153,9 +153,9 @@
               (let [node (.querySelector element "pre")]
                 (await! (until! node "fallback"))
                 (let [[options token] (first @loads)]
-                  (rf/dispatch [:font/loaded (font/request options) token false])
+                  (r/dispatch [:font/loaded (font/request options) token false])
                   (await! (until! node "failed"))
-                  (rf/dispatch [:font/loaded (font/request options) token true])
+                  (r/dispatch [:font/loaded (font/request options) token true])
                   (await! (support/settle!))
                   (is (= "failed" (phase node)) "A late success cannot replay an expired attempt")
                   (is (= "1" (.-opacity (js/getComputedStyle node))))
@@ -200,16 +200,16 @@
                 face (js/FontFace. (:family opts) "url('/webfonts/FiraCode-Retina.woff2')")]
             (.add (.-fonts js/document) face)
             (try
-              (with-redefs [motion/reduced-motion? (constantly true)]
+              (r/with-framework-bindings [motion/reduced-motion? (constantly true)]
                 (await! (support/render! root [<sample> opts {}]))
                 (let [node (.querySelector element "pre")]
                   (await! (until! node "fallback"))
                   (let [[options token] (first @loads)]
-                    (rf/dispatch [:font/loaded (font/request options) token true])
+                    (r/dispatch [:font/loaded (font/request options) token true])
                     (await! (until! node "ready"))
                     (is (nil? (.querySelector node ".font-text-next")))
                     (await! (support/render! root nil))
-                    (with-redefs [motion/reduced-motion? (constantly false)
+                    (r/with-framework-bindings [motion/reduced-motion? (constantly false)
                                   restore/local-document? (constantly true)]
                       (await! (support/render! root [<sample> opts {}]))
                       (let [returned (.querySelector element "pre")]
@@ -217,8 +217,8 @@
                         (is (nil? (.querySelector returned ".font-text-next"))
                             "A local return skips the fade even without reduced motion"))
                       (await! (support/render! root nil)))
-                    (rf/dispatch [:font/reveal (random-uuid)])
-                    (rf/dispatch [:font/loaded (font/request options) token true])
+                    (r/dispatch [:font/reveal (random-uuid)])
+                    (r/dispatch [:font/loaded (font/request options) token true])
                     (await! (support/settle!))
                     (is (not-any? #(= opts (:options %))
                                   (vals (get (await! (support/state-at! [:fonts])) :instances)))))))
@@ -240,7 +240,7 @@
             (set! (.-href sheet) "/css/tolgraven/modules/styled-input.min.css")
             (.appendChild (.-head js/document) sheet)
             (try
-              (with-redefs [font/fira opts
+              (r/with-framework-bindings [font/fira opts
                             motion/reduced-motion? (constantly false)]
                 (await! (support/render! root
                           [styled-input/<input-text-styled> :model model :id "font-input" :open? true]))

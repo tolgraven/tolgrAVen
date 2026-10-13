@@ -3,7 +3,7 @@
   (:require [cljs.reader :as reader]
             [tolgraven.validation.runtime :as validation]
             [tolgraven.ssr.schema :as schema]
-            [reagent.dom.server :as server]
+            [tolgraven.react :as r]
             [reitit.core :as reitit]
             [shadow.lazy :as lazy]
             [tolgraven.loader :as loader]
@@ -49,7 +49,7 @@
                            :href (fn [name params query]
                                    (some-> (reitit/match-by-name routes/router name params)
                                            (reitit/match->path query)))})
-        links (server/render-to-static-markup
+        links (r/render-to-static-markup
                 (into [:<>]
                       (for [href (distinct (mapcat #(style-catalog/paths styles %) (:modules saved)))]
                         [:link {:rel "stylesheet" :href href :data-precedence "modules"}])))

@@ -1,8 +1,8 @@
 (ns tolgraven.navigation.preload
   "Idle, bounded acquisition of the same modules and managed dependencies used by pages."
-  (:require [reagent.core :as r]
+  (:require [tolgraven.react :as r]
             [reitit.core :as reitit]
-            [tolgraven.react :as rf]
+
             [tolgraven.listener :as listener]
             [tolgraven.navigation.routes :as routes]
             [tolgraven.loader :as loader]
@@ -94,9 +94,9 @@
   (when-let [element (some-> (.-target event) (.closest "a[href],button[data-preload-href]"))]
     (when-let [path (path-for-element element)] (enqueue! [path]))))
 
-(rf/reg-event-fx :page/preload-links
+(r/reg-event-fx :page/preload-links
   (fn [_ _] {:page/preload-links true}))
-(rf/reg-fx :page/preload-links (fn [_] (enqueue! (linked-paths))))
+(r/reg-fx :page/preload-links (fn [_] (enqueue! (linked-paths))))
 
 (defn console-node? [node]
   (some-> (if (= 1 (.-nodeType node)) node (.-parentElement node))
@@ -121,9 +121,9 @@
                             (if (exists? js/requestIdleCallback)
                               (reset! *idle
                                 (js/requestIdleCallback
-                                  (fn [_] (reset! *idle nil) (rf/dispatch [:page/preload-links]))
+                                  (fn [_] (reset! *idle nil) (r/dispatch [:page/preload-links]))
                                   #js {:timeout 2000}))
-                              (rf/dispatch [:page/preload-links])))
+                              (r/dispatch [:page/preload-links])))
                           350))))
         intersections (when (exists? js/IntersectionObserver)
                         (js/IntersectionObserver.
@@ -166,7 +166,7 @@
       (when @*idle (js/cancelIdleCallback @*idle)))))
 
 (r/defc <background> []
-  (rf/use-effect
+  (r/use-effect
     (fn []
       (let [*stop (atom nil)
             cancel! (browser-resources/after-page! #(reset! *stop (start!)))]

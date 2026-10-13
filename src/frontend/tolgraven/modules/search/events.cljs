@@ -1,20 +1,20 @@
 (ns tolgraven.modules.search.events
   (:require
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [clojure.string :as string]
     [clojure.walk :as walk]))
 
-(def debug (when ^boolean goog.DEBUG rf/debug))
+(def debug (when ^boolean goog.DEBUG r/debug))
 
-(rf/reg-event-fx :search/init
+(r/reg-event-fx :search/init
   (fn [{:keys [db]} _] {:db (update db :search #(or % {}))}))
 
-(rf/reg-event-fx :search/state
+(r/reg-event-fx :search/state
   (fn [{:keys [db]} [_ path value]]
     {:db (assoc-in db (into [:state :search] path) value)}))
 
-(rf/reg-event-fx :search/search
+(r/reg-event-fx :search/search
   (fn [{:keys [db]} [_ collection query _ opts & _]]
     (when (string? query)
       (cond-> {:db (-> db
@@ -27,15 +27,15 @@
                 [:search/store-search-response [collection query]]
                 [:diag/new :debug "Search error"]])))))
 
-(rf/reg-event-fx :search/multi-search
+(r/reg-event-fx :search/multi-search
   (fn [_ [_ collections query query-by opts no-quote?]]
     {:dispatch-n (mapv #(vector :search/search % query query-by opts no-quote?) collections)}))
 
-(rf/reg-event-db :search/store-search-response
+(r/reg-event-db :search/store-search-response
   (fn [db [_ path response]]
     (assoc-in db (into [:search :results] path) (walk/keywordize-keys response))))
 
-(rf/reg-event-fx :search/latest-query
+(r/reg-event-fx :search/latest-query
   (fn [{:keys [db]} [_ collection query]]
     {:db (-> db
              (assoc-in [:search :previous-query collection]

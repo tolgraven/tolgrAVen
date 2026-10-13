@@ -5,10 +5,10 @@
             [tolgraven.validation.runtime :as validation]
             [tolgraven.supabase.schema :as schema]
             [ajax.core :as ajax]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [tolgraven.service-status :as status]
             [goog.object :as gobj]
-            [reagent.ratom :as ratom]
+
             [tolgraven.supabase.query :as query]
             [tolgraven.supabase.shape :as shape]
             [tolgraven.supabase.realtime :as realtime]
@@ -19,8 +19,8 @@
 (defonce *settings (atom nil))
 (defonce *queries (atom {}))
 (defonce *tables (atom {}))
-(defonce *seed (ratom/atom realtime/empty-seed))
-(defonce *loaded (ratom/atom #{}))
+(defonce *seed (r/atom realtime/empty-seed))
+(defonce *loaded (r/atom #{}))
 (def *session state/*session)
 (defonce *auth-listener (atom nil))
 
@@ -110,22 +110,22 @@
 (add-watch *client ::generation
            (fn [_ _ old new] (when-not (identical? old new) (swap! *client-generation inc))))
 (defn query-key [opts] (pr-str (query/normalize-query opts)))
-(rf/reg-event-db :store/cache-query
+(r/reg-event-db :store/cache-query
   (fn [db [_ key value]] (assoc-in db [:store :query-cache key] value)))
-(rf/reg-event-db :store/cache-seed
+(r/reg-event-db :store/cache-seed
   (fn [db [_ snapshot]]
     (cond-> (assoc-in db [:store :snapshot] snapshot)
       (contains? (:loaded snapshot) "site_users")
       (assoc-in [:store :public "users"] (into {} (map (fn [[id user]] [id (select-keys user [:id :name :avatar :bg-color :comment-count :karma :seq-id])]))
                       (get (shape/seed->contract (:seed snapshot)) "users"))))))
 (defn- publish-cache! [& _]
-  (rf/dispatch [:store/cache-seed {:seed @*seed :loaded @*loaded
+  (r/dispatch [:store/cache-seed {:seed @*seed :loaded @*loaded
                                   :owner (session-key @*session) :generation @*client-generation}]))
 (add-watch *seed ::app-db-cache publish-cache!)
 (add-watch *loaded ::app-db-cache publish-cache!)
 (add-watch *session ::app-db-cache publish-cache!)
 
-(rf/reg-sub :store/query-value
+(r/reg-sub :store/query-value
   (fn [db [_ opts owner generation signed-in?]]
     (let [{:keys [seed loaded] :as snapshot} (get-in db [:store :snapshot])
           tables (query/realtime-tables opts)
@@ -147,7 +147,7 @@
 
         :else nil))))
 
-(rf/reg-sub :supabase/cached-query
+(r/reg-sub :supabase/cached-query
   (fn [db query-v]
     (let [[_ key] (or (:re-frame/query-v query-v) query-v)]
       {:entry (get-in db [:store :query-cache key])
@@ -156,7 +156,7 @@
 (defn cached-query [opts]
   (let [opts (query/normalize-query opts)
         tables (query/realtime-tables opts)
-        {:keys [entry scoped]} @(rf/sub [:supabase/cached-query (query-key opts)])]
+        {:keys [entry scoped]} @(r/sub [:supabase/cached-query (query-key opts)])]
     (cond
       (and (query/scoped-query? opts) scoped)
       {:ready? true :value scoped}
@@ -186,8 +186,8 @@
                                  (fn [value]
                                    (when (and (identical? client @*client) (= owner (session-key @*session)))
                                      (when (query/scoped-query? opts)
-                                       (rf/dispatch-sync [:store/scoped key value]))
-                                     (rf/dispatch-sync [:store/cache-query key
+                                       (r/dispatch-sync [:store/scoped key value]))
+                                     (r/dispatch-sync [:store/cache-query key
                                                         {:value value :owner owner :generation @*client-generation
                                                          :expires-at (+ (.now js/Date) 60000)}]))
                                    (resolve value))
@@ -291,10 +291,10 @@
     (when-not (query/direct-read-query? opts)
       (throw (ex-info "Private configuration is server-only" {})))
     (or (get-in @*queries [key :*state])
-        (let [state (ratom/make-reaction
+        (let [state (r/make-reaction
                       ;; Transport atoms coordinate requests; all content delivered
                       ;; to consumers comes from event-populated app-db subscriptions.
-                      #(deref (rf/subscribe [:store/query-value opts (session-key @*session)
+                      #(deref (r/subscribe [:store/query-value opts (session-key @*session)
                                             @*client-generation (some? @*session)]))
                       :on-dispose
                       (fn []

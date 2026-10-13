@@ -1,13 +1,13 @@
 (ns tolgraven.component.restore
   "First-page restoration context; no loading/motion bypass without ready data."
-  (:require [reagent.core :as r]
-            [reagent.ratom :as ratom]
+  (:require [tolgraven.react :as r]
+
             [tolgraven.component.hydration :as hydration]
-            [tolgraven.react :as rf]
+
             [clojure.string :as string]))
 
-(defonce hydrating-context (rf/create-context false))
-(defonce readiness-context (rf/create-context false))
+(defonce hydrating-context (r/create-context false))
+(defonce readiness-context (r/create-context false))
 (defonce *pending-layout (atom #{}))
 (defonce *layout-listeners (atom #{}))
 
@@ -20,10 +20,10 @@
   "Track mounted pending code/data inside the page, never speculative renders.
    Ready and terminal error views release their blocker after the DOM commit."
   [ready?]
-  (let [tracked? (rf/use-context readiness-context)
-        *identity (rf/use-ref nil)]
+  (let [tracked? (r/use-context readiness-context)
+        *identity (r/use-ref nil)]
     (when-not (.-current *identity) (set! (.-current *identity) (js-obj)))
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn []
         (if (and tracked? (not ready?))
           (let [id (.-current *identity)
@@ -41,15 +41,13 @@
   "Capture the mount's hydration decision without subscribing its render to the
    later hydration-complete update. Call from a hook initializer, not derived UI."
   []
-  (binding [ratom/*ratom-context* nil]
-    (boolean (:hydrate? @*context))))
+  (r/without-tracking #(boolean (:hydrate? @*context))))
 (defn install-module-views! [views]
   (swap! *context assoc :module-views
          (into {} (map (fn [[id exports]]
                          [(keyword id) (set (map keyword exports))]) views))))
 (defn rendered-view? [module view]
-  (binding [ratom/*ratom-context* nil]
-    (contains? (get-in @*context [:module-views module]) view)))
+  (r/without-tracking #(contains? (get-in @*context [:module-views module]) view)))
 
 (defn page-key [] (if (exists? js/location) (str (.-pathname js/location) (.-search js/location)) "/"))
 (defn begin! [{:keys [hydrate? back?]}]

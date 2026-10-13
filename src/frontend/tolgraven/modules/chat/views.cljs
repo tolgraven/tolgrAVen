@@ -3,17 +3,17 @@
     [tolgraven.supabase.schema :as schema]
     [tolgraven.component.registry]
     [tolgraven.macros :as m :refer-macros [defc]]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [clojure.string :as string]
     [tolgraven.loader :as l]
     [tolgraven.modules.link-preview.views :as link-preview]
-    [tolgraven.components.ui :as ui]
+    [tolgraven.components.ui.inputs :as ui-inputs]
     [tolgraven.util :as util]))
 
 (defc <chat-message> "A single chat message"
   [message :- schema/chat-message]
-  (let [user @(rf/subscribe [:user/user (:user message)])
+  (let [user @(r/subscribe [:user/user (:user message)])
         hovered? (r/atom false)]
     (fn [message]
       [:div.chat-message
@@ -35,19 +35,19 @@
 
 (defc <chat> "A place to hang out with real-time messaging"
   []
-  (let [content @(rf/subscribe [:chat/content])]
+  (let [content @(r/subscribe [:chat/content])]
     [:section.chat.noborder.covering-2
      [:div.chat-messages
       {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))}
       (for [message content] ^{:key (str "chat-message-" (:id message))}
         [<chat-message> message])]
      [:div.chat-input.flex
-      [ui/<input-text>
+      [ui-inputs/<input-text>
        :path [:form-field [:chat]]
        :placeholder "Message"
-       :on-enter #(rf/dispatch [:chat/post])]
-      [:button {:disabled @(rf/subscribe [:state [:supabase-writes :chat]])
-                :on-click #(rf/dispatch [:chat/post])}
+       :on-enter #(r/dispatch [:chat/post])]
+      [:button {:disabled @(r/subscribe [:state [:supabase-writes :chat]])
+                :on-click #(r/dispatch [:chat/post])}
        [:i.fa.fa-arrow-right]]]
      [:p.chat-description
       [:b "Step 1. "] "Open two browser windows." [:br]

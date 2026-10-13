@@ -2,8 +2,8 @@
   "Contract boundary used by tolgraven.react. Domain computations stay ordinary
    re-frame handlers; this adapter owns coercion and bounded diagnostic delivery."
   (:require [tolgraven.validation :as validation]
-            [re-frame.core :as rf]
-            [reagent.ratom :as ratom]))
+            [tolgraven.react.runtime :as r]
+            ))
 
 (defonce *enabled? (atom goog.DEBUG))
 (defonce *contracts (atom {:event {}, :sub {}}))
@@ -44,7 +44,7 @@
           (let [reports (vals @*pending)]
             (reset! *pending {})
             (reset! *scheduled? false)
-            (doseq [report reports] (rf/dispatch [:validation/report report]))))))))
+            (doseq [report reports] (r/dispatch [:validation/report report]))))))))
 
 (defn- failure [kind id options issues]
   {:contract (str (name kind) " " id)
@@ -70,12 +70,12 @@
           (if (map? query) (assoc query :re-frame/query-v normalized) normalized))))))
 
 (defn event-interceptor [id {:keys [args coerce], :as options}]
-  (rf/->interceptor
+  (r/->interceptor
     :id :validation/event-arguments
     :before
     (fn [context]
       (if-not args context
-        (let [event (rf/get-coeffect context :event)
+        (let [event (r/get-coeffect context :event)
               value (validation/decode args (vec (rest event)) coerce)
               issues (when @*enabled? (validation/explain args value))]
           (if (seq issues)
@@ -106,4 +106,4 @@
     (let [input (apply handler db (query q) dynamic-values)]
       ;; Reagent tracks the source normally and releases its watch with the last
       ;; consumer. Never force-dispose a source another subscription may own.
-      (ratom/make-reaction #(result id options @input)))))
+      (r/make-reaction #(result id options @input)))))

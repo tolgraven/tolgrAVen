@@ -3,8 +3,8 @@
   (:require [cljs.core.async]
             [tolgraven.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
-            [re-frame.db :as rfdb]
-            [re-frame.core :as rf]
+            [tolgraven.react :as r]
+
             [tolgraven.test-support :refer [subscription-value!]]
             [ajax.core :as ajax]
             [tolgraven.service-status :as status]
@@ -19,11 +19,11 @@
   (async
     done
     (-> (go-promise
-          (let [before @rfdb/app-db
+          (let [before @r/*app-db
                 calls (atom [])
                 original content/request!]
             (reset! content/*pending {})
-            (reset! rfdb/app-db {:content {:document {:title "Loaded"}}})
+            (reset! r/*app-db {:content {:document {:title "Loaded"}}})
             (set! content/request! (fn [ks] (swap! calls conj ks) (js/Promise.resolve nil)))
             (let [a (content/ensure! [:document :cv])
                   b (content/ensure! [:cv :blog])]
@@ -35,13 +35,13 @@
                            (is (empty? @content/*pending))))
                   (.catch #(is false (str %)))
                   (.finally
-                    (fn [] (set! content/request! original) (reset! rfdb/app-db before) (done)))))))
+                    (fn [] (set! content/request! original) (reset! r/*app-db before) (done)))))))
         (.catch (fn [error] (is false (str error)) (done))))))
 (deftest module-init-waits-for-required-content
   (async done
     (-> (go-promise
           (let [id (keyword (str (random-uuid)))
-                restore! (rf/make-restore-fn)
+                restore! (r/make-restore-fn)
                 *initialized? (atom false) *started? (atom false) *resolve (atom nil)
                 pending (js/Promise. (fn [resolve _] (reset! *resolve resolve)))
                 resource {:source :strapi :keys [:cv] :key id}
@@ -49,9 +49,9 @@
                 loadable (reify lazy/ILoadable (ready? [_] true) IDeref (-deref [_] spec))
                 original content/ensure!]
             (try
-              (rf/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:init/app-db])
               (set! content/ensure! (fn [ks] (is (= [:cv] ks)) (reset! *started? true) pending))
-              (let [loaded (with-redefs [loader/modules {id loadable}] (loader/load! {:module id}))]
+              (let [loaded (r/with-framework-bindings [loader/modules {id loadable}] (loader/load! {:module id}))]
                 (await! (support/settle!))
                 (is @*started? "The declared managed source was actually acquired")
                 (is (false? @*initialized?) "Init waits while that source is pending")
@@ -74,10 +74,10 @@
     done
     (->
       (go-promise
-        (let [before @rfdb/app-db
+        (let [before @r/*app-db
               failures @status/*failures
               original-get ajax/GET
-              original-dispatch rf/dispatch
+              original-dispatch (r/dispatch-function)
               events (atom [])
               succeed? (atom false)
               rejected! (fn [promise]
@@ -86,8 +86,8 @@
                               (.catch (fn [_] nil))))]
           (reset! status/*failures {})
           (reset! content/*pending {})
-          (reset! rfdb/app-db {:content {:cv {:title "Keep me"}}})
-          (set! rf/dispatch #(swap! events conj %))
+          (reset! r/*app-db {:content {:cv {:title "Keep me"}}})
+          (r/set-dispatch-function! #(swap! events conj %))
           (set! ajax/GET
                 (fn [_ & [options]]
                   (if (= true @succeed?)
@@ -98,7 +98,7 @@
           (-> (rejected! (content/ensure! [:story]))
               (.then (fn []
                        (is (empty? @content/*pending))
-                       (is (= "Keep me" (get-in @rfdb/app-db [:content :cv :title])))
+                       (is (= "Keep me" (get-in @r/*app-db [:content :cv :title])))
                        (is (contains? @status/*failures [:strapi [:story]]))
                        (reset! succeed? :invalid)
                        (rejected! (content/ensure! [:story]))))
@@ -108,13 +108,13 @@
                        (content/ensure! [:story])))
               (.then (fn []
                        (is (empty? @status/*failures))
-                       (is (= "Recovered" (get-in @rfdb/app-db [:content :story :title])))))
+                       (is (= "Recovered" (get-in @r/*app-db [:content :story :title])))))
               (.catch #(is false (str %)))
               (.finally (fn []
                           (set! ajax/GET original-get)
-                          (set! rf/dispatch original-dispatch)
+                          (r/set-dispatch-function! original-dispatch)
                           (reset! status/*failures failures)
-                          (reset! rfdb/app-db before)
+                          (reset! r/*app-db before)
                           (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))
 (deftest module-data-starts-with-code-and-can-retry
@@ -175,7 +175,7 @@
     done
     (->
       (go-promise
-        (let [before @rfdb/app-db
+        (let [before @r/*app-db
               context @restore/*context
               tracked @storage/*tracked
               original content/request!
@@ -187,7 +187,7 @@
                           (map (fn [key]
                                  [key (if (#{:post-footer :footer :gallery :interlude} key) [] {})])
                             contract/sections))}]
-          (reset! rfdb/app-db {:content {}})
+          (reset! r/*app-db {:content {}})
           (storage/write! :public-content bundle content/cache-options)
           (restore/begin! {:back? true})
           (set! content/request!
@@ -195,11 +195,11 @@
           (-> (content/bootstrap!)
               (.then (fn [_]
                        (is (= 0 @*calls))
-                       (is (= (set contract/sections) (set (keys (:content @rfdb/app-db)))))))
+                       (is (= (set contract/sections) (set (keys (:content @r/*app-db)))))))
               (.catch #(is false (str %)))
               (.finally (fn []
                           (set! content/request! original)
-                          (reset! rfdb/app-db before)
+                          (reset! r/*app-db before)
                           (reset! restore/*context context)
                           (reset! storage/*tracked tracked)
                           (storage/remove! :public-content content/cache-options)
@@ -208,16 +208,16 @@
 (deftest content-subscription-only-prefetches-declared-cms-sections
   (async done
          (-> (go-promise
-               (let [before @rfdb/app-db
+               (let [before @r/*app-db
                      *requests (atom [])]
-                 (rf/clear-subscription-cache!)
-                 (reset! rfdb/app-db {:content {:github {:repo []}}})
-                 (try (with-redefs [rf/dispatch #(swap! *requests conj %)]
+                 (r/clear-subscription-cache!)
+                 (reset! r/*app-db {:content {:github {:repo []}}})
+                 (try (r/with-framework-bindings [r/dispatch #(swap! *requests conj %)]
                         (is (= {:repo []} (await! (subscription-value! [:content [:github]]))))
                         (is (nil? (await! (subscription-value! [:content [:instagram]]))))
                         (is (nil? (await! (subscription-value! [:content [:story]]))))
                         (is (= [[:content/load [:story]]] @*requests)))
-                      (finally (rf/clear-subscription-cache!) (reset! rfdb/app-db before)))))
+                      (finally (r/clear-subscription-cache!) (reset! r/*app-db before)))))
              (.catch (fn [error] (is false (str error))))
              (.finally done))))
 
@@ -261,18 +261,18 @@
 (deftest network-ssr-installs-content-without-waiting-for-disk-or-transport
   (async done
     (-> (go-promise
-          (let [restore! (rf/make-restore-fn)
+          (let [restore! (r/make-restore-fn)
                 *tracked (atom [])
                 snapshot {:content {:document {:title "Server title"}
                                     :blog {}}}]
             (try
-              (rf/dispatch-sync [:init/app-db])
-              (with-redefs [storage/ready! #(throw (js/Error. "SSR must not await disk"))
+              (r/dispatch-sync [:init/app-db])
+              (r/with-framework-bindings [storage/ready! #(throw (js/Error. "SSR must not await disk"))
                             storage/track! (fn [id _ _] (swap! *tracked conj id))
                             content/request! (fn [_] (throw (js/Error. "SSR must not refetch its pair")))]
                 (let [pending (content/bootstrap-server! snapshot)]
-                  (is (= (contract/normalize-content (:content snapshot)) (:content @rfdb/app-db)))
-                  (is (= :ready (get-in @rfdb/app-db [:state :content :status])))
+                  (is (= (contract/normalize-content (:content snapshot)) (:content @r/*app-db)))
+                  (is (= :ready (get-in @r/*app-db [:state :content :status])))
                   (await! pending)
                   (is (= [:public-content] @*tracked))))
               (finally (restore!)))))

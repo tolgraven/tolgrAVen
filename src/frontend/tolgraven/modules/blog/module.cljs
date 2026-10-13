@@ -6,7 +6,7 @@
             [tolgraven.modules.blog.schema :as schema]
 
     [tolgraven.content.contract :as content-contract]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.modules.blog.install :as install]
     [tolgraven.modules.blog.events]
     [tolgraven.modules.blog.subs]
@@ -31,4 +31,4 @@
           :post-content #'view/<post-content>
           :tags-list #'view/<tags-list>
           :comments (when-enabled :blog :comments #'view/<comments-section>)}
-   :init #(rf/dispatch [:on-booted :store [:blog/init]])})
+   :init #(r/dispatch [:on-booted :store [:blog/init]])})

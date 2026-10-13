@@ -3,11 +3,13 @@
   (:require [cljs.core.async]
             [tolgraven.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
-            [react :as react]
-            [reagent.core :as r]
-            [reagent.dom.client :as dom]
+            [tolgraven.react :as r]
+
+
             [tolgraven.macros :refer-macros [defc]]
-            [tolgraven.components.ui :as ui]
+            [tolgraven.components.ui.boundary :as ui-boundary]
+    [tolgraven.components.ui.markdown :as ui-markdown]
+    [tolgraven.components.ui.notifications :as ui-notifications]
             [tolgraven.component :as component]
             [tolgraven.component.markup :as markup]
             [tolgraven.component.loading :as loading]
@@ -77,7 +79,7 @@
     (let [test! (fn [root element]
                   (go-promise
                     (await! (render! root [loading/<rendered>
-                                          {:form [ui/<md->div> "# Sample heading\n\nSample paragraph"]}]))
+                                          {:form [ui-markdown/<md->div> "# Sample heading\n\nSample paragraph"]}]))
                     (is (some? (.querySelector element ".component-render-skeleton .md-rendered h1")))
                     (is (= "Sample paragraph" (.-textContent (.querySelector element "p"))))
                     (is (.hasAttribute (.querySelector element ".component-render-skeleton") "inert"))))]
@@ -154,7 +156,7 @@
 (defc <component-root> [spec] [<empty-args>])
 (defc <empty-element> [spec] [:div])
 ;; Native React element interop is deliberately the unit under test here.
-(defn <native-child> [_] (react/createElement "b" nil "Native child"))
+(defn <native-child> [_] (r/create-element "b" nil "Native child"))
 (defc <native-root> [spec] [:> <native-child>])
 (defc <raw-root> [spec] [:r> <native-child> #js {}])
 (defc <functional-root> [spec] [:f> (fn [] [:b "Functional child"])])
@@ -177,27 +179,27 @@
 (deftest exported-defc-vars-and-page-navigation-recovery
   (async done
          (-> (go-promise
-               (with-redefs [util/log (fn [& _])]
+               (r/with-framework-bindings [util/log (fn [& _])]
                  (await!
                    (with-root
                      (fn [root element]
                        (go-promise
-                         (await! (render! root [ui/<safe> :page [<throws> (r/atom true)] "/blog"]))
+                         (await! (render! root [ui-boundary/<safe> :page [<throws> (r/atom true)] "/blog"]))
                          (is (some? (.querySelector element "[role=alert]")))
                          ;; Changing children on the same route must not retry on every render.
                          (await! (render! root
-                                          [ui/<safe> :page [(component/resolve-view #'<empty-args>)]
+                                          [ui-boundary/<safe> :page [(component/resolve-view #'<empty-args>)]
                                            "/blog"]))
                          (is (some? (.querySelector element "[role=alert]")))
                          ;; A new route owns a new boundary, even if the exported page is a
                          ;; defc Var.
                          (await! (render! root
-                                          [ui/<safe> :page [(component/resolve-view #'<empty-args>)]
+                                          [ui-boundary/<safe> :page [(component/resolve-view #'<empty-args>)]
                                            "/services"]))
                          (is (nil? (.querySelector element "[role=alert]")))
                          (is (= "No arguments" (.-textContent element)))
                          (await! (render! root
-                                          [ui/<safe> :page
+                                          [ui-boundary/<safe> :page
                                            [(component/resolve-view #'<destructured>)
                                             {:title "Post route"}] "/blog/post/2"]))
                          (is (= "Post route" (.-textContent element)))))))))
@@ -253,7 +255,7 @@
     (->
       (go-promise
         (let [*messages (atom [])]
-          (with-redefs [util/log (fn [& message] (swap! *messages conj message))]
+          (r/with-framework-bindings [util/log (fn [& message] (swap! *messages conj message))]
             (doseq [component [<own-error> <child-error> <nested>]]
               (await!
                 (with-root
@@ -289,7 +291,7 @@
                                  (go-promise
                                    (let [*broken? (r/atom true)]
                                      (await! (render! root
-                                                      [ui/<safe> :example [<throws> *broken?]]))
+                                                      [ui-boundary/<safe> :example [<throws> *broken?]]))
                                      (is (some? (.querySelector element "[role=alert]")))
                                      (reset! *broken? false)
                                      (.click (.querySelector element "button"))
@@ -334,7 +336,7 @@
   (async
     done
     (-> (go-promise
-          (with-redefs [util/log (fn [& _])]
+          (r/with-framework-bindings [util/log (fn [& _])]
             (await!
               (with-root (fn [root element]
                            (go-promise (let [*broken? (r/atom false)]
@@ -441,7 +443,7 @@
               (fn [root element]
                 (go-promise
                   (let [*messages (r/atom [{:id 1 :level :error :title "Original"}])]
-                    (await! (render! root [ui/<hud> *messages]))
+                    (await! (render! root [ui-notifications/<hud> *messages]))
                     (let [message (.querySelector element ".hud-message")
                           animation-box (.-parentElement message)]
                       (is (.contains (.-classList animation-box) "zoom-x"))

@@ -1,8 +1,8 @@
 (ns tolgraven.dev.consumer
   "Observation only: query ownership on Reagent instances, without extra watches."
   (:require [clojure.string :as string]
-            [reagent.core :as r]
-            [reagent.ratom :as ratom]
+            [tolgraven.react.runtime :as r]
+
             [tolgraven.dev.values :as values]))
 (defonce *owners (js/WeakMap.))
 (def ^:dynamic *collect* nil)
@@ -26,8 +26,8 @@
   ;; Its cached state is the only read-only value here: never deref, run, watch
   ;; or revive a subscription merely to explain a render. This version-specific
   ;; access stays in the dev adapter; unknown reaction types remain unresolved.
-  (if (instance? ratom/Reaction reaction)
-    (values/safe-value (.-state ^ratom/Reaction reaction))
+  (if (r/reaction? reaction)
+    (values/safe-value (r/reaction-value reaction))
     :debug/unavailable))
 (defn render! [definition args render]
   (if-let [owner (when-not (or (string/starts-with? (:ns definition) "tolgraven.dev-console.")

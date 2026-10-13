@@ -1,6 +1,6 @@
 (ns tolgraven.supabase.state
   "Connection identity shared with the lightweight managed-source adapter."
-  (:require [reagent.ratom :as ratom]))
+  (:require [tolgraven.react :as r]))
 
-(defonce *client (ratom/atom nil))
-(defonce *session (ratom/atom nil))
+(defonce *client (r/atom nil))
+(defonce *session (r/atom nil))

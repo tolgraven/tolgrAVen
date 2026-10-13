@@ -5,8 +5,8 @@
     [tolgraven.component.visibility :as visibility]
     [ajax.core :as ajax]
     [clojure.string :as string]
-    [tolgraven.react :as rf]
-    [reagent.core :as r]
+    [tolgraven.react :as r]
+
     [tolgraven.content.contract :as contract]
     [tolgraven.validation :as validation]
     [tolgraven.service-status :as status]
@@ -19,11 +19,11 @@
 (defonce *queued (atom {}))
 (defonce *tick (atom nil))
 
-(rf/reg-sub :content/cache
+(r/reg-sub :content/cache
   (fn [db _] (:content db)))
-(defn- cached-content [] @(rf/sub [:content/cache]))
+(defn- cached-content [] @(r/sub [:content/cache]))
 
-(rf/reg-event-db :content/install
+(r/reg-event-db :content/install
   (fn [db [_ bundle]]
     (-> db
         (update :content merge (contract/normalize-content (:content bundle)))
@@ -43,7 +43,7 @@
                {:timeout 15000 :response-format (ajax/json-response-format {:keywords? true})
                 :handler (fn [bundle]
                            (if (valid-bundle? bundle ks)
-                             (do (rf/dispatch-sync [:content/install bundle])
+                             (do (r/dispatch-sync [:content/install bundle])
                                  (doseq [id (keys @status/*failures)
                                          :when (and (vector? id) (= :strapi (first id))
                                                     (every? #(contains? (cached-content) %) (second id)))]
@@ -87,8 +87,8 @@
     (reset! *tick (js/setTimeout drain! 0)))
   (js/Promise.all (into-array (distinct (keep @*pending requested)))))
 
-(rf/reg-fx :content/load #(prefetch! %))
-(rf/reg-event-fx :content/load (fn [_ [_ ks]] {:content/load ks}))
+(r/reg-fx :content/load #(prefetch! %))
+(r/reg-event-fx :content/load (fn [_ [_ ks]] {:content/load ks}))
 
 (defn- bootstrap-ready! []
   (try
@@ -97,12 +97,12 @@
       (when embedded
         (when-not (valid-bundle? embedded (keys (:content embedded)))
           (throw (js/Error. "Invalid embedded content")))
-        (rf/dispatch-sync [:content/install embedded]))
+        (r/dispatch-sync [:content/install embedded]))
       ;; Server content wins; fill only missing sections on an external back.
       (when (:back? @restore/*context)
         (when-let [saved (storage/read! :public-content cache-options)]
           (when (valid-bundle? (:value saved) (keys (:content (:value saved))))
-            (rf/dispatch-sync [:content/install
+            (r/dispatch-sync [:content/install
                                (update (:value saved) :content
                                        #(apply dissoc % (keys (cached-content))))]))))
       (storage/track! :public-content
@@ -128,7 +128,7 @@
   "Install content supplied with the validated network SSR pair.
    Browser disk/transport responses still pass through their own validation."
   [snapshot]
-  (rf/dispatch-sync [:content/install
+  (r/dispatch-sync [:content/install
                      {:version contract/version :content (:content snapshot)}])
   (storage/track! :public-content
                   #(hash-map :version contract/version :content (cached-content)) cache-options)

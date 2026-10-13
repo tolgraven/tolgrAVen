@@ -375,3 +375,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   the native preview span. Transient readiness belongs only to the current source;
   known 400w/100vw DPR-1 phone buckets suppress its painted layer before JS. The
   common root owns media identity/styles; refs/load handlers belong to the final.
+
+- Application framework calls use `tolgraven.react` as `r`. Its `react/runtime.cljs`
+  boundary owns raw React/Reagent/re-frame APIs; reader-feature targets keep
+  development instrumentation out of production. Shared UI lives in focused
+  `components/ui/*` owners; the old `components/ui.cljs` exports retain identity.

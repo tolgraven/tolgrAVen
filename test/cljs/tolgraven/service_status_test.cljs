@@ -1,19 +1,19 @@
 (ns tolgraven.service-status-test
   (:require [cljs.test :refer-macros [deftest is async]]
-            [reagent.dom.client :as dom]
-            [re-frame.core :as rf]
+            [tolgraven.react :as r]
+
             [tolgraven.service-status :as status]
             [tolgraven.components.service-status :as notices]))
 
 (deftest notice-renders-and-retry-clears-it-on-recovery
   (async done
-    (let [container (.createElement js/document "div") root (dom/create-root container)
-          before @status/*failures events (atom []) dispatch rf/dispatch]
+    (let [container (.createElement js/document "div") root (r/create-root container)
+          before @status/*failures events (atom []) dispatch r/dispatch]
       (reset! status/*failures {})
       (.appendChild (.-body js/document) container)
-      (set! rf/dispatch #(swap! events conj %))
+      (r/set-dispatch-function! #(swap! events conj %))
       (status/fail! :test "Strapi unavailable" "Please retry loading content." #(status/recover! :test))
-      (dom/render root [notices/<notices>])
+      (r/render root [notices/<notices>])
       (js/setTimeout
        (fn []
          (try
@@ -24,9 +24,9 @@
            (js/setTimeout
             (fn []
               (is (nil? (.querySelector container "[role=alert]")))
-              (dom/unmount root) (.remove container)
-              (reset! status/*failures before) (set! rf/dispatch dispatch) (done)) 50)
+              (r/unmount root) (.remove container)
+              (reset! status/*failures before) (r/set-dispatch-function! dispatch) (done)) 50)
            (catch :default error
              (is false (str error))
-             (dom/unmount root) (.remove container)
-             (reset! status/*failures before) (set! rf/dispatch dispatch) (done)))) 50))))
+             (r/unmount root) (.remove container)
+             (reset! status/*failures before) (r/set-dispatch-function! dispatch) (done)))) 50))))

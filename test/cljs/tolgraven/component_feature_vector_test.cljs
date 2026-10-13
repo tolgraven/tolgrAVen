@@ -2,9 +2,9 @@
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
-            [reagent.core :as r]
-            [reagent.dom.client :as dom]
-            [reagent.dom.server :as server]
+            [tolgraven.react :as r]
+
+
             [tolgraven.component :as component]
             [tolgraven.component.registry :as registry]
             [tolgraven.schema.declarations :as schemas]
@@ -75,10 +75,10 @@
 (deftest feature-vectors-and-maps-render-identical-server-markup
   (doseq [features [[] [:vector-label] [[:vector-label false]]
                     [[:vector-label {:title "Override"}]]]]
-    (is (= (server/render-to-string [<article> features "Title" "One" "Two"])
-           (server/render-to-string [<article> {:features features} "Title" "One" "Two"]))))
+    (is (= (r/render-to-string [<article> features "Title" "One" "Two"])
+           (r/render-to-string [<article> {:features features} "Title" "One" "Two"]))))
   (doseq [view [<domain> <explicit-domain>]]
-    (is (= "<pre>[:unknown-feature]</pre>" (server/render-to-string [view [:unknown-feature]])))))
+    (is (= "<pre>[:unknown-feature]</pre>" (r/render-to-string [view [:unknown-feature]])))))
 
 (defc <layout>
   {:features [:props [:vector-label (fn [spec title & _]
@@ -93,7 +93,7 @@
                {:spec true
                 :features [[:container {:form [<layout> [:vector-label] "Layout"]}]]}
                (fn [_] (fn [_] [:p "Body"])))
-        html (server/render-to-string [view {:props {:id "template-props"}}])]
+        html (r/render-to-string [view {:props {:id "template-props"}}])]
     (is (.includes html "id=\"template-props\""))
     (is (.includes html "data-title=\"Layout\""))
     (is (.includes html "<p>Body</p>"))))
@@ -137,11 +137,11 @@
           (let [element (.createElement js/document "div")
                 form [<article> [:vector-label] "Hydrated" "Child"]]
             ;; Fixture DOM setup models the server document before React owns it.
-            (set! (.-innerHTML element) (server/render-to-string form))
+            (set! (.-innerHTML element) (r/render-to-string form))
             (.appendChild (.-body js/document) element)
             (let [article (.querySelector element "article")
                   button (.querySelector element "button")
-                  root (dom/hydrate-root element form)]
+                  root (r/hydrate-root element form)]
               (try
                 (await! (support/settle!))
                 (is (identical? article (.querySelector element "article")))
@@ -149,6 +149,6 @@
                 (.click button)
                 (await! (support/wait-for! #(= "1" (.-textContent button))))
                 (is (= "Hydrated" (.getAttribute article "data-title")))
-                (finally (dom/unmount root) (.remove element))))))
+                (finally (r/unmount root) (.remove element))))))
         (.catch #(is false (str %)))
         (.finally done))))

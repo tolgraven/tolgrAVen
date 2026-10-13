@@ -1,18 +1,18 @@
 (ns tolgraven.interceptors
   (:require
-   [tolgraven.react :as rf]
-   [re-frame.std-interceptors :as rf-std]
+   [tolgraven.react :as r]
+
    ; [differ.core :as differ]
    [tolgraven.util :as util]))
 
-(def debug (when ^boolean js/goog.DEBUG rf/debug)) ; doesnt shut off in prod tho so, wtf
+(def debug (when ^boolean js/goog.DEBUG r/debug)) ; doesnt shut off in prod tho so, wtf
 
 (def warn-side-effects ;from kee-frame guy. should rather inject an event to queue tho...
-  (rf/->interceptor
+  (r/->interceptor
    :id     :warn-side-effects
    :after  (fn [ctx]
-             (let [effects (rf/get-effect ctx)
-                   event (rf/get-coeffect ctx :event)]
+             (let [effects (r/get-effect ctx)
+                   event (r/get-coeffect ctx :event)]
                (when (seq effects)
                  (util/log :warning "SIDE EFFECTS" (str "Event " event " caused " effects)))
                ctx))))
@@ -20,12 +20,12 @@
 (defonce shadow-db (atom {}))
 
 (def state-soft
-  (rf/->interceptor
+  (r/->interceptor
    :id    :fuzzy-copy
    :after (fn [ctx]
             (let [orig-db (get-in ctx [:coeffects :db])
                   path (get-in orig-db [:state :soft-path]) ; or could have multiple but maybe nah
-                  new-db (rf/get-effect ctx :db :not-found)
+                  new-db (r/get-effect ctx :db :not-found)
                   orig-at-path (get-in orig-db path)
                   new-at-path (get-in new-db path)]
               ; figure out what's changed in which direction

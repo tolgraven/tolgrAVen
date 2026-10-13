@@ -3,10 +3,10 @@
   #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
   #?(:cljs (:require [ajax.core :as ajax]
             [goog.object :as gobj]
-            [reagent.ratom :as ratom]
+            [tolgraven.react :as r]
             [tolgraven.component.data :as data]
             [tolgraven.component.storage :as storage]
-            [tolgraven.react :as rf]
+
             [tolgraven.service-status :as status]
             [tolgraven.content.client :as content]
             [tolgraven.content.contract :as contract]
@@ -15,45 +15,45 @@
 #?(:cljs
 (do
 
-(rf/reg-sub :component-data/path
+(r/reg-sub :component-data/path
   (fn [db query]
     (let [[_ path] (or (:re-frame/query-v query) query)
           value (get-in db path ::missing)]
       {:ready? (not= ::missing value) :value value})))
-(rf/reg-sub :component-data/content
+(r/reg-sub :component-data/content
   (fn [db query]
     (let [[_ keys] (or (:re-frame/query-v query) query)]
       {:ready? (every? #(contains? (:content db) %) keys)
        :value (select-keys (:content db) keys)})))
 (when-enabled :supabase nil
-  (rf/reg-sub :component-data/supabase-cache
+  (r/reg-sub :component-data/supabase-cache
     (fn [_ q] (supabase/cached-query (second (or (:re-frame/query-v q) q))))))
 
 (defn- db-value [path]
-  @(rf/sub [:component-data/path path]))
+  @(r/sub [:component-data/path path]))
 
 (data/register-source!
  :app-db
- {:restore! (fn [{:keys [path]} value] (rf/dispatch-sync [:component-data/install path value]))
+ {:restore! (fn [{:keys [path]} value] (r/dispatch-sync [:component-data/install path value]))
   :read (fn [{:keys [path]}] (db-value path))
   :load! (fn [{:keys [path load timeout-ms]}]
            (-> (if load (data/ensure! load) (js/Promise.resolve nil))
                (.then (fn [_]
-                        (let [*value (ratom/make-reaction #(db-value path) :auto-run true)]
+                        (let [*value (r/make-reaction #(db-value path) :auto-run true)]
                           (-> (data/wait-for! *value #(deref *value) (or timeout-ms 15000))
-                              (.finally #(ratom/dispose! *value))))))))})
+                              (.finally #(r/dispose! *value))))))))})
 
 (data/register-source!
  :strapi
  {:restore! (fn [{:keys [keys]} value]
               (let [bundle {:version contract/version :content value}]
                 (when-not (content/valid-bundle? bundle keys) (throw (js/Error. "Invalid cached content")))
-                (rf/dispatch-sync [:content/install bundle])))
+                (r/dispatch-sync [:content/install bundle])))
   :read (fn [{:keys [keys]}]
-          @(rf/sub [:component-data/content keys]))
+          @(r/sub [:component-data/content keys]))
   :load! (fn [{:keys [keys]}]
            (-> (content/ensure! keys)
-               (.then (fn [_] (:value @(rf/sub [:component-data/content keys]))))))})
+               (.then (fn [_] (:value @(r/sub [:component-data/content keys]))))))})
 
 (data/register-source!
  :url
@@ -86,7 +86,7 @@
 (data/register-source!
  :supabase
  {:scope #(deref *auth-generation)
-  :read (fn [{:keys [query]}] @(rf/sub [:component-data/supabase-cache query]))
+  :read (fn [{:keys [query]}] @(r/sub [:component-data/supabase-cache query]))
   :load! (fn [{:keys [query timeout-ms]}]
            (let [generation @*auth-generation]
              (-> (status/within! (supabase/ensure!) (or timeout-ms 15000))
@@ -102,10 +102,10 @@
 (data/register-source!
  :subscription
  {:load! (fn [{:keys [query timeout-ms]}]
-           (let [*value (ratom/make-reaction #(deref (rf/subscribe query)) :auto-run true)]
+           (let [*value (r/make-reaction #(deref (r/subscribe query)) :auto-run true)]
              (-> (data/wait-for! *value
                                 #(let [value @*value] {:ready? (true? value) :value value})
                                 (or timeout-ms 15000))
-                 (.finally #(ratom/dispose! *value)))))})
+                 (.finally #(r/dispose! *value)))))})
 
 ))

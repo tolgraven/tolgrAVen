@@ -2,16 +2,16 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :as m :refer-macros [defc]]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [clojure.string :as string]
     [tolgraven.loader :as l]
-    [tolgraven.components.ui :as ui]
+    [tolgraven.components.ui.inputs :as ui-inputs]
     [tolgraven.util :as util]))
 
 (defc <gpt-message> "A single gpt message"
   [prompt response thread]
-  (let [user (rf/subscribe [:user/user (:user thread)])
+  (let [user (r/subscribe [:user/user (:user thread)])
         hovered? (r/atom false)]
     (fn [prompt response thread]
       [:div.gpt-message
@@ -25,7 +25,7 @@
           [:span.gpt-message-time-exact
            (when @hovered? (util/unix->ts (:time thread)))]]]
          [:div.gpt-message-user.flex
-          @(rf/subscribe [:gpt/user-short (:user thread)])
+          @(r/subscribe [:gpt/user-short (:user thread)])
           (m/<> :user/avatar @user)]]
        [:div.gpt-message-text.gpt-message-reply
         (or response
@@ -34,9 +34,9 @@
 (defc <thread>
   [id]
   (let [open? (r/atom false)
-        thread (rf/subscribe [:gpt/thread id])]
+        thread (r/subscribe [:gpt/thread id])]
     (fn [id]
-      (let [user @(rf/subscribe [:user/user (:user @thread)])]
+      (let [user @(r/subscribe [:user/user (:user @thread)])]
         [:div.gpt-thread-container
          [:div.flex
           {:style {:align-items "center"}}
@@ -58,21 +58,21 @@
               [<gpt-message> prompt response @thread])
 
             [:div.gpt-input.flex
-             [ui/<input-text>
+             [ui-inputs/<input-text>
               :path [:form-field [:gpt-thread id]]
               :placeholder "Message"
-              :on-enter #(rf/dispatch [:gpt/post-in-thread id (:messages @thread)])]
-             [:button {:on-click #(rf/dispatch [:gpt/post-in-thread id (:messages @thread)])}
+              :on-enter #(r/dispatch [:gpt/post-in-thread id (:messages @thread)])]
+             [:button {:on-click #(r/dispatch [:gpt/post-in-thread id (:messages @thread)])}
               [:i.fa.fa-arrow-right]]]]) ]))))
 
 (defc <threads> "A place to hang out with real-time messaging"
   []
-  (let [ids @(rf/subscribe [:gpt/thread-ids])]
+  (let [ids @(r/subscribe [:gpt/thread-ids])]
     [:section.gpt.noborder.covering-2
      [:div.gpt-messages
       {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))}
       (for [id ids] ^{:key (str "gpt-thread-" id)}
         [<thread> id])]
       [:button
-       {:on-click #(rf/dispatch [:gpt/new-thread])}
+       {:on-click #(r/dispatch [:gpt/new-thread])}
        "New thread"]]))

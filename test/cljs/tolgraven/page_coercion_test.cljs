@@ -11,7 +11,7 @@
             [tolgraven.schema.declarations :as declarations]
             [malli.util :as mu]
             [tolgraven.validation.runtime :as validation]
-            [tolgraven.react :as rf]))
+            [tolgraven.react :as r]))
 
 (deftest production-registry-retains-owned-contracts
   (is (= "custom" registry/type) "Browser tests exercise the release registry")
@@ -95,7 +95,7 @@
         error (ex-info "Request coercion failed"
                        (into {} (decode {:userBox "private-invalid-value"} nil)))]
     (try
-      (with-redefs [rf/dispatch #(swap! *reports conj %)]
+      (r/with-framework-bindings [r/dispatch #(swap! *reports conj %)]
         (try
           (routes/history-coercion-failed! {:path "/blog"} error)
           (is false "History must receive a redacted exception")

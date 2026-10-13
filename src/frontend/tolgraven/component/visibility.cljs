@@ -1,14 +1,14 @@
 (ns tolgraven.component.visibility
   "Visibility effects for a component's existing native root. React owns markup;
    this lifecycle adapter owns the observer, delay and teardown."
-  (:require [tolgraven.react :as rf]
+  (:require [tolgraven.react :as r]
             [tolgraven.component.registry]
             [tolgraven.macros :refer-macros [defc]]))
 
 (defn setup [{:keys [event callback once? threshold root-margin delay-ms]
               :or {once? true threshold 0.5 root-margin "0px" delay-ms 0}}]
   (when (and (or event callback) (exists? js/window))
-    (let [fire! (or callback #(rf/dispatch event))
+    (let [fire! (or callback #(r/dispatch event))
           *observer (atom nil)
           *timer (atom nil)
           *active? (atom true)
@@ -50,15 +50,15 @@
    Both paths share setup; this boundary never owns another observer algorithm."
   {:spec false}
   [options]
-  (let [*element (rf/use-ref nil)
-        *owner (rf/use-ref nil)]
-    (rf/use-layout-effect
+  (let [*element (r/use-ref nil)
+        *owner (r/use-ref nil)]
+    (r/use-layout-effect
       (fn []
         (fn []
           (let [old (.-current *owner)]
             (set! (.-current *owner) nil)
             (when-let [state (:state old)] ((:stop! state)))))) [])
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn []
         (let [element (.-current *element)
               old (.-current *owner)]

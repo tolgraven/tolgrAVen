@@ -1,7 +1,7 @@
 (ns tolgraven.modules.github.module
   (:require
     [tolgraven.content.contract :as content-contract]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.modules.github.events]
     [tolgraven.modules.github.subs]
     [tolgraven.modules.github.views :as view]))
@@ -11,4 +11,4 @@
    :id :github
    :styles ["/css/tolgraven/modules/github.min.css"]
    :view {:view #'view/<commits>}
-   :init #(rf/dispatch [:github/init])})
+   :init #(r/dispatch [:github/init])})

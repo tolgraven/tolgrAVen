@@ -1,6 +1,6 @@
 (ns tolgraven.core
   (:require
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.validation.runtime :as validation]
     [tolgraven.validation :as engine]
     [tolgraven.loader :as loader]
@@ -9,8 +9,8 @@
     [tolgraven.component.data :as component-data]
     [tolgraven.component.storage :as storage]
     [tolgraven.modules.main.module :as main-module]
-    [reagent.core :as r]
-    [reagent.dom.client :as rdomc]
+
+
     [tolgraven.ajax :as ajax]
     [tolgraven.boot :as boot]
     [tolgraven.content.client :as content]
@@ -40,7 +40,7 @@
 (defonce *shell-root (atom nil))
 
 (m/defc <disposed-shell> {:profile false} [complete!]
-  (rf/use-layout-effect (fn [] (complete!) nil) [complete!])
+  (r/use-layout-effect (fn [] (complete!) nil) [complete!])
   [:<>])
 
 (defonce *shell-removal (atom nil))
@@ -56,14 +56,14 @@
                 (fn [complete! _]
                   (motion/finish-animation! element {:timeout-ms 500}
                     (fn []
-                      (reset! *shell-root (rdomc/create-root element))
-                      (rdomc/render @*shell-root [<disposed-shell> complete!])))))
+                      (reset! *shell-root (r/create-root element))
+                      (r/render @*shell-root [<disposed-shell> complete!])))))
               (js/Promise.resolve nil))]
         (reset! *shell-removal pending)
         pending)))
 (defonce <page>
   (if false #_:biggus-debuggus
-    (r/create-element rf/strict-mode
+    (r/create-element r/strict-mode
                       nil                ;; <-- props
                       (r/as-element [page]))
     [page]))
@@ -75,27 +75,27 @@
 
 (defn render []
   (if @root
-    (rdomc/render @root [<root-page>])
+    (r/render @root [<root-page>])
     (let [element (.getElementById js/document "app")]
       (if (:hydrate? @restore/*context)
-        (reset! root (rdomc/hydrate-root element [<root-page>]
+        (reset! root (r/hydrate-root element [<root-page>]
                        {:on-recoverable-error
                         (fn [error _]
                           (js/console.error "Hydration recovery" error)
                           (service-status/fail! :hydration "Page restoration failed"
                                                "The page was rebuilt in your browser. Reload if anything is missing."
                                                #(.reload js/location)))}))
-        (do (reset! root (rdomc/create-root element))
-            (rdomc/render @root [<root-page>]))))))
+        (do (reset! root (r/create-root element))
+            (r/render @root [<root-page>]))))))
 
 (defn mount-components "Called each update when developing" []
   (let [hot-reload? (some? @root)]
     ;; A first load keeps the browser's position through hydration. This save/
     ;; restore pair is only for replacing an already mounted development root.
-    (when hot-reload? (rf/dispatch-sync [:scroll/save-position-dev]))
-    (rf/clear-subscription-cache!)
+    (when hot-reload? (r/dispatch-sync [:scroll/save-position-dev]))
+    (r/clear-subscription-cache!)
     (routes/start!) ; restart router on reload?
-    (rf/dispatch [:reloaded])
+    (r/dispatch [:reloaded])
     (util/log "Mounting root component")
     (-> (if (restore/skip-enter?)
           ;; The route owns initial readiness. Optional SSR exports preserve their
@@ -104,7 +104,7 @@
           (js/Promise.resolve nil))
         (.then (fn [_]
                  (render)
-                 (when hot-reload? (rf/dispatch [:scroll/restore-position-dev 150])))))))
+                 (when hot-reload? (r/dispatch [:scroll/restore-position-dev 150])))))))
 
 (defn prepare-bootstrap! []
   (let [snapshot (when-not (.getElementById js/document "local-page-bootstrap")
@@ -141,24 +141,24 @@
       ;; below; a client-only return has no server attributes to match.
       (restore/begin! {:back? (and (restore/back-navigation?) (not hydrate?))
                        :hydrate? hydrate?}))
-    (rf/dispatch-sync [:init/app-db])
-    (rf/dispatch-sync [:boot/document])
-    (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
+    (r/dispatch-sync [:init/app-db])
+    (r/dispatch-sync [:boot/document])
+    (r/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
     (ajax/load-interceptors!)
     (letfn [(start! []
-              (rf/dispatch-sync [:state [:page-init] {:status :loading}])
+              (r/dispatch-sync [:state [:page-init] {:status :loading}])
               (service-status/recover! :page-init)
               (-> (js/Promise.resolve nil)
                   (.then (fn [_] (prepare-bootstrap!)))
                   (.then (fn [snapshot]
-                           (rf/dispatch-sync [:ls/get-path [:scroll-position] [:state :scroll-position]])
+                           (r/dispatch-sync [:ls/get-path [:scroll-position] [:state :scroll-position]])
                            ;; A history return using persisted content needs layout-
                            ;; aware scroll restoration. Real SSR HTML uses the browser's
                            ;; native restoration; ordinary reloads keep entrance motion.
                            (when (and (restore/back-navigation?)
                                       (not (.getElementById js/document "local-page-bootstrap"))
                                       (= "true" (.getAttribute (.getElementById js/document "app") "data-restore")))
-                             (rf/dispatch [:scroll/restore-history (.-pathname js/location)]))
+                             (r/dispatch [:scroll/restore-history (.-pathname js/location)]))
                            (if snapshot
                              (content/bootstrap-server! snapshot)
                              (content/bootstrap!))))
@@ -168,15 +168,15 @@
                   (.then (fn []
                            (-> (mount-components)
                                (.then (fn [_]
-                                        (rf/dispatch [:state [:page-init] {:status :ready}]))))))
+                                        (r/dispatch [:state [:page-init] {:status :ready}]))))))
                   (.catch (fn [_]
                             (service-status/fail! :page-init "Page initialization failed"
                                                   "The page could not initialize. Existing server content is retained."
                                                   start!)
-                            (rf/dispatch [:state [:page-init] {:status :failed}])))))]
+                            (r/dispatch [:state [:page-init] {:status :failed}])))))]
       (when-let [element (.getElementById js/document "page-init-status")]
-        (when-not @*init-root (reset! *init-root (rdomc/create-root element)))
-        (rdomc/render @*init-root [init-view/<fallback> start!]))
+        (when-not @*init-root (reset! *init-root (r/create-root element)))
+        (r/render @*init-root [init-view/<fallback> start!]))
       (start!))))
 
 (defn ^:export init!  []

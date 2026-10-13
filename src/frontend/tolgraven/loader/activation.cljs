@@ -1,7 +1,7 @@
 (ns tolgraven.loader.activation
   "Owned module proximity/intent triggers. React keeps ownership of the observed UI."
   (:require [tolgraven.component.visibility :as visibility]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [tolgraven.listener :as listener]))
 
 (def trigger [:enum :view :hover :click :event :immediate])
@@ -37,7 +37,7 @@
           *visibility (atom nil)
           fire! (fn [& _]
                   (when (and @*active? (compare-and-set! *fired? false true))
-                    (rf/dispatch (or (:event options)
+                    (r/dispatch (or (:event options)
                                      [:loader/activate (dissoc options :event)]))))
           observe! (fn []
                      (when-let [state @*visibility] ((:stop! state)))

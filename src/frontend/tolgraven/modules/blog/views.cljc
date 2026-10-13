@@ -1,13 +1,13 @@
 (ns tolgraven.modules.blog.views
   #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
   #?(:cljs (:require #?(:clj [tolgraven.build.site :refer [when-enabled]])
-    [reagent.core :as r]
+    [tolgraven.react :as r]
     [tolgraven.components.timer :as timer]
     [tolgraven.modules.blog.model :as model]
     [tolgraven.modules.blog.schema :as schema]
     [tolgraven.modules.blog.data :as data]
     #?(:feature/blog-comments [tolgraven.modules.blog.comments :as comments])
-    [tolgraven.react :as rf]
+
     [clojure.string :as string]
     [tolgraven.loader]
     [tolgraven.macros :as m :refer-macros [defc defpage]]
@@ -16,7 +16,9 @@
     [tolgraven.component.loading :as loading]
     [tolgraven.modules.link-preview.views :as link-preview]
     [tolgraven.util :as util]
-    [tolgraven.components.ui :as ui] )))
+    [tolgraven.components.ui.controls :as ui-controls]
+    [tolgraven.components.ui.inputs :as ui-inputs]
+    [tolgraven.components.ui.layout :as ui-layout] )))
 
 #?(:cljs
    (do
@@ -34,7 +36,7 @@
   (let [id (if (string? user) user (:id user))]
     (cond
       (nil? id) :untrusted
-      @(rf/subscribe [:user/trusted? id]) :trusted
+      @(r/subscribe [:user/trusted? id]) :trusted
       :else :user)))
 
 
@@ -57,15 +59,15 @@
 (defc <posted-by> "Render author, timestamp, and optional score."
   {:features [[:appear nil]]}
   [{:keys [id user ts score] :or {score 0} :as spec} :- schema/posted-by-spec]
-  (let [user @(rf/subscribe [:user/user user])
+  (let [user @(r/subscribe [:user/user user])
         username [:em.blog-user
                   (if-let [username (:name user)]
                     username
                     "anon")]
-        ts @(rf/subscribe [:timestamp ts])]
+        ts @(r/subscribe [:timestamp ts])]
     [:span.blog-info
      username
-    (when @(rf/subscribe [:user/trusted? (:id user)])
+    (when @(r/subscribe [:user/trusted? (:id user)])
       [:span {:style {:font-size "80%"}}
        "admin"])
      [:span ts]
@@ -77,9 +79,9 @@
 (when-enabled :blog :comments
   (defc <add-comment-btn> "Open or cancel the comment editor."
   [{:keys [parent-path kind] :as spec} :- schema/parent-spec]
-  (let [adding-comment? @(rf/subscribe [:comments/adding? parent-path])
+  (let [adding-comment? @(r/subscribe [:comments/adding? parent-path])
         attrs {:on-click
-               #(rf/dispatch
+               #(r/dispatch
                  [:blog/adding-comment parent-path (not adding-comment?)])}]
     (case kind
       :comment (when-not adding-comment?
@@ -90,14 +92,14 @@
                   attrs [:i.fa.fa-reply]])
       :cancel  (when adding-comment?
                  [:button.blog-btn.bottomborder
-                  {:on-click #(rf/dispatch [:blog/cancel-comment parent-path])}
+                  {:on-click #(r/dispatch [:blog/cancel-comment parent-path])}
                   "Cancel"])))))
 
 (when-enabled :blog :comments
   (defc <edit-comment>
   [{:keys [path comment] :as spec}]
   [:button.blog-btn.blog-comment-edit-btn.noborder
-   {:on-click #(rf/dispatch [:blog/edit-comment path comment])}
+   {:on-click #(r/dispatch [:blog/edit-comment path comment])}
    [:i.fa.fa-edit]]))
 
 (when-enabled :blog :comments
@@ -116,13 +118,13 @@
 (when-enabled :blog :comments
   (defc <vote-btn> [{:keys [user active-user path vote] :as spec}]
   (when active-user
-    (let [voted @(rf/subscribe [:blog/vote path])]
+    (let [voted @(r/subscribe [:blog/vote path])]
       [:button.blog-btn.blog-comment-vote-btn
        {:class (if (= vote voted)
                  "noborder"
                  (case vote :up "topborder" :down "bottomborder"))
-        :disabled @(rf/subscribe [:state [:supabase-writes [:vote (str (last path))]]])
-        :on-click #(rf/dispatch [:blog/comment-vote
+        :disabled @(r/subscribe [:state [:supabase-writes [:vote (str (last path))]]])
+        :on-click #(r/dispatch [:blog/comment-vote
                                  user active-user path vote])}
        (case vote :up "+" :down "-")]))))
 
@@ -134,7 +136,7 @@
    {:style {:cursor "zoom-in"
             :max-height "3rem"}
     :on-click #(if-let [expand! (:expand! spec)] (expand!)
-                   (rf/dispatch [:blog/expand-comment-thread path true]))}
+                   (r/dispatch [:blog/expand-comment-thread path true]))}
    [:div.blog-comment-border]
    [:section.blog-comment.blog-comment-collapsed-placeholder
     {:aria-busy (boolean loading?)}
@@ -183,12 +185,12 @@
   (let [[show-expand? show-expand! hide-expand!] (timer/use-delayed-hide 2000)
         showing? (timer/use-delayed-visible? (or (nil? visible?) @visible?) 250)
         is-preview? (= [:new-comment] path)
-        *expanded? (rf/subscribe [:comments/thread-expanded? path])
+        *expanded? (r/subscribe [:comments/thread-expanded? path])
         *comments (when-not is-preview?
-                    (rf/subscribe [:comments/visible-thread (first path) (last path)
+                    (r/subscribe [:comments/visible-thread (first path) (last path)
                                    (boolean (and showing? @*expanded?
                                                  (or (nil? (:reply-count post)) (pos? (:reply-count post))))) path]))]
-    (rf/use-effect
+    (r/use-effect
       (fn []
         (when-let [element (when showing? @*text-element)]
           (when (exists? js/ResizeObserver)
@@ -200,8 +202,8 @@
               (fn [] (.disconnect observer))))))
       [showing? text])
     (when showing?
-      (let [active-user @(rf/subscribe [:user/active-user])
-            user @(rf/subscribe [:user/user user])
+      (let [active-user @(r/subscribe [:user/active-user])
+            user @(r/subscribe [:user/user user])
             score (or score 0)
             *comments (or *comments (r/atom nil))
             replies? (or (seq @*comments) (pos? (:reply-count post 0)))]
@@ -221,7 +223,7 @@
                       :opacity (if is-preview? 0.5 1.0)}
               :on-click #(when replies?
                            (reset! *interacted? true)
-                           (rf/dispatch [:blog/expand-comment-thread path
+                           (r/dispatch [:blog/expand-comment-thread path
                                          (not @*expanded?)]))}]
             [:section.blog-comment
              {:class (cond @*full? "blog-comment-full"
@@ -271,7 +273,7 @@
                  [:i.fa.fa-angle-up]])]]]}]
 
            (when (and active-user
-                      @(rf/subscribe [:comments/adding? path]))
+                      @(r/subscribe [:comments/adding? path]))
              [<add-comment> {:parent-path path}])
 
            (when replies? ;replies
@@ -289,14 +291,14 @@
               (when (or (not @*expanded?) (nil? @*comments))
                 [<collapsed-reply-view> {:path path :comments @*comments :reply-count (:reply-count post)
                                          :expand! (fn [] (reset! *interacted? true)
-                                                    (rf/dispatch [:blog/expand-comment-thread path true]))
+                                                    (r/dispatch [:blog/expand-comment-thread path true]))
                                          :loading? (and @*expanded? (nil? @*comments))}])])])))))
 
 (when-enabled :blog :comments
   (defc <comments-section> "Comments section!"
   {:features [[:appear "zoom-y"]]}
   [{{:keys [id] :as post} :post :as spec} :- schema/post-spec]
-  (let [{:keys [records loading? more?]} @(rf/subscribe [:comments/root-page id])
+  (let [{:keys [records loading? more?]} @(r/subscribe [:comments/root-page id])
         comments (->> (vals records) (sort-by (juxt :ts :id)) reverse)]
     [:section.blog-comments
      [:h2.blog-comments-title.bottomborder (str (util/pluralize (count comments) "comment") (when more? "+"))]
@@ -308,10 +310,10 @@
                                   :stagger-ms (min 48 (* 12 index))}]))])
      (when more?
        [:button.blog-btn.blog-load-more
-        {:disabled loading? :on-click #(rf/dispatch [:blog/load-more-comments id])}
+        {:disabled loading? :on-click #(r/dispatch [:blog/load-more-comments id])}
         (if loading? "Loading comments…" "Load more comments")])
 
-     (when @(rf/subscribe [:user/active-user])
+     (when @(r/subscribe [:user/active-user])
        [<add-comment-btn> {:parent-path [id] :kind :comment}])
      [<add-comment> {:parent-path [id]}]])))
 
@@ -322,9 +324,9 @@
     [:button.blog-btn.noborder
      {:class (when valid? "topborder")
       :disabled (or (not valid?)
-                    @(rf/subscribe [:state [:supabase-writes [:comment parent-path]]]))
+                    @(r/subscribe [:state [:supabase-writes [:comment parent-path]]]))
       :on-click #(when valid?
-                   (rf/dispatch [:blog/comment-submit parent-path model editing?]))}
+                   (r/dispatch [:blog/comment-submit parent-path model editing?]))}
      "Submit"])))
 
 (when-enabled :blog :comments
@@ -347,9 +349,9 @@
       :name (or ui-name (name field))
       :placeholder (string/capitalize (or ui-name (name field)))
       :style (merge style height)
-      :on-change #(rf/dispatch-sync [:form-field [:write-comment parent-path field]
+      :on-change #(r/dispatch-sync [:form-field [:write-comment parent-path field]
                                     (-> % .-target .-value)])
-      :on-blur #(rf/dispatch-sync [:form-field [:write-comment parent-path field]
+      :on-blur #(r/dispatch-sync [:form-field [:write-comment parent-path field]
                                   (get model field) :blur])}])))
 
 (when-enabled :blog :comments
@@ -357,8 +359,8 @@
   {:features [:error-boundary]}
   [{:keys [parent-path] :as spec} :- schema/parent-spec]
   :let [*preview? (r/atom false)]
-  (when @(rf/subscribe [:comments/adding? parent-path])
-    (let [*model (rf/subscribe [:form-field [:write-comment parent-path]])]
+  (when @(r/subscribe [:comments/adding? parent-path])
+    (let [*model (r/subscribe [:form-field [:write-comment parent-path]])]
       [:div.blog-comment-reply-outer
        [:div.blog-comment-reply
         [:div.blog-adding-comment
@@ -378,15 +380,15 @@
                 [<comment-input> {:parent-path parent-path :field :text :kind :textarea
                                   :model @*model :ui-name "Comment"}]]}])
          [<comment-post> {:path [:new-comment]
-                          :comment {:user @(rf/subscribe [:user/active-user])
+                          :comment {:user @(r/subscribe [:user/active-user])
                                     :title (:title @*model)
                                     :text (or (:text @*model) "")}}]
-         [ui/<input-text-styled> :model *model
-          :on-change #(rf/dispatch-sync [:form-field [:write-comment parent-path :text] %])]
+         [ui-inputs/<input-text-styled> :model *model
+          :on-change #(r/dispatch-sync [:form-field [:write-comment parent-path :text] %])]
          ;; The experimental field could use :style {:opacity 0.1 :z-index 10}.
          ;; Future shortcut: submit on Alt-Enter.
          [<submit-comment-btn> {:parent-path parent-path :model @*model
-                                :editing? @(rf/subscribe [:blog/state [:editing-comment parent-path]])}]
+                                :editing? @(r/subscribe [:blog/state [:editing-comment parent-path]])}]
          [<add-comment-btn> {:parent-path parent-path :kind :cancel}]]]]))))
 
 (defc <preview-blog> "Render new post preview"
@@ -395,52 +397,52 @@
     [:h2.blog-post-title title]
     [:br]
     [<markdown> text
-     {:trust (link-trust @(rf/subscribe [:user/active-user]))}]])
+     {:trust (link-trust @(r/subscribe [:user/active-user]))}]])
 
 (defc <post-blog> "Render post-making ui"
   {:features [:error-boundary]}
   [] ; XXX move this and similar to own file...
-  (let [input @(rf/subscribe [:form-field [:post-blog]])
-        user @(rf/subscribe [:user/active-user])
-        editing @(rf/subscribe [:blog/state [:editing]])]
+  (let [input @(r/subscribe [:form-field [:post-blog]])
+        user @(r/subscribe [:user/active-user])
+        editing @(r/subscribe [:blog/state [:editing]])]
     [:section.blog.blog-new-post
      [:h2 "Write blog post"]
      [:br]
 
-     [ui/<input-text>
+     [ui-inputs/<input-text>
       :placeholder "Title"
       :path [:form-field [:post-blog :title]]]
 
-     [ui/<input-text>
+     [ui-inputs/<input-text>
       :placeholder "Tags"
       :path [:form-field [:post-blog :tags]]]
 
-     [ui/<input-text> :input-type :textarea
+     [ui-inputs/<input-text> :input-type :textarea
       :placeholder "Text (markdown)"
       :height "40vh"
       :min-rows 6
       :width "100%"
       :path [:form-field [:post-blog :text]]]
 
-     [ui/<button> "Save draft" :save-blog-draft]
-     [ui/<button> "Highlight code" :highlight-blog-code
-      :action #(rf/dispatch [:run-highlighter!])]
+     [ui-controls/<button> "Save draft" :save-blog-draft]
+     [ui-controls/<button> "Highlight code" :highlight-blog-code
+      :action #(r/dispatch [:run-highlighter!])]
 
      [:br]
      [:section.blog-post-preview
       [<preview-blog> {:post input}]]
 
      [:section
-      [ui/<button> "Submit" :post-new-blog
-       :action #(do (rf/dispatch [:blog/submit
+      [ui-controls/<button> "Submit" :post-new-blog
+       :action #(do (r/dispatch [:blog/submit
                                   (merge {:user user} input)
                                   editing])
                     nil)]
-      [:button {:on-click #(rf/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
+      [:button {:on-click #(r/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
        [:label "Cancel"]]]]))
 
 (defc <tag-link> [{:keys [tag]} :- schema/tag-spec]
-  [:span [:a.blog-tag-link {:href @(rf/subscribe [:href :blog-tag {:tag tag}])} tag]])
+  [:span [:a.blog-tag-link {:href @(r/subscribe [:href :blog-tag {:tag tag}])} tag]])
 
 (defc <tags-list> [{{:keys [id tags]} :post :as spec} :- schema/post-spec]
   (when-let [tags (seq (model/tags tags))]
@@ -456,7 +458,7 @@
 (defc <post-content> "Render a loaded post with metadata and comments."
   {:features [:error-boundary [:appear "zoom-x"]]}
   [{{:keys [id ts user title text permalink comments] :as post} :post :as spec} :- schema/post-spec]
-  (let [user @(rf/subscribe [:user/user user])]
+  (let [user @(r/subscribe [:user/user user])]
      [:section.blog-post
       {:data-link-trust (name (link-trust user))}
 
@@ -464,15 +466,15 @@
                     :children [
        (m/<> :user/avatar user "blog-user-avatar")
       [:div.blog-post-header-main
-       [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
+       [:a {:href @(r/subscribe [:blog/permalink-for-path (or permalink id)])}
          [:h1.blog-post-title title ]]
        [<posted-by> {:id id :user user :ts ts
                      :appear {:class "slide-in" :remember-key [:blog/posted-by id]}}]
        [:div.flex
         [<tags-list> {:post post}]
-        (when (= (:id user) (:id @(rf/subscribe [:user/active-user])))
+        (when (= (:id user) (:id @(r/subscribe [:user/active-user])))
           [:button.noborder.nomargin
-           {:on-click #(rf/dispatch [:blog/edit-post post])}
+           {:on-click #(r/dispatch [:blog/edit-post post])}
            [:i.fa.fa-edit] ])]]]}]
      ; [a custom sticky mini "how far youve scrolled bar" on right?]
      [:div.blog-post-text
@@ -487,25 +489,25 @@
   [{:keys [id post] :as spec}]
   (cond
     (:text post) ^{:key (:id post)} [<post-content> (assoc spec :appear {:class "zoom-x" :remember-key [:blog/post (:id post)]})]
-    (and id @(rf/subscribe [:blog/post-loaded? id])) [:p {:role "status"} "Post not found."]
+    (and id @(r/subscribe [:blog/post-loaded? id])) [:p {:role "status"} "Post not found."]
     :else [loading/<query-fallback> (data/post-query id) [<loading>]]))
 
 (defc <post-by-id> [{:keys [id]}]
   ;; Own the subscription in a render context, never inside a lazy parent for.
-  [<blog-post> {:id id :post @(rf/subscribe [:blog/post id])}])
+  [<blog-post> {:id id :post @(r/subscribe [:blog/post id])}])
 
 (defc <adjacent-post-link> [{:keys [direction post-id] :as spec}]
-  (when-let [id @(rf/subscribe [:blog/adjacent-post-id direction post-id])]
-    (let [{:keys [title permalink]} @(rf/subscribe [:blog/post-summary id])]
-      [:a {:rel (name direction) :href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
+  (when-let [id @(r/subscribe [:blog/adjacent-post-id direction post-id])]
+    (let [{:keys [title permalink]} @(r/subscribe [:blog/post-summary id])]
+      [:a {:rel (name direction) :href @(r/subscribe [:blog/permalink-for-path (or permalink id)])}
        [:span
         (when (= direction :prev) [:<> [:i.fa.fa-chevron-left] " "])
         title
         (when (= direction :next) [:<> " " [:i.fa.fa-chevron-right]])]])))
 
 (defc <blog-single-post> []
-  (let [id @(rf/subscribe [:blog/state [:current-post-id]])
-        post @(rf/subscribe [:blog/post id])]
+  (let [id @(r/subscribe [:blog/state [:current-post-id]])
+        post @(r/subscribe [:blog/post id])]
     [<blog-container>
      {:section
       [:<>
@@ -514,13 +516,13 @@
        [<blog-post> {:id id :post post}]
        (when (:id post)
          [:div.blog-prev-next-links
-          {:ref #(rf/dispatch [:common/set-title (when % (:title post))])}
+          {:ref #(r/dispatch [:common/set-title (when % (:title post))])}
           [<adjacent-post-link> {:direction :prev :post-id (:id post)}]
           [<adjacent-post-link> {:direction :next :post-id (:id post)}]])]}]))
 
 (defc <archive-post> [{{:keys [id ts user title permalink comments] :as post} :post :as spec}]
   [:div.blog-archive-post
-   [:a {:href @(rf/subscribe [:blog/permalink-for-path (or permalink id)])}
+   [:a {:href @(r/subscribe [:blog/permalink-for-path (or permalink id)])}
     [:h2 title]]
    [<posted-by> {:id id :user user :ts ts}]
    (when (seq comments)
@@ -528,7 +530,7 @@
       (util/pluralize (count comments) "comment")])
    [<tags-list> {:post post}]
    [:div {:style {:padding-top "0.4em" :padding-bottom "var(--space)" :font-size "0.9em"}}
-    [<markdown> @(rf/subscribe [:blog/post-preview id])
+    [<markdown> @(r/subscribe [:blog/post-preview id])
      {:trust (link-trust user)}]]])
 
 (defc <blog-archive> "Render the post archive." []
@@ -537,20 +539,20 @@
     [:div.blog-archive
      [:h2 {:style {:text-align :center}} "All posts"] [:br] [:br]
      ;; Future grouping: month/year separators, based on publication time.
-     (for [post @(rf/subscribe [:blog/post-feed])]
+     (for [post @(r/subscribe [:blog/post-feed])]
        ^{:key (str "blog-archive-" (:id post))}
        [<archive-post> {:post post}])]}])
 
 (defc <blog-tag-view> "Render posts filed under the selected tag."
   {:loading-prefab :article :loading-tag :section.blog-post}
   []
-  (when-let [tag @(rf/subscribe [:blog/state [:viewing-tag]])]
+  (when-let [tag @(r/subscribe [:blog/state [:viewing-tag]])]
     [<blog-container>
      {:section
       [:div.blog-posts-with-tag
        [:h2 {:style {:text-align :center}}
         "Posts tagged " [:span.blog-post-tags [:span tag]]]
-       (if-some [posts @(rf/subscribe [:blog/posts-with-tag tag])]
+       (if-some [posts @(r/subscribe [:blog/posts-with-tag tag])]
          (for [post posts]
            ^{:key (str "blog-with-tag-" (:id post))}
            [<blog-post> {:id (:id post) :post post}])
@@ -560,7 +562,7 @@
   [:div.blog-post-tags.flex.center-content
    [:p "Tags "]
    [:div.flex.center-content
-    (for [tag (sort @(rf/subscribe [:blog/all-tags]))]
+    (for [tag (sort @(r/subscribe [:blog/all-tags]))]
       ^{:key (str "blog-tag-" tag)}
       [<tag-link> {:tag tag}])]])
 
@@ -571,7 +573,7 @@
 (defc <nav-btn> [{:keys [nav label props rel] :as spec}]
   [:a.button.blog-btn.blog-nav-btn.topborder
    (merge props {:rel rel
-                 :href @(rf/subscribe [:href :blog-page {:nr nav}])
+                 :href @(r/subscribe [:href :blog-page {:nr nav}])
                  :aria-label (case rel "prev" "Previous page" "next" "Next page" (str "Page " nav))
                  :aria-current (when (= "current" (:class props)) "page")})
    label])
@@ -579,8 +581,8 @@
 (defc <blog-nav> "Blog navigation buttons"
   [{:keys [total-posts current-idx posts-per-page] :as spec}]
   (let [page-count (model/page-count total-posts posts-per-page)
-        previous @(rf/subscribe [:blog/page-index-for-nav-action :prev])
-        next-page @(rf/subscribe [:blog/page-index-for-nav-action :next])]
+        previous @(r/subscribe [:blog/page-index-for-nav-action :prev])
+        next-page @(r/subscribe [:blog/page-index-for-nav-action :next])]
     [:div.blog-nav.center-content
      (when previous [<nav-btn> {:nav previous :rel "prev" :label [:i.fa.fa-chevron-left]}])
      (for [number (range 1 (inc page-count))]
@@ -592,10 +594,10 @@
 (defc <blog-feed> "Render the current database page of posts."
   {:loading-prefab :article :loading-tag :section.blog-post}
   []
-  (let [total @(rf/subscribe [:blog/count])
-        size @(rf/subscribe [:blog/posts-per-page])
-        index @(rf/subscribe [:blog/nav-page])
-        posts @(rf/subscribe [:blog/posts-for-page index size])]
+  (let [total @(r/subscribe [:blog/count])
+        size @(r/subscribe [:blog/posts-per-page])
+        index @(r/subscribe [:blog/nav-page])
+        posts @(r/subscribe [:blog/posts-for-page index size])]
     [:<>
      (if (some? posts)
        (for [post posts]
@@ -612,14 +614,14 @@
      section
      [loading/<spinner>])
    [:div.flex.center-content
-    (when (or @(rf/subscribe [:user/has-role? :bloggers]) @(rf/subscribe [:user/has-role? :admins]))
-      [:a.button.noborder {:href @(rf/subscribe [:href :new-post])
+    (when (or @(r/subscribe [:user/has-role? :bloggers]) @(r/subscribe [:user/has-role? :admins]))
+      [:a.button.noborder {:href @(r/subscribe [:href :new-post])
                            :title "Post blog"
                            :aria-label "Post blog"}
        [:i.fa.fa-feather-alt]])
 
-    [:a.button.blog-btn.noborder {:href @(rf/subscribe [:href :blog])} "Home"]
-    [:a.button.blog-btn.noborder {:href @(rf/subscribe [:href :blog-archive])} "Archive"]]
+    [:a.button.blog-btn.noborder {:href @(r/subscribe [:href :blog])} "Home"]
+    [:a.button.blog-btn.noborder {:href @(r/subscribe [:href :blog-archive])} "Archive"]]
 
     [<blog-tag-cloud>]
 
@@ -634,8 +636,8 @@
   []
   ;; One outer component identity preserves the heading across blog routes. Only
   ;; the selected content changes; SSR and SPA use the same route subscription.
-  (let [page (get-in @(rf/subscribe [:common/route]) [:data :page])]
-    [ui/<with-heading> [:blog :heading]
+  (let [page (get-in @(r/subscribe [:common/route]) [:data :page])]
+    [ui-layout/<with-heading> [:blog :heading]
      (case page
        :post [<blog-single-post>]
        :tag [<blog-tag-view>]

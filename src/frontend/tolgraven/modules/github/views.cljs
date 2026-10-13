@@ -2,12 +2,15 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [tolgraven.modules.github.message :as message]
     [tolgraven.modules.github.schema :as schema]
     [clojure.string :as string]
-    [tolgraven.components.ui :as ui]
+    [tolgraven.components.ui.controls :as ui-controls]
+    [tolgraven.components.ui.inputs :as ui-inputs]
+    [tolgraven.components.ui.layout :as ui-layout]
+    [tolgraven.components.ui.loading :as ui-loading]
     [tolgraven.components.image :as img]
     [tolgraven.util :as util :refer [at]]))
 
@@ -15,7 +18,7 @@
 (defc <commit> "Show a single commit with highlighted diff etc..."
   {:features [[:appear "zoom-y"]]}
   [sha :- :string close]
-  (let [commit @(rf/subscribe [:github/commit sha])]
+  (let [commit @(r/subscribe [:github/commit sha])]
      [:div.github-commit-full
      close
      (for [file (:files commit)
@@ -83,12 +86,12 @@
   [user :- :string repo :- :string]
   (fn [user repo]
    [:div.github-loading
-   [:h2 "Loaded " (count @(rf/subscribe [:github/commits]))]
+   [:h2 "Loaded " (count @(r/subscribe [:github/commits]))]
    [:h3 "Scrolling down should load more..."]
    [:div {:style {:padding "var(--space)"}}
-    [ui/<loading-spinner> true :still]]
+    [ui-loading/<loading-spinner> true :still]]
    [:button {:style {:margin-top "var(--space-lg)"}
-             :on-click #(do (rf/dispatch [:github/fetch-commits-next user repo]))}
+             :on-click #(do (r/dispatch [:github/fetch-commits-next user repo]))}
     "...or you can click here"]]))
 
 (defc <commit-message>
@@ -102,7 +105,7 @@
               :style {:cursor "pointer"}
               :on-click (fn [e]
                           (.stopPropagation e)
-                          (rf/dispatch [:form-field [:github :search] subtitle]))}
+                          (r/dispatch [:form-field [:github :search] subtitle]))}
        subtitle]
       (when title
         [:<>
@@ -111,14 +114,14 @@
           {:style {:cursor "pointer"}
            :on-click (fn [e]
                        (.stopPropagation e)
-                       (rf/dispatch [:form-field [:github :search] title]))}
+                       (r/dispatch [:form-field [:github :search] title]))}
           title]])])])
 
 (defc ^:private <commit-row>
   {:features [[:appear "slide-in slow"]]}
   [{:keys [from sha main-view-position view author date ts html_url sha7 commit]}]
   [:div.github-commit.flex
-         {:on-click #(do (rf/dispatch [:github/fetch-commit (first @from) (second @from) sha])
+         {:on-click #(do (r/dispatch [:github/fetch-commit (first @from) (second @from) sha])
                          (reset! main-view-position
                                  (.-scrollTop (util/elem-by-id "github-commits-box")))
                          (reset! view sha))}
@@ -137,9 +140,9 @@
 
 (defc <commits> "List Github commits for this repo"
   []
-  (let [from (rf/subscribe [:github/get-from])
-        commits (rf/subscribe [:github/filter-by])
-        amount (rf/subscribe [:github/commit-count])
+  (let [from (r/subscribe [:github/get-from])
+        commits (r/subscribe [:github/filter-by])
+        amount (r/subscribe [:github/commit-count])
         view (r/atom :commits)
         main-view-position (r/atom 0)
         ref-fn #(when %
@@ -147,7 +150,7 @@
                     (if (= @view :commits)
                       (set! (.-scrollTop el) @main-view-position)
                       (set! (.-scrollTop el) 0))))
-        url (rf/subscribe [:github/website-url])]
+        url (r/subscribe [:github/website-url])]
    (fn []
     [:<>
      [:section.github-commits.covering-2
@@ -158,7 +161,7 @@
         "this website"]]]
 
      [:div#github-commits-box.github-commits-inner
-      [ui/<input-text> :id "github-commits-filter"
+      [ui-inputs/<input-text> :id "github-commits-filter"
        :input-type "input.search"
        :placeholder "Search commits"
        :width "100%"
@@ -181,8 +184,8 @@
                             :view view)])
 
           [:div
-            [<commit> @view [ui/<close> #(reset! view :commits)]]])
+            [<commit> @view [ui-controls/<close> #(reset! view :commits)]]])
 
      (when (= @view :commits)
       [<loading> (first @from) (second @from)])]]]
-     [ui/<fading> :dir "bottom"]])))
+     [ui-layout/<fading> :dir "bottom"]])))

@@ -2,9 +2,9 @@
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
-            [reagent.core :as r]
-            [re-frame.registrar :as registrar]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
+
+
             [tolgraven.component :as component]
             [tolgraven.component.data :as data]
             [tolgraven.component.motion :as motion]
@@ -34,7 +34,7 @@
   (async done
     (let [observer-before js/IntersectionObserver
           media-before (.-matchMedia js/window)
-          subscribe-before rf/observe-subscription!
+          subscribe-before r/observe-subscription!
           *observers (atom 0)
           *disconnects (atom 0)
           *queries (atom 0)
@@ -52,7 +52,7 @@
               #js {:matches false
                    :addEventListener (fn [& _] (swap! *listeners inc))
                    :removeEventListener (fn [& _] (swap! *removals inc))}))
-      (set! rf/observe-subscription!
+      (set! r/observe-subscription!
             (fn [query handle]
               (when (or (= :font/instance (first query))
                         (= [:state [:motion-seen :instance-test]] query))
@@ -93,7 +93,7 @@
           (.finally (fn []
                       (set! js/IntersectionObserver observer-before)
                       (set! (.-matchMedia js/window) media-before)
-                      (set! rf/observe-subscription! subscribe-before)
+                      (set! r/observe-subscription! subscribe-before)
                       (done)))))))
 
 (deftest dynamic-owners-clean-up-in-reverse-current-declaration-order
@@ -151,7 +151,7 @@
 (deftest shared-prefetch-replaces-only-changed-resources-and-cleans-up
   (async done
     (let [before js/IntersectionObserver
-          effects-before (into {} (map (fn [id] [id (registrar/get-handler :fx id)])
+          effects-before (into {} (map (fn [id] [id (r/get-handler :fx id)])
                                       [:component-data/load :content/load]))
           *observers (atom [])
           *disconnects (atom 0)
@@ -161,7 +161,7 @@
               (swap! *observers conj [callback options])
               #js {:observe (fn [_]), :disconnect #(swap! *disconnects inc)}))
       (doseq [id [:component-data/load :content/load]]
-        (rf/reg-fx id (fn [resources] (swap! *events conj [id resources]))))
+        (r/reg-fx id (fn [resources] (swap! *events conj [id resources]))))
       (-> (go-promise
             (doseq [[view event] [[component/<prefetch> :component-data/load]
                                  [content/<prefetch> :content/load]]]
@@ -189,7 +189,7 @@
           (.catch #(is false (str %)))
           (.finally (fn []
                       (set! js/IntersectionObserver before)
-                      (doseq [[id handler] effects-before] (rf/reg-fx id handler))
+                      (doseq [[id handler] effects-before] (r/reg-fx id handler))
                       (done)))))))
 
 (defc <optional-text>
@@ -202,10 +202,10 @@
 
 (deftest font-gating-releases-a-conditional-root-without-invalid-hiccup
   (async done
-    (let [before rf/observe-subscription!
+    (let [before r/observe-subscription!
           *queries (atom 0)
           *visible? (r/atom false)]
-      (set! rf/observe-subscription!
+      (set! r/observe-subscription!
             (fn [query handle]
               (when (= :font/instance (first query)) (swap! *queries inc))
               (before query handle)))
@@ -228,7 +228,7 @@
                   (await! (support/settle!))
                   (is (nil? (.-firstElementChild element)))))))
           (.catch #(is false (str %)))
-          (.finally (fn [] (set! rf/observe-subscription! before) (done)))))))
+          (.finally (fn [] (set! r/observe-subscription! before) (done)))))))
 
 (defc <instance-exit>
   {:features [[:exit (fn [spec *enabled?]
@@ -338,7 +338,7 @@
       (-> (with-root!
             (fn [root _]
               (go-promise
-                (await! (support/render! root [:> rf/strict-mode
+                (await! (support/render! root [:> r/strict-mode
                                               [visibility/<sentinel> {:callback callback}]]))
                 (is (= 2 (count @*callbacks)))
                 (is (= 1 @*disconnects))

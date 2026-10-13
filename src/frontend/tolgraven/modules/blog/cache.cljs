@@ -3,9 +3,9 @@
    All persistence uses the shared envelope; no component performs disk IO."
   (:require [cljs.reader :as reader]
             [tolgraven.component.legacy-storage :as legacy]
-            [reagent.core :as r]
-            [reagent.ratom :as ratom]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
+
+
             [tolgraven.component.storage :as storage]
             [tolgraven.component.restore :as restore]
             [tolgraven.browser-resources :as resources]
@@ -31,7 +31,7 @@
   (and (vector? path) (= 3 (count path))
        (= [:store :scoped] (subvec path 0 2)) (public-query? (last path))))
 
-(rf/reg-sub :blog/cache-queries
+(r/reg-sub :blog/cache-queries
   {:args [:tuple], :result [:map-of c/path :any]}
   :<- [:component-storage/value [:store :scoped]]
   (fn [scoped _]
@@ -40,11 +40,11 @@
                      (when (public-query? key) [[:store :scoped key] value])))
           (when (map? scoped) scoped))))
 
-(rf/reg-sub :blog/cache-values
+(r/reg-sub :blog/cache-values
   {:args [:tuple], :result [:map-of c/path :any]}
   (fn [_]
-    (into [(rf/subscribe [:blog/cache-queries])]
-          (map #(rf/subscribe [:component-storage/value %])) state-paths))
+    (into [(r/subscribe [:blog/cache-queries])]
+          (map #(r/subscribe [:component-storage/value %])) state-paths))
   (fn [[queries & display] _]
     (into queries (map vector state-paths display))))
 
@@ -56,7 +56,7 @@
     (reset! *restore-cleanup nil)
     (cleanup!))
   (when-let [{:keys [reaction paths]} @*tracking]
-    (ratom/dispose! reaction)
+    (r/dispose! reaction)
     (doseq [path @paths] (storage/untrack! [:state path]))
     (reset! *tracking nil)))
 
@@ -65,7 +65,7 @@
   (let [*paths (atom #{})
         reaction (r/track!
                    (fn []
-                     (let [values (rf/subscribe [:blog/cache-values])
+                     (let [values (r/subscribe [:blog/cache-values])
                            current @values]
                        (doseq [path (keys current) :when (not (contains? @*paths path))]
                          (swap! *paths conj path)
@@ -75,7 +75,7 @@
     ;; pages are unmounted. Explicit disposal releases the subscription owner.
     (reset! *tracking {:reaction reaction :paths *paths})))
 
-(rf/reg-event-db :blog/restore-cache
+(r/reg-event-db :blog/restore-cache
   {:args [:tuple [:vector [:tuple c/path :any]] :boolean]}
   (fn [db [_ snapshots restore-ui?]]
     (reduce (fn [db [path value]]
@@ -106,7 +106,7 @@
                                             (get-in old-state (subvec path 1)))]
                             (cond saved [path (:value saved)]
                                   (some? old-value) [path old-value]))) paths)]
-    (rf/dispatch-sync [:blog/restore-cache (vec snapshots) (not (restore/local-document?))])
+    (r/dispatch-sync [:blog/restore-cache (vec snapshots) (not (restore/local-document?))])
     (when (contains? old-state :blog) (legacy/write! (dissoc old-state :blog)))
     (start!)))
 

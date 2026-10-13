@@ -2,9 +2,9 @@
   (:require [cljs.test :refer-macros [deftest is async use-fixtures]]
             [ajax.core :as ajax]
             [clojure.string :as string]
-            [reagent.ratom :as ratom]
-            [re-frame.core :as rf]
-            [re-frame.db :as rfdb]
+            [tolgraven.react :as r]
+
+
             [tolgraven.service-status :as status]
             [tolgraven.modules.supabase.client :as client]
             [tolgraven.supabase.realtime :as realtime]))
@@ -18,7 +18,7 @@
     (fn [resolve reject]
       (let [deadline (+ (.now js/performance) 2000)]
         (letfn [(check! []
-                  (ratom/flush!)
+                  (r/flush!)
                   (cond
                     (predicate @reference) (resolve nil)
                     (> (.now js/performance) deadline) (reject (js/Error. "Query value did not settle"))
@@ -80,7 +80,7 @@
 (defonce *restore-test (atom nil))
 (use-fixtures :each
   {:before (fn []
-             (let [restore-db! (rf/make-restore-fn)
+             (let [restore-db! (r/make-restore-fn)
                    snapshots (mapv (fn [state] [state @state])
                                    [client/*client client/*settings client/*session
                                     client/*seed client/*loaded client/*auth-listener
@@ -90,7 +90,7 @@
                    ;; Dispose through the adapter even when an assertion/callback
                    ;; fails before the test's happy-path disposal is reached.
                    (doseq [entry (vals @client/*queries)]
-                     (ratom/dispose! (:*state entry)))
+                     (r/dispose! (:*state entry)))
                    (when-let [listener @client/*auth-listener] (.unsubscribe listener))
                    (when-let [tick @client/*query-tick] (js/clearTimeout tick))
                    (reset! client/*query-tick nil)
@@ -125,15 +125,15 @@
                      (change! mock "store-site_users" {:table "site_users" :eventType "UPDATE" :new {:id "u" :name "After"}})
                      (tick!)))
             (.then (fn []
-                     (ratom/flush!)
-                     (is (= "After" (get-in @rfdb/app-db [:store :snapshot :seed :users 0 :name])))
+                     (r/flush!)
+                     (is (= "After" (get-in @r/*app-db [:store :snapshot :seed :users 0 :name])))
                      (is (= "After" (get-in @one [:data :name])))
                      (is (= 1 (count (:docs @all))))
                      (is (= 1 (count @(:selects mock))))
                      (change! mock "store-site_users" {:table "site_users" :eventType "DELETE" :old {:id "u"}})
                      (tick!)))
             (.then (fn []
-                     (ratom/flush!)
+                     (r/flush!)
                      (is (nil? @one))
                      (is (= [] (:docs @all)))
                      ;; Rejoining fetches once to catch changes missed offline.
@@ -141,12 +141,12 @@
                      (status! mock "store-site_users" "SUBSCRIBED")
                      (await-value! all #(= "v" (get-in % [:docs 0 :id])))))
             (.then (fn []
-                     (ratom/flush!)
+                     (r/flush!)
                      (is (= "v" (get-in @all [:docs 0 :id])))
                      (is (= 2 (count @(:selects mock))))
-                     (ratom/dispose! one)
+                     (r/dispose! one)
                      (is (empty? @(:removed mock)))
-                     (ratom/dispose! all)
+                     (r/dispose! all)
                      (is (= 1 (count @(:removed mock))))
                      (is (empty? @client/*tables))))
             (.catch #(is false (str %)))
@@ -165,7 +165,7 @@
             (.then (fn []
                      (is (= "Live" (get-in @one [:data :name])))
                      (is (= 1 (count @(:selects mock))))
-                     (ratom/dispose! one)))
+                     (r/dispose! one)))
             (.catch #(is false (str %)))
             (.finally done))))))
 
@@ -180,7 +180,7 @@
             (.then (fn []
                      (is (= 501 (count (:docs @all))))
                      (is (= [["site_users" 0 499] ["site_users" 500 999]] @(:selects mock)))
-                     (ratom/dispose! all)))
+                     (r/dispose! all)))
             (.catch #(is false (str %)))
             (.finally done))))))
 
@@ -191,7 +191,7 @@
       (reset! (:deferred mock) (js/Promise. (fn [resolve _] (reset! *resolve resolve))))
       (let [all (client/ensure-query! {:path-collection [:users]})]
         (status! mock "store-site_users" "SUBSCRIBED")
-        (ratom/dispose! all)
+        (r/dispose! all)
         (@*resolve #js {:data #js [#js {:id "u" :name "Must not install"}]})
         (-> (tick!)
             (.then (fn []
@@ -221,7 +221,7 @@
             (.then (fn []
                      (is (= 1 (count (:docs @private))))
                      (@(:auth-change mock) "SIGNED_OUT" nil)
-                     (ratom/flush!)
+                     (r/flush!)
                      (is (empty? (:docs @private)) "Auth change immediately hides private data")
                      (is (= [] (:store_documents @client/*seed)))
                      (@*resolve #js {:data #js [#js {:owner_id "a" :collection "gpt-threads" :doc_id "t" :data #js {:messages #js ["late secret"]}}]})
@@ -229,7 +229,7 @@
             (.then (fn []
                      (is (= [] (:store_documents @client/*seed)))
                      (is (not (contains? @client/*loaded "user_documents")))
-                     (ratom/dispose! private)))
+                     (r/dispose! private)))
             (.catch #(is false (str %)))
             (.finally (fn [] (set! client/create-client! sdk-before) (done))))))))
 
@@ -293,7 +293,7 @@
                      (tick!)))
             (.then (fn [] (is (empty? @status/*failures))))
             (.catch #(is false (str %)))
-            (.finally (fn [] (ratom/dispose! all) (reset! status/*failures failures) (done))))))))
+            (.finally (fn [] (r/dispose! all) (reset! status/*failures failures) (done))))))))
 
 (deftest snapshot-error-notifies-retains-data-and-clears-after-recovery
   (async done
@@ -316,7 +316,7 @@
                      (tick!)))
             (.then (fn [] (is (empty? @status/*failures))))
             (.catch #(is false (str %)))
-            (.finally (fn [] (ratom/dispose! all) (reset! status/*failures failures) (done))))))))
+            (.finally (fn [] (r/dispose! all) (reset! status/*failures failures) (done))))))))
 
 (deftest stalled-service-request-rejects-within-deadline
   (async done
@@ -358,7 +358,7 @@
                      (is (empty? @(:channels mock)))
                      (let [subscription (client/ensure-query! opts)]
                        (is (= "Preloaded" (get-in @subscription [:data :name])))
-                       (ratom/dispose! subscription))
+                       (r/dispose! subscription))
                      (tick!)))
             (.then (fn [_]
                      (is (empty? @(:channels mock)) "Disposed before the tick, so no channel starts")

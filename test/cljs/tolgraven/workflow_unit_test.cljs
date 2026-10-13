@@ -8,15 +8,15 @@
     [tolgraven.modules.docs.pages :as docs-pages]
     [tolgraven.test-support :as support]
     [cljs.test :refer-macros [deftest is testing async]]
-    [re-frame.core :as rf]
-    [reagent.ratom :as ratom]
+    [tolgraven.react :as r]
+
     [tolgraven.test-support :refer [mount-subscriptions! subscription-value! state-at! wait-for!]]
-    [re-frame.tooling :as tooling]
+
     [tolgraven.supabase.scoped :as scoped]
     [tolgraven.supabase-client-test :as mocks]
-    [reagent.core :as r]
-    [reagent.dom.client :as dom]
-    [reagent.dom.server :as server]
+
+
+
     [tolgraven.modules.supabase.client :as supabase]
     [tolgraven.supabase.query :as supabase-query]
     [tolgraven.store.contract :as store-contract]
@@ -25,7 +25,7 @@
     [tolgraven.navigation.routes :as routes]
     [tolgraven.loader :as loader]
     [tolgraven.component :as component]
-    [tolgraven.react :as react]
+
     [tolgraven.macros :as m :refer-macros [defpage]]
     [tolgraven.render-context :as context]
     [tolgraven.components.shell :as common]
@@ -37,11 +37,13 @@
     [tolgraven.component.sources]
     [tolgraven.modules.docs.views :as docs-view]
     [tolgraven.components.ui.code :as code]
-    [tolgraven.components.ui :as ui]
+    [tolgraven.components.ui.boundary :as ui-boundary]
+    [tolgraven.components.ui.layout :as ui-layout]
+    [tolgraven.components.ui.markdown :as ui-markdown]
     [tolgraven.components.init :as init-view]
-    [tolgraven.react :as shim]
+
     [tolgraven.component.instrumentation :as instrumentation]
-    [re-frame.registrar :as registrar]
+
     [tolgraven.ssr.client :as ssr]
     [tolgraven.events]
     [tolgraven.subs]
@@ -177,7 +179,7 @@
                                   (ready? [_] true)
                                 IDeref
                                   (-deref [_] spec))]
-                 (with-redefs [loader/modules {id loadable}]
+                 (r/with-framework-bindings [loader/modules {id loadable}]
                    (let [first-load (loader/load! {:module id})
                          second-load (loader/load! {:module id})]
                      (is (instance? js/Promise first-load))
@@ -202,7 +204,7 @@
           ;; A regular function keeps with-redefs from becoming an awaited
           ;; expression in cljs.test/async, so pending retains the Promise.
           load! (fn []
-                  (with-redefs [loader/modules {id loadable}]
+                  (r/with-framework-bindings [loader/modules {id loadable}]
                     (loader/load! {:module id :args [:first {:second true}]
                                    :pre-fn (fn [& args] (swap! *calls conj [:pre args]))
                                    :post-fn (fn [loaded & args]
@@ -230,10 +232,10 @@
 (deftest active-profile-merges-live-public-fields-with-private-details
   (async done
          (-> (go-promise
-               (let [restore! (rf/make-restore-fn)
+               (let [restore! (r/make-restore-fn)
                      *rows (atom {:users [{:id "u", :name "Before", :karma 9}]})
                      transport (fake-scoped-transport! *rows)
-                     _ (rf/dispatch-sync [:state [:active-user]
+                     _ (r/dispatch-sync [:state [:active-user]
                                           {:id "u",
                                            :name "Private snapshot",
                                            :karma 1,
@@ -258,7 +260,7 @@
     done
     (->
       (go-promise
-        (let [restore! (rf/make-restore-fn)
+        (let [restore! (r/make-restore-fn)
               post (fn [id]
                      {:id id,
                       :doc_id (str id),
@@ -345,12 +347,12 @@
 (deftest active-vote-remains-clickable-unless-write-is-pending
   (async done
          (-> (go-promise
-               (let [pending (ratom/atom false)
+               (let [pending (r/atom false)
                      element (.createElement js/document "div")
                      root (await! (support/create-root! element))]
-                 (with-redefs [rf/subscribe (fn
+                 (r/with-framework-bindings [r/subscribe (fn
                                               ([[event]]
-                                               (if (= :blog/vote event) (ratom/atom :up) pending))
+                                               (if (= :blog/vote event) (r/atom :up) pending))
                                               ([_ _] pending))]
                    (try (await!
                           (support/render!
@@ -367,19 +369,19 @@
 (deftest blog-navigation-rejects-invalid-pages-and-page-sizes
   (async done
     (-> (go-promise
-          (let [restore! (rf/make-restore-fn)]
+          (let [restore! (r/make-restore-fn)]
             (try
-              (rf/dispatch [:blog/nav-page "3"])
-              (rf/dispatch [:blog/set-posts-per-page "5"])
+              (r/dispatch [:blog/nav-page "3"])
+              (r/dispatch [:blog/set-posts-per-page "5"])
               (await! (support/settle!))
               (is (= 2 (await! (state-at! [:state :blog :page]))))
               (is (= 5 (await! (state-at! [:options :blog :posts-per-page]))))
               (doseq [number [nil "" "invalid" "2oops" "0" "-1" -2 js/NaN 1.5]]
-                (rf/dispatch [:blog/nav-page number])
+                (r/dispatch [:blog/nav-page number])
                 (await! (support/settle!))
                 (is (= 2 (await! (state-at! [:state :blog :page])))
                     "An invalid event retains the last valid page"))
-              (rf/dispatch [:blog/set-posts-per-page 0])
+              (r/dispatch [:blog/set-posts-per-page 0])
               (await! (support/settle!))
               (is (= 5 (await! (state-at! [:options :blog :posts-per-page]))))
               (is (seq (await! (support/subscription-value! [:validation/errors]))))
@@ -400,15 +402,15 @@
                      root (await! (support/create-root! element))
                      *post (r/atom [{:id 42}])]
                  (.appendChild (.-body js/document) element)
-                 (with-redefs [instrumentation/instrument (fn ([_ form] form) ([_ form _ _] form))
-                               rf/subscribe (fn
+                 (r/with-framework-bindings [instrumentation/instrument (fn ([_ form] form) ([_ form _ _] form))
+                               r/subscribe (fn
                                               ([query]
                                                (case (first query)
                                                  :blog/count (r/atom 1)
                                                  :blog/posts-per-page (r/atom 3)
                                                  :blog/nav-page (r/atom 0)
                                                  :blog/posts-for-page *post))
-                                              ([query _] (rf/subscribe query)))
+                                              ([query _] (r/subscribe query)))
                                blog-views/<blog-post>
                                  (fn [{:keys [post]}] [:p (or (:text post) "Loading")])
                                blog-views/<blog-nav> (fn [_] nil)]
@@ -430,19 +432,19 @@
                 root (await! (support/create-root! element))
                 path [:heading-regression]]
             (try
-              (rf/dispatch-sync [:content path nil])
-              (await! (support/render! root [ui/<with-heading> path [:p "Page body"]]))
+              (r/dispatch-sync [:content path nil])
+              (await! (support/render! root [ui-layout/<with-heading> path [:p "Page body"]]))
               (is (= "" (.-textContent (.querySelector element "h1")))
                   "Missing CMS content supplies a valid empty heading")
               (is (.includes (.-textContent element) "Page body"))
-              (rf/dispatch-sync [:content path {:title "Loaded heading"}])
+              (r/dispatch-sync [:content path {:title "Loaded heading"}])
               (await! (wait-for! #(= "Loaded heading" (.-textContent (.querySelector element "h1")))))
               (is (= "Loaded heading" (.-textContent (.querySelector element "h1"))))
-              (await! (support/render! root [ui/<with-heading> path [:p "Page body"] {:title "Override"}]))
+              (await! (support/render! root [ui-layout/<with-heading> path [:p "Page body"] {:title "Override"}]))
               (is (= "Override" (.-textContent (.querySelector element "h1"))))
               (finally
                 (support/unmount! root)
-                (rf/dispatch-sync [:content path nil])))))
+                (r/dispatch-sync [:content path nil])))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 
@@ -452,13 +454,13 @@
                (let [element (.createElement js/document "div")
                      root (await! (support/create-root! element))
                      *posts (r/atom nil)]
-                 (with-redefs [instrumentation/instrument (fn ([_ form] form) ([_ form _ _] form))
-                               rf/subscribe (fn
+                 (r/with-framework-bindings [instrumentation/instrument (fn ([_ form] form) ([_ form _ _] form))
+                               r/subscribe (fn
                                               ([query]
                                                (case (first query)
                                                  :blog/state (r/atom "cljs")
                                                  :blog/posts-with-tag *posts))
-                                              ([query _] (rf/subscribe query)))
+                                              ([query _] (r/subscribe query)))
                                blog-views/<blog-container> (fn [{:keys [section]}] section)
                                blog-views/<blog-post> (fn [{:keys [post]}] [:p (:text post)])
                                loading/<query-fallback> (fn [_] [:p "Pending"])]
@@ -481,7 +483,7 @@
           (let [element (.createElement js/document "div")
                 root (await! (support/create-root! element))
                 *failure (r/atom nil)]
-            (with-redefs [rf/subscribe (fn ([_] *failure) ([_ _] *failure))]
+            (r/with-framework-bindings [r/subscribe (fn ([_] *failure) ([_ _] *failure))]
               (try (await! (support/render! root
                                             [loading/<query-fallback>
                                              {:path-collection [:blog-posts], :scoped? true}]))
@@ -497,16 +499,16 @@
 (deftest header-routes-survive-json-roundtrip-on-direct-blog-load
   (async done
          (-> (go-promise
-               (let [before (rf/make-restore-fn)
+               (let [before (r/make-restore-fn)
                      element (.createElement js/document "div")
                      root (await! (support/create-root! element))
                      menu {:work [["Services" "/services" "services"] ["Story" "/about" "about"]
                                   ["Hire me" "/hire" "hire"]],
                            :personal [["Blog" "/blog" "blog"]]}]
-                 (try (rf/clear-subscription-cache!)
-                      (rf/dispatch-sync [:set [:common/route]
+                 (try (r/clear-subscription-cache!)
+                      (r/dispatch-sync [:set [:common/route]
                                          (reitit/match-by-path routes/router "/blog")])
-                      (with-redefs [rfe/href
+                      (r/with-framework-bindings [rfe/href
                                       (fn
                                         ([route] (:path (reitit/match-by-name routes/router route)))
                                         ([route _params _query]
@@ -515,45 +517,45 @@
                         (is (= ["/services" "/about" "/hire" "/blog"]
                                (mapv #(.getAttribute % "href")
                                  (array-seq (.querySelectorAll element "a"))))))
-                      (finally (support/unmount! root) (rf/clear-subscription-cache!) (before)))))
+                      (finally (support/unmount! root) (r/clear-subscription-cache!) (before)))))
              (.catch (fn [error] (is false (str error))))
              (.finally done))))
 (deftest fragment-links-retain-current-route-parameters
   (async done
-         (-> (go-promise (let [before (rf/make-restore-fn)
+         (-> (go-promise (let [before (r/make-restore-fn)
                                *calls (atom [])]
-                           (try (rf/clear-subscription-cache!)
-                                (rf/dispatch-sync
+                           (try (r/clear-subscription-cache!)
+                                (r/dispatch-sync
                                   [:set [:common/route]
                                    (reitit/match-by-path routes/router "/blog/post/A-new-era-28")])
-                                (with-redefs [rfe/href (fn [route params _query]
+                                (r/with-framework-bindings [rfe/href (fn [route params _query]
                                                          (swap! *calls conj [route params])
                                                          "/blog/post/A-new-era-28")]
                                   (is (= "/blog/post/A-new-era-28#main"
                                          (await! (subscription-value! [:href "#main"]))))
                                   (is (= [[:blog-post {:permalink "A-new-era-28"}]] @*calls)))
-                                (finally (rf/clear-subscription-cache!) (before)))))
+                                (finally (r/clear-subscription-cache!) (before)))))
              (.catch (fn [error] (is false (str error))))
              (.finally done))))
 (deftest shim-keeps-registration-call-site-in-debug-builds
-  (shim/reg-event-db :test/instrumented-shim (fn [db _] db))
-  (try (let [source (meta (registrar/get-handler :event :test/instrumented-shim))]
+  (r/reg-event-db :test/instrumented-shim (fn [db _] db))
+  (try (let [source (meta (r/get-handler :event :test/instrumented-shim))]
          (is (re-find #"workflow_unit_test.cljs" (:file source)))
          (is (pos? (:line source))))
-       (finally (rf/clear-event :test/instrumented-shim))))
+       (finally (r/clear-event :test/instrumented-shim))))
 (deftest bootstrap-fallback-follows-state-and-retries-without-owning-page-dom
   (async done
          (-> (go-promise
-               (let [before (rf/make-restore-fn)
+               (let [before (r/make-restore-fn)
                      element (.createElement js/document "div")
                      retained (.createElement js/document "article")
                      root (await! (support/create-root! element))
                      *retries (atom 0)
                      retry! #(do (swap! *retries inc)
-                                 (rf/dispatch-sync [:state [:page-init] {:status :loading}]))]
+                                 (r/dispatch-sync [:state [:page-init] {:status :loading}]))]
                  (.appendChild (.-body js/document) retained)
                  (.appendChild (.-body js/document) element)
-                 (try (do (rf/dispatch-sync [:state [:page-init] {:status :failed}])
+                 (try (do (r/dispatch-sync [:state [:page-init] {:status :failed}])
                           (await! (support/render! root [init-view/<fallback> retry!])))
                       (is (some? (.querySelector element "[role=alert]")))
                       (.click (.querySelector element "button"))
@@ -564,7 +566,7 @@
                       (finally (support/unmount! root)
                                (.remove element)
                                (.remove retained)
-                               (rf/clear-subscription-cache!)
+                               (r/clear-subscription-cache!)
                                (before)))))
              (.catch (fn [error] (is false (str error))))
              (.finally done))))
@@ -579,9 +581,9 @@
     done
     (->
       (go-promise
-        (let [restore! (rf/make-restore-fn)
-              _ (rf/reg-sub :test/preload-ready :<- [:state [:preload-ready]] (fn [ready _] ready))
-              _ (rf/dispatch-sync [:state [:preload-ready] false])
+        (let [restore! (r/make-restore-fn)
+              _ (r/reg-sub :test/preload-ready :<- [:state [:preload-ready]] (fn [ready _] ready))
+              _ (r/dispatch-sync [:state [:preload-ready] false])
               {:keys [values unmount!]} (await! (mount-subscriptions! {:ready
                                                                          [:test/preload-ready]}))
               load! (:load! (get @data/*sources :subscription))]
@@ -594,14 +596,14 @@
                            (.then (fn [_]
                                     (is (true? (:ready (values)))
                                         "Mounted owner remains reactive after preload releases")
-                                    (is (some #{[:test/preload-ready]} (tooling/live-query-vs)))
+                                    (is (some #{[:test/preload-ready]} (r/live-query-vs)))
                                     (unmount!)
                                     (wait-for! #(not (some #{[:test/preload-ready]}
-                                                         (tooling/live-query-vs)))))))))
-              (.then (fn [_] (is (not (some #{[:test/preload-ready]} (tooling/live-query-vs))))))
+                                                         (r/live-query-vs)))))))))
+              (.then (fn [_] (is (not (some #{[:test/preload-ready]} (r/live-query-vs))))))
               (.catch #(is false (str %)))
               (.finally (fn [] (unmount!) (restore!) (done))))
-          (rf/dispatch-sync [:state [:preload-ready] true])))
+          (r/dispatch-sync [:state [:preload-ready] true])))
       (.catch (fn [error] (is false (str error)) (done))))))
 (deftest codox-links-are-rewritten-before-rendering
   (is (= "<a href=\"/docs/codox/tolgraven.core#init\">Init</a>"
@@ -609,7 +611,7 @@
   (doseq [url ["https://example.com/page.html" "#heading" "/blog" "mailto:test@example.com"]]
     (let [html (str "<a href=\"" url "\">Link</a>")] (is (= html (docs-view/page-links html))))))
 (deftest markdown-code-uses-reagent-props-without-js-conversion
-  (let [html (server/render-to-static-markup [code/<markdown-code-component> {:children "inline"}])]
+  (let [html (r/render-to-static-markup [code/<markdown-code-component> {:children "inline"}])]
     (let [element (.createElement js/document "div")]
       (set! (.-innerHTML element) html)
       (is (= "inline" (.-textContent (.querySelector element ".code-snippet > code.code-highlight"))))
@@ -617,11 +619,11 @@
       (is (nil? (.querySelector element "pre, div"))))))
 (deftest debug-and-theme-events-preserve-app-db
   (async done
-         (-> (go-promise (let [before (rf/make-restore-fn)]
-                           (try (rf/dispatch-sync [:set [:sentinel] :retained])
-                                (rf/dispatch-sync [:debug [:layers] true])
-                                (rf/dispatch-sync [:theme/dark-mode true])
-                                (rf/dispatch-sync [:theme/colorscheme "test"])
+         (-> (go-promise (let [before (r/make-restore-fn)]
+                           (try (r/dispatch-sync [:set [:sentinel] :retained])
+                                (r/dispatch-sync [:debug [:layers] true])
+                                (r/dispatch-sync [:theme/dark-mode true])
+                                (r/dispatch-sync [:theme/colorscheme "test"])
                                 (is (= :retained (await! (state-at! [:sentinel]))))
                                 (is (true? (await! (state-at! [:state :debug :layers]))))
                                 (is (= {:dark-mode true, :colorscheme "test"}
@@ -647,7 +649,7 @@
 (defn- event-effects
   [id coeffects event]
   ;; Exercise the registered handler without running navigation/timer effects.
-  (let [handler (-> (registrar/get-handler :event id)
+  (let [handler (-> (r/get-handler :event id)
                     last
                     :before)]
     (:effects (handler {:coeffects (assoc coeffects :event event)}))))
@@ -695,7 +697,7 @@
 (deftest obsolete-transition-completion-cannot-scroll-a-new-page
   (let [*completed (atom 0)
         *flushed (atom 0)]
-    (with-redefs [r/after-render (fn [f] (f))
+    (r/with-framework-bindings [r/after-render (fn [f] (f))
                   r/flush #(swap! *flushed inc)]
       (page-transition/ready! 999999
                               {:current? (constantly false), :resolve! #(swap! *completed inc)}))
@@ -713,7 +715,7 @@
     done
     (->
       (go-promise
-        (let [before (rf/make-restore-fn)
+        (let [before (r/make-restore-fn)
               element (.createElement js/document "div")
               root (await! (support/create-root! element))
               *content-ready? (r/atom false)
@@ -721,12 +723,12 @@
               next {:path "/transition-new", :data {:view (fn [] [:div#new-transition-page
                                                                 (if @*content-ready? "New" "Loading destination")])}}
               fixture (fn []
-                        (let [route @(rf/subscribe [:common/route])]
-                          (page-transition/use-ready! @(rf/subscribe [:get :page/commit]))
+                        (let [route @(r/subscribe [:common/route])]
+                          (page-transition/use-ready! @(r/subscribe [:get :page/commit]))
                           [:main#main {:style {:min-height "100vh"}} [:h1 "Shared heading"]
                            [(get-in route [:data :view])]]))]
           (.appendChild (.-body js/document) element)
-          (rf/dispatch-sync [:set [:common/route] old])
+          (r/dispatch-sync [:set [:common/route] old])
           (await! (support/render! root [:f> fixture]))
           (-> (page-transition/navigate! next true)
               (.then (fn [_]
@@ -742,7 +744,7 @@
               (.finally (fn []
                           (support/unmount! root)
                           (.remove element)
-                          (rf/clear-subscription-cache!)
+                          (r/clear-subscription-cache!)
                           (before)
                           (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))
@@ -846,7 +848,7 @@
                      pending (js/Promise. (fn [resolve _] (reset! *finish resolve)))
                      *events (atom [])]
                  (set! loader/load! (constantly pending))
-                 (with-redefs [loader/modules {id loadable}]
+                 (r/with-framework-bindings [loader/modules {id loadable}]
                    (routes/navigate! (atom 0)
                                      #(swap! *events conj %)
                                      loader/load-code!
@@ -871,7 +873,7 @@
                  (set! (.-getBoundingClientRect image) (fn [] #js {:top 0, :bottom 100}))
                  (.appendChild main image)
                  (.appendChild (.-body js/document) main)
-                 (with-redefs [r/after-render (fn [_] (throw (js/Error. "Transition must not wait for an animation frame")))]
+                 (r/with-framework-bindings [r/after-render (fn [_] (throw (js/Error. "Transition must not wait for an animation frame")))]
                    (page-transition/ready! nil
                                            {:current? (constantly true),
                                             :resolve! #(reset! *completed true)}))
@@ -910,7 +912,7 @@
 (deftest history-navigation-declares-restoration-before-page-commit
   (let [before @restore/*context
         *events (atom [])]
-    (try (with-redefs [shim/dispatch #(swap! *events conj %)]
+    (try (r/with-framework-bindings [r/dispatch #(swap! *events conj %)]
            (page-transition/navigate! {:path (restore/page-key)} true true))
          (is (restore/skip-enter?))
          (is (not (restore/document-enter?)))
@@ -935,9 +937,9 @@
                (let [element (.createElement js/document "div")
                      root (await! (support/create-root! element))
                      view (fn [text] [:section [:h1 "Shared heading"] [:article text]])]
-                 (try (await! (support/render! root [ui/<safe> :page [view "First"] "/first"]))
+                 (try (await! (support/render! root [ui-boundary/<safe> :page [view "First"] "/first"]))
                       (let [heading (.querySelector element "h1")]
-                        (await! (support/render! root [ui/<safe> :page [view "Second"] "/second"]))
+                        (await! (support/render! root [ui-boundary/<safe> :page [view "Second"] "/second"]))
                         (is (identical? heading (.querySelector element "h1")))
                         (is (= "Second" (.-textContent (.querySelector element "article")))))
                       (finally (support/unmount! root)))))
@@ -950,9 +952,9 @@
     (is (= 499 (get-in effects [:db :state :scroll-position "/blog/post/27"])))))
 (deftest search-is-closed-unless-explicitly-opened
   (async done
-         (-> (go-promise (let [before (rf/make-restore-fn)]
+         (-> (go-promise (let [before (r/make-restore-fn)]
                            (try (doseq [[state expected] [[nil false] [false false] [true true]]]
-                                  (rf/dispatch-sync [:search/state [:open?] state])
+                                  (r/dispatch-sync [:search/state [:open?] state])
                                   (is (= expected (await! (subscription-value! [:search/open?])))))
                                 (finally (before)))))
              (.catch (fn [error] (is false (str error))))
@@ -1081,7 +1083,7 @@
               {:load! (fn [_] (js/Promise. (fn [resolve _] (reset! *resolve resolve))))})
             (try
               (await! (support/render! root
-                        [:r> (react/context-provider restore/readiness-context) #js {:value true}
+                        [:r> (r/context-provider restore/readiness-context) #js {:value true}
                          [<restoration-data-page>]]))
               (await! (wait-for! #(some? @*resolve)))
               (is (not (restore/layout-ready?)))
@@ -1161,7 +1163,7 @@
             (.appendChild (.-body js/document) element)
             (try
               (await! (support/render! root
-                        [:r> (react/context-provider component/page-root-context)
+                        [:r> (r/context-provider component/page-root-context)
                          #js {:value {:class "navigation"
                                       :style {:opacity 0.5}
                                       :inert true
@@ -1326,7 +1328,7 @@
         (.finally done))))
 
 (deftest github-pagination-component-is-not-the-default-loading-helper
-  (with-redefs [rf/subscribe (fn
+  (r/with-framework-bindings [r/subscribe (fn
                               ([[query]]
                                (r/atom (case query
                                         :github/get-from ["owner" "repo"]
@@ -1336,7 +1338,7 @@
                                         :github/commits []
                                         nil)))
                               ([_ _] (r/atom nil)))]
-    (let [html (server/render-to-string [github-views/<commits>])]
+    (let [html (r/render-to-string [github-views/<commits>])]
       (is (re-find #"github-loading" html))
       (is (re-find #"Loaded (?:<!-- -->)?0" html)))))
 
@@ -1351,7 +1353,7 @@
               (reset! *callback callback)
               #js {:ready (js/Promise.resolve nil) :finished (js/Promise.resolve nil)
                    :skipTransition (fn [])}))
-      (with-redefs [rf/dispatch #(swap! *events conj %)]
+      (r/with-framework-bindings [r/dispatch #(swap! *events conj %)]
         (page-transition/navigate! shell true)
         (page-transition/replace-destination! real)
         (@*callback)
@@ -1374,7 +1376,7 @@
                                        {:text (.-textContent text)
                                         :opacity (.-opacity (.getComputedStyle js/window text))})))
                             :reagent-render
-                            (fn [] [ui/<md->div> "Already loaded article"])})]
+                            (fn [] [ui-markdown/<md->div> "Already loaded article"])})]
             (.appendChild (.-body js/document) element)
             (let [root (await! (support/create-root! element))]
               (try
@@ -1394,16 +1396,16 @@
         module-spec {:id :vector-test :view {:post <target>}}]
     (binding [context/*server?* true context/*modules* {:vector-test module-spec}]
       (is (re-find #"<!--\$--><section>SSR</section><!--/\$-->"
-                   (server/render-to-string
+                   (r/render-to-string
                      (m/<> {:module :vector-test :view :post} {:title "SSR"}))))
       (is (re-find #"<!--\$--><section>Keyword</section><!--/\$-->"
-                   (server/render-to-string
+                   (r/render-to-string
                      (m/<> :vector-test/post {:title "Keyword"}))))
       (is (= [<target> {:title "Direct"}]
              (m/<> <target> {:title "Direct"}))))))
 
 (defpage <recoverable-page> []
-  (let [route @(shim/subscribe [:common/route])]
+  (let [route @(r/subscribe [:common/route])]
     (if (= "/page-error" (:path route))
       (throw (js/Error. "Intentional page fixture error"))
       [:section {:data-page-recovered true} "Recovered page"])))
@@ -1416,14 +1418,14 @@
                 previous (await! (state-at! [:common/route]))]
             (.appendChild (.-body js/document) element)
             (try
-              (shim/dispatch [:set [:common/route] {:path "/page-error"}])
+              (r/dispatch [:set [:common/route] {:path "/page-error"}])
               (await! (support/render! root [<recoverable-page>]))
               (is (some? (.querySelector element "[role=alert]")))
-              (shim/dispatch [:set [:common/route] {:path "/page-recovered"}])
+              (r/dispatch [:set [:common/route] {:path "/page-recovered"}])
               (await! (wait-for! #(.querySelector element "[data-page-recovered]")))
               (is (nil? (.querySelector element "[role=alert]")))
               (finally
-                (shim/dispatch [:set [:common/route] previous])
+                (r/dispatch [:set [:common/route] previous])
                 (support/unmount! root) (.remove element)))))
         (.catch #(is false (str %)))
         (.finally done))))
@@ -1453,7 +1455,7 @@
                       (swap! *calls inc)
                       (.then pending (fn [_]
                                        (reset! *ready? true)
-                                       (shim/dispatch [:loader/code-ready module]) spec))))
+                                       (r/dispatch [:loader/code-ready module]) spec))))
               (await! (support/render! root
                                       [:div [<lazy-vector-consumer> module]
                                        [<lazy-vector-consumer> module]]))
@@ -1467,8 +1469,8 @@
               (finally
                 (support/unmount! root) (.remove element)
                 (set! loader/modules original-modules) (set! loader/load-code! original-load)
-                (shim/dispatch [:component-data/remove [:loader :code-ready module]])
-                (shim/dispatch [:component-data/remove [:loader :requested module]])))))
+                (r/dispatch [:component-data/remove [:loader :code-ready module]])
+                (r/dispatch [:component-data/remove [:loader :requested module]])))))
         (.catch #(is false (str %)))
         (.finally done))))
 
@@ -1487,7 +1489,7 @@
                               (swap! *calls conj url)
                               (reset! *respond (:handler options))))
               ;; Route/controller event and two mounted views use the same source.
-              (shim/dispatch [:docs/get page])
+              (r/dispatch [:docs/get page])
               (await! (support/render! root [:div [docs-view/<doc-page> page]
                                              [docs-view/<doc-page> page]]))
               (await! (wait-for! #(some? @*respond)))
@@ -1502,7 +1504,7 @@
               (finally
                 (support/unmount! root) (.remove element)
                 (set! ajax/GET original-get)
-                (shim/dispatch [:component-data/remove [:docs page]])
+                (r/dispatch [:component-data/remove [:docs page]])
                 (data/invalidate! #{(docs-pages/document-dependency page)
                                     (:load (docs-pages/document-dependency page))})))))
         (.catch #(is false (str %)))
@@ -1511,13 +1513,13 @@
 (deftest mounted-thread-reveal-acquires-both-levels-before-child-mount
   (async done
     (-> (go-promise
-          (let [restore! (rf/make-restore-fn)
+          (let [restore! (r/make-restore-fn)
                 path [24 "root" "child" "folded"]
                 transport (fake-scoped-transport!
                             (atom {:blog_comments
                                    [{:id "reply" :parent_post 24 :parent_comment "folded" :ts 1}
                                     {:id "grandchild" :parent_post 24 :parent_comment "reply" :ts 2}]}))
-                _ (rf/dispatch-sync [:blog/expand-comment-thread path true])
+                _ (r/dispatch-sync [:blog/expand-comment-thread path true])
                 {:keys [values unmount!]} (await! (mount-subscriptions!
                                                    {:replies [:comments/reveal-thread path]}))]
             (try
@@ -1549,7 +1551,7 @@
 (deftest restored-deep-thread-is-complete-in-the-first-mounted-commit
   (async done
     (-> (go-promise
-          (let [restore! (rf/make-restore-fn)
+          (let [restore! (r/make-restore-fn)
                 context @restore/*context
                 element (.createElement js/document "div")
                 root (await! (support/create-root! element))
@@ -1561,17 +1563,17 @@
                             ["deep" "grandchild"] ["leaf" "deep"]])]
             (try
               (restore/begin! {:back? true})
-              (rf/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] true])
+              (r/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] true])
               (doseq [parent [nil "root" "child" "grandchild" "deep"]]
                 (let [query (if parent (comments/thread-query 42 parent)
                                 (comments/root-query 42 comments/page-size))]
-                  (rf/dispatch-sync [:store/scoped (scoped/query-key query)
+                  (r/dispatch-sync [:store/scoped (scoped/query-key query)
                                      {:docs (mapv #(hash-map :id (:id %) :data %)
                                                   (filter #(= parent (:parent-comment %)) rows))}])))
               ;; This test build bundles the real user module rather than using
               ;; Shadow's split browser module runtime. Only adapt code readiness;
               ;; comment subscriptions, caches and rendered components remain real.
-              (with-redefs [loader/modules
+              (r/with-framework-bindings [loader/modules
                             {:user (reify lazy/ILoadable
                                      (ready? [_] true)
                                      IDeref

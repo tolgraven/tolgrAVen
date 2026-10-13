@@ -4,17 +4,17 @@
             [tolgraven.test-support :as support]
             [cljs.reader :as reader]
             [cljs.test :refer-macros [deftest is async]]
-            [re-frame.core :as rf]
+            [tolgraven.react :as r]
             [tolgraven.test-support :refer [mount-subscriptions!]]
-            [re-frame.db :as rfdb]
-            [reagent.core :as r]
-            [reagent.dom.client :as dom]
-            [reagent.dom.server :as server]
+
+
+
+
             [clojure.string :as string]
             [tolgraven.modules.blog.cache :as cache]
             [tolgraven.modules.blog.comments :as comments]
             [tolgraven.ssr.contract :as contract]
-            [reagent.ratom :as ratom]
+
             [tolgraven.modules.blog.views :as blog]
             [tolgraven.component.storage :as storage]
             [tolgraven.component.restore :as restore]
@@ -28,51 +28,51 @@
             [tolgraven.events]
             [tolgraven.subs]))
 (deftest restore-only-public-queries-and-retain-newer-server-data
-  (let [before @rfdb/app-db
+  (let [before @r/*app-db
         buckets @storage/*buckets
         query (scoped/query-key {:path-collection [:blog-comments], :scoped? true})
         path [:store :scoped query]
         fold [:state :blog :comment-thread-expanded]
         snapshots {[:state path] {:value {:docs [{:id "cached"}]}},
                    [:state fold] {:value {[28 "root"] false}}}]
-    (try (reset! rfdb/app-db {})
+    (try (reset! r/*app-db {})
          (swap! storage/*buckets assoc :public snapshots)
-         (with-redefs [storage/read! (fn [id _] (get snapshots id))
+         (r/with-framework-bindings [storage/read! (fn [id _] (get snapshots id))
                        storage/track! (fn [& _])
                        storage/schedule! (fn [])]
            (cache/restore!)
-           (is (= {:docs [{:id "cached"}]} (get-in @rfdb/app-db path)))
-           (is (false? (get-in @rfdb/app-db (conj fold [28 "root"]))))
-           (swap! rfdb/app-db assoc-in path {:docs [{:id "fresh-server"}]})
+           (is (= {:docs [{:id "cached"}]} (get-in @r/*app-db path)))
+           (is (false? (get-in @r/*app-db (conj fold [28 "root"]))))
+           (swap! r/*app-db assoc-in path {:docs [{:id "fresh-server"}]})
            (cache/restore!)
-           (is (= "fresh-server" (get-in @rfdb/app-db (into path [:docs 0 :id]))))
-           (reset! rfdb/app-db (contract/snapshot-state {:kind :blog, :posts []}))
+           (is (= "fresh-server" (get-in @r/*app-db (into path [:docs 0 :id]))))
+           (reset! r/*app-db (contract/snapshot-state {:kind :blog, :posts []}))
            (cache/restore!)
-           (is (= {[28 "root"] false} (get-in @rfdb/app-db [:state :blog :comment-thread-expanded]))
+           (is (= {[28 "root"] false} (get-in @r/*app-db [:state :blog :comment-thread-expanded]))
                "After hydration saved display choices replace server defaults")
            (cache/stop!))
          (is (false? (boolean (cache/public-query? (pr-str {:scoped? true,
                                                             :path-collection [:gpt]})))))
          (is (false? (boolean (cache/public-query? "malformed ["))))
-         (finally (cache/stop!) (reset! rfdb/app-db before) (reset! storage/*buckets buckets)))))
+         (finally (cache/stop!) (reset! r/*app-db before) (reset! storage/*buckets buckets)))))
 (deftest cache-tracks-public-query-events-and-releases-its-subscription
-  (let [before @rfdb/app-db
+  (let [before @r/*app-db
         *scheduled (atom 0)
         public-key (scoped/query-key (comments/root-query 42 10))
         private-key (scoped/query-key {:path-collection [:gpt], :scoped? true})
         path [:store :scoped public-key]]
-    (with-redefs [storage/*tracked (atom {})
+    (r/with-framework-bindings [storage/*tracked (atom {})
                   storage/ready! (fn ([] (js/Promise.resolve nil))
                                     ([_] (js/Promise.resolve nil)))
                   storage/schedule! #(swap! *scheduled inc)]
       (try
         (cache/start!)
-        (rf/dispatch-sync [:store/scoped public-key {:docs [{:id "first"}]}])
+        (r/dispatch-sync [:store/scoped public-key {:docs [{:id "first"}]}])
         (r/flush)
         (is (= {:docs [{:id "first"}]}
                ((:read (get @storage/*tracked [:state path])))))
-        (rf/dispatch-sync [:store/scoped public-key {:docs [{:id "updated"}]}])
-        (rf/dispatch-sync [:store/scoped private-key {:docs [{:id "private"}]}])
+        (r/dispatch-sync [:store/scoped public-key {:docs [{:id "updated"}]}])
+        (r/dispatch-sync [:store/scoped private-key {:docs [{:id "private"}]}])
         (r/flush)
         (is (= "updated" (get-in ((:read (get @storage/*tracked [:state path]))) [:docs 0 :id])))
         (is (not (contains? @storage/*tracked [:state [:store :scoped private-key]])))
@@ -80,10 +80,10 @@
         (cache/stop!)
         (is (empty? @storage/*tracked))
         (let [scheduled @*scheduled]
-          (rf/dispatch-sync [:store/scoped public-key {:docs []}])
+          (r/dispatch-sync [:store/scoped public-key {:docs []}])
           (r/flush)
           (is (= scheduled @*scheduled) "Disposed cache no longer schedules persistence"))
-        (finally (cache/stop!) (reset! rfdb/app-db before))))))
+        (finally (cache/stop!) (reset! r/*app-db before))))))
 
 (deftest returning-comments-render-immediately-and-keep-folded-threads-folded
   (async
@@ -93,7 +93,7 @@
         (let [element (.createElement js/document "div")
               root (await! (support/create-root! element))
               before @restore/*context
-              original rf/subscribe
+              original r/subscribe
               author {:id "author", :name "Writer"}
               comment (fn [id]
                         {:id id,
@@ -110,13 +110,13 @@
               replies (r/atom {"reply" (comment
                                          "reply")})]
           (try (restore/begin! {:back? true})
-               (with-redefs [loader/modules
+               (r/with-framework-bindings [loader/modules
                                {:user (reify
                                         lazy/ILoadable
                                           (ready? [_] true)
                                         IDeref
                                           (-deref [_] (dissoc user-module/spec :content :depends)))}
-                             rf/subscribe
+                             r/subscribe
                                (fn
                                  ([q]
                                   (case (first q)
@@ -149,26 +149,26 @@
       (go-promise
         (let [element (.createElement js/document "div")
               root (await! (support/create-root! element))
-              before @rfdb/app-db
+              before @r/*app-db
               context @restore/*context]
           (.appendChild (.-body js/document) element)
           (restore/begin! {})
-          (rf/dispatch-sync [:user/close-ui])
+          (r/dispatch-sync [:user/close-ui])
           (await! (support/render! root [user/<user-section>]))
           (is (nil? (.querySelector element ".user-section-wrapper")))
-          (rf/dispatch-sync [:user/open-ui :login])
+          (r/dispatch-sync [:user/open-ui :login])
           (r/flush)
           (is (some? (.querySelector element ".user-section-wrapper")))
-          (rf/dispatch-sync [:user/close-ui])
+          (r/dispatch-sync [:user/close-ui])
           (r/flush)
-          (is (= [:closed] (get-in @rfdb/app-db [:state :user-section])))
+          (is (= [:closed] (get-in @r/*app-db [:state :user-section])))
           (is (some? (.querySelector element ".user-section-wrapper.exiting")))
           ;; Reopening before exit completion must retain the same mounted wrapper.
           (let [panel (.querySelector element ".user-section-wrapper")]
-            (rf/dispatch-sync [:user/open-ui :login])
+            (r/dispatch-sync [:user/open-ui :login])
             (r/flush)
             (is (identical? panel (.querySelector element ".user-section-wrapper"))))
-          (rf/dispatch-sync [:user/close-ui])
+          (r/dispatch-sync [:user/close-ui])
           (r/flush)
           (js/setTimeout (fn []
                            (r/flush)
@@ -176,7 +176,7 @@
                                "Exited DOM is removed")
                            (support/unmount! root)
                            (.remove element)
-                           (reset! rfdb/app-db before)
+                           (reset! r/*app-db before)
                            (reset! restore/*context context)
                            (done))
                          250)))
@@ -188,11 +188,11 @@
           (let [element (.createElement js/document "div")
                 root (await! (support/create-root! element))
                 *profile (r/atom nil)
-                before @rfdb/app-db
+                before @r/*app-db
                 fallback "/img/avatar-fallback-test.png"
                 avatar "https://example.invalid/author-avatar.png"
                 render! #(do (r/flush))]
-            (try (swap! rfdb/app-db assoc-in [:content :common :user-avatar-fallback] fallback)
+            (try (swap! r/*app-db assoc-in [:content :common :user-avatar-fallback] fallback)
                  (await! (support/render! root
                                           [(fn [] [user/<user-avatar> @*profile
                                                    "blog-user-avatar"])]))
@@ -218,7 +218,7 @@
                  (reset! *profile {:name "No avatar"})
                  (render!)
                  (is (= fallback (.getAttribute (.querySelector element "img") "src")))
-                 (finally (support/unmount! root) (reset! rfdb/app-db before)))))
+                 (finally (support/unmount! root) (reset! r/*app-db before)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 
@@ -232,14 +232,14 @@
                                           (into {} (map (fn [[id spec]] [id (:paths spec)]))
                                                 style-catalog/modules)
                                           :blog)))
-                before @rfdb/app-db
+                before @r/*app-db
                 fallback "/img/tolgrav-square.png"
                 converted-stem (str "/storage/v1/object/public/avatars/test/"
                                     (apply str (repeat 64 "0")))
                 converted-avatar (str (.-origin js/location) converted-stem ".png")]
             (.appendChild (.-body js/document) element)
             (try
-              (swap! rfdb/app-db assoc-in [:content :common :user-avatar-fallback] fallback)
+              (swap! r/*app-db assoc-in [:content :common :user-avatar-fallback] fallback)
               (await! (js/Promise.all
                         (into-array
                           (map (fn [[path stylesheet]]
@@ -262,7 +262,7 @@
                              :avatar avatar} "blog-user-avatar"]]
                   ;; Model an SSR request which already failed before hydration;
                   ;; no later error event is available to the newly attached handler.
-                  (set! (.-innerHTML element) (server/render-to-string form))
+                  (set! (.-innerHTML element) (r/render-to-string form))
                   (let [image (.querySelector element "img")]
                     (doseq [[property value] [["complete" true] ["naturalWidth" 0]
                                              ["currentSrc" (str (.-origin js/location) selected)]]]
@@ -270,7 +270,7 @@
                     (let [bounds (.getBoundingClientRect image)]
                       (is (< (js/Math.abs (- (.-width bounds) (.-height bounds))) 1)
                           "Broken-image alt text stays in the square avatar box before hydration"))
-                    (let [root (dom/hydrate-root element form)]
+                    (let [root (r/hydrate-root element form)]
                       (try
                         (await! (support/wait-for!
                                   #(and (= expected (.getAttribute (.querySelector element "img") "src"))
@@ -279,11 +279,11 @@
                         (is (= expected (.getAttribute (.querySelector element "img") "src"))
                             "Failed originals use the logo; failed modern sources still try the original")
                         (is (= 1 (.-length (.querySelectorAll element "img"))))
-                        (finally (dom/unmount root)))))))
+                        (finally (r/unmount root)))))))
               (finally
                 (doseq [[_ stylesheet] stylesheets] (.remove stylesheet))
                 (.remove element)
-                (reset! rfdb/app-db before)))))
+                (reset! r/*app-db before)))))
         (.catch #(is false (str %)))
         (.finally done))))
 
@@ -291,38 +291,38 @@
   (async
     done
     (-> (go-promise
-          (let [before @rfdb/app-db
+          (let [before @r/*app-db
                 rows (fn [n]
                        {:docs (mapv #(hash-map :id (str %)
                                                :data {:id (str %), :ts %, :parent-post 42})
                                 (range n))})]
-            (rf/clear-subscription-cache!)
-            (try (reset! rfdb/app-db {})
-                 (rf/dispatch-sync [:store/scoped (scoped/query-key (comments/root-query 42 10))
+            (r/clear-subscription-cache!)
+            (try (reset! r/*app-db {})
+                 (r/dispatch-sync [:store/scoped (scoped/query-key (comments/root-query 42 10))
                                     (rows 11)])
                  (let [{:keys [values unmount!]} (await! (mount-subscriptions!
                                                            {:page [:comments/root-page 42]}))
                        page #(get (values) :page)]
                    (try (is (= 10 (count (:records (page)))))
                         (is (:more? (page)))
-                        (rf/dispatch-sync [:blog/load-more-comments 42])
+                        (r/dispatch-sync [:blog/load-more-comments 42])
                         (await! (support/settle!))
-                        (is (= 20 (get-in @rfdb/app-db [:state :blog :comment-limit 42])))
+                        (is (= 20 (get-in @r/*app-db [:state :blog :comment-limit 42])))
                         (is (= 10 (count (:records (page))))
                             "Keep existing comments during the next read")
                         (is (:loading? (page)))
-                        (rf/dispatch-sync
+                        (r/dispatch-sync
                           [:store/scoped (scoped/query-key (comments/root-query 42 20)) (rows 21)])
                         (await! (support/settle!))
                         (is (= 20 (count (:records (page)))))
                         (is (false? (:loading? (page))))
                         (is (some #{[:state :blog :comment-limit]} cache/state-paths))
                         (finally (unmount!))))
-                 (finally (rf/clear-subscription-cache!) (reset! rfdb/app-db before)))))
+                 (finally (r/clear-subscription-cache!) (reset! r/*app-db before)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 (deftest saved-comment-window-folds-and-data-round-trip-through-one-envelope
-  (let [before @rfdb/app-db
+  (let [before @r/*app-db
         path [:store :scoped (scoped/query-key (comments/root-query 42 20))]
         values {path {:docs (mapv #(hash-map :id (str %) :data {:id (str %), :ts %}) (range 21))},
                 [:state :blog :comment-limit] {42 20},
@@ -331,7 +331,7 @@
         disk (atom nil)
         writes (atom 0)
         marker (atom nil)]
-    (with-redefs [storage/*buckets (atom {})
+    (r/with-framework-bindings [storage/*buckets (atom {})
                   storage/*tracked (atom {})
                   storage/*reads (atom {:public (js/Promise.resolve nil)})
                   storage/*ready (atom #{:public})
@@ -343,38 +343,38 @@
                   storage/write-disk! (fn [_ value] (swap! writes inc) (reset! disk value))
                   storage/mark-return! #(reset! marker %)]
       (try
-        (reset! rfdb/app-db {})
+        (reset! r/*app-db {})
         (doseq [[path value] values]
-          (rf/dispatch-sync [:component-data/install path value])
-          (storage/track! [:state path] #(get-in @rfdb/app-db path storage/missing) cache/options))
+          (r/dispatch-sync [:component-data/install path value])
+          (storage/track! [:state path] #(get-in @r/*app-db path storage/missing) cache/options))
         (storage/track! :public-content (constantly {:common {:title "Cached"}}) cache/options)
         (storage/save-navigation!)
         (is (= 1 @writes) "All state and content use one disk write")
         (is (true? @marker))
         (let [saved (reader/read-string @disk)]
-          (reset! rfdb/app-db {})
+          (reset! r/*app-db {})
           (reset! storage/*buckets {:public saved})
           (cache/restore!)
-          (is (= 20 (get-in @rfdb/app-db [:state :blog :comment-limit 42])))
-          (is (false? (get-in @rfdb/app-db [:state :blog :comment-thread-expanded [42 "root"]])))
-          (is (true? (get-in @rfdb/app-db
+          (is (= 20 (get-in @r/*app-db [:state :blog :comment-limit 42])))
+          (is (false? (get-in @r/*app-db [:state :blog :comment-thread-expanded [42 "root"]])))
+          (is (true? (get-in @r/*app-db
                              [:state :blog :comment-thread-expanded [42 "other" "child"]])))
-          (is (= 21 (count (:docs (get-in @rfdb/app-db path)))))
+          (is (= 21 (count (:docs (get-in @r/*app-db path)))))
           (storage/read! :public-content cache/options)
           (storage/drain!)
           (is (= {} (reader/read-string @disk)) "Restored disk entries are consumed")
           (storage/save-navigation!)
           (is (contains? (reader/read-string @disk) [:state path])
               "Navigation republishes the restored content")
-          (with-redefs [storage/write-disk! (fn [& _] (throw (js/Error. "Full")))]
+          (r/with-framework-bindings [storage/write-disk! (fn [& _] (throw (js/Error. "Full")))]
             (swap! storage/*dirty conj :public)
             (storage/save-navigation!)
             (is (false? @marker) "Failed writes must not opt out of SSR")))
-        (finally (cache/stop!) (reset! storage/*tracked {}) (storage/drain!) (reset! rfdb/app-db before))))))
+        (finally (cache/stop!) (reset! storage/*tracked {}) (storage/drain!) (reset! r/*app-db before))))))
 (deftest folded-reply-placeholder-reserves-its-height-before-mount
   (let [context @restore/*context]
     (try (restore/begin! {:hydrate? true})
-         (let [html (server/render-to-string [blog/<collapsed-reply-view>
+         (let [html (r/render-to-string [blog/<collapsed-reply-view>
                                               {:path [27 1], :reply-count 2}])]
            (is (string/includes? html "max-height:3rem"))
            (is (string/includes? html "hidden replies")))

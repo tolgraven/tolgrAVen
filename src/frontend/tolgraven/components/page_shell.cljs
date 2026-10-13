@@ -5,7 +5,7 @@
             [tolgraven.loader]
             [tolgraven.component.loading :as loading]
             [tolgraven.component.restore :as restore]
-            [tolgraven.components.ui :as ui]))
+            [tolgraven.components.ui.layout :as ui-layout]))
 
 (defc <content> [{:keys [loading-view loading-args loading-prefab loading-class] :as spec}]
   (if loading-view
@@ -19,5 +19,5 @@
 (defpage <page> [{:keys [heading] :as spec}]
   (restore/use-readiness! false)
   (if heading
-    [ui/<with-heading> heading [<content> spec]]
+    [ui-layout/<with-heading> heading [<content> spec]]
     [<content> spec]))

@@ -3,15 +3,15 @@
     [tolgraven.components.icon :as icon]
     [tolgraven.component.registry]
     [clojure.string :as string]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.macros :refer-macros [defc]]
-    [reagent.core :as r]
+
     [tolgraven.components.timer :as anim]
     [tolgraven.component.restore :as restore]
     [tolgraven.components.media :as media]
     [tolgraven.components.image :as img]
     [tolgraven.modules.home.layout :as layout]
-    [tolgraven.components.ui :as ui]))
+    [tolgraven.components.ui.layout :as ui-layout]))
 
 (defn ln->br "Ugh. UGH! Why"
   [text]
@@ -71,7 +71,7 @@
    [:div.buttons
     (for [[text what] buttons] ^{:key (str "intro-button-" text)}
       [(if (string? what) :a.button.background :button.background)
-       (if (string? what) {:href what} {:on-click #(rf/dispatch what)})
+       (if (string? what) {:href what} {:on-click #(r/dispatch what)})
        [:span {:class "blur-bg"}]
        [:span text]])]])
 
@@ -96,21 +96,21 @@
          (for [line lines] ^{:key (str "service-" title "-" line)} [:li line]))])
 
 (defc <service-categories> [{:keys [categories] :as spec}]
-  (let [{:keys [full-screened?]} @(rf/subscribe [:state [:services]])]
+  (let [{:keys [full-screened?]} @(r/subscribe [:state [:services]])]
     [:div#services>div.categories
      {:class (when full-screened? "categories-fullscreened")
-      :on-click #(rf/dispatch [:state [:services :full-screened?] nil])}
+      :on-click #(r/dispatch [:state [:services :full-screened?] nil])}
      (for [[title icon-name lines] categories] ^{:key (str "service-" title)}
        [<service-category>
         {:title title :icon-name icon-name :lines lines :full-screened? full-screened?
          :on-click (fn [event]
                      (.stopPropagation event)
-                     (rf/dispatch [:state [:services :full-screened?]
+                     (r/dispatch [:state [:services :full-screened?]
                                    (when-not full-screened? title)]))}])]))
 
 (defc <services-carousel> "yo"
   [categories]
-  (let [full-screened? @(rf/subscribe [:state [:services]]) ]
+  (let [full-screened? @(r/subscribe [:state [:services]]) ]
     [:div#services>div.categories
      (for [[title icon-name lines] categories ;(if-not full-screened categories (filter #(= (first %) full-screened) categories)) ;XXX change to keys!!
            :let [id (str "service-" title)]] ^{:key id}
@@ -123,14 +123,14 @@
 
 (defc <services> "List services on (fake) offer. Clicking one should bring it up to fill section..."
   [{:keys [categories bg caption] :as spec}]
-  (let [to-focus? (boolean @(rf/subscribe [:state [:services :to-focus?]]))]
+  (let [to-focus? (boolean @(r/subscribe [:state [:services :to-focus?]]))]
     ;; One committed owner handles both initial background focus and later
     ;; section intent. Media/category ref replacement must not repeat the action.
-    (rf/use-effect #(rf/dispatch [:focus-element "services-bg"]) [to-focus?]))
+    (r/use-effect #(r/dispatch [:focus-element "services-bg"]) [to-focus?]))
   [:section#section-services
     {:class "link-anchor stick-up section-with-media-bg-wrapper"} ; want to  focus elem to zoomy zoom slow after reaching scroll
     [:a {:name "link-services"}]
-     [ui/<inset> caption 4] ;auto-gen
+     [ui-layout/<inset> caption 4] ;auto-gen
      [img/<media-as-bg>
       (merge bg {:id "services-bg"
                  :class "darken-5 parallax-bg"})]
@@ -140,7 +140,7 @@
 (defc <story> "Big img header + story" [{:keys [heading] :as content}]
   [:<>
    [:div#about-intro {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
-    [ui/<fading-bg-heading> heading]]
+    [ui-layout/<fading-bg-heading> heading]]
    [:div.fader>div.fade-to-black.between]
 
    [:a {:name "about"}]
@@ -149,4 +149,4 @@
     [:br]
     [layout/<auto-layout-text-imgs> content]
     [:br] [:br]]
-   [ui/<fading> :dir "bottom"]])
+   [ui-layout/<fading> :dir "bottom"]])

@@ -3,9 +3,9 @@
   (:require [cljs.core.async]
             [tolgraven.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
-            [tolgraven.react :as react]
-            [reagent.core :as r]
-            [reagent.dom.client :as dom]
+            [tolgraven.react :as r]
+
+
             [tolgraven.component :as component]
             [tolgraven.component.motion :as motion]
             [tolgraven.component.restore :as restore]
@@ -47,7 +47,7 @@
     (js/Object.defineProperty rejected "frameRate"
       #js {:get (fn [] "auto")
            :set (fn [_] (throw (js/Error. "Frame-rate hint rejected")))})
-    (with-redefs [motion/reduced-motion? (constantly false)]
+    (r/with-framework-bindings [motion/reduced-motion? (constantly false)]
       (motion/prefer-high-frame-rate! [unsupported rejected supported]))
     (is (= "highest" (.-frameRate supported))
         "A rejected hint does not stop the remaining page layer")
@@ -56,7 +56,7 @@
     (is (not (.hasOwnProperty unsupported "frameRate"))
         "Unsupported browsers receive no inert expando property")
     (set! (.-frameRate supported) "auto")
-    (with-redefs [motion/reduced-motion? (constantly true)]
+    (r/with-framework-bindings [motion/reduced-motion? (constantly true)]
       (motion/prefer-high-frame-rate! [supported]))
     (is (= "auto" (.-frameRate supported)) "Reduced motion receives no request")))
 
@@ -198,7 +198,7 @@
                             #js {:observe (fn [_]), :disconnect #(swap! *disconnects inc)})]
                  (set! js/IntersectionObserver fake)
                  (await! (render! root
-                                  [:> react/strict-mode
+                                  [:> r/strict-mode
                                    [<seen> {:seen {:class "opacity", :once? true}}]]))
                  (is (>= (count @*callbacks) 2)
                      "StrictMode restarts the observer after effect cleanup")
@@ -310,7 +310,7 @@
                 context @restore/*context]
             (try
               (restore/navigate! "/motion-test")
-              (react/dispatch [:component-motion/seen :motion-test/remembered])
+              (r/dispatch [:component-motion/seen :motion-test/remembered])
               (await! (flush!))
               (await! (render! root [<remembered-item>]))
               (is (.contains (.-classList (.querySelector element "[data-remembered]")) "appeared"))
@@ -323,7 +323,7 @@
   [id]
   [:section {:data-visible-owner id} "Owner"])
 
-(react/reg-event-db :test/visible-owner
+(r/reg-event-db :test/visible-owner
   (fn [db [_ id]] (update-in db [:test :visible-owner id] (fnil inc 0))))
 
 (deftest visibility-effects-are-owned-by-the-existing-root

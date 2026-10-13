@@ -1,8 +1,8 @@
 (ns tolgraven.boot-test
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
-            [re-frame.core :as re-frame]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
+
             [tolgraven.boot :as boot]
             [tolgraven.listener :as listener]
             [tolgraven.component.storage :as storage]
@@ -56,22 +56,22 @@
 (deftest document-listeners-start-through-events-and-stop-with-their-owner
   (async done
     (-> (go-promise
-          (let [restore-db! (re-frame/make-restore-fn)
+          (let [restore-db! (r/make-restore-fn)
                 old-history (.-scrollRestoration js/history)
                 old-context @restore/*context
                 *saved (atom [])]
-            (with-redefs [storage/save-navigation! #(swap! *saved conj :snapshot)
+            (r/with-framework-bindings [storage/save-navigation! #(swap! *saved conj :snapshot)
                           legacy/drain! #(swap! *saved conj :legacy)
                           legacy/*state (atom nil)
                           legacy/*loaded? (atom true)
                           legacy/*pending (atom nil)]
               (try
                 (is (empty? @listener/*bindings) "Namespace import installed no listeners")
-                (rf/dispatch-sync [:init/app-db])
-                (rf/dispatch-sync [:boot/document])
+                (r/dispatch-sync [:init/app-db])
+                (r/dispatch-sync [:boot/document])
                 (await! (support/settle!))
                 (let [ids (set (keys @listener/*bindings))]
-                  (rf/dispatch-sync [:boot/document])
+                  (r/dispatch-sync [:boot/document])
                   (await! (support/settle!))
                   (is (= ids (set (keys @listener/*bindings))))
                   (is (contains? ids :boot/storage)))
@@ -86,12 +86,12 @@
                 (is (= "auto" (.-scrollRestoration js/history)))
                 (.dispatchEvent js/window (js/PageTransitionEvent. "pageshow" #js {:persisted true}))
                 (is (:back? @restore/*context))
-                (rf/dispatch-sync [:boot/stop])
+                (r/dispatch-sync [:boot/stop])
                 (.dispatchEvent js/window (js/Event. "pagehide"))
                 (is (= [:snapshot :legacy] @*saved) "Stopped listeners no longer save")
                 (is (empty? @listener/*bindings))
                 (finally
-                  (rf/dispatch-sync [:boot/stop])
+                  (r/dispatch-sync [:boot/stop])
                   (reset! restore/*context old-context)
                   (set! (.-scrollRestoration js/history) old-history)
                   (restore-db!))))))
@@ -103,7 +103,7 @@
     (let [after-page! resources/after-page!
           *queued (atom 0)
           *cancelled (atom 0)
-          restore-db! (re-frame/make-restore-fn)]
+          restore-db! (r/make-restore-fn)]
       ;; Leave deferred downloads at the existing, independently tested boundary.
       (set! resources/after-page!
             (fn [_] (swap! *queued inc) #(swap! *cancelled inc)))
@@ -111,7 +111,7 @@
             (let [element (.createElement js/document "div")
                   root (await! (support/create-root! element))]
               (try
-                (rf/dispatch-sync [:init/app-db])
+                (r/dispatch-sync [:init/app-db])
                 (await! (support/render! root [boot/<lifecycle>]))
                 (await! (support/settle!))
                 (is (contains? @listener/*bindings :boot/resize))
@@ -126,7 +126,7 @@
                 (finally (support/unmount! root)))))
           (.catch (fn [error] (is false (str error))))
           (.finally (fn []
-                      (rf/dispatch-sync [:boot/stop])
+                      (r/dispatch-sync [:boot/stop])
                       (set! resources/after-page! after-page!)
                       (restore-db!)
                       (done)))))))

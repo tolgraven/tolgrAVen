@@ -1,10 +1,10 @@
 (ns tolgraven.viewport-module-test
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
-            [reagent.dom.client :as dom]
-            [reagent.dom.server :as server]
+            [tolgraven.react :as r]
+
             [shadow.lazy :as lazy]
-            [tolgraven.react :as rf]
+
             [tolgraven.macros :as m]
             [tolgraven.loader :as loader]
             [tolgraven.loader.activation :as activation]
@@ -19,14 +19,14 @@
 (m/defc <target>
   {:features [[:appear "opacity"]]}
   [title committed!]
-  (rf/use-layout-effect (fn [] (committed!) nil) [])
+  (r/use-layout-effect (fn [] (committed!) nil) [])
   [:article {:data-viewport-target true} [:strong title]])
 
 (m/defc <outer> [module committed! outer-committed!]
-  (let [value @(rf/subscribe [:state [:viewport-fixture]])]
-    (rf/use-layout-effect (fn [] (outer-committed!) nil) [])
+  (let [value @(r/subscribe [:state [:viewport-fixture]])]
+    (r/use-layout-effect (fn [] (outer-committed!) nil) [])
     [:div
-     [:button {:on-click #(rf/dispatch [:state [:viewport-fixture] "Changed"])} (or value "Original")]
+     [:button {:on-click #(r/dispatch [:state [:viewport-fixture] "Changed"])} (or value "Original")]
      (m/<> {:module module} "Server section" committed!)]))
 
 (defn observer-fixture! []
@@ -83,7 +83,7 @@
                  (swap! loader/*installed disj module)
                  (doseq [path [[:loader :code-ready module] [:loader :requested module]
                                [:loader :errors module] [:state :init :scope module]]]
-                   (rf/dispatch [:component-data/remove path])))}))
+                   (r/dispatch [:component-data/remove path])))}))
 
 (deftest view-activation-shares-assets-and-init-with-an-earlier-trigger
   (async done
@@ -145,7 +145,7 @@
               (is (empty? @(:started transport)))
               (is (empty? @(:observers observers)))
               ;; Existing externally defined controls still use the normal event.
-              (rf/dispatch [:scope/init module])
+              (r/dispatch [:scope/init module])
               (await! (support/wait-for! #(seq @(:started transport)) "SSR intent did not start assets"))
               ((:css! transport)) ((:code! transport))
               (await! (support/wait-for! #(.querySelector element "[data-viewport-target]")))
@@ -175,16 +175,16 @@
                 stop-record! (capture/start!)]
             (.appendChild (.-body js/document) element)
             (try
-              (rf/dispatch [:state [:viewport-fixture] nil])
+              (r/dispatch [:state [:viewport-fixture] nil])
               (await! (support/settle!))
               (restore/begin! {:hydrate? true})
               (restore/install-module-views! {module [:view]})
               (set! (.-innerHTML element)
                     (binding [context/*server?* true context/*modules* {module spec}]
-                      (server/render-to-string [<outer> module (fn []) (fn [])])))
+                      (r/render-to-string [<outer> module (fn []) (fn [])])))
               (let [article (.querySelector element "article")
                     strong (.querySelector element "strong")]
-                (reset! *root (dom/hydrate-root element [<outer> module #(@*inner nil) #(@*outer nil)]))
+                (reset! *root (r/hydrate-root element [<outer> module #(@*inner nil) #(@*outer nil)]))
                 (await! outer)
                 (is (empty? @(:started transport)))
                 (is (identical? article (.querySelector element "article")))
@@ -206,8 +206,8 @@
                 (is (.contains (.-classList article) "appeared")
                     "Late hydration retains the visible SSR appearance"))
               (finally
-                (when @*root (dom/unmount @*root)) (.remove element)
-                (rf/dispatch [:state [:viewport-fixture] previous])
+                (when @*root (r/unmount @*root)) (.remove element)
+                (r/dispatch [:state [:viewport-fixture] previous])
                 (reset! restore/*context before)
                 (stop-record!) (stop-capture!)
                 ((:restore! transport)) ((:restore! observers))))))
@@ -286,6 +286,6 @@
                 (swap! loader/*installed disj module)
                 (doseq [path [[:loader :code-ready module] [:loader :requested module]
                               [:loader :errors module] [:state :init :scope module]]]
-                  (rf/dispatch [:component-data/remove path]))))))
+                  (r/dispatch [:component-data/remove path]))))))
         (.catch #(is false (str %)))
         (.finally done))))

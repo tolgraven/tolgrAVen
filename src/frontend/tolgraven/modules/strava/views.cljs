@@ -2,12 +2,15 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.macros :as m :refer-macros [defc]]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
+
     [clojure.string :as string]
     [tolgraven.components.timer :as anim]
     [tolgraven.loader]
-    [tolgraven.components.ui :as ui]
+    [tolgraven.components.ui.controls :as ui-controls]
+    [tolgraven.components.ui.layout :as ui-layout]
+    [tolgraven.components.ui.loading :as ui-loading]
+    [tolgraven.components.ui.media :as ui-media]
     [tolgraven.components.image :as img]
     [tolgraven.components.shell :as views]
     [tolgraven.util :as util :refer [at]]
@@ -31,7 +34,7 @@
                                      :max-width "100%" }}]]
       [:div.strava-activity-photo
        {:on-click (fn [e] (.stopPropagation e)
-                    (rf/dispatch [:modal-zoom :fullscreen :open
+                    (r/dispatch [:modal-zoom :fullscreen :open
                                   (util/add-attrs item
                                                   {:style {:max-width "100%"}})]))}
        [<photo-image> item]])))
@@ -105,7 +108,7 @@
       [:<>
        [:div.strava-activity-segment.flex
         [:p
-         {:on-mouse-over #(do (rf/dispatch [:strava/fetch-segment-stream
+         {:on-mouse-over #(do (r/dispatch [:strava/fetch-segment-stream
                                             (-> segment :segment :id)
                                             "latlng,altitude"])
                               (reset! hovered? true))
@@ -127,7 +130,7 @@
          [:span " km/h"]] ]
        (when @hovered?
          [:div.strava-popup
-          [:pre @(rf/subscribe [:strava/content [:segment-stream (-> segment :segment :id)]])]
+          [:pre @(r/subscribe [:strava/content [:segment-stream (-> segment :segment :id)]])]
           "Map etc goes here"])])))
 
 (defc <activity-segments> "Segments for activity"
@@ -169,15 +172,15 @@
 
 (defc <kudos> "List kudos"
   [activity]
-  (let [kudoers @(rf/subscribe [:strava/content [:kudos (:id activity)]])]
+  (let [kudoers @(r/subscribe [:strava/content [:kudos (:id activity)]])]
     [:div.strava-activity-kudos
      {:style {:position :relative}
       :ref #(when %
-              (rf/dispatch [:strava/fetch-kudos (:id activity)]))}
+              (r/dispatch [:strava/fetch-kudos (:id activity)]))}
      (if kudoers
        (for [kudoer kudoers] ^{:key (str "strava-kudoer-" (:firstname kudoer) "-" (:lastname kudoer))}
          [<kudo-entry> kudoer])
-       [ui/<loading-spinner> true nil
+       [ui-loading/<loading-spinner> true nil
         {:style {:font-size "70%"
                  :width "0.7em"
                  :height "1.0em"}}]) ]))
@@ -185,7 +188,7 @@
 (defc <gear> "Display gear details"
   [id]
   (let [hovered? (r/atom false)
-        gear (rf/subscribe [:strava/content [:gear id]])]
+        gear (r/subscribe [:strava/content [:gear id]])]
     (fn [id]
       [:div.strava-activity-gear
        {:on-mouse-enter #(reset! hovered? true)
@@ -194,7 +197,7 @@
                                            #" - ")]
          [:<> [:span nickname] [:p desc]])
        (when @hovered?
-         (let [info @(rf/subscribe [:strava/content [:gear-info id]])]
+         (let [info @(r/subscribe [:strava/content [:gear-info id]])]
            [:div.strava-activity-gear-popup.strava-popup
             {:style {:animation "fade-in 1.5s ease 0.3s forwards"}}
 
@@ -352,20 +355,20 @@
 
 (defc <activity-graphs>
   [activity]
-  (let [watts @(rf/subscribe [:strava/activity-stream (:id activity) "watts" 10])]
+  (let [watts @(r/subscribe [:strava/activity-stream (:id activity) "watts" 10])]
     (into [:div.strava-activity-graphs]
           (map (fn [[kind unit]]
                  [<graph-canvas>
                   (string/capitalize (name kind))
                   unit
-                  @(rf/subscribe [:strava/activity-stream (:id activity) (name kind) 25])])
+                  @(r/subscribe [:strava/activity-stream (:id activity) (name kind) 25])])
                [[:watts "W"] [:heartrate "bpm"] [:velocity_smooth "km/h"] [:cadence "rpm"]])))) ; TODO expose whats available and have a button with dropdown to add graph, like shitty v of intervals.icu
 
 
 (defc <activity-dot>
   [activity i num-total watts-high]
   (let [hovered? (r/atom false)
-        which-expanded (rf/subscribe [:strava/activity-expanded]) ;needs be post/sub so can have prev/next btns
+        which-expanded (r/subscribe [:strava/activity-expanded]) ;needs be post/sub so can have prev/next btns
         opened? (fn [] ((fnil = -1) @which-expanded i))
         tab (r/atom #_:graphs :summary)
         cutoff 80
@@ -381,7 +384,7 @@
 
           [:div.strava-activity-top-bg]
 
-          (let [details @(rf/subscribe [:strava/content [:activity (:id activity)]])
+          (let [details @(r/subscribe [:strava/content [:activity (:id activity)]])
                 tab-button (fn [id-key]
                              [:button.strava-tab-btn
                               {:class (when (= id-key @tab)
@@ -399,8 +402,8 @@
 
              [:div.strava-activity-full
               {:ref #(when % ; fetch our additional stuff on mount
-                       (rf/dispatch [:strava/fetch-activity (:id activity)])
-                       (rf/dispatch [:strava/fetch-stream (:id activity)
+                       (r/dispatch [:strava/fetch-activity (:id activity)])
+                       (r/dispatch [:strava/fetch-stream (:id activity)
                                      "latlng,watts,heartrate,velocity_smooth,altitude,cadence,time"]))}
 
               [:h3 [:b (:name activity)]]
@@ -411,8 +414,8 @@
                               :bottom 0 :right 0}}]
                     (map (fn [k] [tab-button k])
                          (keys tabs)))
-              [ui/<close> #(do (rf/dispatch [:strava/activity-expand nil])
-                             (rf/dispatch [:strava/state [:stats-minimized] false]))]])]
+              [ui-controls/<close> #(do (r/dispatch [:strava/activity-expand nil])
+                             (r/dispatch [:strava/state [:stats-minimized] false]))]])]
 
          [:div.strava-activity-dot
           {:style {:left (str (* 100 (/ i num-total)) "%")
@@ -422,8 +425,8 @@
            :on-mouse-enter #(reset! hovered? true)
            :on-mouse-leave #(reset! hovered? false)
            :on-click #(do (.stopPropagation %)
-                          (rf/dispatch [:strava/activity-expand i])
-                          (rf/dispatch [:strava/state [:stats-minimized] true])
+                          (r/dispatch [:strava/activity-expand i])
+                          (r/dispatch [:strava/state [:stats-minimized] true])
                           (reset! hovered? false))}
           [anim/<timeout> #(reset! anim-size size) (+ 750 (rand-int 2500))]])
        (when @hovered?
@@ -439,7 +442,7 @@
   {:features [[:seen "opacity extra-slow"]]}
   []
   (let [num-activities 30
-        activities @(rf/subscribe [:strava/content [:activities]])
+        activities @(r/subscribe [:strava/content [:activities]])
         watts-high (apply max (map :average_watts activities))]
     [:div [:div.strava-activities
       {:style {:position :relative}}
@@ -460,14 +463,14 @@
 
 (defc <activity-map> "Visualize latlng somehow! Currently goes behind activity-full but putting it on bg would be best (fix latlng so fits...)"
   [activity]
-  (let [activity @(rf/subscribe [:strava/activity-stream (:id activity) "latlng" 5])
+  (let [activity @(r/subscribe [:strava/activity-stream (:id activity) "latlng" 5])
         [lats lngs] (map #(map % activity) [first second])
         [lat-max lat-min] (map #(apply % lats) [max min])
         [lng-max lng-min] (map #(apply % lngs) [max min]) ]
     [:div.strava-activity-map
      (if activity
        [<map-points> activity lat-min lat-max lng-min lng-max]
-       [ui/<loading-spinner> true]) ]))
+       [ui-loading/<loading-spinner> true]) ]))
 
 
 (defc ^:private <leaflet-map>
@@ -488,13 +491,13 @@
 
 (defc <activity-map-leaflet> "Visualize latlng somehow! Currently goes behind activity-full but putting it on bg would be best (fix latlng so fits...)"
   [activity]
-  (let [latlng @(rf/subscribe [:strava/activity-stream (:id activity) "latlng" 15])
+  (let [latlng @(r/subscribe [:strava/activity-stream (:id activity) "latlng" 15])
         [lats lngs] (map #(map % latlng) [first second])]
     [:div.strava-activity-map
      {:on-click #(.stopPropagation %)}
      (if latlng
        [<leaflet-map> lats lngs latlng]
-       [ui/<loading-spinner> true]) ]))
+       [ui-loading/<loading-spinner> true]) ]))
 
 
 
@@ -538,14 +541,14 @@
 
 (defc <activity-map-canvas> "Visualize latlng somehow! Currently goes behind activity-full but putting it on bg would be best (fix latlng so fits...)"
   [activity]
-  (let [latlng @(rf/subscribe [:strava/activity-stream (:id activity) "latlng" 50])
+  (let [latlng @(r/subscribe [:strava/activity-stream (:id activity) "latlng" 50])
         [lats lngs] (map #(map % latlng) [first second])
-        watts @(rf/subscribe [:strava/activity-stream (:id activity) "watts" 50])
+        watts @(r/subscribe [:strava/activity-stream (:id activity) "watts" 50])
         node (r/atom nil)]
     [:div.strava-activity-map
      (if latlng
        [<map-canvas> node latlng watts]
-       [ui/<loading-spinner> true]) ]))
+       [ui-loading/<loading-spinner> true]) ]))
 
 
 (defc <strava-totals-stats>
@@ -567,7 +570,7 @@
 
 (defc <strava-general-stats> "Box of stats (rides, total distance and stuff)"
   []
-  (let [stats @(rf/subscribe [:strava/content [:stats]])]
+  (let [stats @(r/subscribe [:strava/content [:stats]])]
     [:<>
      [:div.strava-stats-legend
       [:h3 [img/<picture> {:src "img/strava-icon.png"
@@ -580,7 +583,7 @@
       [:div "Average speed"]
       [:div "Elevation gain"]]
      [<strava-totals-stats> stats :all_ride_totals "Total"]
-     [ui/<carousel-normal> "strava-general-stats-carousel"
+     [ui-media/<carousel-normal> "strava-general-stats-carousel"
       {}
       [[<strava-totals-stats> stats :recent_ride_totals "Recent"]
        [<strava-totals-stats> stats :ytd_ride_totals (.getFullYear (js/Date.))]]]]))
@@ -611,7 +614,7 @@
 
 (defc <intervals-general-stats> "Box of stats (graphs n shit!)"
   []
-  (let [stats @(rf/subscribe [:intervals/content [:summary]])]
+  (let [stats @(r/subscribe [:intervals/content [:summary]])]
     [:<> ;div.strava-stats-intervals
      [:div.strava-stats-legend
       [:h3 [img/<picture> {:src "img/intervals-icon.png"
@@ -633,7 +636,7 @@
 
 (defc <intervals-graphs> "Nice graphs"
   []
-  (let [stats @(rf/subscribe [:intervals/content [:summary]])]
+  (let [stats @(r/subscribe [:intervals/content [:summary]])]
    [:div]))
 
 (def strava-logo {:src "img/strava-icon.png"})
@@ -651,7 +654,7 @@
   (let [active-tab (r/atom :strava-stats)]
     (fn [stats]
       [:div.strava-stats.flex
-       {:class (when @(rf/subscribe [:strava/state [:stats-minimized]])
+       {:class (when @(r/subscribe [:strava/state [:stats-minimized]])
                  "stats-minimized")}
 
        [:div.strava-stats-tabs
@@ -690,16 +693,16 @@
 (defc <strava> "Make an increasingly fancy visualizer feed thingy. Relies on [:content :strava] in db"
   {:depends [{:source :strapi :keys [:strava]}]}
   []
-  (let [data @(rf/subscribe [:strava/content])
+  (let [data @(r/subscribe [:strava/content])
         stats (:stats data)
         athlete (:athlete data)
         arrow (fn [direction]
                 [:i.fa {:class (str "fa-arrow-" (name direction))
                         :style {:color "#fc4c02"}}])]
     [:section#strava.strava.section-with-media-bg-wrapper.covering-2
-     {:on-click #(rf/dispatch [:strava/activity-expand nil])}
+     {:on-click #(r/dispatch [:strava/activity-expand nil])}
      [<profile-background> data]
-     [ui/<inset> "Click the dots for details" 4]
+     [ui-layout/<inset> "Click the dots for details" 4]
      [:a {:href (:profile-url data)}
       [:h1  [img/<picture> {:style {:height "2rem"}
                           :alt "Strava"
@@ -710,10 +713,10 @@
         [:p "Uh-oh, looks like we failed to fetch the strava data. Try refreshing the page."]])
      (if athlete
        [<profile-details> athlete data]
-       [ui/<loading-spinner> (rf/subscribe [:loading :strava])])
+       [ui-loading/<loading-spinner> (r/subscribe [:loading :strava])])
 
      (if stats
        [<general-stats> stats]
-       [ui/<loading-spinner> true :massive])
+       [ui-loading/<loading-spinner> true :massive])
 
      [<activities-graph>] ]))

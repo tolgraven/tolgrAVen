@@ -4,11 +4,11 @@
     [tolgraven.component.registry]
     [tolgraven.component.data :as data]
     [tolgraven.components.oembed.contract :as schema]
-    [tolgraven.react :as rf]
-    [reagent.core :as r]
+    [tolgraven.react :as r]
+
     [tolgraven.components.image :as img]
     [tolgraven.macros :as m]
-    [tolgraven.components.ui :as ui]))
+    [tolgraven.components.ui.boundary :as ui-boundary]))
 
 (defn dependency [url]
   {:source :url
@@ -73,14 +73,14 @@
   [artist song]
   (let [base-url "https://soundcloud.com/"
         url      (str base-url artist "/" song)]
-    [:div (if @(rf/subscribe [:booted? :soundcloud])
-       [ui/<safe> :player
+    [:div (if @(r/subscribe [:booted? :soundcloud])
+       [ui-boundary/<safe> :player
         [<oembed-view> url [<soundcloud-loading> artist song]]]
        [<soundcloud-loading> artist song])]))
 
 (m/defc <soundcloud> "Soundcloud feed, plus selected tunes. Bonus if can do anything fun with it"
   []
-  (let [{:keys [artist tunes]} @(rf/subscribe [:content [:soundcloud]])]
+  (let [{:keys [artist tunes]} @(r/subscribe [:content [:soundcloud]])]
     [:section.soundcloud.fullwide.covering-3
      [:div.soundcloud-players.parallax-wrapper
       (m/for [tune tunes]

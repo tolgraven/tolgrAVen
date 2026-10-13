@@ -1,22 +1,22 @@
 (ns tolgraven.react-hooks-test
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.test-support :as support]))
 
 (defc <hook-probe> [dependency phase enabled? *observed *lifecycle]
-  (let [memo (rf/use-memo #(js-obj) [dependency])
-        callback (rf/use-callback (fn [] nil) (list dependency))]
-    (rf/use-layout-effect
+  (let [memo (r/use-memo #(js-obj) [dependency])
+        callback (r/use-callback (fn [] nil) (list dependency))]
+    (r/use-layout-effect
       (fn [] (reset! *observed {:memo memo, :callback callback})))
-    (rf/use-layout-effect
+    (r/use-layout-effect
       (fn []
         (when enabled?
           (swap! *lifecycle conj [:layout-start dependency])
           #(swap! *lifecycle conj [:layout-stop dependency])))
       [dependency enabled?])
-    (rf/use-effect
+    (r/use-effect
       (fn []
         (when enabled?
           (swap! *lifecycle conj [:effect-start dependency])
@@ -70,9 +70,9 @@
           (.finally done)))))
 
 (defc <state-probe> [phase *observed]
-  (let [[state set-state!] (rf/use-state {:value 0})
-        [reduced reduce!] (rf/use-reducer (fn [state value] (assoc state :value value)) {:value 0})]
-    (rf/use-layout-effect
+  (let [[state set-state!] (r/use-state {:value 0})
+        [reduced reduce!] (r/use-reducer (fn [state value] (assoc state :value value)) {:value 0})]
+    (r/use-layout-effect
       #(reset! *observed {:state state
                          :reduced reduced
                          :set-state! set-state!

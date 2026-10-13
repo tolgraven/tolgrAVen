@@ -3,8 +3,8 @@
   (:require [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [tolgraven.macros :refer-macros [defc]]
-            [tolgraven.react :as rf]
-            [re-frame.core :as re-frame]
+            [tolgraven.react :as r]
+
             [tolgraven.dev.values :as values]
             [tolgraven.dev.stack :as stack]
             [tolgraven.dev.source-links :as source]
@@ -13,14 +13,14 @@
             [tolgraven.dev-console.layout :as layout]
             [tolgraven.dev-console.components :as components]
             [tolgraven.validation :as validation]
-            [reagent.dom.server :as server]
-            [reagent.core :as r]
-            [reagent.ratom :as ratom]
+
+
+
             [tolgraven.test-support :as support]))
 
-(rf/reg-sub :diagnostic-test/value (fn [db _] (get-in db [:test :diagnostic-value])))
+(r/reg-sub :diagnostic-test/value (fn [db _] (get-in db [:test :diagnostic-value])))
 (defc <consumer> [label]
-  [:section [label] [:span (str @(rf/subscribe [:diagnostic-test/value]))]])
+  [:section [label] [:span (str @(r/subscribe [:diagnostic-test/value]))]])
 
 (deftest values-are-bounded-and-private-keys-are-redacted
   (is (= {:password :debug/redacted :nested {:access_token :debug/redacted :name "A"}}
@@ -75,7 +75,7 @@
                 stop-record! (capture/start!)]
             (.appendChild (.-body js/document) element)
             (try
-              (rf/dispatch [:component-data/install [:test :diagnostic-value] "before"])
+              (r/dispatch [:component-data/install [:test :diagnostic-value] "before"])
               (await! (support/settle!))
               (await! (support/render! root [<consumer> :strong]))
               (capture/drain!)
@@ -84,7 +84,7 @@
                 (try
                   (let [record (some #(when (= ["tolgraven.dev-diagnostics-test" "<consumer>"] (:component %)) %) (vals (:active (:debug ((:values debug))))))]
                     (is (some #{[:diagnostic-test/value]} (:queries record)))
-                    (rf/dispatch [:component-data/install [:test :diagnostic-value] "after"])
+                    (r/dispatch [:component-data/install [:test :diagnostic-value] "after"])
                     (await! (support/settle!))
                     (capture/drain!)
                     (await! (support/settle!))
@@ -95,11 +95,11 @@
                   (finally ((:unmount! debug)))))
               (finally (support/unmount! root) (.remove element) (stop-record!) (stop!)
                        (reset! capture/*recording? false)
-                       (rf/dispatch [:component-data/remove [:test :diagnostic-value]])))))
+                       (r/dispatch [:component-data/remove [:test :diagnostic-value]])))))
         (.catch #(is false (str %))) (.finally done))))
 
 (deftest structured-schema-values-retain-type-highlighting
-  (let [html (server/render-to-string [values/<issues> [{:path [:age]
+  (let [html (r/render-to-string [values/<issues> [{:path [:age]
                                                         :actual "young"
                                                         :actual-type "string"
                                                         :required [:int {:min 18}]}]])]
@@ -119,16 +119,16 @@
                         :queries [[:diagnostic-test/value]]}
                 mounted (await! (support/mount-subscriptions! {:debug [:dev-console/data]}))]
             (try
-              (rf/dispatch [:dev-console/records [record]])
-              (rf/dispatch [:dev-console/pick id])
-              (rf/dispatch [:dev-console/records [{:kind :unmount, :instance id}
+              (r/dispatch [:dev-console/records [record]])
+              (r/dispatch [:dev-console/pick id])
+              (r/dispatch [:dev-console/records [{:kind :unmount, :instance id}
                                                  {:kind :metadata, :instance id, :queries [[:late]]}]])
               (await! (support/settle!))
               (let [debug (:debug ((:values mounted)))]
                 (is (nil? (get (:active debug) id)))
                 (is (= [[:diagnostic-test/value]] (get-in debug [:selected-record :queries]))))
               (finally
-                (rf/dispatch [:dev-console/pick nil])
+                (r/dispatch [:dev-console/pick nil])
                 ((:unmount! mounted))))))
         (.catch #(is false (str %)))
         (.finally done))))
@@ -137,19 +137,19 @@
   (let [owner (js-obj)
         *runs (atom 0)
         *flushes (atom 0)
-        reaction (ratom/make-reaction #(do (swap! *runs inc) "computed"))
+        reaction (r/make-reaction #(do (swap! *runs inc) "computed"))
         enabled? @consumer/*enabled?]
     (try
       (reset! consumer/*enabled? true)
-      (with-redefs [r/current-component (constantly owner)
-                    ratom/flush! #(swap! *flushes inc)]
+      (r/with-framework-bindings [r/current-component (constantly owner)
+                    r/flush! #(swap! *flushes inc)]
         (is (identical? reaction (consumer/subscribe! [:diagnostic-test/unread] reaction)))
         (consumer/render! {:ns "diagnostic-test", :name "unread"} [] (constantly [:div]))
         (is (zero? @*runs) "Observing an acquisition never runs its computation")
         (is (zero? @*flushes) "Observation never flushes other components"))
       (finally
         (reset! consumer/*enabled? enabled?)
-        (ratom/dispose! reaction)))))
+        (r/dispose! reaction)))))
 
 (deftest fragment-components-select-nearest-native-descendants
   (let [active {"logical" {:instance "logical", :native? false}
@@ -164,13 +164,13 @@
 (deftest early-capture-buffers-until-the-console-owner-commits
   (let [*events (atom [])
         record {:kind :view, :component ["diagnostic-test" "early"], :duration 1}]
-    (with-redefs [capture/*pending (atom [])
+    (r/with-framework-bindings [capture/*pending (atom [])
                   capture/*tick (atom nil)
                   capture/*publishing? (atom false)
                   capture/*connected? (r/atom true)
                   capture/*instances (atom {})
                   consumer/*enabled? (atom true)
-                  re-frame/dispatch #(swap! *events conj %)]
+                  r/dispatch #(swap! *events conj %)]
       (capture/emit! record)
       (capture/drain!)
       (is (empty? @*events) "Startup observations do not write into an uncommitted inspector")
@@ -187,15 +187,15 @@
 (deftest console-host-owns-queries-after-commit-and-releases-them
   (async done
     (-> (go-promise
-          (let [restore-db! (re-frame/make-restore-fn)
+          (let [restore-db! (r/make-restore-fn)
                 element (.createElement js/document "div")
                 root (await! (support/create-root! element))
                 *renders (atom 0)]
             (.appendChild (.-body js/document) element)
             (try
               (await! (support/render! root [<host-consumer> *renders]))
-              (rf/dispatch [:dev-console/option :recording? false])
-              (rf/dispatch [:dev-console/records [{:kind :view :duration 7}]])
+              (r/dispatch [:dev-console/option :recording? false])
+              (r/dispatch [:dev-console/records [{:kind :view :duration 7}]])
               (await! (support/settle!))
               (is (re-find #":recording\? false" (.-textContent element)))
               (is (re-find #":duration 7" (.-textContent element))
@@ -203,7 +203,7 @@
               (support/unmount! root)
               (await! (support/settle!))
               (let [renders @*renders]
-                (rf/dispatch [:dev-console/option :recording? true])
+                (r/dispatch [:dev-console/option :recording? true])
                 (await! (support/settle!))
                 (is (= renders @*renders) "Unmounted host no longer observes its queries"))
               (finally

@@ -1,6 +1,6 @@
 (ns tolgraven.modules.data-inspector.views
   (:require [tolgraven.component.registry]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [tolgraven.macros :refer-macros [defc]]
             [cljs.pprint :as pprint]
             [clojure.string :as string]
@@ -8,7 +8,7 @@
 
 (defc <formatted-data> [title path-or-data]
  (let [data (if (vector? path-or-data)
-             @(rf/subscribe path-or-data)
+             @(r/subscribe path-or-data)
              path-or-data)]
   [:div {:style {:text-align :left}}
   [:h5 title]

@@ -1,10 +1,10 @@
 (ns tolgraven.modules.contact.events
-  (:require [tolgraven.react :as rf]
+  (:require [tolgraven.react :as r]
             [ajax.core :as ajax]))
 
-(def debug (when ^boolean goog.DEBUG rf/debug))
+(def debug (when ^boolean goog.DEBUG r/debug))
 
-(rf/reg-event-fx :contact/send-request
+(r/reg-event-fx :contact/send-request
  (fn [{:keys [db]} [_ _]]
    (let [{:keys [name email title message]} (get-in db [:state :form-field :contact])]
      {:dispatch-n [[:http/post {:uri "/api/send-contact-email"
@@ -12,7 +12,7 @@
                                 :response-format (ajax/json-response-format {:keywords? true})}
                     [:contact/request-sent]]]})))
 
-(rf/reg-event-fx :contact/request-sent [debug]
+(r/reg-event-fx :contact/request-sent [debug]
   (fn [{:keys [db]} [_ response]]
     {:db (-> db
              (assoc-in [:state :contact-form :sent?] true)
@@ -22,11 +22,11 @@
                   [:form-field [:contact-form :title] nil]
                   [:form-field [:contact-form :email] nil]]}))
 
-(rf/reg-event-fx :contact/open
+(r/reg-event-fx :contact/open
   (fn [{:keys [db]} [_]]
     {:db (assoc-in db [:state :contact-form :show?] true)}))
 
-(rf/reg-event-fx :contact/close
+(r/reg-event-fx :contact/close
   (fn [{:keys [db]} [_ force?]]
     (if force?
       {:db (update-in db [:state :contact-form] merge

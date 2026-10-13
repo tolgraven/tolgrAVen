@@ -1,11 +1,11 @@
 (ns tolgraven.blog-ssr-test
   (:require
     [cljs.test :refer-macros [deftest is async]]
-    [reagent.core :as r]
-    [reagent.dom.client :as dom]
-    [tolgraven.react :as react]
-    [re-frame.core :as rf]
-    [re-frame.db :as rfdb]
+    [tolgraven.react :as r]
+
+
+
+
     [reitit.core :as reitit]
     [shadow.lazy :as lazy]
     [tolgraven.db :as db]
@@ -39,18 +39,18 @@
    :link-preview link-preview/spec})
 
 (r/defc <hydration-check> [on-commit]
-  (react/use-effect (fn [] (on-commit) nil) [])
+  (r/use-effect (fn [] (on-commit) nil) [])
   [page/<page>])
 
 (r/defc <formatter-commit> [*commits args]
-  (react/use-layout-effect (fn [] (swap! *commits inc) nil) [])
+  (r/use-layout-effect (fn [] (swap! *commits inc) nil) [])
   (into [highlight-view/<code-block>] args))
 
 (defn check-hydration! [fixture selectors done]
   (let [element (.createElement js/document "div") *root (atom nil)
-        *errors (atom []) before @rfdb/app-db before-snapshot @context/*snapshot
+        *errors (atom []) before @r/*app-db before-snapshot @context/*snapshot
         before-restore @restore/*context before-interactive @context/*interactive?
-        old-modules loader/modules old-href context/*href* old-dispatch rf/dispatch
+        old-modules loader/modules old-href context/*href* old-dispatch r/dispatch
         old-acquire loader/acquire-code! old-after-page resources/after-page!
         *highlight-requests (atom []) *release (atom []) *code-nodes (atom nil)
         *formatter-commits (atom 0)]
@@ -60,7 +60,7 @@
                       [id (reify lazy/ILoadable (ready? [_] true) IDeref (-deref [_] spec))])) modules))
     (set! context/*href* (fn [name params query]
                           (some-> (reitit/match-by-name routes/router name params) (reitit/match->path query))))
-    (set! rf/dispatch (fn [_] nil))
+    (r/set-dispatch-function! (fn [_] nil))
     (set! resources/after-page! (fn [release!] (swap! *release conj release!) (fn [])))
     (set! loader/acquire-code!
       (fn [id]
@@ -88,8 +88,8 @@
                        view (or (get-in match [:data :view])
                                 (get-in modules [(get-in match [:data :module]) :view (get-in match [:data :page])]))
                        script (.createElement js/document "script")]
-                   (rf/clear-subscription-cache!)
-                   (reset! rfdb/app-db (assoc db/data :content (:content snapshot)
+                   (r/clear-subscription-cache!)
+                   (reset! r/*app-db (assoc db/data :content (:content snapshot)
                                               :common/route (assoc-in match [:data :view] view)))
                    (restore/begin! {:hydrate? true})
                    (set! (.-id script) "ssr-bootstrap")
@@ -108,7 +108,7 @@
                      (js/Promise.
                       (fn [resolve reject]
                         (reset! *root
-                          (dom/hydrate-root element
+                          (r/hydrate-root element
                             [<hydration-check>
                              (fn []
                                (try
@@ -143,12 +143,12 @@
                                 (is (empty? @*errors) (pr-str @*errors))))))))
         (.catch #(is false (str %)))
         (.finally (fn []
-                    (when @*root (dom/unmount @*root))
+                    (when @*root (r/unmount @*root))
                     (.remove element)
-                    (rf/clear-subscription-cache!)
-                    (set! loader/modules old-modules) (set! context/*href* old-href) (set! rf/dispatch old-dispatch)
+                    (r/clear-subscription-cache!)
+                    (set! loader/modules old-modules) (set! context/*href* old-href) (r/set-dispatch-function! old-dispatch)
                     (set! loader/acquire-code! old-acquire) (set! resources/after-page! old-after-page)
-                    (reset! rfdb/app-db before) (reset! context/*snapshot before-snapshot)
+                    (reset! r/*app-db before) (reset! context/*snapshot before-snapshot)
                     (reset! context/*interactive? before-interactive) (reset! restore/*context before-restore)
                     (done))))))
 
@@ -167,7 +167,7 @@
                  ".blog-post-text pre code" ".blog-post-text .code-block span"] done)))
 
 (deftest hydration-normalizes-semantic-values-before-enhancing-the-header
-  (let [element (.createElement js/document "script") before @client/*snapshot before-db @rfdb/app-db]
+  (let [element (.createElement js/document "script") before @client/*snapshot before-db @r/*app-db]
     (set! (.-id element) "ssr-bootstrap")
     (set! (.-type element) "application/json")
     (set! (.-textContent element)
@@ -180,7 +180,7 @@
       (let [snapshot (client/install!)]
         (is (= :hire (get-in snapshot [:content :header :menu :work 0 2])))
         (is (= :blog (get-in snapshot [:content :blog :heading :target]))))
-      (finally (.remove element) (reset! client/*snapshot before) (reset! rfdb/app-db before-db)
+      (finally (.remove element) (reset! client/*snapshot before) (reset! r/*app-db before-db)
                (reset! context/*interactive? true)))))
 
 (deftest ordinary-cv-markup-hydrates-without-replacing-content

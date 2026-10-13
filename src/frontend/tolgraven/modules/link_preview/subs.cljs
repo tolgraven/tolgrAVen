@@ -1,34 +1,34 @@
 (ns tolgraven.modules.link-preview.subs
   (:require
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.modules.link-preview.util :as util]))
 
-(rf/reg-sub
+(r/reg-sub
   :link-preview/raw-text
   (fn [_ [_ text]]
     (or text "")))
 
-(rf/reg-sub
+(r/reg-sub
   :link-preview/candidates
   (fn [[_ text]]
-    [(rf/subscribe [:link-preview/raw-text text])])
+    [(r/subscribe [:link-preview/raw-text text])])
   (fn [[text] [_ _ base-url]]
     (util/external-urls text base-url)))
 
-(rf/reg-sub
+(r/reg-sub
   :link-preview/state
   (fn [db _]
     (get-in db [:state :link-preview]
             {:containers {}
              :prefetch-queue []})))
 
-(rf/reg-sub
+(r/reg-sub
   :link-preview/containers
   :<- [:link-preview/state]
   (fn [state _]
     (:containers state)))
 
-(rf/reg-sub
+(r/reg-sub
   :link-preview/link-count
   :<- [:link-preview/containers]
   (fn [containers _]

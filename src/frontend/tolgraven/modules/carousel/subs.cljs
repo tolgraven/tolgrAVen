@@ -1,6 +1,6 @@
 (ns tolgraven.modules.carousel.subs
-  (:require [tolgraven.react :as rf]))
+  (:require [tolgraven.react :as r]))
 
-(rf/reg-sub :carousel/index
-  (fn [[_ id]] (rf/subscribe [:state [:carousel id :index]]))
+(r/reg-sub :carousel/index
+  (fn [[_ id]] (r/subscribe [:state [:carousel id :index]]))
   (fn [index _] (or index 0)))

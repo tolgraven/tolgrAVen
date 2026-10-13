@@ -1,14 +1,14 @@
 (ns tolgraven.media-test
   (:require
     [cljs.test :refer-macros [deftest is testing]]
-    [reagent.dom.server :as server]
+    [tolgraven.react :as r]
     [tolgraven.components.media :as media]
     [tolgraven.components.image :as image]
     [tolgraven.components.video :as video]))
 
 (defn- render-element [component]
   (let [element (.createElement js/document "div")]
-    (set! (.-innerHTML element) (server/render-to-static-markup component))
+    (set! (.-innerHTML element) (r/render-to-static-markup component))
     element))
 
 (deftest responsive-picture-preserves-uppercase-original-and-selects-sized-variants

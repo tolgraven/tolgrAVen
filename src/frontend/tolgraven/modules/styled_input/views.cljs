@@ -1,9 +1,9 @@
 (ns tolgraven.modules.styled-input.views
   (:require [tolgraven.component]
             [tolgraven.component.font :as font]
-            [reagent.core :as r]
+            [tolgraven.react :as r]
             [tolgraven.macros :as m :include-macros true]
-            [tolgraven.components.ui :as ui]
+            [tolgraven.components.ui.markdown :as ui-markdown]
             [clojure.string :as string]))
 
 (m/defc ^:private <styled-letter>
@@ -33,7 +33,7 @@
            caret-pos (str (* char-width @caret) "em")
            selection-len (* char-width (abs (- @caret @selection-end)))
            caret-height (* 1.6 (max 0.(- 1.0 (* 0.03 selection-len))))
-           output [ui/<md->div> @internal-model]]
+           output [ui-markdown/<md->div> @internal-model]]
    [:div.styled-input-container
     {:class (when-not open? "closed")}
 

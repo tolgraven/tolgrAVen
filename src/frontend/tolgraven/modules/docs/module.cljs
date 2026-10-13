@@ -2,7 +2,7 @@
   (:require
     [tolgraven.modules.docs.pages :as pages]
     [tolgraven.content.contract :as content-contract]
-    [tolgraven.react :as rf]
+    [tolgraven.react :as r]
     [tolgraven.diagnostics.docs :as development]
     [tolgraven.modules.docs.events]
     [tolgraven.modules.docs.subs]
@@ -16,4 +16,4 @@
    :styles ["/css/tolgraven/modules/docs.min.css"]
    :pages pages/spec
    :view (merge {:page #'view/<page>} development/views)
-   :init #(rf/dispatch [:docs/init])})
+   :init #(r/dispatch [:docs/init])})
