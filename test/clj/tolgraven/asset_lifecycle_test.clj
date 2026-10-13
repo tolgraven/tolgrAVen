@@ -15,6 +15,9 @@
 (deftest production-imports-once-and-never-discovers-or-optimizes
   (let [calls (atom [])
         handler (with-redefs [config/env {}
+                              ;; This fixture supplies the complete inventory;
+                              ;; asset preflight has its own missing/release tests.
+                              middleware/ensure-production-assets! (constantly nil)
                               manifest/read-prepared! (fn [settings]
                                                         (swap! calls conj settings)
                                                         (inventory "prepared"))

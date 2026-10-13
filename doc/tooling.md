@@ -7,7 +7,7 @@ needed to run these tasks; they use Babashka's built-in libraries.
 
 | Owner | Commands / programs | Callers and runtime |
 | --- | --- | --- |
-| Build | `bb docker <action>`, `bb audit <label>` | Make targets and developers; Docker/Lein/Node subprocesses |
+| Build | `bb docker <action>`, `bb audit <label>`, `bb prod:build` | Make targets and developers; Docker/Lein/Node subprocesses |
 | Build | `scripts/build/sync-vendor.mjs`, `bundle-sizes.mjs` | npm vendor task and bundle audit; Node provides SDK resolution and Brotli |
 | Images | `bb images`, `bb images:verify`, `bb images:staged`, `bb images:responsive` | Manual assets, tracked pre-commit hook; cwebp/ImageMagick |
 | Uploads | `scripts/media/images.clj` | JVM upload adapter and Docker codec smoke test; standalone `bb` script |
