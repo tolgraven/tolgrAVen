@@ -61,7 +61,7 @@
       (-> (with-root!
             (fn [root element]
               (go-promise
-                (let [disabled {:features [[:seen false] [:appear nil] [:on-seen false] [:font false]]}]
+                (let [disabled [[:seen false] [:appear nil] [:on-seen false] [:font false]]]
                   (await! (support/render! root [<motion-counter> disabled]))
                   (is (= [0 0 0 0] [@*config-calls @*observers @*queries @*subscriptions]))
                   (let [native (.querySelector element "section")
@@ -69,7 +69,7 @@
                     (set! (.-value input) "Kept across feature changes")
                     (.click (.querySelector element "button"))
                     (await! (support/settle!))
-                    (await! (support/render! root [<motion-counter> {:features [[:seen {:threshold 0.25}]]}]))
+                    (await! (support/render! root [<motion-counter> [[:seen {:threshold 0.25}]]]))
                     (is (identical? native (.querySelector element "section")))
                     (is (= "1" (.-textContent (.querySelector element "button"))))
                     (is (= "Kept across feature changes" (.-value (.querySelector element "input"))))
@@ -83,7 +83,7 @@
                     (let [counts [@*config-calls @*observers @*queries @*subscriptions]]
                       (await! (support/render! root [<motion-counter> disabled]))
                       (is (= counts [@*config-calls @*observers @*queries @*subscriptions])))
-                    (await! (support/render! root [<motion-counter> {:features [:seen]}]))
+                    (await! (support/render! root [<motion-counter> [:seen]]))
                     (is (= 2 @*observers))
                     (is (identical? native (.querySelector element "section"))))))))
           (.then (fn [_]
@@ -111,14 +111,14 @@
       (-> (with-root!
             (fn [root element]
               (go-promise
-                (await! (support/render! root [view {:features (subvec ids 0 2)}]))
+                (await! (support/render! root [view (subvec ids 0 2)]))
                 (let [native (.-firstElementChild element)]
-                  (await! (support/render! root [view {:features ids}]))
+                  (await! (support/render! root [view ids]))
                   (is (identical? native (.-firstElementChild element)))
                   (is (= (mapv #(vector :mount %) ids) @*events))
-                  (await! (support/render! root [view {:features (mapv #(vector % false) ids)}]))
+                  (await! (support/render! root [view (mapv #(vector % false) ids)]))
                   (is (= (mapv #(vector :unmount %) (reverse ids)) (subvec @*events 10)))
-                  (await! (support/render! root [view {:features [(last ids)]}]))))))
+                  (await! (support/render! root [view [(last ids)]]))))))
           (.then (fn [_] (is (= [:unmount (last ids)] (last @*events)))))
           (.catch #(is false (str %)))
           (.finally done)))))
@@ -219,10 +219,10 @@
                 (await! (support/settle!))
                 (is (pos? @*queries))
                 (let [native (.-firstElementChild element)]
-                  (await! (support/render! root [<optional-text> {:features [[:font false]]} *visible?]))
+                  (await! (support/render! root [<optional-text> [[:font false]] *visible?]))
                   (is (identical? native (.-firstElementChild element)))
                   (let [count @*queries]
-                    (await! (support/render! root [<optional-text> {:features [[:font nil]]} *visible?]))
+                    (await! (support/render! root [<optional-text> [[:font nil]] *visible?]))
                     (is (= count @*queries)))
                   (reset! *visible? false)
                   (await! (support/settle!))
@@ -231,12 +231,12 @@
           (.finally (fn [] (set! rf/observe-subscription! before) (done)))))))
 
 (defc <instance-exit>
-  {:features [[:exit (fn [_ *enabled?]
-                      (when @*enabled? {:timeout-ms 3000}))]]}
+  {:features [[:exit (fn [spec *enabled?]
+                      (when (and (map? spec) @*enabled?) {:timeout-ms 3000}))]]}
   [spec *enabled?]
   [:button "Retained"])
 (defc <fragment-presence> {:features [:presence]} [spec *present? *exit?]
-  [:<> (when @*present? ^{:key :retained} [<instance-exit> {} *exit?])])
+  [:<> (when @*present? ^{:key :retained} [<instance-exit> [] *exit?])])
 
 (deftest fragment-presence-uses-current-child-exit-and-acknowledges-disable
   (async done
@@ -369,10 +369,10 @@
       (-> (with-root!
             (fn [root element]
               (go-promise
-                (await! (support/render! root [<required-boundary> {:features [[:error-boundary false]]}]))
+                (await! (support/render! root [<required-boundary> [[:error-boundary false]]]))
                 (is (some? (.querySelector element "[role=alert]")))
                 (is (.includes (.-textContent element) "Required page recovery"))
-                (await! (support/render! root [view {:features [[:data false]]}]))
+                (await! (support/render! root [view [[:data false]]]))
                 (is (= "Dependency-owned body" (.-textContent element)))
                 (is (some #{[resource]} @*reads) "The declaration-owned data boundary remains mounted")
                 (await! (support/render! root [<lean-domain> {:features [[:unknown-feature true]]}]))

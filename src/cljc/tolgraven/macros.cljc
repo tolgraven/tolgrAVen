@@ -146,6 +146,16 @@
    from spec/opts/options bindings or destructured feature keys; domain-data
    arguments need no opt-out annotation.
 
+   For spec-capable components, the first Hiccup argument may be a spec map or
+   an ordered feature vector: [<article> [[:appear false]] title] is equivalent
+   to [<article> {:features [[:appear false]]} title]. Keyword entries enable
+   features; [id config] entries refine, replace, or disable them. An empty
+   vector inherits declaration defaults. The runtime expands this shorthand to
+   {:features ...} before argument/spec validation, configuration functions and
+   the component body. Use a map with an explicit :features key when also passing
+   :props, :container, :depends, or domain fields. Inferred non-spec components
+   and explicit :spec false declarations keep vectors as ordinary domain data.
+
    Optional :let [bindings] initializes per-instance state. Existing form-2
    bodies, destructured/variadic arguments, docstrings and metadata are supported.
    Use components in Hiccup, not as ordinary functions (Reagent 2 convention).

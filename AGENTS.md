@@ -11,7 +11,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   use Clojure equality and equal state updates retain identity. Adapter review
   and ownership instructions live in `features/reagent-native-refactor.md`.
   See `doc/reagent-2-react-19-guide.md` for the library comparison and design rationale.
-- Reagent 2 / React 19 components use `defc`; full pages use `defpage` and always have an error boundary. Application re-frame calls go through `tolgraven.react`.
+- Reagent 2 / React 19 components use `defc`; spec-capable instances accept map
+  specs or feature-vector shorthand. Full pages use `defpage` and always have an error boundary. Application re-frame calls go through `tolgraven.react`.
 - Module-local `pages.cljc` files contain native Reitit route trees. Module specs expose these declarations; browser and server routers compose them.
 - JVM adapters acquire public data with snapshot-owned, bounded Supabase REST
   connections; the eager Shadow `:ssr` Node build renders the same page components as the browser. `:ssr` in config controls streaming and worker settings.

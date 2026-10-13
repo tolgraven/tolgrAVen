@@ -44,8 +44,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Regenerate Node-rendered fixtures before the browser suite. Check final assertion
   results, running Shadow warnings and browser logs; successful compilation is not
   a passing browser test or proof of live CMS integration.
-- Instance-feature checks cover disabled acquisition/config functions, dynamic
-  off/on/off cleanup and native/local-state identity, StrictMode replay, current
+- Instance-feature checks cover feature-vector/map normalization before validation,
+  callbacks, SSR and hydration, preserved domain vectors, disabled acquisition/config
+  functions, dynamic off/on/off cleanup and native/local-state identity, StrictMode replay, current
   lifecycle callbacks, cleanup exceptions, fragment presence, font nil roots, and
   mandatory page/data boundaries. Observe actual subscription/effect boundaries;
   redefining first-class shim functions does not intercept their macro expansions.

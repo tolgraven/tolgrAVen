@@ -23,6 +23,15 @@
   :let [*clicks (r/atom 0)]
   [:button {:on-click #(swap! *clicks inc)} (str "Sibling counter: " @*clicks)])
 
+(defonce *article-features (r/atom [[:appear false]]))
+(defc <feature-article>
+  {:features [:props [:appear {:class "opacity", :once? true}]]}
+  [spec title]
+  :let [*clicks (r/atom 0)]
+  [:article {:id "feature-vector-article"}
+   [:h3 title]
+   [:button {:on-click #(swap! *clicks inc)} (str "Article clicks: " @*clicks)]])
+
 (defonce *show-data? (r/atom false))
 (defonce *created (r/atom 0))
 (def resources [{:source :url :url "/fixtures/component-data.json" :into [:fixture :url]}])
@@ -55,6 +64,13 @@
 (defn <fixture> []
   [:main {:style {:max-width "62rem" :margin "2rem auto" :padding "1rem"}}
    [:h1 "Composable component features"]
+   [:section
+    [:h2 "Feature-vector instance specs"]
+    [:button {:on-click #(reset! *article-features [[:appear false]])} "Disable appearance"]
+    [:button {:on-click #(reset! *article-features [[:appear {:class "slide-in"}]])} "Enable appearance"]
+    [:button {:on-click #(reset! *article-features {:props {:title "Map props"}
+                                                 :features [[:appear false]]})} "Map with props"]
+    [<feature-article> @*article-features "The same article keeps its counter"]]
    [:section
     [:h2 "Persistent state and loading primitives"]
     [:button {:on-click #(swap! *show-persistent? not)} "Toggle persistent component"]
