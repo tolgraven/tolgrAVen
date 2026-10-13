@@ -152,3 +152,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - CMS deploy-action provisioning checks run `test/scripts/cms_actions_test.php`
   inside the installed Coolify container with helper, CMS UUID and web UUID arguments.
   They roll back all credential/environment writes and never trigger deployments.
+
+- Test runtime settings live in private `env/test/resources/config.edn`; copy
+  `config/test.example.edn` on a new worktree. Test resource paths exclude dev
+  resources so test configuration cannot inherit development credentials.

@@ -272,7 +272,7 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 - Note any config changes (e.g., `env/*` or Supabase schema) in the PR description.
 
 ## Configuration & Secrets
-- Local config lives in `config/local.dev.edn` and `config/local.test.edn`; production config is under `env/prod/resources`.
+- Runtime config uses `env/<environment>/resources/config.edn`. Dev/test files are private and ignored; production defaults are tracked. Examples and the commented defaults reference live in `config/`; see `doc/configuration.md`.
 - Do not commit secrets; prefer env vars or injected config files.
 
 ## Deploy
