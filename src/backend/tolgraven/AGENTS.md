@@ -133,4 +133,6 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 
 - Progressive image catalog entries preload the smallest AVIF preview alongside
   the final responsive AVIF set. Final `imagesrcset`/`imagesizes` match rendered
-  sources so phones select only their appropriate final candidate.
+  sources so phones select only their appropriate final candidate. The document
+  entrance may start after either visible layer decodes; suppressed previews do
+  not release it, and replacing the preview never starts a second entrance.

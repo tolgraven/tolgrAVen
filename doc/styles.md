@@ -215,7 +215,7 @@ source; returning to a prior source cannot reuse stale readiness.
 SSR cannot infer viewport/DPR, so its initial markup declares both candidates.
 The known 400w/100vw bucket suppresses the redundant painted preview on DPR-1
 phones (`25em`, using the browser's initial media-query font size), before JS;
-hydration removes that decorative DOM when the selected final decodes. Larger
+hydration removes that decorative DOM as soon as its native selection is known. Larger
 candidates retain two visible layers only while they need the upgrade. The shared
 root retains the caller’s media styles and dimensions, and the decorative preview
 is hidden from assistive technology. Explicit `:progressive? false` opts out; `true` enables other

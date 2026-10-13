@@ -160,9 +160,10 @@
                      [src ref single! decoded!])
           loaded! (react/use-callback
                     (fn [event]
+                      (single! (.-currentTarget event))
                       (decoded! (.-currentTarget event))
                       (when on-load (on-load event)))
-                    [src on-load decoded!])]
+                    [src on-load single! decoded!])]
       (react/use-effect
         (fn []
           (set! (.-current *active?) true)

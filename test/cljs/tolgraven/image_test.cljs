@@ -173,9 +173,11 @@
     (let [container (.createElement js/document "div")
           *final (atom nil)
           *finished? (atom false)
+          *timeout (atom nil)
           root (dom/create-root container)
           finish! (fn []
                     (when (compare-and-set! *finished? false true)
+                      (js/clearTimeout @*timeout)
                       (dom/unmount root)
                       (.remove container)
                       (done)))
@@ -183,7 +185,8 @@
                     (reset! *final (.-currentTarget event))
                     (js/setTimeout
                       (fn []
-                        (is (.endsWith (.-currentSrc @*final) "-400w.avif"))
+                        (is (re-find #"wide-spot-ctrl-small(-[0-9]+w)?\.avif$" (.-currentSrc @*final))
+                            "The browser may reuse a cached larger final candidate")
                         (is (= 1 (.-length (.querySelectorAll container "img"))))
                         (is (nil? (.querySelector container "[data-image-preview]")))
                         (is (identical? @*final (.querySelector container "[data-image-final]")))
@@ -197,11 +200,12 @@
                                        :progressive? true
                                        :sizes "10vw"
                                        :on-load loaded!}])
-      (js/setTimeout (fn []
-                       (when-not @*finished?
-                         (is false "Native final image decoded within ten seconds")
-                         (finish!)))
-                     10000))))
+      (reset! *timeout
+        (js/setTimeout (fn []
+                         (when-not @*finished?
+                           (is false "Native final image decoded within ten seconds")
+                           (finish!)))
+                       10000)))))
 
 (deftest progressive-final-failure-retains-the-preview
   (async done

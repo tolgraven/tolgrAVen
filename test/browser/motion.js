@@ -31,6 +31,14 @@ const settleLayout = async element => {
   });
   await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
 };
+const heroDecoded = () => {
+  const hero = doc()?.querySelector('#app #top-banner');
+  if (!hero) return false;
+  const images = hero.matches('img') ? [hero] : [...hero.querySelectorAll('img')];
+  return images.some(image => frame.contentWindow.getComputedStyle(image).display !== 'none' &&
+    image.complete && image.naturalWidth > 0);
+};
+
 // Sample the real document from its first paint through interactive startup.
 // Do not substitute data or manipulate application-owned markup.
 const sampleStartup = async path => {
@@ -45,11 +53,16 @@ const sampleStartup = async path => {
       // through their handoff, including a streamed cache miss.
       for (const main of mains) {
         const style = frame.contentWindow.getComputedStyle(main);
+        const titleNode = doc().querySelector('#app .intro-title-letter');
+        const titleAnimation = titleNode?.getAnimations().find(a => a.animationName === 'intro-letter-fade');
         samples.push({animation: style.animationName, opacity: Number(style.opacity),
                       scale: style.transform, shell: main.closest('#ssr-shell') !== null,
                       entranceStart: main.getAnimations().find(a => a.animationName === 'fade-in-site')?.startTime,
                       pending: doc().querySelector('#app')?.hasAttribute('data-document-pending'),
-                      heroDecoded: !!doc().querySelector('#app #top-banner')?.naturalWidth,
+                      heroDecoded: heroDecoded(),
+                      titleNode, titleAnimation,
+                      titleStart: titleAnimation?.startTime,
+                      titleDelay: titleAnimation?.effect.getTiming().delay,
                       restored: !!doc().querySelector('#app')?.hasAttribute('data-restore')});
       }
       // Production has no dev console. Establish interactivity through an
@@ -80,6 +93,14 @@ document.querySelector('#run').onclick = async () => {
       check(new Set(started.map(value => value.entranceStart)).size === 1, `${label} keeps one animation clock through hydration`);
       check(completed.filter(value => !value.pending && value.opacity > 0).every(value => value.heroDecoded),
             `${label} reveals the hero with the design`);
+      const letters = completed.filter(value => !value.pending && value.titleStart != null);
+      check(letters.length && letters.every(value => value.titleDelay === 2000 &&
+        Math.abs(value.titleStart - value.entranceStart) <= 35),
+            `${label} starts the first title letter two seconds after visible SSR`);
+      check(new Set(letters.map(value => value.titleNode)).size === 1 &&
+            new Set(letters.map(value => value.titleAnimation)).size === 1 &&
+            new Set(letters.map(value => value.titleStart)).size === 1,
+            `${label} keeps the native title clock through hydration`);
     };
     checkEntrance(cold, 'Cold SSR');
     // Observe the real return worker output before exercising its document pair.
