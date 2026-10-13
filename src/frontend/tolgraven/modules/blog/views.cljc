@@ -4,6 +4,8 @@
     [tolgraven.react :as r]
     [tolgraven.components.timer :as timer]
     [tolgraven.modules.blog.model :as model]
+    [tolgraven.modules.blog.editor :as editor]
+    [tolgraven.modules.blog.editor-model :as editor-model]
     [tolgraven.modules.blog.schema :as schema]
     [tolgraven.modules.blog.data :as data]
     #?(:feature/blog-comments [tolgraven.modules.blog.comments :as comments])
@@ -392,19 +394,22 @@
          [<add-comment-btn> {:parent-path parent-path :kind :cancel}]]]]))))
 
 (defc <preview-blog> "Render new post preview"
-  [{{:keys [title text]} :post :as spec}]
+  [{{:keys [title text image-assets]} :post :as spec}]
   [:div
     [:h2.blog-post-title title]
     [:br]
     [<markdown> text
-     {:trust (link-trust @(r/subscribe [:user/active-user]))}]])
+     {:trust (link-trust @(r/subscribe [:user/active-user]))
+      :image-assets image-assets}]])
 
 (defc <post-blog> "Render post-making ui"
   {:features [:error-boundary]}
   [] ; XXX move this and similar to own file...
-  (let [input @(r/subscribe [:form-field [:post-blog]])
+  (r/with-let [owner (str (random-uuid))]
+   (let [input @(r/subscribe [:form-field [:post-blog]])
         user @(r/subscribe [:user/active-user])
-        editing @(r/subscribe [:blog/state [:editing]])]
+        editing @(r/subscribe [:blog/state [:editing]])
+        uploads @(r/subscribe [:blog/state [:image-uploads]])]
     [:section.blog.blog-new-post
      [:h2 "Write blog post"]
      [:br]
@@ -417,12 +422,7 @@
       :placeholder "Tags"
       :path [:form-field [:post-blog :tags]]]
 
-     [ui-inputs/<input-text> :input-type :textarea
-      :placeholder "Text (markdown)"
-      :height "40vh"
-      :min-rows 6
-      :width "100%"
-      :path [:form-field [:post-blog :text]]]
+     [editor/<markdown-editor> {:owner owner, :exit (partial editor/dispose! owner)}]
 
      [ui-controls/<button> "Save draft" :save-blog-draft]
      [ui-controls/<button> "Highlight code" :highlight-blog-code
@@ -430,16 +430,21 @@
 
      [:br]
      [:section.blog-post-preview
-      [<preview-blog> {:post input}]]
+      [<preview-blog> {:post (assoc input :image-assets
+                                  (merge (:image-assets input)
+                                         (into {} (keep (fn [{:keys [asset]}]
+                                                         (when asset [(:src asset) asset])))
+                                               (vals uploads))))}]]
 
      [:section
       [ui-controls/<button> "Submit" :post-new-blog
+       :disabled? (editor-model/unresolved? (:text input) uploads)
        :action #(do (r/dispatch [:blog/submit
                                   (merge {:user user} input)
                                   editing])
                     nil)]
       [:button {:on-click #(r/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
-       [:label "Cancel"]]]]))
+       [:label "Cancel"]]]])))
 
 (defc <tag-link> [{:keys [tag]} :- schema/tag-spec]
   [:span [:a.blog-tag-link {:href @(r/subscribe [:href :blog-tag {:tag tag}])} tag]])
@@ -480,7 +485,8 @@
      [:div.blog-post-text
       [<markdown> text
        {:id (str "blog-post-" id)
-        :trust (link-trust user)}]]
+        :trust (link-trust user)
+        :image-assets (:image-assets post)}]]
      (when-enabled :blog :comments
        [<comments-section> {:post post :appear {:class "zoom-y" :remember-key [:blog/comments id]}}])]))
 

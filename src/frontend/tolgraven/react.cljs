@@ -125,3 +125,5 @@
 (def register-trace-cb runtime/register-trace-cb)
 (def remove-epoch-cb runtime/remove-epoch-cb)
 (def remove-trace-cb runtime/remove-trace-cb)
+
+(def use-id runtime/use-id)

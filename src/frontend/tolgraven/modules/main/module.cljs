@@ -5,6 +5,7 @@
 
 (def spec
   {:content [:document :header :common :footer :post-footer]
+   :server {:routes 'tolgraven.modules.main.api/routes}
    :storage storage/tables
    :id :main
    :assets {}

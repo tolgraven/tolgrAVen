@@ -41,6 +41,8 @@
             :converted
             (finally (fs/delete-if-exists temporary))))))))
 
+(declare asset!)
+
 (defn arguments [args]
   (loop [[arg & more :as remaining] args force? false]
     (cond
@@ -50,10 +52,14 @@
       :else {:force? force? :files remaining})))
 
 (defn -main [& args]
-  (let [{:keys [force? files]} (arguments args)
+  (if (= "--asset" (first args))
+    (if (= 3 (count args))
+      (asset! (second args) (nth args 2))
+      (throw (ex-info "Use --asset source-file manifest-file" {})))
+    (let [{:keys [force? files]} (arguments args)
         counts (reduce #(merge-with + %1 (convert! %2 force?)) {} (or (seq files) (originals)))]
     (println "Image conversion:" (get counts :converted 0) "variants created,"
-             (get counts :skipped 0) "current variants skipped.")))
+             (get counts :skipped 0) "current variants skipped."))))
 
 (defn verify! []
   (let [missing (for [file (originals), format formats
@@ -64,7 +70,8 @@
     (println "All public image variants are present.")))
 
 (def responsive-widths [80 160 320 640 960 1280 1920 2560])
-(def responsive-min-bytes (* 16 1024))
+(def responsive-min-dimension 960)
+(def responsive-min-bytes (* 64 1024))
 
 (defn responsive-original? [file]
   (and (or (original? file)
@@ -76,8 +83,9 @@
        (pos-int? height)
        (pos-int? width)
        (nat-int? bytes)
-       (<= 120 width)
-       (or (<= responsive-min-bytes bytes) (<= 960 (max width height)))))
+       (< 320 width)
+       (<= responsive-min-dimension (max width height))
+       (<= responsive-min-bytes bytes)))
 
 (defn responsive-sizes [width]
   (filterv #(< % width) responsive-widths))
@@ -91,20 +99,53 @@
       (for [[src entry] catalog
             :when (or (not (:generated? entry)) (:exclude? entry)
                       (some-> (get metadata src) responsive-eligible?))]
-        [src (if (and (:generated? entry) (not (:exclude? entry)))
-               (let [{:keys [width height]} (get metadata src)]
-                 (assoc entry :width width :height height :sizes (responsive-sizes width)))
-               entry)])
+        [src (let [data (get metadata src)
+                   entry' (cond-> entry
+                            (and (not (:exclude? entry)) (:bytes data)) (assoc :bytes (:bytes data)))]
+               (if (and (:generated? entry') (not (:exclude? entry')))
+                 (let [{:keys [width height]} data]
+                   (assoc entry' :width width :height height :sizes (responsive-sizes width)))
+                 entry'))])
       (for [[src {:keys [width height] :as data}] metadata
             :when (and (not (contains? catalog src)) (responsive-eligible? data))]
         [src {:width width
               :height height
+              :bytes (:bytes data)
               :sizes (responsive-sizes width)
               :generated? true}]))))
 
 (defn imagemagick []
   (str (or (fs/which "magick") (fs/which "convert")
            (throw (ex-info "ImageMagick is required" {})))))
+
+(defn band-colors
+  "Three horizontal RGB bands from a row-major 3×3 sample. No CSS or URLs."
+  [pixels]
+  (when-not (= 9 (count pixels))
+    (throw (ex-info "Invalid placeholder sample" {})))
+  (let [bands (mapv (fn [row]
+                      (apply format "#%02x%02x%02x"
+                             (map #(long (Math/round (/ (double (reduce + %)) 3)))
+                                  (apply map vector row))))
+                    (partition 3 pixels))]
+    bands))
+
+(defn placeholder! [file]
+  (let [output (:out (process/shell {:out :string :extra-env {"MAGICK_THREAD_LIMIT" "1"}}
+                                   (imagemagick) "-limit" "thread" "1" (str file)
+                                   "-auto-orient" "-background" "white" "-alpha" "remove" "-alpha" "off"
+                                   "-colorspace" "sRGB" "-resize" "3x3!" "-depth" "8" "-type" "TrueColor" "txt:-"))
+        pixels (mapv (fn [[_ hex]]
+                       (mapv #(Long/parseLong (subs hex % (+ % 2)) 16) [0 2 4]))
+                     (re-seq #"#([0-9a-fA-F]{6})(?:[0-9a-fA-F]{2})?\s" output))]
+    {:colors (band-colors pixels)}))
+
+(defn catalog-placeholders! [catalog]
+  (into (sorted-map)
+    (map (fn [[src entry]]
+           [src (if (:exclude? entry) entry
+                    (assoc entry :placeholder (placeholder! (fs/path "resources/public" src))))]))
+    catalog))
 
 (defn animated-png? [file]
   ;; APNG declares acTL before its first IDAT; some ImageMagick versions report
@@ -203,6 +244,12 @@
       (fs/move temporary file {:replace-existing true :atomic-move true})
       (finally (fs/delete-if-exists temporary)))))
 
+(defn placeholders! []
+  ;; Metadata-only refresh leaves every existing rendition byte untouched.
+  (let [catalog (edn/read-string (slurp "resources/responsive-images.edn"))]
+    (write-catalog! (catalog-placeholders! catalog))
+    (println "Image placeholders:" (count (remove (comp :exclude? val) catalog)) "sources.")))
+
 (defn responsive! [& args]
   (let [{:keys [force? files]} (arguments args)
         _ (when (seq files)
@@ -210,6 +257,7 @@
         original-catalog (edn/read-string (slurp "resources/responsive-images.edn"))
         metadata (responsive-metadata! original-catalog)
         catalog (responsive-catalog original-catalog metadata)
+        catalog' (catalog-placeholders! catalog)
         counts (frequencies
                  (for [[src {:keys [width height sizes exclude?]}] catalog
                        :when (not exclude?)
@@ -225,10 +273,46 @@
                        (throw (ex-info "Invalid responsive image source or size" {:src src :size size})))
                      (responsive-convert! file size format (and size force?)))))]
     ;; Publish only after all variants succeed; keep original/full-size fallbacks.
-    (write-catalog! catalog)
+    (write-catalog! catalog')
     (println "Responsive images:" (count (remove (comp :exclude? val) catalog)) "sources,"
              (get counts :converted 0) "variants created,"
              (get counts :skipped 0) "current variants skipped.")))
+
+(defn asset!
+  "Encode one private source into a complete local rendition manifest. The caller
+   owns a private temporary directory and durable publication after success."
+  [file manifest-file]
+  (let [{:keys [width height frames]} (image-metadata! file)
+        _ (when-not (and (= 1 frames) (<= 1 width 4096) (<= 1 height 4096))
+            (throw (ex-info "Choose a still image with dimensions at most 4096" {})))
+        format (if (#{"jpg" "jpeg"} (str/lower-case (fs/extension file))) "jpeg" "png")
+        original (fs/path (fs/parent file) (str "original." (if (= format "jpeg") "jpg" "png")))]
+    ;; Re-encode rather than publish user profiles or unvalidated original bytes.
+    (process/shell {:extra-env {"MAGICK_THREAD_LIMIT" "1"}}
+                   (imagemagick) "-limit" "thread" "1" (str file)
+                   "-auto-orient" "-strip" "-quality" "90" (str original))
+    (let [normalized (image-metadata! original)
+          sizes' (if (responsive-eligible? normalized)
+                   (conj (responsive-sizes (:width normalized)) nil)
+                   [nil])
+          rendition (fn [path mime]
+                      (let [metadata (image-metadata! path)]
+                        {:file (str (fs/file-name path))
+                         :width (:width metadata)
+                         :height (:height metadata)
+                         :bytes (:bytes metadata)
+                         :mime mime}))]
+      (doseq [size sizes', codec formats]
+        (responsive-convert! original size codec true))
+      (let [manifest {:placeholder (placeholder! original)
+                      :width (:width normalized)
+                      :height (:height normalized)
+                      :original (rendition original (str "image/" format))
+                      :webp (mapv #(rendition (if % (responsive-target original % "webp")
+                                                  (variant original "webp")) "image/webp") sizes')
+                      :avif (mapv #(rendition (if % (responsive-target original % "avif")
+                                                  (variant original "avif")) "image/avif") sizes')}]
+        (spit (str manifest-file) (pr-str manifest))))))
 
 (when (= *file* (System/getProperty "babashka.file"))
   (apply -main *command-line-args*))

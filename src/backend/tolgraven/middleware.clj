@@ -77,6 +77,9 @@
    (assets/load-bundles "public"
                         {"main.js" [(str "/js/compiled/out/"
                                          (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))]})
+   (assets/load-bundles "public"
+                        {"document-head.js" ["/js/document/head.js"]
+                         "document-entrance.js" ["/js/document/entrance.js"]})
    (assets/load-assets "public"
                        [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?|webp|avif)$"
                         #"/media/.*\.(jpg?|jpeg?|webp|avif|mp4|webm)$"])
@@ -153,6 +156,23 @@
         (assoc-in response [:headers "Cache-Control"] "public, max-age=31536000, immutable")
         response))))
 
+(defn wrap-media-cache
+  "Image/video filenames are immutable: publish changed content under a new name.
+   Preserve existing Optimus headers; plain successful media gets the same policy
+   for whole bodies and range responses. Errors and other resource types are excluded."
+  [handler]
+  (fn [request]
+    (let [response (handler request)
+          headers (:headers response)
+          content-type (or (get headers "Content-Type") (get headers "content-type") "")]
+      (if (and (not (:dev env))
+               (#{200 206} (:status response))
+               (re-matches #"/(?:img|media)/.+" (:uri request ""))
+               (re-find #"(?i)^(?:image|video)/" content-type)
+               (not (or (get headers "Cache-Control") (get headers "cache-control"))))
+        (assoc-in response [:headers "Cache-Control"] "public, max-age=31536000, immutable")
+        response))))
+
 (defn wrap-base [handler]
   (-> ((:middleware defaults) handler)
       ; wrap-flash
@@ -174,6 +194,7 @@
       wrap-not-modified ; guess this doesnt work cause optimus gens new files tho..
       ; (wrap-csp {:policy csp})
       wrap-partial-content
+      wrap-media-cache
       wrap-multipart-params
       wrap-formats
       ; wrap-with-logger

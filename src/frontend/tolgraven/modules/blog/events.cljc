@@ -4,6 +4,7 @@
     [tolgraven.react :as r]
 
     [tolgraven.modules.blog.model :as model]
+    [tolgraven.modules.blog.editor-model :as editor-model]
     [tolgraven.modules.blog.schema :as schema]
     [tolgraven.component.storage :as storage]
     [tolgraven.interceptors :refer [debug]] )))
@@ -60,7 +61,8 @@
 (r/reg-event-fx :blog/submit
   {:args (get schema/event-args :blog/submit)}
   (fn [{:keys [db]} [_ input editing]]
-    (when-not (get-in db [:state :supabase-writes :post])
+    (when-not (or (get-in db [:state :supabase-writes :post])
+                  (editor-model/unresolved? (:text input) (get-in db [:state :blog :image-uploads])))
       {:db (assoc-in db [:state :supabase-writes :post] true)
        :supabase/request {:method :post :uri "/api/supabase/posts"
                           :data (cond-> (select-keys input [:title :text :tags])

@@ -7,6 +7,7 @@
    [clojure.string :as string]
    [tolgraven.config :as config]
    [tolgraven.supabase.catalog :as catalog]
+   [tolgraven.media.query :as media-query]
    [tolgraven.validation :as validation]
    [tolgraven.site :as site])
   (:import
@@ -195,7 +196,10 @@
                        :path path
                        :status (:status response)
                        :body (:body response)})))
-    response))
+    (update response :body
+      (fn [body]
+        (if (sequential? body) (mapv media-query/normalize-row body)
+            (media-query/normalize-row body))))))
 
 (defn ->jsonb [value]
   (doto (PGobject.)

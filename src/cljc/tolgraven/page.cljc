@@ -39,11 +39,34 @@
   (or (when-let [title (:document-title spec)] (title snapshot))
       (get-in snapshot [:content :document :title])))
 
+(defn critical-image-paths
+  "Shared content paths for the heading and declared first-paint images."
+  [spec]
+  (let [heading (get-in spec [:shell :heading])]
+    (vec (distinct (concat (when heading [(conj (vec heading) :bg :src)])
+                           (:preload-images spec))))))
+
 (defn critical-images
   "The page's shared heading and explicitly declared first-paint content images."
   [spec content]
-  (let [heading (get-in spec [:shell :heading])]
-    (->> (concat (when heading [(conj (vec heading) :bg :src)])
-                 (:preload-images spec))
-         (keep #(get-in content %))
-         (filter string?) distinct vec)))
+  (->> (critical-image-paths spec)
+       (keep #(get-in content %))
+       (filter string?) distinct vec))
+
+(defn critical-image-attrs
+  "Project each first-paint image's rendered source, ready manifest and sizes.
+   String-only CMS fields use their section-owned image-assets sidecar."
+  [spec content]
+  (->> (critical-image-paths spec)
+       (keep (fn [path]
+               (let [src (get-in content path)
+                     parent (get-in content (pop path))
+                     asset (or (when (map? parent) (:asset parent))
+                               (loop [prefix (pop path)]
+                                 (or (get-in content (into prefix [:image-assets src]))
+                                     (when (seq prefix) (recur (pop prefix))))))]
+                 (when (string? src)
+                   (cond-> {:src (or (:src asset) src)}
+                     asset (assoc :asset asset)
+                     (and (map? parent) (:sizes parent)) (assoc :sizes (:sizes parent)))))))
+       distinct vec))

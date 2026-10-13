@@ -1,14 +1,14 @@
 (ns tolgraven.layout-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.data.json :as json]
-            [clojure.java.io :as io]
             [optimus.html :as ohtml]
             [ring.core.protocols :as protocols]
             [optimus.link :as olink]
     [tolgraven.config :as config]
     [tolgraven.content.service :as content]
             [tolgraven.ssr :as ssr]
-            [tolgraven.layout :as layout]))
+            [tolgraven.layout :as layout]
+            [tolgraven.managed-image-test :as managed]))
 
 (deftest page-heading-image-is-preloaded-before-the-body
   (with-redefs [config/env {:dev true :ssr {:enabled false}}
@@ -22,17 +22,33 @@
       (is (not (.contains body "img/blog.webp")))
       (is (not (.contains body "img/blog.jpg"))))))
 
-(deftest progressive-hero-preloads-preview-and-responsive-final
+(deftest managed-heading-preloads-explicit-sources-and-paints-its-own-gradient
+  (with-redefs [config/env {:dev true :ssr {:enabled false}}
+                content/immediate-content
+                (constantly {:blog {:heading {:bg {:src "https://cms.example.test/photo.jpg"
+                                                  :asset managed/asset
+                                                  :sizes "45vw"}}}})
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (let [body (:body (layout/render-home {:uri "/blog/post/17"}))
+          links (filter #(.contains % "as=\"image\"") (re-seq #"<link[^>]+>" body))]
+      (is (= 1 (count links)))
+      (is (.contains (first links) "imagesizes=\"45vw\""))
+      (is (.contains (first links) "https://images.example.test/objects/avif?width=1600"))
+      (is (not (.contains body "https://cms.example.test/photo.avif")))
+      (is (.contains body "linear-gradient(to bottom, #123456 0%, #abcdef 50%, #fedcba 100%)")))))
+
+(deftest progressive-hero-preloads-only-responsive-final-after-Back-policy
   (with-redefs [config/env {:dev true :ssr {:enabled false}}
                 content/immediate-content (constantly {:intro {:bg [{:src "img/foggy-shit-small.jpg"}]}})
                 ohtml/link-to-js-bundles (fn [& _] nil)]
     (let [body (:body (layout/render-home {:uri "/"}))
-          links (filter #(.contains % "as=\"image\"") (re-seq #"<link[^>]+>" body))]
-      (is (= 2 (count links)))
-      (is (.contains (first links) "href=\"img/foggy-shit-small-400w.avif\""))
-      (is (.contains (second links) "imagesrcset=\"img/foggy-shit-small-400w.avif 400w, img/foggy-shit-small-800w.avif 800w, img/foggy-shit-small.avif 1189w\""))
-      (is (.contains (second links) "imagesizes=\"100vw\""))
-      (is (< (.indexOf body "foggy-shit-small-400w.avif") (.indexOf body "<body"))))))
+          links (filter #(.contains % "as=\"image\"") (re-seq #"<link[^>]+>" body))
+          policy "src=\"/js/document/head.js\""]
+      (is (= 1 (count links)))
+      (is (.contains (first links) "imagesrcset=\"img/foggy-shit-small-400w.avif 400w, img/foggy-shit-small-800w.avif 800w, img/foggy-shit-small.avif 1189w\""))
+      (is (.contains (first links) "imagesizes=\"100vw\""))
+      (is (.contains body policy))
+      (is (< (.indexOf body policy) (.indexOf body (first links)))))))
 
 (deftest ssr-failure-status
   (doseq [[error status] [[(ex-info "Missing document" {:status 404}) 404]
@@ -298,8 +314,17 @@
       (is (= {:main {:url "/js/compiled/out/main.hash.js" :depends []}
               :blog {:url "/js/compiled/out/blog.hash.js" :depends [:main :user]}}
              (:scripts result)))
-      (is (.contains html (slurp (io/resource "public/js/document-entrance.js")))
+      (is (.contains html "/js/document/entrance.js")
           "Paired returns use the same owned image stage")
       (is (.contains html "data-local-return=\"true\""))
       (is (not (.contains html "data-document-pending=\"true\""))
           "The image stage cannot replay a paired document entrance"))))
+
+
+(deftest initial-browser-skeleton-has-an-image-colored-background
+  (with-redefs [config/env {:dev true :ssr {:enabled false}}
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (let [body (:body (layout/render-home {:uri "/"}))]
+      (is (.contains body "background-image:linear-gradient(to bottom, #"))
+      (is (< (.indexOf body "background-image:linear-gradient")
+             (.indexOf body "class=\"loading-container\""))))))

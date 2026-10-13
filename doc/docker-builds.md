@@ -47,8 +47,12 @@ No additional Coolify API token or SSH key is created.
 ## Prefab builder
 
 `Dockerfile.builder` combines pinned Babashka 1.13.225, Node 22, Temurin Java 21, and Leiningen images,
-then installs exactly `package-lock.json` and downloads build and documentation
-Maven artifacts.
+then installs ImageMagick and `cwebp`, exactly `package-lock.json`, and build and
+documentation Maven artifacts. Both the shared prefab and the self-contained
+fallback encode and decode WebP/AVIF fixtures during construction; a missing codec
+fails the build. ImageMagick defaults to one worker. Responsive catalog generation
+and real backend codec tests use this ordinary builder, with no separate test
+image or per-run tool installation.
 The prefab includes the complete project `node_modules` directory, including
 Sass, PostCSS, and Shadow CLI tools. npm scripts use these local executables;
 no global CSS-tool installs or compatibility symlinks are needed.
@@ -88,6 +92,16 @@ The npm imports use the supported `$default`/`:as` form, which Codox can parse,
 and the namespace filter matches `tolgraven.*` names rather than file extensions.
 The prefab still supplies most dependencies, so ordinary builds gain primarily
 from overlapping compilation rather than downloading dependencies.
+
+Agent prefab refreshes use the shared CPU launcher:
+
+```sh
+tolgraven-cpu run --mode buildkit -- make docker-prefab
+```
+
+This retains the global job slot, one-CPU quota, two-GiB memory budget and
+BuildKit worker parallelism of one. The launcher stops its owned BuildKit daemon
+when the command finishes; the reusable cache remains available.
 
 The independent `media-tools` runtime stage copies the pinned Babashka runtime and installs ImageMagick and `cwebp`, then
 encodes and decodes a tiny WebP/AVIF fixture during the image build. Check only

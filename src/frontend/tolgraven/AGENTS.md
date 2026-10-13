@@ -71,6 +71,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - `navigation/` owns routing, preload, transition and scroll adapters and contracts.
   `validation/schema.cljs` assembles browser/Node app-db sections from their owners;
   small single-use shell-state contracts stay inline there.
+- Image readiness callbacks use the shared picture lifecycle: notify only a decoded,
+  visibly committed final candidate after its overlap completes. Source changes and
+  unmount release native observation; hidden ancestors wait on scoped visibility/
+  motion changes rather than frame polling. See `doc/progressive-images.md`.
 - Rendered reusable UI lives in `components/`; feature-specific UI lives with its
   module. `component/` is the declaration/lifecycle runtime, not a view inventory.
   Import the owning namespace directly; there is no top-level `views.cljs` shim.
@@ -365,16 +369,28 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   do not initialize it globally or add an SDK script to server HTML. Keep restored
   public state renderable while the module is loading.
 
-- Catalog images marked `:progressive?` acquire a blurred decorative smallest
-  candidate and the responsive final concurrently. Distinct decoded upgrades use
-  simultaneous 100ms linear opacity/presence; same-candidate or already usable
-  pixels settle immediately. The initial hero's document adapter owns its phase
-  through terminal readiness, including mid-fade hydration, then the component
-  adopts it without replay and releases native listeners. The exact hero/src guard
-  prevents SPA inheritance. Later upgrades use keyed `defc :exit`/`:presence` on
-  the native preview span. Transient readiness belongs only to the current source;
-  known 400w/100vw DPR-1 phone buckets suppress its painted layer before JS. The
-  common root owns media identity/styles; refs/load handlers belong to the final.
+- Automatically eligible large catalog images default to a decorative smallest
+  preview and responsive final; the shared dimensions/bytes predicate excludes cheap originals; `:progressive? false` opts out. Native initial-image owners are
+  keyed by exact SSR wrappers and stable React IDs, stored only on the document
+  mount. They write mount CSS variables, never React children, and retain phase
+  through terminal handoff. Later upgrades use keyed `defc :exit`/`:presence`.
+  Preview blur clears from 4rem over 100ms while opacity overlaps for 150ms; cached,
+  reduced-motion and unnoticeable (opening scale <=2/3) finals settle directly.
+  External departure/history returns use final-only policy from shared restore
+  context; early head classification suppresses lazy preview discovery before JS.
+  Paired SSR emits final-only markup. SPA navigation, including query/history
+  destinations, clears that image policy while retaining the existing document clock.
+  Native decode/source completion and ref cleanup remain exact-node/currentSrc guarded.
+  Shared `restore/document-form` preserves three React document slots in Node/local
+  SSR and hydration so native image useId tokens match. `src/bootstrap/bootstrap/`
+  owns generated native document scripts; no authored snippets live in public JS.
+
+- Blog Markdown attachments use owner-scoped registered events and one serialized
+  authenticated upload queue. Keep browser File values transient, insert a stable
+  draft marker at the native selection, and replace only that marker after a
+  complete validated rendition manifest arrives. Retry/cancel/disposal invalidate
+  stale attempts; pending markers block publication. SDK reads and realtime events
+  restore URL-keyed image metadata before row validation.
 
 - Application framework calls use `tolgraven.react` as `r`. Its `react/runtime.cljs`
   boundary owns raw React/Reagent/re-frame APIs; reader-feature targets keep

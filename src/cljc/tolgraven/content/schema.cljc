@@ -2,6 +2,7 @@
   "Public CMS sections, after semantic normalization. Editor-owned optional
    fields may be absent; present values must have the shape consumed by views."
   (:require [tolgraven.schema.common :as c]
+            [tolgraven.media.schema :as media-schema]
             #?(:clj [tolgraven.build.site :refer [when-enabled]]))
   #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]])))
 
@@ -9,6 +10,9 @@
                            :playsInline :boolean :autoPlay :boolean :muted :boolean
                            :loop :boolean :controls :boolean :width [:or number? :string]
                            :height [:or number? :string]
+                           :asset media-schema/asset
+                           :renditions media-schema/renditions
+                           :placeholder media-schema/placeholder
                            :sizes :string
                            :loading [:enum "lazy" "eager"]
                            :decoding [:enum "async" "sync" "auto"]
@@ -49,11 +53,17 @@
    :gallery (when-enabled :home nil [:vector media])
    :blog (when-enabled :blog nil (c/optional-map {:heading heading}))
    :docs (when-enabled :docs nil (c/optional-map {:heading heading}))
-   :common (c/optional-map {:banner-heading heading :user-avatar-fallback :string})
+   :common (c/optional-map {:banner-heading heading
+                            :user-avatar-fallback :string
+                            :image-assets [:map-of :string media-schema/asset]})
    :footer [:vector footer-item]
    :post-footer [:vector footer-item]}))
 (def content (into [:map {:closed true}]
-                   (map (fn [[key schema]] [key {:optional true} schema])) sections))
+                   (map (fn [[key schema]]
+                          [key {:optional true}
+                           (if (#{:document :header :intro :services :moneyshot :story :strava :cv :soundcloud :blog :docs :common} key)
+                             [:merge schema [:map [:?image-assets [:map-of :string media-schema/asset]]]]
+                             schema)])) sections))
 (def bundle [:map [:version [:= 1]] [:content content]
              [:?deferred? :boolean]])
 

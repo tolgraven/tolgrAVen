@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.test :refer [deftest is run-tests]]
             [media.images :as images]
+            [tolgraven.components.image.eligibility :as eligibility]
             [test.server :as server]
             [util.process :as p]))
 
@@ -74,12 +75,27 @@
   (doseq [path ["img/a-320w.png" "img/a-320w.avif" "img/a.svg" "img/a.gif"
                 "img/uploads/a.png" "img/avatar.png" "img/apple-touch-icon.png" "img/favicon.avif" "img/android-chrome.webp"]]
     (is (not (images/responsive-original? path))))
-  (is (images/responsive-eligible? {:width 600 :height 600 :bytes 16384 :frames 1}))
-  (is (images/responsive-eligible? {:width 1200 :height 300 :bytes 4000 :frames 1}))
-  (doseq [data [{:width 100 :height 100 :bytes 100000 :frames 1}
-                {:width 600 :height 600 :bytes 8000 :frames 1}
-                {:width 600 :height 600 :bytes 100000 :frames 2}]]
+  (is (images/responsive-eligible? {:width 960 :height 600 :bytes 65536 :frames 1}))
+  (is (images/responsive-eligible? {:width 1200 :height 300 :bytes 100000 :frames 1}))
+  (is (images/responsive-eligible? {:width 321 :height 960 :bytes 65536 :frames 1}))
+  (is (images/responsive-eligible? {:width 950 :height 1194 :bytes 1454052 :frames 1}))
+  (doseq [data [{:width 959 :height 959 :bytes 100000 :frames 1}
+                {:width 320 :height 1200 :bytes 100000 :frames 1}
+                {:width 960 :height 600 :bytes 65535 :frames 1}
+                {:width 264 :height 262 :bytes 24776 :frames 1}
+                {:width 1200 :height 600 :bytes 8000 :frames 1}
+                {:width 1200 :height 600 :bytes 100000 :frames 2}]]
     (is (not (images/responsive-eligible? data)))))
+
+(deftest automatic-small-icons-are-removed-without-changing-manual-overrides
+  (let [icon {:width 264 :height 262 :sizes [80 160] :generated? true}
+        manual {:width 250 :height 250 :sizes [40 80] :progressive? false}
+        metadata {"img/cljs@2x.png" {:width 264 :height 262 :bytes 24776 :frames 1}
+                  "img/manual.png" {:width 250 :height 250 :bytes 100000 :frames 1}}
+        catalog (images/responsive-catalog {"img/cljs@2x.png" icon "img/manual.png" manual} metadata)]
+    (is (not (contains? catalog "img/cljs@2x.png")))
+    (is (= (assoc manual :bytes 100000) (get catalog "img/manual.png")))
+    (is (empty? (images/responsive-catalog {} metadata)))))
 
 (deftest responsive-discovery-selects-one-canonical-source-per-stem
   (with-redefs [fs/glob (fn [& _] ["resources/public/img/a.jpg" "resources/public/img/a.avif"
@@ -102,12 +118,13 @@
                   "excluded.jpg" {:width 600 :height 600 :bytes 200000 :frames 1}
                   "new.png" {:width 4096 :height 4096 :bytes 1000000 :frames 1}}
         catalog (images/responsive-catalog before metadata)]
-    (is (= hero (get catalog "hero.jpg")))
+    (is (= (assoc hero :bytes 200000) (get catalog "hero.jpg")))
     (is (= excluded (get catalog "excluded.jpg")))
     (is (= manual-off (get catalog "manual.png")))
     (is (not (contains? catalog "gone.png")))
     (is (= {:width 4096
             :height 4096
+            :bytes 1000000
             :sizes [80 160 320 640 960 1280 1920 2560]
             :generated? true}
            (get catalog "new.png")))
@@ -166,6 +183,15 @@
   (let [start (System/nanoTime)]
     (is (thrown-with-msg? Exception #"timed out" (p/shell {:timeout 50 :out :string} ["sleep" "10"])))
     (is (< (/ (- (System/nanoTime) start) 1e6) 2000))))
+
+(deftest scanner-and-runtime-share-the-substantial-original-cutoff
+  (doseq [data [{:width 960 :height 600 :bytes 65536 :frames 1}
+               {:width 321 :height 960 :bytes 65536 :frames 1}
+               {:width 320 :height 1200 :bytes 100000 :frames 1}
+               {:width 950 :height 950 :bytes 100000 :frames 1}
+               {:width 1200 :height 600 :bytes 65535 :frames 1}
+               {:width 165 :height 256 :bytes 7604 :frames 1}]]
+    (is (= (images/responsive-eligible? data) (eligibility/eligible? data)))))
 
 (defn -main [& _]
   (let [{:keys [fail error]} (run-tests 'tools-test)]

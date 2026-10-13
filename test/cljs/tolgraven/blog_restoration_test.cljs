@@ -93,7 +93,7 @@
         (let [element (.createElement js/document "div")
               root (await! (support/create-root! element))
               before @restore/*context
-              original r/subscribe
+              original (r/subscribe-function)
               author {:id "author", :name "Writer"}
               comment (fn [id]
                         {:id id,

@@ -14,7 +14,7 @@
 (deftest responsive-picture-preserves-uppercase-original-and-selects-sized-variants
   (let [element (render-element [image/<picture> {:src "img/crowd-lbp.JPG"}])
         img (.querySelector element "img")
-        avif (.querySelector element "source[type='image/avif']")]
+        avif (.querySelector element "picture source[type='image/avif']")]
     (is (= "img/crowd-lbp.JPG" (.getAttribute img "src")))
     (is (= "540" (.getAttribute img "width")))
     (is (.includes (.getAttribute avif "srcset") "img/crowd-lbp-400w.avif 400w"))))
@@ -23,7 +23,7 @@
   (testing "an image interlude renders an image, not an undecodable video"
     (let [element (render-element
                     [media/<interlude> [{:bg {:src "img/collage-strips.jpg"}}] 0])
-          image (.querySelector element "img")]
+          image (.querySelector element "img.media-as-bg")]
       (is (nil? (.querySelector element "video")))
       (is (= "img/collage-strips.jpg" (.getAttribute image "src")))
       (is (.contains (.-classList image) "media-as-bg")))))

@@ -154,3 +154,5 @@
 (def remove-trace-cb targets/remove-trace-cb)
 (def dispatch-and-settle re-frame.core/dispatch-and-settle)
 (def dispatch-with re-frame.core/dispatch-with)
+
+(def use-id hooks/use-id)

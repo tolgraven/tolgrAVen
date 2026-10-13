@@ -1,7 +1,7 @@
 ;; shadow-cljs configuration
 {;:lein {:profile "+dev"}
  :nrepl {:middleware [cider.piggieback/wrap-cljs-repl]}
- :source-paths ["src/backend" "src/frontend" "src/cljc"]
+ :source-paths ["src/backend" "src/frontend" "src/cljc" "src/bootstrap"]
 
  :builds
  ;; SSR is an eager Node program, deliberately without browser :modules.
@@ -23,6 +23,16 @@
                           ;; decoder; React's browser server renderer supports
                           ;; renderToString in Node without native npm modules.
                           :export-conditions ["worker" "browser" "require" "default"]}}
+
+  :document {:target :browser
+             :devtools {:enabled false}
+             :output-dir "resources/public/js/document"
+             :asset-path "/js/document"
+             :compiler-options {:infer-externs true
+                                :rename-prefix-namespace "DOC_BOOTSTRAP"}
+             :modules {:head {:init-fn bootstrap.images/init!}
+                       :entrance {:init-fn bootstrap.entrance/init!
+                                  :depends-on #{:head}}}}
 
   :return-worker {:target :browser
                   :compiler-options {:reader-features #{:return-worker}}
@@ -81,7 +91,7 @@
    :output-feature-set :es-next
    :pretty-print    true
    :infer-externs   true
-   :parallel-build  true
+   :parallel-build  false
    :closure-warnings {:externs-validation :off
                       :non-standard-jsdoc :off}
    :recompile-dependents false
@@ -125,7 +135,7 @@
    :output-feature-set :es-next
    :pretty-print         false
    :infer-externs        true
-   :parallel-build       true
+   :parallel-build       false
    :closure-warnings     {:externs-validation :off
                           :non-standard-jsdoc :off}
    :recompile-dependents false

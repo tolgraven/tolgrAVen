@@ -7,6 +7,17 @@ FROM --platform=$BUILDPLATFORM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746
 FROM --platform=$BUILDPLATFORM clojure:temurin-21-lein-bookworm-slim@sha256:12d1d3d51f3aa9b4f1c643a084b6e13180caa3b83176423ad839a3b1ac493bb2 AS prefab
 COPY --from=babashka /usr/local/bin/bb /usr/local/bin/bb
 RUN bb --version
+# Media generation and backend codec tests use the ordinary dependency prefab.
+ENV MAGICK_THREAD_LIMIT=1
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends imagemagick webp \
+ && rm -rf /var/lib/apt/lists/* \
+ && mkdir /tmp/image-codec-check \
+ && convert -size 16x16 xc:red /tmp/image-codec-check/image.png \
+ && cwebp -quiet /tmp/image-codec-check/image.png -o /tmp/image-codec-check/image.webp \
+ && convert /tmp/image-codec-check/image.png /tmp/image-codec-check/image.avif \
+ && convert /tmp/image-codec-check/image.webp /tmp/image-codec-check/image.avif null: \
+ && rm -rf /tmp/image-codec-check
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
@@ -42,7 +53,7 @@ RUN mkdir -p resources/public/css/tolgraven && npm run build
 ARG BUILD_JAVA_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m"
 RUN --mount=type=cache,id=tolgraven-shadow-release,target=/usr/src/app/.shadow-cljs,sharing=locked \
     JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
-    lein with-profile prod,provided run -m shadow.cljs.devtools.cli release app ssr return-worker
+    lein with-profile prod,provided run -m shadow.cljs.devtools.cli release app ssr return-worker document
 
 FROM source AS backend
 # Keep the smaller backend JVM bounded while Shadow compiles concurrently.

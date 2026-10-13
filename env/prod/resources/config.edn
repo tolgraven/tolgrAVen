@@ -2,6 +2,7 @@
  :analytics {:google-id "G-Y8H6RLZX3V"}
  :port 3000
  :image-converter "/app/scripts/media/images.clj"
+ :media {:enabled false}
  :ssr {:enabled true
        :render-workers 2
        :worker "/app/ssr/site.js"

@@ -2,12 +2,14 @@
   "Helpers for serving modern image formats (WebP, AVIF) with automatic fallbacks"
   (:require
     [tolgraven.component.registry]
+    [tolgraven.component.restore :as restore]
+    [tolgraven.component.visibility :as visibility]
+    [clojure.string :as string]
     [tolgraven.content.schema :as content]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.components.image.sources :as sources]
     [tolgraven.react :as r]
-    [tolgraven.listener :as listener]
-    ))
+    [tolgraven.listener :as listener]))
 
 (def attrs-schema
   ;; Pending avatars intentionally reserve their box without an image request.
@@ -15,8 +17,12 @@
   (vector :merge content/media [:map [:?src :?string]
                                [:?on-error [:maybe fn?]]
                                [:?on-load [:maybe fn?]]
+                               [:?on-visible-ready [:maybe fn?]]
                                [:?style :?map]
                                [:?progressive? :boolean]]))
+
+(def visible-ready-schema
+  [:map [:src :string] [:selected-src :string]])
 
 (def get-src-variants sources/get-src-variants)
 
@@ -45,7 +51,7 @@
   [{:keys [src on-error ref preview? on-attached-error on-source-error] :as attrs} :- attrs-schema]
   (r/with-let [*fallback-sources (r/atom #{})]
     (let [attrs' (merge {:decoding "async"} (sources/dimensions src)
-                        (dissoc attrs :preview? :progressive? :on-attached-error :on-source-error))
+                        (dissoc attrs :preview? :progressive? :on-attached-error :on-source-error :on-visible-ready))
           preview (when preview? (sources/preview src))
           capture! (r/use-memo
                     #(r/compose-refs
@@ -93,16 +99,138 @@
       [:img attrs']))))
 
 (defn- document-owner [^js image src]
-  ;; The document adapter owns only the exact initial hero, through its terminal
-  ;; phase. Reading its native identity is interop, not a second readiness store.
+  ;; Initial images share a document-owned collection, keyed by exact native
+  ;; wrapper identity. No later SPA instance inherits an old staging owner.
   (when image
-    (let [hero (.closest image ".progressive-image")
-          ^js root (some-> hero (.closest "#app"))]
-      (when (and root (identical? hero (.-__progressiveHero root))
-                 (= "native" (.getAttribute root "data-document-image-owner"))
-                 (= src (.getAttribute root "data-document-image-src"))
+    (let [wrapper (.closest image ".progressive-image, img[data-image-placeholder]")
+          ^js root (some-> wrapper (.closest "#app"))
+          ^js owners (some-> root (aget "__progressiveImages"))
+          ^js owner (when owners (.get owners wrapper))]
+      (when (and owner ((aget owner "current"))
+                 (= src (aget owner "src"))
                  (= src (.getAttribute image "src")))
-        root))))
+        owner))))
+
+(defn- noticeable-preview? [image]
+  ;; Use actual viewport exposure and the real entrance transform, including CSS
+  ;; easing and paused clocks. Early finals have no minimum preview duration.
+  (when image
+    (let [wrapper (.closest image ".progressive-image")
+          rect (.getBoundingClientRect wrapper)]
+      (when (and (pos? (.-width rect)) (pos? (.-height rect))
+                 (pos? (.-bottom rect)) (pos? (.-right rect))
+                 (< (.-top rect) (.-innerHeight js/window))
+                 (< (.-left rect) (.-innerWidth js/window)))
+        (loop [node wrapper]
+          (if (or (nil? node) (= "app" (.-id node)))
+            true
+            (let [style (js/getComputedStyle node)
+                  transform (.-transform style)
+                  scale-x (if (= transform "none") 1
+                            (.-a (js/DOMMatrixReadOnly. transform)))]
+              (and (not= "hidden" (.-visibility style))
+                   (not= "none" (.-display style))
+                   (> (js/parseFloat (.-opacity style)) 0)
+                   (> (js/Math.abs scale-x) (/ 2 3))
+                   (recur (.-parentElement node))))))))))
+
+(defn- in-viewport? [image]
+  (let [rect (.getBoundingClientRect image)]
+    (and (pos? (.-width rect)) (pos? (.-height rect))
+         (pos? (.-bottom rect)) (pos? (.-right rect))
+         (< (.-top rect) (.-innerHeight js/window))
+         (< (.-left rect) (.-innerWidth js/window)))))
+
+(defn- painted-image? [image]
+  (and (= "visible" (.-visibilityState js/document))
+       (in-viewport? image)
+       (loop [node image]
+         (if-not node
+           true
+           (let [style (js/getComputedStyle node)]
+             (and (not= "hidden" (.-visibility style))
+                  (not= "none" (.-display style))
+                  (pos? (js/parseFloat (.-opacity style)))
+                  (recur (.-parentElement node))))))))
+
+(defn- use-visible-ready! [*image src state callback]
+  (let [*notification (r/use-ref {:src src})]
+    (r/use-effect
+      (fn []
+        (when-not (= src (:src (.-current *notification)))
+          (set! (.-current *notification) {:src src}))
+        (when (and callback (exists? js/window)
+                   (= src (:src state)) (= :decoded (:phase state))
+                   (seq (:selected state)) (not (:notified? (.-current *notification))))
+          (let [image (.-current *image)
+                selected (:selected state)
+                *active? (volatile! true)
+                *frame (volatile! nil)
+                *visibility (volatile! nil)
+                *observer (volatile! nil)
+                *stop-listeners (volatile! nil)]
+            ;; The normal visibility root of a modern picture is display:contents.
+            ;; Reuse its observer setup on the committed native IMG, then wait two
+            ;; paint frames after final decode/fade. Only opt-in callbacks acquire
+            ;; this adapter; offscreen images wait on the observer without polling.
+            (letfn [(cleanup! []
+                      (vreset! *active? false)
+                      (when @*frame (js/cancelAnimationFrame @*frame))
+                      (when @*visibility ((:stop! @*visibility)))
+                      (when @*observer (.disconnect @*observer))
+                      (when @*stop-listeners (@*stop-listeners)))
+                    (current? []
+                      (and @*active? image
+                           (identical? image (.-current *image))
+                           (.contains js/document image)
+                           (= src (.getAttribute image "src"))
+                           (= selected (.-currentSrc image))))
+                    (paint! []
+                      (vreset! *frame nil)
+                      (when (current?)
+                        (when (and (.-complete image) (pos? (.-naturalWidth image)))
+                          (if (painted-image? image)
+                            (do
+                              (cleanup!)
+                              (set! (.-current *notification) {:src src, :notified? true})
+                              (callback {:src src, :selected-src selected}))
+                            ;; Hidden ancestors wait for their next native change
+                            ;; or motion completion; never keep requesting frames.
+                            nil))))
+                    (schedule! []
+                      (when (and (current?) (nil? @*frame))
+                        (vreset! *frame
+                                 (js/requestAnimationFrame
+                                   (fn []
+                                     (vreset! *frame (js/requestAnimationFrame paint!)))))))]
+              (when image
+                (let [ancestors (take-while some? (iterate #(.-parentElement %) image))
+                      observer (js/MutationObserver. (fn [_ _] (schedule!)))]
+                  (vreset! *observer observer)
+                  (doseq [ancestor ancestors]
+                    (.observe observer ancestor
+                              #js {:attributes true
+                                   :attributeFilter #js ["class" "style" "hidden" "data-document-pending"]}))
+                  (vreset! *stop-listeners
+                           (listener/listen!
+                             :image-visible-ready
+                             (concat
+                               [{:target js/document
+                                 :event "visibilitychange"
+                                 :handler (fn [_] (schedule!))}]
+                               (for [ancestor ancestors
+                                     event ["transitionend" "transitioncancel" "animationend" "animationcancel"]]
+                                 {:target ancestor
+                                  :event event
+                                  :handler (fn [event]
+                                             (when (identical? ancestor (.-target event))
+                                               (schedule!)))})))))
+                (vreset! *visibility (visibility/setup {:callback schedule!
+                                                        :once? false
+                                                        :threshold 0}))
+                ((:mount! @*visibility) image))
+              cleanup!))))
+      [src (:phase state) (:selected state) callback])))
 
 (defn- same-preview-candidate? [image preview-image preview sizes]
   (when (and image preview (exists? js/window))
@@ -118,7 +246,7 @@
 
 (defc ^:private <preview-layer>
   ;; A picture with display:contents has no painted native motion root. This
-  ;; span lets the established presence lifecycle own the 100ms opacity exit.
+  ;; span lets the established presence lifecycle own the 150ms opacity exit.
   {:features [:exit]}
   [attrs]
   [:span.progressive-image__preview-layer
@@ -135,18 +263,30 @@
 
 (defc <picture>
   "Render responsive modern sources with original recovery. Different candidates
-   overlap for 100ms after final decode; matching candidates use a single layer.
+   overlap for 150ms after final decode; matching candidates use a single layer.
    The initial document owns its upgrade through hydration, without replay."
-  [{:keys [src class style id progressive? on-error on-load ref on-transition-end on-transition-cancel] :as attrs} :- attrs-schema]
+  [{:keys [src class style id progressive? on-error on-load ref on-transition-end on-transition-cancel on-visible-ready] :as attrs} :- attrs-schema]
   (r/with-let [*image-phase (r/atom {:src src, :phase nil})]
     (let [*final-image (r/use-ref nil)
           *preview-image (r/use-ref nil)
           *active? (r/use-ref true)
+          image-key (string/replace (r/use-id) #"[^A-Za-z0-9_-]" "_")
+          initial-hydration? (r/use-memo restore/initial-hydration? [])
+          direct? (restore/direct-images?)
           preview (sources/preview src)
           progressive?' (and preview (if (contains? attrs :progressive?)
                                       progressive? (sources/progressive? src)))
+          background (sources/placeholder-background src)
+          dimensions (sources/dimensions src)
+          placeholder? (and background (>= (max (or (:width dimensions) 0)
+                                               (or (:height dimensions) 0)) 960))
           sizes (or (:sizes attrs) "100vw")
           phase (when (= src (:src @*image-phase)) (:phase @*image-phase))
+          phase' (cond
+                   (not progressive?') (if (= :decoded phase) :decoded :single)
+                   (and direct? (or (not initial-hydration?) (restore/local-document?) phase))
+                   (if (= :decoded phase) :decoded :single)
+                   :else phase)
           failed! (r/use-callback
                     (fn [event]
                       (when-not (= {:src src, :phase :failed} @*image-phase)
@@ -160,9 +300,9 @@
           single! (r/use-callback
                     (fn [image]
                       (when (and progressive?' (not (document-owner image src))
-                                 (same-preview-candidate? image (.-current *preview-image) preview sizes))
+                                 (or direct? (same-preview-candidate? image (.-current *preview-image) preview sizes)))
                         (reset! *image-phase {:src src, :phase :single})))
-                    [src progressive?' sizes (:width preview) (:avif preview) (:webp preview)])
+                    [src direct? progressive?' sizes (:width preview) (:avif preview) (:webp preview)])
           decoded! (r/use-callback
                      (fn [image upgrade?]
                        ;; No fetch or application timer: native decode readiness
@@ -175,14 +315,17 @@
                                                    (identical? image (.-current *final-image))
                                                    (= src (.getAttribute image "src"))
                                                    (= selected (.-currentSrc image))
-                                                   (not (#{:single :decoded :failed} (:phase @*image-phase)))
+                                                   (not= :failed (:phase @*image-phase))
+                                                   (not (and (= :decoded (:phase @*image-phase))
+                                                             (= selected (:selected @*image-phase))))
                                                    (not (and (= :upgrading (:phase @*image-phase))
                                                              (= selected (:selected @*image-phase)))))
                                           (let [preview-image (.-current *preview-image)
                                                 upgrading? (= :upgrading (:phase @*image-phase))
                                                 settled? (and upgrading?
                                                               (>= (js/parseFloat (.-opacity (js/getComputedStyle image))) 0.999))
-                                                overlap? (and upgrade? preview-image
+                                                overlap? (and upgrade? (not direct?) (not= :single (:phase @*image-phase)) preview-image
+                                                              (noticeable-preview? image)
                                                               (pos? (.-naturalWidth preview-image))
                                                               (not (.. js/window
                                                                        (matchMedia "(prefers-reduced-motion: reduce)")
@@ -197,7 +340,7 @@
                            (if (.-decode image)
                              (-> (.decode image) (.then ready!) (.catch (fn [_] nil)))
                              (ready!)))))
-                     [src])
+                     [src direct?])
           capture! (r/use-memo
                      #(r/compose-refs
                        (fn [image]
@@ -228,7 +371,9 @@
                                    (= :upgrading (:phase @*image-phase))
                                    (= (:selected @*image-phase)
                                       (.-currentSrc (.-currentTarget event))))
-                          (reset! *image-phase {:src src, :phase :decoded}))
+                          (reset! *image-phase {:src src
+                                               :phase :decoded
+                                               :selected (.-currentSrc (.-currentTarget event))}))
                         (when-let [handler (case (.-type event)
                                              "transitionend" on-transition-end
                                              "transitioncancel" on-transition-cancel
@@ -240,36 +385,45 @@
           (set! (.-current *active?) true)
           (when-not (= src (:src @*image-phase))
             (reset! *image-phase {:src src, :phase nil}))
-          (if-let [root (document-owner (.-current *final-image) src)]
-            (let [adopt! (fn adopt! [_]
-                           (when (document-owner (.-current *final-image) src)
+          (if-let [owner (document-owner (.-current *final-image) src)]
+            (if (#{:single :decoded :retry :failed} phase)
+              (do
+                ;; A final-only paired wrapper was managed in SSR already; its
+                ;; exact native owner cannot infer this commit from that marker.
+                ((aget owner "handoff"))
+                (decoded! (.-current *final-image) false)
+                #(set! (.-current *active?) false))
+              (let [root (aget owner "root")
+                    adopt! (fn [_]
+                           (when (identical? owner (document-owner (.-current *final-image) src))
                              (when-let [terminal (get {"ready" :decoded
-                                                      "single" :single
-                                                      ;; Modern recovery is owned by source-picture.
+                                                      "single" (if (aget owner "finalReady") :decoded :single)
                                                       "failed" (if (modern-source-selected?
                                                                        (.-current *final-image) src)
                                                                  :retry :failed)}
-                                                     (.getAttribute root "data-document-image-phase"))]
-                               (reset! *image-phase {:src src, :phase terminal})
+                                                     (aget owner "phase"))]
+                               (reset! *image-phase {:src src, :phase terminal
+                                                      :selected (.-currentSrc (.-current *final-image))})
                                terminal)))
-                  stop-listeners! (listener/listen! :progressive-image
+                    stop-listeners! (listener/listen! :progressive-image
                                     [{:target root
                                       :event "tolgraven:document-image-ready"
-                                      :handler adopt!
-                                      :once? true}])]
+                                      :handler adopt!}])]
               (when (adopt! nil) (stop-listeners!))
               #(do (set! (.-current *active?) false)
-                   (stop-listeners!)))
+                   (stop-listeners!))))
             (do
               (single! (.-current *final-image))
               (decoded! (.-current *final-image) false)
               #(set! (.-current *active?) false))))
-        [src single! decoded! (= :native phase)])
-      (if progressive?'
-        (let [managed? (or (and phase (not= :native phase))
+        [src single! decoded! direct? phase])
+      (use-visible-ready! *final-image src @*image-phase on-visible-ready)
+      (cond
+        progressive?'
+        (let [managed? (or (and phase' (not= :native phase'))
                            (not= src (:src @*image-phase)))
               final-attrs (-> attrs
-                              (dissoc :class :style :id :progressive?)
+                              (dissoc :class :style :id :progressive? :on-visible-ready)
                               (assoc :class "progressive-image__final"
                                      :data-image-final true
                                      :style {:visibility (when (= :failed phase) "hidden")}
@@ -287,18 +441,52 @@
                              :class "progressive-image__preview"
                              :data-image-preview true
                              :ref *preview-image
-                             :loading (or (:loading attrs) "eager")
+                             :loading "lazy"
                              :fetchPriority (or (:fetchPriority attrs) "auto")}
               root-attrs {:id id
                           :class class
-                          :style style
+                          :style (merge {"--image-final-opacity" (str "var(--pi-" image-key "-final, 0)")
+                                         "--image-preview-opacity" (str "var(--pi-" image-key "-preview, 1)")
+                                         "--image-preview-blur" (str "var(--pi-" image-key "-blur, 4rem)")
+                                         "--image-motion" (str "var(--pi-" image-key "-motion, none)")
+                                         "--image-placeholder" (str "var(--pi-" image-key "-placeholder, "
+                                                                      (or background "none") ")")}
+                                        style)
+                          :data-image-key image-key
+                          :data-image-placeholder (when background true)
                           :data-preview-width (:width preview)
                           :data-image-sizes sizes
-                          :data-image-phase (when managed? (some-> phase name))
+                          :data-image-phase (when managed? (some-> phase' name))
                           :data-image-managed (when managed? true)
-                          :data-image-retrying (when (#{:retry :failed} phase) true)}]
-          [<progressive-layers> root-attrs phase preview-attrs final-attrs])
-        [<source-picture> attrs]))))
+                          :data-image-retrying (when (#{:retry :failed} phase') true)}]
+          [<progressive-layers> root-attrs phase' preview-attrs final-attrs])
+
+        placeholder?
+        [<source-picture>
+         (assoc (dissoc attrs :on-visible-ready)
+                :style (merge {:background-image (if (= :decoded phase) "none"
+                                                    (str "var(--pi-" image-key "-placeholder, " background ")"))}
+                              style)
+                :data-image-key image-key
+                :data-image-placeholder true
+                :data-image-phase (name phase')
+                :data-image-managed true
+                :data-image-final true
+                :ref capture!
+                :on-load loaded!
+                :on-error failed!
+                :on-source-error pending!
+                :on-attached-error failed!)]
+
+        on-visible-ready
+        [<source-picture> (assoc (dissoc attrs :on-visible-ready)
+                                :ref capture!
+                                :on-load loaded!
+                                :on-error failed!
+                                :on-source-error pending!
+                                :on-attached-error failed!)]
+
+        :else [<source-picture> (dissoc attrs :on-visible-ready)]))))
 
 (defc <img>
   "Smart img component that automatically uses modern formats when available.

@@ -50,7 +50,7 @@
          [:p.cv-position position])
        [:p.cv-where where]
        (when-not (string/blank? logo)
-         [img/<picture> {:src logo :alt "Company logo"}])])))
+         [img/<picture> {:src logo :alt "Company logo" :sizes (if @expanded? "8rem" "4rem")}])])))
 
 (m/defc <capabilities> "The various skills"
   [skills :- [:map-of [:or :string :keyword] [:sequential :string]]]

@@ -17,8 +17,8 @@
                             :cache-document-field :id}}
     :key [:id]
     :order [[:id :asc]]
-    :jsonb #{:raw}
-    :public-columns "doc_id,id,permalink,user_id,title,text,tags,score,ts"
+    :jsonb #{:raw :image_assets}
+    :public-columns "doc_id,id,permalink,user_id,title,text,tags,score,ts,image_assets"
     :references #{:site_users}}
    {:table :blog_comments
     :sql "supabase/modules/blog_comments.sql"

@@ -162,7 +162,7 @@
   ;; Initial routing must not cancel restoration started before mounting.
   (when (pos? @*generation)
     (when-let [cleanup! @*restore-cleanup] (cleanup!)))
-  (when back? (restore/begin! {:back? true}))
+  (when back? (restore/spa-back!))
   (let [generation (swap! *generation inc)
         animate? (and animate? (not back?) (not (motion/reduced-motion?)))
         native? (and animate? (exists? js/document) (fn? (.-startViewTransition js/document)))

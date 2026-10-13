@@ -83,7 +83,7 @@
 
   :min-lein-version "2.0.0"
 
-  :source-paths ["src/backend" "src/frontend" "src/cljc"]
+  :source-paths ["src/backend" "src/frontend" "src/cljc" "src/bootstrap"]
   :test-paths ["test/clj"]
   :resource-paths ["resources"]
   ;; Git ignores do not affect resource packaging in local jar builds.
@@ -139,7 +139,7 @@
                                  :init (start)
                                  :nrepl-middleware [cider.piggieback/wrap-cljs-repl
                                                     shadow.cljs.devtools.server.nrepl/middleware]
-                                 ;; Cold namespaces and initial watches precede the nREPL acknowledgement.
+                                 ;; Allow cold application initialization; Shadow watches start afterward.
                                  :timeout 180000}
                   }
    :project/test {:dependencies [[ring/ring-mock "0.6.2"]]
@@ -149,7 +149,7 @@
 
    :uberjar {:jvm-opts ["-Dconf=env/prod/resources/config.edn"]
              :prep-tasks ["compile"
-                          ["run" "-m" "shadow.cljs.devtools.cli" "release" "app" "return-worker"]
+                          ["run" "-m" "shadow.cljs.devtools.cli" "release" "app" "return-worker" "document"]
                           ["docs"]]
              :aot ~(:aot site-packaging)
              :omit-source true
@@ -157,7 +157,8 @@
              :source-paths ["env/prod/clj" "env/prod/cljs"]
              :resource-paths ["env/prod/resources" "resources"]}
 
-   :prod {:source-paths ["env/prod/clj" "env/prod/cljs"]
+   :prod {:jvm-opts ["-Dconf=env/prod/resources/config.edn"]
+          :source-paths ["env/prod/clj" "env/prod/cljs"]
           :resource-paths ["env/prod/resources"]}
 
    ;; Codox's bundled CLJS 1.7 analyzer must not override Shadow's compiler.
