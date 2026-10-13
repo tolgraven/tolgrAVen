@@ -16,6 +16,7 @@
     [reitit.frontend.easy :as rfe]
     [website.diagnostics.routes :as diagnostics]
     #?(:module/blog [website.modules.blog.pages :as blog])
+    #?(:module/blog-editor [website.modules.blog-editor.pages :as blog-editor])
     #?(:module/cv [website.modules.cv.pages :as cv])
     #?(:module/docs [website.modules.docs.pages :as docs])
     [website.loader :as l]
@@ -58,6 +59,7 @@
                   [#?(:module/cv (into [""] cv/spec))
                    #?(:module/docs (into [""] docs/spec))
                    #?(:module/blog (into [""] blog/spec))
+                   #?(:module/blog-editor (into [""] blog-editor/spec))
                    ["/log" {:name :log :view #'<log-page>}]
                    #?(:module/test ["/test"
       ["" {:name :test

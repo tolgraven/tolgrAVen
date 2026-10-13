@@ -93,7 +93,7 @@
              ["/cv" :cv :cv] ["/docs" :docs :docs] ["/docs/codox/index" :docs-codox-page :docs]
              ["/blog" :blog :blog] ["/blog/page/2" :blog-page :blog]
              ["/blog/post/example-1" :blog-post :blog] ["/blog/tag/clojure" :blog-tag :blog]
-             ["/blog/archive" :blog-archive :blog] ["/blog/new-post" :new-post :blog]
+             ["/blog/archive" :blog-archive :blog] ["/blog/new-post" :new-post :blog-editor]
              ["/test/search" :test-tab :test] ["/client-oauth/twitter" :client-oauth-twitter nil]
              ["/not-found" :not-found nil]]]
     (let [data (:data (reitit/match-by-path routes/router path))]
