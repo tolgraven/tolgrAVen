@@ -113,3 +113,13 @@ Periodically remove completed labels after inspecting active workers. Keep the
 current audit's cache for incremental iterations, watched `app-dev`/`ssr`/
 `return-worker` caches, and useful reports/chunks in `target/bundle-audit`.
 Do not clear the entire Shadow directory while watches are running.
+
+
+## Middleware and asset investigation
+
+`script` entry points that inspect middleware are separate from release builds.
+Run the guarded `scripts/audit/middleware.clj` reproducer only in the installed
+CPU controller's disposable Docker snapshot. It loads actual CSS/media and
+identifies generated stand-in JavaScript explicitly; no watched output is changed.
+See [the middleware and Optimus audit](middleware-optimus-audit.md) for the command,
+request fixtures, evidence and implementation recommendations.

@@ -47,3 +47,7 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   SVG viewports must contain transformed outlines; compensate expanded mask boxes
   with margins to preserve the original advance/height/baseline.
   Commit declared SVGs, catalog, generated SCSS and fonts together; see `doc/styles.md`.
+
+- `audit/middleware.clj` is a disposable Docker-only investigation reproducer.
+  It may generate stand-in JavaScript only inside the CPU controller's snapshot;
+  it must never overwrite watched application output. See `doc/middleware-optimus-audit.md`.
