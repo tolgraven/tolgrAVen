@@ -9,6 +9,8 @@
             [ajax.core :as ajax]
             [website.service-status :as status]
             [website.content.client :as content]
+            [website.events]
+            [website.subs]
             [website.loader :as loader]
             [website.component.data :as data]
             [website.content.contract :as contract]
@@ -185,7 +187,9 @@
                         (into
                           {}
                           (map (fn [key]
-                                 [key (if (#{:post-footer :footer :gallery :interlude} key) [] {})])
+                                 [key (case key
+                                        :github-settings {:user "example", :repo "website"}
+                                        (if (#{:post-footer :footer :gallery :interlude} key) [] {}))])
                             contract/sections))}]
           (reset! r/*app-db {:content {}})
           (storage/write! :public-content bundle content/cache-options)

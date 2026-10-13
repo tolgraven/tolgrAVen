@@ -105,6 +105,11 @@ COPY --from=build /usr/src/app/target/ssr/site.js /app/ssr/site.js
 COPY --from=build /usr/src/app/target/uberjar/website.jar /app/website.jar
 COPY --from=build /usr/src/app/env/prod/resources/config.edn /app/env/prod/resources/config.edn
 ARG VCS_REF=unknown
+ARG SOURCE_COMMIT
+ARG CAPROVER_GIT_COMMIT_SHA
+ARG DEPLOY_REPOSITORY=tolgraven/tolgrAVen
+RUN printf '%s\n' "${CAPROVER_GIT_COMMIT_SHA:-${SOURCE_COMMIT:-$VCS_REF}}" > /app/revision \
+ && printf '%s\n' "$DEPLOY_REPOSITORY" > /app/repository
 LABEL org.opencontainers.image.revision=$VCS_REF
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
 ENTRYPOINT ["/app/docker-entrypoint.sh"]

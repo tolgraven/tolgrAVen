@@ -8,6 +8,8 @@
     [website.browser-resources.schema :as resource-schema]
     [website.supabase.schema :as store-schema]
     [website.config :as config]
+    [website.deployment :as deployment]
+    [website.deployment.schema :as deployment-schema]
     [website.site-catalog :as catalog]
     [website.site :as site]
     [website.env :as environment]
@@ -70,6 +72,8 @@
 
 
    ["/content/bootstrap" {:get (fn [_] (content/response nil))}]
+   ["/deployment" {:get {:responses {200 {:body deployment-schema/metadata}}
+                         :handler deployment/response}}]
    ["/browser-resources"
     {:get {:summary "Public optional-script settings acquired after page readiness"
            :responses {200 {:body resource-schema/settings}}

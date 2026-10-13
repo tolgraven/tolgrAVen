@@ -2,12 +2,18 @@
   (:require
     [website.content.contract :as content-contract]
     [website.react :as r]
+    [website.components.activity-schema :as activity-schema]
+    [website.deployment.schema :as deployment-schema]
     [website.modules.github.events]
     [website.modules.github.subs]
     [website.modules.github.views :as view]))
 
 (def spec
-  {:depends (get content-contract/module-dependencies :github [])
+  {:content [:github-settings]
+   :server {:routes 'website.modules.github.api/routes}
+   :depends (get content-contract/module-dependencies :github [])
+   :db-schema {[:module :github :activity] [:map-of :string activity-schema/result]
+               [:module :github :deployment] deployment-schema/metadata}
    :id :github
    :styles ["/css/website/modules/github.min.css"]
    :view {:view #'view/<commits>}

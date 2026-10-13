@@ -14,12 +14,12 @@
   [:intro [:interlude 0] :services [:init :services] [:interlude 1]
    :moneyshot [:init :instagram] [:init :strava] :story [:interlude 2]
    [:init :soundcloud] :strava [:init :gallery] :soundcloud :instagram
-   :gallery :github :gpt :chat])
+   :gallery :github :codex-profile :gpt :chat])
 
 (def landing-spec
   {:id :landing :layout landing-layout
    :depends [{:source :strapi :keys (content/keys-for-route :home)}]
-   :deferred-modules #{:strava :soundcloud :instagram :github :gpt :chat}})
+   :deferred-modules #{:strava :soundcloud :instagram :github :codex-profile :gpt :chat}})
 
 (defn page-spec [uri]
   (when (landing-paths uri) landing-spec))

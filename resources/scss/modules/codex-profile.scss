@@ -1,0 +1,2 @@
+@use "activity";
+.codex-profile { padding: 1.25rem; background: var(--bg-3); min-width: 0; h2 { font-size: 1.25rem; } &__unavailable { color: var(--fg-5); } }

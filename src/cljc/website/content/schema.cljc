@@ -4,6 +4,7 @@
   (:require [clojure.string :as string]
             [website.schema.common :as c]
             [website.media.schema :as media-schema]
+            [website.components.activity-schema :as activity]
             #?(:clj [website.build.site :refer [when-enabled]]))
   #?(:cljs (:require-macros [website.build.site :refer [when-enabled]])))
 
@@ -61,6 +62,15 @@
    :gallery (when-enabled :home nil [:vector media])
    :blog (when-enabled :blog nil (c/optional-map {:heading heading}))
    :docs (when-enabled :docs nil (c/optional-map {:heading heading}))
+   :github-settings (when-enabled :github nil
+                      [:map
+                       [:user [:re #"^[A-Za-z0-9][A-Za-z0-9-]{0,38}$"]]
+                       [:repo [:re #"^[A-Za-z0-9_.-]+$"]]])
+   :codex-profile (when-enabled :codex-profile nil
+                    (c/optional-map {:display-name :string
+                                     :profile-url [:re #"^https://chatgpt\.com/u/[A-Za-z0-9_-]+$"]
+                                     :bio :string
+                                     :days activity/calendar}))
    :common (c/optional-map {:banner-heading heading
                             :user-avatar-fallback :string
                             :code-languages code-languages

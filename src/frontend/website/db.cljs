@@ -43,8 +43,6 @@
                         :anon-key nil}
              :theme {:dark-mode true
                      :colorscheme "default"}
-             :github {:user "tolgraven"
-                      :repo "tolgraven"}
              :hud {:timeout 30 :level :info}}
    :cookie-notice {:a :map}})
 
