@@ -115,7 +115,7 @@ Do not retain completed investigation diaries or historical test counts as curre
   Text faces stay consumer-scoped; `defc`'s `:font` feature owns controlled late
   upgrades independently of stylesheet/module readiness.
   See `doc/styles.md` for source ownership and loading behavior.
-- `bb images:responsive`: rebuild the opt-in image catalog's sized AVIF/WebP assets.
+- `bb images:responsive [--force]`: discover large still raster originals and rebuild the responsive catalog's sized AVIF/WebP assets.
 - `bb videos:responsive`: rebuild the opt-in video catalog's mobile renditions.
 - `bb fonts:icons`: regenerate small application icon fonts and full-font Unicode
   fallbacks with optional Python authoring tools; see `doc/styles.md`.
