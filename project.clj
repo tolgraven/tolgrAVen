@@ -157,7 +157,8 @@
              :source-paths ["env/prod/clj" "env/prod/cljs"]
              :resource-paths ["env/prod/resources" "resources"]}
 
-   :prod {:source-paths ["env/prod/clj" "env/prod/cljs"]
+   :prod {:jvm-opts ["-Dconf=env/prod/resources/config.edn"]
+          :source-paths ["env/prod/clj" "env/prod/cljs"]
           :resource-paths ["env/prod/resources"]}
 
    ;; Codox's bundled CLJS 1.7 analyzer must not override Shadow's compiler.
