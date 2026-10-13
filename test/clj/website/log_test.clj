@@ -25,12 +25,26 @@
                                   "io/aviso/repl.clj"))))
       "Pretty's compatibility namespace must have only one classpath owner"))
 
+(deftest namespace-loading-preserves-uncaught-handler-test
+  (let [original-handler (Thread/getDefaultUncaughtExceptionHandler)
+        handler (reify Thread$UncaughtExceptionHandler
+                  (uncaughtException [_ _ _]))]
+    (try
+      (Thread/setDefaultUncaughtExceptionHandler handler)
+      (require 'website.core :reload)
+      (require 'website.log :reload)
+      (is (identical? handler (Thread/getDefaultUncaughtExceptionHandler))
+          "Only explicit logging initialization may replace the default handler")
+      (finally
+        (Thread/setDefaultUncaughtExceptionHandler original-handler)))))
+
 (deftest logging-paths-test
   (let [original-config timbre/*config*
         original-factory tools-log/*logger-factory*
         original-handler (Thread/getDefaultUncaughtExceptionHandler)
         *entries (atom [])
         exception (ex-info "logging probe" {:probe true})
+        thread (Thread. "uncaught-probe-thread")
         file (.toFile (Files/createTempFile "tolgraven-logging-" ".log"
                                             (make-array java.nio.file.attribute.FileAttribute 0)))]
     (try
@@ -52,7 +66,7 @@
         (.info (LoggerFactory/getLogger "org.apache.http") "suppressed http probe")
         (.warn (LoggerFactory/getLogger "org.apache.http") "http warning probe")
         (.uncaughtException (Thread/getDefaultUncaughtExceptionHandler)
-                            (Thread/currentThread) exception))
+                            thread exception))
       (testing "every facade reaches Timbre once and retains its Throwable"
         (is (= 6 (count @*entries)))
         (is (= [:info :error :warn :error :warn :error] (mapv :level @*entries)))
@@ -65,7 +79,9 @@
                           "http warning probe"]]
             (is (.contains output message)))
           (is (not (.contains output "suppressed http probe")))
-          (is (.contains output "logging probe"))))
+          (is (.contains output "logging probe"))
+          (is (.contains output "Uncaught exception on uncaught-probe-thread"))
+          (is (.contains output ":uncaught-exception"))))
       (finally
         (timbre/set-config! original-config)
         (alter-var-root #'tools-log/*logger-factory* (constantly original-factory))

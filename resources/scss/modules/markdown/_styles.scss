@@ -154,7 +154,7 @@ div > pre[class*="language-"] {
   position: absolute;
   z-index: 2;
   top: calc(0.5 * var(--space));
-  right: calc(0.5 * var(--space));
+  right: var(--space);
   display: flex;
   gap: 0.25em;
   font-size: 0.8em;
@@ -179,12 +179,12 @@ div > pre[class*="language-"] {
   }
 }
 // Match comment reply actions: parent intent reveals the children, and the
-// action group moves to the right edge. Keyboard focus has the same treatment.
+// action group keeps an inset from the right edge. Keyboard focus matches hover.
 .code-block:hover,
 .code-block:active,
 .code-block:focus-within {
   > .code-block-controls {
-    right: 0;
+    right: calc(0.5 * var(--space));
 
     > button {
       opacity: 1;
