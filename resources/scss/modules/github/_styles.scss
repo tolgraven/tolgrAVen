@@ -214,3 +214,7 @@
     }
   }
 }
+
+.github-deployment { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; padding: 0.75rem; margin-bottom: 1rem; background: var(--bg-4); border-radius: 0.4rem; font-size: 0.9rem; }
+.github-repository-owner { text-align: center; color: var(--fg-5); }
+.github-activity { padding: 1.25rem; background: var(--bg-3); min-width: 0; h2 { font-size: 1.25rem; } }

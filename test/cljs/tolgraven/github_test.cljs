@@ -8,6 +8,11 @@
             [tolgraven.modules.github.message :as message]
             [tolgraven.modules.github.schema :as schema]
             [tolgraven.modules.github.views :as views]
+            [tolgraven.modules.github.events]
+            [tolgraven.modules.github.subs]
+            [tolgraven.components.activity :as activity]
+            [re-frame.core :as re-frame]
+            [tolgraven.react :as rf]
             [tolgraven.test-support :as support]))
 
 (deftest commit-message-styles
@@ -78,4 +83,50 @@
                   (support/unmount! root)
                   (.remove container))))))
         (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+(deftest cms-selected-repository-rejects-old-responses
+  (async done
+    (let [restore! (re-frame/make-restore-fn)
+          *requests (atom [])]
+      (rf/reg-fx :http-xhrio #(swap! *requests conj %))
+      (-> (go-promise
+            (rf/dispatch-sync [:init/app-db])
+            (rf/dispatch-sync [:content [:github-settings] {:user "first-user", :repo "first-repo"}])
+            (rf/dispatch-sync [:github/init])
+            (await! (support/settle!))
+            (is (some #(= "https://api.github.com/repos/first-user/first-repo/commits" (:uri %)) @*requests))
+            (rf/dispatch-sync [:content [:github-settings] {:user "second-user", :repo "second-repo"}])
+            (rf/dispatch-sync [:github/init])
+            (await! (support/settle!))
+            (rf/dispatch-sync [:github/save-headers "first-user" "first-repo" {:link "old"}])
+            (rf/dispatch-sync [:github/save-commits "first-user" "first-repo" 1 []])
+            (rf/dispatch-sync [:github/save-commit "first-user" "first-repo" "old" {:sha "old"}])
+            (is (= {} (await! (support/state-at! [:content :github]))))
+            (is (= ["second-user" "second-repo"] (await! (support/subscription-value! [:github/get-from]))))
+            (is (= "https://github.com/second-user/second-repo" (await! (support/subscription-value! [:github/website-url]))))
+            (rf/dispatch-sync [:github/save-headers "second-user" "second-repo" {}])
+            (is (= 0 (await! (support/subscription-value! [:github/commit-count])))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
+(deftest calendar-preserves-real-counts-and-fits-a-phone
+  (async done
+    (-> (go-promise
+          (let [container (.createElement js/document "div")
+                days [{:date "2026-10-11", :count 0, :level 0}
+                      {:date "2026-10-12", :count 42, :level 4}]]
+            (.appendChild (.-body js/document) container)
+            (let [root (await! (support/create-root! container))]
+              (try
+                (await! (support/render! root
+                          [:div {:style {:width "18rem"}}
+                           [:link {:rel "stylesheet", :href "/css/tolgraven/modules/github.css"}]
+                           [activity/<calendar> days]]))
+                (is (= 2 (.-length (.querySelectorAll container "[data-date]"))))
+                (is (= "42 contributions on 2026-10-12"
+                       (.getAttribute (.querySelector container "[data-date='2026-10-12']") "aria-label")))
+                (is (string/includes? (.-textContent container) "42 contributions"))
+                (finally (support/unmount! root) (.remove container))))))
+        (.catch #(is false (str %)))
         (.finally done))))

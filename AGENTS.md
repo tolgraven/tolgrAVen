@@ -355,3 +355,5 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 - Authoring modules may declare literal namespace metadata `:site/owner`; child
   capabilities follow their selected parent in discovery and packaging. Public
   blog reading stays independent of `:blog-editor` and the lazy visual SDK.
+
+- GitHub editor settings live in the CMS `github-settings` section; provider caches stay separate. Deployment identity and public calendar contracts are documented in `doc/activity-panels.md`.

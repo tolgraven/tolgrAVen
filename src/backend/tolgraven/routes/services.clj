@@ -8,6 +8,8 @@
     [tolgraven.browser-resources.schema :as resource-schema]
     [tolgraven.supabase.schema :as store-schema]
     [tolgraven.config :as config]
+    [tolgraven.deployment :as deployment]
+    [tolgraven.deployment.schema :as deployment-schema]
     [tolgraven.site-catalog :as catalog]
     [tolgraven.site :as site]
     [tolgraven.env :as environment]
@@ -70,6 +72,8 @@
 
 
    ["/content/bootstrap" {:get (fn [_] (content/response nil))}]
+   ["/deployment" {:get {:responses {200 {:body deployment-schema/metadata}}
+                         :handler deployment/response}}]
    ["/browser-resources"
     {:get {:summary "Public optional-script settings acquired after page readiness"
            :responses {200 {:body resource-schema/settings}}

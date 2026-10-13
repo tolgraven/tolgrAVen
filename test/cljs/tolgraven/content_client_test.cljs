@@ -185,7 +185,9 @@
                         (into
                           {}
                           (map (fn [key]
-                                 [key (if (#{:post-footer :footer :gallery :interlude} key) [] {})])
+                                 [key (case key
+                                        :github-settings {:user "example", :repo "website"}
+                                        (if (#{:post-footer :footer :gallery :interlude} key) [] {}))])
                             contract/sections))}]
           (reset! rfdb/app-db {:content {}})
           (storage/write! :public-content bundle content/cache-options)

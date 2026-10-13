@@ -2,17 +2,16 @@
   (:require [clojure.string :as string]
             [tolgraven.react :as rf]))
 
-(rf/reg-sub :github/website-url
-  (fn [[_ _]]
-    (rf/subscribe [:github/commits])) ; dumb to rely on this tho since will re-run a bunch for same res.
-  (fn [commits _]
-    (first (string/split (:html_url (first commits)) #"/commit/"))))
-
 (rf/reg-sub :github/get-from
- :<- [:option [:github]]
+ :<- [:content [:github-settings]]
  (fn [github]
-   [(:user github)
-    (:repo github)]))
+   [(:user github) (:repo github)]))
+
+(rf/reg-sub :github/website-url
+ :<- [:github/get-from]
+ (fn [[user repo] _]
+   (when (and (seq user) (seq repo))
+     (str "https://github.com/" user "/" repo))))
 
 (rf/reg-sub :github/commits
  :<- [:content [:github]]
@@ -21,13 +20,13 @@
 
 (rf/reg-sub :github/commit-count
  :<- [:content [:github :repo-headers]]
- (fn [headers]
+ :<- [:github/commits]
+ (fn [[headers commits] _]
    (if headers
-     (-> headers
-         :link
-         (string/split "page=") last
-         (string/split ">")     first
-         js/parseInt)
+     (if-let [page (some->> (:link headers)
+                           (re-find #"[?&]page=(\d+)>; rel=\"last\"") second)]
+       (js/parseInt page)
+       (count commits))
      "Loading")))
 
 (rf/reg-sub :github/commit
