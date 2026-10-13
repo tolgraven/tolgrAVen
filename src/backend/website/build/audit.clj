@@ -46,7 +46,7 @@
             (throw (ex-info "An optional dependency entered the main bundle" source)))
           (doseq [module [:main :blog]
                   source (get graph module)
-                  :when (re-find #"@mdxeditor/|(?:^|/)lexical/|@lexical/|website/modules/(?:blog_editor|markdown_editor)/"
+                  :when (re-find #"@mdxeditor/|@site/mdxeditor/|(?:^|/)lexical/|@lexical/|website/modules/(?:blog_editor|markdown_editor)/"
                                  (:resource-name source ""))]
             (throw (ex-info "An authoring dependency entered a public reading bundle" (assoc source :module module))))
           (let [data (report/extract-report-data state)
