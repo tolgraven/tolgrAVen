@@ -103,9 +103,10 @@ are separate macOS calls, with a small unavoidable race. Do not layer another
 STOP/CONT tool over these same processes.
 
 ```sh
-# Observe without sending any process signals:
+# Observe without signals when no monitor/service owns the singleton lock:
 bb cpu monitor --project /path/to/tolgrAVen --once
-# Read current targets, actual cores, run duties and Docker reservation:
+# During active enforcement use this read-only status command instead:
+# It reports current targets, actual cores, run duties and Docker reservation.
 tolgraven-cpu status
 # Disable installed enforcement and resume its paused processes:
 tolgraven-cpu stop
