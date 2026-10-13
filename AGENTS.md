@@ -96,8 +96,10 @@ Do not retain completed investigation diaries or historical test counts as curre
   `tolgraven-cpu run --mode buildkit -- <command>` so BuildKit steps also have a quota.
   Increase a documented heap/memory limit only when required; avoid competing watched output.
   `--mode host` uses nice 10 and the shared build slot when live watches/interop
-  require macOS. The installed monitor owns the project Java/renderer aggregate
-  budget; never issue ad hoc STOP/CONT or global process kills. See
+  require macOS. The installed monitor caps exact app renderers and only explicitly
+  registered agent host Java families; user-launched Lein clients and their
+  backend/Shadow descendants remain unthrottled. Never issue ad
+  hoc STOP/CONT or global process kills. See
   `doc/resource-controls.md` for scope, telemetry, recovery and explicit overrides.
 - `lein repl`: start HTTP and the Clojure REPL; deferred Shadow watches compile
   sequentially without blocking REPL acknowledgement. `(cljs-repl)` waits for

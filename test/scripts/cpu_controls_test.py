@@ -166,13 +166,88 @@ class PolicyTests(unittest.TestCase):
 
     def test_selection_excludes_other_users_helpers_pre_stopped_and_unrelated_java(self):
         def p(pid, path, parent=1, status=2):
-            return {'pid': pid, 'path': path, 'ppid': parent, 'status': status, 'start': [1, pid], 'uid': os.getuid()}
+            return {'pid': pid, 'path': path, 'ppid': parent, 'status': status, 'start': [1, pid], 'uid': os.getuid(), 'pgid': pid}
         bundle = '/Applications/ChatGPT.app/Contents/'
         items = {2:p(2, bundle+'MacOS/ChatGPT'), 3:p(3,bundle+'Helpers/Codex (Renderer)',2),
                  4:p(4,bundle+'Resources/codex'), 5:p(5,'/usr/bin/java'), 6:p(6,'/usr/bin/java'),
                  7:p(7,bundle+'Helpers/Codex (Renderer)',2,4), 8:p(8,bundle+'Helpers/Codex (Renderer)',1)}
-        selected = cpu.select_targets(items,[Path('/project')],{4},lambda pid:Path('/project') if pid==5 else Path('/other'))
+        selected = cpu.select_targets(items,[Path('/project')],{4},lambda pid:Path('/project') if pid==5 else Path('/other'), owned_roots=[items[5]])
         self.assertEqual(set(selected), {3,5})
+
+    def test_user_lein_tree_is_unthrottled_but_registered_backend_workers_are_selected(self):
+        def record(pid, parent, group, path='/usr/bin/java'):
+            return {'pid': pid, 'ppid': parent, 'pgid': group, 'path': path,
+                    'start': [1, pid], 'uid': os.getuid(), 'status': 2}
+        processes = {5: record(5, 1, 5), 6: record(6, 5, 5),
+                     20: record(20, 1, 20, '/usr/bin/lein'),
+                     21: record(21, 20, 20), 22: record(22, 21, 20)}
+        project = lambda pid: Path('/project')
+        self.assertEqual(cpu.select_targets(processes, [Path('/project')], set(), project), {})
+        selected = cpu.select_targets(processes, [Path('/project')], set(), project,
+                                      owned_roots=[processes[20]])
+        self.assertEqual(set(selected), {21, 22})
+        processes[22]['pgid'] = 5
+        self.assertEqual(set(cpu.select_targets(processes, [Path('/project')], set(), project,
+                                               owned_roots=[processes[20]])), {21})
+
+    def test_host_registration_requires_live_owner_root_birth_and_project(self):
+        owner = {'pid': 10, 'start': [1, 10], 'uid': os.getuid(), 'path': '/python'}
+        root = {'pid': 20, 'start': [2, 20], 'uid': os.getuid(),
+                'pgid': 20, 'path': '/usr/bin/nice'}
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            token = 'a' * 32
+            path = cpu.host_registration_path(token)
+            path.parent.mkdir()
+            cpu.save_json(path, {'owner': owner, 'root': root, 'checkout': '/project'})
+            proc = mock.Mock()
+            proc.same.return_value = True
+            # Exec changes the path but never the root's birth identity/group.
+            current = dict(root, path='/usr/bin/java')
+            proc.identity.return_value = current
+            self.assertEqual(cpu.registered_host_roots(proc, [Path('/project')]), [current])
+            proc.identity.return_value = dict(current, start=[3, 20])
+            self.assertEqual(cpu.registered_host_roots(proc, [Path('/project')]), [])
+            proc.identity.return_value = current
+            proc.same.return_value = False
+            self.assertEqual(cpu.registered_host_roots(proc, [Path('/project')]), [])
+            proc.same.return_value = True
+            self.assertEqual(cpu.registered_host_roots(proc, [Path('/other')]), [])
+
+    def test_host_launcher_registers_family_until_confirmed_cleanup(self):
+        owner = {'pid': 10, 'start': [1, 10], 'uid': os.getuid(), 'path': '/python'}
+        root = {'pid': 20, 'start': [2, 20], 'uid': os.getuid(), 'pgid': 20, 'path': '/nice'}
+        args = mock.Mock(checkout='/project', java_heap='1024m')
+        child, guardian = mock.Mock(pid=20), mock.Mock(pid=30)
+        proc = mock.Mock()
+        proc.identity.side_effect = [owner, root]
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)), \
+             mock.patch.object(cpu, 'MacProcesses', return_value=proc), \
+             mock.patch.object(cpu.subprocess, 'Popen', side_effect=[child, guardian]), \
+             mock.patch.object(cpu, 'stop_host_family', return_value=True):
+            def wait():
+                records = list((cpu.STATE / 'host-active').glob('*.json'))
+                self.assertEqual(len(records), 1)
+                self.assertEqual(json.loads(records[0].read_text())['root'], root)
+                return 0
+            child.wait.side_effect = wait
+            self.assertEqual(cpu.host_run(args, ['lein', 'run'], None), 0)
+            self.assertEqual(list((cpu.STATE / 'host-active').glob('*.json')), [])
+            guardian.terminate.assert_called_once()
+
+    def test_host_registration_write_failure_still_cleans_up_child(self):
+        owner = {'pid': 10, 'start': [1, 10], 'uid': os.getuid(), 'path': '/python'}
+        root = {'pid': 20, 'start': [2, 20], 'uid': os.getuid(), 'pgid': 20, 'path': '/nice'}
+        proc = mock.Mock()
+        proc.identity.side_effect = [owner, root]
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)), \
+             mock.patch.object(cpu, 'MacProcesses', return_value=proc), \
+             mock.patch.object(cpu.subprocess, 'Popen', return_value=mock.Mock(pid=20)) as popen, \
+             mock.patch.object(cpu, 'save_json', side_effect=OSError('fixture write failure')), \
+             mock.patch.object(cpu, 'stop_host_family', return_value=True) as cleanup:
+            with self.assertRaisesRegex(OSError, 'fixture write failure'):
+                cpu.host_run(mock.Mock(checkout='/project', java_heap='1024m'), ['lein', 'run'], None)
+            cleanup.assert_called_once_with(root)
+            self.assertEqual(popen.call_count, 1)
 
     def test_pid_reuse_never_receives_continue(self):
         proc = mock.Mock()
