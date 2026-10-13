@@ -5,6 +5,7 @@
     [tolgraven.modules.github.message :as message]
     [clojure.string :as string]))
 
+(def url "https://api.github.com/repos/")
 
 (r/reg-event-fx :github/init
  (fn [{:keys [db]} [_ user repo]]
@@ -16,13 +17,12 @@
 
 (r/reg-event-fx :github/fetch-commits
  (fn [{:keys [db]} [_ user repo page]]
-   (let [url "https://api.github.com/repos/"]
-     (when (and page
-                (not (some #{page} (get-in db [:state :github :pages-fetched]))))
-       {:dispatch-n [[:http/get {:uri (str url user "/" repo "/commits")
-                                 :headers {"Accept" "application/vnd.github.v3+json"}
-                                 :params {:page page}}
-                      [:github/save-commits page]]]}))))
+   (when (and page
+              (not (some #{page} (get-in db [:state :github :pages-fetched]))))
+     {:dispatch-n [[:http/get {:uri (str url user "/" repo "/commits")
+                               :headers {"Accept" "application/vnd.github.v3+json"}
+                               :params {:page page}}
+                    [:github/save-commits page]]]})))
 
 (r/reg-event-fx :github/save-commits
  (fn [{:keys [db]} [_ page data]]
@@ -48,28 +48,26 @@
 
 (r/reg-event-fx :github/fetch-commit-count
  (fn [{:keys [db]} [_ user repo]]
-   (let [url "https://api.github.com/repos/"]
-     (when-not (get-in db [:content :github :repo-headers])
-       {:dispatch [:http/get {:uri (str url user "/" repo "/commits")
-                              :url-params {:per_page 1}
-                              :response-format
-                              {:read (fn [^js response]
-                                       (js->clj (.getResponseHeaders response)
-                                                :keywordize-keys true))
-                               :description "headers"}
-                              :headers {"Accept" "application/vnd.github.v3+json"}}
-                   [:content [:github :repo-headers]] ]}))))
+   (when-not (get-in db [:content :github :repo-headers])
+     {:dispatch [:http/get {:uri (str url user "/" repo "/commits")
+                            :url-params {:per_page 1}
+                            :response-format
+                            {:read (fn [^js response]
+                                     (js->clj (.getResponseHeaders response)
+                                              :keywordize-keys true))
+                             :description "headers"}
+                            :headers {"Accept" "application/vnd.github.v3+json"}}
+                 [:content [:github :repo-headers]] ]})))
 
 
 (r/reg-event-fx :github/fetch-commit
  (fn [{:keys [db]} [_ user repo sha]]
-   (let [url "https://api.github.com/repos/"]
-     (when (and sha
-                (not (some #{sha} (get-in db [:state :github :commits-fetched]))))
-       {:dispatch-n [[:http/get {:uri (str url user "/" repo "/commits/" sha)
-                                 :headers {"Accept" "application/vnd.github.v3+json"}}
-                      [:github/save-commit sha]
-                      [:content [:github :errors]]]]}))))
+   (when (and sha
+              (not (some #{sha} (get-in db [:state :github :commits-fetched]))))
+     {:dispatch-n [[:http/get {:uri (str url user "/" repo "/commits/" sha)
+                               :headers {"Accept" "application/vnd.github.v3+json"}}
+                    [:github/save-commit sha]
+                    [:content [:github :errors]]]]})))
 
 (r/reg-event-fx :github/save-commit
  (fn [{:keys [db]} [_ sha data]]

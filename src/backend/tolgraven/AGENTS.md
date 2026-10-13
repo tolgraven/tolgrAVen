@@ -79,6 +79,13 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   handlers must finish reading/copying temporary bytes before returning.
 - Validate/coerce requests at the Ring boundary; handlers consume parsed parameters.
   Authentication/authorization and input protection remain active in production.
+- Production middleware defaults to HTTPS proxy handling, HSTS and secure cookies.
+  Only explicit `:https-required false` selects HTTP site defaults; the local `prod`
+  Lein profile supplies that with loopback listening. CSRF remains enabled in both.
+  Production initialization preflights a hashed release browser manifest and both
+  document bootstrap scripts before its success log or Optimus loading. Local builds use
+  separate `prod-local-*` Shadow targets and `target/production` output so watched
+  development resources cannot silently supply the production frontend.
 - Secrets remain in server adapters/configuration. Runtime public settings must
   expose only public origins/keys and allowed options.
   `/api/browser-resources` projects only `:analytics :google-id`; `:enabled false`

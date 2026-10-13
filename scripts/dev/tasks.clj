@@ -3,6 +3,13 @@
             [util.process :refer [shell]]
             [clojure.string :as str]))
 
+(defn production-local! []
+  (shell ["npm" "run" "build"])
+  (fs/create-dirs "target/production/resources/public")
+  (fs/copy-tree "resources/public/css" "target/production/resources/public/css"
+                {:replace-existing true})
+  (shell ["lein" "with-profile" "prod,provided" "run" "-m" "tolgraven.build.local"]))
+
 (defn audit! [& [label]]
   (let [label (or label "current")]
     (when-not (re-matches #"[A-Za-z0-9_-]+" label)

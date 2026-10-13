@@ -72,6 +72,10 @@
          wrapped)
        request))))
 
+(def document-bundles
+  {"document-head.js" ["/js/document/head.js"]
+   "document-entrance.js" ["/js/document/entrance.js"]})
+
 (defn get-bundled-assets
   "Load the declared CSS/JS owners and their references for the live dev build."
   []
@@ -82,9 +86,7 @@
     (assets/load-bundle "public" "main.js"
       [(str "/js/compiled/out/"
             (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))])
-    (assets/load-bundles "public"
-      {"document-head.js" ["/js/document/head.js"]
-       "document-entrance.js" ["/js/document/entrance.js"]})))
+    (assets/load-bundles "public" document-bundles)))
 
 (defn get-assets
   "Complete build-time inventory; runtime production imports its prepared result."
@@ -124,7 +126,28 @@
   (delivery/serve-assets app get-assets optimize (assoc options :cache-live-assets 2000)))
   ; :cache-live-assets 60000 ; preserved longer-cache experiment
 
+(defn ensure-production-assets! []
+  (when-not (or (:dev env) (:test env) (:stage env))
+    (let [main (:main (layout/browser-modules))]
+      (when (or (not (re-matches #"main\.[a-fA-F0-9]{32}\.js" (or (:output-name main) "")))
+                (some #{'devtools.preload 'shadow.cljs.devtools.client.browser}
+                      (:entries main)))
+        (throw (ex-info "Production browser assets are missing or use a development build. Run bb prod:build before starting local prod."
+                        {:output-name (:output-name main)})))
+      (let [missing (vec (for [path (mapcat val document-bundles)
+                              :when (nil? (io/resource (str "public" path)))]
+                          path))]
+        (when (seq missing)
+          (throw (ex-info "Production document bootstrap is missing. Run bb prod:build before starting local prod."
+                          {:build :document
+                           :missing-assets missing}))))
+      (when-not (io/resource manifest/resource-path)
+        (throw (ex-info "Production prepared assets are missing. Run bb prod:build before starting local prod."
+                        {:build :assets
+                         :missing-assets [manifest/resource-path]}))))))
+
 (defn wrap-optimus [app]
+  (ensure-production-assets!)
   (if (:dev env)
     (serve-live-assets-maybe-autorefresh app get-bundled-assets (fn [files _] files) {})
     (let [inventory (manifest/read-prepared! (asset-build-settings))]
@@ -186,7 +209,8 @@
         response))))
 
 (defn wrap-base [handler]
-  (let [options (if (or (env :dev) (env :test) (env :stage))
+  (let [options (if (or (env :dev) (env :test) (env :stage)
+                        (false? (env :https-required)))
                   site-defaults
                   (assoc secure-site-defaults :proxy true))
         browser-options (-> options

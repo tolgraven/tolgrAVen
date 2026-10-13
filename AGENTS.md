@@ -101,6 +101,12 @@ Do not retain completed investigation diaries or historical test counts as curre
   backend/Shadow descendants remain unthrottled. Never issue ad
   hoc STOP/CONT or global process kills. See
   `doc/resource-controls.md` for scope, telemetry, recovery and explicit overrides.
+- `lein with-profile prod run` overlays `config/prod-local.edn` for local HTTP on
+  loopback and local SSR/converter paths; packaged production keeps secure proxy
+  defaults. `bb prod:build` releases separate `prod-local-*` Shadow targets into
+  `target/production`; local prod loads those resources before shared assets and
+  preflights the release browser manifest and both document bootstrap scripts
+  before initialization logging/asset loading. See `doc/testing.md`.
 - `lein repl`: start HTTP and the Clojure REPL; deferred Shadow watches compile
   sequentially without blocking REPL acknowledgement. `(cljs-repl)` waits for
   startup and selects the browser runtime in the calling session. See `README.md`.

@@ -9,6 +9,11 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   be inlined safely. Keep `npm run build` and the watch workflow aligned.
 - `test/ssr.clj` saves renderer export metadata with each HTML/state hydration
   fixture; never infer rendered exports from the browser bundle inventory.
+- `bb prod:build` builds CSS and calls the existing Shadow release API sequentially
+  for `:document`, `:app`, `:ssr`, and `:return-worker` with separate `prod-local-*`
+  build IDs under `target/production`, then prepares the shared Optimus manifest
+  into that resource root. Never copy those
+  assets into watched browser/SSR outputs. See `doc/testing.md`.
 - `build/`, `media/`, `dev/`, `test/`: local build, asset and verification tools.
   Prefer Babashka using its built-in libraries; Node owns SDK/zlib operations.
 - `ops/`: isolated site provisioning and Coolify adapters. `ops/coolify/*.php`

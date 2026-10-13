@@ -12,7 +12,9 @@
     [mount.core :as mount]))
 
 (mount/defstate init-app
-  :start ((or (:init defaults) (fn [])))
+  :start (do
+           (middleware/ensure-production-assets!)
+           ((or (:init defaults) (fn []))))
   :stop  ((or (:stop defaults) (fn []))))
 
 (mount/defstate app-routes
