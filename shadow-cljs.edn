@@ -71,7 +71,8 @@
                            (website.build.compat/rrb-vector)
                            (website.build.browser/test-modules)]
              :test-dir "resources/public/js/tests"
-             :ns-regexp "website\\..*-test$"}
+             ;; The authored owner/coercion gate is a separate release-only suite.
+             :ns-regexp "website\\.(?!authored-hydration-test$).*-test$"}
 
   :app-dev
   {:lein true

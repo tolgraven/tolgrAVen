@@ -52,8 +52,10 @@ Build `:document` first as above; its scripts are required by generated HTML.
 4. `bb test:browser`, then open `http://127.0.0.1:4002/`.
    Inspect final assertion counts and failures, not just compilation.
 
-`:app-test` discovers all `website.*-test` namespaces through the Shadow
-browser runner; the obsolete Doo entry point has been removed.
+`:app-test` discovers ordinary `website.*-test` namespaces through the Shadow
+browser runner; the authored hydration suite runs separately in release mode,
+where the validation engine and component owners actually begin deferred.
+The obsolete Doo entry point has been removed.
 Selected optimized hydration builds retain `:browser` and `:browser-test` reader
 features and use `website.nested-hydration-runner` with the authored and nested
 hydration namespaces. The test-only feature makes server fixture rendering
