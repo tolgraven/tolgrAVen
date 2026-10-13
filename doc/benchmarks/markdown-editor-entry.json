@@ -73,5 +73,23 @@
       "excluded_resolved_sources": 0,
       "excluded_optimized_bytes": 0
     }
-  ]
+  ],
+  "master_integration": {
+    "source_checkpoint": "4f7c6412875e8266e819daa8185c6c69a2c62581",
+    "audit_target": "editor-final-master",
+    "snapshot": "f94b0b156b34",
+    "excluded_resolved_sources": 0,
+    "excluded_optimized_bytes": 0,
+    "gzip_bytes": {
+      "markdown-editor": 497551,
+      "blog-editor": 21641,
+      "blog": 27834
+    },
+    "browser_checkpoint": "03d0b96ea9fc4a3f5427850ce76dbde8f54ca943",
+    "browser_snapshot": "8b8439a31973",
+    "browser_tests": 46,
+    "browser_assertions": 307,
+    "browser_failures": 0,
+    "browser_errors": 0
+  }
 }
