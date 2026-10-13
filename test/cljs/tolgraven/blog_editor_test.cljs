@@ -2,6 +2,7 @@
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is testing async]]
             [tolgraven.react :as r]
+            [tolgraven.macros :refer-macros [defc]]
             [tolgraven.test-support :as support]
             [tolgraven.supabase.runtime :as client]
             [tolgraven.modules.blog.subs]
@@ -9,6 +10,7 @@
             [tolgraven.subs]
             [tolgraven.modules.blog-editor.model :as model]
             [tolgraven.modules.blog-editor.editor :as editor]
+            [tolgraven.modules.blog-editor.views :as views]
             [tolgraven.schema.dsl :as dsl]
             [malli.core :as m]))
 
@@ -81,6 +83,14 @@
                   :webp [(rendition "webp" "image/webp")]
                   :avif [(rendition "avif" "image/avif")]}}))
 
+(deftest repeated-canonical-sources-have-distinct-stable-preview-generations
+  (let [first-upload {:id "first", :attempt 1, :asset asset}
+        second-upload {:id "second", :attempt 1, :asset asset}
+        generation (model/preview-generations [first-upload second-upload])]
+    (is (= generation (model/preview-generations [second-upload first-upload])))
+    (is (not= (model/preview-generations [first-upload]) generation))
+    (is (not= generation (model/preview-generations [(assoc first-upload :preview-attempt 1) second-upload])))))
+
 (defn transfer! [textarea kind file]
   ;; Native File/clipboard/drop boundaries exercise the actual Reagent handlers.
   (let [transfer (js/DataTransfer.)
@@ -91,6 +101,63 @@
     (.dispatchEvent textarea event)
     event))
 
+(defc <visible-preview-fixture> [owner]
+  (let [text @(r/subscribe [:form-field [:post-blog :text]])
+        uploads @(r/subscribe [:blog/state [:image-uploads]])
+        hidden? @(r/subscribe [:state [:upload-preview-hidden?]])
+        assets (into {} (keep (fn [{:keys [asset]}] (when asset [(:src asset) asset]))) (vals uploads))]
+    [:section {:style {:position "fixed", :top 0, :left 0, :width "24rem", :z-index 10}}
+     [editor/<upload-status> {:owner owner}]
+     [:div {:hidden hidden?}
+      [views/<preview-blog> {:owner owner, :post {:text text, :image-assets assets}}]]]))
+
+(deftest uploaded-image-status-exits-only-after-the-real-preview-visibly-paints
+  (async done
+    (let [before @r/*app-db
+          original client/authenticated-request!
+          *success (atom nil)
+          *root (atom nil)
+          owner "visible-preview-test"
+          id "visible-upload"
+          src "/img/tolgrav-square.png"
+          ready-asset (assoc asset :src src :renditions
+                             {:original {:src src, :width 800, :height 600, :bytes 1024, :mime "image/png"}
+                              :webp [{:src "/img/tolgrav-square.webp", :width 800, :height 600, :bytes 512, :mime "image/webp"}]
+                              :avif [{:src "/img/tolgrav-square.avif", :width 800, :height 600, :bytes 256, :mime "image/avif"}]})
+          element (.createElement js/document "div")]
+      (.appendChild (.-body js/document) element)
+      (set! client/authenticated-request!
+            (fn [& [_ _ _ success _ _]] (reset! *success success)))
+      (r/dispatch-sync [:state [:upload-preview-hidden?] true])
+      (-> (go-promise
+            (let [root (await! (support/create-root! element))]
+              (reset! *root root)
+              (await! (support/render! root [<visible-preview-fixture> owner]))
+              (r/dispatch-sync [:blog/image-upload-enqueue
+                                 [{:id id, :name "visible.png", :owner owner
+                                   :file (js/File. #js ["image"] "visible.png" #js {:type "image/png"})}] 0 0])
+              (await! (support/wait-for! #(some? @*success)))
+              (@*success {:id "visible-job", :status "ready", :asset ready-asset})
+              (await! (support/wait-for! #(.querySelector element "img")))
+              ;; Native lazy images may defer the request entirely while hidden.
+              (is (.querySelector element ".upload-row") "A ready but hidden preview must retain its row")
+              (is (not (get-in @r/*app-db [:state :blog :image-uploads id :preview-ready?])))
+              (let [image (.querySelector element "img")]
+                (r/dispatch-sync [:state [:upload-preview-hidden?] false])
+                (await! (support/wait-for! #(get-in @r/*app-db [:state :blog :image-uploads id :preview-ready?])))
+                (await! (support/wait-for! #(nil? (.querySelector element ".upload-row"))))
+                (is (identical? image (.querySelector element "img")) "The ready acknowledgment must preserve the visible image")
+                (is (pos? (.-naturalWidth image)))
+                (is (nil? (.querySelector element ".upload-row"))))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (.remove element)
+                      (r/dispatch-sync [:blog/image-upload-dispose owner])
+                      (set! client/authenticated-request! original)
+                      (reset! r/*app-db before)
+                      (done)))))))
+
 (deftest mounted-paste-polls-and-completes-with-current-draft-edits
   (async done
     (let [before @r/*app-db
@@ -99,9 +166,9 @@
           element (.createElement js/document "div")
           *root (atom nil)]
       (set! client/authenticated-request!
-            (fn [& [method uri data success failure]]
+            (fn [& [method uri data success failure options]]
               (swap! *calls conj {:method method, :uri uri, :data data,
-                                 :success success, :failure failure})))
+                                 :success success, :failure failure, :progress (:on-upload-progress options)})))
       (-> (go-promise
             (r/dispatch-sync [:form-field [:post-blog :text] "Hello end"])
             (let [root (await! (support/create-root! element))]
@@ -112,22 +179,52 @@
                 (.setSelectionRange textarea 5 5)
                 (is (.-defaultPrevented (transfer! textarea "paste" file)))
                 (await! (support/wait-for! #(first @*calls)))
-                (let [{:keys [method data success]} (first @*calls)]
+                (let [{:keys [method data success progress]} (first @*calls)]
                   (is (= :post method))
                   (is (instance? js/FormData data))
                   (is (= "pasted.png" (.-name (.get data "file"))))
                   (is (.includes (.-value textarea) "<!-- image-upload:"))
+                  (progress {:loaded 40, :total 100})
+                  (await! (support/wait-for! #(= "40" (some-> (.querySelector element "progress") (.getAttribute "value")))))
+                  (is (= "100" (.getAttribute (.querySelector element "progress") "max")))
+                  (progress {:loaded 20, :total 100})
+                  (progress {:loaded js/Infinity, :total 100})
+                  (await! (support/settle!))
+                  (is (= "40" (.getAttribute (.querySelector element "progress") "value")))
                   (success {:id "job-first", :status "queued"}))
                 (await! (support/wait-for! #(some (fn [call] (when (= :get (:method call)) call)) @*calls)))
                 (let [poll (last @*calls)
                       draft (str "New intro " (.-value textarea) " later edit")]
                   (is (= "/api/supabase/media/job-first" (:uri poll)))
+                  (is (nil? (.getAttribute (.querySelector element "progress") "value")) "Conversion is indeterminate")
+                  ((:progress (first @*calls)) {:loaded 100, :total 100})
+                  (await! (support/settle!))
+                  (is (nil? (.getAttribute (.querySelector element "progress") "value")) "Late transfer events cannot change processing")
                   (r/dispatch-sync [:form-field [:post-blog :text] draft])
                   ((:success poll) {:id "job-first", :status "ready", :asset asset})
                   (await! (support/wait-for! #(.includes (.-value textarea) "https://media.test/image.png")))
                   (is (= "New intro Hello![pasted.png](https://media.test/image.png) end later edit"
                          (.-value textarea)))
                   (is (.includes (.-textContent element) "Uploaded"))
+                  (is (= "ready" (.getAttribute (.querySelector element ".upload-row") "data-status")))
+                  (is (nil? (.querySelector element "progress")))
+                  (let [upload (first (vals (get-in @r/*app-db [:state :blog :image-uploads])))
+                        id (:id upload)
+                        attempt (:attempt upload)
+                        src (get-in upload [:asset :src])]
+                    (is (.querySelector element ".upload-row") "Manifest ready alone must retain success row")
+                    (r/dispatch-sync [:blog/image-preview-ready id (inc attempt) src "editor-test" 0])
+                    (await! (support/settle!))
+                    (is (.querySelector element ".upload-row") "Stale attempt cannot dismiss row")
+                    (r/dispatch-sync [:blog/image-preview-failed id attempt src "editor-test" 0])
+                    (await! (support/wait-for! #(.querySelector element "[role=alert]")))
+                    (r/dispatch-sync [:blog/image-preview-retry id])
+                    (r/dispatch-sync [:blog/image-preview-ready id attempt src "editor-test" 0])
+                    (await! (support/settle!))
+                    (is (.querySelector element ".upload-row") "Old preview generation cannot dismiss retry")
+                    (r/dispatch-sync [:blog/image-preview-ready id attempt src "editor-test" 1])
+                    (await! (support/wait-for! #(nil? (.querySelector element ".upload-row"))))
+                    (is (nil? (.querySelector element ".upload-row")) "Actual preview acknowledgment completes the exit"))
                   (is (not (.includes (.-value textarea) "image-upload:")))))))
           (.catch (fn [error] (is false (str error))))
           (.finally (fn []
@@ -145,9 +242,9 @@
           element (.createElement js/document "div")
           *root (atom nil)]
       (set! client/authenticated-request!
-            (fn [& [method uri data success failure]]
+            (fn [& [method uri data success failure options]]
               (swap! *calls conj {:method method, :uri uri, :data data,
-                                 :success success, :failure failure})))
+                                 :success success, :failure failure, :progress (:on-upload-progress options)})))
       (-> (go-promise
             (r/dispatch-sync [:form-field [:post-blog :text] "Draft"])
             (let [root (await! (support/create-root! element))]
@@ -160,10 +257,15 @@
                 (await! (support/wait-for! #(first @*calls)))
                 ((:failure (first @*calls)) {:message "Offline"})
                 (await! (support/wait-for! #(.includes (.-textContent element) "Offline")))
+                (is (= "failed" (.getAttribute (.querySelector element ".upload-row") "data-status")))
+                (is (.querySelector element "[role=alert]"))
                 (let [retry (some #(when (= "Retry" (.-textContent %)) %)
                                   (array-seq (.querySelectorAll element "button")))]
                   (.click retry))
                 (await! (support/wait-for! #(when (= 2 (count @*calls)) true)))
+                ((:progress (first @*calls)) {:loaded 90, :total 100})
+                (await! (support/settle!))
+                (is (nil? (.getAttribute (.querySelector element "progress") "value")) "Retry ignores previous attempt progress")
                 ;; A late result from attempt one must not complete attempt two.
                 ((:success (first @*calls)) {:id "old", :status "ready", :asset asset})
                 (await! (support/settle!))
@@ -176,6 +278,7 @@
                 ((:success (second @*calls)) {:id "cancelled", :status "ready", :asset asset})
                 (await! (support/settle!))
                 (is (= "Draft" (.-value textarea)))
+                (await! (support/wait-for! #(nil? (.querySelector element "li"))))
                 (is (nil? (.querySelector element "li")))
                 ;; Ordinary text paste must retain its native editing behavior.
                 (let [transfer (js/DataTransfer.)

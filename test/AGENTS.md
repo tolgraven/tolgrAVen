@@ -30,6 +30,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Browser tests use the release Malli registry. Check typed page parameters,
   bounds, booleans, query encoding/extension keys and redacted coercion failures
   with internal validation disabled as well as ordinary contract validation.
+- Release browser-test builds include selected module entries through Shadow's
+  native namespace list; development uses preloads. Release excludes development
+  preloads, so both paths must expose the same lazy owner inventory.
 - Use owning schemas/constructors in fixtures instead of duplicating contracts.
   Test browser/Node-only schemas in `test/cljs`; JVM tests exercise portable/server
   contracts and generic composition helpers.
@@ -186,3 +189,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   path/expression rejection, feature-pruned generated help, block-safe published
   markup and actual editor normalization/keyboard/source transitions. Vendor CSS
   checks prove selector/palette isolation and relative units. See `doc/markdown-authoring.md`.
+
+- Upload-row checks cover measured/invalid/stale byte callbacks, indeterminate
+  processing, errors/retry/cancel, ready-but-unpainted retention and preview-owned
+  exit. A mocked queue acknowledgment does not prove actual image decode/visibility.

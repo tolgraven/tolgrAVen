@@ -2,9 +2,10 @@
   "Recognize authored public tags in Markdown HTML nodes without changing prose parsing."
   (:require [tolgraven.react :as r]
             [clojure.string :as string]
-            [tolgraven.loader.view :as view]
-            [tolgraven.modules.markdown-components.model :as model]
-            [tolgraven.modules.markdown-components.catalog :as catalog]
+            [tolgraven.loader :as loader]
+            [tolgraven.render-context :as context]
+            [tolgraven.markdown.authoring :as model]
+            [tolgraven.component.public-catalog :as catalog]
             ["mdast-util-from-markdown" :refer [fromMarkdown]]
             ["mdast-util-mdx-jsx" :refer [mdxJsxFromMarkdown]]
             ["micromark-extension-mdx-jsx" :refer [mdxJsx]]
@@ -89,4 +90,7 @@
       (let [node (try (js->clj (js/JSON.parse invocation) :keywordize-keys true)
                       (catch :default _ {:error "Invalid component arguments"}))
             invocation' (if (:error node) node (model/invocation node))]
-        (view/form :markdown-components :render [invocation'] [:span "Loading component…"])))))
+        (if (contains? (if context/*server?* context/*modules* loader/modules) :markdown-components)
+          (loader/component-vector :markdown-components/render [invocation'])
+          [:aside.content-component-error {:role "status"}
+           "Components are unavailable on this site"])))))

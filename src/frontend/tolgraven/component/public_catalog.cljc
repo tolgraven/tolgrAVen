@@ -1,4 +1,4 @@
-(ns tolgraven.modules.markdown-components.catalog
+(ns tolgraven.component.public-catalog
   "Public lookup retains only canonical identities and lazy module owners."
   #?(:cljs (:require [shadow.lazy]
                      [tolgraven.component.registry :as registry]))

@@ -5,7 +5,8 @@
             [tolgraven.macros :as m :refer-macros [defc]]
             [tolgraven.modules.blog-editor.upload-bridge :as bridge]
             [tolgraven.modules.blog-editor.events]
-            [tolgraven.modules.blog-editor.model :as model]))
+            [tolgraven.modules.blog-editor.model :as model]
+            [tolgraven.components.content.upload :as upload]))
 
 (defn image-file? [file]
   (or (string/starts-with? (.-type file) "image/")
@@ -29,6 +30,8 @@
       (enqueue! files textarea owner))))
 
 (defn dispose! [owner _] (r/dispatch [:blog/image-upload-dispose owner]))
+
+(declare <upload-status>)
 
 (defc <source-editor>
   {:features [:lifecycle]}
@@ -64,34 +67,22 @@
                               (enqueue! (image-files (.. event -target -files)) @*textarea owner)
                               (swap! *picker-generation inc))}]]
        [:p.blog-image-editor__hint "Paste, drop, or select images. Uploads are inserted where your cursor is."]
-       (when (seq uploads)
-         [:ul.blog-image-editor__uploads {:aria-live "polite"}
-          (for [{:keys [id name status error]} (sort-by :order (vals uploads))]
-            ^{:key id}
-            [:li
-             [:span name " — " (case status
-                                  :ready "Uploaded"
-                                  :failed (or error "Upload failed")
-                                  :queued "Waiting to upload…"
-                                  :uploading "Uploading…"
-                                  :processing "Preparing image sizes…")]
-             (when (= :failed status)
-               [:button {:type "button" :on-click #(r/dispatch [:blog/image-upload-retry id])} "Retry"])
-             (when (not= :ready status)
-               [:button {:type "button" :on-click #(r/dispatch [:blog/image-upload-cancel id])} "Remove"])])])
+       [<upload-status> {:owner owner}]
        (when (model/unresolved? text uploads)
          [:p {:role "status"} "Finish or remove image uploads before publishing."])]))
 
-(defc <upload-status> []
+(defc <upload-status>
+  {:features [:presence]}
+  [{:keys [owner]}]
   (let [uploads @(r/subscribe [:blog/state [:image-uploads]])]
-    [:ul.blog-image-editor__uploads {:aria-live "polite"}
-     (for [{:keys [id name status error]} (sort-by :order (vals uploads))]
-       ^{:key id}
-       [:li [:span name " — " (case status :ready "Uploaded" :failed error :queued "Waiting…" :uploading "Uploading…" :processing "Preparing image sizes…")]
-        (when (= status :failed)
-          [:button {:type "button", :on-click #(r/dispatch [:blog/image-upload-retry id])} "Retry"])
-        (when (not= status :ready)
-          [:button {:type "button", :on-click #(r/dispatch [:blog/image-upload-cancel id])} "Remove"])])]))
+    [:ul.blog-image-editor__uploads
+     (for [{:keys [id preview-ready? preview-error status] :as item} (sort-by :order (vals uploads))
+           :when (and (= owner (:owner item)) (not (and (= :ready status) preview-ready?)))]
+       ^{:key id} [upload/<upload-row> (cond-> (assoc item
+                                                   :exit {:class "upload-row--exit"}
+                                                   :retry! #(r/dispatch [(if preview-error :blog/image-preview-retry :blog/image-upload-retry) id])
+                                                   :remove! #(r/dispatch [:blog/image-upload-cancel id]))
+                                       preview-error (assoc :status :failed, :error preview-error))])]))
 
 (defc <library-state> []
   (let [{:keys [pending? error next-offset]} @(r/subscribe [:state [:blog-editor :library]])]
@@ -133,4 +124,4 @@
               :image-urls (mapv :src assets)
               :library library-action})
        [<source-editor> {:owner owner}])
-     (when @*rich? [<upload-status>])]))
+     (when @*rich? [<upload-status> {:owner owner}])]))

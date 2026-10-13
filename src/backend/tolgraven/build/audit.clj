@@ -31,6 +31,11 @@
                   :when (re-find #"cljs_time/|luminus_transit/time|modules/carousel/(views|events|subs|module)|modules/contact/(views|module)|modules/settings/(views|module)|dev_console/|reitit/dev/pretty|expound/|cljs/pprint|^markdown/|modules/blog/cache|modules/home/(views|sections|layout|module)|modules/styled_input/(views|module)|modules/data_inspector/|reitit/coercion/malli|^malli/|validation/malli|schema/malli_coercion|react-dom-server|highlight[_-]|refractor/|react_leaflet|leaflet/"
                                  (:resource-name source ""))]
             (throw (ex-info "An optional dependency entered the main bundle" source)))
+          (doseq [module [:main :blog]
+                  source (get graph module)
+                  :when (re-find #"@mdxeditor/|(?:^|/)lexical/|@lexical/|tolgraven/modules/(?:blog_editor|markdown_editor)/"
+                                 (:resource-name source ""))]
+            (throw (ex-info "An authoring dependency entered a public reading bundle" (assoc source :module module))))
           (let [data (report/extract-report-data state)
                 main (first (filter #(= :main (:module-id %)) (:build-modules data)))]
             (spit (str directory "/report.json") (json/write-str data))

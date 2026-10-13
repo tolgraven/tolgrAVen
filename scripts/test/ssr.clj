@@ -48,6 +48,17 @@
         code-blog (update-in blog [:posts 0 :text]
                              str "\n\nInline `42`, `(inc 1)` and `echo \"$HOME\"`.\n\n```\n(defn untagged [x] (inc x))\n```\n\n```clojure\n(defn greet [name] (str \"Hello \" name))\n```\n\n```cpp\n// Retain the language during hydration\nint answer = 42;\n```\n")
         [code-html] (render! worker [code-blog])
+        authored-blog (assoc-in blog [:posts 0 :text]
+                               (str "Before authored content\n\n"
+                                    "<Component component=\"tolgraven.components.content.box/<highlight-box>\" text=\"SSR authored note\" tone=\"tip\" layout-width=\"20rem\" layout-flow=\"right\" />\n\n"
+                                    "After authored content\n\n"
+                                    "<Component component=\"tolgraven.components.content.markdown/<image>\" src=\"/img/tolgrav-square.png\" alt=\"Authored logo\" layout-width=\"10rem\" />\n\n"
+                                    "<Component component=\"tolgraven.modules.settings.views/<config-table>\" title=\"SSR reader controls\" />\n\n"
+                                    "<Component component=\"tolgraven.modules.search.views/<inline>\" args='json:[]' />"))
+        [authored-html] (render! worker [authored-blog])
+        authored-config (assoc-in blog [:posts 0 :text]
+                                  "<Component component=\"tolgraven.modules.settings.views/<config-table>\" title=\"SSR reader controls\" />")
+        [authored-config-html] (render! worker [authored-config])
         shells (render! worker (mapv #(assoc % :shell? true :posts [] :query-params {})
                                      [home (assoc blog :path "/blog/post/42") cv]))]
     (check! (contains-all? (:html first) ["<strong>article</strong>" "Server comment 0"
@@ -78,8 +89,17 @@
     (check! (every? #(not (str/includes? (:html %) "component-error")) shells) "A page shell violated its contract")
     (check! (str/includes? (:html (nth shells 0)) "background-image:linear-gradient(to bottom, #")
             "Initial landing skeleton must paint sampled colors before image requests finish")
+    (check! (contains-all? (:html authored-html) ["SSR authored note" "content-box" "Authored logo" "SSR reader controls" "role=\"switch\"" "content-search"])
+            "Authored components must render their actual public UI in Node SSR")
+    (check! (not (re-find #"<p><(?:div|aside)|<site-component|Preparing component" (:html authored-html)))
+            "Authored SSR must retain block-safe real component markup")
+    (check! (contains? (:module-views authored-config-html) :settings)
+            "Visible authored settings must own their initial CSS and hydration inventory")
+    (check! (not (contains? (:module-views first) :settings))
+            "Hidden settings popup must stay out of plain post first-paint metadata")
     (doseq [[name snapshot response] [["blog" blog first] ["landing" home landing]
                                       ["cv" cv cv-html] ["docs" docs docs-html] ["missing" missing missing-html]
-                                      ["code-blog" code-blog code-html]]]
+                                      ["code-blog" code-blog code-html] ["authored-blog" authored-blog authored-html]
+                                      ["authored-config" authored-config authored-config-html]]]
       (fixture! name snapshot response))
     (println "Node SSR: all page kinds, escaping, request isolation, missing permalink and shells passed; hydration fixtures generated.")))

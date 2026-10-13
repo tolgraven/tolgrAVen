@@ -1,10 +1,13 @@
 (ns tolgraven.modules.blog-editor.model
   "Pure draft attachment transformations. Upload files and status are transient."
   (:require [clojure.string :as string]
+            [tolgraven.components.content.upload-schema :as upload-schema]
             [tolgraven.media.schema :as media]))
 
 (def uploading-statuses #{:queued :uploading :processing})
 (def marker-pattern #"<!-- image-upload:[A-Za-z0-9-]+ -->")
+
+(def progress-schema upload-schema/progress)
 
 (def upload-schema
   [:map
@@ -20,8 +23,21 @@
    [:?attempt [:int {:min 1}]]
    [:?polls [:int {:min 0}]]
    [:?error :string]
+   [:?progress progress-schema]
+   [:?preview-ready? :boolean]
+   [:?preview-error :string]
+   [:?preview-attempt [:int {:min 0}]]
    [:?asset media/asset]])
 (def uploads-schema [:map-of :string upload-schema])
+
+(defn preview-generations
+  "A new upload of an already shown source still requires its own visible acknowledgment."
+  [uploads]
+  (into {} (map (fn [[src items]]
+                  [src (mapv (fn [{:keys [id attempt preview-attempt]}]
+                               [id attempt (or preview-attempt 0)])
+                             (sort-by :id items))]))
+        (group-by #(get-in % [:asset :src]) uploads)))
 
 (defn placeholder [id] (str "<!-- image-upload:" id " -->"))
 

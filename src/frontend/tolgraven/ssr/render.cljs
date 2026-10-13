@@ -2,6 +2,7 @@
   "Synchronous, isolated rendering of the ordinary Reagent tree. This adapter
    owns request-local subscriptions; it never replaces the running app's db."
   (:require [tolgraven.react :as r]
+            [tolgraven.component.public-catalog :as public-catalog]
             [tolgraven.validation.runtime :as validation]
             [tolgraven.schema.app-db :as app-db]
             [tolgraven.schema.declarations :as declarations]
@@ -14,9 +15,22 @@
             [tolgraven.render-context :as context]))
 
 (defn module-views [modules]
-  (into {} (map (fn [[id spec]] [id (vec (keys (:view spec)))]) modules)))
+  (into {}
+        (for [[id spec] modules
+              :let [canonical (sort (keep (fn [[identity owner]]
+                                            (when (= id owner) (keyword identity)))
+                                          public-catalog/owners))]]
+          [id (vec (distinct (concat (keys (:view spec)) canonical)))])))
 
-(defn html! [db form {:keys [modules href snapshot restored? interactive?]}]
+(defn export-inventory
+  "JSON must retain qualified canonical keywords rather than dropping their namespace."
+  [views]
+  (into {} (map (fn [[id exports]]
+                  [id (mapv (fn [value]
+                              (if (keyword? value) (subs (str value) 1) (str value)))
+                            (sort exports))])) views))
+
+(defn html! [db form {:keys [modules href snapshot restored? interactive? rendered-views]}]
   (when @validation/*enabled?
     (doseq [[id spec] modules]
       (validation/check! (str "render module " id)
@@ -32,7 +46,7 @@
                       (r/run value)
                       (swap! *readers assoc args value)
                       value)))]
-    (binding [context/*server?* true context/*modules* modules context/*href* href]
+    (binding [context/*server?* true context/*modules* modules context/*href* href context/*rendered-views* rendered-views]
       (r/with-framework-bindings [r/*app-db (r/atom db)
                     r/*subscription-cache (atom {})
                     context/*snapshot (r/atom snapshot)

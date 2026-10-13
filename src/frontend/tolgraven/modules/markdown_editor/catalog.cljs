@@ -2,21 +2,26 @@
   "Rich source documentation belongs only to the authoring SDK owner."
   (:require [clojure.string :as string]
             [tolgraven.components.content.layout :as layout]
-            [tolgraven.component.registry :as registry])
+            [tolgraven.component.registry :as registry]
+            [tolgraven.schema.dsl :as dsl])
   (:require-macros [tolgraven.build.authoring :refer [catalog]]))
 
 (def entries (catalog))
 (def by-name (into {} (map (juxt :name identity)) entries))
 
 (defn map-fields [schema]
-  (when (vector? schema)
-    (case (first schema)
-      :map (filter vector? (rest schema))
-      :merge (mapcat map-fields (rest schema))
-      :and (mapcat map-fields (rest schema))
-      :cat (map-fields (second schema))
-      :tuple (map-fields (second schema))
-      [])))
+  (let [schema' (dsl/->malli schema)]
+    (when (vector? schema')
+      (let [tail (rest schema')
+            children (if (map? (first tail)) (rest tail) tail)]
+        (case (first schema')
+          :map (filter vector? children)
+          :merge (mapcat map-fields children)
+          :and (mapcat map-fields children)
+          :maybe (map-fields (first children))
+          :cat (map-fields (first children))
+          :tuple (map-fields (first children))
+          [])))))
 
 (defn arguments [{:keys [name schema mode]}]
   (let [options (get-in (registry/public-component name) [:definition :options])

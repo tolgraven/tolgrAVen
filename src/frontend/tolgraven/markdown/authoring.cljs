@@ -1,8 +1,8 @@
-(ns tolgraven.modules.markdown-components.model
+(ns tolgraven.markdown.authoring
   "Data-only component arguments. Neither expressions nor imports are executable."
   (:require [clojure.string :as string]
             [tolgraven.markdown.components :as syntax]
-            [tolgraven.modules.markdown-components.catalog :as catalog]))
+            [tolgraven.component.public-catalog :as catalog]))
 
 (def binding-schema syntax/binding-schema)
 (def argument-schema syntax/argument-schema)
@@ -10,10 +10,17 @@
 (def public-path? syntax/public-path?)
 (def decode-value syntax/decode-value)
 
+(defn edn-literal? [value]
+  (boolean (some #(or (keyword? %) (symbol? %) (set? %)
+                     (and (map? %) (some (fn [key] (or (not (keyword? key)) (namespace key))) (keys %))))
+                 (tree-seq coll? #(if (map? %) (vals %) (seq %)) value))))
+
 (defn encode-value [{:keys [path literal]}]
   (if path (str "db:" (pr-str path))
-      (if (and (string? literal) (not (re-find #"^(db:|json:)" literal))) literal
-          (str "json:" (js/JSON.stringify (clj->js literal))))))
+      (cond
+        (and (string? literal) (not (re-find #"^(db:|json:|edn:)" literal))) literal
+        (edn-literal? literal) (str "edn:" (pr-str literal))
+        :else (str "json:" (js/JSON.stringify (clj->js literal))))))
 
 (defn component-name [node]
   (when (= "Component" (:name node))

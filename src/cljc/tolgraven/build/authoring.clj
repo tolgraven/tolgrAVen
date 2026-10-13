@@ -26,11 +26,12 @@
 
 (defn argument-shape [args]
   (if-not (vector? args) {:mode :positional, :parameters []}
-    (let [first-arg (first args)
+    (let [clean-args (:args ((requiring-resolve 'tolgraven.macros/component-arguments) args))
+          first-arg (first clean-args)
           spec? (or (map? first-arg)
                     (and (symbol? first-arg) (#{"spec" "opts" "options"} (name first-arg))))]
-      {:mode (if (and spec? (or (= 1 (count args)) (= ':- (second args)))) :map :positional)
-       :parameters (mapv pr-str (remove #{':-} args))})))
+      {:mode (if (and spec? (= 1 (count clean-args))) :map :positional)
+       :parameters (mapv pr-str clean-args)})))
 
 (defn declarations [source enabled?]
   (let [forms (read-forms source (cond-> #{:cljs :browser} (enabled? :blog :comments) (conj :feature/blog-comments)))

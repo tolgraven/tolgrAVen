@@ -312,31 +312,38 @@
           (queue-queries!)
           state)))))
 
-(defn authenticated-request! [method uri data on-success on-error]
-  (if-let [client @*client]
-    (let [owner (session-key @*session)
-          current? #(and (identical? client @*client)
-                         (= owner (session-key @*session)))
-          fail! #(when (current?) (on-error %))]
-      (-> (status/within! (call-method (gobj/get client "auth") "getSession") 15000)
-          (.then (fn [result]
-                   (when (gobj/get result "error") (throw (js/Error. "Unable to restore your Supabase session")))
-                   (let [session (some-> result (gobj/get "data") (gobj/get "session"))
-                         token (some-> session (gobj/get "access_token"))]
-                     (when (and (current?) (= owner (session-key session)))
-                       (if token
-                         ((case method :get ajax/GET :put ajax/PUT :post ajax/POST)
-                          uri {:params (when-not (instance? js/FormData data) data)
-                               :body (when (instance? js/FormData data) data)
-                               :headers {"Authorization" (str "Bearer " token)}
-                               :timeout 60000
-                               :format (when-not (instance? js/FormData data) (ajax/json-request-format))
-                               :response-format (ajax/json-response-format {:keywords? true})
-                               :handler #(when (current?) (on-success %))
-                               :error-handler fail!})
-                         (fail! {:message "Sign in to continue"}))))))
-          (.catch #(fail! {:message (.-message %)}))))
-    (on-error {:message "Supabase is not initialized"})))
+(defn authenticated-request!
+  ([method uri data on-success on-error]
+   (authenticated-request! method uri data on-success on-error nil))
+  ([method uri data on-success on-error {:keys [on-upload-progress]}]
+   (if-let [client @*client]
+     (let [owner (session-key @*session)
+           current? #(and (identical? client @*client)
+                          (= owner (session-key @*session)))
+           fail! #(when (current?) (on-error %))]
+       (-> (status/within! (call-method (gobj/get client "auth") "getSession") 15000)
+           (.then (fn [result]
+                    (when (gobj/get result "error") (throw (js/Error. "Unable to restore your Supabase session")))
+                    (let [session (some-> result (gobj/get "data") (gobj/get "session"))
+                          token (some-> session (gobj/get "access_token"))]
+                      (when (and (current?) (= owner (session-key session)))
+                        (if token
+                          ((case method :get ajax/GET :put ajax/PUT :post ajax/POST)
+                           uri {:params (when-not (instance? js/FormData data) data)
+                                :body (when (instance? js/FormData data) data)
+                                :headers {"Authorization" (str "Bearer " token)}
+                                :timeout 60000
+                                :format (when-not (instance? js/FormData data) (ajax/json-request-format))
+                                :response-format (ajax/json-response-format {:keywords? true})
+                                :handler #(when (current?) (on-success %))
+                                :error-handler fail!
+                                :progress-handler (when on-upload-progress
+                                                    (fn [event]
+                                                      (when (and (current?) (.-lengthComputable event))
+                                                        (on-upload-progress {:loaded (.-loaded event), :total (.-total event)}))))})
+                          (fail! {:message "Sign in to continue"}))))))
+           (.catch #(fail! {:message (.-message %)}))))
+     (on-error {:message "Supabase is not initialized"}))))
 
 (when-enabled :user nil
 (defn sign-in! [method email password on-error]

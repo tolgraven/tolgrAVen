@@ -407,3 +407,14 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   existing registry/module loader. Legacy `<…>` render functions register through
   `register-render-functions!`; never wrap their ordinary call contracts. Rich
   docs remain editor-owned; layout geometry uses separate `layout-*` arguments.
+- Shared `component/public_catalog.cljc` retains only canonical identities and
+  lazy owners. `markdown/authoring.cljs` handles data encoding; optional rendering
+  stays in `:markdown-components`. Canonical boundaries use the existing selective
+  hydration loader and await coercion installation before committing. SSR records
+  actually rendered exports with full identities preserved in JSON; their styles
+  are available before hydration, including visibly embedded deferred owners.
+
+- Blog authoring upload progress comes from the authenticated transport's measured
+  byte callbacks and remains attempt/owner guarded in transient module state.
+  Server-ready media stays visible in the status list until the published preview
+  acknowledges visible decoded content; keyed presence owns row exit and cleanup.

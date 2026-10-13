@@ -47,7 +47,9 @@
               :user #?(:module/user user/spec :default nil)
               :link-preview #?(:module/link-preview link-preview/spec :default nil)}))
 
-(defn render! [snapshot]
+(defn render!
+  ([snapshot] (render! snapshot nil))
+  ([snapshot rendered-views]
   (let [snapshot (update snapshot :content content/normalize-content)
         _ (validation/check! :ssr/snapshot schema/snapshot snapshot)
         match (cond-> (assoc (reitit/match-by-path routes/router (:path snapshot))
@@ -66,10 +68,10 @@
                    :common/route (assoc-in match [:data :view] view))
             (assoc-in [:state :booted :store] true))
         [page/<page>]
-        {:snapshot snapshot :modules modules
+        {:snapshot snapshot :modules modules :rendered-views rendered-views
          :href (fn [name params query]
                  (some-> (reitit/match-by-name routes/router name params)
-                         (reitit/match->path query)))}))))
+                         (reitit/match->path query)))})))))
 
 (defn main []
   (-> (.createInterface readline #js {:input (.-stdin js/process) :crlfDelay js/Infinity})
@@ -77,8 +79,10 @@
       (.on "line"
            (fn [line]
              (let [response (try
-                              {:html (render! (js->clj (js/JSON.parse line) :keywordize-keys true))
-                               :module-views (render/module-views modules)}
+                              (let [*views (atom {})
+                                    html (render! (js->clj (js/JSON.parse line) :keywordize-keys true) *views)]
+                                {:html html
+                                 :module-views (render/export-inventory @*views)})
                               (catch :default error
                                 (.write (.-stderr js/process) (str (.-stack error) "\n"))
                                 {:error "Page rendering failed"}))]

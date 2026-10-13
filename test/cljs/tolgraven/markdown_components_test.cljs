@@ -2,13 +2,14 @@
   (:require [cljs.test :refer-macros [deftest is testing async]]
             [tolgraven.modules.markdown-editor.views :as rich]
             [tolgraven.test-support :as support]
+            [tolgraven.ssr.render :as render]
             [tolgraven.markdown-editor-demo]
             [clojure.string :as string]
             [reagent.dom.server :as server]
             [tolgraven.components.markdown-components :as tags]
             [tolgraven.components.ui.code :as public-markdown]
             [tolgraven.modules.markdown-editor.catalog :as catalog]
-            [tolgraven.modules.markdown-components.model :as model]
+            [tolgraven.markdown.authoring :as model]
             [tolgraven.components.content.markdown :as markdown]
             [tolgraven.components.content.box :as box]
             [tolgraven.components.content.frame :as frame]
@@ -16,22 +17,37 @@
             [tolgraven.components.content.resize :as resize]
             ["mdast-util-from-markdown" :refer [fromMarkdown]]))
 
+(deftest canonical-export-inventory-survives-json-with-its-namespace
+  (let [inventory (render/export-inventory {:settings #{:view :tolgraven.modules.settings.views/<config-table>}})
+        restored (js->clj (js/JSON.parse (js/JSON.stringify (clj->js inventory))) :keywordize-keys true)]
+    (is (= #{"view" "tolgraven.modules.settings.views/<config-table>"} (set (:settings restored))))))
+
 (deftest metadata-search-includes-docstrings-and-types
   (is (some #(= "tolgraven.components.content.box/<highlight-box>" (:name %)) (catalog/search "aside warning")))
   (is (some #(= "tolgraven.modules.settings.views/<config-table>" (:name %)) (catalog/search "theme")))
   (is (= {:key :title, :optional? true, :schema :string}
          (second (catalog/arguments (get catalog/by-name "tolgraven.components.content.box/<highlight-box>"))))))
 
+(deftest argument-help-expands-the-shared-nullable-schema-dsl
+  (is (= [[:text {:optional true} :string]]
+         (vec (catalog/map-fields [:?map [:?text :string]]))))
+  (is (= [[:text :string]]
+         (vec (catalog/map-fields [:cat {:title "Arguments"} [:map [:text :string]]])))))
+
 (deftest data-arguments-round-trip-without-evaluation
   (doseq [value [{:literal "Hello"} {:literal 2} {:literal false}
                  {:literal ["One" "Two"]} {:literal {:text "A", :checked true}}
-                 {:literal "db:not-a-path"}
+                 {:literal "db:not-a-path"} {:literal "edn:literal text"}
+                 {:literal :content} {:literal #{:appear :seen}} {:literal [:options :theme]}
+                 {:literal {:content/title "Typed key"}} {:literal {"string-key" 1}} {:literal {1 "Numeric key"}}
                  {:path [:content :blog "post-id" :title]}]]
     (is (= value (model/decode-value (model/encode-value value)))))
   (is (= {:path [:options :theme :dark-mode]}
          (model/decode-value "db:[:options :theme :dark-mode]"))))
 
 (deftest private-state-and-code-cannot-become-arguments
+  (doseq [text ["edn:#=(js/alert 1)" "edn:#inst \"2026-10-13\"" "edn:#uuid \"00000000-0000-0000-0000-000000000000\""]]
+    (is (thrown? js/Error (model/decode-value text))))
   (doseq [text ["db:[:user :active-user]" "db:[:supabase :client]"
                 "db:[:options :secret]" "db:[:state :ops]" "db:#=(do (js/alert 1))"]]
     (is (thrown? js/Error (model/decode-value text))))
@@ -133,7 +149,8 @@
           (.then (fn [root]
                    (reset! *root root)
                    (support/render! root [public-markdown/<parse-markdown-components> source])))
-          (.then (fn [_] (support/wait-for! #(.querySelector element ".content-box"))))
+          (.then (fn [_] (support/wait-for! #(and (.querySelector element ".content-box")
+                                                (.querySelector element "[role=switch]")))))
           (.then (fn [_]
                    (is (= "Published aside" (.-textContent (.querySelector element ".content-box p"))))
                    (is (= "right" (.. element (querySelector ".content-widget") -style -float)))

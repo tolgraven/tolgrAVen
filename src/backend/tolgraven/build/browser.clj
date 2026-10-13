@@ -4,6 +4,7 @@
             [tolgraven.build.modules :as modules]
             [shadow.build :as build]
             [shadow.build.config :as config]
+            [shadow.build.test-util :as test-util]
             [shadow.build.targets.browser :as browser]))
 
 (defmethod config/target-spec 'tolgraven.build.browser/process [_]
@@ -24,5 +25,17 @@
   [state]
   ;; The single browser-test bundle needs every discovered namespace available
   ;; to shadow.lazy, even when no test directly requires that module entry yet.
-  (update-in state [::build/config :devtools :preloads]
-             #(vec (distinct (concat % (map :entry (modules/discover)))))))
+  (let [entries (mapv :entry (modules/discover))]
+    (if (= :release (::build/mode state))
+      ;; Shadow's browser-test target excludes development preloads in release.
+      ;; Its native namespace list supplies the same selected module entries to
+      ;; the single test bundle so shadow.lazy can resolve their real owners.
+      (-> state
+          (assoc-in [::build/config :namespaces]
+                    (vec (distinct (concat (test-util/find-test-namespaces state (::build/config state)) entries))))
+          ;; Config merges union sets, so adding #{:browser} cannot remove :dev.
+          ;; A release fixture must exercise the deferred validation engine.
+          (update-in [::build/config :compiler-options :reader-features] disj :dev)
+          (update-in [:compiler-options :reader-features] disj :dev))
+      (update-in state [::build/config :devtools :preloads]
+                 #(vec (distinct (concat % entries)))))))

@@ -5,6 +5,13 @@ which owns the posting form, media-library UI and serialized attachment queue.
 The reusable visual SDK, its toolbar and rich help live in the independently lazy
 `:markdown-editor` bundle. `blog-editor` declares `:site/owner :blog`, and `markdown-editor` follows
 `blog-editor`; disabled parents prune child code, routes and packaged assets.
+Attachment rows show measured upload bytes, an indeterminate conversion phase,
+and success/error surfaces with retry/remove. Byte callbacks retain the transport
+auth owner and queue attempt guards; cancelled and replaced attempts cannot update
+the row. Files and byte progress stay in transient module state. Server-ready rows
+remain until the published preview acknowledges visibly decoded image content.
+The existing keyed presence lifecycle owns their brief opacity exit. Preview
+failures retain a notice; retry reloads the preview without reuploading the file.
 Reading a public post uses the normal public Markdown
 renderer; it does not acquire either authoring bundle.
 
@@ -45,7 +52,9 @@ positional call contract:
 ```
 
 Plain strings are literal. `json:` supplies numbers, booleans, arrays, objects or
-an explicitly escaped string. `db:` supplies an EDN **data path**, retaining keyword,
+an explicitly escaped string. `edn:` supplies literal Clojure data, including
+keywords, sets and typed map keys; it never evaluates code and rejects tags.
+`db:` supplies an EDN **data path**, retaining keyword,
 string-ID and numeric segments. Paths may read public `:content`, component-owned
 `:content-components`, or `[:options :theme ...]`. They cannot read account,
 credential, administration or arbitrary application state. No tagged code,
@@ -111,3 +120,13 @@ modifier families, task/list/table editing, media insertion, literal/path argume
 actual component interactions, iframe measurement cleanup, image/widget resize
 and float geometry, public SSR/hydration, and navigation ownership. Source tests
 alone do not establish visual parity or live Strapi/Supabase behavior.
+
+The focused workflow runs through the shared resource launcher:
+`tolgraven-cpu run -- bash scripts/test/markdown-editor.sh --hydration` produces
+current Node fixtures and the ordinary mounted suite. Use a separate isolated
+`--production-hydration` run to verify delayed owner/coercion installation with
+release readers. The release fixture checks native SSR node identity before each
+gate opens and then operates the actual theme control. Use the current shared
+budgets from `doc/resource-controls.md`; independent outputs preserve watched
+builds. First-paint CSS follows the renderer's actual visible export
+inventory, including embedded owners whose popup stylesheet is normally deferred.

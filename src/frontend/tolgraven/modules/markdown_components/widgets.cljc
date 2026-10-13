@@ -6,7 +6,7 @@
                      [tolgraven.components.image :as image]
                      [tolgraven.components.highlight :as highlight]
                      [tolgraven.components.oembed :as oembed]
-                     [tolgraven.modules.markdown-components.catalog :as catalog]
+                     [tolgraven.component.public-catalog :as catalog]
                      [tolgraven.components.content.box]
                      [tolgraven.components.content.markdown]
                      [tolgraven.components.content.frame])))

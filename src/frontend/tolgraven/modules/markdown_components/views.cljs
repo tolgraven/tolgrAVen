@@ -1,13 +1,14 @@
 (ns tolgraven.modules.markdown-components.views
   (:require [tolgraven.component.registry :as registry]
+            [tolgraven.loader :as loader]
             [tolgraven.component.data :as data]
             [tolgraven.components.content.layout :as layout]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.validation :as validation]
             [tolgraven.render-context :as context]
             [tolgraven.react :as r]
-            [tolgraven.modules.markdown-components.catalog :as catalog]
-            [tolgraven.modules.markdown-components.model :as model]
+            [tolgraven.component.public-catalog :as catalog]
+            [tolgraven.markdown.authoring :as model]
             [tolgraven.modules.markdown-components.widgets]))
 
 (defn binding-dependencies [{:keys [arguments]}]
@@ -33,7 +34,6 @@
         props (values invocation)
         geometry (layout/geometry props)
         depth (r/use-context depth-context)
-        _ (when (and entry (not= :main (:owner entry)) (not context/*server?*)) @(r/subscribe [:loader/module (:owner entry)]))
         _' (when-not (validation/ready?) @(r/subscribe [:loader/module :coercion]))
         {:keys [component definition]} (registry/public-component name)
         options (:options definition)
@@ -47,7 +47,8 @@
       error [<unavailable> error]
       (nil? entry) [<unavailable> "Component unavailable on this site"]
       (>= depth 8) [<unavailable> "Component nesting limit reached"]
-      (nil? component) [<unavailable> "Preparing component…"]
+      (and (nil? component) (or (= :main (:owner entry)) (= :markdown-components (:owner entry))))
+      [<unavailable> "Preparing component…"]
       (not (validation/ready?)) [<unavailable> "Preparing component…"]
       invalid? [<unavailable> (str "Check the arguments for " name)]
       :else [:> (.-Provider depth-context) {:value (inc depth)}
@@ -57,4 +58,11 @@
                :data-flow (or (:flow geometry) "block")
                :data-height-mode (if (and (:height geometry) (not (#{"auto" "fit"} (:height geometry)))) "fixed" "natural")
                :style (layout/style geometry)}
-              (into [component] args)]]])))
+              (if (#{:main :markdown-components} (:owner entry))
+                (into [component] args)
+                ;; The enclosing authored boundary already owns viewport intent.
+                ;; Acquire its chosen widget owner immediately rather than waiting
+                ;; for a second observer inside retained SSR Suspense content.
+                (loader/component-vector {:module (:owner entry)
+                                          :view (keyword name)
+                                          :load-on :immediate} args))]]])))
