@@ -447,6 +447,10 @@
 
 (deftest responsive-catalog-defaults-and-modern-originals-share-the-source-contract
   (is (sources/progressive? "/img/logo/tolgraven-logo.png"))
+  (is (not (sources/progressive? "/img/logo/icon/react-logo-icon.png")))
+  (is (not (sources/progressive? "/img/warning_clojure.webp")))
+  (is (not (sources/progressive? "/img/wide-spot-ctrl-small.jpg")))
+  (is (sources/progressive? "/img/foggy-shit-small.jpg"))
   (is (= 80 (:width (sources/preview "/img/logo/tolgraven-logo.png"))))
   (is (sources/should-use-modern-formats? "/img/warning_clojure.webp"))
   (is (= "/img/warning_clojure-80w.avif" (:avif (sources/preview "/img/warning_clojure.webp"))))
@@ -525,3 +529,23 @@
                   ["#ffffff" "#000000"]]]
     (with-redefs [sources/responsive {"img/unsafe.jpg" {:placeholder {:colors colors}}}]
       (is (nil? (sources/placeholder-background "/img/unsafe.jpg"))))))
+
+
+(deftest small-manual-responsive-images-have-no-preview-or-blur-layer
+  (let [html (server/render-to-string
+              [image/<picture> {:src "/img/warning_clojure.webp"}])]
+    (is (not (.includes html "progressive-image")))
+    (is (not (.includes html "data-image-preview")))
+    (is (.includes html (sources/srcset "/img/warning_clojure.webp" "avif")))))
+
+
+(deftest cheap-large-banner-keeps-a-static-placeholder-with-one-final-image
+  (let [html (server/render-to-string
+              [image/<picture> {:src "/img/wide-spot-ctrl-small.jpg"
+                                :class "original-banner"}])]
+    (is (.includes html "data-image-placeholder=\"true\""))
+    (is (.includes html "data-image-phase=\"single\""))
+    (is (.includes html "class=\"original-banner\""))
+    (is (not (.includes html "progressive-image")))
+    (is (not (.includes html "data-image-preview")))
+    (is (.includes html (sources/srcset "/img/wide-spot-ctrl-small.jpg" "avif")))))

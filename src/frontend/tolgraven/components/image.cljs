@@ -97,7 +97,7 @@
   ;; Initial images share a document-owned collection, keyed by exact native
   ;; wrapper identity. No later SPA instance inherits an old staging owner.
   (when image
-    (let [wrapper (.closest image ".progressive-image")
+    (let [wrapper (.closest image ".progressive-image, img[data-image-placeholder]")
           ^js root (some-> wrapper (.closest "#app"))
           ^js owners (some-> root (aget "__progressiveImages"))
           ^js owner (when owners (.get owners wrapper))]
@@ -173,11 +173,17 @@
           preview (sources/preview src)
           progressive?' (and preview (if (contains? attrs :progressive?)
                                       progressive? (sources/progressive? src)))
+          background (sources/placeholder-background src)
+          dimensions (sources/dimensions src)
+          placeholder? (and background (>= (max (or (:width dimensions) 0)
+                                               (or (:height dimensions) 0)) 960))
           sizes (or (:sizes attrs) "100vw")
           phase (when (= src (:src @*image-phase)) (:phase @*image-phase))
-          phase' (if (and direct? (or (not initial-hydration?)
-                                     (restore/local-document?) phase))
-                   (if (= :decoded phase) :decoded :single) phase)
+          phase' (cond
+                   (not progressive?') (if (= :decoded phase) :decoded :single)
+                   (and direct? (or (not initial-hydration?) (restore/local-document?) phase))
+                   (if (= :decoded phase) :decoded :single)
+                   :else phase)
           failed! (r/use-callback
                     (fn [event]
                       (when-not (= {:src src, :phase :failed} @*image-phase)
@@ -303,7 +309,8 @@
               (decoded! (.-current *final-image) false)
               #(set! (.-current *active?) false))))
         [src single! decoded! direct? phase])
-      (if progressive?'
+      (cond
+        progressive?'
         (let [managed? (or (and phase' (not= :native phase'))
                            (not= src (:src @*image-phase)))
               final-attrs (-> attrs
@@ -334,17 +341,35 @@
                                          "--image-preview-blur" (str "var(--pi-" image-key "-blur, 4rem)")
                                          "--image-motion" (str "var(--pi-" image-key "-motion, none)")
                                          "--image-placeholder" (str "var(--pi-" image-key "-placeholder, "
-                                                                      (or (sources/placeholder-background src) "none") ")")}
+                                                                      (or background "none") ")")}
                                         style)
                           :data-image-key image-key
-                          :data-image-placeholder (when (sources/placeholder-background src) true)
+                          :data-image-placeholder (when background true)
                           :data-preview-width (:width preview)
                           :data-image-sizes sizes
                           :data-image-phase (when managed? (some-> phase' name))
                           :data-image-managed (when managed? true)
                           :data-image-retrying (when (#{:retry :failed} phase') true)}]
           [<progressive-layers> root-attrs phase' preview-attrs final-attrs])
-        [<source-picture> attrs]))))
+
+        placeholder?
+        [<source-picture>
+         (assoc attrs
+                :style (merge {:background-image (if (= :decoded phase) "none"
+                                                    (str "var(--pi-" image-key "-placeholder, " background ")"))}
+                              style)
+                :data-image-key image-key
+                :data-image-placeholder true
+                :data-image-phase (name phase')
+                :data-image-managed true
+                :data-image-final true
+                :ref capture!
+                :on-load loaded!
+                :on-error failed!
+                :on-source-error pending!
+                :on-attached-error failed!)]
+
+        :else [<source-picture> attrs]))))
 
 (defc <img>
   "Smart img component that automatically uses modern formats when available.

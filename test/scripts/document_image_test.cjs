@@ -5,11 +5,12 @@ const test = require('node:test');
 const head = fs.readFileSync('resources/public/js/document/head.js', 'utf8');
 const source = fs.readFileSync('resources/public/js/document/entrance.js', 'utf8');
 function deferred() { let resolve, reject; const promise = new Promise((a,b) => {resolve=a; reject=b;}); return {promise,resolve,reject}; }
-function fixture({pending=true, width=390, dpr=2, same=false, reduced=false, nativeDecode=true, cached=false, direct=false, scale=1, duplicate=false, placeholder=false, previewOmitted=false, managed=false}={}) {
+function fixture({pending=true, width=390, dpr=2, same=false, reduced=false, nativeDecode=true, cached=false, direct=false, scale=1, duplicate=false, placeholder=false, previewOmitted=false, managed=false, nativeImage=false}={}) {
   const frames = new Map(), timers = new Map(); let sequence = 0, observer;
   class Element extends EventTarget {
     constructor(attrs={}) { super(); this.attrs=new Map(Object.entries(attrs)); this.listeners=new Map(); this.properties=new Map(); this.style={setProperty:(k,v)=>this.properties.set(k,v),removeProperty:k=>this.properties.delete(k)}; }
     querySelectorAll() { return []; }
+    matches() { return false; }
     getAttribute(k) { return this.attrs.get(k) ?? null; }
     setAttribute(k,v) { this.attrs.set(k,String(v)); }
     removeAttribute(k) { this.attrs.delete(k); }
@@ -18,7 +19,7 @@ function fixture({pending=true, width=390, dpr=2, same=false, reduced=false, nat
     removeEventListener(k,v) { super.removeEventListener(k,v); this.listeners.set(k,(this.listeners.get(k)||0)-1); }
   }
   const root = new Element(pending ? {'data-document-pending':'true'} : {});
-  const hero = new Element({'data-preview-width':'400','data-image-sizes':'100vw','data-image-key':'_R_hero'});
+  let hero = new Element({'data-preview-width':'400','data-image-sizes':'100vw','data-image-key':'_R_hero'});
   const html = new Element(direct?{'data-image-direct':'true'}:{});
   hero.parentElement=root;
   if(placeholder) hero.setAttribute('data-image-placeholder','true');
@@ -45,9 +46,15 @@ function fixture({pending=true, width=390, dpr=2, same=false, reduced=false, nat
     }
     other.final.getAnimations=()=>[];
   }
+  if(nativeImage) {
+    hero=final;final.parentElement=root;
+    final.setAttribute('data-image-key','_R_hero');
+    if(placeholder) final.setAttribute('data-image-placeholder','true');
+    if(managed) final.setAttribute('data-image-managed','true');
+  }
   root.querySelector=()=>hero; root.querySelectorAll=()=>other?[hero,other.hero]:[hero]; root.contains=node=>[hero,preview,final,...(other?Object.values(other):[])].includes(node) && !hero.removed && !node.removed;
-  hero.querySelector=selector=>selector.includes('preview')?(previewOmitted?null:preview):final;
-  hero.matches=()=>false; hero.querySelectorAll=()=>[];
+  hero.querySelector=selector=>nativeImage?null:(selector.includes('preview')?(previewOmitted?null:preview):final);
+  hero.matches=()=>nativeImage; hero.querySelectorAll=()=>[];
   const window = new Element();window.matchMedia=()=>({matches:reduced});
   class Observer {constructor(callback){this.callback=callback;observer=this;} observe(){} disconnect(){this.disconnected=true;}}
   const context={performance:{getEntriesByType:()=>[{type:direct?'back_forward':'navigate'}]},document:{querySelector:()=>root,documentElement:html}, Event, MutationObserver:Observer, window,
@@ -228,4 +235,17 @@ test('committed paired adoption releases its already-managed native owner',async
  owner.handoff();
  assert.equal(f.root.__progressiveImages.has(f.hero),false);
  assert.equal(f.final.listeners.get('load'),0);assert.equal(f.observer.disconnected,true);
+});
+
+test('a static single native image keeps its identity and clears the gradient on decode',async()=>{
+ const f=fixture({placeholder:true,managed:true,nativeImage:true});
+ assert.equal(f.hero,f.final);assert.equal(f.phase(),'single');
+ assert.equal(f.preview.listeners.get('load'),undefined);
+ await f.frame();await f.frame();
+ assert.equal(f.root.hasAttribute('data-document-pending'),false);
+ await f.load(f.final);
+ assert.equal(f.root.properties.get('--pi-_R_hero-placeholder'),'none');
+ f.root.__progressiveImages.get(f.final).handoff();
+ assert.equal(f.root.__progressiveImages.has(f.final),false);
+ assert.equal(f.final.listeners.get('load'),0);
 });

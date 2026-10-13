@@ -34,7 +34,8 @@
 
 (defn- acquire! [^js root ^js owners ^js entries ^js gate reveal! ^js wrapper]
   (let [preview (.querySelector wrapper "[data-image-preview]")
-        final (.querySelector wrapper "[data-image-final]")
+        final (if (.matches wrapper "img") wrapper
+                  (.querySelector wrapper "[data-image-final]"))
         key (.getAttribute wrapper "data-image-key")]
     (when (and final key)
       (let [src (.getAttribute final "src")
@@ -252,7 +253,7 @@
                        (js/requestAnimationFrame #(.forEach entries (fn [^js entry] (.previewPainted entry))))
                        (cleanup!)))))))]
         (set! (.-deadline gate) (js/setTimeout reveal! 10000))
-        (.forEach (.querySelectorAll root ".progressive-image")
+        (.forEach (.querySelectorAll root ".progressive-image, img[data-image-placeholder]")
                   #(acquire! root owners entries gate reveal! %))
         (if-not (.-pending gate)
           (js/clearTimeout (.-deadline gate))

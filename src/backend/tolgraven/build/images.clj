@@ -11,6 +11,7 @@
     [:map [:exclude? [:= true]]]
     [:map [:width pos-int?]
      [:height pos-int?]
+     [:?bytes nat-int?]
      [:sizes [:vector pos-int?]]
      [:?progressive? :boolean]
      [:?generated? :boolean]
