@@ -67,7 +67,8 @@ Features are explicit, ordered and registered independently of the macro:
  "An article"]
 ```
 
-Instance specs use the same ordered feature notation as declarations:
+Instance specs use the same ordered feature notation as declarations. When the
+first argument contains only features, pass that feature vector directly:
 
 ```clojure
 (defc <article>
@@ -75,11 +76,28 @@ Instance specs use the same ordered feature notation as declarations:
   [spec title]
   [:article title])
 
-[<article> {:features [[:appear false]]} "Already visible"]
-[<article> {:features [[:appear {:class "slide-in"}]
-                       [:seen {:threshold 0.25}]]} "Approaching the viewport"]
-[<article> {:features [[:on-seen {:event [:article/load 42], :once? true}]]}
+[<article> [[:appear false]] "Already visible"]
+[<article> [[:appear {:class "slide-in"}]
+            [:seen {:threshold 0.25}]] "Approaching the viewport"]
+[<article> [[:on-seen {:event [:article/load 42], :once? true}]]
  "Load the article when seen"]
+```
+
+`[<article> [[:appear false]] title]` is equivalent to
+`[<article> {:features [[:appear false]]} title]`. The runtime expands the vector
+into a spec map before argument/spec validation, configuration/dependency functions,
+per-instance bindings and the body. Keyword entries such as `[:seen]` enable a
+feature; `[]` inherits all declaration defaults. This applies only to spec-capable
+components; inferred non-spec components and explicit `:spec false` declarations
+keep vector arguments as domain data.
+
+When also supplying props, a container, dependencies or domain fields, keep a map
+and its explicit `:features` key:
+
+```clojure
+[<article> {:props {:id "visible-article"}
+            :features [[:appear false]]}
+ "Already visible with props"]
 ```
 
 Missing entries inherit defaults. `false` and `nil` disable; `true` inherits an
@@ -583,7 +601,7 @@ The main page marks its shared document/header/footer dependencies for startup
 availability, while individual sections use `defc` dependency lifecycle handling.
 
 Appearance and visibility belong to actual components, for example
-`{:features [[:seen "zoom"]]}` on an image component. For a visibility-driven event, use `[:on-seen {:event [:load-more] :once? false}]`; it observes the existing
+`[[:seen "zoom"]]` as the first argument to a spec-capable image component. For a visibility-driven event, use `[:on-seen {:event [:load-more] :once? false}]`; it observes the existing
 native root and owns cleanup. Feature configurations may also be functions of the
 component's arguments, such as `[:on-seen (fn [id] {:event [:load id]})]`.
 `on-seen` supports `:threshold`, `:root-margin`, `:delay-ms`, and defaults to firing
