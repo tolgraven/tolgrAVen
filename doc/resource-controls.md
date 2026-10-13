@@ -18,6 +18,13 @@ Each invocation copies tracked working files plus nonignored untracked source
 into a new `.local-wip/cpu-builds/<id>` checkout. It excludes local private config,
 symlinks, ignored output and dependencies. Unstaged source edits are included;
 deleted files stay deleted. All generated files remain in that reported directory.
+Missing isolated dev/test runtime files are seeded only from the tracked public
+`config/dev.example.edn` and `config/test.example.edn` at their known canonical paths
+`env/dev/resources/config.edn` and `env/test/resources/config.edn`. Private checkout
+files at those paths are excluded even if accidentally tracked. Existing destination
+configuration is preserved, and production defaults are copied normally without seeding.
+This lets plain agent Docker test commands use the public configuration layout.
+
 Copy wanted output back only when the owning watch is stopped or absent. The
 launcher never writes a live checkout's `target` or public build files.
 

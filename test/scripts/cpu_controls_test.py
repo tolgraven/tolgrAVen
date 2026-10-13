@@ -124,6 +124,41 @@ class PolicyTests(unittest.TestCase):
             self.assertTrue((out/'new.txt').exists())
             self.assertFalse((out/'config/local.dev.edn').exists())
 
+    def test_snapshot_seeds_public_dev_test_examples_without_private_configs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)/'repo';out=Path(directory)/'out';root.mkdir();out.mkdir()
+            subprocess.run(['git','init','-q',str(root)],check=True)
+            files={'config/dev.example.edn':'{:port 4000}',
+                   'config/test.example.edn':'{:port 3000}',
+                   'env/prod/resources/config.edn':'{:prod true}',
+                   '.gitignore':'/env/dev/resources/config.edn\n/env/test/resources/config.edn\n'}
+            for name,text in files.items():
+                path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(text)
+            subprocess.run(['git','-C',str(root),'add','.'],check=True)
+            for name in ('env/dev/resources/config.edn','env/test/resources/config.edn'):
+                path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('private marker')
+            # Even accidental force-tracking must not copy a canonical private file.
+            subprocess.run(['git','-C',str(root),'add','--force','env/dev/resources/config.edn'],check=True)
+            cpu.snapshot(root,out)
+            self.assertEqual((out/'env/dev/resources/config.edn').read_text(),files['config/dev.example.edn'])
+            self.assertEqual((out/'env/test/resources/config.edn').read_text(),files['config/test.example.edn'])
+            self.assertEqual((out/'env/prod/resources/config.edn').read_text(),files['env/prod/resources/config.edn'])
+            self.assertNotIn('private marker',''.join(path.read_text() for path in out.rglob('*.edn')))
+
+    def test_snapshot_seeding_preserves_existing_runtime_and_requires_tracked_example(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)/'repo';out=Path(directory)/'out';root.mkdir();out.mkdir()
+            subprocess.run(['git','init','-q',str(root)],check=True)
+            (root/'config').mkdir()
+            (root/'config/dev.example.edn').write_text('public dev')
+            (root/'config/test.example.edn').write_text('untracked test')
+            subprocess.run(['git','-C',str(root),'add','config/dev.example.edn'],check=True)
+            existing=out/'env/dev/resources/config.edn';existing.parent.mkdir(parents=True)
+            existing.write_text('destination already configured')
+            cpu.snapshot(root,out)
+            self.assertEqual(existing.read_text(),'destination already configured')
+            self.assertFalse((out/'env/test/resources/config.edn').exists())
+
 
 @unittest.skipUnless(sys.platform=='darwin','native guard uses macOS libproc')
 class NativeTests(unittest.TestCase):

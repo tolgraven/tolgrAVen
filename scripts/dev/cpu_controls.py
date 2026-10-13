@@ -621,12 +621,16 @@ def build_lock():
     return handle
 
 
+CONFIG_EXAMPLES = (('config/dev.example.edn', 'env/dev/resources/config.edn'),
+                   ('config/test.example.edn', 'env/test/resources/config.edn'))
+
+
 def snapshot(checkout, destination):
     raw = subprocess.check_output(['git', '-C', str(checkout), 'ls-files', '-z', '--cached',
                                    '--others', '--exclude-standard'])
-    import shutil
+    private_configs = {target for _, target in CONFIG_EXAMPLES}
     for name in dict.fromkeys(os.fsdecode(raw).split('\0')):
-        if not name or name.startswith(('config/local.', '.local-wip/')):
+        if not name or name in private_configs or name.startswith(('config/local.', '.local-wip/')):
             continue
         source = checkout / name
         if not source.is_file() or source.is_symlink():
@@ -634,6 +638,14 @@ def snapshot(checkout, destination):
         target = destination / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
+    tracked = set(os.fsdecode(subprocess.check_output(
+        ['git', '-C', str(checkout), 'ls-files', '-z', '--cached'])).split('\0'))
+    for example, runtime in CONFIG_EXAMPLES:
+        source = destination / example
+        target = destination / runtime
+        if example in tracked and source.is_file() and not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
 
 
 def run(args):

@@ -1,7 +1,7 @@
 # Page rendering, hydration and navigation
 
 SSR is enabled by default. Configure it under `:ssr` in your `config.edn`
-(`config/local.dev.edn` in local development):
+(`env/dev/resources/config.edn` in local development):
 
 ```clojure
 :ssr {:enabled true

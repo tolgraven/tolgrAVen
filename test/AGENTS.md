@@ -156,3 +156,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - CPU-control tests use disposable owned burners for native identity, STOP/CONT,
   watchdog death/stall and already-stopped preservation. Keep image/browser timing
   benchmarks separate from these probes and record active resource quotas.
+
+- Test runtime settings live in private `env/test/resources/config.edn`; copy
+  `config/test.example.edn` on a new worktree. Test resource paths exclude dev
+  resources so test configuration cannot inherit development credentials.
