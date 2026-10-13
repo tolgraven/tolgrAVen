@@ -134,6 +134,10 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   `tolgraven.cache.inflight`; pending work is never expired or evicted. If only
   pending entries fill the cache, return the existing unavailable/retry response.
 
+- Supabase platform REST/JDBC settings and TLS policy read `tolgraven.config/env`;
+  cprop owns source consolidation and precedence. Keep process environment reads
+  out of that adapter. Its `connection-config` maps own aliases, defaults, required
+  JDBC components and conversions; resolution and diagnostics derive from them.
 - Supabase seed reads/imports/resets consume module-owned storage declarations
   and runtime `:supabase :modules` options. Do not add parallel table lists.
   JDBC resets name declared dependent tables and omit unrestricted CASCADE.
