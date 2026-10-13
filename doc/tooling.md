@@ -93,6 +93,12 @@ under `experiments/clj/`. Tool-mandated root configuration stays at its native p
 
 CSS build and watch entry points compile shared, icon and feature sheets independently;
 see [styles.md](styles.md) for declarations, source ownership and verification.
+Development startup runs `node scripts/build/styles.mjs --if-stale` before HTTP.
+Its output revision covers SCSS, tool/lock files, font inputs and native component/
+module declarations. Every raw and minified sheet must still match its recorded
+digest; missing or overwritten output is rebuilt. Fresh output does not import
+Sass/PostCSS. Keep `npm run dev` running for ongoing CSS edits.
+`node test/scripts/styles_test.mjs` exercises the guard in a disposable source tree.
 
 `bb audit <label>` writes isolated optimized chunks, compression sizes, the
 namespace/module inventory and `report.html`/`report.json` under

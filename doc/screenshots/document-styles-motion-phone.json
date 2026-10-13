@@ -1,0 +1,52 @@
+{
+  "geometry": {
+    "intro": {
+      "x": 0,
+      "y": 113.4296875,
+      "width": 390,
+      "height": 343.8125,
+      "top": 113.4296875,
+      "right": 390,
+      "bottom": 457.2421875,
+      "left": 0
+    },
+    "hero": {
+      "x": 0,
+      "y": 113.4296875,
+      "width": 390,
+      "height": 390,
+      "top": 113.4296875,
+      "right": 390,
+      "bottom": 503.4296875,
+      "left": 0
+    },
+    "logo": {
+      "x": 11.515625,
+      "y": 124.9453125,
+      "width": 366.96875,
+      "height": 151.203125,
+      "top": 124.9453125,
+      "right": 378.484375,
+      "bottom": 276.1484375,
+      "left": 11.515625
+    },
+    "image": {
+      "x": 15.515625,
+      "y": 128.9453125,
+      "width": 351.484375,
+      "height": 144.984375,
+      "top": 128.9453125,
+      "right": 367,
+      "bottom": 273.9296875,
+      "left": 15.515625
+    }
+  },
+  "clock": {
+    "entranceStart": 546.6430000087712,
+    "titleStart": 546.6430000087712,
+    "titleDelay": 2000,
+    "logoStart": 546.6430000087712,
+    "logoDuration": 3500
+  },
+  "checks": "Cold motion check receives a real SSR snapshotCold SSR runs the original site entranceCold SSR keeps one animation clock through hydrationCold SSR reveals image pixels or the sampled gradient with the designCold SSR starts the first title letter two seconds after visible SSRCold SSR keeps the native title clock through hydrationCold SSR preserves the native 3.5-second logo clock through hydrationRepeat document load uses the saved HTML/state pairPaired document restoration stays visible without replaying its entranceSaved HTML/state pair contains only final image candidatesActual document Back retains final-only image candidatesPaired return starts with the final-only image policySame-path query navigation retains the document and ends final-only image policyQuery navigation does not restart the settled page or title clockSPA query Back retains the existing documentSPA query Back does not revive the external-return image policySPA query Back retains the existing title nodesSPA query Back retains the existing page and title clocksFresh SSR cache bypasses the skeletonCached SSR runs the original site entranceCached SSR keeps one animation clock through hydrationCached SSR reveals image pixels or the sampled gradient with the designCached SSR starts the first title letter two seconds after visible SSRCached SSR keeps the native title clock through hydrationFAILED: Content unavailableThe requested content could not load. Try again.Attempt reload {\"worker\":true,\"resources\":[\"/api/content/bootstrap\",\"/api/supabase/settings\",\"/api/page-return-template\"],\"loading\":1}"
+}

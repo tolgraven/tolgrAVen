@@ -2,8 +2,15 @@
 
 Keep this guide and `doc/testing.md` current when test/build entry points change.
 
+- `node test/scripts/styles_test.mjs` checks fresh CSS skips, stale inputs,
+  overwritten/missing outputs and declaration/tool/font revisions in a disposable
+  tree. Startup tests must prove a style failure prevents HTTP from opening while
+  successful styles retain the deferred Shadow startup. Document release tests
+  prove isolated release-before-watches, scoped HTTP readiness, bounded failure
+  and real REPL acknowledgement while compilation is blocked.
+
 - Cold layout/handler JVM suites require compiled `:document` resources. Build
-  them in the isolated test checkout, or reuse their owning Shadow watch; see
+  them in the isolated test checkout, or reuse its standalone release output; see
   `doc/testing.md`.
 - Mount actual Reagent components, dereference subscriptions during render, dispatch
   real events, await lifecycle completion, and unmount in cleanup. Avoid direct

@@ -25,7 +25,7 @@
                           :export-conditions ["worker" "browser" "require" "default"]}}
 
   :document {:target :browser
-             :devtools {:enabled false}
+             :devtools {:enabled false, :console-support false, :preloads []}
              :output-dir "resources/public/js/document"
              :asset-path "/js/document"
              :compiler-options {:infer-externs true

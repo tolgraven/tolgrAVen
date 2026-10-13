@@ -105,8 +105,12 @@ Do not retain completed investigation diaries or historical test counts as curre
   `target/production`; local prod loads those resources before shared assets and
   preflights the release browser manifest and both document bootstrap scripts
   before initialization logging/asset loading. See `doc/testing.md`.
-- `lein repl`: start HTTP and the Clojure REPL; deferred Shadow watches compile
-  sequentially without blocking REPL acknowledgement. `(cljs-repl)` waits for
+- `lein repl`: check/rebuild stale CSS before opening HTTP and the Clojure REPL;
+  current SSR/browser markup must not paint against sheets from an older checkout.
+  Deferred Shadow watches compile
+  sequentially without blocking REPL acknowledgement. The standalone `:document`
+  target releases first (no HMR); document/bootstrap requests await only that
+  bounded release barrier, while unrelated assets/API remain available. `(cljs-repl)` waits for
   startup and selects the browser runtime in the calling session. See `README.md`.
 - Browser builds discover `modules/*/module.cljs` through `tolgraven.build.browser/process`;
   the literal spec `:id` owns the bundle ID and namespace `:bundle/depends-on`

@@ -185,3 +185,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   bounded `media/svg.clj` adapter rejects active/external XML content before
   public publication; keep the complete-raster versus original-only SVG
   rendition contracts distinct. See `doc/media-pipeline.md`.
+
+- Development page, return-template and document-bootstrap requests await the
+  existing deferred startup owner's standalone release barrier. Gate before
+  asset delivery; unrelated static images and APIs must not wait for app watches.
+  Keep release failure/timeout explicit rather than serving stale unoptimized JS.

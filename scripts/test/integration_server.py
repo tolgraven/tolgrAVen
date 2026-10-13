@@ -33,6 +33,32 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.server.style_dir and path.startswith('/css/tolgraven/'):
+            file = (self.server.style_dir / path.removeprefix('/css/tolgraven/')).resolve()
+            if self.server.style_dir not in file.parents or not file.is_file():
+                self.send_error(404, 'Not in the isolated stylesheet output')
+                return
+            body = file.read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/css; charset=utf-8')
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.server.document_dir and path.startswith('/js/document/'):
+            file = (self.server.document_dir / path.removeprefix('/js/document/')).resolve()
+            if self.server.document_dir not in file.parents or not file.is_file():
+                self.send_error(404, 'Not in the isolated document output')
+                return
+            body = file.read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/javascript' if file.suffix == '.js' else 'application/json')
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.server.bundle_dir and path.startswith('/js/compiled/out/'):
             name = path.removeprefix('/js/compiled/out/')
             if name not in self.server.bundle_names:
@@ -95,6 +121,8 @@ if __name__ == '__main__':
     parser.add_argument('--delay-seconds', type=float, default=0)
     parser.add_argument('--forwarded-proto', choices=['http', 'https'])
     parser.add_argument('--bundle-dir', type=Path, help='Serve JS from an isolated production bundle audit')
+    parser.add_argument('--style-dir', type=Path, help='Serve isolated compiled stylesheets')
+    parser.add_argument('--document-dir', type=Path, help='Serve an isolated compiled document bootstrap')
     parser.add_argument('--verbose', action='store_true', help='Log request paths and response statuses')
     args = parser.parse_args()
     upstream = urlsplit(args.app)
@@ -107,6 +135,8 @@ if __name__ == '__main__':
     server.forwarded_proto = args.forwarded_proto
     server.verbose = args.verbose
     server.bundle_dir = args.bundle_dir.resolve() if args.bundle_dir else None
+    server.style_dir = args.style_dir.resolve() if args.style_dir else None
+    server.document_dir = args.document_dir.resolve() if args.document_dir else None
     server.bundle_names = set()
     if server.bundle_dir:
         server.bundle_names = set(json.loads((server.bundle_dir / 'bundles.json').read_text()))
