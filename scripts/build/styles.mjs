@@ -4,6 +4,7 @@ import path from 'node:path';
 import * as sass from 'sass';
 import postcss from 'postcss';
 import autoprefixer from 'autoprefixer';
+import {editorStyles} from './editor-styles.mjs';
 
 const root = 'resources/scss';
 const output = process.env.CSS_OUTPUT_DIR || 'resources/public/css/tolgraven';
@@ -18,7 +19,8 @@ async function build() {
     await fs.mkdir(path.dirname(file), {recursive: true});
     if (!postcssOnly) {
       const result = sass.compile(path.join(root, entry), {style: 'compressed', charset: false});
-      await fs.writeFile(file, entry === 'modules/maps.scss'
+      await fs.writeFile(file, entry === 'modules/markdown-editor.scss'
+        ? `${await editorStyles()}\n${result.css}` : entry === 'modules/maps.scss'
         ? result.css.replaceAll('url(images/', 'url(/vendor/leaflet/images/') : result.css);
     }
     if (!sassOnly) {

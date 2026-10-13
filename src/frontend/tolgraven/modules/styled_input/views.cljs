@@ -28,7 +28,8 @@
                   on-change on-enter on-esc]
            :or {height "2em"
                 open? true}}]
-     (let [suggestion-str (string/join " " (:match suggestions))
+     (let [input-id (or id "styled-input")
+           suggestion-str (string/join " " (:match suggestions))
            suggestion (first suggestions)
            caret-pos (str (* char-width @caret) "em")
            selection-len (* char-width (abs (- @caret @selection-end)))
@@ -41,8 +42,8 @@
      {:style {:height height }}
 
      [:label.styled-caret.nomargin.nopadding
-      {:id    "styled-caret"
-       :for   "styled-input"
+      {:id    (if id (str id "-caret") "styled-caret")
+       :for   input-id
        :style {:position :absolute
                :width (str (max char-width selection-len) "em")
                :height (str caret-height "em")
@@ -50,8 +51,8 @@
                :top (str (- (/ (- 1.6 caret-height #_"-0.1em") 2) 0.15) "em")}}
        "_"]
      [:label.styled-caret-under.nomargin.nopadding
-      {:id    "styled-caret-under"
-       :for   "styled-input"
+      {:id    (if id (str id "-caret-under") "styled-caret-under")
+       :for   input-id
        :style {:position :absolute
                :left caret-pos
                :top "0.1em"
@@ -71,7 +72,7 @@
 
      [:input.styled-input ;problem if multiple search boxes on same page tho
       {:type "textarea"
-       :id   (or id "styled-input")
+       :id   input-id
        :class class
        :style {:opacity 0
                :width width ;:min-width width :max-width width

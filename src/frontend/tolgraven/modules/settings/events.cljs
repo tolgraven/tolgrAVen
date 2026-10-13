@@ -4,7 +4,8 @@
 
 (r/reg-event-fx :theme/dark-mode
  (fn [{:keys [db]} [_ on?]]
-   {:db (assoc-in db [:options :theme :dark-mode] on?)}))
+   {:db (assoc-in db [:options :theme :dark-mode] on?)
+    :dispatch [:html/set-attr! nil "data-theme" (if on? "dark" "light")]}))
 
 (r/reg-event-fx :theme/colorscheme
  (fn [{:keys [db]} [_ colorscheme]]

@@ -1,13 +1,14 @@
 (ns tolgraven.components.ui.code
   (:require
     [tolgraven.component.registry]
-    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.macros :refer-macros [defc register-render-functions!]]
     [tolgraven.react :as r]
-
     [tolgraven.components.highlight :as highlight]
     [tolgraven.components.code-block :as code-block]
     [tolgraven.components.image :as image]
     [tolgraven.media.schema :as media]
+    [tolgraven.components.content.media :as authored-media]
+    [tolgraven.components.markdown-components :as authored]
     ["react-markdown$default" :as ReactMarkdown]
     ["remark-gfm$default" :as remarkGfm]
     ["rehype-raw$default" :as rehypeRaw]
@@ -114,13 +115,17 @@
                           #(r/reactify-component
                              (fn [props] [<markdown-image> props image-assets allow-images?]))
                           [image-assets allow-images?])]
-    [react-markdown
+    [:r> (r/context-provider authored-media/asset-context) #js {:value (or image-assets {})}
+     [react-markdown
      {:children md-text
-      :remarkPlugins [remarkGfm]
+      :remarkPlugins [remarkGfm authored/plugin]
       :rehypePlugins (cond-> [mark-markdown-blocks]
                        allow-raw? (conj [rehypeRaw {:passThrough ["tolgravenCodeBlock"]}])
                        true (conj restore-markdown-blocks))
       :components {:code code-component
                    :pre markdown-pre-react
                    :a markdown-link-react
-                   :img image-component}}]))
+                   :img image-component
+                   "site-component" authored/renderer}}]]))
+
+(register-render-functions!)

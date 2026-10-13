@@ -7,8 +7,8 @@
             [tolgraven.modules.blog.subs]
             [tolgraven.events]
             [tolgraven.subs]
-            [tolgraven.modules.blog.editor-model :as model]
-            [tolgraven.modules.blog.editor :as editor]
+            [tolgraven.modules.blog-editor.model :as model]
+            [tolgraven.modules.blog-editor.editor :as editor]
             [tolgraven.schema.dsl :as dsl]
             [malli.core :as m]))
 
@@ -29,6 +29,15 @@
     (is (= "New intro before ![first.png](https://media.test/first.png)\n![second.png](https://media.test/second.png) after\nAnother edit" both-ready))
     (is (model/unresolved? text uploads))
     (is (not (model/unresolved? both-ready {})))))
+
+(deftest sdk-uploads-share-the-queue-without-mutating-source-markers
+  (let [{:keys [text uploads]} (model/insert-files "draft unchanged" 0 0 {}
+                                                  [(assoc (first files) :sdk? true :owner "rich-editor")])
+        upload (get uploads "first")]
+    (is (= "draft unchanged" text))
+    (is (= "draft unchanged" (model/complete-upload text upload {:src "https://media.test/ready.png"})))
+    (is (= "draft unchanged" (model/cancel-upload text upload)))
+    (is (= "first" (:id (model/next-upload uploads))))))
 
 (deftest cancelled-attachments-never-reappear-or-overwrite-later-edits
   (let [{:keys [text uploads]} (model/insert-files "draft" 5 5 {} (take 1 files))
@@ -97,7 +106,7 @@
             (r/dispatch-sync [:form-field [:post-blog :text] "Hello end"])
             (let [root (await! (support/create-root! element))]
               (reset! *root root)
-              (await! (support/render! root [editor/<markdown-editor> {:owner "editor-test", :exit (partial editor/dispose! "editor-test")}]))
+              (await! (support/render! root [editor/<source-editor> {:owner "editor-test", :exit (partial editor/dispose! "editor-test")}]))
               (let [textarea (.querySelector element "textarea")
                     file (js/File. #js ["sample"] "pasted.png" #js {:type "image/png"})]
                 (.setSelectionRange textarea 5 5)
@@ -143,7 +152,7 @@
             (r/dispatch-sync [:form-field [:post-blog :text] "Draft"])
             (let [root (await! (support/create-root! element))]
               (reset! *root root)
-              (await! (support/render! root [editor/<markdown-editor> {:owner "editor-test", :exit (partial editor/dispose! "editor-test")}]))
+              (await! (support/render! root [editor/<source-editor> {:owner "editor-test", :exit (partial editor/dispose! "editor-test")}]))
               (let [textarea (.querySelector element "textarea")
                     file (js/File. #js ["sample"] "dropped.png" #js {:type "image/png"})]
                 (.setSelectionRange textarea 5 5)

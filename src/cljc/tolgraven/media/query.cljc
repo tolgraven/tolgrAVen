@@ -1,5 +1,6 @@
 (ns tolgraven.media.query
-  "Public rendition lookups shared by page plans and managed browser bindings.")
+  "Public rendition lookups shared by page plans and managed browser bindings."
+  (:require [tolgraven.markdown.components :as components]))
 
 (defn assets
   "Query the ready manifest by either its source URL or immutable canonical URL."
@@ -22,11 +23,12 @@
                   [url asset]))) rows)))
 
 (defn markdown-sources
-  "Inline image sources emitted by the editor; preserve ordinary external URLs
-   without granting them trust. Ready manifest lookup decides eligibility."
+  "Literal image sources from ordinary Markdown and canonical Component data.
+   Ready server manifests decide eligibility; authored metadata grants no trust."
   [text]
-  (vec (distinct (map (fn [[_ angle plain]] (or angle plain))
-                     (re-seq #"!\[[^\]]*\]\((?:<([^>]+)>|([^\s)]+))(?:\s+[^)]*)?\)" (or text ""))))))
+  (vec (distinct (concat (components/image-sources text)
+                         (map (fn [[_ angle plain]] (or angle plain))
+                            (re-seq #"!\[[^\]]*\]\((?:<([^>]+)>|([^\s)]+))(?:\s+[^)]*)?\)" (or text "")))))))
 
 (defn normalize-row
   "JSON keywordization applies recursively to URL-keyed JSONB too. Restore those

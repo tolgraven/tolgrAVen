@@ -144,3 +144,5 @@
   "Acquire the custom field only when a consumer renders it."
   [& args]
   (loader-view/form :styled-input :input (vec args) nil))
+
+(m/register-render-functions!)

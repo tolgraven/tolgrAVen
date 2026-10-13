@@ -16,5 +16,6 @@
    :id :search
    :styles ["/css/tolgraven/modules/search.min.css"]
    :view {:view #'view/<ui>
-          :button #'view/<button>}
+          :button #'view/<button>
+          :inline #'view/<inline>}
    :init #(r/dispatch [:search/init])})

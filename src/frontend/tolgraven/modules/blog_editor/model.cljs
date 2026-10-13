@@ -1,4 +1,4 @@
-(ns tolgraven.modules.blog.editor-model
+(ns tolgraven.modules.blog-editor.model
   "Pure draft attachment transformations. Upload files and status are transient."
   (:require [clojure.string :as string]
             [tolgraven.media.schema :as media]))
@@ -11,6 +11,7 @@
    [:id :string]
    [:name :string]
    [:?owner :string]
+   [:?sdk? :boolean]
    [:order [:int {:min 0}]]
    [:placeholder :string]
    [:status [:enum :queued :uploading :processing :ready :failed]]
@@ -42,9 +43,9 @@
         additions (map-indexed
                     (fn [index {:keys [id name] :as file}]
                       (assoc file :order (+ order index)
-                                  :placeholder (placeholder id)
+                                  :placeholder (if (:sdk? file) "" (placeholder id))
                                   :status :queued)) files)
-        placeholders (string/join "\n" (map :placeholder additions))]
+        placeholders (string/join "\n" (remove string/blank? (map :placeholder additions)))]
     {:text (str (subs text' 0 start') placeholders (subs text' end'))
      :uploads (into (or uploads {}) (map (juxt :id identity)) additions)}))
 
@@ -59,8 +60,9 @@
 (defn complete-upload [text upload asset]
   ;; A removed placeholder never reappears after a slow completion. Other draft
   ;; edits and attachments retain their position, regardless of completion order.
-  (string/replace (or text "") (:placeholder upload)
-                  (fn [_] (image-markdown (:name upload) (:src asset)))))
+  (if (:sdk? upload) text
+      (string/replace (or text "") (:placeholder upload)
+                      (fn [_] (image-markdown (:name upload) (:src asset))))))
 
 (defn cancel-upload [text upload]
-  (string/replace (or text "") (:placeholder upload) ""))
+  (if (:sdk? upload) text (string/replace (or text "") (:placeholder upload) "")))

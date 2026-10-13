@@ -53,3 +53,5 @@
                   )]
          ^{:key (str (:id msg))}
          [<log-line> msg])]]]))
+
+(m/register-render-functions!)

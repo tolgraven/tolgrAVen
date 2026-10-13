@@ -4,7 +4,6 @@
     [tolgraven.react :as r]
 
     [tolgraven.modules.blog.model :as model]
-    [tolgraven.modules.blog.editor-model :as editor-model]
     [tolgraven.modules.blog.schema :as schema]
     [tolgraven.component.storage :as storage]
     [tolgraven.interceptors :refer [debug]] )))
@@ -18,22 +17,12 @@
       {:dispatch-n [[:blog/set-posts-per-page 3]
                     [:booted :blog]]})))
 
-(r/reg-event-fx :blog/init-posting
-  {:args (get schema/event-args :blog/init-posting)}
-  (fn [_ _] {:dispatch [:user/close-ui]}))
-
 (r/reg-event-fx :blog/edit-post
   {:args (get schema/event-args :blog/edit-post)}
   (fn [_ [_ post]]
     {:dispatch-n [[:form-field [:post-blog] post :blur]
                   [:blog/state [:editing] post]
                   [:common/navigate! :new-post]]}))
-
-(r/reg-event-fx :blog/cancel-edit
-  {:args (get schema/event-args :blog/cancel-edit)}
-  (fn [_ _]
-    {:dispatch-n [[:form-field [:post-blog] nil :blur]
-                  [:blog/state [:editing] nil]]}))
 
 (r/reg-event-db :blog/state
   {:args (get schema/event-args :blog/state)}
@@ -57,27 +46,6 @@
   {:args (get schema/event-args :blog/nav-page)}
   [(r/path [:state :blog :page])]
   (fn [_ [_ number]] (model/page-index number)))
-
-(r/reg-event-fx :blog/submit
-  {:args (get schema/event-args :blog/submit)}
-  (fn [{:keys [db]} [_ input editing]]
-    (when-not (or (get-in db [:state :supabase-writes :post])
-                  (editor-model/unresolved? (:text input) (get-in db [:state :blog :image-uploads])))
-      {:db (assoc-in db [:state :supabase-writes :post] true)
-       :supabase/request {:method :post :uri "/api/supabase/posts"
-                          :data (cond-> (select-keys input [:title :text :tags])
-                                  editing (assoc :post-id (:id editing)))
-                          :on-success [:blog/post-saved input]
-                          :on-error [:blog/write-failed :post]}})))
-
-(r/reg-event-fx :blog/post-saved
-  {:args (get schema/event-args :blog/post-saved)}
-  (fn [{:keys [db]} [_ submitted _]]
-    {:db (update-in db [:state :supabase-writes] dissoc :post)
-     :dispatch-n (cond-> [[:common/navigate! :blog] [:blog/state [:editing] nil]]
-                   (= (select-keys submitted [:title :text :tags])
-                      (select-keys (get-in db [:state :form-field :post-blog]) [:title :text :tags]))
-                   (conj [:form-field [:post-blog] nil :blur]))}))
 
 (when-enabled :blog :comments
   (r/reg-event-fx :blog/edit-comment

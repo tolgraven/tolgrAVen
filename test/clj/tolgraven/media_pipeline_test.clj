@@ -51,6 +51,29 @@
   (is (= ["https://storage.test/a.png" "https://storage.test/b.png"]
          (query/markdown-sources "![a](https://storage.test/a.png) ![b](<https://storage.test/b.png> \"title\")"))))
 
+(deftest canonical-component-images-use-the-shared-literal-source-contract
+  (let [url "https://storage.test/components/photo.avif"
+        direct (str "<Component component=\"tolgraven.components.content.markdown/<image>\" src=\"" url "\" alt=\"Photo\" layout-width=\"20rem\" />")
+        positional (str "<Component component=\"tolgraven.components.image/<picture>\" args='json:[{\"src\":\"" url "\",\"alt\":\"Photo\"}]' />")]
+    (is (= [url] (query/markdown-sources (str direct "\n" positional))))
+    (is (= [url] (query/markdown-sources
+                   (str "<Component component='tolgraven.components.image/<picture>' src='json:&quot;" url "&quot;' />"))))
+    (doseq [source [(str "<Component component='anything' src={\"" url "\"} />")
+                    (str "<Component component='anything' {...data} src='" url "' />")
+                    (str "<Component component='anything' src='" url "' src='different' />")
+                    "<Component component='anything' src='db:[:content :common :image]' />"
+                    "<Component component='anything' args='json:invalid' />"]]
+      (is (empty? (query/markdown-sources source))))))
+
+(deftest rich-post-save-reacquires-ready-manifests-instead-of-authored-metadata
+  (let [calls (atom [])
+        source (str "<Component component='tolgraven.components.content.markdown/<image>' src='" (:src asset) "' alt='Photo' />")]
+    (with-redefs [pipeline/assets! (fn [sources] (is (= [(:src asset)] sources)) {(:src asset) asset})
+                  platform/request! (fn [_ _ opts] (swap! calls conj opts) {:body {}})
+                  tolgraven.supabase.auth/ensure-profile! (constantly "author")]
+      (operations/save-post! {:id "author"} {:title "Rich image" :text source :tags "tag"})
+      (is (= {(:src asset) asset} (get-in (first @calls) [:form-params :p_image_assets]))))))
+
 (deftest originals-are-bounded-and-sniffed-before-queueing
   (is (= "png" (storage/extension! source-bytes)))
   (is (= "svg" (storage/extension! (.getBytes "<svg>" "UTF-8"))))

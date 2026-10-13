@@ -181,3 +181,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Prepared-asset checks compare exact optimized metadata, CSS/font URLs and body
   bytes through source and jar resolvers. Reject missing, stale or corrupt output;
   do not replace this proof with a manifest-exists assertion.
+
+- Markdown authoring checks cover data-only component argument round trips, private
+  path/expression rejection, feature-pruned generated help, block-safe published
+  markup and actual editor normalization/keyboard/source transitions. Vendor CSS
+  checks prove selector/palette isolation and relative units. See `doc/markdown-authoring.md`.

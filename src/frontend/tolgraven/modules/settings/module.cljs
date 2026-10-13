@@ -6,4 +6,5 @@
   {:id :settings
    :styles ["/css/tolgraven/modules/settings.min.css"]
    :ssr-styles :deferred
-   :view {:view #'views/<settings>}})
+   :view {:view #'views/<settings>
+          :config-table #'views/<config-table>}})
