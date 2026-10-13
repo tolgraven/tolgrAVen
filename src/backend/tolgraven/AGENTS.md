@@ -141,19 +141,17 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Browser builds prefer worker-compatible package exports so Markdown does not
   require a DOM during capture. The worker reuses fingerprinted browser chunks.
 
-- Network SSR emits a document-owned hero decode gate before application code.
-  Keep its mount-container marker outside the React tree; streamed skeletons
-  remain visible until the completed page can start its original entrance.
-  Local returns and JavaScript-disabled documents must remain usable.
+- Network SSR uses the generated document bootstrap before application code.
+  Keep its mount-container marker outside React; sampled gradients or usable image
+  pixels release the initial page/title clock without waiting for hydration.
+  Script wrappers reference the generated assets; do not inline authored snippets.
+  Local returns and JavaScript-disabled documents remain usable.
 
-- Progressive image catalog entries preload the smallest AVIF preview alongside
-  the final responsive AVIF set. Final `imagesrcset`/`imagesizes` match rendered
-  sources so phones select only their appropriate final candidate. The document
-  entrance may start after either visible layer decodes; suppressed previews do
-  not release it, and replacing the preview never starts a second entrance.
-  The same root-owned image adapter stages local-return templates; already usable
-  final pixels settle immediately. Its native initial-hero phase remains owned
-  through hydration until terminal adoption, independently of the entrance gate.
+- Responsive final preloads match rendered `imagesrcset`/`imagesizes`. Preview
+  candidates use native image discovery, never speculative preloads; external
+  returns must request only final candidates. Suppressed previews cannot release
+  the entrance gate. Exact initial image nodes keep native phase ownership through
+  hydration until terminal adoption, independently of entrance-gate readiness.
 
 - `media/pipeline.clj` owns the durable main-module media queue and complete immutable
   rendition publication. One mounted worker uses expiring database leases and
@@ -170,6 +168,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   artifacts. Build-only JS/CSS/image preparation belongs to `build/assets.clj`;
   development refreshes declared bundles and their references with a two-second
   TTL, without a resource watcher. Preserve independent module style acquisition.
+
 
 - Managed SVG media retains its vector original with no raster sidecars. The
   bounded `media/svg.clj` adapter rejects active/external XML content before

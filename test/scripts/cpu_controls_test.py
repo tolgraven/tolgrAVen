@@ -17,6 +17,83 @@ spec.loader.exec_module(cpu)
 
 
 class PolicyTests(unittest.TestCase):
+    def test_build_defaults_double_memory_without_increasing_cpu_or_slots(self):
+        with mock.patch.object(sys, 'argv', ['cpu-controls', 'run', '--', 'true']), \
+             mock.patch.object(cpu, 'run', return_value=0) as run:
+            self.assertEqual(cpu.main(), 0)
+            args = run.call_args.args[0]
+            self.assertEqual(args.memory, '4g')
+            self.assertEqual(args.java_heap, '2048m')
+            self.assertEqual(args.cpus, 1.5)
+
+    def test_two_locks_admit_two_builds_and_queue_a_third(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            first = cpu.try_build_lock()
+            second = cpu.try_build_lock()
+            try:
+                self.assertIsNotNone(first)
+                self.assertIsNotNone(second)
+                self.assertNotEqual(first.name, second.name)
+                self.assertIsNone(cpu.try_build_lock())
+                first.close()
+                replacement = cpu.try_build_lock()
+                try:
+                    self.assertEqual(replacement.name, first.name)
+                    self.assertIsNone(cpu.try_build_lock())
+                finally:
+                    replacement.close()
+            finally:
+                first.close()
+                second.close()
+
+    def test_legacy_lock_occupies_one_of_the_two_slots(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            with (cpu.STATE / 'build.lock').open('w') as legacy:
+                cpu.fcntl.flock(legacy, cpu.fcntl.LOCK_EX)
+                with cpu.try_build_lock() as current:
+                    self.assertEqual(Path(current.name).name, 'build-1.lock')
+                    self.assertIsNone(cpu.try_build_lock())
+
+    def test_inherited_lock_remains_owned_until_guardian_exits(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            first = cpu.try_build_lock()
+            second = cpu.try_build_lock()
+            guardian = subprocess.Popen([sys.executable, '-c', 'import sys;sys.stdin.read()'],
+                                        stdin=subprocess.PIPE, pass_fds=(first.fileno(),))
+            first.close()
+            try:
+                self.assertIsNone(cpu.try_build_lock())
+                guardian.stdin.close()
+                guardian.wait(timeout=3)
+                with cpu.try_build_lock() as replacement:
+                    self.assertIsNotNone(replacement)
+            finally:
+                if guardian.poll() is None:
+                    guardian.terminate()
+                    guardian.wait(timeout=3)
+                second.close()
+
+    def test_cpu_reservations_sum_live_workers_and_cleanup_only_named_owner(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            records = [('legacy', 1, 1), ('new', 2, 1.5), ('stale', 3, 1.5)]
+            for name, pid, cpus in records:
+                path = cpu.STATE / 'docker-active.json' if name == 'legacy' else cpu.reservation_path(name)
+                path.write_text(json.dumps({'name': name, 'owner': {'pid': pid}, 'cpus': cpus}))
+            proc = mock.Mock()
+            proc.same.side_effect = lambda record: record['pid'] in (1, 2)
+            self.assertEqual(cpu.active_docker_quota(proc), 2.5)
+            cpu.release_reservation('new')
+            self.assertEqual(cpu.active_docker_quota(proc), 1)
+            self.assertEqual({record['name'] for _, record in cpu.build_records()}, {'legacy', 'stale'})
+
+    def test_per_slot_cpu_override_cannot_exceed_combined_ceiling(self):
+        args = mock.Mock(action='run', command=['true'], cpus=3)
+        with mock.patch.object(cpu, 'build_lock') as acquire:
+            with self.assertRaisesRegex(RuntimeError, 'shared Docker ceiling is 3'):
+                cpu.run(args)
+            acquire.assert_not_called()
+        self.assertEqual(cpu.BUILD_SLOTS * cpu.BUILD_CPUS, 3)
+
     def test_buildkit_driver_options_bound_whole_worker_and_load_output(self):
         self.assertEqual(cpu.buildkit_options(1, '2g'),
                          ['cpu-quota=100000', 'cpu-period=100000', 'memory=2g',

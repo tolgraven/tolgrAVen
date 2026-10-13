@@ -607,3 +607,61 @@
                 (.remove container)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
+
+(deftest managed-picture-uses-explicit-query-bearing-renditions
+  (let [original {:src "https://media.example/photo?version=2"
+                  :width 1600
+                  :height 900
+                  :bytes 200000
+                  :mime "image/jpeg"}
+        rendition (fn [format width]
+                    {:src (str "https://media.example/" format "?width=" width)
+                     :width width
+                     :height (js/Math.round (* width (/ 9 16)))
+                     :bytes 10000
+                     :mime (str "image/" format)})
+        asset {:id "photo"
+               :src (:src original)
+               :width 1600
+               :height 900
+               :renditions {:original original
+                            :avif [(rendition "avif" 400) (rendition "avif" 1600)]
+                            :webp [(rendition "webp" 400) (rendition "webp" 1600)]}
+               :placeholder {:colors ["#112233" "#445566" "#778899"]}}
+        container (.createElement js/document "div")]
+    (set! (.-innerHTML container)
+          (server/render-to-string [image/<picture> {:src "old-reference.jpg"
+                                                     :asset asset
+                                                     :sizes "45vw"
+                                                     :alt "Managed photo"}]))
+    (let [final (.querySelector container "img[data-image-final]")
+          preview (.querySelector container "img[data-image-preview]")
+          avif (.querySelector (.-parentElement final) "source[type='image/avif']")]
+      (is (some? preview) "Eligible metadata enables a progressive preview")
+      (is (= (:src original) (.getAttribute final "src")))
+      (is (= "https://media.example/avif?width=400 400w, https://media.example/avif?width=1600 1600w"
+             (.getAttribute avif "srcset")))
+      (is (= "45vw" (.getAttribute avif "sizes")))
+      (is (= "1600" (.getAttribute final "width")))
+      (is (not (.hasAttribute final "asset")))
+      (is (not (.hasAttribute final "renditions")))
+      (is (string/includes? (.getAttribute (.querySelector container ".progressive-image") "style")
+                            "#445566")))))
+
+(deftest managed-svg-retains-one-original-image
+  (let [original {:src "https://media.example/logo.svg?version=2"
+                  :width 1600
+                  :height 900
+                  :bytes 10000
+                  :mime "image/svg+xml"}
+        asset {:id "logo"
+               :src (:src original)
+               :width 1600
+               :height 900
+               :renditions {:original original}}
+        container (.createElement js/document "div")]
+    (set! (.-innerHTML container)
+          (server/render-to-string [image/<picture> {:asset asset :alt "Vector logo"}]))
+    (is (= 1 (.-length (.querySelectorAll container "img"))))
+    (is (nil? (.querySelector container "source, .progressive-image")))
+    (is (= (:src original) (.getAttribute (.querySelector container "img") "src")))))

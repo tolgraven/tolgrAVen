@@ -19,7 +19,7 @@
         entered (promise)
         release (promise)
         selected (promise)
-        builds [:return-worker :ssr :app-dev]
+        builds [:return-worker :ssr :document :app-dev]
         resolve! (fn [symbol]
                    (case symbol
                      shadow.cljs.devtools.server/start! #(swap! *calls conj :server)
@@ -54,8 +54,8 @@
               (is (= :app-dev (:build @selected)))
               (is (identical? (:caller result) (:thread @selected))
                   "Select on the requesting nREPL thread, never the startup thread"))
-            (is (= [:server :return-worker :ssr :app-dev
-                    :server :return-worker :ssr :app-dev]
+            (is (= [:server :return-worker :ssr :document :app-dev
+                    :server :return-worker :ssr :document :app-dev]
                    @*calls)))
           (finally
             (deliver release true)

@@ -6,6 +6,7 @@
     [tolgraven.component.visibility :as visibility]
     [clojure.string :as string]
     [tolgraven.content.schema :as content]
+    [tolgraven.media.schema :as media-schema]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.components.image.sources :as sources]
     [tolgraven.react :as r]
@@ -19,7 +20,8 @@
                                [:?on-load [:maybe fn?]]
                                [:?on-visible-ready [:maybe fn?]]
                                [:?style :?map]
-                               [:?progressive? :boolean]]))
+                               [:?progressive? :boolean]
+                               [:?asset [:maybe media-schema/asset]]]))
 
 (def visible-ready-schema
   [:map [:src :string] [:selected-src :string]])
@@ -48,11 +50,11 @@
    Browsers select the first supported format. If requesting or decoding that
    source fails, retry the original JPEG/PNG. Call the caller's on-error only when the
    original image fails too."
-  [{:keys [src on-error ref preview? on-attached-error on-source-error] :as attrs} :- attrs-schema]
+  [{:keys [src asset on-error ref preview? on-attached-error on-source-error] :as attrs} :- attrs-schema]
   (r/with-let [*fallback-sources (r/atom #{})]
-    (let [attrs' (merge {:decoding "async"} (sources/dimensions src)
-                        (dissoc attrs :preview? :progressive? :on-attached-error :on-source-error :on-visible-ready))
-          preview (when preview? (sources/preview src))
+    (let [attrs' (merge {:decoding "async"} (sources/dimensions src asset)
+                        (dissoc attrs :asset :renditions :placeholder :preview? :progressive? :on-attached-error :on-source-error :on-visible-ready))
+          preview (when preview? (sources/preview src asset))
           capture! (r/use-memo
                     #(r/compose-refs
                       (fn [image]
@@ -62,17 +64,16 @@
                         (when (and image (seq src) (seq (.-currentSrc image))
                                    (.-complete image) (zero? (.-naturalWidth image)))
                           (when on-source-error (on-source-error))
-                          (if (and (sources/should-use-modern-formats? src)
+                          (if (and (sources/should-use-modern-formats? src asset)
                                    (modern-source-selected? image src))
                             (swap! *fallback-sources conj src)
                             (when on-attached-error
                               (on-attached-error #js {:currentTarget image}))))
                         nil)
                       ref)
-                    [src ref on-attached-error on-source-error])]
-     (if (sources/should-use-modern-formats? src)
-      (let [avif-src (sources/replace-extension src "avif")
-            webp-src (sources/replace-extension src "webp")
+                    [src asset ref on-attached-error on-source-error])]
+     (if (sources/should-use-modern-formats? src asset)
+      (let [{avif-src :avif, webp-src :webp} (sources/get-src-variants src asset)
             ;; Keep failures by original path so a new src tries modern formats anew.
             fallback? (contains? @*fallback-sources src)
             retry! (fn [event]
@@ -86,12 +87,12 @@
         [:picture
          (when-not fallback?
            [:source {:key avif-src
-                     :srcSet (or (:avif preview) (sources/srcset src "avif") avif-src)
+                     :srcSet (or (:avif preview) (sources/srcset src "avif" asset) avif-src)
                      :sizes (or (:sizes attrs') "100vw")
                      :type "image/avif"}])
          (when-not fallback?
            [:source {:key webp-src
-                     :srcSet (or (:webp preview) (sources/srcset src "webp") webp-src)
+                     :srcSet (or (:webp preview) (sources/srcset src "webp" asset) webp-src)
                      :sizes (or (:sizes attrs') "100vw")
                      :type "image/webp"}])
          [:img (assoc attrs' :on-error retry! :ref capture!)]])
@@ -265,22 +266,24 @@
   "Render responsive modern sources with original recovery. Different candidates
    overlap for 150ms after final decode; matching candidates use a single layer.
    The initial document owns its upgrade through hydration, without replay."
-  [{:keys [src class style id progressive? on-error on-load ref on-transition-end on-transition-cancel on-visible-ready] :as attrs} :- attrs-schema]
-  (r/with-let [*image-phase (r/atom {:src src, :phase nil})]
+  [{:keys [asset class style id progressive? on-error on-load ref on-transition-end on-transition-cancel on-visible-ready] :as attrs} :- attrs-schema]
+  (let [src (or (:src asset) (:src attrs))
+        attrs' (assoc attrs :src src)]
+   (r/with-let [*image-phase (r/atom {:src src, :phase nil})]
     (let [*final-image (r/use-ref nil)
           *preview-image (r/use-ref nil)
           *active? (r/use-ref true)
           image-key (string/replace (r/use-id) #"[^A-Za-z0-9_-]" "_")
           initial-hydration? (r/use-memo restore/initial-hydration? [])
           direct? (restore/direct-images?)
-          preview (sources/preview src)
-          progressive?' (and preview (if (contains? attrs :progressive?)
-                                      progressive? (sources/progressive? src)))
-          background (sources/placeholder-background src)
-          dimensions (sources/dimensions src)
+          preview (sources/preview src asset)
+          progressive?' (and preview (if (contains? attrs' :progressive?)
+                                      progressive? (sources/progressive? src asset)))
+          background (sources/placeholder-background src asset)
+          dimensions (sources/dimensions src asset)
           placeholder? (and background (>= (max (or (:width dimensions) 0)
                                                (or (:height dimensions) 0)) 960))
-          sizes (or (:sizes attrs) "100vw")
+          sizes (or (:sizes attrs') "100vw")
           phase (when (= src (:src @*image-phase)) (:phase @*image-phase))
           phase' (cond
                    (not progressive?') (if (= :decoded phase) :decoded :single)
@@ -422,7 +425,7 @@
         progressive?'
         (let [managed? (or (and phase' (not= :native phase'))
                            (not= src (:src @*image-phase)))
-              final-attrs (-> attrs
+              final-attrs (-> attrs'
                               (dissoc :class :style :id :progressive? :on-visible-ready)
                               (assoc :class "progressive-image__final"
                                      :data-image-final true
@@ -435,6 +438,7 @@
                                      :on-source-error pending!
                                      :on-attached-error failed!))
               preview-attrs {:src src
+                             :asset asset
                              :alt ""
                              :aria-hidden true
                              :preview? true
@@ -442,7 +446,7 @@
                              :data-image-preview true
                              :ref *preview-image
                              :loading "lazy"
-                             :fetchPriority (or (:fetchPriority attrs) "auto")}
+                             :fetchPriority (or (:fetchPriority attrs') "auto")}
               root-attrs {:id id
                           :class class
                           :style (merge {"--image-final-opacity" (str "var(--pi-" image-key "-final, 0)")
@@ -463,7 +467,7 @@
 
         placeholder?
         [<source-picture>
-         (assoc (dissoc attrs :on-visible-ready)
+         (assoc (dissoc attrs' :on-visible-ready)
                 :style (merge {:background-image (if (= :decoded phase) "none"
                                                     (str "var(--pi-" image-key "-placeholder, " background ")"))}
                               style)
@@ -479,14 +483,14 @@
                 :on-attached-error failed!)]
 
         on-visible-ready
-        [<source-picture> (assoc (dissoc attrs :on-visible-ready)
+        [<source-picture> (assoc (dissoc attrs' :on-visible-ready)
                                 :ref capture!
                                 :on-load loaded!
                                 :on-error failed!
                                 :on-source-error pending!
                                 :on-attached-error failed!)]
 
-        :else [<source-picture> (dissoc attrs :on-visible-ready)]))))
+        :else [<source-picture> (dissoc attrs' :on-visible-ready)])))))
 
 (defc <img>
   "Smart img component that automatically uses modern formats when available.

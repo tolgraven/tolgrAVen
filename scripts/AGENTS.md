@@ -56,7 +56,12 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   it must never overwrite watched application output. See `doc/middleware-optimus-audit.md`.
 - `dev/cpu_controls.py` is the macOS libproc/signal and Docker lifecycle adapter.
   Keep microsecond PID identity, exact project/app ownership, pre-stopped exclusion,
-  independent CONT watchdog, container labels and shared build serialization intact.
+  independent CONT watchdog, container labels and two shared inherited-lock build slots intact.
+  Each slot caps Docker at 1.5 CPUs and 4 GiB RAM with a 2 GiB JVM heap;
+  ordinary containers share only the host Maven repository directory, not credentials. Reservations sum across live workers, and
+  BuildKit daemon/cache identities must differ between slots. Keep each worker
+  garbage-collected toward 2 GB cache with a 256 MB reservation and 20 GB free-space
+  target; preserve outputs still owned by active verification.
   Native CPU accounting uses the Mach timebase; cap tests must measure actual CPU
   seconds, not only duty settings. CPU probes touch disposable owned fixtures only.
 
