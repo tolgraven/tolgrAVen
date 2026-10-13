@@ -17,6 +17,21 @@ spec.loader.exec_module(cpu)
 
 
 class PolicyTests(unittest.TestCase):
+    def test_custom_non_node_image_can_explicitly_skip_dependency_bootstrap(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = subprocess.run(['sh', '-c', cpu.docker_bootstrap('skip'), 'cpu-build',
+                                     'printf', '%s\\n', 'literal $value; argument with spaces'],
+                                    cwd=directory, capture_output=True, text=True, check=True)
+            self.assertEqual(result.stdout, 'literal $value; argument with spaces\n')
+            self.assertEqual(list(Path(directory).iterdir()), [])
+
+    def test_default_node_bootstrap_preserves_prefab_reuse_and_install(self):
+        bootstrap = cpu.docker_bootstrap('auto')
+        self.assertIn('cmp -s package-lock.json /opt/prefab-package-lock.json', bootstrap)
+        self.assertIn('ln -s /usr/src/app/node_modules node_modules', bootstrap)
+        self.assertIn('npm ci --no-audit --no-fund', bootstrap)
+        self.assertTrue(bootstrap.endswith('exec "$@"'))
+
     def test_host_existing_options_preserve_heap_and_always_append_worker_bounds(self):
         options=cpu.host_environment({'JAVA_TOOL_OPTIONS':'-Dsome.property=keep -Xmx2g -XX:ActiveProcessorCount=8'})['JAVA_TOOL_OPTIONS']
         self.assertIn('-Dsome.property=keep',options)

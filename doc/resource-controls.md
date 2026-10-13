@@ -33,6 +33,17 @@ The prefab's Maven artifacts are reused. Matching npm manifests use its locked
 not refresh/publish a prefab or deploy anything. An explicit `--image` can select
 a current dependency-hash builder. No credentials or local dev config are copied.
 
+Custom media images that have codecs but no Node tools can explicitly skip
+Node dependency setup for non-Node tasks:
+
+```sh
+tolgraven-cpu run --image tolgraven-media-tools-check --node-deps skip -- bb images:responsive
+```
+
+This retains the isolated source snapshot, shared build queue, container guardian
+and CPU/memory limits. Ordinary builds retain the default `--node-deps auto`,
+which reuses matching prefab dependencies or runs the locked npm installation.
+
 For host-only watches, nREPL and browser interoperability:
 
 ```sh

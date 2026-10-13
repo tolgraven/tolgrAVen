@@ -648,6 +648,14 @@ def snapshot(checkout, destination):
             shutil.copy2(source, target)
 
 
+def docker_bootstrap(node_deps):
+    if node_deps == 'skip':
+        return 'exec "$@"'
+    return ('if cmp -s package-lock.json /opt/prefab-package-lock.json; then '
+            'ln -s /usr/src/app/node_modules node_modules; else npm ci --no-audit --no-fund; fi; '
+            'exec "$@"')
+
+
 def run(args):
     command = args.command
     if command and command[0] == '--':
@@ -673,9 +681,7 @@ def run(args):
         save_json(STATE / 'docker-active.json', {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
         guardian, guardian_identity = start_docker_guardian(owner, name, token, endpoint, lock)
         save_json(STATE / 'docker-active.json', {'owner': owner, 'guardian': guardian_identity, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
-        bootstrap = ('if cmp -s package-lock.json /opt/prefab-package-lock.json; then '
-                     'ln -s /usr/src/app/node_modules node_modules; else npm ci --no-audit --no-fund; fi; '
-                     'exec "$@"')
+        bootstrap = docker_bootstrap(args.node_deps)
         cmd = ['docker', '--host', endpoint, 'run', '--rm', '--init', '--name', name, '--cpus', str(args.cpus),
                '--memory', args.memory, '--memory-swap', args.memory, '--pids-limit', '512',
                '--label', 'tolgraven.cpu.token=' + token,
@@ -756,6 +762,8 @@ def main():
     runner.add_argument('--cpus', type=positive, default=1.0)
     runner.add_argument('--memory', default='2g')
     runner.add_argument('--image', default='registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v1')
+    runner.add_argument('--node-deps', choices=['auto', 'skip'], default='auto',
+                        help='Use skip only for non-Node tasks in custom images, such as media codecs.')
     runner.add_argument('command', nargs=argparse.REMAINDER)
     runtime = commands.add_parser('runtime', help='Supervised low-priority host runtime; does not hold the agent build queue.')
     runtime.add_argument('--checkout', default=os.getcwd())

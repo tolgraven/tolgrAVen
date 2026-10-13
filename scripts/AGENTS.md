@@ -46,3 +46,6 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   independent CONT watchdog, container labels and shared build serialization intact.
   Native CPU accounting uses the Mach timebase; cap tests must measure actual CPU
   seconds, not only duty settings. CPU probes touch disposable owned fixtures only.
+
+  Custom codec images use explicit `run --node-deps skip` only for non-Node tasks;
+  retain the shared queue, snapshot and container limits. Default Node bootstrap stays enabled.
