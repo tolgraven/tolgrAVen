@@ -149,7 +149,9 @@
                            (if (and (:schema options)
                                     (value-validation/explain (:schema options) (:value saved)))
                              (storage/remove! id persistence')
-                             (rf/dispatch [:component-state/restore path revision (:value saved)]))))))))))))
+                             ;; Complete restoration before following readiness
+                             ;; callbacks (including autosaves) observe defaults.
+                             (rf/dispatch-sync [:component-state/restore path revision (:value saved)]))))))))))))
 
 (defn- initialization-effects [{:keys [db]} [_ path options]]
   (when (accessible-path? path)

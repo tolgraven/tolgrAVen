@@ -388,6 +388,8 @@
                     (original key))))
           (await! (render! root [<cold-setting>]))
           (storage/flush!) ; A prior autosave must not persist defaults over a cold read.
+          (await! (support/wait-for! #(= "true" (.-textContent element))
+                                    "Cold storage result did not reach the mounted view"))
           (is (= "true" (.-textContent element))
               "Cold storage has settled through the normal render lifecycle")
           (-> (tick!)
@@ -713,7 +715,12 @@
                 (rf/dispatch-sync [:component-state/initialize path options])
                 (rf/dispatch-sync [:component-state/load path options])
                 (rf/dispatch-sync [:component-state/reset edited-path 12])
-                (@*release nil)
+                (let [restored (-> ready
+                                   (.then (fn [_]
+                                            (is (= 7 (get-in @rfdb/app-db path))
+                                                "Storage readiness cannot expose defaults to a following autosave"))))]
+                  (@*release nil)
+                  (await! restored))
                 (await! (tick!))
                 (is (= 7 @*value) "Storage returns through a result event into app-db")
                 (is (= 12 @*edited) "Late restoration preserves intervening edits")

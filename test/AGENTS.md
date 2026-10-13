@@ -5,6 +5,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Mount actual Reagent components, dereference subscriptions during render, dispatch
   real events, await lifecycle completion, and unmount in cleanup. Avoid direct
   app-db mutation, dangling subscriptions and forced React flushes.
+  Render frames do not establish asynchronous source completion; wait for the
+  mounted result or result event before asserting loaded/error state.
 - Native ref tests cover forwarded React 19 cleanup, legacy nil callbacks,
   replacement/unmount and plain atom/object refs. Keyed state tests
   protect the isolated Reagent 2.0.1 Hiccup metadata compatibility boundary.
