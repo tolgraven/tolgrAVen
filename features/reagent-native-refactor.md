@@ -28,6 +28,12 @@ current code owners, contracts and justified exceptions for future changes.
 `use-memo` and `use-callback` to Reagent 2.0.1. Inspect installed upstream definitions
 when extending the hook surface; hooks do not all have identical adaptation rules.
 
+The facade's hydration root preserves Reagent 2.0.1's compiler, two root wrapper
+slots, batching setup and initial after-render flush. Its narrow native adapter
+forwards recovery callbacks and identifier prefixes that the installed upstream
+function accepts but omits from React's `hydrateRoot` call. Keep mismatch checks
+on that public facade so production recovery and tests exercise the same path.
+
 Use ordinary dependency vectors. Upstream compares Clojure values, retaining
 memo/callback/effect ownership for equal collections. Functions and native handles
 inside those vectors remain identity-sensitive. Equal state/reducer updates retain
@@ -49,7 +55,7 @@ Review these source owners when changing the shim; paths are relative to
 | `components/page.cljc`, `components/shell.cljs` | Native context values, restored shell state and simultaneous 250ms linear fades |
 | `components/timer.cljs`, `components/oembed.cljs`, `components/popover.cljs` | Mount deadlines, latest committed callbacks, local hover state and open-surface measurement |
 | `components/image.cljs`, `components/video.cljs`, `modules/user/views.cljc` | React 19 ref cleanup, native observers and pre-hydration image recovery |
-| `components/ui.cljs`, `components/ui/code.cljs`, `components/code_block.cljs`, `modules/highlight/views.cljs` | Deferred formatting, stable native adapters, copy/fold/wrap controls and pure markup |
+| `components/ui/*`, `modules/markdown/{views,code_block}.cljs`, `modules/highlight/views.cljs` | Deferred formatting, stable native adapters, copy/fold/wrap controls and pure markup |
 | `browser_resources.cljs`, `navigation/preload.cljs`, `navigation/transition.cljs`, `ssr/client.cljs`, `ssr/local.cljs` | Lifecycle-owned scheduling, restoration and cleanup |
 | `modules/blog/views.cljs`, `modules/home/sections.cljs`, `modules/link_preview/views.cljs`, `modules/search/views.cljs`, `modules/settings/views.cljs` | Current inputs, one focus owner, deferred acquisition and declarative interactions |
 | `env/dev/cljs/website/component/dev_instrumentation.cljs` | Commit-owned resolver publication, Clojure dependency/context values and bounded diagnostics |
@@ -75,7 +81,7 @@ application callers use Reagent's value-oriented contract.
 | `components/oembed.cljs`, `components/page.cljc` | Transient hover uses a local ratom; internal transition tokens stay vectors, with serialization only for actual React keys. |
 | `components/timer.cljs` | `<timeout>` keeps its mount deadline and invokes the latest committed callback. Canceled/completed hide timers release their handles. |
 | `modules/home/sections.cljs`, `modules/search/views.cljs` | Services has one focus effect. Search uses the existing painted-frame adapter, cancels pending focus and blurs the hidden input on close. |
-| `components/ui.cljs`, `modules/github/views.cljs` | Render bodies and refs no longer trigger the legacy DOM highlighter. The deferred formatter owns highlighting; preserved prototypes/helpers remain available. Missing HUD content renders nil without dispatching from render. |
+| `components/ui/diagnostics.cljs`, `modules/github/views.cljs` | Render bodies and refs no longer trigger the legacy DOM highlighter. The deferred formatter owns highlighting; preserved prototypes/helpers remain available. Missing HUD content renders nil without dispatching from render. |
 | `browser_resources.cljs`, `boot.cljs` | A timeout changes local Reagent readiness from a hidden placeholder to supplied Hiccup. Analytics settings acquire through the existing URL source after that delay; scripts render declaratively, with only SDK queue setup in the native adapter. Server config owns the ID. |
 
 Managed acquisition before commit is intentional: re-frame owns source subscriptions

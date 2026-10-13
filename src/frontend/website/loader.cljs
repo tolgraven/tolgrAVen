@@ -322,12 +322,25 @@
         [committed? set-committed!] (r/use-state false)
         *trigger (r/use-ref nil)
         release! (hydration/use-deferred! initial?)
-        complete! (r/use-callback (fn [] (release!) (set-committed! true)) [release!])
+        complete! (r/use-callback
+                    (fn []
+                      ;; A parser may have introduced another unhydrated SSR
+                      ;; owner. An urgent marker removal can discard its nodes
+                      ;; before its activation effects commit.
+                      (if initial?
+                        (r/start-transition #(set-committed! true))
+                        (set-committed! true)))
+                    [initial? set-committed!])
         boundary (r/use-memo #(make-boundary module) [module])
         ready? (or context/*server?* (boolean @(r/subscribe [:loader/code-ready module])))
         failure (when-not context/*server?* @(r/subscribe [:loader/code-error module]))
         modes (activation/triggers options)
         requested? (and (not hidden?) active?)]
+    (r/use-layout-effect
+      ;; Keep transition batching until the marker-removal update commits;
+      ;; nested owners can then install their own hydration/activation effects.
+      (fn [] (when committed? (release!)) nil)
+      [committed? release!])
     (restore/use-readiness! (or (not requested?) ready? (some? failure)))
     (when (and context/*server?* ssr? context/*rendered-views*)
       (swap! context/*rendered-views* update module (fnil conj #{}) (or view :view)))

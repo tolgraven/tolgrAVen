@@ -28,6 +28,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Hook dependencies use Clojure value equality without converting their contents;
   native handles/functions remain opaque. Memo/callback helpers require explicit
   dependencies. Equal state/reducer updates retain the previous value identity.
+  The facade's hydration root retains Reagent's compiler, wrapper slots and
+  after-render lifecycle while forwarding recovery callbacks and identifier
+  prefixes; Reagent 2.0.1 accepts but drops those native options.
   Browser adapters must release their listeners/observers/timers and guard SSR.
   Use `:listener/register` / `:listener/stop` effects for application bindings.
   Committed browser/component lifecycles use `listener/listen!` binding maps and
@@ -147,6 +150,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Keep the formatter in its own memoized `defc` so control updates do not replace
   pending SSR nodes. Initial boundaries own transition batching in
   `component/hydration.cljs` until inner commit/unmount; navigation releases it.
+  Loader marker removal is a transition during initial hydration; release its
+  batching owner after that update commits so nested SSR activation can mount.
   Cached child completion can precede parent setup: acquire no owner after that
   completion. Overlapping owners and StrictMode cleanup must restore batching
   only when the last current owner releases; stale document callbacks are inert.

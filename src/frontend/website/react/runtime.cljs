@@ -4,12 +4,16 @@
    back into the instrumented facade. Ordinary components use website.react."
   (:refer-clojure :exclude [atom flush])
   (:require [react-dom :as react-dom]
+            ["react-dom/client" :as react-dom-client]
             [react :as react]
             [reagent.core]
             [reagent.hooks :as hooks]
             [reagent.ratom]
             [reagent.dom.client]
             [reagent.impl.batching]
+            [reagent.impl.protocols]
+            [reagent.impl.template]
+            [reagent.impl.util]
             [re-frame.router]
             [re-frame.interop]
             [re-frame.subs]
@@ -98,7 +102,33 @@
 (def *app-db re-frame.db/app-db)
 (def preinit react-dom/preinit)
 (def create-root reagent.dom.client/create-root)
-(def hydrate-root reagent.dom.client/hydrate-root)
+
+(defn- hydration-root [^js props]
+  ;; Match Reagent 2.0.1's two root slots and initial after-render lifecycle.
+  (react/useEffect
+    (fn []
+      (binding [reagent.impl.util/*always-update* false]
+        (reagent.impl.batching/flush-after-render))
+      js/undefined))
+  (binding [reagent.impl.util/*always-update* true]
+    (react/createElement (.-comp props))))
+
+(defn hydrate-root
+  "Retain Reagent's root/compile lifecycle while forwarding native root options."
+  ([container form] (hydrate-root container form nil))
+  ([container form {:keys [compiler on-recoverable-error identifier-prefix]
+                    :or {compiler reagent.impl.template/*current-default-compiler*}}]
+   ;; Reagent 2.0.1 accepts these options but drops them at hydrateRoot. Both
+   ;; production recovery and mismatch tests need the actual React callback.
+   (set! reagent.impl.batching/react-flush react-dom/flushSync)
+   (let [props #js {:comp (fn [] (reagent.impl.protocols/as-element compiler form))}
+         options #js {}]
+     (when on-recoverable-error
+       (set! (.-onRecoverableError options) on-recoverable-error))
+     (when identifier-prefix
+       (set! (.-identifierPrefix options) identifier-prefix))
+     (react-dom-client/hydrateRoot container (react/createElement hydration-root props) options))))
+
 (def render reagent.dom.client/render)
 (def unmount reagent.dom.client/unmount)
 (def native-suspense react/Suspense)
