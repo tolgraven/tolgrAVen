@@ -3,6 +3,7 @@
    events, refs and exceptions remain intentionally opaque."
   #?(:cljs (:require [tolgraven.schema.common :as c]
             [tolgraven.component.font :as font]
+            [tolgraven.browser-resources.schema :as resources]
             #?(:module/blog [tolgraven.modules.blog.schema :as blog])
             #?(:module/chat [tolgraven.modules.chat.schema :as chat])
             [tolgraven.content.schema :as content]
@@ -121,6 +122,7 @@
      [:common/route] navigation/route
      [:common/route-last] navigation/route
      [:component-revisions] [:map-of c/path c/nonnegative]
+     [:browser-resources :settings] resources/settings
      ;; Values at these roots are owned by each component/page/module. Their
      ;; :db-schema or :state {:schema ...} adds deeper validation.
      [:component] :map

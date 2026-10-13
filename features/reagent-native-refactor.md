@@ -1,359 +1,155 @@
-# Refactor toward native Reagent and idiomatic React
+# Native Reagent implementation and maintenance
 
-## Objective and authorization
-
-Make frontend implementation as ClojureScript/Reagent-native as practical while
-respecting React's lifecycle, purity and ownership rules. This is an implementation
-brief for future agents, not a claim that the listed changes have been made.
-
-The user explicitly selected these defaults:
-
-- Our fully-featured `tolgraven.macros/defc` uses upstream `reagent.core/defc` as
-  its foundation, including its composed feature path.
-- Hooks exposed by `tolgraven.react` should delegate to `reagent.hooks` rather
-  than raw React hooks or independently maintained approximations.
-- Ordinary feature code should remain familiar ClojureScript: Hiccup, maps,
-  vectors, small functions, reactive state, events and subscriptions.
-
-Read the [explanatory guide](../doc/reagent-2-react-19-guide.md),
+Use this alongside the [Reagent 2 / React 19 guide](../doc/reagent-2-react-19-guide.md),
 [authoring policy](../doc/reagent-re-frame.md), [component API](../doc/components.md),
-[SSR contract](../doc/ssr.md) and the scoped AGENTS files before implementation.
-Keep this brief current as tasks complete. Do not retain a completed audit diary
-or old test totals in it; documentation describes behavior and remaining work.
+[SSR contract](../doc/ssr.md) and scoped AGENTS instructions. The hook and ownership
+migration described by the original brief is implemented. This file records the
+current code owners, contracts and justified exceptions for future changes.
 
-## Preserve these contracts
+## Defaults
 
-1. Retain upstream `r/defc` underneath lean and composed definitions. Do not
-   replace it with raw JS components, a global compiler switch or class wrappers
-   for all components. Preserve docstrings, typed arguments, multiple lean
-   arities, form-2 compatibility, prototype bodies and stable component identity.
-2. Keep application calls through `tolgraven.react`, including subscription/event
-   validation and development consumer tracing. Changing hook delegates must not
-   bypass the shim's re-frame macros or add another React/Reagent runtime.
-3. Preserve scoped state ownership and event-driven writes. Current `<sub` handles
-   are native re-frame subscriptions; use `>reset`/`>update`. Do not bring back
-   writable cursors, mirror app-db in hooks or add a second application store.
-4. Keep React in charge of markup, attributes, loading/error states and motion.
-   Preserve appearance on native roots, keyed exit retention, retry boundaries,
-   font layers, lazy media and page readiness.
-5. Preserve exact initial SSR/hydration state and DOM, local return snapshots,
-   code/highlighter deferral, and parallel CSS/JS module loading. No loading flash,
-   replayed entrance, extra eager dependency or fabricated empty data.
-6. Preserve disabled experiments, unfinished views and API stubs. Their apparent
-   non-use does not authorize deletion or a speculative rewrite.
-7. Native data containers and handles remain appropriate where a specific browser,
-   SDK or React API requires them. This is not a blanket ban on `#js`, `set!`,
-   `.-current`, Promises, classes or native event listeners.
+- Our full-featured `tolgraven.macros/defc` builds on upstream `reagent.core/defc`,
+  including the composed feature path. Keep docstrings, typed arguments, lean
+  arities, form-2 support, prototype bodies and stable component identity.
+- Hooks in `tolgraven.react` delegate directly to installed `reagent.hooks`.
+  Keep the shim's re-frame validation and development consumer tracing.
+- Feature code uses Hiccup, Clojure maps/vectors, small functions, subscriptions
+  and registered events/effects. Use local ratoms for transient view state and
+  scoped native re-frame subscriptions for state that survives remounts.
+- React owns markup, attributes and transitions. Existing appearance, visibility,
+  presence, loading and readiness declarations own their lifecycles.
+- Preserve unfinished views, disabled experiments, examples and stubs. This
+  refactor is not authorization to remove them.
 
-## First task Replace the custom hook implementation
+## Hook boundary and caller inventory
 
-Update [src/frontend/tolgraven/react.cljs](../src/frontend/tolgraven/react.cljs).
-Require `reagent.hooks` once here and delegate the existing public hook names to
-its installed 2.0.1 functions:
+`src/frontend/tolgraven/react.cljs` delegates `use-state`, `use-ref`, `use-context`,
+`use-reducer`, `use-sync-external-store`, `use-effect`, `use-layout-effect`,
+`use-memo` and `use-callback` to Reagent 2.0.1. Inspect installed upstream definitions
+when extending the hook surface; hooks do not all have identical adaptation rules.
 
-| Public helper | Upstream delegate |
+Use ordinary dependency vectors. Upstream compares Clojure values, retaining
+memo/callback/effect ownership for equal collections. Functions and native handles
+inside those vectors remain identity-sensitive. Equal state/reducer updates retain
+the previous value identity. Do not serialize dependency maps with `pr-str` or
+stabilize them with primitive-field memoization just to approximate value equality.
+
+Effects return cleanup or nil. Upstream suppresses other non-function results,
+but an accidental returned function is still interpreted as cleanup. Memo/callback
+helpers require explicit dependencies. Retain actual API-specific undefined returns
+and native containers at other boundaries.
+
+Review these source owners when changing the shim; paths are relative to
+`src/frontend/tolgraven/` unless another root is given:
+
+| Owners | Contract to preserve |
 | --- | --- |
-| `use-state` | `reagent.hooks/use-state` |
-| `use-ref` | `reagent.hooks/use-ref` |
-| `use-context` | `reagent.hooks/use-context` |
-| `use-reducer` | `reagent.hooks/use-reducer` |
-| `use-sync-external-store` | `reagent.hooks/use-sync-external-store` |
-| `use-effect` | `reagent.hooks/use-effect` |
-| `use-layout-effect` | `reagent.hooks/use-layout-effect` |
-| `use-memo` | `reagent.hooks/use-memo` |
-| `use-callback` | `reagent.hooks/use-callback` |
+| `component.cljs`, `component/motion.cljs`, `component/restore.cljs`, `component/font.cljs` | Stable hook order, current committed feature configuration, root identity and readiness |
+| `component/hydration.cljs`, `loader.cljs`, `core.cljs`, `boot.cljs` | Selective hydration, module activation, cancellation and document disposal |
+| `components/page.cljc`, `components/shell.cljs` | Native context values, restored shell state and simultaneous 250ms linear fades |
+| `components/timer.cljs`, `components/oembed.cljs`, `components/popover.cljs` | Mount deadlines, latest committed callbacks, local hover state and open-surface measurement |
+| `components/image.cljs`, `components/video.cljs`, `modules/user/views.cljc` | React 19 ref cleanup, native observers and pre-hydration image recovery |
+| `components/ui.cljs`, `components/ui/code.cljs`, `components/code_block.cljs`, `modules/highlight/views.cljs` | Deferred formatting, stable native adapters, copy/fold/wrap controls and pure markup |
+| `browser_resources.cljs`, `navigation/preload.cljs`, `navigation/transition.cljs`, `ssr/client.cljs`, `ssr/local.cljs` | Lifecycle-owned scheduling, restoration and cleanup |
+| `modules/blog/views.cljs`, `modules/home/sections.cljs`, `modules/link_preview/views.cljs`, `modules/search/views.cljs`, `modules/settings/views.cljs` | Current inputs, one focus owner, deferred acquisition and declarative interactions |
+| `env/dev/cljs/tolgraven/component/dev_instrumentation.cljs` | Commit-owned resolver publication, Clojure dependency/context values and bounded diagnostics |
+| `env/dev/cljs/tolgraven/dev_console/{capture,views}.cljs`, `env/dev/cljs/tolgraven/dev/{source,stack}.cljs` | Cached external-store snapshot identity, cancellation, measurement and source acquisition |
 
-Inspect the actual library definitions before changing arities. Our current
-`use-memo`/`use-callback` accept a one-argument arity; upstream 2.0.1 exposes a
-two-argument dependency form. Find callers, give them explicit dependencies or
-remove unnecessary memoization, and update the public contract deliberately.
-Do not emulate an undocumented upstream arity. Upstream `use-imperative-handle`
-has different dependency adaptation details; do not claim every hook has the
-same Clojure-aware behavior.
+Relevant direct test callers include `react_hooks_test.cljs`, `blog_ssr_test.cljs`,
+`page_return_test.cljs`, `suspense_deferred_test.cljs` and `viewport_module_test.cljs`
+under `test/cljs/tolgraven/`. Do not make tests use raw dependency arrays when
+application callers use Reagent's value-oriented contract.
 
-Remove `hook-dependencies` and `effect-setup` after every caller is migrated.
-Retain React operations that are not wrapped hooks: context creation/provider,
-lazy, Suspense, Profiler, StrictMode, transitions, portal/root operations and the
-small class boundary. Upstream does not replace those with hook functions.
+## Ownership changes to retain
 
-### Intentional semantic changes
-
-- Dependency equality changes from per-entry React `Object.is` to upstream
-  Clojure equality over the dependency collection. Equal maps/vectors should
-  retain memo/callback/effect ownership; changed data should restart it.
-- State/reducer updates producing an equal Clojure value should retain the old
-  identity. Do not depend on setting an equal fresh map to force rendering.
-- Upstream effects suppress every non-function result, whereas our custom setup
-  wrapper currently normalizes only nil and exposes other mistakes to React.
-  Ensure setup functions return cleanup or no meaningful value. Do not return
-  Promises or accidentally return a callable as cleanup.
-- Native arrays are unsuitable as a way to express Clojure value dependencies
-  through these wrappers: fresh arrays compare by identity as values. Convert
-  hook dependency containers to ordinary Clojure vectors. Functions and native
-  handles inside those vectors retain their intended identity semantics.
-
-Update `test/cljs/tolgraven/react_hooks_test.cljs` rather than retaining its current
-equal-map-invalidates expectations. Separate probes for dependency equality from
-enabled/phase changes: changing `enabled?` at the same time as an equal map would
-otherwise hide the semantic distinction. Cover changed maps, equal maps/vectors,
-native handle/function identity changes, state/reducer equal updates, effect
-cleanup and omitted-versus-empty dependencies. Verify the wrapper's supported
-arity and cleanup behavior with mounted components.
-
-## Caller inventory
-
-These are all files with hook calls/declarations found under `src`, `env` and
-`test` on this brief's inspected base. Every row requires migration review;
-already-Clojure dependency vectors may require no textual edit. Rows with only
-ref/context/state calls are still affected by changing the central delegates.
-Use the symbols listed here as anchors; line numbers drift during implementation.
-
-For each file, replace hook dependency `#js` arrays with vectors, remove redundant
-effect `js/undefined`/`or ... js/undefined` plumbing, and review equality, cleanup
-and captured inputs. **Do not remove native containers or undefined returns used
-by other APIs.** In particular, callback refs and native callback contracts are
-not effect setups.
-
-### Application runtime
-
-All paths in this table are relative to `src/frontend/tolgraven/`.
-
-| File | Code to inspect and required focus |
+| Code | Current implementation |
 | --- | --- |
-| `react.cljs` | All hook exports, `hook-dependencies`, `effect-setup`; implement upstream delegation and document changed equality/arity |
-| `component.cljs` | `use-lifecycle!`, `render-function`, `<container>`, `<data-body>`; migrate effect deps; review feature hook order and latest-args refs |
-| `component/motion.cljs` | `use-motion`, `use-presence`; callback/effect arrays, reducer and ref handles; preserve visibility, reduced motion, root replacement and exit cancellation |
-| `component/restore.cljs` | `use-readiness!`; dependency vector and no-cleanup branches; retain commit-only readiness ownership |
-| `component/hydration.cljs` | `use-deferred!`; empty deps and completion callback; keep release ownership and review global batching separately |
-| `component/font.cljs` | `use-font`; existing vector deps and primitive-field stabilization; reassess redundant map-stabilization only after equality migration |
-| `components/page.cljs` | `use-page-crossfade`, `<page>`; token/vector state, effects and context provider envelopes; preserve positioning and simultaneous fades |
-| `components/timer.cljs` | `<timeout>`, `use-delayed-visible?`, `use-delayed-hide`; empty/changed deps, stale callbacks, cancellable timer cleanup |
-| `components/image.cljs` | `<picture>` capture callback; native ref return handling, equal attrs and src updates; preserve pre-hydration image failure recovery |
-| `components/video.cljs` | `use-source-attrs`; callback/effect arrays, observer cleanup and source gating; keep native observer options |
-| `components/popover.cljs` | `<popover>` outer initializer/inner effect; arrays, ResizeObserver allocation, changing open/configuration and portal teardown |
-| `components/shell.cljs` | `<header>`, `<footer-full>`; initial menu/restoration snapshots, refs/state and effect arrays; do not synchronize duplicate menu state |
-| `components/ui.cljs` | `<log>` layout effect; preserve intentional every-commit timing only if needed; inspect legacy ref-triggered highlighter work |
-| `components/ui/code.cljs` | `<markdown-code-component>`, `<parse-markdown-components>`; context reads and `use-memo` deps for adapters; preserve Markdown/raw HTML trust and representation |
-| `components/code_block.cljs` | `<formatted>`, `<formatter>`, `use-copy-feedback`, `use-copy-gesture`, `<code-block>`; lazy gate, commit callbacks, memo/state and gestures; preserve controls outside deferred formatting |
-| `components/oembed.cljs` | `<oembed-view>` hover state; assess whether local ratom is sufficient without changing loading/cache ownership |
-| `loader.cljs` | `<trigger>`, `<module-content>` and `<module-boundary>`; activation effects, arrays, memoized boundary and hydration completion; preserve current options/args and shared loading |
-| `core.cljs` | `<disposed-shell>` layout effect; arrays and implicit cleanup; preserve root/overlay disposal sequencing |
-| `boot.cljs` | `<lifecycle>` effects; startup and page-preload ownership, setup/cleanup and empty deps |
-| `browser_resources.cljs` | `<deferred>` effect; eliminate no-cleanup ceremony while keeping any actual cleanup; preserve readiness/load/paint/idle ordering |
-| `navigation/preload.cljs` | `<background>` effect; `start!` cleanup and empty deps; preserve intent/adjacent-only prefetch |
-| `navigation/transition.cljs` | `use-ready!`; compare commit as Clojure data, preserve handled token and commit-only route completion |
-| `ssr/client.cljs` | `<hydrate>` layout effect; microtask cancellation and empty deps; no synchronous Reagent flush from a React lifecycle |
-| `ssr/local.cljs` | `<capture>` effect; subscription-owned capture and listeners, empty deps; preserve worker/state-document pairing |
-| `modules/blog/views.cljs` | `<comment-post>` and shared timer hook consumers; ResizeObserver deps, current comment text, truncation/expansion and delayed visibility |
-| `modules/home/sections.cljs` | `<service-categories>` effect and focus ref; arrays and focus ownership; avoid duplicate focus paths |
-| `modules/link_preview/views.cljs` | `<observed-link-container>` and `<link-preview>`; form-2 captures, mount-only observation and every-commit preview actions; preserve trust, external return and cleanup |
-| `modules/search/views.cljs` | `<box>` focus effect; open dependency and timer/ref ownership; closed input must release focus |
-| `modules/settings/views.cljs` | `<settings>` CSS-variable read effect; empty deps and explicit event ownership |
-| `modules/user/views.cljs` | `<user-avatar>` effect/ref; avatar/src dependency arrays, cancelled animation frame and pre-hydration failure recovery |
-| `modules/highlight/views.cljs` | `<code-block>` tree/generator memoization; existing vector deps, equal language-option collections, stable formatter identities |
+| `component.cljs/use-lifecycle!`, `render-function` | Each committed effect captures its render's callbacks and shape; speculative renders cannot overwrite pending shared slots. Capability owners reconcile without changing hook order or remounting the body. |
+| `component.cljs/<data-body>`, `component/data.cljs` | `:component-data/status` acquires the existing queue through a managed source factory. Its reaction computes readiness without IO. Preloads use that same queue, preserving CSS/code/data parallelism. |
+| `component/persistent_state.cljs` | `<sub` returns the native scoped value subscription. Persistent acquisition dispatches an idempotent load event, sharing the effect used by eager initialization. Derived reads stay pure; declared defaults initialize after commit. No dummy owner reaction, writable cursor or duplicate store. |
+| `components/popover.cljs` | Closed or abandoned renders allocate no observer/listener. Open committed surfaces acquire fresh measurement owners; changing configuration, close and unmount release them. |
+| `modules/link_preview/views.cljs` | Committed candidate/config changes replace observer ownership. Pointer/focus/click interactions use Hiccup attributes and resolve current candidates at event time, preserving caller handlers. Window events use the shared listener registry. |
+| `react.cljs/compose-refs`, root/media consumers | Ordinary Hiccup refs use node/nil callbacks, including plain atoms. Composition only forwards internal/caller refs and explicit React 19 cleanup; React owns attachment/detachment. |
+| `env/dev/cljs/tolgraven/component/dev_instrumentation.cljs` | Latest diagnostic resolver publication happens in a layout commit, with Clojure values rather than serialized dependency workarounds. |
+| `component/hydration.cljs` | Cached child completion before parent setup acquires no batching owner. Overlapping boundaries retain ownership until the last current release; stale document callbacks cannot release newer ownership. |
+| `components/oembed.cljs`, `components/page.cljc` | Transient hover uses a local ratom; internal transition tokens stay vectors, with serialization only for actual React keys. |
+| `components/timer.cljs` | `<timeout>` keeps its mount deadline and invokes the latest committed callback. Canceled/completed hide timers release their handles. |
+| `modules/home/sections.cljs`, `modules/search/views.cljs` | Services has one focus effect. Search uses the existing painted-frame adapter, cancels pending focus and blurs the hidden input on close. |
+| `components/ui.cljs`, `modules/github/views.cljs` | Render bodies and refs no longer trigger the legacy DOM highlighter. The deferred formatter owns highlighting; preserved prototypes/helpers remain available. Missing HUD content renders nil without dispatching from render. |
+| `browser_resources.cljs`, `boot.cljs` | A timeout changes local Reagent readiness from a hidden placeholder to supplied Hiccup. Analytics settings acquire through the existing URL source after that delay; scripts render declaratively, with only SDK queue setup in the native adapter. Server config owns the ID. |
 
-### Development tooling
+Managed acquisition before commit is intentional: re-frame owns source subscriptions
+and their disposal; derived computations remain pure. Do not push every dependency
+into a post-mount effect and introduce loading waterfalls. Keep abandoned-render,
+shared-source adoption, restoration and disposal tests when altering this boundary.
 
-All paths in this table are relative to `env/dev/cljs/tolgraven/`.
+## Browser listeners and worker data
 
-| File | Code to inspect and required focus |
-| --- | --- |
-| `component/dev_instrumentation.cljs` | `<probe>`, `instrument`; state/ref/context/effects, latest resolver, serialized deps and native identity envelope; preserve bounded inactive diagnostics |
-| `dev_console/capture.cljs` | `use-host-state`; refs/callbacks and `use-sync-external-store`; preserve subscription-owned snapshot caching and disposal |
-| `dev_console/views.cljs` | Every hook-bearing inspector/picker/console component; rect state, layout measurement, popup ownership, capture connect/start and keyboard cleanup |
-| `dev/source.cljs` | `<listing>` reveal ref; keep scroll/reveal work commit-owned and avoid JS-heavy domain source data |
-| `dev/stack.cljs` | `<stack>` effect; source-map acquisition through declared managed resources, cleanup and changed stack input |
+Application events use `:listener/register` and `:listener/stop` effects from
+`listener.cljs`. Browser/component commit lifecycles use `listener/listen!` with
+Clojure binding maps and retain its cleanup. This extends the same registry rather
+than introducing another listener store. Each acquisition has independent ids;
+replacement-safe teardown and capture/passive/once options preserve ownership and
+timing. Partial acquisition failure releases already-installed bindings.
 
-### Direct hook test callers
+Owners include popovers, preview measurement/window controls, module activation,
+idle preload intent, navigation restoration, browser readiness, local-return
+capture and development picker/selection/popout/keyboard controls. Ordinary UI
+interactions still belong in Hiccup event attributes. Do not dispatch an asynchronous
+registration event when early document capture or pre-paint setup is required.
 
-All paths in this table are relative to `test/cljs/tolgraven/`.
+`ssr/return_policy.cljs` holds pure request eligibility, freshness/arm expiry,
+document retention and obsolete-build decisions over maps/sequences.
+`ssr/return_worker.cljs` holds Cache/Fetch, native Request/Response, message-port and
+worker-event adapters. Incoming JSON becomes Clojure data once; outgoing options
+convert once. Cache entry arrays become sequences of opaque native handles.
+Preserve the native serialized Promise write queue and synchronous
+`waitUntil`/`respondWith` calls: those determine the browser event's lifetime.
 
-| File | Code to update or verify |
-| --- | --- |
-| `react_hooks_test.cljs` | Replace native-map-identity expectations with deliberate upstream equality/cleanup coverage described above |
-| `blog_ssr_test.cljs` | Commit probe effect: empty array and undefined ceremony; keep real hydration identity assertions |
-| `page_return_test.cljs` | Commit probe effect: empty array and undefined ceremony; preserve restored state/content checks |
-| `suspense_deferred_test.cljs` | Hook-bearing hydration/deferred probes; preserve boundary completion/cancellation and scheduling assertions |
-| `viewport_module_test.cljs` | Hook-bearing activation/commit probes; preserve trigger ownership and no premature acquisition |
+## Narrow exceptions requiring deliberate review
 
-Re-run this bounded search before implementation and after each slice. Inspect
-every match, including direct React imports and tests; do not use a textual
-replacement across all `#js` literals:
+| Boundary | Why it remains | Review when |
+| --- | --- | --- |
+| `component/compat.cljs` | Reagent 2.0.1 function-component Hiccup-key metadata has no supported accessor preserving the public `[component ...]` contract. Backing `Subvec` representation access is isolated here. React keys are not props. | Reagent changes its representation or adds a public accessor; keep keyed scoped-state tests. |
+| `component/hydration.cljs` batching integration | Installed root APIs expose no public per-boundary flush option. The temporary global adapter preserves deferred SSR DOM against synchronous Reagent updates. | Upstream offers a supported alternative; test overlapping owners, cached completion, StrictMode, cancellation and stale callbacks. |
+| Raw context provider envelopes | `:r>` preserves opaque Clojure values; ordinary Reagent native-prop conversion may recursively change them. | Changing provider/adapters; verify the receiving API's representation rather than blindly replacing `:r>` with `:>`. |
+| Native lazy/Markdown/highlighter components | These packages require stable React component identities and actual React elements/module export objects. | Adapter identity, chunk ownership or formatter behavior changes. |
+| Small class error boundary | React still exposes that boundary lifecycle through class components. | Retry/error handling changes; event/transport failures still belong to effects. |
+| Motion media-query listener | This low-level feature participates in validation schemas; importing the validated application listener registry creates a dependency cycle. | Dependency layering changes; keep lifecycle-owned native cleanup. |
+| Stylesheet load/error and worker activation listeners | Native resource handles have an asynchronous readiness lifetime, separate from rendered application interaction. | Resource ownership/retry changes; cleanup must run on success and failure. |
+| Service-worker listeners | Worker events run outside the application's re-frame runtime and require native lifetime methods. | Worker protocol/cache policy changes; verify actual service-worker navigation as well as policy tests. |
+
+Browser clocks, URL parsing, measurement, focus, scrolling, observers, SDK handles,
+React refs and Promises are legitimate host boundaries. Around them, prefer ordinary
+Clojure transformations and existing event/effect mechanisms. An external-store
+snapshot must retain cached identity; a fresh equal map on every read violates the
+React snapshot contract. Memoization remains appropriate for an actual identity
+consumer or expensive calculation, not as the sole owner of a disposable resource.
+
+## Verification for future changes
+
+- Inspect active Shadow workers and use their existing runtime or isolated output.
+  Never overwrite watched browser, SSR or return-worker assets.
+- Regenerate current Node hydration fixtures with `bb ssr:fixtures`; run the
+  affected mounted browser tests using `bb test:browser` and inspect final results.
+- Include hook equality/cleanup, feature/motion/font/scoped-state, ref ownership,
+  component lifecycle, deferred hydration, viewport/module and return-policy tests.
+  Exercise discarded renders, StrictMode replay, changed configuration and errors.
+- Compile affected SSR/browser/worker targets. Use `bb audit <label>` for isolated
+  production bundles and dependency ownership; reuse the ordinary Docker prefab.
+- Exercise actual cold and cached direct loads, home/blog/permalink/CV SPA navigation
+  both ways, SPA Back and external/local return. Check Search focus, previews,
+  expanded comments, avatar recovery, lazy media, deferred copy/fold/wrap controls,
+  fonts and inactive/open diagnostics according to scope.
+- Check DOM continuity, content, spinners, entrance replay, header/footer movement,
+  layout jumps, duplicate loads/listeners and recovery. Fixture tests and successful
+  compilation do not prove live route or visual behavior.
+- Keep owning docs and AGENTS instructions current. Preserve module CSS ownership,
+  relative styling units, no eager optional dependencies and original visuals.
+
+Bounded audit searches (inspect each match; never replace all native literals):
 
 ```sh
 rg -n 'use(State|Ref|Context|Effect|LayoutEffect|Callback|Reducer|Memo|SyncExternalStore)|use-(state|ref|context|effect|layout-effect|callback|reducer|memo|sync-external-store)' src env test
-rg -n '#js|js/undefined|component-argv|reagent\.impl|cljs\.core/Subvec' src/frontend src/cljc env/dev/cljs test/cljs
+rg -n '#js|js/undefined|component-argv|reagent\.impl|cljs\.core/Subvec|addEventListener|on-window|on-event' src/frontend src/cljc env/dev/cljs
 ```
-
-## Separate design work after wrapper conversion
-
-These are concrete review targets, not permission to declare unverified bugs or
-rewrite the runtime wholesale. Establish the behavior, make the smallest coherent
-change, and explain any retained exception next to its owner.
-
-### 1 Stabilize hook order and instance initialization
-
-Review `src/cljc/tolgraven/macros.cljc` (`defc`, generated `:let`/form-2 paths) and
-`component.cljs` (`render-function`, `render-component`, `use-lifecycle!`). Conditional
-hook groups depend on feature selection, registered implementations and inline
-versus wrapped paths. Prove the groups stay stable for a mounted identity, including
-hot reload, caller options, font capability changes and feature registration.
-
-If capability changes alter hook order, keep the owning hook sequence stable or
-explicitly remount the appropriate boundary. Preserve the macro's lean path;
-do not add all hooks to every leaf merely to hide uncertainty. Never put hooks in
-one-time `:let` bindings or a form-2 outer initializer.
-
-Review observer/resource allocation in `components/popover.cljs` and
-`modules/link_preview/views.cljs`. Move external resource acquisition into owned
-commit effects where needed. Form-2 closures must either intentionally capture
-mount-only values or receive changing inputs with correct teardown/reconfiguration.
-
-### 2 Make data acquisition and state initialization ownership explicit
-
-Review `component.cljs/<data-body>` render-time `data/prefetch!`,
-`component/data.cljs`, `component/sources.cljs`, `component/persistent_state.cljs`
-initialization, and `loader.cljs`/`loader/activation.cljs` request ownership.
-Deduplication limits duplication but does not itself establish render purity.
-
-Prefer existing declarative dependencies, preload owners, event/effect paths and
-managed subscription acquisition. Separate a subscription's resource lifecycle
-from its pure derived computation. Preserve acquisition before/alongside code
-loading and adoption of SSR/cache values; moving everything to a post-mount
-effect would regress readiness and introduce waterfalls. Specify abandoned-render
-behavior and test it before choosing a replacement.
-
-Review diagnostics in `component/instrumentation.cljc`,
-`env/dev/cljs/tolgraven/component/dev_instrumentation.cljs` and
-`src/cljc/tolgraven/diagnostics/consumer.cljc`: render attempts may be observed,
-but must not publish committed ownership or perform application IO prematurely.
-
-### 3 Reduce dependence on Reagent implementation representation
-
-Review `react.cljs/component-argv`, `component.cljs/current-argv`, generated calls
-in `macros.cljc`, `component/instrumentation.cljc` and development `instrument`.
-They recover keys/arguments through current-component fields and the backing
-`cljs.core/Subvec.-v`. Investigate explicit argument/key propagation or supported
-Reagent APIs without changing the public `[component ...]` syntax.
-
-If no supported equivalent preserves automatic Hiccup-key identity, retain one
-small compatibility adapter with a version-specific contract and tests. Do not
-inspect React element internals or distribute the workaround across views.
-Preserve state-key precedence, metadata and feature wrapper propagation.
-
-### 4 Review selective hydration scheduling as its own integration
-
-Review `component/hydration.cljs` (`hold!`, `release-all!`, `use-deferred!`),
-`loader.cljs`, `components/code_block.cljs`, `ssr/client.cljs` and
-`navigation/transition.cljs`. The temporary global `reagent.impl.batching/react-flush`
-override is a compatibility boundary, not a public Reagent hook pattern.
-
-Test multiple overlapping deferred boundaries, failure/retry, rapid navigation,
-unmount, Strict Mode, abandoned work and restoration of the previous flush adapter.
-Determine whether supported React/Reagent APIs can preserve selective hydration
-without that global override. Do not remove it before reproducing and preserving
-the behavior it protects. Retain cold SSR DOM and prevent diagnostic ancestor
-updates from replacing unhydrated code content.
-
-### 5 Keep refs narrow and remove redundant state and memoization
-
-Review `component.cljs` latest-args/instance/capture refs, motion presence refs,
-`components/page.cljs` route tokens, `component/font.cljs` options stabilization,
-shell restoration snapshots, oEmbed hover state and code-block gesture refs.
-Move domain data to existing subscriptions and derive values when practical.
-Keep local gesture/observer/timer handles local; a ref can be the simplest owner.
-
-After upstream equality is established, replace serialized hook dependency
-workarounds such as the probe's `pr-str` collection with actual Clojure dependency
-data where equivalent. Reassess manual primitive-field stabilization rather than
-keeping two equality mechanisms. Preserve cached native snapshot identity for
-`use-sync-external-store`: returning a newly allocated equal map on every snapshot
-read is not a valid substitute.
-
-Audit memo/callback hooks for a concrete identity consumer or measured expensive
-computation. Upstream `defc` already memoizes component arguments. Retain stable
-React.lazy/ReactMarkdown/native adapter identities and lazy module ownership.
-Do not make memo caches the sole owner of resources that require cleanup.
-
-### 6 Clarify native data and context boundaries
-
-Review raw provider envelopes in `component.cljs/<container>` and
-`components/page.cljs`, the provider in `component/loading.cljs`, native diagnostic
-identity in development `<probe>`, and adapters in `components/ui/code.cljs`,
-`components/code_block.cljs`, `modules/highlight/views.cljs`,
-`components/portal.cljs` and `components/highlight.cljs`.
-
-Use Clojure maps for configuration and domain values. Keep raw provider envelopes
-when needed to preserve an opaque Clojure `value`; do not blindly exchange `:r>`
-and `:>`. Keep native lazy-module `default` objects and React element conversion at
-the receiving API. Do not recursively `js->clj` Reagent props, SDK instances,
-React children/elements or DOM nodes.
-
-Transport conversions in `content/client.cljs`, `supabase/client.cljs`,
-`ssr/client.cljs`, `ssr/local.cljs`, `ssr/local_render.cljs`, `ssr/worker.cljs` and
-`ssr/return_worker.cljs` remain appropriate adapter work. Review consistency only
-where payloads escape unnormalized into views; do not churn correct conversions.
-
-### 7 Enforce DOM ownership and deliberate timing
-
-Review ref callbacks in image/video/container/motion composition for React 19 ref
-cleanup and accidental function returns. Preserve forwarded ref teardown.
-Review `components/ui.cljs/<log>` highlighter ref dispatch, home service focus,
-search focus timing, `util.cljs` class/attribute/theme helpers and their callers.
-Read actual call sites before deciding a mutation touches React-owned markup.
-
-State-driven classes/styles/text belong in Hiccup. Measurements, focus, scrolling,
-browser document settings and SDK-owned canvases remain adapter operations.
-Do not rewrite preserved experiments or third-party SDK DOM simply because their
-internals are imperative. Remove duplicate focus/scheduling paths only with a
-reproduced reason and behavioral verification.
-
-Review layout effects across the inventory: keep pre-paint readiness/positioning
-where required, use ordinary effects for nonvisual external synchronization, and
-avoid a new arbitrary timeout as a substitute for a commit or readiness signal.
-
-## Verification and delivery order
-
-Work in coherent slices. First migrate the hook boundary and every affected
-caller/test contract in one consistent change. Commit it after focused checks.
-Then take the design items separately, committing verified changes and recording
-remaining exceptions in owning docs. Do not mix speculative architecture work
-with a mechanical dependency-container cleanup.
-
-For runtime changes:
-
-- Inspect active Shadow workers before compiling. Use existing workers or isolated
-  output; never overwrite watched `:app-dev`/`:ssr`/`:return-worker` assets.
-- Run the relevant browser tests using `bb test:browser`; consult
-  `doc/testing.md` for selection and mounted async workflows. Regenerate current
-  Node-rendered hydration fixtures with `bb ssr:fixtures` before hydration tests.
-- Include `react_hooks_test`, component/motion/font/persistence tests,
-  loader/viewport/deferred-Suspense/code-block tests and the affected feature tests.
-  Test names/files already exist; inspect their current assertions and fixtures.
-- Add focused tests for meaningful uncovered behavior: equal versus changed
-  dependency values, cleanup/reconfiguration, repeated Strict Mode setup, stable
-  hook order, abandoned rendering and nested hydration ownership.
-- Run affected browser, SSR and worker targets as appropriate; inspect compiler
-  warnings and browser console errors. Run backend tests only for changed shared
-  contracts/macros/backend behavior that needs them.
-- Exercise actual cold direct loads, hydration, home/blog/permalink/CV navigation
-  both ways, SPA Back and external return. Check comment expansion, Search focus,
-  preview close/return, lazy video, avatar recovery, deferred code copy/fold/wrap,
-  font changes, and inactive/open diagnostics according to the changed slice.
-- Check DOM continuity, missing content, spinners, entrance replay, header/footer
-  movement, layout jumps, duplicate listeners/loads and error/retry states. Preserve
-  simultaneous 250ms linear page fades. Fixture tests do not prove live behavior.
-
-Update `doc/reagent-re-frame.md`, `doc/components.md`, this brief and the relevant
-root/frontend/shared/test AGENTS guidance in the implementation that changes
-their contracts. Explicitly document upstream value equality, supported hook
-arities, effect returns and remaining native/implementation exceptions. Scan
-style changes for prohibited pixel units and preserve feature CSS ownership.
-
-No dependency upgrade is needed just to use `reagent.hooks` in installed 2.0.1.
-Reuse the prefab for ordinary source changes. If dependencies/toolchain change
-for a separately justified reason, follow the documented Docker prefab workflow.
-
-Completion requires the upstream delegates, migrated callers, revised behavioral
-tests, real affected flows and updated contracts. A clean compiler or a search
-with fewer `#js` literals is not sufficient evidence.

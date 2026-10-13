@@ -61,6 +61,8 @@
             (is (not (contains? @status/*failures :supabase-init)))
             (rf/dispatch-sync [:supabase/init 1 {:url "https://example.invalid" :anon-key "public"}])
             (await! (support/settle!))
+            (await! (support/wait-for! #(contains? @status/*failures :supabase-init)
+                                      "SDK retry failure did not reach its result event"))
             (is (= 1 (count @*retry)) "No third automatic attempt")
             (is (= :failed (await! (support/state-at! [:state :supabase-init]))))
             (is (= "Supabase could not initialize" (get-in @status/*failures [:supabase-init :title])))

@@ -5,13 +5,26 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Mount actual Reagent components, dereference subscriptions during render, dispatch
   real events, await lifecycle completion, and unmount in cleanup. Avoid direct
   app-db mutation, dangling subscriptions and forced React flushes.
+  Render frames do not establish asynchronous source completion; wait for the
+  mounted result or result event before asserting loaded/error state.
+- Native ref tests cover forwarded React 19 cleanup, legacy nil callbacks,
+  replacement/unmount and plain atom/object refs. Keyed state tests
+  protect the isolated Reagent 2.0.1 Hiccup metadata compatibility boundary.
+- Deferred hydration tests cover cached child-before-parent commit, overlapping
+  ownership, discarded renders, StrictMode cleanup and stale document completion.
+  Preserve the original batching adapter after every test/unmount.
   Scoped-state tests use native subscription handles and event writes; persistence
-  checks cover accepted transactions, rejected transactions and explicit deletions.
+  checks cover pure nonpersistent reads, idempotent eager/subscription acquisition,
+  late restoration versus edits, accepted/rejected transactions and explicit deletions.
 - Unit/component tests may replace transport boundaries. Live integration must use
   real routes, module loaders and service bindings; do not inject fixture app state.
 - Boot checks dispatch the real startup/stop events and mount/unmount the common
   lifecycle host. Verify repeated starts/remounts do not multiply listeners,
   persistence drains before native history release, and deferred work is cancelled.
+  Listener checks exercise capture/passive/once, independent lifecycle acquisitions,
+  stale replacement cleanup and rollback of partially installed groups. Return
+  policy tests use ordinary data; Cache API and live service-worker checks protect
+  one-time consumption, build compatibility and actual document restoration.
 - Browser tests use the release Malli registry. Check typed page parameters,
   bounds, booleans, query encoding/extension keys and redacted coercion failures
   with internal validation disabled as well as ordinary contract validation.
@@ -34,8 +47,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Regenerate Node-rendered fixtures before the browser suite. Check final assertion
   results, running Shadow warnings and browser logs; successful compilation is not
   a passing browser test or proof of live CMS integration.
-- Instance-feature checks cover disabled acquisition/config functions, dynamic
-  off/on/off cleanup and native/local-state identity, StrictMode replay, current
+- Instance-feature checks cover feature-vector/map normalization before validation,
+  callbacks, SSR and hydration, preserved domain vectors, disabled acquisition/config
+  functions, dynamic off/on/off cleanup and native/local-state identity, StrictMode replay, current
   lifecycle callbacks, cleanup exceptions, fragment presence, font nil roots, and
   mandatory page/data boundaries. Observe actual subscription/effect boundaries;
   redefining first-class shim functions does not intercept their macro expansions.
@@ -140,3 +154,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - CMS deploy-action provisioning checks run `test/scripts/cms_actions_test.php`
   inside the installed Coolify container with helper, CMS UUID and web UUID arguments.
   They roll back all credential/environment writes and never trigger deployments.
+
+- Test runtime settings live in private `env/test/resources/config.edn`; copy
+  `config/test.example.edn` on a new worktree. Test resource paths exclude dev
+  resources so test configuration cannot inherit development credentials.

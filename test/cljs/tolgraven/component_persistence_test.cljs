@@ -4,6 +4,7 @@
             [tolgraven.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
             [reagent.core :as r]
+            [reagent.ratom :as ratom]
             [reagent.dom.client :as dom]
             [re-frame.db :as rfdb]
             [re-frame.core :as rf]
@@ -284,14 +285,15 @@
                           (reset! storage/*identity identity-before)
                           (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))
-;; No :state declaration or helper imports: defc recognizes the scoped helpers.
+;; defc recognizes the scoped helpers; the declaration owns initial state.
 (defc <scoped-toggle>
+  {:state {:initial {:opts {:setting false}}}}
   []
   :let
   [*setting (<sub :comp [:opts :setting] {:initial false})]
   [:button {:on-click #(>update *setting not)} (str @*setting)])
 (defc <keyed-setting>
-  {:state {:key identity, :persist true}}
+  {:state {:key identity, :persist true, :initial {:opts {:setting 0}}}}
   [id]
   :let
   [*setting (<sub :comp [:opts :setting] {:initial 0})]
@@ -358,7 +360,7 @@
                      (.finally (fn [] (close!) (done))))))
              (.catch (fn [error] (is false (str error)) (done))))))
 (defc <cold-setting>
-  {:state {:persist {:scope :user}}}
+  {:state {:persist {:scope :user}, :initial {:opts {:setting false}}}}
   []
   :let
   [*setting (<sub :comp [:opts :setting] {:initial false})]
@@ -386,6 +388,8 @@
                     (original key))))
           (await! (render! root [<cold-setting>]))
           (storage/flush!) ; A prior autosave must not persist defaults over a cold read.
+          (await! (support/wait-for! #(= "true" (.-textContent element))
+                                    "Cold storage result did not reach the mounted view"))
           (is (= "true" (.-textContent element))
               "Cold storage has settled through the normal render lifecycle")
           (-> (tick!)
@@ -422,7 +426,8 @@
 (defc <wrapped-key-setting>
   {:features [:error-boundary],
    :depends [],
-   :state {:key (fn [_] (throw (js/Error. "Metadata must take precedence")))}}
+   :state {:key (fn [_] (throw (js/Error. "Metadata must take precedence")))
+           :initial 0}}
   [manual-key]
   :let
   [*value (<sub :comp [] {:initial 0})]
@@ -523,7 +528,7 @@
       (.catch (fn [error] (is false (str error)) (done))))))
 (defonce *scope-handles (atom nil))
 (defc <scope-controls>
-  {:module :blog}
+  {:module :blog, :state {:initial {:count 0}}}
   []
   :let
   [*comp (<sub :comp [:count] {:initial 0}) *module (<sub :module [:handle-test] {:initial 10})
@@ -541,6 +546,10 @@
     (->
       (go-promise
         (let [{:keys [root element close!]} (await! (fixture))]
+          (doseq [[path initial] [[[:module :blog :handle-test] 10]
+                                  [[:page :test-page :handle-test] 20]
+                                  [[:state :handle-test] 30]]]
+            (rf/dispatch-sync [:component-state/initialize path {:initial initial}]))
           (await! (render! root [<scope-controls>]))
           (let [[*comp *module *page *global] @*scope-handles]
             (is (= [0 10 20 30] (mapv deref @*scope-handles)))
@@ -549,7 +558,7 @@
             (is (= [:module :blog :handle-test] (component/path-of *module)))
             (is (= [:page :test-page :handle-test] (component/path-of *page)))
             (is (= [:state :handle-test] (component/path-of *global)))
-            (is (identical? *comp (rf/subscribe [:component-state/scoped-value (component/path-of *comp)]))
+            (is (identical? *comp (rf/subscribe [:component-state/scoped-value (component/path-of *comp) {:initial 0}]))
                 "The state handle is the native re-frame subscription")
             (component/>reset *comp 4)
             (component/>update *comp inc)
@@ -666,5 +675,65 @@
                 ((:unmount! mounted))
                 (rf/dispatch [:component-data/remove path])
                 (rf/dispatch [:component-data/remove [:persist-test :unrelated]])))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest nonpersistent-value-reads-do-not-initialize-state
+  (let [before @rfdb/app-db
+        path [:state :read-only-default]
+        *value (state/<sub :global [:read-only-default] {:initial false})]
+    (try
+      (is (false? @*value))
+      (is (= before @rfdb/app-db) "A fallback is a value, not a write")
+      (rf/dispatch-sync [:component-state/initialize path {:initial false}])
+      (rf/dispatch-sync [:component-state/reset path true])
+      (rf/dispatch-sync [:component-state/initialize path {:initial false}])
+      (is (true? @*value) "Repeated initialization preserves edits")
+      (finally (ratom/dispose! *value) (reset! rfdb/app-db before)))))
+
+(deftest persistent-value-source-and-eager-owner-share-idempotent-loading
+  (async done
+    (-> (go-promise
+          (let [before @rfdb/app-db
+                tracked @storage/*tracked
+                original-ready storage/ready!
+                original-read storage/read!
+                *release (atom nil)
+                *reads (atom 0)
+                ready (js/Promise. (fn [resolve _] (reset! *release resolve)))
+                options {:initial 0, :persist true}
+                path [:state :source-load-test]
+                edited-path [:state :source-edited-test]]
+            (set! storage/ready! (fn ([] ready) ([_] ready)))
+            (set! storage/read! (fn [_ _] (swap! *reads inc) {:value 7}))
+            (let [*value (state/<sub :global [:source-load-test] options)
+                  *edited (state/<sub :global [:source-edited-test] options)]
+              (try
+                (is (= 0 @*value) "Subscription immediately supplies its fallback")
+                (await! (tick!))
+                (is (= 0 (get-in @rfdb/app-db path)) "Acquisition dispatches the load event")
+                (rf/dispatch-sync [:component-state/initialize path options])
+                (rf/dispatch-sync [:component-state/load path options])
+                (rf/dispatch-sync [:component-state/reset edited-path 12])
+                (let [restored (-> ready
+                                   (.then (fn [_]
+                                            (is (= 7 (get-in @rfdb/app-db path))
+                                                "Storage readiness cannot expose defaults to a following autosave"))))]
+                  (@*release nil)
+                  (await! restored))
+                (await! (tick!))
+                (is (= 7 @*value) "Storage returns through a result event into app-db")
+                (is (= 12 @*edited) "Late restoration preserves intervening edits")
+                (is (= 2 @*reads) "One snapshot read per path, shared with eager initialization")
+                (rf/dispatch-sync [:component-state/load path options])
+                (await! (tick!))
+                (is (= 2 @*reads) "Already loaded state does not acquire storage again")
+                (finally
+                  (ratom/dispose! *value)
+                  (ratom/dispose! *edited)
+                  (set! storage/ready! original-ready)
+                  (set! storage/read! original-read)
+                  (reset! storage/*tracked tracked)
+                  (reset! rfdb/app-db before))))))
         (.catch #(is false (str %)))
         (.finally done))))

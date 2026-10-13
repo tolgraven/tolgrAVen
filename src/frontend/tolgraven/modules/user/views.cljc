@@ -214,7 +214,7 @@
                                           (.-href (js/URL. src (.-baseURI image)))))
                               (swap! *failed-sources conj avatar)))))]
             #(js/cancelAnimationFrame frame)))
-        #js [avatar src])
+        [avatar src])
       [:div.user-avatar-container
        ;; A fallback overlay flashes during hydration even when SSR already
        ;; knows the author. Keep a single image and let the browser load it.

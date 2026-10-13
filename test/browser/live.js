@@ -51,8 +51,14 @@ const settled = async () => {
 const navigate = async (anchor, path) => {
   if (!anchor) throw new Error(`Missing navigation link: ${path}`);
   await settled();
+  // Font/content commits can replace the link while layout settles. A real
+  // user clicks the current DOM, rather than the detached earlier node.
+  const currentAnchor = anchor.isConnected ? anchor :
+    [...app().querySelectorAll('a[href]')].find(candidate => new URL(candidate.href).pathname === path);
+  if (!currentAnchor) throw new Error(`Missing current navigation link: ${path}`);
+  if (currentAnchor !== anchor) check(true, `${path}: layout replaced the link; click its current node`);
   const documentBefore = doc();
-  anchor.click();
+  currentAnchor.click();
   await waitFor(() => frame.contentWindow.location.pathname === path, `immediate SPA route ${path}`, 1000);
   check(doc() === documentBefore, `${path}: navigation retains the document (no SSR document load)`);
 };

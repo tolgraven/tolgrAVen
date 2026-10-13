@@ -1,4 +1,10 @@
-{:port 4000
+;; Copy to env/dev/resources/config.edn, then add private integration settings.
+;; See defaults.example.edn and ../doc/configuration.md for all runtime options.
+{:dev true
+ :bind "127.0.0.1"
+ :port 4000
+ :nrepl-bind "127.0.0.1"
+ :nrepl-port 7000
  :ssr {:enabled true
        :worker "target/ssr/site.js"
        :node-binary "node"}}

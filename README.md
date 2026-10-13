@@ -14,6 +14,8 @@ Use Java 21 or newer, Leiningen, and Node.js 22.12 or newer. Install the lockfil
 and build CSS:
 
 ```sh
+cp config/dev.example.edn env/dev/resources/config.edn
+cp config/test.example.edn env/test/resources/config.edn
 npm ci
 npm run build
 make hooks
@@ -24,7 +26,7 @@ The development server runs at http://localhost:4000. Run `npm run dev` in a
 second terminal to watch CSS. In the Clojure REPL, `(cljs-repl)` selects the
 `:app-dev` browser runtime and watches the `:ssr` Node target. SSR is enabled by
 default; configure `:ssr {:enabled true :render-workers 2 :worker "target/ssr/site.js"
-:node-binary "node"}` in `config/local.dev.edn`. See [SSR configuration](doc/ssr.md). `(restart-handler)` reloads the Ring handler after
+:node-binary "node"}` in `env/dev/resources/config.edn`. See [SSR configuration](doc/ssr.md). `(restart-handler)` reloads the Ring handler after
 reloading changed backend namespaces.
 
 Set `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY` and server-only
@@ -32,6 +34,9 @@ Set `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY` and server-only
 operations before starting; see [Supabase provisioning](doc/supabase-provisioning.md).
 Firebase is no longer a runtime or build dependency. Local migration exports and
 credentials remain ignored and are not needed to run the site.
+
+See [Runtime configuration](doc/configuration.md) for required keys, defaults and
+production analytics/CMS/storage settings.
 
 ## Validation
 
@@ -61,8 +66,8 @@ See [component authoring](doc/components.md), [page rendering](doc/ssr.md),
 and [testing](doc/testing.md) for current architecture and verification workflows.
 For a detailed comparison with classic Reagent and an assessment of this
 project's choices, read [Reagent 2 and React 19](doc/reagent-2-react-19-guide.md).
-The [native Reagent refactor brief](features/reagent-native-refactor.md) lists
-the planned cleanup for future implementation.
+The [native Reagent implementation guide](features/reagent-native-refactor.md)
+records current ownership contracts and the adapters that need deliberate review.
 
 ## License
 

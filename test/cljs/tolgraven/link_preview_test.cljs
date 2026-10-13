@@ -42,14 +42,19 @@
               _ (.appendChild js/document.body element)
               root (await! (support/create-root! element))
               *ref (atom nil)
+              *pointer-events (atom 0)
               ref! #(reset! *ref %)
               form (fn [url] [<link-example>
                               {:links {:id "macro-test", :text url, :trust :untrusted},
-                               :props {:ref ref!}} url])]
+                               :props {:ref ref!
+                                       :on-pointer-over #(swap! *pointer-events inc)}} url])]
           (await! (render! root (form "https://example.invalid/one")))
           (-> (tick 0)
               (.then (fn []
                        (go-promise (is (= (.-firstElementChild element) @*ref))
+                                   (.dispatchEvent @*ref
+                                     (js/PointerEvent. "pointerover" #js {:bubbles true}))
+                                   (is (= 1 @*pointer-events) "Reagent preview props preserve caller events")
                                    (is (= 1
                                           (count (get-in @preview/*containers
                                                          ["macro-test" :candidates-by-element]))))

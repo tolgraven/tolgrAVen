@@ -1,7 +1,7 @@
 # Page rendering, hydration and navigation
 
 SSR is enabled by default. Configure it under `:ssr` in your `config.edn`
-(`config/local.dev.edn` in local development):
+(`env/dev/resources/config.edn` in local development):
 
 ```clojure
 :ssr {:enabled true
@@ -362,7 +362,13 @@ from replacing pending server content. Each initial boundary temporarily owns
 React transition batching through Reagent's batching adapter: its ordinary
 `flushSync` would discard a still-unhydrated boundary on ancestor updates.
 Inner commit/unmount releases that ownership; navigation restores ordinary
-batching immediately. Capture the initial hydration decision without a reactive
+batching immediately. Overlapping boundaries retain the override until the last
+owner releases it; stale completions cannot release owners from a later document.
+If a cached child's layout effect completes before its parent's setup, the
+parent acquires no owner. StrictMode cleanup releases its exact owner without
+marking unresolved work complete. The batching access is one documented Reagent
+2.0.1 compatibility boundary; its root API has no public per-boundary flush option.
+Capture the initial hydration decision without a reactive
 subscription to the later completion flag. New SPA code acquires the formatter through
 the normal loader immediately. Paired local documents also render completed
 boundaries, and skip `:highlight` during bootstrap. Markdown delegates ownership of
@@ -419,17 +425,31 @@ restoration after a failed local return.
 Its service worker serves an exact cached document/state pair; it does not create
 another server rendering pipeline. Ordinary SPA navigation never requests SSR HTML.
 
+`ssr/return_policy.cljs` expresses request eligibility, arm expiry, cache freshness,
+bounded document retention and obsolete-build selection as pure functions over
+Clojure maps and sequences. `ssr/return_worker.cljs` extracts native request fields
+once, decodes arm JSON into a map once, and converts outgoing response options at
+the API boundary. Cache entries remain opaque Request/Response handles inside
+Clojure sequences. Native Promises retain the serialized write queue and browser
+event lifetime: `waitUntil` and `respondWith` receive the actual asynchronous work.
+This split makes policy readable and testable without replacing browser APIs or
+adding an asynchronous library merely to conceal Promise syntax. See the
+[ClojureScript conversion API](https://cljs.github.io/api/cljs.core/js-GTclj),
+[array sequences](https://cljs.github.io/api/cljs.core/array-seq), and
+[service-worker lifetime documentation](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers).
+
 Source extensions reflect actual consumers:
 
 - Module `pages.cljc`, public query plans, data normalization and
   `ssr/contract_schema.cljc` are consumed by JVM and CLJS code.
-- `ssr/contract.cljs`, `return_contract.cljs`, and `schema.cljs` belong to Node and
-  browser execution. Their tests run in the browser suite. The JVM does not need
-  a copy of hydration or browser persistence logic.
+- `ssr/contract.cljc`, `return_contract.cljc`, and `schema.cljs` contain the Node
+  and browser state contracts. The CLJC files use thin target-feature adapters;
+  the JVM does not need a copy of hydration or browser persistence logic.
+  Their state/restoration tests run in the browser suite.
 - `modules/blog/ssr.cljs` owns legacy display-row snapshot conversion and initial
   blog state. Node rendering and browser hydration use this once through the
   same snapshot adapter; exact `:app-db-edn` state takes precedence.
-- `modules/main/layout.cljs` owns home section ordering and its module SSR metadata.
+- `modules/main/layout.cljc` owns home section ordering and its module SSR metadata.
 - Small `.cljc` build adapters may use Shadow's `:browser`, `:ssr` and `:dev`
   reader features even without JVM consumers. `.cljs` does not support reader
   conditionals; these adapters do not imply a second JVM renderer.

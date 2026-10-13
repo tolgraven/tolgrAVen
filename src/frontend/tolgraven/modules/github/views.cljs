@@ -23,7 +23,6 @@
                             (string/split #"\.")
                             last)]]
        [:div
-        {:ref #(when % (rf/dispatch [:run-highlighter! %]))} ;screws up live preview :( jumpy
         [:code
          (:filename file)]
         [:p

@@ -7,8 +7,8 @@ every view as a JavaScript React component translated into ClojureScript.
 
 Some of the unfamiliar code in this project comes from browser integration and
 SSR. Some comes from choices in our component runtime. The latter is open to
-improvement. In particular, we should use the upstream `reagent.hooks` wrappers
-through `tolgraven.react`, rather than maintain our own approximation of them.
+improvement. Hooks now delegate to upstream `reagent.hooks` through
+`tolgraven.react`, retaining Clojure equality instead of a custom approximation.
 
 Our full-featured `tolgraven.macros/defc` should continue to build on upstream
 `reagent.core/defc`. Its purpose is to add declarative capabilities while retaining
@@ -16,8 +16,7 @@ Reagent's rendering and reactivity, not to implement another component system.
 
 This guide explains the library differences and evaluates the current design.
 The [refactor brief](../features/reagent-native-refactor.md) gives future agents
-the concrete implementation inventory and verification requirements. It describes
-planned work; the runtime has not been refactored by this documentation change.
+the concrete ownership boundaries and verification requirements.
 
 ## Reading map and scope
 
@@ -185,12 +184,22 @@ writes. Older implementations of this project had writable cursor adapters;
 those are not the authoring contract on this PR base.
 
 ```clojure
-(defc <setting> []
-  :let [*enabled? (<sub :comp [:enabled?] {:initial false})]
+(defc <setting>
+  {:state {:initial {:enabled? false}}}
+  []
+  :let [*enabled? (<sub :comp [:enabled?])]
   [:button {:aria-pressed @*enabled?
             :on-click #(>update *enabled? not)}
    (if @*enabled? "Enabled" "Disabled")])
 ```
+
+Declared defaults initialize after commit through an idempotent event/effect.
+An ordinary `<sub` fallback does not write app-db. Persistent storage is the
+managed-source exception: acquiring the real value subscription dispatches a
+load event, while its derived reaction only reads app-db. Eager initialization
+uses the same effect, so later mounting does not repeat the snapshot read. This
+matches the useful acquisition pattern of our Strapi/Supabase bindings; a dummy
+subscription returning `true` solely to trigger work adds no useful data flow.
 
 Do not mirror a subscription in hook state with an effect that copies values.
 That creates two owners and an extra update cycle. The existing blog vote/edit
@@ -213,18 +222,13 @@ initializers. A helper calling hooks is itself a custom hook and should be named
 `use-...` to expose that fact.
 [React rules of hooks](https://react.dev/reference/rules/rules-of-hooks).
 
-### The current shim and the desired shim differ
+### The shim delegates to upstream Reagent
 
-On the inspected PR base, `tolgraven.react` has custom wrappers for effects,
-memoization and callbacks. They accept Clojure dependency sequences by converting
-the outer container into a JS array, while keeping React's `Object.is` comparison.
-Effect callbacks normalize `nil` to `undefined`; other unexpected returns reach
-React diagnostics. State and reducer hooks are direct React aliases.
-
-That is already friendlier than raw React syntax, but still a custom contract.
-It is not equivalent to upstream `reagent.hooks`. The intended direction is to
-delegate to Reagent's wrappers through this same shim, preserving tracing and
-validation around the existing re-frame entry points.
+`tolgraven.react` exposes upstream Reagent effect, layout-effect, memo, callback,
+state, reducer, ref, context and external-store hooks. Application code continues
+using that shim, preserving tracing and validation around re-frame entry points.
+There is no independent hook dependency/cleanup implementation. Memo and callback
+hooks require an explicit Clojure dependency collection.
 
 An upstream illustration of the style we want at that boundary:
 
@@ -259,13 +263,12 @@ be native arrays even though Clojure destructuring works on them.
 [Reagent hooks source](https://github.com/reagent-project/reagent/blob/v2.0.1/src/reagent/hooks.cljs).
 
 For example, rebuilding `{:id 42}` produces an equal Clojure map even if it has a
-new JavaScript identity. The current shim considers that a changed dependency;
-the upstream wrapper can retain the prior dependency collection. This can avoid
+new JavaScript identity. The upstream wrapper retains the prior equal dependency
+collection. This avoids
 unnecessary disconnect/reconnect work for value-oriented configuration.
 
-It is a semantic change. `test/cljs/tolgraven/react_hooks_test.cljs` currently
-asserts the existing identity behavior for equal maps. The future refactor must
-change that expectation deliberately and test both equal and changed values.
+`test/cljs/tolgraven/react_hooks_test.cljs` exercises equal and changed Clojure
+values, state/reducer identity, resource cleanup and native handle/function identity.
 Functions, refs and DOM nodes remain identity-sensitive values; do not recursively
 convert them or treat them as interchangeable configuration data.
 
@@ -323,7 +326,7 @@ change a reliable measurement strategy.
 React Strict Mode can repeat rendering, effect setup/cleanup and ref attachment
 in development to reveal ownership bugs. Our core contains a disabled diagnostic
 Strict Mode branch; that is not evidence that the whole app is currently checked.
-The refactor should use targeted Strict Mode checks for adapters that own resources.
+Mounted adapter tests use targeted Strict Mode checks for resource ownership.
 [React StrictMode reference](https://react.dev/reference/react/StrictMode).
 
 ## Decoding the interop vocabulary
@@ -348,16 +351,54 @@ Likewise, `use-ref` is not a ratom: changing its field does not notify Reagent.
 Prefer a callback ref or a small owned adapter over spreading `.-current` reads
 through domain code. React discourages arbitrary ref reads/writes during rendering;
 predictable one-time initialization is a narrow exception. Our “latest args” and
-diagnostic resolver refs deserve review for speculative-render behavior, not a
-mechanical replacement with another mutable container.
+diagnostic resolver publication and feature callbacks now belong to commits, so
+discarded renders cannot overwrite the work belonging to a selected render.
 
 React 19 supports cleanup returned by a ref callback. Do not accidentally return
 a function-valued assignment or helper result unless it is intended as cleanup.
-Effect return normalization does not normalize ref callback returns. Existing
-ref composition must preserve both callers and teardown behavior.
+Effect return normalization does not normalize ref callback returns.
+The familiar `[:div {:ref #(reset! *node %)} ...]` works with a plain atom allocated
+in `:let` or an outer function: attachment stores the node, detachment stores nil,
+and neither change rerenders. Reagent/React handles those callbacks. Our small
+`react/compose-refs` helper exists only where internal and caller refs must both
+receive the node; it forwards explicit cleanup when a caller returns it. Ordinary
+callbacks do not require manual release, leases or a second lifecycle registry.
 [React 19 release notes](https://react.dev/blog/2024/12/05/react-19).
 
+### Browser APIs around Clojure data
+
+Native APIs do not require native-shaped application logic. In the return worker,
+JSON arm records become maps once, native cache arrays become sequences, and
+request eligibility, expiry and eviction use pure functions in
+`ssr/return_policy.cljs`. The worker adapter retains actual Request/Response and
+Cache objects, clocks, URL parsing and the Promises needed by browser event
+lifetimes. `array-seq` retains opaque handles while enabling ordinary destructuring,
+`map`, `filter` and `drop-last`; recursively converting browser objects would be
+the wrong boundary. Response options are Clojure maps converted at construction.
+[ClojureScript js->clj](https://cljs.github.io/api/cljs.core/js-GTclj),
+[array-seq](https://cljs.github.io/api/cljs.core/array-seq),
+[service-worker event ownership](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers).
+
+Application listeners likewise use existing re-frame effects. Events return
+`:listener/register` / `:listener/stop`; committed component/browser lifecycles
+use `listener/listen!` with declarative binding maps through the same registry.
+Its cleanup releases exactly that acquisition. Capture/passive/once are data,
+converted only by the native adapter. Rendered link-preview pointer/focus/click
+interactions use Hiccup attributes. Native resource readiness and worker events
+remain small explicit adapters where their lifecycle requires it.
+
 ### Hiccup integration forms
+
+Optional scripts can be rendered as Hiccup too. The boot lifecycle mounts
+`[browser-resources/<deferred> [browser-resources/<analytics>]]` only in production.
+The deferred component starts as `[:div {:hidden true}]`; after the shared page
+gate and a cancellable timeout, resetting its local ratom changes its render to
+the supplied Hiccup. Analytics then acquires public settings through the existing
+managed URL source and renders `[:script {:async true :src ...}]`. Its ID lives in
+server configuration, and its native adapter only configures the SDK queue.
+This keeps the page update in ordinary Reagent state/rendering instead of hiding
+script acquisition inside `preinit`. React 19 deduplicates async scripts by `src`.
+[React script reference](https://react.dev/reference/react-dom/components/script).
 
 | Form | Contract |
 | --- | --- |
@@ -400,8 +441,11 @@ flush calls throughout application code.
 Our `component/hydration.cljs` temporarily changes `reagent.impl.batching/react-flush`
 to `startTransition` while deferred SSR boundaries finish hydration. That is a
 project-specific integration with an implementation namespace, with shared/global
-ownership implications. It needs a documented compatibility contract and focused
-tests. Calling it “how Reagent 2 works” would obscure the actual decision.
+ownership implications. Its tests cover cached child completion before parent
+setup, overlapping owners, discarded renders, StrictMode and stale document
+callbacks. Installed Reagent's root API offers no public per-boundary flush
+option, so this remains a narrow compatibility adapter with an explicit release
+contract. Calling it “how Reagent 2 works” would obscure the actual decision.
 
 SSR here uses shared components and Node rendering. React Server Components,
 Server Actions and React 19 form actions are not prerequisites for this design.
@@ -416,11 +460,11 @@ See [our SSR guide](ssr.md) and the
 | Full-featured macro based on upstream `r/defc` | Keep | Reuses Reagent tracking and React function identity; project capabilities remain declarative |
 | Hiccup, domain helpers, subscriptions and events | Strong fit | Keeps data transformations ordinary ClojureScript and application actions traceable |
 | Shared appearance/presence/font features | Useful project extensions | Avoid repeated lifecycle code; preserve declarative markup and one resource owner |
-| Current custom hook wrappers | Replace with upstream wrappers | Upstream already supplies Clojure equality/cleanup behavior; migrate its contract explicitly |
+| Upstream hook delegates through the shim | Keep | Reagent owns Clojure equality, state identity and cleanup adaptation |
 | Small error boundary using `create-class` and native state | Justified interop | React's boundary API is class-based; keep the class narrow and preserve retry behavior |
 | Native refs/observers inside motion/video adapters | Justified at the boundary | DOM lifecycle requires native handles; use Clojure configuration around them |
-| Key recovery via `Subvec.-v` and current-component fields | Fragile compatibility code | Depends on implementation representation; isolate and test while investigating a supported replacement |
-| Data prefetch initiated in `<data-body>` render | Explicit purity departure | Deduplication prevents duplicate requests, but does not make acquisition pure; investigate managed ownership without delaying preload |
+| Hiccup-key recovery in `component/compat.cljs` | Retain as a tested compatibility boundary | React keys are not props; Reagent's class accessor does not expose function metadata. Backing representation access stays in one version-specific adapter |
+| Managed `:component-data/status` acquisition | Keep | Source factory owns the shared queue; the derived reaction and view only read status, preserving parallel preloads |
 | Global batching override during selective hydration | Specialized, needs scrutiny | Preserves SSR content but couples us to Reagent internals and overlapping boundary ownership |
 | Stable ReactMarkdown/highlighter adapters | Appropriate | Packages require native components; keep Clojure values until the specific boundary |
 | Ref/state machinery for every simple UI choice | Usually unnecessary | Prefer a local ratom or subscription when that fully expresses the behavior |
@@ -448,13 +492,13 @@ improving behavior.
 4. Use local ratoms for genuinely transient view state; scoped subscriptions
    for state that survives remounts. Avoid duplicated state.
 5. Use shared component features before introducing another lifecycle adapter.
-6. When a hook is needed, use the shim delegating to `reagent.hooks` after the
-   planned migration. Include dependencies, cleanup and the SSR contract.
+6. When a hook is needed, use the shim delegating to `reagent.hooks`. Include
+   dependencies, cleanup and the SSR contract.
 7. Keep native containers, refs, observers and Promises at APIs that require them.
 8. Verify actual lifecycle and route behavior when changing adapters, including
    hydration identity, restoration, empty/error states and resource cleanup.
 
 This standard preserves the functional component foundation while making normal
 feature code read like ClojureScript. The [refactor brief](../features/reagent-native-refactor.md)
-identifies which current adapters need conversion and which require a separate
-design review.
+records the implemented ownership changes and the remaining compatibility
+boundaries that future changes must preserve or replace with evidence.

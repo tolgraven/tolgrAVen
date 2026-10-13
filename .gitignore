@@ -56,3 +56,7 @@ resources/docs/codox/
 
 # Sanitized build-time CMS override snapshot; recreated for each build.
 resources/site.overrides.edn
+
+# Canonical private runtime configuration (production defaults stay tracked).
+/env/dev/resources/config.edn
+/env/test/resources/config.edn

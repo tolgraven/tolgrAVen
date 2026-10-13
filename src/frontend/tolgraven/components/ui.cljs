@@ -336,10 +336,9 @@
    (fn []
      (when @*mounted? (util/scroll-to-end! @*table))
      (reset! *mounted? true)
-     js/undefined))
+     nil))
   (let [messages (:messages @content)]
     [:section#log-container.log-container.solid-bg
-     {:ref #(when % (rf/dispatch [:run-highlighter! %]))}
      [<minimize> [:state [:display :log]]]
      [:table
       {:ref #(reset! *table %)
@@ -366,7 +365,7 @@
 
 (m/defc <hud-modal> "Show more info about a specific HUD message"
  [] ;doesnt really have to be modal but wanted to implement that, so...
- (if-let [msg @(rf/subscribe   [:hud :modal])]
+ (when-let [msg @(rf/subscribe [:hud :modal])]
   (let [to-close #(rf/dispatch [:hud :modal :remove])]
    [<modal> [:div.hud-modal-main
            {:class (str "hud-message " (name (:level msg)))}
@@ -374,8 +373,7 @@
            [:p   (str (:message msg))]
            [:p   (str (:time    msg))]
            [<close> to-close]]
-    to-close])
-  (rf/dispatch [:modal false]))) ;eww gross
+    to-close])))
 
 (m/defc <hud-message>
   {:features [[:appear "zoom-x slow"]]}
@@ -387,7 +385,6 @@
     {:role (if (= :error level) "alert" "status")
      :class (name level)
      :style {:position :relative}
-     :ref #(when % (util/run-highlighter! "pre" %))
      :on-click #(doseq [action (or actions
                                   [[:diag/unhandled :remove id]
                                    [:common/navigate! :log]])]

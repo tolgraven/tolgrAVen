@@ -129,6 +129,8 @@
                (exists? js/window) (.-matchMedia js/window))
       (let [query (.matchMedia js/window "(prefers-reduced-motion: reduce)")
             change! #(reset! (:reduced? state) (.-matches query))]
+        ;; This feature is required by validation schemas. The application
+        ;; listener registry depends on validation and would create a cycle.
         (.addEventListener query "change" change!)
         (swap! (:stops state) assoc :media
                #(.removeEventListener query "change" change!))))))
