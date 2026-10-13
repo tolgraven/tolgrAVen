@@ -179,6 +179,7 @@
                           setter (.-set (.getOwnPropertyDescriptor js/Object prototype "value"))]
                       (.call setter input value)
                       (.dispatchEvent input (js/Event. "input" #js {:bubbles true}))))]
+      (.setAttribute element "class" "blog-image-editor")
       (.appendChild (.-body js/document) element)
       (-> (support/create-root! element)
           (.then (fn [root]
@@ -189,6 +190,9 @@
           (.then (fn [_]
                    (is (.querySelector element ".code-block .code-wrap"))
                    (is (nil? (.querySelector element ".cm-editor")) "Fenced blocks use the ordinary site UI")
+                   (is (< (.-height (.getBoundingClientRect (.querySelector element ".code-editor-fields textarea")))
+                          (* 0.4 (.-innerHeight js/window)))
+                       "Public blog CSS must not impose its old source-editor minimum on nested code fields")
                    (change! ".code-editor-fields textarea" "(+ 3 4)")))
           (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(+ 3 4)"))))
           (.then (fn [_]

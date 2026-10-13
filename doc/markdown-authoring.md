@@ -129,13 +129,6 @@ can still enter an existing/custom fence tag without changing the source code.
 
 ## Component identities and arguments
 
-Fenced-code editor descriptors render Highlight's shared code-block component;
-the SDK supplies code/language/metadata setters. Its optional editable fields
-retain the same highlighted display, copy/wrap/fold controls and deferred formatter
-as a public post. Both authoring owners declare their Highlight dependency.
-Source-mode CodeMirror edits the document rather than providing another fenced
-code renderer.
-
 Fenced blocks retain their language tag and metadata in Markdown. The `clj`,
 `cljs`, `cljc` and `clojurescript` tags use Clojure's highlighting grammar without
 rewriting the authored tag. Untagged fences use automatic detection.
@@ -275,3 +268,12 @@ gate opens and then operates the actual theme control. Use the current shared
 budgets from `doc/resource-controls.md`; independent outputs preserve watched
 builds. First-paint CSS follows the renderer's actual visible export
 inventory, including embedded owners whose popup stylesheet is normally deferred.
+
+Nested authored owners keep their SSR nodes until their own activation commits.
+Initial boundary completion removes its marker in a React transition; the layout
+commit then releases shared hydration batching. An urgent ancestor completion
+would discard a still-pending nested widget. The hydration facade retains Reagent's
+compiler/root lifecycle while forwarding React's recovery and identifier-prefix
+options, which Reagent 2.0.1 accepts but does not pass through. The release fixture
+uses actual initial styles, checks delayed owner/coercion gates, and verifies a
+deliberate native recovery plus the selected identifier prefix.

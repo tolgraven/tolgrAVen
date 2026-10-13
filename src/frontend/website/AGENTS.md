@@ -428,11 +428,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   owns generated native document scripts; no authored snippets live in public JS.
 
 - Blog Markdown attachments use owner-scoped registered events and one serialized
-  authenticated upload queue. Keep browser File values transient, insert a stable
-  draft marker at the native selection, and replace only that marker after a
-  complete validated rendition manifest arrives. Retry/cancel/disposal invalidate
-  stale attempts; pending markers block publication. SDK reads and realtime events
-  restore URL-keyed image metadata before row validation.
+  authenticated upload queue. Browser File values remain transient; a stable native
+  media node retains the original selection while its presentation derives from
+  the managed queue. Only a complete validated manifest adds its canonical source.
+  Retry/cancel/disposal invalidate stale attempts; pending nodes block publication.
+  SDK reads and realtime events restore URL-keyed metadata before row validation.
 
 - Application framework calls use `website.react` as `r`. Its `react/runtime.cljs`
   boundary owns raw React/Reagent/re-frame APIs; reader-feature targets keep

@@ -68,7 +68,7 @@ try {
   rebuilt();
   await fs.appendFile(path.join(fixture, 'scripts/build/styles.mjs'), '\n// Tool revision fixture.\n');
   rebuilt();
-  await fs.appendFile(path.join(fixture, 'scripts/build/editor-styles.mjs'), '\n// Editor style revision fixture.\n');
+  await fs.appendFile(path.join(fixture, 'scripts/build/editor-styles.mjs'), '\n// Editor stylesheet revision fixture.\n');
   rebuilt();
   await write('resources/scss/modules/new-owner.scss', '.new-owner { display: grid; }');
   rebuilt();
