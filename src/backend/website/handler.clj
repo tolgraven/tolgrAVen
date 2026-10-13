@@ -1,5 +1,7 @@
 (ns website.handler
   (:require
+    ;; Register the mounted logger before application services and startup logs.
+    [website.log]
     [website.middleware :as middleware]
     [website.concurrent :as concurrent]
     [website.validation-server :as validation]

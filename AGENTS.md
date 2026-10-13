@@ -114,8 +114,12 @@ Do not retain completed investigation diaries or historical test counts as curre
   `target/production`; local prod loads those resources before shared assets and
   preflights the release browser manifest and both document bootstrap scripts
   before initialization logging/asset loading. See `doc/testing.md`.
-- `lein repl`: start HTTP and the Clojure REPL; deferred Shadow watches compile
-  sequentially without blocking REPL acknowledgement. `(cljs-repl)` waits for
+- `lein repl`: check/rebuild stale CSS before opening HTTP and the Clojure REPL;
+  current SSR/browser markup must not paint against sheets from an older checkout.
+  Deferred Shadow watches compile
+  sequentially without blocking REPL acknowledgement. The standalone `:document`
+  target releases first (no HMR); document/bootstrap requests await only that
+  bounded release barrier, while unrelated assets/API remain available. `(cljs-repl)` waits for
   startup and selects the browser runtime in the calling session. See `README.md`.
 - Browser builds discover `modules/*/module.cljs` through `website.build.browser/process`;
   development browser builds also select `env/dev/cljs/website/modules/` with the
@@ -157,6 +161,12 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Live re-frame debugging: read the installed `re-frame-pair` skill, then run `bb pair discover-app` before inspecting the runtime. See `doc/re-frame-pair.md`; the wrapper selects `:app-dev` and Lein's nREPL port.
 
 ## Dependency ownership
+
+- Timbre owns JVM logging configuration in `website.log`; tools.logging and
+  SLF4J route through its existing adapters. Select JBoss's SLF4J provider in
+  Lein and direct Java launches before Undertow loads. Use the shared
+  `org.clj-commons/pretty`, not the duplicate `io.aviso/pretty` or Logback XML.
+  See `doc/dependencies.md`.
 
 - Shadow owns the CLJS/Closure compiler graph in `:provided`; explicit production build commands include that profile, while runtime packaging excludes it. Keep the managed Codox analyzer version aligned with Shadow.
 - Use locked local npm tools. Supabase uses its npm SDK inside the lazy `:supabase` module;

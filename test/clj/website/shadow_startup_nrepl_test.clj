@@ -12,11 +12,12 @@
         resolve! (fn [symbol]
                    (case symbol
                      shadow.cljs.devtools.server/start! (constantly nil)
-                     shadow.cljs.devtools.api/watch
+                     shadow.cljs.devtools.api/release!
                      (fn [build]
-                       (when (= :return-worker build)
+                       (when (= :document build)
                          (deliver entered true)
-                         @release))))]
+                         @release))
+                     shadow.cljs.devtools.api/watch (constantly nil)))]
     (reset! startup/*startup nil)
     (try
       (with-redefs [clojure.core/requiring-resolve resolve!
@@ -29,14 +30,14 @@
             (is (some #(some #{"done"} (:status %)) initialization)
                 "Initialization is acknowledged before the blocked compilation finishes")
             (is (true? (deref entered 5000 :timeout)))
-            (is (not (future-done? @startup/*startup)))
+            (is (not (future-done? (:task @startup/*startup))))
             (let [response (doall (nrepl/message client {:op "eval", :code "(+ 20 22)"}))]
               (is (some #(= "42" (:value %)) response)
                   "The real REPL accepts another evaluation during compilation"))
             (deliver release true)
-            (is (nil? (deref @startup/*startup 5000 :timeout))))))
+            (is (nil? (deref (:task @startup/*startup) 5000 :timeout))))))
       (finally
         (deliver release true)
-        (when-let [task @startup/*startup] @task)
+        (when-let [task (:task @startup/*startup)] @task)
         (reset! startup/*startup previous)
         (server/stop-server repl-server)))))

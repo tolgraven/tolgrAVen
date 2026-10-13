@@ -3,6 +3,13 @@
 Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 `doc/site-provisioning.md` for operating and configuration details.
 
+- The handler loads `website.log` before its other dependencies so Mount
+  initializes logging before application startup. It owns Timbre appenders and
+  pretty exceptions; keep Throwable
+  objects intact through tools.logging and SLF4J. JBoss provider selection is a
+  launch-time JVM option shared by Lein and Docker, before Undertow loads.
+  See `doc/dependencies.md` for logging dependency ownership.
+
 - Feature-owned server adapters live under `modules/<feature>/`; shared platform
   adapters retain their `content/`, `supabase/`, and `ssr/` ownership.
   Landing routes come from `modules/home/pages.cljc`; their code/CSS assets use
@@ -192,3 +199,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   bounded `media/svg.clj` adapter rejects active/external XML content before
   public publication; keep the complete-raster versus original-only SVG
   rendition contracts distinct. See `doc/media-pipeline.md`.
+
+- Development page, return-template and document-bootstrap requests await the
+  existing deferred startup owner's standalone release barrier. Gate before
+  asset delivery; unrelated static images and APIs must not wait for app watches.
+  Keep release failure/timeout explicit rather than serving stale unoptimized JS.

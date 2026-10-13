@@ -155,7 +155,7 @@ response bytes and flushes streaming chunks without replacing them.
 
 `/__tests/motion.html` checks the original network SSR entrance through hydration,
 hero readiness before reveal, and settled paired returns without entrance replay, comment layout, simultaneous 250ms linear page fades and the
-opaque sticky footer. Add `?fallback` to remove the optional native transition API in the test driver and exercise ordinary fallback
+opaque sticky footer. Add `?phone` for a 24.375rem test frame, or `?fallback` to remove the optional native transition API in the test driver and exercise ordinary fallback
 navigation with the same content. `__tests/scroll.html` checks SPA and document
 Back restoration. Run these on separate test origins if they overlap in time.
 
@@ -255,3 +255,18 @@ audited directory; other requests use the live server. The manifest is a whiteli
 so missing production chunks cannot silently fall back to development output.
 This verifies production frontend code with the current backend configuration;
 it does not establish production server packaging or deployment behavior.
+
+Development startup releases `:document` before its ordered application watches.
+It must stay optimized even beside `:app-dev`: unoptimized independent CLJS
+runtimes share Closure globals and corrupt local-return hydration. Document-only
+requests wait for this release with a bounded readiness barrier; the REPL does
+not wait for compilation. Focused startup tests cover ordering, failure, timeout
+and real nREPL acknowledgement during a blocked document release.
+
+For isolated live bootstrap validation, the integration proxy accepts
+`--document-dir PATH` pointing at the capped build's actual document output.
+Add `--style-dir PATH` for actual isolated stylesheet output. Only their declared
+`/js/document/` and `/css/tolgraven/` paths are overridden; application responses,
+state, styles and app chunks still come unchanged from the existing server. This
+checks a standalone release without overwriting a watched runtime or restarting
+the user's REPL.

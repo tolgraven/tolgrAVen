@@ -3,7 +3,8 @@
 - `bootstrap.*` is standalone source beside the application frontend, never an
   application/component import. Keep Reagent, re-frame and optional modules out.
 - Shadow `:document` generates ignored `resources/public/js/document/head.js`
-  and `entrance.js`. Local `bb prod:build` releases it as `prod-local-document`
+  and `entrance.js`. Development releases this target before native app watches;
+  do not watch it or inject console/preload runtimes. Local `bb prod:build` releases it as `prod-local-document`
   into `target/production/resources/public/js/document`. The head is parser-blocking before image discovery; the body
   runs after completed markup and before deferred hydration. Register both through
   existing Optimus bundles/script wrappers; never inline/slurp their implementation.
