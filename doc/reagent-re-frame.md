@@ -100,6 +100,14 @@ It must clean up on cancellation, dependency changes and unmount, and dispatch
 its final application action through re-frame. This exception does not extend to
 content caches, persistence, network state or business logic.
 
+Keep simple transient view state in ratoms, as the oEmbed hover surface does.
+Keep internal route tokens as Clojure values; serialize only when a native API
+requires a string. `<timeout>` keeps its mount deadline and calls the latest
+committed callback without restarting for incidental argument changes. Services
+owns its focus intent in one effect; Search schedules focus through the shared
+painted-frame adapter and cancels it on close/unmount. Ref replacement and guessed
+loading delays must not become a second scheduling mechanism.
+
 Browser interop needs SSR guards and an owning lifecycle. Native listeners are an
 exception when ordinary Reagent event attributes cannot handle a specific browser
 boundary. For example, React holds events aimed at an unhydrated Suspense child:

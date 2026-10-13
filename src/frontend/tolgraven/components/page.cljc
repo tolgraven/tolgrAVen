@@ -23,7 +23,7 @@
   (let [page-key (fn [route] (or (get-in route [:data :transition-key]) (:path route)))
         current-key (page-key current)
         previous-key (page-key previous)
-        token (pr-str [transition-id previous-key current-key])
+        token [transition-id previous-key current-key]
         [running set-running!] (rf/use-state nil)
         [finished set-finished!] (rf/use-state nil)
         [offset set-offset!] (rf/use-state nil)

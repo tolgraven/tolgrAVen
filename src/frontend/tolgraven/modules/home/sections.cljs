@@ -78,16 +78,10 @@
          (for [line lines] ^{:key (str "service-" title "-" line)} [:li line]))])
 
 (defc <service-categories> [{:keys [categories] :as spec}]
-  (let [{:keys [to-focus? full-screened?]} @(rf/subscribe [:state [:services]])]
-    (rf/use-effect
-     (fn []
-       (when to-focus? (rf/dispatch [:focus-element "services-bg"]))
-       nil)
-     [to-focus?])
+  (let [{:keys [full-screened?]} @(rf/subscribe [:state [:services]])]
     [:div#services>div.categories
      {:class (when full-screened? "categories-fullscreened")
-      :on-click #(rf/dispatch [:state [:services :full-screened?] nil])
-      :ref #(when % (rf/dispatch [:focus-element "services-bg"]))}
+      :on-click #(rf/dispatch [:state [:services :full-screened?] nil])}
      (for [[title icon-name lines] categories] ^{:key (str "service-" title)}
        [<service-category>
         {:title title :icon-name icon-name :lines lines :full-screened? full-screened?
@@ -111,14 +105,17 @@
 
 (defc <services> "List services on (fake) offer. Clicking one should bring it up to fill section..."
   [{:keys [categories bg caption] :as spec}]
+  (let [to-focus? (boolean @(rf/subscribe [:state [:services :to-focus?]]))]
+    ;; One committed owner handles both initial background focus and later
+    ;; section intent. Media/category ref replacement must not repeat the action.
+    (rf/use-effect #(rf/dispatch [:focus-element "services-bg"]) [to-focus?]))
   [:section#section-services
     {:class "link-anchor stick-up section-with-media-bg-wrapper"} ; want to  focus elem to zoomy zoom slow after reaching scroll
     [:a {:name "link-services"}]
      [ui/<inset> caption 4] ;auto-gen
      [img/<media-as-bg>
       (merge bg {:id "services-bg"
-                 :class "darken-5 parallax-bg"
-                 :ref #(when % (rf/dispatch [:focus-element "services-bg"]))})]
+                 :class "darken-5 parallax-bg"})]
      [<service-categories> {:categories categories}]])
 
 

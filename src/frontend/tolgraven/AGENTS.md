@@ -206,6 +206,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   See `doc/boot.md` for the stage boundaries.
   Deferred Search owns focus while open and releases it on close/unmount; hidden
   input focus must not drive scrolling during later navigation.
+  Its owned painted-frame callback replaces guessed loading/focus delays.
+  Services owns background focus once per mount/section intent; child/media ref
+  replacement must not repeat it. `<timeout>` retains its mount deadline while
+  invoking the latest committed callback, and cancels on unmount.
 - `browser_resources.cljs` acquires analytics
   after hydration, window load, two paint frames and idle with no pending page
   bindings. Production analytics initializes its queue/configuration there too;
