@@ -18,6 +18,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Boot checks dispatch the real startup/stop events and mount/unmount the common
   lifecycle host. Verify repeated starts/remounts do not multiply listeners,
   persistence drains before native history release, and deferred work is cancelled.
+  Listener checks exercise capture/passive/once, independent lifecycle acquisitions,
+  stale replacement cleanup and rollback of partially installed groups. Return
+  policy tests use ordinary data; Cache API and live service-worker checks protect
+  one-time consumption, build compatibility and actual document restoration.
 - Browser tests use the release Malli registry. Check typed page parameters,
   bounds, booleans, query encoding/extension keys and redacted coercion failures
   with internal validation disabled as well as ordinary contract validation.

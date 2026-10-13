@@ -316,7 +316,7 @@ change a reliable measurement strategy.
 React Strict Mode can repeat rendering, effect setup/cleanup and ref attachment
 in development to reveal ownership bugs. Our core contains a disabled diagnostic
 Strict Mode branch; that is not evidence that the whole app is currently checked.
-The refactor should use targeted Strict Mode checks for adapters that own resources.
+Mounted adapter tests use targeted Strict Mode checks for resource ownership.
 [React StrictMode reference](https://react.dev/reference/react/StrictMode).
 
 ## Decoding the interop vocabulary
@@ -341,8 +341,8 @@ Likewise, `use-ref` is not a ratom: changing its field does not notify Reagent.
 Prefer a callback ref or a small owned adapter over spreading `.-current` reads
 through domain code. React discourages arbitrary ref reads/writes during rendering;
 predictable one-time initialization is a narrow exception. Our “latest args” and
-diagnostic resolver refs deserve review for speculative-render behavior, not a
-mechanical replacement with another mutable container.
+diagnostic resolver publication and feature callbacks now belong to commits, so
+discarded renders cannot overwrite the work belonging to a selected render.
 
 React 19 supports cleanup returned by a ref callback. Do not accidentally return
 a function-valued assignment or helper result unless it is intended as cleanup.
@@ -350,6 +350,28 @@ Effect return normalization does not normalize ref callback returns.
 `component.ref/compose` preserves both callers and their teardown behavior, with
 idempotent cleanup for each attachment.
 [React 19 release notes](https://react.dev/blog/2024/12/05/react-19).
+
+### Browser APIs around Clojure data
+
+Native APIs do not require native-shaped application logic. In the return worker,
+JSON arm records become maps once, native cache arrays become sequences, and
+request eligibility, expiry and eviction use pure functions in
+`ssr/return_policy.cljs`. The worker adapter retains actual Request/Response and
+Cache objects, clocks, URL parsing and the Promises needed by browser event
+lifetimes. `array-seq` retains opaque handles while enabling ordinary destructuring,
+`map`, `filter` and `drop-last`; recursively converting browser objects would be
+the wrong boundary. Response options are Clojure maps converted at construction.
+[ClojureScript js->clj](https://cljs.github.io/api/cljs.core/js-GTclj),
+[array-seq](https://cljs.github.io/api/cljs.core/array-seq),
+[service-worker event ownership](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers).
+
+Application listeners likewise use existing re-frame effects. Events return
+`:listener/register` / `:listener/stop`; committed component/browser lifecycles
+use `listener/listen!` with declarative binding maps through the same registry.
+Its cleanup releases exactly that acquisition. Capture/passive/once are data,
+converted only by the native adapter. Rendered link-preview pointer/focus/click
+interactions use Hiccup attributes. Native resource readiness and worker events
+remain small explicit adapters where their lifecycle requires it.
 
 ### Hiccup integration forms
 
@@ -453,5 +475,5 @@ improving behavior.
 
 This standard preserves the functional component foundation while making normal
 feature code read like ClojureScript. The [refactor brief](../features/reagent-native-refactor.md)
-identifies which current adapters need conversion and which require a separate
-design review.
+records the implemented ownership changes and the remaining compatibility
+boundaries that future changes must preserve or replace with evidence.

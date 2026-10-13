@@ -434,13 +434,14 @@ Source extensions reflect actual consumers:
 
 - Module `pages.cljc`, public query plans, data normalization and
   `ssr/contract_schema.cljc` are consumed by JVM and CLJS code.
-- `ssr/contract.cljs`, `return_contract.cljs`, and `schema.cljs` belong to Node and
-  browser execution. Their tests run in the browser suite. The JVM does not need
-  a copy of hydration or browser persistence logic.
+- `ssr/contract.cljc`, `return_contract.cljc`, and `schema.cljs` contain the Node
+  and browser state contracts. The CLJC files use thin target-feature adapters;
+  the JVM does not need a copy of hydration or browser persistence logic.
+  Their state/restoration tests run in the browser suite.
 - `modules/blog/ssr.cljs` owns legacy display-row snapshot conversion and initial
   blog state. Node rendering and browser hydration use this once through the
   same snapshot adapter; exact `:app-db-edn` state takes precedence.
-- `modules/main/layout.cljs` owns home section ordering and its module SSR metadata.
+- `modules/main/layout.cljc` owns home section ordering and its module SSR metadata.
 - Small `.cljc` build adapters may use Shadow's `:browser`, `:ssr` and `:dev`
   reader features even without JVM consumers. `.cljs` does not support reader
   conditionals; these adapters do not imply a second JVM renderer.
