@@ -45,7 +45,7 @@
     (request! "nvim_exec_lua" [open-lua [path]])
     (js/Promise.reject (js/Error. "Invalid import path"))))
 
-(defn- write! [request! {:keys [path file]}]
+(defn write! [request! {:keys [path file]}]
   (-> (.arrayBuffer file)
       (.then (fn [buffer]
                (let [bytes (js/Uint8Array. buffer)

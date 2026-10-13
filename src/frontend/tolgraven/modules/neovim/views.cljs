@@ -7,10 +7,12 @@
             [clojure.string :as string]
             [tolgraven.modules.neovim.model :as model]
             [tolgraven.modules.neovim.runtime :as runtime]
-            [tolgraven.modules.neovim.files :as files]))
+            [tolgraven.modules.neovim.files :as files]
+            [tolgraven.modules.neovim.document :as document]))
 
 (def options-schema
   [:map
+   [:?document document/schema]
    [:?initial-file [:string {:max 512}]]
    [:?initial-text [:string {:max 8192}]]
    [:?filetype [:string {:max 64}]]
@@ -44,10 +46,12 @@
         *element (atom nil)
         *probe (atom nil)
         *grid-element (atom nil)
-        *pointer (atom nil)]
+        *pointer (atom nil)
+        *document (atom nil)]
   ;; The editor process owns its buffer. This ratom is its disposable UI projection,
   ;; like a native player/gesture adapter, never a mirrored application document store.
   (let [{:keys [rows cols initial-text initial-file filetype on-save]
+         source-document :document
          :or {rows 24, cols 80, initial-text "", filetype "clojure"}} options
         fail! #(swap! *view assoc :status :error :message (.-message %))
         request! (fn [method params]
@@ -76,6 +80,7 @@
                        :grid (model/grid cols rows)})
          (reset! *imports files/idle-state)
          (reset! *pointer nil)
+         (reset! *document source-document)
          (if-not (runtime/available?)
            (do (swap! *view assoc :status :unsupported
                       :message (runtime/unavailable-message)) nil)
@@ -86,7 +91,8 @@
                                   :rows rows
                                   :initial-text initial-text
                                   :initial-file initial-file
-                                  :filetype filetype}
+                                  :filetype filetype
+                                  :document source-document}
                    #(when @*active? (swap! *view update :grid model/redraw %))
                    #(when @*active? (swap! *view assoc :status %1 :message %2)))
                  resize! (fn []
@@ -107,7 +113,7 @@
                (reset! *session nil)
                (reset! *pointer nil)
                (stop!))))))
-     [cols rows initial-text initial-file filetype])
+     [cols rows initial-text initial-file filetype (some? source-document)])
     (let [{:keys [status message grid]} @*view
           importing? (= :loading (:status @*imports))
           import! (fn [file-list folder?]
@@ -125,6 +131,19 @@
                                      (when @*grid-element (.focus @*grid-element)))))
                           (.catch #(when (identical? session @*session)
                                      (swap! *imports assoc :status :error :message (.-message %))))))))]
+      (rf/use-layout-effect
+       (fn []
+         (when (and source-document (= :ready status) (not= source-document @*document))
+           (let [session @*session]
+             (reset! *document source-document)
+             (reset! *pointer nil)
+             (swap! *view assoc :status :booting :message "Preparing revision buffers…")
+             (-> (document/open! #(runtime/request! session %1 %2) source-document)
+                 (.then #(runtime/request! session "nvim_command" ["redraw"]))
+                 (.then #(when (identical? session @*session)
+                           (swap! *view assoc :status :ready :message "Ready")))
+                 (.catch #(when (identical? session @*session) (fail! %)))))))
+       [source-document status])
       (rf/use-effect
        (fn []
          (when (= :ready status)
@@ -161,7 +180,7 @@
       [:div.neovim
        [:div.neovim__toolbar
         [:span {:role "status", :aria-live "polite"} (if (= :ready status) (:mode grid) message)]
-        (when on-save
+        (when (and on-save (not source-document))
           [:button {:disabled (not= :ready status)
                     :on-click (fn [_]
                                 (when-let [session @*session]
@@ -175,7 +194,7 @@
          [:div.neovim__loading
           [:div.neovim__progress {:role "progressbar", :aria-label "Loading Neovim", :aria-valuetext message}
            [:span.neovim__progress-fill]]])
-       (when (= :ready status)
+       (when (and (= :ready status) (not source-document))
          [:div.neovim__files
           [:button {:on-click #(request! "nvim_exec_lua" ["vim.cmd('cd /workspace/tolgrAVen'); vim.cmd('Meta!')" []])} "Search repository"]
           [:button {:on-click #(request! "nvim_exec_lua" ["vim.cmd('cd /workspace/tolgrAVen'); vim.cmd('Meta! #file')" []])} "Browse source files"]
@@ -223,7 +242,7 @@
           :role "textbox"
           :aria-label "Neovim editor"
           :aria-multiline true
-          :aria-readonly (not= :ready status)
+          :aria-readonly (or (some? source-document) (not= :ready status))
           :on-pointer-down (fn [event]
                              (when-let [button (model/mouse-button (.-button event))]
                                (when-let [params (mouse! event button "press")]
@@ -251,18 +270,20 @@
                              (.preventDefault event)
                              (request! "nvim_input" [input]))))
           :on-paste (fn [event]
-                      (when (= :ready status)
+                      (when (and (= :ready status) (not source-document))
                         (.preventDefault event)
                         (request! "nvim_paste" [(.getData (.-clipboardData event) "text/plain") true -1])))
           :on-composition-end (fn [event]
-                                (when (seq (.-data event)) (request! "nvim_paste" [(.-data event) true -1])))}
+                                (when (and (not source-document) (seq (.-data event))) (request! "nvim_paste" [(.-data event) true -1])))}
          [<grid> grid]]]])))
 
 (defc <editor>
   "A lifecycle-owned Neovim WASM component. options: :initial-text or :initial-file, :filetype,
    :cols, :rows and optional :on-save (receives the current buffer as a string).
    Requires an isolated top-level document, as provided by /neovim.
-   Changing initialization options starts a new session; unmount terminates it."
+   Source :document options use read-only native patch/diff buffers; changing them
+   reuses the session. Changing ordinary initialization options starts a new session;
+   unmount terminates it."
   {:spec false}
   [options :- options-schema]
   :let [*generation (r/atom 0)]

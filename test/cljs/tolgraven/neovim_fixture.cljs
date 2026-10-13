@@ -6,7 +6,8 @@
             [tolgraven.neovim-test]
             [tolgraven.modules.neovim.views :as views]
             [tolgraven.modules.neovim.runtime :as runtime]
-            [tolgraven.modules.neovim.files :as files]))
+            [tolgraven.modules.neovim.files :as files]
+            [tolgraven.modules.neovim.document :as document]))
 
 (defonce *unit (r/atom nil))
 (defonce *show? (r/atom true))
@@ -15,6 +16,8 @@
 (defonce *live (r/atom "Not run"))
 (defonce *plugins (r/atom "Not run"))
 (defonce *workspace (r/atom "Not run"))
+(defonce *diff (r/atom "Not run"))
+(defonce *diff-view? (r/atom false))
 (defonce *settings (r/atom "Not run"))
 (defonce *startup-ms (r/atom nil))
 (defonce *first-frame (r/atom "Waiting for first visible frame…"))
@@ -222,9 +225,49 @@
         (.catch #(reset! *settings (str "FAIL: " (.-message %))))
         (.finally stop!))))
 
+(def sample-diff
+  {:mode :diff
+   :files [{:path "before/core.clj", :text "(ns example)\n(def answer 41)\n"}
+           {:path "after/core.clj", :text "(ns example)\n(def answer 42)\n(println answer)\n"}]})
+
+(defn diff-checks! []
+  (reset! *diff "Running…")
+  (let [{:keys [ready stop!]}
+        (runtime/start! {:cols 100, :rows 20, :document sample-diff}
+                        (fn [_]) (fn [status message]
+                                   (when-not (= :ready status) (reset! *diff message))))]
+    (-> ready
+        (.then (fn [session]
+                 (when-not session (throw (js/Error. "Diff startup failed")))
+                 (runtime/request! session "nvim_exec_lua"
+                   ["local wins = vim.api.nvim_list_wins(); assert(#wins == 2)
+                     for _, win in ipairs(wins) do
+                       local buf = vim.api.nvim_win_get_buf(win)
+                       assert(not vim.bo[buf].modifiable and vim.bo[buf].readonly)
+                       assert(vim.wo[win].diff and vim.wo[win].scrollbind and vim.wo[win].number)
+                       assert(not vim.wo[win].relativenumber)
+                       assert(not pcall(vim.api.nvim_buf_set_lines, buf, 0, 1, false, {'changed'}))
+                     end
+                     assert(vim.fn.diff_hlID(2, 14) ~= 0, 'Native diff highlighting missing')
+                     local f = assert(io.open('/workspace/before/core.clj', 'rb'))
+                     assert(f:read('*a') == [[(ns example)\n(def answer 41)\n]]); f:close()
+                     return true" []])))
+        (.then (fn [_]
+                 (-> ready (.then (fn [session]
+                   (-> (document/open! #(runtime/request! session %1 %2)
+                         {:mode :patch, :files [{:path "commit.patch", :text "@@ -1 +1 @@\n-old\n+new\n"}]})
+                       (.then #(runtime/request! session "nvim_exec_lua"
+                                 ["assert(#vim.api.nvim_list_wins() == 1); assert(vim.bo.filetype == 'diff'); assert(vim.bo.readonly and not vim.bo.modifiable); return 'PASS: native split diff, absolute line numbers, immutable buffers, exact file bytes and patch view'" []]))))))))
+        (.then #(reset! *diff %))
+        (.catch #(reset! *diff (str "FAIL: " (.-message %))))
+        (.finally stop!))))
+
 (defn <fixture> []
   [:main {:style {:max-width "65rem", :margin "2rem auto", :padding "1rem"}}
    [:h1 "Neovim WASM component"]
+   [:button {:on-click #(swap! *diff-view? not)} "Toggle diff preview"]
+   [:button {:disabled (not (runtime/available?)), :on-click diff-checks!} "Run diff checks"]
+   [:p {:id "diff-results"} @*diff]
    [:p "Press i to insert; Esc returns to normal mode. :help opens bundled help."]
    [:pre {:id "unit-results"} (pr-str @*unit)]
    [:p {:id "first-frame"} @*first-frame]
@@ -244,9 +287,11 @@
    (when @*show?
      [views/<editor> (merge {:filetype "clojure"
                             :on-save #(reset! *saved %)}
-                           (if @*alternate?
+                           (if @*diff-view?
+                             {:document sample-diff}
+                             (if @*alternate?
                              {:initial-text ";; New session"}
-                             {:initial-file "src/frontend/tolgraven/modules/neovim/views.cljs"}))])
+                             {:initial-file "src/frontend/tolgraven/modules/neovim/views.cljs"})))])
    [:pre {:id "saved-buffer"} @*saved]])
 
 (defn ^:export init! []

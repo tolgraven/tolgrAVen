@@ -2,7 +2,8 @@
   (:require [cljs.test :refer-macros [deftest is testing]]
             [tolgraven.modules.neovim.model :as model]
             [tolgraven.modules.neovim.policy :as policy]
-            [tolgraven.modules.neovim.files :as files]))
+            [tolgraven.modules.neovim.files :as files]
+            [tolgraven.modules.neovim.document :as document]))
 
 (deftest redraw-is-a-pure-projection
   (let [original (model/grid 5 3)
@@ -106,3 +107,10 @@
   (let [enabled (model/redraw (model/grid 5 3) [["mouse_on" []]])]
     (is (:mouse? enabled))
     (is (not (:mouse? (model/redraw enabled [["mouse_off" []]]))))))
+
+(deftest source-documents-reject-invalid-or-oversized-plans
+  (is (nil? (document/error {:mode :diff, :files [{:path "a/x", :text "λ\n"} {:path "b/x", :text ""}]})))
+  (is (some? (document/error {:mode :diff, :files [{:path "a/x", :text ""}]})))
+  (is (some? (document/error {:mode :patch, :files [{:path "../x", :text ""}]})))
+  (is (some? (document/error {:mode :patch, :files [{:path "x", :text "binary\u0000"}]})))
+  (is (some? (document/error {:mode :patch, :files [{:path "x", :text (.repeat "λ" 600000)}]}))))
