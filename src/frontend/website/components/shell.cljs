@@ -12,7 +12,6 @@
     [website.loader]
     [website.components.ui.controls :as ui-controls]
     [website.components.ui.loading :as ui-loading]
-    [website.components.ui :as ui]
     [website.components.contact :as contact]
     [website.components.image :as img]
     [website.components.image.sources :as image-sources]
@@ -79,7 +78,7 @@
       {:style {:position "absolute" :right 0 :bottom 0} }
       ; [input-toggle "theme-force-dark" [:state [:theme-force-dark]]]
       ; [:label.show-in-menu {:for "theme-force-dark" :class "theme-label"} "Theme"]
-      ; [ui/toggle [:state [:debug-layers]]]
+      ; [ui-controls/<toggle> [:state [:debug-layers]]]
       ; [input-toggle "debug-layers" [:debug [:layers]]]
       ; [:label.show-in-menu {:for "debug-layers"} "Debug"]
       ] ]))

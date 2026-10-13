@@ -52,8 +52,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   pre-hydration `bootstrap.*` sources live beside `website/` in `src/frontend/`.
   Keep external asset URLs and existing persisted storage identities stable.
 - `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code, and shared CLJC infrastructure. Feature implementations and their portable declarations live in `src/frontend/website/modules/<module>/`.
-- `components/ui/` groups shared UI by component type; `components/ui.cljs` keeps
-  compatibility identities. New consumers import their focused owner directly.
+- `components/ui/` groups shared UI by component type. Import each component's
+  owning namespace directly; do not retain forwarding definitions or compatibility exports.
 - `src/frontend/website/components/`: reusable rendered UI and site shell;
   `component/` contains the declaration/lifecycle runtime.
 - `experiments/clj`: preserved JVM prototypes, compiled only with `:experiments`.

@@ -31,9 +31,6 @@
 (def omit-markdown-component
   (r/reactify-component (fn [_] nil)))
 
-;; Controls belong to Markdown; the formatter is a separate deferred module.
-(def <code-block> code-block/<code-block>)
-
 (defc <markdown-code-component>
   "Custom code component for react-markdown that uses our syntax highlighter"
   [{:keys [children className default-language auto-languages code-options]}]
@@ -43,7 +40,7 @@
         language (some->> className (re-find #"language-([\w-]+)") second)
         block? (r/use-context block-context)
         linked? (r/use-context link-context)]
-    [<code-block> code
+    [code-block/<code-block> code
      (merge {:default-language default-language
              :auto-languages auto-languages}
        code-options

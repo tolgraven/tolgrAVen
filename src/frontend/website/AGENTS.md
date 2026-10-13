@@ -404,7 +404,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Application framework calls use `website.react` as `r`. Its `react/runtime.cljs`
   boundary owns raw React/Reagent/re-frame APIs; reader-feature targets keep
   development instrumentation out of production. Shared UI lives in focused
-  `components/ui/*` owners; the old `components/ui.cljs` exports retain identity.
+  `components/ui/*` owners. Call their components directly; do not re-export them
+  from forwarding namespaces. Lazy interfaces own actual module acquisition.
 
 - `/blog/new-post` and its upload queue/UI belong to `:blog-editor`; the
   independent lazy `:markdown-editor` owns the visual Markdown SDK. Canonical source and

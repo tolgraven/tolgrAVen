@@ -1,7 +1,9 @@
 (ns website.modules.blog-editor.views
   (:require [website.react :as r]
             [website.macros :refer-macros [defc defpage]]
-            [website.components.ui :as ui]
+            [website.components.ui.controls :as controls]
+            [website.components.ui.inputs :as inputs]
+            [website.components.ui.layout :as layout]
             [website.modules.blog.views :as blog]
             [website.modules.blog-editor.editor :as editor]
             [website.modules.blog-editor.model :as editor-model]))
@@ -47,18 +49,18 @@
      [:h2 "Write blog post"]
      [:br]
 
-     [ui/<input-text>
+     [inputs/<input-text>
       :placeholder "Title"
       :path [:form-field [:post-blog :title]]]
 
-     [ui/<input-text>
+     [inputs/<input-text>
       :placeholder "Tags"
       :path [:form-field [:post-blog :tags]]]
 
      [editor/<markdown-editor> {:owner owner, :exit (partial editor/dispose! owner)}]
 
-     [ui/<button> "Save draft" :save-blog-draft]
-     [ui/<button> "Highlight code" :highlight-blog-code
+     [controls/<button> "Save draft" :save-blog-draft]
+     [controls/<button> "Highlight code" :highlight-blog-code
       :action #(r/dispatch [:run-highlighter!])]
 
      [:br]
@@ -70,7 +72,7 @@
                                                (vals uploads))))}]]
 
      [:section
-      [ui/<button> "Submit" :post-new-blog
+      [controls/<button> "Submit" :post-new-blog
        :disabled? (editor-model/unresolved? (:text input) uploads)
        :action #(do (r/dispatch [:blog/submit
                                   (merge {:user user} input)
@@ -80,4 +82,4 @@
        [:label "Cancel"]]]]))
 
 (defpage <page> []
-  [ui/<with-heading> [:blog :heading] [<post-blog>]])
+  [layout/<with-heading> [:blog :heading] [<post-blog>]])
