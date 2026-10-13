@@ -3,10 +3,15 @@
   (:require-macros [tolgraven.react])
   (:require
     [react-dom :as react-dom]
+    ["react-dom/client" :as react-dom-client]
     [react :as react]
     [reagent.core :as r]
     [reagent.hooks :as hooks]
     [reagent.ratom]
+    [reagent.impl.batching]
+    [reagent.impl.protocols]
+    [reagent.impl.template]
+    [reagent.impl.util]
     [tolgraven.component.compat :as compat]
     [tolgraven.validation.bindings :as contracts]
     [tolgraven.diagnostics.consumer :as consumer]
@@ -63,6 +68,32 @@
 
 (def component-argv compat/argv)
 (def flush-sync                react-dom/flushSync)
+
+(defn- hydration-root [^js props]
+  ;; Preserve Reagent 2.0.1's root slots and initial after-render lifecycle.
+  (react/useEffect
+    (fn []
+      (binding [reagent.impl.util/*always-update* false]
+        (reagent.impl.batching/flush-after-render))
+      js/undefined))
+  (binding [reagent.impl.util/*always-update* true]
+    (react/createElement (.-comp props))))
+
+(defn hydrate-root
+  "Retain the upstream compiler/root lifecycle and forward native root options."
+  ([container form] (hydrate-root container form nil))
+  ([container form {:keys [compiler on-recoverable-error identifier-prefix]
+                    :or {compiler reagent.impl.template/*current-default-compiler*}}]
+   ;; Upstream accepts these options but drops them at React's hydrateRoot.
+   ;; Native recovery must reach the caller in production and mismatch tests.
+   (set! reagent.impl.batching/react-flush react-dom/flushSync)
+   (let [props #js {:comp (fn [] (reagent.impl.protocols/as-element compiler form))}
+         options #js {}]
+     (when on-recoverable-error
+       (set! (.-onRecoverableError options) on-recoverable-error))
+     (when identifier-prefix
+       (set! (.-identifierPrefix options) identifier-prefix))
+     (react-dom-client/hydrateRoot container (react/createElement hydration-root props) options))))
 
 
 ;; First-class API values remain available (e.g. passing dispatch to a helper).

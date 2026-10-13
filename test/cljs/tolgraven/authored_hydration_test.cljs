@@ -25,6 +25,34 @@
     {:promise (js/Promise. (fn [resolve _] (reset! *release resolve)))
      :release! (fn [value] (@*release value))}))
 
+(r/defc <hydration-id-fixture> []
+  [:p {:id (r/use-id)} "Client content"])
+
+(deftest native-root-options-preserve-recovery-and-identifier-prefix
+  (async done
+    (let [element (.createElement js/document "div")
+          server-node (.createElement js/document "p")
+          *errors (atom [])
+          *root (atom nil)]
+      ;; Test-only server markup deliberately differs from the client text.
+      ;; The real React root must report recovery through our facade boundary.
+      (set! (.-textContent server-node) "Server content")
+      (.appendChild element server-node)
+      (.appendChild (.-body js/document) element)
+      (reset! *root (r/hydrate-root element [<hydration-id-fixture>]
+                                   {:identifier-prefix "markdown-native-"
+                                    :on-recoverable-error #(swap! *errors conj %)}))
+      (-> (support/wait-for! #(seq @*errors) "React did not forward its actual recovery callback")
+          (.then (fn [_]
+                   (is (= "Client content" (.-textContent element)))
+                   (is (.startsWith (.-id (.querySelector element "p")) "markdown-native-"))
+                   (is (seq @*errors))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (dom/unmount @*root))
+                      (.remove element)
+                      (done)))))))
+
 (defn delayed-transport! []
   (let [specs {:markdown-components authored/spec, :settings settings/spec, :coercion coercion/spec}
         before {:modules loader/modules, :load lazy/load, :css styles/acquire!, :css-ready styles/ready?
@@ -106,7 +134,7 @@
                      (reset! *nodes {:table (.querySelector element ".content-config")
                                      :toggle (.querySelector element "[role=switch]")})
                      (is (some? (:table @*nodes)))
-                     (reset! *root (dom/hydrate-root element [ui/<md->div> source]
+                     (reset! *root (r/hydrate-root element [ui/<md->div> source]
                                                    {:on-recoverable-error #(swap! *errors conj (.-message %))}))
                      (support/wait-for! #(contains? @(:started transport) [:markdown-components :code])
                                         "The authored component owner did not begin acquisition"))))

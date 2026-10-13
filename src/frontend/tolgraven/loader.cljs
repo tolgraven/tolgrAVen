@@ -322,12 +322,24 @@
         [committed? set-committed!] (rf/use-state false)
         *trigger (rf/use-ref nil)
         release! (hydration/use-deferred! initial?)
-        complete! (rf/use-callback (fn [] (release!) (set-committed! true)) [release!])
+        complete! (rf/use-callback
+                    (fn []
+                      ;; Removing an ancestor marker urgently can discard a
+                      ;; nested SSR owner before its activation effects commit.
+                      (if initial?
+                        (rf/start-transition #(set-committed! true))
+                        (set-committed! true)))
+                    [initial? set-committed!])
         boundary (rf/use-memo #(make-boundary module) [module])
         ready? (or context/*server?* (boolean @(rf/subscribe [:loader/code-ready module])))
         failure (when-not context/*server?* @(rf/subscribe [:loader/code-error module]))
         modes (activation/triggers options)
         requested? (and (not hidden?) active?)]
+    (rf/use-layout-effect
+      ;; Retain transition batching until marker removal actually commits, so
+      ;; nested owners can establish their hydration/activation lifecycles.
+      (fn [] (when committed? (release!)) nil)
+      [committed? release!])
     (restore/use-readiness! (or (not requested?) ready? (some? failure)))
     (when (and context/*server?* ssr? context/*rendered-views*)
       (swap! context/*rendered-views* update module (fnil conj #{}) (or view :view)))

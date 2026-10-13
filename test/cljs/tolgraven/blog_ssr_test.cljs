@@ -126,7 +126,7 @@
                      (js/Promise.
                       (fn [resolve reject]
                         (reset! *root
-                          (dom/hydrate-root element
+                          (react/hydrate-root element
                             [<hydration-check>
                              (fn []
                                (try

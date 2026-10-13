@@ -83,6 +83,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   visibly committed final candidate after its overlap completes. Source changes and
   unmount release native observation; hidden ancestors wait on scoped visibility/
   motion changes rather than frame polling. See `doc/progressive-images.md`.
+- Hydrate through `tolgraven.react/hydrate-root`: it preserves the upstream root
+  lifecycle and compiler while forwarding native recovery/prefix options that
+  Reagent 2.0.1 otherwise drops. Initial nested SSR boundaries remove their markers
+  in a transition and release hydration batching only after that commit.
 - Authoring drafts/uploads/anchors belong to re-frame. Pending image chips use
   native editor nodes/decorations, never authored markers. SDK extension slots
   may require stable reverse React adapters; keep their native document/selection

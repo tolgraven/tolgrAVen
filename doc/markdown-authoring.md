@@ -264,3 +264,12 @@ gate opens and then operates the actual theme control. Use the current shared
 budgets from `doc/resource-controls.md`; independent outputs preserve watched
 builds. First-paint CSS follows the renderer's actual visible export
 inventory, including embedded owners whose popup stylesheet is normally deferred.
+
+Nested authored owners keep their SSR nodes until their own activation commits.
+Initial boundary completion removes its marker in a React transition; the layout
+commit then releases shared hydration batching. An urgent ancestor completion
+would discard a still-pending nested widget. The hydration facade retains Reagent's
+compiler/root lifecycle while forwarding React's recovery and identifier-prefix
+options, which Reagent 2.0.1 accepts but does not pass through. The release fixture
+uses actual initial styles, checks delayed owner/coercion gates, and verifies a
+deliberate native recovery plus the selected identifier prefix.
