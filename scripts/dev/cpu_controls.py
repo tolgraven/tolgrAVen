@@ -722,7 +722,9 @@ def buildkit_run(args, command, lock):
     save_json(reservation_path(name), dict(record, guardian=identity))
     try:
         config = STATE / (builder + '.toml')
-        config.write_text('[worker.oci]\n  max-parallelism = 1\n')
+        config.write_text('[worker.oci]\n  max-parallelism = 1\n  gc = true\n'
+                          '  reservedSpace = "256MB"\n  maxUsedSpace = "2GB"\n'
+                          '  minFreeSpace = "20GB"\n')
         inspected = subprocess.run(prefix + ['buildx', 'inspect', builder], capture_output=True,
                                    text=True, env=docker_environment(), timeout=30)
         if inspected.returncode != 0:
