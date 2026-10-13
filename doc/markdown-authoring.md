@@ -45,6 +45,16 @@ The SDK's own content
 signal supplies Markdown changes, preserving normalization/mute guards and
 avoiding another full serialization for cursor movement.
 
+The posting owner supplies query descriptors, rather than a mirrored upload
+vector, through SDK ancestry. Each native media node subscribes to its exact
+managed job; the controller subscribes to the owner-specific derived queue.
+Only native insertion/update capabilities and per-editor callbacks belong in
+that context. Standalone editor hosts can supply static values instead. A
+document mutation listener handles deleting an otherwise zero-width pending
+node, because such deletion need not change the SDK's distinct Markdown cell;
+selection changes do not trigger additional exports. Account changes end the
+previous transport/editor owner without requiring route unmount.
+
 Formatting, new directives and components use the SDK's normal publishers;
 argument edits use its node updater. Upload cancellation uses one guarded native
 document transaction: the SDK's removal hook assumes the node exists inside a

@@ -23,6 +23,11 @@
 
 (defn dispose! [owner _] (r/dispatch [:blog/image-upload-dispose owner]))
 
+(defn use-owner [account]
+  ;; The transient SDK/transport lifetime changes with authentication, while
+  ;; the persistent draft document has its own restored identity.
+  (r/use-memo #(str (random-uuid)) [account]))
+
 (defn upload-actions [owner {:keys [id attempt preview-attempt preview-error] :as item}]
   (cond-> (assoc item
                  :retry! #(r/dispatch [(if preview-error :blog/image-preview-retry :blog/image-upload-retry) id])
@@ -66,9 +71,9 @@
   [{:keys [owner source?]}]
   :let [*rich? (r/atom (not source?))]
   (let [text (or @(r/subscribe [:form-field [:post-blog :text]]) "")
-        uploads @(r/subscribe [:blog/state [:image-uploads]])
+        uploads @(r/subscribe [:blog-editor/uploads owner])
         library @(r/subscribe [:state [:blog-editor :library]])
-        assets (->> (concat (:assets library) (keep :asset (vals uploads)))
+        assets (->> (concat (:assets library) (keep :asset uploads))
                     (reduce (fn [[seen result] asset]
                               (if (seen (:id asset)) [seen result]
                                   [(conj seen (:id asset)) (conj result asset)])) [#{} []])
@@ -89,7 +94,9 @@
      (m/<> {:module :markdown-editor, :view :editor, :load-on :immediate}
              {:text text
               :source? (not @*rich?)
-              :uploads (vec (sort-by :order (filter #(= owner (:owner %)) (vals uploads))))
+              :uploads uploads
+              :uploads-query [:blog-editor/uploads owner]
+              :upload-query (r/use-callback (fn [id] [:blog/state [:image-uploads id]]) [])
               :enqueue! (r/use-callback (partial enqueue-files! owner) [owner])
               :render-upload (r/use-callback (fn [item] [upload/<upload-slot> (upload-actions owner item)]) [owner])
               :insert-ready! (r/use-callback (fn [item insert!]

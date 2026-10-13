@@ -11,6 +11,11 @@
 (def uploads-path [:state :blog :image-uploads])
 (def text-path [:state :form-field :post-blog :text])
 
+(r/reg-sub :blog-editor/uploads
+  :<- [:blog/state [:image-uploads]]
+  (fn [uploads [_ owner]]
+    (vec (sort-by :order (filter #(= owner (:owner %)) (vals uploads))))))
+
 (r/reg-event-db :blog/editor-mounted
   {:args [:tuple :string]}
   (fn [db [_ owner]] (assoc-in db [:state :blog-editor :active-owner] owner)))
@@ -29,9 +34,10 @@
                                           [id (assoc upload :position position)])))) owned)
                    (model/map-uploads owned changes'))
           removed (remove #(contains? mapped %) (keys owned))]
-      {:db (-> db (assoc-in text-path text)
+      (cond-> {:db (-> db (assoc-in text-path text)
                    (assoc-in uploads-path (merge (apply dissoc uploads (keys owned)) mapped)))
-       :fx (mapv (fn [id] [:blog-editor/settle-upload {:id id, :error "Upload insertion removed"}]) removed)}))))
+               :fx (mapv (fn [id] [:blog-editor/settle-upload {:id id, :error "Upload insertion removed"}]) removed)}
+        (seq removed) (assoc :dispatch [:blog/image-upload-next]))))))
 
 (r/reg-event-db :blog/editor-mode
   {:args [:tuple :string :boolean]}
@@ -243,13 +249,14 @@
        :blog-editor/settle-upload {:id id, :error "Image upload removed"}
        :dispatch [:blog/image-upload-next]})))
 
-(r/reg-event-db :blog/image-anchor-removed
+(r/reg-event-fx :blog/image-anchor-removed
   {:args [:tuple :string :string]}
-  (fn [db [_ owner id]]
+  (fn [{:keys [db]} [_ owner id]]
     (let [upload (get-in db (conj uploads-path id))]
-      (if (and (= owner (:owner upload)) (:cancelled? upload))
-        (update-in db uploads-path dissoc id)
-        db))))
+      (when (= owner (:owner upload))
+        {:db (update-in db uploads-path dissoc id)
+         :blog-editor/settle-upload {:id id, :error "Image insertion removed"}
+         :dispatch [:blog/image-upload-next]}))))
 
 (r/reg-event-fx :blog/image-upload-dispose
   {:args [:tuple :string]}

@@ -308,8 +308,9 @@
 (defc <editor>
   "Edit canonical Markdown through the lazy rich-text SDK; only external changes reset SDK content."
   {:spec-schema [:map [:text :string] [:on-change fn?] [:?upload! fn?] [:?image-urls [:vector :string]] [:?assets [:vector :map]] [:?library fn?]
-                      [:?source? :boolean] [:?uploads [:vector :map]] [:?render-upload fn?] [:?enqueue! fn?] [:?insert-ready! fn?] [:?on-anchors fn?] [:?on-removed fn?]]}
-  [{:keys [text on-change upload! image-urls assets library source? uploads render-upload enqueue! insert-ready! on-anchors on-removed] :as props}]
+                      [:?source? :boolean] [:?uploads [:vector :map]] [:?uploads-query [:vector :any]] [:?upload-query fn?]
+                      [:?render-upload fn?] [:?enqueue! fn?] [:?insert-ready! fn?] [:?on-anchors fn?] [:?on-removed fn?]]}
+  [{:keys [text on-change upload! image-urls assets library source? uploads uploads-query upload-query render-upload enqueue! insert-ready! on-anchors on-removed] :as props}]
   :let [*error (r/atom nil)
         *overlay (r/atom nil)]
   (let [editor-ref (r/use-ref nil)
@@ -325,8 +326,16 @@
     [:r> (r/context-provider media/asset-context) #js {:value (into {} (map (juxt :src identity)) assets)}
      [:r> (r/context-provider media-context) #js {:value {:assets assets, :library library, :upload! upload!}}
      [:r> (r/context-provider uploads/context)
-      #js {:value {:uploads uploads, :render-upload render-upload, :enqueue! enqueue!, :insert-ready! insert-ready!
-                   :on-change on-change, :on-anchors on-anchors, :on-removed on-removed}}
+      #js {:value (cond-> {:upload-query upload-query
+                          :uploads-query uploads-query
+                          :render-upload render-upload
+                          :enqueue! enqueue!
+                          :insert-ready! insert-ready!
+                          :on-change on-change
+                          :on-anchors on-anchors
+                          :on-removed on-removed}
+                    ;; Reusable static hosts need no application subscription.
+                    (nil? uploads-query) (assoc :uploads uploads))}
      [:div.site-md-editor
      [:div.site-md-editor-overlay {:ref (fn [node] (when node (reset! *overlay node)) nil)}]
      (if source?

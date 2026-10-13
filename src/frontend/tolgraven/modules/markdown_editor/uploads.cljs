@@ -14,12 +14,20 @@
             ["mdast-util-to-markdown" :refer [toMarkdown]]
             ["lexical" :refer [$getRoot $getNodeByKey]]))
 
-(def context (r/create-context {}))
+(def context
+  ;; Only per-editor native capabilities/query descriptors cross SDK ancestry.
+  ;; Application upload values are read by each node's exact subscription.
+  (r/create-context {}))
 
 (defn upload-node? [^js node]
   (and (editor/$isDirectiveNode node)
        (= tree/upload-name (.-name (.getMdastNode node)))
        (true? (some-> (.getMdastNode node) .-data .-editorMedia))))
+
+(defn media-id-present? [^js node id]
+  (or (and (upload-node? node) (= id (some-> (.getMdastNode node) .-attributes .-id)))
+      (and (fn? (.-getChildren node))
+           (some #(media-id-present? % id) (array-seq (.getChildren node))))))
 
 (def omit-visitor
   #js {:priority 200
@@ -100,7 +108,7 @@
   :let [*draft (r/atom nil)
         *open? (r/atom false)
         *fields (r/atom {})]
-  (let [{:keys [uploads render-upload insert-ready! on-anchors on-removed]} (r/use-context context)
+  (let [{:keys [uploads upload-query render-upload insert-ready! on-anchors on-removed]} (r/use-context context)
         realm (editor/useRealm)
         cells (editor/useCellValues editor/exportVisitors$ editor/jsxComponentDescriptors$
                                     editor/jsxIsAvailable$ editor/toMarkdownExtensions$ editor/toMarkdownOptions$)
@@ -108,7 +116,9 @@
         assets (r/use-context media/asset-context)
         update! (editor/useMdastNodeUpdater)
         id (.. mdastNode -attributes -id)
-        item (some #(when (= id (:id %)) %) uploads)
+        item (if (and id upload-query)
+               @(r/subscribe (upload-query id))
+               (some #(when (= id (:id %)) %) uploads))
         src (or (.. mdastNode -attributes -src) (get-in item [:asset :src]))
         key (.getKey lexicalNode)
         attributes (js->clj (.-attributes mdastNode) :keywordize-keys true)
@@ -199,8 +209,9 @@
 (defc ^:private <controller>
   "Observe native selection/changes and expose insertion to paste/drop and the image picker."
   [{:keys [children]}]
-  (let [{:keys [enqueue! on-change uploads] :as data} (r/use-context context)
-        pending-ids (mapv :id (remove :chip-dismissed? uploads))
+  (let [{:keys [enqueue! on-change on-removed uploads uploads-query] :as data} (r/use-context context)
+        uploads' (if uploads-query @(r/subscribe uploads-query) uploads)
+        pending-ids (mapv :id (remove :chip-dismissed? uploads'))
         insert-directive! (editor/usePublisher editor/insertDirective$)
         root (editor/useCellValue editor/rootEditor$)
         realm (editor/useRealm)
@@ -214,6 +225,28 @@
                         (enqueue! additions 0 0 true)
                         (doseq [{:keys [id]} additions]
                           (insert-directive! (clj->js (tree/upload-node id 0))))))) [insert-directive! enqueue!])]
+    (r/use-effect
+      (fn []
+        (when (and root on-removed)
+          ;; Deleting a zero-width pending node need not change markdown$.
+          ;; Native document mutations cover deletion without serializing on
+          ;; selection updates, and cleanup never reports a document deletion.
+          (.registerMutationListener root editor/DirectiveNode
+            (fn [mutations details]
+              (let [removed (.read (.-prevEditorState details)
+                              (fn []
+                                (into []
+                                  (keep (fn [[key kind]]
+                                          (when (= kind "destroyed")
+                                            (when-let [node ($getNodeByKey key)]
+                                              (when (upload-node? node)
+                                                (some-> (.getMdastNode node) .-attributes .-id))))))
+                                  (array-seq (js/Array.from mutations)))))]
+                (.read (.getEditorState root)
+                  (fn []
+                    (doseq [id removed :when (not (media-id-present? ($getRoot) id))]
+                      (on-removed id))))))
+            #js {:skipInitialization true}))) [root on-removed])
     (r/use-effect
       (fn []
         (when root

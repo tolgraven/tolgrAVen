@@ -1,6 +1,7 @@
 (ns tolgraven.blog-editor-test
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is testing async]]
+            [clojure.string :as string]
             [tolgraven.react :as rf]
             [tolgraven.macros :refer-macros [defc]]
             [re-frame.db :as rfdb]
@@ -19,6 +20,7 @@
             [tolgraven.components.content.upload :as upload]
             [tolgraven.schema.dsl :as dsl]
             ["@codemirror/view" :refer [EditorView]]
+            ["lexical" :refer [getNearestEditorFromDOMNode $getNearestNodeFromDOMNode $createNodeSelection $setSelection KEY_BACKSPACE_COMMAND]]
             [malli.core :as m]))
 
 (def files [{:id "first", :name "first.png", :file :first-file}
@@ -223,6 +225,97 @@
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (rf/dispatch-sync [:blog/image-upload-dispose owner])
+                      (set! client/authenticated-request! original)
+                      (restore-fixture-db! before)
+                      (done)))))))
+
+(deftest deleting-only-a-pending-native-node-cancels-it-and-starts-the-next-upload
+  (async done
+    (let [before @rfdb/app-db
+          original client/authenticated-request!
+          *calls (atom [])
+          *root (atom nil)
+          owner "delete-native-test"
+          element (.createElement js/document "div")]
+      (.appendChild (.-body js/document) element)
+      (set! client/authenticated-request!
+            (fn [& [_ _ _ success failure _]] (swap! *calls conj {:success success, :failure failure})))
+      (rf/dispatch-sync [:form-field [:post-blog :text] "Unchanged text"])
+      (-> (go-promise
+            (let [root (await! (support/create-root! element))]
+              (reset! *root root)
+              (await! (support/render! root [editor/<markdown-editor> {:owner owner}]))
+              (await! (support/wait-for! #(.querySelector element ".md-editor-content p")))
+              (let [editable (.querySelector element ".md-editor-content")]
+                (.focus editable)
+                (transfer! editable "paste" (js/File. #js ["image"] "A.png" #js {:type "image/png"}))
+                (await! (support/wait-for! #(= 1 (count @*calls))))
+                (transfer! editable "paste" (js/File. #js ["image"] "B.png" #js {:type "image/png"}))
+                (await! (support/wait-for! #(= 2 (.-length (.querySelectorAll editable ".md-media-node")))))
+                (let [node (.querySelector editable ".md-media-node")
+                      native (getNearestEditorFromDOMNode node)
+                      id (.getAttribute node "data-upload-id")]
+                  (.update native
+                    (fn []
+                      (let [selection ($createNodeSelection)]
+                        (.add selection (.getKey ($getNearestNodeFromDOMNode node)))
+                        ($setSelection selection))) #js {:discrete true})
+                  (.dispatchCommand native KEY_BACKSPACE_COMMAND (js/KeyboardEvent. "keydown" #js {:key "Backspace"}))
+                  (await! (support/wait-for! #(nil? (get-in @rfdb/app-db [:state :blog :image-uploads id]))))
+                  (await! (support/wait-for! #(= 2 (count @*calls))))
+                  ((:success (first @*calls)) {:id "late-A", :status "ready", :asset asset})
+                  (await! (support/settle!))
+                  (is (= "Unchanged text" (get-in @rfdb/app-db [:state :form-field :post-blog :text])))
+                  (is (= 1 (count (get-in @rfdb/app-db [:state :blog :image-uploads]))))
+                  (is (not (string/includes? (get-in @rfdb/app-db [:state :form-field :post-blog :text]) (:src asset))))))))
+          (.catch #(is false (str % " rendered=" (.-textContent element))))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (.remove element)
+                      (rf/dispatch-sync [:blog/image-upload-dispose owner])
+                      (set! client/authenticated-request! original)
+                      (restore-fixture-db! before)
+                      (done)))))))
+
+(defc <account-editor-fixture> []
+  (let [account @(rf/subscribe [:state [:active-user :id]])
+        owner (editor/use-owner account)]
+    [:section {:data-editor-owner owner}
+     [editor/<markdown-editor> {:owner owner, :source? true}]]))
+
+(deftest switching-account-disposes-the-old-upload-owner-without-route-unmount
+  (async done
+    (let [before @rfdb/app-db
+          original client/authenticated-request!
+          *calls (atom [])
+          *root (atom nil)
+          element (.createElement js/document "div")]
+      (.appendChild (.-body js/document) element)
+      (set! client/authenticated-request!
+            (fn [& [_ _ _ success failure _]] (swap! *calls conj {:success success, :failure failure})))
+      (rf/dispatch-sync [:state [:active-user] {:id 101}])
+      (rf/dispatch-sync [:form-field [:post-blog :text] "Draft"])
+      (-> (go-promise
+            (let [root (await! (support/create-root! element))]
+              (reset! *root root)
+              (await! (support/render! root [<account-editor-fixture>]))
+              (await! (support/wait-for! #(.querySelector element ".cm-content")))
+              (let [owner (.getAttribute (.querySelector element "[data-editor-owner]") "data-editor-owner")]
+                (transfer! (.querySelector element ".cm-content") "paste" (js/File. #js ["A"] "A.png" #js {:type "image/png"}))
+                (await! (support/wait-for! #(= 1 (count @*calls))))
+                (rf/dispatch-sync [:state [:active-user] {:id 102}])
+                (await! (support/wait-for! #(not= owner (.getAttribute (.querySelector element "[data-editor-owner]") "data-editor-owner"))))
+                (await! (support/wait-for! #(empty? (get-in @rfdb/app-db [:state :blog :image-uploads]))))
+                ((:success (first @*calls)) {:id "late-account-A", :status "ready", :asset asset})
+                (await! (support/settle!))
+                (is (= "Draft" (get-in @rfdb/app-db [:state :form-field :post-blog :text])))
+                (transfer! (.querySelector element ".cm-content") "paste" (js/File. #js ["B"] "B.png" #js {:type "image/png"}))
+                (await! (support/wait-for! #(= 2 (count @*calls))))
+                (is (= 1 (count (get-in @rfdb/app-db [:state :blog :image-uploads])))))))
+          (.catch #(is false (str % " rendered=" (.-textContent element))))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (.remove element)
                       (set! client/authenticated-request! original)
                       (restore-fixture-db! before)
                       (done)))))))

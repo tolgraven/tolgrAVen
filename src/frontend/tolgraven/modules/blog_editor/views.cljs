@@ -38,11 +38,14 @@
 (defc <post-blog> "Render post-making ui"
   {:features [:error-boundary]}
   [] ; XXX move this and similar to own file...
-  :let [owner (str (random-uuid))]
   (let [input @(r/subscribe [:form-field [:post-blog]])
         user @(r/subscribe [:user/active-user])
         editing @(r/subscribe [:blog/state [:editing]])
-        uploads @(r/subscribe [:blog/state [:image-uploads]])]
+        uploads @(r/subscribe [:blog/state [:image-uploads]])
+        account @(r/subscribe [:state [:active-user :id]])
+        ;; Account changes end the old queue/transport owner even while this
+        ;; route remains mounted. Draft document identity is restored separately.
+        owner (editor/use-owner account)]
     [:section.blog.blog-new-post
      [:h2 "Write blog post"]
      [:br]
