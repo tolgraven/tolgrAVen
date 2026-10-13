@@ -1,6 +1,7 @@
 (ns tolgraven.browser-resources
   "Acquire optional scripts after hydration, load, pending page work and a painted idle frame."
   (:require [tolgraven.component.restore :as restore]
+            [tolgraven.component]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as rf]
             [tolgraven.listener :as listener]
