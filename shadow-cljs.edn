@@ -10,6 +10,7 @@
  {:ssr {:target :node-script
              :build-hooks [(tolgraven.build.modules/configure-site)
                            (tolgraven.modules.markdown-editor.build/configure)
+                           (tolgraven.modules.markdown-editor.build/verify-entry)
                            (tolgraven.build.modules/clean-site-output)
                            (tolgraven.build.modules/check-site-sources)
                            (tolgraven.build.compat/rrb-vector)
@@ -63,6 +64,7 @@
              :closure-defines {malli.registry/type "custom"}
              :build-hooks [(tolgraven.build.modules/configure-site)
                            (tolgraven.modules.markdown-editor.build/configure)
+                           (tolgraven.modules.markdown-editor.build/verify-entry)
                            (tolgraven.build.modules/clean-site-output)
                            (tolgraven.build.modules/check-site-sources)
                            (tolgraven.build.compat/rrb-vector)
@@ -78,6 +80,7 @@
    :target tolgraven.build.browser/process
              :build-hooks [(tolgraven.build.modules/configure-site)
                            (tolgraven.modules.markdown-editor.build/configure)
+                           (tolgraven.modules.markdown-editor.build/verify-entry)
                            (tolgraven.build.modules/clean-site-output)
                            (tolgraven.build.modules/check-site-sources)
                            (tolgraven.build.compat/rrb-vector)]
@@ -121,6 +124,7 @@
   :app
   {:build-hooks [(tolgraven.build.modules/configure-site)
                            (tolgraven.modules.markdown-editor.build/configure)
+                           (tolgraven.modules.markdown-editor.build/verify-entry)
                            (tolgraven.build.modules/clean-site-output)
                            (tolgraven.build.modules/check-site-sources)
                            (tolgraven.build.compat/rrb-vector)

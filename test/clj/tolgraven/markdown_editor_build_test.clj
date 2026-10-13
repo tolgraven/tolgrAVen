@@ -28,3 +28,8 @@
                        (build/entry-source public-entry #{"privateHelper"} "../../sdk/")))
   (is (= "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
          (build/digest ""))))
+
+(deftest live-watch-export-changes-fail-with-the-reconfiguration-action
+  (is (nil? (build/require-current-exports! #{"MDXEditor"} #{"MDXEditor"})))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Restart this Shadow watch"
+                       (build/require-current-exports! #{"MDXEditor"} #{"MDXEditor" "InsertTable"}))))

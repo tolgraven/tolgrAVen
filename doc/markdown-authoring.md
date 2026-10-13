@@ -241,6 +241,14 @@ use the same configure hook and normal npm resolver. React, Lexical and Gurx kee
 their existing singleton dependencies. The adapter is build output, not a script
 served to visitors or a source snippet embedded in application markup.
 
+Ordinary changes using the same SDK exports keep normal hot reload. Adding or
+removing an SDK reference changes this dependency entry and requires restarting
+that Shadow watch, just like changing its module declarations. The per-compile
+guard reports the added/removed export names and the required restart before
+compilation; it never silently compiles against an outdated entry. Shadow resolves
+modular dependencies before its compile-prepare hook, so that hook verifies the
+configured entry rather than mutating an already resolved graph.
+
 The focused workflow runs through the shared resource launcher:
 `tolgraven-cpu run -- bash scripts/test/markdown-editor.sh --hydration` produces
 current Node fixtures and the ordinary mounted suite. Use a separate isolated

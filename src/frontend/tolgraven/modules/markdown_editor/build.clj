@@ -39,6 +39,16 @@
          (when-let [names (seq (sort (filter gurx-exports exports)))]
            (str "export { " (string/join ", " names) " } from \"@mdxeditor/gurx\";\n")))))
 
+(defn selected-exports []
+  (used-exports (map #(slurp (io/file "src/frontend/tolgraven/modules/markdown_editor" %))
+                     ["views.cljs" "code.cljs" "source.cljs" "uploads.cljs"])))
+
+(defn require-current-exports! [prepared current]
+  (when (not= prepared current)
+    (throw (ex-info "Editor SDK references changed. Restart this Shadow watch to regenerate its public entry."
+                    {:added (vec (sort (remove prepared current)))
+                     :removed (vec (sort (remove current prepared)))}))))
+
 (defn prepare! []
   (let [package (io/file "node_modules/@mdxeditor/editor/package.json")
         installed (json/read-str (slurp package))
@@ -46,9 +56,8 @@
     (when-not (and (= sdk-version (get installed "version")) (= entry-hash (digest entry)))
       (throw (ex-info "MDXEditor's public entry changed; review the selective adapter before building"
                       {:expected-version sdk-version})))
-    (let [sources (map #(slurp (io/file "src/frontend/tolgraven/modules/markdown_editor" %))
-                       ["views.cljs" "code.cljs" "source.cljs" "uploads.cljs"])
-          output (entry-source entry (used-exports sources) "./dist/")
+    (let [exports (selected-exports)
+          output (entry-source entry exports "./dist/")
           directory (io/file generated-root generated-package)
           destination (io/file directory "entry.js")
           original (.toPath (.getCanonicalFile (io/file (.getParentFile package) "dist")))
@@ -64,17 +73,28 @@
       (spit (io/file directory "package.json")
             (json/write-str {:name generated-package, :version sdk-version, :type "module", :exports {"." "./entry.js"}}))
       (when (not= output (when (.isFile destination) (slurp destination)))
-        (spit destination output)))))
+        (spit destination output))
+      exports)))
 
 (defn configure
   {:shadow.build/stage :configure}
   [state]
   (if (some #(= :markdown-editor (:id %)) (modules/discover))
-    (do (prepare!)
+    (let [exports (prepare!)]
         (reduce (fn [state' path]
                   (-> state'
                       (assoc-in (conj path :resolve "@mdxeditor/editor") {:target :npm, :require generated-package})
                       (update-in (conj path :js-package-dirs)
                                  #(vec (distinct (concat [generated-root] (or % ["node_modules"])))))))
-                state [[:js-options] [:shadow.build/config :js-options]]))
+                (assoc state ::exports exports) [[:js-options] [:shadow.build/config :js-options]]))
     state))
+
+(defn verify-entry
+  {:shadow.build/stage :compile-prepare}
+  [state]
+  ;; Shadow resolves a modular graph before compile-prepare, and configure runs
+  ;; once per watch configuration. Never regenerate a new graph behind that
+  ;; resolver: require explicit reconfiguration when the native export set changes.
+  (when-let [prepared (::exports state)]
+    (require-current-exports! prepared (selected-exports)))
+  state)
