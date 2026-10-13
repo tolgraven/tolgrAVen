@@ -177,7 +177,7 @@
   
   transition: opacity 0.25s ease;
 
-  img:not([data-image-preview]):not([data-image-final]), .progressive-image {
+  > .cv-logo-picture, > picture > .cv-logo-picture {
     position: absolute;
     transition: width 0.5s ease, transform 0.3s, box-shadow 0.9s ease;
     width: 5em;
@@ -282,10 +282,12 @@
       margin-right: calc(0.35 * var(--space));
     }
 
-    img:not([data-image-preview]):not([data-image-final]), .progressive-image {
+    > .cv-logo-picture, > picture > .cv-logo-picture {
       position: absolute;
       display: initial;
       width: 10em;
+
+      &.progressive-image { display: inline-grid; }
     }
     
     .cv-bg-logo {

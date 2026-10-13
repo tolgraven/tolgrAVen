@@ -1,6 +1,8 @@
 (ns tolgraven.components.media
   (:require
+    [clojure.string :as string]
     [tolgraven.content.schema :as schema]
+    [tolgraven.media.schema :as media-schema]
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.react :as rf]
@@ -10,12 +12,17 @@
     [tolgraven.util :as util]
     [tolgraven.components.video :as vid]))
 
-(defc <bg-logo> "Try to remember why had to put img in css/style..."
-  [path]
-  (fn [path]
-    [:div#logo-top.logo-bg.stick-up ;.parallax-sm
-     {:class "logo-tolgraven"
-      :style {:background-image (str "url('" path "')")}} ])) ; cant remember why I did the weird path-in-css bs but anyways...
+(defc <bg-logo>
+  "Keep the decorative logo's container and entrance; shared pictures own pixels."
+  [path :- :?string & [asset] :- [:maybe media-schema/asset]]
+  (when-not (string/blank? path)
+    [:div#logo-top.logo-bg.stick-up
+     {:class "logo-tolgraven" :aria-hidden true}
+     [img/<picture> {:src path
+                     :asset asset
+                     :alt ""
+                     :class "logo-picture"
+                     :loading "eager"}]]))
 
 (defc ^:private <media-as-bg-smart> "Detects whether media is image or video and uses appropriate component"
   [media-data :- schema/media]
