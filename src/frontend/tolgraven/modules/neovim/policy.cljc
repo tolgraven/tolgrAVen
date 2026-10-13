@@ -8,5 +8,10 @@
    "Cross-Origin-Resource-Policy" "same-origin"})
 
 (defn headers-for [path]
-  (when (or (= "/neovim" path) (string/starts-with? path "/vendor/neovim/"))
+  (when (or (= "/neovim" path) (string/starts-with? path "/neovim/github/") (string/starts-with? path "/vendor/neovim/"))
     isolation-headers))
+
+(defn document-navigation?
+  "Isolation changes require a document response, in both directions."
+  [current-isolated? path]
+  (not= (boolean current-isolated?) (boolean (headers-for path))))

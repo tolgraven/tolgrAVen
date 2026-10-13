@@ -186,4 +186,4 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   public publication; keep the complete-raster versus original-only SVG
   rendition contracts distinct. See `doc/media-pipeline.md`.
 
-- Neovim isolation headers apply only to `/neovim` and `/vendor/neovim/`; keep ordinary documents unchanged and omit the module adapter/assets from disabled sites. See `doc/neovim.md`.
+- Neovim isolation headers apply only to `/neovim`, `/neovim/github/` diff documents and `/vendor/neovim/`; keep ordinary documents unchanged and omit the module adapter/assets from disabled sites. See `doc/neovim.md`.

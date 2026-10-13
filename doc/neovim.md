@@ -50,7 +50,9 @@ bundled help. It does not implement terminal jobs, OS processes,
 external-process plugins, durable file export or saving back to the host. Browser Cmd
 shortcuts and Ctrl+Shift+V remain native. Sessions are temporary; copy/use the
 buffer before leaving. Large pastes that exceed the ring capacity fail visibly.
-Upstream's worker still contains its diagnostic logging and filesystem behavior.
+The wrapper suppresses upstream's per-input-byte console trace, which otherwise
+can exhaust the RPC timeout during bulk imports. Other diagnostics and upstream
+filesystem behavior remain available; the upstream artifacts stay unchanged.
 
 ## Pinned artifacts
 
@@ -220,3 +222,18 @@ performance guarantee. Additional checks:
 bb -cp scripts:src/cljc:resources test/scripts/neovim_workspace_test.clj
 node test/scripts/neovim_profile_test.cjs
 ```
+
+## GitHub commit diffs
+
+Commit rows open `/neovim/github/:user/:repo/:sha` as a new isolated document. Crossing into or out of isolation uses document navigation, so normal pages recover their normal media policy.
+The GitHub module owns this route, data and controls; it is omitted when Neovim
+is disabled, preserving the existing basic commit viewer. Before/after uses one
+native Neovim process with vertical diff windows, absolute line numbers and
+nonmodifiable, readonly buffers. This layout attaches its hidden UI at the measured size before loading source files and creating equal-width windows; it publishes only the completed redraw. The patch mode requests GitHub's complete patch.
+
+Revision metadata and sources use the shared browser HTTP effects, with cached
+results keyed by repository and immutable SHA. Comparisons use the first parent
+for merges, the previous filename for renames, and empty sides for additions,
+deletions and root commits. Changed-file metadata follows GitHub's pages up to
+its 3000-file limit. UTF-8 source files and patches are limited to 1 MiB each;
+binary, larger and unavailable files show an error and a GitHub link.

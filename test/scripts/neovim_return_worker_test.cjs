@@ -48,6 +48,9 @@ async function navigate(path) {
   assert.equal(editor.headers.get('Cross-Origin-Embedder-Policy'), 'require-corp');
   assert.equal(await editor.text(), '<h1>Neovim</h1>');
   assert.equal(entries.has(origin + '/neovim'), false, 'cached document is consumed once');
+  await save('/neovim/github/u/r/abcdef', '<h1>Diff</h1>');
+  const diff = await navigate('/neovim/github/u/r/abcdef');
+  assert.equal(diff.headers.get('Cross-Origin-Embedder-Policy'), 'require-corp');
   await save('/ordinary', '<h1>Ordinary</h1>');
   const ordinary = await navigate('/ordinary');
   assert.equal(ordinary.headers.get('Cross-Origin-Opener-Policy'), null);

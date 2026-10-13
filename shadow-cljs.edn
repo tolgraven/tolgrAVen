@@ -61,6 +61,16 @@
                  :asset-path "/js/neovim-check"
                  :modules {:main {:init-fn tolgraven.neovim-fixture/init!}}}
 
+  :github-diff-check {:target :browser
+                      :module-loader true
+                      :compiler-options {:reader-features #{:dev}}
+                      :build-hooks [(tolgraven.build.modules/configure-site)
+                                    (tolgraven.build.modules/check-site-sources)]
+                      :devtools {:enabled false}
+                      :output-dir "resources/public/js/github-diff-check"
+                      :asset-path "/js/github-diff-check"
+                      :modules {:main {:init-fn tolgraven.github-diff-fixture/init!}}}
+
   :app-test {:target :browser-test
              :module-loader true
              :compiler-options {:reader-features #{:browser :dev}}

@@ -29,6 +29,8 @@
    for index, path in ipairs(paths) do
      if index == 2 then vim.cmd('silent rightbelow vnew') end
      vim.cmd('silent hide edit! ' .. vim.fn.fnameescape('/workspace/' .. path))
+     vim.api.nvim_win_set_cursor(0, {1, 0})
+     vim.cmd('silent normal! ggzt')
      if mode == 'patch' then vim.bo.filetype = 'diff' end
      vim.bo.readonly = true
      vim.bo.modifiable = false

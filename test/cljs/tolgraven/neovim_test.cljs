@@ -114,3 +114,9 @@
   (is (some? (document/error {:mode :patch, :files [{:path "../x", :text ""}]})))
   (is (some? (document/error {:mode :patch, :files [{:path "x", :text "binary\u0000"}]})))
   (is (some? (document/error {:mode :patch, :files [{:path "x", :text (.repeat "λ" 600000)}]}))))
+
+(deftest navigation-crosses-isolation-boundaries-in-both-directions
+  (is (policy/document-navigation? false "/neovim/github/u/r/sha"))
+  (is (policy/document-navigation? true "/"))
+  (is (not (policy/document-navigation? false "/blog")))
+  (is (not (policy/document-navigation? true "/neovim"))))

@@ -1,6 +1,7 @@
 (ns tolgraven.neovim-http-test
   (:require [clojure.test :refer [deftest is]]
             [tolgraven.modules.neovim.http :as http]
+            [tolgraven.page-router :as pages]
             [tolgraven.middleware :as middleware]
             [tolgraven.config :as config]
             [tolgraven.env :as environment]
@@ -10,7 +11,7 @@
 (deftest isolation-is-scoped-to-editor-documents-and-workers
   (let [response {:status 200, :headers {"Content-Type" "text/html"}, :body "editor"}
         handler (http/wrap-isolation (constantly response))]
-    (doseq [path ["/neovim" "/vendor/neovim/nvim-worker.js" "/vendor/neovim/nvim.wasm"]]
+    (doseq [path ["/neovim" "/neovim/github/u/r/abcdef" "/vendor/neovim/nvim-worker.js" "/vendor/neovim/nvim.wasm"]]
       (let [result (handler {:uri path})]
         (is (= "same-origin" (get-in result [:headers "Cross-Origin-Opener-Policy"])))
         (is (= "require-corp" (get-in result [:headers "Cross-Origin-Embedder-Policy"])))
@@ -48,3 +49,10 @@
       (is (= "require-corp" (get-in response [:headers "Cross-Origin-Embedder-Policy"])))
       (is (nil? (get-in (handler (assoc request :uri "/ordinary"))
                        [:headers "Cross-Origin-Opener-Policy"]))))))
+
+(deftest github-diff-routes-consume-typed-immutable-revisions
+  (let [sha (apply str (repeat 40 "a"))
+        match (pages/request-match (str "/neovim/github/tolgraven/tolgrAVen/" sha) {})]
+    (is (= :github-diff (get-in match [:data :name])))
+    (is (= {:user "tolgraven", :repo "tolgrAVen", :sha sha} (get-in match [:parameters :path])))
+    (is (thrown? Exception (pages/request-match "/neovim/github/tolgraven/tolgrAVen/HEAD" {})))))

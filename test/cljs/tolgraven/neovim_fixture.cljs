@@ -264,6 +264,14 @@
         (.then (fn [_]
                  (-> ready (.then (fn [session]
                    (-> (document/open! #(runtime/request! session %1 %2)
+                         {:mode :diff
+                          :files [{:path "before/added.txt", :text ""}
+                                  {:path "after/added.txt", :text (apply str (repeat 256 "added line\n"))}]})
+                       (.then #(runtime/request! session "nvim_exec_lua"
+                                 ["local wins = vim.api.nvim_list_wins(); assert(#wins == 2); assert(vim.fn.getwininfo(wins[2])[1].topline == 1, 'Added source inherited the previous viewport'); return true" []]))))))))
+        (.then (fn [_]
+                 (-> ready (.then (fn [session]
+                   (-> (document/open! #(runtime/request! session %1 %2)
                          {:mode :patch, :files [{:path "commit.patch", :text "@@ -1 +1 @@\n-old\n+new\n"}]})
                        (.then #(runtime/request! session "nvim_exec_lua"
                                  ["assert(#vim.api.nvim_list_wins() == 1); assert(vim.bo.filetype == 'diff'); assert(vim.bo.readonly and not vim.bo.modifiable); return 'PASS: native split diff, absolute line numbers, immutable buffers, equal panes, bulk UTF-8 file bytes and patch view'" []]))))))))
