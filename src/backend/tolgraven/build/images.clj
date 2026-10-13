@@ -2,7 +2,8 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [malli.core :as m]
-            [tolgraven.schema.dsl :as dsl]))
+            [tolgraven.schema.dsl :as dsl]
+            [tolgraven.components.image.schema :as image]))
 
 (def catalog-schema
   [:map-of :string
@@ -12,7 +13,8 @@
      [:height pos-int?]
      [:sizes [:vector pos-int?]]
      [:?progressive? :boolean]
-     [:?generated? :boolean]]]])
+     [:?generated? :boolean]
+     [:?placeholder image/placeholder]]]])
 
 (defmacro responsive-images []
   (let [catalog (edn/read-string

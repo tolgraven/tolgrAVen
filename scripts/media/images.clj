@@ -106,6 +106,35 @@
   (str (or (fs/which "magick") (fs/which "convert")
            (throw (ex-info "ImageMagick is required" {})))))
 
+(defn band-colors
+  "Three horizontal RGB bands from a row-major 3×3 sample. No CSS or URLs."
+  [pixels]
+  (when-not (= 9 (count pixels))
+    (throw (ex-info "Invalid placeholder sample" {})))
+  (let [bands (mapv (fn [row]
+                      (apply format "#%02x%02x%02x"
+                             (map #(long (Math/round (/ (double (reduce + %)) 3)))
+                                  (apply map vector row))))
+                    (partition 3 pixels))]
+    bands))
+
+(defn placeholder! [file]
+  (let [output (:out (process/shell {:out :string :extra-env {"MAGICK_THREAD_LIMIT" "1"}}
+                                   (imagemagick) "-limit" "thread" "1" (str file)
+                                   "-auto-orient" "-background" "white" "-alpha" "remove" "-alpha" "off"
+                                   "-colorspace" "sRGB" "-resize" "3x3!" "-depth" "8" "-type" "TrueColor" "txt:-"))
+        pixels (mapv (fn [[_ hex]]
+                       (mapv #(Long/parseLong (subs hex % (+ % 2)) 16) [0 2 4]))
+                     (re-seq #"#([0-9a-fA-F]{6})(?:[0-9a-fA-F]{2})?\s" output))]
+    {:colors (band-colors pixels)}))
+
+(defn catalog-placeholders! [catalog]
+  (into (sorted-map)
+    (map (fn [[src entry]]
+           [src (if (:exclude? entry) entry
+                    (assoc entry :placeholder (placeholder! (fs/path "resources/public" src))))]))
+    catalog))
+
 (defn animated-png? [file]
   ;; APNG declares acTL before its first IDAT; some ImageMagick versions report
   ;; only the first frame, so inspect the chunk header without decoding pixels.
@@ -203,6 +232,12 @@
       (fs/move temporary file {:replace-existing true :atomic-move true})
       (finally (fs/delete-if-exists temporary)))))
 
+(defn placeholders! []
+  ;; Metadata-only refresh leaves every existing rendition byte untouched.
+  (let [catalog (edn/read-string (slurp "resources/responsive-images.edn"))]
+    (write-catalog! (catalog-placeholders! catalog))
+    (println "Image placeholders:" (count (remove (comp :exclude? val) catalog)) "sources.")))
+
 (defn responsive! [& args]
   (let [{:keys [force? files]} (arguments args)
         _ (when (seq files)
@@ -210,6 +245,7 @@
         original-catalog (edn/read-string (slurp "resources/responsive-images.edn"))
         metadata (responsive-metadata! original-catalog)
         catalog (responsive-catalog original-catalog metadata)
+        catalog' (catalog-placeholders! catalog)
         counts (frequencies
                  (for [[src {:keys [width height sizes exclude?]}] catalog
                        :when (not exclude?)
@@ -225,7 +261,7 @@
                        (throw (ex-info "Invalid responsive image source or size" {:src src :size size})))
                      (responsive-convert! file size format (and size force?)))))]
     ;; Publish only after all variants succeed; keep original/full-size fallbacks.
-    (write-catalog! catalog)
+    (write-catalog! catalog')
     (println "Responsive images:" (count (remove (comp :exclude? val) catalog)) "sources,"
              (get counts :converted 0) "variants created,"
              (get counts :skipped 0) "current variants skipped.")))
