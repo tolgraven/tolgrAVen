@@ -1,22 +1,39 @@
 (ns tolgraven.react
   "Call-site preserving re-frame macros for the shared React/Reagent shim."
-  (:require [re-frame.core-instrumented :as instrumented]))
+  (:require [cljs.env :as env]
+            [re-frame.core-instrumented :as instrumented]))
 
-;; Forward the original form and compiler environment so tooling records the
-;; caller, not this shim. Upstream macros branch on goog.DEBUG through
-;; re-frame.interop/debug-enabled?; Closure removes instrumentation in release.
+(defn- compiler-debug? []
+  (when env/*compiler*
+    (let [options (:options @env/*compiler*)
+          defines (:closure-defines options)]
+      (cond
+        (contains? defines 'goog.DEBUG) (get defines 'goog.DEBUG)
+        (contains? defines "goog.DEBUG") (get defines "goog.DEBUG")
+        (= :advanced (:optimizations options)) false))))
+
+(defn- expand-call [operation form compiler-env args]
+  ;; Choose the regular API before CLJS analysis in production. With no compiler
+  ;; context, retain upstream's own goog.DEBUG guard (e.g. JVM macro tooling).
+  (if (false? (compiler-debug?))
+    (cons (symbol "re-frame.core" (name operation)) args)
+    (apply @(ns-resolve 're-frame.core-instrumented operation) form compiler-env args)))
+
+(defn- registrar [operation]
+  (fn [form compiler-env & args]
+    (expand-call operation form compiler-env args)))
 
 (defmacro dispatch [& args]
-  (apply @#'instrumented/dispatch &form &env args))
+  (expand-call 'dispatch &form &env args))
 
 (defmacro dispatch-sync [& args]
-  (apply @#'instrumented/dispatch-sync &form &env args))
+  (expand-call 'dispatch-sync &form &env args))
 
 (defmacro subscribe [& args]
   (let [query (gensym "query")]
     `(let [~query (tolgraven.validation.bindings/query ~(first args))]
        (tolgraven.react/observe-subscription! ~query
-         ~(apply @#'instrumented/subscribe &form &env (cons query (rest args)))))))
+         ~(expand-call 'subscribe &form &env (cons query (rest args)))))))
 
 (defn- contract? [value]
   (and (map? value) (some #(contains? value %) [:args :result :coerce :result-coerce :on-error])))
@@ -39,10 +56,10 @@
                      (last body))))))
 
 (defmacro reg-event-db [& args]
-  (event-registration @#'instrumented/reg-event-db &form &env (first args) (rest args)))
+  (event-registration (registrar 'reg-event-db) &form &env (first args) (rest args)))
 
 (defmacro reg-event-fx [& args]
-  (event-registration @#'instrumented/reg-event-fx &form &env (first args) (rest args)))
+  (event-registration (registrar 'reg-event-fx) &form &env (first args) (rest args)))
 
 (defn- subscription-registration [registrar wrapper form env id decls]
   (if-not (contract? (first decls))
@@ -58,15 +75,15 @@
                  (concat (butlast body) [`(~wrapper ~id-sym ~options-sym ~(last body))]))))))
 
 (defmacro reg-sub [& args]
-  (subscription-registration @#'instrumented/reg-sub 'tolgraven.validation.bindings/computation
+  (subscription-registration (registrar 'reg-sub) 'tolgraven.validation.bindings/computation
                              &form &env (first args) (rest args)))
 
 (defmacro reg-sub-raw [& args]
-  (subscription-registration @#'instrumented/reg-sub-raw 'tolgraven.validation.bindings/source
+  (subscription-registration (registrar 'reg-sub-raw) 'tolgraven.validation.bindings/source
                              &form &env (first args) (rest args)))
 
 (defmacro reg-fx [& args]
-  (apply @#'instrumented/reg-fx &form &env args))
+  (expand-call 'reg-fx &form &env args))
 
 (defmacro reg-cofx [& args]
-  (apply @#'instrumented/reg-cofx &form &env args))
+  (expand-call 'reg-cofx &form &env args))

@@ -13,6 +13,12 @@
   {:shadow.build/stage :compile-prepare}
   [state]
   (when (= :release (:mode state))
+    (let [defines (get-in state [:compiler-options :closure-defines])]
+      (when (or (true? (get defines 'goog.DEBUG))
+                (true? (get defines "goog.DEBUG"))
+                (true? (get defines 're-frame.trace/trace-enabled?))
+                (true? (get defines "re_frame.trace.trace_enabled_QMARK_")))
+        (throw (ex-info "Production builds cannot enable debug instrumentation" {}))))
     (doseq [id (:build-sources state)
             :let [source (get-in state [:sources id])]
             :when (development-inspector? source)]

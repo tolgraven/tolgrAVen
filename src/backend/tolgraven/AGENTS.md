@@ -78,7 +78,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   per-source report alongside chunk sizes; keep the normal compatibility hooks
   and optional-main boundary checks when changing this workflow. Browser audits
   also reject Markdown-clj and every Malli implementation namespace in main.
-  Release browser, renderer and return-worker graphs reject 10x/re-frisk/legacy
+  Release browser, renderer and return-worker graphs reject debug/trace overrides
+  and 10x/re-frisk/legacy
   inspectors through `build/policy.clj`; stale analysis cache files are not graph membership.
 
 - Reitit uses shared Malli parameter schemas. Internal/response validation follows
@@ -141,3 +142,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   The same root-owned image adapter stages local-return templates; already usable
   final pixels settle immediately. Its native initial-hero phase remains owned
   through hydration until terminal adoption, independently of the entrance gate.
+
+- The shared React/re-frame macro facade selects ordinary calls when the compiler's
+  `goog.DEBUG` is false; development preserves original caller metadata. Public
+  validation contracts remain active independently of diagnostic instrumentation.

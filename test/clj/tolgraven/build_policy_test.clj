@@ -27,3 +27,15 @@
                                 :resource-name "day8/re_frame/http_fx.cljs"}
                          :old {:ns 'day8.re-frame-10x}}}]
     (is (identical? state (policy/no-debug-tools state)))))
+
+(deftest release-rejects-debug-and-trace-overrides
+  (doseq [defines [{'goog.DEBUG true}
+                   {"goog.DEBUG" true}
+                   {'re-frame.trace/trace-enabled? true}
+                   {"re_frame.trace.trace_enabled_QMARK_" true}]]
+    (let [state {:mode :release
+                 :compiler-options {:closure-defines defines}}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"debug instrumentation"
+                           (policy/no-debug-tools state)))
+      (is (= (assoc state :mode :dev)
+             (policy/no-debug-tools (assoc state :mode :dev)))))))
