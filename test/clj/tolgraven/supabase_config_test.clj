@@ -98,7 +98,7 @@
     (doseq [resolve! [platform/database-spec platform/rest-base-url platform/service-key]]
       (let [error (try (resolve!) (catch clojure.lang.ExceptionInfo error error))]
         (is (instance? clojure.lang.ExceptionInfo error))
-        (is (seq (:env (ex-data error))))
+        (is (seq (:config-keys (ex-data error))))
         (is (not (.contains (pr-str (ex-data error)) "private")))))))
 
 (deftest provisioning-doctor-starts-only-config-and-reports-consolidated-values
@@ -111,12 +111,13 @@
                                   :service-key-configured? true}]
                                 [{} {:database {:source :missing
                                                 :configured? false
-                                                :expected-env ["SUPABASE_DATABASE_URL"
-                                                               "SUPABASE_DB_URL"
-                                                               "POSTGRES_HOSTNAME"
-                                                               "POSTGRES_DB"
-                                                               "POSTGRES_USER"
-                                                               "POSTGRES_PASSWORD"]}
+                                                :expected-config {:database-url [:supabase-database-url :supabase-db-url]
+                                                                  :host [:postgres-hostname :postgres-host :pghost]
+                                                                  :database [:postgres-db :postgres-database :pgdatabase]
+                                                                  :user [:postgres-user :pguser]
+                                                                  :password [:postgres-password :pgpassword]
+                                                                  :port [:postgres-port :pgport]
+                                                                  :sslmode [:supabase-db-sslmode :postgres-sslmode]}}
                                      :rest-url-configured? false
                                      :service-key-configured? false}]]]
       (with-redefs [config/env settings
@@ -125,3 +126,33 @@
           (is (= [#'config/env] @*started))
           (is (= (with-out-str (println expected)) output))
           (is (not (.contains output "private"))))))))
+
+(deftest declarative-aliases-use-the-first-configured-value
+  (with-redefs [config/env {:supabase-public-url "https://preferred.example"
+                           :supabase-url "https://other.example"
+                           :supabase-service-key "preferred-key"
+                           :supabase-service-role-key "other-key"
+                           :supabase-database-url "jdbc:postgresql://preferred.example/site"
+                           :supabase-db-url "jdbc:postgresql://other.example/site"}]
+    (is (= "https://preferred.example" (platform/rest-base-url)))
+    (is (= "preferred-key" (platform/service-key)))
+    (is (= "jdbc:postgresql://preferred.example/site" (platform/database-url))))
+  (with-redefs [config/env {:supabase-public-url nil
+                           :supabase-url "https://fallback.example"
+                           :supabase-service-key nil
+                           :supabase-service-role-key "fallback-key"}]
+    (is (= "https://fallback.example" (platform/rest-base-url)))
+    (is (= "fallback-key" (platform/service-key)))))
+
+(deftest missing-settings-report-their-declared-config-aliases
+  (with-redefs [config/env {}]
+    (doseq [[resolve! expected] [[platform/rest-base-url
+                                 [:supabase-public-url :supabase-url :next-public-supabase-url]]
+                                [platform/service-key
+                                 [:supabase-service-key :supabase-service-role-key :service-supabaseservice-key]]]]
+      (let [error (try (resolve!) (catch clojure.lang.ExceptionInfo error error))]
+        (is (= {:config-keys expected} (ex-data error)))))
+    (let [expected (:expected-config (platform/database-target-summary))
+          error (try (platform/database-spec) (catch clojure.lang.ExceptionInfo error error))]
+      (is (= expected (:config-keys (ex-data error))))
+      (is (= [:postgres-password :pgpassword] (:password expected))))))

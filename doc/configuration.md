@@ -75,8 +75,13 @@ The Supabase platform adapter reads REST/JDBC settings and its TLS policy from
 `SUPABASE_INSECURE_TLS` map to the corresponding kebab-case EDN keys. JDBC can
 also use `:postgres-hostname`, `:postgres-db`, `:postgres-user`,
 `:postgres-password` and optional `:postgres-port` / `:supabase-db-sslmode`;
-existing Supabase, Postgres and PG aliases remain supported. The platform adapter
-uses the consolidated values rather than reading the process environment again.
+existing Supabase, Postgres and PG aliases remain supported. The adapter declares
+aliases in priority order, defaults, required JDBC components and TLS conversion
+in `connection-config`; one resolver maps the consolidated values to connection
+keys. Missing-config diagnostics derive keyword aliases from those declarations
+(`:config-keys` in exceptions, `:expected-config` in the missing database summary).
+Cprop maps shell names to those keywords; the adapter does not duplicate shell
+variable names or read the process environment again.
 The Supabase provisioning CLI starts only the mounted config state; its `doctor`
 command reports those same resolved settings without credentials.
 Browser settings support `SUPABASE_ANON_KEY` (or `SUPABASE_PUBLISHABLE_KEY`).

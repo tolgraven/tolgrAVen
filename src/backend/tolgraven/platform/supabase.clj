@@ -41,76 +41,80 @@
     (catalog/table-config declaration)
     (throw (ex-info "Supabase table is disabled or undeclared" {:table table}))))
 
+(def ^:private connection-config
+  {:jdbc {:database-url {:keys [:supabase-database-url :supabase-db-url]}
+          :host {:keys [:postgres-hostname :postgres-host :pghost], :required? true}
+          :database {:keys [:postgres-db :postgres-database :pgdatabase], :required? true}
+          :user {:keys [:postgres-user :pguser], :required? true}
+          :password {:keys [:postgres-password :pgpassword], :required? true}
+          :port {:keys [:postgres-port :pgport], :default "5432"}
+          :sslmode {:keys [:supabase-db-sslmode :postgres-sslmode], :default "disable"}}
+   :rest {:url {:keys [:supabase-public-url :supabase-url :next-public-supabase-url]
+                :error "Missing Supabase public URL"}
+          :service-key {:keys [:supabase-service-key :supabase-service-role-key :service-supabaseservice-key]
+                        :error "Missing Supabase service key"}
+          :insecure? {:keys [:supabase-insecure-tls]
+                      :default false
+                      :parse #(contains? #{true 1 "1" "true" "TRUE" "yes" "YES"} %)}}})
+
+(defn- connection-settings [group]
+  (reduce-kv
+    (fn [settings key {:keys [keys default parse]}]
+      (let [value (if-some [configured (first (keep #(get config/env %) keys))]
+                    configured
+                    default)]
+        (assoc settings key (if parse (parse value) value))))
+    {}
+    (get connection-config group)))
+
+(defn- expected-config [group]
+  (reduce-kv (fn [expected key definition] (assoc expected key (:keys definition)))
+             {}
+             (get connection-config group)))
+
+(defn- required-setting [group key]
+  (or (get (connection-settings group) key)
+      (let [{:keys [keys error]} (get-in connection-config [group key])]
+        (throw (ex-info error {:config-keys keys})))))
+
+(defn- jdbc-components-configured? [settings]
+  (every? (fn [[key {:keys [required?]}]]
+            (or (not required?) (get settings key)))
+          (:jdbc connection-config)))
+
 (defn- encode-query-value [value]
   (URLEncoder/encode (str value) "UTF-8"))
 
-(defn- jdbc-url-from-components []
-  (let [host (or (get config/env :postgres-hostname)
-                (get config/env :postgres-host)
-                (get config/env :pghost))
-        db-name (or (get config/env :postgres-db)
-                   (get config/env :postgres-database)
-                   (get config/env :pgdatabase))
-        user (or (get config/env :postgres-user)
-                (get config/env :pguser))
-        password (or (get config/env :postgres-password)
-                    (get config/env :pgpassword))]
-    (when (and host db-name user password)
-      (let [port (or (get config/env :postgres-port)
-                    (get config/env :pgport)
-                    "5432")
-            sslmode (or (get config/env :supabase-db-sslmode)
-                        (get config/env :postgres-sslmode)
-                        "disable")
-            params {"user" user
-                    "password" password
-                    "sslmode" sslmode}
-            query-string (->> params
-                              (map (fn [[k v]]
-                                     (str k "=" (encode-query-value v))))
-                              (string/join "&"))]
-        (str "jdbc:postgresql://" host ":" port "/" db-name "?" query-string)))))
+(defn- jdbc-url-from-components [{:keys [host database user password port sslmode] :as settings}]
+  (when (jdbc-components-configured? settings)
+    (let [params {"user" user
+                  "password" password
+                  "sslmode" sslmode}
+          query-string (->> params
+                            (map (fn [[key value]]
+                                   (str key "=" (encode-query-value value))))
+                            (string/join "&"))]
+      (str "jdbc:postgresql://" host ":" port "/" database "?" query-string))))
 
 (defn database-url []
-  (or (get config/env :supabase-database-url)
-      (get config/env :supabase-db-url)
-      (jdbc-url-from-components)))
+  (let [settings (connection-settings :jdbc)]
+    (or (:database-url settings)
+        (jdbc-url-from-components settings))))
 
 (defn database-target-summary []
-  (let [direct-url (or (get config/env :supabase-database-url)
-                      (get config/env :supabase-db-url))]
+  (let [settings (connection-settings :jdbc)]
     (cond
-      direct-url
-      {:source :database-url
-       :configured? true}
+      (:database-url settings)
+      {:source :database-url, :configured? true}
 
-      (jdbc-url-from-components)
-      {:source :components
-       :configured? true
-       :host (or (get config/env :postgres-hostname)
-                 (get config/env :postgres-host)
-                 (get config/env :pghost))
-       :port (or (get config/env :postgres-port)
-                 (get config/env :pgport)
-                 "5432")
-       :database (or (get config/env :postgres-db)
-                     (get config/env :postgres-database)
-                     (get config/env :pgdatabase))
-       :user (or (get config/env :postgres-user)
-                 (get config/env :pguser))
-       :sslmode (or (get config/env :supabase-db-sslmode)
-                    (get config/env :postgres-sslmode)
-                    "disable")}
+      (jdbc-components-configured? settings)
+      (merge {:source :components, :configured? true}
+             (select-keys settings [:host :port :database :user :sslmode]))
 
       :else
       {:source :missing
        :configured? false
-       :expected-env ["SUPABASE_DATABASE_URL"
-                      "SUPABASE_DB_URL"
-                      "POSTGRES_HOSTNAME"
-                      "POSTGRES_DB"
-                      "POSTGRES_USER"
-                      "POSTGRES_PASSWORD"]})))
+       :expected-config (expected-config :jdbc)})))
 
 (defn jdbc-available? []
   (boolean (database-url)))
@@ -118,30 +122,16 @@
 (defn database-spec []
   (or (database-url)
       (throw (ex-info "Missing Supabase database URL"
-                      {:env ["SUPABASE_DATABASE_URL"
-                             "SUPABASE_DB_URL"
-                             "POSTGRES_HOSTNAME"
-                             "POSTGRES_DB"
-                             "POSTGRES_USER"
-                             "POSTGRES_PASSWORD"]}))))
+                      {:config-keys (expected-config :jdbc)}))))
 
 (defn rest-base-url []
-  (or (get config/env :supabase-public-url)
-      (get config/env :supabase-url)
-      (get config/env :next-public-supabase-url)
-      (throw (ex-info "Missing Supabase public URL"
-                      {:env ["SUPABASE_PUBLIC_URL" "SUPABASE_URL" "NEXT_PUBLIC_SUPABASE_URL"]}))))
+  (required-setting :rest :url))
 
 (defn service-key []
-  (or (get config/env :supabase-service-key)
-      (get config/env :supabase-service-role-key)
-      (get config/env :service-supabaseservice-key)
-      (throw (ex-info "Missing Supabase service key"
-                      {:env ["SUPABASE_SERVICE_KEY" "SUPABASE_SERVICE_ROLE_KEY"]}))))
+  (required-setting :rest :service-key))
 
 (defn insecure-rest? []
-  (contains? #{true 1 "1" "true" "TRUE" "yes" "YES"}
-             (get config/env :supabase-insecure-tls)))
+  (:insecure? (connection-settings :rest)))
 
 (defn rest-url [path]
   (str (string/replace (rest-base-url) #"/+$" "")
