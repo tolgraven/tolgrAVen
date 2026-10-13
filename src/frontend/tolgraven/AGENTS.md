@@ -374,7 +374,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   reduced-motion and unnoticeable (opening scale <=2/3) finals settle directly.
   External departure/history returns use final-only policy from shared restore
   context; early head classification suppresses lazy preview discovery before JS.
-  Paired SSR emits final-only markup. SPA navigation clears that document policy.
+  Paired SSR emits final-only markup. SPA navigation, including query/history
+  destinations, clears that image policy while retaining the existing document clock.
   Native decode/source completion and ref cleanup remain exact-node/currentSrc guarded.
   Shared `restore/document-form` preserves three React document slots in Node/local
   SSR and hydration so native image useId tokens match. `src/bootstrap/bootstrap/`

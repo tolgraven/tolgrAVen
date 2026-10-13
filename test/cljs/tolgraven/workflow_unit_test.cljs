@@ -1546,6 +1546,44 @@
       (is (not (restore/document-enter?)))
       (finally (reset! restore/*context before)))))
 
+(deftest query-navigation-ends-direct-images-without-restarting-the-document
+  (let [before @restore/*context
+        url (.-href js/location)
+        history-state (.-state js/history)
+        root (.-documentElement js/document)
+        marker (.getAttribute root "data-image-direct")]
+    (try
+      (restore/begin! {:hydrate? true})
+      (restore/direct-images!)
+      (restore/hydrated!)
+      (is (restore/direct-images?))
+      (let [query-url (js/URL. url)]
+        (.set (.-searchParams query-url) "image-query-proof" "changed")
+        (.replaceState js/history history-state "" query-url))
+      (restore/navigate! (.-pathname js/location))
+      (is (not (.hasAttribute root "data-image-direct")))
+      (is (not (restore/direct-images?)))
+      (is (restore/document-enter?) "The same document retains its SSR clock")
+      (.replaceState js/history history-state "" url)
+      (restore/navigate! (.-pathname js/location))
+      (restore/spa-back!)
+      (is (not (restore/direct-images?)) "SPA query Back cannot revive the policy")
+      (is (restore/document-enter?) "SPA query Back preserves the original clock")
+      (restore/begin! {:back? true})
+      (restore/direct-images!)
+      (.replaceState js/history history-state "" (str (.-pathname js/location) "?image-query-proof=back"))
+      (restore/navigate! (.-pathname js/location))
+      (is (not (restore/direct-images?)) "Back policy also ends on ordinary query navigation")
+      (is (not (restore/document-enter?)) "A settled return does not start an SSR entrance")
+      (restore/spa-back!)
+      (is (restore/skip-enter?) "SPA Back still retains its page-motion contract")
+      (is (not (restore/direct-images?)) "SPA Back uses the ordinary destination image lifecycle")
+      (finally
+        (.replaceState js/history history-state "" url)
+        (reset! restore/*context before)
+        (if marker (.setAttribute root "data-image-direct" marker)
+                   (.removeAttribute root "data-image-direct"))))))
+
 (deftest restored-deep-thread-is-complete-in-the-first-mounted-commit
   (async done
     (-> (go-promise
