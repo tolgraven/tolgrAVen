@@ -86,6 +86,14 @@ Do not retain completed investigation diaries or historical test counts as curre
   constraints without logging raw values, credentials, or event arguments.
 
 ## Build, Test, and Development Commands
+- Agent Java/Lein builds use `tolgraven-cpu run -- <command>` (serialized, isolated
+  Docker prefab, default 1 CPU/2 GiB). Dockerfile/prefab work uses
+  `tolgraven-cpu run --mode buildkit -- <command>` so BuildKit steps also have a quota.
+  Increase a documented heap/memory limit only when required; avoid competing watched output.
+  `--mode host` uses nice 10 and the shared build slot when live watches/interop
+  require macOS. The installed monitor owns the project Java/renderer aggregate
+  budget; never issue ad hoc STOP/CONT or global process kills. See
+  `doc/resource-controls.md` for scope, telemetry, recovery and explicit overrides.
 - `lein repl`: start HTTP and the Clojure REPL; deferred Shadow watches compile
   sequentially without blocking REPL acknowledgement. `(cljs-repl)` waits for
   startup and selects the browser runtime in the calling session. See `README.md`.
@@ -269,6 +277,10 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 - See `doc/testing.md` for mounted subscription workflows, live integration boundaries and browser checks. Unit replacements do not establish live service behavior.
 
 ## Commit & Pull Request Guidelines
+- Always open and keep in-progress PRs as drafts. Mark them ready for review only
+  after implementation and required verification are complete, the current head is
+  pushed, and the description matches it. Return a PR to draft when follow-up
+  implementation starts.
 - A user request to make or update a PR authorizes committing the task changes,
   pushing its feature branch, and creating/updating the PR in
   `https://github.com/tolgraven/tolgrAVen`; do not ask again solely for these
