@@ -871,7 +871,7 @@ def shadow_cache(args, output, command, endpoint):
         save_json(directory / 'metadata.json', record)
         print('Shadow cache:', key, '(worktree-scoped disk cache)', flush=True)
         try:
-            yield builds, handle
+            yield builds, handle, image.stdout.strip()
         finally:
             # A surviving guardian retains the inherited lock while its container
             # can still write. No other invocation/pruner can enter that identity.
@@ -1023,16 +1023,15 @@ def docker_run(args, command, lock, output, endpoint, cache):
     guardian, guardian_identity = start_docker_guardian(owner, name, token, endpoint, lock, (cache[1],) if cache else ())
     save_json(reservation_path(name), {'owner': owner, 'guardian': guardian_identity, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
     bootstrap = docker_bootstrap(args.node_deps)
+    image = cache[2] if cache else args.image
+    cache_mount = ['--mount', f'type=bind,source={cache[0]},target=/workspace/.shadow-cljs/builds'] if cache else []
     cmd = ['docker', '--host', endpoint, 'run', '--rm', '--init', '--name', name, '--cpus', str(args.cpus),
            '--memory', args.memory, '--memory-swap', args.memory, '--pids-limit', '512',
            '--label', 'tolgraven.cpu.token=' + token,
            '--mount', f'type=bind,source={output},target=/workspace', '-w', '/workspace',
            '--mount', f'type=bind,source={maven_repository},target=/root/.m2/repository',
            '-e', f'JAVA_TOOL_OPTIONS={JVM_POOLS} -Xmx{args.java_heap}',
-           args.image, 'sh', '-c', bootstrap, 'cpu-build', *command]
-    if cache:
-        cmd[cmd.index(args.image):cmd.index(args.image)] = [
-            '--mount', f'type=bind,source={cache[0]},target=/workspace/.shadow-cljs/builds']
+           *cache_mount, image, 'sh', '-c', bootstrap, 'cpu-build', *command]
     print('Isolated output:', output, '\nDocker budget:', args.cpus, 'cores /', args.memory, flush=True)
     child = subprocess.Popen(cmd, env=docker_environment())
     try:

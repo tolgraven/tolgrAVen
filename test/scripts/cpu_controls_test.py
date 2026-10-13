@@ -303,6 +303,21 @@ class PolicyTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 cpu.start_docker_guardian({'path':'/python'},'owned','token','unix:///fixture.sock',lock)
 
+    def test_docker_guardian_inherits_both_slot_and_cache_descriptor(self):
+        fake = mock.Mock(pid=123)
+        owner = {'path': '/python'}
+        identity = {'pid': 123, 'path': '/python'}
+        with tempfile.TemporaryFile() as slot, tempfile.TemporaryFile() as cache, \
+                mock.patch.object(cpu.subprocess, 'Popen', return_value=fake) as spawn, \
+                mock.patch.object(cpu, 'packet_receive', return_value={'guardian': identity}), \
+                mock.patch.object(cpu, 'MacProcesses') as processes:
+            processes.return_value.same.return_value = True
+            cpu.start_docker_guardian(owner, 'owned', 'token', 'unix:///fixture', slot, (cache,))
+            descriptors = spawn.call_args.kwargs['pass_fds']
+            self.assertIn(slot.fileno(), descriptors)
+            self.assertIn(cache.fileno(), descriptors)
+            self.assertEqual(len(descriptors), 3)
+
     def test_packet_boundaries(self):
         import socket
         a,b=socket.socketpair()
