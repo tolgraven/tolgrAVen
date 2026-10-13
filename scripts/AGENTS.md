@@ -6,7 +6,9 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `build/styles.mjs` compiles shell, development inspector and module CSS entries
   with locked Sass/PostCSS, compiles the separate icon sheet and vendors
   Leaflet images. Emit UTF-8 without a byte-order marker so the same sheets can
-  be inlined safely. Keep `npm run build` and the watch workflow aligned.
+  be inlined safely. `--if-stale` verifies source/tool/font/icon-declaration inputs
+  and every raw/minified output before skipping compilation; development startup
+  runs that guard before opening HTTP. Keep full builds and the watch workflow aligned.
 - `test/ssr.clj` saves renderer export metadata with each HTML/state hydration
   fixture; never infer rendered exports from the browser bundle inventory.
 - `bb prod:build` builds CSS and calls the existing Shadow release API sequentially

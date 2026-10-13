@@ -2,6 +2,11 @@
 
 Keep this guide and `doc/testing.md` current when test/build entry points change.
 
+- `node test/scripts/styles_test.mjs` checks fresh CSS skips, stale inputs,
+  overwritten/missing outputs and declaration/tool/font revisions in a disposable
+  tree. Startup tests must prove a style failure prevents HTTP from opening while
+  successful styles retain the deferred Shadow startup.
+
 - Cold layout/handler JVM suites require compiled `:document` resources. Build
   them in the isolated test checkout, or reuse their owning Shadow watch; see
   `doc/testing.md`.

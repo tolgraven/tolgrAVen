@@ -1,23 +1,87 @@
 /** Build the shell and independent feature sheets with the same locked tools. */
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import * as sass from 'sass';
-import postcss from 'postcss';
-import autoprefixer from 'autoprefixer';
+import crypto from 'node:crypto';
 
 const root = 'resources/scss';
 const output = process.env.CSS_OUTPUT_DIR || 'resources/public/css/tolgraven';
 const watch = process.argv.includes('--watch');
 const sassOnly = process.argv.includes('--sass-only');
 const postcssOnly = process.argv.includes('--postcss-only');
-async function build() {
-  const entries = ['main.scss', 'dev.scss', 'icons.scss', ...(await fs.readdir(`${root}/modules`))
+const ifStale = process.argv.includes('--if-stale');
+const stamp = path.join(output, '.build-revision.json');
+
+async function entries() {
+  return ['main.scss', 'dev.scss', 'icons.scss', ...(await fs.readdir(`${root}/modules`))
     .filter(name => name.endsWith('.scss')).sort().map(name => `modules/${name}`)];
-  for (const entry of entries) {
+}
+
+async function inputFiles(directory, extensions) {
+  try {
+    return (await fs.readdir(directory, {recursive: true}))
+      .filter(name => extensions.some(extension => name.endsWith(extension)))
+      .map(name => path.join(directory, name));
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+}
+
+async function revision() {
+  const inputs = [
+    'scripts/build/styles.mjs', 'package.json', 'package-lock.json', 'resources/icon-fonts.json',
+    'resources/public/css/opensans.css',
+    ...await inputFiles(root, ['.scss']),
+    // Module/component icon declarations and their macros own the style inventory.
+    ...await inputFiles('src/frontend', ['.cljs', '.cljc']),
+    ...await inputFiles('src/cljc', ['.cljc']),
+    ...await inputFiles('src/backend', ['.clj']),
+  ].sort();
+  const hash = crypto.createHash('sha256');
+  for (const file of inputs) {
+    hash.update(file).update('\0').update(await fs.readFile(file)).update('\0');
+  }
+  return hash.digest('hex');
+}
+
+const digest = contents => crypto.createHash('sha256').update(contents).digest('hex');
+async function outputHashes(buildEntries) {
+  const hashes = {};
+  for (const entry of buildEntries) {
+    const name = entry.replace(/\.scss$/, '.css');
+    for (const file of [name, name.replace(/\.css$/, '.min.css')]) {
+      hashes[file] = digest(await fs.readFile(path.join(output, file)));
+    }
+  }
+  return hashes;
+}
+
+async function current(buildEntries, inputRevision) {
+  try {
+    const saved = JSON.parse(await fs.readFile(stamp, 'utf8'));
+    return saved?.revision === inputRevision &&
+      JSON.stringify(saved.outputs) === JSON.stringify(await outputHashes(buildEntries));
+  } catch (error) {
+    if (error.code === 'ENOENT' || error instanceof SyntaxError) return false;
+    throw error;
+  }
+}
+
+async function build() {
+  const buildEntries = await entries();
+  const inputRevision = await revision();
+  if (ifStale && await current(buildEntries, inputRevision)) {
+    console.log(`CSS is current in ${output}`);
+    return;
+  }
+  const [{compile}, {default: postcss}, {default: autoprefixer}] = await Promise.all([
+    import('sass'), import('postcss'), import('autoprefixer'),
+  ]);
+  for (const entry of buildEntries) {
     const file = path.join(output, entry.replace(/\.scss$/, '.css'));
     await fs.mkdir(path.dirname(file), {recursive: true});
     if (!postcssOnly) {
-      const result = sass.compile(path.join(root, entry), {style: 'compressed', charset: false});
+      const result = compile(path.join(root, entry), {style: 'compressed', charset: false});
       await fs.writeFile(file, entry === 'modules/maps.scss'
         ? result.css.replaceAll('url(images/', 'url(/vendor/leaflet/images/') : result.css);
     }
@@ -28,8 +92,14 @@ async function build() {
     }
   }
   await fs.cp('node_modules/leaflet/dist/images', 'resources/public/vendor/leaflet/images', {recursive: true});
-  console.log(`Built ${entries.length} CSS entries in ${output}`);
+  if (!sassOnly && !postcssOnly) {
+    await fs.writeFile(stamp, JSON.stringify({revision: inputRevision, outputs: await outputHashes(buildEntries)}));
+  } else {
+    await fs.rm(stamp, {force: true});
+  }
+  console.log(`Built ${buildEntries.length} CSS entries in ${output}`);
 }
+if (ifStale && (sassOnly || postcssOnly)) throw new Error('--if-stale requires the complete CSS build');
 await build();
 if (watch) {
   // Poll like the existing Sass watcher so bind mounts and editors behave alike.

@@ -22,7 +22,9 @@ make hooks
 lein repl
 ```
 
-The development server runs at http://localhost:4000. Run `npm run dev` in a
+The development server checks CSS before opening HTTP and rebuilds stale or missing
+sheets with the locked tools. Fresh output skips compilation. It runs at
+http://localhost:4000. Run `npm run dev` in a
 second terminal to watch CSS. The Clojure REPL becomes available before the
 initial Shadow compilations finish. After a short deferral, watches start in
 order: `:return-worker`, `:ssr` when enabled, then `:app-dev`. `(cljs-repl)` waits
