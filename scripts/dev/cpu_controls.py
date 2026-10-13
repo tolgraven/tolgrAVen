@@ -764,7 +764,7 @@ def shadow_cache_key(checkout, output, image_id, command):
             declarations.append(path.read_text())
     profiles = sorted(set(re.findall(r'with-profile[\"\']?\s+[\"\']?([+\w,./-]+)', '\n'.join(declarations))))
     fingerprints = {}
-    for name in ('project.clj', 'package.json', 'package-lock.json', 'resources/site.edn'):
+    for name in ('project.clj', 'package.json', 'package-lock.json', 'resources/site.edn', 'resources/site.overrides.edn'):
         path = output / name
         fingerprints[name] = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
     policy = [SHADOW_CACHE_VERSION, str(checkout.resolve()), image_id, profiles or ['default'], fingerprints]
@@ -980,8 +980,9 @@ def parse_memory(value):
 def docker_bootstrap(node_deps):
     if node_deps == 'skip':
         return 'exec "$@"'
-    return ('if cmp -s package-lock.json /opt/prefab-package-lock.json; then '
+    return ('cpu_deps_started=$(date +%s); if cmp -s package-lock.json /opt/prefab-package-lock.json; then '
             'ln -s /usr/src/app/node_modules node_modules; else npm ci --no-audit --no-fund; fi; '
+            'printf "Dependency setup: %ss\\n" "$(( $(date +%s) - cpu_deps_started ))"; '
             'exec "$@"')
 
 
@@ -995,7 +996,9 @@ def run(args):
         return host_run(args, command, None)
     if args.cpus > BUILD_CPUS:
         raise RuntimeError('Each of two build slots permits at most 1.5 CPUs; the shared Docker ceiling is 3 CPUs.')
+    queued = time.monotonic()
     with build_lock() as lock:
+        print(f'Build slot wait: {time.monotonic() - queued:.3f}s', flush=True)
         if args.mode == 'host':
             return host_run(args, command, lock)
         if args.mode == 'buildkit':

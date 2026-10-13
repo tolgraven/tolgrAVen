@@ -395,6 +395,9 @@ class ShadowCacheTests(unittest.TestCase):
                                           (root / 'worktree', 'sha256:two', command),
                                           (root / 'worktree', 'sha256:one', ['lein', 'with-profile', 'prod,provided'])]:
                 self.assertNotEqual(key, cpu.shadow_cache_key(checkout, source, image, args))
+            (source / 'resources/site.overrides.edn').write_text('CMS selection')
+            self.assertNotEqual(key, cpu.shadow_cache_key(root / 'worktree', source, 'sha256:one', command))
+            (source / 'resources/site.overrides.edn').unlink()
             (source / 'resources/site.edn').write_text('other site')
             self.assertNotEqual(key, cpu.shadow_cache_key(root / 'worktree', source, 'sha256:one', command))
 

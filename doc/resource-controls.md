@@ -55,6 +55,16 @@ budget; active writers may temporarily exceed that budget. `tolgraven-cpu cache-
 runs the same cleanup explicitly. It preserves lock files to prevent inode races.
 Compiler cache cleanup is separate from finished output snapshot cleanup.
 
+Reproduce compiler-cache measurements with
+`python3 scripts/test/shadow_cache.py --report /tmp/shadow-document.json` or
+`--target app-test --report /tmp/shadow-app-test.json`. These invoke the installed
+launcher with the normal budgets and write logs plus JSON outside the checkout.
+The document matrix verifies unchanged reuse, reporting-prefix reuse, a changed
+source and its restoration; fixture edits exist only in isolated snapshots.
+The full browser-test graph measures cold/warm/prefix variants. Reports separate
+queue wait, dependency setup, compiler time and total wall time, and capture load
+and the active budget. Coordinate a quiet build window for timing comparisons.
+
 Copy wanted output back only when the owning watch is stopped or absent. The
 launcher never writes a live checkout's `target` or public build files.
 
