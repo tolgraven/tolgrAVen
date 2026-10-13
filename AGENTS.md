@@ -309,6 +309,12 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   `https://github.com/tolgraven/tolgrAVen`; do not ask again solely for these
   publication steps. This does not independently authorize force pushes, branch
   deletion, merges, deployment, unrelated changes, or publication elsewhere.
+- GitHub Copilot code review credits are exhausted. Before every merge, perform a
+  proper review with the [Code Review plugin](plugin://code-review@openai-bundled/).
+  Review the complete current diff and relevant surrounding code for correctness,
+  regressions, security, preservation of unfinished work, and verification gaps;
+  resolve actionable findings and review any resulting changes before merging.
+  Passing CI or a Codex Security scan does not replace this review.
 - Commit each completed, verified task before starting the next. Subagents commit their own finished changes; coordinate the shared index so unrelated work is never included.
 - Commit messages follow `scope: summary` (examples in git history: `scss: fix theme var helper broken`). Can also use `scope: subscope: summary`. Keep summaries short and imperative.
 - PRs should include: a clear description, related issue links, and screenshots/gifs for UI changes.
