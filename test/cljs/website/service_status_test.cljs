@@ -8,7 +8,7 @@
 (deftest notice-renders-and-retry-clears-it-on-recovery
   (async done
     (let [container (.createElement js/document "div") root (r/create-root container)
-          before @status/*failures events (atom []) dispatch r/dispatch]
+          before @status/*failures events (atom []) dispatch (r/dispatch-function)]
       (reset! status/*failures {})
       (.appendChild (.-body js/document) container)
       (r/set-dispatch-function! #(swap! events conj %))

@@ -19,6 +19,7 @@
     [website.ssr.client :as client]
     [website.components.page :as page]
     [website.modules.blog.module :as blog]
+    [website.modules.markdown.module :as markdown]
     [website.modules.markdown-components.module :as authored]
     [website.modules.settings.module :as settings]
     [website.modules.search.module :as search]
@@ -38,6 +39,7 @@
    :carousel carousel/spec
    :docs docs/spec
    :blog blog/spec
+   :markdown markdown/spec
    :markdown-components authored/spec
    :settings settings/spec
    :search search/spec

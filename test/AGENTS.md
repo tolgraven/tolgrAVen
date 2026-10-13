@@ -48,6 +48,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Release browser-test builds include selected module entries through Shadow's
   native namespace list; development uses preloads. Release excludes development
   preloads, so both paths must expose the same lazy owner inventory.
+  Hydration fixtures that replace the module map must include each lazy parser
+  and renderer owner; retained SSR HTML alone does not prove those owners mounted.
   Keep `:browser-test` in selected release test reader features so test fixtures
   can render server markup through the framework shim without enabling development
   tooling. Optimized hydration checks use `website.nested-hydration-runner`;
