@@ -16,8 +16,11 @@
   --dev-key: hsl(var(--hue-4), 28%, var(--lum-dark-2));
   --dev-fg: var(--light-1); --dev-line: hsl(var(--hue-4), 20%, var(--lum-dark-6));
   position: fixed; inset: auto .75rem .75rem auto; z-index: 100001;
-  color: var(--dev-fg); font: 0.8125rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--dev-fg); font: 0.6875rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
   button, input, select { font: inherit; color: inherit; border: 0.0625rem solid var(--dev-line); border-radius: .3rem; background: var(--dev-row); padding: .3rem .6rem; margin: .15rem; }
+  // Site buttons enlarge direct span/label children. Inspector summaries must
+  // retain the same typography whether rendered as a button or a plain value.
+  button > span, button > label { font: inherit; }
   button { cursor: pointer; min-height: 1.875rem; }
   button:hover { background: var(--dev-line); }
   button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
@@ -47,15 +50,15 @@
 }
 .dev-value {
   min-width: 0;
-  &__preview { display: inline; font-size: 0.75rem; }
+  &__preview { display: inline; font: inherit; }
   &__preview-item { display: inline; }
   &__delimiter { color: var(--purple-3); font-weight: bold; }
   &__separator { color: var(--blue); }
-  &__preview.dev-value--vector > .dev-value__delimiter { color: var(--aqua-3); font-size: 1.3em; text-shadow: 0 0 .3em var(--aqua); }
+  &__preview.dev-value--vector > .dev-value__delimiter { color: var(--aqua-3); text-shadow: 0 0 .3em var(--aqua); }
   &__preview.dev-value--list > .dev-value__delimiter { color: var(--yellow-3); }
   &__preview.dev-value--set > .dev-value__delimiter { color: var(--orange-3); }
   &__chevron { display: inline-block; width: 1.1em; color: var(--blue-3); }
-  &__count { color: var(--blue); font-size: 0.625rem; }
+  &__count { color: var(--blue); font: inherit; }
   &__entries { margin: .3rem 0 .5rem .6rem; padding: .4rem 1.2rem .4rem .5rem; position: relative; border-radius: .5rem; background: var(--dev-surface); box-shadow: inset 0 0.0625rem 0.1875rem #0005; }
   &__entry { display: grid; grid-template-columns: minmax(4ch, var(--dev-key-width, 12ch)) minmax(0, 1fr); gap: 0; margin: .3rem 0; border-radius: .4rem; background: var(--dev-row); box-shadow: 0 0.0625rem 0.25rem #0004; overflow: hidden; }
   &__summary { border: 0 !important; background: none !important; padding: 0 .2rem !important; min-height: 1.5rem !important; }
