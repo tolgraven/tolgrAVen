@@ -17,6 +17,83 @@ spec.loader.exec_module(cpu)
 
 
 class PolicyTests(unittest.TestCase):
+    def test_build_defaults_double_memory_without_increasing_cpu_or_slots(self):
+        with mock.patch.object(sys, 'argv', ['cpu-controls', 'run', '--', 'true']), \
+             mock.patch.object(cpu, 'run', return_value=0) as run:
+            self.assertEqual(cpu.main(), 0)
+            args = run.call_args.args[0]
+            self.assertEqual(args.memory, '4g')
+            self.assertEqual(args.java_heap, '2048m')
+            self.assertEqual(args.cpus, 1.5)
+
+    def test_two_locks_admit_two_builds_and_queue_a_third(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            first = cpu.try_build_lock()
+            second = cpu.try_build_lock()
+            try:
+                self.assertIsNotNone(first)
+                self.assertIsNotNone(second)
+                self.assertNotEqual(first.name, second.name)
+                self.assertIsNone(cpu.try_build_lock())
+                first.close()
+                replacement = cpu.try_build_lock()
+                try:
+                    self.assertEqual(replacement.name, first.name)
+                    self.assertIsNone(cpu.try_build_lock())
+                finally:
+                    replacement.close()
+            finally:
+                first.close()
+                second.close()
+
+    def test_legacy_lock_occupies_one_of_the_two_slots(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            with (cpu.STATE / 'build.lock').open('w') as legacy:
+                cpu.fcntl.flock(legacy, cpu.fcntl.LOCK_EX)
+                with cpu.try_build_lock() as current:
+                    self.assertEqual(Path(current.name).name, 'build-1.lock')
+                    self.assertIsNone(cpu.try_build_lock())
+
+    def test_inherited_lock_remains_owned_until_guardian_exits(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            first = cpu.try_build_lock()
+            second = cpu.try_build_lock()
+            guardian = subprocess.Popen([sys.executable, '-c', 'import sys;sys.stdin.read()'],
+                                        stdin=subprocess.PIPE, pass_fds=(first.fileno(),))
+            first.close()
+            try:
+                self.assertIsNone(cpu.try_build_lock())
+                guardian.stdin.close()
+                guardian.wait(timeout=3)
+                with cpu.try_build_lock() as replacement:
+                    self.assertIsNotNone(replacement)
+            finally:
+                if guardian.poll() is None:
+                    guardian.terminate()
+                    guardian.wait(timeout=3)
+                second.close()
+
+    def test_cpu_reservations_sum_live_workers_and_cleanup_only_named_owner(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            records = [('legacy', 1, 1), ('new', 2, 1.5), ('stale', 3, 1.5)]
+            for name, pid, cpus in records:
+                path = cpu.STATE / 'docker-active.json' if name == 'legacy' else cpu.reservation_path(name)
+                path.write_text(json.dumps({'name': name, 'owner': {'pid': pid}, 'cpus': cpus}))
+            proc = mock.Mock()
+            proc.same.side_effect = lambda record: record['pid'] in (1, 2)
+            self.assertEqual(cpu.active_docker_quota(proc), 2.5)
+            cpu.release_reservation('new')
+            self.assertEqual(cpu.active_docker_quota(proc), 1)
+            self.assertEqual({record['name'] for _, record in cpu.build_records()}, {'legacy', 'stale'})
+
+    def test_per_slot_cpu_override_cannot_exceed_combined_ceiling(self):
+        args = mock.Mock(action='run', command=['true'], cpus=3)
+        with mock.patch.object(cpu, 'build_lock') as acquire:
+            with self.assertRaisesRegex(RuntimeError, 'shared Docker ceiling is 3'):
+                cpu.run(args)
+            acquire.assert_not_called()
+        self.assertEqual(cpu.BUILD_SLOTS * cpu.BUILD_CPUS, 3)
+
     def test_buildkit_driver_options_bound_whole_worker_and_load_output(self):
         self.assertEqual(cpu.buildkit_options(1, '2g'),
                          ['cpu-quota=100000', 'cpu-period=100000', 'memory=2g',
@@ -89,13 +166,88 @@ class PolicyTests(unittest.TestCase):
 
     def test_selection_excludes_other_users_helpers_pre_stopped_and_unrelated_java(self):
         def p(pid, path, parent=1, status=2):
-            return {'pid': pid, 'path': path, 'ppid': parent, 'status': status, 'start': [1, pid], 'uid': os.getuid()}
+            return {'pid': pid, 'path': path, 'ppid': parent, 'status': status, 'start': [1, pid], 'uid': os.getuid(), 'pgid': pid}
         bundle = '/Applications/ChatGPT.app/Contents/'
         items = {2:p(2, bundle+'MacOS/ChatGPT'), 3:p(3,bundle+'Helpers/Codex (Renderer)',2),
                  4:p(4,bundle+'Resources/codex'), 5:p(5,'/usr/bin/java'), 6:p(6,'/usr/bin/java'),
                  7:p(7,bundle+'Helpers/Codex (Renderer)',2,4), 8:p(8,bundle+'Helpers/Codex (Renderer)',1)}
-        selected = cpu.select_targets(items,[Path('/project')],{4},lambda pid:Path('/project') if pid==5 else Path('/other'))
+        selected = cpu.select_targets(items,[Path('/project')],{4},lambda pid:Path('/project') if pid==5 else Path('/other'), owned_roots=[items[5]])
         self.assertEqual(set(selected), {3,5})
+
+    def test_user_lein_tree_is_unthrottled_but_registered_backend_workers_are_selected(self):
+        def record(pid, parent, group, path='/usr/bin/java'):
+            return {'pid': pid, 'ppid': parent, 'pgid': group, 'path': path,
+                    'start': [1, pid], 'uid': os.getuid(), 'status': 2}
+        processes = {5: record(5, 1, 5), 6: record(6, 5, 5),
+                     20: record(20, 1, 20, '/usr/bin/lein'),
+                     21: record(21, 20, 20), 22: record(22, 21, 20)}
+        project = lambda pid: Path('/project')
+        self.assertEqual(cpu.select_targets(processes, [Path('/project')], set(), project), {})
+        selected = cpu.select_targets(processes, [Path('/project')], set(), project,
+                                      owned_roots=[processes[20]])
+        self.assertEqual(set(selected), {21, 22})
+        processes[22]['pgid'] = 5
+        self.assertEqual(set(cpu.select_targets(processes, [Path('/project')], set(), project,
+                                               owned_roots=[processes[20]])), {21})
+
+    def test_host_registration_requires_live_owner_root_birth_and_project(self):
+        owner = {'pid': 10, 'start': [1, 10], 'uid': os.getuid(), 'path': '/python'}
+        root = {'pid': 20, 'start': [2, 20], 'uid': os.getuid(),
+                'pgid': 20, 'path': '/usr/bin/nice'}
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            token = 'a' * 32
+            path = cpu.host_registration_path(token)
+            path.parent.mkdir()
+            cpu.save_json(path, {'owner': owner, 'root': root, 'checkout': '/project'})
+            proc = mock.Mock()
+            proc.same.return_value = True
+            # Exec changes the path but never the root's birth identity/group.
+            current = dict(root, path='/usr/bin/java')
+            proc.identity.return_value = current
+            self.assertEqual(cpu.registered_host_roots(proc, [Path('/project')]), [current])
+            proc.identity.return_value = dict(current, start=[3, 20])
+            self.assertEqual(cpu.registered_host_roots(proc, [Path('/project')]), [])
+            proc.identity.return_value = current
+            proc.same.return_value = False
+            self.assertEqual(cpu.registered_host_roots(proc, [Path('/project')]), [])
+            proc.same.return_value = True
+            self.assertEqual(cpu.registered_host_roots(proc, [Path('/other')]), [])
+
+    def test_host_launcher_registers_family_until_confirmed_cleanup(self):
+        owner = {'pid': 10, 'start': [1, 10], 'uid': os.getuid(), 'path': '/python'}
+        root = {'pid': 20, 'start': [2, 20], 'uid': os.getuid(), 'pgid': 20, 'path': '/nice'}
+        args = mock.Mock(checkout='/project', java_heap='1024m')
+        child, guardian = mock.Mock(pid=20), mock.Mock(pid=30)
+        proc = mock.Mock()
+        proc.identity.side_effect = [owner, root]
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)), \
+             mock.patch.object(cpu, 'MacProcesses', return_value=proc), \
+             mock.patch.object(cpu.subprocess, 'Popen', side_effect=[child, guardian]), \
+             mock.patch.object(cpu, 'stop_host_family', return_value=True):
+            def wait():
+                records = list((cpu.STATE / 'host-active').glob('*.json'))
+                self.assertEqual(len(records), 1)
+                self.assertEqual(json.loads(records[0].read_text())['root'], root)
+                return 0
+            child.wait.side_effect = wait
+            self.assertEqual(cpu.host_run(args, ['lein', 'run'], None), 0)
+            self.assertEqual(list((cpu.STATE / 'host-active').glob('*.json')), [])
+            guardian.terminate.assert_called_once()
+
+    def test_host_registration_write_failure_still_cleans_up_child(self):
+        owner = {'pid': 10, 'start': [1, 10], 'uid': os.getuid(), 'path': '/python'}
+        root = {'pid': 20, 'start': [2, 20], 'uid': os.getuid(), 'pgid': 20, 'path': '/nice'}
+        proc = mock.Mock()
+        proc.identity.side_effect = [owner, root]
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)), \
+             mock.patch.object(cpu, 'MacProcesses', return_value=proc), \
+             mock.patch.object(cpu.subprocess, 'Popen', return_value=mock.Mock(pid=20)) as popen, \
+             mock.patch.object(cpu, 'save_json', side_effect=OSError('fixture write failure')), \
+             mock.patch.object(cpu, 'stop_host_family', return_value=True) as cleanup:
+            with self.assertRaisesRegex(OSError, 'fixture write failure'):
+                cpu.host_run(mock.Mock(checkout='/project', java_heap='1024m'), ['lein', 'run'], None)
+            cleanup.assert_called_once_with(root)
+            self.assertEqual(popen.call_count, 1)
 
     def test_pid_reuse_never_receives_continue(self):
         proc = mock.Mock()
@@ -150,6 +302,21 @@ class PolicyTests(unittest.TestCase):
         with tempfile.TemporaryFile() as lock, mock.patch.object(cpu.subprocess,'Popen',return_value=fake), mock.patch.object(cpu,'packet_receive',return_value={'guardian':None}):
             with self.assertRaises(RuntimeError):
                 cpu.start_docker_guardian({'path':'/python'},'owned','token','unix:///fixture.sock',lock)
+
+    def test_docker_guardian_inherits_both_slot_and_cache_descriptor(self):
+        fake = mock.Mock(pid=123)
+        owner = {'path': '/python'}
+        identity = {'pid': 123, 'path': '/python'}
+        with tempfile.TemporaryFile() as slot, tempfile.TemporaryFile() as cache, \
+                mock.patch.object(cpu.subprocess, 'Popen', return_value=fake) as spawn, \
+                mock.patch.object(cpu, 'packet_receive', return_value={'guardian': identity}), \
+                mock.patch.object(cpu, 'MacProcesses') as processes:
+            processes.return_value.same.return_value = True
+            cpu.start_docker_guardian(owner, 'owned', 'token', 'unix:///fixture', slot, (cache,))
+            descriptors = spawn.call_args.kwargs['pass_fds']
+            self.assertIn(slot.fileno(), descriptors)
+            self.assertIn(cache.fileno(), descriptors)
+            self.assertEqual(len(descriptors), 3)
 
     def test_packet_boundaries(self):
         import socket
@@ -209,6 +376,107 @@ class PolicyTests(unittest.TestCase):
             cpu.snapshot(root,out)
             self.assertEqual(existing.read_text(),'destination already configured')
             self.assertFalse((out/'env/test/resources/config.edn').exists())
+
+
+class ShadowCacheTests(unittest.TestCase):
+    def test_identity_retains_minor_command_changes_but_separates_worktree_profile_toolchain_site(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); source = root / 'source'; source.mkdir()
+            (source / 'project.clj').write_text('deps')
+            (source / 'package-lock.json').write_text('npm')
+            (source / 'resources').mkdir(); (source / 'resources/site.edn').write_text('site')
+            command = ['lein', 'with-profile', 'provided', 'run', '-m', 'shadow.cljs.devtools.cli', 'compile', 'document']
+            key = cpu.shadow_cache_key(root / 'worktree', source, 'sha256:one', command)
+            varied = ['bash', '-lc', 'echo report; lein with-profile provided run -m shadow.cljs.devtools.cli compile app-test; echo done']
+            self.assertEqual(key, cpu.shadow_cache_key(root / 'worktree', source, 'sha256:one', varied))
+            (source / 'source.cljs').write_text('changed source')
+            self.assertEqual(key, cpu.shadow_cache_key(root / 'worktree', source, 'sha256:one', command))
+            for checkout, image, args in [(root / 'other', 'sha256:one', command),
+                                          (root / 'worktree', 'sha256:two', command),
+                                          (root / 'worktree', 'sha256:one', ['lein', 'with-profile', 'prod,provided'])]:
+                self.assertNotEqual(key, cpu.shadow_cache_key(checkout, source, image, args))
+            (source / 'resources/site.overrides.edn').write_text('CMS selection')
+            self.assertNotEqual(key, cpu.shadow_cache_key(root / 'worktree', source, 'sha256:one', command))
+            (source / 'resources/site.overrides.edn').unlink()
+            (source / 'resources/site.edn').write_text('other site')
+            self.assertNotEqual(key, cpu.shadow_cache_key(root / 'worktree', source, 'sha256:one', command))
+
+    def test_helper_profile_inventory_does_not_hash_reporting_or_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); helper = root / 'build.sh'
+            helper.write_text('lein with-profile +project/test run compile app-test')
+            key = cpu.shadow_cache_key(root, root, 'image', ['bash', 'build.sh'])
+            helper.write_text('echo report\nlein with-profile +project/test run compile app-test\necho done')
+            self.assertEqual(key, cpu.shadow_cache_key(root, root, 'image', ['bash', 'build.sh']))
+            helper.write_text('lein with-profile prod,provided run release app')
+            self.assertNotEqual(key, cpu.shadow_cache_key(root, root, 'image', ['bash', 'build.sh']))
+
+    def test_cache_guard_inherits_identity_lock_alongside_build_slot(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            key = 'a' * 24
+            handle = cpu.cache_lock(key)
+            guard = subprocess.Popen([sys.executable, '-c', 'import sys;sys.stdin.read()'],
+                                     stdin=subprocess.PIPE, pass_fds=(handle.fileno(),))
+            handle.close()
+            try:
+                self.assertIsNone(cpu.cache_lock(key, blocking=False))
+                guard.stdin.close(); guard.wait(timeout=3)
+                with cpu.cache_lock(key, blocking=False) as acquired:
+                    self.assertIsNotNone(acquired)
+            finally:
+                if guard.poll() is None:
+                    guard.terminate(); guard.wait(timeout=3)
+
+    def test_pruning_skips_active_and_unmanaged_caches_and_evicts_oldest_under_budget(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)), \
+                mock.patch.object(cpu, 'SHADOW_CACHE_BYTES', 10):
+            root = cpu.shadow_cache_root()
+            for key, timestamp in [('a' * 24, 1), ('b' * 24, 2), ('c' * 24, 3)]:
+                path = root / key; path.mkdir(parents=True)
+                (path / 'builds').mkdir(); (path / 'builds' / 'cache').write_bytes(b'12345678')
+                cpu.save_json(path / 'metadata.json', {'version': 1, 'key': key, 'used_at': timestamp, 'bytes': 8})
+            unmanaged = root / 'unmanaged'; unmanaged.mkdir()
+            with cpu.cache_lock('a' * 24):
+                result = cpu.prune_shadow_caches(now=10)
+                self.assertEqual(result['removed'], ['b' * 24, 'c' * 24])
+                self.assertTrue((root / ('a' * 24)).is_dir())
+                self.assertTrue(unmanaged.is_dir())
+            self.assertEqual(cpu.prune_shadow_caches(now=cpu.SHADOW_CACHE_AGE + 10)['removed'], ['a' * 24])
+
+    def test_reuse_refresh_and_off_keep_cache_outside_fresh_output(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory) / 'state'):
+            root = Path(directory); out = root / 'snapshot'; out.mkdir()
+            (out / 'shadow-cljs.edn').write_text('{:builds {}}')
+            args = SimpleNamespace(checkout=str(root / 'checkout'), image='prefab', shadow_cache='reuse')
+            image = mock.Mock(returncode=0, stdout='sha256:fixture')
+            with mock.patch.object(cpu.subprocess, 'run', return_value=image):
+                with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as first:
+                    (first[0] / 'cached').write_text('data')
+                    self.assertFalse((out / '.shadow-cljs').exists())
+                with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as second:
+                    self.assertEqual((second[0] / 'cached').read_text(), 'data')
+                args.shadow_cache = 'refresh'
+                with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as fresh:
+                    self.assertFalse((fresh[0] / 'cached').exists())
+                args.shadow_cache = 'off'
+                with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as absent:
+                    self.assertIsNone(absent)
+
+    def test_unknown_image_or_custom_cache_root_bypasses_without_touching_control_markers(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory) / 'state'):
+            out = Path(directory) / 'snapshot'; out.mkdir()
+            config = out / 'shadow-cljs.edn'; config.write_text('{:cache-root "custom"}')
+            args = SimpleNamespace(checkout=str(out), image='missing', shadow_cache='reuse')
+            with mock.patch.object(cpu.subprocess, 'run', return_value=mock.Mock(returncode=1, stdout='')) as run:
+                with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as absent:
+                    self.assertIsNone(absent)
+                run.assert_not_called()
+                config.write_text('{:builds {}}')
+                with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as absent:
+                    self.assertIsNone(absent)
+                self.assertFalse(cpu.shadow_cache_root().exists())
 
 
 @unittest.skipUnless(sys.platform=='darwin','native guard uses macOS libproc')

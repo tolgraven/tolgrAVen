@@ -6,9 +6,16 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `build/styles.mjs` compiles shell, development inspector and module CSS entries
   with locked Sass/PostCSS, compiles the separate icon sheet and vendors
   Leaflet images. Emit UTF-8 without a byte-order marker so the same sheets can
-  be inlined safely. Keep `npm run build` and the watch workflow aligned.
+  be inlined safely. `--if-stale` verifies source/tool/font/icon-declaration inputs
+  and every raw/minified output before skipping compilation; development startup
+  runs that guard before opening HTTP. Keep full builds and the watch workflow aligned.
 - `test/ssr.clj` saves renderer export metadata with each HTML/state hydration
   fixture; never infer rendered exports from the browser bundle inventory.
+- `bb prod:build` builds CSS and calls the existing Shadow release API sequentially
+  for `:document`, `:app`, `:ssr`, and `:return-worker` with separate `prod-local-*`
+  build IDs under `target/production`, then prepares the shared Optimus manifest
+  into that resource root. Never copy those
+  assets into watched browser/SSR outputs. See `doc/testing.md`.
 - `build/`, `media/`, `dev/`, `test/`: local build, asset and verification tools.
   Prefer Babashka using its built-in libraries; Node owns SDK/zlib operations.
 - `ops/`: isolated site provisioning and Coolify adapters. `ops/coolify/*.php`
@@ -51,11 +58,35 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   with margins to preserve the original advance/height/baseline.
   Commit declared SVGs, catalog, generated SCSS and fonts together; see `doc/styles.md`.
 
+- `audit/middleware.clj` is a disposable Docker-only investigation reproducer.
+  It may generate stand-in JavaScript only inside the CPU controller's snapshot;
+  it must never overwrite watched application output. See `doc/middleware-optimus-audit.md`.
 - `dev/cpu_controls.py` is the macOS libproc/signal and Docker lifecycle adapter.
   Keep microsecond PID identity, exact project/app ownership, pre-stopped exclusion,
-  independent CONT watchdog, container labels and shared build serialization intact.
+  independent CONT watchdog, container labels and two shared inherited-lock build slots intact.
+  Each slot caps Docker at 1.5 CPUs and 4 GiB RAM with a 2 GiB JVM heap;
+  ordinary containers share only the host Maven repository directory, not credentials. Reservations sum across live workers, and
+  BuildKit daemon/cache identities must differ between slots. Keep each worker
+  garbage-collected toward 2 GB cache with a 256 MB reservation and 20 GB free-space
+  target; preserve outputs still owned by active verification.
   Native CPU accounting uses the Mach timebase; cap tests must measure actual CPU
   seconds, not only duty settings. CPU probes touch disposable owned fixtures only.
 
+  Ordinary compiler snapshots reuse only an independently locked, worktree/toolchain/
+  profile/site-scoped `.shadow-cljs/builds` cache; transient ports and generated output
+  remain fresh. The container guardian inherits its writer lock. Keep Shadow's native
+  source/options validation and the unlocked 7-day/8-GiB LRU cleanup; never mount
+  watched checkout caches or retain a hot JVM per worktree. See `doc/resource-controls.md`.
+
   Custom codec images use explicit `run --node-deps skip` only for non-Node tasks;
   retain the shared queue, snapshot and container limits. Default Node bootstrap stays enabled.
+
+- `test/shadow_cache.py` measures the installed launcher's real cold/warm compiler
+  reuse with ordinary build IDs and resource budgets. Source mutation fixtures stay
+  inside isolated snapshots; keep queue/dependency/compiler time separate from wall
+  time and verify that missing fresh output is written from cached analysis.
+
+- `test/prepared_assets.clj` checks the explicit prepared inventory from source and
+  then from an uberjar, preserving all bodies and independent bundle paths. Run
+  it only in the CPU controller's Docker snapshot after real production outputs;
+  it does not start the application or prove deployment behavior.

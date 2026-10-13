@@ -98,6 +98,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Rendered reusable UI lives in `components/`; feature-specific UI lives with its
   module. `component/` is the declaration/lifecycle runtime, not a view inventory.
   Import the owning namespace directly; there is no top-level `views.cljs` shim.
+- The page shell owns one lazy contact popup outside both footer copies. Footer
+  controls share its re-frame state; do not mount the popup inside each control.
+  Keep the HUD above the contact layer so notices remain actionable.
 - Render state through `tolgraven.react` subscriptions and change it through events.
   Effects/source adapters own I/O; view functions remain pure.
 - Use `<component>` names, `defc` features and `defpage` boundaries. `m/<>` selects
@@ -406,11 +409,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   owns generated native document scripts; no authored snippets live in public JS.
 
 - Blog Markdown attachments use owner-scoped registered events and one serialized
-  authenticated upload queue. Keep browser File values transient, insert a stable
-  draft marker at the native selection, and replace only that marker after a
-  complete validated rendition manifest arrives. Retry/cancel/disposal invalidate
-  stale attempts; pending markers block publication. SDK reads and realtime events
-  restore URL-keyed image metadata before row validation.
+  authenticated upload queue. Browser File values remain transient; a stable native
+  media node retains the original selection while its presentation derives from
+  the managed queue. Only a complete validated manifest adds its canonical source.
+  Retry/cancel/disposal invalidate stale attempts; pending nodes block publication.
+  SDK reads and realtime events restore URL-keyed metadata before row validation.
 
 - `/blog/new-post` and its upload queue/UI belong to `:blog-editor`; the
   independent lazy `:markdown-editor` owns the visual Markdown SDK. Canonical source and

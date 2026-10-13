@@ -9,6 +9,7 @@
     [tolgraven.navigation.transition :as transition]
     [tolgraven.modules.main.module :as main-module]
     [tolgraven.loader :as l]
+    [tolgraven.components.contact :as contact]
     [tolgraven.components.ui :as ui]
     [tolgraven.components.shell :as common])))
 
@@ -125,6 +126,7 @@
 
    [common/<footer-full> @(rf/subscribe [:content [:footer]])]
    [common/<footer> @(rf/subscribe [:content [:footer]])]
+   [contact/<contact-popup>]
    [ui/<hud> (rf/subscribe [:hud])]
    [common/<to-top>]
    ; [[:div.ripple-on-click

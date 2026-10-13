@@ -10,7 +10,7 @@
       (try
         (test!)
         (finally
-          (when-let [task @startup/*startup]
+          (when-let [task (:task @startup/*startup)]
             (try @task (catch java.util.concurrent.ExecutionException _ nil)))
           (reset! startup/*startup previous))))))
 
@@ -19,10 +19,15 @@
         entered (promise)
         release (promise)
         selected (promise)
-        builds [:return-worker :ssr :app-dev]
+        builds [:return-worker :ssr :document :app-dev]
         resolve! (fn [symbol]
                    (case symbol
                      shadow.cljs.devtools.server/start! #(swap! *calls conj :server)
+                     shadow.cljs.devtools.api/release!
+                     (fn [build]
+                       (swap! *calls conj [:release build])
+                       (deliver entered true)
+                       @release)
                      shadow.cljs.devtools.api/watch
                      (fn [build]
                        (swap! *calls conj build)
@@ -41,7 +46,7 @@
           (is (true? (deref entered 2000 :timeout)))
           (is (not (future-done? task)) "Initialization returned while compilation is blocked")
           (is (identical? task (startup/start! builds)) "Repeated start shares the same work")
-          (is (= [:server :return-worker] @*calls) "Next targets wait for the first build")
+          (is (= [:server [:release :document]] @*calls) "Next targets wait for the first build")
           (let [selection (future
                             (let [caller (Thread/currentThread)]
                               {:caller caller
@@ -54,8 +59,8 @@
               (is (= :app-dev (:build @selected)))
               (is (identical? (:caller result) (:thread @selected))
                   "Select on the requesting nREPL thread, never the startup thread"))
-            (is (= [:server :return-worker :ssr :app-dev
-                    :server :return-worker :ssr :app-dev]
+            (is (= [:server [:release :document] :return-worker :ssr :app-dev
+                    :return-worker :ssr :app-dev]
                    @*calls)))
           (finally
             (deliver release true)
@@ -69,8 +74,9 @@
         resolve! (fn [symbol]
                    (case symbol
                      shadow.cljs.devtools.server/start! (constantly nil)
-                     shadow.cljs.devtools.api/watch
+                     shadow.cljs.devtools.api/release!
                      (fn [_] (when (= 1 (swap! *attempts inc)) (throw failure)))
+                     shadow.cljs.devtools.api/watch (constantly nil)
                      shadow.cljs.devtools.api/nrepl-select
                      #(reset! *selected %)))]
     (with-redefs [clojure.core/requiring-resolve resolve!
@@ -86,5 +92,41 @@
         (is (identical? failure (:error (first @*errors))))
         (is (re-find #"Deferred Shadow startup failed" (:message (first @*errors))))
         (is (= :app-dev (startup/select! [:return-worker :app-dev] :app-dev)))
-        (is (= 3 @*attempts))
+        (is (= 2 @*attempts))
         (is (= :app-dev @*selected))))))
+
+(deftest document-barrier-is-prepared-before-start-and-released-before-watches
+  (let [release (promise)
+        watching (promise)
+        finish (promise)]
+    (startup/prepare!)
+    (with-redefs [startup/document-wait-ms 1]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"still building"
+                           (startup/await-document!))))
+    (with-redefs [startup/startup-delay-ms 0
+                  clojure.core/requiring-resolve
+                  (fn [symbol]
+                    (case symbol
+                      shadow.cljs.devtools.server/start! (constantly nil)
+                      shadow.cljs.devtools.api/release! (fn [_] @release)
+                      shadow.cljs.devtools.api/watch (fn [_] (deliver watching true) @finish)))]
+      (let [task (startup/start! [:document :app-dev])]
+        (try
+          (deliver release true)
+          (is (true? (deref watching 2000 :timeout)))
+          (is (nil? (startup/await-document!)))
+          (is (not (future-done? task)) "HTTP does not wait for the app watch")
+          (finally (deliver release true) (deliver finish true) @task))))))
+
+(deftest document-release-failure-resolves-http-barrier
+  (with-redefs [startup/startup-delay-ms 0
+                clojure.core/requiring-resolve
+                (fn [symbol]
+                  (case symbol
+                    shadow.cljs.devtools.server/start! (constantly nil)
+                    shadow.cljs.devtools.api/release!
+                    (fn [_] (throw (ex-info "release failed" {})))))]
+    (let [task (startup/start! [:document :app-dev])]
+      (is (thrown? java.util.concurrent.ExecutionException @task))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bootstrap failed"
+                           (startup/await-document!))))))

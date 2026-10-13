@@ -1,0 +1,17 @@
+{
+  "observedAt": "after all thirty final samples completed",
+  "resourceSnapshot": {
+    "time": 1791893415.312489,
+    "native_budget_cores": 1.5,
+    "docker_quota_cores": 0.0,
+    "actual_cores": {
+      "java": 0.05188751662294629,
+      "renderers": 1.0301662913472556
+    },
+    "load_averages_1_5_15": [
+      4.244140625,
+      3.5576171875,
+      4.72314453125
+    ]
+  }
+}

@@ -89,16 +89,30 @@ Do not retain completed investigation diaries or historical test counts as curre
   constraints without logging raw values, credentials, or event arguments.
 
 ## Build, Test, and Development Commands
-- Agent Java/Lein builds use `tolgraven-cpu run -- <command>` (serialized, isolated
-  Docker prefab, default 1 CPU/2 GiB). Dockerfile/prefab work uses
+- Agent Java/Lein builds use `tolgraven-cpu run -- <command>` (two shared build slots, isolated
+  Docker prefab, 1.5 CPUs/4 GiB per slot; 3 Docker CPUs combined). Dockerfile/prefab work uses
   `tolgraven-cpu run --mode buildkit -- <command>` so BuildKit steps also have a quota.
   Increase a documented heap/memory limit only when required; avoid competing watched output.
+  Fresh output snapshots reuse a separately locked worktree-scoped Shadow compiler disk
+  cache; never mount or overwrite a live checkout’s watched cache. See `doc/resource-controls.md`.
   `--mode host` uses nice 10 and the shared build slot when live watches/interop
-  require macOS. The installed monitor owns the project Java/renderer aggregate
-  budget; never issue ad hoc STOP/CONT or global process kills. See
+  require macOS. The installed monitor caps exact app renderers and only explicitly
+  registered agent host Java families; user-launched Lein clients and their
+  backend/Shadow descendants remain unthrottled. Never issue ad
+  hoc STOP/CONT or global process kills. See
   `doc/resource-controls.md` for scope, telemetry, recovery and explicit overrides.
-- `lein repl`: start HTTP and the Clojure REPL; deferred Shadow watches compile
-  sequentially without blocking REPL acknowledgement. `(cljs-repl)` waits for
+- `lein with-profile prod run` overlays `config/prod-local.edn` for local HTTP on
+  loopback and local SSR/converter paths; packaged production keeps secure proxy
+  defaults. `bb prod:build` releases separate `prod-local-*` Shadow targets into
+  `target/production`; local prod loads those resources before shared assets and
+  preflights the release browser manifest and both document bootstrap scripts
+  before initialization logging/asset loading. See `doc/testing.md`.
+- `lein repl`: check/rebuild stale CSS before opening HTTP and the Clojure REPL;
+  current SSR/browser markup must not paint against sheets from an older checkout.
+  Deferred Shadow watches compile
+  sequentially without blocking REPL acknowledgement. The standalone `:document`
+  target releases first (no HMR); document/bootstrap requests await only that
+  bounded release barrier, while unrelated assets/API remain available. `(cljs-repl)` waits for
   startup and selects the browser runtime in the calling session. See `README.md`.
 - Browser builds discover `modules/*/module.cljs` through `tolgraven.build.browser/process`;
   the literal spec `:id` owns the bundle ID and namespace `:bundle/depends-on`
@@ -121,7 +135,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   specs declare literal `:styles`; CSS starts alongside JS acquisition. SSR emits
   route styles in the initial head, inlining small feature sheets within a bounded
   budget. Popup-only modules may declare `:ssr-styles :deferred`; Optimus
-  fingerprints each bundle separately.
+  fingerprints each bundle separately. Production packaging prepares its inventory
+  once; runtime imports the validated artifact without minification or image conversion.
   Literal component/module `:icons` export SVG masks into the same style inventory;
   `bb fonts:icons` regenerates committed glyph assets without browser font swaps.
   Text faces stay consumer-scoped; `defc`'s `:font` feature owns controlled late
@@ -137,6 +152,12 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Live re-frame debugging: read the installed `re-frame-pair` skill, then run `bb pair discover-app` before inspecting the runtime. See `doc/re-frame-pair.md`; the wrapper selects `:app-dev` and Lein's nREPL port.
 
 ## Dependency ownership
+
+- Timbre owns JVM logging configuration in `tolgraven.log`; tools.logging and
+  SLF4J route through its existing adapters. Select JBoss's SLF4J provider in
+  Lein and direct Java launches before Undertow loads. Use the shared
+  `org.clj-commons/pretty`, not the duplicate `io.aviso/pretty` or Logback XML.
+  See `doc/dependencies.md`.
 
 - Shadow owns the CLJS/Closure compiler graph in `:provided`; explicit production build commands include that profile, while runtime packaging excludes it. Keep the managed Codox analyzer version aligned with Shadow.
 - Use locked local npm tools. Supabase uses its npm SDK inside the lazy `:supabase` module;
@@ -284,6 +305,10 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 - See `doc/testing.md` for mounted subscription workflows, live integration boundaries and browser checks. Unit replacements do not establish live service behavior.
 
 ## Commit & Pull Request Guidelines
+- Resolve merge and rebase conflicts manually, file by file, from the start.
+  Inspect both sides and the intended combined behavior, edit each conflict
+  explicitly, and review the resulting diff. Do not use bulk conflict-resolution
+  scripts or blanket ours/theirs choices across files.
 - Always open and keep in-progress PRs as drafts. Mark them ready for review only
   after implementation and required verification are complete, the current head is
   pushed, and the description matches it. Return a PR to draft when follow-up
@@ -293,6 +318,12 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   `https://github.com/tolgraven/tolgrAVen`; do not ask again solely for these
   publication steps. This does not independently authorize force pushes, branch
   deletion, merges, deployment, unrelated changes, or publication elsewhere.
+- GitHub Copilot code review credits are exhausted. Before every merge, perform a
+  proper review with the [Code Review plugin](plugin://code-review@openai-bundled/).
+  Review the complete current diff and relevant surrounding code for correctness,
+  regressions, security, preservation of unfinished work, and verification gaps;
+  resolve actionable findings and review any resulting changes before merging.
+  Passing CI or a Codex Security scan does not replace this review.
 - Commit each completed, verified task before starting the next. Subagents commit their own finished changes; coordinate the shared index so unrelated work is never included.
 - Commit messages follow `scope: summary` (examples in git history: `scss: fix theme var helper broken`). Can also use `scope: subscope: summary`. Keep summaries short and imperative.
 - PRs should include: a clear description, related issue links, and screenshots/gifs for UI changes.

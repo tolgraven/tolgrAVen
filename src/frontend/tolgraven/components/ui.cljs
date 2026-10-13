@@ -377,35 +377,45 @@
            [<close> to-close]]
     to-close])))
 
+(m/defc ^:private <hud-button>
+  [{:keys [text action]}]
+  [:button.hud-message-button
+   {:on-click (fn [event]
+                (.stopPropagation event)
+                (rf/dispatch action))}
+   text])
+
 (m/defc <hud-message>
   {:features [[:appear "zoom-x slow"]]}
   [{:keys [level title message time actions buttons id]}]
   ;; Keep the existing animation box: message margins and its 0.9 opacity
   ;; remain independent of the entry animation. No separate appear component.
-  [:div
-   [:div.hud-message
-    {:role (if (= :error level) "alert" "status")
-     :class (name level)
-     :style {:position :relative}
-     :on-click #(doseq [action (or actions
-                                  [[:diag/unhandled :remove id]
-                                   [:common/navigate! :log]])]
-                  (rf/dispatch action))}
-    [:div.hud-message-top
-     [:h2.hud-message-title title]
-     [<close> (fn [event]
-                (.stopPropagation event)
-                (rf/dispatch [:diag/unhandled :remove id]))]]
-    (when message [:pre (format-log-message message)])
-    (when buttons
-      [:div.hud-message-buttons
-       (for [{button-id :id :keys [text action]} buttons]
-         ^{:key (str "hud-message-" id "-button-" button-id)}
-         [:button.hud-message-button
-          {:on-click (fn [event]
-                       (.stopPropagation event)
-                       (rf/dispatch action))}
-          text])])]])
+  (let [retry-buttons (filter #(= :retry (:id %)) buttons)
+        other-buttons (remove #(= :retry (:id %)) buttons)]
+    [:div
+     [:div.hud-message
+      {:role (if (= :error level) "alert" "status")
+       :class (name level)
+       :style {:position :relative}
+       :on-click #(doseq [action (or actions
+                                    [[:diag/unhandled :remove id]
+                                     [:common/navigate! :log]])]
+                    (rf/dispatch action))}
+      [:div.hud-message-top
+       [:h2.hud-message-title title]
+       [:div.hud-message-actions
+        (for [button retry-buttons]
+          ^{:key (str "hud-message-" id "-button-" (:id button))}
+          [<hud-button> button])
+        [<close> (fn [event]
+                   (.stopPropagation event)
+                   (rf/dispatch [:diag/unhandled :remove id]))]]]
+      (when message [:pre (format-log-message message)])
+      (when (seq other-buttons)
+        [:div.hud-message-buttons
+         (for [button other-buttons]
+           ^{:key (str "hud-message-" id "-button-" (:id button))}
+           [<hud-button> button])])]]))
 
 (m/defc <hud> "Render a HUD sorta like figwheel's but at reagent/re-frame level"
   {:features [:error-boundary]}

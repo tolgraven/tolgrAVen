@@ -49,7 +49,7 @@
                  [com.taoensso/timbre "6.8.0" :exclusions [org.clojure/tools.reader]]
                  [com.taoensso/encore "3.172.1"]
                  [com.fzakaria/slf4j-timbre "0.4.1" :exclusions [org.slf4j/slf4j-api]] ; Java SLF4J callers use Timbre.
-                 [io.aviso/pretty "1.4.4"] ;pretty exceptions, pretty logging...
+                 [org.clj-commons/pretty "3.6.3"] ; Shared with Timbre; REPL exception formatting.
 
                  [ring/ring-core "1.15.5"]
                  [ring/ring-defaults "0.7.1"]
@@ -83,6 +83,10 @@
 
   :min-lein-version "2.0.0"
 
+  ;; JBoss otherwise prefers Log4j when present, or JUL without Logback.
+  ;; Select the existing SLF4J -> Timbre provider before Undertow loads.
+  :jvm-opts ["-Dorg.jboss.logging.provider=slf4j"]
+
   :source-paths ["src/backend" "src/frontend" "src/cljc" "src/bootstrap"]
   :test-paths ["test/clj"]
   :resource-paths ["resources"]
@@ -101,7 +105,8 @@
 
   :plugins [[lein-codox "0.10.8"]]
 
-  :aliases {"docs" ["do" ["run" "-m" "tolgraven.build.docs"] ["codox"]]}
+  :aliases {"docs" ["update-in" ":" "assoc" ":prep-tasks" "^:replace []" "--"
+                    "do" ["run" "-m" "tolgraven.build.docs"] ["codox"]]}
 
   :codox
   {:language :clojurescript
@@ -149,7 +154,8 @@
 
    :uberjar {:jvm-opts ["-Dconf=env/prod/resources/config.edn"]
              :prep-tasks ["compile"
-                          ["run" "-m" "shadow.cljs.devtools.cli" "release" "app" "return-worker" "document"]
+                          ["run" "-m" "shadow.cljs.devtools.cli" "release" "app" "ssr" "return-worker" "document"]
+                          ["run" "-m" "tolgraven.build.assets" "--build-styles"]
                           ["docs"]]
              :aot ~(:aot site-packaging)
              :omit-source true
@@ -157,9 +163,9 @@
              :source-paths ["env/prod/clj" "env/prod/cljs"]
              :resource-paths ["env/prod/resources" "resources"]}
 
-   :prod {:jvm-opts ["-Dconf=env/prod/resources/config.edn"]
+   :prod {:jvm-opts ["-Dconf=config/prod-local.edn"]
           :source-paths ["env/prod/clj" "env/prod/cljs"]
-          :resource-paths ["env/prod/resources"]}
+          :resource-paths ["env/prod/resources" "target/production/resources"]}
 
    ;; Codox's bundled CLJS 1.7 analyzer must not override Shadow's compiler.
    ;; Lein Codox merges this profile only while generating documentation.

@@ -7,7 +7,7 @@ needed to run these tasks; they use Babashka's built-in libraries.
 
 | Owner | Commands / programs | Callers and runtime |
 | --- | --- | --- |
-| Build | `bb docker <action>`, `bb audit <label>` | Make targets and developers; Docker/Lein/Node subprocesses |
+| Build | `bb docker <action>`, `bb audit <label>`, `bb prod:build` | Make targets and developers; Docker/Lein/Node subprocesses |
 | Build | `scripts/build/sync-vendor.mjs`, `bundle-sizes.mjs` | npm vendor task and bundle audit; Node provides SDK resolution and Brotli |
 | Images | `bb images`, `bb images:verify`, `bb images:staged`, `bb images:responsive` | Manual assets, tracked pre-commit hook; cwebp/ImageMagick |
 | Uploads | `scripts/media/images.clj` | JVM upload adapter and Docker codec smoke test; standalone `bb` script |
@@ -93,6 +93,12 @@ under `experiments/clj/`. Tool-mandated root configuration stays at its native p
 
 CSS build and watch entry points compile shared, icon and feature sheets independently;
 see [styles.md](styles.md) for declarations, source ownership and verification.
+Development startup runs `node scripts/build/styles.mjs --if-stale` before HTTP.
+Its output revision covers SCSS, tool/lock files, font inputs and native component/
+module declarations. Every raw and minified sheet must still match its recorded
+digest; missing or overwritten output is rebuilt. Fresh output does not import
+Sass/PostCSS. Keep `npm run dev` running for ongoing CSS edits.
+`node test/scripts/styles_test.mjs` exercises the guard in a disposable source tree.
 
 `bb audit <label>` writes isolated optimized chunks, compression sizes, the
 namespace/module inventory and `report.html`/`report.json` under
@@ -120,3 +126,12 @@ managed images to share the runtime dimensions/bytes cutoff. The standalone code
 scanner keeps its application-classpath-free entrypoint; focused script fixtures
 assert that its cutoff matches the shared predicate. Explicit progressive flags
 override the display default without removing responsive final candidates.
+
+## Middleware and asset investigation
+
+`script` entry points that inspect middleware are separate from release builds.
+Run the guarded `scripts/audit/middleware.clj` reproducer only in the installed
+CPU controller's disposable Docker snapshot. It loads actual CSS/media and
+identifies generated stand-in JavaScript explicitly; no watched output is changed.
+See [the middleware and Optimus audit](middleware-optimus-audit.md) for the command,
+request fixtures, evidence and implementation recommendations.

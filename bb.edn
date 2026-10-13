@@ -28,9 +28,11 @@
                      :task (videos/responsive!)}
   fonts:icons {:doc "Regenerate declared SVG icons and font subsets with Python/fontTools (see doc/styles.md)"
               :task (process/shell "python3" "scripts/media/icon_fonts.py")}
+  prod:build {:doc "Build isolated local production document, browser, SSR and return-worker assets"
+              :task (dev/production-local!)}
   audit {:doc "Measure isolated production bundles [label]"
          :task (apply dev/audit! *command-line-args*)}
-  cpu {:doc "Scoped native CPU monitor and serialized CPU-capped Docker/low-priority host launcher [action options -- command]"
+  cpu {:doc "Scoped native CPU monitor and two-slot CPU-capped Docker/low-priority host launcher [action options -- command]"
        :task (apply dev/cpu! *command-line-args*)}
   pair {:doc "Run the installed re-frame-pair skill [operation args...]"
         :task (apply dev/pair! *command-line-args*)}

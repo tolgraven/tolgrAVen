@@ -3,6 +3,14 @@
 Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 `doc/site-provisioning.md` for operating and configuration details.
 
+- The handler loads `tolgraven.log` before its other dependencies so Mount
+  initializes logging before application startup. It owns Timbre appenders,
+  pretty exceptions and the default uncaught exception handler. Namespace loading
+  must not replace that handler; keep Throwable
+  objects intact through tools.logging and SLF4J. JBoss provider selection is a
+  launch-time JVM option shared by Lein and Docker, before Undertow loads.
+  See `doc/dependencies.md` for logging dependency ownership.
+
 - Feature-owned server adapters live under `modules/<feature>/`; shared platform
   adapters retain their `content/`, `supabase/`, and `ssr/` ownership.
   Landing routes come from `modules/home/pages.cljc`; their code/CSS assets use
@@ -64,8 +72,28 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   it to the generic middleware's buffered InputStream.
 - A return cookie alone never bypasses network SSR. Only the local worker's
   explicit `X-Page-Render: state` fallback requests browser state restoration.
+- `middleware/wrap-base` owns one static response policy outside the browser
+  session/CSRF layer and inside proxy/HTTPS/security headers. Public assets do not
+  create session cookies. API and return-worker paths retain their route owners.
+  MIME-based gzip honors quality negotiation and preserves streaming flushes;
+  known-length bodies share conditional, HEAD and single-byte-range handling.
+- Global browser CSRF stays enabled. Only the exact Strapi webhook POST can gain
+  Ring's existing safe header, after `media/cms` validates the configured bearer
+  secret with the same constant-time check used by its handler. Invalid or missing
+  credentials must fail before acquiring the media pipeline.
+- `middleware/multipart` owns parsing once, before browser CSRF/form handling:
+  one file up to 5 MiB, bounded request/field count, and request-lifetime tempfile
+  cleanup. API multipart middleware only coerces the already parsed data; upload
+  handlers must finish reading/copying temporary bytes before returning.
 - Validate/coerce requests at the Ring boundary; handlers consume parsed parameters.
   Authentication/authorization and input protection remain active in production.
+- Production middleware defaults to HTTPS proxy handling, HSTS and secure cookies.
+  Only explicit `:https-required false` selects HTTP site defaults; the local `prod`
+  Lein profile supplies that with loopback listening. CSRF remains enabled in both.
+  Production initialization preflights a hashed release browser manifest and both
+  document bootstrap scripts before its success log or Optimus loading. Local builds use
+  separate `prod-local-*` Shadow targets and `target/production` output so watched
+  development resources cannot silently supply the production frontend.
 - Secrets remain in server adapters/configuration. Runtime public settings must
   expose only public origins/keys and allowed options.
   `/api/browser-resources` projects only `:analytics :google-id`; `:enabled false`
@@ -116,6 +144,10 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   `tolgraven.cache.inflight`; pending work is never expired or evicted. If only
   pending entries fill the cache, return the existing unavailable/retry response.
 
+- Supabase platform REST/JDBC settings and TLS policy read `tolgraven.config/env`;
+  cprop owns source consolidation and precedence. Keep process environment reads
+  out of that adapter. Its `connection-config` maps own aliases, defaults, required
+  JDBC components and conversions; resolution and diagnostics derive from them.
 - Supabase seed reads/imports/resets consume module-owned storage declarations
   and runtime `:supabase :modules` options. Do not add parallel table lists.
   JDBC resets name declared dependent tables and omit unrestricted CASCADE.
@@ -130,19 +162,17 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Browser builds prefer worker-compatible package exports so Markdown does not
   require a DOM during capture. The worker reuses fingerprinted browser chunks.
 
-- Network SSR emits a document-owned hero decode gate before application code.
-  Keep its mount-container marker outside the React tree; streamed skeletons
-  remain visible until the completed page can start its original entrance.
-  Local returns and JavaScript-disabled documents must remain usable.
+- Network SSR uses the generated document bootstrap before application code.
+  Keep its mount-container marker outside React; sampled gradients or usable image
+  pixels release the initial page/title clock without waiting for hydration.
+  Script wrappers reference the generated assets; do not inline authored snippets.
+  Local returns and JavaScript-disabled documents remain usable.
 
-- Progressive image catalog entries preload the smallest AVIF preview alongside
-  the final responsive AVIF set. Final `imagesrcset`/`imagesizes` match rendered
-  sources so phones select only their appropriate final candidate. The document
-  entrance may start after either visible layer decodes; suppressed previews do
-  not release it, and replacing the preview never starts a second entrance.
-  The same root-owned image adapter stages local-return templates; already usable
-  final pixels settle immediately. Its native initial-hero phase remains owned
-  through hydration until terminal adoption, independently of the entrance gate.
+- Responsive final preloads match rendered `imagesrcset`/`imagesizes`. Preview
+  candidates use native image discovery, never speculative preloads; external
+  returns must request only final candidates. Suppressed previews cannot release
+  the entrance gate. Exact initial image nodes keep native phase ownership through
+  hydration until terminal adoption, independently of entrance-gate readiness.
 
 - `media/pipeline.clj` owns the durable main-module media queue and complete immutable
   rendition publication. One mounted worker uses expiring database leases and
@@ -155,7 +185,18 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   name. Whole/range media responses retain Optimus policy or get one-year immutable
   caching; never apply that policy to failures or mutable document/API responses.
 
+- Production Optimus startup imports `optimus/assets.edn` and rejects missing/stale
+  artifacts. Build-only JS/CSS/image preparation belongs to `build/assets.clj`;
+  development refreshes declared bundles and their references with a two-second
+  TTL, without a resource watcher. Preserve independent module style acquisition.
+
+
 - Managed SVG media retains its vector original with no raster sidecars. The
   bounded `media/svg.clj` adapter rejects active/external XML content before
   public publication; keep the complete-raster versus original-only SVG
   rendition contracts distinct. See `doc/media-pipeline.md`.
+
+- Development page, return-template and document-bootstrap requests await the
+  existing deferred startup owner's standalone release barrier. Gate before
+  asset delivery; unrelated static images and APIs must not wait for app watches.
+  Keep release failure/timeout explicit rather than serving stale unoptimized JS.

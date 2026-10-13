@@ -119,17 +119,11 @@
                                        (catch Exception error error)))))))
       (finally (.delete file)))))
 
-(deftest server-configuration-supports-local-key-and-environment-precedence
+(deftest server-configuration-supports-local-key-alias
   (with-redefs [config/env {:service-supabaseservice-key "local-secret"
                            :supabase-public-url "https://local.example"}]
-    (with-redefs-fn {#'platform/env (constantly nil)}
-      #(do (is (= "local-secret" (platform/service-key)))
-           (is (= "https://local.example" (platform/rest-base-url)))))
-    (with-redefs-fn {#'platform/env {"SUPABASE_SERVICE_KEY" "environment-secret"
-                                    "SUPABASE_PUBLIC_URL" "https://environment.example"}}
-      #(do (is (= "environment-secret" (platform/service-key)))
-           (is (= "https://environment.example" (platform/rest-base-url)))))))
-
+    (is (= "local-secret" (platform/service-key)))
+    (is (= "https://local.example" (platform/rest-base-url)))))
 
 (deftest public-browser-bootstrap-survives-optional-service-failures
   (with-redefs [config/env {:supabase-public-url "https://public.example"

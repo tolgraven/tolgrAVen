@@ -22,10 +22,16 @@ make hooks
 lein repl
 ```
 
-The development server runs at http://localhost:4000. Run `npm run dev` in a
+The development server checks CSS before opening HTTP and rebuilds stale or missing
+sheets with the locked tools. Fresh output skips compilation. It runs at
+http://localhost:4000. Run `npm run dev` in a
 second terminal to watch CSS. The Clojure REPL becomes available before the
-initial Shadow compilations finish. After a short deferral, watches start in
-order: `:return-worker`, `:ssr` when enabled, then `:app-dev`. `(cljs-repl)` waits
+initial Shadow compilations finish. After a short deferral, the standalone
+`:document` bootstrap is released first with its own optimized runtime. Documents
+and bootstrap requests wait for that release; unrelated assets and APIs stay
+available. Native watches then start in order: `:return-worker`, `:ssr` when
+enabled, then `:app-dev`. The document target has no HMR/browser REPL; changes
+require another standalone release. `(cljs-repl)` waits
 for those watches and selects the browser runtime in your session. SSR is enabled by
 default; configure `:ssr {:enabled true :render-workers 2 :worker "target/ssr/site.js"
 :node-binary "node"}` in `env/dev/resources/config.edn`. See [SSR configuration](doc/ssr.md). `(restart-handler)` reloads the Ring handler after
@@ -54,11 +60,17 @@ tree, asynchronous navigation, module initialization, search completions, and
 Supabase cache/stream behavior. The server also provides the image fixtures.
 After recompiling, use a hard reload to avoid a cached test bundle.
 
-Compile production JavaScript without replacing a running development build:
+Build and run local production without replacing watched development assets:
 
 ```sh
-lein with-profile -dev,+prod run -m shadow.cljs.devtools.cli release app --config-merge '{:output-dir "target/production-js"}'
+bb prod:build
+PORT=4011 lein with-profile prod run
 ```
+
+Open `http://127.0.0.1:4011/`. The local releases use separate Shadow build IDs and
+`target/production` output; production startup rejects development browser bundles.
+The packaged server retains its HTTPS proxy policy. See [testing](doc/testing.md)
+for agent CPU controls, isolated build output and live provider checks.
 
 `lein uberjar` builds the deployable server, production JavaScript, and Codox.
 Both browser builds use the same lazy module graph. Pull requests validate CSS;

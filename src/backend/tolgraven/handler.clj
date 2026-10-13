@@ -1,5 +1,7 @@
 (ns tolgraven.handler
   (:require
+    ;; Register the mounted logger before application services and startup logs.
+    [tolgraven.log]
     [tolgraven.middleware :as middleware]
     [tolgraven.concurrent :as concurrent]
     [tolgraven.validation-server :as validation]
@@ -12,7 +14,9 @@
     [mount.core :as mount]))
 
 (mount/defstate init-app
-  :start ((or (:init defaults) (fn [])))
+  :start (do
+           (middleware/ensure-production-assets!)
+           ((or (:init defaults) (fn []))))
   :stop  ((or (:stop defaults) (fn []))))
 
 (mount/defstate app-routes
@@ -27,8 +31,7 @@
         {:path   "/swagger-ui"
          :url    "/api/swagger.json"
          :config {:validator-url nil}})
-      (ring/create-resource-handler         ; serve resources/public at /
-        {:path "/"})
+      ;; middleware/assets owns public resources before browser session handling.
       (ring/create-default-handler          ; error/default routes
         (let [get-error (fn [code message]
                           (constantly (error-page {:status code

@@ -4,6 +4,7 @@
    [tolgraven.config :refer [env]]
    [tolgraven.routes.home :as home]
    [clojure.pprint]
+   [clojure.java.shell :as shell]
    [clojure.spec.alpha :as s]
    [clojure.tools.logging :as log]
    [expound.alpha :as expound]
@@ -26,7 +27,18 @@
   ([build-id]
    (shadow-startup/select! (cljs-builds build-id) build-id)))
 
+(defn- ensure-styles! []
+  (let [{:keys [exit out err]} (shell/sh "node" "scripts/build/styles.mjs" "--if-stale")]
+    (when-not (zero? exit)
+      (throw (ex-info "Development styles failed to build. Run npm run build before starting HTTP."
+                      {:exit exit, :error err})))
+    (print out)))
+
 (defn start "Starts application.  You'll usually want to run this on startup." []
+  ;; A new SSR/browser build must never paint against CSS from an older checkout.
+  ;; Fresh styles skip Sass/PostCSS; Shadow still starts on its deferred thread.
+  (ensure-styles!)
+  (shadow-startup/prepare!)
   (home/gen-sitemap!)
   (doseq [component (-> (mount/start-without #'tolgraven.core/repl-server)
                         :started)]

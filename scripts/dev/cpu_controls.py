@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Bounded macOS CPU ownership adapter and isolated, capped prefab build launcher."""
 import argparse
+from contextlib import contextmanager
 import ctypes
 import fcntl
 import hashlib
@@ -20,6 +21,8 @@ import time
 import uuid
 
 STATE = Path.home() / 'Library/Application Support/tolgraven/cpu-controls'
+BUILD_SLOTS = 2
+BUILD_CPUS = 1.5  # Two kernel-capped workers share a maximum of three Docker cores.
 JVM_POOLS = '-XX:ActiveProcessorCount=1 -XX:CICompilerCount=2 -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1'
 
 
@@ -137,8 +140,48 @@ def within(path, roots):
     return path is not None and any(path == r or r in path.parents for r in roots)
 
 
-def select_targets(processes, roots, excluded, cwd_fn=cwd, allow_apps=True):
-    """Only project Java and renderer descendants of exact app bundle roots qualify."""
+def host_registration_path(token):
+    if len(token) != 32 or any(char not in '0123456789abcdef' for char in token):
+        raise RuntimeError('Invalid owned host registration token.')
+    return STATE / 'host-active' / (token + '.json')
+
+
+def release_host_registration(token, owner, root):
+    if token is None:
+        return
+    path = host_registration_path(token)
+    try:
+        record = json.loads(path.read_text())
+        if record.get('owner') == owner and record.get('root') == root:
+            path.unlink(missing_ok=True)
+    except (OSError, ValueError):
+        pass
+
+
+def registered_host_roots(proc, roots):
+    """Only a live explicit launcher registration admits a native Java family."""
+    admitted = []
+    for path in (STATE / 'host-active').glob('*.json'):
+        try:
+            if path.stat().st_uid != os.getuid():
+                continue
+            record = json.loads(path.read_text())
+            root = record['root']
+            current = proc.identity(root['pid'])
+            # A launcher root legitimately execs nice/shell/Java. Its birth and
+            # dedicated process group remain stable; each target path is checked
+            # afresh by Controller before STOP/CONT.
+            if (proc.same(record['owner']) and same_birth(current, root)
+                    and current['pgid'] == root['pid']
+                    and within(Path(record['checkout']).resolve(), roots)):
+                admitted.append(current)
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    return admitted
+
+
+def select_targets(processes, roots, excluded, cwd_fn=cwd, allow_apps=True, owned_roots=()):
+    """Only registered agent Java and renderer descendants of exact app roots qualify."""
     apps = {pid for pid, p in processes.items() if p['path'] in (
         '/Applications/ChatGPT.app/Contents/MacOS/ChatGPT',
         '/Applications/Codex.app/Contents/MacOS/Codex')}
@@ -147,7 +190,9 @@ def select_targets(processes, roots, excluded, cwd_fn=cwd, allow_apps=True):
         if pid in excluded or p['status'] == 4 or p['uid'] != os.getuid():
             continue
         path = p['path']
-        if Path(path).name == 'java' and within(cwd_fn(pid), roots):
+        if (Path(path).name == 'java' and within(cwd_fn(pid), roots)
+                and any(p.get('pgid') == root['pid'] and p['start'] >= root['start']
+                        and root['pid'] in ancestry(pid, processes) for root in owned_roots)):
             targets[pid] = dict(p, family='java')
         elif allow_apps and ('/Applications/ChatGPT.app/Contents/' in path or
               '/Applications/Codex.app/Contents/' in path) and '(Renderer)' in Path(path).name:
@@ -323,7 +368,8 @@ def monitor(args):
                         roots = [Path(line[9:]).resolve() for line in text.splitlines() if line.startswith('worktree ')] or roots
                         del inventory_child
                         root_inventory_time = now
-                targets = select_targets(processes, roots, excluded, proc.cwd, not args.java_only)
+                owned_roots = registered_host_roots(proc, roots)
+                targets = select_targets(processes, roots, excluded, proc.cwd, not args.java_only, owned_roots)
                 rates = {'java': 0.0, 'renderers': 0.0}
                 fresh = {}
                 for pid, p in targets.items():
@@ -347,7 +393,9 @@ def monitor(args):
                                     'runnable': sum(thread_info[p['pid']].running for p in targets.values() if p['family']==k and thread_info[p['pid']])} for k in caps},
                     'load_averages_1_5_15': list(os.getloadavg()),
                     'scan_ms': round((time.monotonic()-now)*1000,3),
-                    'excluded_controller_ancestors': sorted(excluded)})
+                    'excluded_controller_ancestors': sorted(excluded),
+                    'java_scope': 'registered-agent-host-families',
+                    'registered_host_roots': [{'pid': p['pid'], 'start': p['start']} for p in owned_roots]})
                 last, next_scan = now, now + 1
             if args.once:
                 print((STATE / 'status.json').read_text())
@@ -378,12 +426,34 @@ def monitor(args):
         (STATE / 'monitor.json').unlink(missing_ok=True)
 
 
+def build_records():
+    """Read independent reservations, including an already-running legacy build."""
+    for path in STATE.glob('docker-active*.json'):
+        try:
+            yield path, json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+
+
+def reservation_path(name):
+    return STATE / ('docker-active-' + name + '.json')
+
+
+def release_reservation(name):
+    for path, record in build_records():
+        if record.get('name') == name:
+            path.unlink(missing_ok=True)
+
+
 def active_docker_quota(proc):
-    try:
-        record = json.loads((STATE / 'docker-active.json').read_text())
-        return record['cpus'] if proc.same(record['owner']) or (record.get('guardian') and proc.same(record['guardian'])) else 0.0
-    except (OSError, ValueError, KeyError):
-        return 0.0
+    total = 0.0
+    for _, record in build_records():
+        try:
+            if proc.same(record['owner']) or (record.get('guardian') and proc.same(record['guardian'])):
+                total += record['cpus']
+        except (KeyError, TypeError):
+            continue
+    return total
 
 
 def docker_environment():
@@ -455,7 +525,12 @@ def guardian_protocol(argv, record):
 
 def recover_build(args):
     proc = MacProcesses()
-    record = json.loads((STATE / 'docker-active.json').read_text())
+    records = [(path, record) for path, record in build_records()
+               if not args.name or record.get('name') == args.name]
+    if len(records) != 1:
+        names = ', '.join(record.get('name', '<unknown>') for _, record in records)
+        raise RuntimeError('Select exactly one recorded build with --name. Recorded: ' + names)
+    _, record = records[0]
     if same_birth(proc.identity(record['owner']['pid']), record['owner']):
         raise RuntimeError('Build owner is alive; refusing to recover its slot.')
     guardian = proc.identity(record['guardian']['pid'])
@@ -474,26 +549,18 @@ def recover_build(args):
         time.sleep(0.05)
     if same_birth(proc.identity(guardian['pid']), guardian):
         raise RuntimeError('Guardian has not exited; slot remains owned.')
-    try:
-        latest = json.loads((STATE / 'docker-active.json').read_text())
-        if latest['name'] == record['name']:
-            (STATE / 'docker-active.json').unlink(missing_ok=True)
-    except (OSError, ValueError):
-        pass
+    release_reservation(record['name'])
     print('Recovered confirmed orphan:', record['name'], 'guardian', guardian['pid'])
 
 
 def repair_legacy_reservation(proc, owner, name, token, endpoint):
-    try:
-        record = json.loads((STATE / 'docker-active.json').read_text())
+    for path, record in build_records():
         guardian = record.get('guardian')
         if record.get('name') == name and guardian and guardian['pid'] == os.getpid() and same_birth(record['owner'], owner):
             stable = proc.identity(os.getpid())
             if record.get('endpoint') != endpoint or guardian != stable:
                 record.update(guardian=stable, endpoint=endpoint, token=token)
-                save_json(STATE / 'docker-active.json', record)
-    except (OSError, ValueError, KeyError):
-        pass
+                save_json(path, record)
 
 
 def docker_watchdog(owner, name, token, endpoint=None, ready_fd=None):
@@ -516,25 +583,20 @@ def docker_watchdog(owner, name, token, endpoint=None, ready_fd=None):
     while True:
         try:
             if stop_container(name, token, endpoint):
-                try:
-                    record = json.loads((STATE / 'docker-active.json').read_text())
-                    if record.get('name') == name:
-                        (STATE / 'docker-active.json').unlink(missing_ok=True)
-                except (OSError, ValueError):
-                    pass
+                release_reservation(name)
                 return
         except subprocess.SubprocessError:
             pass
         time.sleep(1)
 
 
-def start_docker_guardian(owner, name, token, endpoint, lock):
+def start_docker_guardian(owner, name, token, endpoint, lock, extra_locks=()):
     parent, child = socket.socketpair()
     parent.settimeout(10)
     guard = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '_docker-watchdog',
                               json.dumps(owner), name, token, '--endpoint', endpoint,
                               '--ready-fd', str(child.fileno())], start_new_session=True,
-                              pass_fds=(lock.fileno(), child.fileno()))
+                              pass_fds=(lock.fileno(), child.fileno(), *(item.fileno() for item in extra_locks)))
     child.close()
     try:
         identity = packet_receive(parent)['guardian']
@@ -573,12 +635,13 @@ def stop_host_family(root):
     return False
 
 
-def host_watchdog(owner, root):
+def host_watchdog(owner, root, registration=None):
     proc = MacProcesses()
     while proc.same(owner):
         time.sleep(0.5)
     while not stop_host_family(root):
         time.sleep(1)
+    release_host_registration(registration, owner, root)
 
 
 def host_environment(environment, heap='1024m'):
@@ -609,25 +672,47 @@ def host_run(args, command, lock, extra_env=None):
     root = proc.identity(child.pid)
     if root is None:
         return child.wait()
-    guard = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '_host-watchdog',
-                              json.dumps(owner), json.dumps(root)], start_new_session=True,
-                             pass_fds=(lock.fileno(),) if lock else ())
+    registration = uuid.uuid4().hex
+    guard = None
     try:
+        record_path = host_registration_path(registration)
+        record_path.parent.mkdir(parents=True, exist_ok=True)
+        save_json(record_path, {'owner': owner, 'root': root, 'checkout': str(Path(args.checkout).resolve())})
+        guard = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '_host-watchdog',
+                                  json.dumps(owner), json.dumps(root), '--registration', registration],
+                                 start_new_session=True, pass_fds=(lock.fileno(),) if lock else ())
         return child.wait()
     finally:
         if stop_host_family(root):
-            guard.terminate()
-            guard.wait(timeout=3)
+            release_host_registration(registration, owner, root)
+            if guard is not None:
+                guard.terminate()
+                guard.wait(timeout=3)
         else:
             print('Host family cleanup pending; watchdog retains ownership and any build lock.', file=sys.stderr)
 
 
-def build_lock():
+def try_build_lock():
+    """Acquire one of two OS locks; guardians inherit the selected descriptor."""
     STATE.mkdir(parents=True, exist_ok=True)
-    handle = (STATE / 'build.lock').open('w')
-    print('Waiting for the shared agent build slot…', flush=True)
-    fcntl.flock(handle, fcntl.LOCK_EX)
-    return handle
+    for index in range(BUILD_SLOTS):
+        filename = 'build.lock' if index == 0 else 'build-' + str(index) + '.lock'
+        handle = (STATE / filename).open('a')
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return handle
+        except BlockingIOError:
+            handle.close()
+    return None
+
+
+def build_lock():
+    print('Waiting for one of two shared agent build slots…', flush=True)
+    while True:
+        handle = try_build_lock()
+        if handle:
+            return handle
+        time.sleep(0.25)
 
 
 CONFIG_EXAMPLES = (('config/dev.example.edn', 'env/dev/resources/config.edn'),
@@ -657,6 +742,144 @@ def snapshot(checkout, destination):
             shutil.copy2(source, target)
 
 
+SHADOW_CACHE_VERSION = 1
+SHADOW_CACHE_BYTES = 8 * 1024 ** 3
+SHADOW_CACHE_AGE = 7 * 86400
+
+
+def shadow_cache_root():
+    return STATE / 'shadow-caches'
+
+
+def shadow_cache_key(checkout, output, image_id, command):
+    import re
+    # Helper/reporting text and source revisions are deliberately not identities.
+    # Shadow owns build ID/mode/options and validates changed source/macro keys.
+    declarations = [' '.join(command)]
+    for argument in command:
+        if len(argument) > 1024 or not argument.endswith(('.sh', '.clj', '.py')):
+            continue
+        path = output / argument
+        if path.resolve().is_relative_to(output.resolve()) and path.is_file():
+            declarations.append(path.read_text())
+    profiles = sorted(set(re.findall(r'with-profile[\"\']?\s+[\"\']?([+\w,./-]+)', '\n'.join(declarations))))
+    fingerprints = {}
+    for name in ('project.clj', 'package.json', 'package-lock.json', 'resources/site.edn', 'resources/site.overrides.edn'):
+        path = output / name
+        fingerprints[name] = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+    policy = [SHADOW_CACHE_VERSION, str(checkout.resolve()), image_id, profiles or ['default'], fingerprints]
+    return hashlib.sha256(json.dumps(policy, sort_keys=True).encode()).hexdigest()[:24]
+
+
+def cache_lock(key, blocking=True):
+    locks = shadow_cache_root() / 'locks'
+    locks.mkdir(parents=True, exist_ok=True)
+    handle = (locks / (key + '.lock')).open('a')
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
+        return handle
+    except BlockingIOError:
+        handle.close()
+        return None
+
+
+def cache_bytes(path):
+    size = 0
+    for item in path.rglob('*'):
+        try:
+            if item.is_file() and not item.is_symlink():
+                size += item.stat().st_size
+        except FileNotFoundError:
+            pass  # An orphan guardian may still own a writer replacing a cache file.
+    return size
+
+
+def prune_shadow_caches(now=None):
+    now = time.time() if now is None else now
+    import re
+    root = shadow_cache_root()
+    if root.is_symlink():
+        raise RuntimeError('Refusing a symlinked compiler cache root.')
+    records = []
+    for metadata in root.glob('*/metadata.json'):
+        try:
+            record = json.loads(metadata.read_text())
+            if (record.get('version') == SHADOW_CACHE_VERSION and record.get('key') == metadata.parent.name
+                    and re.fullmatch('[0-9a-f]{24}', metadata.parent.name)
+                    and isinstance(record.get('used_at'), (float, int))
+                    and isinstance(record.get('bytes'), int) and record['bytes'] >= 0
+                    and not metadata.is_symlink() and not metadata.parent.is_symlink()):
+                handle = cache_lock(record['key'], blocking=False)
+                size = record['bytes']
+                if handle is not None:
+                    with handle:
+                        size = cache_bytes(metadata.parent / 'builds')
+                records.append((record, metadata.parent, size))
+        except (OSError, ValueError, TypeError):
+            continue
+    total = sum(size for _, _, size in records)
+    removed = []
+    for record, path, size in sorted(records, key=lambda pair: pair[0]['used_at']):
+        if now - record['used_at'] < SHADOW_CACHE_AGE and total <= SHADOW_CACHE_BYTES:
+            continue
+        handle = cache_lock(record['key'], blocking=False)
+        if handle is None:
+            continue
+        with handle:
+            # Re-read after acquiring: a completed worker may have refreshed its lease.
+            try:
+                current = json.loads((path / 'metadata.json').read_text())
+            except (OSError, ValueError):
+                continue
+            if current != record:
+                continue
+            shutil.rmtree(path)
+            total -= size
+            removed.append(record['key'])
+    return {'removed': removed, 'retained_bytes': total}
+
+
+@contextmanager
+def shadow_cache(args, output, command, endpoint):
+    if args.shadow_cache == 'off' or not (output / 'shadow-cljs.edn').exists():
+        yield None
+        return
+    import re
+    config = (output / 'shadow-cljs.edn').read_text()
+    if re.search(r':cache-root\s', config):
+        print('Shadow cache: bypassed (custom cache-root)', flush=True)
+        yield None
+        return
+    image = subprocess.run(['docker', '--host', endpoint, 'image', 'inspect', '--format', '{{.Id}}', args.image],
+                           capture_output=True, text=True, timeout=30, env=docker_environment())
+    if image.returncode or not image.stdout.strip().startswith('sha256:'):
+        # Docker can pull the prefab normally; its next run can reuse a known immutable image.
+        print('Shadow cache: bypassed (prefab image identity unavailable)', flush=True)
+        yield None
+        return
+    prune_shadow_caches()
+    key = shadow_cache_key(Path(args.checkout), output, image.stdout.strip(), command)
+    with cache_lock(key) as handle:
+        directory = shadow_cache_root() / key
+        if directory.is_symlink():
+            raise RuntimeError('Refusing a symlinked compiler cache directory.')
+        if args.shadow_cache == 'refresh' and directory.exists():
+            shutil.rmtree(directory)
+        builds = directory / 'builds'
+        builds.mkdir(parents=True, exist_ok=True)
+        record = {'version': SHADOW_CACHE_VERSION, 'key': key, 'used_at': time.time(), 'bytes': cache_bytes(builds)}
+        save_json(directory / 'metadata.json', record)
+        print('Shadow cache:', key, '(worktree-scoped disk cache)', flush=True)
+        try:
+            yield builds, handle, image.stdout.strip()
+        finally:
+            # A surviving guardian retains the inherited lock while its container
+            # can still write. No other invocation/pruner can enter that identity.
+            record.update(used_at=time.time(), bytes=cache_bytes(builds))
+            save_json(directory / 'metadata.json', record)
+    prune_shadow_caches()
+
+
 def buildkit_options(cpus, memory):
     return [f'cpu-quota={round(cpus * 100000)}', 'cpu-period=100000',
             f'memory={memory}', f'memory-swap={memory}', 'default-load=true',
@@ -678,19 +901,22 @@ def buildkit_run(args, command, lock):
     expected_memory = parse_memory(args.memory)
     if expected_memory < 6 * 1024 * 1024 or round(args.cpus * 100000) < 1000:
         raise RuntimeError('BuildKit requires at least 6 MiB memory and 0.01 CPU.')
-    policy = json.dumps([os.getuid(), endpoint, args.cpus, args.memory])
+    # Each admitted slot owns a separate reusable daemon and cache volume.
+    policy = json.dumps([os.getuid(), endpoint, args.cpus, args.memory, str(lock.name)])
     builder = 'tolgraven-cpu-' + hashlib.sha256(policy.encode()).hexdigest()[:12]
     name = 'buildx_buildkit_' + builder + '0'
     prefix = ['docker', '--host', endpoint]
     owner = MacProcesses().identity(os.getpid())
     record = {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint,
               'token': builder}
-    save_json(STATE / 'docker-active.json', record)
+    save_json(reservation_path(name), record)
     guardian, identity = start_docker_guardian(owner, name, builder, endpoint, lock)
-    save_json(STATE / 'docker-active.json', dict(record, guardian=identity))
+    save_json(reservation_path(name), dict(record, guardian=identity))
     try:
         config = STATE / (builder + '.toml')
-        config.write_text('[worker.oci]\n  max-parallelism = 1\n')
+        config.write_text('[worker.oci]\n  max-parallelism = 1\n  gc = true\n'
+                          '  reservedSpace = "256MB"\n  maxUsedSpace = "2GB"\n'
+                          '  minFreeSpace = "20GB"\n')
         inspected = subprocess.run(prefix + ['buildx', 'inspect', builder], capture_output=True,
                                    text=True, env=docker_environment(), timeout=30)
         if inspected.returncode != 0:
@@ -738,7 +964,7 @@ def buildkit_run(args, command, lock):
         if confirmed:
             guardian.terminate()
             guardian.wait(timeout=3)
-            (STATE / 'docker-active.json').unlink(missing_ok=True)
+            release_reservation(name)
         else:
             print('BuildKit cleanup pending; guardian retains the quota and slot.', file=sys.stderr)
 
@@ -754,8 +980,9 @@ def parse_memory(value):
 def docker_bootstrap(node_deps):
     if node_deps == 'skip':
         return 'exec "$@"'
-    return ('if cmp -s package-lock.json /opt/prefab-package-lock.json; then '
+    return ('cpu_deps_started=$(date +%s); if cmp -s package-lock.json /opt/prefab-package-lock.json; then '
             'ln -s /usr/src/app/node_modules node_modules; else npm ci --no-audit --no-fund; fi; '
+            'printf "Dependency setup: %ss\\n" "$(( $(date +%s) - cpu_deps_started ))"; '
             'exec "$@"')
 
 
@@ -767,7 +994,11 @@ def run(args):
         raise RuntimeError('Pass a command after --.')
     if args.action == 'runtime':
         return host_run(args, command, None)
+    if args.cpus > BUILD_CPUS:
+        raise RuntimeError('Each of two build slots permits at most 1.5 CPUs; the shared Docker ceiling is 3 CPUs.')
+    queued = time.monotonic()
     with build_lock() as lock:
+        print(f'Build slot wait: {time.monotonic() - queued:.3f}s', flush=True)
         if args.mode == 'host':
             return host_run(args, command, lock)
         if args.mode == 'buildkit':
@@ -779,36 +1010,47 @@ def run(args):
         if shadow.exists():
             import re
             shadow.write_text(re.sub(r':parallel-build\s+true', ':parallel-build false', shadow.read_text()))
-        name = 'tolgraven-cpu-' + output.name
-        token = uuid.uuid4().hex
         endpoint = docker_endpoint()
-        owner = MacProcesses().identity(os.getpid())
-        save_json(STATE / 'docker-active.json', {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
-        guardian, guardian_identity = start_docker_guardian(owner, name, token, endpoint, lock)
-        save_json(STATE / 'docker-active.json', {'owner': owner, 'guardian': guardian_identity, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
-        bootstrap = docker_bootstrap(args.node_deps)
-        cmd = ['docker', '--host', endpoint, 'run', '--rm', '--init', '--name', name, '--cpus', str(args.cpus),
-               '--memory', args.memory, '--memory-swap', args.memory, '--pids-limit', '512',
-               '--label', 'tolgraven.cpu.token=' + token,
-               '--mount', f'type=bind,source={output},target=/workspace', '-w', '/workspace',
-               '-e', f'JAVA_TOOL_OPTIONS={JVM_POOLS} -Xmx{args.java_heap}',
-               args.image, 'sh', '-c', bootstrap, 'cpu-build', *command]
-        print('Isolated output:', output, '\nDocker budget:', args.cpus, 'cores /', args.memory, flush=True)
-        child = subprocess.Popen(cmd, env=docker_environment())
+        cache_context = shadow_cache(args, output, command, endpoint)
+        with cache_context as cache:
+            return docker_run(args, command, lock, output, endpoint, cache)
+
+
+def docker_run(args, command, lock, output, endpoint, cache):
+    maven_repository = Path.home() / '.m2/repository'
+    maven_repository.mkdir(parents=True, exist_ok=True)
+    name = 'tolgraven-cpu-' + output.name
+    token = uuid.uuid4().hex
+    owner = MacProcesses().identity(os.getpid())
+    save_json(reservation_path(name), {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
+    guardian, guardian_identity = start_docker_guardian(owner, name, token, endpoint, lock, (cache[1],) if cache else ())
+    save_json(reservation_path(name), {'owner': owner, 'guardian': guardian_identity, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
+    bootstrap = docker_bootstrap(args.node_deps)
+    image = cache[2] if cache else args.image
+    cache_mount = ['--mount', f'type=bind,source={cache[0]},target=/workspace/.shadow-cljs/builds'] if cache else []
+    cmd = ['docker', '--host', endpoint, 'run', '--rm', '--init', '--name', name, '--cpus', str(args.cpus),
+           '--memory', args.memory, '--memory-swap', args.memory, '--pids-limit', '512',
+           '--label', 'tolgraven.cpu.token=' + token,
+           '--mount', f'type=bind,source={output},target=/workspace', '-w', '/workspace',
+           '--mount', f'type=bind,source={maven_repository},target=/root/.m2/repository',
+           '-e', f'JAVA_TOOL_OPTIONS={JVM_POOLS} -Xmx{args.java_heap}',
+           *cache_mount, image, 'sh', '-c', bootstrap, 'cpu-build', *command]
+    print('Isolated output:', output, '\nDocker budget:', args.cpus, 'cores /', args.memory, flush=True)
+    child = subprocess.Popen(cmd, env=docker_environment())
+    try:
+        return child.wait()
+    finally:
+        # Exact owned container name; do not touch unrelated build/watch containers.
         try:
-            return child.wait()
-        finally:
-            # Exact owned container name; do not touch unrelated build/watch containers.
-            try:
-                confirmed = stop_container(name, token, endpoint)
-            except subprocess.SubprocessError:
-                confirmed = False
-            if confirmed:
-                (STATE / 'docker-active.json').unlink(missing_ok=True)
-                guardian.terminate()
-                guardian.wait(timeout=3)
-            else:
-                print('Docker cleanup pending; watchdog retains the build lock and quota reservation.', file=sys.stderr)
+            confirmed = stop_container(name, token, endpoint)
+        except subprocess.SubprocessError:
+            confirmed = False
+        if confirmed:
+            release_reservation(name)
+            guardian.terminate()
+            guardian.wait(timeout=3)
+        else:
+            print('Docker cleanup pending; watchdog retains the build lock and quota reservation.', file=sys.stderr)
 
 
 def positive(value):
@@ -860,15 +1102,17 @@ def main():
     mon.add_argument('--cpus', type=positive, default=1.5)
     mon.add_argument('--java-cpus', type=positive, default=1.5)
     mon.add_argument('--app-cpus', type=positive, default=1.0)
-    runner = commands.add_parser('run', help='Serialize one isolated Docker build or low-priority host command.')
+    runner = commands.add_parser('run', help='Run in one of two bounded, isolated build slots (3 Docker CPUs combined).')
     runner.add_argument('--mode', choices=['docker', 'host', 'buildkit'], default='docker')
     runner.add_argument('--checkout', default=os.getcwd())
-    runner.add_argument('--java-heap', default='1024m')
-    runner.add_argument('--cpus', type=positive, default=1.0)
-    runner.add_argument('--memory', default='2g')
+    runner.add_argument('--java-heap', default='2048m')
+    runner.add_argument('--cpus', type=positive, default=BUILD_CPUS)
+    runner.add_argument('--memory', default='4g')
     runner.add_argument('--image', default='registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v1')
     runner.add_argument('--node-deps', choices=['auto', 'skip'], default='auto',
                         help='Use skip only for non-Node tasks in custom images, such as media codecs.')
+    runner.add_argument('--shadow-cache', choices=['reuse', 'off', 'refresh'], default='reuse',
+                        help='Reuse isolated worktree/compiler cache, bypass it, or reset this identity before building.')
     runner.add_argument('command', nargs=argparse.REMAINDER)
     runtime = commands.add_parser('runtime', help='Supervised low-priority host runtime; does not hold the agent build queue.')
     runtime.add_argument('--checkout', default=os.getcwd())
@@ -877,7 +1121,9 @@ def main():
     installer.add_argument('--project', required=True)
     installer.add_argument('--cpus', type=positive, default=1.5)
     recovery = commands.add_parser('recover-build', help='Recover only a recorded orphan after exact endpoint/container/guardian confirmation.')
+    recovery.add_argument('--name', help='Exact recorded build name when more than one reservation exists.')
     recovery.add_argument('--endpoint', help='Required original local Docker endpoint for legacy reservations.')
+    commands.add_parser('cache-prune', help='Remove only unlocked managed Shadow caches older than seven days or over the 8 GiB LRU budget.')
     commands.add_parser('status')
     commands.add_parser('stop', help='Stop only the recorded monitor; watchdog resumes its owned paused targets.')
     wd = commands.add_parser('_watchdog')
@@ -892,11 +1138,12 @@ def main():
     hw = commands.add_parser('_host-watchdog')
     hw.add_argument('owner')
     hw.add_argument('root')
+    hw.add_argument('--registration')
     args = parser.parse_args()
     for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
         signal.signal(sig, stop_signal)
     if args.action == '_host-watchdog':
-        host_watchdog(json.loads(args.owner), json.loads(args.root))
+        host_watchdog(json.loads(args.owner), json.loads(args.root), args.registration)
     elif args.action == '_docker-watchdog':
         docker_watchdog(json.loads(args.owner), args.name, args.token, args.endpoint, args.ready_fd)
     elif args.action == '_watchdog':
@@ -909,6 +1156,8 @@ def main():
         install(args)
     elif args.action == 'recover-build':
         recover_build(args)
+    elif args.action == 'cache-prune':
+        print(json.dumps(prune_shadow_caches(), indent=2))
     elif args.action == 'status':
         print((STATE / 'status.json').read_text())
     elif args.action == 'stop':

@@ -129,3 +129,32 @@
                    "/api/integrations/image?url=https%3A%2F%2Fexample.test%2Fa.jpg&transforms=10000x10000"]]
         (is (= 400 (:status (app-routes (request :get url)))) url))
       (is (empty? @calls)))))
+
+(deftest production-transport-policy
+  (doseq [https-required [nil true]]
+    (with-redefs [config/env (assoc config/env
+                                   :dev false :test false :stage false
+                                   :https-required https-required)]
+      (let [handler (app)
+            response (handler (request :get "/"))
+            proxied (handler (header (request :get "/") "x-forwarded-proto" "https"))]
+        (is (= 301 (:status response)))
+        (is (= "https://localhost/" (get-in response [:headers "Location"])))
+        (is (= 200 (:status proxied)))
+        (is (some? (get-in proxied [:headers "Strict-Transport-Security"])))
+        (is (some #(re-find #"(?i);\s*secure(?:;|$)" %)
+                  (get-in proxied [:headers "Set-Cookie"])))))))
+
+(deftest local-production-transport-policy
+  (with-redefs [config/env (assoc config/env
+                                 :dev false :test false :stage false
+                                 :https-required false)]
+    (let [handler (app)
+          response (handler (request :get "/"))]
+      (is (= 200 (:status response)))
+      (is (nil? (get-in response [:headers "Strict-Transport-Security"])))
+      (is (not-any? #(re-find #"(?i);\s*secure(?:;|$)" %)
+                    (get-in response [:headers "Set-Cookie"])))
+      (is (= 403 (:status (handler (request :post "/"))))
+          "Local production still rejects requests without a CSRF token")
+      (is (= "nosniff" (get-in response [:headers "X-Content-Type-Options"]))))))

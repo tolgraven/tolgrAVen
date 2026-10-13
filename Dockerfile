@@ -54,28 +54,31 @@ ARG BUILD_JAVA_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m"
 RUN --mount=type=cache,id=tolgraven-shadow-release,target=/usr/src/app/.shadow-cljs,sharing=locked \
     JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
     lein with-profile prod,provided run -m shadow.cljs.devtools.cli release app ssr return-worker document
+RUN JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
+    lein with-profile prod,provided run -m tolgraven.build.assets
 
 FROM source AS backend
 # Keep the smaller backend JVM bounded while Shadow compiles concurrently.
 ARG BUILD_CLJ_JAVA_OPTIONS="-Xms64m -Xmx768m -XX:ReservedCodeCacheSize=96m"
 RUN JAVA_TOOL_OPTIONS="${BUILD_CLJ_JAVA_OPTIONS}" \
-    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :prep-tasks '^:replace []' -- compile
+    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :compile-path '"target/uberjar+provided/classes"' :prep-tasks '^:replace []' -- compile
 
 FROM source AS docs
 ARG BUILD_DOCS_JAVA_OPTIONS="-Xms64m -Xmx512m -XX:ReservedCodeCacheSize=96m"
 RUN JAVA_TOOL_OPTIONS="${BUILD_DOCS_JAVA_OPTIONS}" \
-    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :prep-tasks '^:replace []' -- docs > /tmp/codox.log 2>&1; \
+    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :compile-path '"target/uberjar+provided/classes"' :prep-tasks '^:replace []' -- docs > /tmp/codox.log 2>&1; \
     result=$?; cat /tmp/codox.log; \
     test "$result" -eq 0 && ! grep -q 'Could not generate' /tmp/codox.log
 
 FROM backend AS build
 COPY --from=docs /usr/src/app/resources/docs/codox /usr/src/app/resources/docs/codox
 COPY --from=frontend /usr/src/app/resources/public /usr/src/app/resources/public
+COPY --from=frontend /usr/src/app/resources/optimus /usr/src/app/resources/optimus
 COPY --from=frontend /usr/src/app/target/ssr/site.js /usr/src/app/target/ssr/site.js
 # All prep work is complete. In particular, jar's normal automatic clean must
 # not remove the precompiled classes before packaging the finished assets.
 RUN JAVA_TOOL_OPTIONS="${BUILD_CLJ_JAVA_OPTIONS}" \
-    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :prep-tasks '^:replace []' :auto-clean false -- uberjar
+    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :compile-path '"target/uberjar+provided/classes"' :prep-tasks '^:replace []' :auto-clean false -- uberjar
 
 # This stage intentionally uses TARGETPLATFORM. The compiler runs on the Mac's
 # architecture; the persistent renderer must run on the deployment host's CPU.
@@ -106,4 +109,4 @@ LABEL org.opencontainers.image.revision=$VCS_REF
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 EXPOSE 3000
-CMD ["java", "-Xms64m", "-Xmx512m", "-XX:MaxDirectMemorySize=128m", "-XX:ReservedCodeCacheSize=128m", "-XX:+ExitOnOutOfMemoryError", "-Dclojure.main.report=stderr", "-Dconf=env/prod/resources/config.edn", "-cp", "/app/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]
+CMD ["java", "-Xms128m", "-Xmx768m", "-XX:MaxDirectMemorySize=256m", "-XX:ReservedCodeCacheSize=128m", "-XX:+ExitOnOutOfMemoryError", "-Dclojure.main.report=stderr", "-Dorg.jboss.logging.provider=slf4j", "-Dconf=env/prod/resources/config.edn", "-cp", "/app/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]

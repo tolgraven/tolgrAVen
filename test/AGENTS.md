@@ -6,6 +6,16 @@
 
 Keep this guide and `doc/testing.md` current when test/build entry points change.
 
+- `node test/scripts/styles_test.mjs` checks fresh CSS skips, stale inputs,
+  overwritten/missing outputs and declaration/tool/font revisions in a disposable
+  tree. Startup tests must prove a style failure prevents HTTP from opening while
+  successful styles retain the deferred Shadow startup. Document release tests
+  prove isolated release-before-watches, scoped HTTP readiness, bounded failure
+  and real REPL acknowledgement while compilation is blocked.
+
+- Cold layout/handler JVM suites require compiled `:document` resources. Build
+  them in the isolated test checkout, or reuse its standalone release output; see
+  `doc/testing.md`.
 - Mount actual Reagent components, dereference subscriptions during render, dispatch
   real events, await lifecycle completion, and unmount in cleanup. Avoid direct
   app-db mutation, dangling subscriptions and forced React flushes.
@@ -190,3 +200,14 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Upload-row checks cover measured/invalid/stale byte callbacks, indeterminate
   processing, errors/retry/cancel, ready-but-unpainted retention and preview-owned
   exit. A mocked queue acknowledgment does not prove actual image decode/visibility.
+- Middleware integration checks construct the actual `wrap-base` stack, replacing
+  only asset preparation and service I/O. Cover source/jar bytes, conditional and
+  range responses, security/cache headers, real form-cookie CSRF, typed API JSON,
+  one bounded multipart parse and exact authenticated webhook preflight. Streaming
+  gzip must expose the shell before deferred content completes.
+
+- Handler/layout fixtures require generated CSS and the real `:document` bootstrap
+  in the same isolated snapshot as the test command. See `doc/testing.md`.
+- Prepared-asset checks compare exact optimized metadata, CSS/font URLs and body
+  bytes through source and jar resolvers. Reject missing, stale or corrupt output;
+  do not replace this proof with a manifest-exists assertion.

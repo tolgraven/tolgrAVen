@@ -1,11 +1,17 @@
 (ns tolgraven.middleware
   (:require
     [tolgraven.env :refer [defaults]]
+    [tolgraven.build.site :refer [when-enabled]]
     [cognitect.transit :as transit]
     [clojure.tools.logging :as log]
     [tolgraven.layout :as layout :refer [error-page]]
     [tolgraven.streaming :as streaming]
     [tolgraven.middleware.formats :as formats]
+    [tolgraven.middleware.assets :as delivery]
+    [tolgraven.middleware.asset-manifest :as manifest]
+    [tolgraven.site :as site]
+    [tolgraven.middleware.multipart :as multipart]
+    [tolgraven.middleware.ranges :as ranges]
     [tolgraven.config :refer [env]]
     [muuntaja.middleware :refer [wrap-format wrap-params]]
     [clojure.java.io :as io]
@@ -18,6 +24,8 @@
     [ring.middleware.partial-content :refer [wrap-partial-content]]
     [ring.middleware.multipart-params :refer [wrap-multipart-params]]
     [ring.middleware.content-type :refer [wrap-content-type]]
+    [ring.middleware.default-charset :refer [wrap-default-charset]]
+    [ring.middleware.content-length :refer [wrap-content-length]]
     [ring.middleware.not-modified :refer [wrap-not-modified]]
     ; Optional :experiments profile:
     ; [ring.middleware.ratelimit :refer [wrap-ratelimit]]
@@ -27,12 +35,8 @@
     [ring.middleware.defaults :refer [site-defaults wrap-defaults secure-site-defaults]]
     ; [ring-middleware-csp.core :refer [wrap-csp]]
     ; [ring.middleware.logger :refer [wrap-with-logger]]
-    [optimus.prime :as optimus]
     [tolgraven.loader.style-catalog :as styles]
     [optimus.assets :as assets]
-    [optimus.optimizations :as optimizations]
-    [optimus.strategies :as strategies]
-    [optimus-img-transform.core :refer [transform-images]]
     [taoensso.timbre :as timbre :refer [debug log error]]
     ))
 
@@ -42,10 +46,14 @@
       (handler req)
       (catch Throwable t
         (error t (.getMessage t))
-        (error-page {:request req
-                     :status 500
-                     :title "Internal error"
-                     :message (.getMessage t)})))))
+        ;; The inner session/CSRF binding has already unwound. Error rendering
+        ;; must not depend on it or expose exception messages in public HTML.
+        (binding [ring.middleware.anti-forgery/*anti-forgery-token* nil]
+          (let [status (:status (ex-data t))]
+            (error-page {:request req
+                         :status (if (and (integer? status) (<= 400 status 599)) status 500)
+                         :title "Request could not be completed"
+                         :message "Please try again."})))))))
 
 (defn wrap-csrf [handler]
   (wrap-anti-forgery
@@ -64,27 +72,39 @@
          wrapped)
        request))))
 
-(defn get-assets []
+(def document-bundles
+  {"document-head.js" ["/js/document/head.js"]
+   "document-entrance.js" ["/js/document/entrance.js"]})
+
+(defn get-bundled-assets
+  "Load the declared CSS/JS owners and their references for the live dev build."
+  []
   (concat
-   (assets/load-bundle "public"
-                       "styles.css"
-                       ["/css/tolgraven/main.min.css"])
-   (assets/load-bundles "public"
-                        styles/stylesheet-bundles)
-   (assets/load-bundle "public"
-                       "icons.css"
-                       ["/css/tolgraven/icons.min.css"])
-   (assets/load-bundles "public"
-                        {"main.js" [(str "/js/compiled/out/"
-                                         (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))]})
-   (assets/load-bundles "public"
-                        {"document-head.js" ["/js/document/head.js"]
-                         "document-entrance.js" ["/js/document/entrance.js"]})
-   (assets/load-assets "public"
-                       [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?|webp|avif)$"
-                        #"/media/.*\.(jpg?|jpeg?|webp|avif|mp4|webm)$"])
-   (assets/load-assets "public"
-                       ["/sitemap.xml" "/robots.txt"])))
+    (assets/load-bundle "public" "styles.css" ["/css/tolgraven/main.min.css"])
+    (assets/load-bundles "public" styles/stylesheet-bundles)
+    (assets/load-bundle "public" "icons.css" ["/css/tolgraven/icons.min.css"])
+    (assets/load-bundle "public" "main.js"
+      [(str "/js/compiled/out/"
+            (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))])
+    ;; Unrelated asset requests may realize the dev inventory before release.
+    ;; Never retain bytes from an old unoptimized document build in that cache.
+    (when (if-let [ready? (:document-ready? defaults)] (ready?) true)
+      (assets/load-bundles "public" document-bundles))))
+
+(defn get-assets
+  "Complete build-time inventory; runtime production imports its prepared result."
+  []
+  (concat
+    (get-bundled-assets)
+    (assets/load-assets "public"
+      [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?|webp|avif)$"
+       #"/media/.*\.(jpg?|jpeg?|webp|avif|mp4|webm)$"])
+    (assets/load-assets "public" ["/sitemap.xml" "/robots.txt"])))
+
+(defn asset-build-settings []
+  {:browser-modules (layout/browser-modules)
+   :site site/config
+   :styles styles/stylesheet-bundles})
 
 
 (defn module-source-maps
@@ -97,37 +117,44 @@
                    "$1/js/compiled/out/$2")
            asset)) loaded-assets))
 
-(defn optimize-all [assets options]
-  (-> assets
-      module-source-maps
-      (optimizations/minify-js-assets options)
-      ; (optimizations/minify-css-assets options) ;my css breaks it ofc ; not anymore apparently ; well it's already minified by autoprefixer or? could anyways
-      (optimizations/inline-css-imports)
-      (optimizations/concatenate-bundles options)
-      (transform-images {:regexp #"(/media/.*\.jpg)|(/img/.*\.(jpg|png))" ; Only transform originals, not webp/avif
-                         :quality 0.80
-                         :progressive true}) ; webp/avif already optimized at creation time
-      (optimizations/add-cache-busted-expires-headers)
-      (optimizations/add-last-modified-headers)))
+(defn optimize-all
+  "Compatibility entry point for build/audit callers; never invoked at startup."
+  [assets options]
+  ((requiring-resolve 'tolgraven.build.assets/optimize)
+   (module-source-maps assets) options))
 
-(defonce serve-live-assets-maybe-autorefresh
-  (if (nil? (io/resource "/js/compiled/out/main.js"))
-     strategies/serve-live-assets
-     strategies/serve-live-assets-autorefresh))
+(defn serve-live-assets-maybe-autorefresh
+  "Refresh a realized development inventory with a bounded TTL, without a watcher."
+  [app get-assets optimize options]
+  (delivery/serve-assets app get-assets optimize (assoc options :cache-live-assets 2000)))
+  ; :cache-live-assets 60000 ; preserved longer-cache experiment
 
-(defn wrap-optimus
-  [app]
-  (-> app
-      (optimus/wrap
-       get-assets
-       (if (:dev env)
-         optimizations/none
-         optimize-all)
-       (if (:dev env)
-         serve-live-assets-maybe-autorefresh ; like serve-live-assets but with watcher recompiling instead of timeout
-         strategies/serve-frozen-assets)
-       {;:cache-live-assets 60000
-        :uglify-js {:mangle-names false}})))
+(defn ensure-production-assets! []
+  (when-not (or (:dev env) (:test env) (:stage env))
+    (let [main (:main (layout/browser-modules))]
+      (when (or (not (re-matches #"main\.[a-fA-F0-9]{32}\.js" (or (:output-name main) "")))
+                (some #{'devtools.preload 'shadow.cljs.devtools.client.browser}
+                      (:entries main)))
+        (throw (ex-info "Production browser assets are missing or use a development build. Run bb prod:build before starting local prod."
+                        {:output-name (:output-name main)})))
+      (let [missing (vec (for [path (mapcat val document-bundles)
+                              :when (nil? (io/resource (str "public" path)))]
+                          path))]
+        (when (seq missing)
+          (throw (ex-info "Production document bootstrap is missing. Run bb prod:build before starting local prod."
+                          {:build :document
+                           :missing-assets missing}))))
+      (when-not (io/resource manifest/resource-path)
+        (throw (ex-info "Production prepared assets are missing. Run bb prod:build before starting local prod."
+                        {:build :assets
+                         :missing-assets [manifest/resource-path]}))))))
+
+(defn wrap-optimus [app]
+  (ensure-production-assets!)
+  (if (:dev env)
+    (serve-live-assets-maybe-autorefresh app get-bundled-assets (fn [files _] files) {})
+    (let [inventory (manifest/read-prepared! (asset-build-settings))]
+      (delivery/serve-assets app (constantly inventory) (fn [files _] files) {}))))
 
 (defn wrap-log "Log req then pass on unchanged"
   [handler id]
@@ -136,15 +163,26 @@
     (handler req)))
 
 (defn wrap-gzip-content-aware
-  "Needed presumably because optimus confuses the gzip middleware due to not raw files or whatever? At least it tries to gzip inappropriate stuff..."
+  "Compress useful response representations, independent of optional Fetch Metadata."
   [handler]
-  (let [compressed (gzip/wrap-gzip handler)]
-    (fn [{:keys [headers] :as req}]
-      (if (some->> (get headers "sec-fetch-dest") ; could also look at content-type?
-                   (re-find #"image|video")
-                   some?)
-        (handler req)
-        (streaming/gzip-response req (compressed req))))))
+  (fn [request]
+    (let [response (handler request)
+          headers (:headers response)
+          content-type (or (get headers "Content-Type") (get headers "content-type") "")
+          vary (or (get headers "Vary") (get headers "vary"))
+          varied? (some #{"*" "accept-encoding"}
+                        (map string/trim (string/split (string/lower-case (or vary "")) #",")))]
+      (if (and (#{200 206 304} (:status response))
+               (re-find #"(?i)^(?:text/|application/(?:javascript|json|transit\+json|xml)|image/svg\+xml)" content-type)
+               (not (or (get headers "Content-Encoding") (get headers "content-encoding"))))
+        (streaming/gzip-response
+          request
+          (update response :headers #(-> %
+                                         (dissoc "vary")
+                                         (assoc "Vary" (if varied? vary
+                                                          (str (when (seq vary) (str vary ", "))
+                                                               "Accept-Encoding"))))))
+        response))))
 
 (defn wrap-module-cache [handler]
   (fn [request]
@@ -173,32 +211,72 @@
         (assoc-in response [:headers "Cache-Control"] "public, max-age=31536000, immutable")
         response))))
 
+(defn wrap-document-readiness
+  "Development documents and their bootstrap wait for the isolated release.
+   Static images and unrelated API calls remain available during app compilation."
+  [handler]
+  (if-let [ready! (:document-ready! defaults)]
+    (fn [request]
+      (let [uri (:uri request "")
+            static? (some #(string/starts-with? uri %)
+                          ["/css/" "/js/" "/img/" "/media/" "/fonts/" "/bundles/" "/assets/"])
+            api? (or (= uri "/api") (string/starts-with? uri "/api/"))
+            html? (re-find #"(?i)(?:^|,)\s*text/html(?:\s*[;,]|$)"
+                           (get-in request [:headers "accept"] ""))]
+        (when (and (#{:get :head} (:request-method request))
+                   (or (= uri "/api/page-return-template")
+                       (string/starts-with? uri "/js/document/")
+                       (re-find #"^/bundles/(?:[^/]+/)*document-(?:head|entrance)\.js$" uri)
+                       (and (not api?) (not static?)
+                            (or html? (not (re-find #"\.[^/]+$" uri))))))
+          (ready!))
+        (handler request)))
+    handler))
+
 (defn wrap-base [handler]
-  (-> ((:middleware defaults) handler)
-      ; wrap-flash
-      (wrap-defaults
-        (-> (if (or (env :dev) (env :test) (env :stage))
-              site-defaults
-              (-> secure-site-defaults ;use ssl and setup for rev proxy
-                  (assoc-in [:proxy] true)))
-            #_(assoc-in [:security :anti-forgery] true) ; what's with this? from before we injected csrf or?
-            )) ; why was there a dissoc :session? cause it's about what middleware we request to wrap us with. cause gotta choose either above or through defaults... get duplicate session warnings now that uncommented hmm.
-      (wrap-resource "public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
-      ; (wrap-file "resources/public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
-      wrap-optimus
-      ;; Ring's default MIME table has WebP but no AVIF entry.
-      (wrap-content-type {:mime-types {"avif" "image/avif"}})
-      wrap-module-cache
-      wrap-gzip-content-aware
-      ; (wrap-log "Wrapped gzip")
-      wrap-not-modified ; guess this doesnt work cause optimus gens new files tho..
-      ; (wrap-csp {:policy csp})
-      wrap-partial-content
-      wrap-media-cache
-      wrap-multipart-params
-      wrap-formats
-      ; wrap-with-logger
-      wrap-internal-error))
+  (let [options (if (or (env :dev) (env :test) (env :stage)
+                        (false? (env :https-required)))
+                  site-defaults
+                  (assoc secure-site-defaults :proxy true))
+        browser-options (-> options
+                            (dissoc :proxy :static)
+                            (assoc :security (select-keys (:security options) [:anti-forgery]))
+                            (assoc :responses {})
+                            (assoc-in [:params :multipart] false)
+                            #_(assoc-in [:security :anti-forgery] true)) ; preserved CSRF experiment
+        authorize (or (when-enabled :main :media
+                        (requiring-resolve 'tolgraven.media.cms/wrap-webhook-authorization))
+                      identity)]
+    (-> ((:middleware defaults) handler)
+        ; wrap-flash
+        ;; Keep global browser CSRF, cookies, sessions and form parameters intact.
+        ;; Public GET/HEAD assets do not create personalized session cookies.
+        (wrap-defaults browser-options)
+        delivery/wrap-public-resources
+        ; (wrap-file "resources/public" {:prefer-handler? true}) ; preserved file-serving experiment
+        wrap-optimus
+        ;; One response policy covers plain resources, Optimus and routed bodies.
+        (wrap-content-type {:mime-types {"avif" "image/avif"}})
+        (wrap-default-charset "utf-8")
+        wrap-content-length
+        wrap-module-cache
+        ; (wrap-log "Wrapped gzip")
+        wrap-not-modified
+        ; (wrap-csp {:policy csp})
+        ranges/wrap-ranges
+        wrap-media-cache
+        wrap-gzip-content-aware
+        multipart/wrap-multipart
+        ;; Only the exact Strapi POST can supply Ring's existing safe header,
+        ;; after the same constant-time bearer validation used by the handler.
+        authorize
+        ;; API routes own Muuntaja; HTML and return-template JSON are already encoded.
+        ; wrap-with-logger
+        wrap-document-readiness
+        wrap-internal-error
+        ;; Proxy/HTTPS and security response headers also cover early failures.
+        (wrap-defaults {:proxy (:proxy options)
+                        :security (dissoc (:security options) :anti-forgery)}))))
 
 ; wrap-cors maybe good for api side once/if we get a real api heh. would need configure to only run on prod tho...
 ; wrap-ratelimit sounds good to have for potential larger sites with actual exposure.
