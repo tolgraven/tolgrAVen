@@ -12,7 +12,7 @@
   {:content [:github-settings]
    :server {:routes 'tolgraven.modules.github.api/routes}
    :depends (get content-contract/module-dependencies :github [])
-   :db-schema {[:module :github :activity] activity-schema/result
+   :db-schema {[:module :github :activity] [:map-of :string activity-schema/result]
                [:module :github :deployment] deployment-schema/metadata}
    :id :github
    :styles ["/css/tolgraven/modules/github.min.css"]

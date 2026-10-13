@@ -137,7 +137,8 @@
           [<commit-message> (message/parse-message (:message commit))]]])
 
 (rf/reg-sub :github/deployment (fn [db _] (get-in db [:module :github :deployment])))
-(rf/reg-sub :github/activity (fn [db _] (get-in db [:module :github :activity])))
+(rf/reg-sub :github/activity
+  (fn [db [_ user]] (get-in db [:module :github :activity user])))
 
 (defc <deployment>
   {:depends [{:source :url
@@ -154,14 +155,16 @@
      (when commit
        [(if commit-url :a :span) {:href commit-url, :title commit} [:code (subs commit 0 7)]])]))
 
+(defn activity-dependencies [user]
+  [{:source :url
+    :url (str "/api/github/activity?user=" (js/encodeURIComponent user))
+    :into [:module :github :activity user]}])
+
 (defc <activity>
-  {:depends (fn [user]
-              [{:source :url
-                :url (str "/api/github/activity?user=" (js/encodeURIComponent user))
-                :into [:module :github :activity]}])
+  {:depends activity-dependencies
    :loading [:section.github-activity.covering-2 [:h2 "GitHub activity"] [:p "Loading contribution calendar…"]]}
   [user :- :string]
-  (let [{:keys [days]} @(rf/subscribe [:github/activity])]
+  (let [{:keys [days]} @(rf/subscribe [:github/activity user])]
     [:section.github-activity.covering-2
      [:h2 [:a {:href (str "https://github.com/" user)} (str user " on GitHub")]]
      [activity/<calendar> days]]))

@@ -11,6 +11,7 @@
             [tolgraven.modules.github.events]
             [tolgraven.modules.github.subs]
             [tolgraven.components.activity :as activity]
+            [tolgraven.component.data :as data]
             [re-frame.core :as re-frame]
             [tolgraven.react :as rf]
             [tolgraven.test-support :as support]))
@@ -130,3 +131,39 @@
                 (finally (support/unmount! root) (.remove container))))))
         (.catch #(is false (str %)))
         (.finally done))))
+
+(deftest cached-calendar-belongs-to-its-user-after-switching-back
+  (async done
+    (let [restore! (re-frame/make-restore-fn)
+          original-source (get @data/*sources :url)
+          resources (set (mapcat views/activity-dependencies ["activity-test-a" "activity-test-b"]))
+          *requests (atom [])
+          container (.createElement js/document "div")]
+      (data/invalidate! resources)
+      (data/register-source! :url
+        {:load! (fn [{:keys [url]}]
+                  (swap! *requests conj url)
+                  (js/Promise.resolve
+                    {:days [{:date "2026-10-11"
+                             :count (if (string/ends-with? url "activity-test-a") 3 7)
+                             :level 1}]}))})
+      (.appendChild (.-body js/document) container)
+      (-> (go-promise
+            (let [root (await! (support/create-root! container))]
+              (try
+                (doseq [[user total] [["activity-test-a" 3] ["activity-test-b" 7] ["activity-test-a" 3]]]
+                  (await! (support/render! root (with-meta [views/<activity> user] {:key user})))
+                  (await! (support/wait-for!
+                            #(and (string/includes? (.-textContent container) (str user " on GitHub"))
+                                  (string/includes? (.-textContent container) (str total " contributions")))))
+                  (is (= (str total " contributions on 2026-10-11")
+                         (.getAttribute (.querySelector container "[data-date]") "aria-label"))))
+                (is (= 2 (count @*requests)) "Returning to A uses A's cached calendar")
+                (finally (support/unmount! root)))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (data/invalidate! resources)
+                      (data/register-source! :url original-source)
+                      (.remove container)
+                      (restore!)
+                      (done)))))))

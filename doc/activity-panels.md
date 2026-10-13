@@ -10,7 +10,9 @@ Strapi's `github-settings` single type owns `user` and `repo`.
 The module declares this section as a managed content dependency; the
 `:github/get-from` subscription reads it. GitHub provider responses remain in
 `:content :github`, separate from editor content. Repository changes reset that
-provider cache and reject late responses from the previous target.
+provider cache and reject late responses from the previous target. Calendars are
+installed and subscribed to by username, so a cached A/B/A switch retains the
+correct user's counts.
 
 Strapi's `codex-profile` single type owns `displayName`, `profileUrl`, `bio` and
 optional `days`. The public contract uses `:display-name`, `:profile-url`, `:bio`
