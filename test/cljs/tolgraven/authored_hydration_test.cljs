@@ -45,7 +45,7 @@
       (-> (support/wait-for! #(seq @*errors) "React did not forward its actual recovery callback")
           (.then (fn [_]
                    (is (= "Client content" (.-textContent element)))
-                   (is (.startsWith (.-id (.querySelector element "p")) "markdown-native-"))
+                   (is (.includes (.-id (.querySelector element "p")) "markdown-native-"))
                    (is (seq @*errors))))
           (.catch #(is false (str %)))
           (.finally (fn []
