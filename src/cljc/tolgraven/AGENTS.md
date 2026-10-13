@@ -108,3 +108,8 @@ server format handlers retain their native JVM Java-time support.
   `:progressive? false` opts out. Catalogued WebP/AVIF originals share canonical
   stems with JPEG/PNG renditions. Final sources retain the complete responsive set;
   preview acquisition is native lazy markup, suppressed on history returns.
+
+- `media/schema.cljc` owns public rendition/asset, upload/status and library contracts.
+  `media/query.cljc` builds shared public manifest queries for page plans and managed
+  browser bindings. Post `:image-assets` and CMS section sidecars carry paired SSR
+  metadata; private job/source/lease fields must not enter public projections.

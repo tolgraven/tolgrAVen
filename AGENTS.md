@@ -280,6 +280,10 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 - See `doc/testing.md` for mounted subscription workflows, live integration boundaries and browser checks. Unit replacements do not establish live service behavior.
 
 ## Commit & Pull Request Guidelines
+- Resolve merge and rebase conflicts manually, file by file, from the start.
+  Inspect both sides and the intended combined behavior, edit each conflict
+  explicitly, and review the resulting diff. Do not use bulk conflict-resolution
+  scripts or blanket ours/theirs choices across files.
 - Always open and keep in-progress PRs as drafts. Mark them ready for review only
   after implementation and required verification are complete, the current head is
   pushed, and the description matches it. Return a PR to draft when follow-up

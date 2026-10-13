@@ -384,3 +384,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Shared `restore/document-form` preserves three React document slots in Node/local
   SSR and hydration so native image useId tokens match. `src/bootstrap/bootstrap/`
   owns generated native document scripts; no authored snippets live in public JS.
+
+- Blog Markdown attachments use owner-scoped registered events and one serialized
+  authenticated upload queue. Keep browser File values transient, insert a stable
+  draft marker at the native selection, and replace only that marker after a
+  complete validated rendition manifest arrives. Retry/cancel/disposal invalidate
+  stale attempts; pending markers block publication. SDK reads and realtime events
+  restore URL-keyed image metadata before row validation.

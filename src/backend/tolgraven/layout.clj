@@ -108,13 +108,14 @@
 (defn- img-preload-modern
   "Prioritize the same first source as the shared picture component.
    Preloading every supported format would download all three on modern phones."
-  [path]
-  (let [{:keys [original avif]} (image-sources/get-src-variants path)]
+  [image]
+  (let [{:keys [src asset sizes]} (if (string? image) {:src image} image)
+        {:keys [original avif]} (image-sources/get-src-variants src asset)
+        srcset (image-sources/srcset src "avif" asset)]
     [:link (cond-> {:rel "preload" :as "image" :href (or avif original)
                      :fetchpriority "high"}
              avif (assoc :type "image/avif")
-             (image-sources/srcset path "avif")
-             (assoc :imagesrcset (image-sources/srcset path "avif") :imagesizes "100vw"))]))
+             srcset (assoc :imagesrcset srcset :imagesizes (or sizes "100vw")))]))
 
 (defn- loading-spinner
   [text]
@@ -138,8 +139,9 @@
 
    [:main#main.main-loading.main-content
     {:class main-class
-     :style (when-let [background (image-sources/placeholder-background hero-img)]
-              {:background-image background})}
+     :style (let [{:keys [src asset]} (if (string? hero-img) {:src hero-img} hero-img)]
+              (when-let [background (image-sources/placeholder-background src asset)]
+                {:background-image background}))}
     [:section#intro
      #_[:img.media.media-as-bg {:src hero-img}]
      (when error-text
@@ -333,30 +335,35 @@
                      (log/error "Page SSR unavailable; returning a retryable public error")
                      {:error? true
                       :status (if (= 404 (:status (ex-data error))) 404 503)}))))
-        script-paths (distinct (concat script-paths
+        script-paths' (distinct (concat script-paths
                                        (when (or ssr returning?)
                                          (hydration-script-paths (:uri request)))))
-        request (cond-> request
+        critical-images (page/critical-image-attrs (some-> (:uri request) pages/match :data)
+                          (or (get-in ssr [:snapshot :content])
+                              (try (content/immediate-content)
+                                   (catch Exception _ {}))))
+        request' (cond-> request
                   returning? (assoc :restore? true)
                   (:snapshot ssr) (assoc :ssr ssr
                                         :site-content {:version 1 :deferred? true
                                                        :content (get-in ssr [:snapshot :content])}))]
   (cond-> (hiccup-response
    home
-   (if (or (:ssr request) returning?) request (if-let [mode (System/getenv "CONTENT_BOOTSTRAP_MODE")]
+   (if (or (:ssr request') returning?) request' (if-let [mode (System/getenv "CONTENT_BOOTSTRAP_MODE")]
      (if (#{"route" "full"} mode)
-       (let [route (keyword (or (second (clojure.string/split (:uri request) #"/")) "home"))
+       (let [route (keyword (or (second (clojure.string/split (:uri request') #"/")) "home"))
              bundle (if (= mode "route") (assoc (content/for-route! route) :deferred? true) (content/bundle!))]
-         (assoc request :site-content bundle))
-       request)
-     request))
+         (assoc request' :site-content bundle))
+       request')
+     request'))
    :loading-content (when-not returning? (or (:html ssr)
                         (when (:error? ssr)
                           [:main.main-content [:p {:role "alert"} "Page content could not load. Please retry."]
-                           [:a {:href (:uri request)} "Retry"]])
-                        (basic-skeleton "tolgrAVen" ["audio" "visual"] "img/foggy-shit-small.jpg")))
+                           [:a {:href (:uri request')} "Retry"]])
+                        (basic-skeleton "tolgrAVen" ["audio" "visual"]
+                          (or (first critical-images) "img/foggy-shit-small.jpg"))))
    :title (or (get-in ssr [:snapshot :document-title])
-              (page/document-title (some-> (:uri request) pages/match :data) (:snapshot ssr))
+              (page/document-title (some-> (:uri request') pages/match :data) (:snapshot ssr))
               (get-in env [:site :title])
               (try (get-in (content/immediate-content) [:document :title])
                    (catch Exception _ nil)))
@@ -365,19 +372,16 @@
    :pre-pre [["media/fog-3d-small.mp4" "video"]]
    :css-paths (if (:dev env)
                 ["/css/tolgraven/icons.min.css"]
-                (olink/bundle-paths request ["icons.css"]))
-   :js-pre script-paths
-   :img-pre (page/critical-images (some-> (:uri request) pages/match :data)
-                                  (or (get-in ssr [:snapshot :content])
-                                      (try (content/immediate-content)
-                                           (catch Exception _ {}))))
+                (olink/bundle-paths request' ["icons.css"]))
+   :js-pre script-paths'
+   :img-pre critical-images
    :link-pre []
    :title-img "img/logo/tolgraven-logo.png"
    :anti-forgery (force *anti-forgery-token*))
-    (seq script-paths) (assoc-in [:headers "Link"]
+    (seq script-paths') (assoc-in [:headers "Link"]
                                 (clojure.string/join ", "
-                                  (for [path script-paths
-                                        :let [{:keys [as crossorigin fetchpriority]} (script-preload-attrs request path)]]
+                                  (for [path script-paths'
+                                        :let [{:keys [as crossorigin fetchpriority]} (script-preload-attrs request' path)]]
                                     (str "<" path ">; rel=preload; as=" as
                                          (when crossorigin (str "; crossorigin=" crossorigin))
                                          (when fetchpriority (str "; fetchpriority=" fetchpriority))))))

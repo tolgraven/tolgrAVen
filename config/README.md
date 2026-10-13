@@ -27,3 +27,7 @@ shows the runtime defaults with commented alternatives.
 Tool configuration stays at each tool's required location (`shadow-cljs.edn`,
 `project.clj`, `bb.edn`, `.clj-kondo/config.edn`). Module/page selections belong to
 `resources/site.edn` and optional CMS overrides; see [Site capabilities](../doc/site-capabilities.md).
+
+Managed CMS/Markdown media defaults off until its module-owned tables/buckets are
+provisioned. Configure it in the same private runtime files; see
+[Managed media](../doc/media-pipeline.md) for webhook authentication and ready asset contracts.

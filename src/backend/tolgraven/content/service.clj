@@ -3,6 +3,8 @@
             [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as string]
+            [clojure.walk :as walk]
+            [tolgraven.media.pipeline :as media]
             [tolgraven.config :as config]
             [tolgraven.page-router :as pages]
             [clojure.tools.logging :as log]
@@ -13,6 +15,33 @@
 (defn settings []
   {:url (or (System/getenv "STRAPI_URL") (:strapi-url config/env))
    :token (or (System/getenv "STRAPI_READ_TOKEN") (:strapi-read-token config/env))})
+
+(defn- image-sources [value]
+  (set (filter #(and (string? %)
+                    (re-matches #"(?i)(?:https?://|/uploads/|/?img/).+\.(?:png|jpe?g|webp|avif|svg)(?:[?#].*)?" %))
+               (tree-seq coll? seq value))))
+
+(defn enrich-media!
+  "Acquire ready manifests through the shared public query plan once per content
+   snapshot. Media props gain their manifest; string logos keep their public
+   contract and use the owning section's sidecar. Missing manifests retain source pixels."
+  [sections]
+  (let [sources (into {} (map (fn [[key value]] [key (image-sources value)])) sections)
+        assets (try (media/assets! (mapcat val sources))
+                    (catch Exception _
+                      (log/warn "Media manifests unavailable; retaining source images")
+                      {}))]
+    (into {}
+      (for [[key value] sections]
+        (let [enriched (walk/postwalk
+                         (fn [node]
+                           (if-let [asset (and (map? node) (get assets (:src node)))]
+                             (merge node (select-keys asset [:src :width :height :renditions :placeholder]) {:asset asset})
+                             node)) value)
+              owned (select-keys assets (sources key))]
+          [key (if (and (map? enriched) (seq owned))
+                 (assoc enriched :image-assets owned)
+                 enriched)])))))
 
 (defn- load-content! [ks]
   (let [{:keys [url token]} (settings)]
@@ -26,12 +55,12 @@
         (when-not (and (= 200 (:status response)) (= contract/version (:version body))
                        (map? (:content body)) (every? #(contains? (:content body) %) ks))
           (throw (ex-info "CMS content unavailable" {:status 503})))
-        (select-keys (:content (contract/checked-bundle body ks)) ks))
+        (enrich-media! (select-keys (:content (contract/checked-bundle body ks)) ks)))
       ;; Development/offline seed is server-side only. A configured CMS failure
       ;; never silently replaces the editor's content with the original seed.
-      (select-keys (:content (contract/checked-bundle
+      (enrich-media! (select-keys (:content (contract/checked-bundle
                               {:version contract/version
-                               :content (select-keys (json/read-str (slurp (io/resource "content-seed.json")) :key-fn keyword) ks)} ks)) ks))))
+                               :content (select-keys (json/read-str (slurp (io/resource "content-seed.json")) :key-fn keyword) ks)} ks)) ks)))))
 
 (defonce *immediate (atom nil))
 

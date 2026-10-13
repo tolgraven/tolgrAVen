@@ -164,3 +164,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Test runtime settings live in private `env/test/resources/config.edn`; copy
   `config/test.example.edn` on a new worktree. Test resource paths exclude dev
   resources so test configuration cannot inherit development credentials.
+
+- Managed-media HTTP/codec checks use the ordinary codec-capable dependency prefab
+  through `tolgraven-cpu run`. `test/scripts/media_sql_test.sql` creates its own
+  roles and fixture schema; run it only in a disposable PostgreSQL container, never
+  against a project database. See `doc/media-pipeline.md`.

@@ -2,6 +2,7 @@
   #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
   #?(:cljs (:require #?(:clj [tolgraven.build.site :refer [when-enabled]]) [tolgraven.schema.common :as c]
             [tolgraven.schema.declarations :as declarations]
+            [tolgraven.modules.blog.editor-model :as editor-model]
             [tolgraven.supabase.schema :as store] )))
 
 #?(:cljs
@@ -14,6 +15,7 @@
   [:map
    [:?restore-edits [:set [:tuple [:enum :comment-thread-expanded :comment-limit :adding-comment :comments-expanded]
            :any]]]
+   [:?image-uploads editor-model/uploads-schema]
    [:?current-post-id [:maybe c/id]]
    [:?viewing-tag :?string]
    [:?comments-expanded [:map-of c/id :boolean]]

@@ -44,3 +44,8 @@ SUPABASE_CATALOG_TEST_DB_URL='jdbc:postgresql://127.0.0.1:5432/test_db' \
 It verifies JDBC imports/JSONB/reads, FK-safe resets, actually absent blog/comment
 tables and a custom table. It does not test Supabase REST/Auth. The capability matrix
 and retention test exercise fresh DDL installs and disable/re-enable grants separately.
+
+Main's `:media` feature declares `site_media` and its private-source/public-rendition
+buckets. Its ready-only public columns and server-only job RPCs are module-owned;
+post `image_assets` stores the server-derived manifest paired with Markdown.
+Apply these resources before enabling media processing. See [Managed media](media-pipeline.md).

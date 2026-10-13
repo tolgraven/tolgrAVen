@@ -1,2 +1,3 @@
 ;; Copy to env/test/resources/config.edn; isolated service fixtures can add keys.
-{:port 3000}
+{:port 3000
+ :media {:enabled false}}

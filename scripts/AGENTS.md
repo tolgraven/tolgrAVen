@@ -22,6 +22,10 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   up private configuration and restores prior files on failure. See `doc/crawl-policy.md`.
 - `media/images.clj` also runs in the web runtime. Keep it standalone, bounded by
   the JVM upload adapter; Docker copies and smoke-tests it with pinned Babashka.
+  `--asset source-file manifest-file` emits a complete private rendition manifest;
+  the durable backend owns publication only after every codec succeeds. Uploaded
+  images use the same responsive cutoff as local rasters; smaller images still
+  receive full-size AVIF/WebP fallbacks without sized sidecars.
 - `bb images:responsive` discovers still raster originals and standalone WebP/AVIF rasters with a longest
   edge of at least 960 and source size at least 64 KiB (native width >320), and rebuilds the
   responsive catalog's sized AVIF/WebP files. Preserve manual entries, explicit
