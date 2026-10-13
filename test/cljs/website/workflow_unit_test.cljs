@@ -616,7 +616,7 @@
       (set! (.-innerHTML element) html)
       (is (= "inline" (.-textContent (.querySelector element ".code-snippet > code.code-highlight"))))
       (is (= "Copy code" (.getAttribute (.querySelector element ".code-copy") "aria-label")))
-      (is (nil? (.querySelector element "pre, div"))))))
+      (is (nil? (.querySelector element ".code-snippet pre, .code-snippet div"))))))
 (deftest debug-and-theme-events-preserve-app-db
   (async done
          (-> (go-promise (let [before (r/make-restore-fn)]

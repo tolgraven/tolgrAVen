@@ -78,6 +78,18 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   visibly committed final candidate after its overlap completes. Source changes and
   unmount release native observation; hidden ancestors wait on scoped visibility/
   motion changes rather than frame polling. See `doc/progressive-images.md`.
+- Authoring drafts/uploads/anchors belong to re-frame. Pending image chips use
+  native editor nodes/decorations, never authored markers. SDK extension slots
+  may require stable reverse React adapters; keep their native document/selection
+  work scoped and render ordinary Reagent UI. See `doc/markdown-authoring.md`.
+- Working/named blog drafts use account-owned projections in the existing storage
+  queue/debounce and navigation/pagehide drain. Restore validates before applying;
+  new input and account changes supersede pending reads. Published-post revision
+  collections retain their edit target; selected document IDs own native undo lifetime.
+- Source mode uses literal native text plus the same media nodes, without an
+  independent CodeMirror view or Markdown markers. Source input commits its
+  registered form event before the next key; controlled reconciliation reads
+  the latest managed query. Keep the text/on-change/disposal boundary reusable.
 - Rendered reusable UI lives in `components/`; feature-specific UI lives with its
   module. `component/` is the declaration/lifecycle runtime, not a view inventory.
   Import the owning namespace directly; there is no top-level `views.cljs` shim.

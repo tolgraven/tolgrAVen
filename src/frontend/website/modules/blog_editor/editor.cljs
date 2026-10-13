@@ -1,20 +1,12 @@
 (ns website.modules.blog-editor.editor
   "Markdown draft attachment UI; re-frame owns upload state and draft text."
-  (:require [clojure.string :as string]
-            [website.react :as r]
+  (:require [website.react :as r]
             [website.macros :as m :refer-macros [defc]]
             [website.modules.blog-editor.upload-bridge :as bridge]
             [website.modules.blog-editor.events]
             [website.modules.blog-editor.model :as model]
+            [website.modules.blog-editor.files :as files]
             [website.components.content.upload :as upload]))
-
-(defn image-file? [file]
-  (or (string/starts-with? (.-type file) "image/")
-      (and (string/blank? (.-type file))
-           (boolean (re-find #"(?i)\.(jpe?g|png|webp|avif|svg|gif|heic|heif|tiff?)$" (.-name file))))))
-
-(defn image-files [files]
-  (filterv image-file? (array-seq files)))
 
 (defn- enqueue! [files textarea owner]
   (when (seq files)
@@ -24,52 +16,30 @@
                   (or (some-> textarea .-selectionEnd) 0)])))
 
 (defn- transfer-images! [event textarea transfer owner]
-  (let [files (image-files (.-files transfer))]
+  (let [files (files/image-files (.-files transfer))]
     (when (seq files)
       (.preventDefault event)
       (enqueue! files textarea owner))))
 
 (defn dispose! [owner _] (r/dispatch [:blog/image-upload-dispose owner]))
 
-(declare <upload-status>)
+(defn use-owner [account]
+  ;; The transient SDK/transport lifetime changes with authentication, while
+  ;; the persistent draft document has its own restored identity.
+  (r/use-memo #(str (random-uuid)) [account]))
 
-(defc <source-editor>
-  {:features [:lifecycle]}
-  [{:keys [owner]}]
-  :let [*textarea (atom nil)
-        *picker-generation (r/atom 0)
-        textarea-ref (fn [element] (reset! *textarea element) nil)]
-  (let [text (or @(r/subscribe [:form-field [:post-blog :text]]) "")
-          uploads (or @(r/subscribe [:blog/state [:image-uploads]]) {})]
-      [:div.blog-image-editor
-       [:label {:for "blog-markdown-text"} "Text (Markdown)"]
-       [:textarea.form-control
-        {:id "blog-markdown-text"
-         :rows 6
-         :value text
-         :ref textarea-ref
-         :placeholder "Write Markdown. Paste or drop images to attach them."
-         :on-change #(r/dispatch-sync [:form-field [:post-blog :text] (.. % -target -value)])
-         :on-blur #(r/dispatch [:form-field [:post-blog :text] (.. % -target -value) :blur])
-         :on-paste #(transfer-images! % @*textarea (.-clipboardData %) owner)
-         :on-drop #(transfer-images! % @*textarea (.-dataTransfer %) owner)
-         :on-drag-over (fn [event]
-                         (when (some #(= "file" (.-kind %))
-                                     (array-seq (.. event -dataTransfer -items)))
-                           (.preventDefault event))) }]
-       [:label.blog-image-editor__attach
-        "Attach images "
-        ^{:key @*picker-generation}
-        [:input {:type "file"
-                 :accept "image/*"
-                 :multiple true
-                 :on-change (fn [event]
-                              (enqueue! (image-files (.. event -target -files)) @*textarea owner)
-                              (swap! *picker-generation inc))}]]
-       [:p.blog-image-editor__hint "Paste, drop, or select images. Uploads are inserted where your cursor is."]
-       [<upload-status> {:owner owner}]
-       (when (model/unresolved? text uploads)
-         [:p {:role "status"} "Finish or remove image uploads before publishing."])]))
+(defn upload-actions [owner {:keys [id attempt preview-attempt preview-error] :as item}]
+  (cond-> (assoc item
+                 :retry! #(r/dispatch [(if preview-error :blog/image-preview-retry :blog/image-upload-retry) id])
+                 :remove! #(r/dispatch [:blog/image-upload-cancel id])
+                 :exited! #(when attempt (r/dispatch [:blog/image-chip-exited owner id attempt (or preview-attempt 0)])))
+    preview-error (assoc :status :failed, :error preview-error)))
+
+(defn enqueue-files! [owner files start end sdk?]
+  (r/dispatch-sync [:blog/image-upload-enqueue
+                    (mapv (fn [file]
+                            (assoc (if (map? file) file {:id (str (random-uuid)), :name (.-name file), :file file})
+                                   :owner owner, :sdk? sdk?)) files) start end]))
 
 (defc <upload-status>
   {:features [:presence]}
@@ -77,7 +47,7 @@
   (let [uploads @(r/subscribe [:blog/state [:image-uploads]])]
     [:ul.blog-image-editor__uploads
      (for [{:keys [id preview-ready? preview-error status] :as item} (sort-by :order (vals uploads))
-           :when (and (= owner (:owner item)) (not (and (= :ready status) preview-ready?)))]
+           :when (and (= owner (:owner item)) (not (:cancelled? item)) (not (and (= :ready status) preview-ready?)))]
        ^{:key id} [upload/<upload-row> (cond-> (assoc item
                                                    :exit {:class "upload-row--exit"}
                                                    :retry! #(r/dispatch [(if preview-error :blog/image-preview-retry :blog/image-upload-retry) id])
@@ -95,13 +65,16 @@
 
 (defc <markdown-editor>
   "Canonical form text and upload jobs stay in the posting owner; only the SDK is lazy."
-  {:features [:lifecycle]}
-  [{:keys [owner]}]
-  :let [*rich? (r/atom true)]
+  {:features [:lifecycle]
+   :spec true
+   :spec-schema [:map [:owner :string] [:?source? :boolean] [:?exit fn?]]}
+  [{:keys [owner source?]}]
+  :let [*rich? (r/atom (not source?))]
   (let [text (or @(r/subscribe [:form-field [:post-blog :text]]) "")
-        uploads @(r/subscribe [:blog/state [:image-uploads]])
+        document-id @(r/subscribe [:state [:blog-editor :draft :document-id]])
+        uploads @(r/subscribe [:blog-editor/uploads owner])
         library @(r/subscribe [:state [:blog-editor :library]])
-        assets (->> (concat (:assets library) (keep :asset (vals uploads)))
+        assets (->> (concat (:assets library) (keep :asset uploads))
                     (reduce (fn [[seen result] asset]
                               (if (seen (:id asset)) [seen result]
                                   [(conj seen (:id asset)) (conj result asset)])) [#{} []])
@@ -111,17 +84,37 @@
                                         (case action
                                           :load (r/dispatch [:blog-editor/library-load offset])
                                           :view [<library-state>])) [])]
+    (r/use-effect
+      (fn []
+        (r/dispatch [:blog/editor-mounted owner])
+        #(r/dispatch [:blog/image-upload-dispose owner])) [owner])
     [:section.blog-image-editor
      [:nav {:aria-label "Markdown editor mode"}
-      [:button {:type "button", :aria-pressed @*rich?, :on-click #(reset! *rich? true)} "Visual editor"]
-      [:button {:type "button", :aria-pressed (not @*rich?), :on-click #(reset! *rich? false)} "Plain Markdown"]]
-     (if @*rich?
-       (m/<> :markdown-editor/editor
+      [:button {:type "button", :aria-pressed @*rich?, :on-click #(do (r/dispatch-sync [:blog/editor-mode owner true]) (reset! *rich? true))} "Visual editor"]
+      [:button {:type "button", :aria-pressed (not @*rich?), :on-click #(do (r/dispatch-sync [:blog/editor-mode owner false]) (reset! *rich? false))} "Plain Markdown"]]
+     (m/<> {:module :markdown-editor, :view :editor, :load-on :immediate}
              {:text text
-              :on-change #(r/dispatch-sync [:form-field [:post-blog :text] %])
+              :document-id document-id
+              :source? (not @*rich?)
+              :text-query [:form-field [:post-blog :text]]
+              :uploads uploads
+              :uploads-query [:blog-editor/uploads owner]
+              :upload-query (r/use-callback (fn [id] [:blog/state [:image-uploads id]]) [])
+              :enqueue! (r/use-callback (partial enqueue-files! owner) [owner])
+              :render-upload (r/use-callback (fn [item] [upload/<upload-slot> (upload-actions owner item)]) [owner])
+              :insert-ready! (r/use-callback (fn [item insert!]
+                                              (r/dispatch-sync [:blog/image-upload-insert owner (:id item) (:attempt item)
+                                                                (get-in item [:asset :src]) insert!])) [owner])
+              :on-change (r/use-callback (fn [text & [changes positions]]
+                                           ;; Literal native input must be accepted before the
+                                           ;; next key transaction; queued echoes can otherwise
+                                           ;; overwrite newer text during controlled reconciliation.
+                                           ((if @*rich? r/dispatch r/dispatch-sync)
+                                            [:blog/editor-text-changed owner text changes positions document-id])) [owner document-id])
+              :on-anchors (r/use-callback #(r/dispatch [:blog/editor-anchors owner %]) [owner])
+              :on-removed (r/use-callback #(r/dispatch [:blog/image-anchor-removed owner %]) [owner])
               :upload! upload!
               :assets assets
               :image-urls (mapv :src assets)
               :library library-action})
-       [<source-editor> {:owner owner}])
-     (when @*rich? [<upload-status> {:owner owner}])]))
+     [<upload-status> {:owner owner}]]))

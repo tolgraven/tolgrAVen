@@ -15,6 +15,10 @@
             [website.components.content.frame :as frame]
             [website.components.content.layout :as layout]
             [website.components.content.resize :as resize]
+            [website.modules.highlight.code-block :as code-block]
+            [website.blog-editor-test :as editor-test]
+            [website.content.schema :as content-schema]
+            [website.validation :as validation]
             ["mdast-util-from-markdown" :refer [fromMarkdown]]))
 
 (deftest canonical-export-inventory-survives-json-with-its-namespace
@@ -104,12 +108,25 @@
                                         frame "null"))))))
 
 (deftest persisted-geometry-retains-chosen-units-and-component-fields
+  (is (= {:width "21rem"}
+         (resize/edge-geometry :right {:width "20rem"}
+                               {:width 320, :height 160, :units {:rem 16, :em 20, :parent 800}} 16 0))
+      "Resizing one edge must not introduce a present nil size")
   (is (= {:width "20rem", :flow "left"}
          (layout/geometry {:width 640, :layout-width "20rem", :layout-flow "left"})))
   (is (= "50%" (layout/resized "40%" 400 {:rem 16, :em 20, :parent 800})))
   (is (= {:width "21rem", :height "11rem"}
          (resize/geometry {:width "20rem", :height "10rem"}
                           {:width 320, :height 160, :units {:rem 16, :em 20, :parent 800}} 16 16))))
+
+(deftest runtime-language-suggestions-have-the-shared-cms-contract
+  (is (nil? (validation/explain content-schema/code-languages [])))
+  (is (nil? (validation/explain content-schema/code-languages [{:value "cljs", :label "ClojureScript"}])))
+  (doseq [invalid [[{:value "", :label "No blank auto entry"}]
+                   [{:value "bad token", :label "Invalid"}]
+                   [{:value "cljs", :label "   "}]
+                   [{:value "cljs", :label "First"} {:value "cljs", :label "Second"}]]]
+    (is (some? (validation/explain content-schema/code-languages invalid)))))
 
 (deftest reusable-builtins-render-native-markup
   (is (= "<h2>Section</h2>" (r/render-to-static-markup [markdown/<heading> {:level 2, :text "Section"}])))
@@ -166,7 +183,7 @@
       (-> (support/create-root! element)
           (.then (fn [root]
                    (reset! *root root)
-                   (support/render! root [rich/<editor> {:text "```clojure sample\n(+ 1 2)\n```"
+                   (support/render! root [rich/<editor> {:text "```cljs sample\n(defn yada [] [])\n```"
                                                        :on-change #(swap! *changes conj %)}])))
           (.then (fn [_] (support/wait-for! #(.querySelector element ".code-editor-fields textarea"))))
           (.then (fn [_]
@@ -174,7 +191,11 @@
                    (is (nil? (.querySelector element ".cm-editor")) "Fenced blocks use the ordinary site UI")
                    (change! ".code-editor-fields textarea" "(+ 3 4)")))
           (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(+ 3 4)"))))
-          (.then (fn [_] (change! ".code-editor-fields label:nth-of-type(2) input" "javascript")))
+          (.then (fn [_]
+                   (is (string/includes? (last @*changes) "```cljs sample") "Formatting aliases never rewrite the authored fence tag")
+                   (change! ".code-editor-fields label:nth-of-type(2) input" "javascript")))
+          (.then (fn [_] (support/wait-for! #(.querySelector element ".search-select [role=option]"))))
+          (.then (fn [_] (.click (.querySelector element ".search-select [role=option]"))))
           (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "```javascript"))))
           (.then (fn [_] (change! ".code-editor-fields label:nth-of-type(3) input" "title=Example")))
           (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "javascript title=Example"))))
@@ -206,6 +227,34 @@
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (done)))))))
+(deftest code-language-picker-observes-runtime-config-and-empty-means-auto-only
+  (async done
+    (let [before @r/*app-db
+          element (.createElement js/document "div")
+          *root (atom nil)
+          *chosen (atom nil)]
+      (r/dispatch-sync [:content [:common :code-languages] [{:value "rust", :label "Rust"}]])
+      (.appendChild (.-body js/document) element)
+      (-> (support/create-root! element)
+          (.then (fn [root] (reset! *root root)
+                   (support/render! root [code-block/<code-block> "fn main() {}"
+                                          {:editable? true, :language "", :on-language-change #(reset! *chosen %)}])))
+          (.then (fn [_] (support/wait-for! #(.querySelector element "[role=combobox]"))))
+          (.then (fn [_]
+                   (.focus (.querySelector element "[role=combobox]"))
+                   (support/settle!)))
+          (.then (fn [_]
+                   (is (= ["Auto detect" "Rust"] (mapv #(.-textContent %) (array-seq (.querySelectorAll element "[role=option]")))))
+                   (r/dispatch-sync [:content [:common :code-languages] []])
+                   (support/settle!)))
+          (.then (fn [_]
+                   (is (= ["Auto detect"] (mapv #(.-textContent %) (array-seq (.querySelectorAll element "[role=option]")))))
+                   (.dispatchEvent (.querySelector element "[role=combobox]")
+                                   (js/KeyboardEvent. "keydown" #js {:key "Enter", :bubbles true, :cancelable true}))
+                   (is (= "" @*chosen))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (when @*root (support/unmount! @*root))
+                      (.remove element) (editor-test/restore-fixture-db! before) (done)))))))
 
 (deftest published-components-render-real-interactive-ui
   (async done

@@ -4,9 +4,9 @@ set -euo pipefail
 npm run build
 if [[ "${1:-}" == --hydration || "${1:-}" == --production-hydration ]]; then
   lein with-profile prod,provided run -m shadow.cljs.devtools.cli release ssr
-  test_names='{:ns-regexp "website\\.(markdown-components|blog-editor|blog-ssr)-test$"}'
+  test_names='{:ns-regexp "website\\.(markdown-components|blog-editor|blog-editor-anchors|blog-draft|markdown-upload-tree|blog-ssr)-test$"}'
 else
-  test_names='{:ns-regexp "website\\.(markdown-components|blog-editor)-test$"}'
+  test_names='{:ns-regexp "website\\.(markdown-components|blog-editor|blog-editor-anchors|blog-draft|markdown-upload-tree)-test$"}'
 fi
 if [[ "${1:-}" == --production-hydration ]]; then
   # A separate isolated run retains the ordinary development suite output.

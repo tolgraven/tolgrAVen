@@ -8,6 +8,10 @@
             [website.modules.markdown-editor.views :as editor]
             [website.components.content.upload :as upload]
             [website.modules.markdown.views :as markdown]
+            [website.component.storage :as storage]
+            [website.listener :as listener]
+            [website.modules.blog-editor.editor :as blog-editor]
+            [website.modules.blog-editor.views :as blog-views]
             [website.test-support :as support]))
 
 (def initial-source
@@ -42,3 +46,35 @@
 (defn ^:export init-uploads! []
   (-> (support/create-root! (.getElementById js/document "editor-demo"))
       (.then #(support/render! % [<upload-fixture>]))))
+
+(defc <draft-fixture> []
+  (let [account @(r/subscribe [:state [:active-user :id]])
+        owner (blog-editor/use-owner account)
+        form @(r/subscribe [:form-field [:post-blog]])
+        state @(r/subscribe [:state [:blog-editor :draft]])]
+    (r/use-effect
+      (fn []
+        (listener/listen! :draft-fixture
+          [{:target "window", :event "pagehide"
+            :handler (fn [_] (storage/flush! :navigation) (storage/drain!))}])) [])
+    [:main.editor-demo
+     [:h1 "Draft storage fixture"]
+     [:label "Title" [:input {:value (or (:title form) "")
+                              :on-change #(r/dispatch [:form-field [:post-blog :title] (.. % -target -value)])}]]
+     [:label "Tags" [:input {:value (or (:tags form) "")
+                             :on-change #(r/dispatch [:form-field [:post-blog :tags] (.. % -target -value)])}]]
+     ^{:key owner} [blog-editor/<markdown-editor> {:owner owner, :source? true}]
+     [blog-views/<draft-controls> owner]
+     [:p {:id "draft-document-id"} (:document-id state)]
+     [:details [:summary "Canonical Markdown"] [:pre#saved-markdown (:text form)]]
+     [:h2 "Published preview"]
+     [markdown/<parse-markdown-components> (or (:text form) "") {:allow-images? true}]]))
+
+(defn ^:export init-drafts! []
+  ;; A fixed disposable account tests actual document reloads without using
+  ;; credentials, private user records, or a live upload transport.
+  (r/dispatch-sync [:test-editor/initialize])
+  (r/dispatch-sync [:state [:active-user] {:id 990}])
+  (storage/identity! ["local-draft-fixture" 990])
+  (-> (support/create-root! (.getElementById js/document "editor-demo"))
+      (.then #(support/render! % [<draft-fixture>]))))

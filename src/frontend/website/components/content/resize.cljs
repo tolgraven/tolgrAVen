@@ -17,10 +17,19 @@
   {:width (layout/resized (:width original) (+ (:width measured) dx) (:units measured))
    :height (layout/resized (:height original) (+ (:height measured) dy) (:units measured))})
 
+(defn edge-geometry [edge original measured dx dy]
+  (let [result (geometry original measured (if (= edge :left) (- dx) dx)
+                          (if (= edge :top) (- dy) dy))]
+    (case edge
+      (:left :right) (merge (select-keys original [:width :height]) (select-keys result [:width]))
+      (:top :bottom) (merge (select-keys original [:width :height]) (select-keys result [:height]))
+      result)))
+
 (defc <handle>
-  "Drag the corner or use arrow keys to resize a content widget in its chosen units."
-  {:spec-schema [:map [:target fn?] [:geometry layout/schema] [:preview fn?] [:commit fn?] [:?parent-width fn?]]}
-  [{:keys [target preview commit parent-width] original :geometry}]
+  "Drag an edge or use arrow keys to resize a content widget in its chosen units."
+  {:spec-schema [:map [:target fn?] [:geometry layout/schema] [:preview fn?] [:commit fn?] [:?parent-width fn?]
+                      [:?edge [:enum :left :right :top :bottom]] [:?class :string]]}
+  [{:keys [target preview commit parent-width edge class] original :geometry}]
   :let [*gesture (atom nil)]
   (r/use-effect
     (fn []
@@ -30,7 +39,9 @@
         (reset! *gesture nil))) [])
   [:button.md-resize-handle
    {:type "button"
-    :aria-label "Resize widget"
+    :class class
+    :data-edge (some-> edge name)
+    :aria-label (if edge (str "Resize widget " (name edge) " edge") "Resize widget")
     :title "Drag to resize; arrow keys resize by one em"
     :on-pointer-down
     (fn [event]
@@ -49,11 +60,11 @@
     :on-pointer-move
     (fn [event]
       (when-let [{:keys [x y measured]} @*gesture]
-        (preview (geometry original measured (- (.-clientX event) x) (- (.-clientY event) y)))))
+        (preview (edge-geometry edge original measured (- (.-clientX event) x) (- (.-clientY event) y)))))
     :on-pointer-up
     (fn [event]
       (when-let [{:keys [x y measured element pointer]} @*gesture]
-        (let [result (geometry original measured (- (.-clientX event) x) (- (.-clientY event) y))]
+        (let [result (edge-geometry edge original measured (- (.-clientX event) x) (- (.-clientY event) y))]
           (reset! *gesture nil)
           (when (.hasPointerCapture element pointer) (.releasePointerCapture element pointer))
           (commit result)
@@ -69,5 +80,5 @@
           (let [measured (cond-> (measurement element) parent-width (assoc-in [:units :parent] (parent-width)))
                 step (get-in measured [:units :em])
                 [dx dy] direction]
-            (commit (geometry original measured (* step dx) (* step dy)))))))}
-   "↘"])
+            (commit (edge-geometry edge original measured (* step dx) (* step dy)))))))}
+   (if edge "" "↘")])

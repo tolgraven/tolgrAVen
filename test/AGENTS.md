@@ -204,6 +204,11 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   path/expression rejection, feature-pruned generated help, block-safe published
   markup and actual editor normalization/keyboard/source transitions. Vendor CSS
   checks prove selector/palette isolation and relative units. See `doc/markdown-authoring.md`.
+- Draft checks cover durable reload, edits during disk reads, account/route isolation,
+  named document selection, pending-upload exclusion and real write failure/retry.
+  Source checks preserve selection/undo/anchors and accept each native key before
+  the next one. Language picker checks update public CMS choices at runtime, retain
+  explicit fence tags and exercise keyboard selection; an empty list means auto only.
 
 - Upload-row checks cover measured/invalid/stale byte callbacks, indeterminate
   processing, errors/retry/cancel, ready-but-unpainted retention and preview-owned

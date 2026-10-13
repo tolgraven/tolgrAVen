@@ -21,10 +21,107 @@ renderer; it does not acquire either authoring bundle.
 | Headings 1–6, quotes, bullet/number/task lists | Toolbar and Markdown typing shortcuts | Standard Markdown |
 | Links, tables, rules, fenced code | Link dialog, toolbar and code editor | Shared Markdown and deferred highlight |
 | Images | Search server assets, upload, paste/drop, URL insertion | Shared responsive picture with paired rendition metadata |
-| Source mode | SDK source/diff and a plain Markdown attachment view | The same saved source |
+| Source mode | Literal Markdown in the existing native document with inline upload chips | The same saved source |
 | Site components | Search canonical names, docstrings, signatures and schemas | The actual public components and their normal data dependencies |
-| Widget geometry | Argument inputs, corner drag and arrow-key resizing | Persisted sizing, alignment and floating text flow |
+| Widget geometry | Argument inputs, edge/corner drag and arrow-key resizing | Persisted sizing, alignment and floating text flow |
 | Frames and embeds | HTTPS/local iframe; YouTube/SoundCloud oEmbed | Existing sandbox/embedding policy |
+
+## Editor and application ownership
+
+The outer React editor is adapted once with `r/adapt-react-class` and receives
+Clojure props from ordinary Reagent views. SDK extension slots run in the opposite
+direction: descriptor `Editor`, `EditImageToolbar` and `addEditorWrapper$` require
+React component types. Their stable `r/reactify-component` adapters render normal
+`defc` components; they are not a second UI implementation. Opaque native editor
+handles stay inside these small extension adapters.
+
+Lexical owns its editable document, selection and undo history. Re-frame owns the
+canonical draft, upload queue, progress, pending insertion points and completion
+guards. Native Lexical updates are document transactions; an event claims the
+media node's canonical URL update and acknowledges it after a successful commit.
+One stable media node renders pending/error/ready declaratively; completion never
+inserts a neighboring image. Effect replay cannot claim the same update twice.
+The SDK's own content
+signal supplies Markdown changes, preserving normalization/mute guards and
+avoiding another full serialization for cursor movement.
+
+The posting owner supplies query descriptors, rather than a mirrored upload
+vector, through SDK ancestry. Each native media node subscribes to its exact
+managed job; the controller subscribes to the owner-specific derived queue.
+Only native insertion/update capabilities and per-editor callbacks belong in
+that context. Standalone editor hosts can supply static values instead. A
+document mutation listener handles deleting an otherwise zero-width pending
+node, because such deletion need not change the SDK's distinct Markdown cell;
+selection changes do not trigger additional exports. Account changes end the
+previous transport/editor owner without requiring route unmount.
+
+Formatting, new directives and components use the SDK's normal publishers;
+argument edits use its node updater. Upload cancellation uses one guarded native
+document transaction: the SDK's removal hook assumes the node exists inside a
+later transaction, which breaks under effect replay. The queue explicitly owns
+cancellation and removes its record after the document owner acknowledges it;
+temporary absence from a context render never implies cancellation. The one
+anchored image-completion transaction updates its existing media node, rather
+than the user's newer cursor position. `insertImage$` targets the
+active selection, so it cannot express that asynchronous attachment operation.
+
+Pending uploads are native inline nodes in both visual and source modes.
+Their small highlighted widgets use ordinary Reagent views and the existing
+presence/exit lifecycle. Pending IDs, status and
+positions never appear in authored Markdown. Completed media exports ordinary
+Markdown image data, or the canonical image component when saved layout is
+needed, retaining its canonical source after queue disposal. The same media node
+owns all four drag edges and its alternative text, dimensions and text flow.
+Pure tree transformations preserve
+surrounding formatting; native source changes map anchors through precise edits.
+Source changes from upload completion use a normal editor transaction, retaining
+selection and undo. Callback changes reconfigure the owned content listener
+without recreating the editor. Source mode reads literal native text rather than
+serializing it as rich Markdown, so unfinished syntax is editable too. Its
+controlled text/on-change/disposal contract is the future Monaco adapter boundary;
+it adds no second editor dependency or application store. Managed query values
+are read again at reconciliation so a passive effect cannot apply an earlier
+render's accepted text over newer typing. There is no whole-props ref.
+
+Fenced-code editor descriptors render the ordinary shared code-block component;
+the SDK supplies only code/language/metadata setters. Its optional editable fields
+retain the same highlighted display, copy/wrap/fold controls and formatter gate
+as a public post. Both authoring owners declare their highlight dependency.
+Source mode does not implement another fenced-code rendering system.
+
+## Working and named drafts
+
+Accepted title, tags, Markdown and referenced ready image assets use the shared
+150 ms storage debounce. Navigation/pagehide drains that same queue, including
+the latest accepted edit; neither the editor nor the draft view owns another
+timer or writes localStorage. Restoration validates private data before applying
+it. Input typed while disk is loading wins over the earlier snapshot, and account
+changes release the previous transport/native editor lifetime.
+
+The working document keeps a stable ID across reloads. **Save draft** gives that
+document its current title in the in-progress chooser; subsequent edits continue
+to autosave. Named working documents store a pointer to their collection entry,
+rather than a second copy of their content. Choosing a draft or starting another
+ends the previous native document/undo lifetime. Published-post revisions have
+their own collection, so selecting a new-post draft cannot inherit another
+published post's edit target. Pending Files, node IDs and upload chips are never
+persisted; the view explains that unfinished images remain in the current tab.
+
+An explicit save acknowledges the storage adapter's actual durable write.
+Unavailable/full storage reports an error and preserves the dirty write for
+retry, including retry without changing the text.
+
+## Code language choices
+
+New fences default to **Auto detect**, serialized with an empty language tag.
+Existing tags, including `cljs`, survive editing even when the formatter uses an
+alias to choose its rendering grammar. The shared code-block's searchable picker
+uses optional public CMS `:common :code-languages` choices, or an explicit
+`:language-options` component option. Values are unique ASCII language names
+of 1–80 characters (`a-z`, `A-Z`, digits, `_`, `+`, `-`); labels are nonblank and
+at most 120 characters, with at most 200 choices. An absent field supplies a few
+initial suggestions; an explicit empty list supplies only Auto detect. Authors
+can still enter an existing/custom fence tag without changing the source code.
 
 ## Component identities and arguments
 
