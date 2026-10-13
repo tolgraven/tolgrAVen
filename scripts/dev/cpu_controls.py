@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Bounded macOS CPU ownership adapter and isolated, capped prefab build launcher."""
 import argparse
+from contextlib import contextmanager
 import ctypes
 import fcntl
 import hashlib
@@ -589,13 +590,13 @@ def docker_watchdog(owner, name, token, endpoint=None, ready_fd=None):
         time.sleep(1)
 
 
-def start_docker_guardian(owner, name, token, endpoint, lock):
+def start_docker_guardian(owner, name, token, endpoint, lock, extra_locks=()):
     parent, child = socket.socketpair()
     parent.settimeout(10)
     guard = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '_docker-watchdog',
                               json.dumps(owner), name, token, '--endpoint', endpoint,
                               '--ready-fd', str(child.fileno())], start_new_session=True,
-                              pass_fds=(lock.fileno(), child.fileno()))
+                              pass_fds=(lock.fileno(), child.fileno(), *(item.fileno() for item in extra_locks)))
     child.close()
     try:
         identity = packet_receive(parent)['guardian']
@@ -741,6 +742,144 @@ def snapshot(checkout, destination):
             shutil.copy2(source, target)
 
 
+SHADOW_CACHE_VERSION = 1
+SHADOW_CACHE_BYTES = 8 * 1024 ** 3
+SHADOW_CACHE_AGE = 7 * 86400
+
+
+def shadow_cache_root():
+    return STATE / 'shadow-caches'
+
+
+def shadow_cache_key(checkout, output, image_id, command):
+    import re
+    # Helper/reporting text and source revisions are deliberately not identities.
+    # Shadow owns build ID/mode/options and validates changed source/macro keys.
+    declarations = [' '.join(command)]
+    for argument in command:
+        if len(argument) > 1024 or not argument.endswith(('.sh', '.clj', '.py')):
+            continue
+        path = output / argument
+        if path.resolve().is_relative_to(output.resolve()) and path.is_file():
+            declarations.append(path.read_text())
+    profiles = sorted(set(re.findall(r'with-profile[\"\']?\s+[\"\']?([+\w,./-]+)', '\n'.join(declarations))))
+    fingerprints = {}
+    for name in ('project.clj', 'package.json', 'package-lock.json', 'resources/site.edn'):
+        path = output / name
+        fingerprints[name] = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+    policy = [SHADOW_CACHE_VERSION, str(checkout.resolve()), image_id, profiles or ['default'], fingerprints]
+    return hashlib.sha256(json.dumps(policy, sort_keys=True).encode()).hexdigest()[:24]
+
+
+def cache_lock(key, blocking=True):
+    locks = shadow_cache_root() / 'locks'
+    locks.mkdir(parents=True, exist_ok=True)
+    handle = (locks / (key + '.lock')).open('a')
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
+        return handle
+    except BlockingIOError:
+        handle.close()
+        return None
+
+
+def cache_bytes(path):
+    size = 0
+    for item in path.rglob('*'):
+        try:
+            if item.is_file() and not item.is_symlink():
+                size += item.stat().st_size
+        except FileNotFoundError:
+            pass  # An orphan guardian may still own a writer replacing a cache file.
+    return size
+
+
+def prune_shadow_caches(now=None):
+    now = time.time() if now is None else now
+    import re
+    root = shadow_cache_root()
+    if root.is_symlink():
+        raise RuntimeError('Refusing a symlinked compiler cache root.')
+    records = []
+    for metadata in root.glob('*/metadata.json'):
+        try:
+            record = json.loads(metadata.read_text())
+            if (record.get('version') == SHADOW_CACHE_VERSION and record.get('key') == metadata.parent.name
+                    and re.fullmatch('[0-9a-f]{24}', metadata.parent.name)
+                    and isinstance(record.get('used_at'), (float, int))
+                    and isinstance(record.get('bytes'), int) and record['bytes'] >= 0
+                    and not metadata.is_symlink() and not metadata.parent.is_symlink()):
+                handle = cache_lock(record['key'], blocking=False)
+                size = record['bytes']
+                if handle is not None:
+                    with handle:
+                        size = cache_bytes(metadata.parent / 'builds')
+                records.append((record, metadata.parent, size))
+        except (OSError, ValueError, TypeError):
+            continue
+    total = sum(size for _, _, size in records)
+    removed = []
+    for record, path, size in sorted(records, key=lambda pair: pair[0]['used_at']):
+        if now - record['used_at'] < SHADOW_CACHE_AGE and total <= SHADOW_CACHE_BYTES:
+            continue
+        handle = cache_lock(record['key'], blocking=False)
+        if handle is None:
+            continue
+        with handle:
+            # Re-read after acquiring: a completed worker may have refreshed its lease.
+            try:
+                current = json.loads((path / 'metadata.json').read_text())
+            except (OSError, ValueError):
+                continue
+            if current != record:
+                continue
+            shutil.rmtree(path)
+            total -= size
+            removed.append(record['key'])
+    return {'removed': removed, 'retained_bytes': total}
+
+
+@contextmanager
+def shadow_cache(args, output, command, endpoint):
+    if args.shadow_cache == 'off' or not (output / 'shadow-cljs.edn').exists():
+        yield None
+        return
+    import re
+    config = (output / 'shadow-cljs.edn').read_text()
+    if re.search(r':cache-root\s', config):
+        print('Shadow cache: bypassed (custom cache-root)', flush=True)
+        yield None
+        return
+    image = subprocess.run(['docker', '--host', endpoint, 'image', 'inspect', '--format', '{{.Id}}', args.image],
+                           capture_output=True, text=True, timeout=30, env=docker_environment())
+    if image.returncode or not image.stdout.strip().startswith('sha256:'):
+        # Docker can pull the prefab normally; its next run can reuse a known immutable image.
+        print('Shadow cache: bypassed (prefab image identity unavailable)', flush=True)
+        yield None
+        return
+    prune_shadow_caches()
+    key = shadow_cache_key(Path(args.checkout), output, image.stdout.strip(), command)
+    with cache_lock(key) as handle:
+        directory = shadow_cache_root() / key
+        if directory.is_symlink():
+            raise RuntimeError('Refusing a symlinked compiler cache directory.')
+        if args.shadow_cache == 'refresh' and directory.exists():
+            shutil.rmtree(directory)
+        builds = directory / 'builds'
+        builds.mkdir(parents=True, exist_ok=True)
+        record = {'version': SHADOW_CACHE_VERSION, 'key': key, 'used_at': time.time(), 'bytes': cache_bytes(builds)}
+        save_json(directory / 'metadata.json', record)
+        print('Shadow cache:', key, '(worktree-scoped disk cache)', flush=True)
+        try:
+            yield builds, handle
+        finally:
+            # A surviving guardian retains the inherited lock while its container
+            # can still write. No other invocation/pruner can enter that identity.
+            record.update(used_at=time.time(), bytes=cache_bytes(builds))
+            save_json(directory / 'metadata.json', record)
+    prune_shadow_caches()
+
+
 def buildkit_options(cpus, memory):
     return [f'cpu-quota={round(cpus * 100000)}', 'cpu-period=100000',
             f'memory={memory}', f'memory-swap={memory}', 'default-load=true',
@@ -868,39 +1007,48 @@ def run(args):
         if shadow.exists():
             import re
             shadow.write_text(re.sub(r':parallel-build\s+true', ':parallel-build false', shadow.read_text()))
-        maven_repository = Path.home() / '.m2/repository'
-        maven_repository.mkdir(parents=True, exist_ok=True)
-        name = 'tolgraven-cpu-' + output.name
-        token = uuid.uuid4().hex
         endpoint = docker_endpoint()
-        owner = MacProcesses().identity(os.getpid())
-        save_json(reservation_path(name), {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
-        guardian, guardian_identity = start_docker_guardian(owner, name, token, endpoint, lock)
-        save_json(reservation_path(name), {'owner': owner, 'guardian': guardian_identity, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
-        bootstrap = docker_bootstrap(args.node_deps)
-        cmd = ['docker', '--host', endpoint, 'run', '--rm', '--init', '--name', name, '--cpus', str(args.cpus),
-               '--memory', args.memory, '--memory-swap', args.memory, '--pids-limit', '512',
-               '--label', 'tolgraven.cpu.token=' + token,
-               '--mount', f'type=bind,source={output},target=/workspace', '-w', '/workspace',
-               '--mount', f'type=bind,source={maven_repository},target=/root/.m2/repository',
-               '-e', f'JAVA_TOOL_OPTIONS={JVM_POOLS} -Xmx{args.java_heap}',
-               args.image, 'sh', '-c', bootstrap, 'cpu-build', *command]
-        print('Isolated output:', output, '\nDocker budget:', args.cpus, 'cores /', args.memory, flush=True)
-        child = subprocess.Popen(cmd, env=docker_environment())
+        cache_context = shadow_cache(args, output, command, endpoint)
+        with cache_context as cache:
+            return docker_run(args, command, lock, output, endpoint, cache)
+
+
+def docker_run(args, command, lock, output, endpoint, cache):
+    maven_repository = Path.home() / '.m2/repository'
+    maven_repository.mkdir(parents=True, exist_ok=True)
+    name = 'tolgraven-cpu-' + output.name
+    token = uuid.uuid4().hex
+    owner = MacProcesses().identity(os.getpid())
+    save_json(reservation_path(name), {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
+    guardian, guardian_identity = start_docker_guardian(owner, name, token, endpoint, lock, (cache[1],) if cache else ())
+    save_json(reservation_path(name), {'owner': owner, 'guardian': guardian_identity, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
+    bootstrap = docker_bootstrap(args.node_deps)
+    cmd = ['docker', '--host', endpoint, 'run', '--rm', '--init', '--name', name, '--cpus', str(args.cpus),
+           '--memory', args.memory, '--memory-swap', args.memory, '--pids-limit', '512',
+           '--label', 'tolgraven.cpu.token=' + token,
+           '--mount', f'type=bind,source={output},target=/workspace', '-w', '/workspace',
+           '--mount', f'type=bind,source={maven_repository},target=/root/.m2/repository',
+           '-e', f'JAVA_TOOL_OPTIONS={JVM_POOLS} -Xmx{args.java_heap}',
+           args.image, 'sh', '-c', bootstrap, 'cpu-build', *command]
+    if cache:
+        cmd[cmd.index(args.image):cmd.index(args.image)] = [
+            '--mount', f'type=bind,source={cache[0]},target=/workspace/.shadow-cljs/builds']
+    print('Isolated output:', output, '\nDocker budget:', args.cpus, 'cores /', args.memory, flush=True)
+    child = subprocess.Popen(cmd, env=docker_environment())
+    try:
+        return child.wait()
+    finally:
+        # Exact owned container name; do not touch unrelated build/watch containers.
         try:
-            return child.wait()
-        finally:
-            # Exact owned container name; do not touch unrelated build/watch containers.
-            try:
-                confirmed = stop_container(name, token, endpoint)
-            except subprocess.SubprocessError:
-                confirmed = False
-            if confirmed:
-                release_reservation(name)
-                guardian.terminate()
-                guardian.wait(timeout=3)
-            else:
-                print('Docker cleanup pending; watchdog retains the build lock and quota reservation.', file=sys.stderr)
+            confirmed = stop_container(name, token, endpoint)
+        except subprocess.SubprocessError:
+            confirmed = False
+        if confirmed:
+            release_reservation(name)
+            guardian.terminate()
+            guardian.wait(timeout=3)
+        else:
+            print('Docker cleanup pending; watchdog retains the build lock and quota reservation.', file=sys.stderr)
 
 
 def positive(value):
@@ -961,6 +1109,8 @@ def main():
     runner.add_argument('--image', default='registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v1')
     runner.add_argument('--node-deps', choices=['auto', 'skip'], default='auto',
                         help='Use skip only for non-Node tasks in custom images, such as media codecs.')
+    runner.add_argument('--shadow-cache', choices=['reuse', 'off', 'refresh'], default='reuse',
+                        help='Reuse isolated worktree/compiler cache, bypass it, or reset this identity before building.')
     runner.add_argument('command', nargs=argparse.REMAINDER)
     runtime = commands.add_parser('runtime', help='Supervised low-priority host runtime; does not hold the agent build queue.')
     runtime.add_argument('--checkout', default=os.getcwd())
@@ -971,6 +1121,7 @@ def main():
     recovery = commands.add_parser('recover-build', help='Recover only a recorded orphan after exact endpoint/container/guardian confirmation.')
     recovery.add_argument('--name', help='Exact recorded build name when more than one reservation exists.')
     recovery.add_argument('--endpoint', help='Required original local Docker endpoint for legacy reservations.')
+    commands.add_parser('cache-prune', help='Remove only unlocked managed Shadow caches older than seven days or over the 8 GiB LRU budget.')
     commands.add_parser('status')
     commands.add_parser('stop', help='Stop only the recorded monitor; watchdog resumes its owned paused targets.')
     wd = commands.add_parser('_watchdog')
@@ -1003,6 +1154,8 @@ def main():
         install(args)
     elif args.action == 'recover-build':
         recover_build(args)
+    elif args.action == 'cache-prune':
+        print(json.dumps(prune_shadow_caches(), indent=2))
     elif args.action == 'status':
         print((STATE / 'status.json').read_text())
     elif args.action == 'stop':

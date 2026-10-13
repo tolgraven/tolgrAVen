@@ -93,6 +93,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   Docker prefab, 1.5 CPUs/4 GiB per slot; 3 Docker CPUs combined). Dockerfile/prefab work uses
   `tolgraven-cpu run --mode buildkit -- <command>` so BuildKit steps also have a quota.
   Increase a documented heap/memory limit only when required; avoid competing watched output.
+  Fresh output snapshots reuse a separately locked worktree-scoped Shadow compiler disk
+  cache; never mount or overwrite a live checkout’s watched cache. See `doc/resource-controls.md`.
   `--mode host` uses nice 10 and the shared build slot when live watches/interop
   require macOS. The installed monitor caps exact app renderers and only explicitly
   registered agent host Java families; user-launched Lein clients and their
