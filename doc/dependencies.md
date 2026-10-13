@@ -132,7 +132,9 @@ Several larger libraries remain because they perform real work:
 
 ## JVM logging
 
-Timbre is the application logging backend. `tolgraven.log` owns console output
+Timbre is the application logging backend. The handler loads `tolgraven.log`
+first so Mount initializes its configuration before application services.
+`tolgraven.log` owns console output
 (info and above), rotating `log/tolgraven.log` output, namespace thresholds and
 pretty exceptions. `clojure.tools.logging` callers use Timbre's existing adapter;
 Java SLF4J callers use `slf4j-timbre`. Keep both adapters: application and dependency

@@ -1,5 +1,7 @@
 (ns tolgraven.handler
   (:require
+    ;; Register the mounted logger before application services and startup logs.
+    [tolgraven.log]
     [tolgraven.middleware :as middleware]
     [tolgraven.concurrent :as concurrent]
     [tolgraven.validation-server :as validation]
