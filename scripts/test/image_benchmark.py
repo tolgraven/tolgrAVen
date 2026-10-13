@@ -258,8 +258,8 @@ def main():
         parser.feed(markup)
         server.preloads[version] = parser.sources
     server.link = ImageLink(args.image_kibps, args.latency_ms)
-    server.metadata = {'protocolVersion': 5, 'versions': versions, 'profile': {'aggregateImageKiBps': args.image_kibps, 'imageBodyLatencyMs': args.latency_ms, 'chunkBytes': 1024},
-                       'probeVisibility': 'Fixed full-viewport iframe; native image intersects viewport; all image ancestors have positive opacity and visible display; finalOpaque is the final layer alpha, independent of outer page entrance.',
+    server.metadata = {'protocolVersion': 6, 'versions': versions, 'profile': {'aggregateImageKiBps': args.image_kibps, 'imageBodyLatencyMs': args.latency_ms, 'chunkBytes': 1024},
+                       'probeVisibility': 'Fixed visible native iframe at exact case CSS width/height; host viewport fully contains it. Native image intersects that viewport; all ancestors have positive opacity and visible display. finalOpaque is settled final-layer contribution: baseline native opacity is its intended 0.65 tint, progressive inner-final target is 1; outer tint/page entrance excluded.',
                        'resourceControls': 'Build artifacts generated sequentially with Docker 1 CPU / 2 GiB / 1 GiB Java heap. Browser timing only after compilers and CPU probes finish. Native project-Java/Codex-renderer monitor active; Chrome excluded.',
                        'scope': 'Native images in renderer-generated SSR, application bootstrap withheld; non-hero assets unpaced; no backend/provider timing.'}
     server.holds = {}

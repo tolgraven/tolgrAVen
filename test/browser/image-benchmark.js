@@ -48,13 +48,16 @@ if (location.pathname.startsWith('/probe/')) {
       if (previewVisible == null && images.some(image => image.hasAttribute('data-image-preview') && painted(image))) previewVisible = performance.now();
       if (firstVisible == null && images.some(painted)) firstVisible = performance.now();
       if (finalPaint == null && final && painted(final)) finalPaint = performance.now();
-      if (finalOpaque == null && final && painted(final) && Number(getComputedStyle(final).opacity) >= 0.999) finalOpaque = performance.now();
+      if (finalOpaque == null && final && painted(final) &&
+          (!final.hasAttribute('data-image-final') || Number(getComputedStyle(final).opacity) >= 0.999)) finalOpaque = performance.now();
     }
     if (!sent && finalReady != null && firstVisible != null && finalPaint != null && finalOpaque != null) {
       sent = true;
       const record = {width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
         heroVisibleMs: firstVisible, previewVisibleMs: previewVisible, gradientVisibleMs: gradientVisible,
         finalLoadMs: loads.get(final) ?? null, finalReadyMs: finalReady, finalPaintMs: finalPaint, finalOpaqueMs: finalOpaque,
+        finalTargetOpacity: final.hasAttribute('data-image-final') ? 1 : Number(getComputedStyle(final).opacity),
+        finalOpacityAtReport: Number(getComputedStyle(final).opacity),
         visibleImageLayers: images.filter(painted).length,
         finalSource: final.currentSrc.split('/').pop(),
         previewSource: images.find(image => image.hasAttribute('data-image-preview'))?.currentSrc.split('/').pop() || null,
@@ -103,6 +106,15 @@ if (location.pathname === '/') {
     try {
       metadata = {...await (await fetch('/metadata')).json(), browserUserAgent: navigator.userAgent};
       const [width, dpr] = document.querySelector('#case').value.split(',').map(Number);
+      const height = width === 375 ? 812 : width === 390 ? 844 : 900;
+      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      // A native nested viewport supplies the chosen CSS width. Retina DPR2
+      // uses the host's real pixel ratio; DPR1 uses the browser viewport override.
+      frame.style.width = `${width / rootFontSize}rem`;
+      frame.style.height = `${height / rootFontSize}rem`;
+      if (devicePixelRatio !== dpr || innerWidth < width || innerHeight < height) {
+        throw new Error(`Set a visible host viewport at least ${width}×${height} with DPR${dpr}; actual ${innerWidth}×${innerHeight}/DPR${devicePixelRatio}`);
+      }
       for (let iteration = 0; iteration < 5; iteration++) {
         const versions = iteration % 2 ? ['progressive', 'baseline'] : ['baseline', 'progressive'];
         for (const version of versions) {
@@ -119,7 +131,7 @@ if (location.pathname === '/') {
             addEventListener('message', receive);
             frame.src = `/probe/${version}/${key}`;
           });
-          if (record.width !== width || record.dpr !== dpr) throw new Error(`Expected ${width}/DPR${dpr}; actual ${record.width}/DPR${record.dpr}. Set browser viewport/DPR first.`);
+          if (record.width !== width || record.height !== height || record.dpr !== dpr) throw new Error(`Expected ${width}/DPR${dpr}; actual ${record.width}/DPR${record.dpr}. Set browser viewport/DPR first.`);
           const requests = await (await fetch(`/report/${key}`)).json();
           runs.push({...record, version, isolation, iteration: iteration + 1, requestCount: requests.length,
                      imageBytes: requests.reduce((total, request) => total + request.sentBytes, 0), requests});

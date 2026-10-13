@@ -30,11 +30,13 @@ python3 scripts/test/image_benchmark.py \
   --output target/image-benchmark-results.json
 ```
 
-Open the displayed localhost URL in Chrome. Set the browser viewport and actual
-DPR to each case (375/DPR1, 390/DPR2, 1280/DPR1), select that case and click **Run five
+Open the displayed localhost URL in Chrome. Set a host browser viewport that fully contains the probe and has the actual
+DPR for each case (375/DPR1, 390/DPR2, 1280/DPR1), select that case and click **Run five
 pairs**. The harness rejects a mismatched viewport/DPR. Each case retains five
-cold-cache runs per version, alternating which version runs first. The probe stays
-in a visible full-viewport iframe. After each case it is replaced with a blank
+cold-cache runs per version, alternating which version runs first. The probe uses a fixed, fully visible native iframe at the exact case width and
+height (375×812, 390×844, 1280×900). The 390/DPR2 case uses the real Retina host
+pixel ratio with a 390-wide nested viewport; DPR1 cases use a browser viewport
+override. After each case it is replaced with a blank
 frame and the shared image link drains before another viewport is selected. Close
 standalone screenshot/probe tabs before measuring.
 
@@ -60,9 +62,10 @@ The probe uses renderer-generated completed SSR markup and native responsive
 selection, with application hydration withheld. It records request start, headers,
 response end, native load and decode completion separately. RAF sampling records
 the first positive decoded-image paint opportunity, first preview opportunity,
-first gradient opportunity, first positive final opacity and final opacity of at
-least .999. These are observable paint opportunities, not screenshots of every
-frame and not LCP. The final opacity metric excludes the outer page entrance.
+first gradient opportunity, first positive final opacity and final settled layer opacity. A progressive final reaches at least .999; the
+baseline native image already has its intended .65 design tint and no layer fade. These are observable paint opportunities, not screenshots of every
+frame and not LCP. The final settled-opacity metric excludes the outer page entrance and preserves
+the existing design tint; raw records include actual/target opacity.
 
 Server/provider acquisition and streamed skeleton latency are excluded so they
 cannot be mistaken for image savings. The real live motion driver separately
