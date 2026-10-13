@@ -109,3 +109,7 @@ server format handlers retain their native JVM Java-time support.
   `media/query.cljc` builds shared public manifest queries for page plans and managed
   browser bindings. Post `:image-assets` and CMS section sidecars carry paired SSR
   metadata; private job/source/lease fields must not enter public projections.
+
+- `markdown/components.cljc` owns portable quoted component attributes and data
+  prefixes. Browser composition and media source lookup share this grammar;
+  ready server manifests determine rendition metadata, never authored asset objects.
