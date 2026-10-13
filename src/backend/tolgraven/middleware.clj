@@ -217,13 +217,18 @@
   [handler]
   (if-let [ready! (:document-ready! defaults)]
     (fn [request]
-      (let [uri (:uri request "")]
+      (let [uri (:uri request "")
+            static? (some #(string/starts-with? uri %)
+                          ["/css/" "/js/" "/img/" "/media/" "/fonts/" "/bundles/" "/assets/"])
+            api? (or (= uri "/api") (string/starts-with? uri "/api/"))
+            html? (re-find #"(?i)(?:^|,)\s*text/html(?:\s*[;,]|$)"
+                           (get-in request [:headers "accept"] ""))]
         (when (and (#{:get :head} (:request-method request))
                    (or (= uri "/api/page-return-template")
                        (string/starts-with? uri "/js/document/")
                        (re-find #"^/bundles/(?:[^/]+/)*document-(?:head|entrance)\.js$" uri)
-                       (and (not (string/starts-with? uri "/api/"))
-                            (not (re-find #"\.[^/]+$" uri)))))
+                       (and (not api?) (not static?)
+                            (or html? (not (re-find #"\.[^/]+$" uri))))))
           (ready!))
         (handler request)))
     handler))
