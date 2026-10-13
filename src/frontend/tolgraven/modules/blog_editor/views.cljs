@@ -58,7 +58,7 @@
       :placeholder "Tags"
       :path [:form-field [:post-blog :tags]]]
 
-     [editor/<markdown-editor> {:owner owner, :exit (partial editor/dispose! owner)}]
+     ^{:key owner} [editor/<markdown-editor> {:owner owner, :exit (partial editor/dispose! owner)}]
 
      [ui/<button> "Save draft" :save-blog-draft]
      [ui/<button> "Highlight code" :highlight-blog-code

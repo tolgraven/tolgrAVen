@@ -281,7 +281,7 @@
   (let [account @(rf/subscribe [:state [:active-user :id]])
         owner (editor/use-owner account)]
     [:section {:data-editor-owner owner}
-     [editor/<markdown-editor> {:owner owner, :source? true}]]))
+     ^{:key owner} [editor/<markdown-editor> {:owner owner}]]))
 
 (deftest switching-account-disposes-the-old-upload-owner-without-route-unmount
   (async done
@@ -299,17 +299,22 @@
             (let [root (await! (support/create-root! element))]
               (reset! *root root)
               (await! (support/render! root [<account-editor-fixture>]))
-              (await! (support/wait-for! #(.querySelector element ".cm-content")))
+              (await! (support/wait-for! #(.querySelector element ".md-editor-content p")))
               (let [owner (.getAttribute (.querySelector element "[data-editor-owner]") "data-editor-owner")]
-                (transfer! (.querySelector element ".cm-content") "paste" (js/File. #js ["A"] "A.png" #js {:type "image/png"}))
+                (.focus (.querySelector element ".md-editor-content"))
+                (transfer! (.querySelector element ".md-editor-content") "paste" (js/File. #js ["A"] "A.png" #js {:type "image/png"}))
                 (await! (support/wait-for! #(= 1 (count @*calls))))
+                (await! (support/wait-for! #(.querySelector element ".md-media-node")))
                 (rf/dispatch-sync [:state [:active-user] {:id 102}])
                 (await! (support/wait-for! #(not= owner (.getAttribute (.querySelector element "[data-editor-owner]") "data-editor-owner"))))
                 (await! (support/wait-for! #(empty? (get-in @rfdb/app-db [:state :blog :image-uploads]))))
+                (await! (support/wait-for! #(.querySelector element ".md-editor-content p")))
+                (is (nil? (.querySelector element ".md-media-node")) "The previous account's native pending node is gone")
                 ((:success (first @*calls)) {:id "late-account-A", :status "ready", :asset asset})
                 (await! (support/settle!))
                 (is (= "Draft" (get-in @rfdb/app-db [:state :form-field :post-blog :text])))
-                (transfer! (.querySelector element ".cm-content") "paste" (js/File. #js ["B"] "B.png" #js {:type "image/png"}))
+                (.focus (.querySelector element ".md-editor-content"))
+                (transfer! (.querySelector element ".md-editor-content") "paste" (js/File. #js ["B"] "B.png" #js {:type "image/png"}))
                 (await! (support/wait-for! #(= 2 (count @*calls))))
                 (is (= 1 (count (get-in @rfdb/app-db [:state :blog :image-uploads])))))))
           (.catch #(is false (str % " rendered=" (.-textContent element))))
