@@ -89,11 +89,11 @@ validates the schema, build selection, source digests and transformed bodies onc
 then returns the existing Optimus asset shape. Missing, stale or corrupt artifacts
 fail clearly; importing never discovers or transforms assets.
 
-`test/prepared_assets.clj` runs inside the CPU controller's disposable snapshot.
+`scripts/test/prepared_assets.clj` runs inside the CPU controller's disposable snapshot.
 Its `source` mode records exact bundle paths, metadata and body signatures; `jar`
 mode compares the actual packaged resources against that record without loading
-minification or image transformation namespaces. Production imports this artifact at handler construction, once. Development
-loads declared CSS/JS bundles and their references through a two-second TTL; it
+minification or image transformation namespaces. Production imports this artifact
+at handler construction, once. Development loads declared CSS/JS bundles and their references through a two-second TTL; it
 has no broad resource watcher. `lein with-profile uberjar,provided uberjar` and the
 Docker frontend stage prepare the inventory after production Shadow/CSS outputs.
 Docker copies it into the final JAR alongside public resources. These checks

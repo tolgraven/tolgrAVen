@@ -89,10 +89,10 @@ Separate stage filesystems prevent target-directory and Maven download races.
 The Docker compile and assembly tasks explicitly share `target/uberjar+provided/classes`;
 changing `:target-path` alone does not update Lein's already-resolved compile path.
 The ordinary `lein with-profile uberjar,provided uberjar` prep tasks also generate
-production Shadow/CSS output and the inventory. The documentation prep step
-disables nested prep tasks, so its alias/Codox profile cannot restart the build.
-Missing or stale prepared assets
-fail startup clearly; no runtime transformation fallback runs.
+production Shadow/CSS output and the inventory. The shared `docs` alias disables
+nested prep tasks, so direct documentation commands and the uberjar prep step
+cannot restart the build through Codox. Missing or stale prepared assets fail
+startup clearly; no runtime transformation fallback runs.
 Codox analyzes source without the custom `:browser` reader feature. The loader's
 `.cljc` reader conditional therefore omits lazy-loadable declarations during
 documentation analysis and SSR; browser builds explicitly enable that feature.
