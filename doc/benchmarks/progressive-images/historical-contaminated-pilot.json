@@ -1,0 +1,1042 @@
+{
+  "metadata": {
+    "versions": {
+      "baseline": {
+        "commit": "868d52d1885d70bfc617b487e4559c9f0d9e996b",
+        "fixtureSha256": "54f5c74dcf4cffbc9f01345ee01dd711f8f8fbea3582c487d868328e7bf8ac51"
+      },
+      "progressive": {
+        "commit": "818ca5d0d8e4d298858fac1f08fc0fda619663a9",
+        "fixtureSha256": "69df793259ccf302bc7fb6d21fd590b4494fcdf3ebca943f806ec44d5bf42c64"
+      }
+    },
+    "profile": {
+      "aggregateImageKiBps": 64,
+      "imageResponseLatencyMs": 150,
+      "chunkBytes": 1024
+    },
+    "scope": "Native images in renderer-generated SSR, application bootstrap withheld; non-hero assets unpaced; no backend/provider timing."
+  },
+  "runs": [
+    {
+      "width": 375,
+      "height": 591,
+      "dpr": 1,
+      "heroVisibleMs": 448.20000000298023,
+      "finalReadyMs": 387.1000000014901,
+      "finalPaintMs": 448.20000000298023,
+      "finalSource": "foggy-shit-small-400w.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 35,
+          "endMs": 371.79999999701977
+        }
+      ],
+      "version": "baseline",
+      "iteration": 1,
+      "requestCount": 1,
+      "imageBytes": 7853,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        }
+      ]
+    },
+    {
+      "width": 375,
+      "height": 591,
+      "dpr": 1,
+      "heroVisibleMs": 422.3999999985099,
+      "finalReadyMs": 374,
+      "finalPaintMs": 422.5,
+      "finalSource": "foggy-shit-small-400w.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 16.399999998509884,
+          "endMs": 299.5
+        }
+      ],
+      "version": "progressive",
+      "iteration": 1,
+      "requestCount": 1,
+      "imageBytes": 7853,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        }
+      ]
+    },
+    {
+      "width": 375,
+      "height": 591,
+      "dpr": 1,
+      "heroVisibleMs": 340.69999999552965,
+      "finalReadyMs": 307,
+      "finalPaintMs": 340.69999999552965,
+      "finalSource": "foggy-shit-small-400w.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 20.69999999552965,
+          "endMs": 292.59999999403954
+        }
+      ],
+      "version": "progressive",
+      "iteration": 2,
+      "requestCount": 1,
+      "imageBytes": 7853,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        }
+      ]
+    },
+    {
+      "width": 375,
+      "height": 591,
+      "dpr": 1,
+      "heroVisibleMs": 339,
+      "finalReadyMs": 306.3999999985099,
+      "finalPaintMs": 339,
+      "finalSource": "foggy-shit-small-400w.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 23.899999998509884,
+          "endMs": 298.6000000014901
+        }
+      ],
+      "version": "baseline",
+      "iteration": 2,
+      "requestCount": 1,
+      "imageBytes": 7853,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        }
+      ]
+    },
+    {
+      "width": 375,
+      "height": 591,
+      "dpr": 1,
+      "heroVisibleMs": 337.29999999701977,
+      "finalReadyMs": 304.19999999552965,
+      "finalPaintMs": 337.29999999701977,
+      "finalSource": "foggy-shit-small-400w.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 21.899999998509884,
+          "endMs": 296.79999999701977
+        }
+      ],
+      "version": "baseline",
+      "iteration": 3,
+      "requestCount": 1,
+      "imageBytes": 7853,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        }
+      ]
+    },
+    {
+      "width": 375,
+      "height": 591,
+      "dpr": 1,
+      "heroVisibleMs": 340,
+      "finalReadyMs": 306.20000000298023,
+      "finalPaintMs": 340,
+      "finalSource": "foggy-shit-small-400w.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 18.80000000447035,
+          "endMs": 293
+        }
+      ],
+      "version": "progressive",
+      "iteration": 3,
+      "requestCount": 1,
+      "imageBytes": 7853,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        }
+      ]
+    },
+    {
+      "width": 375,
+      "height": 591,
+      "dpr": 1,
+      "heroVisibleMs": 333,
+      "finalReadyMs": 299.20000000298023,
+      "finalPaintMs": 333,
+      "finalSource": "foggy-shit-small-400w.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 18,
+          "endMs": 287.6000000014901
+        }
+      ],
+      "version": "progressive",
+      "iteration": 4,
+      "requestCount": 1,
+      "imageBytes": 7853,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        }
+      ]
+    },
+    {
+      "width": 375,
+      "height": 591,
+      "dpr": 1,
+      "heroVisibleMs": 338.6000000014901,
+      "finalReadyMs": 306.20000000298023,
+      "finalPaintMs": 338.6000000014901,
+      "finalSource": "foggy-shit-small-400w.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 23.399999998509884,
+          "endMs": 297.29999999701977
+        }
+      ],
+      "version": "baseline",
+      "iteration": 4,
+      "requestCount": 1,
+      "imageBytes": 7853,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        }
+      ]
+    },
+    {
+      "width": 375,
+      "height": 591,
+      "dpr": 1,
+      "heroVisibleMs": 347.69999999552965,
+      "finalReadyMs": 314.19999999552965,
+      "finalPaintMs": 347.69999999552965,
+      "finalSource": "foggy-shit-small-400w.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 32.29999999701977,
+          "endMs": 303.1000000014901
+        }
+      ],
+      "version": "baseline",
+      "iteration": 5,
+      "requestCount": 1,
+      "imageBytes": 7853,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        }
+      ]
+    },
+    {
+      "width": 375,
+      "height": 591,
+      "dpr": 1,
+      "heroVisibleMs": 327.09999999403954,
+      "finalReadyMs": 293.69999999552965,
+      "finalPaintMs": 327.09999999403954,
+      "finalSource": "foggy-shit-small-400w.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 13.299999997019768,
+          "endMs": 285.5
+        }
+      ],
+      "version": "progressive",
+      "iteration": 5,
+      "requestCount": 1,
+      "imageBytes": 7853,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 591,
+      "dpr": 2,
+      "heroVisibleMs": 992,
+      "finalReadyMs": 952.6000000014901,
+      "finalPaintMs": 992,
+      "finalSource": "foggy-shit-small-800w.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "transferBytes": 34671,
+          "startMs": 107.90000000596046,
+          "endMs": 833.4000000059605
+        }
+      ],
+      "version": "baseline",
+      "iteration": 1,
+      "requestCount": 1,
+      "imageBytes": 34371,
+      "requests": [
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "sentBytes": 34371
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 591,
+      "dpr": 2,
+      "heroVisibleMs": 1379.1000000014901,
+      "finalReadyMs": 1932,
+      "finalPaintMs": 1942,
+      "finalSource": "foggy-shit-small-800w.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 97.10000000149012,
+          "endMs": 1201
+        },
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "transferBytes": 34671,
+          "startMs": 97.20000000298023,
+          "endMs": 1898.3999999985099
+        }
+      ],
+      "version": "progressive",
+      "iteration": 1,
+      "requestCount": 2,
+      "imageBytes": 42224,
+      "requests": [
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "sentBytes": 34371
+        },
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 591,
+      "dpr": 2,
+      "heroVisibleMs": 777.5999999940395,
+      "finalReadyMs": 1287.0999999940395,
+      "finalPaintMs": 1293.1999999955297,
+      "finalSource": "foggy-shit-small-800w.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 94.89999999850988,
+          "endMs": 704.2999999970198
+        },
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "transferBytes": 34671,
+          "startMs": 95.09999999403954,
+          "endMs": 1213.5
+        }
+      ],
+      "version": "progressive",
+      "iteration": 2,
+      "requestCount": 2,
+      "imageBytes": 42224,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        },
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "sentBytes": 34371
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 591,
+      "dpr": 2,
+      "heroVisibleMs": 1028.7999999970198,
+      "finalReadyMs": 986.6999999955297,
+      "finalPaintMs": 1028.7999999970198,
+      "finalSource": "foggy-shit-small-800w.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "transferBytes": 34671,
+          "startMs": 73.5,
+          "endMs": 941
+        }
+      ],
+      "version": "baseline",
+      "iteration": 2,
+      "requestCount": 1,
+      "imageBytes": 34371,
+      "requests": [
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "sentBytes": 34371
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 591,
+      "dpr": 2,
+      "heroVisibleMs": 939.0999999940395,
+      "finalReadyMs": 899.6999999955297,
+      "finalPaintMs": 939.1999999955297,
+      "finalSource": "foggy-shit-small-800w.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "transferBytes": 34671,
+          "startMs": 82.5,
+          "endMs": 875.7999999970198
+        }
+      ],
+      "version": "baseline",
+      "iteration": 3,
+      "requestCount": 1,
+      "imageBytes": 34371,
+      "requests": [
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "sentBytes": 34371
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 591,
+      "dpr": 2,
+      "heroVisibleMs": 676.2000000029802,
+      "finalReadyMs": 1081,
+      "finalPaintMs": 1088.7000000029802,
+      "finalSource": "foggy-shit-small-800w.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 66.10000000149012,
+          "endMs": 627.7000000029802
+        },
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "transferBytes": 34671,
+          "startMs": 66.30000000447035,
+          "endMs": 1045.2000000029802
+        }
+      ],
+      "version": "progressive",
+      "iteration": 3,
+      "requestCount": 2,
+      "imageBytes": 42224,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        },
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "sentBytes": 34371
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 591,
+      "dpr": 2,
+      "heroVisibleMs": 595.6000000014901,
+      "finalReadyMs": 1024.3999999985099,
+      "finalPaintMs": 1026,
+      "finalSource": "foggy-shit-small-800w.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 65.19999999552965,
+          "endMs": 550.8999999985099
+        },
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "transferBytes": 34671,
+          "startMs": 65.5,
+          "endMs": 1005.3999999985099
+        }
+      ],
+      "version": "progressive",
+      "iteration": 4,
+      "requestCount": 2,
+      "imageBytes": 42224,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        },
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "sentBytes": 34371
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 591,
+      "dpr": 2,
+      "heroVisibleMs": 912.1000000014901,
+      "finalReadyMs": 879.2000000029802,
+      "finalPaintMs": 912.1000000014901,
+      "finalSource": "foggy-shit-small-800w.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "transferBytes": 34671,
+          "startMs": 64.39999999850988,
+          "endMs": 857.7999999970198
+        }
+      ],
+      "version": "baseline",
+      "iteration": 4,
+      "requestCount": 1,
+      "imageBytes": 34371,
+      "requests": [
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "sentBytes": 34371
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 591,
+      "dpr": 2,
+      "heroVisibleMs": 987.4000000059605,
+      "finalReadyMs": 942,
+      "finalPaintMs": 987.5,
+      "finalSource": "foggy-shit-small-800w.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "transferBytes": 34671,
+          "startMs": 40.400000005960464,
+          "endMs": 762.6000000014901
+        }
+      ],
+      "version": "baseline",
+      "iteration": 5,
+      "requestCount": 1,
+      "imageBytes": 34371,
+      "requests": [
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "sentBytes": 34371
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "height": 591,
+      "dpr": 2,
+      "heroVisibleMs": 536.9000000059605,
+      "finalReadyMs": 1007.4000000059605,
+      "finalPaintMs": 1017.4000000059605,
+      "finalSource": "foggy-shit-small-800w.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 71.10000000149012,
+          "endMs": 473.40000000596046
+        },
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "transferBytes": 34671,
+          "startMs": 71.20000000298023,
+          "endMs": 960.5
+        }
+      ],
+      "version": "progressive",
+      "iteration": 5,
+      "requestCount": 2,
+      "imageBytes": 42224,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        },
+        {
+          "name": "foggy-shit-small-800w.avif",
+          "encodedBytes": 34371,
+          "sentBytes": 34371
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 630,
+      "dpr": 1,
+      "heroVisibleMs": 4432.5,
+      "finalReadyMs": 4284,
+      "finalPaintMs": 4432.5,
+      "finalSource": "foggy-shit-small.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "transferBytes": 146418,
+          "startMs": 103.60000000149012,
+          "endMs": 3797.89999999851
+        }
+      ],
+      "version": "baseline",
+      "iteration": 1,
+      "requestCount": 1,
+      "imageBytes": 146118,
+      "requests": [
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "sentBytes": 146118
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 630,
+      "dpr": 1,
+      "heroVisibleMs": 2855.8000000044703,
+      "finalReadyMs": 6399,
+      "finalPaintMs": 6400.10000000149,
+      "finalSource": "foggy-shit-small.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 251.80000000447035,
+          "endMs": 2774.9000000059605
+        },
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "transferBytes": 146418,
+          "startMs": 252,
+          "endMs": 6254.9000000059605
+        }
+      ],
+      "version": "progressive",
+      "iteration": 1,
+      "requestCount": 2,
+      "imageBytes": 153971,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        },
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "sentBytes": 146118
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 630,
+      "dpr": 1,
+      "heroVisibleMs": 804.2000000029802,
+      "finalReadyMs": 4041.60000000149,
+      "finalPaintMs": 4052.3000000044703,
+      "finalSource": "foggy-shit-small.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 130.60000000149012,
+          "endMs": 746.8000000044703
+        },
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "transferBytes": 146418,
+          "startMs": 130.90000000596046,
+          "endMs": 3341.7000000029802
+        }
+      ],
+      "version": "progressive",
+      "iteration": 2,
+      "requestCount": 2,
+      "imageBytes": 153971,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        },
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "sentBytes": 146118
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 630,
+      "dpr": 1,
+      "heroVisibleMs": 3173.2000000029802,
+      "finalReadyMs": 3137.3000000044703,
+      "finalPaintMs": 3173.3000000044703,
+      "finalSource": "foggy-shit-small.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "transferBytes": 146418,
+          "startMs": 118.80000000447035,
+          "endMs": 3041
+        }
+      ],
+      "version": "baseline",
+      "iteration": 2,
+      "requestCount": 1,
+      "imageBytes": 146118,
+      "requests": [
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "sentBytes": 146118
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 630,
+      "dpr": 1,
+      "heroVisibleMs": 4527,
+      "finalReadyMs": 4487.20000000298,
+      "finalPaintMs": 4527,
+      "finalSource": "foggy-shit-small.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "transferBytes": 146418,
+          "startMs": 1224.2000000029802,
+          "endMs": 4445.39999999851
+        }
+      ],
+      "version": "baseline",
+      "iteration": 3,
+      "requestCount": 1,
+      "imageBytes": 146118,
+      "requests": [
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "sentBytes": 146118
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 630,
+      "dpr": 1,
+      "heroVisibleMs": 527.3999999985099,
+      "finalReadyMs": 3145.60000000149,
+      "finalPaintMs": 3161.10000000149,
+      "finalSource": "foggy-shit-small.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 72.20000000298023,
+          "endMs": 484.29999999701977
+        },
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "transferBytes": 146418,
+          "startMs": 72.39999999850988,
+          "endMs": 2979.10000000149
+        }
+      ],
+      "version": "progressive",
+      "iteration": 3,
+      "requestCount": 2,
+      "imageBytes": 153971,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        },
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "sentBytes": 146118
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 630,
+      "dpr": 1,
+      "heroVisibleMs": 1183.3999999985099,
+      "finalReadyMs": 3884.7999999970198,
+      "finalPaintMs": 3901,
+      "finalSource": "foggy-shit-small.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 115.10000000149012,
+          "endMs": 1124.7999999970198
+        },
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "transferBytes": 146418,
+          "startMs": 115.20000000298023,
+          "endMs": 3609.7999999970198
+        }
+      ],
+      "version": "progressive",
+      "iteration": 4,
+      "requestCount": 2,
+      "imageBytes": 153971,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        },
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "sentBytes": 146118
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 630,
+      "dpr": 1,
+      "heroVisibleMs": 2673.8000000044703,
+      "finalReadyMs": 2634.9000000059605,
+      "finalPaintMs": 2673.8000000044703,
+      "finalSource": "foggy-shit-small.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "transferBytes": 146418,
+          "startMs": 100.70000000298023,
+          "endMs": 2575.2000000029802
+        }
+      ],
+      "version": "baseline",
+      "iteration": 4,
+      "requestCount": 1,
+      "imageBytes": 146118,
+      "requests": [
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "sentBytes": 146118
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 630,
+      "dpr": 1,
+      "heroVisibleMs": 2989.10000000149,
+      "finalReadyMs": 2938.9000000059605,
+      "finalPaintMs": 2989.10000000149,
+      "finalSource": "foggy-shit-small.avif",
+      "previewSource": null,
+      "resources": [
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "transferBytes": 146418,
+          "startMs": 77.70000000298023,
+          "endMs": 2858.4000000059605
+        }
+      ],
+      "version": "baseline",
+      "iteration": 5,
+      "requestCount": 1,
+      "imageBytes": 146118,
+      "requests": [
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "sentBytes": 146118
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 630,
+      "dpr": 1,
+      "heroVisibleMs": 688,
+      "finalReadyMs": 3046.5,
+      "finalPaintMs": 3054.10000000149,
+      "finalSource": "foggy-shit-small.avif",
+      "previewSource": "foggy-shit-small-400w.avif",
+      "resources": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "transferBytes": 8153,
+          "startMs": 101.20000000298023,
+          "endMs": 623.8000000044703
+        },
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "transferBytes": 146418,
+          "startMs": 101.39999999850988,
+          "endMs": 2793.5
+        }
+      ],
+      "version": "progressive",
+      "iteration": 5,
+      "requestCount": 2,
+      "imageBytes": 153971,
+      "requests": [
+        {
+          "name": "foggy-shit-small-400w.avif",
+          "encodedBytes": 7853,
+          "sentBytes": 7853
+        },
+        {
+          "name": "foggy-shit-small.avif",
+          "encodedBytes": 146118,
+          "sentBytes": 146118
+        }
+      ]
+    }
+  ]
+}

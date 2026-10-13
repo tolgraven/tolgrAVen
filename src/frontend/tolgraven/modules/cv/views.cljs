@@ -1,6 +1,7 @@
 (ns tolgraven.modules.cv.views
   (:require
     [tolgraven.content.schema :as schema]
+    [tolgraven.media.schema :as media-schema]
     [tolgraven.component.registry]
     [clojure.string :as string]
     [tolgraven.react :as r]
@@ -18,10 +19,10 @@
 ;; either as a full new timeline of same type, or inside the existing big box (that'd be made bigger)
 (m/defc <box> "One thing, accomplishment, employment, etc"
   [{:keys [from to what position how where logo color] :as all} :- schema/timeline-item
-   pos :- [:or :string number?] size :- [:or :string number?] overlap-level :- :int]
+   pos :- [:or :string number?] size :- [:or :string number?] overlap-level :- :int & [asset] :- [:maybe media-schema/asset]]
   (let [expanded? (r/atom false)
         closing? (r/atom false)]
-    (fn [{:keys [from to what position how where logo color] :as all} pos size overlap-level]
+    (fn [{:keys [from to what position how where logo color] :as all} pos size overlap-level & [asset]]
       [:div.cv-detail
        {:on-click (fn []
                     (swap! closing? not)
@@ -37,8 +38,9 @@
         :class (str (when @expanded? "cv-detail-expanded ")
                     (when @closing? "cv-detail-closing"))}
        [:div.cv-bg-logo
-        {:style (when-not (string/blank? logo)
-                  {:background-image (str "url(../../" logo ")")})}]
+        {:aria-hidden true
+         :style (when-not (string/blank? logo)
+                  {:background-image (str "url(" (or (:src asset) (str "../../" logo)) ")")})}]
        [:p.cv-from from]
        [:p.cv-to (if (= from to)
                    ""
@@ -50,7 +52,11 @@
          [:p.cv-position position])
        [:p.cv-where where]
        (when-not (string/blank? logo)
-         [img/<picture> {:src logo :alt "Company logo" :sizes (if @expanded? "8rem" "4rem")}])])))
+         [img/<picture> {:src logo
+                         :asset asset
+                         :alt "Company logo"
+                         :class "cv-logo-picture"
+                         :sizes (if @expanded? "8rem" "4rem")}])])))
 
 (m/defc <capabilities> "The various skills"
   [skills :- [:map-of [:or :string :keyword] [:sequential :string]]]
@@ -116,7 +122,7 @@
                      (r/dispatch [:dispatch-in/ms 4500 [:scroll/by -37]])
                      (r/dispatch [:dispatch-in/ms 5500 [:focus-element "fullscreen-btn"]]))))]
    (fn []
-    (let [{:keys [title caption cv]} @(r/subscribe [:content [:cv]])
+    (let [{:keys [title caption cv image-assets]} @(r/subscribe [:content [:cv]])
         {:keys [timeline skills]} cv
         total-width "200em"
         base-height 9
@@ -153,7 +159,8 @@
                             [<box> thing
                              (get-pos from to)
                              (get-size from to)
-                             (or level @overlap-level)])))
+                             (or level @overlap-level)
+                             (get image-assets (:logo thing))])))
         fullscreen? (when @(r/subscribe [:fullscreen/get :cv])
                       "fullscreen")]
     [:section#cv.cv.nopadding.noborder

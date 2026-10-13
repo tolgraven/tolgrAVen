@@ -1,0 +1,62 @@
+{
+  "observedPageshow": {
+    "persisted": true,
+    "type": "navigate",
+    "direct": true
+  },
+  "visibleLayers": 1,
+  "visuallySharpFinal": true,
+  "requestsBeforeDeparture": [
+    {
+      "name": "foggy-shit-small.avif",
+      "encodedBytes": 146118,
+      "sentBytes": 146118,
+      "startedMs": 390951.99416600005,
+      "otherRunsActiveAtStart": [],
+      "endedMs": 393615.182625
+    },
+    {
+      "name": "foggy-shit-small-400w.avif",
+      "encodedBytes": 7853,
+      "sentBytes": 7853,
+      "startedMs": 390975.20587500004,
+      "otherRunsActiveAtStart": [],
+      "endedMs": 391364.457083
+    },
+    {
+      "name": "foggy-shit-small-400w.avif",
+      "encodedBytes": 7853,
+      "sentBytes": 7853,
+      "startedMs": 391796.767708,
+      "otherRunsActiveAtStart": [],
+      "endedMs": 392186.36016599997
+    }
+  ],
+  "requestsAfterReturn": [
+    {
+      "name": "foggy-shit-small.avif",
+      "encodedBytes": 146118,
+      "sentBytes": 146118,
+      "startedMs": 390951.99416600005,
+      "otherRunsActiveAtStart": [],
+      "endedMs": 393615.182625
+    },
+    {
+      "name": "foggy-shit-small-400w.avif",
+      "encodedBytes": 7853,
+      "sentBytes": 7853,
+      "startedMs": 390975.20587500004,
+      "otherRunsActiveAtStart": [],
+      "endedMs": 391364.457083
+    },
+    {
+      "name": "foggy-shit-small-400w.avif",
+      "encodedBytes": 7853,
+      "sentBytes": 7853,
+      "startedMs": 391796.767708,
+      "otherRunsActiveAtStart": [],
+      "endedMs": 392186.36016599997
+    }
+  ],
+  "note": "Safari retained BFCache despite the test-only unload handler. This establishes BFCache behavior, not a forced Safari network return. Three initial no-store-fixture requests included two 400w fetches before departure; no request was added by Back."
+}

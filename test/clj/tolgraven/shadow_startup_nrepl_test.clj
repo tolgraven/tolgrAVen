@@ -25,7 +25,7 @@
           (let [client (nrepl/client connection 5000)
                 initialization (doall (nrepl/message client
                                        {:op "eval"
-                                        :code "(tolgraven.dev.shadow/start! [:return-worker :ssr :app-dev]) nil"}))]
+                                        :code "(tolgraven.dev.shadow/start! [:return-worker :ssr :document :app-dev]) nil"}))]
             (is (some #(some #{"done"} (:status %)) initialization)
                 "Initialization is acknowledged before the blocked compilation finishes")
             (is (true? (deref entered 5000 :timeout)))
