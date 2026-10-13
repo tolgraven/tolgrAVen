@@ -322,10 +322,13 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   do not initialize it globally or add an SDK script to server HTML. Keep restored
   public state renderable while the module is loading.
 
-- Catalog images marked `:progressive?` render a blurred decorative smallest candidate
-  underneath their normal responsive picture. Both layers acquire natively in SSR;
-  final decode paints over the preview before hydration. Its committed native
-  image adapter removes same-candidate previews immediately after commit and
-  other previews after final decode. Transient phase belongs only to the current source;
+- Catalog images marked `:progressive?` acquire a blurred decorative smallest
+  candidate and the responsive final concurrently. Distinct decoded upgrades use
+  simultaneous 100ms linear opacity/presence; same-candidate or already usable
+  pixels settle immediately. The initial hero's document adapter owns its phase
+  through terminal readiness, including mid-fade hydration, then the component
+  adopts it without replay and releases native listeners. The exact hero/src guard
+  prevents SPA inheritance. Later upgrades use keyed `defc :exit`/`:presence` on
+  the native preview span. Transient readiness belongs only to the current source;
   known 400w/100vw DPR-1 phone buckets suppress its painted layer before JS. The
-  common root owns media styles/identity; refs/load handlers belong to the final.
+  common root owns media identity/styles; refs/load handlers belong to the final.

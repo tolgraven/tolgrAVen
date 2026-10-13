@@ -204,20 +204,27 @@ resources. Its popup sheet is deferred in ordinary SSR documents.
 The closed Settings panel has no DOM, CSS-variable reads or view code in bootstrap.
 Opening it acquires `:settings` and its sheet before mounting its controls.
 
-Progressive catalog images (`:progressive? true`) paint the smallest AVIF/WebP
-candidate, blurred by the shared image styles, below the native responsive final
-picture. The two requests start together; final decoded pixels replace the preview
-without waiting for application code or hydration. The committed native image
-adapter then removes the preview. An exposed same-candidate selection, or the
-known 100vw small bucket while currentSrc is pending, removes redundant DOM at
-commit without awaiting decode. Its transient phase belongs only to the current
-source; returning to a prior source cannot reuse stale readiness.
-SSR cannot infer viewport/DPR, so its initial markup declares both candidates.
-The known 400w/100vw bucket suppresses the redundant painted preview on DPR-1
-phones (`25em`, using the browser's initial media-query font size), before JS;
-hydration removes that decorative DOM as soon as its native selection is known. Larger
-candidates retain two visible layers only while they need the upgrade. The shared
-root retains the caller’s media styles and dimensions, and the decorative preview
-is hidden from assistive technology. Explicit `:progressive? false` opts out; `true` enables other
-images with sized catalog candidates. Final modern-format errors retry the original,
-and a final original failure leaves the preview visible.
+Progressive catalog images (`:progressive? true`) acquire the smallest AVIF/WebP
+preview and the normal responsive final concurrently through native pictures.
+The preview uses `1.5rem` blur with overscan. Different final pixels overlap it
+with simultaneous 100ms linear opacity-in/opacity-out after native decode; reduced
+motion and already usable cached/paired pixels settle immediately. The initial
+hero's document adapter owns that phase on `#app` through terminal readiness,
+including hydration in the middle of the fade. It changes no React-owned child.
+The component adopts the terminal phase declaratively, without replay, and its
+managed marker releases the native owner/listeners. Changed sources or replaced
+hero nodes cannot inherit that document phase. Later component-owned upgrades use
+ordinary keyed `defc :exit`/`:presence`; its native preview span supplies a painted
+motion root because `picture { display: contents }` cannot own an opacity exit.
+
+An exposed same-candidate selection, or the known 100vw small bucket while
+currentSrc is pending, removes redundant DOM at commit without awaiting decode.
+Transient readiness belongs only to the current source. SSR cannot infer viewport
+or DPR, so its markup declares both candidates; the 400w/100vw bucket suppresses
+the redundant painted preview on DPR-1 phones (`25em`, using the initial media-query
+font size) before JS. Larger candidates retain both layers only during an upgrade.
+The shared root retains media styles/dimensions, and object-fit inherits explicitly
+through every picture and preview wrapper. The preview is decorative. Explicit
+`:progressive? false` opts out; `true` enables other sized catalog images. Modern
+errors retry the original; final failure retains usable preview pixels. Both
+source and decode completions are guarded by native node/currentSrc identity.

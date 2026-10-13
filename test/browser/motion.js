@@ -35,8 +35,15 @@ const heroDecoded = () => {
   const hero = doc()?.querySelector('#app #top-banner');
   if (!hero) return false;
   const images = hero.matches('img') ? [hero] : [...hero.querySelectorAll('img')];
-  return images.some(image => frame.contentWindow.getComputedStyle(image).display !== 'none' &&
-    image.complete && image.naturalWidth > 0);
+  return images.some(image => {
+    let layer = image;
+    while (layer && layer !== hero.parentElement) {
+      const style = frame.contentWindow.getComputedStyle(layer);
+      if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) <= 0) return false;
+      layer = layer.parentElement;
+    }
+    return image.complete && image.naturalWidth > 0;
+  });
 };
 
 // Sample the real document from its first paint through interactive startup.

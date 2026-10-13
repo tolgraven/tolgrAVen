@@ -1,5 +1,7 @@
 (ns tolgraven.image-test
+  (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require
+    [cljs.core.async]
     [cljs.test :refer-macros [async deftest is]]
     [reagent.core :as r]
     [reagent.dom.client :as dom]
@@ -324,3 +326,101 @@
                 100))
             100))
         100))))
+
+
+(deftest hydration-adopts-a-terminal-native-upgrade-without-restarting-it
+  (async done
+    (let [container (.createElement js/document "div")
+          src "/img/foggy-shit-small.jpg"
+          form [image/<picture> {:src src, :id "top-banner"}]]
+      (.setAttribute container "id" "app")
+      (.setAttribute container "data-document-image-owner" "native")
+      (.setAttribute container "data-document-image-phase" "upgrading")
+      (.setAttribute container "data-document-image-src" src)
+      (set! (.-innerHTML container) (server/render-to-string form))
+      (.appendChild (.-body js/document) container)
+      (let [hero (.querySelector container "#top-banner")
+            preview (.querySelector hero "[data-image-preview]")
+            final (.querySelector hero "[data-image-final]")]
+        (set! (.-__progressiveHero container) hero)
+        (doseq [[property value] [["complete" true] ["naturalWidth" 800]
+                                 ["currentSrc" (str (.-origin js/location) "/img/foggy-shit-small-800w.avif")]
+                                 ["decode" #(js/Promise.resolve)]]]
+          (js/Object.defineProperty final property #js {:configurable true :value value}))
+        (let [root (dom/hydrate-root container form)]
+          (js/setTimeout
+            (fn []
+              (is (identical? preview (.querySelector hero "[data-image-preview]")))
+              (is (identical? final (.querySelector hero "[data-image-final]")))
+              (is (not (.hasAttribute hero "data-image-managed"))
+                  "Hydration cannot take the native mid-fade phase away")
+              (.setAttribute container "data-document-image-phase" "ready")
+              (.dispatchEvent container (js/Event. "tolgraven:document-image-ready"))
+              (js/setTimeout
+                (fn []
+                  (is (.hasAttribute hero "data-image-managed"))
+                  (is (= 1 (.-length (.querySelectorAll hero "img"))))
+                  (is (identical? final (.querySelector hero "[data-image-final]")))
+                  (dom/unmount root)
+                  (.remove container)
+                  (done))
+                100))
+            100))))))
+
+(deftest different-native-candidates-share-a-100ms-overlapping-exit
+  (async done
+    (-> (go-promise
+          (let [container (.createElement js/document "div")
+                stylesheet (.createElement js/document "link")
+                *root (atom nil)
+                form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
+            (.appendChild (.-body js/document) container)
+            (set! (.-rel stylesheet) "stylesheet")
+            (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
+            (try
+              (await! (js/Promise.
+                        (fn [resolve reject]
+                          (set! (.-onload stylesheet) resolve)
+                          (set! (.-onerror stylesheet) reject)
+                          (.appendChild (.-head js/document) stylesheet))))
+              (set! (.-innerHTML container) (server/render-to-string form))
+              (let [preview (.querySelector container "[data-image-preview]")
+                    final (.querySelector container "[data-image-final]")]
+                (doseq [[image property value] [[final "complete" false]
+                                              [final "naturalWidth" 0]
+                                              [final "currentSrc" (str (.-origin js/location) "/img/foggy-shit-small-800w.avif")]
+                                              [final "decode" #(js/Promise.resolve)]
+                                              [preview "naturalWidth" 400]]]
+                  (js/Object.defineProperty image property #js {:configurable true :value value}))
+                (reset! *root (dom/hydrate-root container form))
+                (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 100))))
+                (let [hero (.querySelector container ".progressive-image")]
+                  (is (= "waiting" (.getAttribute hero "data-image-phase")))
+                  (is (= "0s" (.-transitionDuration (js/getComputedStyle final)))
+                      "Pending pixels hide immediately rather than reversing a fade")
+                  (js/Object.defineProperty final "complete" #js {:configurable true :value true})
+                  (js/Object.defineProperty final "naturalWidth" #js {:configurable true :value 800})
+                  (.dispatchEvent final (js/Event. "load"))
+                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 30))))
+                  (when-not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))
+                    (is (= "upgrading" (.getAttribute hero "data-image-phase")))
+                    (is (= "0.1s" (.-transitionDuration (js/getComputedStyle final))))
+                    (is (= "linear" (.-transitionTimingFunction (js/getComputedStyle final))))
+                    (is (some? (.querySelector hero ".progressive-image__preview-layer.exiting")))
+                    (js/Object.defineProperty final "currentSrc"
+                      #js {:configurable true :value (str (.-origin js/location) "/img/foggy-shit-small.avif")})
+                    (.dispatchEvent final (js/TransitionEvent. "transitionend"
+                                           #js {:bubbles true :propertyName "opacity"}))
+                    (is (= "upgrading" (.getAttribute hero "data-image-phase"))
+                        "A completion for the prior selected candidate cannot finish the upgrade")
+                    (.dispatchEvent final (js/Event. "load")))
+                  (is (identical? final (.querySelector hero "[data-image-final]")))
+                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 250))))
+                  (is (= 1 (.-length (.querySelectorAll hero "img"))))
+                  (is (= "decoded" (.getAttribute hero "data-image-phase")))))
+              (finally
+                (when @*root (dom/unmount @*root))
+                (.remove stylesheet)
+                (.remove container)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))

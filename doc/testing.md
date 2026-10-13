@@ -20,6 +20,11 @@ lein with-profile +project/test test
 bb test:scripts
 ```
 
+The script suite includes bounded Node fixtures for the initial image adapter
+(`node --test test/scripts/document_image_test.cjs`). They exercise native phase/gate
+ownership and cleanup; mounted/browser checks below still establish actual pixels
+and transitions.
+
 Browser suite:
 
 1. Compile the existing `:ssr` target. If it is already watched, use that Shadow

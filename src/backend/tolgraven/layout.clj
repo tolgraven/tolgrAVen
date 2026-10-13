@@ -229,7 +229,7 @@
                          (:local-return? request) (assoc :data-local-return "true")
                          (:local-return? request) (assoc :data-page-build (str (ssr/renderer-build)))
                          (:restore? request) (assoc :data-restore "true")) loading-content]
-    (when (:ssr request)
+    (when (or (:ssr request) (:local-return? request))
       [:script (slurp (io/resource "public/js/document-entrance.js"))])
     [:noscript [:style "body:has(#ssr-complete) #app[data-document-pending]{display:block}body:has(#ssr-complete) #ssr-shell{display:none}#app[data-document-pending] main{visibility:visible}#app[data-document-pending] *,#app[data-document-pending] *::after{animation-play-state:running!important}"]]
     ;; A separate React root can report bootstrap failures without replacing

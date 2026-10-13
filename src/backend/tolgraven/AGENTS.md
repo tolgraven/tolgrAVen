@@ -136,3 +136,6 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   sources so phones select only their appropriate final candidate. The document
   entrance may start after either visible layer decodes; suppressed previews do
   not release it, and replacing the preview never starts a second entrance.
+  The same root-owned image adapter stages local-return templates; already usable
+  final pixels settle immediately. Its native initial-hero phase remains owned
+  through hydration until terminal adoption, independently of the entrance gate.

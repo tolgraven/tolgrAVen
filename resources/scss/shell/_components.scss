@@ -647,35 +647,75 @@ figcaption, .float-with-caption {
   overflow: clip;
   vertical-align: middle;
 
-  > picture {
-    display: contents;
-  }
+  // display:contents still participates in inheritance. Propagate cover through
+  // both pictures and the preview's native presence root to keep the same crop.
+  picture { display: contents; object-fit: inherit; }
 
-  .progressive-image__preview, .progressive-image__final {
+  .progressive-image__preview-layer, .progressive-image__final {
     grid-area: 1 / 1;
     display: block;
     width: 100%;
     height: 100%;
     min-width: 0;
     object-fit: inherit;
+    opacity: 1;
+    transition: opacity 100ms linear;
+  }
+
+  .progressive-image__preview-layer {
+    overflow: clip;
+    &.exiting { opacity: 0; }
   }
 
   .progressive-image__preview {
-    filter: blur(0.3rem);
-    transform: scale(1.015);
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: inherit;
+    filter: blur(1.5rem);
+    transform: scale(1.12);
   }
 
-  .progressive-image__final {
-    position: relative;
+  .progressive-image__final { position: relative; }
+
+  &[data-image-managed][data-image-phase="waiting"],
+  &[data-image-managed][data-image-phase="retry"] {
+    .progressive-image__final { opacity: 0; transition: none; }
+  }
+
+  &[data-image-managed][data-image-phase="decoded"],
+  &[data-image-managed][data-image-phase="single"] {
+    .progressive-image__final { transition: none; }
   }
 }
 
-// For the 400w / 100vw bucket, DPR-1 phones select the preview as their final.
-// Suppress its redundant painted layer before application code can remove it.
+// Initial native staging belongs to the document until terminal adoption. React
+// leaves that exact initial hero unmanaged through a mid-transition hydration.
+#app[data-document-image-owner="native"][data-document-image-phase="waiting"],
+#app[data-document-image-owner="native"][data-document-image-phase="failed"] {
+  #top-banner:not([data-image-managed]) .progressive-image__final { opacity: 0; transition: none; }
+}
+// A final decoded before the first preview paint settles directly; the native
+// adapter uses upgrading only after an actual preview paint opportunity.
+#app[data-document-image-owner="native"][data-document-image-phase="ready"],
+#app[data-document-image-owner="native"][data-document-image-phase="single"] {
+  #top-banner:not([data-image-managed]) .progressive-image__final { transition: none; }
+}
+#app[data-document-image-owner="native"][data-document-image-phase="upgrading"],
+#app[data-document-image-owner="native"][data-document-image-phase="ready"],
+#app[data-document-image-owner="native"][data-document-image-phase="single"] {
+  #top-banner:not([data-image-managed]) .progressive-image__preview-layer { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressive-image {
+    .progressive-image__preview-layer, .progressive-image__final { transition: none; }
+  }
+}
+
+// Suppress the redundant same-candidate layer before application code commits.
 @media (max-width: 25em) and (max-resolution: 1dppx) {
   .progressive-image[data-preview-width="400"][data-image-sizes="100vw"]:not([data-image-retrying]) {
-    .progressive-image__preview {
-      display: none;
-    }
+    .progressive-image__preview-layer { display: none; }
   }
 }
