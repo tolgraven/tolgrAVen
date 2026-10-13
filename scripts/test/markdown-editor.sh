@@ -10,7 +10,7 @@ else
 fi
 if [[ "${1:-}" == --production-hydration ]]; then
   # A separate isolated run retains the ordinary development suite output.
-  lein with-profile +project/test,+provided run -m shadow.cljs.devtools.cli --config-merge '{:runner-ns website.authored-hydration-runner :ns-regexp "website\\.authored-hydration-test$" :compiler-options {:reader-features #{:browser}}}' release app-test
+  lein with-profile +project/test,+provided run -m shadow.cljs.devtools.cli --config-merge '{:runner-ns website.authored-hydration-runner :ns-regexp "website\\.authored-hydration-test$" :compiler-options {:reader-features #{:browser :browser-test}}}' release app-test
   mkdir -p resources/public/test-release
   cp resources/public/js/tests/js/test.js resources/public/test-release/test.js
 else
