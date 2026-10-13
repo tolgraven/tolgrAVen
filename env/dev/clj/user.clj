@@ -38,6 +38,7 @@
   ;; A new SSR/browser build must never paint against CSS from an older checkout.
   ;; Fresh styles skip Sass/PostCSS; Shadow still starts on its deferred thread.
   (ensure-styles!)
+  (shadow-startup/prepare!)
   (home/gen-sitemap!)
   (doseq [component (-> (mount/start-without #'tolgraven.core/repl-server)
                         :started)]

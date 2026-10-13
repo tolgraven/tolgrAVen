@@ -86,7 +86,10 @@
     (assets/load-bundle "public" "main.js"
       [(str "/js/compiled/out/"
             (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))])
-    (assets/load-bundles "public" document-bundles)))
+    ;; Unrelated asset requests may realize the dev inventory before release.
+    ;; Never retain bytes from an old unoptimized document build in that cache.
+    (when (if-let [ready? (:document-ready? defaults)] (ready?) true)
+      (assets/load-bundles "public" document-bundles))))
 
 (defn get-assets
   "Complete build-time inventory; runtime production imports its prepared result."
@@ -208,6 +211,23 @@
         (assoc-in response [:headers "Cache-Control"] "public, max-age=31536000, immutable")
         response))))
 
+(defn wrap-document-readiness
+  "Development documents and their bootstrap wait for the isolated release.
+   Static images and unrelated API calls remain available during app compilation."
+  [handler]
+  (if-let [ready! (:document-ready! defaults)]
+    (fn [request]
+      (let [uri (:uri request "")]
+        (when (and (#{:get :head} (:request-method request))
+                   (or (= uri "/api/page-return-template")
+                       (string/starts-with? uri "/js/document/")
+                       (re-find #"^/bundles/(?:[^/]+/)*document-(?:head|entrance)\.js$" uri)
+                       (and (not (string/starts-with? uri "/api/"))
+                            (not (re-find #"\.[^/]+$" uri)))))
+          (ready!))
+        (handler request)))
+    handler))
+
 (defn wrap-base [handler]
   (let [options (if (or (env :dev) (env :test) (env :stage)
                         (false? (env :https-required)))
@@ -247,6 +267,7 @@
         authorize
         ;; API routes own Muuntaja; HTML and return-template JSON are already encoded.
         ; wrap-with-logger
+        wrap-document-readiness
         wrap-internal-error
         ;; Proxy/HTTPS and security response headers also cover early failures.
         (wrap-defaults {:proxy (:proxy options)

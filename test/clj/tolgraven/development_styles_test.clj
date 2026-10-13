@@ -19,10 +19,11 @@
                                           (swap! *calls conj :http)
                                           {:started []})
                     clojure.core/add-tap (fn [_])
+                    shadow/prepare! #(swap! *calls conj :document-barrier)
                     shadow/start! (fn [_] (swap! *calls conj :shadow))]
         (is (nil? (user/start)))
         (is (= [[:styles '("node" "scripts/build/styles.mjs" "--if-stale")]
-                :sitemap :http :shadow]
+                :document-barrier :sitemap :http :shadow]
                @*calls)))
       (finally (alter-var-root #'s/*explain-out* (constantly previous-explain))))))
 
