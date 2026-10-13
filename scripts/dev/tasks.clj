@@ -42,3 +42,6 @@
   (doseq [command (if (= action "all") ["schema" "import"] [action])]
     (shell (into ["lein" "run" "-m" "tolgraven.provision.supabase.cli" command]
                          (when (= command "import") args)))))
+
+(defn cpu! [& args]
+  (shell (into ["python3" "scripts/dev/cpu_controls.py"] args)))

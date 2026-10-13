@@ -40,3 +40,9 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   SVG viewports must contain transformed outlines; compensate expanded mask boxes
   with margins to preserve the original advance/height/baseline.
   Commit declared SVGs, catalog, generated SCSS and fonts together; see `doc/styles.md`.
+
+- `dev/cpu_controls.py` is the macOS libproc/signal and Docker lifecycle adapter.
+  Keep microsecond PID identity, exact project/app ownership, pre-stopped exclusion,
+  independent CONT watchdog, container labels and shared build serialization intact.
+  Native CPU accounting uses the Mach timebase; cap tests must measure actual CPU
+  seconds, not only duty settings. CPU probes touch disposable owned fixtures only.
