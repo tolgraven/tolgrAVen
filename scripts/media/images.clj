@@ -288,7 +288,9 @@
                    (imagemagick) "-limit" "thread" "1" (str file)
                    "-auto-orient" "-strip" "-quality" "90" (str original))
     (let [normalized (image-metadata! original)
-          sizes' (conj (responsive-sizes (:width normalized)) nil)
+          sizes' (if (responsive-eligible? normalized)
+                   (conj (responsive-sizes (:width normalized)) nil)
+                   [nil])
           rendition (fn [path mime]
                       (let [metadata (image-metadata! path)]
                         {:file (str (fs/file-name path))
