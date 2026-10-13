@@ -1,33 +1,9 @@
-{"img/afterglow-new-web-old-small.jpg"
- {:width 751,
-  :height 677,
-  :sizes [80 160 320 640],
-  :generated? true,
-  :placeholder {:colors ["#58434a" "#96948e" "#8c988a"]}},
- "img/afterglow-web-new-aug-small.jpg"
+{"img/afterglow-web-new-aug-small.jpg"
  {:width 756,
   :height 1008,
   :sizes [80 160 320 640],
   :generated? true,
   :placeholder {:colors ["#58646a" "#544d6b" "#322338"]}},
- "img/cljs@2x.png"
- {:width 264,
-  :height 262,
-  :sizes [80 160],
-  :generated? true,
-  :placeholder {:colors ["#e5ede7" "#dce7e0" "#e2ebe5"]}},
- "img/cljs@3x.png"
- {:width 396,
-  :height 393,
-  :sizes [80 160 320],
-  :generated? true,
-  :placeholder {:colors ["#e5ede7" "#dce7e0" "#e1ebe5"]}},
- "img/collage-strips.jpg"
- {:width 700,
-  :height 394,
-  :sizes [80 160 320 640],
-  :generated? true,
-  :placeholder {:colors ["#5e3668" "#6d478d" "#603876"]}},
  "img/crowd-lbp.JPG"
  {:width 540,
   :height 540,
@@ -39,54 +15,12 @@
   :sizes [400 800],
   :progressive? true,
   :placeholder {:colors ["#9052bc" "#804e96" "#361756"]}},
- "img/growly.jpg"
- {:width 600,
-  :height 731,
-  :sizes [80 160 320],
-  :generated? true,
-  :placeholder {:colors ["#746353" "#621c14" "#570e09"]}},
- "img/joen-mixer-small.jpg"
- {:width 390,
-  :height 430,
-  :sizes [80 160 320],
-  :generated? true,
-  :placeholder {:colors ["#706660" "#6e6061" "#828585"]}},
- "img/joen-mixer.jpg"
- {:width 780,
-  :height 860,
-  :sizes [80 160 320 640],
-  :generated? true,
-  :placeholder {:colors ["#706660" "#6e6061" "#828585"]}},
  "img/kecy-smoke-small.jpg"
  {:width 1358,
   :height 1019,
   :sizes [80 160 320 640 960 1280],
   :generated? true,
   :placeholder {:colors ["#7b725d" "#433d31" "#17120d"]}},
- "img/logo/Borderland-logo-2019.png"
- {:width 300,
-  :height 300,
-  :sizes [80 160],
-  :generated? true,
-  :placeholder {:colors ["#f4d776" "#ddac8f" "#c9bab4"]}},
- "img/logo/KTH-logo.jpg"
- {:width 200,
-  :height 200,
-  :sizes [80 160],
-  :generated? true,
-  :placeholder {:colors ["#3766ae" "#4b73b3" "#3c69af"]}},
- "img/logo/chas-logo.png"
- {:width 600,
-  :height 600,
-  :sizes [80 160 320],
-  :generated? true,
-  :placeholder {:colors ["#ffffff" "#ffffff" "#ffffff"]}},
- "img/logo/crosstown-logo.png"
- {:width 120,
-  :height 142,
-  :sizes [80],
-  :generated? true,
-  :placeholder {:colors ["#a47372" "#752e2b" "#caa59a"]}},
  "img/logo/icon/clojure-logo-icon.png"
  {:width 250,
   :height 250,
@@ -102,35 +36,11 @@
   :height 150,
   :sizes [40 80],
   :placeholder {:colors ["#617074" "#315a66" "#627277"]}},
- "img/logo/icon/react-logo-icon2.jpg"
- {:width 150,
-  :height 146,
-  :sizes [80],
-  :generated? true,
-  :placeholder {:colors ["#d0e9f0" "#c5e6ee" "#dfeef2"]}},
  "img/logo/icon/sass-logo-icon.png"
  {:width 320,
   :height 320,
   :sizes [40 80],
   :placeholder {:colors ["#e1a4c3" "#d47ca8" "#dd9abc"]}},
- "img/logo/instagram-fallback-logo.png"
- {:width 150,
-  :height 150,
-  :sizes [80],
-  :generated? true,
-  :placeholder {:colors ["#efdae3" "#edd5dc" "#f4dce0"]}},
- "img/logo/karrtorp-logo.jpg"
- {:width 362,
-  :height 204,
-  :sizes [80 160 320],
-  :generated? true,
-  :placeholder {:colors ["#bf467b" "#d78faf" "#c45e8d"]}},
- "img/logo/svff-logo.png"
- {:width 256,
-  :height 256,
-  :sizes [80 160],
-  :generated? true,
-  :placeholder {:colors ["#cdd5c0" "#aac3a0" "#d8e4d0"]}},
  "img/logo/tolgraven-logo-crop-2.png"
  {:width 1024,
   :height 1024,
@@ -172,12 +82,6 @@
   :sizes [80 160 320 640 960 1280],
   :generated? true,
   :placeholder {:colors ["#403e45" "#a18a72" "#7d787f"]}},
- "img/questionmark.png"
- {:width 504,
-  :height 454,
-  :sizes [80 160 320],
-  :generated? true,
-  :placeholder {:colors ["#a1a9b6" "#5a677e" "#a3aab8"]}},
  "img/showcase/funky-lights-small.jpg"
  {:width 1383,
   :height 1243,
@@ -190,12 +94,6 @@
   :sizes [80 160 320 640 960 1280 1920 2560],
   :generated? true,
   :placeholder {:colors ["#252641" "#272743" "#222339"]}},
- "img/showcase/live-session-small.jpg"
- {:width 800,
-  :height 600,
-  :sizes [80 160 320 640],
-  :generated? true,
-  :placeholder {:colors ["#3e3f38" "#383232" "#2f1f24"]}},
  "img/showcase/opter-messages.png"
  {:width 1179,
   :height 2556,
@@ -214,18 +112,6 @@
   :sizes [80 160 320 640 960 1280],
   :generated? true,
   :placeholder {:colors ["#21211e" "#484d43" "#58575e"]}},
- "img/speedy.jpg"
- {:width 500,
-  :height 587,
-  :sizes [80 160 320],
-  :generated? true,
-  :placeholder {:colors ["#696e72" "#67686a" "#5b5f4c"]}},
- "img/ssiri-balcony-small.jpg"
- {:width 600,
-  :height 437,
-  :sizes [80 160 320],
-  :generated? true,
-  :placeholder {:colors ["#a6b0bc" "#4a4644" "#725f54"]}},
  "img/strava-heatmap-new.jpg"
  {:width 800,
   :height 1307,
@@ -237,12 +123,6 @@
   :height 106,
   :sizes [40 80],
   :placeholder {:colors ["#a09c96" "#6f6e6e" "#9b9892"]}},
- "img/tolgrav.png"
- {:width 320,
-  :height 132,
-  :sizes [80 160],
-  :generated? true,
-  :placeholder {:colors ["#ececec" "#bfc1c7" "#eaebec"]}},
  "img/video-editing-small.jpg"
  {:width 1008,
   :height 567,

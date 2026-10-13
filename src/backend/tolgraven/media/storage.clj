@@ -34,16 +34,17 @@
 
 (defn extension! [bytes]
   (let [size (alength ^bytes bytes)
-        prefix (String. ^bytes bytes 0 (min 64 size) "ISO-8859-1")]
+        prefix (String. ^bytes bytes 0 (min 1024 size) "ISO-8859-1")]
     (cond
       (and (<= 8 size) (= [137 80 78 71 13 10 26 10]
                           (mapv #(bit-and 255 %) (take 8 bytes)))) "png"
       (and (<= 3 size) (= [255 216 255] (mapv #(bit-and 255 %) (take 3 bytes)))) "jpg"
       (and (<= 12 size) (string/starts-with? prefix "RIFF") (= "WEBP" (subs prefix 8 12))) "webp"
       (and (<= 16 size) (= "ftyp" (subs prefix 4 8)) (string/includes? prefix "avif")) "avif"
-      :else (fail! 400 "Choose a PNG, JPEG, WebP or AVIF still image"))))
+      (re-find #"(?is)^\s*(?:ï»¿)?\s*(?:<\?xml\s[^?]*\?>\s*)?(?:<!--.*?-->\s*)*<(?:[A-Za-z_][\w.-]*:)?svg(?:\s|>)" prefix) "svg"
+      :else (fail! 400 "Choose a PNG, JPEG, WebP, AVIF or SVG image"))))
 
-(def mime-types {"png" "image/png" "jpg" "image/jpeg" "webp" "image/webp" "avif" "image/avif"})
+(def mime-types {"png" "image/png" "jpg" "image/jpeg" "webp" "image/webp" "avif" "image/avif" "svg" "image/svg+xml"})
 
 (defn put! [path mime bytes]
   (let [response (try

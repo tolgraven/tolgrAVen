@@ -52,3 +52,21 @@
   (->> (critical-image-paths spec)
        (keep #(get-in content %))
        (filter string?) distinct vec))
+
+(defn critical-image-attrs
+  "Project each first-paint image's rendered source, ready manifest and sizes.
+   String-only CMS fields use their section-owned image-assets sidecar."
+  [spec content]
+  (->> (critical-image-paths spec)
+       (keep (fn [path]
+               (let [src (get-in content path)
+                     parent (get-in content (pop path))
+                     asset (or (when (map? parent) (:asset parent))
+                               (loop [prefix (pop path)]
+                                 (or (get-in content (into prefix [:image-assets src]))
+                                     (when (seq prefix) (recur (pop prefix))))))]
+                 (when (string? src)
+                   (cond-> {:src (or (:src asset) src)}
+                     asset (assoc :asset asset)
+                     (and (map? parent) (:sizes parent)) (assoc :sizes (:sizes parent)))))))
+       distinct vec))

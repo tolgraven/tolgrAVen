@@ -75,8 +75,8 @@ grant execute on function public.tolgraven_claim_media(text) to service_role;
 do $$ begin
   if to_regclass('storage.buckets') is not null then
     insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
-      values ('media-originals','media-originals',false,5242880,array['image/png','image/jpeg','image/webp','image/avif']),
-             ('media-renditions','media-renditions',true,67108864,array['image/png','image/jpeg','image/webp','image/avif'])
-      on conflict(id) do nothing;
+      values ('media-originals','media-originals',false,5242880,array['image/png','image/jpeg','image/webp','image/avif','image/svg+xml']),
+             ('media-renditions','media-renditions',true,67108864,array['image/png','image/jpeg','image/webp','image/avif','image/svg+xml'])
+      on conflict(id) do update set allowed_mime_types=excluded.allowed_mime_types;
   end if;
 end $$;

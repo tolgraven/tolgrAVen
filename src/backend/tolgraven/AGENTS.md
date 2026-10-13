@@ -170,3 +170,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   artifacts. Build-only JS/CSS/image preparation belongs to `build/assets.clj`;
   development refreshes declared bundles and their references with a two-second
   TTL, without a resource watcher. Preserve independent module style acquisition.
+
+- Managed SVG media retains its vector original with no raster sidecars. The
+  bounded `media/svg.clj` adapter rejects active/external XML content before
+  public publication; keep the complete-raster versus original-only SVG
+  rendition contracts distinct. See `doc/media-pipeline.md`.

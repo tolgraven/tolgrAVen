@@ -70,7 +70,8 @@
     (println "All public image variants are present.")))
 
 (def responsive-widths [80 160 320 640 960 1280 1920 2560])
-(def responsive-min-bytes (* 16 1024))
+(def responsive-min-dimension 960)
+(def responsive-min-bytes (* 64 1024))
 
 (defn responsive-original? [file]
   (and (or (original? file)
@@ -82,8 +83,9 @@
        (pos-int? height)
        (pos-int? width)
        (nat-int? bytes)
-       (<= 120 width)
-       (or (<= responsive-min-bytes bytes) (<= 960 (max width height)))))
+       (< 320 width)
+       (<= responsive-min-dimension (max width height))
+       (<= responsive-min-bytes bytes)))
 
 (defn responsive-sizes [width]
   (filterv #(< % width) responsive-widths))
@@ -286,7 +288,9 @@
                    (imagemagick) "-limit" "thread" "1" (str file)
                    "-auto-orient" "-strip" "-quality" "90" (str original))
     (let [normalized (image-metadata! original)
-          sizes' (conj (responsive-sizes (:width normalized)) nil)
+          sizes' (if (responsive-eligible? normalized)
+                   (conj (responsive-sizes (:width normalized)) nil)
+                   [nil])
           rendition (fn [path mime]
                       (let [metadata (image-metadata! path)]
                         {:file (str (fs/file-name path))

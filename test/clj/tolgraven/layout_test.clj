@@ -7,7 +7,8 @@
     [tolgraven.config :as config]
     [tolgraven.content.service :as content]
             [tolgraven.ssr :as ssr]
-            [tolgraven.layout :as layout]))
+            [tolgraven.layout :as layout]
+            [tolgraven.managed-image-test :as managed]))
 
 (deftest page-heading-image-is-preloaded-before-the-body
   (with-redefs [config/env {:dev true :ssr {:enabled false}}
@@ -20,6 +21,21 @@
                      "fetchpriority=\"high\""))
       (is (not (.contains body "img/blog.webp")))
       (is (not (.contains body "img/blog.jpg"))))))
+
+(deftest managed-heading-preloads-explicit-sources-and-paints-its-own-gradient
+  (with-redefs [config/env {:dev true :ssr {:enabled false}}
+                content/immediate-content
+                (constantly {:blog {:heading {:bg {:src "https://cms.example.test/photo.jpg"
+                                                  :asset managed/asset
+                                                  :sizes "45vw"}}}})
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (let [body (:body (layout/render-home {:uri "/blog/post/17"}))
+          links (filter #(.contains % "as=\"image\"") (re-seq #"<link[^>]+>" body))]
+      (is (= 1 (count links)))
+      (is (.contains (first links) "imagesizes=\"45vw\""))
+      (is (.contains (first links) "https://images.example.test/objects/avif?width=1600"))
+      (is (not (.contains body "https://cms.example.test/photo.avif")))
+      (is (.contains body "linear-gradient(to bottom, #123456 0%, #abcdef 50%, #fedcba 100%)")))))
 
 (deftest progressive-hero-preloads-only-responsive-final-after-Back-policy
   (with-redefs [config/env {:dev true :ssr {:enabled false}}

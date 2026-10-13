@@ -7,6 +7,7 @@ create table public.auth_roles (role text,user_id text);
 create publication supabase_realtime;
 create schema storage;
 create table storage.buckets (id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+insert into storage.buckets values ('media-originals','media-originals',false,123456,array['image/png']);
 begin;
 \i resources/supabase/modules/site_media.sql
 \i resources/supabase/modules/blog_posts.sql
@@ -22,6 +23,10 @@ do $$ begin
   if not (select public from storage.buckets where id='media-renditions') or
      (select public from storage.buckets where id='media-originals') then
     raise exception 'Invalid bucket visibility';
+  end if;
+  if (select count(*) from storage.buckets where 'image/svg+xml'=any(allowed_mime_types)) <> 2 or
+     (select file_size_limit from storage.buckets where id='media-originals') <> 123456 then
+    raise exception 'SVG bucket update changed existing policy or omitted MIME support';
   end if;
 end $$;
 

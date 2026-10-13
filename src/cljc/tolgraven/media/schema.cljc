@@ -12,13 +12,22 @@
    [:width pos-int?]
    [:height pos-int?]
    [:bytes pos-int?]
-   [:mime [:enum "image/png" "image/jpeg" "image/webp" "image/avif"]]])
+   [:mime [:enum "image/png" "image/jpeg" "image/webp" "image/avif" "image/svg+xml"]]])
+
+(def raster-rendition
+  [:and rendition [:map [:mime [:enum "image/png" "image/jpeg" "image/webp" "image/avif"]]]])
+
+(def vector-rendition
+  [:and rendition [:map [:mime [:= "image/svg+xml"]]]])
 
 (def renditions
-  [:map {:closed true}
-   [:original rendition]
-   [:webp [:vector {:min 1} rendition]]
-   [:avif [:vector {:min 1} rendition]]])
+  [:or
+   [:map {:closed true}
+    [:original raster-rendition]
+    [:webp [:vector {:min 1} raster-rendition]]
+    [:avif [:vector {:min 1} raster-rendition]]]
+   [:map {:closed true}
+    [:original vector-rendition]]])
 
 (def placeholder image/placeholder)
 

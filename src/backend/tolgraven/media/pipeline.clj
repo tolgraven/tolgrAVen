@@ -19,7 +19,7 @@
            [java.util UUID]
            [java.util.concurrent Executors ExecutorService TimeUnit]))
 
-(def policy-version "responsive-v2")
+(def policy-version "responsive-v3")
 
 (defn enabled? []
   (and (site/enabled? :main :media) (true? (get-in config/env [:media :enabled]))))
@@ -137,7 +137,7 @@
     value))
 
 (defn- rendition! [directory prefix {:keys [file] :as rendition}]
-  (when-not (re-matches #"original(?:-[0-9]+w)?\.(?:png|jpg|webp|avif)" (or file ""))
+  (when-not (re-matches #"original(?:-[0-9]+w)?\.(?:png|jpg|webp|avif|svg)" (or file ""))
     (storage/fail! 503 "Invalid media rendition"))
   (let [bytes (Files/readAllBytes (.toPath (io/file directory file)))
         parts (string/split file #"\." 2)
@@ -147,9 +147,9 @@
 
 (defn publish! [job directory manifest]
   (let [prefix (str "media-renditions/" (:content_hash job) "/" (:policy_version job))
-        renditions {:original (rendition! directory prefix (:original manifest))
-                    :webp (mapv #(rendition! directory prefix %) (:webp manifest))
-                    :avif (mapv #(rendition! directory prefix %) (:avif manifest))}
+        renditions (cond-> {:original (rendition! directory prefix (:original manifest))}
+                     (seq (:webp manifest)) (assoc :webp (mapv #(rendition! directory prefix %) (:webp manifest)))
+                     (seq (:avif manifest)) (assoc :avif (mapv #(rendition! directory prefix %) (:avif manifest))))
         asset (cond-> {:id (:id job)
                        :src (get-in renditions [:original :src])
                        :width (:width manifest)
