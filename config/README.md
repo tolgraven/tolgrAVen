@@ -12,6 +12,12 @@ merges the selected override, Mount arguments, system properties, then environme
 variables. Production defaults contain no secrets. Inject deployment secrets as
 environment variables or an external `-Dconf` file, never Docker build inputs.
 
+`:analytics {:google-id "G-..."}` selects the optional Google Analytics script.
+Production defaults retain this site's ID; set `:analytics {:enabled false}`
+to disable it. `/api/browser-resources` exposes only the selected public
+ID. The browser requests it after page readiness and the deferred host's timeout;
+SSR emits no analytics settings or scripts. Development does not mount analytics.
+
 Tool configuration stays at each tool's required location (`shadow-cljs.edn`,
 `project.clj`, `bb.edn`, `.clj-kondo/config.edn`). These are not runtime overrides.
 An ignored `local.dev-legacy.edn`, if present, preserves an old unused resource

@@ -23,7 +23,9 @@ Do not retain completed investigation diaries or historical test counts as curre
   Fresh cached SSR skips the skeleton (`:ssr :cache-ttl-ms`, default one hour).
   Hydration preserves the existing DOM and does not replay entrances.
 - Analytics initialization and script acquisition belong to the browser lifecycle
-  after hydration and page readiness; SSR emits no analytics markup or bootstrap.
+  after hydration and page readiness. The deferred host's timeout replaces hidden
+  markup with script Hiccup; public settings load through the shared dependency
+  adapter. The ID lives in server config; SSR emits no analytics markup/bootstrap.
 - Readable link previews belong to content containers, acquire text/image data only
   on activation, and delay optional sandboxed miniatures until the card paints.
   Frame policy controls embedding; menu navigation does not opt into previews.

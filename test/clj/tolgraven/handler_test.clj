@@ -15,6 +15,16 @@
 (defn parse-json [body]
   (m/decode formats/instance "application/json" body))
 
+(deftest optional-script-settings-project-only-the-public-id
+  (doseq [[options expected]
+          [[{:google-id "G-ABC123", :private-token "secret"} {:google-id "G-ABC123"}]
+           [{:enabled false, :google-id "G-ABC123"} {}]
+           [{} {}]]]
+    (with-redefs [config/env (assoc config/env :analytics options :test true)]
+      (let [result (app-routes (request :get "/api/browser-resources"))]
+        (is (= 200 (:status result)))
+        (is (= {:analytics expected} (m/decode-response-body result)))))))
+
 (use-fixtures
   :once
   (fn [f]

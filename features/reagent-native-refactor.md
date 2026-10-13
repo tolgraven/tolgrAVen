@@ -76,6 +76,7 @@ application callers use Reagent's value-oriented contract.
 | `components/timer.cljs` | `<timeout>` keeps its mount deadline and invokes the latest committed callback. Canceled/completed hide timers release their handles. |
 | `modules/home/sections.cljs`, `modules/search/views.cljs` | Services has one focus effect. Search uses the existing painted-frame adapter, cancels pending focus and blurs the hidden input on close. |
 | `components/ui.cljs`, `modules/github/views.cljs` | Render bodies and refs no longer trigger the legacy DOM highlighter. The deferred formatter owns highlighting; preserved prototypes/helpers remain available. Missing HUD content renders nil without dispatching from render. |
+| `browser_resources.cljs`, `boot.cljs` | A timeout changes local Reagent readiness from a hidden placeholder to supplied Hiccup. Analytics settings acquire through the existing URL source after that delay; scripts render declaratively, with only SDK queue setup in the native adapter. Server config owns the ID. |
 
 Managed acquisition before commit is intentional: re-frame owns source subscriptions
 and their disposal; derived computations remain pure. Do not push every dependency

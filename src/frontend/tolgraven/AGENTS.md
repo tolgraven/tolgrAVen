@@ -230,7 +230,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   invoking the latest committed callback, and cancels on unmount.
 - `browser_resources.cljs` acquires analytics
   after hydration, window load, two paint frames and idle with no pending page
-  bindings. Production analytics initializes its queue/configuration there too;
+  bindings. Its deferred host renders hidden markup until a cancellable timeout
+  publishes local Reagent readiness, then renders its child Hiccup. Analytics
+  requests `/api/browser-resources` through the existing managed URL dependency
+  before rendering an async script. The SDK queue initializes at layout commit;
   keep its ID, bootstrap, remote scripts and preconnects out of SSR HTML. Browsers
   use native smooth scrolling without a compatibility script (Safari 15.4+).
   Older browsers retain instant scrolling as progressive enhancement.

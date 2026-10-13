@@ -152,16 +152,16 @@
                              (rf/dispatch [:component-state/restore path revision (:value saved)]))))))))))))
 
 (defn- initialization-effects [{:keys [db]} [_ path options]]
-    (when (accessible-path? path)
-      (let [{:keys [present? value revision]} (entry-at db path)
-            value' (if present? value (:initial options))]
-        (when-let [schema (:schema options)]
-          (validation/check! "component state" schema value'))
-        {:db (if present? db (assoc-in db path value'))
-         :component-state/initialize {:path path
-                                      :options options
-                                      :restore? (not present?)
-                                      :revision revision}})))
+  (when (accessible-path? path)
+    (let [{:keys [present? value revision]} (entry-at db path)
+          value' (if present? value (:initial options))]
+      (when-let [schema (:schema options)]
+        (validation/check! "component state" schema value'))
+      {:db (if present? db (assoc-in db path value'))
+       :component-state/initialize {:path path
+                                    :options options
+                                    :restore? (not present?)
+                                    :revision revision}})))
 
 (doseq [event [:component-state/initialize :component-state/load]]
   (rf/reg-event-fx event

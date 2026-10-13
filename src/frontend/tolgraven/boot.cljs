@@ -136,4 +136,5 @@
     [])
   [:<> [<coercion>] [preload/<background>]
    (when-enabled :page-capture nil [local-page/<capture>])
-   (when @context/*interactive? [resources/<deferred>])])
+   (when (and @context/*interactive? (not ^boolean goog.DEBUG))
+     [resources/<deferred> [resources/<analytics>]])])

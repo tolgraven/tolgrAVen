@@ -389,6 +389,17 @@ remain small explicit adapters where their lifecycle requires it.
 
 ### Hiccup integration forms
 
+Optional scripts can be rendered as Hiccup too. The boot lifecycle mounts
+`[browser-resources/<deferred> [browser-resources/<analytics>]]` only in production.
+The deferred component starts as `[:div {:hidden true}]`; after the shared page
+gate and a cancellable timeout, resetting its local ratom changes its render to
+the supplied Hiccup. Analytics then acquires public settings through the existing
+managed URL source and renders `[:script {:async true :src ...}]`. Its ID lives in
+server configuration, and its native adapter only configures the SDK queue.
+This keeps the page update in ordinary Reagent state/rendering instead of hiding
+script acquisition inside `preinit`. React 19 deduplicates async scripts by `src`.
+[React script reference](https://react.dev/reference/react-dom/components/script).
+
 | Form | Contract |
 | --- | --- |
 | `[<our-component> data]` | Reagent component with Clojure arguments and tracking |
