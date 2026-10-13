@@ -39,7 +39,7 @@ def main():
         ('unchanged', 'reuse', compile_command),
         ('reporting-variation', 'reuse', ['bash', '-c', 'echo cache-report-variation; ' + shell_compile]),
         ('changed-source', 'reuse', ['bash', '-c',
-            "printf '\\n(def cache-validation-marker 42)\\n' >> src/bootstrap/bootstrap/entrance.cljs; " + shell_compile]),
+            "printf '\\n(def cache-validation-marker 42)\\n' >> src/frontend/bootstrap/entrance.cljs; " + shell_compile]),
         ('restored-source', 'reuse', compile_command)]
     if args.target == 'app-test':
         samples = samples[:3]
