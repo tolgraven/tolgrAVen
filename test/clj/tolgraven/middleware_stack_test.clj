@@ -1,60 +1,41 @@
 (ns tolgraven.middleware-stack-test
-  "Compatibility evidence for the proposed stack before production integration."
+  "Exercise the production middleware composition with controlled asset/service I/O."
   (:require [clojure.test :refer [deftest is]]
             [clojure.java.io :as io]
             [clojure.data.json :as json]
             [clojure.string :as string]
             [reitit.ring :as reitit]
-            [ring.middleware.defaults :as defaults]
-            [ring.middleware.content-type :refer [wrap-content-type]]
-            [ring.middleware.default-charset :refer [wrap-default-charset]]
-            [ring.middleware.content-length :refer [wrap-content-length]]
             [ring.middleware.resource :as resource]
-            [ring.middleware.not-modified :refer [wrap-not-modified]]
+            [ring.adapter.undertow :as undertow]
+            [tolgraven.concurrent :as concurrent]
+            [tolgraven.streaming :as streaming]
+            [ring.middleware.multipart-params :as ring-multipart]
             [ring.middleware.anti-forgery :as csrf]
             [ring.util.codec :as codec]
-            [reitit.ring.middleware.multipart :as reitit-multipart]
             [tolgraven.middleware :as middleware]
             [tolgraven.middleware.assets :as assets]
-            [tolgraven.middleware.multipart :as multipart]
-            [tolgraven.middleware.ranges :as ranges]
             [tolgraven.middleware-transport-test :refer [body-text body-bytes upload-request]]
             [tolgraven.routes.services :as services]
             [tolgraven.schema.http :as schemas]
             [tolgraven.config :as config]
+            [tolgraven.env :as environment]
             [tolgraven.media.cms :as cms]
             [tolgraven.media.pipeline :as pipeline]
             [tolgraven.media.storage :as storage])
   (:import [java.io File]
-           [java.net URL]
+           [java.net URL URI]
+           [java.net.http HttpClient HttpRequest HttpResponse$BodyHandlers]
+           [java.util.zip GZIPInputStream]
            [java.util.jar JarEntry JarOutputStream]))
 
-(defn candidate-stack
-  ;; This is a controlled test fixture only. Production stays on the existing
-  ;; stack until this actual Ring/Optimus/Reitit composition proves its contracts.
-  ([handler inventory] (candidate-stack handler inventory identity))
-  ([handler inventory authorize]
-   (-> handler
-      (defaults/wrap-defaults
-        (-> defaults/secure-site-defaults
-            (assoc :static {} :security (select-keys (:security defaults/secure-site-defaults) [:anti-forgery]))
-            (assoc-in [:params :multipart] false)
-            (assoc :responses {})))
-      assets/wrap-public-resources
-      (assets/serve-assets (constantly inventory) (fn [files _] files) {})
-      (wrap-content-type {:mime-types {"avif" "image/avif"}})
-      (wrap-default-charset "utf-8")
-      wrap-content-length
-      middleware/wrap-module-cache
-      wrap-not-modified
-      ranges/wrap-ranges
-      middleware/wrap-media-cache
-      middleware/wrap-gzip-content-aware
-      multipart/wrap-multipart
-      authorize
-      (defaults/wrap-defaults
-        {:proxy true
-         :security (dissoc (:security defaults/secure-site-defaults) :anti-forgery)}))))
+(defn integrated-stack [handler inventory]
+  ;; Replace only expensive asset preparation and development reload I/O. The
+  ;; actual production constructor owns every request/response wrapper and order.
+  (with-redefs [config/env (dissoc (if (map? config/env) config/env {}) :dev :test :stage)
+                environment/defaults {:middleware identity}
+                middleware/get-assets (constantly inventory)
+                middleware/optimize-all (fn [files _] files)]
+    (middleware/wrap-base handler)))
 
 (defn request [uri & [headers method]]
   {:request-method (or method :get)
@@ -64,7 +45,7 @@
    :uri uri
    :headers (or headers {})})
 
-(deftest candidate-static-source-and-jar-contracts
+(deftest integrated-static-source-and-jar-contracts
   (with-redefs [config/env {}]
     (let [file (File/createTempFile "asset-source-" ".avif")
           jar (File/createTempFile "asset-packaged-" ".jar")]
@@ -82,7 +63,7 @@
                            {:path "/bundles/styles.hash.css"
                             :contents "body{color:red}"
                             :headers {"Cache-Control" "max-age=315360000"}}]
-                handler (candidate-stack
+                handler (integrated-stack
                           (reitit/ring-handler
                             (reitit/router [["/api/page-return-template"
                                              {:get (fn [_] {:status 200
@@ -140,15 +121,12 @@
       (is (= "static" (:body (handler (request "/robots.txt"))))))
     (is (= 1 @*lookups))))
 
-(deftest candidate-api-format-coercion-and-browser-csrf-contracts
+(deftest integrated-api-format-coercion-and-browser-csrf-contracts
   (let [route-data (second (#'services/ordinary-service-routes))
-        route-data' (update route-data :middleware
-                            #(mapv (fn [entry] (if (= entry reitit-multipart/multipart-middleware)
-                                                multipart/coercion-middleware entry)) %))
-        handler (candidate-stack
+        handler (integrated-stack
                   (reitit/ring-handler
                     (reitit/router
-                      [["/api" route-data'
+                      [["/api" route-data
                         ["/typed" {:post {:parameters {:body schemas/operands}
                                           :handler (fn [request]
                                                      {:status 200
@@ -171,18 +149,25 @@
     (let [upload (-> (upload-request [["file" "test.txt" "abc"]])
                      (assoc :uri "/api/upload" :scheme :https)
                      (assoc-in [:headers "x-ring-anti-forgery"] "test"))
-          response (handler upload)]
+          *calls (atom 0)
+          parse! ring-multipart/parse-multipart-params
+          response (with-redefs [ring-multipart/parse-multipart-params
+                                 (fn [request options]
+                                   (swap! *calls inc)
+                                   (parse! request options))]
+                     (handler upload))]
       (is (= 200 (:status response)))
+      (is (= 1 @*calls))
       (is (= {"size" 3} (json/read-str (body-text response)))))))
 
-(deftest candidate-webhook-exception-requires-the-real-secret-before-pipeline-work
+(deftest integrated-webhook-exception-requires-the-real-secret-before-pipeline-work
   (let [*pipeline-calls (atom 0)
         *intake-calls (atom 0)]
     (with-redefs [config/env {:media {:strapi-webhook-token "disposable-webhook-secret"}}
                   pipeline/configured! #(swap! *pipeline-calls inc)
                   cms/intake! (fn [_] (swap! *intake-calls inc) {:accepted true})
                   storage/public-url #(str "https://storage.invalid/" %)]
-      (let [handler (candidate-stack
+      (let [handler (integrated-stack
                         (reitit/ring-handler
                           (reitit/router
                             [["/api" (second (#'services/ordinary-service-routes))
@@ -191,7 +176,7 @@
                                                        :headers {"Content-Type" "text/plain"}
                                                        :body (force csrf/*anti-forgery-token*)})}]
                               ["/ordinary" {:post (fn [_] {:status 200, :body {:accepted true}})}]]]))
-                        [] cms/wrap-webhook-authorization)
+                        [])
             post! (fn [uri authorization & [safe-header]]
                     (handler (assoc (request uri (cond-> {"content-type" "application/json"
                                                           "accept" "application/json"}
@@ -232,3 +217,61 @@
         (with-redefs [config/env {}]
           (is (= 503 (:status (post! "/api/media/strapi/webhook" "Bearer disposable-webhook-secret")))))
         (is (= 1 @*pipeline-calls))))))
+
+(deftest native-undertow-delivery-keeps-ranges-and-streaming-flushes
+  (with-redefs [config/env {}]
+    (let [release (promise)
+          handler (integrated-stack
+                    (fn [_]
+                      {:status 200
+                       :headers {"Content-Type" "text/html"}
+                       :body (streaming/html-document
+                               [:html {:lang "en"} [:head [:title "Stream"]] [:body {}]]
+                               [:div "Shell before data"]
+                               (fn [] @release [:article "Finished data"]))})
+                    [{:path "/img/fixture.svg", :contents "0123456789"}])
+          server (undertow/run-undertow (concurrent/wrap-async handler)
+                   {:host "127.0.0.1", :port 0, :async? true, :io-threads 1, :worker-threads 2})
+          port (.getPort ^java.net.InetSocketAddress (.getAddress (first (.getListenerInfo server))))
+          client (HttpClient/newHttpClient)
+          send! (fn [path method headers body-handler]
+                  (let [builder (-> (HttpRequest/newBuilder (URI/create (str "http://127.0.0.1:" port path)))
+                                    (.timeout (java.time.Duration/ofSeconds 10))
+                                    (.header "X-Forwarded-Proto" "https")
+                                    (.method method (java.net.http.HttpRequest$BodyPublishers/noBody)))]
+                    (doseq [[name value] headers] (.header builder name value))
+                    (.send client (.build builder) body-handler)))]
+      (try
+        (doseq [[method range status expected] [["GET" "bytes=-3" 206 "789"]
+                                                ["GET" "bytes=20-" 416 ""]
+                                                ["HEAD" "bytes=-3" 200 ""]]]
+          (let [response (send! "/img/fixture.svg" method {"Range" range} (HttpResponse$BodyHandlers/ofString))]
+            (is (= status (.statusCode response)))
+            (is (= expected (.body response)))
+            (is (= "nosniff" (.orElse (.firstValue (.headers response) "X-Content-Type-Options") nil)))))
+        (let [response (send! "/stream" "GET" {"Accept-Encoding" "gzip"} (HttpResponse$BodyHandlers/ofInputStream))
+              input (.body response)
+              first-chunk (future
+                            (let [gzip (GZIPInputStream. input)
+                                  buffer (byte-array 65536)
+                                  size (.read gzip buffer)]
+                              [gzip (String. buffer 0 size "UTF-8")]))]
+          (try
+            (is (= 200 (.statusCode response)))
+            (is (= "gzip" (.orElse (.firstValue (.headers response) "Content-Encoding") nil)))
+            (let [result (deref first-chunk 10000 ::timeout)]
+              (is (not= ::timeout result))
+              (when-not (= ::timeout result)
+                (let [[gzip shell] result]
+                  (is (.contains shell "Shell before data"))
+                  (is (not (realized? release)))
+                  (deliver release true)
+                  (is (.contains (slurp gzip) "Finished data")))))
+            (finally
+              (deliver release true)
+              (.close input)
+              (future-cancel first-chunk))))
+        (finally
+          (deliver release true)
+          (.close client)
+          (.stop server))))))

@@ -1,11 +1,15 @@
 (ns tolgraven.middleware
   (:require
     [tolgraven.env :refer [defaults]]
+    [tolgraven.build.site :refer [when-enabled]]
     [cognitect.transit :as transit]
     [clojure.tools.logging :as log]
     [tolgraven.layout :as layout :refer [error-page]]
     [tolgraven.streaming :as streaming]
     [tolgraven.middleware.formats :as formats]
+    [tolgraven.middleware.assets :as delivery]
+    [tolgraven.middleware.multipart :as multipart]
+    [tolgraven.middleware.ranges :as ranges]
     [tolgraven.config :refer [env]]
     [muuntaja.middleware :refer [wrap-format wrap-params]]
     [clojure.java.io :as io]
@@ -18,6 +22,8 @@
     [ring.middleware.partial-content :refer [wrap-partial-content]]
     [ring.middleware.multipart-params :refer [wrap-multipart-params]]
     [ring.middleware.content-type :refer [wrap-content-type]]
+    [ring.middleware.default-charset :refer [wrap-default-charset]]
+    [ring.middleware.content-length :refer [wrap-content-length]]
     [ring.middleware.not-modified :refer [wrap-not-modified]]
     ; Optional :experiments profile:
     ; [ring.middleware.ratelimit :refer [wrap-ratelimit]]
@@ -114,10 +120,10 @@
       (optimizations/add-cache-busted-expires-headers)
       (optimizations/add-last-modified-headers)))
 
-(defonce serve-live-assets-maybe-autorefresh
-  (if (nil? (io/resource "/js/compiled/out/main.js"))
-     strategies/serve-live-assets
-     strategies/serve-live-assets-autorefresh))
+(defn serve-live-assets-maybe-autorefresh
+  "Refresh a realized development inventory with a bounded TTL, without a watcher."
+  [app get-assets optimize options]
+  (delivery/serve-assets app get-assets optimize (assoc options :cache-live-assets 2000)))
 
 (defn wrap-optimus
   [app]
@@ -129,7 +135,7 @@
          optimize-all)
        (if (:dev env)
          serve-live-assets-maybe-autorefresh ; like serve-live-assets but with watcher recompiling instead of timeout
-         strategies/serve-frozen-assets)
+         delivery/serve-assets)
        {;:cache-live-assets 60000
         :uglify-js {:mangle-names false}})))
 
@@ -189,31 +195,47 @@
         response))))
 
 (defn wrap-base [handler]
-  (-> ((:middleware defaults) handler)
-      ; wrap-flash
-      (wrap-defaults
-        (-> (if (or (env :dev) (env :test) (env :stage))
-              site-defaults
-              (-> secure-site-defaults ;use ssl and setup for rev proxy
-                  (assoc-in [:proxy] true)))
-            #_(assoc-in [:security :anti-forgery] true) ; what's with this? from before we injected csrf or?
-            )) ; why was there a dissoc :session? cause it's about what middleware we request to wrap us with. cause gotta choose either above or through defaults... get duplicate session warnings now that uncommented hmm.
-      (wrap-resource "public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
-      ; (wrap-file "resources/public" {:prefer-handler? true}) ; hopefully fixes gzipping of images and shit causing 50% ballooning of sizes :O
-      wrap-optimus
-      ;; Ring's default MIME table has WebP but no AVIF entry.
-      (wrap-content-type {:mime-types {"avif" "image/avif"}})
-      wrap-module-cache
-      ; (wrap-log "Wrapped gzip")
-      wrap-not-modified ; guess this doesnt work cause optimus gens new files tho..
-      wrap-gzip-content-aware
-      ; (wrap-csp {:policy csp})
-      wrap-partial-content
-      wrap-media-cache
-      wrap-multipart-params
-      wrap-formats
-      ; wrap-with-logger
-      wrap-internal-error))
+  (let [options (if (or (env :dev) (env :test) (env :stage))
+                  site-defaults
+                  (assoc secure-site-defaults :proxy true))
+        browser-options (-> options
+                            (dissoc :proxy :static)
+                            (assoc :security (select-keys (:security options) [:anti-forgery]))
+                            (assoc :responses {})
+                            (assoc-in [:params :multipart] false)
+                            #_(assoc-in [:security :anti-forgery] true)) ; preserved CSRF experiment
+        authorize (or (when-enabled :main :media
+                        (requiring-resolve 'tolgraven.media.cms/wrap-webhook-authorization))
+                      identity)]
+    (-> ((:middleware defaults) handler)
+        ; wrap-flash
+        ;; Keep global browser CSRF, cookies, sessions and form parameters intact.
+        ;; Public GET/HEAD assets do not create personalized session cookies.
+        (wrap-defaults browser-options)
+        delivery/wrap-public-resources
+        ; (wrap-file "resources/public" {:prefer-handler? true}) ; preserved file-serving experiment
+        wrap-optimus
+        ;; One response policy covers plain resources, Optimus and routed bodies.
+        (wrap-content-type {:mime-types {"avif" "image/avif"}})
+        (wrap-default-charset "utf-8")
+        wrap-content-length
+        wrap-module-cache
+        ; (wrap-log "Wrapped gzip")
+        wrap-not-modified
+        ; (wrap-csp {:policy csp})
+        ranges/wrap-ranges
+        wrap-media-cache
+        wrap-gzip-content-aware
+        multipart/wrap-multipart
+        ;; Only the exact Strapi POST can supply Ring's existing safe header,
+        ;; after the same constant-time bearer validation used by the handler.
+        authorize
+        ;; API routes own Muuntaja; HTML and return-template JSON are already encoded.
+        ; wrap-with-logger
+        wrap-internal-error
+        ;; Proxy/HTTPS and security response headers also cover early failures.
+        (wrap-defaults {:proxy (:proxy options)
+                        :security (dissoc (:security options) :anti-forgery)}))))
 
 ; wrap-cors maybe good for api side once/if we get a real api heh. would need configure to only run on prod tho...
 ; wrap-ratelimit sounds good to have for potential larger sites with actual exposure.
