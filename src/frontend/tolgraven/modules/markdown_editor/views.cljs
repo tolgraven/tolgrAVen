@@ -4,10 +4,11 @@
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as r]
             [tolgraven.modules.markdown-editor.catalog :as catalog]
-            [tolgraven.modules.markdown-components.model :as model]
+            [tolgraven.markdown.authoring :as model]
             [tolgraven.modules.markdown-components.views :as components]
             [tolgraven.components.content.layout :as layout]
             [tolgraven.components.content.resize :as resize]
+            [tolgraven.components.image :as image]
             [tolgraven.components.content.media :as media]
             [clojure.string :as string]
             ["@mdxeditor/editor" :as editor]
@@ -42,7 +43,7 @@
                                                                            (model/defaults entry)) "component" name)}))
                                     (reset! *open? false))}
             [:strong name] [:small category] [:span doc]
-            [:code (pr-str (:schema entry))]])]])]))
+            [:code (pr-str (or (:schema entry) (:parameters entry)))]])]])]))
 
 (defc <argument-table>
   "Required and optional arguments accept quoted literals or public app-db paths."
@@ -72,8 +73,10 @@
                                 (update! (clj->js {:attributes attributes'})))}]]])]]
    [:aside.md-component-help
     [:h4 (:name entry)] [:p (:doc entry)]
-    [:p "Text is literal. Prefix numbers, booleans, arrays or objects with json:. Prefix public state references with db:."]
+    [:code (pr-str (:parameters entry))]
+    [:p "Text is literal. Use json: for numbers, booleans, arrays or objects; edn: for Clojure keywords, sets or data. Use db: for public state references."]
     [:code "json:[\"First\",\"Second\"]"]
+    [:code "edn:[:appear :seen]"]
     [:code "db:[:content :common :title]"]
     [:p "Content and theme paths are readable; account, administration and credential state are excluded."]]])
 
@@ -193,11 +196,12 @@
         [:label "Find a server image"
          [:input {:type "search", :value @*query, :on-change #(reset! *query (.. % -target -value))}]]
         [:div.md-image-picker__assets
-         (for [{:keys [id src]} assets
+         (for [{:keys [id src] :as asset} assets
                :when (string/includes? (string/lower-case (str src)) (string/lower-case @*query))]
            ^{:key id}
            [:button {:type "button", :on-click #(insert-image! src "Image")}
-            [:img {:src src, :alt "", :loading "lazy"}] [:span src]])]
+            [image/<picture> {:src src, :asset asset, :alt "", :loading "lazy", :sizes "6rem", :progressive? false}]
+            [:span src]])]
         (when library (library :view nil))
         [:label "Image URL"
          [:input {:type "url", :value @*url, :on-change #(reset! *url (.. % -target -value))}]]
@@ -216,7 +220,7 @@
                             (.then #(insert-image! % (.-name file)))
                             (.catch #(reset! *error (.-message %)))
                             (.finally #(reset! *pending? false)))))}]])
-        (when @*pending? [:p {:role "status"} "Preparing image sizes…"])
+        (when @*pending? [:p {:role "status"} "Preparing image…"])
         (when @*error [:p {:role "alert"} @*error])])]))
 
 (defc <image-layout-toolbar>

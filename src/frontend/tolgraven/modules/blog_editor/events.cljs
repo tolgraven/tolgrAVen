@@ -26,7 +26,18 @@
       (client/authenticated-request!
         :post "/api/supabase/media" body
         #(accept-response! id attempt %)
-        #(r/dispatch [:blog/image-upload-failed id attempt %])))))
+        #(r/dispatch [:blog/image-upload-failed id attempt %])
+        {:on-upload-progress #(r/dispatch [:blog/image-upload-progress id attempt %])}))))
+
+(r/reg-event-db :blog/image-upload-progress
+  {:args [:tuple :string [:int {:min 1}] :any]}
+  (fn [db [_ id attempt progress]]
+    (let [upload (get-in db (conj uploads-path id))]
+      (if (and (= :uploading (:status upload)) (= attempt (:attempt upload))
+               (nil? (validation/explain model/progress-schema progress))
+               (>= (:loaded progress) (get-in upload [:progress :loaded] 0)))
+        (assoc-in db (conj uploads-path id :progress) progress)
+        db))))
 
 (r/reg-event-fx :blog/image-upload-enqueue
   {:args [:tuple [:vector [:map [:id :string] [:name :string] [:file :any] [:owner :string] [:?sdk? :boolean]]]
@@ -91,12 +102,47 @@
        :blog-editor/settle-upload {:id id, :error (or (:message error) "Unable to upload image")}
        :dispatch [:blog/image-upload-next]}))))
 
+(def preview-event-args [:tuple :string [:int {:min 1}] :string :string [:int {:min 0}]])
+
+(defn current-preview? [upload attempt src owner generation]
+  (and (= :ready (:status upload)) (= attempt (:attempt upload))
+       (= src (get-in upload [:asset :src])) (= owner (:owner upload))
+       (= generation (or (:preview-attempt upload) 0))))
+
+(r/reg-event-db :blog/image-preview-ready
+  {:args preview-event-args}
+  (fn [db [_ id attempt src owner generation]]
+    (let [upload (get-in db (conj uploads-path id))]
+      (if (current-preview? upload attempt src owner generation)
+        (update-in db (conj uploads-path id) #(-> % (assoc :preview-ready? true) (dissoc :preview-error)))
+        db))))
+
+(r/reg-event-db :blog/image-preview-failed
+  {:args preview-event-args}
+  (fn [db [_ id attempt src owner generation]]
+    (let [upload (get-in db (conj uploads-path id))]
+      (if (current-preview? upload attempt src owner generation)
+        (update-in db (conj uploads-path id) assoc :preview-ready? false
+                   :preview-error "The image uploaded, but its preview could not load. Retry the preview or remove this notice.")
+        db))))
+
+(r/reg-event-db :blog/image-preview-retry
+  {:args [:tuple :string]}
+  (fn [db [_ id]]
+    (if-let [upload (get-in db (conj uploads-path id))]
+      (if (and (= :ready (:status upload)) (:preview-error upload))
+        (update-in db (conj uploads-path id) #(-> % (dissoc :preview-error)
+                                                  (assoc :preview-ready? false)
+                                                  (update :preview-attempt (fnil inc 0))))
+        db)
+      db)))
+
 (r/reg-event-fx :blog/image-upload-retry
   {:args [:tuple :string]}
   (fn [{:keys [db]} [_ id]]
     (when (= :failed (get-in db (conj uploads-path id :status)))
       {:db (update-in db (conj uploads-path id)
-                      #(-> % (assoc :status :queued) (dissoc :error :polls :job-id)))
+                      #(-> % (assoc :status :queued) (dissoc :error :polls :job-id :progress :preview-ready? :preview-error :preview-attempt)))
        :dispatch [:blog/image-upload-next]})))
 
 (r/reg-event-fx :blog/image-upload-cancel

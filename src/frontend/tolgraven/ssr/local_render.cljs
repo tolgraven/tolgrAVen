@@ -28,6 +28,7 @@
         view (or (get-in match [:data :view])
                  (get-in modules [(get-in match [:data :module]) :view (get-in match [:data :page])]))
         _view-ready (when-not view (throw (js/Error. "Local page view unavailable")))
+        *views (atom {})
         saved {:version contract/version
                :url url
                :build build
@@ -35,7 +36,6 @@
                :owner owner
                :state-edn encoded
                :modules (vec (keys modules))
-               :module-views (render/module-views modules)
                :document-title title}
         render-db (-> (ssr-contract/merge-state db/data state)
                       (assoc :common/route (assoc-in match [:data :view] view)
@@ -43,17 +43,19 @@
                              :page/commit nil))
         html (render/html! render-db [page/<page>]
                           {:modules modules
+                           :rendered-views *views
                            :restored? true
                            :interactive? true
                            :snapshot snapshot
                            :href (fn [name params query]
                                    (some-> (reitit/match-by-name routes/router name params)
                                            (reitit/match->path query)))})
+        saved' (assoc saved :module-views (render/export-inventory @*views))
         links (server/render-to-static-markup
                 (into [:<>]
                       (for [href (distinct (mapcat #(style-catalog/paths styles %) (:modules saved)))]
                         [:link {:rel "stylesheet" :href href :data-precedence "modules"}])))
-        document (contract/document template html (js/JSON.stringify (clj->js saved)) title links)]
+        document (contract/document template html (js/JSON.stringify (clj->js saved')) title links)]
     (when (> (contract/byte-count document) contract/max-bytes)
       (throw (js/Error. "Page document exceeds cache budget")))
     {:op "save" :url url :build build :html document :state state}))

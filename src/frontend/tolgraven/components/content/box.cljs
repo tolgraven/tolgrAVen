@@ -11,4 +11,3 @@
   [{:keys [text title tone]}]
   [:aside.content-box {:class (str "content-box--" (or tone "note"))}
    (when title [:h3 title]) [:p text]])
-

@@ -32,7 +32,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   its fonts and rewrites CSS references. Development-only inspector
   rules use a separate unbundled sheet; normal and error documents share the shell
   stylesheet policy. Emit
-  route dependency styles and User control styles in the first head. Home owns
+  route dependency styles, User control styles and actually rendered SSR module
+  styles in the first head. Visible authored widgets may use a normally deferred
+  owner; hidden popup boundaries do not enter the renderer export inventory. Home owns
   its static Markdown styles without depending on Markdown code. Do not add the
   Link Preview popup sheet to the initial head; its static container rule belongs
   to Markdown. Respect module `:ssr-styles :deferred` without removing loader URLs.

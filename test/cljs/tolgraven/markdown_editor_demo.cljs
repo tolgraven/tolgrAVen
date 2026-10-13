@@ -6,6 +6,7 @@
             [tolgraven.events]
             [tolgraven.subs]
             [tolgraven.modules.markdown-editor.views :as editor]
+            [tolgraven.components.content.upload :as upload]
             [tolgraven.components.ui.code :as markdown]
             [tolgraven.test-support :as support]))
 
@@ -28,3 +29,16 @@
   (r/dispatch-sync [:test-editor/initialize])
   (-> (support/create-root! (.getElementById js/document "editor-demo"))
       (.then #(support/render! % [<fixture>]))))
+
+(defc <upload-fixture> []
+  [:main.editor-demo
+   [:h1 "Image upload states"]
+   [:ul.blog-image-editor__uploads
+    [upload/<upload-row> {:name "gallery-photo.png", :status :uploading, :progress {:loaded 40, :total 100}}]
+    [upload/<upload-row> {:name "portrait.heic", :status :processing}]
+    [upload/<upload-row> {:name "banner.jpg", :status :ready}]
+    [upload/<upload-row> {:name "cover.png", :status :failed, :error "Upload interrupted. Retry or remove the image.", :retry! (fn []), :remove! (fn [])}]]])
+
+(defn ^:export init-uploads! []
+  (-> (support/create-root! (.getElementById js/document "editor-demo"))
+      (.then #(support/render! % [<upload-fixture>]))))

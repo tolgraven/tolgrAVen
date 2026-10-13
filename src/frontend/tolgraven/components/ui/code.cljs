@@ -19,6 +19,7 @@
   [:?map
    [:?allow-images? :boolean]
    [:?image-assets [:?map-of :string media/asset]]
+   [:?image-readiness [:maybe authored-media/readiness-schema]]
    [:?allow-raw? :boolean]
    [:?default-language :?string]
    [:?auto-languages [:?vector :string]]
@@ -86,21 +87,21 @@
         ;; Trusted raw pre keeps its own attributes and whitespace semantics.
         [:pre (dissoc props :node :children) children]))))
 
-(defn <markdown-image> [{:keys [src alt title]} assets allow-images?]
-  (let [asset (get assets src)]
-    (cond
-      asset [image/<picture> {:src (:src asset)
-                              :alt (or alt (:alt asset) "")
-                              :title title
-                              :asset asset
-                              :loading "lazy"}]
-      allow-images? [image/<picture> {:src src, :alt (or alt ""), :title title, :loading "lazy"}]
-      :else nil)))
+(defn <markdown-image> [{:keys [src alt title]} assets allow-images? & [readiness]]
+  (let [asset (get assets src)
+        attrs (merge (authored-media/readiness-attrs src readiness)
+                     {:src (or (:src asset) src)
+                      :alt (or alt (:alt asset) "")
+                      :title title
+                      :loading "lazy"})]
+    (when (or asset allow-images?)
+      ^{:key (authored-media/preview-key src readiness)}
+      [image/<picture> (cond-> attrs asset (assoc :asset asset))])))
 
 (defc <parse-markdown-components>
   "Parse markdown into pure React components using react-markdown"
   {:args-schema [:cat :?string [:? options-schema]]}
-  [md-text & [{:keys [allow-images? allow-raw? image-assets default-language auto-languages code-options]
+  [md-text & [{:keys [allow-images? allow-raw? image-assets image-readiness default-language auto-languages code-options]
               :or {allow-images? false
                    allow-raw? false}}]]
   (let [code-component (r/use-memo
@@ -113,9 +114,10 @@
                          [default-language auto-languages code-options])
         image-component (r/use-memo
                           #(r/reactify-component
-                             (fn [props] [<markdown-image> props image-assets allow-images?]))
-                          [image-assets allow-images?])]
-    [:r> (r/context-provider authored-media/asset-context) #js {:value (or image-assets {})}
+                             (fn [props] [<markdown-image> props image-assets allow-images? image-readiness]))
+                          [image-assets allow-images? image-readiness])]
+    [:r> (r/context-provider authored-media/readiness-context) #js {:value image-readiness}
+     [:r> (r/context-provider authored-media/asset-context) #js {:value (or image-assets {})}
      [react-markdown
      {:children md-text
       :remarkPlugins [remarkGfm authored/plugin]
@@ -126,6 +128,6 @@
                    :pre markdown-pre-react
                    :a markdown-link-react
                    :img image-component
-                   "site-component" authored/renderer}}]]))
+                   "site-component" authored/renderer}}]]]))
 
 (register-render-functions!)

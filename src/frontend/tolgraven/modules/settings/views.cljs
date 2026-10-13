@@ -1,14 +1,14 @@
 (ns tolgraven.modules.settings.views
   (:require [tolgraven.component.registry]
             [tolgraven.macros :refer-macros [defc]]
-            [tolgraven.react :as rf]
+            [tolgraven.react :as r]
             [clojure.string :as string]))
 
 (defc <settings> "Settings panel for theme and stuff"
   {:features [:error-boundary]}
   []
-  (rf/use-effect (fn [] (rf/dispatch [:settings/read-css-vars]) nil) [])
-  (let [open? @(rf/subscribe [:state [:settings :panel-open]])
+  (r/use-effect (fn [] (r/dispatch [:settings/read-css-vars]) nil) [])
+  (let [open? @(r/subscribe [:state [:settings :panel-open]])
         vars {:line-width         {:unit "rem"  :min 0     :max 1 :step 0.0625}
               :line-width-vert    {:unit "rem"  :min 0     :max 1 :step 0.0625}
               :section-rounded    {:unit "%"    :min 0     :max 10}
@@ -21,7 +21,7 @@
 
      [:h2 [:i {:class "fa fa-cog"}] " Settings"]
      [:div
-      [:button {:on-click #(rf/dispatch [:html/set-attr! nil "data-theme" "light"])}
+      [:button {:on-click #(r/dispatch [:html/set-attr! nil "data-theme" "light"])}
        "Light/dark"]]
 
      [:div.settings-numbers
@@ -32,9 +32,9 @@
           {:id (str (name k) "-input")
            :type :number
            :min min :max max :step step
-           :value (if-let [value @(rf/subscribe [:get-css-var (name k)])]
+           :value (if-let [value @(r/subscribe [:get-css-var (name k)])]
                     (str (js/parseFloat value)) "")
-           :on-change #(rf/dispatch [:->css-var! (name k) (-> % .-target .-value (str unit))])}]
+           :on-change #(r/dispatch [:->css-var! (name k) (-> % .-target .-value (str unit))])}]
          [:label {:for (str (name k) "-input")}
           (-> (name k)
               (string/replace "-" " ")
@@ -60,8 +60,8 @@
    Title is optional. Preferences belong to the reader and do not change content."
   {:spec-schema [:map [:?title :string]]}
   [{:keys [title]}]
-  (rf/use-effect (fn [] (rf/dispatch [:settings/read-css-vars])) [])
-  (let [theme @(rf/subscribe [:option [:theme]])]
+  (r/use-effect (fn [] (r/dispatch [:settings/read-css-vars])) [])
+  (let [theme @(r/subscribe [:option [:theme]])]
     [:section.content-config
      [:h3 (or title "Appearance")]
      [:table
@@ -71,7 +71,7 @@
                        :role "switch"
                        :aria-label "Dark mode"
                        :aria-checked (boolean (:dark-mode theme))
-                       :on-click #(rf/dispatch [:theme/dark-mode (not (:dark-mode theme))])}
+                       :on-click #(r/dispatch [:theme/dark-mode (not (:dark-mode theme))])}
               (if (:dark-mode theme) "On" "Off")]]]
        (doall (for [[key {:keys [unit min max step]}] appearance-numbers]
          ^{:key key}
@@ -81,6 +81,6 @@
                         :min min
                         :max max
                         :step step
-                        :value (if-let [value @(rf/subscribe [:get-css-var (name key)])]
+                        :value (if-let [value @(r/subscribe [:get-css-var (name key)])]
                                  (str (js/parseFloat value)) "")
-                        :on-change #(rf/dispatch [:->css-var! (name key) (str (.. % -target -value) unit)])}]]]))]]]))
+                        :on-change #(r/dispatch [:->css-var! (name key) (str (.. % -target -value) unit)])}]]]))]]]))

@@ -15,13 +15,19 @@
            (= :content-components (first path))
            (and (= :options (first path)) (= :theme (second path))))))
 
+(defn read-literal [text]
+  (when (> (count text) 32768) (throw (ex-info "Literal argument is too large" {})))
+  (let [reject-tag (fn [& _] (throw (ex-info "Tagged values are not component data" {})))]
+    (reader/read-string {:readers {'inst reject-tag, 'uuid reject-tag}, :default reject-tag} text)))
+
 (defn decode-value [text]
+  (when (> (count text) 32768) (throw (ex-info "Literal argument is too large" {})))
   (cond
     (string/starts-with? text "db:")
-    (let [path (reader/read-string {:readers {}, :default (fn [_ _] (throw (ex-info "Tagged code is not data" {})))}
-                                   (subs text 3))]
+    (let [path (read-literal (subs text 3))]
       (when-not (public-path? path) (throw (ex-info "Choose a public content or theme path" {})))
       {:path path})
+    (string/starts-with? text "edn:") {:literal (read-literal (subs text 4))}
     (string/starts-with? text "json:")
     {:literal #?(:clj (json/parse-string (subs text 5) true)
                  :cljs (js->clj (js/JSON.parse (subs text 5)) :keywordize-keys true))}

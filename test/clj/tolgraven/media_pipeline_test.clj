@@ -57,6 +57,8 @@
         positional (str "<Component component=\"tolgraven.components.image/<picture>\" args='json:[{\"src\":\"" url "\",\"alt\":\"Photo\"}]' />")]
     (is (= [url] (query/markdown-sources (str direct "\n" positional))))
     (is (= [url] (query/markdown-sources
+                   (str "<Component component='tolgraven.components.image/<picture>' args='edn:[{:src &quot;" url "&quot;}]' />"))))
+    (is (= [url] (query/markdown-sources
                    (str "<Component component='tolgraven.components.image/<picture>' src='json:&quot;" url "&quot;' />"))))
     (doseq [source [(str "<Component component='anything' src={\"" url "\"} />")
                     (str "<Component component='anything' {...data} src='" url "' />")

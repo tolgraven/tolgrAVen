@@ -328,3 +328,21 @@
       (is (.contains body "background-image:linear-gradient(to bottom, #"))
       (is (< (.indexOf body "background-image:linear-gradient")
              (.indexOf body "class=\"loading-container\""))))))
+
+(deftest visible-authored-widget-styles-follow-the-renderer-inventory
+  (let [manifest {:blog ["/blog.css"]
+                  :user ["/user.css"]
+                  :settings ["/settings.css"]
+                  :markdown-components ["/components.css"]}]
+    (is (not (some #{"/settings.css"}
+                   (layout/initial-styles {:uri "/blog/post/17"} manifest))))
+    (is (some #{"/settings.css"}
+              (layout/initial-styles
+                {:uri "/blog/post/17"
+                 :ssr {:snapshot {:module-views {:settings [:config-table]
+                                                :markdown-components [:render]}}}}
+                manifest)))
+    (is (= 1 (count (filter #{"/user.css"}
+                            (layout/initial-styles
+                              {:uri "/blog/post/17" :ssr {:snapshot {:module-views {:user [:view]}}}}
+                              manifest)))))))

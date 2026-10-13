@@ -63,8 +63,11 @@
   {:authoring {:category "Markdown", :defaults {:src "/img/tolgrav-square.png", :alt "Image"}}
    :spec-schema [:map [:src :string] [:alt :string]]}
   [{:keys [src] :as spec}]
-  (let [assets (r/use-context media/asset-context)]
-    [image/<picture> (cond-> (dissoc spec :layout) (get assets src) (assoc :asset (get assets src)))]))
+  (let [assets (r/use-context media/asset-context)
+        readiness (r/use-context media/readiness-context)]
+    ^{:key (media/preview-key src readiness)}
+    [image/<picture> (merge (media/readiness-attrs src readiness)
+                            (cond-> (dissoc spec :layout :asset) (get assets src) (assoc :asset (get assets src))))]))
 
 (defc <link>
   "A Markdown link. Supply an HTTPS URL or a local path, and its visible text."
@@ -90,4 +93,3 @@
   {:authoring {:category "Markdown"}
    :spec-schema [:map]}
   [_] [:hr])
-

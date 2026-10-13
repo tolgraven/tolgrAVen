@@ -45,3 +45,7 @@
     (is (get by-name "tolgraven.components.content.markdown/<image>"))
     (is (get by-name "tolgraven.modules.blog-editor.views/<post-blog>"))
     (is (not-any? #(= "Image" (:name %)) entries))))
+
+(deftest annotated-signatures-use-the-existing-component-argument-parser
+  (is (= ["attrs"] (:parameters (authoring/argument-shape '[attrs :- schema/image]))))
+  (is (= ["spec"] (:parameters (authoring/argument-shape '[spec :- [:map [:text :string]]])))))

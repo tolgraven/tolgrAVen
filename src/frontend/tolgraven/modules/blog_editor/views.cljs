@@ -7,9 +7,23 @@
             [tolgraven.modules.blog-editor.model :as editor-model]))
 
 (defc <preview-blog> "Render new post preview"
-  [{{:keys [title text image-assets]} :post :as spec}]
+  [{{:keys [title text image-assets]} :post :keys [owner] :as spec}]
   (let [user @(r/subscribe [:user/active-user])
         user-id (if (string? user) user (:id user))
+        uploads (filter #(and (= owner (:owner %)) (= :ready (:status %)))
+                        (vals @(r/subscribe [:blog/state [:image-uploads]])))
+        generations (editor-model/preview-generations uploads)
+        ;; Status acknowledgments must not replace the adapted image component:
+        ;; only its source generation or owner changes these callback identities.
+        readiness (r/use-memo
+                    (fn []
+                      (let [acknowledge! (fn [event src]
+                                           (doseq [[id attempt generation] (get generations src)]
+                                             (r/dispatch [event id attempt src owner generation])))]
+                        {:ready! #(acknowledge! :blog/image-preview-ready %)
+                         :failed! #(acknowledge! :blog/image-preview-failed %)
+                         :generations generations}))
+                    [owner generations])
         trust (cond (nil? user-id) :untrusted
                     @(r/subscribe [:user/trusted? user-id]) :trusted
                     :else :user)]
@@ -18,7 +32,8 @@
     [:br]
     [blog/<markdown> text
      {:trust trust
-      :image-assets image-assets}]]))
+      :image-assets image-assets
+      :image-readiness readiness}]]))
 
 (defc <post-blog> "Render post-making ui"
   {:features [:error-boundary]}
@@ -48,7 +63,7 @@
 
      [:br]
      [:section.blog-post-preview
-      [<preview-blog> {:post (assoc input :image-assets
+      [<preview-blog> {:owner owner, :post (assoc input :image-assets
                                   (merge (:image-assets input)
                                          (into {} (keep (fn [{:keys [asset]}]
                                                          (when asset [(:src asset) asset])))

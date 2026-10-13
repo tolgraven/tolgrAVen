@@ -215,18 +215,20 @@
   "Always-visible embedded search using the same public search bindings and results."
   {:features [:error-boundary]}
   []
-  (let [input-id (r/use-id)]
+  (let [input-id (r/use-id)
+        query (r/subscribe [:search/get-query "blog-posts"])]
    [:section.content-search
    [styled-input/<input-text-styled>
     :id input-id
-    :model (r/subscribe [:search/get-query "blog-posts"])
+    :model query
     :open? true
     :height "2.5em"
     :on-change (fn [text]
                  (doseq [collection collections]
                    (r/dispatch [:search/search collection text ["text" "title"] nil false])))]
-   [:div.search-instant-results
+   (when-not (string/blank? @query)
+    [:div.search-instant-results
     [:div.blog [<instant-result-category> "blog-posts" <blog-post-results> "blog-post" "zoom-y"]]
     (when-enabled :blog :comments
       [:div.blog-comments>div.blog-comments-inner
-       [<instant-result-category> "blog-comments" <blog-comment-results> "blog-comment-around flex" "zoom"]])]]))
+       [<instant-result-category> "blog-comments" <blog-comment-results> "blog-comment-around flex" "zoom"]])])]))
