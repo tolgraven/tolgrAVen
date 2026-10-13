@@ -72,3 +72,32 @@
                       expected (io/input-stream (io/resource (str "public" original)))]
             (is (= (vec (.readAllBytes expected)) (vec (.readAllBytes actual)))))))
       (is (.contains css "unicode-range:")))))
+
+(deftest immutable-media-filenames-cache-whole-and-range-responses
+  (doseq [status [200 206]
+          [uri mime] [["/img/photo-v2.avif" "image/avif"]
+                      ["/img/logo.svg" "image/svg+xml"]
+                      ["/media/demo-v3.webm" "video/webm"]]]
+    (with-redefs [config/env {:stage true}]
+      (let [response {:status status
+                      :headers {"Content-Type" mime, "Content-Range" "bytes 0-9/100"}
+                      :body "original bytes"}
+            handler (middleware/wrap-media-cache (constantly response))
+            actual (handler {:uri uri})]
+        (is (= "public, max-age=31536000, immutable" (get-in actual [:headers "Cache-Control"])))
+        (is (= response (update actual :headers dissoc "Cache-Control")))))))
+
+(deftest immutable-media-cache-respects-errors-development-and-existing-policy
+  (doseq [[dev? uri status mime] [[true "/img/photo.avif" 200 "image/avif"]
+                                 [false "/img/missing.avif" 404 "image/avif"]
+                                 [false "/media/error.webm" 500 "video/webm"]
+                                 [false "/api/image" 200 "image/png"]
+                                 [false "/img/error.png" 200 "text/html"]]]
+    (with-redefs [config/env {:dev dev?}]
+      (let [response {:status status, :headers {"Content-Type" mime}, :body "same"}]
+        (is (= response ((middleware/wrap-media-cache (constantly response)) {:uri uri}))))))
+  (with-redefs [config/env {:stage true}]
+    (doseq [headers [{"Content-Type" "image/avif", "Cache-Control" "max-age=315360000"}
+                     {"content-type" "video/webm", "cache-control" "private, no-store"}]]
+      (let [response {:status 200, :headers headers, :body "same"}]
+        (is (= response ((middleware/wrap-media-cache (constantly response)) {:uri "/media/versioned.avif"})))))))

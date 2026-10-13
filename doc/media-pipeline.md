@@ -139,3 +139,11 @@ checks do not establish live Strapi webhook configuration or remote deployment.
 The storage upload/immutable URL rules follow the [Supabase upload API](https://supabase.com/docs/guides/storage/uploads/standard-uploads)
 and [Storage access control](https://supabase.com/docs/guides/storage/security/access-control).
 Strapi media envelopes and bearer headers follow its [webhook contract](https://docs.strapi.io/cms/backend-customization/webhooks).
+
+Local public image/video filenames are immutable cache keys. Replace content by
+adding and referencing a new suffixed filename; do not overwrite deployed pixels
+under an existing URL. Successful `/img/` and `/media/` responses, including video
+range responses, receive one-year public immutable caching when Optimus has not
+already supplied its fingerprinted ten-year policy. Error responses are excluded.
+Managed uploads already use output content hashes and policy versions in their
+object keys, so generated renditions retain the same immutability guarantee.
