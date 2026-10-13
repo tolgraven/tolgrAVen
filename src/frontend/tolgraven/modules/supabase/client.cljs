@@ -4,6 +4,7 @@
             [tolgraven.supabase.state :as state]
             [tolgraven.validation.runtime :as validation]
             [tolgraven.supabase.schema :as schema]
+            [tolgraven.media.query :as media]
             [ajax.core :as ajax]
             [tolgraven.react :as rf]
             [tolgraven.service-status :as status]
@@ -56,11 +57,12 @@
                   start (+ (or (:offset plan) 0) offset)]
               (.then (status/within! (.range q start (+ start (dec size))) 15000)
                      (fn [res]
-                       (let [{:keys [data error]} (js->clj res :keywordize-keys true)]
+                       (let [{:keys [data error]} (js->clj res :keywordize-keys true)
+                             data' (mapv media/normalize-row data)]
                          (when error (throw (ex-info "Supabase select failed" {:table table})))
-                         (validation/check! (str "Supabase " table) (schema/projected-rows table select) data)
-                         (let [rows (into rows data)]
-                           (if (and (= size (count data)) (or (nil? limit) (< (+ offset size) limit)))
+                         (validation/check! (str "Supabase " table) (schema/projected-rows table select) data')
+                         (let [rows (into rows data')]
+                           (if (and (= size (count data')) (or (nil? limit) (< (+ offset size) limit)))
                              (page! (+ offset size) rows) rows)))))))]
     (-> (js/Promise.resolve) (.then (fn [] (page! 0 []))))))
 
@@ -251,7 +253,9 @@
                                                    (assoc :filter (str "owner_id=eq." (session-owner-id @*session)))))
                (fn [payload]
                  (when (current-entry? entry)
-                   (let [change (js->clj payload :keywordize-keys true)
+                   (let [change (-> (js->clj payload :keywordize-keys true)
+                                    (update :old media/normalize-row)
+                                    (update :new media/normalize-row))
                          row (if (= "DELETE" (:eventType change)) (:old change) (:new change))]
                      (when (or (not= table "user_documents")
                                (= (:owner_id row) (session-owner-id @*session)))

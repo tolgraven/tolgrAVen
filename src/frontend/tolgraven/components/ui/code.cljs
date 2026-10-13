@@ -6,6 +6,8 @@
     [tolgraven.react :as rf]
     [tolgraven.components.highlight :as highlight]
     [tolgraven.components.code-block :as code-block]
+    [tolgraven.components.image :as image]
+    [tolgraven.media.schema :as media]
     ["react-markdown$default" :as ReactMarkdown]
     ["remark-gfm$default" :as remarkGfm]
     ["rehype-raw$default" :as rehypeRaw]
@@ -15,6 +17,7 @@
 (def options-schema
   [:?map
    [:?allow-images? :boolean]
+   [:?image-assets [:?map-of :string media/asset]]
    [:?allow-raw? :boolean]
    [:?default-language :?string]
    [:?auto-languages [:?vector :string]]
@@ -82,10 +85,21 @@
         ;; Trusted raw pre keeps its own attributes and whitespace semantics.
         [:pre (dissoc props :node :children) children]))))
 
+(defn <markdown-image> [{:keys [src alt title]} assets allow-images?]
+  (let [asset (get assets src)]
+    (cond
+      asset [image/<picture> {:src (:src asset)
+                              :alt (or alt (:alt asset) "")
+                              :title title
+                              :asset asset
+                              :loading "lazy"}]
+      allow-images? [image/<picture> {:src src, :alt (or alt ""), :title title, :loading "lazy"}]
+      :else nil)))
+
 (defc <parse-markdown-components>
   "Parse markdown into pure React components using react-markdown"
   {:args-schema [:cat :?string [:? options-schema]]}
-  [md-text & [{:keys [allow-images? allow-raw? default-language auto-languages code-options]
+  [md-text & [{:keys [allow-images? allow-raw? image-assets default-language auto-languages code-options]
               :or {allow-images? false
                    allow-raw? false}}]]
   (let [code-component (rf/use-memo
@@ -95,14 +109,18 @@
                                (assoc props :default-language default-language
                                             :auto-languages auto-languages
                                             :code-options code-options)]))
-                         [default-language auto-languages code-options])]
+                         [default-language auto-languages code-options])
+        image-component (rf/use-memo
+                          #(r/reactify-component
+                             (fn [props] [<markdown-image> props image-assets allow-images?]))
+                          [image-assets allow-images?])]
     [react-markdown
      {:children md-text
       :remarkPlugins [remarkGfm]
       :rehypePlugins (cond-> [mark-markdown-blocks]
                        allow-raw? (conj [rehypeRaw {:passThrough ["tolgravenCodeBlock"]}])
                        true (conj restore-markdown-blocks))
-      :components (cond-> {:code code-component
-                          :pre markdown-pre-react
-                          :a markdown-link-react}
-                    (not allow-images?) (assoc :img omit-markdown-component))}]))
+      :components {:code code-component
+                   :pre markdown-pre-react
+                   :a markdown-link-react
+                   :img image-component}}]))

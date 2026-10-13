@@ -51,6 +51,7 @@
     (util/md->normal md)
     {:allow-images? (= :trusted (:trust options))
      :allow-raw? (= :trusted (:trust options))
+     :image-assets (:image-assets options)
      :default-language (:default-language options)
      :auto-languages (:auto-languages options)
      :code-options (:code-options options)}]])
