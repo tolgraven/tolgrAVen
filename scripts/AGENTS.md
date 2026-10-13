@@ -24,7 +24,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   the JVM upload adapter; Docker copies and smoke-tests it with pinned Babashka.
   `--asset source-file manifest-file` emits a complete private rendition manifest;
   the durable backend owns publication only after every codec succeeds.
-- `bb images:responsive` discovers large still raster originals and standalone WebP/AVIF rasters and rebuilds the
+- `bb images:responsive` discovers still raster originals and standalone WebP/AVIF rasters with a longest
+  edge of at least 960 and source size at least 64 KiB (native width >320), and rebuilds the
   responsive catalog's sized AVIF/WebP files. Preserve manual entries, explicit
   exclusions, original/full-size fallbacks and progressive opt-outs; skip animated
   assets, uploaded avatars and generated sidecars. `images:responsive:verify`
