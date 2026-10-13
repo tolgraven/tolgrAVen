@@ -1,5 +1,5 @@
 (ns tolgraven.modules.blog-editor.module
-  {:bundle/depends-on #{:main :blog}
+  {:bundle/depends-on #{:main :blog :highlight}
    :site/owner :blog}
   (:require [tolgraven.modules.blog-editor.pages :as pages]
             [tolgraven.modules.blog-editor.schema :as schema]

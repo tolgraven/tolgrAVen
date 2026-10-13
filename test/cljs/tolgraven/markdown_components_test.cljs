@@ -139,6 +139,38 @@
           (.catch #(is false (str %)))
           (.finally (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
 
+(deftest rich-code-block-uses-the-normal-component-and-writes-native-code-metadata
+  (async done
+    (let [element (.createElement js/document "div")
+          *changes (atom [])
+          *root (atom nil)
+          change! (fn [selector value]
+                    (let [input (.querySelector element selector)
+                          prototype (if (= "TEXTAREA" (.-tagName input))
+                                      (.-prototype js/HTMLTextAreaElement) (.-prototype js/HTMLInputElement))
+                          setter (.-set (.getOwnPropertyDescriptor js/Object prototype "value"))]
+                      (.call setter input value)
+                      (.dispatchEvent input (js/Event. "input" #js {:bubbles true}))))]
+      (.appendChild (.-body js/document) element)
+      (-> (support/create-root! element)
+          (.then (fn [root]
+                   (reset! *root root)
+                   (support/render! root [rich/<editor> {:text "```clojure sample\n(+ 1 2)\n```"
+                                                       :on-change #(swap! *changes conj %)}])))
+          (.then (fn [_] (support/wait-for! #(.querySelector element ".code-editor-fields textarea"))))
+          (.then (fn [_]
+                   (is (.querySelector element ".code-block .code-wrap"))
+                   (is (nil? (.querySelector element ".cm-editor")) "Fenced blocks use the ordinary site UI")
+                   (change! ".code-editor-fields textarea" "(+ 3 4)")))
+          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(+ 3 4)"))))
+          (.then (fn [_] (change! ".code-editor-fields label:nth-of-type(2) input" "javascript")))
+          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "```javascript"))))
+          (.then (fn [_] (change! ".code-editor-fields label:nth-of-type(3) input" "title=Example")))
+          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "javascript title=Example"))))
+          (.then (fn [_] (is (string/includes? (last @*changes) "(+ 3 4)"))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
+
 (deftest published-components-render-real-interactive-ui
   (async done
     (let [element (.createElement js/document "div")

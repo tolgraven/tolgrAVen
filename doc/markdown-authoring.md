@@ -26,6 +26,13 @@ renderer; it does not acquire either authoring bundle.
 | Widget geometry | Argument inputs, corner drag and arrow-key resizing | Persisted sizing, alignment and floating text flow |
 | Frames and embeds | HTTPS/local iframe; YouTube/SoundCloud oEmbed | Existing sandbox/embedding policy |
 
+Fenced-code editor descriptors render the ordinary shared code-block component;
+the SDK supplies only code/language/metadata setters. Its optional editable fields
+retain the same highlighted display, copy/wrap/fold controls and formatter gate
+as a public post. Both authoring owners declare their highlight dependency.
+Source-mode CodeMirror edits the document; it does not implement another fenced
+code highlighting/rendering system.
+
 ## Component identities and arguments
 
 The tag is a data container. Its `component` field preserves the actual qualified

@@ -4,6 +4,7 @@
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as r]
             [tolgraven.modules.markdown-editor.catalog :as catalog]
+            [tolgraven.modules.markdown-editor.code :as code]
             [tolgraven.markdown.authoring :as model]
             [tolgraven.modules.markdown-components.views :as components]
             [tolgraven.components.content.layout :as layout]
@@ -288,16 +289,7 @@
        (editor/linkPlugin)
        (editor/linkDialogPlugin)
        (editor/tablePlugin)
-       (editor/codeBlockPlugin #js {:defaultCodeBlockLanguage "clojure"})
-       (editor/codeMirrorPlugin #js {:codeBlockLanguages #js {:clojure "Clojure"
-                                                             :javascript "JavaScript"
-                                                             :typescript "TypeScript"
-                                                             :css "CSS"
-                                                             :json "JSON"
-                                                             :bash "Shell"
-                                                             :python "Python"
-                                                             :sql "SQL"
-                                                             :text "Plain text"}})
+       (editor/codeBlockPlugin #js {:defaultCodeBlockLanguage "clojure", :codeBlockEditorDescriptors code/descriptors})
        (editor/imagePlugin #js {:imageUploadHandler upload!
                                 :imageAutocompleteSuggestions (clj->js image-urls)
                                 :disableImageResize true

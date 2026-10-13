@@ -1,5 +1,5 @@
 (ns tolgraven.modules.markdown-editor.module
-  {:bundle/depends-on #{:main :markdown-components}
+  {:bundle/depends-on #{:main :markdown-components :highlight}
    :site/owner :blog-editor}
   (:require [tolgraven.modules.markdown-editor.entry :as entry]))
 
