@@ -59,7 +59,7 @@ or entries must also read the expanded form. Expansion is pure and idempotent.
 Internal checks default on in development and off in production. Configure:
 
 ```clojure
-;; config/local.dev.edn or the deployed config.edn
+;; env/dev/resources/config.edn or the deployed config.edn
 {:validation {:enabled true}}
 ```
 

@@ -124,7 +124,8 @@
    :test          [:project/dev :project/test :profiles/test]
    :stage         [:uberjar :profiles/stage]
 
-   :project/dev  {:jvm-opts ["-Dconf=config/local.dev.edn" "-XX:-OmitStackTraceInFastThrow"]
+   :project/dev  {:jar-exclusions [#"^config\.edn$"]
+                  :jvm-opts ["-Dconf=env/dev/resources/config.edn" "-XX:-OmitStackTraceInFastThrow"]
                   :dependencies [[binaryage/devtools "1.0.7"]
                                  [prone "2021-04-23"]
                                  [ring/ring-devel "1.15.5"]]
@@ -143,8 +144,8 @@
                   }
    :project/test {:dependencies [[ring/ring-mock "0.6.2"]]
                   :source-paths ["test/cljs"]
-                  :jvm-opts ["-Dconf=config/local.test.edn"]
-                  :resource-paths ["env/test/resources"]}
+                  :jvm-opts ["-Dconf=env/test/resources/config.edn"]
+                  :resource-paths ^:replace ["env/test/resources" "resources"]}
 
    :uberjar {:jvm-opts ["-Dconf=env/prod/resources/config.edn"]
              :prep-tasks ["compile"
