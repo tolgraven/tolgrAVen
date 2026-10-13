@@ -186,6 +186,9 @@ app-db content and view state used to render it. Install the pair before hydrati
 expanded comment windows must not hydrate over a shorter default server tree.
 See [local return documents](components.md#local-return-documents) for lifecycle,
 limits and build requirements. BFCache resumes the live document directly.
+The lazy page-render module owns the explicit `website.react.server` adapter.
+It passes that renderer into the shared isolated tree renderer; initial browser
+code does not acquire React's server-rendering implementation.
 
 Public localStorage restoration remains a fallback when the pair is unavailable.
 Consumed snapshots are removed from disk and current state is saved on departure.

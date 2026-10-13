@@ -30,7 +30,8 @@
                               (if (keyword? value) (subs (str value) 1) (str value)))
                             (sort exports))])) views))
 
-(defn html! [db form {:keys [modules href snapshot restored? interactive? rendered-views]}]
+(defn html! [db form {:keys [modules href snapshot restored? interactive? rendered-views render-to-string]
+                     :or {render-to-string r/render-to-string}}]
   (when @validation/*enabled?
     (doseq [[id spec] modules]
       (validation/check! (str "render module " id)
@@ -58,6 +59,6 @@
                     r/dispatch (fn [_] nil)
                     r/subscribe (fn ([query] (read! [query]))
                                    ([query dynamic] (read! [query dynamic])))]
-        (try (r/render-to-string (restore/document-form form))
+        (try (render-to-string (restore/document-form form))
              (finally (doseq [value (vals @*readers)] (r/dispose! value))
                       (r/clear-subscription-cache!)))))))

@@ -4,6 +4,7 @@
             [website.validation.runtime :as validation]
             [website.ssr.schema :as schema]
             [website.react :as r]
+            [website.react.server :as server]
             [reitit.core :as reitit]
             [shadow.lazy :as lazy]
             [website.loader :as loader]
@@ -47,11 +48,12 @@
                            :restored? true
                            :interactive? true
                            :snapshot snapshot
+                           :render-to-string server/render-to-string
                            :href (fn [name params query]
                                    (some-> (reitit/match-by-name routes/router name params)
                                            (reitit/match->path query)))})
         saved' (assoc saved :module-views (render/export-inventory @*views))
-        links (r/render-to-static-markup
+        links (server/render-to-static-markup
                 (into [:<>]
                       (for [href (distinct (mapcat #(style-catalog/paths styles %) (:modules saved)))]
                         [:link {:rel "stylesheet" :href href :data-precedence "modules"}])))

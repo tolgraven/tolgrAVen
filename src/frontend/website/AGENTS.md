@@ -51,6 +51,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 ## Ownership and feature contracts
 
+- The lazy page-render owner explicitly imports `website.react.server` and passes
+  its renderer to shared SSR rendering. The ordinary release facade keeps that
+  dependency absent; do not use its inert target aliases for browser-worker SSR.
+
 - Spec-capable `defc` instances accept a map or feature-vector first argument.
   The runtime expands vectors to `{:features ...}` before validation and callbacks,
   then resolves declaration defaults and ordered overrides. Disabled entries must

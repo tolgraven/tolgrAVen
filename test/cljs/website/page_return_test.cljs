@@ -4,6 +4,7 @@
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
+            [website.react.server :as server]
 
             [shadow.lazy :as lazy]
 
@@ -95,7 +96,10 @@
                                                   (filter #(= parent (:parent-comment %)) rows))}])))
               (let [db (await! (support/state-at! []))
                     saved (contract/state-for db)
-                    html (render/html! db form {:modules {:user module} :restored? true :interactive? true})]
+                    html (render/html! db form {:modules {:user module}
+                                               :restored? true
+                                               :interactive? true
+                                               :render-to-string server/render-to-string})]
                 ;; Isolated rendering must not disturb existing app state/readers.
                 (is (= db (await! (support/state-at! []))))
                 (set! (.-innerHTML element) html)
