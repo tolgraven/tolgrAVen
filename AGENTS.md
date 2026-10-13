@@ -269,6 +269,10 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 - See `doc/testing.md` for mounted subscription workflows, live integration boundaries and browser checks. Unit replacements do not establish live service behavior.
 
 ## Commit & Pull Request Guidelines
+- Always open and keep in-progress PRs as drafts. Mark them ready for review only
+  after implementation and required verification are complete, the current head is
+  pushed, and the description matches it. Return a PR to draft when follow-up
+  implementation starts.
 - Commit each completed, verified task before starting the next. Subagents commit their own finished changes; coordinate the shared index so unrelated work is never included.
 - Commit messages follow `scope: summary` (examples in git history: `scss: fix theme var helper broken`). Can also use `scope: subscope: summary`. Keep summaries short and imperative.
 - PRs should include: a clear description, related issue links, and screenshots/gifs for UI changes.
