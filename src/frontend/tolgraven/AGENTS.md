@@ -30,9 +30,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 ## Ownership and feature contracts
 
-- Spec-capable `defc` instances resolve declaration defaults and ordered `:features`
-  overrides through the shared runtime. Disabled entries must skip config functions
-  and resource acquisition. Root capabilities reconcile owned setup/cleanup without
+- Spec-capable `defc` instances accept a map or feature-vector first argument.
+  The runtime expands vectors to `{:features ...}` before validation and callbacks,
+  then resolves declaration defaults and ordered overrides. Disabled entries must
+  skip config functions and resource acquisition. Root capabilities reconcile owned setup/cleanup without
   conditional hooks or body remounts; initial structural wrappers stay stable unless
   the caller explicitly changes the Hiccup key. Full-page boundaries and declaration
   dependencies remain required. See `doc/components.md` for precedence and adapters.
