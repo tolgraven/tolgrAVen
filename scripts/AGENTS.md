@@ -51,3 +51,11 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `audit/middleware.clj` is a disposable Docker-only investigation reproducer.
   It may generate stand-in JavaScript only inside the CPU controller's snapshot;
   it must never overwrite watched application output. See `doc/middleware-optimus-audit.md`.
+- `dev/cpu_controls.py` is the macOS libproc/signal and Docker lifecycle adapter.
+  Keep microsecond PID identity, exact project/app ownership, pre-stopped exclusion,
+  independent CONT watchdog, container labels and shared build serialization intact.
+  Native CPU accounting uses the Mach timebase; cap tests must measure actual CPU
+  seconds, not only duty settings. CPU probes touch disposable owned fixtures only.
+
+  Custom codec images use explicit `run --node-deps skip` only for non-Node tasks;
+  retain the shared queue, snapshot and container limits. Default Node bootstrap stays enabled.

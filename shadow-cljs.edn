@@ -90,7 +90,7 @@
    :output-feature-set :es-next
    :pretty-print    true
    :infer-externs   true
-   :parallel-build  true
+   :parallel-build  false
    :closure-warnings {:externs-validation :off
                       :non-standard-jsdoc :off}
    :recompile-dependents false
@@ -134,7 +134,7 @@
    :output-feature-set :es-next
    :pretty-print         false
    :infer-externs        true
-   :parallel-build       true
+   :parallel-build       false
    :closure-warnings     {:externs-validation :off
                           :non-standard-jsdoc :off}
    :recompile-dependents false
