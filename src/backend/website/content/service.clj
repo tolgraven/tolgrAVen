@@ -84,7 +84,7 @@
            ;; keep serving the last successful public snapshot.
            (refresh-immediate!)
            (let [executor (java.util.concurrent.Executors/newSingleThreadScheduledExecutor)
-                 interval (max 1 (long (get-in config/env [:ssr :shell-refresh-seconds] 30)))]
+                 interval (max 1 (long (get-in config/env [:ssr :shell-refresh-seconds] 120)))]
              (.scheduleWithFixedDelay executor
                ^Runnable (fn [] (try (refresh-immediate!)
                                     (catch Exception _ (log/warn "Page shell refresh failed; retaining loaded content"))))
@@ -126,7 +126,7 @@
    :content (read-content! (contract/validate-keys requested))})
 
 (defn response [requested]
-  (try {:status 200 :headers {"Cache-Control" "public, max-age=30"
+  (try {:status 200 :headers {"Cache-Control" "public, max-age=120"
                                "X-Content-Source" (if (seq (:url (settings))) "strapi" "seed")} :body (bundle! requested)}
        ;; No upstream exceptions or credentials in browser errors.
        (catch Exception error {:status (or (:status (ex-data error)) 503)
