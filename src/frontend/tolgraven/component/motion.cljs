@@ -141,7 +141,9 @@
         once? (boolean (:once? appearance))
         margin (or (:root-margin appearance) "0px")
         reduced? @(:reduced? state)
-        skip? (:skip-enter? state)
+        ;; Ready first-screen SSR remains visible. Offscreen :seen owners still
+        ;; observe the viewport after hydration and enter when scrolled into view.
+        skip? (and (:skip-enter? state) (not (:observe-document? state)))
         signature [element (boolean seen) (boolean (:appear options)) threshold once? margin reduced? skip? (:force appearance)]]
     (when (not= signature @(:signature state))
       (stop! state :watch)
@@ -190,6 +192,11 @@
             (let [skip? (skip-enter? options)]
               {:options options
                :skip-enter? skip?
+               :document-enter? (and skip? (restore/document-enter?)
+                                     (:appear options) (not (:seen options))
+                                     (not (:remembered? options)))
+               :observe-document? (and skip? (restore/document-enter?) (:seen options)
+                                      (not (:remembered? options)))
                :visible? (r/atom skip?)
                :reduced? (r/atom (boolean (and (some options [:appear :seen :exit])
                                               (reduced-motion?))))
@@ -209,6 +216,10 @@
                    exiting? (= :exiting (get-in options [:presence :phase]))
                    visible? (if state @(:visible? state) (skip-enter? options))
                    reduced? (boolean (and state @(:reduced? state)))
+                   document-enter? (if state (and (:document-enter? state) (:appear options) (not (:seen options)))
+                                     (and (skip-enter? options) (restore/document-enter?)
+                                          (:appear options) (not (:seen options))
+                                     (not (:remembered? options))))
                    base (attrs form)
                    classes (string/join " " (remove string/blank?
                                                   [(class-text (:class base))
@@ -218,6 +229,7 @@
                {:form (when form
                         (with-attrs form
                           (cond-> (assoc base :class classes)
+                            document-enter? (assoc :data-document-appear true)
                             reduced? (update :style merge {:transition "none", :animation "none"})
                             exiting? (assoc :aria-hidden true :inert true))))
                 :commit! (when state #(commit-motion! state % options))}))})

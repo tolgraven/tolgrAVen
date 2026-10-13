@@ -46,7 +46,11 @@ const sampleStartup = async path => {
       for (const main of mains) {
         const style = frame.contentWindow.getComputedStyle(main);
         samples.push({animation: style.animationName, opacity: Number(style.opacity),
-                      scale: style.transform, restored: !!doc().querySelector('#app')?.hasAttribute('data-restore')});
+                      scale: style.transform, shell: main.closest('#ssr-shell') !== null,
+                      entranceStart: main.getAnimations().find(a => a.animationName === 'fade-in-site')?.startTime,
+                      pending: doc().querySelector('#app')?.hasAttribute('data-document-pending'),
+                      heroDecoded: !!doc().querySelector('#app #top-banner')?.naturalWidth,
+                      restored: !!doc().querySelector('#app')?.hasAttribute('data-restore')});
       }
       // Production has no dev console. Establish interactivity through an
       // ordinary control, as the live workflow checks do after hydration.
@@ -66,11 +70,18 @@ document.querySelector('#run').onclick = async () => {
   results.replaceChildren();
   try {
     await resetTestOrigin(frame, wait);
-    const path = '/?motion-entrance';
+    const path = `/?motion-entrance=${Date.now()}`;
     const cold = await sampleStartup(path);
     check(!!doc().querySelector('#ssr-bootstrap'), 'Cold motion check receives a real SSR snapshot');
-    check(cold.length && cold.every(value => value.animation === 'none' && value.opacity === 1),
-          'Cold SSR landing stays visible through hydration without replaying a root entrance');
+    const checkEntrance = (values, label) => {
+      const completed = values.filter(value => !value.shell);
+      const started = completed.filter(value => value.entranceStart != null && !value.pending);
+      check(started.length && started.some(value => value.animation === 'fade-in-site'), `${label} runs the original site entrance`);
+      check(new Set(started.map(value => value.entranceStart)).size === 1, `${label} keeps one animation clock through hydration`);
+      check(completed.filter(value => !value.pending && value.opacity > 0).every(value => value.heroDecoded),
+            `${label} reveals the hero with the design`);
+    };
+    checkEntrance(cold, 'Cold SSR');
     // Observe the real return worker output before exercising its document pair.
     await wait(async () => {
       for (const name of await caches.keys()) {
@@ -85,6 +96,10 @@ document.querySelector('#run').onclick = async () => {
     check(!!doc().querySelector('#local-page-bootstrap'), 'Repeat document load uses the saved HTML/state pair');
     check(repeated.length && repeated.every(value => value.animation === 'none' && value.opacity === 1),
           'Paired document restoration stays visible without replaying its entrance');
+    await resetTestOrigin(frame, wait);
+    const cached = await sampleStartup(path);
+    check(!doc().querySelector('#ssr-shell'), 'Fresh SSR cache bypasses the skeleton');
+    checkEntrance(cached, 'Cached SSR');
     frame.src = '/blog/post/New-features-27';
     await wait(() => doc()?.querySelector('.blog-comment-collapsed-placeholder'));
     await wait(() => {
@@ -176,7 +191,13 @@ document.querySelector('#run').onclick = async () => {
     check(performance.now() - started < 2500, 'Section motion is bounded independently of content loading');
     check(true, 'MOTION CHECKS PASSED');
   } catch (error) {
-    const row = document.createElement('li'); row.className = 'failed'; row.textContent = `FAILED: ${error.message}`; results.append(row);
+    const diagnostics = {
+      worker: !!navigator.serviceWorker?.controller,
+      resources: frame.contentWindow.performance.getEntriesByType('resource').map(entry => new URL(entry.name).pathname)
+        .filter(path => /page-return|return-worker|page-render|page-capture|api\//.test(path)),
+      loading: doc()?.querySelectorAll('[role=status]').length,
+    };
+    const row = document.createElement('li'); row.className = 'failed'; row.textContent = `FAILED: ${error.message} ${JSON.stringify(diagnostics)}`; results.append(row);
   }
 };
 

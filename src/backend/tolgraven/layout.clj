@@ -1,6 +1,6 @@
 (ns tolgraven.layout
   (:require
-    [clojure.java.io]
+    [clojure.java.io :as io]
     [clojure.edn :as edn]
     [clojure.data.json :as json]
     [clojure.string :as string]
@@ -210,16 +210,20 @@
     (for [path js-paths]
       (js path))
     ;; Critical visibility rules prevent two page roots from ever painting together.
-    [:style "body:has(#ssr-shell):not(:has(#ssr-complete)) #app{display:none}"]
+    [:style "body:has(#ssr-shell):not(:has(#ssr-complete)) #app,body:has(#ssr-shell) #app[data-document-pending]{display:none}"]
     (for [script js-raw]
       [:script {:type "text/javascript"} script])]
 
    [:body {:class "container themable framing-shadow sticky-footer-container"}
 
     [:div#app (cond-> {} (:streamed? request) (assoc :data-streamed "true") (or (:ssr request) (:local-return? request)) (assoc :data-hydrate "true")
+                         (:ssr request) (assoc :data-document-pending "true")
                          (:local-return? request) (assoc :data-local-return "true")
                          (:local-return? request) (assoc :data-page-build (str (ssr/renderer-build)))
                          (:restore? request) (assoc :data-restore "true")) loading-content]
+    (when (:ssr request)
+      [:script (slurp (io/resource "public/js/document-entrance.js"))])
+    [:noscript [:style "body:has(#ssr-complete) #app[data-document-pending]{display:block}body:has(#ssr-complete) #ssr-shell{display:none}#app[data-document-pending] main{visibility:visible}#app[data-document-pending] *,#app[data-document-pending] *::after{animation-play-state:running!important}"]]
     ;; A separate React root can report bootstrap failures without replacing
     ;; server HTML that has not yet been hydrated.
     [:div#page-init-status]

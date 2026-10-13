@@ -28,9 +28,14 @@
        (if (= (nth title (dec shown)) " ") 500 0)
        (if (= shown (dec (count title))) 600 0))))
 
+(defn title-delays-ms [title]
+  (vec (rest (reductions + 0 (map #(title-delay-ms title %) (range (count title)))))))
+
 (defc <intro> [{:keys [title text buttons logo-bg bg] :as spec}]
-  :let [restored? (restore/skip-enter?)
-        *showing-title (r/atom (if restored? (count title) 0))]
+  :let [document-enter? (restore/document-enter?)
+        restored? (and (restore/skip-enter?) (not document-enter?))
+        *showing-title (r/atom (if restored? (count title) 0))
+        letter-delays (title-delays-ms title)]
   [:section#intro {:data-restored (when restored? true)}
    [media/<bg-logo> logo-bg]
    [img/<media-as-bg> (merge (first bg) {:id "top-banner"
@@ -38,16 +43,29 @@
                                       :fetchPriority "high"})]
    [:div.h1-wrapper.center-content
     [:h1.h-responsive.h-intro
-     ;; A keyed timer owns each step, so leaving the page cancels the animation.
-     (when (and (not restored?) (< @*showing-title (count title)))
-       ^{:key @*showing-title}
-       [anim/<timeout> #(swap! *showing-title inc) (title-delay-ms title @*showing-title)])
-     (if (< @*showing-title 1)
-       "•"
-       (map-indexed
-        (fn [i letter]
-          ^{:key (str "intro-letter-" i)} [<intro-letter> {:letter letter}])
-        (take @*showing-title title)))]]
+     {:aria-label (when document-enter? (apply str title))}
+     (if document-enter?
+       ;; All letters exist in SSR. CSS owns the original typing clock before
+       ;; JavaScript arrives, and hydration retains these exact nodes/timings.
+       [:<>
+        [:span.intro-title-dot {:aria-hidden true} "•"]
+        (map-indexed
+         (fn [i letter]
+           ^{:key (str "intro-letter-" i)}
+           [:span.intro-title-letter
+            {:style {"--intro-letter-delay" (str (nth letter-delays i) "ms")}}
+            letter]) title)]
+       [:<>
+        ;; A keyed timer owns SPA typing, so leaving the page cancels it.
+        (when (and (not restored?) (< @*showing-title (count title)))
+          ^{:key @*showing-title}
+          [anim/<timeout> #(swap! *showing-title inc) (title-delay-ms title @*showing-title)])
+        (if (< @*showing-title 1)
+          "•"
+          (map-indexed
+           (fn [i letter]
+             ^{:key (str "intro-letter-" i)} [<intro-letter> {:letter letter}])
+           (take @*showing-title title)))])]]
    (into [:<>] (ln->br text))
    [:br]
    [:div.buttons

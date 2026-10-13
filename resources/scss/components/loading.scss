@@ -64,9 +64,9 @@
   .component-render-skeleton * { animation: none !important; }
 }
 
-body:has(#ssr-complete) #ssr-shell { display: none; }
+body:has(#ssr-complete):not(:has(#app[data-document-pending])) #ssr-shell { display: none; }
 @media (prefers-reduced-motion: no-preference) {
-  body:has(#ssr-complete) #ssr-shell {
+  body:has(#ssr-complete):not(:has(#app[data-document-pending])) #ssr-shell {
     display: block;
     position: absolute;
     // The containing block is html; preserve the centered body width while fading.
@@ -101,8 +101,10 @@ body:has(#ssr-complete) #ssr-shell { display: none; }
 
 }
 
-// Restored defc roots already carry `appeared`. Paint complete SSR content
-// immediately; the temporary shell owns its dissolve and SPA defc owns motion.
+// Keep the streamed skeleton until the completed document can reveal its hero.
+// The final page owns one entrance; hydration continues its existing CSS clock.
+#ssr-shell main { animation: none; }
+.component-render-skeleton #logo-top { visibility: hidden; }
 // A dependency-gated component keeps its skeleton and real tree in one slot.
 .component-loading-reveal {
   display: grid;

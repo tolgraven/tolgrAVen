@@ -268,7 +268,7 @@
                                (.catch #(is false (str %)))
                                (.finally (fn [] (close!) (done))))))
              (.catch (fn [error] (is false (str error)) (done))))))
-(deftest restored-motion-roots-stay-visible-through-hydration-and-spa-mounts-enter
+(deftest document-motion-retains-its-clock-through-hydration-and-spa-mounts-enter
   (async
     done
     (-> (go-promise
@@ -277,23 +277,23 @@
             (try (restore/begin! {:hydrate? true})
                  (await! (render! root (with-meta [<item> {:id 1, :title "SSR"}] {:key :initial})))
                  (let [node (.querySelector element "button")]
-                   (is (nil? (.getAttribute node "data-stream-enter")))
+                   (is (= "true" (.getAttribute node "data-document-appear")))
                    (is (.contains (.-classList node) "appeared"))
                    (restore/hydrated!)
                    (await!
                      (render! root (with-meta [<item> {:id 1, :title "Hydrated"}] {:key :initial})))
                    (is (identical? node (.querySelector element "button")))
-                   (is (nil? (.getAttribute node "data-stream-enter")))
+                   (is (= "true" (.getAttribute node "data-document-appear")))
                    (is (.contains (.-classList node) "appeared")))
                  (restore/navigate! "/another-page")
                  (await! (render! root (with-meta [<item> {:id 2, :title "SPA"}] {:key :spa})))
                  (let [node (.querySelector element "button")]
-                   (is (nil? (.getAttribute node "data-stream-enter")))
+                   (is (nil? (.getAttribute node "data-document-appear")))
                    (is (not (.contains (.-classList node) "appeared"))))
                  (restore/begin! {:back? true})
                  (await! (render! root (with-meta [<item> {:id 3, :title "Back"}] {:key :back})))
                  (let [node (.querySelector element "button")]
-                   (is (nil? (.getAttribute node "data-stream-enter")))
+                   (is (nil? (.getAttribute node "data-document-appear")))
                    (is (.contains (.-classList node) "appeared")))
                  (finally (close!) (reset! restore/*context context)))))
         (.catch (fn [error] (is false (str error))))
@@ -346,5 +346,33 @@
               (await! (render! root nil))
               (is (>= @*disconnects 2) "Once visibility and unmount both release observation")
               (finally (close!) (set! js/IntersectionObserver original)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest initial-network-seen-owners-resume-viewport-motion
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture))
+                context @restore/*context
+                original js/IntersectionObserver
+                *callback (atom nil)
+                *observed (atom nil)
+                observer #js {:observe #(reset! *observed %), :disconnect (fn [])}]
+            (try
+              (restore/begin! {:hydrate? true})
+              (set! js/IntersectionObserver (fn [callback _] (reset! *callback callback) observer))
+              (await! (render! root [<seen> {:seen {:class "zoom-x"}}]))
+              (let [node (.querySelector element "div")]
+                (is (identical? node @*observed))
+                (is (.contains (.-classList node) "appeared") "Already-visible SSR stays visible")
+                (@*callback #js [#js {:isIntersecting false, :intersectionRatio 0}] observer)
+                (await! (flush!))
+                (is (not (.contains (.-classList node) "appeared")) "Offscreen content waits for its viewport entrance")
+                (restore/hydrated!)
+                (@*callback #js [#js {:isIntersecting true, :intersectionRatio 1}] observer)
+                (await! (flush!))
+                (is (.contains (.-classList node) "appeared"))
+                (is (identical? node (.querySelector element "div"))))
+              (finally (close!) (set! js/IntersectionObserver original) (reset! restore/*context context)))))
         (.catch #(is false (str %)))
         (.finally done))))

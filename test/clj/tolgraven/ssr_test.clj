@@ -235,6 +235,9 @@
       (is (= 200 (:status response)))
       (is (= "no-store" (get-in response [:headers "Cache-Control"])))
       (is (string/includes? html "data-hydrate=\"true\""))
+      (is (string/includes? html "data-document-pending=\"true\""))
+      (is (string/includes? html "hero.decode()"))
+      (is (string/includes? html "<noscript>"))
       (is (string/includes? html "<article>Safe rendered content</article>"))
       (is (string/includes? html "&lt;/title&gt;&lt;script&gt;"))
       (is (not (string/includes? html "<script>bad()"))))))
@@ -331,6 +334,7 @@
       (is (= 200 (:status response)))
       (is (string/includes? (:body response) "data-restore=\"true\""))
       (is (not (string/includes? (:body response) "data-hydrate")))
+      (is (not (string/includes? (:body response) "data-document-pending=\"true\"")))
       (is (= "no-store" (get-in response [:headers "Cache-Control"]))))))
 
 (deftest saved-return-hints-cover-recent-paths-and-reject-invalid-values

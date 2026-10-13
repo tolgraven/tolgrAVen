@@ -102,7 +102,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Reuse appearance/presence/loading features. Hydration and restored data bypass
   loading and entrances; later SPA navigation must restore ordinary motion.
   Appearance classes merge onto native roots; `appear-wrapper` is only a CSS
-  class. SSR roots paint visible, without separate child/page entrance keyframes.
+  class. Network SSR retains the original site/hero entrance in CSS across
+  hydration; the document-owned mount container gates it on hero decoding.
+  Streamed skeletons remain until that gate opens. Local/history returns stay settled.
 - Shared Markdown, full syntax highlighting and mapping code live in the
   `:markdown`, `:highlight` and `:maps` bundles. Keep the full highlighter out of
   Markdown so link previews do not acquire every language. Node renders highlighted

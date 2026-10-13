@@ -125,3 +125,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   dependencies for isolated worker capture; do not maintain a second module list.
   Browser builds prefer worker-compatible package exports so Markdown does not
   require a DOM during capture. The worker reuses fingerprinted browser chunks.
+
+- Network SSR emits a document-owned hero decode gate before application code.
+  Keep its mount-container marker outside the React tree; streamed skeletons
+  remain visible until the completed page can start its original entrance.
+  Local returns and JavaScript-disabled documents must remain usable.

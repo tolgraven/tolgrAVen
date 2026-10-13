@@ -530,3 +530,35 @@ button:hover .blur-bg, button:active .blur-bg,
     // transform: scale(1, 1);
   }
 }
+
+// Match the ordinary defc transitions on initial server markup. These markers
+// persist through hydration; viewport :seen owners resume their own observers.
+.appear-wrapper[data-document-appear] {
+  --document-appear-time: .45s;
+  --document-opacity-time: var(--document-appear-time);
+  animation: document-opacity var(--document-opacity-time) ease both;
+  &.opacity { --document-appear-time: 1s; }
+  &.zoom { animation-name: document-opacity, document-zoom; }
+  &.zoom-x { animation-name: document-opacity, document-zoom-x; }
+  &.zoom-y { animation-name: document-opacity, document-zoom-y; }
+  &.slide-in { animation-name: document-opacity, document-slide-in; --document-opacity-time: .12s; --document-appear-time: .35s; }
+  &.slide-behind { animation-name: document-behind-opacity, document-slide-behind; --document-opacity-time: .12s; --document-appear-time: .35s; }
+  &.slide-from-right { animation-name: document-opacity, document-slide-from-right; --document-opacity-time: .12s; --document-appear-time: .35s; }
+  &.fast { --document-appear-time: .25s; --document-opacity-time: var(--document-appear-time); }
+  &.faster { --document-appear-time: .15s; --document-opacity-time: var(--document-appear-time); }
+  &.slow { --document-appear-time: 1s; --document-opacity-time: var(--document-appear-time); }
+  &.extra-slow { --document-appear-time: 2.2s; --document-opacity-time: var(--document-appear-time); }
+  &.super-slow { --document-appear-time: 4.5s; --document-opacity-time: var(--document-appear-time); }
+  animation-duration: var(--document-opacity-time), var(--document-appear-time);
+}
+@keyframes document-opacity { from { opacity: 0; } to { opacity: 1; } }
+@keyframes document-behind-opacity { from { opacity: .5; } to { opacity: 1; } }
+@keyframes document-zoom { from { transform: scale(0); } to { transform: none; } }
+@keyframes document-zoom-x { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes document-zoom-y { from { transform: scaleY(0); } to { transform: none; } }
+@keyframes document-slide-in { from { transform: translateY(20%); } to { transform: none; } }
+@keyframes document-slide-behind { from { transform: translateY(-80%) scaleY(.4); } to { transform: none; } }
+@keyframes document-slide-from-right { from { transform: translateY(80%) scaleY(.8); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .appear-wrapper[data-document-appear] { animation: none; }
+}

@@ -59,9 +59,11 @@
     (check! (and (= (:html landing) (:html again))
                  (contains-all? (:html landing) ["h-intro" "id=\"section-services\"" "id=\"about\""
                                                  "id=\"gallery\"" "id=\"story-image-cljs\""])
-                 (not (re-find #"intro-letter|id=\"cljs\"|Server-rendered blog" (:html landing)))
+                 (not (re-find #"id=\"cljs\"|Server-rendered blog" (:html landing)))
                  (str/includes? (:html blog-again) "Server-rendered blog")
                  (not (str/includes? (:html blog-again) "h-intro"))) "Home/blog state leaked")
+    (check! (contains-all? (:html landing) ["animate" "intro-title-letter" "--intro-letter-delay:2000ms"])
+            "Initial SSR must include the document entrance and original typing clock")
     (check! (and (= (:html cv-html) (:html cv-again))
                  (contains-all? (:html cv-html) ["cv-skills" "carousel-normal" "carousel-item-main"])
                  (str/includes? (:html docs-html) "Shared documentation view.")

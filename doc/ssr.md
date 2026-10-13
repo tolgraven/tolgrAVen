@@ -69,7 +69,14 @@ begin after commit. Existing DOM nodes remain in place. Main-module
 viewport loading, media interactions, editing, search, user/settings panels,
 Markdown and link previews use their existing implementations.
 
-Restoration skips loading placeholders for ready resources and entrance/typing
+Ready network SSR retains the original 500 ms site reveal, 3.5 s hero logo,
+staggered title (starting at 2 s), and delayed underline. CSS owns their clock
+from the completed document reveal through hydration. The inline document
+adapter waits for the selected hero image to decode before releasing the
+mount container; a streamed skeleton remains visible until then. It changes
+only that document-owned container, never React children. Image errors and a
+bounded stalled-image deadline release usable content; noscript stays visible.
+Local/history restoration skips loading placeholders and entrance/typing
 animations. Genuinely missing resources retain the normal loading/error states.
 CMS image IDs are prefixed: a bare `cljs` ID can hijack the compiler's global
 namespace through the browser's named-element properties. Bootstrap JSON escapes
@@ -225,11 +232,12 @@ React render produces the shell, using the ordinary header, footer, heading and
 skeleton components. Its HTML is flushed before waiting for page data. The same
 HTTP response then carries the complete ordinary page root and its public
 hydration snapshot. CSS displays that root only after both have arrived; React unmounts the temporary loading root after its exit animation. Elements
-paint fully visible with the same root-merged `defc` appearance classes on the
-server and browser. The completed page does not replay page/child entrances;
-the temporary shell owns its dissolve, respecting reduced motion. Hydration
-neither replaces the selected page with a code-loading shell nor starts another
-animation. Cached SSR responses paint immediately without a skeleton step.
+retain the same root-merged `defc` appearance classes on server and browser.
+The skeleton remains until the completed hero decodes; the completed page then
+starts the original document entrance while the shell dissolves. Hydration
+retains that CSS clock and every native node, respecting reduced motion.
+Cached SSR uses the same entrance without the skeleton step. Local/history
+returns retain the settled appearance without an entrance.
 
 This first stage streams two complete React renders, not suspended component
 renders. It preserves request isolation in the existing renderer pool: no Node
