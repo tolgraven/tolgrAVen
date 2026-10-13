@@ -31,6 +31,23 @@ const settleLayout = async element => {
   });
   await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
 };
+const heroReady = () => {
+  const hero = doc()?.querySelector('#app #top-banner');
+  if (!hero) return false;
+  const images = hero.matches('img') ? [hero] : [...hero.querySelectorAll('img')];
+  const placeholder = hero.hasAttribute('data-image-placeholder') &&
+    frame.contentWindow.getComputedStyle(hero).backgroundImage !== 'none';
+  return placeholder || images.some(image => {
+    let layer = image;
+    while (layer && layer !== hero.parentElement) {
+      const style = frame.contentWindow.getComputedStyle(layer);
+      if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) <= 0) return false;
+      layer = layer.parentElement;
+    }
+    return image.complete && image.naturalWidth > 0;
+  });
+};
+
 // Sample the real document from its first paint through interactive startup.
 // Do not substitute data or manipulate application-owned markup.
 const sampleStartup = async path => {
@@ -45,11 +62,16 @@ const sampleStartup = async path => {
       // through their handoff, including a streamed cache miss.
       for (const main of mains) {
         const style = frame.contentWindow.getComputedStyle(main);
+        const titleNode = doc().querySelector('#app .intro-title-letter');
+        const titleAnimation = titleNode?.getAnimations().find(a => a.animationName === 'intro-letter-fade');
         samples.push({animation: style.animationName, opacity: Number(style.opacity),
                       scale: style.transform, shell: main.closest('#ssr-shell') !== null,
                       entranceStart: main.getAnimations().find(a => a.animationName === 'fade-in-site')?.startTime,
                       pending: doc().querySelector('#app')?.hasAttribute('data-document-pending'),
-                      heroDecoded: !!doc().querySelector('#app #top-banner')?.naturalWidth,
+                      heroReady: heroReady(),
+                      titleNode, titleAnimation,
+                      titleStart: titleAnimation?.startTime,
+                      titleDelay: titleAnimation?.effect.getTiming().delay,
                       restored: !!doc().querySelector('#app')?.hasAttribute('data-restore')});
       }
       // Production has no dev console. Establish interactivity through an
@@ -78,8 +100,16 @@ document.querySelector('#run').onclick = async () => {
       const started = completed.filter(value => value.entranceStart != null && !value.pending);
       check(started.length && started.some(value => value.animation === 'fade-in-site'), `${label} runs the original site entrance`);
       check(new Set(started.map(value => value.entranceStart)).size === 1, `${label} keeps one animation clock through hydration`);
-      check(completed.filter(value => !value.pending && value.opacity > 0).every(value => value.heroDecoded),
-            `${label} reveals the hero with the design`);
+      check(completed.filter(value => !value.pending && value.opacity > 0).every(value => value.heroReady),
+            `${label} reveals image pixels or the sampled gradient with the design`);
+      const letters = completed.filter(value => !value.pending && value.titleStart != null);
+      check(letters.length && letters.every(value => value.titleDelay === 2000 &&
+        Math.abs(value.titleStart - value.entranceStart) <= 35),
+            `${label} starts the first title letter two seconds after visible SSR`);
+      check(new Set(letters.map(value => value.titleNode)).size === 1 &&
+            new Set(letters.map(value => value.titleAnimation)).size === 1 &&
+            new Set(letters.map(value => value.titleStart)).size === 1,
+            `${label} keeps the native title clock through hydration`);
     };
     checkEntrance(cold, 'Cold SSR');
     // Observe the real return worker output before exercising its document pair.
@@ -96,6 +126,61 @@ document.querySelector('#run').onclick = async () => {
     check(!!doc().querySelector('#local-page-bootstrap'), 'Repeat document load uses the saved HTML/state pair');
     check(repeated.length && repeated.every(value => value.animation === 'none' && value.opacity === 1),
           'Paired document restoration stays visible without replaying its entrance');
+    check(!doc().querySelector('[data-image-preview]'),
+          'Saved HTML/state pair contains only final image candidates');
+    // Leave the application document and use the unrelated document's native
+    // Back button. A saved pair alone is not proof of native Back classification.
+    frame.src = '/__tests/away.html';
+    await wait(() => doc()?.location.pathname === '/__tests/away.html');
+    doc().querySelector('button').click();
+    await wait(() => doc()?.location.pathname === '/' &&
+      doc()?.documentElement.hasAttribute('data-image-direct') && doc()?.querySelector('#intro'));
+    await wait(() => {
+      if (doc().querySelector('.search-ui-open')) return true;
+      doc().querySelector('button.search-ui-btn')?.click(); return false;
+    });
+    doc().querySelector('button.search-ui-btn').click();
+    await settleLayout(doc().body);
+    check(!doc().querySelector('[data-image-preview]'),
+          'Actual document Back retains final-only image candidates');
+    const pairedDocument = doc(), pairedMain = doc().querySelector('#app main');
+    const pairedTitle = doc().querySelector('#app .intro-title-letter');
+    const documentClocks = () => doc().getAnimations().filter(animation => {
+      const target = animation.effect?.target;
+      return target === pairedMain || target?.closest?.('#intro');
+    });
+    const pairedClocks = documentClocks();
+    check(pairedDocument.documentElement.hasAttribute('data-image-direct'),
+          'Paired return starts with the final-only image policy');
+    // A test-owned link outside React exercises the real query router handler.
+    const queryLink = pairedDocument.createElement('a');
+    const queryURL = new URL(frame.contentWindow.location.href);
+    queryURL.searchParams.set('image-query-proof', 'changed');
+    queryLink.href = queryURL.href; queryLink.textContent = 'Query navigation proof';
+    pairedDocument.body.append(queryLink);
+    queryLink.click();
+    await wait(() => frame.contentWindow.location.search === queryURL.search &&
+      !pairedDocument.documentElement.hasAttribute('data-image-direct'));
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    check(doc() === pairedDocument && doc().querySelector('#app main') === pairedMain,
+          'Same-path query navigation retains the document and ends final-only image policy');
+    check(doc().querySelector('#app .intro-title-letter') === pairedTitle &&
+      documentClocks().every(animation => pairedClocks.includes(animation)),
+          'Query navigation does not restart the settled page or title clock');
+    const queryBack = pairedDocument.createElement('button');
+    queryBack.textContent = 'Query Back proof';
+    queryBack.onclick = () => frame.contentWindow.history.back();
+    pairedDocument.body.append(queryBack); queryBack.click();
+    await wait(() => frame.contentWindow.location.search === new URL(path, location.href).search);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    check(doc() === pairedDocument, 'SPA query Back retains the existing document');
+    check(!pairedDocument.documentElement.hasAttribute('data-image-direct'),
+      'SPA query Back does not revive the external-return image policy');
+    check(doc().querySelector('#app .intro-title-letter') === pairedTitle,
+      'SPA query Back retains the existing title nodes');
+    check(documentClocks().every(animation => pairedClocks.includes(animation)),
+      'SPA query Back retains the existing page and title clocks');
+    queryLink.remove(); queryBack.remove();
     await resetTestOrigin(frame, wait);
     const cached = await sampleStartup(path);
     check(!doc().querySelector('#ssr-shell'), 'Fresh SSR cache bypasses the skeleton');

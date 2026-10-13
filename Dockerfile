@@ -42,7 +42,7 @@ RUN mkdir -p resources/public/css/tolgraven && npm run build
 ARG BUILD_JAVA_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m"
 RUN --mount=type=cache,id=tolgraven-shadow-release,target=/usr/src/app/.shadow-cljs,sharing=locked \
     JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
-    lein with-profile prod,provided run -m shadow.cljs.devtools.cli release app ssr return-worker
+    lein with-profile prod,provided run -m shadow.cljs.devtools.cli release app ssr return-worker document
 
 FROM source AS backend
 # Keep the smaller backend JVM bounded while Shadow compiles concurrently.

@@ -340,3 +340,10 @@ packaged, serve AVIF as `image/avif`, and verify `currentSrc` plus `naturalWidth
 in the rendered browser. A successful HTTP response alone does not prove decoding.
 Changing the original path resets the failure state; original-source errors still
 reach the caller. See `test/cljs/tolgraven/image_test.cljs`.
+
+Responsive catalog entries include optional `:placeholder {:colors ["#rrggbb" "#rrggbb" "#rrggbb"]}`.
+The existing codec generator orients the source, samples a 3×3 RGB image and averages
+its horizontal rows; transparent pixels composite against white. Exactly three
+lowercase hex colors are accepted by the shared image schema, and the image runtime
+owns the fixed vertical gradient. `bb images:placeholders` refreshes this metadata
+without re-encoding or changing any rendition bytes.

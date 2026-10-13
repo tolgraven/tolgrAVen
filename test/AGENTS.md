@@ -16,6 +16,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   Scoped-state tests use native subscription handles and event writes; persistence
   checks cover pure nonpersistent reads, idempotent eager/subscription acquisition,
   late restoration versus edits, accepted/rejected transactions and explicit deletions.
+- `bb test:scripts` includes bounded Node document-image adapter fixtures. They
+  verify phase/gate ownership and cleanup; real-browser checks verify painted motion.
 - Unit/component tests may replace transport boundaries. Live integration must use
   real routes, module loaders and service bindings; do not inject fixture app state.
 - Boot checks dispatch the real startup/stop events and mount/unmount the common

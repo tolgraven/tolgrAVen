@@ -40,7 +40,7 @@
 
 (r/defc <hydration-check> [on-commit]
   (react/use-effect (fn [] (on-commit) nil) [])
-  [page/<page>])
+  (restore/document-form [page/<page>]))
 
 (r/defc <formatter-commit> [*commits args]
   (react/use-layout-effect (fn [] (swap! *commits inc) nil) [])
@@ -53,8 +53,14 @@
         old-modules loader/modules old-href context/*href* old-dispatch rf/dispatch
         old-acquire loader/acquire-code! old-after-page resources/after-page!
         *highlight-requests (atom []) *release (atom []) *code-nodes (atom nil)
-        *formatter-commits (atom 0)]
+        *formatter-commits (atom 0)
+        original-error (.-error js/console)]
     (.appendChild (.-body js/document) element)
+    (set! (.-error js/console)
+          (fn [& args]
+            (when (some #(and (string? %) (re-find #"hydrated|did not match|didn't match" %)) args)
+              (swap! *errors conj (str (first args))))
+            (.apply original-error js/console (to-array args))))
     (set! loader/modules
       (into {} (map (fn [[id spec]]
                       [id (reify lazy/ILoadable (ready? [_] true) IDeref (-deref [_] spec))])) modules))
@@ -102,6 +108,10 @@
                      (reset! *code-nodes (mapv #(.querySelector element %)
                                               [".code-block pre" ".code-block span" ".code-block code.language-cpp" "p > .code-snippet > code.code-highlight" "p > .code-snippet > code.code-highlight span[style]"])))
                    (let [nodes (mapv #(.querySelector element %) selectors)
+                         images (mapv (fn [wrapper]
+                                        [wrapper (.getAttribute wrapper "data-image-key")
+                                         (.getPropertyValue (.-style wrapper) "--image-final-opacity")])
+                                      (array-seq (.querySelectorAll element ".progressive-image")))
                          letter (.querySelector element ".intro-title-letter")
                          animations (when letter (vec (array-seq (.getAnimations letter))))]
                      (is (every? some? nodes) "Ordinary page elements exist before hydration")
@@ -114,6 +124,11 @@
                                (try
                                  (doseq [[node selector] (map vector nodes selectors)]
                                    (is (identical? node (.querySelector element selector)) selector))
+                                 (doseq [[wrapper token opacity] images]
+                                   (is (.contains element wrapper) "Selective hydration retains each native image wrapper")
+                                   (is (= token (.getAttribute wrapper "data-image-key")))
+                                   (is (= opacity (.getPropertyValue (.-style wrapper) "--image-final-opacity"))
+                                       "Each native image retains its Node-rendered identifier through module hydration"))
                                  (when letter
                                    (is (seq animations) "SSR starts the letter clock before hydration")
                                    (is (= animations (vec (array-seq (.getAnimations letter))))
@@ -145,6 +160,7 @@
         (.finally (fn []
                     (when @*root (dom/unmount @*root))
                     (.remove element)
+                    (set! (.-error js/console) original-error)
                     (rf/clear-subscription-cache!)
                     (set! loader/modules old-modules) (set! context/*href* old-href) (set! rf/dispatch old-dispatch)
                     (set! loader/acquire-code! old-acquire) (set! resources/after-page! old-after-page)

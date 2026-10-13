@@ -42,11 +42,46 @@ The Git hook validates all variants before staging any, so one failed encode doe
 not partially stage its batch. `images:verify` exits unsuccessfully for missing
 variants; it never claims codec or live-storage validation.
 
-`resources/responsive-images.edn` opts local originals into sized AVIF/WebP
-sources. `bb images:responsive` rebuilds these with ImageMagick; commit all outputs
-and preserve original/full-size fallbacks. The validated catalog is baked into
-CLJS and read by server preloads, so `imagesrcset` and `<picture>` select the same
-resource. Pictures default to `sizes=100vw`; callers may supply a narrower slot.
+`bb images:responsive [--force]` discovers JPEG/PNG originals and standalone WebP/AVIF rasters under `resources/public/img` with a longest edge of at least 960 **and**
+at least 64 KiB of source data. Both thresholds must pass; native width must also
+exceed 320 so horizontal downscaling is useful. Portraits qualify by height. It
+skips vectors, animations, uploaded avatars, app icons and generated `-<width>w`
+sidecars. The defaults come from the current asset inventory: large CV logos,
+showcase screenshots and blog/header photos qualify while small compressed icons
+do not. Images retain their original and existing full-size codec fallbacks.
+
+The existing `resources/responsive-images.edn` remains the single catalog baked
+into CLJS and server preloads. New entries have `:generated? true`, refreshed
+intrinsic dimensions and widths from `[80 160 320 640 960 1280 1920 2560]` below the
+original width. Existing manually curated sizes are preserved. Remove
+`:generated?` to take manual ownership of an entry; `:progressive? false` disables
+its preview while retaining responsive sizing. An explicit `{:exclude? true}`
+entry prevents discovery and is omitted from the runtime catalog. Exclusion never
+deletes image files. Animated manual entries fail rather than silently flattening.
+
+`bb images:responsive:verify` reads every sized codec, rejects upscales or incorrect
+widths and reports the total byte budget. This verifies file metadata, not visual
+quality or browser decoding.
+
+Sized encodes use one ImageMagick worker, strip metadata, replace outputs
+atomically and skip current variants unless `--force` is supplied. The catalog is
+published after all encodes succeed. Commit it together with all new variants.
+On this Mac, use the installed shared-slot CPU launcher with the ordinary codec-capable dependency
+prefab for generation (`tolgraven-cpu run -- bb images:responsive`); its isolated snapshot retains outputs for deliberate copy
+back to this worktree (never overwrite a watched output directory). Pictures
+and preloads share the same candidates; callers may supply a narrower `sizes`
+slot than the default `100vw`.
+
+Representative committed AVIF sizes illustrate the per-request savings; browsers
+choose one final candidate for the declared slot/DPR, rather than downloading the
+whole catalog. Values below are file bytes, not timing measurements.
+
+| Source | Full AVIF | 80-wide preview | 320-wide final |
+| --- | ---: | ---: | ---: |
+| CV `tolgraven-logo.png` | 20,798 | 805 | 2,019 |
+| Showcase `wordgame.png` | 25,755 | 2,015 | 10,074 |
+| Showcase `joen-data-viz-better.png` | 53,654 | 641 | 3,404 |
+| Photo `skuggan-dansbana-small.jpg` | 240,103 | 1,150 | 9,391 |
 
 `resources/responsive-videos.edn` opts local videos into smaller native media-query
 sources. `bb videos:responsive` generates AV1, VP9 and H.264 renditions atomically;
@@ -79,3 +114,9 @@ Periodically remove completed labels after inspecting active workers. Keep the
 current audit's cache for incremental iterations, watched `app-dev`/`ssr`/
 `return-worker` caches, and useful reports/chunks in `target/bundle-audit`.
 Do not clear the entire Shadow directory while watches are running.
+
+Responsive catalog entries include each original's byte size, allowing bundled and
+managed images to share the runtime dimensions/bytes cutoff. The standalone codec
+scanner keeps its application-classpath-free entrypoint; focused script fixtures
+assert that its cutoff matches the shared predicate. Explicit progressive flags
+override the display default without removing responsive final candidates.

@@ -1,0 +1,310 @@
+{
+  "metadata": {
+    "protocolVersion": 6,
+    "versions": {
+      "baseline": {
+        "commit": "cd9fa9ea5a9f6f9213a8be58a12bfc5a007c9bf6",
+        "fixtureSha256": "54f5c74dcf4cffbc9f01345ee01dd711f8f8fbea3582c487d868328e7bf8ac51",
+        "adapterSha256": "affb36be4b9d9234a5c6a9bd49fb9716254c372e7f82dd098547927b1ebce400",
+        "mainCssSha256": "43340399842e6b232ba88730ff4055526fe378cbc771a0c8e78ae342e0b98fbe",
+        "trackedChanges": false
+      },
+      "progressive": {
+        "commit": "9c4b53206e6ddfd4470731abb5a6af2e20a80c4e",
+        "fixtureSha256": "0a8a928aa6055c5db01bec4f1552bce0c06203a4c29f8bf3e4b3390538ac4da5",
+        "adapterSha256": "493cc5b15b9d5c405f1883e56e9d95dff9494a1d201ce3260cc7a040742db316",
+        "mainCssSha256": "7adbcbdbf8bc51de03c4c98ccbed6607c5e702df13f0671cc241104f2a424d76",
+        "trackedChanges": false
+      }
+    },
+    "profile": {
+      "aggregateImageKiBps": 64,
+      "imageBodyLatencyMs": 150,
+      "chunkBytes": 1024
+    },
+    "probeVisibility": "Fixed visible native iframe at exact case CSS width/height; host viewport fully contains it. Native image intersects that viewport; all ancestors have positive opacity and visible display. finalOpaque is settled final-layer contribution: baseline native opacity is its intended 0.65 tint, progressive inner-final target is 1; outer tint/page entrance excluded.",
+    "resourceControls": "Build artifacts generated sequentially with Docker 1 CPU / 2 GiB / 1 GiB Java heap. Browser timing only after compilers and CPU probes finish. Native project-Java/Codex-renderer monitor active; Chrome excluded.",
+    "scope": "Native images in renderer-generated SSR, application bootstrap withheld; non-hero assets unpaced; no backend/provider timing.",
+    "browserUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+  },
+  "summary": {
+    "375/DPR1/baseline": {
+      "runs": 5,
+      "finalSources": [
+        "foggy-shit-small-400w.avif"
+      ],
+      "gradientVisibleMs": null,
+      "previewVisibleMs": null,
+      "heroVisibleMs": {
+        "median": 335,
+        "min": 330,
+        "max": 372.20000000298023
+      },
+      "finalLoadMs": {
+        "median": 285.20000000298023,
+        "min": 282.30000001192093,
+        "max": 293.20000000298023
+      },
+      "finalReadyMs": {
+        "median": 289.40000000596046,
+        "min": 286.5,
+        "max": 296
+      },
+      "finalPaintMs": {
+        "median": 335,
+        "min": 330.09999999403954,
+        "max": 372.29999999701977
+      },
+      "finalOpaqueMs": {
+        "median": 335.1000000089407,
+        "min": 330.19999998807907,
+        "max": 372.29999999701977
+      },
+      "imageBytes": {
+        "median": 7853,
+        "min": 7853,
+        "max": 7853
+      },
+      "requestCount": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    "375/DPR1/progressive": {
+      "runs": 5,
+      "finalSources": [
+        "foggy-shit-small-400w.avif"
+      ],
+      "gradientVisibleMs": {
+        "median": 87,
+        "min": 57.79999999701977,
+        "max": 103.79999999701977
+      },
+      "previewVisibleMs": null,
+      "heroVisibleMs": {
+        "median": 294.1000000089407,
+        "min": 292.5,
+        "max": 304.09999999403954
+      },
+      "finalLoadMs": {
+        "median": 282.70000000298023,
+        "min": 278.20000000298023,
+        "max": 290.8999999910593
+      },
+      "finalReadyMs": {
+        "median": 285.1000000089407,
+        "min": 280.79999999701977,
+        "max": 293.09999999403954
+      },
+      "finalPaintMs": {
+        "median": 294.1000000089407,
+        "min": 292.5,
+        "max": 304.09999999403954
+      },
+      "finalOpaqueMs": {
+        "median": 294.20000000298023,
+        "min": 292.5,
+        "max": 304.20000000298023
+      },
+      "imageBytes": {
+        "median": 7853,
+        "min": 7853,
+        "max": 7853
+      },
+      "requestCount": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    "390/DPR2/baseline": {
+      "runs": 5,
+      "finalSources": [
+        "foggy-shit-small-800w.avif"
+      ],
+      "gradientVisibleMs": null,
+      "previewVisibleMs": null,
+      "heroVisibleMs": {
+        "median": 756.6000000089407,
+        "min": 740.7999999970198,
+        "max": 798.6999999880791
+      },
+      "finalLoadMs": {
+        "median": 694.2999999970198,
+        "min": 687.7000000029802,
+        "max": 696.4000000059605
+      },
+      "finalReadyMs": {
+        "median": 709.7999999970198,
+        "min": 701.2999999970198,
+        "max": 746.2999999970198
+      },
+      "finalPaintMs": {
+        "median": 756.7000000029802,
+        "min": 740.7999999970198,
+        "max": 798.6999999880791
+      },
+      "finalOpaqueMs": {
+        "median": 756.7999999970198,
+        "min": 740.8999999910593,
+        "max": 798.6999999880791
+      },
+      "imageBytes": {
+        "median": 34371,
+        "min": 34371,
+        "max": 34371
+      },
+      "requestCount": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    "390/DPR2/progressive": {
+      "runs": 5,
+      "finalSources": [
+        "foggy-shit-small-800w.avif"
+      ],
+      "gradientVisibleMs": {
+        "median": 83.79999999701977,
+        "min": 81.69999998807907,
+        "max": 112.90000000596046
+      },
+      "previewVisibleMs": {
+        "median": 465,
+        "min": 437,
+        "max": 481
+      },
+      "heroVisibleMs": {
+        "median": 465.09999999403954,
+        "min": 437,
+        "max": 481
+      },
+      "finalLoadMs": {
+        "median": 811.4000000059605,
+        "min": 805,
+        "max": 813.2999999970198
+      },
+      "finalReadyMs": {
+        "median": 824.2000000029802,
+        "min": 818.7000000029802,
+        "max": 825.1000000089407
+      },
+      "finalPaintMs": {
+        "median": 867,
+        "min": 860.2999999970198,
+        "max": 881.2000000029802
+      },
+      "finalOpaqueMs": {
+        "median": 1007,
+        "min": 997.5999999940395,
+        "max": 1027.5
+      },
+      "imageBytes": {
+        "median": 42224,
+        "min": 42224,
+        "max": 42224
+      },
+      "requestCount": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "1280/DPR1/baseline": {
+      "runs": 5,
+      "finalSources": [
+        "foggy-shit-small.avif"
+      ],
+      "gradientVisibleMs": null,
+      "previewVisibleMs": null,
+      "heroVisibleMs": {
+        "median": 2472.0999999940395,
+        "min": 2461.2999999970198,
+        "max": 2541
+      },
+      "finalLoadMs": {
+        "median": 2395.2000000029802,
+        "min": 2392.0999999940395,
+        "max": 2458.699999988079
+      },
+      "finalReadyMs": {
+        "median": 2423.7000000029802,
+        "min": 2422,
+        "max": 2493.0999999940395
+      },
+      "finalPaintMs": {
+        "median": 2472.0999999940395,
+        "min": 2461.2999999970198,
+        "max": 2541
+      },
+      "finalOpaqueMs": {
+        "median": 2472.2000000029802,
+        "min": 2461.4000000059605,
+        "max": 2541.0999999940395
+      },
+      "imageBytes": {
+        "median": 146118,
+        "min": 146118,
+        "max": 146118
+      },
+      "requestCount": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    "1280/DPR1/progressive": {
+      "runs": 5,
+      "finalSources": [
+        "foggy-shit-small.avif"
+      ],
+      "gradientVisibleMs": {
+        "median": 96.8999999910593,
+        "min": 85.70000000298023,
+        "max": 144.09999999403954
+      },
+      "previewVisibleMs": {
+        "median": 466,
+        "min": 446,
+        "max": 510.29999999701977
+      },
+      "heroVisibleMs": {
+        "median": 466.1000000089407,
+        "min": 446,
+        "max": 510.29999999701977
+      },
+      "finalLoadMs": {
+        "median": 2522.2000000029802,
+        "min": 2511.300000011921,
+        "max": 2567.0999999940395
+      },
+      "finalReadyMs": {
+        "median": 2552.2000000029802,
+        "min": 2546.1000000089407,
+        "max": 2592.7000000029802
+      },
+      "finalPaintMs": {
+        "median": 2597,
+        "min": 2583.7000000029802,
+        "max": 2627.5999999940395
+      },
+      "finalOpaqueMs": {
+        "median": 2732.7000000029802,
+        "min": 2724,
+        "max": 2785.5
+      },
+      "imageBytes": {
+        "median": 153971,
+        "min": 153971,
+        "max": 153971
+      },
+      "requestCount": {
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    }
+  }
+}

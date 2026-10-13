@@ -76,6 +76,8 @@
     (check! (not (str/includes? (:html first) "code-block"))
             "Plain blog content must not require the highlighter")
     (check! (every? #(not (str/includes? (:html %) "component-error")) shells) "A page shell violated its contract")
+    (check! (str/includes? (:html (nth shells 0)) "background-image:linear-gradient(to bottom, #")
+            "Initial landing skeleton must paint sampled colors before image requests finish")
     (doseq [[name snapshot response] [["blog" blog first] ["landing" home landing]
                                       ["cv" cv cv-html] ["docs" docs docs-html] ["missing" missing missing-html]
                                       ["code-blog" code-blog code-html]]]

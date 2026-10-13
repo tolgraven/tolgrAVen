@@ -54,6 +54,17 @@
       (script-priority request) (assoc :fetchpriority (script-priority request)))))
 (defn- js-preload [request path]
   [:link (assoc (script-preload-attrs request path) :href path)])
+(defn- document-path [request entry]
+  (let [path (str "/js/document/" entry ".js")]
+    (when-not (io/resource (str "public" path))
+      ;; Build readiness is explicit on a cold checkout; never expose an SSR
+      ;; page whose native document gate is absent.
+      (throw (ex-info "Document bootstrap unavailable; build the :document target"
+                      {:status 503 :build :document})))
+    (if (:dev env)
+      path
+      (or (first (olink/bundle-paths request [(str "document-" entry ".js")])) path))))
+
 (defn- img-preload [path] [:link {:rel "preload" :as "image" :href path}])
 (defn- css-preload [path] [:link {:rel "preload" :as "style" :type "text/css" :href path}])
 
@@ -126,7 +137,9 @@
    [:div.line.line-header]
 
    [:main#main.main-loading.main-content
-    {:class main-class}
+    {:class main-class
+     :style (when-let [background (image-sources/placeholder-background hero-img)]
+              {:background-image background})}
     [:section#intro
      #_[:img.media.media-as-bg {:src hero-img}]
      (when error-text
@@ -185,6 +198,10 @@
     (for [link link-pre]
       (preconnect link))
 
+    ;; Classify native Back before any preview can enter the request queue.
+    ;; Final responsive preloads remain unconditional; preview acquisition is
+    ;; native lazy markup, suppressed on history returns before discovery.
+    (js {:src (document-path request "head") :async false})
     (for [path img-pre]
       (img-preload-modern path))
 
@@ -221,8 +238,8 @@
                          (:local-return? request) (assoc :data-local-return "true")
                          (:local-return? request) (assoc :data-page-build (str (ssr/renderer-build)))
                          (:restore? request) (assoc :data-restore "true")) loading-content]
-    (when (:ssr request)
-      [:script (slurp (io/resource "public/js/document-entrance.js"))])
+    (when (or (:ssr request) (:local-return? request))
+      (js {:src (document-path request "entrance") :async false}))
     [:noscript [:style "body:has(#ssr-complete) #app[data-document-pending]{display:block}body:has(#ssr-complete) #ssr-shell{display:none}#app[data-document-pending] main{visibility:visible}#app[data-document-pending] *,#app[data-document-pending] *::after{animation-play-state:running!important}"]]
     ;; A separate React root can report bootstrap failures without replacing
     ;; server HTML that has not yet been hydrated.

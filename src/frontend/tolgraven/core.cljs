@@ -70,8 +70,9 @@
 
 ;; Profiling this host would include console commits and create capture feedback.
 (m/defc <root-page> {:profile false} []
-  [:<> [ssr/<hydrate> [page]] [boot/<lifecycle>]
-   (when (and ^boolean goog.DEBUG @context/*interactive?) [dev-console/<console>])])
+  (restore/document-form [ssr/<hydrate> [page]] [boot/<lifecycle>]
+                         (when (and ^boolean goog.DEBUG @context/*interactive?)
+                           [dev-console/<console>])))
 
 (defn render []
   (if @root
@@ -140,7 +141,9 @@
       ;; history traversal. A local pair installs its own restoration context
       ;; below; a client-only return has no server attributes to match.
       (restore/begin! {:back? (and (restore/back-navigation?) (not hydrate?))
-                       :hydrate? hydrate?}))
+                       :hydrate? hydrate?})
+      (when (= "true" (.getAttribute (.-documentElement js/document) "data-image-direct"))
+        (restore/direct-images!)))
     (rf/dispatch-sync [:init/app-db])
     (rf/dispatch-sync [:boot/document])
     (rf/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])

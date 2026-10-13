@@ -102,3 +102,9 @@ server format handlers retain their native JVM Java-time support.
 - Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
   Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
   Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.
+
+- Automatically eligible large catalog entries default to progressive display;
+  the shared dimensions/bytes predicate excludes cheap originals. Explicit
+  `:progressive? false` opts out. Catalogued WebP/AVIF originals share canonical
+  stems with JPEG/PNG renditions. Final sources retain the complete responsive set;
+  preview acquisition is native lazy markup, suppressed on history returns.

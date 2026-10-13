@@ -128,7 +128,14 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Browser builds prefer worker-compatible package exports so Markdown does not
   require a DOM during capture. The worker reuses fingerprinted browser chunks.
 
-- Network SSR emits a document-owned hero decode gate before application code.
-  Keep its mount-container marker outside the React tree; streamed skeletons
-  remain visible until the completed page can start its original entrance.
-  Local returns and JavaScript-disabled documents must remain usable.
+- Network SSR uses the generated document bootstrap before application code.
+  Keep its mount-container marker outside React; sampled gradients or usable image
+  pixels release the initial page/title clock without waiting for hydration.
+  Script wrappers reference the generated assets; do not inline authored snippets.
+  Local returns and JavaScript-disabled documents remain usable.
+
+- Responsive final preloads match rendered `imagesrcset`/`imagesizes`. Preview
+  candidates use native image discovery, never speculative preloads; external
+  returns must request only final candidates. Suppressed previews cannot release
+  the entrance gate. Exact initial image nodes keep native phase ownership through
+  hydration until terminal adoption, independently of entrance-gate readiness.

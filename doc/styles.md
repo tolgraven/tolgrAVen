@@ -203,3 +203,38 @@ resources. Its popup sheet is deferred in ordinary SSR documents.
 
 The closed Settings panel has no DOM, CSS-variable reads or view code in bootstrap.
 Opening it acquires `:settings` and its sheet before mounting its controls.
+
+Large originals default to progressive loading only when width exceeds 320,
+longest edge is at least 960, and source size is at least 64 KiB. Bundled and
+managed metadata share that eligibility predicate. Explicit `:progressive? true`
+or `false` overrides it. Small responsive images retain their source set and one
+final layer; large-but-cheap banners can still use the static color placeholder. Native pictures request the smallest AVIF/WebP preview and the normal final
+srcset concurrently. The preview starts with 4rem blur; image scale/crop stay
+unchanged. After a noticeable preview paint, blur clears over 100ms and opacity-out overlaps the sharp
+final's opacity-in for 150ms, both linear. Reduced motion, cached final readiness,
+and an opening entrance whose computed scaleX has not passed two thirds settle
+sharp immediately; there is no minimum preview duration.
+
+Each initial native image retains an exact wrapper/source owner through hydration.
+Its React SSR identifier names document-mount CSS properties; the adapter writes
+only that mount and the component adopts terminal readiness without replay.
+Later component upgrades use keyed `defc :exit`/`:presence`; the preview span is
+its painted motion root because `picture { display: contents }` cannot own an exit.
+Transient readiness and decode completions remain guarded by node and currentSrc.
+
+External departures and native history returns use the appropriate responsive
+final directly. The head classifies Back before image discovery, suppressing lazy
+previews; no preview preload is emitted. Paired SSR renders only the final.
+BFCache keeps the direct policy during pending upgrades. Normal SPA navigation
+clears it. A same-candidate selection also removes its redundant preview at commit,
+without waiting for decode; the known 400w/100vw DPR1 bucket hides it before JS.
+Shared wrappers retain media sizing, filters and object-fit through both layers.
+Original-format recovery stays native to the source picture; a failed final may
+retain usable preview except under the strict direct-return policy.
+
+Image generation samples three oriented RGB rows into validated `:placeholder
+{:colors [top middle bottom]}` metadata. The shared source helper derives a fixed
+vertical gradient for SSR image boxes and the initial page skeleton. This static
+background can release the document entrance before either image request finishes;
+the native owner and component remove it when the selected final image decodes.
+The gradient adds no request, client canvas work, scaling, or crop changes.

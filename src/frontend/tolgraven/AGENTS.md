@@ -71,6 +71,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - `navigation/` owns routing, preload, transition and scroll adapters and contracts.
   `validation/schema.cljs` assembles browser/Node app-db sections from their owners;
   small single-use shell-state contracts stay inline there.
+- Image readiness callbacks use the shared picture lifecycle: notify only a decoded,
+  visibly committed final candidate after its overlap completes. Source changes and
+  unmount release native observation; hidden ancestors wait on scoped visibility/
+  motion changes rather than frame polling. See `doc/progressive-images.md`.
 - Rendered reusable UI lives in `components/`; feature-specific UI lives with its
   module. `component/` is the declaration/lifecycle runtime, not a view inventory.
   Import the owning namespace directly; there is no top-level `views.cljs` shim.
@@ -364,3 +368,19 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Shared bindings/account actions acquire it through `supabase/runtime.cljs`;
   do not initialize it globally or add an SDK script to server HTML. Keep restored
   public state renderable while the module is loading.
+
+- Automatically eligible large catalog images default to a decorative smallest
+  preview and responsive final; the shared dimensions/bytes predicate excludes cheap originals; `:progressive? false` opts out. Native initial-image owners are
+  keyed by exact SSR wrappers and stable React IDs, stored only on the document
+  mount. They write mount CSS variables, never React children, and retain phase
+  through terminal handoff. Later upgrades use keyed `defc :exit`/`:presence`.
+  Preview blur clears from 4rem over 100ms while opacity overlaps for 150ms; cached,
+  reduced-motion and unnoticeable (opening scale <=2/3) finals settle directly.
+  External departure/history returns use final-only policy from shared restore
+  context; early head classification suppresses lazy preview discovery before JS.
+  Paired SSR emits final-only markup. SPA navigation, including query/history
+  destinations, clears that image policy while retaining the existing document clock.
+  Native decode/source completion and ref cleanup remain exact-node/currentSrc guarded.
+  Shared `restore/document-form` preserves three React document slots in Node/local
+  SSR and hydration so native image useId tokens match. `src/bootstrap/bootstrap/`
+  owns generated native document scripts; no authored snippets live in public JS.

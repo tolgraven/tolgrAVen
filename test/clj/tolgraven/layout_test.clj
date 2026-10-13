@@ -21,6 +21,19 @@
       (is (not (.contains body "img/blog.webp")))
       (is (not (.contains body "img/blog.jpg"))))))
 
+(deftest progressive-hero-preloads-only-responsive-final-after-Back-policy
+  (with-redefs [config/env {:dev true :ssr {:enabled false}}
+                content/immediate-content (constantly {:intro {:bg [{:src "img/foggy-shit-small.jpg"}]}})
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (let [body (:body (layout/render-home {:uri "/"}))
+          links (filter #(.contains % "as=\"image\"") (re-seq #"<link[^>]+>" body))
+          policy "src=\"/js/document/head.js\""]
+      (is (= 1 (count links)))
+      (is (.contains (first links) "imagesrcset=\"img/foggy-shit-small-400w.avif 400w, img/foggy-shit-small-800w.avif 800w, img/foggy-shit-small.avif 1189w\""))
+      (is (.contains (first links) "imagesizes=\"100vw\""))
+      (is (.contains body policy))
+      (is (< (.indexOf body policy) (.indexOf body (first links)))))))
+
 (deftest ssr-failure-status
   (doseq [[error status] [[(ex-info "Missing document" {:status 404}) 404]
                          [(ex-info "Renderer unavailable" {}) 503]]]
@@ -280,6 +293,22 @@
                 layout/browser-modules (constantly
                                          {:main {:output-name "main.hash.js" :depends-on #{}}
                                           :blog {:output-name "blog.hash.js" :depends-on #{:main :user}}})]
-    (is (= {:main {:url "/js/compiled/out/main.hash.js" :depends []}
-            :blog {:url "/js/compiled/out/blog.hash.js" :depends [:main :user]}}
-           (:scripts (layout/return-template {:uri "/api/page-return-template"}))))))
+    (let [result (layout/return-template {:uri "/api/page-return-template"})
+          html (:template result)]
+      (is (= {:main {:url "/js/compiled/out/main.hash.js" :depends []}
+              :blog {:url "/js/compiled/out/blog.hash.js" :depends [:main :user]}}
+             (:scripts result)))
+      (is (.contains html "/js/document/entrance.js")
+          "Paired returns use the same owned image stage")
+      (is (.contains html "data-local-return=\"true\""))
+      (is (not (.contains html "data-document-pending=\"true\""))
+          "The image stage cannot replay a paired document entrance"))))
+
+
+(deftest initial-browser-skeleton-has-an-image-colored-background
+  (with-redefs [config/env {:dev true :ssr {:enabled false}}
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (let [body (:body (layout/render-home {:uri "/"}))]
+      (is (.contains body "background-image:linear-gradient(to bottom, #"))
+      (is (< (.indexOf body "background-image:linear-gradient")
+             (.indexOf body "class=\"loading-container\""))))))

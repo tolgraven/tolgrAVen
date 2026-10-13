@@ -39,11 +39,16 @@
   (or (when-let [title (:document-title spec)] (title snapshot))
       (get-in snapshot [:content :document :title])))
 
+(defn critical-image-paths
+  "Shared content paths for the heading and declared first-paint images."
+  [spec]
+  (let [heading (get-in spec [:shell :heading])]
+    (vec (distinct (concat (when heading [(conj (vec heading) :bg :src)])
+                           (:preload-images spec))))))
+
 (defn critical-images
   "The page's shared heading and explicitly declared first-paint content images."
   [spec content]
-  (let [heading (get-in spec [:shell :heading])]
-    (->> (concat (when heading [(conj (vec heading) :bg :src)])
-                 (:preload-images spec))
-         (keep #(get-in content %))
-         (filter string?) distinct vec)))
+  (->> (critical-image-paths spec)
+       (keep #(get-in content %))
+       (filter string?) distinct vec))

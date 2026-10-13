@@ -638,3 +638,76 @@ figcaption, .float-with-caption {
 
   }
 }
+
+// Native image fetching/decoding and component presence share one layout box.
+.progressive-image {
+  display: inline-grid;
+  max-width: 100%;
+  overflow: clip;
+  vertical-align: middle;
+  background-image: var(--image-placeholder, none);
+  picture { display: contents; object-fit: inherit; }
+
+  .progressive-image__preview-layer, .progressive-image__final {
+    grid-area: 1 / 1;
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    object-fit: inherit;
+    transition: var(--image-motion, none);
+  }
+  .progressive-image__preview-layer {
+    overflow: clip;
+    opacity: var(--image-preview-opacity, 1);
+    &.exiting { opacity: 0; }
+  }
+  .progressive-image__preview {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: inherit;
+    filter: blur(var(--image-preview-blur, 4rem));
+    transition: filter 100ms linear;
+  }
+  .progressive-image__final {
+    position: relative;
+    opacity: var(--image-final-opacity, 0);
+  }
+  &[data-image-managed] {
+    .progressive-image__preview-layer, .progressive-image__final {
+      transition: opacity 150ms linear;
+    }
+    .progressive-image__final { opacity: 1; }
+    &[data-image-phase="waiting"], &[data-image-phase="retry"], &[data-image-phase="failed"] {
+      .progressive-image__final { opacity: 0; transition: none; }
+    }
+    &[data-image-phase="upgrading"] {
+      .progressive-image__preview { filter: blur(0); }
+    }
+    &[data-image-phase="decoded"] { background-image: none; }
+    &[data-image-phase="decoded"], &[data-image-phase="single"] {
+      .progressive-image__final { transition: none; }
+    }
+  }
+}
+
+// This document-root marker precedes preview discovery on native Back. The
+// component later omits its lazy preview declaratively, retaining the same final.
+html[data-image-direct] .progressive-image {
+  .progressive-image__preview-layer { display: none; transition: none; }
+  .progressive-image__final { opacity: 1; transition: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .progressive-image {
+    .progressive-image__preview-layer, .progressive-image__final,
+    .progressive-image__preview { transition: none; }
+  }
+}
+
+// Native same-candidate suppression before the component removes the duplicate.
+@media (max-width: 25em) and (max-resolution: 1dppx) {
+  .progressive-image[data-preview-width="400"][data-image-sizes="100vw"]:not([data-image-retrying]) {
+    .progressive-image__preview-layer { display: none; }
+  }
+}

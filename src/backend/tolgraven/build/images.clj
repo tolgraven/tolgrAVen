@@ -2,11 +2,20 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [malli.core :as m]
-            [tolgraven.schema.dsl :as dsl]))
+            [tolgraven.schema.dsl :as dsl]
+            [tolgraven.components.image.schema :as image]))
 
 (def catalog-schema
   [:map-of :string
-   [:map [:width pos-int?] [:height pos-int?] [:sizes [:vector pos-int?]]]])
+   [:or
+    [:map [:exclude? [:= true]]]
+    [:map [:width pos-int?]
+     [:height pos-int?]
+     [:?bytes nat-int?]
+     [:sizes [:vector pos-int?]]
+     [:?progressive? :boolean]
+     [:?generated? :boolean]
+     [:?placeholder image/placeholder]]]])
 
 (defmacro responsive-images []
   (let [catalog (edn/read-string
@@ -17,4 +26,4 @@
                     (slurp (io/resource "responsive-images.edn"))))]
     (when-not (m/validate (dsl/->malli catalog-schema) catalog)
       (throw (ex-info "Invalid responsive image catalog" {})))
-    catalog))
+    (into {} (remove (comp :exclude? val)) catalog)))

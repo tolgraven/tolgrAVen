@@ -22,8 +22,14 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   up private configuration and restores prior files on failure. See `doc/crawl-policy.md`.
 - `media/images.clj` also runs in the web runtime. Keep it standalone, bounded by
   the JVM upload adapter; Docker copies and smoke-tests it with pinned Babashka.
-- `bb images:responsive` rebuilds the opt-in resource catalog's sized AVIF/WebP
-  files. Keep original/full-size fallbacks; commit catalog and generated assets together.
+- `bb images:responsive` discovers still raster originals and standalone WebP/AVIF rasters with a longest
+  edge of at least 960 and source size at least 64 KiB (native width >320), and rebuilds the
+  responsive catalog's sized AVIF/WebP files. Preserve manual entries, explicit
+  exclusions, original/full-size fallbacks and progressive opt-outs; skip animated
+  assets, uploaded avatars and generated sidecars. `images:responsive:verify`
+  checks codec dimensions and byte budgets. The same generator samples oriented
+  3×3 RGB pixels into three horizontal bands for initial SSR backgrounds; transparent
+  pixels composite against white. `images:placeholders` refreshes only this metadata. Commit catalog and generated assets together.
 - `bb videos:responsive` atomically rebuilds cataloged mobile AV1/VP9/H.264
   renditions with FFmpeg; keep the full-size video and codec fallbacks intact.
 - Hook conversion reads index blobs, handles NUL-delimited paths, checks all outputs

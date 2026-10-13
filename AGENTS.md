@@ -37,6 +37,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Shared local-return view state is opt-in through shell/navigation/module owner
   declarations; scroll measurements, header visibility, timers and boot flags are
   rebuilt for each document.
+- The standalone `:document` CLJS target supplies parser-blocking head return policy
+  and body SSR entrance/image readiness before hydration; build it for deployment.
 - Local returns and reloads may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
 - Read `src/frontend/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/backend/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
 - Markdown code, including untagged blocks and inline snippets, shares the deferred
@@ -125,7 +127,7 @@ Do not retain completed investigation diaries or historical test counts as curre
   Text faces stay consumer-scoped; `defc`'s `:font` feature owns controlled late
   upgrades independently of stylesheet/module readiness.
   See `doc/styles.md` for source ownership and loading behavior.
-- `bb images:responsive`: rebuild the opt-in image catalog's sized AVIF/WebP assets.
+- `bb images:responsive [--force]`: discover still raster originals with longest edge ≥960, native width >320 and source size ≥64 KiB and rebuild the responsive catalog's sized AVIF/WebP assets.
 - `bb videos:responsive`: rebuild the opt-in video catalog's mobile renditions.
 - `bb fonts:icons`: regenerate small application icon fonts and full-font Unicode
   fallbacks with optional Python authoring tools; see `doc/styles.md`.

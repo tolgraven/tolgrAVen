@@ -1,10 +1,14 @@
 (ns tolgraven.react
   "Call-site preserving re-frame macros for the shared React/Reagent shim."
-  (:require [re-frame.core-instrumented :as instrumented]))
+  (:require [re-frame.core-instrumented :as instrumented]
+            [reagent.core :as reagent]))
 
 ;; Forward the original form and compiler environment so tooling records the
 ;; caller, not this shim. Upstream macros branch on goog.DEBUG through
 ;; re-frame.interop/debug-enabled?; Closure removes instrumentation in release.
+
+(defmacro with-let [bindings & body]
+  (apply @#'reagent/with-let &form &env bindings body))
 
 (defmacro dispatch [& args]
   (apply @#'instrumented/dispatch &form &env args))

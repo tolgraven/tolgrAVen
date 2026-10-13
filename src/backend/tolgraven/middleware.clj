@@ -77,6 +77,9 @@
    (assets/load-bundles "public"
                         {"main.js" [(str "/js/compiled/out/"
                                          (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))]})
+   (assets/load-bundles "public"
+                        {"document-head.js" ["/js/document/head.js"]
+                         "document-entrance.js" ["/js/document/entrance.js"]})
    (assets/load-assets "public"
                        [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?|webp|avif)$"
                         #"/media/.*\.(jpg?|jpeg?|webp|avif|mp4|webm)$"])
