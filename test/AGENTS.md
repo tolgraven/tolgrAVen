@@ -8,6 +8,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Native ref tests cover forwarded React 19 cleanup, legacy nil callbacks,
   replacement/unmount, stale cleanup and failure teardown. Keyed state tests
   protect the isolated Reagent 2.0.1 Hiccup metadata compatibility boundary.
+- Deferred hydration tests cover cached child-before-parent commit, overlapping
+  ownership, discarded renders, StrictMode cleanup and stale document completion.
+  Preserve the original batching adapter after every test/unmount.
   Scoped-state tests use native subscription handles and event writes; persistence
   checks cover accepted transactions, rejected transactions and explicit deletions.
 - Unit/component tests may replace transport boundaries. Live integration must use

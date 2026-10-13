@@ -121,6 +121,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Keep the formatter in its own memoized `defc` so control updates do not replace
   pending SSR nodes. Initial boundaries own transition batching in
   `component/hydration.cljs` until inner commit/unmount; navigation releases it.
+  Cached child completion can precede parent setup: acquire no owner after that
+  completion. Overlapping owners and StrictMode cleanup must restore batching
+  only when the last current owner releases; stale document callbacks are inert.
   Capture their initial restoration decision without subscribing to completion.
   New SPA code uses the normal loader immediately. Paired local
   returns render completed boundaries too and skip the formatter during bootstrap.

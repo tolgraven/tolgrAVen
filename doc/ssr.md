@@ -354,7 +354,13 @@ from replacing pending server content. Each initial boundary temporarily owns
 React transition batching through Reagent's batching adapter: its ordinary
 `flushSync` would discard a still-unhydrated boundary on ancestor updates.
 Inner commit/unmount releases that ownership; navigation restores ordinary
-batching immediately. Capture the initial hydration decision without a reactive
+batching immediately. Overlapping boundaries retain the override until the last
+owner releases it; stale completions cannot release owners from a later document.
+If a cached child's layout effect completes before its parent's setup, the
+parent acquires no owner. StrictMode cleanup releases its exact owner without
+marking unresolved work complete. The batching access is one documented Reagent
+2.0.1 compatibility boundary; its root API has no public per-boundary flush option.
+Capture the initial hydration decision without a reactive
 subscription to the later completion flag. New SPA code acquires the formatter through
 the normal loader immediately. Paired local documents also render completed
 boundaries, and skip `:highlight` during bootstrap. Markdown delegates ownership of

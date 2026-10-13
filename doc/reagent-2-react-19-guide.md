@@ -394,8 +394,11 @@ flush calls throughout application code.
 Our `component/hydration.cljs` temporarily changes `reagent.impl.batching/react-flush`
 to `startTransition` while deferred SSR boundaries finish hydration. That is a
 project-specific integration with an implementation namespace, with shared/global
-ownership implications. It needs a documented compatibility contract and focused
-tests. Calling it “how Reagent 2 works” would obscure the actual decision.
+ownership implications. Its tests cover cached child completion before parent
+setup, overlapping owners, discarded renders, StrictMode and stale document
+callbacks. Installed Reagent's root API offers no public per-boundary flush
+option, so this remains a narrow compatibility adapter with an explicit release
+contract. Calling it “how Reagent 2 works” would obscure the actual decision.
 
 SSR here uses shared components and Node rendering. React Server Components,
 Server Actions and React 19 form actions are not prerequisites for this design.
