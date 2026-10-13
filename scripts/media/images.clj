@@ -93,14 +93,18 @@
       (for [[src entry] catalog
             :when (or (not (:generated? entry)) (:exclude? entry)
                       (some-> (get metadata src) responsive-eligible?))]
-        [src (if (and (:generated? entry) (not (:exclude? entry)))
-               (let [{:keys [width height]} (get metadata src)]
-                 (assoc entry :width width :height height :sizes (responsive-sizes width)))
-               entry)])
+        [src (let [data (get metadata src)
+                   entry' (cond-> entry
+                            (and (not (:exclude? entry)) (:bytes data)) (assoc :bytes (:bytes data)))]
+               (if (and (:generated? entry') (not (:exclude? entry')))
+                 (let [{:keys [width height]} data]
+                   (assoc entry' :width width :height height :sizes (responsive-sizes width)))
+                 entry'))])
       (for [[src {:keys [width height] :as data}] metadata
             :when (and (not (contains? catalog src)) (responsive-eligible? data))]
         [src {:width width
               :height height
+              :bytes (:bytes data)
               :sizes (responsive-sizes width)
               :generated? true}]))))
 

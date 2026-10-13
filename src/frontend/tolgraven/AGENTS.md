@@ -365,8 +365,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   do not initialize it globally or add an SDK script to server HTML. Keep restored
   public state renderable while the module is loading.
 
-- Catalog images with sized variants default to a decorative smallest preview and
-  responsive final; `:progressive? false` opts out. Native initial-image owners are
+- Automatically eligible large catalog images default to a decorative smallest
+  preview and responsive final; the shared dimensions/bytes predicate excludes cheap originals; `:progressive? false` opts out. Native initial-image owners are
   keyed by exact SSR wrappers and stable React IDs, stored only on the document
   mount. They write mount CSS variables, never React children, and retain phase
   through terminal handoff. Later upgrades use keyed `defc :exit`/`:presence`.

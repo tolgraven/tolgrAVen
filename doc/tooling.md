@@ -113,3 +113,9 @@ Periodically remove completed labels after inspecting active workers. Keep the
 current audit's cache for incremental iterations, watched `app-dev`/`ssr`/
 `return-worker` caches, and useful reports/chunks in `target/bundle-audit`.
 Do not clear the entire Shadow directory while watches are running.
+
+Responsive catalog entries include each original's byte size, allowing bundled and
+managed images to share the runtime dimensions/bytes cutoff. The standalone codec
+scanner keeps its application-classpath-free entrypoint; focused script fixtures
+assert that its cutoff matches the shared predicate. Explicit progressive flags
+override the display default without removing responsive final candidates.

@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.test :refer [deftest is run-tests]]
             [media.images :as images]
+            [tolgraven.components.image.eligibility :as eligibility]
             [test.server :as server]
             [util.process :as p]))
 
@@ -93,7 +94,7 @@
                   "img/manual.png" {:width 250 :height 250 :bytes 100000 :frames 1}}
         catalog (images/responsive-catalog {"img/cljs@2x.png" icon "img/manual.png" manual} metadata)]
     (is (not (contains? catalog "img/cljs@2x.png")))
-    (is (= manual (get catalog "img/manual.png")))
+    (is (= (assoc manual :bytes 100000) (get catalog "img/manual.png")))
     (is (empty? (images/responsive-catalog {} metadata)))))
 
 (deftest responsive-discovery-selects-one-canonical-source-per-stem
@@ -117,12 +118,13 @@
                   "excluded.jpg" {:width 600 :height 600 :bytes 200000 :frames 1}
                   "new.png" {:width 4096 :height 4096 :bytes 1000000 :frames 1}}
         catalog (images/responsive-catalog before metadata)]
-    (is (= hero (get catalog "hero.jpg")))
+    (is (= (assoc hero :bytes 200000) (get catalog "hero.jpg")))
     (is (= excluded (get catalog "excluded.jpg")))
     (is (= manual-off (get catalog "manual.png")))
     (is (not (contains? catalog "gone.png")))
     (is (= {:width 4096
             :height 4096
+            :bytes 1000000
             :sizes [80 160 320 640 960 1280 1920 2560]
             :generated? true}
            (get catalog "new.png")))
@@ -181,6 +183,15 @@
   (let [start (System/nanoTime)]
     (is (thrown-with-msg? Exception #"timed out" (p/shell {:timeout 50 :out :string} ["sleep" "10"])))
     (is (< (/ (- (System/nanoTime) start) 1e6) 2000))))
+
+(deftest scanner-and-runtime-share-the-substantial-original-cutoff
+  (doseq [data [{:width 960 :height 600 :bytes 65536 :frames 1}
+               {:width 321 :height 960 :bytes 65536 :frames 1}
+               {:width 320 :height 1200 :bytes 100000 :frames 1}
+               {:width 950 :height 950 :bytes 100000 :frames 1}
+               {:width 1200 :height 600 :bytes 65535 :frames 1}
+               {:width 165 :height 256 :bytes 7604 :frames 1}]]
+    (is (= (images/responsive-eligible? data) (eligibility/eligible? data)))))
 
 (defn -main [& _]
   (let [{:keys [fail error]} (run-tests 'tools-test)]

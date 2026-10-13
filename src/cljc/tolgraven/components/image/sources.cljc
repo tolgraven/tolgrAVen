@@ -1,6 +1,7 @@
 (ns tolgraven.components.image.sources
   "Shared format selection for rendered pictures and server preloads."
   (:require [clojure.string :as string]
+            [tolgraven.components.image.eligibility :as eligibility]
             #?(:clj [tolgraven.build.images :refer [responsive-images]]))
   #?(:cljs (:require-macros [tolgraven.build.images :refer [responsive-images]])))
 
@@ -8,7 +9,7 @@
 
 (defn preview
   "Smallest catalog candidate for a progressive image. Sized local renditions
-   enable progressive display unless the catalog explicitly excludes it."
+   preserve responsive source selection independently of progressive display."
   [src]
   (when-let [{:keys [sizes width]} (get responsive (string/replace (or src "") #"^/" ""))]
     (when-let [size (first (sort (filter #(< % width) sizes)))]
@@ -17,8 +18,11 @@
        :webp (string/replace src #"(?i)\.(jpe?g|png|webp|avif)$" (str "-" size "w.webp"))})))
 
 (defn progressive? [src]
-  (and (some? (preview src))
-       (not= false (:progressive? (get responsive (string/replace (or src "") #"^/" ""))))))
+  (let [metadata (get responsive (string/replace (or src "") #"^/" ""))]
+    (and (some? (preview src))
+         (if (contains? metadata :progressive?)
+           (:progressive? metadata)
+           (eligibility/eligible? metadata)))))
 
 (defn dimensions [src]
   (select-keys (get responsive (string/replace (or src "") #"^/" "")) [:width :height]))
