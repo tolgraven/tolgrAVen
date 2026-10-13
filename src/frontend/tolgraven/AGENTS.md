@@ -71,6 +71,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - `navigation/` owns routing, preload, transition and scroll adapters and contracts.
   `validation/schema.cljs` assembles browser/Node app-db sections from their owners;
   small single-use shell-state contracts stay inline there.
+- Image readiness callbacks use the shared picture lifecycle: notify only a decoded,
+  visibly committed final candidate after its overlap completes. Source changes and
+  unmount release native observation; hidden ancestors wait on scoped visibility/
+  motion changes rather than frame polling. See `doc/progressive-images.md`.
 - Rendered reusable UI lives in `components/`; feature-specific UI lives with its
   module. `component/` is the declaration/lifecycle runtime, not a view inventory.
   Import the owning namespace directly; there is no top-level `views.cljs` shim.

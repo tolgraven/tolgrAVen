@@ -94,3 +94,18 @@ browser Back, then **Show request report**. Inspect actual `pageshow.persisted`,
 navigation type, visible layers and new requests rather than assuming which
 history mechanism the browser selected. Historical requests from before departure
 are retained and distinguished from new return requests.
+
+
+## Committed image readiness
+
+`image/<picture>` and its aliases accept an optional `:on-visible-ready` callback.
+It receives `{:src canonical-source :selected-src native-current-src}` once per
+source generation, after the final native image decodes, its progressive overlap
+finishes, and two committed paint frames show it in the viewport with visible
+ancestors. Ordinary images and SVGs use the same contract. The callback is absent
+from SSR and DOM attributes; it does not replace `:on-load` or `:on-error`.
+
+Hidden surfaces wait on the existing visibility observer, scoped ancestor
+attribute changes and native motion completion. They do not poll every frame.
+Changing source or unmounting cancels the previous acquisition. Consumers should
+validate their own upload/preview generation before acting on the notification.
