@@ -72,8 +72,19 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   Native CPU accounting uses the Mach timebase; cap tests must measure actual CPU
   seconds, not only duty settings. CPU probes touch disposable owned fixtures only.
 
+  Ordinary compiler snapshots reuse only an independently locked, worktree/toolchain/
+  profile/site-scoped `.shadow-cljs/builds` cache; transient ports and generated output
+  remain fresh. The container guardian inherits its writer lock. Keep Shadow's native
+  source/options validation and the unlocked 7-day/8-GiB LRU cleanup; never mount
+  watched checkout caches or retain a hot JVM per worktree. See `doc/resource-controls.md`.
+
   Custom codec images use explicit `run --node-deps skip` only for non-Node tasks;
   retain the shared queue, snapshot and container limits. Default Node bootstrap stays enabled.
+
+- `test/shadow_cache.py` measures the installed launcher's real cold/warm compiler
+  reuse with ordinary build IDs and resource budgets. Source mutation fixtures stay
+  inside isolated snapshots; keep queue/dependency/compiler time separate from wall
+  time and verify that missing fresh output is written from cached analysis.
 
 - `test/prepared_assets.clj` checks the explicit prepared inventory from source and
   then from an uberjar, preserving all bodies and independent bundle paths. Run
