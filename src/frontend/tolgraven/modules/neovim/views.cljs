@@ -21,7 +21,7 @@
     [:<>
      (for [[row cells] (map-indexed vector (:cells grid))]
        ^{:key row}
-       [:div.neovim__row
+       [:span.neovim__row
         (for [{:keys [col width text highlight cursor?]}
               (model/row-runs cells (if (= row cursor-row) cursor-col -1))]
           ^{:key col}
@@ -91,7 +91,8 @@
          [:p [:a {:href "/neovim", :target "_self", :data-document-navigation "true"} "Open Neovim"]])
        [:div.neovim__viewport {:ref #(reset! *element %)}
         [:span.neovim__measure {:aria-hidden true, :ref #(reset! *probe %)} "M"]
-        [:div.neovim__grid
+        ;; Preformatted markup keeps theme font overrides from changing cell metrics.
+        [:pre.neovim__grid
          {:tab-index 0
           :role "textbox"
           :aria-label "Neovim editor"
