@@ -108,7 +108,7 @@ bucket and prefix used by the upload. A read or dry-run check cannot establish
 current remote write/ACL permissions; verify those on the next real publish.
 
 The old localStorage library has been replaced by
-`tolgraven.component.legacy-storage`. It preserves the existing Transit-encoded
+`website.component.legacy-storage`. It preserves the existing Transit-encoded
 key and payload, caches reads, batches writes and handles cross-tab updates.
 New persistent component state uses the existing scoped storage system.
 

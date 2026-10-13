@@ -175,7 +175,7 @@ tolgraven-cpu stop
 tolgraven-cpu recover-build
 # Older reservations need the original explicit --endpoint; no new daemon is guessed.
 # Re-enable the installed service:
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/se.tolgraven.cpu-controls.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/se.website.cpu-controls.plist
 ```
 
 Installation is explicit: `bb cpu install --project /path/to/tolgrAVen`. It copies

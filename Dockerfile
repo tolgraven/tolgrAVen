@@ -55,7 +55,7 @@ RUN --mount=type=cache,id=tolgraven-shadow-release,target=/usr/src/app/.shadow-c
     JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
     lein with-profile prod,provided run -m shadow.cljs.devtools.cli release app ssr return-worker document
 RUN JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
-    lein with-profile prod,provided run -m tolgraven.build.assets
+    lein with-profile prod,provided run -m website.build.assets
 
 FROM source AS backend
 # Keep the smaller backend JVM bounded while Shadow compiles concurrently.
@@ -102,11 +102,11 @@ WORKDIR /app
 RUN mkdir -p resources/public
 COPY --from=ssr-node /usr/local/bin/node /usr/local/bin/node
 COPY --from=build /usr/src/app/target/ssr/site.js /app/ssr/site.js
-COPY --from=build /usr/src/app/target/uberjar/tolgraven.jar /app/tolgraven.jar
+COPY --from=build /usr/src/app/target/uberjar/website.jar /app/website.jar
 COPY --from=build /usr/src/app/env/prod/resources/config.edn /app/env/prod/resources/config.edn
 ARG VCS_REF=unknown
 LABEL org.opencontainers.image.revision=$VCS_REF
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 EXPOSE 3000
-CMD ["java", "-Xms64m", "-Xmx512m", "-XX:MaxDirectMemorySize=128m", "-XX:ReservedCodeCacheSize=128m", "-XX:+ExitOnOutOfMemoryError", "-Dclojure.main.report=stderr", "-Dconf=env/prod/resources/config.edn", "-cp", "/app/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]
+CMD ["java", "-Xms64m", "-Xmx512m", "-XX:MaxDirectMemorySize=128m", "-XX:ReservedCodeCacheSize=128m", "-XX:+ExitOnOutOfMemoryError", "-Dclojure.main.report=stderr", "-Dconf=env/prod/resources/config.edn", "-cp", "/app/website.jar", "clojure.main", "-m", "website.core"]

@@ -1,16 +1,16 @@
 (require '[clojure.java.io :as io]
          '[clojure.string :as string]
          '[reitit.ring :as ring]
-         '[tolgraven.routes.services :as services]
-         '[tolgraven.page-router :as pages]
-         '[tolgraven.site :as site]
-         '[tolgraven.supabase.query :as query]
-         '[tolgraven.provision.supabase.schema :as schema]
-         '[tolgraven.platform.supabase :as platform]
-         '[tolgraven.config :as config]
-         '[tolgraven.schema.http]
-         '[tolgraven.supabase.auth]
-         '[tolgraven.supabase.storage])
+         '[website.routes.services :as services]
+         '[website.page-router :as pages]
+         '[website.site :as site]
+         '[website.supabase.query :as query]
+         '[website.provision.supabase.schema :as schema]
+         '[website.platform.supabase :as platform]
+         '[website.config :as config]
+         '[website.schema.http]
+         '[website.supabase.auth]
+         '[website.supabase.storage])
 (defn ensure! [condition message] (when-not condition (throw (ex-info message {}))))
 (with-redefs [config/env {}]
   (let [router (ring/router [(services/service-routes)])
@@ -48,11 +48,11 @@
       (ensure! (not-any? #(= "blog_comments" (:table %)) (query/seed-load-plan {:path-collection [:blog-posts]}))
                "Posts still load disabled comments"))
     (doseq [[owner feature namespace symbols]
-            [[:user nil 'tolgraven.supabase.auth '[ensure-profile! profile! save-profile!]]
-             [:user nil 'tolgraven.supabase.storage '[save-avatar! png-bytes!]]
-             [:blog nil 'tolgraven.schema.http '[blog-page blog-post blog-tag]]
-             [:docs nil 'tolgraven.schema.http '[docs-page docs-query]]
-             [:main :services 'tolgraven.supabase.integrations '[strapi! image-response!]]]]
+            [[:user nil 'website.supabase.auth '[ensure-profile! profile! save-profile!]]
+             [:user nil 'website.supabase.storage '[save-avatar! png-bytes!]]
+             [:blog nil 'website.schema.http '[blog-page blog-post blog-tag]]
+             [:docs nil 'website.schema.http '[docs-page docs-query]]
+             [:main :services 'website.supabase.integrations '[strapi! image-response!]]]]
       (when-not (if feature (site/enabled? owner feature) (site/enabled? owner))
         (doseq [symbol symbols]
           (ensure! (nil? (ns-resolve namespace symbol))

@@ -51,7 +51,7 @@ Build `:document` first as above; its scripts are required by generated HTML.
 4. `bb test:browser`, then open `http://127.0.0.1:4002/`.
    Inspect final assertion counts and failures, not just compilation.
 
-`:app-test` discovers all `tolgraven.*-test` namespaces through the Shadow
+`:app-test` discovers all `website.*-test` namespaces through the Shadow
 browser runner; the obsolete Doo entry point has been removed.
 `workflow_unit_test.cljs` replaces the misleadingly named `integration_test.cljs`.
 Ring request fixtures use `ring-mock` from `:project/test`.
@@ -200,8 +200,8 @@ pending eager images/fonts retain observation within the same bounded deadline.
 
 ## Browser bundle declarations
 
-`tolgraven.build.browser/process` delegates to Shadow's browser target after
-reading `src/frontend/tolgraven/modules/*/module.cljs`. Entries need a literal
+`website.build.browser/process` delegates to Shadow's browser target after
+reading `src/frontend/website/modules/*/module.cljs`. Entries need a literal
 `(def spec {:id :feature ...})`. Their namespace can declare
 `{:bundle/depends-on #{:main :other-feature}}`; the default is `#{:main}`.
 Directories without `module.cljs` remain ordinary source organization. `:main`

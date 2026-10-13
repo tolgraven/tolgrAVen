@@ -1,6 +1,6 @@
 # Development console
 
-The console and profiling implementation live in `env/dev/cljs/tolgraven/`.
+The console and profiling implementation live in `env/dev/cljs/website/`.
 `:app-dev` and `:app-test` enable Shadow's `:dev` reader feature. Production and
 Node SSR omit those dependencies at read time, including their registration
 side effects and inspector schemas; `goog.DEBUG` is not their import boundary.

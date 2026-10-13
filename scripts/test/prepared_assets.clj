@@ -3,10 +3,10 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [optimus.link :as link]
-            [tolgraven.middleware.asset-manifest :as manifest]
-            [tolgraven.layout :as layout]
-            [tolgraven.loader.style-catalog :as styles]
-            [tolgraven.site :as site]))
+            [website.middleware.asset-manifest :as manifest]
+            [website.layout :as layout]
+            [website.loader.style-catalog :as styles]
+            [website.site :as site]))
 
 (when-not (and (.exists (io/file "/.dockerenv"))
                (= "/workspace" (.getCanonicalPath (io/file "."))))
@@ -19,15 +19,15 @@
     (.toByteArray output)))
 
 (defn verify-stack! [inventory]
-  (let [wrap-base (requiring-resolve 'tolgraven.middleware/wrap-base)
+  (let [wrap-base (requiring-resolve 'website.middleware/wrap-base)
         selected (filter #(or (= "styles.css" (:bundle %))
                                (re-find #"\.(woff2|avif)$" (:path %))) inventory)
         samples (take 3 (vals (group-by #(cond
                                           (:contents %) :style
                                           (re-find #"\.woff2$" (:path %)) :font
                                           :else :image) selected)))]
-    (with-redefs-fn {(requiring-resolve 'tolgraven.config/env) {}
-                    (requiring-resolve 'tolgraven.env/defaults) {:middleware identity}}
+    (with-redefs-fn {(requiring-resolve 'website.config/env) {}
+                    (requiring-resolve 'website.env/defaults) {:middleware identity}}
       (fn []
         (let [handler (wrap-base (constantly {:status 404, :headers {}, :body "Not found"}))]
           (assert (= 3 (count samples)) "Styles, fonts and modern images must be represented")

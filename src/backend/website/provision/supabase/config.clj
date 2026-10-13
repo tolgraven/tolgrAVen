@@ -1,0 +1,9 @@
+(ns website.provision.supabase.config)
+
+(def import-scopes
+  {"auth" #{"auth"}
+   "blog" #{"blog-comments" "blog-post-ids" "blog-posts"}
+   "chat" #{"chat"}
+   "gpt" #{"gpt" "gpt-threads"}
+   "services" #{"imagor" "instagram" "secrets" "strapi" "strava" "typesense"}
+   "users" #{"users"}})

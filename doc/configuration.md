@@ -81,7 +81,7 @@ build IDs/caches from development watches. Missing/development browser output
 fails startup; see [Testing](testing.md).
 
 The Supabase platform adapter reads REST/JDBC settings and its TLS policy from
-`tolgraven.config/env`, consolidated by cprop with the precedence above. For example,
+`website.config/env`, consolidated by cprop with the precedence above. For example,
 `SUPABASE_PUBLIC_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_DATABASE_URL` and
 `SUPABASE_INSECURE_TLS` map to the corresponding kebab-case EDN keys. JDBC can
 also use `:postgres-hostname`, `:postgres-db`, `:postgres-user`,

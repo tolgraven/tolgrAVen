@@ -1,7 +1,7 @@
 # Shared schemas and runtime validation
 
 Keep Malli contracts beside their consumers. Feature contracts live under
-`src/frontend/tolgraven/modules/<module>/`; reusable component inputs can be inline
+`src/frontend/website/modules/<module>/`; reusable component inputs can be inline
 beside the component. Browser and Node-renderer state/input contracts use `.cljs`.
 Use `.cljc` when the JVM actually consumes the same definition: module-local
 `pages.cljc`, blog data/query declarations, public CMS/Supabase data, HTTP parameters,
@@ -13,7 +13,7 @@ application data. Make a map closed explicitly when unknown keys are an error.
 
 ## Schema shorthand
 
-Schemas remain ordinary data. `tolgraven.schema.dsl/->malli` expands the local
+Schemas remain ordinary data. `website.schema.dsl/->malli` expands the local
 shorthand into standard Malli before validation or coercion:
 
 ```clojure
@@ -114,7 +114,7 @@ corrupt content or saved state from entering the application.
 
 ## Declaration contracts
 
-`tolgraven.schema.declarations` exports `component`, `module`, `dependency`,
+`website.schema.declarations` exports `component`, `module`, `dependency`,
 `dependencies`, `route-data`, `routes`, `data-plan`, `path`, and `event`.
 
 - `component` describes evaluated `defc` options: features, dependencies, loading
@@ -243,7 +243,7 @@ recursively merge Malli maps, with later fields refining/replacing earlier field
 Use `[:and base extra]` when both constraints must independently hold.
 
 ```clojure
-(require '[tolgraven.schema.declarations :as declarations])
+(require '[website.schema.declarations :as declarations])
 (def cacheable-module
   (declarations/extend-module [:map [:cache-limit [:int {:min 1}]]]))
 (def catalog-page
@@ -263,7 +263,7 @@ data; `defpage` component options use `extend-component`, like other `defc` view
 
 ## Re-frame event and subscription contracts
 
-The `tolgraven.react` registration macros accept an optional contract map immediately
+The `website.react` registration macros accept an optional contract map immediately
 after the event/subscription ID. Existing registrations retain their ordinary
 re-frame signatures, including input subscriptions and event interceptors.
 Keep reusable schemas in the owning module's `schema.cljs`; use `.cljc` when JVM consumers need them too.
@@ -310,8 +310,8 @@ normal pure computations; the shared adapter owns checking and report delivery.
 
 ## App-db by section
 
-`tolgraven.validation.schema/sections` contains the initial browser/Node sections; blog owns
-its definitions in `tolgraven.modules.blog.schema`. The composition covers CMS sections, normalized public records and managed query caches,
+`website.validation.schema/sections` contains the initial browser/Node sections; blog owns
+its definitions in `website.modules.blog.schema`. The composition covers CMS sections, normalized public records and managed query caches,
 blog pagination/thread state, navigation/forms/options, provider caches, loader
 readiness, validation reports and inspector records. Persistent roots gain their
 domain contracts from module sections or component `:state {:schema ...}`.
@@ -336,9 +336,9 @@ already validates their input. Add contracts for new meaningful CLJ/CLJS data an
 public boundaries as part of the feature, rather than a later cleanup.
 
 ```clojure
-(require '[tolgraven.schema.app-db :as app-db]
-         '[tolgraven.validation :as validation]
-         '[tolgraven.validation.schema :as state])
+(require '[website.schema.app-db :as app-db]
+         '[website.validation :as validation]
+         '[website.validation.schema :as state])
 
 (def total-schema (app-db/schema state/sections))
 (validation/check! :app-db total-schema
@@ -364,7 +364,7 @@ schemas without installing browser event interception in the Node worker.
 
 ## Reitit and Ring parameters
 
-Use `tolgraven.schema.http/coercion` and shared Malli parameter schemas. Query maps
+Use `website.schema.http/coercion` and shared Malli parameter schemas. Query maps
 remain open so unrelated query parameters survive navigation.
 
 ```clojure

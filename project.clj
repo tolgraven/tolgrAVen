@@ -1,8 +1,8 @@
 ;; The dependency prefab reads this file before copying application sources.
 (def site-packaging
-  (if (.isFile (java.io.File. "src/cljc/tolgraven/build/packaging.clj"))
-    (do (load-file "src/cljc/tolgraven/build/packaging.clj")
-        ((resolve 'tolgraven.build.packaging/plan)))
+  (if (.isFile (java.io.File. "src/cljc/website/build/packaging.clj"))
+    (do (load-file "src/cljc/website/build/packaging.clj")
+        ((resolve 'website.build.packaging/plan)))
     {}))
 
 (defproject tolgraven "0.1.0-SNAPSHOT"
@@ -83,7 +83,7 @@
 
   :min-lein-version "2.0.0"
 
-  :source-paths ["src/backend" "src/frontend" "src/cljc" "src/bootstrap"]
+  :source-paths ["src/backend" "src/frontend" "src/cljc"]
   :test-paths ["test/clj"]
   :resource-paths ["resources"]
   ;; Git ignores do not affect resource packaging in local jar builds.
@@ -93,7 +93,7 @@
                    #"(?i)(^|/)firebase/.*(firebase-adminsdk|SECRETS).*"
                    #"(^|/)(dev-config|test-config)\.edn$"])
   :target-path "target/%s/"
-  :main ^:skip-aot tolgraven.core
+  :main ^:skip-aot website.core
 
   :repositories
   [["private" {:url "https://tolgraven.hel1.your-objectstorage.com/m2/releases/"
@@ -102,7 +102,7 @@
   :plugins [[lein-codox "0.10.8"]]
 
   :aliases {"docs" ["update-in" ":" "assoc" ":prep-tasks" "^:replace []" "--"
-                    "do" ["run" "-m" "tolgraven.build.docs"] ["codox"]]}
+                    "do" ["run" "-m" "website.build.docs"] ["codox"]]}
 
   :codox
   {:language :clojurescript
@@ -151,11 +151,11 @@
    :uberjar {:jvm-opts ["-Dconf=env/prod/resources/config.edn"]
              :prep-tasks ["compile"
                           ["run" "-m" "shadow.cljs.devtools.cli" "release" "app" "ssr" "return-worker" "document"]
-                          ["run" "-m" "tolgraven.build.assets" "--build-styles"]
+                          ["run" "-m" "website.build.assets" "--build-styles"]
                           ["docs"]]
              :aot ~(:aot site-packaging)
              :omit-source true
-             :uberjar-name "tolgraven.jar"
+             :uberjar-name "website.jar"
              :source-paths ["env/prod/clj" "env/prod/cljs"]
              :resource-paths ["env/prod/resources" "resources"]}
 

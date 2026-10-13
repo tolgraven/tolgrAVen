@@ -8,10 +8,10 @@ current code owners, contracts and justified exceptions for future changes.
 
 ## Defaults
 
-- Our full-featured `tolgraven.macros/defc` builds on upstream `reagent.core/defc`,
+- Our full-featured `website.macros/defc` builds on upstream `reagent.core/defc`,
   including the composed feature path. Keep docstrings, typed arguments, lean
   arities, form-2 support, prototype bodies and stable component identity.
-- Hooks in `tolgraven.react` delegate directly to installed `reagent.hooks`.
+- Hooks in `website.react` delegate directly to installed `reagent.hooks`.
   Keep the shim's re-frame validation and development consumer tracing.
 - Feature code uses Hiccup, Clojure maps/vectors, small functions, subscriptions
   and registered events/effects. Use local ratoms for transient view state and
@@ -23,7 +23,7 @@ current code owners, contracts and justified exceptions for future changes.
 
 ## Hook boundary and caller inventory
 
-`src/frontend/tolgraven/react.cljs` delegates `use-state`, `use-ref`, `use-context`,
+`src/frontend/website/react.cljs` delegates `use-state`, `use-ref`, `use-context`,
 `use-reducer`, `use-sync-external-store`, `use-effect`, `use-layout-effect`,
 `use-memo` and `use-callback` to Reagent 2.0.1. Inspect installed upstream definitions
 when extending the hook surface; hooks do not all have identical adaptation rules.
@@ -40,7 +40,7 @@ helpers require explicit dependencies. Retain actual API-specific undefined retu
 and native containers at other boundaries.
 
 Review these source owners when changing the shim; paths are relative to
-`src/frontend/tolgraven/` unless another root is given:
+`src/frontend/website/` unless another root is given:
 
 | Owners | Contract to preserve |
 | --- | --- |
@@ -52,12 +52,12 @@ Review these source owners when changing the shim; paths are relative to
 | `components/ui.cljs`, `components/ui/code.cljs`, `components/code_block.cljs`, `modules/highlight/views.cljs` | Deferred formatting, stable native adapters, copy/fold/wrap controls and pure markup |
 | `browser_resources.cljs`, `navigation/preload.cljs`, `navigation/transition.cljs`, `ssr/client.cljs`, `ssr/local.cljs` | Lifecycle-owned scheduling, restoration and cleanup |
 | `modules/blog/views.cljs`, `modules/home/sections.cljs`, `modules/link_preview/views.cljs`, `modules/search/views.cljs`, `modules/settings/views.cljs` | Current inputs, one focus owner, deferred acquisition and declarative interactions |
-| `env/dev/cljs/tolgraven/component/dev_instrumentation.cljs` | Commit-owned resolver publication, Clojure dependency/context values and bounded diagnostics |
-| `env/dev/cljs/tolgraven/dev_console/{capture,views}.cljs`, `env/dev/cljs/tolgraven/dev/{source,stack}.cljs` | Cached external-store snapshot identity, cancellation, measurement and source acquisition |
+| `env/dev/cljs/website/component/dev_instrumentation.cljs` | Commit-owned resolver publication, Clojure dependency/context values and bounded diagnostics |
+| `env/dev/cljs/website/dev_console/{capture,views}.cljs`, `env/dev/cljs/website/dev/{source,stack}.cljs` | Cached external-store snapshot identity, cancellation, measurement and source acquisition |
 
 Relevant direct test callers include `react_hooks_test.cljs`, `blog_ssr_test.cljs`,
 `page_return_test.cljs`, `suspense_deferred_test.cljs` and `viewport_module_test.cljs`
-under `test/cljs/tolgraven/`. Do not make tests use raw dependency arrays when
+under `test/cljs/website/`. Do not make tests use raw dependency arrays when
 application callers use Reagent's value-oriented contract.
 
 ## Ownership changes to retain
@@ -70,7 +70,7 @@ application callers use Reagent's value-oriented contract.
 | `components/popover.cljs` | Closed or abandoned renders allocate no observer/listener. Open committed surfaces acquire fresh measurement owners; changing configuration, close and unmount release them. |
 | `modules/link_preview/views.cljs` | Committed candidate/config changes replace observer ownership. Pointer/focus/click interactions use Hiccup attributes and resolve current candidates at event time, preserving caller handlers. Window events use the shared listener registry. |
 | `react.cljs/compose-refs`, root/media consumers | Ordinary Hiccup refs use node/nil callbacks, including plain atoms. Composition only forwards internal/caller refs and explicit React 19 cleanup; React owns attachment/detachment. |
-| `env/dev/cljs/tolgraven/component/dev_instrumentation.cljs` | Latest diagnostic resolver publication happens in a layout commit, with Clojure values rather than serialized dependency workarounds. |
+| `env/dev/cljs/website/component/dev_instrumentation.cljs` | Latest diagnostic resolver publication happens in a layout commit, with Clojure values rather than serialized dependency workarounds. |
 | `component/hydration.cljs` | Cached child completion before parent setup acquires no batching owner. Overlapping boundaries retain ownership until the last current release; stale document callbacks cannot release newer ownership. |
 | `components/oembed.cljs`, `components/page.cljc` | Transient hover uses a local ratom; internal transition tokens stay vectors, with serialization only for actual React keys. |
 | `components/timer.cljs` | `<timeout>` keeps its mount deadline and invokes the latest committed callback. Canceled/completed hide timers release their handles. |

@@ -5,15 +5,15 @@ portability determines the extension.
 
 | Location | Responsibility |
 | --- | --- |
-| `src/frontend/tolgraven/modules/<feature>/` | Feature module specs, views, events, subscriptions, schemas and portable page/data declarations |
-| `src/backend/tolgraven/modules/<feature>/` | Server adapters owned by a feature |
-| `src/frontend/tolgraven/components/` | Reusable rendered UI, page roots and the site shell |
-| `src/frontend/tolgraven/component/` | `defc` declaration, lifecycle, managed data, motion and persistence runtime |
-| `src/frontend/tolgraven/navigation/` | Router, page preload, transitions, scroll restoration and their contracts |
-| `src/frontend/tolgraven/validation/` | Browser/Node state assembly and runtime validation adapters |
-| `src/frontend/tolgraven/dev_console/` | Development instrumentation and inspector tooling |
-| `src/cljc/tolgraven/` | Contracts and algorithms consumed by both JVM and CLJS |
-| `src/backend/tolgraven/` | HTTP, renderer, provisioning, transport and other server adapters |
+| `src/frontend/website/modules/<feature>/` | Feature module specs, views, events, subscriptions, schemas and portable page/data declarations |
+| `src/backend/website/modules/<feature>/` | Server adapters owned by a feature |
+| `src/frontend/website/components/` | Reusable rendered UI, page roots and the site shell |
+| `src/frontend/website/component/` | `defc` declaration, lifecycle, managed data, motion and persistence runtime |
+| `src/frontend/website/navigation/` | Router, page preload, transitions, scroll restoration and their contracts |
+| `src/frontend/website/validation/` | Browser/Node state assembly and runtime validation adapters |
+| `src/frontend/website/dev_console/` | Development instrumentation and inspector tooling |
+| `src/cljc/website/` | Contracts and algorithms consumed by both JVM and CLJS |
+| `src/backend/website/` | HTTP, renderer, provisioning, transport and other server adapters |
 | `experiments/clj/` | Preserved JVM prototypes, enabled only by the experiments profile |
 
 Module IDs, route names, event IDs and state keys are independent of source paths.

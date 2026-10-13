@@ -4,7 +4,7 @@
             [cheshire.core :as json]
             [clojure.java.io :as io]
             [clojure.string :as string]
-            [tolgraven.build.site :as site]))
+            [website.build.site :as site]))
 
 (def snapshot "resources/site.overrides.edn")
 (def max-bytes 262144)

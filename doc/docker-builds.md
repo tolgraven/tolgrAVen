@@ -97,7 +97,7 @@ Codox analyzes source without the custom `:browser` reader feature. The loader's
 `.cljc` reader conditional therefore omits lazy-loadable declarations during
 documentation analysis and SSR; browser builds explicitly enable that feature.
 The npm imports use the supported `$default`/`:as` form, which Codox can parse,
-and the namespace filter matches `tolgraven.*` names rather than file extensions.
+and the namespace filter matches `website.*` names rather than file extensions.
 The prefab still supplies most dependencies, so ordinary builds gain primarily
 from overlapping compilation rather than downloading dependencies.
 

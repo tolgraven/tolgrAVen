@@ -234,10 +234,10 @@ packaged validation before implementation claims.
 
 ## Sources
 
-Application owners: `src/backend/tolgraven/middleware.clj`, `handler.clj`,
+Application owners: `src/backend/website/middleware.clj`, `handler.clj`,
 `layout.clj`, `streaming.clj`, `concurrent.clj`, `routes/services.clj`,
-`modules/main/api.clj`; `src/cljc/tolgraven/loader/style_catalog.cljc`;
-`env/dev/clj/tolgraven/dev_middleware.clj`; `scripts/build/styles.mjs`;
+`modules/main/api.clj`; `src/cljc/website/loader/style_catalog.cljc`;
+`env/dev/clj/website/dev_middleware.clj`; `scripts/build/styles.mjs`;
 `doc/styles.md`, `doc/ssr.md`, `doc/media-pipeline.md`.
 
 The versioned JAR source is the evidence for implementation details, rather than

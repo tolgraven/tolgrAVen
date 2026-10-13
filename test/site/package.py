@@ -26,18 +26,18 @@ def main():
             assert len(jars)==1, jars
             with zipfile.ZipFile(jars[0]) as jar:
                 names = jar.namelist()
-                assert 'tolgraven/core.class' in names, 'Executable backend class missing'
+                assert 'website/core.class' in names, 'Executable backend class missing'
                 assert 'supabase/schema.sql' not in names
                 assert 'site.overrides.edn' not in names
-                assert not any(n.startswith('tolgraven/modules/blog/comments') for n in names)
+                assert not any(n.startswith('website/modules/blog/comments') for n in names)
                 assert 'supabase/modules/blog_comments.sql' not in names
                 if label == 'home-only':
                     assert 'public/vendor/supabase.js' not in names
                     for helper in ('auth$profile_BANG_', 'auth$ensure_profile_BANG_', 'auth$save_profile_BANG_', 'storage$png_bytes_BANG_', 'storage$save_avatar_BANG_', 'integrations$strapi_BANG_', 'integrations$image_response_BANG_'):
-                        assert not any(n.startswith('tolgraven/supabase/'+helper) for n in names), helper
+                        assert not any(n.startswith('website/supabase/'+helper) for n in names), helper
                     for owner in ('blog','user','chat','gpt','search','strava','instagram'):
-                        assert not any(n.startswith('tolgraven/modules/'+owner+'/') for n in names), owner
-                        assert not any(n.startswith('docs/codox/tolgraven.modules.'+owner+'.') for n in names), owner
+                        assert not any(n.startswith('website/modules/'+owner+'/') for n in names), owner
+                        assert not any(n.startswith('docs/codox/website.modules.'+owner+'.') for n in names), owner
                     assert not any(n.startswith('supabase/modules/') and not n.endswith('/') for n in names)
                 print(f'PASS: {label}: actual AOT jar omits disabled code, SQL and docs ({len(names)} entries)',flush=True)
     finally:

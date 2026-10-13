@@ -1,0 +1,141 @@
+(ns website.boot
+  "Ordered document setup, committed UI setup and deferred background hosts."
+  (:require-macros [website.build.site :refer [when-enabled]])
+  (:require [breaking-point.core :as bp]
+            [website.react :as r]
+            [website.macros :refer-macros [defc]]
+            [website.listener :as listener]
+            [website.component.storage :as storage]
+            [website.component.legacy-storage :as legacy]
+            [website.component.restore :as restore]
+            [website.render-context :as context]
+            [website.browser-resources :as resources]
+            [website.loader :as loader]
+            [website.validation :as validation]
+            [website.validation.runtime :as validation-runtime]
+            [website.navigation.preload :as preload]
+            [website.ssr.local :as local-page]))
+
+(defn save! []
+  ;; Capture history before flushing either disk queue. Native history ownership
+  ;; is released afterwards by pagehide, so BFCache keeps the final offset.
+  (storage/save-navigation!)
+  (r/dispatch-sync [:ls/store-path [:scroll-position] [:state :scroll-position]])
+  (legacy/drain!))
+
+(defn page-hidden! [_]
+  (restore/direct-images!)
+  (save!)
+  (restore/release-history!))
+
+(defn visibility-changed! [_]
+  (r/dispatch [:handle-visibility-change "hidden"])
+  (when (.-hidden js/document) (save!)))
+
+(defn document-bindings []
+  [{:id :boot/pagehide
+    :owner :document
+    :target "window"
+    :event "pagehide"
+    :handler page-hidden!}
+   {:id :boot/pageshow
+    :owner :document
+    :target "window"
+    :event "pageshow"
+    :handler restore/resumed!}
+   {:id :boot/storage
+    :owner :document
+    :target "window"
+    :event "storage"
+    :handler legacy/storage-event!}
+   {:id :boot/visibility
+    :owner :document
+    :target "document"
+    :event "visibilitychange"
+    :handler visibility-changed!}])
+
+(r/reg-fx :boot/load
+  (fn [_]
+    (if (= "complete" (.-readyState js/document))
+      (r/dispatch [:booted :load])
+      (listener/register! {:id :boot/load
+                           :owner :document
+                           :target "window"
+                           :event "load"
+                           :handler (fn [_]
+                                      (listener/remove! :boot/load)
+                                      (r/dispatch [:booted :load]))}))))
+
+(r/reg-event-fx :boot/document
+  (fn [_ _]
+    {:fx [[:listener/register (document-bindings)]
+          [:boot/load true]]}))
+
+(def breakpoints [:mobile 560 :tablet 992 :small-monitor 1200 :large-monitor])
+(r/reg-fx :boot/breakpoints
+  (fn [_]
+    ;; The library's set-breakpoints installs an anonymous resize listener with
+    ;; no teardown. Reuse its subscriptions/events with our owned listener.
+    (bp/register-subs breakpoints)
+    (r/dispatch [::bp/set-screen-dimensions])
+    (listener/register! {:id :boot/resize
+                         :owner :site
+                         :target "window"
+                         :event "resize"
+                         :handler #(r/dispatch [::bp/set-screen-dimensions-debounced 250])})))
+
+(def interactive-events
+  [[:ls/get-path [:scroll-position] [:state :scroll-position]]
+   [:scroll/update-direction]
+   [:scroll/update-css-var]
+   [:listener/scroll]
+   [:listener/popstate-back]
+   [:ls/get-path [:form-field] [:state :form-field]]
+   [:ls/get-path [:cv-visited] [:state :cv :visited]]
+   [:cookie/show-notice]
+   [:booted :site]])
+
+(r/reg-event-fx :boot/interactive
+  (fn [_ _]
+    {:fx [[:listener/register (document-bindings)]
+          [:boot/breakpoints true]
+          [:dispatch-n interactive-events]]}))
+
+(r/reg-event-fx :boot/stop
+  (fn [_ _]
+    {:fx [[:listener/stop :site]
+          [:listener/stop :document]]}))
+
+;; Compatibility for explicitly invoked old callers; startup uses the lifecycle.
+(r/reg-event-fx :init/init (fn [_ _] {:dispatch [:boot/interactive]}))
+
+(defn start-validation! []
+  ;; Keep restoration attached to engine readiness even if acquisition fails and
+  ;; is retried from the shared loader notification later.
+  (let [restored (-> (validation/when-ready!)
+                     (.then (fn [_]
+                              (validation-runtime/install!)
+                              (storage/ready!)))
+                     (.then (fn [_] (storage/restore-public-cache!))))]
+    (-> (if (validation/ready?)
+          (js/Promise.resolve nil)
+          (loader/load-code! {:module :coercion}))
+        (.then (fn [_] restored))
+        (.catch (fn [_] nil)))))
+
+(defc <coercion> {:profile false} []
+  (r/use-effect
+    (fn [] (resources/after-page! start-validation!))
+    [])
+  [:<>])
+
+(defc <lifecycle> {:profile false} []
+  (r/use-effect
+    (fn []
+      (r/dispatch-sync [:boot/interactive])
+      #(r/dispatch-sync [:boot/stop]))
+    [])
+  [:<> [<coercion>] [preload/<background>]
+   (when-enabled :page-capture nil [local-page/<capture>])
+   (when (and @context/*interactive? (not ^boolean goog.DEBUG))
+     [resources/<deferred> [resources/<analytics>]])])

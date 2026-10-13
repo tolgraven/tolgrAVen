@@ -50,14 +50,14 @@
         [code-html] (render! worker [code-blog])
         authored-blog (assoc-in blog [:posts 0 :text]
                                (str "Before authored content\n\n"
-                                    "<Component component=\"tolgraven.components.content.box/<highlight-box>\" text=\"SSR authored note\" tone=\"tip\" layout-width=\"20rem\" layout-flow=\"right\" />\n\n"
+                                    "<Component component=\"website.components.content.box/<highlight-box>\" text=\"SSR authored note\" tone=\"tip\" layout-width=\"20rem\" layout-flow=\"right\" />\n\n"
                                     "After authored content\n\n"
-                                    "<Component component=\"tolgraven.components.content.markdown/<image>\" src=\"/img/tolgrav-square.png\" alt=\"Authored logo\" layout-width=\"10rem\" />\n\n"
-                                    "<Component component=\"tolgraven.modules.settings.views/<config-table>\" title=\"SSR reader controls\" />\n\n"
-                                    "<Component component=\"tolgraven.modules.search.views/<inline>\" args='json:[]' />"))
+                                    "<Component component=\"website.components.content.markdown/<image>\" src=\"/img/tolgrav-square.png\" alt=\"Authored logo\" layout-width=\"10rem\" />\n\n"
+                                    "<Component component=\"website.modules.settings.views/<config-table>\" title=\"SSR reader controls\" />\n\n"
+                                    "<Component component=\"website.modules.search.views/<inline>\" args='json:[]' />"))
         [authored-html] (render! worker [authored-blog])
         authored-config (assoc-in blog [:posts 0 :text]
-                                  "<Component component=\"tolgraven.modules.settings.views/<config-table>\" title=\"SSR reader controls\" />")
+                                  "<Component component=\"website.modules.settings.views/<config-table>\" title=\"SSR reader controls\" />")
         [authored-config-html] (render! worker [authored-config])
         shells (render! worker (mapv #(assoc % :shell? true :posts [] :query-params {})
                                      [home (assoc blog :path "/blog/post/42") cv]))]
