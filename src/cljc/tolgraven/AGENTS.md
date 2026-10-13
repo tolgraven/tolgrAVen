@@ -104,3 +104,8 @@ server format handlers retain their native JVM Java-time support.
 - The responsive image catalog may opt into progressive display with `:progressive?`.
   Its smallest sized candidate is shared by preview markup and document preloads;
   final sources retain the complete responsive set.
+
+- `media/schema.cljc` owns public rendition/asset, upload/status and library contracts.
+  `media/query.cljc` builds shared public manifest queries for page plans and managed
+  browser bindings. Post `:image-assets` and CMS section sidecars carry paired SSR
+  metadata; private job/source/lease fields must not enter public projections.

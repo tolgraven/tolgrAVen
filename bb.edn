@@ -18,6 +18,8 @@
                  :task (images/verify!)}
   images:responsive {:doc "Discover large raster images and rebuild responsive AVIF/WebP sizes [--force]"
                      :task (apply images/responsive! *command-line-args*)}
+  images:placeholders {:doc "Sample build-time color gradients without changing rendition bytes"
+                       :task (images/placeholders!)}
   images:responsive:verify {:doc "Verify sized image codecs, dimensions and total bytes"
                             :task (images/responsive-verify!)}
   videos {:doc "Convert MP4 to muted VP9/AV1 WebM [--force] [files...]"

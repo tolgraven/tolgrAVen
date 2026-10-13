@@ -375,3 +375,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   the native preview span. Transient readiness belongs only to the current source;
   known 400w/100vw DPR-1 phone buckets suppress its painted layer before JS. The
   common root owns media identity/styles; refs/load handlers belong to the final.
+
+- Blog Markdown attachments use owner-scoped registered events and one serialized
+  authenticated upload queue. Keep browser File values transient, insert a stable
+  draft marker at the native selection, and replace only that marker after a
+  complete validated rendition manifest arrives. Retry/cancel/disposal invalidate
+  stale attempts; pending markers block publication. SDK reads and realtime events
+  restore URL-keyed image metadata before row validation.

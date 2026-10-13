@@ -2,7 +2,8 @@
   "Transport-independent contracts for queries, public records and writes.
    Authorization remains in the service/RLS layer, never in these schemas."
   #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]]))
-  (:require #?(:clj [tolgraven.build.site :refer [when-enabled]]) [clojure.string :as string]
+  (:require [tolgraven.media.schema :as media]
+            #?(:clj [tolgraven.build.site :refer [when-enabled]]) [clojure.string :as string]
             [tolgraven.schema.common :as c]))
 
 (defn bounded-text [limit]
@@ -53,7 +54,8 @@
   (def post
   (c/optional-map {:id c/id :permalink :?string :user [:maybe c/id]
                    :title :?string :text :?string :tags [:?or :string c/strings]
-                   :score [:maybe number?] :ts [:maybe number?]})))
+                   :score [:maybe number?] :ts [:maybe number?]
+                  :image-assets [:map-of :string media/asset]})))
 (when-enabled :blog :comments
   (def comment-record
   (c/optional-map {:id c/id :seq-id :?int :parent-post [:maybe c/id]
@@ -90,7 +92,11 @@
                  :bg_color :?string :comment_count [:maybe c/nonnegative] :karma [:maybe number?]})
    "blog_posts" (when-enabled :blog nil {:doc_id c/id :id c/id :permalink :?string :user_id [:maybe c/id]
                   :title :?string :text :?string :tags [:?or :string c/strings]
-                  :score [:maybe number?] :ts [:maybe number?]})
+                  :score [:maybe number?] :ts [:maybe number?]
+                  :image_assets [:map-of :string media/asset]})
+   "site_media" (when-enabled :main :media {:id media/id :source_url :?string
+                                             :canonical_src :?string :status media/status
+                                             :asset [:maybe media/asset] :updated_at :string})
    "blog_comments" (when-enabled :blog :comments {:id c/id :seq_id :?int :parent_post [:maybe c/id] :parent_comment [:maybe c/id]
                      :user_id [:maybe c/id] :title :?string :text :?string
                      :score [:maybe number?] :path [:?sequential c/id] :ts [:maybe number?]})

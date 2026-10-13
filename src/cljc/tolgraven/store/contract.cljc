@@ -1,5 +1,6 @@
 (ns tolgraven.store.contract
-  (:require #?(:clj [tolgraven.build.site :refer [when-enabled]]))
+  (:require [tolgraven.media.query :as media-query]
+            #?(:clj [tolgraven.build.site :refer [when-enabled]]))
   #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]])))
 
 (def ^:private service-docs
@@ -15,7 +16,7 @@
    {:collection "typesense" :doc-id "auth" :service "typesense/auth"}])
 
 (def ^:private normalized-collections
-  #{"auth" "blog-comments" "blog-post-ids" "blog-posts" "chat" "users"})
+  #{"auth" "blog-comments" "blog-post-ids" "blog-posts" "chat" "users" "media-assets"})
 
 (def ^:private service-doc-keys
   (into #{}
@@ -312,6 +313,7 @@
                                     :title (:title post)
                                     :text (:text post)
                                     :tags (:tags post)
+                                    :image-assets (or (:image_assets (media-query/normalize-row post)) {})
                                     :score (:score post)
                                     :ts (:ts post)})
                   (when-enabled :blog :comments (seq (root-comments (:id post) comment-rows)))
@@ -412,5 +414,14 @@
                "strapi" (when-enabled :main :services (contract-services seed "strapi"))
                "strava" (when-enabled :main :services (contract-services seed "strava"))
                "typesense" (when-enabled :main :services (contract-services seed "typesense"))
-               "users" (when-enabled :user nil (contract-users seed))})
+               "users" (when-enabled :user nil (contract-users seed))
+               "media-assets" (when-enabled :main :media
+                                (into {} (for [{:keys [id source_url canonical_src status asset updated_at]} (:site_media seed)
+                                               :when (= "ready" status)]
+                                           [id {:id id
+                                                :src source_url
+                                                :canonical-src canonical_src
+                                                :status status
+                                                :asset asset
+                                                :updated-at updated_at}])))})
               (when-enabled :main :documents (contract-generic-docs seed))))
