@@ -328,21 +328,21 @@
 
 (defc ^:private <observed-link-container>
   [{:keys [candidates id trust]} content]
-  (let [*element (atom nil)
-        *cleanup (atom nil)
-        observer (candidate-observer id)]
-    (fn [_ content]
-      (rf/use-effect
-       (fn []
-         (reset! *cleanup
-                 (register-container! id @*element {:trust trust}
-                                      observer candidates))
-         #(when @*cleanup (@*cleanup))) [])
-      [:div.link-preview-container
-       {:data-link-container true
-        :data-link-trust (when trust (name trust))
-        :ref #(reset! *element %)}
-       content])))
+  :let [*element (atom nil)]
+  (rf/use-effect
+    (fn []
+      (when (and @*element (seq candidates))
+        (let [observer (candidate-observer id)
+              stop! (register-container! id @*element {:trust trust} observer candidates)]
+          (fn []
+            (when stop! (stop!))
+            (when observer (.disconnect observer))))))
+    [id candidates trust])
+  [:div.link-preview-container
+   {:data-link-container true
+    :data-link-trust (when trust (name trust))
+    :ref (fn [element] (reset! *element element) nil)}
+   content])
 
 (defc <link-container>
   "Subscribe to raw text candidates and mount observation only when needed."

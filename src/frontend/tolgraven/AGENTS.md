@@ -96,6 +96,14 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   still owns data activation. SSR adapters must not install disk caches or watches.
 - Declare managed dependencies at the narrowest owning component/module/page.
   Preloads acquire those same sources; keep pending, empty, failed and cached distinct.
+- `:component-data/status` acquires the shared queue through its managed source
+  factory; the derived reaction only reads readiness. Scoped state acquisition
+  owns `:component-state/owner`, initializing before its first native value read.
+  Keep transport/initialization out of component bodies and derived computations.
+- Feature layout commits capture their render's callbacks and shape. Never store
+  pending render work in mutable slots that an abandoned render can overwrite.
+  Popover/link observers belong to committed effects with current configuration
+  and cleanup; closed popovers acquire no measurement observer/listener.
 - Supabase startup retries a settings/SDK initialization failure silently once after
   three seconds; only a second failure publishes the retry HUD. Queued reads
   retain their boot dependency and resume when startup succeeds.

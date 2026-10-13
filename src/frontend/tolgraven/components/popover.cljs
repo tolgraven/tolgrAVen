@@ -10,32 +10,28 @@
 
 (defc <popover>
   "Generic anchored content which can transition into a full-viewport surface."
-  [_ _]
-  (let [*element (atom nil)
-        *scale (r/atom nil)
-        measure! (fn []
-                   (when-let [element @*element]
-                     ;; Fill the preview width and crop the page vertically. Fitting
-                     ;; both axes makes portrait previews tiny and leaves a blank strip.
-                     (reset! *scale (/ (.-clientWidth element) (.-innerWidth js/window)))))
-        observer (when (exists? js/ResizeObserver) (js/ResizeObserver. measure!))
-        set-element! (fn [element]
-                       (when observer (.disconnect observer))
-                       (reset! *element element)
-                       (when element
-                         (when observer (.observe observer element))
-                         (measure!)))]
-    (fn [{:keys [aria-label class expanded? on-click on-pointer-enter
+  [{:keys [aria-label class expanded? on-click on-pointer-enter
                     on-pointer-leave on-key-down on-focus on-blur open? scaled?]
              :or {scaled? true}}
-            content]
-      (react/use-effect
-       (fn []
-         ;; React may clean up and re-run effects without replacing the ref.
-         (when (and observer @*element) (.observe observer @*element))
-         (.addEventListener js/window "resize" measure!)
-         #(do (when observer (.disconnect observer))
-              (.removeEventListener js/window "resize" measure!))) [])
+   content]
+  :let [*element (atom nil)
+        *scale (r/atom nil)
+        capture! (fn [element] (reset! *element element) nil)]
+  ;; Measurement belongs to the committed open surface. Closed/abandoned renders
+  ;; allocate no observer/listener; reopening and StrictMode acquire fresh owners.
+  (react/use-layout-effect
+    (fn []
+      (when (and open? scaled? (exists? js/window) @*element)
+        (let [element @*element
+              measure! #(reset! *scale (/ (.-clientWidth element) (.-innerWidth js/window)))
+              observer (when (exists? js/ResizeObserver) (js/ResizeObserver. measure!))]
+          (measure!)
+          (when observer (.observe observer element))
+          (.addEventListener js/window "resize" measure!)
+          (fn []
+            (when observer (.disconnect observer))
+            (.removeEventListener js/window "resize" measure!)))))
+    [open? scaled?])
          (when open?
            [portal/<portal> js/document.body
             [:div.popover-layer
@@ -46,7 +42,7 @@
                            (when-not scaled? " popover--readable")
                            (when expanded? " popover--expanded"))
                :data-popover true
-               :style (when @*scale {"--popover-content-scale" @*scale})
+               :style (when (and scaled? @*scale) {"--popover-content-scale" @*scale})
                :tab-index 0
                :on-key-down on-key-down
                :on-focus on-focus
@@ -56,6 +52,6 @@
                            (when on-click (on-click event)))
                :on-pointer-enter on-pointer-enter
                :on-pointer-leave on-pointer-leave
-               :ref set-element!
+               :ref capture!
                :role "dialog"}
-              [:div.popover__surface content]]]]))))
+              [:div.popover__surface content]]]]))

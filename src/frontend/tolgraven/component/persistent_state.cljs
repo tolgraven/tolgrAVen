@@ -4,6 +4,8 @@
             [clojure.string :as string]
             [tolgraven.content.contract :as content]
             [tolgraven.react :as rf]
+            [reagent.ratom :as ratom]
+            [tolgraven.schema.declarations :as declarations]
             [tolgraven.component.restore :as restore]
             [tolgraven.component.storage :as storage]))
 
@@ -131,25 +133,39 @@
   (when-let [schema (:schema options)]
     (validation/register-sections! {path schema} {:dynamic? true}))
   (let [persistence (:persist options)
-        persistence (when persistence (merge {:scope :public} (when (map? persistence) persistence)))
+        persistence' (when persistence (merge {:scope :public} (when (map? persistence) persistence)))
         id [:state path]
         entry (rf/subscribe [:component-state/entry path])]
     (when (and (:present? @entry) (:schema options))
       (validation/check! "component state" (:schema options) (:value @entry)))
     (when-not (:present? @entry)
-      (let [saved (when persistence (storage/read! id persistence))
+      (let [saved (when persistence' (storage/read! id persistence'))
             revision (:revision @entry)
             value (if saved (:value saved) (:initial options))]
         (when-let [schema (:schema options)] (validation/check! "component state" schema value))
         (rf/dispatch-sync [:component-state/init path value])
-        (when (and persistence (nil? saved))
-          (-> (storage/ready! persistence)
+        (when (and persistence' (nil? saved))
+          (-> (storage/ready! persistence')
               (.then (fn [_]
                        (when (accessible-path? path)
-                         (when-let [snapshot (storage/read! id persistence)]
+                         (when-let [snapshot (storage/read! id persistence')]
                            (rf/dispatch-sync [:component-state/restore path revision (:value snapshot)])))))))))
-    (when persistence
-      (storage/track! id #(storage/state-value path) persistence))))
+    (when persistence'
+      (storage/track! id #(storage/state-value path) persistence'))))
+
+(rf/reg-sub-raw :component-state/owner
+  {:args [:cat declarations/path declarations/state-options declarations/path
+          [:map [:?initial :any]]]
+   :result :boolean}
+  (fn [_ query]
+    (let [[_ root options full leaf] (or (:re-frame/query-v query) query)]
+      ;; Initialize once on acquisition, before the first value read, preserving
+      ;; SSR/disk priority. Pure value subscriptions keep their public identity.
+      ;; Unrelated renders never re-run initialization or resurrect deleted data.
+      (initialize! root options)
+      (when (contains? leaf :initial)
+        (rf/dispatch-sync [:component-state/init full (:initial leaf)]))
+      (ratom/make-reaction (constantly true)))))
 
 (rf/reg-sub :component-state/scoped-value
   (fn [db [_ path]] (when (accessible-path? path) (get-in db path))))
@@ -165,9 +181,10 @@
          root-options (merge defaults (if (and component? (seq path)) (dissoc options :initial) options))
          full (scoped-path scope path root-options)
          root (if component? (path-for root-options) full)]
-     (initialize! root root-options)
-     (when (and component? (seq path) (contains? options :initial))
-       (rf/dispatch-sync [:component-state/init full (:initial options)]))
+     ;; Dereferencing the acquisition handle ties its lifetime to the consumer;
+     ;; the separately returned value handle remains an ordinary subscription.
+     @(rf/subscribe [:component-state/owner root root-options full
+                     (if (and component? (seq path)) (select-keys options [:initial]) {})])
      (let [subscription (rf/subscribe [:component-state/scoped-value full])]
        (.set state-paths subscription full)
        subscription))))

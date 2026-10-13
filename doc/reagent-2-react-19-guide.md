@@ -413,7 +413,7 @@ See [our SSR guide](ssr.md) and the
 | Small error boundary using `create-class` and native state | Justified interop | React's boundary API is class-based; keep the class narrow and preserve retry behavior |
 | Native refs/observers inside motion/video adapters | Justified at the boundary | DOM lifecycle requires native handles; use Clojure configuration around them |
 | Key recovery via `Subvec.-v` and current-component fields | Fragile compatibility code | Depends on implementation representation; isolate and test while investigating a supported replacement |
-| Data prefetch initiated in `<data-body>` render | Explicit purity departure | Deduplication prevents duplicate requests, but does not make acquisition pure; investigate managed ownership without delaying preload |
+| Managed `:component-data/status` acquisition | Keep | Source factory owns the shared queue; the derived reaction and view only read status, preserving parallel preloads |
 | Global batching override during selective hydration | Specialized, needs scrutiny | Preserves SSR content but couples us to Reagent internals and overlapping boundary ownership |
 | Stable ReactMarkdown/highlighter adapters | Appropriate | Packages require native components; keep Clojure values until the specific boundary |
 | Ref/state machinery for every simple UI choice | Usually unnecessary | Prefer a local ratom or subscription when that fully expresses the behavior |

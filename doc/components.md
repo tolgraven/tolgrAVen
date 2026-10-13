@@ -249,7 +249,11 @@ of the component's arguments returning that vector:
 [<article-page> "welcome"]
 ```
 
-On first rendering, requests start before mounting. The body is created after
+On acquisition, `:component-data/status` starts the shared source queue before
+mounting; its reaction only reads status. Component bodies observe the managed
+subscription rather than invoking transport work. Preloads acquire the same
+queue before/alongside module code. SSR status only reads supplied snapshots.
+The body is created after
 all required resources are ready. A `role=status` loading placeholder is shown
 until then; set definition `:loading` to custom Hiccup to replace it. Failures
 produce a visible alert with **Retry data**, plus the existing service
@@ -456,6 +460,13 @@ readers, rather than combining unrelated SQL reads into an invented batch API.
 
 `defc` makes `<sub`, `>reset`, and `>update` available locally. No `:state`
 declaration is needed unless configuring component keys, defaults, or persistence.
+
+Scoped acquisition owns a cached `:component-state/owner` subscription which
+initializes missing state and persistence once, before the first value read.
+The returned `:component-state/scoped-value` is still the native value subscription
+with its existing query identity. Unrelated renders do not repeat initialization
+or resurrect deleted values; unmount disposes acquisition/value readers while
+retaining app-db content.
 
 ```clojure
 (defc <setting> []
