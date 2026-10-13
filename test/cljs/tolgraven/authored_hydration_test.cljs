@@ -4,6 +4,7 @@
             [reagent.dom.client :as dom]
             [shadow.lazy :as lazy]
             [tolgraven.react :as r]
+            [tolgraven.macros :refer-macros [defc]]
             [re-frame.db :as rfdb]
             [tolgraven.db :as db]
             [tolgraven.loader :as loader]
@@ -25,7 +26,7 @@
     {:promise (js/Promise. (fn [resolve _] (reset! *release resolve)))
      :release! (fn [value] (@*release value))}))
 
-(r/defc <hydration-id-fixture> []
+(defc <hydration-id-fixture> []
   [:p {:id (r/use-id)} "Client content"])
 
 (deftest native-root-options-preserve-recovery-and-identifier-prefix
