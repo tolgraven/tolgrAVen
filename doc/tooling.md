@@ -120,3 +120,12 @@ managed images to share the runtime dimensions/bytes cutoff. The standalone code
 scanner keeps its application-classpath-free entrypoint; focused script fixtures
 assert that its cutoff matches the shared predicate. Explicit progressive flags
 override the display default without removing responsive final candidates.
+
+## Middleware and asset investigation
+
+`script` entry points that inspect middleware are separate from release builds.
+Run the guarded `scripts/audit/middleware.clj` reproducer only in the installed
+CPU controller's disposable Docker snapshot. It loads actual CSS/media and
+identifies generated stand-in JavaScript explicitly; no watched output is changed.
+See [the middleware and Optimus audit](middleware-optimus-audit.md) for the command,
+request fixtures, evidence and implementation recommendations.

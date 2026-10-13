@@ -20,10 +20,17 @@ On a new checkout/worktree, copy `config/test.example.edn` to
 excludes the dev resource directory so dev credentials are not inherited.
 See [Runtime configuration](configuration.md) for defaults and integration keys.
 
+Backend handler/layout fixtures need generated CSS and the real `:document`
+bootstrap. In an isolated agent snapshot, build those prerequisites and run the
+suite together so each command sees the same output:
+
 ```sh
-lein with-profile +project/test test
+/Users/tol/.local/bin/tolgraven-cpu run -- sh -c 'npm run build && lein with-profile prod,provided run -m shadow.cljs.devtools.cli release document && lein with-profile +project/test test'
 bb test:scripts
 ```
+
+Focused pure backend tests can omit those asset prerequisites. Preserve the
+existing watched output; a placeholder bootstrap does not verify layout behavior.
 
 The script suite includes bounded Node fixtures for the initial image adapter
 (`node --test test/scripts/document_image_test.cjs`). They exercise native phase/gate
