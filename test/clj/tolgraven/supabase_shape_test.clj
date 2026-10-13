@@ -131,7 +131,9 @@
            (get-in rebuilt-contract ["auth" "roles"])))
     (is (= (get-in firebase-contract ["users" "u1"])
            (get-in rebuilt-contract ["users" "u1"])))
-    (is (= (get-in firebase-contract ["blog-posts" "1"])
+    ;; Legacy Firebase posts have no managed media; the public projection
+    ;; supplies the required empty asset map while preserving the original data.
+    (is (= (assoc (get-in firebase-contract ["blog-posts" "1"]) :image-assets {})
            (get-in rebuilt-contract ["blog-posts" "1"])))
     (is (= (get-in firebase-contract ["blog-comments" "c1"])
            (get-in rebuilt-contract ["blog-comments" "c1"])))
