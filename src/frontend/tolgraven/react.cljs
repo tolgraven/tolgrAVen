@@ -33,6 +33,7 @@
 (def use-id                    react/useId)
 (def use-state                 hooks/use-state)
 (def use-ref                   hooks/use-ref)
+(def use-id                    react/useId)
 (def create-context            react/createContext)
 (def use-context               hooks/use-context)
 (defn context-provider [context] (.-Provider context))

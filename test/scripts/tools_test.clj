@@ -74,12 +74,27 @@
   (doseq [path ["img/a-320w.png" "img/a-320w.avif" "img/a.svg" "img/a.gif"
                 "img/uploads/a.png" "img/avatar.png" "img/apple-touch-icon.png" "img/favicon.avif" "img/android-chrome.webp"]]
     (is (not (images/responsive-original? path))))
-  (is (images/responsive-eligible? {:width 600 :height 600 :bytes 16384 :frames 1}))
-  (is (images/responsive-eligible? {:width 1200 :height 300 :bytes 4000 :frames 1}))
-  (doseq [data [{:width 100 :height 100 :bytes 100000 :frames 1}
-                {:width 600 :height 600 :bytes 8000 :frames 1}
-                {:width 600 :height 600 :bytes 100000 :frames 2}]]
+  (is (images/responsive-eligible? {:width 960 :height 600 :bytes 65536 :frames 1}))
+  (is (images/responsive-eligible? {:width 1200 :height 300 :bytes 100000 :frames 1}))
+  (is (images/responsive-eligible? {:width 321 :height 960 :bytes 65536 :frames 1}))
+  (is (images/responsive-eligible? {:width 950 :height 1194 :bytes 1454052 :frames 1}))
+  (doseq [data [{:width 959 :height 959 :bytes 100000 :frames 1}
+                {:width 320 :height 1200 :bytes 100000 :frames 1}
+                {:width 960 :height 600 :bytes 65535 :frames 1}
+                {:width 264 :height 262 :bytes 24776 :frames 1}
+                {:width 1200 :height 600 :bytes 8000 :frames 1}
+                {:width 1200 :height 600 :bytes 100000 :frames 2}]]
     (is (not (images/responsive-eligible? data)))))
+
+(deftest automatic-small-icons-are-removed-without-changing-manual-overrides
+  (let [icon {:width 264 :height 262 :sizes [80 160] :generated? true}
+        manual {:width 250 :height 250 :sizes [40 80] :progressive? false}
+        metadata {"img/cljs@2x.png" {:width 264 :height 262 :bytes 24776 :frames 1}
+                  "img/manual.png" {:width 250 :height 250 :bytes 100000 :frames 1}}
+        catalog (images/responsive-catalog {"img/cljs@2x.png" icon "img/manual.png" manual} metadata)]
+    (is (not (contains? catalog "img/cljs@2x.png")))
+    (is (= manual (get catalog "img/manual.png")))
+    (is (empty? (images/responsive-catalog {} metadata)))))
 
 (deftest responsive-discovery-selects-one-canonical-source-per-stem
   (with-redefs [fs/glob (fn [& _] ["resources/public/img/a.jpg" "resources/public/img/a.avif"

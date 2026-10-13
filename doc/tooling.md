@@ -12,6 +12,7 @@ needed to run these tasks; they use Babashka's built-in libraries.
 | Images | `bb images`, `bb images:verify`, `bb images:staged`, `bb images:responsive` | Manual assets, tracked pre-commit hook; cwebp/ImageMagick |
 | Uploads | `scripts/media/images.clj` | JVM upload adapter and Docker codec smoke test; standalone `bb` script |
 | Videos | `bb videos [--force] [files...]`, `bb videos:responsive` | Manual assets; FFmpeg VP9/AV1, muted output, original MP4 fallback |
+| Development | `bb cpu <action>`, `tolgraven-cpu` | Serialized isolated Docker agent builds and scoped macOS CPU monitor; see [resource controls](resource-controls.md) |
 | Development | `bb hooks`, `bb pair <operation>` | Per-checkout setup and installed re-frame-pair skill |
 | Renderer tests | `bb ssr:fixtures [--worker path]` | Actual compiled generic Node renderer; generates browser hydration fixtures |
 | Browser tests | `bb test:browser [--port 4002]` | Static component suite and fixtures; loopback HTTP-kit server |
@@ -41,8 +42,9 @@ The Git hook validates all variants before staging any, so one failed encode doe
 not partially stage its batch. `images:verify` exits unsuccessfully for missing
 variants; it never claims codec or live-storage validation.
 
-`bb images:responsive [--force]` discovers JPEG/PNG originals and standalone WebP/AVIF rasters under `resources/public/img` with width at
-least 120 and either at least 16 KiB of source data or a longest edge of 960. It
+`bb images:responsive [--force]` discovers JPEG/PNG originals and standalone WebP/AVIF rasters under `resources/public/img` with a longest edge of at least 960 **and**
+at least 64 KiB of source data. Both thresholds must pass; native width must also
+exceed 320 so horizontal downscaling is useful. Portraits qualify by height. It
 skips vectors, animations, uploaded avatars, app icons and generated `-<width>w`
 sidecars. The defaults come from the current asset inventory: large CV logos,
 showcase screenshots and blog/header photos qualify while small compressed icons
@@ -64,9 +66,8 @@ quality or browser decoding.
 Sized encodes use one ImageMagick worker, strip metadata, replace outputs
 atomically and skip current variants unless `--force` is supplied. The catalog is
 published after all encodes succeed. Commit it together with all new variants.
-On this Mac, use the installed shared-slot CPU launcher with the existing codec
-image for generation (`tolgraven-cpu run --image tolgraven-media-tools-check
---node-deps skip -- bb images:responsive`); its isolated snapshot retains outputs for deliberate copy
+On this Mac, use the installed shared-slot CPU launcher with the ordinary codec-capable dependency
+prefab for generation (`tolgraven-cpu run -- bb images:responsive`); its isolated snapshot retains outputs for deliberate copy
 back to this worktree (never overwrite a watched output directory). Pictures
 and preloads share the same candidates; callers may supply a narrower `sizes`
 slot than the default `100vw`.

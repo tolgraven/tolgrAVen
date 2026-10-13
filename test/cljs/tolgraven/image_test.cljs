@@ -2,6 +2,7 @@
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require
     [cljs.core.async]
+    [clojure.string :as string]
     [cljs.test :refer-macros [async deftest is]]
     [reagent.core :as r]
     [reagent.dom.client :as dom]
@@ -10,7 +11,8 @@
     [tolgraven.listener :as listener]
     [tolgraven.components.image.sources :as sources]
     [tolgraven.components.shell :as shell]
-    [tolgraven.component.markup :as markup]))
+    [tolgraven.component.markup :as markup]
+    [tolgraven.component.restore :as restore]))
 
 (defn- check-original-fallback! [src done]
   (let [container (.createElement js/document "div")
@@ -57,6 +59,7 @@
                         (is (= 1 @*errors) "The original failure reaches the caller exactly once")
                         (reset! *source-reset? false)
                         (reset! *attrs {:src "/img/tolgrav-square.png"
+                                        :progressive? false
                                         :on-load changed-src-loaded!})))))]
     (.appendChild (.-body js/document) container)
     (.observe observer container #js {:childList true :subtree true})
@@ -340,15 +343,16 @@
                         #(swap! *references conj [:release element])))
           form [image/<picture> {:src src, :id "top-banner", :ref reference}]]
       (.setAttribute container "id" "app")
-      (.setAttribute container "data-document-image-owner" "native")
-      (.setAttribute container "data-document-image-phase" "upgrading")
-      (.setAttribute container "data-document-image-src" src)
       (set! (.-innerHTML container) (server/render-to-string form))
       (.appendChild (.-body js/document) container)
       (let [hero (.querySelector container "#top-banner")
             preview (.querySelector hero "[data-image-preview]")
             final (.querySelector hero "[data-image-final]")]
-        (set! (.-__progressiveHero container) hero)
+        (let [owners (js/WeakMap.)
+              owner #js {:root container :src src :phase "upgrading"
+                         :current #(not (.hasAttribute hero "data-image-managed"))}]
+          (.set owners hero owner)
+          (aset container "__progressiveImages" owners))
         (doseq [[property value] [["complete" true] ["naturalWidth" 800]
                                  ["currentSrc" (str (.-origin js/location) "/img/foggy-shit-small-800w.avif")]
                                  ["decode" #(js/Promise.resolve)]]]
@@ -360,7 +364,7 @@
               (is (identical? final (.querySelector hero "[data-image-final]")))
               (is (not (.hasAttribute hero "data-image-managed"))
                   "Hydration cannot take the native mid-fade phase away")
-              (.setAttribute container "data-document-image-phase" "ready")
+              (set! (.-phase (.get (aget container "__progressiveImages") hero)) "ready")
               (.dispatchEvent container (js/Event. "tolgraven:document-image-ready"))
               (js/setTimeout
                 (fn []
@@ -381,13 +385,14 @@
                 100))
             100))))))
 
-(deftest different-native-candidates-share-a-100ms-overlapping-exit
+(deftest different-native-candidates-share-a-150ms-overlap-and-100ms-blur
   (async done
     (-> (go-promise
           (let [container (.createElement js/document "div")
                 stylesheet (.createElement js/document "link")
                 *root (atom nil)
                 form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
+            (.setAttribute container "style" "position:fixed;inset:0 auto auto 0;width:20rem;height:20rem;z-index:999")
             (.appendChild (.-body js/document) container)
             (set! (.-rel stylesheet) "stylesheet")
             (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
@@ -418,7 +423,8 @@
                   (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 30))))
                   (when-not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))
                     (is (= "upgrading" (.getAttribute hero "data-image-phase")))
-                    (is (= "0.1s" (.-transitionDuration (js/getComputedStyle final))))
+                    (is (= "0.15s" (.-transitionDuration (js/getComputedStyle final))))
+                    (is (= "0.1s" (.-transitionDuration (js/getComputedStyle preview))))
                     (is (= "linear" (.-transitionTimingFunction (js/getComputedStyle final))))
                     (is (some? (.querySelector hero ".progressive-image__preview-layer.exiting")))
                     (js/Object.defineProperty final "currentSrc"
@@ -438,3 +444,84 @@
                 (.remove container)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
+
+(deftest responsive-catalog-defaults-and-modern-originals-share-the-source-contract
+  (is (sources/progressive? "/img/logo/tolgraven-logo.png"))
+  (is (= 80 (:width (sources/preview "/img/logo/tolgraven-logo.png"))))
+  (is (sources/should-use-modern-formats? "/img/warning_clojure.webp"))
+  (is (= "/img/warning_clojure-80w.avif" (:avif (sources/preview "/img/warning_clojure.webp"))))
+  (is (.includes (sources/srcset "/img/warning_clojure.webp" "avif") "warning_clojure.avif 165w"))
+  (is (not (sources/should-use-modern-formats? "https://cms.example/photo.webp")))
+  (with-redefs [sources/responsive {"img/manual.jpg" {:width 1000 :height 600 :sizes [80 640] :progressive? false}}]
+    (is (not (sources/progressive? "/img/manual.jpg")))))
+
+(deftest paired-SSR-renders-only-the-appropriate-responsive-final
+  (with-redefs [restore/*context (r/atom {:page (restore/page-key) :back? true :local? true})]
+    (let [html (server/render-to-string [image/<picture> {:src "/img/logo/tolgraven-logo.png"}])]
+      (is (.includes html "data-image-phase=\"single\""))
+      (is (.includes html "data-image-final=\"true\""))
+      (is (not (.includes html "data-image-preview")))
+      (is (.includes html (sources/srcset "/img/logo/tolgraven-logo.png" "avif"))))))
+
+(deftest leaving-with-pending-upgrade-removes-preview-without-replacing-final
+  (async done
+    (go-promise
+      (let [previous @restore/*context
+            container (.createElement js/document "div")
+            root (dom/create-root container)]
+        (.appendChild (.-body js/document) container)
+        (try
+          (reset! restore/*context {})
+          (dom/render root [image/<picture> {:src "/img/foggy-shit-small.jpg"}])
+          (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 60))))
+          (let [final (.querySelector container "[data-image-final]")]
+            (restore/direct-images!)
+            (r/flush)
+            (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 60))))
+            (is (nil? (.querySelector container "[data-image-preview]")))
+            (is (identical? final (.querySelector container "[data-image-final]")))
+            (is (#{"single" "decoded"} (.getAttribute (.querySelector container ".progressive-image") "data-image-phase")))
+            (is (= "1" (.-opacity (js/getComputedStyle final)))))
+          (finally
+            (dom/unmount root)
+            (.remove container)
+            (.removeAttribute (.-documentElement js/document) "data-image-direct")
+            (reset! restore/*context previous)
+            (done)))))))
+
+(deftest document-root-slots-preserve-SSR-image-identifiers-through-hydration
+  (async done
+    (let [container (.createElement js/document "div")
+          form (restore/document-form [image/<picture> {:src "/img/logo/tolgraven-logo.png"}])]
+      (.appendChild (.-body js/document) container)
+      (set! (.-innerHTML container) (server/render-to-string form))
+      (let [wrapper (.querySelector container ".progressive-image")
+            key (.getAttribute wrapper "data-image-key")
+            properties ["--image-final-opacity" "--image-preview-opacity"
+                        "--image-preview-blur" "--image-motion" "--image-placeholder"]
+            style (mapv #(.getPropertyValue (.-style wrapper) %) properties)
+            root (dom/hydrate-root container form)]
+        (js/setTimeout
+          (fn []
+            (is (identical? wrapper (.querySelector container ".progressive-image")))
+            (is (= key (.getAttribute wrapper "data-image-key")))
+            (is (= style (mapv #(.getPropertyValue (.-style wrapper) %) properties))
+                "Image variables retain the exact SSR token; unrelated dev anchor styles are independent")
+            (dom/unmount root)
+            (.remove container)
+            (done))
+          80)))))
+
+
+(deftest image-placeholder-is-static-safe-metadata-in-SSR
+  (let [src "/img/foggy-shit-small.jpg"
+        background (sources/placeholder-background src)
+        html (server/render-to-string [image/<picture> {:src src}])]
+    (is (string/starts-with? background "linear-gradient(to bottom, #"))
+    (is (.includes html "data-image-placeholder=\"true\""))
+    (is (.includes html background)))
+  (doseq [colors [["red" "#ffffff" "#000000"]
+                  ["#FFFFFF" "#ffffff" "#000000"]
+                  ["#ffffff" "#000000"]]]
+    (with-redefs [sources/responsive {"img/unsafe.jpg" {:placeholder {:colors colors}}}]
+      (is (nil? (sources/placeholder-background "/img/unsafe.jpg"))))))

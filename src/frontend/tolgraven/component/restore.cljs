@@ -36,6 +36,12 @@
           nil))
       [tracked? ready?])))
 
+(defn document-form
+  "Keep the native document's React tree slots identical in Node, local capture
+   and hydration. Empty lifecycle/console slots add no markup but preserve useId."
+  ([page] (document-form page nil nil))
+  ([page lifecycle console] [:<> page lifecycle console]))
+
 (defonce *context (r/atom {}))
 (defn initial-hydration?
   "Capture the mount's hydration decision without subscribing its render to the
@@ -60,6 +66,19 @@
 (defn document-enter? []
   (and (= (:page @*context) (page-key)) (:initial-document? @*context)))
 (defn local-document? [] (boolean (:local? @*context)))
+(defn direct-images?
+  "History/departure images retain only their device-appropriate final candidate.
+   This media policy does not change the page's SSR entrance/hydration contract."
+  []
+  (and (= (:page @*context) (page-key))
+       (boolean (or (:back? @*context) (:local? @*context)
+                    (:direct-images? @*context)))))
+(defn direct-images! []
+  ;; The document root is outside React. Native Back can suppress lazy preview
+  ;; discovery immediately while normal component rendering removes its layer.
+  (when (exists? js/document)
+    (.setAttribute (.-documentElement js/document) "data-image-direct" "true"))
+  (swap! *context assoc :page (page-key) :direct-images? true))
 (defn hydrated! []
   ;; Existing motion hooks retain their first-render decision. New components
   ;; loaded or expanded afterwards must use normal SPA entrance motion.
@@ -69,6 +88,8 @@
              (not= (first (string/split path #"\?"))
                    (first (string/split (:page @*context) #"\?"))))
     (hydration/release-all!)
+    (when (exists? js/document)
+      (.removeAttribute (.-documentElement js/document) "data-image-direct"))
     (reset! *context {})))
 (defn back-navigation? []
   (or (= "back_forward" (some-> js/performance (.getEntriesByType "navigation") (aget 0) .-type))

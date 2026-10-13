@@ -204,27 +204,34 @@ resources. Its popup sheet is deferred in ordinary SSR documents.
 The closed Settings panel has no DOM, CSS-variable reads or view code in bootstrap.
 Opening it acquires `:settings` and its sheet before mounting its controls.
 
-Progressive catalog images (`:progressive? true`) acquire the smallest AVIF/WebP
-preview and the normal responsive final concurrently through native pictures.
-The preview uses `1.5rem` blur with overscan. Different final pixels overlap it
-with simultaneous 100ms linear opacity-in/opacity-out after native decode; reduced
-motion and already usable cached/paired pixels settle immediately. The initial
-hero's document adapter owns that phase on `#app` through terminal readiness,
-including hydration in the middle of the fade. It changes no React-owned child.
-The component adopts the terminal phase declaratively, without replay, and its
-managed marker releases the native owner/listeners. Changed sources or replaced
-hero nodes cannot inherit that document phase. Later component-owned upgrades use
-ordinary keyed `defc :exit`/`:presence`; its native preview span supplies a painted
-motion root because `picture { display: contents }` cannot own an opacity exit.
+Sized catalog images default to progressive loading; `:progressive? false` opts
+out. Native pictures request the smallest AVIF/WebP preview and the normal final
+srcset concurrently. The preview starts with 4rem blur; image scale/crop stay
+unchanged. After a noticeable preview paint, blur clears over 100ms and opacity-out overlaps the sharp
+final's opacity-in for 150ms, both linear. Reduced motion, cached final readiness,
+and an opening entrance whose computed scaleX has not passed two thirds settle
+sharp immediately; there is no minimum preview duration.
 
-An exposed same-candidate selection, or the known 100vw small bucket while
-currentSrc is pending, removes redundant DOM at commit without awaiting decode.
-Transient readiness belongs only to the current source. SSR cannot infer viewport
-or DPR, so its markup declares both candidates; the 400w/100vw bucket suppresses
-the redundant painted preview on DPR-1 phones (`25em`, using the initial media-query
-font size) before JS. Larger candidates retain both layers only during an upgrade.
-The shared root retains media styles/dimensions, and object-fit inherits explicitly
-through every picture and preview wrapper. The preview is decorative. Explicit
-`:progressive? false` opts out; `true` enables other sized catalog images. Modern
-errors retry the original; final failure retains usable preview pixels. Both
-source and decode completions are guarded by native node/currentSrc identity.
+Each initial native image retains an exact wrapper/source owner through hydration.
+Its React SSR identifier names document-mount CSS properties; the adapter writes
+only that mount and the component adopts terminal readiness without replay.
+Later component upgrades use keyed `defc :exit`/`:presence`; the preview span is
+its painted motion root because `picture { display: contents }` cannot own an exit.
+Transient readiness and decode completions remain guarded by node and currentSrc.
+
+External departures and native history returns use the appropriate responsive
+final directly. The head classifies Back before image discovery, suppressing lazy
+previews; no preview preload is emitted. Paired SSR renders only the final.
+BFCache keeps the direct policy during pending upgrades. Normal SPA navigation
+clears it. A same-candidate selection also removes its redundant preview at commit,
+without waiting for decode; the known 400w/100vw DPR1 bucket hides it before JS.
+Shared wrappers retain media sizing, filters and object-fit through both layers.
+Original-format recovery stays native to the source picture; a failed final may
+retain usable preview except under the strict direct-return policy.
+
+Image generation samples three oriented RGB rows into validated `:placeholder
+{:colors [top middle bottom]}` metadata. The shared source helper derives a fixed
+vertical gradient for SSR image boxes and the initial page skeleton. This static
+background can release the document entrance before either image request finishes;
+the native owner and component remove it when the selected final image decodes.
+The gradient adds no request, client canvas work, scaling, or crop changes.

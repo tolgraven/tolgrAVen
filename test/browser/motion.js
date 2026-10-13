@@ -31,11 +31,13 @@ const settleLayout = async element => {
   });
   await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
 };
-const heroDecoded = () => {
+const heroReady = () => {
   const hero = doc()?.querySelector('#app #top-banner');
   if (!hero) return false;
   const images = hero.matches('img') ? [hero] : [...hero.querySelectorAll('img')];
-  return images.some(image => {
+  const placeholder = hero.hasAttribute('data-image-placeholder') &&
+    frame.contentWindow.getComputedStyle(hero).backgroundImage !== 'none';
+  return placeholder || images.some(image => {
     let layer = image;
     while (layer && layer !== hero.parentElement) {
       const style = frame.contentWindow.getComputedStyle(layer);
@@ -66,7 +68,7 @@ const sampleStartup = async path => {
                       scale: style.transform, shell: main.closest('#ssr-shell') !== null,
                       entranceStart: main.getAnimations().find(a => a.animationName === 'fade-in-site')?.startTime,
                       pending: doc().querySelector('#app')?.hasAttribute('data-document-pending'),
-                      heroDecoded: heroDecoded(),
+                      heroReady: heroReady(),
                       titleNode, titleAnimation,
                       titleStart: titleAnimation?.startTime,
                       titleDelay: titleAnimation?.effect.getTiming().delay,
@@ -98,8 +100,8 @@ document.querySelector('#run').onclick = async () => {
       const started = completed.filter(value => value.entranceStart != null && !value.pending);
       check(started.length && started.some(value => value.animation === 'fade-in-site'), `${label} runs the original site entrance`);
       check(new Set(started.map(value => value.entranceStart)).size === 1, `${label} keeps one animation clock through hydration`);
-      check(completed.filter(value => !value.pending && value.opacity > 0).every(value => value.heroDecoded),
-            `${label} reveals the hero with the design`);
+      check(completed.filter(value => !value.pending && value.opacity > 0).every(value => value.heroReady),
+            `${label} reveals image pixels or the sampled gradient with the design`);
       const letters = completed.filter(value => !value.pending && value.titleStart != null);
       check(letters.length && letters.every(value => value.titleDelay === 2000 &&
         Math.abs(value.titleStart - value.entranceStart) <= 35),

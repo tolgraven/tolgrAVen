@@ -8,22 +8,23 @@
    [clojure.tools.logging :as log]
    [expound.alpha :as expound]
    [mount.core :as mount]
-   [shadow.cljs.devtools.api :as shadow]
-   [shadow.cljs.devtools.server :as server]
+   [tolgraven.dev.shadow :as shadow-startup]
    [tolgraven.handler :as handler]
    [tolgraven.ssr :as ssr]
    [tolgraven.core]))
 
 
-(defn cljs-repl "Connects to a given build-id. Defaults to `:app`."
-  ([]
-   (cljs-repl :app-dev))
+(defn- cljs-builds [build-id]
+  (cond-> []
+    (not= :return-worker build-id) (conj :return-worker)
+    (and (ssr/enabled?) (not= :ssr build-id)) (conj :ssr)
+    (not= :document build-id) (conj :document)
+    true (conj build-id)))
+
+(defn cljs-repl "Connect to a watched build. Defaults to `:app-dev`."
+  ([] (cljs-repl :app-dev))
   ([build-id]
-   (server/start!)
-   (when (not= :return-worker build-id) (shadow/watch :return-worker))
-   (when (and (ssr/enabled?) (not= :ssr build-id)) (shadow/watch :ssr))
-   (shadow/watch build-id)
-   (shadow/nrepl-select build-id)))
+   (shadow-startup/select! (cljs-builds build-id) build-id)))
 
 (defn start "Starts application.  You'll usually want to run this on startup." []
   (home/gen-sitemap!)
@@ -32,7 +33,8 @@
     (log/info component "started"))
   (alter-var-root #'s/*explain-out* (constantly expound/printer))
   (add-tap (bound-fn* clojure.pprint/pprint)) ; (tap> ) goes to repl, anything else?
-  (cljs-repl))
+  (shadow-startup/start! (cljs-builds :app-dev))
+  nil)
 
 (defn stop "Stops application." []
   (doseq [component (-> (mount/stop-except #'tolgraven.core/repl-server)

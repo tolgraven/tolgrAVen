@@ -76,7 +76,8 @@
 
 (deftest originals-are-bounded-and-sniffed-before-queueing
   (is (= "png" (storage/extension! source-bytes)))
-  (is (thrown? clojure.lang.ExceptionInfo (storage/extension! (.getBytes "<svg>" "UTF-8"))))
+  (is (= "svg" (storage/extension! (.getBytes "<svg>" "UTF-8"))))
+  (is (thrown? clojure.lang.ExceptionInfo (storage/extension! (.getBytes "<html>" "UTF-8"))))
   (is (thrown? clojure.lang.ExceptionInfo
                (storage/limited-bytes! (ByteArrayInputStream. (byte-array 20)) 10)))
   (let [calls (atom [])]
@@ -265,7 +266,7 @@
                  (fn [path manifest]
                    (reset! directory path)
                    (is (m/validate (dsl/->malli image/rendition-manifest) manifest))
-                   (is (= [80 160 240] (mapv :width (:avif manifest))))
+                   (is (= [240] (mapv :width (:avif manifest))))
                    (doseq [rendition (concat [(:original manifest)] (:webp manifest) (:avif manifest))]
                      (is (.isFile (io/file path (:file rendition)))))
                    :complete))]

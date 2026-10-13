@@ -8,9 +8,10 @@ same scoped queries used by JVM page plans and managed browser subscriptions.
 A request verifies its author or CMS webhook token, bounds and identifies its
 source bytes, and uploads the original to the private `media-originals` bucket
 before accepting the queued job. Decoding belongs to the worker. Supported inputs
-are still PNG, JPEG, WebP and AVIF, up to 5 MiB and 4096 in each dimension;
-animations and corrupt inputs never produce a ready manifest. Supplied filenames
-are never passed to a codec.
+are still PNG, JPEG, WebP and AVIF rasters, plus standalone SVG, up to 5 MiB.
+Rasters are bounded to 4096 in each dimension; vectors retain their original
+geometry and bytes without raster conversion. Animations and corrupt raster
+inputs never produce a ready manifest. Supplied filenames are never passed to a codec.
 
 One mounted worker per server claims a PostgreSQL lease, normalizes orientation
 and metadata, then uses the existing standalone `media.images/asset!` generator.
@@ -40,8 +41,8 @@ write Storage objects. The browser never receives service or CMS credentials.
 ## Rendering and editor contracts
 
 An asset contains `:id`, canonical `:src`, intrinsic `:width`/`:height`, and
-`:renditions` with one `:original` and ascending vectors of `:webp`/`:avif`
-candidates. Each rendition supplies its explicit URL, dimensions, byte count and
+`:renditions` with one `:original` and, for raster images, ascending vectors of
+`:webp`/`:avif` candidates. SVG assets contain only the vector original. Each rendition supplies its explicit URL, dimensions, byte count and
 MIME type. Optional `:placeholder {:colors ["#rrggbb" "#rrggbb" "#rrggbb"]}`
 contains exactly three sampled bands. The existing codec helper samples an oriented
 3×3 RGB grid, composites transparency against white and averages each horizontal
@@ -139,3 +140,30 @@ checks do not establish live Strapi webhook configuration or remote deployment.
 The storage upload/immutable URL rules follow the [Supabase upload API](https://supabase.com/docs/guides/storage/uploads/standard-uploads)
 and [Storage access control](https://supabase.com/docs/guides/storage/security/access-control).
 Strapi media envelopes and bearer headers follow its [webhook contract](https://docs.strapi.io/cms/backend-customization/webhooks).
+
+Local public image/video filenames are immutable cache keys. Replace content by
+adding and referencing a new suffixed filename; do not overwrite deployed pixels
+under an existing URL. Successful `/img/` and `/media/` responses, including video
+range responses, receive one-year public immutable caching when Optimus has not
+already supplied its fingerprinted ten-year policy. Error responses are excluded.
+Managed uploads already use output content hashes and policy versions in their
+object keys, so generated renditions retain the same immutability guarantee.
+
+## Native SVG images
+
+Strapi reconciliation and authenticated editor uploads also accept `image/svg+xml`.
+The same durable queue, private source, lease and immutable publication path apply.
+SVG publishes one vector original; it never generates raster sizes or a progressive
+preview. The public rendition contract distinguishes complete raster AVIF/WebP
+sets from an SVG original-only manifest. The image renderer and SSR preload use
+that explicit original, with intrinsic geometry from absolute dimensions or viewBox.
+
+Before publication the bounded JVM XML adapter rejects active/external content,
+DTD/entity processing and excessive nesting. It never invokes raster codecs or
+resolves XML resources. Accepted vector geometry/styles and source bytes are kept.
+The existing 5 MiB upload limit and source-only/private versus rendition/public
+bucket distinction remain. Reapplying the module's SQL adds the SVG MIME type to
+existing owned media buckets; this source change does not provision a remote bucket.
+
+References: [SVG media type](https://www.w3.org/TR/SVG/mimereg.html) and
+[JAXP processing controls](https://docs.oracle.com/en/java/javase/21/docs/api/java.xml/javax/xml/parsers/DocumentBuilderFactory.html).

@@ -148,3 +148,12 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   expose only typed URLs/dimensions/renditions. CMS intake and Markdown uploads share
   this owner; metadata updates and delete events preserve published pixels.
   See `doc/media-pipeline.md` for configuration and operator actions.
+
+- Public image/video filenames are immutable. Changed pixels use a new suffixed
+  name. Whole/range media responses retain Optimus policy or get one-year immutable
+  caching; never apply that policy to failures or mutable document/API responses.
+
+- Managed SVG media retains its vector original with no raster sidecars. The
+  bounded `media/svg.clj` adapter rejects active/external XML content before
+  public publication; keep the complete-raster versus original-only SVG
+  rendition contracts distinct. See `doc/media-pipeline.md`.

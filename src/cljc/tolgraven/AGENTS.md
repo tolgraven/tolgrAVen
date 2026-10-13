@@ -97,13 +97,16 @@ server format handlers retain their native JVM Java-time support.
   query/realtime and JVM seed tooling consume that data. Track portable sources
   with module entries in Shadow. See `doc/supabase-tables.md`.
 
+- Source-graph capability checks read one fresh settings snapshot per build;
+  never reacquire or validate the configuration inside the per-source loop.
 - Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
   Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
   Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.
 
-- The responsive image catalog may opt into progressive display with `:progressive?`.
-  Its smallest sized candidate is shared by preview markup and document preloads;
-  final sources retain the complete responsive set.
+- Sized responsive catalog entries default to progressive display; explicit
+  `:progressive? false` opts out. Catalogued WebP/AVIF originals share canonical
+  stems with JPEG/PNG renditions. Final sources retain the complete responsive set;
+  preview acquisition is native lazy markup, suppressed on history returns.
 
 - `media/schema.cljc` owns public rendition/asset, upload/status and library contracts.
   `media/query.cljc` builds shared public manifest queries for page plans and managed

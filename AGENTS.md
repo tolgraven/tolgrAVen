@@ -37,6 +37,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Shared local-return view state is opt-in through shell/navigation/module owner
   declarations; scroll measurements, header visibility, timers and boot flags are
   rebuilt for each document.
+- The standalone `:document` CLJS target supplies parser-blocking head return policy
+  and body SSR entrance/image readiness before hydration; build it for deployment.
 - Local returns and reloads may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
 - Read `src/frontend/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/backend/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
 - Markdown code, including untagged blocks and inline snippets, shares the deferred
@@ -87,7 +89,17 @@ Do not retain completed investigation diaries or historical test counts as curre
   constraints without logging raw values, credentials, or event arguments.
 
 ## Build, Test, and Development Commands
-- `lein repl`: start the HTTP server and Shadow CLJS REPL (see `README.md`).
+- Agent Java/Lein builds use `tolgraven-cpu run -- <command>` (serialized, isolated
+  Docker prefab, default 1 CPU/2 GiB). Dockerfile/prefab work uses
+  `tolgraven-cpu run --mode buildkit -- <command>` so BuildKit steps also have a quota.
+  Increase a documented heap/memory limit only when required; avoid competing watched output.
+  `--mode host` uses nice 10 and the shared build slot when live watches/interop
+  require macOS. The installed monitor owns the project Java/renderer aggregate
+  budget; never issue ad hoc STOP/CONT or global process kills. See
+  `doc/resource-controls.md` for scope, telemetry, recovery and explicit overrides.
+- `lein repl`: start HTTP and the Clojure REPL; deferred Shadow watches compile
+  sequentially without blocking REPL acknowledgement. `(cljs-repl)` waits for
+  startup and selects the browser runtime in the calling session. See `README.md`.
 - Browser builds discover `modules/*/module.cljs` through `tolgraven.build.browser/process`;
   the literal spec `:id` owns the bundle ID and namespace `:bundle/depends-on`
   declares extra code dependencies. Runtime inventories track declaration resources
@@ -115,7 +127,7 @@ Do not retain completed investigation diaries or historical test counts as curre
   Text faces stay consumer-scoped; `defc`'s `:font` feature owns controlled late
   upgrades independently of stylesheet/module readiness.
   See `doc/styles.md` for source ownership and loading behavior.
-- `bb images:responsive [--force]`: discover large still raster originals and rebuild the responsive catalog's sized AVIF/WebP assets.
+- `bb images:responsive [--force]`: discover still raster originals with longest edge ≥960, native width >320 and source size ≥64 KiB and rebuild the responsive catalog's sized AVIF/WebP assets.
 - `bb videos:responsive`: rebuild the opt-in video catalog's mobile renditions.
 - `bb fonts:icons`: regenerate small application icon fonts and full-font Unicode
   fallbacks with optional Python authoring tools; see `doc/styles.md`.
@@ -136,7 +148,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - The CIDER Lein plugin supplies CIDER middleware; list Piggieback and Shadow
   explicitly in the development REPL handler, and
   Piggieback in Shadow's separate nREPL configuration. Keep the cold-start timeout
-  large enough for the initial watches; see `doc/dependencies.md`.
+  large enough for cold application initialization; watches run afterward.
+  See `doc/dependencies.md`.
 - Keep Ring mocks in `:project/test`, prototype dependencies/source paths in `:experiments`, and the S3 wagon in `:s3-publish`.
 - The personal `deploy-private` alias uses `lein-shell` and AWS CLI with a seeded local Maven staging repository; see `doc/dependencies.md` and `doc/lein-profiles.clj`.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
@@ -267,6 +280,15 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 - See `doc/testing.md` for mounted subscription workflows, live integration boundaries and browser checks. Unit replacements do not establish live service behavior.
 
 ## Commit & Pull Request Guidelines
+- Always open and keep in-progress PRs as drafts. Mark them ready for review only
+  after implementation and required verification are complete, the current head is
+  pushed, and the description matches it. Return a PR to draft when follow-up
+  implementation starts.
+- A user request to make or update a PR authorizes committing the task changes,
+  pushing its feature branch, and creating/updating the PR in
+  `https://github.com/tolgraven/tolgrAVen`; do not ask again solely for these
+  publication steps. This does not independently authorize force pushes, branch
+  deletion, merges, deployment, unrelated changes, or publication elsewhere.
 - Commit each completed, verified task before starting the next. Subagents commit their own finished changes; coordinate the shared index so unrelated work is never included.
 - Commit messages follow `scope: summary` (examples in git history: `scss: fix theme var helper broken`). Can also use `scope: subscope: summary`. Keep summaries short and imperative.
 - PRs should include: a clear description, related issue links, and screenshots/gifs for UI changes.

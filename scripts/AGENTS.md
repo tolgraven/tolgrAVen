@@ -23,12 +23,17 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `media/images.clj` also runs in the web runtime. Keep it standalone, bounded by
   the JVM upload adapter; Docker copies and smoke-tests it with pinned Babashka.
   `--asset source-file manifest-file` emits a complete private rendition manifest;
-  the durable backend owns publication only after every codec succeeds.
-- `bb images:responsive` discovers large still raster originals and standalone WebP/AVIF rasters and rebuilds the
+  the durable backend owns publication only after every codec succeeds. Uploaded
+  images use the same responsive cutoff as local rasters; smaller images still
+  receive full-size AVIF/WebP fallbacks without sized sidecars.
+- `bb images:responsive` discovers still raster originals and standalone WebP/AVIF rasters with a longest
+  edge of at least 960 and source size at least 64 KiB (native width >320), and rebuilds the
   responsive catalog's sized AVIF/WebP files. Preserve manual entries, explicit
   exclusions, original/full-size fallbacks and progressive opt-outs; skip animated
   assets, uploaded avatars and generated sidecars. `images:responsive:verify`
-  checks codec dimensions and byte budgets. Commit catalog and generated assets together.
+  checks codec dimensions and byte budgets. The same generator samples oriented
+  3×3 RGB pixels into three horizontal bands for initial SSR backgrounds; transparent
+  pixels composite against white. `images:placeholders` refreshes only this metadata. Commit catalog and generated assets together.
 - `bb videos:responsive` atomically rebuilds cataloged mobile AV1/VP9/H.264
   renditions with FFmpeg; keep the full-size video and codec fallbacks intact.
 - Hook conversion reads index blobs, handles NUL-delimited paths, checks all outputs
@@ -45,3 +50,12 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   SVG viewports must contain transformed outlines; compensate expanded mask boxes
   with margins to preserve the original advance/height/baseline.
   Commit declared SVGs, catalog, generated SCSS and fonts together; see `doc/styles.md`.
+
+- `dev/cpu_controls.py` is the macOS libproc/signal and Docker lifecycle adapter.
+  Keep microsecond PID identity, exact project/app ownership, pre-stopped exclusion,
+  independent CONT watchdog, container labels and shared build serialization intact.
+  Native CPU accounting uses the Mach timebase; cap tests must measure actual CPU
+  seconds, not only duty settings. CPU probes touch disposable owned fixtures only.
+
+  Custom codec images use explicit `run --node-deps skip` only for non-Node tasks;
+  retain the shared queue, snapshot and container limits. Default Node bootstrap stays enabled.

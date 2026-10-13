@@ -4,7 +4,8 @@
             [clojure.edn :as edn]
             [tolgraven.config :as config]
             [tolgraven.validation :as validation]
-            [tolgraven.media.schema :as schema])
+            [tolgraven.media.schema :as schema]
+            [tolgraven.media.svg :as svg])
   (:import [java.lang ProcessBuilder ProcessBuilder$Redirect ProcessHandle]
            [java.nio.file Files]
            [java.nio.file.attribute FileAttribute]
@@ -24,7 +25,7 @@
    [:bytes pos-int?]
    [:mime [:enum "image/png" "image/jpeg" "image/webp" "image/avif"]]])
 
-(def rendition-manifest
+(def raster-manifest
   [:map {:closed true}
    [:placeholder schema/placeholder]
    [:width [:int {:min 1 :max 4096}]]
@@ -32,6 +33,19 @@
    [:original local-rendition]
    [:webp [:vector {:min 1} local-rendition]]
    [:avif [:vector {:min 1} local-rendition]]])
+
+(def vector-manifest
+  [:map {:closed true}
+   [:width [:int {:min 1 :max 65536}]]
+   [:height [:int {:min 1 :max 65536}]]
+   [:original [:map {:closed true}
+               [:file [:= "original.svg"]]
+               [:width [:int {:min 1 :max 65536}]]
+               [:height [:int {:min 1 :max 65536}]]
+               [:bytes pos-int?]
+               [:mime [:= "image/svg+xml"]]]]])
+
+(def rendition-manifest [:or raster-manifest vector-manifest])
 
 (defonce ^:private conversion-slots (Semaphore. 2))
 (def ^:private timeout-ms 45000)
@@ -68,11 +82,11 @@
              (.waitFor process 2 TimeUnit/SECONDS))))))))
 
 (defn with-renditions!
-  "Encode one private raster and publish through a bounded temporary-file owner.
+  "Prepare one private image and publish through a bounded temporary-file owner.
    The callback receives the directory and complete EDN manifest, never partial
    outputs. Source and codecs remain durable only in the caller's Storage adapter."
   [source-bytes extension publish!]
-  (when-not (and (#{"jpg" "png" "webp" "avif"} extension)
+  (when-not (and (#{"jpg" "png" "webp" "avif" "svg"} extension)
                  (.tryAcquire conversion-slots))
     (throw (ex-info "Image conversion is busy or unsupported" {:auth/status 503})))
   (try
@@ -82,8 +96,16 @@
           manifest (io/file directory "manifest.edn")]
       (try
         (with-open [output (io/output-stream source)] (.write output ^bytes source-bytes))
-        (run-converter! source manifest)
-        (let [value (edn/read-string (slurp manifest))]
+        (let [value (if (= "svg" extension)
+                      (let [dimensions (svg/inspect! source-bytes)
+                            original (io/file directory "original.svg")]
+                        (with-open [output (io/output-stream original)] (.write output ^bytes source-bytes))
+                        (assoc dimensions :original (assoc dimensions
+                                                      :file "original.svg"
+                                                      :bytes (alength ^bytes source-bytes)
+                                                      :mime "image/svg+xml")))
+                      (do (run-converter! source manifest)
+                          (edn/read-string (slurp manifest))))]
           (when (validation/explain rendition-manifest value) (unavailable!))
           (publish! directory value))
         (finally

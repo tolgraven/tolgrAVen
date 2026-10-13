@@ -241,9 +241,13 @@
 (defn check-site-sources
   {:shadow.build/stage :compile-prepare}
   [state]
-  (let [selected-ids (conj (set (map :id (discover))) :main)
-        disabled (for [{:keys [id entry]} (all-declarations)
-                       :when (not (selected-ids id))]
+  (let [settings (site/settings)
+        declarations (all-declarations)
+        by-id (into {} (map (juxt :id identity)) declarations)
+        comments-disabled? (or (= false (get-in settings [:modules :blog :enabled]))
+                               (= false (get-in settings [:modules :blog :comments])))
+        disabled (for [{:keys [id entry]} declarations
+                       :when (not (packaging/owner-enabled? settings by-id id))]
                    (str (-> (namespace (symbol (str entry) "spec"))
                             (string/replace #"\.module$" "")
                             (string/replace "-" "_")
@@ -252,7 +256,7 @@
             :let [{:keys [resource-name] :as source} (get-in state [:sources id])]
             :when (and resource-name
                        (or (some #(string/starts-with? resource-name %) disabled)
-                           (and (not (site/enabled? :blog :comments))
+                           (and comments-disabled?
                                 (string/starts-with? resource-name "tolgraven/modules/blog/comments."))))]
       (throw (ex-info "Disabled capability entered the source graph"
                       (select-keys source [:ns :resource-name]))))
