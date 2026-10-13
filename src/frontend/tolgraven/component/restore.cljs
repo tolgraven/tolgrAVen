@@ -33,8 +33,8 @@
             (fn []
               (swap! *pending-layout disj id)
               (notify!)))
-          js/undefined))
-      #js [tracked? ready?])))
+          nil))
+      [tracked? ready?])))
 
 (defonce *context (r/atom {}))
 (defn initial-hydration?

@@ -95,7 +95,7 @@
                                (assoc props :default-language default-language
                                             :auto-languages auto-languages
                                             :code-options code-options)]))
-                         #js [default-language auto-languages code-options])]
+                         [default-language auto-languages code-options])]
     [react-markdown
      {:children md-text
       :remarkPlugins [remarkGfm]

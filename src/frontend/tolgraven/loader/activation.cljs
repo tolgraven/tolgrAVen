@@ -1,7 +1,8 @@
 (ns tolgraven.loader.activation
   "Owned module proximity/intent triggers. React keeps ownership of the observed UI."
   (:require [tolgraven.component.visibility :as visibility]
-            [tolgraven.react :as rf]))
+            [tolgraven.react :as rf]
+            [tolgraven.listener :as listener]))
 
 (def trigger [:enum :view :hover :click :event :immediate])
 (def options-schema
@@ -54,14 +55,18 @@
           events (cond-> []
                    (some modes [:view :hover :click]) (conj "focusin")
                    (or (modes :click) (modes :view)) (conj "click")
-                   (or (modes :hover) (modes :view)) (conj "pointerenter"))]
-      (doseq [event events] (.addEventListener js/document event intent! true))
+                   (or (modes :hover) (modes :view)) (conj "pointerenter"))
+          bindings (cond-> (mapv (fn [event]
+                                  {:target   "document"
+                                   :event    event
+                                   :handler  intent!
+                                   :capture? true}) events)
+                     (modes :view) (conj {:target "window", :event "resize", :handler observe!}))
+          stop-listeners! (listener/listen! :loader-activation bindings)]
       (when (modes :view)
-        (observe!)
-        (.addEventListener js/window "resize" observe!))
+        (observe!))
       (when (modes :immediate) (fire!))
       (fn []
         (reset! *active? false)
         (when-let [state @*visibility] ((:stop! state)))
-        (.removeEventListener js/window "resize" observe!)
-        (doseq [event events] (.removeEventListener js/document event intent! true))))))
+        (stop-listeners!)))))

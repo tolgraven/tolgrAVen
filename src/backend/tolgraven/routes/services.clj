@@ -5,6 +5,7 @@
     [reitit.swagger-ui :as swagger-ui]
     [reitit.ring.coercion :as coercion]
     [tolgraven.schema.http :as schemas]
+    [tolgraven.browser-resources.schema :as resource-schema]
     [tolgraven.supabase.schema :as store-schema]
     [tolgraven.config :as config]
     [tolgraven.site-catalog :as catalog]
@@ -69,6 +70,14 @@
 
 
    ["/content/bootstrap" {:get (fn [_] (content/response nil))}]
+   ["/browser-resources"
+    {:get {:summary "Public optional-script settings acquired after page readiness"
+           :responses {200 {:body resource-schema/settings}}
+           :handler (fn [_]
+                      (response/ok
+                        {:analytics (if (false? (get-in config/env [:analytics :enabled]))
+                                      {}
+                                      (select-keys (:analytics config/env) [:google-id]))}))}}]
    ["/content" {:get (fn [request]
                        (content/response (some-> (get-in request [:query-params "keys"])
                                                   (string/split #","))))}]

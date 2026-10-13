@@ -66,6 +66,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Authentication/authorization and input protection remain active in production.
 - Secrets remain in server adapters/configuration. Runtime public settings must
   expose only public origins/keys and allowed options.
+  `/api/browser-resources` projects only `:analytics :google-id`; `:enabled false`
+  disables that script. Keep these settings out of SSR markup and snapshots.
 - ImageMagick pixel-cache files stay inside the request temporary directory so
   failure/timeout cleanup also removes them. Avatar uploads normalize/validate PNG
   before bounded `media/image` conversion.

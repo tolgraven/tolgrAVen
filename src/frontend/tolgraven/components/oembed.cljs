@@ -5,6 +5,7 @@
     [tolgraven.component.data :as data]
     [tolgraven.components.oembed.contract :as schema]
     [tolgraven.react :as rf]
+    [reagent.core :as r]
     [tolgraven.components.image :as img]
     [tolgraven.macros :as m]
     [tolgraven.components.ui :as ui]))
@@ -40,12 +41,12 @@
   {:depends (fn [url _] [(dependency url)])
    :loading <loading>}
   [url :- :string placeholder]
-  (let [[hovered? set-hovered!] (rf/use-state false)
-        result (:value (data/snapshot (dependency url)))]
+  :let [*hovered? (r/atom false)]
+  (let [result (:value (data/snapshot (dependency url)))]
     [:div.oembed.parallax-sm
-     {:class (when hovered? "hovered")
-      :on-mouse-enter #(set-hovered! true)
-      :on-mouse-leave #(set-hovered! false)}
+     {:class (when @*hovered? "hovered")
+      :on-mouse-enter #(reset! *hovered? true)
+      :on-mouse-leave #(reset! *hovered? false)}
      [<player> result]]))
 
 ;; Unfinished React-player alternative; oEmbed remains the active player.

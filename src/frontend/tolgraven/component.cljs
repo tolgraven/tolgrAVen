@@ -104,10 +104,6 @@
 
 (defonce page-root-context (rf/create-context nil))
 
-(defn- set-ref! [ref element]
-  (cond (fn? ref) (ref element)
-        ref (set! (.-current ^js ref) element)))
-
 (def component-spec registry/component-spec)
 (def register-component! registry/register-component!)
 (def definition registry/definition)
@@ -188,9 +184,8 @@
    :mount (fn [state _] (when-let [init (:init @state)] (init (:component @state))))
    :unmount (fn [state] (when-let [exit (:exit @state)] (exit (:component @state))))})
 
-(defn- use-lifecycle! [owners instance]
-  (let [[version refresh!] (rf/use-state 0)
-        *active (:active instance)
+(defn- use-lifecycle! [owners instance commits shape refresh!]
+  (let [*active (:active instance)
         *element (:element instance)
         cleanup! (fn [id]
                    (when-let [{:keys [implementation state]} (get @*active id)]
@@ -242,17 +237,18 @@
           (reset! (:order instance) (into [] (comp (map first) (filter #(contains? @*active %))) owners))
           ;; Render callbacks describe work for the exact owner state used by
           ;; that render. A replaced/disposed owner cannot commit stale work.
-          (doseq [[id state commit!] @(:commits instance)
+          (doseq [[id state commit!] commits
                   :when (identical? state (get-in @*active [id :state]))]
             (commit! @*element))
-          (when-let [commit! @(:commit-shape instance)] (commit!))
-          (when @*changed? (refresh! inc)))))
-    (pos? version)))
+          (reset! (:shape instance) shape)
+          (when @*changed? (refresh! inc)))))))
 
 (defn- render-function [definition raw-args presence state-key supplied-features]
   (let [args (registry/validate-args! definition raw-args)
         *instance (rf/use-ref nil)
+        [version refresh!] (rf/use-state 0)
         hydrating? (rf/use-context restore/hydrating-context)]
+    (state-store/use-initialization! definition args state-key)
     (when-not (.-current *instance)
       (let [*element (atom nil)]
         (set! (.-current *instance)
@@ -263,13 +259,11 @@
                :element *element
                :active (atom {})
                :order (atom [])
-               :commits (atom [])
-               :commit-shape (atom nil)
                :shape (atom nil)
                :capture-ref (memoize (fn [base caller]
-                                      (fn [element]
-                                        (reset! *element element)
-                                        (doseq [ref (distinct [base caller])] (set-ref! ref element)))))})))
+                                      (rf/compose-refs
+                                        (fn [element] (reset! *element element) nil)
+                                        base caller)))})))
     (let [{*render :render *element :element capture-ref :capture-ref :as instance} (.-current *instance)
           features (or supplied-features (resolved-features definition args))
           ids (set (map first features))
@@ -295,7 +289,7 @@
                    (conj [motion-owner (assoc options :presence presence :hydrating? hydrating?
                                         :server? context/*server?* :remembered? remembered?)
                           motion/motion-feature]))
-          mounted? (use-lifecycle! owners instance)
+          mounted? (pos? version)
           form (decorate raw-form
                          (if (ids :container) (remove #(= :props (first %)) features) features)
                          spec (and (ids :lifecycle) mounted?) capture-ref)
@@ -328,8 +322,9 @@
                  (= (:raw previous) (:raw shape)) (not= (:root previous) (:root shape)))
         (throw (ex-info "Changing a feature's root structure requires an intentional Hiccup key/remount"
                         {:component (:name definition)})))
-      (reset! (:commits instance) (:commits rendered))
-      (reset! (:commit-shape instance) #(reset! (:shape instance) shape))
+      ;; Commit closures capture this render's work; an abandoned render cannot
+      ;; overwrite a mutable pending-work slot shared with the committed tree.
+      (use-lifecycle! owners instance (:commits rendered) shape refresh!)
       (instrumentation/instrument definition form'' args state-key))))
 
 (r/defc <function-body> [definition args presence state-key features]
@@ -379,9 +374,7 @@
                              :else {}))]
     (when-not (.-current *capture-ref)
       (set! (.-current *capture-ref)
-            (memoize (fn [base caller]
-                       (fn [element]
-                         (doseq [ref (distinct [base caller])] (set-ref! ref element)))))))
+            (memoize rf/compose-refs)))
     (if (false? supplied)
       content
       (let [children [:r> (rf/context-provider page-root-context) #js {:value nil} content]
@@ -438,10 +431,7 @@
 (r/defc <data-body> [definition args form]
   (let [skeleton? (rf/use-context loading/render-context)
         resources (dependencies definition args)]
-    ;; Deliberately before mount: requests are shared and not owned by a React
-    ;; instance, so speculative/abandoned renders neither duplicate nor leak them.
-    (when-not (or skeleton? context/*server?*) (data/prefetch! resources))
-    (let [status (if skeleton? :ready (data/state resources))
+    (let [status (if skeleton? :ready @(rf/subscribe [:component-data/status resources]))
           _ (restore/use-readiness! (not= :loading status))
           rendered? (= :rendered (:loading-prefab (merge (:options definition)
                                                        (current-spec definition args))))]

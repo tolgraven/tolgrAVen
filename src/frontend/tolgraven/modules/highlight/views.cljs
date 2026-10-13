@@ -55,12 +55,12 @@
   (let [language (or language (when inline? (or inline-language "bash")))
         numbered? (and (not inline?) (if (nil? line-numbers?) (not basic?) line-numbers?))
         tree (rf/use-memo #(code-tree code language default-language auto-languages)
-                         #js [code language default-language auto-languages])
+                         [code language default-language auto-languages])
         ;; Reuse the selected AST instead of running auto-detection twice.
         generator (rf/use-memo
                     #(clj->js {:listLanguages (fn [] #js [])
                                :highlightAuto (fn [_] tree)})
-                    #js [tree])]
+                    [tree])]
     [syntax-highlighter
      (cond-> {:language (or (.-language tree) language "text")
               :astGenerator generator

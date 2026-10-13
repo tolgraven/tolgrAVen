@@ -4,13 +4,14 @@
             [reagent.core :as r]
             [reagent.dom.client :as dom]
             [reagent.dom.server :as server]
+            [reagent.impl.batching :as batching]
             [tolgraven.component.restore :as restore]
             [tolgraven.component.hydration :as hydration]
             [tolgraven.react :as rf]
             [tolgraven.test-support :as support]))
 
 (r/defc <highlighted> [committed!]
-  (rf/use-layout-effect (fn [] (committed!) js/undefined) #js [])
+  (rf/use-layout-effect (fn [] (committed!) nil) [])
   [:pre [:code [:span {:style {:color "#fb4934"}} "defn"] " greet"]])
 
 (r/defc <formatter> [server? lazy-view]
@@ -22,7 +23,7 @@
 
 (r/defc <boundary> [server? lazy-view committed!]
   (let [[wrap? set-wrap!] (rf/use-state false)]
-    (rf/use-layout-effect (fn [] (committed!) js/undefined) #js [])
+    (rf/use-layout-effect (fn [] (committed!) nil) [])
     [:div {:class (when wrap? "wrapped")
            :data-hydrating (:hydrate? @restore/*context)}
      [:button {:type "button" :on-click #(set-wrap! (not wrap?))} "Wrap"]
@@ -80,3 +81,73 @@
                 (reset! restore/*context before-restore)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
+
+(r/defc <hold-probe> [id *callbacks]
+  (let [complete! (hydration/use-deferred! true)]
+    (rf/use-layout-effect #(swap! *callbacks assoc id complete!) [id complete!])
+    [:span (name id)]))
+
+(r/defc <early-child> [complete!]
+  (rf/use-layout-effect complete! [])
+  [:span "Ready"])
+
+(r/defc <cached-boundary> []
+  (let [complete! (hydration/use-deferred! true)]
+    [<early-child> complete!]))
+
+(r/defc <discarded> [gate] (throw gate))
+
+(deftest cached-inner-commit-does-not-install-a-stale-global-owner
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                original batching/react-flush]
+            (try
+              (await! (support/render! root [:> rf/strict-mode [<cached-boundary>]]))
+              (is (= "Ready" (.-textContent element)))
+              (is (identical? original batching/react-flush)
+                  "Child completion before parent setup must leave no batching override")
+              (finally (support/unmount! root) (hydration/release-all!)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest overlapping-and-abandoned-hydration-owners-release-without-stale-completion
+  (async done
+    (let [*callbacks (atom {})
+          gate (js/Promise. (fn [_ _]))]
+      (-> (go-promise
+            (let [element (.createElement js/document "div")
+                  root (await! (support/create-root! element))
+                  original batching/react-flush]
+              (try
+                (await! (support/render! root
+                          [rf/suspense {:fallback (r/as-element [:p "Waiting"])}
+                           [:<> [<hold-probe> :discarded *callbacks] [<discarded> gate]]]))
+                (is (identical? original batching/react-flush) "Uncommitted renders acquire no owner")
+                (is (empty? @*callbacks))
+                (await! (support/render! root
+                          [:> rf/strict-mode
+                           [:<> (with-meta [<hold-probe> :first *callbacks] {:key :first})
+                            (with-meta [<hold-probe> :second *callbacks] {:key :second})]]))
+                (is (identical? rf/start-transition batching/react-flush))
+                ((:first @*callbacks))
+                (is (identical? rf/start-transition batching/react-flush)
+                    "The remaining owner keeps transition batching")
+                ((:second @*callbacks))
+                (is (identical? original batching/react-flush))
+                (await! (support/render! root
+                          (with-meta [<hold-probe> :old *callbacks] {:key :old})))
+                (let [old! (:old @*callbacks)]
+                  (hydration/release-all!)
+                  (is (identical? original batching/react-flush))
+                  (await! (support/render! root
+                            (with-meta [<hold-probe> :new *callbacks] {:key :new})))
+                  (old!)
+                  (is (identical? rf/start-transition batching/react-flush)
+                      "An old document completion cannot release a new owner's gate"))
+                (await! (support/render! root [:p "Away"]))
+                (is (identical? original batching/react-flush) "Unmount releases the pending owner")
+                (finally (support/unmount! root) (hydration/release-all!)))))
+          (.catch #(is false (str %)))
+          (.finally done)))))

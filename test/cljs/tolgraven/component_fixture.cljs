@@ -57,7 +57,9 @@
    [:p "This card uses its own root for visibility and animation."]])
 
 (defonce *show-persistent? (r/atom true))
-(defc <persistent-counter> {:state {:id :fixture-counter :persist true}} []
+(defc <persistent-counter>
+  {:state {:id :fixture-counter :persist true :initial {:opts {:count 0}}}}
+  []
   :let [*count (<sub :comp [:opts :count] {:initial 0})]
   [:button {:on-click #(>update *count inc)} (str "Persistent count: " @*count)])
 

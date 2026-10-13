@@ -1,4 +1,5 @@
 {:prod true
+ :analytics {:google-id "G-Y8H6RLZX3V"}
  :port 3000
  :image-converter "/app/scripts/media/images.clj"
  :ssr {:enabled true
