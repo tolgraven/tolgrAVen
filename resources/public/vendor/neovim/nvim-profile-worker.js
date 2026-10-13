@@ -1,5 +1,11 @@
 // Install pinned plugins before the unmodified upstream worker starts Neovim.
 // Emscripten preRun is the filesystem boundary; no plugin bytes travel over RPC.
+// The upstream development worker logs each RPC input byte. Bulk imports can
+// spend their request budget on console traffic; retain all other diagnostics.
+const upstreamConsoleLog = console.log.bind(console);
+console.log = (message, ...details) => {
+  if (message !== 'POP BYTE') upstreamConsoleLog(message, ...details);
+};
 let profile, workspace;
 const upstreamImportScripts = self.importScripts.bind(self);
 self.importScripts = (...paths) => {

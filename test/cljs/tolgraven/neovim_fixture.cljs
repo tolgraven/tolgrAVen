@@ -230,10 +230,18 @@
    :files [{:path "before/core.clj", :text "(ns example)\n(def answer 41)\n"}
            {:path "after/core.clj", :text "(ns example)\n(def answer 42)\n(println answer)\n"}]})
 
+(def large-diff
+  ;; The first 32 KiB boundary splits a UTF-8 character. This catches bulk
+  ;; source startup failures that a short initial buffer cannot exercise.
+  (update sample-diff :files
+          #(mapv (fn [file]
+                   (update file :text str "\n\n\n\n\n"
+                           (apply str (repeat 4096 ";; λ retained\n")))) %)))
+
 (defn diff-checks! []
   (reset! *diff "Running…")
-  (let [{:keys [ready stop!]}
-        (runtime/start! {:cols 100, :rows 20, :document sample-diff}
+  (let [{:keys [ready stop!] transport-session :session}
+        (runtime/start! {:cols 100, :rows 20, :document large-diff}
                         (fn [_]) (fn [status message]
                                    (when-not (= :ready status) (reset! *diff message))))]
     (-> ready
@@ -241,6 +249,7 @@
                  (when-not session (throw (js/Error. "Diff startup failed")))
                  (runtime/request! session "nvim_exec_lua"
                    ["local wins = vim.api.nvim_list_wins(); assert(#wins == 2)
+                     assert(math.abs(vim.api.nvim_win_get_width(wins[1]) - vim.api.nvim_win_get_width(wins[2])) <= 1, 'Diff panes are unequal')
                      for _, win in ipairs(wins) do
                        local buf = vim.api.nvim_win_get_buf(win)
                        assert(not vim.bo[buf].modifiable and vim.bo[buf].readonly)
@@ -250,16 +259,16 @@
                      end
                      assert(vim.fn.diff_hlID(2, 14) ~= 0, 'Native diff highlighting missing')
                      local f = assert(io.open('/workspace/before/core.clj', 'rb'))
-                     assert(f:read('*a') == [[(ns example)\n(def answer 41)\n]]); f:close()
+                     assert(vim.fn.sha256(f:read('*a')) == '8b9c16dd4d3e76ae000de41bd045b613abc273b65a28ff48e20be0be49f5bd7e', 'Bulk UTF-8 source bytes changed'); f:close()
                      return true" []])))
         (.then (fn [_]
                  (-> ready (.then (fn [session]
                    (-> (document/open! #(runtime/request! session %1 %2)
                          {:mode :patch, :files [{:path "commit.patch", :text "@@ -1 +1 @@\n-old\n+new\n"}]})
                        (.then #(runtime/request! session "nvim_exec_lua"
-                                 ["assert(#vim.api.nvim_list_wins() == 1); assert(vim.bo.filetype == 'diff'); assert(vim.bo.readonly and not vim.bo.modifiable); return 'PASS: native split diff, absolute line numbers, immutable buffers, exact file bytes and patch view'" []]))))))))
+                                 ["assert(#vim.api.nvim_list_wins() == 1); assert(vim.bo.filetype == 'diff'); assert(vim.bo.readonly and not vim.bo.modifiable); return 'PASS: native split diff, absolute line numbers, immutable buffers, equal panes, bulk UTF-8 file bytes and patch view'" []]))))))))
         (.then #(reset! *diff %))
-        (.catch #(reset! *diff (str "FAIL: " (.-message %))))
+        (.catch #(reset! *diff (str "FAIL: " (.-message %) "; unread input: " (.-pendingInputBytes (.diagnostics transport-session)))))
         (.finally stop!))))
 
 (defn <fixture> []

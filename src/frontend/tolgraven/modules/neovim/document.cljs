@@ -24,6 +24,7 @@
    vim.cmd('diffoff!')
    -- Viewers use absolute line numbers even after numbertoggle's WinEnter hook.
    vim.g.relativemode = 0
+   vim.opt.equalalways = true
    vim.opt.diffopt = {'internal', 'filler', 'closeoff', 'algorithm:histogram', 'indent-heuristic'}
    for index, path in ipairs(paths) do
      if index == 2 then vim.cmd('silent rightbelow vnew') end
@@ -39,6 +40,7 @@
      if mode == 'diff' then vim.cmd('silent diffthis') end
    end
    if mode == 'diff' then vim.cmd('silent wincmd h'); vim.cmd('silent diffupdate') end
+   vim.cmd('silent wincmd =')
    vim.api.nvim_win_set_cursor(0, {1, 0})")
 
 (defn open! [request! document]
@@ -47,5 +49,10 @@
     (-> (reduce (fn [pending {:keys [path text]}]
                   (.then pending #(files/write! request! {:path path, :file (js/Blob. #js [text])})))
                 (js/Promise.resolve nil) (:files document))
-        (.then #(request! "nvim_exec_lua"
-                          [configure-lua [(name (:mode document)) (mapv :path (:files document))]])))))
+        (.catch (fn [error]
+                  (throw (js/Error. (str "Writing comparison files failed: " (.-message error))))))
+        (.then (fn [_]
+                 (-> (request! "nvim_exec_lua"
+                               [configure-lua [(name (:mode document)) (mapv :path (:files document))]])
+                     (.catch (fn [error]
+                               (throw (js/Error. (str "Preparing comparison windows failed: " (.-message error))))))))))))

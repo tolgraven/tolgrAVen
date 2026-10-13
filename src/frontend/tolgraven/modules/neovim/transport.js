@@ -42,7 +42,9 @@ exports.start = function start(workerPath, onRedraw, onStatus, onExit, onFailure
       const id = nextId++;
       const timeout = setTimeout(() => {
         pending.delete(id);
-        reject(new Error('Neovim request timed out: ' + method));
+        const error = new Error('Neovim request timed out: ' + method);
+        error.pendingInputBytes = (Atomics.load(state, 0) - Atomics.load(state, 1) + CAP) % CAP;
+        reject(error);
       }, 30000);
       pending.set(id, { resolve, reject, timeout });
       try { send(packer.pack([0, id, method, params])); }
@@ -113,6 +115,7 @@ exports.start = function start(workerPath, onRedraw, onStatus, onExit, onFailure
 
   return {
     ready, request, stop,
+    diagnostics: () => ({ pendingInputBytes: (Atomics.load(state, 0) - Atomics.load(state, 1) + CAP) % CAP }),
     registerTypes(types) {
       for (const info of Object.values(types)) {
         addExtension({ type: info.id, unpack: payload => unpack(payload) });

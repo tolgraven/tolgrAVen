@@ -44,6 +44,9 @@
                            (publish! :booting "Configuring editor and repository…")
                            (.registerTypes session (.-types (aget info 1)))
                            (profile/configure! #(request! session %1 %2))))
+                  ;; Native diff windows need the measured UI in place. Reagent keeps every startup frame hidden until ready.
+                  (.then #(when document
+                            (request! session "nvim_ui_attach" [cols rows {:rgb true, :ext_linegrid true}])))
                   (.then #(cond
                             document (document/open! (fn [method params] (request! session method params)) document)
                             initial-file
@@ -54,8 +57,9 @@
                   (.then #(when-not document
                             (request! session "nvim_set_option_value"
                               ["filetype" filetype {:buf 0}])))
-                  ;; Attach only after the initial buffer and its syntax are ready.
-                  (.then #(request! session "nvim_ui_attach" [cols rows {:rgb true, :ext_linegrid true}]))
+                  ;; Ordinary editable buffers retain their initial-file-before-UI order.
+                  (.then #(when-not document
+                            (request! session "nvim_ui_attach" [cols rows {:rgb true, :ext_linegrid true}])))
                   (.then #(request! session "nvim_command" ["redraw"]))
                   (.then #(do (reset! *ready? true) (publish! :ready "Ready") session))
                   (.catch (fn [error]
