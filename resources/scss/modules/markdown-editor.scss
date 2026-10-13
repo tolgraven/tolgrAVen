@@ -8,7 +8,7 @@
 
 
   .mdxeditor { font-family: inherit; color: inherit; }
-  .md-editor-content { min-height: 20rem; padding: var(--space); line-height: 1.6; }
+  .md-editor-content { min-height: 20rem; padding: var(--space); line-height: inherit; }
   [role="toolbar"] { flex-wrap: wrap; gap: 0.2em; border-block-end: var(--line-width) solid var(--line-color); }
   button { color: inherit; }
   input, select, textarea { color: var(--fg-1); background: var(--bg-1); }
@@ -93,11 +93,13 @@
 // owner so following paragraphs actually wrap; an inner float cannot do this.
 .md-editor-content > div:has(> .md-component-node[data-flow="left"]) {
   float: left;
+  margin-inline-end: var(--space);
   width: fit-content;
   max-width: 100%;
 }
 .md-editor-content > div:has(> .md-component-node[data-flow="right"]) {
   float: right;
+  margin-inline-start: var(--space);
   width: fit-content;
   max-width: 100%;
 }
@@ -112,7 +114,13 @@
   touch-action: none;
 }
 
-.md-component-node { display: flow-root; }
+.md-component-node { display: block; }
+.md-component-node[data-flow="left"],
+.md-component-node[data-flow="right"] { display: flow-root; }
+.md-component-node:has(> .content-widget > .content-box, > .content-widget > .content-config) {
+  margin-block: var(--space);
+}
+.md-component-node > .content-widget { margin-block: 0; }
 
 .md-image-picker { position: relative; }
 .md-image-picker__menu {
@@ -183,7 +191,7 @@
 .md-component-node > .md-resize-edge,
 .md-media-node > .md-resize-edge {
   position: absolute;
-  z-index: 6;
+  z-index: 8;
   padding: 0;
   border: 0;
   background: transparent;
@@ -191,10 +199,10 @@
   touch-action: none;
   &[data-edge="left"], &[data-edge="right"] { inset-block: 0; width: 0.5rem; cursor: ew-resize; }
   &[data-edge="top"], &[data-edge="bottom"] { inset-inline: 0; height: 0.5rem; cursor: ns-resize; }
-  &[data-edge="left"] { inset-inline-start: -0.25rem; }
-  &[data-edge="right"] { inset-inline-end: -0.25rem; }
-  &[data-edge="top"] { inset-block-start: -0.25rem; }
-  &[data-edge="bottom"] { inset-block-end: -0.25rem; }
+  &[data-edge="left"] { inset-inline-start: 0; }
+  &[data-edge="right"] { inset-inline-end: 0; }
+  &[data-edge="top"] { inset-block-start: 0; }
+  &[data-edge="bottom"] { inset-block-end: 0; }
 }
 .md-component-node:hover > .md-resize-edge,
 .md-component-node:focus-within > .md-resize-edge,
