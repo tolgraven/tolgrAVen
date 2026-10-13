@@ -63,16 +63,21 @@
                     :initial-document? (boolean (and hydrate? (not back?))) :page (page-key)}))
 (defn skip-enter? []
   (and (= (:page @*context) (page-key)) (or (:hydrate? @*context) (:back? @*context))))
+(defn- pathname [path] (first (string/split path #"\?")))
 (defn document-enter? []
-  (and (= (:page @*context) (page-key)) (:initial-document? @*context)))
+  ;; Query navigation retains the already-visible document and its native clock.
+  (and (:page @*context)
+       (= (pathname (:page @*context)) (pathname (page-key)))
+       (:initial-document? @*context)))
 (defn local-document? [] (boolean (:local? @*context)))
 (defn direct-images?
   "History/departure images retain only their device-appropriate final candidate.
    This media policy does not change the page's SSR entrance/hydration contract."
   []
   (and (= (:page @*context) (page-key))
-       (boolean (or (:back? @*context) (:local? @*context)
-                    (:direct-images? @*context)))))
+       (boolean (if (contains? @*context :direct-images?)
+                  (:direct-images? @*context)
+                  (or (:back? @*context) (:local? @*context))))))
 (defn direct-images! []
   ;; The document root is outside React. Native Back can suppress lazy preview
   ;; discovery immediately while normal component rendering removes its layer.
@@ -84,13 +89,22 @@
   ;; loaded or expanded afterwards must use normal SPA entrance motion.
   (swap! *context assoc :hydrate? false))
 (defn navigate! [path]
-  (when (and (:page @*context)
-             (not= (first (string/split path #"\?"))
-                   (first (string/split (:page @*context) #"\?"))))
-    (hydration/release-all!)
-    (when (exists? js/document)
-      (.removeAttribute (.-documentElement js/document) "data-image-direct"))
-    (reset! *context {})))
+  (when-let [page (:page @*context)]
+    (let [other-page? (not= (pathname path) (pathname page))]
+      (when (or other-page? (not= page (page-key)))
+        (when (exists? js/document)
+          (.removeAttribute (.-documentElement js/document) "data-image-direct"))
+        ;; Explicit false prevents returning to the initial query from reviving
+        ;; the departure policy. The existing document entrance keeps its clock.
+        (swap! *context assoc :direct-images? false))
+      (when other-page?
+        (hydration/release-all!)
+        (reset! *context {})))))
+(defn spa-back! []
+  ;; SPA history keeps page Back motion, but is not an external document return.
+  ;; Same-path query pops retain the initial document's native entrance clock.
+  (when-not (document-enter?) (begin! {:back? true}))
+  (swap! *context assoc :direct-images? false))
 (defn back-navigation? []
   (or (= "back_forward" (some-> js/performance (.getEntriesByType "navigation") (aget 0) .-type))
       (= 2 (some-> js/performance .-navigation .-type))))

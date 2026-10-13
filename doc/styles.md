@@ -204,8 +204,11 @@ resources. Its popup sheet is deferred in ordinary SSR documents.
 The closed Settings panel has no DOM, CSS-variable reads or view code in bootstrap.
 Opening it acquires `:settings` and its sheet before mounting its controls.
 
-Sized catalog images default to progressive loading; `:progressive? false` opts
-out. Native pictures request the smallest AVIF/WebP preview and the normal final
+Large originals default to progressive loading only when width exceeds 320,
+longest edge is at least 960, and source size is at least 64 KiB. Bundled and
+managed metadata share that eligibility predicate. Explicit `:progressive? true`
+or `false` overrides it. Small responsive images retain their source set and one
+final layer; large-but-cheap banners can still use the static color placeholder. Native pictures request the smallest AVIF/WebP preview and the normal final
 srcset concurrently. The preview starts with 4rem blur; image scale/crop stay
 unchanged. After a noticeable preview paint, blur clears over 100ms and opacity-out overlaps the sharp
 final's opacity-in for 150ms, both linear. Reduced motion, cached final readiness,
