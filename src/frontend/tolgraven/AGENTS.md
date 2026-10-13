@@ -59,7 +59,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   the storage interceptor/effect; no mirrored app-db or writable cursor.
   Local-return capture observes its source subscription in the component lifecycle.
   Return-worker decisions use Clojure data in `ssr/return_policy.cljs`; Cache,
-  Request/Response and event lifetime handling stay in `ssr/return_worker.cljs`.
+  Request/Response and event lifetime handling stay in `ssr/return_worker.cljc`.
   Decode JSON once at that boundary; process native entry arrays as sequences,
   retaining opaque Request/Response handles. Keep the native Promise write queue
   and synchronous `waitUntil`/`respondWith` event ownership.
@@ -391,3 +391,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   complete validated rendition manifest arrives. Retry/cancel/disposal invalidate
   stale attempts; pending markers block publication. SDK reads and realtime events
   restore URL-keyed image metadata before row validation.
+
+- `:neovim` renders its native grid through Reagent. Its component lifecycle owns one WASM worker/RPC connection and terminates it on unmount; the buffer stays process-owned. See `doc/neovim.md`.
+
+- `ssr/return_worker.cljc` is a thin Shadow target-feature adapter; Neovim cached documents reuse their module-owned isolation policy.

@@ -55,6 +55,12 @@
                   :ns-regexp "tolgraven\\.supabase-.*-test$"
                   :autorun true}
 
+  :neovim-check {:target :browser
+                 :devtools {:enabled false}
+                 :output-dir "resources/public/js/neovim-check"
+                 :asset-path "/js/neovim-check"
+                 :modules {:main {:init-fn tolgraven.neovim-fixture/init!}}}
+
   :app-test {:target :browser-test
              :module-loader true
              :compiler-options {:reader-features #{:browser :dev}}

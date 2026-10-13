@@ -249,6 +249,8 @@
         ; wrap-with-logger
         wrap-internal-error
         ;; Proxy/HTTPS and security response headers also cover early failures.
+        ((or (when-enabled :neovim nil
+               (requiring-resolve 'tolgraven.modules.neovim.http/wrap-isolation)) identity))
         (wrap-defaults {:proxy (:proxy options)
                         :security (dissoc (:security options) :anti-forgery)}))))
 

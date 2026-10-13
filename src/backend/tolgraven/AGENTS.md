@@ -185,3 +185,5 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   bounded `media/svg.clj` adapter rejects active/external XML content before
   public publication; keep the complete-raster versus original-only SVG
   rendition contracts distinct. See `doc/media-pipeline.md`.
+
+- Neovim isolation headers apply only to `/neovim` and `/vendor/neovim/`; keep ordinary documents unchanged and omit the module adapter/assets from disabled sites. See `doc/neovim.md`.

@@ -18,6 +18,7 @@
     #?(:module/blog [tolgraven.modules.blog.pages :as blog])
     #?(:module/cv [tolgraven.modules.cv.pages :as cv])
     #?(:module/docs [tolgraven.modules.docs.pages :as docs])
+    #?(:module/neovim [tolgraven.modules.neovim.pages :as neovim])
     [tolgraven.loader :as l]
     [tolgraven.component.data :as data]
     [tolgraven.content.contract :as content]
@@ -56,6 +57,7 @@
           (site/routes (concat #?(:module/home home/spec :default nil)
                   [#?(:module/cv (into [""] cv/spec))
                    #?(:module/docs (into [""] docs/spec))
+                   #?(:module/neovim (into [""] neovim/spec))
                    #?(:module/blog (into [""] blog/spec))
                    ["/log" {:name :log :view #'<log-page>}]
                    #?(:module/test ["/test"
@@ -203,7 +205,11 @@
 
 (defn ignore-anchor-click? [router event element ^goog.Uri uri]
   ;; Only intercepted internal links may update the pending fragment.
-  (let [ignore? (rfh/ignore-anchor-click? router event element uri)]
+  (let [ignore? (or (= "true" (.getAttribute element "data-document-navigation"))
+                    #?(:module/neovim (and (= "/neovim" (.getPath uri))
+                                           (not js/window.crossOriginIsolated))
+                       :default false)
+                    (rfh/ignore-anchor-click? router event element uri))]
     (when ignore?
       (rf/dispatch [:state [:fragment] (.getFragment uri)]))
     ignore?))

@@ -20,6 +20,7 @@
     #?(:module/contact [tolgraven.modules.contact.module :as contact])
     #?(:module/settings [tolgraven.modules.settings.module :as settings])
     #?(:module/docs [tolgraven.modules.docs.module :as docs])
+    #?(:module/neovim [tolgraven.modules.neovim.module :as neovim])
     [tolgraven.ssr.contract :as contract]
     [tolgraven.components.page-shell :as shell]
     [tolgraven.ssr.render :as render]
@@ -39,6 +40,7 @@
               :contact #?(:module/contact contact/spec :default nil)
               :settings #?(:module/settings settings/spec :default nil)
               :docs #?(:module/docs docs/spec :default nil)
+              :neovim #?(:module/neovim neovim/spec :default nil)
               :blog #?(:module/blog blog/spec :default nil)
               :user #?(:module/user user/spec :default nil)
               :link-preview #?(:module/link-preview link-preview/spec :default nil)}))

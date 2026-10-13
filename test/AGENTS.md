@@ -184,3 +184,5 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Prepared-asset checks compare exact optimized metadata, CSS/font URLs and body
   bytes through source and jar resolvers. Reject missing, stale or corrupt output;
   do not replace this proof with a manifest-exists assertion.
+
+- `:neovim-check` mounts the real WASM editor in `/fixtures/neovim.html`; serve with COOP/COEP for active editing, and without them for the fallback. See `doc/neovim.md`.

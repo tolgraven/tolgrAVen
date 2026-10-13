@@ -95,6 +95,7 @@
                                               "(?:\\.min)?\\.css$")) disabled-styles)
                        (for [{:keys [id]} all :when (not (enabled? id))]
                          (re-pattern (str "^public/css/tolgraven/modules/icons-" (name id) "(?:\\.min)?\\.css$")))
+                       (when-not (enabled? :neovim) [#"^public/vendor/neovim/"])
                        [#"^public/vendor/supabase\.js(?:\.map)?$"
                         #"^supabase/(?:schema|operations)\.sql$"
                         #"^site\.overrides\.edn$"]))}))

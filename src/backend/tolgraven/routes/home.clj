@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.data.json :as json]
    [tolgraven.layout :as layout]
+   [tolgraven.build.site :refer [when-enabled]]
    [tolgraven.ssr :as ssr]
    [tolgraven.page-router :as pages]
    [tolgraven.validation :as validation]
@@ -77,6 +78,7 @@
             {:status 200 :headers {"Content-Type" "application/json" "Cache-Control" "no-store"}
              :body (json/write-str (layout/return-template request))})}]
    ["/blog*" {:get home-page}]
+   (when-enabled :neovim nil ["/neovim" {:get home-page}])
    ["/not-found" {:get home-page}]
    ["/client-oauth*" {:get home-page}]
    ["/log*" {:get home-page}]
