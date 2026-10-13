@@ -23,10 +23,11 @@
             [tolgraven.ssr.render :as render]
             [tolgraven.ssr.local :as local]
             [tolgraven.ssr.capture :as capture]
+            [tolgraven.ssr.return-policy :as policy]
             [tolgraven.ssr.return-worker :as worker]))
 
 (r/defc <check> [form committed!]
-  (rf/use-effect (fn [] (committed!) js/undefined) #js [])
+  (rf/use-effect (fn [] (committed!) nil) [])
   form)
 
 (deftest capture-observes-native-source-and-releases-it-on-unmount
@@ -130,6 +131,34 @@
                 (restore-db!)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
+
+(deftest return-decisions-use-data-and-preserve-cache-boundaries
+  (let [url "https://example.test/blog"
+        now 2000000
+        request {:url url, :origin "https://example.test", :mode "navigate", :method "GET"}
+        armed (policy/arm-record url now)]
+    (is (policy/intercept? request "https://example.test"))
+    (is (not (policy/intercept? request "https://other.test")))
+    (is (not (policy/intercept? (assoc request :method "POST") "https://example.test")))
+    (is (not (policy/intercept? (assoc request :mode "cors") "https://example.test")))
+    (is (= {:source :cache, :returning? false}
+           (policy/navigation-plan url now nil now)))
+    (is (= {:source :cache, :returning? true}
+           (policy/navigation-plan url now armed now)))
+    (is (= {:source :network, :returning? true}
+           (policy/navigation-plan url (- now policy/ttl-ms) armed now)))
+    (is (= {:source :network, :returning? false}
+           (policy/navigation-plan url nil (assoc armed :url "another-url") now)))
+    (is (= {:source :network, :returning? false}
+           (policy/navigation-plan url nil (assoc armed :expires now) now)))
+    (is (= {:source :network, :returning? false}
+           (policy/navigation-plan url nil {:url url} now)))
+    (is (= [0 1 2] (vec (policy/excess-documents (range (+ 3 policy/max-documents))))))
+    (is (empty? (policy/excess-documents (range policy/max-documents))))
+    (is (= [(str policy/prefix "old")]
+           (vec (policy/obsolete-caches [(str policy/prefix "old")
+                                        (str policy/prefix "current") "unrelated"]
+                                       (str policy/prefix "current")))))))
 
 (deftest local-worker-restores-reloads-and-armed-returns-once
   (async done

@@ -3,6 +3,8 @@
   (:require [tolgraven.validation.runtime :as validation]
             [tolgraven.schema.declarations :as schemas]
             [reagent.core :as r]
+            [reagent.ratom :as ratom]
+            [tolgraven.render-context :as context]
             [tolgraven.react :as rf]
             [tolgraven.service-status :as status]
             [tolgraven.component.storage :as storage]
@@ -216,6 +218,17 @@
       (some #(= :error (:status %)) states) :error
       (every? #(= :ready (:status %)) states) :ready
       :else :loading)))
+
+(rf/reg-sub-raw :component-data/status
+  {:args [:cat [:vector schemas/dependency]]
+   :result [:enum :loading :ready :error]}
+  (fn [_ query]
+    (let [[_ resources] (or (:re-frame/query-v query) query)]
+      ;; Acquisition belongs to the managed source lifecycle, just as for module
+      ;; and CMS subscriptions. Preloads use this same deduplicated queue. The
+      ;; derived reaction only reads status; SSR must use supplied snapshots.
+      (when-not context/*server?* (prefetch! resources))
+      (ratom/make-reaction #(state resources)))))
 
 (defn wait-for!
   "Observe a ratom without creating a React subscription. Always remove the watch."

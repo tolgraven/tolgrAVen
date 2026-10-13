@@ -54,28 +54,32 @@
         nil) [])
     (when-not (.-current *identity)
       (set! (.-current *identity)
-            #js {:instance (.-current *id)
-                 :component (identity-for definition)}))
+            {:instance (.-current *id)
+             :component (identity-for definition)}))
     ;; Opening the inspector backfills current details; closed probes avoid
     ;; resolving dependencies on each render.
-    (set! (.-current *details)
-          (fn [] {:depends (if connected? dependencies (resolve-dependencies!))
-                  :queries (capture/preview (:queries (consumer/snapshot owner)))
-                  :source (get-in definition [:options :source])}))
+    (rf/use-layout-effect
+      (fn []
+        ;; Backfill the committed resolver only. An abandoned render must not
+        ;; replace details for the still-mounted diagnostic instance.
+        (set! (.-current *details)
+              (fn [] {:depends (if connected? dependencies (resolve-dependencies!))
+                      :queries (capture/preview (:queries (consumer/snapshot owner)))
+                      :source (get-in definition [:options :source])}))))
     (rf/use-effect
       (fn []
         (capture/emit! {:kind :mount
                         :instance (.-current *id)
                         :component (identity-for definition)
-                        :parent (some-> parent .-instance)
-                        :parent-component (some-> parent .-component)
+                        :parent (:instance parent)
+                        :parent-component (:component parent)
                         :path path
                         :resolve! #((.-current *details))
                         :key instance-key
                         :native? attributed?
                         :page (when (exists? js/location) (.-pathname js/location))})
         #(capture/emit! {:kind :unmount, :instance (.-current *id)}))
-      [qualified (pr-str [path dependencies (some-> parent .-instance) attributed?])])
+      [qualified path dependencies (:instance parent) attributed?])
     (let [form (if attributed?
                  (let [[tag attrs & children] form
                        attrs? (map? attrs)
@@ -92,7 +96,10 @@
                            (if attrs? children (rest form)))
                      (meta form)))
                  form)]
-      [:> (rf/context-provider parent-context) {:value (.-current *identity)}
+      ;; :> recursively converts props, including :value, into JS. Raw provider
+      ;; props keep the diagnostic identity itself a Clojure map for consumers;
+      ;; only React's outer props envelope is native.
+      [:r> (rf/context-provider parent-context) #js {:value (.-current *identity)}
        [:> rf/profiler
         {:id qualified
          :onRender

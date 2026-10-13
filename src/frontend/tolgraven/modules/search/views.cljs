@@ -2,6 +2,7 @@
   (:require
     [tolgraven.component.registry]
     [tolgraven.component.font :as font]
+    [tolgraven.component.motion :as motion]
     [tolgraven.modules.link-preview.views :as link-preview]
     [tolgraven.modules.styled-input.views :as styled-input]
     [reagent.core :as r]
@@ -69,19 +70,20 @@
      (fn []
        (if (and open? (exists? js/document))
          (let [input (util/elem-by-id "search-input")
-               timer (js/setTimeout
+               ;; The shared frame adapter waits for the committed styles to
+               ;; paint without guessing a 100ms loading/animation deadline.
+               stop! (motion/next-frame!
                        (fn []
                          (util/scroll-to "search-input")
-                         (when input (.focus input #js {:preventScroll true})))
-                       100)]
+                         (when input (.focus input #js {:preventScroll true}))))]
            (fn []
-             (js/clearTimeout timer)
+             (stop!)
              ;; A focused, collapsed input makes the browser chase its hidden
              ;; caret during later page/layout changes, even after navigation.
              (when (identical? input (.-activeElement js/document))
                (.blur input))))
-         js/undefined))
-     #js [open?])
+         nil))
+     [open?])
    [styled-input/<input-text-styled>
     :id "search-input"
     :query-by query-by

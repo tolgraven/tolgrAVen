@@ -174,6 +174,19 @@ Root props only apply to native DOM roots, never fragment, child-component or
 React-interop roots. Link discovery needs a native DOM root. Feature composition
 itself adds no DOM wrapper; a custom feature may deliberately add one.
 
+Ordinary Hiccup callback refs receive the node on attachment and nil on detachment.
+Use a plain atom, for example `:let [*node (atom nil)]` and
+`[:div {:ref #(reset! *node %)} ...]`, when retaining a node should not rerender.
+Reagent/React owns those calls; no manual release manager is needed. Root/media
+components use `react/compose-refs` only to forward internal and caller refs.
+Explicit React 19 callback cleanup is forwarded instead of calling that callback
+with nil; other composed refs still receive nil. Keep native nodes/refs opaque.
+
+React keys are excluded from props. The narrowly scoped
+`component/compat.cljs` adapter retains original Hiccup metadata from Reagent
+2.0.1 function state; it is the only backing-subvec access. Preserve keyed state,
+form-2 and class/function identity tests before changing that library boundary.
+
 Register a feature with `component/register-feature!`:
 
 - `:transform (fn [hiccup instance-spec config] ...)` transforms the body's
@@ -267,7 +280,11 @@ of the component's arguments returning that vector:
 [<article-page> "welcome"]
 ```
 
-On first rendering, requests start before mounting. The body is created after
+On acquisition, `:component-data/status` starts the shared source queue before
+mounting; its reaction only reads status. Component bodies observe the managed
+subscription rather than invoking transport work. Preloads acquire the same
+queue before/alongside module code. SSR status only reads supplied snapshots.
+The body is created after
 all required resources are ready. A `role=status` loading placeholder is shown
 until then; set definition `:loading` to custom Hiccup to replace it. Failures
 produce a visible alert with **Retry data**, plus the existing service
@@ -475,9 +492,24 @@ readers, rather than combining unrelated SQL reads into an invented batch API.
 `defc` makes `<sub`, `>reset`, and `>update` available locally. No `:state`
 declaration is needed unless configuring component keys, defaults, or persistence.
 
+`<sub` returns the actual `:component-state/scoped-value` subscription. Its derived
+reaction reads app-db, with a pure fallback for a missing path. A `:state` declaration
+initializes defaults through a committed effect and registered event. It may be a
+map or a pure function of the component arguments returning that map.
+
+With `:persist`, acquiring the value subscription dispatches `:component-state/load`.
+That event shares the idempotent initialization effect: seed missing defaults,
+register persistence, await the shared storage queue, then dispatch a restore result.
+Existing state is retained, and intervening edits win over late restoration. Eager
+owners can dispatch `[:component-state/initialize resolved-path options]` before
+mounting; the later subscription does not repeat the snapshot read. No separate
+boolean owner subscription is needed. SSR reads its supplied state without disk IO.
+
 ```clojure
-(defc <setting> []
-  :let [*setting (<sub :comp [:opts :setting] {:initial false})]
+(defc <setting>
+  {:state {:initial {:opts {:setting false}}}}
+  []
+  :let [*setting (<sub :comp [:opts :setting])]
   [:button {:on-click #(>update *setting not)} (str @*setting)])
 ```
 
@@ -506,11 +538,14 @@ retain their routing context in callbacks after render has finished.
 
 - `(>reset handle-or-path value)` queues replacement, like `reset!`.
 - `(>update handle-or-path f & args)` queues an atomic update, like `swap!`.
-- `(<sub :comp path {:initial value})` initializes only a missing leaf.
-- Native `reset!` and `swap!` on a handle perform synchronous re-frame writes.
+- `(<sub :comp path {:initial value})` supplies a pure fallback for a missing leaf;
+  put app-db defaults in the owning `:state` declaration or initialization event.
+- Use `>reset`/`>update` for writes; native handles are read-only subscriptions.
 - Component `:state {:initial {...} :persist true}` restores/persists the whole
   component root; nested subscriptions share that registration.
-- Other scopes opt in with `{:persist true}` on `<sub`, persisting only that path.
+- Other scopes opt in with `{:initial value :persist true}` on `<sub`, loading and
+  persisting only that path. This is a convenient managed-source shorthand;
+  eager initialization is preferable for data needed before a component mounts.
 
 Updates compute from current app-db inside the event handler, so queued updates
 compose correctly. Account guards prevent old private handles from mutating another

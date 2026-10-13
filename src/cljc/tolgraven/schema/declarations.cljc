@@ -48,7 +48,7 @@
    [:?schema :any]
    [:?args-schema :any]
    [:?spec-schema :any]
-   [:?state state-options]
+   [:?state [:or state-options fn?]]
    [:?spec :boolean]
    [:?page :boolean]
    [:?container container]

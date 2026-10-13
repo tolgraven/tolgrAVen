@@ -1,0 +1,56 @@
+;; Runtime reference: copy to env/dev/resources/config.edn for local development.
+;; Values below select the usual local setup. Comments distinguish explicit
+;; environment choices from defaults implemented by the consumers.
+;; Keep secrets in ignored dev/test files or deployment environment variables.
+{:dev true                         ; Needed for development asset/reload behavior.
+ :bind "127.0.0.1"                 ; Local-only HTTP; use "0.0.0.0" for LAN/container access.
+ :port 4000                        ; Explicit dev choice; prod/test use 3000.
+ ;; For a local production run use :prod true, :dev false and :port 3000.
+ ;; The :prod profile selects production adapters; :prod alone does not select it.
+
+ :nrepl-bind "127.0.0.1"
+ :nrepl-port 7000                  ; Optional standalone app nREPL; omit to disable.
+ ;; `lein repl` also has its own listener on 7000 from project.clj.
+ ;; Use a different :nrepl-port when running another app alongside that REPL.
+
+ ;; :io-threads 2                  ; Omitted: 2 * JVM available processors.
+ ;; :validation-enabled false     ; Omitted: enabled in dev, disabled in prod.
+ ;; Public request validation stays enabled in either mode.
+
+ :ssr {:enabled true               ; Default: true; false gives the browser-rendered site.
+       :render-workers 2           ; Default: 2, clamped to 1..4 by the worker pool.
+       :cache-ttl-ms 3600000        ; Default: one hour; 0 always revalidates.
+       :shell-refresh-seconds 30   ; Default: 30; refreshes shared public shell content.
+       :worker "target/ssr/site.js" ; Default: local build output.
+       :node-binary "node"}        ; Default: executable on PATH; an absolute path works too.
+ ;; Docker production sets :worker "/app/ssr/site.js".
+ ;; Minimal/offline alternative: :ssr {:enabled false}.
+
+ ;; No analytics script without a Google ID; dev does not mount analytics.
+ ;; Production's tracked config currently includes tolgraven's Google ID.
+ ;; Choose explicitly for a new production site:
+ ;; :analytics {:enabled false}
+ ;; :analytics {:google-id "G-YOUR-OWN-ID"}
+
+ ;; Optional CMS: absent :strapi-url uses the local server-side content seed.
+ ;; Once configured, CMS failures are errors, not a fallback to seed content.
+ ;; :strapi-url "https://cms.example.com"
+ ;; :strapi-read-token "PRIVATE-SERVER-READ-TOKEN"
+ ;; STRAPI_URL / STRAPI_READ_TOKEN override these; build-time CMS config
+ ;; resolution uses those environment variables too.
+
+ ;; Required when enabled modules use Supabase:
+ ;; :supabase-public-url "https://supabase.example.com"
+ ;; :supabase-anon-key "PUBLIC-ANON-KEY"
+ ;; :supabase-service-key "PRIVATE-SERVER-SERVICE-KEY"
+ ;; Corresponding env: SUPABASE_PUBLIC_URL, SUPABASE_ANON_KEY,
+ ;; SUPABASE_SERVICE_KEY. Never expose the service key to browser code.
+
+ ;; Required only for requests to the enabled GPT module:
+ ;; :openai-api-key "PRIVATE-OPENAI-API-KEY"  ; Or OPENAI_API_KEY.
+ ;; The contact module uses the GOOGLE_SENDMAIL_SCRIPT environment variable,
+ ;; not an EDN key, for its Google Apps Script deployment ID.
+
+ ;; :image-converter "scripts/media/images.clj" ; Default; requires bb/codecs for uploads.
+ ;; Docker production uses "/app/scripts/media/images.clj".
+}

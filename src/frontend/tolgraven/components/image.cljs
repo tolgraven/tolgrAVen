@@ -42,9 +42,10 @@
    original image fails too."
   [{:keys [src on-error ref] :as attrs} :- attrs-schema]
   (r/with-let [*fallback-sources (r/atom #{})]
-    (let [attrs (merge {:decoding "async"} (sources/dimensions src) attrs)
-          capture! (react/use-callback
-                    (fn [image]
+    (let [attrs' (merge {:decoding "async"} (sources/dimensions src) attrs)
+          capture! (react/use-memo
+                    #(react/compose-refs
+                     (fn [image]
                       ;; A server-rendered image may fail before React attaches
                       ;; on-error. Inspect it at attachment without changing DOM;
                       ;; state removes the modern sources through normal rendering.
@@ -52,10 +53,9 @@
                                  (.-complete image) (zero? (.-naturalWidth image))
                                  (modern-source-selected? image src))
                         (swap! *fallback-sources conj src))
-                      (cond (fn? ref) (ref image)
-                            ref (set! (.-current ^js ref) image))
-                      js/undefined)
-                    #js [src ref])]
+                       nil)
+                     ref)
+                    [src ref])]
      (if (sources/should-use-modern-formats? src)
       (let [avif-src (sources/replace-extension src "avif")
             webp-src (sources/replace-extension src "webp")
@@ -79,9 +79,9 @@
                      :srcSet (or (sources/srcset src "webp") webp-src)
                      :sizes (or (:sizes attrs) "100vw")
                      :type "image/webp"}])
-         [:img (assoc attrs :on-error retry! :ref capture!)]])
+        [:img (assoc attrs' :on-error retry! :ref capture!)]])
       ;; No modern format available, just use img directly.
-      [:img attrs]))))
+      [:img attrs']))))
 
 (defc <img>
   "Smart img component that automatically uses modern formats when available.

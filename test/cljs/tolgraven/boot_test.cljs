@@ -11,6 +11,48 @@
             [tolgraven.browser-resources :as resources]
             [tolgraven.test-support :as support]))
 
+(deftest lifecycle-listeners-keep-options-and-release-only-their-acquisition
+  (let [target (js/EventTarget.)
+        *seen (atom [])
+        binding {:id :listener-test
+                 :owner :listener-test
+                 :target target
+                 :event "probe"
+                 :handler #(swap! *seen conj :old)}
+        old-stop! (listener/register! binding)
+        new-stop! (listener/register! (assoc binding :handler #(swap! *seen conj :new)))
+        first-stop! (listener/listen! :listener-test
+                      [{:target target, :event "once", :handler #(swap! *seen conj :once), :once? true}])
+        second-stop! (listener/listen! :listener-test
+                       [{:target   target
+                         :event    "passive"
+                         :handler  #(.preventDefault %)
+                         :passive? true}])]
+    (try
+      (old-stop!)
+      (.dispatchEvent target (js/Event. "probe"))
+      (.dispatchEvent target (js/Event. "once"))
+      (.dispatchEvent target (js/Event. "once"))
+      (is (= [:new :once] @*seen))
+      (let [event (js/Event. "passive" #js {:cancelable true})]
+        (.dispatchEvent target event)
+        (is (not (.-defaultPrevented event))))
+      (first-stop!)
+      (is (= 2 (count (filter #(= :listener-test (:owner %)) (vals @listener/*bindings)))))
+      (new-stop!)
+      (new-stop!)
+      (.dispatchEvent target (js/Event. "probe"))
+      (is (= [:new :once] @*seen))
+      (finally (old-stop!) (new-stop!) (first-stop!) (second-stop!)))
+    (is (not-any? #(= :listener-test (:owner %)) (vals @listener/*bindings)))
+    (is (try
+          (listener/listen! :listener-test
+            [{:target target, :event "partial", :handler identity}
+             {:target nil, :event "invalid", :handler identity}])
+          false
+          (catch :default _ true)))
+    (is (not-any? #(= :listener-test (:owner %)) (vals @listener/*bindings)))))
+
 (deftest document-listeners-start-through-events-and-stop-with-their-owner
   (async done
     (-> (go-promise

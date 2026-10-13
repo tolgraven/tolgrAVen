@@ -71,9 +71,10 @@
 
 (defpage <page>
   {:depends [catalog-resource]
+   :state {:initial {:filter ""}}
    :loading-tag :section.dev-source}
   []
-  :let [*filter (<sub :comp [:filter] {:initial ""})]
+  :let [*filter (<sub :comp [:filter])]
   (let [catalog (:value @(rf/subscribe [:component-data/installed catalog-path]))
         route @(rf/subscribe [:common/route])
         file (or (get-in route [:path-params :file]) (:path (first catalog)))

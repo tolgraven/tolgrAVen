@@ -21,7 +21,7 @@
 
 (defn <loading> [] [:span "Namespace-owned loading"])
 (defc <own-loading> [] [:div [<loading>]])
-(defc <shared-name> {:state {}} []
+(defc <shared-name> {:state {:initial {:count 0}}} []
   :let [*count (<sub :comp [:count] {:initial 0})]
   [:button {:on-click #(>update *count inc)} (str "here:" @*count)])
 (defc <tree-parent> {:profile false} [show?]

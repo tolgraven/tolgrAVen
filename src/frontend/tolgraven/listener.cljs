@@ -14,7 +14,9 @@
    [:target :any]
    [:event :string]
    [:handler fn?]
-   [:?capture? :boolean]])
+   [:?capture? :boolean]
+   [:?passive? :boolean]
+   [:?once? :boolean]])
 (defonce *bindings (atom {}))
 (defonce scroll-listeners (atom {}))
 
@@ -26,13 +28,35 @@
     (.removeEventListener target event handler (boolean capture?))
     (swap! *bindings dissoc id)))
 
-(defn register! [{:keys [id target event handler capture?] :as binding}]
+(defn register! [{:keys [id target event handler capture? passive? once?] :as binding}]
   (when (exists? js/window)
     (validation/check! "document listener" binding-schema binding)
     (remove! id)
-    (let [element (native-target target)]
-      (.addEventListener element event handler (boolean capture?))
-      (swap! *bindings assoc id (assoc binding :target element)))))
+    (let [element (native-target target)
+          binding' (assoc binding :target element)
+          options (cond-> {:capture (boolean capture?)}
+                    (some? passive?) (assoc :passive passive?)
+                    (some? once?) (assoc :once once?))]
+      (.addEventListener element event handler (clj->js options))
+      (swap! *bindings assoc id binding')
+      ;; An old lifecycle cleanup must not remove a replacement with the same id.
+      (fn []
+        (when (identical? binding' (get @*bindings id)) (remove! id))))))
+
+(defn listen!
+  "Acquire declarative bindings inside a committed lifecycle/effect. Each group
+   owns independent ids; cleanup releases exactly that acquisition. Application
+   event handlers still use :listener/register / :listener/stop effects."
+  [owner bindings]
+  (let [*cleanups (atom [])
+        stop! #(doseq [cleanup! @*cleanups :when cleanup!] (cleanup!))]
+    (try
+      (doseq [binding bindings]
+        (swap! *cleanups conj (register! (assoc binding :id (random-uuid) :owner owner))))
+      stop!
+      (catch :default error
+        (stop!)
+        (throw error)))))
 
 (defn stop! [owner]
   (doseq [[id binding] @*bindings :when (= owner (:owner binding))] (remove! id))

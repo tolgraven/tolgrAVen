@@ -6,9 +6,10 @@ instructions concise; detailed schemas, examples and user guides belong in `doc/
 Do not retain completed investigation diaries or historical test counts as current guidance.
 
 ## Current architecture
-- Keep the full-featured `defc` based on upstream `reagent.core/defc`. The requested
-  hook migration and caller inventory live in `features/reagent-native-refactor.md`;
-  use upstream `reagent.hooks` through the existing shim when implementing it.
+- Keep the full-featured `defc` based on upstream `reagent.core/defc`. Hooks delegate
+  to upstream `reagent.hooks` through the existing shim; dependency collections
+  use Clojure equality and equal state updates retain identity. Adapter review
+  and ownership instructions live in `features/reagent-native-refactor.md`.
   See `doc/reagent-2-react-19-guide.md` for the library comparison and design rationale.
 - Reagent 2 / React 19 components use `defc`; spec-capable instances accept map
   specs or feature-vector shorthand. Full pages use `defpage` and always have an error boundary. Application re-frame calls go through `tolgraven.react`.
@@ -22,7 +23,9 @@ Do not retain completed investigation diaries or historical test counts as curre
   Fresh cached SSR skips the skeleton (`:ssr :cache-ttl-ms`, default one hour).
   Hydration preserves the existing DOM and does not replay entrances.
 - Analytics initialization and script acquisition belong to the browser lifecycle
-  after hydration and page readiness; SSR emits no analytics markup or bootstrap.
+  after hydration and page readiness. The deferred host's timeout replaces hidden
+  markup with script Hiccup; public settings load through the shared dependency
+  adapter. The ID lives in server config; SSR emits no analytics markup/bootstrap.
 - Readable link previews belong to content containers, acquire text/image data only
   on activation, and delay optional sandboxed miniatures until the card paints.
   Frame policy controls embedding; menu navigation does not opt into previews.
@@ -223,9 +226,10 @@ These are required principles for new code and changes to existing code. Follow 
 - Convert JSON/SDK payloads once at the boundary using standard `js->clj`/`clj->js` options. Native events, DOM measurements, React refs and SDK objects legitimately require property access; keep that access in the adapter that owns it.
 - Keep native Promises where a JavaScript API or shared asynchronous adapter requires them. Page/component code should declare dependencies and dispatch events rather than duplicate transport queries and Promise chains. Do not introduce an async library or thin wrappers solely to hide `js/Promise` syntax.
 - `tolgraven.react/use-effect` and `use-layout-effect` accept implicit nil for no
-  cleanup. Hook dependency lists accept Clojure vectors/sequences; conversion is
-  shallow so dependency identities remain intact. Memo/callback return values stay
-  unchanged. Prefer these wrappers over raw React hook imports.
+  cleanup. Hook dependencies are Clojure vectors/sequences compared by value;
+  refs/functions/native handles remain opaque. Memo/callback helpers require
+  explicit dependencies and preserve return values. Use these upstream Reagent
+  delegates over raw React hook imports.
 - Keep adapted React component identities stable across renders. Use Clojure props with Reagent adapters; reserve `#js` containers for APIs that actually require JavaScript values.
 
 ### Toolchain and verification
@@ -276,7 +280,7 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 - Note any config changes (e.g., `env/*` or Supabase schema) in the PR description.
 
 ## Configuration & Secrets
-- Local config lives in `config/local.dev.edn` and `config/local.test.edn`; production config is under `env/prod/resources`.
+- Runtime config uses `env/<environment>/resources/config.edn`. Dev/test files are private and ignored; production defaults are tracked. Examples and the commented defaults reference live in `config/`; see `doc/configuration.md`.
 - Do not commit secrets; prefer env vars or injected config files.
 
 ## Deploy
