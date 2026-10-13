@@ -185,6 +185,7 @@
 (defn navigate! [url] (.assign js/location url))
 
 (defn depart! [{:keys [db url]}]
+  (restore/direct-images!)
   ;; A fresh pair must reach the cache before leaving. Bound optional capture
   ;; so worker/network failure never traps an ordinary external navigation.
   (let [generation (swap! *departure-generation inc)
@@ -208,9 +209,11 @@
 (defn departure!
   "Capture the same exact page for native links and programmatic departures."
   ([]
+   (restore/direct-images!)
    (storage/save-navigation!)
    (rf/dispatch-sync [:page-return/save true]))
   ([url]
+   (restore/direct-images!)
    ;; Saving scroll history dispatches synchronously, outside event handling;
    ;; the queued departure then receives that updated state.
    (storage/save-navigation!)

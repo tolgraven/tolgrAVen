@@ -365,13 +365,17 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   do not initialize it globally or add an SDK script to server HTML. Keep restored
   public state renderable while the module is loading.
 
-- Catalog images marked `:progressive?` acquire a blurred decorative smallest
-  candidate and the responsive final concurrently. Distinct decoded upgrades use
-  simultaneous 100ms linear opacity/presence; same-candidate or already usable
-  pixels settle immediately. The initial hero's document adapter owns its phase
-  through terminal readiness, including mid-fade hydration, then the component
-  adopts it without replay and releases native listeners. The exact hero/src guard
-  prevents SPA inheritance. Later upgrades use keyed `defc :exit`/`:presence` on
-  the native preview span. Transient readiness belongs only to the current source;
-  known 400w/100vw DPR-1 phone buckets suppress its painted layer before JS. The
-  common root owns media identity/styles; refs/load handlers belong to the final.
+- Catalog images with sized variants default to a decorative smallest preview and
+  responsive final; `:progressive? false` opts out. Native initial-image owners are
+  keyed by exact SSR wrappers and stable React IDs, stored only on the document
+  mount. They write mount CSS variables, never React children, and retain phase
+  through terminal handoff. Later upgrades use keyed `defc :exit`/`:presence`.
+  Preview blur clears from 4rem over 100ms while opacity overlaps for 150ms; cached,
+  reduced-motion and unnoticeable (opening scale <=2/3) finals settle directly.
+  External departure/history returns use final-only policy from shared restore
+  context; early head classification suppresses lazy preview discovery before JS.
+  Paired SSR emits final-only markup. SPA navigation clears that document policy.
+  Native decode/source completion and ref cleanup remain exact-node/currentSrc guarded.
+  Shared `restore/document-form` preserves three React document slots in Node/local
+  SSR and hydration so native image useId tokens match. `src/bootstrap/bootstrap/`
+  owns generated native document scripts; no authored snippets live in public JS.

@@ -44,6 +44,6 @@
                     rf/dispatch (fn [_] nil)
                     rf/subscribe (fn ([query] (read! [query]))
                                    ([query dynamic] (read! [query dynamic])))]
-        (try (server/render-to-string form)
+        (try (server/render-to-string (restore/document-form form))
              (finally (doseq [value (vals @*readers)] (ratom/dispose! value))
                       (rf/clear-subscription-cache!)))))))

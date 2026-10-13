@@ -83,7 +83,7 @@
 
   :min-lein-version "2.0.0"
 
-  :source-paths ["src/backend" "src/frontend" "src/cljc"]
+  :source-paths ["src/backend" "src/frontend" "src/cljc" "src/bootstrap"]
   :test-paths ["test/clj"]
   :resource-paths ["resources"]
   ;; Git ignores do not affect resource packaging in local jar builds.
@@ -149,7 +149,7 @@
 
    :uberjar {:jvm-opts ["-Dconf=env/prod/resources/config.edn"]
              :prep-tasks ["compile"
-                          ["run" "-m" "shadow.cljs.devtools.cli" "release" "app" "return-worker"]
+                          ["run" "-m" "shadow.cljs.devtools.cli" "release" "app" "return-worker" "document"]
                           ["docs"]]
              :aot ~(:aot site-packaging)
              :omit-source true
