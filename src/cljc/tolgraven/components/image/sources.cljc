@@ -7,32 +7,43 @@
 (def responsive (responsive-images))
 
 (defn preview
-  "Smallest catalog candidate for a progressive image. Explicit component intent
-   may opt other responsive images in; the catalog selects document preloads."
+  "Smallest catalog candidate for a progressive image. Sized local renditions
+   enable progressive display unless the catalog explicitly excludes it."
   [src]
   (when-let [{:keys [sizes width]} (get responsive (string/replace (or src "") #"^/" ""))]
     (when-let [size (first (sort (filter #(< % width) sizes)))]
       {:width size
-       :avif (string/replace src #"(?i)\.(jpe?g|png)$" (str "-" size "w.avif"))
-       :webp (string/replace src #"(?i)\.(jpe?g|png)$" (str "-" size "w.webp"))})))
+       :avif (string/replace src #"(?i)\.(jpe?g|png|webp|avif)$" (str "-" size "w.avif"))
+       :webp (string/replace src #"(?i)\.(jpe?g|png|webp|avif)$" (str "-" size "w.webp"))})))
 
 (defn progressive? [src]
-  (true? (:progressive? (get responsive (string/replace (or src "") #"^/" "")))))
+  (and (some? (preview src))
+       (not= false (:progressive? (get responsive (string/replace (or src "") #"^/" ""))))))
 
 (defn dimensions [src]
   (select-keys (get responsive (string/replace (or src "") #"^/" "")) [:width :height]))
+
+(defn placeholder-background
+  "Fixed vertical gradient from codec-owned, validated three-row color samples.
+   Invalid or unavailable metadata has no CSS representation."
+  [src]
+  (let [colors (get-in responsive [(string/replace (or src "") #"^/" "") :placeholder :colors])]
+    (when (and (vector? colors) (= 3 (count colors))
+               (every? #(and (string? %) (re-matches #"^#[0-9a-f]{6}$" %)) colors))
+      (str "linear-gradient(to bottom, " (nth colors 0) " 0%, "
+           (nth colors 1) " 50%, " (nth colors 2) " 100%)"))))
 
 (defn srcset [src format]
   (when-let [{:keys [sizes width]} (get responsive (string/replace (or src "") #"^/" ""))]
     (string/join ", "
       (concat (for [size sizes]
-                (str (string/replace src #"(?i)\.(jpe?g|png)$" (str "-" size "w." format)) " " size "w"))
-              [(str (string/replace src #"(?i)\.(jpe?g|png)$" (str "." format)) " " width "w")]))))
+                (str (string/replace src #"(?i)\.(jpe?g|png|webp|avif)$" (str "-" size "w." format)) " " size "w"))
+              [(str (string/replace src #"(?i)\.(jpe?g|png|webp|avif)$" (str "." format)) " " width "w")]))))
 
 (defn replace-extension
   "Replace file extension. e.g., 'img/foo.jpg' -> 'img/foo.webp'"
   [path new-ext]
-  (string/replace path #"(?i)\.(jpe?g|png)$" (str "." new-ext)))
+  (string/replace path #"(?i)\.(jpe?g|png|webp|avif)$" (str "." new-ext)))
 
 (defn- converted-avatar? [src]
   ;; This versioned object layout is published only after PNG/WebP/AVIF exist.
@@ -46,11 +57,12 @@
    - External URLs other than our versioned, converted Supabase avatars
    - URLs with query strings (likely already proxied/optimized)
    - Favicons and app icons
-   - Already modern formats (webp, avif)"
+   - Uncatalogued modern formats (WebP, AVIF)"
   [src]
   (and (string? src)
        (or (converted-avatar? src)
-           (and (re-find #"(?i)\.(jpe?g|png)$" src)
+           (and (or (get responsive (string/replace src #"^/" ""))
+                    (re-find #"(?i)\.(jpe?g|png)$" src))
                 (not (re-find #"^(https?:|//)" src))
                 (not (re-find #"\?" src))
                 (not (re-find #"avatar" src))

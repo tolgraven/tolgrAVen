@@ -1,7 +1,6 @@
 (ns tolgraven.ssr-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.data.json :as json]
-            [clojure.java.io :as io]
             [clojure.string :as string]
             [tolgraven.ssr :as ssr]
             [tolgraven.ssr.contract-schema :as contract-schema]
@@ -237,7 +236,7 @@
       (is (= "no-store" (get-in response [:headers "Cache-Control"])))
       (is (string/includes? html "data-hydrate=\"true\""))
       (is (string/includes? html "data-document-pending=\"true\""))
-      (is (string/includes? html (slurp (io/resource "public/js/document-entrance.js")))
+      (is (string/includes? html "/js/document/entrance.js")
           "The completed SSR document emits the current owned image adapter")
       (is (string/includes? html "<noscript>"))
       (is (string/includes? html "<article>Safe rendered content</article>"))

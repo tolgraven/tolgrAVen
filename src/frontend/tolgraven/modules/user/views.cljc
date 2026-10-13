@@ -220,6 +220,7 @@
        ;; knows the author. Keep a single image and let the browser load it.
        [img/<picture>
         {:class (str "user-avatar " extra-class)
+         :progressive? false
          :src src
          :ref *image
          :on-error (fn [_] (when avatar (swap! *failed-sources conj avatar)))

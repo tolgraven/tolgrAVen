@@ -24,6 +24,7 @@
   (legacy/drain!))
 
 (defn page-hidden! [_]
+  (restore/direct-images!)
   (save!)
   (restore/release-history!))
 

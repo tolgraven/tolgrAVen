@@ -22,6 +22,7 @@
    (server/start!)
    (when (not= :return-worker build-id) (shadow/watch :return-worker))
    (when (and (ssr/enabled?) (not= :ssr build-id)) (shadow/watch :ssr))
+   (when (not= :document build-id) (shadow/watch :document))
    (shadow/watch build-id)
    (shadow/nrepl-select build-id)))
 
