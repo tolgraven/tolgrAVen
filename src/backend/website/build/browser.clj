@@ -15,7 +15,7 @@
     (cond-> state
       (= :configure stage)
       (update-in [::build/config :modules]
-                 #(merge (modules/bundles) %))
+                 #(merge (modules/bundles (modules/development-build? state)) %))
       (= :configure stage)
       (assoc-in [:js-options :export-conditions]
                 ["worker" "browser" "require" "default"]))))
@@ -25,7 +25,7 @@
   [state]
   ;; The single browser-test bundle needs every discovered namespace available
   ;; to shadow.lazy, even when no test directly requires that module entry yet.
-  (let [entries (mapv :entry (modules/discover))]
+  (let [entries (mapv :entry (modules/discover modules/root (modules/development-build? state)))]
     (if (= :release (::build/mode state))
       ;; Shadow's browser-test target excludes development preloads in release.
       ;; Its native namespace list supplies the same selected module entries to

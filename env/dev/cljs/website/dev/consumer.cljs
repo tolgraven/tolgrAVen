@@ -31,6 +31,7 @@
     :debug/unavailable))
 (defn render! [definition args render]
   (if-let [owner (when-not (or (string/starts-with? (:ns definition) "website.dev-console.")
+                               (string/starts-with? (:ns definition) "website.modules.dev-console.")
                                (= "website.dev.stack" (:ns definition)))
                     (r/current-component))]
     (let [previous (.get *owners owner)

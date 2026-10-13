@@ -10,7 +10,7 @@
             [website.dev.source-links :as source]
             [website.dev.consumer :as consumer]
             [website.dev-console.capture :as capture]
-            [website.dev-console.layout :as layout]
+            [website.modules.dev-console.layout :as layout]
             [website.dev-console.components :as components]
             [website.validation :as validation]
 

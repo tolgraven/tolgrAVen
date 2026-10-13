@@ -26,7 +26,7 @@
 (r/reg-sub :dev-console/data (fn [db _] (:dev-console db)))
 (r/reg-sub :dev-console/db
   (fn [db _] (-> db (dissoc :dev-console)
-                 (update :component dissoc "website.dev-console.views"))))
+                 (update :component dissoc "website.modules.dev-console.views"))))
 (r/reg-sub :dev-console/path (fn [db [_ path]] (get-in db path)))
 (r/reg-sub :dev-console/path-keys
   (fn [db query]

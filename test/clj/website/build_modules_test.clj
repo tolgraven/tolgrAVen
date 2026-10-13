@@ -22,6 +22,28 @@
     (is (= #{:main :markdown} (get-in by-id [:link-preview :depends-on])))
     (is (= (set (keys by-id)) (set (keys (modules/bundles)))))))
 
+(deftest development-console-is-selected-only-in-enabled-development-builds
+  (let [all (modules/all-declarations)
+        selected (fn [settings development?]
+                   (set (map :id (modules/select-declarations all settings development?))))
+        console (first (filter #(= :dev-console (:id %)) all))]
+    (is (= 'website.modules.dev-console.module (:entry console)))
+    (is (true? (:development-only? console)))
+    (is (not ((selected {:modules {}} false) :dev-console)))
+    (is ((selected {:modules {}} true) :dev-console))
+    (is (not ((selected {:modules {:dev-console {:enabled false}}} true) :dev-console)))
+    (with-redefs [site/settings (constantly {:modules {}})]
+      (is (not (contains? (modules/bundles false) :dev-console)))
+      (is (contains? (modules/bundles true) :dev-console)))
+    (is (modules/development-build? {:mode :dev, :compiler-options {:reader-features #{:browser :dev}}}))
+    (is (not (modules/development-build? {:mode :release, :compiler-options {:reader-features #{:browser :dev}}})))
+    (is (not (modules/development-build? {:mode :dev, :compiler-options {:reader-features #{:ssr :node}}})))
+    (let [state {:mode :release
+                 :build-sources [:console]
+                 :sources {:console {:resource-name "website/modules/dev_console/module.cljs"}}}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Disabled capability"
+                           (modules/check-site-sources state))))))
+
 (deftest declaration-is-data-and-does-not-evaluate-browser-code
   (let [file (java.io.File/createTempFile "module-declaration" ".cljs")]
     (try

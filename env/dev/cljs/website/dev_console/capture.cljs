@@ -63,7 +63,9 @@
     (r/dispatch [:dev-console/disconnected])))
 (defn own? [event]
   (boolean (some #(or (and (keyword? %) (or (= :dev-console %) (contains? #{"dev-console" "dev-stack" "dev-source"} (namespace %))))
-                     (and (string? %) (string/starts-with? % "website.dev-console")))
+                     (and (string? %)
+                          (or (string/starts-with? % "website.dev-console")
+                              (string/starts-with? % "website.modules.dev-console"))))
                  (tree-seq coll? seq event))))
 (defn drain! []
   (when @*tick (js/clearTimeout @*tick))
@@ -90,7 +92,7 @@
       (reset! *tick (js/setTimeout drain! 200)))))
 (defn public-db [db]
   (-> db (dissoc :dev-console)
-      (update :component dissoc "website.dev-console.views")))
+      (update :component dissoc "website.modules.dev-console.views")))
 
 (defn preview
   "Bound retained debug payloads; never hold SDK objects or unbounded lazy data."

@@ -1,4 +1,4 @@
-(ns website.dev-console.views
+(ns website.modules.dev-console.views
   (:require [website.components.validation :as validation] [cljs.reader :as reader]
             [clojure.string :as string]
             [website.react :as r]
@@ -12,7 +12,7 @@
             [website.component.restore :as restore]
             [website.component.data :as data]
             [website.dev-console.capture :as capture]
-            [website.dev-console.layout :as layout]
+            [website.modules.dev-console.layout :as layout]
             [website.dev-console.components :as components]
             [website.dev-console.state]
             [website.dev.source-links :as source]

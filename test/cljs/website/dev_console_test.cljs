@@ -11,12 +11,15 @@
             [website.component.instrumentation :as instrumentation]
             [website.dev-console.capture :as capture]
             [website.dev-console.state :as state]
-            [website.dev-console.layout :as layout]
+            [website.modules.dev-console.layout :as layout]
             [website.dev-console.components :as components]
-            [website.dev-console.views :as views]
+            [website.modules.dev-console.views :as views]
             [website.dev-console-fixture :as fixture]
             [website.render-context :as context]
             [website.react :as r]
+            [website.app :as app]
+            [website.core :as core]
+            [website.loader :as loader]
             [website.test-support :as support]))
 
 (defn <loading> [] [:span "Namespace-owned loading"])
@@ -35,6 +38,36 @@
                                                :reaction (js-obj) :effects {:db {:secret true}}}}])]
     (is (= [3] (mapv :id records)))
     (is (= {:event [:blog/load]} (:tags (first records))))))
+
+(deftest module-owned-console-does-not-observe-itself
+  (let [namespace "website.modules.dev-console.views"
+        form [:aside {:data-dev-console true} "Dev"]
+        active {"console" {:instance "console", :component [namespace "<console>"]}
+                "page" {:instance "page", :component ["page.views" "<page>"]}}
+        tree (components/tree active {} {})]
+    (is (capture/own? [namespace "<console>"]))
+    (is (= form (instrumentation/instrument {:ns namespace, :name "<console>"} form [] nil)))
+    (is (= ["page"] (mapv :instance (:mounted tree))))
+    (is (= {:component {"page.views" {:count 1}}}
+           (capture/public-db {:component {namespace {:count 5}, "page.views" {:count 1}}})))))
+
+(deftest disabled-console-does-not-start-diagnostic-capture
+  (let [*capture-starts (atom 0)
+        *app-starts (atom 0)]
+    (with-redefs [app/configure! (fn [])
+                  core/init! #(swap! *app-starts inc)
+                  capture/bootstrap! #(swap! *capture-starts inc)
+                  loader/modules {}]
+      (app/init!)
+      (is (zero? @*capture-starts) "Disabled selection skips capture even when bootstrap would honor ?diagnostics=1")
+      (is (= 1 @*app-starts)))
+    (with-redefs [app/configure! (fn [])
+                  core/init! #(swap! *app-starts inc)
+                  capture/bootstrap! #(swap! *capture-starts inc)
+                  loader/modules {:dev-console :selected}]
+      (app/init!)
+      (is (= 1 @*capture-starts))
+      (is (= 2 @*app-starts)))))
 
 (deftest epoch-and-settled-results-retain-only-bounded-diffs
   (let [epoch {:event [:blog/load] :app-db/before {:count 1 :dev-console {:records ["old"]}}

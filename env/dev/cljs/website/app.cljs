@@ -1,6 +1,7 @@
 (ns website.app
   (:require
     [website.core :as core]
+    [website.loader :as loader]
     [website.dev-console.capture :as diagnostics]
     [cljs.spec.alpha :as s]
     ;[portal.web :as p]
@@ -21,7 +22,8 @@
   []
   (configure!)
 
-  (diagnostics/bootstrap!)
+  (when (contains? loader/modules :dev-console)
+    (diagnostics/bootstrap!))
   (core/init!)
   
   ;(add-tap #'p/submit)

@@ -8,10 +8,15 @@
                   {:ns 're-frisk.core}
                   {:ns 're-frisk-remote.core}
                   {:ns 'website.legacy-debug}
+                  {:ns 'website.modules.dev-console.views}
+                  {:ns 'website.dev-console.capture}
+                  {:ns 'website.modules.dev-console.module}
                   {:resource-name "day8/re_frame_10x.cljs"}
                   {:resource-name "day8/re_frame_10x/panels/app_db.cljs"}
                   {:resource-name "re_frisk/core.cljs"}
-                  {:resource-name "re_frisk_remote/core.cljs"}]]
+                  {:resource-name "re_frisk_remote/core.cljs"}
+                  {:resource-name "website/modules/dev_console/views.cljs"}
+                  {:resource-name "website/modules/dev_console/module.cljs"}]]
     (let [state {:mode :release
                  :build-sources [:active]
                  :sources {:active source}}]

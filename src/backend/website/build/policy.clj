@@ -3,10 +3,10 @@
 
 (defn- development-inspector? [{:keys [ns resource-name]}]
   (or (when ns
-        (re-find #"^(day8\.re-frame-10x(?:\.|$)|re-frisk(?:-remote)?(?:\.|$)|website\.legacy-debug$)"
+        (re-find #"^(day8\.re-frame-10x(?:\.|$)|re-frisk(?:-remote)?(?:\.|$)|website\.legacy-debug$|website\.(?:dev-console|modules\.dev-console)(?:\.|$))"
                  (str ns)))
       (when resource-name
-        (re-find #"^(day8/re_frame_10x(?:/|\.cljs$)|re_frisk(?:_remote)?/|website/legacy_debug\.cljs$)"
+        (re-find #"^(day8/re_frame_10x(?:/|\.cljs$)|re_frisk(?:_remote)?/|website/legacy_debug\.cljs$|website/(?:dev_console|modules/dev_console)/)"
                  resource-name))))
 
 (defn no-debug-tools

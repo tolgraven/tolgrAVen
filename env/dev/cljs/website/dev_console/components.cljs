@@ -3,9 +3,9 @@
    Historical placements are hints, never inferred by rendering hidden views.")
 
 (defn tree [active catalog parents]
-  (let [active (into {} (remove #(= "website.dev-console.views" (first (:component (val %))))) active)
+  (let [active (into {} (remove #(= "website.modules.dev-console.views" (first (:component (val %))))) active)
         mounted (group-by :component (vals active))
-        catalog (into {} (remove #(= "website.dev-console.views" (first (key %)))) catalog)
+        catalog (into {} (remove #(= "website.modules.dev-console.views" (first (key %)))) catalog)
         ready (into {} (remove #(contains? mounted (key %))) catalog)
         ready-id (fn [component] [:ready component])
         live (into {} (map (fn [[id instance]]

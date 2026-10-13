@@ -142,7 +142,8 @@
   ([definition form args key]
    (let [form (if (fn? form) form (markup/normalize-form form))]
      (if (or (not ^boolean goog.DEBUG)
-             (string/starts-with? (:ns definition) "website.dev-console."))
+             (string/starts-with? (:ns definition) "website.dev-console.")
+             (string/starts-with? (:ns definition) "website.modules.dev-console."))
        form
        (if (fn? form)
          (fn [& args] (instrument definition (apply form args) args key))

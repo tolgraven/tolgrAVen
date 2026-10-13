@@ -1,4 +1,4 @@
-(ns website.dev-console.layout
+(ns website.modules.dev-console.layout
   "Pure, bounded pagination and layout timeline projections."
   (:require [clojure.string]))
 

@@ -254,10 +254,14 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Older browsers retain instant scrolling as progressive enhancement.
   Lazy videos omit sources until visible; their observer owns cleanup, React owns markup.
   Use Shadow reader features for build-specific dependencies, not runtime imports.
-- Development console and React profiling implementations live in `env/dev/cljs`.
+- Development console UI lives in `env/dev/cljs/website/modules/dev_console/`;
+  capture, state and React profiling helpers remain separate under `env/dev/cljs`.
   Inspector styles compile into `dev.min.css`, linked only by development documents.
-  Only builds with the `:dev` reader feature import them; production and SSR use
-  small diagnostics/instrumentation boundaries. Timing capture is bounded and inactive without a console, picker, or explicit page-capture owner. Keep diagnostics out
+  Development-only module declarations are discovered from `env/dev/cljs/website/modules`;
+  selected dev browser builds acquire the real `:dev-console` UI through the module
+  loader after becoming interactive. Disabled/prod/SSR inventories omit that module;
+  capture and profiling remain separate development lifecycles, with no empty UI shim.
+  Timing capture is bounded and inactive without a console, picker, or explicit page-capture owner. Keep diagnostics out
   of persistence snapshots and do not let diagnostic events trigger page renders.
 - Page navigation uses a brief simultaneous opacity crossfade. Native View Transitions
   and the page-root fallback share duration/easing; neither delays the incoming fade.

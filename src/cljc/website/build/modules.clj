@@ -8,6 +8,16 @@
             [website.build.packaging :as packaging]))
 
 (def root "src/frontend/website/modules")
+(def development-root "env/dev/cljs/website/modules")
+
+(defn development-build?
+  "Development declarations follow the compiler's reader features, not its classpath."
+  ([]
+   (when-let [compiler (some-> (find-ns 'cljs.env) (ns-resolve '*compiler*) var-get)]
+     (contains? (get-in @compiler [:options :reader-features]) :dev)))
+  ([state]
+   (and (not= :release (:mode state))
+        (contains? (get-in state [:compiler-options :reader-features]) :dev))))
 
 (defn declaration [file]
   (with-open [reader (java.io.PushbackReader. (io/reader file))]
@@ -69,53 +79,61 @@
 (defn all-declarations
   ([] (all-declarations root))
   ([directory]
-   (->> (.listFiles (io/file directory))
-        (map #(io/file % "module.cljs"))
-        (filter #(.isFile %))
-        (sort-by str)
-        (mapv declaration))))
+   (->> (cond-> [directory] (= root directory) (conj development-root))
+        (mapcat (fn [module-root]
+                  (for [child (.listFiles (io/file module-root))
+                        :let [file (io/file child "module.cljs")]
+                        :when (.isFile file)]
+                    (cond-> (declaration file)
+                      (= development-root module-root) (assoc :development-only? true)))))
+        (sort-by (comp str :entry))
+        vec)))
 
 (declare storage-data)
 
-(defn select-declarations [declarations settings]
-  (let [settings (site/validate! settings)
-        ids (map :id declarations)
-        unknown (remove (set ids) (keys (:modules settings)))
-        by-id (into {} (map (juxt :id identity)) declarations)
-        selected (filterv #(packaging/owner-enabled? settings by-id (:id %)) declarations)
-        selected-ids (set (map :id selected))]
-    (when (seq unknown) (throw (ex-info "Unknown site modules" {:modules (vec unknown)})))
-    (when-not (= (count ids) (count (set ids)))
-      (throw (ex-info "Duplicate module IDs" {:ids ids})))
-    (doseq [{:keys [id storage]} declarations
-            :let [tables (when (and storage (seq (dissoc (get-in settings [:modules id]) :enabled)))
-                           (require (symbol (namespace storage)))
-                           (var-get (requiring-resolve storage)))
-                  allowed (conj (set (keep :feature tables)) :enabled)]
-            option (keys (get-in settings [:modules id]))
-            :when (not (allowed option))]
-      (throw (ex-info "Unknown site module option" {:module id :option option})))
-    (when (and (not (selected-ids :supabase))
-               (some (fn [{:keys [id] :as module}]
-                       (some #(not= false (get-in settings [:modules id (:feature %)]))
-                             (storage-data module))) selected))
-      (throw (ex-info "Enabled storage requires the Supabase module" {})))
-    (doseq [{:keys [id depends-on server]} selected
-            dependency (concat (when (not= id :main) depends-on) (:requires server))
-            :when (not (selected-ids dependency))]
-      (throw (ex-info "Disabled or missing module dependency" {:module id :dependency dependency})))
-    (doseq [{:keys [id server]} selected
-            [owner features] (:requires-features server)
-            feature features
-            :when (= false (get-in settings [:modules owner feature]))]
-      (throw (ex-info "Disabled module feature dependency" {:module id :owner owner :feature feature})))
-    selected))
+(defn select-declarations
+  ([declarations settings] (select-declarations declarations settings false))
+  ([declarations settings development?]
+   (let [settings (site/validate! settings)
+         ids (map :id declarations)
+         unknown (remove (set ids) (keys (:modules settings)))
+         by-id (into {} (map (juxt :id identity)) declarations)
+         selected (filterv #(and (or development? (not (:development-only? %)))
+                                 (packaging/owner-enabled? settings by-id (:id %))) declarations)
+         selected-ids (set (map :id selected))]
+     (when (seq unknown) (throw (ex-info "Unknown site modules" {:modules (vec unknown)})))
+     (when-not (= (count ids) (count (set ids)))
+       (throw (ex-info "Duplicate module IDs" {:ids ids})))
+     (doseq [{:keys [id storage]} declarations
+             :let [tables (when (and storage (seq (dissoc (get-in settings [:modules id]) :enabled)))
+                            (require (symbol (namespace storage)))
+                            (var-get (requiring-resolve storage)))
+                   allowed (conj (set (keep :feature tables)) :enabled)]
+             option (keys (get-in settings [:modules id]))
+             :when (not (allowed option))]
+       (throw (ex-info "Unknown site module option" {:module id :option option})))
+     (when (and (not (selected-ids :supabase))
+                (some (fn [{:keys [id] :as module}]
+                        (some #(not= false (get-in settings [:modules id (:feature %)]))
+                              (storage-data module))) selected))
+       (throw (ex-info "Enabled storage requires the Supabase module" {})))
+     (doseq [{:keys [id depends-on server]} selected
+             dependency (concat (when (not= id :main) depends-on) (:requires server))
+             :when (not (selected-ids dependency))]
+       (throw (ex-info "Disabled or missing module dependency" {:module id :dependency dependency})))
+     (doseq [{:keys [id server]} selected
+             [owner features] (:requires-features server)
+             feature features
+             :when (= false (get-in settings [:modules owner feature]))]
+       (throw (ex-info "Disabled module feature dependency" {:module id :owner owner :feature feature})))
+     selected)))
 
 (defn discover
   ([] (discover root))
-  ([directory]
+  ([directory] (discover directory (development-build?)))
+  ([directory development?]
    (vec (remove #(= :main (:id %))
-                (select-declarations (all-declarations directory) (site/settings))))))
+                (select-declarations (all-declarations directory) (site/settings) development?)))))
 
 (defn icon-definitions []
   (let [definitions (icons/definitions (all-declarations))
@@ -123,11 +141,13 @@
     ;; Shared components can declare icons for an installed but disabled owner.
     (with-meta (select-keys definitions selected) (meta definitions))))
 
-(defn bundles []
-  (into (sorted-map)
-        (map (fn [{:keys [id entry depends-on]}]
-               [id {:entries [entry] :depends-on depends-on}]))
-        (discover)))
+(defn bundles
+  ([] (bundles (development-build?)))
+  ([development?]
+   (into (sorted-map)
+         (map (fn [{:keys [id entry depends-on]}]
+                [id {:entries [entry] :depends-on depends-on}]))
+         (discover root development?))))
 
 (defn- track-declarations! [env declarations]
   (site/track! env)
@@ -204,7 +224,7 @@
   [state]
   ;; Initialize tracking before Shadow expands independent namespaces in parallel.
   (require 'shadow.resource)
-  (let [ids (conj (mapv :id (discover)) :main)
+  (let [ids (conj (mapv :id (discover root (development-build? state))) :main)
         features (concat (map #(keyword "module" (name %)) ids)
                          (for [[id options] (:modules (site/settings))
                                [feature value] options
@@ -246,8 +266,9 @@
         by-id (into {} (map (juxt :id identity)) declarations)
         comments-disabled? (or (= false (get-in settings [:modules :blog :enabled]))
                                (= false (get-in settings [:modules :blog :comments])))
-        disabled (for [{:keys [id entry]} declarations
-                       :when (not (packaging/owner-enabled? settings by-id id))]
+        disabled (for [{:keys [id entry development-only?]} declarations
+                       :when (or (and development-only? (not (development-build? state)))
+                                 (not (packaging/owner-enabled? settings by-id id)))]
                    (str (-> (namespace (symbol (str entry) "spec"))
                             (string/replace #"\.module$" "")
                             (string/replace "-" "_")
