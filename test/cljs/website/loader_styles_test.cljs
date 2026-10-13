@@ -6,7 +6,7 @@
             [website.loader.styles :as styles]))
 
 (deftest shared-font-stylesheet-has-one-bundle-across-consumers
-  (let [font "/css/tolgraven/modules/monospace.min.css"
+  (let [font "/css/website/modules/monospace.min.css"
         bundle (catalog/stylesheet-bundle font)]
     (is (= [font] (get catalog/stylesheet-bundles bundle)))
     (is (some #{bundle} (catalog/bundle-names :markdown)))
@@ -56,7 +56,7 @@
 
 (deftest stylesheet-adapter-deduplicates-real-loads-and-retries-failed-resources
   (async done
-    (let [url (str "/css/tolgraven/modules/cv.min.css?test=" (random-uuid))
+    (let [url (str "/css/website/modules/cv.min.css?test=" (random-uuid))
           missing (str "/css/missing-" (random-uuid) ".css")
           first-load (styles/acquire-path! url)]
       (is (identical? first-load (styles/acquire-path! url)))
@@ -106,8 +106,8 @@
 
 (deftest deferred-popup-styles-still-start-with-module-acquisition
   (let [manifest (into {} (map (fn [[id spec]] [id (:paths spec)])) catalog/modules)
-        popup "/css/tolgraven/modules/link-preview.min.css"
-        markdown "/css/tolgraven/modules/markdown.min.css"]
+        popup "/css/website/modules/link-preview.min.css"
+        markdown "/css/website/modules/markdown.min.css"]
     (is (not (some #{popup} (catalog/initial-paths manifest :blog))))
     (is (some #{markdown} (catalog/initial-paths manifest :blog)))
     (is (some #{popup} (catalog/paths manifest :blog)))
@@ -140,7 +140,7 @@
 
 (deftest hidden-contact-popup-keeps-code-and-styles-out-of-the-shell
   (let [manifest (into {} (map (fn [[id spec]] [id (:paths spec)])) catalog/modules)
-        sheet "/css/tolgraven/modules/contact.min.css"]
+        sheet "/css/website/modules/contact.min.css"]
     (is (not (some #{:contact} (catalog/dependencies :main))))
     (is (empty? (catalog/initial-paths manifest :contact)))
     (is (some #{sheet} (catalog/paths manifest :contact)))))

@@ -10,6 +10,6 @@
   {:content [:cv]
    :depends (get content-contract/module-dependencies :cv [])
    :id :cv
-   :styles ["/css/tolgraven/modules/cv.min.css"]
+   :styles ["/css/website/modules/cv.min.css"]
    :pages pages/spec
    :view {:page #'view/<page>}})

@@ -6,7 +6,7 @@
 
 (def spec
   {:id :carousel
-   :styles ["/css/tolgraven/modules/carousel.min.css"]
+   :styles ["/css/website/modules/carousel.min.css"]
    :view {:indices #'views/<carousel-idx-btns>
           :three #'views/<carousel>
           :normal #'views/<carousel-normal>

@@ -41,6 +41,6 @@
 
 (deftest icon-styles-have-one-owning-bundle
   (is (nil? (icons/stylesheet-path :main)))
-  (is (= "/css/tolgraven/modules/icons-user.min.css" (icons/stylesheet-path :user)))
+  (is (= "/css/website/modules/icons-user.min.css" (icons/stylesheet-path :user)))
   (is (icons/valid-icons? []))
   (is (not (icons/valid-icons? '("brands/github")))))

@@ -6,5 +6,5 @@
 (def spec
   {:id :markdown-components
    :install (fn [] (loader/acquire-code! :coercion))
-   :styles ["/css/tolgraven/modules/markdown-components.min.css"]
+   :styles ["/css/website/modules/markdown-components.min.css"]
    :view {:render #'views/<render>}})

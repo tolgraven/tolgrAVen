@@ -49,7 +49,7 @@ RUN --mount=type=secret,id=STRAPI_URL,env=STRAPI_URL \
 # BuildKit runs these independent branches concurrently. Each has its own target
 # directory and Maven cache, so Lein's prep/cleanup cannot erase Shadow outputs.
 FROM source AS frontend
-RUN mkdir -p resources/public/css/tolgraven && npm run build
+RUN mkdir -p resources/public/css/website && npm run build
 ARG BUILD_JAVA_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m"
 RUN --mount=type=cache,id=tolgraven-shadow-release,target=/usr/src/app/.shadow-cljs,sharing=locked \
     JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \

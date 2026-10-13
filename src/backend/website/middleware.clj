@@ -80,9 +80,9 @@
   "Load the declared CSS/JS owners and their references for the live dev build."
   []
   (concat
-    (assets/load-bundle "public" "styles.css" ["/css/tolgraven/main.min.css"])
+    (assets/load-bundle "public" "styles.css" ["/css/website/main.min.css"])
     (assets/load-bundles "public" styles/stylesheet-bundles)
-    (assets/load-bundle "public" "icons.css" ["/css/tolgraven/icons.min.css"])
+    (assets/load-bundle "public" "icons.css" ["/css/website/icons.min.css"])
     (assets/load-bundle "public" "main.js"
       [(str "/js/compiled/out/"
             (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))])

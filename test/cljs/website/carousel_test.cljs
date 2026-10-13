@@ -11,7 +11,7 @@
             [website.test-support :as support]))
 
 (deftest carousel-assets-follow-only-real-consumers
-  (let [sheet "/css/tolgraven/modules/carousel.min.css"
+  (let [sheet "/css/website/modules/carousel.min.css"
         manifest (into {} (map (fn [[id spec]] [id (:paths spec)])) catalog/modules)]
     (doseq [module [:cv :home :strava]]
       (is (some #{:carousel} (catalog/dependencies module)))

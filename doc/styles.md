@@ -3,7 +3,7 @@
 `npm run build` compiles the shared `resources/scss/main.scss`, `dev.scss`,
 `icons.scss` and the entry files
 in `resources/scss/modules/` through the locked Sass and Autoprefixer packages.
-Outputs are `resources/public/css/tolgraven/main.min.css`, `dev.min.css`, `icons.min.css`, and
+Outputs are `resources/public/css/website/main.min.css`, `dev.min.css`, `icons.min.css`, and
 `modules/<feature>.min.css`. The development document alone links `dev.min.css`,
 which contains inspector styles; production shell and error pages share the same
 fingerprinted shell link without loading those rules. Shared validation-error

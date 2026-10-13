@@ -36,7 +36,7 @@
            (not= href "css/opensans.css") (assoc :media "print" :onload "this.media='all'"))])
 (defn- shell-styles [request]
   (for [path (if (:dev env)
-               ["/css/tolgraven/main.min.css" "/css/tolgraven/dev.min.css"]
+               ["/css/website/main.min.css" "/css/website/dev.min.css"]
                (olink/bundle-paths request ["styles.css"]))]
     [:link {:href path
             :rel "stylesheet"
@@ -376,7 +376,7 @@
                     "tolgrAVen audiovisual by Joen Tolgraven")
    :pre-pre [["media/fog-3d-small.mp4" "video"]]
    :css-paths (if (:dev env)
-                ["/css/tolgraven/icons.min.css"]
+                ["/css/website/icons.min.css"]
                 (olink/bundle-paths request' ["icons.css"]))
    :js-pre script-paths'
    :img-pre critical-images

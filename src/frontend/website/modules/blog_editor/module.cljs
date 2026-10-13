@@ -9,6 +9,6 @@
 (def spec
   {:id :blog-editor
    :pages pages/spec
-   :styles ["/css/tolgraven/modules/blog-editor.min.css"]
+   :styles ["/css/website/modules/blog-editor.min.css"]
    :db-schema schema/sections
    :view {:page #'views/<page>}})

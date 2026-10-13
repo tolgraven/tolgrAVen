@@ -186,7 +186,7 @@
               (await! (js/Promise.
                        (fn [resolve reject]
                          (set! (.-rel stylesheet) "stylesheet")
-                         (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
+                         (set! (.-href stylesheet) "/css/website/main.min.css")
                          (set! (.-onload stylesheet) resolve)
                          (set! (.-onerror stylesheet) reject)
                          (.appendChild (.-head js/document) stylesheet))))

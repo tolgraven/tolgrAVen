@@ -8,9 +8,9 @@
   {:content [:intro :services :moneyshot :story :interlude :soundcloud :gallery]
    :id :home
    :pages pages/spec
-   :styles ["/css/tolgraven/modules/home.min.css"
-            "/css/tolgraven/modules/monospace.min.css"
-            "/css/tolgraven/modules/markdown.min.css"]
+   :styles ["/css/website/modules/home.min.css"
+            "/css/website/modules/monospace.min.css"
+            "/css/website/modules/markdown.min.css"]
    :view {:page #'views/<auto>
           :float-image #'layout/<float-img>
           :text-images #'layout/<auto-layout-text-imgs>}})

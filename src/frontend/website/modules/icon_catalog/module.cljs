@@ -2,6 +2,6 @@
 
 (def spec
   {:id :icon-catalog
-   :styles ["/css/tolgraven/modules/icon-catalog.min.css"]
+   :styles ["/css/website/modules/icon-catalog.min.css"]
    :ssr-styles :deferred
    :view {:empty (fn [] nil)}})

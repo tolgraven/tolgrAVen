@@ -396,7 +396,7 @@
             (.setAttribute container "style" "position:fixed;inset:0 auto auto 0;width:20rem;height:20rem;z-index:999")
             (.appendChild (.-body js/document) container)
             (set! (.-rel stylesheet) "stylesheet")
-            (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
+            (set! (.-href stylesheet) "/css/website/main.min.css")
             (try
               (await! (js/Promise.
                         (fn [resolve reject]

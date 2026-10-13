@@ -19,7 +19,7 @@
    :pages pages/spec
    :depends (get content-contract/module-dependencies :blog [])
    :id :blog
-   :styles ["/css/tolgraven/modules/blog.min.css"]
+   :styles ["/css/website/modules/blog.min.css"]
    :install install/cache!
    :db-schema schema/sections
    :view {:page #'view/<blog-page>

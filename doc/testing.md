@@ -268,7 +268,7 @@ and real nREPL acknowledgement during a blocked document release.
 For isolated live bootstrap validation, the integration proxy accepts
 `--document-dir PATH` pointing at the capped build's actual document output.
 Add `--style-dir PATH` for actual isolated stylesheet output. Only their declared
-`/js/document/` and `/css/tolgraven/` paths are overridden; application responses,
+`/js/document/` and `/css/website/` paths are overridden; application responses,
 state, styles and app chunks still come unchanged from the existing server. This
 checks a standalone release without overwriting a watched runtime or restarting
 the user's REPL.

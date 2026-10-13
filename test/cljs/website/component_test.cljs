@@ -92,7 +92,7 @@
                   (go-promise
                     (let [stylesheet (.createElement js/document "link")]
                       (set! (.-rel stylesheet) "stylesheet")
-                      (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
+                      (set! (.-href stylesheet) "/css/website/main.min.css")
                       (try
                         (await! (js/Promise.
                                   (fn [resolve reject]

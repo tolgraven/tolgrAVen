@@ -13,6 +13,6 @@
             :requires-features {:main #{:services}}}
    :depends (get content-contract/module-dependencies :strava [])
    :id :strava
-   :styles ["/css/tolgraven/modules/strava.min.css"]
+   :styles ["/css/website/modules/strava.min.css"]
    :view {:view #'view/<strava>}
    :init #(r/dispatch [:strava/init])})

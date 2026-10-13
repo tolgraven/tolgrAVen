@@ -12,5 +12,5 @@
    :storage storage/tables
    :depends (get content-contract/module-dependencies :gpt [])
    :id :gpt
-   :styles ["/css/tolgraven/modules/gpt.min.css"]
+   :styles ["/css/website/modules/gpt.min.css"]
    :view {:view #'view/<threads>}})

@@ -32,8 +32,8 @@
   (let [root (temporary-directory)
         build-id (assoc build-settings
                         :browser-modules {:main {:output-name "main.hash.js"}}
-                        :styles {"icons.css" ["/css/tolgraven/icons.min.css"]})
-        source-assets (vec (assets/load-bundle "public" "icons.css" ["/css/tolgraven/icons.min.css"]))
+                        :styles {"icons.css" ["/css/website/icons.min.css"]})
+        source-assets (vec (assets/load-bundle "public" "icons.css" ["/css/website/icons.min.css"]))
         optimized (vec (build/optimize source-assets {}))
         sources (map #(str "public" (:path %)) source-assets)]
     (try

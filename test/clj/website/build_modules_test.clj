@@ -103,7 +103,7 @@
         (is (some #{"website/modules/main/module.cljs"} resources))
         (is (some #{"website/components/shell.cljs"} resources))
         (is (some #{"website/modules/user/views.cljc"} resources))
-        (is (some #{"/css/tolgraven/modules/icons-user.min.css"} (:paths (:user styles))))
+        (is (some #{"/css/website/modules/icons-user.min.css"} (:paths (:user styles))))
         (is (every? io/resource resources) "Every tracked entry resolves on the source classpath")
         (is (every? #(= env (first %)) @*reads)))
       (reset! *reads [])

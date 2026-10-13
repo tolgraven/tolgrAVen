@@ -12,5 +12,5 @@
    :storage storage/tables
    :depends (get content-contract/module-dependencies :chat [])
    :id :chat
-   :styles ["/css/tolgraven/modules/chat.min.css"]
+   :styles ["/css/website/modules/chat.min.css"]
    :view {:view #'view/<chat>}})

@@ -87,4 +87,4 @@
 
 (defn stylesheet-path [module]
   (when-not (= :main module)
-    (str "/css/tolgraven/modules/icons-" (name module) ".min.css")))
+    (str "/css/website/modules/icons-" (name module) ".min.css")))

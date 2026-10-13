@@ -9,6 +9,6 @@
 (def spec
   {:depends (get content-contract/module-dependencies :github [])
    :id :github
-   :styles ["/css/tolgraven/modules/github.min.css"]
+   :styles ["/css/website/modules/github.min.css"]
    :view {:view #'view/<commits>}
    :init #(r/dispatch [:github/init])})

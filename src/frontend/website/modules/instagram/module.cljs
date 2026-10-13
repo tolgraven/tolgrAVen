@@ -11,6 +11,6 @@
             :requires-features {:main #{:services}}}
    :depends (get content-contract/module-dependencies :instagram [])
    :id :instagram
-   :styles ["/css/tolgraven/modules/instagram.min.css"]
+   :styles ["/css/website/modules/instagram.min.css"]
    :view {:view #'view/<instagram>}
    :init #(r/dispatch [:instagram/init])})

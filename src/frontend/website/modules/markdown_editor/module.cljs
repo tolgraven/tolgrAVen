@@ -5,5 +5,5 @@
 
 (def spec
   {:id :markdown-editor
-   :styles ["/css/tolgraven/modules/markdown-editor.min.css"]
+   :styles ["/css/website/modules/markdown-editor.min.css"]
    :view {:editor #'entry/<editor>}})

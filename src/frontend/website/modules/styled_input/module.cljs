@@ -3,6 +3,6 @@
 
 (def spec
   {:id :styled-input
-   :styles ["/css/tolgraven/modules/monospace.min.css"
-            "/css/tolgraven/modules/styled-input.min.css"]
+   :styles ["/css/website/modules/monospace.min.css"
+            "/css/website/modules/styled-input.min.css"]
    :view {:input #'views/<input-text-styled>}})

@@ -56,10 +56,10 @@
                 *adjusted? (atom false)]
             (.add (.-fonts js/document) face)
             (set! (.-rel sheet) "stylesheet")
-            (set! (.-href sheet) "/css/tolgraven/main.min.css")
+            (set! (.-href sheet) "/css/website/main.min.css")
             (.appendChild (.-head js/document) sheet)
             (set! (.-rel monospace) "stylesheet")
-            (set! (.-href monospace) "/css/tolgraven/modules/monospace.min.css")
+            (set! (.-href monospace) "/css/website/modules/monospace.min.css")
             (try
               (await! (js/Promise. (fn [resolve reject]
                                     (set! (.-onload monospace) resolve)
@@ -237,7 +237,7 @@
                 sheet (.createElement js/document "link")]
             (.add (.-fonts js/document) face)
             (set! (.-rel sheet) "stylesheet")
-            (set! (.-href sheet) "/css/tolgraven/modules/styled-input.min.css")
+            (set! (.-href sheet) "/css/website/modules/styled-input.min.css")
             (.appendChild (.-head js/document) sheet)
             (try
               (r/with-framework-bindings [font/fira opts

@@ -4,7 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const root = 'resources/scss';
-const output = process.env.CSS_OUTPUT_DIR || 'resources/public/css/tolgraven';
+const output = process.env.CSS_OUTPUT_DIR || 'resources/public/css/website';
 const watch = process.argv.includes('--watch');
 const sassOnly = process.argv.includes('--sass-only');
 const postcssOnly = process.argv.includes('--postcss-only');

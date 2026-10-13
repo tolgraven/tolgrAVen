@@ -13,7 +13,7 @@
    :server {:routes 'website.modules.docs.api/routes}
    :depends (get content-contract/module-dependencies :docs [])
    :id :docs
-   :styles ["/css/tolgraven/modules/docs.min.css"]
+   :styles ["/css/website/modules/docs.min.css"]
    :pages pages/spec
    :view (merge {:page #'view/<page>} development/views)
    :init #(r/dispatch [:docs/init])})

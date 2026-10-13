@@ -13,7 +13,7 @@
   ;; the same dependency. Preserve ordinary module-<feature>.css names.
   (str "module-"
        (-> path
-           (string/replace #"^/css/tolgraven/modules/" "")
+           (string/replace #"^/css/website/modules/" "")
            (string/replace #"(?:\.min)?\.css$" "")
            (string/replace #"[^A-Za-z0-9_-]" "-"))
        ".css"))

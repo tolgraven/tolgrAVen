@@ -4,7 +4,7 @@
 
 (def spec
   {:id :settings
-   :styles ["/css/tolgraven/modules/settings.min.css"]
+   :styles ["/css/website/modules/settings.min.css"]
    :ssr-styles :deferred
    :view {:view #'views/<settings>
           :config-table #'views/<config-table>}})

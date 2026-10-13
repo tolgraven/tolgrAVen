@@ -106,7 +106,7 @@
                                                          (string/replace % #"\.min\.css$" ""))
                                               "(?:\\.min)?\\.css$")) disabled-styles)
                        (for [{:keys [id]} all :when (not (enabled? id))]
-                         (re-pattern (str "^public/css/tolgraven/modules/icons-" (name id) "(?:\\.min)?\\.css$")))
+                         (re-pattern (str "^public/css/website/modules/icons-" (name id) "(?:\\.min)?\\.css$")))
                        [#"^public/vendor/supabase\.js(?:\.map)?$"
                         #"^supabase/(?:schema|operations)\.sql$"
                         #"^site\.overrides\.edn$"]))}))

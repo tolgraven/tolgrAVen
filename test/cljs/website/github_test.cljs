@@ -46,7 +46,7 @@
                   (await! (support/render! root
                             [:div
                              [:link {:rel "stylesheet"
-                                     :href "/css/tolgraven/modules/github.css"
+                                     :href "/css/website/modules/github.css"
                                      :on-load #(reset! *loaded? true)}]
                              [:section.github-commits
                               {:style {:width width

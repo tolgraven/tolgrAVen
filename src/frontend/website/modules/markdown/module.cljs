@@ -4,6 +4,6 @@
 (def spec
   {:id :markdown
    :server {:requires #{:highlight}}
-   :styles ["/css/tolgraven/modules/monospace.min.css"
-            "/css/tolgraven/modules/markdown.min.css"]
+   :styles ["/css/website/modules/monospace.min.css"
+            "/css/website/modules/markdown.min.css"]
    :view {:parse #'views/<parse-markdown-components>}})

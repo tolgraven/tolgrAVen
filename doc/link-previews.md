@@ -53,7 +53,7 @@ port as distinct origins for the iframe and navigation target.
 npm run build
 lein with-profile +project/test run -m shadow.cljs.devtools.cli compile app-test
 cp test/browser/preview*.html resources/public/js/tests/
-cp resources/public/css/tolgraven/main.min.css resources/public/js/tests/preview.css
+cp resources/public/css/website/main.min.css resources/public/js/tests/preview.css
 python3 -m http.server 4002 --bind 127.0.0.1 --directory resources/public/js/tests
 ```
 

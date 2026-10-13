@@ -25,8 +25,9 @@ firestore-export
 resources/firebase/*SECRETS*
 resources/firebase/*firebase-adminsdk*.json
 
-# Browser JavaScript is rebuilt by the production stage.
+# Browser JavaScript and generated CSS directories are rebuilt by the production stage.
 resources/public/js
+resources/public/css/*/*
 
 # Build artifacts and tools are not application inputs.
 Dockerfile*

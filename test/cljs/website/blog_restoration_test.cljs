@@ -227,7 +227,7 @@
     (-> (go-promise
           (let [element (.createElement js/document "div")
                 stylesheets (mapv (fn [path] [path (.createElement js/document "link")])
-                                  (into ["/css/tolgraven/main.min.css"]
+                                  (into ["/css/website/main.min.css"]
                                         (style-catalog/paths
                                           (into {} (map (fn [[id spec]] [id (:paths spec)]))
                                                 style-catalog/modules)

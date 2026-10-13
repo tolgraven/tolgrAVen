@@ -4,7 +4,7 @@
 
 (def spec
   {:id :highlight
-   :styles ["/css/tolgraven/modules/monospace.min.css"
-            "/css/tolgraven/modules/markdown.min.css"]
+   :styles ["/css/website/modules/monospace.min.css"
+            "/css/website/modules/markdown.min.css"]
    :view {:code-block #'code-block/<code-block>
           :formatted-code #'views/<formatted-code>}})

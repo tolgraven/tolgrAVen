@@ -61,7 +61,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `src/frontend/website/components/`: reusable rendered UI and site shell;
   `component/` contains the declaration/lifecycle runtime.
 - `experiments/clj`: preserved JVM prototypes, compiled only with `:experiments`.
-- `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/tolgraven`.
+- `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/website`.
 - `test/clj`, `test/cljs`: backend and frontend tests.
 - `env/`: environment-specific source/resources (dev/test/prod).
 - `resources/supabase/`: schema, native operations and account import SQL.
@@ -310,6 +310,11 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   - `[<user-profile>]`
 
 ## Testing Guidelines
+
+- Clear viewport, network and CPU emulation after browser checks, including failure
+  cleanup. Verify the reset on an adopted tab: another tool connection may have
+  left a fixed viewport even when the reset reports success. User-facing tabs must
+  follow the actual browser window again.
 - Use `lein with-profile +project/test test` for backend tests; browser tests use Shadow `:app-test` and the runner in `bb test:browser`.
 - Generate hydration fixtures from the current Node renderer with `bb ssr:fixtures` before browser tests. The obsolete Doo runner has been removed.
 - Inspect existing watched builds before compiling. Live development normally watches `:app-dev`, `:ssr`, and `:return-worker`; never overwrite watched output with another compiler.

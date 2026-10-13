@@ -4,5 +4,5 @@
 
 (def spec
   {:id :test
-   :styles ["/css/tolgraven/modules/test.min.css"]
+   :styles ["/css/website/modules/test.min.css"]
    :view {:page #'views/<test-page>}})
