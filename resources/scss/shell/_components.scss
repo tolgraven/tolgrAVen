@@ -492,6 +492,19 @@ figcaption, .float-with-caption {
   .hud-message-top {
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
+
+    .hud-message-actions {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      gap: 0.75rem;
+
+      .hud-message-button {
+        margin: 0;
+        padding: 0.2rem 0.5rem;
+      }
+    }
     
     .hud-message-title {
       font-size: 1em;
