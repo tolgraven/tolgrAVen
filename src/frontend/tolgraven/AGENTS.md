@@ -111,8 +111,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Declare managed dependencies at the narrowest owning component/module/page.
   Preloads acquire those same sources; keep pending, empty, failed and cached distinct.
 - `:component-data/status` acquires the shared queue through its managed source
-  factory; the derived reaction only reads readiness. Scoped state acquisition
-  owns `:component-state/owner`, initializing before its first native value read.
+  factory; the derived reaction only reads readiness. Persistent scoped value
+  subscriptions dispatch the idempotent `:component-state/load` event on acquisition;
+  ordinary scoped reads stay pure. Declared defaults initialize after commit through
+  `:component-state/initialize`, sharing the same effect with eager storage loads.
   Keep transport/initialization out of component bodies and derived computations.
 - Feature layout commits capture their render's callbacks and shape. Never store
   pending render work in mutable slots that an abandoned render can overwrite.
@@ -207,8 +209,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   icon CSS. Capped comment text uses non-scrolling clipping; an owned resize
   adapter measures code boundaries and React renders the corresponding fade.
 - Browser-only APIs belong in lifecycle/effect adapters with cleanup and SSR guards.
-  `component/ref.cljs` composes native refs: returned cleanup replaces a legacy
-  nil call, all owners release once, and old cleanup cannot clear a new attachment.
+  Ordinary Hiccup callback refs receive node/nil; a plain atom can retain a node
+  without rerendering. `react/compose-refs` forwards internal/caller refs only where
+  needed, including explicit React 19 returned cleanup. React owns attachment and
+  detachment; do not add a second ref lifecycle manager.
   Keep `component/compat.cljs` as the sole version-specific Hiccup-key metadata
   adapter; React keys are not props and public Reagent class argv is insufficient
   for function-component metadata. Run keyed persistence tests on Reagent upgrades.

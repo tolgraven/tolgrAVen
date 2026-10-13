@@ -2,7 +2,6 @@
   "Helpers for serving modern image formats (WebP, AVIF) with automatic fallbacks"
   (:require
     [tolgraven.component.registry]
-    [tolgraven.component.ref :as refs]
     [tolgraven.content.schema :as content]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.components.image.sources :as sources]
@@ -45,7 +44,7 @@
   (r/with-let [*fallback-sources (r/atom #{})]
     (let [attrs' (merge {:decoding "async"} (sources/dimensions src) attrs)
           capture! (react/use-memo
-                    #(refs/compose
+                    #(react/compose-refs
                      (fn [image]
                       ;; A server-rendered image may fail before React attaches
                       ;; on-error. Inspect it at attachment without changing DOM;

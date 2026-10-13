@@ -184,12 +184,22 @@ writes. Older implementations of this project had writable cursor adapters;
 those are not the authoring contract on this PR base.
 
 ```clojure
-(defc <setting> []
-  :let [*enabled? (<sub :comp [:enabled?] {:initial false})]
+(defc <setting>
+  {:state {:initial {:enabled? false}}}
+  []
+  :let [*enabled? (<sub :comp [:enabled?])]
   [:button {:aria-pressed @*enabled?
             :on-click #(>update *enabled? not)}
    (if @*enabled? "Enabled" "Disabled")])
 ```
+
+Declared defaults initialize after commit through an idempotent event/effect.
+An ordinary `<sub` fallback does not write app-db. Persistent storage is the
+managed-source exception: acquiring the real value subscription dispatches a
+load event, while its derived reaction only reads app-db. Eager initialization
+uses the same effect, so later mounting does not repeat the snapshot read. This
+matches the useful acquisition pattern of our Strapi/Supabase bindings; a dummy
+subscription returning `true` solely to trigger work adds no useful data flow.
 
 Do not mirror a subscription in hook state with an effect that copies values.
 That creates two owners and an extra update cycle. The existing blog vote/edit
@@ -347,8 +357,12 @@ discarded renders cannot overwrite the work belonging to a selected render.
 React 19 supports cleanup returned by a ref callback. Do not accidentally return
 a function-valued assignment or helper result unless it is intended as cleanup.
 Effect return normalization does not normalize ref callback returns.
-`component.ref/compose` preserves both callers and their teardown behavior, with
-idempotent cleanup for each attachment.
+The familiar `[:div {:ref #(reset! *node %)} ...]` works with a plain atom allocated
+in `:let` or an outer function: attachment stores the node, detachment stores nil,
+and neither change rerenders. Reagent/React handles those callbacks. Our small
+`react/compose-refs` helper exists only where internal and caller refs must both
+receive the node; it forwards explicit cleanup when a caller returns it. Ordinary
+callbacks do not require manual release, leases or a second lifecycle registry.
 [React 19 release notes](https://react.dev/blog/2024/12/05/react-19).
 
 ### Browser APIs around Clojure data

@@ -165,9 +165,14 @@
           (<= (count (pr-str value)) 42)))))
 
 (defc <value>
-  {:state {:key (fn [path & _] (pr-str path)) :initial {:page 0}}}
+  {:state (fn [path value depth]
+            {:key (pr-str path)
+             :initial {:page 0
+                       :expanded? (and (< depth 2)
+                                       (or (zero? depth)
+                                           (and (coll? value) (<= (bounded-count 13 value) 12))))}})}
   [path value depth]
-  :let [*expanded (<sub :comp [:expanded?] {:initial (and (< depth 2) (or (zero? depth) (and (coll? value) (<= (bounded-count 13 value) 12))))})
+  :let [*expanded (<sub :comp [:expanded?])
         *page (<sub :comp [:page])]
   (let [kind (value-type value) collection? (coll? value)
         page (when collection? (layout/page (entries value) (or @*page 0) (when (counted? value) (count value))))
@@ -565,10 +570,13 @@
         [:button {:disabled (not more?) :on-click #(>reset *page (inc index))} "Next components"]])]))
 
 (defc <component-branch>
-  {:state {:key (fn [node & _] (pr-str (:id node)))}}
+  {:state (fn [node depth _]
+            {:key (pr-str (:id node))
+             :initial {:open? (and (zero? depth) (= :mounted (:status node)))
+                       :details? false}})}
   [node depth inspect!]
-  :let [*open (<sub :comp [:open?] {:initial (and (zero? depth) (= :mounted (:status node)))})
-        *details (<sub :comp [:details?] {:initial false})]
+  :let [*open (<sub :comp [:open?])
+        *details (<sub :comp [:details?])]
   (let [{:keys [id component children status path key observed?]} node
         branch? (seq children)
         mounted? (= status :mounted)
@@ -599,8 +607,10 @@
      (when (and branch? @*open)
        [<component-branches> id children (inc depth) inspect!])]))
 
-(defc <component-tree> [active inspect!]
-  :let [*search (<sub :comp [:search] {:initial ""})]
+(defc <component-tree>
+  {:state {:initial {:search ""}}}
+  [active inspect!]
+  :let [*search (<sub :comp [:search])]
   (let [catalog @(rf/subscribe [:dev-console/catalog])
         active (into {} (filter #(layout/matches? @*search (val %))) active)
         catalog (into {} (filter #(layout/matches? @*search (key %))) catalog)
@@ -631,16 +641,20 @@
        [:p "Enter a vector path."])]))
 
 
-(defc <event-history> [records]
-  :let [*search (<sub :comp [:search] {:initial ""})]
+(defc <event-history>
+  {:state {:initial {:search ""}}}
+  [records]
+  :let [*search (<sub :comp [:search])]
   [:section
    [:label "Search captured events " [:input {:type "search" :value @*search
                                               :on-change #(>reset *search (.. % -target -value))}]]
    [<record-groups> :epochs (filterv #(and (= :epoch (:kind %))
                                           (layout/matches? @*search (:event %))) records)]])
 
-(defc <profile-summary> [records]
-  :let [*search (<sub :comp [:search] {:initial ""})]
+(defc <profile-summary>
+  {:state {:initial {:search ""}}}
+  [records]
+  :let [*search (<sub :comp [:search])]
   (let [groups (layout/metrics records @*search)]
     [:section.dev-profile
      [:h3 "Where time goes"]

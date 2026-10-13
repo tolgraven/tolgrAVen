@@ -1,7 +1,8 @@
 (ns tolgraven.component-ref-test
   (:require-macros [tolgraven.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
-            [tolgraven.component.ref :as refs]
+            [tolgraven.react :as rf]
+            [tolgraven.component]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.test-support :as support]))
 
@@ -36,33 +37,32 @@
           (.catch #(is false (str %)))
           (.finally done)))))
 
-(deftest ref-cleanup-is-idempotent-and-cannot-release-a-later-attachment
-  (let [reference #js {:current nil}
-        *events (atom [])
-        legacy #(swap! *events conj %)
-        callback (refs/compose reference legacy legacy nil)
+(deftest each-native-attachment-returns-its-own-cleanup
+  (let [*events (atom [])
+        reference (fn [element]
+                    (swap! *events conj [:attach element])
+                    #(swap! *events conj [:release element]))
+        callback (rf/compose-refs reference reference nil)
         first-element (js-obj)
         second-element (js-obj)
         release-first! (callback first-element)
         release-second! (callback second-element)]
-    (is (= [first-element nil second-element] @*events) "Duplicate references attach once")
+    (is (= [[:attach first-element] [:attach second-element]] @*events)
+        "Distinct React attachments do not release each other")
     (release-first!)
-    (is (identical? second-element (.-current reference)))
+    (is (= [:release first-element] (last @*events)))
     (release-second!)
-    (release-second!)
-    (callback nil)
-    (is (nil? (.-current reference)))
-    (is (= [first-element nil second-element nil] @*events))))
+    (is (= [:release second-element] (last @*events)))
+    (is (nil? (callback nil)))))
 
-(deftest failed-ref-attachment-and-cleanup-release-the-other-owners
-  (let [reference #js {:current nil}
-        attach-error (js/Error. "Attach failed")
-        cleanup-error (js/Error. "Cleanup failed")
-        failed-attach (refs/compose reference (fn [_] (throw attach-error)))
-        failed-cleanup (refs/compose reference (fn [_] #(throw cleanup-error)))]
-    (is (identical? attach-error (try (failed-attach (js-obj)) (catch :default error error))))
-    (is (nil? (.-current reference)))
-    (let [release! (failed-cleanup (js-obj))]
-      (is (identical? cleanup-error (try (release!) (catch :default error error))))
-      (is (nil? (.-current reference)))
-      (is (nil? (release!)) "Failed cleanup still releases exactly once"))))
+(deftest plain-ref-callbacks-use-the-normal-node-and-nil-contract
+  (let [*element (atom nil)
+        reference #js {:current nil}
+        callback (rf/compose-refs #(reset! *element %) reference)
+        element (js-obj)]
+    (is (nil? (callback element)) "Plain callbacks do not opt into React 19 cleanup")
+    (is (identical? element @*element))
+    (is (identical? element (.-current reference)))
+    (callback nil)
+    (is (nil? @*element))
+    (is (nil? (.-current reference)))))

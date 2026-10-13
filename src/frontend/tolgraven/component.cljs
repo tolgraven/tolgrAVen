@@ -4,7 +4,6 @@
     [clojure.walk :as walk]
     [tolgraven.render-context :as context]
     [tolgraven.component.registry :as registry]
-    [tolgraven.component.ref :as refs]
     [tolgraven.component.features :as feature-options]
     [tolgraven.schema.declarations :as schemas]
     [tolgraven.validation.runtime :as validation]
@@ -249,6 +248,7 @@
         *instance (rf/use-ref nil)
         [version refresh!] (rf/use-state 0)
         hydrating? (rf/use-context restore/hydrating-context)]
+    (state-store/use-initialization! definition args state-key)
     (when-not (.-current *instance)
       (let [*element (atom nil)]
         (set! (.-current *instance)
@@ -261,7 +261,7 @@
                :order (atom [])
                :shape (atom nil)
                :capture-ref (memoize (fn [base caller]
-                                      (refs/compose
+                                      (rf/compose-refs
                                         (fn [element] (reset! *element element) nil)
                                         base caller)))})))
     (let [{*render :render *element :element capture-ref :capture-ref :as instance} (.-current *instance)
@@ -374,7 +374,7 @@
                              :else {}))]
     (when-not (.-current *capture-ref)
       (set! (.-current *capture-ref)
-            (memoize refs/compose)))
+            (memoize rf/compose-refs)))
     (if (false? supplied)
       content
       (let [children [:r> (rf/context-provider page-root-context) #js {:value nil} content]

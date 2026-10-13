@@ -6,13 +6,14 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   real events, await lifecycle completion, and unmount in cleanup. Avoid direct
   app-db mutation, dangling subscriptions and forced React flushes.
 - Native ref tests cover forwarded React 19 cleanup, legacy nil callbacks,
-  replacement/unmount, stale cleanup and failure teardown. Keyed state tests
+  replacement/unmount and plain atom/object refs. Keyed state tests
   protect the isolated Reagent 2.0.1 Hiccup metadata compatibility boundary.
 - Deferred hydration tests cover cached child-before-parent commit, overlapping
   ownership, discarded renders, StrictMode cleanup and stale document completion.
   Preserve the original batching adapter after every test/unmount.
   Scoped-state tests use native subscription handles and event writes; persistence
-  checks cover accepted transactions, rejected transactions and explicit deletions.
+  checks cover pure nonpersistent reads, idempotent eager/subscription acquisition,
+  late restoration versus edits, accepted/rejected transactions and explicit deletions.
 - Unit/component tests may replace transport boundaries. Live integration must use
   real routes, module loaders and service bindings; do not inject fixture app state.
 - Boot checks dispatch the real startup/stop events and mount/unmount the common

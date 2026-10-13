@@ -43,6 +43,23 @@
 (def use-layout-effect         hooks/use-layout-effect)
 (def use-memo                  hooks/use-memo)
 (def use-callback              hooks/use-callback)
+(defn- set-ref! [reference element]
+  (cond
+    (fn? reference) (reference element)
+    reference (do (set! (.-current ^js reference) element) nil)))
+
+(defn compose-refs
+  "Forward React's node/nil callback to each ref. Ordinary refs need no cleanup
+   manager; forward an explicit React 19 cleanup only when a caller returns one."
+  [& references]
+  (let [references' (vec (distinct (remove nil? references)))]
+    (fn [element]
+      (let [results (mapv #(set-ref! % element) references')]
+        (when (and element (some fn? results))
+          (fn []
+            (doseq [[reference result] (map vector references' results)]
+              (if (fn? result) (result) (set-ref! reference nil)))))))))
+
 (def component-argv compat/argv)
 (def flush-sync                react-dom/flushSync)
 
