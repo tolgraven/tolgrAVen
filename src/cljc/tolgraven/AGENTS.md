@@ -112,3 +112,7 @@ server format handlers retain their native JVM Java-time support.
   `media/query.cljc` builds shared public manifest queries for page plans and managed
   browser bindings. Post `:image-assets` and CMS section sidecars carry paired SSR
   metadata; private job/source/lease fields must not enter public projections.
+
+- `build/assets.clj` prepares the existing Optimus inventory after production
+  Shadow/CSS outputs. Keep asset transformations out of runtime startup and preserve
+  the CSS/font reference contract; `doc/middleware.md` describes the artifact.

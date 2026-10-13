@@ -25,9 +25,9 @@
       ;; GraalJS/Uglify or silently inline another stylesheet owner's imports.
       ; (optimizations/minify-css-assets options) ;my css breaks it ofc ; not anymore apparently ; well it's already minified by autoprefixer or? could anyways
       (concatenate-bundles options)
-      (transform-images {:regexp #"(/media/.*\.jpg)|(/img/.*\.(jpg|png))"
+      (transform-images {:regexp #"(/media/.*\.jpg)|(/img/.*\.(jpg|png))" ; Only transform originals, not webp/avif
                          :quality 0.80
-                         :progressive true})
+                         :progressive true}) ; webp/avif already optimized at creation time
       (add-cache-busted-expires-headers)
       (add-last-modified-headers)))
 

@@ -8,6 +8,8 @@
     [tolgraven.streaming :as streaming]
     [tolgraven.middleware.formats :as formats]
     [tolgraven.middleware.assets :as delivery]
+    [tolgraven.middleware.asset-manifest :as manifest]
+    [tolgraven.site :as site]
     [tolgraven.middleware.multipart :as multipart]
     [tolgraven.middleware.ranges :as ranges]
     [tolgraven.config :refer [env]]
@@ -33,12 +35,8 @@
     [ring.middleware.defaults :refer [site-defaults wrap-defaults secure-site-defaults]]
     ; [ring-middleware-csp.core :refer [wrap-csp]]
     ; [ring.middleware.logger :refer [wrap-with-logger]]
-    [optimus.prime :as optimus]
     [tolgraven.loader.style-catalog :as styles]
     [optimus.assets :as assets]
-    [optimus.optimizations :as optimizations]
-    [optimus.strategies :as strategies]
-    [optimus-img-transform.core :refer [transform-images]]
     [taoensso.timbre :as timbre :refer [debug log error]]
     ))
 
@@ -74,27 +72,34 @@
          wrapped)
        request))))
 
-(defn get-assets []
+(defn get-bundled-assets
+  "Load the declared CSS/JS owners and their references for the live dev build."
+  []
   (concat
-   (assets/load-bundle "public"
-                       "styles.css"
-                       ["/css/tolgraven/main.min.css"])
-   (assets/load-bundles "public"
-                        styles/stylesheet-bundles)
-   (assets/load-bundle "public"
-                       "icons.css"
-                       ["/css/tolgraven/icons.min.css"])
-   (assets/load-bundles "public"
-                        {"main.js" [(str "/js/compiled/out/"
-                                         (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))]})
-   (assets/load-bundles "public"
-                        {"document-head.js" ["/js/document/head.js"]
-                         "document-entrance.js" ["/js/document/entrance.js"]})
-   (assets/load-assets "public"
-                       [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?|webp|avif)$"
-                        #"/media/.*\.(jpg?|jpeg?|webp|avif|mp4|webm)$"])
-   (assets/load-assets "public"
-                       ["/sitemap.xml" "/robots.txt"])))
+    (assets/load-bundle "public" "styles.css" ["/css/tolgraven/main.min.css"])
+    (assets/load-bundles "public" styles/stylesheet-bundles)
+    (assets/load-bundle "public" "icons.css" ["/css/tolgraven/icons.min.css"])
+    (assets/load-bundle "public" "main.js"
+      [(str "/js/compiled/out/"
+            (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))])
+    (assets/load-bundles "public"
+      {"document-head.js" ["/js/document/head.js"]
+       "document-entrance.js" ["/js/document/entrance.js"]})))
+
+(defn get-assets
+  "Complete build-time inventory; runtime production imports its prepared result."
+  []
+  (concat
+    (get-bundled-assets)
+    (assets/load-assets "public"
+      [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?|webp|avif)$"
+       #"/media/.*\.(jpg?|jpeg?|webp|avif|mp4|webm)$"])
+    (assets/load-assets "public" ["/sitemap.xml" "/robots.txt"])))
+
+(defn asset-build-settings []
+  {:browser-modules (layout/browser-modules)
+   :site site/config
+   :styles styles/stylesheet-bundles})
 
 
 (defn module-source-maps
@@ -107,37 +112,23 @@
                    "$1/js/compiled/out/$2")
            asset)) loaded-assets))
 
-(defn optimize-all [assets options]
-  (-> assets
-      module-source-maps
-      (optimizations/minify-js-assets options)
-      ; (optimizations/minify-css-assets options) ;my css breaks it ofc ; not anymore apparently ; well it's already minified by autoprefixer or? could anyways
-      (optimizations/inline-css-imports)
-      (optimizations/concatenate-bundles options)
-      (transform-images {:regexp #"(/media/.*\.jpg)|(/img/.*\.(jpg|png))" ; Only transform originals, not webp/avif
-                         :quality 0.80
-                         :progressive true}) ; webp/avif already optimized at creation time
-      (optimizations/add-cache-busted-expires-headers)
-      (optimizations/add-last-modified-headers)))
+(defn optimize-all
+  "Compatibility entry point for build/audit callers; never invoked at startup."
+  [assets options]
+  ((requiring-resolve 'tolgraven.build.assets/optimize)
+   (module-source-maps assets) options))
 
 (defn serve-live-assets-maybe-autorefresh
   "Refresh a realized development inventory with a bounded TTL, without a watcher."
   [app get-assets optimize options]
   (delivery/serve-assets app get-assets optimize (assoc options :cache-live-assets 2000)))
+  ; :cache-live-assets 60000 ; preserved longer-cache experiment
 
-(defn wrap-optimus
-  [app]
-  (-> app
-      (optimus/wrap
-       get-assets
-       (if (:dev env)
-         optimizations/none
-         optimize-all)
-       (if (:dev env)
-         serve-live-assets-maybe-autorefresh ; like serve-live-assets but with watcher recompiling instead of timeout
-         delivery/serve-assets)
-       {;:cache-live-assets 60000
-        :uglify-js {:mangle-names false}})))
+(defn wrap-optimus [app]
+  (if (:dev env)
+    (serve-live-assets-maybe-autorefresh app get-bundled-assets (fn [files _] files) {})
+    (let [inventory (manifest/read-prepared! (asset-build-settings))]
+      (delivery/serve-assets app (constantly inventory) (fn [files _] files) {}))))
 
 (defn wrap-log "Log req then pass on unchanged"
   [handler id]

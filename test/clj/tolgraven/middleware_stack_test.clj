@@ -14,6 +14,7 @@
             [ring.util.codec :as codec]
             [tolgraven.middleware :as middleware]
             [tolgraven.middleware.assets :as assets]
+            [tolgraven.middleware.asset-manifest :as manifest]
             [tolgraven.middleware-transport-test :refer [body-text body-bytes upload-request]]
             [tolgraven.routes.services :as services]
             [tolgraven.schema.http :as schemas]
@@ -33,8 +34,7 @@
   ;; actual production constructor owns every request/response wrapper and order.
   (with-redefs [config/env (dissoc (if (map? config/env) config/env {}) :dev :test :stage)
                 environment/defaults {:middleware identity}
-                middleware/get-assets (constantly inventory)
-                middleware/optimize-all (fn [files _] files)]
+                manifest/read-prepared! (constantly inventory)]
     (middleware/wrap-base handler)))
 
 (defn request [uri & [headers method]]

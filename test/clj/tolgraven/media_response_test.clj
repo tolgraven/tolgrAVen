@@ -5,6 +5,7 @@
             [optimus.link :as link]
             [tolgraven.config :as config]
             [tolgraven.env :as env]
+            [tolgraven.middleware.asset-manifest :as manifest]
             [tolgraven.middleware :as middleware]))
 
 (deftest only-successful-production-fingerprinted-modules-are-immutable
@@ -30,9 +31,9 @@
     ;; Stage permits local HTTP while retaining frozen, optimized assets.
     (with-redefs [config/env {:stage true}
                   env/defaults {:middleware identity}
-                  middleware/get-assets
-                  #(assets/load-assets "public" ["/img/tolgrav.avif"
-                                                "/img/tolgrav.webp"])]
+                  manifest/read-prepared!
+                  (fn [_] (assets/load-assets "public" ["/img/tolgrav.avif"
+                                                       "/img/tolgrav.webp"]))]
       (let [handler (middleware/wrap-base
                      (constantly {:status 404
                                   :headers {"Content-Type" "text/plain"}

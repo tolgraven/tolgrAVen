@@ -12,6 +12,46 @@
                (= "/workspace" (.getCanonicalPath (io/file "."))))
   (throw (ex-info "Run this packaging fixture only inside the isolated CPU build" {})))
 
+(defn response-bytes [response]
+  (with-open [output (java.io.ByteArrayOutputStream.)]
+    ((requiring-resolve 'ring.core.protocols/write-body-to-stream)
+     (:body response) response output)
+    (.toByteArray output)))
+
+(defn verify-stack! [inventory]
+  (let [wrap-base (requiring-resolve 'tolgraven.middleware/wrap-base)
+        selected (filter #(or (= "styles.css" (:bundle %))
+                               (re-find #"\.(woff2|avif)$" (:path %))) inventory)
+        samples (take 3 (vals (group-by #(cond
+                                          (:contents %) :style
+                                          (re-find #"\.woff2$" (:path %)) :font
+                                          :else :image) selected)))]
+    (with-redefs-fn {(requiring-resolve 'tolgraven.config/env) {}
+                    (requiring-resolve 'tolgraven.env/defaults) {:middleware identity}}
+      (fn []
+        (let [handler (wrap-base (constantly {:status 404, :headers {}, :body "Not found"}))]
+          (assert (= 3 (count samples)) "Styles, fonts and modern images must be represented")
+          (doseq [[{:keys [path contents resource]}] samples]
+            (let [request {:request-method :get
+                           :scheme :https
+                           :server-name "localhost"
+                           :server-port 443
+                           :uri path
+                           :headers {"accept-encoding" "identity"}}
+                  response (handler request)
+                  bytes (response-bytes response)
+                  expected (manifest/digest (or resource (.getBytes ^String contents "UTF-8")))
+                  partial (handler (assoc-in request [:headers "range"] "bytes=-3"))
+                  partial-bytes (response-bytes partial)]
+              (assert (= 200 (:status response)))
+              (assert (= expected (manifest/digest bytes)) "Actual middleware must preserve prepared bytes")
+              (assert (= "nosniff" (get-in response [:headers "X-Content-Type-Options"])))
+              (assert (= (str (alength bytes)) (get-in response [:headers "Content-Length"])))
+              (assert (= 206 (:status partial)))
+              (assert (= (vec (take-last 3 bytes)) (vec partial-bytes)))))))))
+  (assert (nil? (find-ns 'optimus.optimizations.minify)) "Production stack must not load minifiers")
+  (assert (nil? (find-ns 'optimus-img-transform.core)) "Production stack must not load image transforms"))
+
 (let [[mode] *command-line-args*
       expected {:browser-modules (layout/browser-modules)
                 :site site/config
@@ -39,5 +79,6 @@
             (assert (= record (edn/read-string (slurp report)))
                     "Packaged URLs, headers, styles, fonts and fallback bytes must equal source output"))
     (throw (ex-info "Expected source or jar" {})))
+  (verify-stack! inventory)
   (println "Verified" mode "prepared inventory:" (count inventory) "assets," (count bundles) "independent bundles"))
 (shutdown-agents)

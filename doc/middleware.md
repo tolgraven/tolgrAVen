@@ -92,6 +92,13 @@ fail clearly; importing never discovers or transforms assets.
 `test/prepared_assets.clj` runs inside the CPU controller's disposable snapshot.
 Its `source` mode records exact bundle paths, metadata and body signatures; `jar`
 mode compares the actual packaged resources against that record without loading
-minification or image transformation namespaces. These checks establish artifact
-compatibility; production startup and automatic packaging integration require
-separate stack/build checks.
+minification or image transformation namespaces. Production imports this artifact at handler construction, once. Development
+loads declared CSS/JS bundles and their references through a two-second TTL; it
+has no broad resource watcher. `lein with-profile uberjar,provided uberjar` and the
+Docker frontend stage prepare the inventory after production Shadow/CSS outputs.
+Docker copies it into the final JAR alongside public resources. These checks
+establish artifact compatibility; stack/build checks verify those entry points.
+
+The current Optimus bundle names and second JS fingerprints remain intentional:
+layout, preloads and lazy style consumers still use that URL contract. Removing
+that extra naming layer requires a separate proven consumer migration.

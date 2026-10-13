@@ -121,7 +121,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   specs declare literal `:styles`; CSS starts alongside JS acquisition. SSR emits
   route styles in the initial head, inlining small feature sheets within a bounded
   budget. Popup-only modules may declare `:ssr-styles :deferred`; Optimus
-  fingerprints each bundle separately.
+  fingerprints each bundle separately. Production packaging prepares its inventory
+  once; runtime imports the validated artifact without minification or image conversion.
   Literal component/module `:icons` export SVG masks into the same style inventory;
   `bb fonts:icons` regenerates committed glyph assets without browser font swaps.
   Text faces stay consumer-scoped; `defc`'s `:font` feature owns controlled late

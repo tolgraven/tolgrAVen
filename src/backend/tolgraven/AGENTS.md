@@ -165,3 +165,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - Public image/video filenames are immutable. Changed pixels use a new suffixed
   name. Whole/range media responses retain Optimus policy or get one-year immutable
   caching; never apply that policy to failures or mutable document/API responses.
+
+- Production Optimus startup imports `optimus/assets.edn` and rejects missing/stale
+  artifacts. Build-only JS/CSS/image preparation belongs to `build/assets.clj`;
+  development refreshes declared bundles and their references with a two-second
+  TTL, without a resource watcher. Preserve independent module style acquisition.
