@@ -125,10 +125,37 @@ Several larger libraries remain because they perform real work:
 | cljs-time | Existing date calculations/formatting. |
 | PostgreSQL JDBC + clojure.java.jdbc | Active database provisioning tooling. HoneySQL is confined to `:experiments`. |
 | tools.logging + Timbre + SLF4J bridge | Application logging facade and Timbre sink, including Java libraries using SLF4J 2. Keep the bridge compatible with the resolved SLF4J API. |
-| io.aviso/pretty / Prone | Application exception/log formatting and development error pages respectively. |
+| org.clj-commons/pretty / Prone | Pretty exceptions shared with Timbre, and development error pages respectively. |
 | Leaflet / react-leaflet | Preserved map functionality. |
 | react-markdown, remark-gfm, rehype-raw, syntax highlighter | Existing Markdown rendering and highlighting. |
 | xmlhttprequest | Node test transport adapter; a development dependency. |
+
+## JVM logging
+
+Timbre is the application logging backend. `tolgraven.log` owns console output
+(info and above), rotating `log/tolgraven.log` output, namespace thresholds and
+pretty exceptions. `clojure.tools.logging` callers use Timbre's existing adapter;
+Java SLF4J callers use `slf4j-timbre`. Keep both adapters: application and dependency
+code use these APIs. Encore is used directly by the namespace filter and required
+by Timbre. `org.clj-commons/pretty` supplies both Timbre's exception formatter and
+the REPL hooks; the older `io.aviso/pretty` duplicates compatibility namespaces
+and must not be added alongside it.
+
+JBoss Logging is required by Undertow, XNIO and JBoss Threads. Its automatic
+selection prefers Log4j when available and otherwise falls back to JUL unless
+Logback is present. The shared Lein JVM options and Docker command explicitly
+select `-Dorg.jboss.logging.provider=slf4j`, routing HTTP-server logs to Timbre
+from class initialization, before the application logger is mounted. Include
+that option when launching the JAR directly too. A running JVM retains its
+selected provider; restart it to pick up dependency or JVM-option changes.
+
+There is no Log4j or Logback backend in the resolved application graph and no
+Logback XML configuration. `log4j:WARN No appenders could be found` means a
+Log4j backend was selected without any output destination. Check the emitting
+JVM's actual classpath and launch options if this appears; do not add a second
+logging backend or configure Log4j merely to suppress the warning.
+Apache HttpClient 4's transitive `commons-logging` facade remains necessary for
+`clj-http`; it is not an additional application backend.
 
 ## Upgrade checks
 

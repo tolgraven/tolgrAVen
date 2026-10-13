@@ -3,6 +3,11 @@
 Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 `doc/site-provisioning.md` for operating and configuration details.
 
+- `tolgraven.log` owns Timbre appenders and pretty exceptions; keep Throwable
+  objects intact through tools.logging and SLF4J. JBoss provider selection is a
+  launch-time JVM option shared by Lein and Docker, before Undertow loads.
+  See `doc/dependencies.md` for logging dependency ownership.
+
 - Feature-owned server adapters live under `modules/<feature>/`; shared platform
   adapters retain their `content/`, `supabase/`, and `ssr/` ownership.
   Landing routes come from `modules/home/pages.cljc`; their code/CSS assets use

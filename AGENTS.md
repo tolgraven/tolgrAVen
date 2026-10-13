@@ -151,6 +151,12 @@ Do not retain completed investigation diaries or historical test counts as curre
 
 ## Dependency ownership
 
+- Timbre owns JVM logging configuration in `tolgraven.log`; tools.logging and
+  SLF4J route through its existing adapters. Select JBoss's SLF4J provider in
+  Lein and direct Java launches before Undertow loads. Use the shared
+  `org.clj-commons/pretty`, not the duplicate `io.aviso/pretty` or Logback XML.
+  See `doc/dependencies.md`.
+
 - Shadow owns the CLJS/Closure compiler graph in `:provided`; explicit production build commands include that profile, while runtime packaging excludes it. Keep the managed Codox analyzer version aligned with Shadow.
 - Use locked local npm tools. Supabase uses its npm SDK inside the lazy `:supabase` module;
   `npm run vendor:sync` maintains only the preserved legacy UMD reference.
