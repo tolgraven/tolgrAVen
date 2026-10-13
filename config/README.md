@@ -1,18 +1,29 @@
-# Configuration ownership
+# Runtime configuration examples
 
-Private machine overrides live here and are ignored by Git and Docker:
+Active runtime files use the same name in each environment:
 
-- `local.dev.edn`: read by `lein repl` and the development profile.
-- `local.test.edn`: read by the test profile.
-- `local.edn`: optional manual override; use `-Dconf=config/local.edn` explicitly.
+- Development: `env/dev/resources/config.edn`.
+- Tests: `env/test/resources/config.edn`.
+- Production: `env/prod/resources/config.edn`.
 
-Copy an example to its corresponding local file on a new checkout. Environment
-classpath defaults remain in `env/<environment>/resources/config.edn`; cprop
-merges the selected override, Mount arguments, system properties, then environment
-variables. Production defaults contain no secrets. Inject deployment secrets as
-environment variables or an external `-Dconf` file, never Docker build inputs.
+Dev/test files are private and ignored by Git and Docker. Production defaults are
+tracked and contain no secrets; deployment credentials come from environment
+variables or an external `-Dconf` file. `config/` contains tracked examples only.
+
+For a new checkout or worktree:
+
+```sh
+mkdir -p env/dev/resources env/test/resources
+cp config/dev.example.edn env/dev/resources/config.edn
+cp config/test.example.edn env/test/resources/config.edn
+```
+
+Add private integration settings to those environment files. Existing private
+configuration is not copied into a new worktree automatically. Read
+[Runtime configuration](../doc/configuration.md) for required settings, actual
+defaults, override precedence and production options. `defaults.example.edn`
+shows the runtime defaults with commented alternatives.
 
 Tool configuration stays at each tool's required location (`shadow-cljs.edn`,
-`project.clj`, `bb.edn`, `.clj-kondo/config.edn`). These are not runtime overrides.
-An ignored `local.dev-legacy.edn`, if present, preserves an old unused resource
-copy; it is not automatically loaded.
+`project.clj`, `bb.edn`, `.clj-kondo/config.edn`). Module/page selections belong to
+`resources/site.edn` and optional CMS overrides; see [Site capabilities](../doc/site-capabilities.md).

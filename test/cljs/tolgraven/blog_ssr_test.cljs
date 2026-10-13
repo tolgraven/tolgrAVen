@@ -39,11 +39,11 @@
    :link-preview link-preview/spec})
 
 (r/defc <hydration-check> [on-commit]
-  (react/use-effect (fn [] (on-commit) js/undefined) #js [])
+  (react/use-effect (fn [] (on-commit) nil) [])
   [page/<page>])
 
 (r/defc <formatter-commit> [*commits args]
-  (react/use-layout-effect (fn [] (swap! *commits inc) js/undefined) #js [])
+  (react/use-layout-effect (fn [] (swap! *commits inc) nil) [])
   (into [highlight-view/<code-block>] args))
 
 (defn check-hydration! [fixture selectors done]

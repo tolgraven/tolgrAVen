@@ -7,10 +7,14 @@
 (defc <timeout>
   "Call f after mount, cancelling on unmount. Renders no DOM and is safe in Node."
   [f :- fn? milliseconds :- [:and number? [:>= 0]]]
+  :let [*callback (atom f)]
+  ;; Keep the mount deadline, while callbacks come from the latest committed
+  ;; arguments. Returning f here would accidentally declare it as cleanup.
+  (react/use-layout-effect (fn [] (reset! *callback f) nil) [f])
   (react/use-effect
    (fn []
-     (let [timer (js/setTimeout f milliseconds)]
-       #(js/clearTimeout timer))) #js [])
+     (let [timer (js/setTimeout #(@*callback) milliseconds)]
+       #(js/clearTimeout timer))) [])
   nil)
 
 (defn use-delayed-visible?
@@ -20,10 +24,10 @@
     (react/use-effect
      (fn []
        (if visible?
-         (do (set-retained! true) js/undefined)
+         (do (set-retained! true) nil)
          (let [timer (js/setTimeout #(set-retained! false) delay-ms)]
            #(js/clearTimeout timer))))
-     #js [visible? delay-ms])
+     [visible? delay-ms])
     (or visible? retained?)))
 
 (defn use-delayed-hide
@@ -31,9 +35,14 @@
   [delay-ms]
   (let [[visible? set-visible!] (react/use-state false)
         *timer (react/use-ref nil)
-        cancel! #(when (.-current *timer) (js/clearTimeout (.-current *timer)))
+        cancel! #(when-let [timer (.-current *timer)]
+                   (js/clearTimeout timer)
+                   (set! (.-current *timer) nil))
         show! #(do (cancel!) (set-visible! true))
         hide! #(do (cancel!)
-                   (set! (.-current *timer) (js/setTimeout (fn [] (set-visible! false)) delay-ms)))]
-    (react/use-effect (fn [] cancel!) #js [])
+                   (set! (.-current *timer)
+                         (js/setTimeout
+                           (fn [] (set! (.-current *timer) nil) (set-visible! false))
+                           delay-ms)))]
+    (react/use-effect (fn [] cancel!) [])
     [visible? show! hide!]))

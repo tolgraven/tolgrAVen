@@ -5,7 +5,9 @@
     [react-dom :as react-dom]
     [react :as react]
     [reagent.core :as r]
+    [reagent.hooks :as hooks]
     [reagent.ratom]
+    [tolgraven.component.compat :as compat]
     [tolgraven.validation.bindings :as contracts]
     [tolgraven.diagnostics.consumer :as consumer]
     [re-frame.core :as rf]
@@ -28,56 +30,37 @@
 (def suspense                  (adapt-react-class react/Suspense))
 (def strict-mode               react/StrictMode)
 (def profiler                  react/Profiler)
-(def use-state                 react/useState)
-(def use-ref                   react/useRef)
+(def use-state                 hooks/use-state)
+(def use-ref                   hooks/use-ref)
 (def create-context            react/createContext)
-(def use-context               react/useContext)
+(def use-context               hooks/use-context)
 (defn context-provider [context] (.-Provider context))
-(def use-reducer               react/useReducer)
-(def use-sync-external-store   react/useSyncExternalStore)
+(def use-reducer               hooks/use-reducer)
+(def use-sync-external-store   hooks/use-sync-external-store)
+;; Upstream owns Clojure equality, state identity and cleanup adaptation.
+;; Dependency collections are Clojure values; native handles remain opaque.
+(def use-effect                hooks/use-effect)
+(def use-layout-effect         hooks/use-layout-effect)
+(def use-memo                  hooks/use-memo)
+(def use-callback              hooks/use-callback)
+(defn- set-ref! [reference element]
+  (cond
+    (fn? reference) (reference element)
+    reference (do (set! (.-current ^js reference) element) nil)))
 
-(defn- hook-dependencies [dependencies]
-  ;; Convert only the container: maps, refs and functions must keep their identity
-  ;; so React's Object.is dependency comparison retains its native semantics.
-  (if (sequential? dependencies) (to-array dependencies) dependencies))
+(defn compose-refs
+  "Forward React's node/nil callback to each ref. Ordinary refs need no cleanup
+   manager; forward an explicit React 19 cleanup only when a caller returns one."
+  [& references]
+  (let [references' (vec (distinct (remove nil? references)))]
+    (fn [element]
+      (let [results (mapv #(set-ref! % element) references')]
+        (when (and element (some fn? results))
+          (fn []
+            (doseq [[reference result] (map vector references' results)]
+              (if (fn? result) (result) (set-ref! reference nil)))))))))
 
-(defn- effect-setup [setup!]
-  (fn []
-    (let [cleanup! (setup!)]
-      ;; Clojure's implicit nil means no cleanup. Preserve other results so React
-      ;; still diagnoses accidental Promise/non-function returns.
-      (if (nil? cleanup!) js/undefined cleanup!))))
-
-(defn use-effect
-  "Owned React effect; accepts Clojure dependency sequences and implicit nil cleanup."
-  ([setup!] (react/useEffect (effect-setup setup!)))
-  ([setup! dependencies]
-   (react/useEffect (effect-setup setup!) (hook-dependencies dependencies))))
-
-(defn use-layout-effect
-  "Layout effect with the same Clojure dependency/cleanup contract as use-effect."
-  ([setup!] (react/useLayoutEffect (effect-setup setup!)))
-  ([setup! dependencies]
-   (react/useLayoutEffect (effect-setup setup!) (hook-dependencies dependencies))))
-
-(defn use-memo
-  "Native memoization with shallow conversion of Clojure dependency sequences."
-  ([calculate] (react/useMemo calculate))
-  ([calculate dependencies]
-   (react/useMemo calculate (hook-dependencies dependencies))))
-
-(defn use-callback
-  "Native callback identity/return values with Clojure dependency sequences."
-  ([callback] (react/useCallback callback))
-  ([callback dependencies]
-   (react/useCallback callback (hook-dependencies dependencies))))
-(defn component-argv
-  "Recover Reagent's original Hiccup and metadata for function or class views."
-  []
-  (when-let [instance (r/current-component)]
-    (if-let [argv (.-argv ^clj instance)]
-      (if (instance? cljs.core/Subvec argv) (.-v ^cljs.core/Subvec argv) argv)
-      (r/argv instance))))
+(def component-argv compat/argv)
 (def flush-sync                react-dom/flushSync)
 
 

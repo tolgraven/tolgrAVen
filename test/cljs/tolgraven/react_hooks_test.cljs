@@ -9,12 +9,13 @@
   (let [memo (rf/use-memo #(js-obj) [dependency])
         callback (rf/use-callback (fn [] nil) (list dependency))]
     (rf/use-layout-effect
+      (fn [] (reset! *observed {:memo memo, :callback callback})))
+    (rf/use-layout-effect
       (fn []
-        (reset! *observed {:memo memo, :callback callback})
         (when enabled?
           (swap! *lifecycle conj [:layout-start dependency])
           #(swap! *lifecycle conj [:layout-stop dependency])))
-      [dependency phase enabled?])
+      [dependency enabled?])
     (rf/use-effect
       (fn []
         (when enabled?
@@ -23,12 +24,13 @@
       [dependency enabled?])
     [:span (str phase)]))
 
-(deftest clojure-hook-dependencies-preserve-identity-and-effects-clean-up
+(deftest equal-clojure-dependencies-retain-ownership-and-changed-values-clean-up
   (async done
     (let [*observed (atom nil)
           *lifecycle (atom [])
           dependency {:enabled? true}
-          equal-dependency (into {} dependency)]
+          equal-dependency (into {} dependency)
+          changed-dependency {:enabled? false}]
       (-> (go-promise
             (let [element (.createElement js/document "div")
                   root (await! (support/create-root! element))]
@@ -43,19 +45,85 @@
                   (is (identical? memo (:memo @*observed)))
                   (is (identical? callback (:callback @*observed)))
                   (is (empty? @*lifecycle))
-                  (await! (support/render! root [<hook-probe> equal-dependency 2 true *observed *lifecycle]))
+                  (await! (support/render! root [<hook-probe> equal-dependency 2 false *observed *lifecycle]))
                   (is (= dependency equal-dependency))
                   (is (not (identical? dependency equal-dependency)))
-                  (is (not (identical? memo (:memo @*observed)))
-                      "Equal but distinct Clojure map dependencies still have distinct native identities")
-                  (is (not (identical? callback (:callback @*observed)))))
-                (is (= [[:layout-start equal-dependency] [:effect-start equal-dependency]] @*lifecycle))
+                  (is (identical? memo (:memo @*observed))
+                      "Equal Clojure values retain memo and callback identity")
+                  (is (identical? callback (:callback @*observed))))
+                (is (empty? @*lifecycle))
                 (await! (support/render! root [<hook-probe> dependency 3 true *observed *lifecycle]))
+                (is (= [[:layout-start equal-dependency] [:effect-start equal-dependency]] @*lifecycle))
+                (await! (support/render! root [<hook-probe> equal-dependency 4 true *observed *lifecycle]))
+                (is (= 2 (count @*lifecycle)) "Equal values do not disconnect/reconnect resources")
+                (let [{:keys [memo callback]} @*observed]
+                  (await! (support/render! root [<hook-probe> changed-dependency 5 true *observed *lifecycle]))
+                  (is (not (identical? memo (:memo @*observed))))
+                  (is (not (identical? callback (:callback @*observed)))))
                 (is (= 1 (count (filter #(= [:layout-stop equal-dependency] %) @*lifecycle))))
                 (is (= 1 (count (filter #(= [:effect-stop equal-dependency] %) @*lifecycle))))
                 (finally (support/unmount! root)))
               (await! (support/settle!))
               (is (= 2 (count (filter #(= :layout-stop (first %)) @*lifecycle))))
               (is (= 2 (count (filter #(= :effect-stop (first %)) @*lifecycle))))))
+          (.catch #(is false (str %)))
+          (.finally done)))))
+
+(defc <state-probe> [phase *observed]
+  (let [[state set-state!] (rf/use-state {:value 0})
+        [reduced reduce!] (rf/use-reducer (fn [state value] (assoc state :value value)) {:value 0})]
+    (rf/use-layout-effect
+      #(reset! *observed {:state state
+                         :reduced reduced
+                         :set-state! set-state!
+                         :reduce! reduce!}))
+    [:span (str phase ":" (:value state) ":" (:value reduced))]))
+
+(deftest state-and-reducer-preserve-equal-clojure-values
+  (async done
+    (let [*observed (atom nil)]
+      (-> (go-promise
+            (let [element (.createElement js/document "div")
+                  root (await! (support/create-root! element))]
+              (try
+                (await! (support/render! root [<state-probe> 0 *observed]))
+                (let [{:keys [state reduced set-state! reduce!]} @*observed]
+                  (set-state! assoc :value 0)
+                  (reduce! 0)
+                  (await! (support/render! root [<state-probe> 1 *observed]))
+                  (is (identical? state (:state @*observed)))
+                  (is (identical? reduced (:reduced @*observed)))
+                  (set-state! assoc :value 1)
+                  (reduce! 1)
+                  (await! (support/settle!))
+                  (is (= "1:1:1" (.-textContent element)))
+                  (is (not (identical? state (:state @*observed))))
+                  (is (not (identical? reduced (:reduced @*observed)))))
+                (finally (support/unmount! root)))))
+          (.catch #(is false (str %)))
+          (.finally done)))))
+
+(deftest native-handles-and-functions-retain-identity-semantics-inside-clojure-dependencies
+  (async done
+    (let [*observed (atom nil)
+          *lifecycle (atom [])
+          handle (js-obj)
+          callback (fn [] nil)
+          dependency [handle callback]]
+      (-> (go-promise
+            (let [element (.createElement js/document "div")
+                  root (await! (support/create-root! element))]
+              (try
+                (await! (support/render! root [<hook-probe> dependency 0 true *observed *lifecycle]))
+                (let [memo (:memo @*observed)]
+                  (await! (support/render! root [<hook-probe> (vec (seq dependency)) 1 true *observed *lifecycle]))
+                  (is (identical? memo (:memo @*observed)))
+                  (is (= 2 (count @*lifecycle)))
+                  (await! (support/render! root [<hook-probe> [(js-obj) callback] 2 true *observed *lifecycle]))
+                  (is (not (identical? memo (:memo @*observed)))))
+                (let [memo (:memo @*observed)]
+                  (await! (support/render! root [<hook-probe> [handle (fn [] nil)] 3 true *observed *lifecycle]))
+                  (is (not (identical? memo (:memo @*observed)))))
+                (finally (support/unmount! root)))))
           (.catch #(is false (str %)))
           (.finally done)))))

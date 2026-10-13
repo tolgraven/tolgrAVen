@@ -15,6 +15,11 @@ Supabase, or hydration works. Keep these layers distinct when reporting results.
 
 ## Unit and component checks
 
+On a new checkout/worktree, copy `config/test.example.edn` to
+`env/test/resources/config.edn`. The test profile loads that private file and
+excludes the dev resource directory so dev credentials are not inherited.
+See [Runtime configuration](configuration.md) for defaults and integration keys.
+
 ```sh
 lein with-profile +project/test test
 bb test:scripts

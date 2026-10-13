@@ -37,6 +37,6 @@
   (with-redefs [environment/defaults {:development? true}]
     (let [routes (source/routes)
           response ((get-in (second routes) [1 :get :handler])
-                    {:parameters {:query {:file "config/local.dev.edn"}}})]
+                    {:parameters {:query {:file "env/dev/resources/config.edn"}}})]
       (is (= ["/dev/source-catalog" "/dev/source"] (mapv first routes)))
       (is (= 404 (:status response))))))

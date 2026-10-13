@@ -6,6 +6,7 @@
             [reitit.core :as reitit]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as rf]
+            [tolgraven.listener :as listener]
             [tolgraven.component.registry :as registry]
             [tolgraven.component.persistent-state :as scoped]
             [tolgraven.component.restore :as restore]
@@ -164,9 +165,14 @@
           (<= (count (pr-str value)) 42)))))
 
 (defc <value>
-  {:state {:key (fn [path & _] (pr-str path)) :initial {:page 0}}}
+  {:state (fn [path value depth]
+            {:key (pr-str path)
+             :initial {:page 0
+                       :expanded? (and (< depth 2)
+                                       (or (zero? depth)
+                                           (and (coll? value) (<= (bounded-count 13 value) 12))))}})}
   [path value depth]
-  :let [*expanded (<sub :comp [:expanded?] {:initial (and (< depth 2) (or (zero? depth) (and (coll? value) (<= (bounded-count 13 value) 12))))})
+  :let [*expanded (<sub :comp [:expanded?])
         *page (<sub :comp [:page])]
   (let [kind (value-type value) collection? (coll? value)
         page (when collection? (layout/page (entries value) (or @*page 0) (when (counted? value) (count value))))
@@ -564,10 +570,13 @@
         [:button {:disabled (not more?) :on-click #(>reset *page (inc index))} "Next components"]])]))
 
 (defc <component-branch>
-  {:state {:key (fn [node & _] (pr-str (:id node)))}}
+  {:state (fn [node depth _]
+            {:key (pr-str (:id node))
+             :initial {:open? (and (zero? depth) (= :mounted (:status node)))
+                       :details? false}})}
   [node depth inspect!]
-  :let [*open (<sub :comp [:open?] {:initial (and (zero? depth) (= :mounted (:status node)))})
-        *details (<sub :comp [:details?] {:initial false})]
+  :let [*open (<sub :comp [:open?])
+        *details (<sub :comp [:details?])]
   (let [{:keys [id component children status path key observed?]} node
         branch? (seq children)
         mounted? (= status :mounted)
@@ -598,8 +607,10 @@
      (when (and branch? @*open)
        [<component-branches> id children (inc depth) inspect!])]))
 
-(defc <component-tree> [active inspect!]
-  :let [*search (<sub :comp [:search] {:initial ""})]
+(defc <component-tree>
+  {:state {:initial {:search ""}}}
+  [active inspect!]
+  :let [*search (<sub :comp [:search])]
   (let [catalog @(rf/subscribe [:dev-console/catalog])
         active (into {} (filter #(layout/matches? @*search (val %))) active)
         catalog (into {} (filter #(layout/matches? @*search (key %))) catalog)
@@ -630,16 +641,20 @@
        [:p "Enter a vector path."])]))
 
 
-(defc <event-history> [records]
-  :let [*search (<sub :comp [:search] {:initial ""})]
+(defc <event-history>
+  {:state {:initial {:search ""}}}
+  [records]
+  :let [*search (<sub :comp [:search])]
   [:section
    [:label "Search captured events " [:input {:type "search" :value @*search
                                               :on-change #(>reset *search (.. % -target -value))}]]
    [<record-groups> :epochs (filterv #(and (= :epoch (:kind %))
                                           (layout/matches? @*search (:event %))) records)]])
 
-(defc <profile-summary> [records]
-  :let [*search (<sub :comp [:search] {:initial ""})]
+(defc <profile-summary>
+  {:state {:initial {:search ""}}}
+  [records]
+  :let [*search (<sub :comp [:search])]
   (let [groups (layout/metrics records @*search)]
     [:section.dev-profile
      [:h3 "Where time goes"]
@@ -669,10 +684,9 @@
                      (.preventDefault event) (.stopPropagation event)
                      (rf/dispatch [:dev-console/pick (.getAttribute element "data-dev-instance")]))))
         escape! #(when (= "Escape" (.-key %)) (rf/dispatch [:dev-console/picking false]))]
-    (.addEventListener js/document "click" click! true)
-    (.addEventListener js/document "keydown" escape!)
-    #(do (.removeEventListener js/document "click" click! true)
-         (.removeEventListener js/document "keydown" escape!))))
+    (listener/listen! :dev-picker
+      [{:target "document", :event "click", :handler click!, :capture? true}
+       {:target "document", :event "keydown", :handler escape!}])))
 
 (defc <selection-highlight> [instance]
   (let [[rect set-rect!] (rf/use-state nil)]
@@ -687,14 +701,14 @@
                                          :width (str (/ (.-width rect) unit) "rem")
                                          :height (str (/ (.-height rect) unit) "rem")}))
                            (set-rect! nil)))
-              observer (when (exists? js/ResizeObserver) (js/ResizeObserver. measure!))]
+              observer (when (exists? js/ResizeObserver) (js/ResizeObserver. measure!))
+              stop-listeners! (listener/listen! :dev-selection
+                                [{:target "window", :event "scroll", :handler measure!, :capture? true}
+                                 {:target "window", :event "resize", :handler measure!}])]
           (measure!)
           (when-let [element (element-for-instance instance)] (when observer (.observe observer element)))
-          (.addEventListener js/window "scroll" measure! true)
-          (.addEventListener js/window "resize" measure!)
           #(do (when observer (.disconnect observer))
-               (.removeEventListener js/window "scroll" measure! true)
-               (.removeEventListener js/window "resize" measure!)))) [instance])
+               (stop-listeners!)))) [instance])
     (when rect [:div.dev-selection-highlight {:style rect :aria-hidden true}])))
 
 (defc <component-inspector>
@@ -762,10 +776,11 @@
 (defc <popout> [window close!]
   (rf/use-effect
     (fn []
-      (let [document (.-document window)]
+      (let [document (.-document window)
+            stop-listeners! (listener/listen! :dev-popout
+                              [{:target window, :event "beforeunload", :handler close!}])]
         (set! (.-title document) "tolgrAVen · development diagnostics")
-        (.addEventListener window "beforeunload" close!)
-        #(do (.removeEventListener window "beforeunload" close!)
+        #(do (stop-listeners!)
              (when-not (.-closed window) (.close window))))) [window])
   [:<>
    (rf/create-portal
@@ -862,8 +877,8 @@
                         (when (and (= "D" (string/upper-case (.-key event)))
                                    (.-altKey event) (.-shiftKey event))
                           (.preventDefault event) (rf/dispatch [:dev-console/toggle-open])))]
-          (.addEventListener js/window "keydown" handler)
-          #(.removeEventListener js/window "keydown" handler))) [])
+          (listener/listen! :dev-console
+            [{:target "window", :event "keydown", :handler handler}]))) [])
     [:aside.dev-console {:aria-label "Development console" :data-dev-console true}
      [:div.dev-console__tools
       [:button.dev-console__toggle {:on-click #(rf/dispatch [:dev-console/toggle-open]) :aria-expanded (boolean open?)}

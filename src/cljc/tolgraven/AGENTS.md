@@ -83,10 +83,14 @@ The thin `ajax/time.cljc` Shadow adapter lives beside its browser consumer and
 retains Java-time Transit codecs only under `:dev`. Production uses standard Transit;
 server format handlers retain their native JVM Java-time support.
 
-- `defc` recognizes a spec's ordered `:features` overrides without another usage
-  macro. Explicit `:spec false` and ordinary non-spec primitives retain the direct
-  Reagent path; per-instance ownership and protected page/data contracts are
+- `defc` accepts ordered feature-vector first arguments on spec-capable instances,
+  expanding them to `{:features ...}` before validation and rendering. Map specs
+  retain explicit `:features` alongside props, containers and domain fields.
+  Explicit `:spec false` and ordinary non-spec primitives retain the direct Reagent
+  path; per-instance ownership and protected page/data contracts are
   documented in `doc/components.md` and implemented by the browser/Node runtime.
+  Component `:state` may be an options map or a pure function of component arguments
+  returning that map; browser lifecycle effects own its initialization.
 
 - `supabase/catalog.cljc` bakes module-owned portable `:storage` declarations via
   existing module discovery. Keys/projections/JSONB columns have one owner;

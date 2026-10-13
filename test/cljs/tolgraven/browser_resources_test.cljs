@@ -1,8 +1,48 @@
 (ns tolgraven.browser-resources-test
-  (:require [cljs.test :refer-macros [deftest is testing]]
+  (:require-macros [tolgraven.test-async :refer [go-promise await!]])
+  (:require [cljs.test :refer-macros [deftest is testing async]]
+            [tolgraven.component]
+            [tolgraven.test-support :as support]
             [tolgraven.browser-resources :as resources]
             [tolgraven.component.restore :as restore]
             [tolgraven.render-context :as context]))
+
+(deftest deferred-markup-replaces-the-placeholder-only-after-its-timeout
+  (async done
+    (let [original-after-page resources/after-page!
+          *release (atom nil)
+          *cancelled? (atom false)]
+      (set! resources/after-page!
+        (fn [release!]
+          (reset! *release release!)
+          #(reset! *cancelled? true)))
+      (-> (go-promise
+            (let [element (.createElement js/document "div")
+                  root (await! (support/create-root! element))
+                  token (str (random-uuid))
+                  script [:script {:async true
+                                   :src (str "data:text/javascript,window.__deferredTest="
+                                             (js/encodeURIComponent (pr-str token)))}]]
+              (.appendChild (.-body js/document) element)
+              (try
+                (await! (support/render! root [resources/<deferred> script]))
+                (is (some? (.querySelector element "div[hidden]")))
+                (is (nil? (.querySelector js/document (str "script[src='" (get-in script [1 :src]) "']"))))
+                (@*release)
+                (is (some? (.querySelector element "div[hidden]")) "The timer has not fired yet")
+                (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 250))))
+                (await! (support/settle!))
+                (is (nil? (.querySelector element "div[hidden]")))
+                (is (= token (.-__deferredTest js/window)) "Actual script Hiccup loads and executes")
+                (finally
+                  (support/unmount! root)
+                  (.remove element)
+                  (js/Reflect.deleteProperty js/window "__deferredTest")))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (is @*cancelled? "Unmount releases the page gate")
+                      (set! resources/after-page! original-after-page)
+                      (done)))))))
 
 (deftest optional-scripts-wait-for-load-two-painted-frames-and-idle-and-can-be-cancelled
   (with-redefs [context/*interactive? (atom true)

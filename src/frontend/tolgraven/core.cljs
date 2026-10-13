@@ -40,7 +40,7 @@
 (defonce *shell-root (atom nil))
 
 (m/defc <disposed-shell> {:profile false} [complete!]
-  (rf/use-layout-effect (fn [] (complete!) js/undefined) #js [complete!])
+  (rf/use-layout-effect (fn [] (complete!) nil) [complete!])
   [:<>])
 
 (defonce *shell-removal (atom nil))

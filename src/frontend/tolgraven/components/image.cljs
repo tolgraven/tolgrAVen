@@ -46,8 +46,9 @@
     (let [attrs' (merge {:decoding "async"} (sources/dimensions src)
                         (dissoc attrs :preview? :progressive? :on-attached-error :on-source-error))
           preview (when preview? (sources/preview src))
-          capture! (react/use-callback
-                    (fn [image]
+          capture! (react/use-memo
+                    #(react/compose-refs
+                      (fn [image]
                       ;; A server-rendered image may fail before React attaches
                       ;; on-error. Inspect it at attachment without changing DOM;
                       ;; state removes the modern sources through normal rendering.
@@ -59,9 +60,8 @@
                           (swap! *fallback-sources conj src)
                           (when on-attached-error
                             (on-attached-error #js {:currentTarget image}))))
-                      (cond (fn? ref) (ref image)
-                            ref (set! (.-current ^js ref) image))
-                      js/undefined)
+                        nil)
+                      ref)
                     [src ref on-attached-error on-source-error])]
      (if (sources/should-use-modern-formats? src)
       (let [avif-src (sources/replace-extension src "avif")
@@ -197,8 +197,9 @@
                              (-> (.decode image) (.then ready!) (.catch (fn [_] nil)))
                              (ready!)))))
                      [src])
-          capture! (react/use-callback
-                     (fn [image]
+          capture! (react/use-memo
+                     #(react/compose-refs
+                       (fn [image]
                        (set! (.-current *final-image) image)
                        (if (document-owner image src)
                          (reset! *image-phase {:src src, :phase :native})
@@ -209,9 +210,8 @@
                                           (nil? (:phase @*image-phase))))
                              (reset! *image-phase {:src src, :phase :waiting}))
                            (decoded! image false)))
-                       (cond (fn? ref) (ref image)
-                             ref (set! (.-current ^js ref) image))
-                       js/undefined)
+                         nil)
+                       ref)
                      [src ref single! decoded!])
           loaded! (react/use-callback
                     (fn [event]

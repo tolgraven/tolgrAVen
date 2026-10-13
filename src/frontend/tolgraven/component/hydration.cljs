@@ -16,7 +16,7 @@
   (reset! *previous-flush nil))
 
 (defn- hold! []
-  (let [owner (js-obj)]
+  (let [owner (random-uuid)]
     (when (empty? @*owners)
       ;; Reagent 2 exposes this batching adapter and hydrate-root sets it to
       ;; flushSync. Urgent ancestor updates would discard unhydrated Suspense
@@ -33,17 +33,23 @@
   "Own one initial boundary until its inner layout commits or it unmounts.
    Returns the inner component's stable completion callback."
   [defer?]
-  (let [[*release] (rf/use-state #(atom nil))
+  (let [[*owner] (rf/use-state #(atom {:complete? false, :release! nil}))
         complete! (rf/use-callback
                     (fn []
-                      (when-let [release! @*release]
-                        (reset! *release nil)
-                        (release!)))
-                    #js [])]
+                      ;; Child layout effects precede their parent's. A cached
+                      ;; formatter can complete before hold! has run at all.
+                      (let [release! (:release! @*owner)]
+                        (swap! *owner assoc :complete? true :release! nil)
+                        (when release! (release!))))
+                    [])]
     (rf/use-layout-effect
       (fn []
-        (if defer?
-          (do (reset! *release (hold!)) complete!)
-          js/undefined))
-      #js [])
+        (when (and defer? (not (:complete? @*owner)))
+          (let [release! (hold!)]
+            (swap! *owner assoc :release! release!)
+            (fn []
+              (when (identical? release! (:release! @*owner))
+                (swap! *owner assoc :release! nil))
+              (release!)))))
+      [defer?])
     complete!))

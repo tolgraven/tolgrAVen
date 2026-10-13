@@ -1,18 +1,25 @@
 (ns tolgraven.browser-resources
   "Acquire optional scripts after hydration, load, pending page work and a painted idle frame."
   (:require [tolgraven.component.restore :as restore]
+            [tolgraven.component]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as rf]
+            [tolgraven.listener :as listener]
             [tolgraven.render-context :as context]
-            ["react-dom" :as react-dom]))
+            [tolgraven.browser-resources.schema :as schema]))
 
 (defonce *started? (atom false))
+
+(rf/reg-sub :browser-resources/settings
+  {:result schema/settings}
+  (fn [db _] (get-in db [:browser-resources :settings])))
 
 (defn after-page! [load!]
   (let [*active? (atom true)
         *frame (atom nil)
         *idle (atom nil)
-        *timer (atom nil)]
+        *timer (atom nil)
+        *stop-listeners (atom nil)]
     (letfn [(idle! []
               (when @*active?
                 (if (and @context/*interactive?
@@ -34,31 +41,57 @@
                              (reset! *frame (js/requestAnimationFrame queue-idle!))))))))]
       (if (= "complete" (.-readyState js/document))
         (painted!)
-        (.addEventListener js/window "load" painted! #js {:once true}))
+        (reset! *stop-listeners
+          (listener/listen! :browser-resources
+            [{:target "window", :event "load", :handler painted!, :once? true}])))
       (fn []
         (reset! *active? false)
-        (.removeEventListener js/window "load" painted!)
+        (when-let [stop! @*stop-listeners] (stop!))
         (when @*frame (js/cancelAnimationFrame @*frame))
         (when @*idle (js/cancelIdleCallback @*idle))
         (when @*timer (js/clearTimeout @*timer))))))
 
-(defn- acquire! []
+(defn- configure-analytics! [google-id]
   (when (compare-and-set! *started? false true)
-    (when-not ^boolean goog.DEBUG
-      ;; Own the entire GA bootstrap here: SSR must not emit its queue, ID or
-      ;; scripts. Queue configuration before React starts the remote download.
-      (aset js/window "dataLayer" (or (aget js/window "dataLayer") #js []))
-      (aset js/window "gtag"
-            ;; GA consumes the native arguments object, not a CLJS sequence.
-            (fn [] (.push (aget js/window "dataLayer") (js* "arguments"))))
-      ((aget js/window "gtag") "js" (js/Date.))
-      ((aget js/window "gtag") "config" "G-Y8H6RLZX3V")
-      (react-dom/preinit "https://www.googletagmanager.com/gtag/js?id=G-Y8H6RLZX3V"
-                        #js {:as "script" :fetchPriority "low"}))))
+    ;; The SDK expects a native queue/arguments object. Script acquisition is
+    ;; ordinary Hiccup below; only its external configuration lives here.
+    (aset js/window "dataLayer" (or (aget js/window "dataLayer") #js []))
+    (aset js/window "gtag"
+          ;; GA consumes the native arguments object, not a CLJS sequence.
+          (fn [] (.push (aget js/window "dataLayer") (js* "arguments"))))
+    ((aget js/window "gtag") "js" (js/Date.))
+    ((aget js/window "gtag") "config" google-id)))
 
-(defn start! []
-  (after-page! acquire!))
+(defc <analytics>
+  {:depends [{:source :url
+              :url "/api/browser-resources"
+              :into [:browser-resources :settings]}]
+   :loading [:div {:hidden true}]}
+  []
+  (let [settings @(rf/subscribe [:browser-resources/settings])
+        google-id (get-in settings [:analytics :google-id])]
+    ;; The layout commit configures the SDK queue before the browser can execute
+    ;; the async script. This setup never downloads or changes rendered markup.
+    (rf/use-layout-effect
+      (fn [] (when google-id (configure-analytics! google-id)))
+      [google-id])
+    (if google-id
+      [:script {:async true
+                :fetch-priority "low"
+                :src (str "https://www.googletagmanager.com/gtag/js?id=" google-id)}]
+      [:div {:hidden true}])))
 
-(defc <deferred> []
-  (rf/use-effect (fn [] (or (start!) js/undefined)) #js [])
-  [:<>])
+(defc <deferred> [content]
+  :let [*ready? (rf/atom false)]
+  (rf/use-effect
+    (fn []
+      (let [*timer (atom nil)
+            cancel-page! (after-page!
+                           #(reset! *timer (js/setTimeout (fn [] (reset! *ready? true)) 200)))]
+        (fn []
+          (cancel-page!)
+          (when @*timer (js/clearTimeout @*timer)))))
+    [])
+  (if @*ready?
+    content
+    [:div {:hidden true}]))

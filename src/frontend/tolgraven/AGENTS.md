@@ -23,16 +23,27 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   need or demonstrated performance benefit. Keep them behind small shared adapters,
   preserve normal re-frame event tracing, and document the reason. Do not create a
   second state machine/store merely to use a React API.
-- Through `tolgraven.react`, effects may return implicit nil; cleanup functions run
-  on dependency changes/unmount. Hook dependencies accept ordinary Clojure vectors
-  without recursively converting their contents. Memo/callback values are preserved.
+- Through `tolgraven.react`, hooks delegate to upstream `reagent.hooks`. Effects
+  may return implicit nil; cleanup functions run on dependency changes/unmount.
+  Hook dependencies use Clojure value equality without converting their contents;
+  native handles/functions remain opaque. Memo/callback helpers require explicit
+  dependencies. Equal state/reducer updates retain the previous value identity.
   Browser adapters must release their listeners/observers/timers and guard SSR.
+  Use `:listener/register` / `:listener/stop` effects for application bindings.
+  Committed browser/component lifecycles use `listener/listen!` binding maps and
+  its cleanup through that same registry, including capture/passive/once options.
+  Low-level feature code may retain native listeners when importing the registry
+  creates a dependency cycle; document the concrete reason at the adapter.
+  Link-container pointer/focus/click interactions use Hiccup event attributes;
+  their event handlers resolve the current committed candidate registry. Preserve
+  caller events and release observation/timers on reconfiguration or unmount.
 
 ## Ownership and feature contracts
 
-- Spec-capable `defc` instances resolve declaration defaults and ordered `:features`
-  overrides through the shared runtime. Disabled entries must skip config functions
-  and resource acquisition. Root capabilities reconcile owned setup/cleanup without
+- Spec-capable `defc` instances accept a map or feature-vector first argument.
+  The runtime expands vectors to `{:features ...}` before validation and callbacks,
+  then resolves declaration defaults and ordered overrides. Disabled entries must
+  skip config functions and resource acquisition. Root capabilities reconcile owned setup/cleanup without
   conditional hooks or body remounts; initial structural wrappers stay stable unless
   the caller explicitly changes the Hiccup key. Full-page boundaries and declaration
   dependencies remain required. See `doc/components.md` for precedence and adapters.
@@ -47,6 +58,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   `>reset`/`>update` events. Accepted transactions enqueue persistence through
   the storage interceptor/effect; no mirrored app-db or writable cursor.
   Local-return capture observes its source subscription in the component lifecycle.
+  Return-worker decisions use Clojure data in `ssr/return_policy.cljs`; Cache,
+  Request/Response and event lifetime handling stay in `ssr/return_worker.cljs`.
+  Decode JSON once at that boundary; process native entry arrays as sequences,
+  retaining opaque Request/Response handles. Keep the native Promise write queue
+  and synchronous `waitUntil`/`respondWith` event ownership.
 
 - Feature modules live under `modules/<module>/`; collocate schemas, query
   declarations and `pages.cljc` with the implementation. Browser/Node-only schemas
@@ -94,6 +110,16 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   still owns data activation. SSR adapters must not install disk caches or watches.
 - Declare managed dependencies at the narrowest owning component/module/page.
   Preloads acquire those same sources; keep pending, empty, failed and cached distinct.
+- `:component-data/status` acquires the shared queue through its managed source
+  factory; the derived reaction only reads readiness. Persistent scoped value
+  subscriptions dispatch the idempotent `:component-state/load` event on acquisition;
+  ordinary scoped reads stay pure. Declared defaults initialize after commit through
+  `:component-state/initialize`, sharing the same effect with eager storage loads.
+  Keep transport/initialization out of component bodies and derived computations.
+- Feature layout commits capture their render's callbacks and shape. Never store
+  pending render work in mutable slots that an abandoned render can overwrite.
+  Popover/link observers belong to committed effects with current configuration
+  and cleanup; closed popovers acquire no measurement observer/listener.
 - Supabase startup retries a settings/SDK initialization failure silently once after
   three seconds; only a second failure publishes the retry HUD. Queued reads
   retain their boot dependency and resume when startup succeeds.
@@ -113,6 +139,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Keep the formatter in its own memoized `defc` so control updates do not replace
   pending SSR nodes. Initial boundaries own transition batching in
   `component/hydration.cljs` until inner commit/unmount; navigation releases it.
+  Cached child completion can precede parent setup: acquire no owner after that
+  completion. Overlapping owners and StrictMode cleanup must restore batching
+  only when the last current owner releases; stale document callbacks are inert.
   Capture their initial restoration decision without subscribing to completion.
   New SPA code uses the normal loader immediately. Paired local
   returns render completed boundaries too and skip the formatter during bootstrap.
@@ -182,6 +211,13 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   icon CSS. Capped comment text uses non-scrolling clipping; an owned resize
   adapter measures code boundaries and React renders the corresponding fade.
 - Browser-only APIs belong in lifecycle/effect adapters with cleanup and SSR guards.
+  Ordinary Hiccup callback refs receive node/nil; a plain atom can retain a node
+  without rerendering. `react/compose-refs` forwards internal/caller refs only where
+  needed, including explicit React 19 returned cleanup. React owns attachment and
+  detachment; do not add a second ref lifecycle manager.
+  Keep `component/compat.cljs` as the sole version-specific Hiccup-key metadata
+  adapter; React keys are not props and public Reagent class argv is insufficient
+  for function-component metadata. Run keyed persistence tests on Reagent upgrades.
   `boot.cljs` installs document persistence/history listeners after app-db setup,
   then site listeners/preferences from the committed root lifecycle. Deferred
   resources, route prefetch and local-return capture share that lifecycle host.
@@ -190,9 +226,16 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   See `doc/boot.md` for the stage boundaries.
   Deferred Search owns focus while open and releases it on close/unmount; hidden
   input focus must not drive scrolling during later navigation.
+  Its owned painted-frame callback replaces guessed loading/focus delays.
+  Services owns background focus once per mount/section intent; child/media ref
+  replacement must not repeat it. `<timeout>` retains its mount deadline while
+  invoking the latest committed callback, and cancels on unmount.
 - `browser_resources.cljs` acquires analytics
   after hydration, window load, two paint frames and idle with no pending page
-  bindings. Production analytics initializes its queue/configuration there too;
+  bindings. Its deferred host renders hidden markup until a cancellable timeout
+  publishes local Reagent readiness, then renders its child Hiccup. Analytics
+  requests `/api/browser-resources` through the existing managed URL dependency
+  before rendering an async script. The SDK queue initializes at layout commit;
   keep its ID, bootstrap, remote scripts and preconnects out of SSR HTML. Browsers
   use native smooth scrolling without a compatibility script (Safari 15.4+).
   Older browsers retain instant scrolling as progressive enhancement.
