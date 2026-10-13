@@ -3,6 +3,7 @@
   (:require [clj-http.client :as http]
             [clj-http.conn-mgr :as connections]
             [clojure.string :as string]
+            [clojure.data.json :as json]
             [tolgraven.config :as config]
             [tolgraven.content.service :as content]
             [tolgraven.media.pipeline :as pipeline]
@@ -119,18 +120,42 @@
   ;; the CMS association without deleting pixels from already published content.
   {:accepted true})
 
-(defn webhook! [request]
-  (pipeline/configured!)
+(defn authorize-webhook!
+  "Validate the private bearer secret before CSRF preflight or pipeline work."
+  [request]
   (let [secret (or (System/getenv "STRAPI_MEDIA_WEBHOOK_TOKEN")
                    (get-in config/env [:media :strapi-webhook-token]))
-        authorization (get-in request [:headers "authorization"])
-        payload (:body-params request)]
+        authorization (get-in request [:headers "authorization"])]
     (when-not (and (string? secret) (<= 16 (count secret)))
       (storage/fail! 503 "CMS media webhook token is not configured"))
     (when-not (and (seq secret) (string? authorization)
                    (MessageDigest/isEqual (.getBytes (str "Bearer " secret) "UTF-8")
                                           (.getBytes authorization "UTF-8")))
-      (storage/fail! 401 "Invalid CMS webhook authorization"))
+      (storage/fail! 401 "Invalid CMS webhook authorization"))))
+
+(def webhook-path "/media/strapi/webhook")
+
+(defn wrap-webhook-authorization
+  "Preflight only the external POST before the unchanged browser CSRF middleware.
+   Ring's existing safe header is supplied internally only after secret validation;
+   no browser path, cookie, or client header is accepted as webhook authorization."
+  [handler]
+  (fn [request]
+    (if (and (= :post (:request-method request))
+             (= (str "/api" webhook-path) (:uri request)))
+      (if-let [failure (try (authorize-webhook! request) nil
+                           (catch clojure.lang.ExceptionInfo error
+                             {:status (or (:auth/status (ex-data error)) 503)
+                              :headers {"Content-Type" "application/json; charset=utf-8"}
+                              :body (json/write-str {:error (.getMessage error)})}))]
+        failure
+        (handler (assoc-in request [:headers "x-ring-anti-forgery"] "authenticated-webhook")))
+      (handler request))))
+
+(defn webhook! [request]
+  (authorize-webhook! request)
+  (pipeline/configured!)
+  (let [payload (:body-params request)]
     (when (validation/explain schema/webhook payload) (storage/fail! 400 "Invalid CMS media event"))
     (cond
       (string/starts-with? (get-in payload [:media :url]) (storage/public-url "media-renditions/"))

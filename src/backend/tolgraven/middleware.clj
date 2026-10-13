@@ -42,10 +42,14 @@
       (handler req)
       (catch Throwable t
         (error t (.getMessage t))
-        (error-page {:request req
-                     :status 500
-                     :title "Internal error"
-                     :message (.getMessage t)})))))
+        ;; The inner session/CSRF binding has already unwound. Error rendering
+        ;; must not depend on it or expose exception messages in public HTML.
+        (binding [ring.middleware.anti-forgery/*anti-forgery-token* nil]
+          (let [status (:status (ex-data t))]
+            (error-page {:request req
+                         :status (if (and (integer? status) (<= 400 status 599)) status 500)
+                         :title "Request could not be completed"
+                         :message "Please try again."})))))))
 
 (defn wrap-csrf [handler]
   (wrap-anti-forgery
@@ -136,15 +140,26 @@
     (handler req)))
 
 (defn wrap-gzip-content-aware
-  "Needed presumably because optimus confuses the gzip middleware due to not raw files or whatever? At least it tries to gzip inappropriate stuff..."
+  "Compress useful response representations, independent of optional Fetch Metadata."
   [handler]
-  (let [compressed (gzip/wrap-gzip handler)]
-    (fn [{:keys [headers] :as req}]
-      (if (some->> (get headers "sec-fetch-dest") ; could also look at content-type?
-                   (re-find #"image|video")
-                   some?)
-        (handler req)
-        (streaming/gzip-response req (compressed req))))))
+  (fn [request]
+    (let [response (handler request)
+          headers (:headers response)
+          content-type (or (get headers "Content-Type") (get headers "content-type") "")
+          vary (or (get headers "Vary") (get headers "vary"))
+          varied? (some #{"*" "accept-encoding"}
+                        (map string/trim (string/split (string/lower-case (or vary "")) #",")))]
+      (if (and (#{200 206 304} (:status response))
+               (re-find #"(?i)^(?:text/|application/(?:javascript|json|transit\+json|xml)|image/svg\+xml)" content-type)
+               (not (or (get headers "Content-Encoding") (get headers "content-encoding"))))
+        (streaming/gzip-response
+          request
+          (update response :headers #(-> %
+                                         (dissoc "vary")
+                                         (assoc "Vary" (if varied? vary
+                                                          (str (when (seq vary) (str vary ", "))
+                                                               "Accept-Encoding"))))))
+        response))))
 
 (defn wrap-module-cache [handler]
   (fn [request]
@@ -189,9 +204,9 @@
       ;; Ring's default MIME table has WebP but no AVIF entry.
       (wrap-content-type {:mime-types {"avif" "image/avif"}})
       wrap-module-cache
-      wrap-gzip-content-aware
       ; (wrap-log "Wrapped gzip")
       wrap-not-modified ; guess this doesnt work cause optimus gens new files tho..
+      wrap-gzip-content-aware
       ; (wrap-csp {:policy csp})
       wrap-partial-content
       wrap-media-cache
