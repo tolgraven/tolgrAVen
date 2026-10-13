@@ -448,7 +448,8 @@ figcaption, .float-with-caption {
 
 .hud {
   position: fixed;
-  z-index: 100;
+  // Notices must remain actionable above the contact popup (150).
+  z-index: 190;
   transition: bottom var(--header-expand-time) ease;
   bottom: calc(var(--footer-height-current) + env(safe-area-inset-bottom, 0px) + 0.25rem); /* ;actually, footer, if sticky... */
   right: calc(var(--space-edges) + 0.05rem);
