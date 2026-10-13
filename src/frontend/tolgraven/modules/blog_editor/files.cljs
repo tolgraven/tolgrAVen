@@ -9,3 +9,14 @@
 
 (defn image-files [files]
   (filterv image-file? (array-seq files)))
+
+(defn image-transfer? [transfer]
+  ;; OS dragover keeps File contents/names protected until drop. Item MIME
+  ;; identifies images; an unknown file MIME is filtered by name on drop.
+  (boolean
+    (or (seq (image-files (.-files transfer)))
+        (some (fn [item]
+                (and (= "file" (.-kind item))
+                     (or (string/blank? (.-type item))
+                         (string/starts-with? (.-type item) "image/"))))
+              (array-seq (.-items transfer))))))

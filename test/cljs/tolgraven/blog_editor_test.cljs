@@ -532,6 +532,12 @@
                     textarea (.querySelector element ".md-source-content")
                     file (js/File. #js ["sample"] "dropped.png" #js {:type "image/png"})]
                 (edit-source! view [] {:anchor 5, :head 5})
+                (let [over (js/Event. "dragover" #js {:bubbles true, :cancelable true})]
+                  ;; Browser OS dragover protects FileList until drop.
+                  (js/Object.defineProperty over "dataTransfer"
+                    #js {:value #js {:files #js [], :items #js [#js {:kind "file", :type "image/png"}]}})
+                  (.dispatchEvent textarea over)
+                  (is (.-defaultPrevented over) "Protected image dragover is accepted over ordinary source text"))
                 (is (.-defaultPrevented (transfer! textarea "drop" file)))
                 (reset! *stage "first request")
                 (await! (support/wait-for! #(first @*calls)))
@@ -567,6 +573,10 @@
                 (let [transfer (js/DataTransfer.)
                       event (js/Event. "paste" #js {:bubbles true, :cancelable true})]
                   (.setData transfer "text/plain" "ordinary text")
+                  (let [over (js/Event. "dragover" #js {:bubbles true, :cancelable true})]
+                    (js/Object.defineProperty over "dataTransfer" #js {:value transfer})
+                    (.dispatchEvent textarea over)
+                    (is (not (.-defaultPrevented over)) "Ordinary text retains its native drag/drop behavior"))
                   (js/Object.defineProperty event "clipboardData" #js {:value transfer})
                   (.dispatchEvent textarea event)
                   ;; The native text document handles ordinary paste itself, including

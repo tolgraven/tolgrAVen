@@ -4,6 +4,7 @@
             [tolgraven.components.ui :as ui]
             [tolgraven.modules.blog.views :as blog]
             [tolgraven.modules.blog-editor.editor :as editor]
+            [tolgraven.modules.blog-editor.draft :as draft]
             [tolgraven.modules.blog-editor.model :as editor-model]))
 
 (defc <preview-blog> "Render new post preview"
@@ -35,6 +36,49 @@
       :image-assets image-assets
       :image-readiness readiness}]]))
 
+(defc <draft-controls>
+  "Restore before tracking the working draft; the shared storage lifecycle owns autosave."
+  [owner]
+  (let [account @(r/subscribe [:state [:active-user :id]])
+        editing-id (:id @(r/subscribe [:blog/state [:editing]]))
+        state @(r/subscribe [:state [:blog-editor :draft]])
+        uploads @(r/subscribe [:blog-editor/uploads owner])
+        projection @(r/subscribe [:blog-editor/draft-projection owner])
+        entries (when (= account (:account state)) (get-in projection [:collection :entries]))
+        id [:blog-editor/working (or editing-id :new)]]
+    (r/use-effect
+      (fn []
+        (r/dispatch [:blog/load-draft owner])
+        #(r/dispatch [:blog/draft-unmount owner id])) [owner account editing-id])
+    [:section.blog-draft-controls
+     [ui/<button> "Save draft" :save-blog-draft
+      :disabled? (boolean (or (nil? account) (nil? (:document-id state)) (#{:loading :saving} (:status state))))
+      :action #(r/dispatch [:blog/save-draft owner])]
+     (when (seq entries)
+       [:label "In-progress posts"
+        [:select {:value (if (:named? state) (:document-id state) "")
+                  :on-change #(r/dispatch [:blog/select-draft owner (.. % -target -value)])}
+         [:option {:value "", :disabled true} "Choose a draft…"]
+         (for [[id entry] (sort-by #(get-in (val %) [:form :title]) entries)]
+           ^{:key id} [:option {:value id} (get-in entry [:form :title])])]])
+     [:button {:type "button", :disabled (= :loading (:status state))
+               :on-click #(r/dispatch [:blog/new-draft owner])} (if editing-id "New editing draft" "New draft")]
+     (when (= owner (:owner state))
+       [:p.blog-draft-status {:role (if (:error state) "alert" "status")}
+        (case (:status state)
+          :loading "Checking for autosaved text…"
+          :saving "Saving draft…"
+          :saved "Named draft saved. Changes continue to autosave in this browser. "
+          :restored "Autosaved draft restored. "
+          :failed nil
+          "Changes autosave in this browser. ")
+        (:error state)
+        (when (editor-model/unresolved? nil (into {} (map (juxt :id identity)) uploads))
+          " Pending images stay in this tab until their upload finishes; they are not saved in drafts.")
+        (when (= :failed (:status state))
+          [:button {:type "button", :on-click #(r/dispatch [(if (= :save (:operation state)) :blog/save-draft :blog/load-draft) owner])}
+           "Retry draft storage"])])]))
+
 (defc <post-blog> "Render post-making ui"
   {:features [:error-boundary]}
   [] ; XXX move this and similar to own file...
@@ -60,7 +104,7 @@
 
      ^{:key owner} [editor/<markdown-editor> {:owner owner, :exit (partial editor/dispose! owner)}]
 
-     [ui/<button> "Save draft" :save-blog-draft]
+     [<draft-controls> owner]
      [ui/<button> "Highlight code" :highlight-blog-code
       :action #(r/dispatch [:run-highlighter!])]
 

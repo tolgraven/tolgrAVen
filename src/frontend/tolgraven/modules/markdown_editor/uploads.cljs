@@ -284,12 +284,19 @@
                   nil))))) [root realm on-change enqueue! values pending-ids source?])
     [:r> (r/context-provider context) #js {:value (assoc data :insert-upload! insert!)}
      [:div.md-rich-upload-host
-     {:on-paste-capture (fn [event]
+     {:on-drag-over-capture (fn [event]
+                             (when-let [transfer (.-dataTransfer event)]
+                               (when (files/image-transfer? transfer) (.preventDefault event))))
+      :on-paste-capture (fn [event]
                          (let [files (files/image-files (.. event -clipboardData -files))]
                            (when (seq files) (.preventDefault event) (.stopPropagation event) (insert! files))))
       :on-drop-capture (fn [event]
                         (let [files (files/image-files (.. event -dataTransfer -files))]
-                          (when (seq files) (.preventDefault event) (.stopPropagation event) (insert! files))))}
+                          (when (seq files)
+                            (.preventDefault event)
+                            (.stopPropagation event)
+                            (when (and source? root) (source-model/select-drop-point! root event))
+                            (insert! files))))}
       children]]))
 
 (def controller-react (r/reactify-component (fn [props] [<controller> props])))

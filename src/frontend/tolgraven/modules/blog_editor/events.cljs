@@ -22,9 +22,10 @@
   (fn [db [_ owner]] (assoc-in db [:state :blog-editor :active-owner] owner)))
 
 (r/reg-event-fx :blog/editor-text-changed
-  {:args [:tuple :string :string [:maybe [:vector anchors/change-schema]] [:maybe anchors/positions-schema]]}
-  (fn [{:keys [db]} [_ owner text changes positions]]
-    (when (= owner (get-in db [:state :blog-editor :active-owner]))
+  {:args [:cat :string :string [:maybe [:vector anchors/change-schema]] [:maybe anchors/positions-schema] [:? :?string]]}
+  (fn [{:keys [db]} [_ owner text changes positions document-id]]
+    (when (and (= owner (get-in db [:state :blog-editor :active-owner]))
+               (= document-id (get-in db [:state :blog-editor :draft :document-id])))
     (let [uploads (get-in db uploads-path)
           changes' (or changes [(anchors/text-change (get-in db text-path) text)])
           owned (into {} (filter #(= owner (:owner (val %)))) uploads)
@@ -278,8 +279,11 @@
 (r/reg-event-fx :blog/cancel-edit
   {:args (get schema/event-args :blog/cancel-edit)}
   (fn [_ _]
-    {:dispatch-n [[:form-field [:post-blog] nil :blur]
-                  [:blog/state [:editing] nil]]}))
+    ;; Route controllers call this before releasing the authoring page. Drain
+    ;; the accepted form before queued clears make its projection unavailable.
+    {:fx [[:component-storage/flush :navigation]
+          [:dispatch-n [[:form-field [:post-blog] nil :blur]
+                        [:blog/state [:editing] nil]]]]}))
 
 (r/reg-event-fx :blog/submit
   {:args (get schema/event-args :blog/submit)}

@@ -102,9 +102,11 @@
                             (into {} (map (fn [[key value]] [key {:literal value}])) (layout/attributes preview-geometry)))
         update! (editor/useMdastNodeUpdater)
         node-ref (r/use-ref nil)
-        commit! (fn [geometry]
-                  (let [attrs (remove #(contains? #{"layout-width" "layout-height"} (:name %)) (:attributes node))
-                        attrs' (into (vec attrs) (model/attributes (into {} (map (fn [[key value]] [key {:literal value}])) (layout/attributes geometry))))]
+        commit! (fn [geometry']
+                  (let [layout-values (layout/attributes geometry')
+                        layout-names (set (map name (keys layout-values)))
+                        attrs (remove #(contains? layout-names (:name %)) (:attributes node))
+                        attrs' (into (vec attrs) (model/attributes (into {} (map (fn [[key value]] [key {:literal value}])) layout-values)))]
                     (update! (clj->js {:attributes attrs'}))))]
     ;; Percentages refer to the editor content box, just like the published
     ;; article. Measure before paint because this width controls the first
@@ -308,9 +310,9 @@
 (defc <editor>
   "Edit canonical Markdown through the lazy rich-text SDK; only external changes reset SDK content."
   {:spec-schema [:map [:text :string] [:on-change fn?] [:?upload! fn?] [:?image-urls [:vector :string]] [:?assets [:vector :map]] [:?library fn?]
-                      [:?source? :boolean] [:?text-query [:vector :any]] [:?uploads [:vector :map]] [:?uploads-query [:vector :any]] [:?upload-query fn?]
+                      [:?source? :boolean] [:?document-id :?string] [:?text-query [:vector :any]] [:?uploads [:vector :map]] [:?uploads-query [:vector :any]] [:?upload-query fn?]
                       [:?render-upload fn?] [:?enqueue! fn?] [:?insert-ready! fn?] [:?on-anchors fn?] [:?on-removed fn?]]}
-  [{:keys [text on-change upload! image-urls assets library source? uploads uploads-query upload-query render-upload enqueue! insert-ready! on-anchors on-removed] :as props}]
+  [{:keys [text document-id on-change upload! image-urls assets library source? uploads uploads-query upload-query render-upload enqueue! insert-ready! on-anchors on-removed] :as props}]
   :let [*error (r/atom nil)
         *overlay (r/atom nil)]
   (let [editor-ref (r/use-ref nil)
@@ -322,7 +324,7 @@
       (fn []
         (when-let [instance (.-current editor-ref)]
           (when-not (= text (.getMarkdown instance)) (.setMarkdown instance text))))
-      [text])
+      [text document-id])
     [:r> (r/context-provider media/asset-context) #js {:value (into {} (map (juxt :src identity)) assets)}
      [:r> (r/context-provider media-context) #js {:value {:assets assets, :library library, :upload! upload!}}
      [:r> (r/context-provider uploads/context)
@@ -339,8 +341,8 @@
      [:div.site-md-editor
      [:div.site-md-editor-overlay {:ref (fn [node] (when node (reset! *overlay node)) nil)}]
      (if source?
-       [source/<source> props]
-       [mdx-editor {:ref editor-ref
+       ^{:key document-id} [source/<source> props]
+       ^{:key document-id} [mdx-editor {:ref editor-ref
                   :markdown text
                   :plugins editor-plugins
                   :contentEditableClassName "md-editor-content"

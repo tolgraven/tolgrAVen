@@ -86,6 +86,31 @@
       ($setSelection selection)
       selection)))
 
+(defn select-drop-point!
+  "Measure the browser's drop caret, then update only the native selection model."
+  [^js editor event]
+  (let [x (.-clientX event)
+        y (.-clientY event)
+        element (.getRootElement editor)]
+    (when (and element (number? x) (number? y) (js/Number.isFinite x) (js/Number.isFinite y))
+      (let [range (cond
+                    (fn? (.-caretRangeFromPoint js/document)) (.caretRangeFromPoint js/document x y)
+                    (fn? (.-caretPositionFromPoint js/document))
+                    (when-let [position (.caretPositionFromPoint js/document x y)]
+                      (let [range' (.createRange js/document)]
+                        (.setStart range' (.-offsetNode position) (.-offset position))
+                        (.collapse range' true)
+                        range')))]
+        (when (and range (.contains element (.-startContainer range)))
+          ;; applyDOMRange is Lexical's public measurement adapter. React-owned
+          ;; markup is untouched; insertion uses this document selection.
+          (.update editor
+            (fn []
+              (let [selection ($createRangeSelection)]
+                (.applyDOMRange selection range)
+                ($setSelection selection)))
+            #js {:discrete true}))))))
+
 (defn replace-text! [text]
   (let [before (document)
         selected (selected-range before)

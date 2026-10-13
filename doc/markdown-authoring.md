@@ -89,6 +89,40 @@ retain the same highlighted display, copy/wrap/fold controls and formatter gate
 as a public post. Both authoring owners declare their highlight dependency.
 Source mode does not implement another fenced-code rendering system.
 
+## Working and named drafts
+
+Accepted title, tags, Markdown and referenced ready image assets use the shared
+150 ms storage debounce. Navigation/pagehide drains that same queue, including
+the latest accepted edit; neither the editor nor the draft view owns another
+timer or writes localStorage. Restoration validates private data before applying
+it. Input typed while disk is loading wins over the earlier snapshot, and account
+changes release the previous transport/native editor lifetime.
+
+The working document keeps a stable ID across reloads. **Save draft** gives that
+document its current title in the in-progress chooser; subsequent edits continue
+to autosave. Named working documents store a pointer to their collection entry,
+rather than a second copy of their content. Choosing a draft or starting another
+ends the previous native document/undo lifetime. Published-post revisions have
+their own collection, so selecting a new-post draft cannot inherit another
+published post's edit target. Pending Files, node IDs and upload chips are never
+persisted; the view explains that unfinished images remain in the current tab.
+
+An explicit save acknowledges the storage adapter's actual durable write.
+Unavailable/full storage reports an error and preserves the dirty write for
+retry, including retry without changing the text.
+
+## Code language choices
+
+New fences default to **Auto detect**, serialized with an empty language tag.
+Existing tags, including `cljs`, survive editing even when the formatter uses an
+alias to choose its rendering grammar. The shared code-block's searchable picker
+uses optional public CMS `:common :code-languages` choices, or an explicit
+`:language-options` component option. Values are unique ASCII language names
+of 1–80 characters (`a-z`, `A-Z`, digits, `_`, `+`, `-`); labels are nonblank and
+at most 120 characters, with at most 200 choices. An absent field supplies a few
+initial suggestions; an explicit empty list supplies only Auto detect. Authors
+can still enter an existing/custom fence tag without changing the source code.
+
 ## Component identities and arguments
 
 The tag is a data container. Its `component` field preserves the actual qualified

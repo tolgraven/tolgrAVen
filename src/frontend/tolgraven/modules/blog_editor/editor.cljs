@@ -71,6 +71,7 @@
   [{:keys [owner source?]}]
   :let [*rich? (r/atom (not source?))]
   (let [text (or @(r/subscribe [:form-field [:post-blog :text]]) "")
+        document-id @(r/subscribe [:state [:blog-editor :draft :document-id]])
         uploads @(r/subscribe [:blog-editor/uploads owner])
         library @(r/subscribe [:state [:blog-editor :library]])
         assets (->> (concat (:assets library) (keep :asset uploads))
@@ -93,6 +94,7 @@
       [:button {:type "button", :aria-pressed (not @*rich?), :on-click #(do (r/dispatch-sync [:blog/editor-mode owner false]) (reset! *rich? false))} "Plain Markdown"]]
      (m/<> {:module :markdown-editor, :view :editor, :load-on :immediate}
              {:text text
+              :document-id document-id
               :source? (not @*rich?)
               :text-query [:form-field [:post-blog :text]]
               :uploads uploads
@@ -108,7 +110,7 @@
                                            ;; next key transaction; queued echoes can otherwise
                                            ;; overwrite newer text during controlled reconciliation.
                                            ((if @*rich? r/dispatch r/dispatch-sync)
-                                            [:blog/editor-text-changed owner text changes positions])) [owner])
+                                            [:blog/editor-text-changed owner text changes positions document-id])) [owner document-id])
               :on-anchors (r/use-callback #(r/dispatch [:blog/editor-anchors owner %]) [owner])
               :on-removed (r/use-callback #(r/dispatch [:blog/image-anchor-removed owner %]) [owner])
               :upload! upload!

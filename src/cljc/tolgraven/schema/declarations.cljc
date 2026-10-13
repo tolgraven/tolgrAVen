@@ -8,7 +8,7 @@
 (def path [:vector {:min 1} :any])
 (def event [:cat :keyword [:* :any]])
 (def persistence
-  (c/optional-map {:scope [:enum :public :user] :version c/positive :ttl-ms c/milliseconds}))
+  (c/optional-map {:scope [:enum :public :user] :version c/positive :ttl-ms c/milliseconds :consume? :boolean}))
 (def state-options
   (c/optional-map {:schema :any :initial :any :key :any :id c/id :scope :keyword
                    :persist [:or :boolean persistence]}))
