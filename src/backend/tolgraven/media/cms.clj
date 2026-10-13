@@ -157,7 +157,7 @@
     (when-not (and (= 200 (:status response)) (vector? files) (<= (count files) 20))
       (storage/fail! 503 "CMS media inventory unavailable"))
     {:accepted (mapv (fn [media]
-                       (if (#{"image/png" "image/jpeg" "image/webp" "image/avif"} (:mime media))
+                       (if (#{"image/png" "image/jpeg" "image/webp" "image/avif" "image/svg+xml"} (:mime media))
                          (try {:id (:id media) :upload (intake! media)}
                               (catch Exception _ {:id (:id media) :error "Media unavailable or unsupported"}))
                          {:id (:id media) :skipped true})) files)
