@@ -39,7 +39,7 @@
     [website.modules.markdown.views :as code]
     [website.components.ui.boundary :as ui-boundary]
     [website.components.ui.layout :as ui-layout]
-    [website.components.ui.markdown :as ui-markdown]
+    [website.modules.markdown.interface :as markdown]
     [website.components.init :as init-view]
 
     [website.component.instrumentation :as instrumentation]
@@ -611,7 +611,7 @@
   (doseq [url ["https://example.com/page.html" "#heading" "/blog" "mailto:test@example.com"]]
     (let [html (str "<a href=\"" url "\">Link</a>")] (is (= html (docs-view/page-links html))))))
 (deftest markdown-code-uses-reagent-props-without-js-conversion
-  (let [html (r/render-to-static-markup [code/<markdown-code-component> {:children "inline"}])]
+  (let [html (r/render-to-static-markup [code/<parse-markdown-components> "`inline`"])]
     (let [element (.createElement js/document "div")]
       (set! (.-innerHTML element) html)
       (is (= "inline" (.-textContent (.querySelector element ".code-snippet > code.code-highlight"))))
@@ -1376,7 +1376,7 @@
                                        {:text (.-textContent text)
                                         :opacity (.-opacity (.getComputedStyle js/window text))})))
                             :reagent-render
-                            (fn [] [ui-markdown/<md->div> "Already loaded article"])})]
+                            (fn [] [markdown/<md->div> "Already loaded article"])})]
             (.appendChild (.-body js/document) element)
             (let [root (await! (support/create-root! element))]
               (try

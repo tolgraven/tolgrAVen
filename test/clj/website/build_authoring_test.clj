@@ -42,6 +42,7 @@
   (let [entries (authoring/entries {})
         by-name (into {} (map (juxt :name identity)) entries)]
     (is (= :settings (:owner (get by-name "website.modules.settings.views/<config-table>"))))
+    (is (= :highlight (:owner (get by-name "website.modules.highlight.code-block/<code-block>"))))
     (is (get by-name "website.components.content.markdown/<image>"))
     (is (get by-name "website.modules.blog-editor.views/<post-blog>"))
     (is (not-any? #(= "Image" (:name %)) entries))))

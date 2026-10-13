@@ -1,4 +1,4 @@
-(ns website.modules.markdown.code-block
+(ns website.modules.highlight.code-block
   "Controls hydrate immediately; the formatter hydrates after the page is ready."
   (:require [clojure.string :as string]
             [website.schema.dsl :as dsl]
@@ -29,7 +29,14 @@
    [:?starting-line-number [:int {:min 1}]]
    [:?foldable? :boolean]
    [:?folded? :boolean]
-   [:?fold-lines [:int {:min 1}]]])
+   [:?fold-lines [:int {:min 1}]]
+   [:?editable? :boolean]
+   [:?code-ref [:or fn? [:fn object?]]]
+   [:?on-code-focus fn?]
+   [:?on-code-change fn?]
+   [:?on-language-change fn?]
+   [:?on-meta-change fn?]
+   [:?meta :?string]])
 
 ;; Preserve the public keyword/value API, with the same contracts as map options.
 (def args-schema
@@ -60,7 +67,7 @@
                (-> gate
                    (.then (fn [_] (loader/acquire-code! :highlight)))
                    (.then (fn [spec]
-                            (let [component (get-in spec [:view :code-block])
+                            (let [component (get-in spec [:view :formatted-code])
                                   component (if (var? component) @component component)]
                               #js {:default (r/reactify-component
                                               (fn [{:keys [args]}]
@@ -84,7 +91,7 @@
     ;; Reagent defc memoizes this boundary independently of outer controls.
     [r/suspense {:fallback (r/as-element fallback)}
      (if context/*server?*
-       (view/form :highlight :code-block args fallback)
+       (view/form :highlight :formatted-code args fallback)
        ;; Keep Clojure arguments opaque at this native React boundary.
        (r/create-element (:view formatter) #js {:args args}))]))
 
@@ -248,8 +255,10 @@
       copy! (merge handlers))))
 
 (defc <code-block>
-  {:args-schema args-schema
-   :module :markdown
+  {:authoring {:category "Markdown"
+               :defaults {:args ["(+ 1 2)" {:language "clojure"}]}}
+   :args-schema args-schema
+   :module :highlight
    :icons ["solid/copy" "solid/check" "solid/ellipsis-h" "solid/exclamation"
            "solid/align-left" "solid/angle-down" "solid/angle-up"]}
   [code & options]
@@ -260,7 +269,8 @@
         [ssr-pending? set-ssr-pending!]
         (r/use-state #(and (not context/*server?*) (restore/initial-hydration?)))
         on-ready! (r/use-callback #(set-ssr-pending! false) [])
-        gesture-props (use-copy-gesture (when (not= false (:copy? options)) copy!) ssr-pending?)
+        gesture-props (use-copy-gesture (when (and (not= false (:copy? options))
+                                                 (not (:editable? options))) copy!) ssr-pending?)
         inline? (:inline? options)
         line-count (r/use-memo
                      #(count (string/split code #"\n" -1))
@@ -317,4 +327,26 @@
            [:i.fas {:aria-hidden true
                     :class (if folded? "fa-angle-down" "fa-angle-up")}]])]
        [:div.code-block-content [<formatter> code options on-ready!]]
+       (when (:editable? options)
+         [:div.code-editor-fields
+          {:on-key-down-capture #(.stopPropagation %)}
+          [:label "Code"
+           [:textarea {:value code
+                       :ref (:code-ref options)
+                       :on-focus (:on-code-focus options)
+                       :spell-check false
+                       :rows (max 3 (min 24 line-count))
+                       :on-change #(when-let [change! (:on-code-change options)]
+                                     (change! (.. % -target -value)))}]]
+          [:label "Language"
+           [:input {:type "text"
+                    :value (or (:language options) "")
+                    :placeholder "Plain text"
+                    :on-change #(when-let [change! (:on-language-change options)]
+                                  (change! (.. % -target -value)))}]]
+          [:label "Fence metadata"
+           [:input {:type "text"
+                    :value (or (:meta options) "")
+                    :on-change #(when-let [change! (:on-meta-change options)]
+                                  (change! (.. % -target -value)))}]]])
        feedback])))

@@ -836,11 +836,19 @@ backend document read, independently of browser sandboxing.
 
 ## Code presentation and copying
 
-`website.modules.markdown.interface/<code-block>` accepts either an option map or
+`website.modules.highlight.code-block/<code-block>` accepts either an option map or
 keyword/value options. Markdown forwards its `:code-options` map to this same
 component. Fenced blocks keep their language tag and inline snippets use generic
 Bash highlighting by default, with the shared Bruvbox palette. An explicit tag
 always wins; `:inline-language` changes only the untagged inline default.
+
+`website.modules.markdown.views/renderers` declares the parser's node/component
+mapping. Code nodes point to the shared Highlight component; the argument adapter
+supplies the language, inline/block mode and owner's options. Images point to the
+shared picture component. Native headings, lists and text marks use DOM element
+types directly, preserving rich children without adding component wrappers.
+The SDK renderer identities are built once, and current options flow through
+context so an option change does not remount images or reader controls.
 
 ```clojure
 [highlight/<code-block> source

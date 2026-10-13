@@ -56,6 +56,18 @@
       (is (thrown? RuntimeException (modules/declaration file)))
       (finally (.delete file)))))
 
+(deftest shared-code-consumers-require-the-formatter-without-eager-browser-dependency
+  (let [declarations (modules/all-declarations)
+        by-id (into {} (map (juxt :id identity)) declarations)]
+    (doseq [owner [:markdown :data-inspector]]
+      (is (= #{:highlight} (get-in by-id [owner :server :requires])))
+      (is (not (contains? (get-in by-id [owner :depends-on]) :highlight))))
+    (doseq [owner [:markdown-editor :blog-editor]]
+      (is (contains? (get-in by-id [owner :depends-on]) :highlight)))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Disabled or missing module dependency"
+                         (modules/select-declarations declarations
+                           {:modules {:highlight {:enabled false}}})))))
+
 (deftest stylesheet-catalog-contains-transitive-code-dependencies
   (let [file (java.io.File/createTempFile "module-styles" ".cljs")]
     (try

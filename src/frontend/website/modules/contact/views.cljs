@@ -6,8 +6,7 @@
             [clojure.string :as string]
             [website.components.ui.controls :as ui-controls]
     [website.components.ui.inputs :as ui-inputs]
-    [website.components.ui.loading :as ui-loading]
-            [website.components.contact :as contact]))
+    [website.components.ui.loading :as ui-loading]))
 
 (defc ^:private <contact-confirmation>
   {:features [[:appear "slide-in"]]}
@@ -98,6 +97,3 @@
                [:br])
              [:p "Whether for work, collaboration or something else, I'll do my best to accomodate you.
                   NOTE! Currently out of order, please just email me for now haha."]])]])))))
-
-(defn <contact-ways> [email]
-  [contact/<contact-ways> email])

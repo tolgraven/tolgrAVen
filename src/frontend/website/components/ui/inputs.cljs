@@ -1,6 +1,5 @@
 (ns website.components.ui.inputs
   (:require [website.component.registry]
-            [website.loader.view :as loader-view]
             [website.react :as r]
             [website.util :as util :refer [at]]
             [website.macros :as m :include-macros true]
@@ -139,10 +138,5 @@
                            true)))}
             attr)])))) ;after not before, want to be able to override stuff duh
 
-
-(defn <input-text-styled>
-  "Acquire the custom field only when a consumer renders it."
-  [& args]
-  (loader-view/form :styled-input :input (vec args) nil))
 
 (m/register-render-functions!)

@@ -1,7 +1,6 @@
-(ns website.components.markdown-components
+(ns website.modules.markdown-components.interface
   "Recognize authored public tags in Markdown HTML nodes without changing prose parsing."
-  (:require [website.react :as r]
-            [clojure.string :as string]
+  (:require [clojure.string :as string]
             [website.loader :as loader]
             [website.render-context :as context]
             [website.markdown.authoring :as model]
@@ -84,13 +83,11 @@
                   (set! (.-value node) "[Put each component on a separate line]"))))))
         nil))))
 
-(def renderer
-  (r/reactify-component
-    (fn [{:keys [invocation]}]
-      (let [node (try (js->clj (js/JSON.parse invocation) :keywordize-keys true)
-                      (catch :default _ {:error "Invalid component arguments"}))
-            invocation' (if (:error node) node (model/invocation node))]
-        (if (contains? (if context/*server?* context/*modules* loader/modules) :markdown-components)
-          (loader/component-vector :markdown-components/render [invocation'])
-          [:aside.content-component-error {:role "status"}
-           "Components are unavailable on this site"])))))
+(defn <render> [invocation]
+  (let [node (try (js->clj (js/JSON.parse invocation) :keywordize-keys true)
+                  (catch :default _ {:error "Invalid component arguments"}))
+        invocation' (if (:error node) node (model/invocation node))]
+    (if (contains? (if context/*server?* context/*modules* loader/modules) :markdown-components)
+      (loader/component-vector :markdown-components/render [invocation'])
+      [:aside.content-component-error {:role "status"}
+       "Components are unavailable on this site"])))

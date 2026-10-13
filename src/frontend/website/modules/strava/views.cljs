@@ -10,7 +10,6 @@
     [website.components.ui.controls :as ui-controls]
     [website.components.ui.layout :as ui-layout]
     [website.components.ui.loading :as ui-loading]
-    [website.components.ui.media :as ui-media]
     [website.components.image :as img]
     [website.components.shell :as views]
     [website.util :as util :refer [at]]
@@ -583,10 +582,11 @@
       [:div "Average speed"]
       [:div "Elevation gain"]]
      [<strava-totals-stats> stats :all_ride_totals "Total"]
-     [ui-media/<carousel-normal> "strava-general-stats-carousel"
+     (m/<> {:module :carousel, :view :normal, :load-on :immediate}
+      "strava-general-stats-carousel"
       {}
       [[<strava-totals-stats> stats :recent_ride_totals "Recent"]
-       [<strava-totals-stats> stats :ytd_ride_totals (.getFullYear (js/Date.))]]]]))
+       [<strava-totals-stats> stats :ytd_ride_totals (.getFullYear (js/Date.))]])]))
 
 (defc <strava-details-stats> "Use rides to calc stuff"
   []

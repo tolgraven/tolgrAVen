@@ -28,6 +28,17 @@ renderer; it does not acquire either authoring bundle.
 
 ## Component identities and arguments
 
+Fenced-code editor descriptors render Highlight's shared code-block component;
+the SDK supplies code/language/metadata setters. Its optional editable fields
+retain the same highlighted display, copy/wrap/fold controls and deferred formatter
+as a public post. Both authoring owners declare their Highlight dependency.
+Source-mode CodeMirror edits the document rather than providing another fenced
+code renderer.
+
+Fenced blocks retain their language tag and metadata in Markdown. The `clj`,
+`cljs`, `cljc` and `clojurescript` tags use Clojure's highlighting grammar without
+rewriting the authored tag. Untagged fences use automatic detection.
+
 The tag is a data container. Its `component` field preserves the actual qualified
 ClojureScript component identity, including the angle brackets in its Var name:
 
@@ -48,7 +59,7 @@ signatures take the `args` field as a quoted data vector, retaining the original
 positional call contract:
 
 ```markdown
-<Component component="website.modules.markdown.interface/<code-block>" args='json:["(+ 1 2)",{"language":"clojure"}]' />
+<Component component="website.modules.highlight.code-block/<code-block>" args='json:["(+ 1 2)",{"language":"clojure"}]' />
 ```
 
 Plain strings are literal. `json:` supplies numbers, booleans, arrays, objects or

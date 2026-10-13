@@ -4,6 +4,7 @@
             [website.macros :refer-macros [defc]]
             [website.react :as r]
             [website.modules.markdown-editor.catalog :as catalog]
+            [website.modules.markdown-editor.code :as code]
             [website.markdown.authoring :as model]
             [website.modules.markdown-components.views :as components]
             [website.components.content.layout :as layout]
@@ -288,16 +289,8 @@
        (editor/linkPlugin)
        (editor/linkDialogPlugin)
        (editor/tablePlugin)
-       (editor/codeBlockPlugin #js {:defaultCodeBlockLanguage "clojure"})
-       (editor/codeMirrorPlugin #js {:codeBlockLanguages #js {:clojure "Clojure"
-                                                             :javascript "JavaScript"
-                                                             :typescript "TypeScript"
-                                                             :css "CSS"
-                                                             :json "JSON"
-                                                             :bash "Shell"
-                                                             :python "Python"
-                                                             :sql "SQL"
-                                                             :text "Plain text"}})
+       (editor/codeBlockPlugin #js {:defaultCodeBlockLanguage "clojure"
+                                   :codeBlockEditorDescriptors code/descriptors})
        (editor/imagePlugin #js {:imageUploadHandler upload!
                                 :imageAutocompleteSuggestions (clj->js image-urls)
                                 :disableImageResize true

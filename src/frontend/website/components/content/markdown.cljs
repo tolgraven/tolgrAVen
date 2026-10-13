@@ -4,8 +4,7 @@
             [website.macros :refer-macros [defc]]
             [website.components.image :as image]
             [website.components.content.media :as media]
-            [website.react :as r]
-            [website.modules.markdown.interface :as highlight]))
+            [website.react :as r]))
 
 (defc <heading>
   "A Markdown heading. Level is a number from one to six, and text is its visible label."
@@ -50,13 +49,6 @@
   [:table [:thead [:tr (for [[index label] (map-indexed vector headers)] ^{:key index} [:th label])]]
    [:tbody (for [[index cells] (map-indexed vector rows)]
              ^{:key index} [:tr (for [[column text] (map-indexed vector cells)] ^{:key column} [:td text])])]])
-
-(defc <code>
-  "A Markdown code block or inline code span rendered by the site's shared deferred syntax highlighter. Language is optional."
-  {:authoring {:category "Markdown", :defaults {:text "(+ 1 2)", :language "clojure"}}
-   :spec-schema [:map [:text :string] [:?language :string] [:?inline :boolean]]}
-  [{:keys [text language inline]}]
-  [highlight/<code-block> text {:language language, :inline? (boolean inline)}])
 
 (defc <image>
   "A Markdown image with alternative text. The image component chooses responsive and modern formats when available."

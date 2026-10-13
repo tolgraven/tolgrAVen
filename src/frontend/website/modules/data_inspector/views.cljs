@@ -4,7 +4,8 @@
             [website.macros :refer-macros [defc]]
             [cljs.pprint :as pprint]
             [clojure.string :as string]
-            [website.modules.markdown.interface :as code]))
+            [website.components.portal :as portal]
+            [website.modules.highlight.code-block :as code]))
 
 (defc <formatted-data>
   "Pretty-print a value or subscription as Clojure using the deferred formatter."
@@ -45,4 +46,17 @@
      [:span
       [:button {:on-click #(reset! *error nil)}
       "Attempt reload"]]]))
+
+(defc <error>
+  "Show the inspector's full error details in a toggled portal."
+  [_ _ _ _]
+  (let [*open? (r/atom false)]
+    (fn <error-inner>
+      [ns-name comp-name *error spec]
+      [:<>
+       [:button.error-show {:on-click #(swap! *open? not)}
+        (if @*open? "-" "+") " Error"]
+       (when @*open?
+        [portal/<portal> "error-portal"
+         [<error-full> ns-name comp-name *error spec]])])))
 

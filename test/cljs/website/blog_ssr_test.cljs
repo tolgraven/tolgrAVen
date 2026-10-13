@@ -52,7 +52,7 @@
 
 (r/defc <formatter-commit> [*commits args]
   (r/use-layout-effect (fn [] (swap! *commits inc) nil) [])
-  (into [highlight-view/<code-block>] args))
+  (into [highlight-view/<formatted-code>] args))
 
 (defn check-hydration! [fixture selectors done]
   (let [element (.createElement js/document "div") *root (atom nil)
@@ -82,7 +82,7 @@
           (do
             (swap! *highlight-requests conj id)
             (js/Promise.resolve
-              (assoc-in highlight/spec [:view :code-block]
+              (assoc-in highlight/spec [:view :formatted-code]
                         (fn [& args] [<formatter-commit> *formatter-commits args]))))
           (old-acquire id))))
     ;; Fixtures are regenerated from the current Node bundle; never hydrate

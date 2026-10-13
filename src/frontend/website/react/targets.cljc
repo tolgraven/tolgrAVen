@@ -3,17 +3,20 @@
    ordinary release browser graph. JVM source tooling sees inert declarations."
   (:require
     #?@(:dev [[reagent.dom.server] [re-frame.tooling]]
+        :browser-test [[reagent.dom.server]]
         :ssr [[reagent.dom.server]]
         :return-worker [[reagent.dom.server]]
         :default [])))
 
 (def render-to-string
   #?(:dev reagent.dom.server/render-to-string
+     :browser-test reagent.dom.server/render-to-string
      :ssr reagent.dom.server/render-to-string
      :return-worker reagent.dom.server/render-to-string
      :default nil))
 (def render-to-static-markup
   #?(:dev reagent.dom.server/render-to-static-markup
+     :browser-test reagent.dom.server/render-to-static-markup
      :ssr reagent.dom.server/render-to-static-markup
      :return-worker reagent.dom.server/render-to-static-markup
      :default nil))

@@ -5,8 +5,7 @@
             [website.react :as r]
             [website.events]
             [website.subs]
-            [website.components.ui.diagnostics :as ui-diagnostics]
-            [website.components.error :as error]
+            [website.loader :as loader]
             [website.util :as util]
             [website.test-support :as support]))
 
@@ -27,7 +26,9 @@
                 value {:nested {:values [1 2 3] :label "Preserved"}}
                 *error (r/atom {:error (ex-info "Readable error" {})})]
             (try
-              (await! (support/render! root [ui-diagnostics/<formatted-data> "Data" value]))
+              (await! (support/render! root
+                       (loader/component-vector {:module :data-inspector, :view :data, :load-on :immediate}
+                                                ["Data" value])))
               (await! (support/wait-for!
                         #(some-> (.querySelector element "pre") .-textContent
                                  (.includes "Preserved"))))
@@ -36,7 +37,9 @@
               (await! (support/wait-for!
                         #(.querySelector element "pre code.language-clojure span")))
               (is (= value (reader/read-string (.-textContent (.querySelector element "pre code")))))
-              (await! (support/render! root [error/<error-full> "test" "view" *error value]))
+              (await! (support/render! root
+                       (loader/component-vector {:module :data-inspector, :view :error, :load-on :immediate}
+                                                ["test" "view" *error value])))
               (let [retry (await! (support/wait-for!
                                    #(some (fn [button]
                                             (when (= "Attempt reload" (.-textContent button)) button))

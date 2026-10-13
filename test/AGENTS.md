@@ -37,6 +37,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Release browser-test builds include selected module entries through Shadow's
   native namespace list; development uses preloads. Release excludes development
   preloads, so both paths must expose the same lazy owner inventory.
+  Keep `:browser-test` in selected release test reader features so test fixtures
+  can render server markup through the framework shim without enabling development
+  tooling. Optimized hydration checks use `website.nested-hydration-runner`;
+  the default display runner mutates a Closure define and is development-only.
 - Use owning schemas/constructors in fixtures instead of duplicating contracts.
   Test browser/Node-only schemas in `test/cljs`; JVM tests exercise portable/server
   contracts and generic composition helpers.

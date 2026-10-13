@@ -8,7 +8,7 @@
 
             [website.macros :refer-macros [defc]]
             [website.components.ui.boundary :as ui-boundary]
-    [website.components.ui.markdown :as ui-markdown]
+    [website.modules.markdown.interface :as markdown]
     [website.components.ui.notifications :as ui-notifications]
             [website.component :as component]
             [website.component.markup :as markup]
@@ -79,7 +79,7 @@
     (let [test! (fn [root element]
                   (go-promise
                     (await! (render! root [loading/<rendered>
-                                          {:form [ui-markdown/<md->div> "# Sample heading\n\nSample paragraph"]}]))
+                                          {:form [markdown/<md->div> "# Sample heading\n\nSample paragraph"]}]))
                     (is (some? (.querySelector element ".component-render-skeleton .md-rendered h1")))
                     (is (= "Sample paragraph" (.-textContent (.querySelector element "p"))))
                     (is (.hasAttribute (.querySelector element ".component-render-skeleton") "inert"))))]

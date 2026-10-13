@@ -1,15 +1,10 @@
 (ns website.components.ui.diagnostics
   (:require [website.component.registry]
-            [website.loader.view :as loader-view]
             [website.react :as r]
             [website.util :as util :refer [at]]
             [website.macros :as m :include-macros true]
             [website.components.ui.controls :as controls]))
 
-
-(defn <formatted-data> [title path-or-data]
-  (loader-view/form :data-inspector :data [title path-or-data]
-                    [:div [:h5 title] [:pre "Loading data…"]]))
 
 (defn format-log-message
   [message]

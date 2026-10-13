@@ -32,21 +32,34 @@
 ; (.registerLanguage SyntaxHighlighter "javascript" js-lang)
 ; (.registerLanguage SyntaxHighlighter "clojure" clj-lang)
 
+(def language-aliases
+  ;; These fence tags share Clojure's grammar. Authoring retains the original tag.
+  {"clj" "clojure"
+   "cljs" "clojure"
+   "cljc" "clojure"
+   "clojurescript" "clojure"})
+
+(defn- grammar-language [language]
+  (get language-aliases language language))
+
 (defn code-tree
   "Honor language tags; otherwise detect, using the owner's optional fallback
    only when detection produces no language. Unknown tags also try detection."
   [code language default-language & [auto-languages]]
-  (let [explicit (when language
-                   (try (.highlight lowlight language code)
+  (let [language' (grammar-language language)
+        default-language' (grammar-language default-language)
+        auto-languages' (when auto-languages (vec (distinct (map grammar-language auto-languages))))
+        explicit (when language'
+                   (try (.highlight lowlight language' code)
                         (catch :default _ nil)))
         detected (or explicit (.highlightAuto lowlight code
-                                           (when auto-languages
-                                             #js {:subset (into-array auto-languages)})))]
-    (if (and (nil? (.-language detected)) default-language)
-      (.highlight lowlight default-language code)
+                                           (when auto-languages'
+                                             #js {:subset (into-array auto-languages')})))]
+    (if (and (nil? (.-language detected)) default-language')
+      (.highlight lowlight default-language' code)
       detected)))
 
-(defc <code-block>
+(defc <formatted-code>
   "Full language support and Bruvbox are acquired only by code consumers."
   [code & {:keys [language default-language auto-languages style basic? inline? inline-language
                  line-numbers? starting-line-number line-props]

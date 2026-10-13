@@ -1,6 +1,9 @@
 (ns website.components.ui.controls
+  (:require-macros [website.build.site :refer [when-enabled]])
   (:require [website.component.registry]
             [website.components.icon :as icon]
+            [website.components.icon-catalog :as icon-catalog]
+            [website.loader]
             [website.react :as r]
             [website.macros :as m :include-macros true]))
 
@@ -50,10 +53,18 @@
 
 (m/defc <material-toggle>
  [model-path [on-state off-state & [prefix]]]
- (let [model (r/subscribe (into [:get] model-path))]
-  [icon/<icon> "fa" (str (when prefix (str prefix "-")) (if @model on-state off-state))
-   {:style {:margin "0.1em 0.2em"}
-    :on-click #(r/dispatch [:toggle model-path])}]))
+ (let [model (r/subscribe (into [:get] model-path))
+       name (str (when prefix (str prefix "-")) (if @model on-state off-state))]
+  [:<>
+   (when-enabled :icon-catalog nil
+     (when-not (icon-catalog/names name)
+       (m/<> {:module :icon-catalog
+              :view :empty
+              :load-on :immediate
+              :<loading> [:<>]})))
+   [icon/<icon> "fa" name
+    {:style {:margin "0.1em 0.2em"}
+     :on-click #(r/dispatch [:toggle model-path])}]]))
 
 (m/defc <minimize> [model-path]
  [<material-toggle>

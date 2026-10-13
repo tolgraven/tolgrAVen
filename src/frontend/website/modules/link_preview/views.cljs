@@ -17,7 +17,7 @@
     [website.component.motion :as motion]
     [website.modules.link-preview.subs]
     [website.modules.link-preview.util :as util]
-    [website.components.ui.markdown :as ui-markdown]))
+    [website.modules.markdown.interface :as markdown]))
 
 (def ^:private open-delay-ms 300)
 (def ^:private close-delay-ms 180)
@@ -389,7 +389,7 @@
        {:id id
         :text md
         :trust (:trust options)}
-       [ui-markdown/<md->div> md options]])))
+       [markdown/<md->div> md options]])))
 
 (defn article-dependency [url]
   {:source :url

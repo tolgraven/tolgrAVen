@@ -9,7 +9,6 @@
 
     [website.components.image :as img]
     [website.components.ui.layout :as ui-layout]
-    [website.components.ui.media :as ui-media]
     [website.util :as util]
     [website.components.video :as vid]))
 
@@ -143,25 +142,6 @@
     (when @(r/subscribe [:state [:gallery :loaded]])
       (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
          [img/<picture> (merge img {:class "media"})]))]]) ; TODO add captions and other features etc...
-
-(defc <gallery-2> "Gallery carousel"
-  [img-attrs :- [:sequential schema/media]]
-  [:section#gallery-2.covering.fullwide {:style {:z-index 12}}
-   [:div "test carousel-normal"]
-   [ui-media/<carousel-normal> :gallery-2-normal {:style {:height "40vh"} }
-    (into []
-          (for [img img-attrs] ^{:key (str "gallery-2-normal-" (:src img))}
-            [img/<picture> (merge img {:class "media"})]))]])
-
-(defc <gallery-3> "Gallery carousel"
-  [img-attrs :- [:sequential schema/media]]
-  [:section#gallery-2.covering.fullwide {:style {:z-index 12}}
-   [:div "test carousel"]
-   [ui-media/<carousel> :gallery-2 {:style {:height "30vh"} }
-    (into []
-          (for [img img-attrs] ^{:key (str "gallery-" (:src img))}
-         [img/<picture> (merge img {:class "media"})]))]])
-
 
 (defc <moneyshot> "needs better name lol. what is hero img halfway down page?"
   [{:keys [title caption bg]}]

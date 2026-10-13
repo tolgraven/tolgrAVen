@@ -58,7 +58,7 @@
 
   :app-test {:target :browser-test
              :module-loader true
-             :compiler-options {:reader-features #{:browser :dev}}
+             :compiler-options {:reader-features #{:browser :dev :browser-test}}
              :closure-defines {malli.registry/type "custom"}
              :build-hooks [(website.build.modules/configure-site)
                            (website.build.modules/clean-site-output)

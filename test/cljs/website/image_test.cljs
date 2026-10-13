@@ -628,7 +628,7 @@
                :placeholder {:colors ["#112233" "#445566" "#778899"]}}
         container (.createElement js/document "div")]
     (set! (.-innerHTML container)
-          (server/render-to-string [image/<picture> {:src "old-reference.jpg"
+          (r/render-to-string [image/<picture> {:src "old-reference.jpg"
                                                      :asset asset
                                                      :sizes "45vw"
                                                      :alt "Managed photo"}]))
@@ -659,7 +659,7 @@
                :renditions {:original original}}
         container (.createElement js/document "div")]
     (set! (.-innerHTML container)
-          (server/render-to-string [image/<picture> {:asset asset :alt "Vector logo"}]))
+          (r/render-to-string [image/<picture> {:asset asset :alt "Vector logo"}]))
     (is (= 1 (.-length (.querySelectorAll container "img"))))
     (is (nil? (.querySelector container "source, .progressive-image")))
     (is (= (:src original) (.getAttribute (.querySelector container "img") "src")))))

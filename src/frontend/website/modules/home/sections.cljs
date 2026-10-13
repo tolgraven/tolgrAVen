@@ -1,10 +1,12 @@
 (ns website.modules.home.sections
+  (:require-macros [website.build.site :refer [when-enabled]])
   (:require
     [website.components.icon :as icon]
+    [website.components.icon-catalog :as icon-catalog]
     [website.component.registry]
     [clojure.string :as string]
     [website.react :as r]
-    [website.macros :refer-macros [defc]]
+    [website.macros :as m :refer-macros [defc]]
 
     [website.components.timer :as anim]
     [website.component.restore :as restore]
@@ -92,7 +94,14 @@
    (into [:ul {:class (cond (= full-screened? title) "service-fullscreen"
                             full-screened? "service-minimized")
                :on-click on-click}
-          [:li [icon/<icon> "fas" icon-name {}] [:h2.service-title title]]]
+          [:li
+           (when-enabled :icon-catalog nil
+             (when (and (seq icon-name) (not (icon-catalog/names icon-name)))
+               (m/<> {:module :icon-catalog
+                      :view :empty
+                      :load-on :immediate
+                      :<loading> [:<>]})))
+           [icon/<icon> "fas" icon-name {}] [:h2.service-title title]]]
          (for [line lines] ^{:key (str "service-" title "-" line)} [:li line]))])
 
 (defc <service-categories> [{:keys [categories] :as spec}]
@@ -116,6 +125,12 @@
            :let [id (str "service-" title)]] ^{:key id}
        (into [:ul
                [:li
+                (when-enabled :icon-catalog nil
+                  (when (and (seq icon-name) (not (icon-catalog/names icon-name)))
+                    (m/<> {:module :icon-catalog
+                           :view :empty
+                           :load-on :immediate
+                           :<loading> [:<>]})))
                 [icon/<icon> "fas" icon-name {}]
                 [:h3 title]]]
               (for [line lines] ^{:key (str "service-" title "-" line)}

@@ -2,6 +2,7 @@
   "Helpers for serving modern image formats (WebP, AVIF) with automatic fallbacks"
   (:require
     [website.component.registry]
+    [website.component]
     [website.component.restore :as restore]
     [website.component.visibility :as visibility]
     [clojure.string :as string]
@@ -25,8 +26,6 @@
 
 (def visible-ready-schema
   [:map [:src :string] [:selected-src :string]])
-
-(def get-src-variants sources/get-src-variants)
 
 (defn- modern-source-selected? [image src]
   (let [current-src (.-currentSrc image)]
@@ -492,12 +491,6 @@
 
         :else [<source-picture> (dissoc attrs' :on-visible-ready)])))))
 
-(defc <img>
-  "Smart img component that automatically uses modern formats when available.
-   Alias for picture component for drop-in replacement."
-  [attrs :- attrs-schema]
-  [<picture> attrs])
-
 (defc <media-as-bg>
   "Generate picture element optimized for use as background media.
    Adds common background styling attributes."
@@ -506,6 +499,3 @@
                               {:alt (or alt "")
                                :class (str "media media-as-bg " (or class ""))})]
     [<picture> combined-attrs]))
-
-;; For backward compatibility - export main functions
-(def ^:export responsiveImage <picture>)

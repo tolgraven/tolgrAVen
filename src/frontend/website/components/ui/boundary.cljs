@@ -27,8 +27,7 @@
 ;; also setup event for when component module is loaded, ensure other data fetch goes parallel
 
 (m/defc <safe>
-  "Compatibility boundary for existing [safe category component] call sites.
-   Keep the category in diagnostics while sharing defc's recovery machinery."
+  "Group error diagnostics by category, with the caller's recovery key."
   [category form & [reset-key]]
-  [component/<boundary> {:ns-name "website.components.ui" :component-name (name category)
+  [component/<boundary> {:ns-name "website.components.ui.boundary" :component-name (name category)
                          :reset-key reset-key} form])

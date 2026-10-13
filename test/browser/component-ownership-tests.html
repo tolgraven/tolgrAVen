@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Component ownership and shared Markdown controls</title>
+<link rel="stylesheet" href="/css/tolgraven/main.min.css">
+<link rel="stylesheet" href="/css/tolgraven/modules/markdown.min.css">
+<link rel="stylesheet" href="/css/tolgraven/modules/markdown-editor.min.css">
+<link rel="stylesheet" href="/css/tolgraven/modules/icons-highlight.min.css">
+<body>
+<script src="/js/test.js"></script>
+<script>
+const run = shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1;
+shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1 = env =>
+  shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$2(env,
+    /^website\.(markdown-components|highlight|code-block|ui-scoping)-test$/);
+shadow.test.browser.init();
+shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1 = run;
+</script>
+</body>

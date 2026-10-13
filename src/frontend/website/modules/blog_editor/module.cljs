@@ -1,5 +1,5 @@
 (ns website.modules.blog-editor.module
-  {:bundle/depends-on #{:main :blog}
+  {:bundle/depends-on #{:main :blog :highlight}
    :site/owner :blog}
   (:require [website.modules.blog-editor.pages :as pages]
             [website.modules.blog-editor.schema :as schema]

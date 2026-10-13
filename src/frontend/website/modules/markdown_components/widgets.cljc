@@ -4,7 +4,6 @@
                      [website.macros :as m :refer-macros [defc]]
                      [website.react :as r]
                      [website.components.image :as image]
-                     [website.modules.markdown.interface :as highlight]
                      [website.components.oembed :as oembed]
                      [website.component.public-catalog :as catalog]
                      [website.components.content.box]

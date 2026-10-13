@@ -17,7 +17,6 @@
     [website.modules.link-preview.views :as link-preview]
     [website.util :as util]
     [website.components.ui.controls :as ui-controls]
-    [website.components.ui.inputs :as ui-inputs]
     [website.components.ui.layout :as ui-layout] )))
 
 #?(:cljs
@@ -383,8 +382,9 @@
                           :comment {:user @(r/subscribe [:user/active-user])
                                     :title (:title @*model)
                                     :text (or (:text @*model) "")}}]
-         [ui-inputs/<input-text-styled> :model *model
-          :on-change #(r/dispatch-sync [:form-field [:write-comment parent-path :text] %])]
+         (m/<> {:module :styled-input, :view :input, :load-on :immediate}
+               :model *model
+               :on-change #(r/dispatch-sync [:form-field [:write-comment parent-path :text] %]))
          ;; The experimental field could use :style {:opacity 0.1 :z-index 10}.
          ;; Future shortcut: submit on Alt-Enter.
          [<submit-comment-btn> {:parent-path parent-path :model @*model

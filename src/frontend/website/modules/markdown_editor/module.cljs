@@ -1,5 +1,5 @@
 (ns website.modules.markdown-editor.module
-  {:bundle/depends-on #{:main :markdown-components}
+  {:bundle/depends-on #{:main :markdown-components :highlight}
    :site/owner :blog-editor}
   (:require [website.modules.markdown-editor.entry :as entry]))
 

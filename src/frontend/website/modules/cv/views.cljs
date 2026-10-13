@@ -9,7 +9,6 @@
     [website.components.image :as img]
     [website.components.ui.controls :as ui-controls]
     [website.components.ui.layout :as ui-layout]
-    [website.components.ui.media :as ui-media]
     [website.util :as util])
   (:require-macros
     [website.macros :as m]))
@@ -73,7 +72,8 @@
     [:div.cv-skills
      {:style {:min-height "20em"}}
      [:h1 "Skills"]
-     [ui-media/<carousel-normal> :cv/skills {} [software digital general language]]]))
+     (m/<> {:module :carousel, :view :normal, :load-on :immediate}
+           :cv/skills {} [software digital general language])]))
 
 (m/defc ^:private <intro-logo>
   {:features [[:seen "slide-in zoom opacity extra-slow"]]}

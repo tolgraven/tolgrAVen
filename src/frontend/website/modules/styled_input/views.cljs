@@ -3,7 +3,7 @@
             [website.component.font :as font]
             [website.react :as r]
             [website.macros :as m :include-macros true]
-            [website.components.ui.markdown :as ui-markdown]
+            [website.modules.markdown.interface :as markdown]
             [clojure.string :as string]))
 
 (m/defc ^:private <styled-letter>
@@ -34,7 +34,7 @@
            caret-pos (str (* char-width @caret) "em")
            selection-len (* char-width (abs (- @caret @selection-end)))
            caret-height (* 1.6 (max 0.(- 1.0 (* 0.03 selection-len))))
-           output [ui-markdown/<md->div> @internal-model]]
+           output [markdown/<md->div> @internal-model]]
    [:div.styled-input-container
     {:class (when-not open? "closed")}
 

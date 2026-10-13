@@ -1,30 +1,65 @@
 (ns website.highlight-test
-  (:require [cljs.test :refer-macros [deftest is]]
+  (:require-macros [website.test-async :refer [go-promise await!]])
+  (:require [cljs.test :refer-macros [deftest is async]]
             [clojure.string :as string]
             [website.react :as r]
             [website.subs]
             [malli.core :as m]
             [website.schema.dsl :as dsl]
-            [website.modules.markdown.code-block :as code-block]
-            [website.modules.markdown.interface :as markdown]
+            [website.modules.highlight.code-block :as code-block]
             [website.modules.highlight.module :as highlight]
             [website.modules.highlight.views :as highlight-view]
             [website.modules.markdown.views :as code]
-            [website.components.ui.markdown :as ui-markdown]
+            [website.modules.markdown.interface :as markdown]
             [website.modules.blog.views :as blog]
+            [website.component.restore :as restore]
+            [website.test-support :as support]
             [website.render-context :as context]))
+
+(deftest renderer-options-update-without-remounting-code-controls
+  (async done
+    (let [element (.createElement js/document "div")
+          before @restore/*context
+          *root (atom nil)
+          text "```clojure\n(inc 1)\n```"]
+      (reset! restore/*context {:hydrate? false})
+      (-> (go-promise
+            (reset! *root (await! (support/create-root! element)))
+            (await! (support/render! @*root [code/<parse-markdown-components> text
+                                           {:default-language "clojure"}]))
+            (await! (support/wait-for! #(.querySelector element ".code-block pre code span")))
+            (let [pre (.querySelector element "pre")
+                  token (.querySelector element "code span")
+                  wrap (.querySelector element ".code-wrap")]
+              (.click wrap)
+              (await! (support/wait-for! #(.querySelector element ".code-block-wrapped")))
+              (await! (support/render! @*root [code/<parse-markdown-components> text
+                                             {:default-language "json"}]))
+              (is (identical? pre (.querySelector element "pre")))
+              (is (identical? token (.querySelector element "code span")))
+              (is (.querySelector element ".code-block-wrapped")
+                  "Changing parser options preserves the reader's control state")
+              (is (= "true" (.getAttribute wrap "aria-pressed")))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (reset! restore/*context before)
+                      (done)))))))
 
 (deftest shared-code-boundary-renders-full-language-support-during-ssr
   (binding [context/*server?* true
-            context/*modules* {:highlight highlight/spec
-                              :markdown {:view {:code-block code-block/<code-block>}}}]
+            context/*modules* {:highlight highlight/spec}]
     (let [html (r/render-to-string
-                 [markdown/<code-block> "(defn hello [] :world)" :language "clojure"])]
+                 [code-block/<code-block> "(defn hello [] :world)" :language "clojure"])]
       (is (.includes html "<code"))
       (is (.includes html "<span"))
       (is (.includes html "defn")))))
 
 (deftest language-selection-preserves-tags-and-keeps-fallback-local
+  (doseq [tag ["clj" "cljs" "cljc" "clojurescript"]]
+    (let [tree (highlight-view/code-tree "(defn yada [] [])" tag "javascript")]
+      (is (= "clojure" (.-language tree)) (str "Explicit " tag " uses its grammar"))
+      (is (pos? (.-length (.-value tree))))))
   (is (= "cpp" (.-language (highlight-view/code-tree "int answer = 42;" "cpp" "clojure"))))
   (is (= "clojure" (.-language (highlight-view/code-tree "(defn greet [x] (inc x))" nil nil))))
   (is (= "clojure" (.-language (highlight-view/code-tree "42" nil "clojure"))))
@@ -132,7 +167,7 @@
             context/*modules* {:highlight highlight/spec
                               :markdown {:view {:parse code/<parse-markdown-components>}}}]
     (let [html (r/render-to-string
-                 [ui-markdown/<md->div> "```clojure\n(inc 1)\n(inc 2)\n```"
+                 [markdown/<md->div> "```clojure\n(inc 1)\n(inc 2)\n```"
                   {:code-options {:line-numbers? true
                                   :wrap? true
                                   :foldable? true

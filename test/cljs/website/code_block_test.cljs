@@ -8,7 +8,7 @@
             [website.render-context :as context]
             [website.modules.highlight.module :as highlight]
 
-            [website.modules.markdown.code-block :as code]
+            [website.modules.highlight.code-block :as code]
             [website.modules.highlight.views :as highlighter]
             [website.loader :as loader]
             [website.component.restore :as restore]
@@ -27,7 +27,7 @@
       (set! loader/acquire-code!
         (fn [id]
           (swap! *calls conj id)
-          (js/Promise.resolve {:view {:code-block (fn [text & _] [:pre [:code text]])}})))
+          (js/Promise.resolve {:view {:formatted-code (fn [text & _] [:pre [:code text]])}})))
       (r/reg-fx :code-block/copy
         (fn [{:keys [text complete!]}] (reset! *copied text) (complete! "Copied")))
       (-> (go-promise
@@ -129,7 +129,7 @@
           *copies (atom [])]
       (reset! restore/*context {:hydrate? false})
       (set! loader/acquire-code!
-        (fn [_] (js/Promise.resolve {:view {:code-block highlighter/<code-block>}})))
+        (fn [_] (js/Promise.resolve {:view {:formatted-code highlighter/<formatted-code>}})))
       (r/reg-fx :code-block/copy
         (fn [{:keys [text complete!]}] (swap! *copies conj text) (complete! "Copied")))
       (-> (go-promise
@@ -222,7 +222,7 @@
       (set! loader/acquire-code!
         (fn [id]
           (swap! *calls conj id)
-          (js/Promise.resolve {:view {:code-block highlighter/<code-block>}})))
+          (js/Promise.resolve {:view {:formatted-code highlighter/<formatted-code>}})))
       (r/reg-fx :code-block/copy
         (fn [{:keys [text complete!]}] (swap! *copies conj text) (complete! "Copied")))
       (-> (go-promise
@@ -281,7 +281,7 @@
           *requests (atom [])]
       (reset! restore/*context {:hydrate? false})
       (set! loader/acquire-code!
-        (fn [_] (js/Promise.resolve {:view {:code-block highlighter/<code-block>}})))
+        (fn [_] (js/Promise.resolve {:view {:formatted-code highlighter/<formatted-code>}})))
       (r/reg-fx :code-block/copy #(swap! *requests conj %))
       (-> (go-promise
             (let [element (.createElement js/document "div")

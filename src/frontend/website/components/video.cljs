@@ -152,6 +152,3 @@
     (if poster
       [<video-with-picture-poster> combined-attrs {:poster poster}]
       [<video> combined-attrs])))
-
-;; For backward compatibility - export main functions
-(def ^:export modernVideo <video>)

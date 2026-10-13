@@ -139,10 +139,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   hydration; the document-owned mount container gates it on hero decoding.
   Streamed skeletons remain until that gate opens. Local/history returns stay settled.
 - Shared Markdown, full syntax highlighting and mapping code live in the
-  `:markdown`, `:highlight` and `:maps` bundles. Keep Markdown's parser/control
-  sources in `modules/markdown/`; eager consumers use
-  only its `interface.cljc` entry. Module-owned implementations do not belong in
-  `components/`. The data inspector formats Clojure through that same interface.
+  `:markdown`, `:highlight` and `:maps` bundles. Markdown's parser and declared
+  node/component mapping live in `modules/markdown/`; eager consumers use its
+  `interface.cljs` entry. Highlight owns the shared code-block controls; the data
+  inspector uses that component directly. Module-owned implementations do not belong in
+  `components/` or hidden shared UI forwarding entries.
   Keep the full highlighter out of
   Markdown so link previews do not acquire every language. Node renders highlighted
   code inside completed React Suspense boundaries. Copy/wrapping and the page
@@ -189,14 +190,15 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Home/CV/Strava declare that bundle dependency, and shared UI keeps lazy exports.
   Closed Settings contributes no DOM or CSS-variable reads; its view and styles
   belong to `:settings` and activate on open intent. Dynamic glyph consumers use
-  `components.icon/<icon>`; unknown CMS names acquire the full `:icon-catalog`
-  sheet, while known selectors and subset fonts remain in the small icon sheet.
+  the pure `components.icon/<icon>`. Their call sites explicitly acquire the full
+  `:icon-catalog` sheet for unknown CMS names; known selectors and subset fonts
+  remain in the small icon sheet. Basic components do not acquire optional modules.
   Include newly split SSR components in the eager Node worker spec map and verify
   their actual markup in fixtures before checking hydration identity.
   Contact email/toggle markup stays in the shell; the popup view/styles belong
   to `:contact` and mount with immediate activation only after the toggle opens.
-  Landing story/float helpers belong to `:home`, with lazy compatibility
-  exports in shared UI. Preserve prototype implementations when moving ownership.
+  Landing story/float helpers belong to `:home`. Carousel and styled-input callers
+  declare their module explicitly. Preserve prototype implementations when moving ownership.
 - Saved local HTML/state pairs also restore reload and address-bar document
   navigation at the exact URL/build, once. With no usable pair, network SSR
   hydrates first; validated disk display choices restore afterwards, preserving
@@ -220,7 +222,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   inputs and stateful child components outside its duplicated text. Incoming
   text is decorative until the outgoing layer is declaratively removed; SSR,
   cached initial faces, reduced motion and local returns use one text layer.
-- Code controls stay outside the highlighted/font text layers, with Markdown-owned
+- Code controls stay outside the highlighted/font text layers, with Highlight-owned
   icon CSS. Capped comment text uses non-scrolling clipping; an owned resize
   adapter measures code boundaries and React renders the corresponding fade.
 - Browser-only APIs belong in lifecycle/effect adapters with cleanup and SSR guards.

@@ -94,8 +94,19 @@
                       seen)))
         namespace-owners (reduce (fn [result {:keys [id entry]}]
                                   (reduce #(if (contains? %1 %2) %1 (assoc %1 %2 id)) result (closure entry)))
-                                {} (sort-by #(if (= :main (:id %)) "" (name (:id %))) owners))]
-    (->> namespace-owners
+                                {} (sort-by #(if (= :main (:id %)) "" (name (:id %))) owners))
+        ;; A module's own namespace has one owner even when another consumer
+        ;; imports its lightweight interface. Shared components use the closure.
+        namespace-owners' (reduce
+                            (fn [result {:keys [id entry]}]
+                              (let [prefix (string/replace (str entry) #"\.module$" ".")]
+                                (reduce (fn [result namespace]
+                                          (if (string/starts-with? (str namespace) prefix)
+                                            (assoc result namespace id)
+                                            result))
+                                        result (keys namespace-owners))))
+                            namespace-owners owners)]
+    (->> namespace-owners'
          (mapcat (fn [[namespace owner]]
                    (when (or (string/starts-with? (str namespace) "website.components.")
                              (string/starts-with? (str namespace) "website.modules."))

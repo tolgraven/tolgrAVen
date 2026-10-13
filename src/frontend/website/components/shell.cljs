@@ -2,6 +2,7 @@
   (:require-macros [website.build.site :refer [when-enabled]])
   (:require
     [website.components.icon :as icon]
+    [website.components.icon-catalog :as icon-catalog]
     [website.component.registry]
     [website.component.restore :as restore]
     [website.react :as r]
@@ -176,6 +177,13 @@
 (defc <footer-content> "Upper content (first few rows) of footer"
   [content]
   [:div.footer-content ;; XXX should adapt to available height, also disappear...
+   (when-enabled :contact nil
+     (when @(r/subscribe [:state [:contact-form :show?]])
+       (m/<> {:module :contact
+              :view :popup
+              :load-on :immediate
+              :<before> (fn [] [:span {:role "status"} "Opening contact form…"])}
+             true)))
    (for [{:keys [title email text id links logo] :as column} content
          :let [id (str "footer-" id)]] ^{:key id}
      [:div.footer-column {:id id}
@@ -191,6 +199,12 @@
       (when links [:div.footer-icons
                    (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
                      [:a {:href href :name name :aria-label name}
+                      (when-enabled :icon-catalog nil
+                        (when (and (seq icon) (not (icon-catalog/names icon)))
+                          (m/<> {:module :icon-catalog
+                                 :view :empty
+                                 :load-on :immediate
+                                 :<loading> [:<>]})))
                       [icon/<icon> "fab" icon {}]])])])])
 
 
@@ -243,7 +257,14 @@
     [:a {:id "to-top"
          :class "to-top"
          :href @(r/subscribe [:href "#main"])
-         :aria-label "Back to top"} i]))
+         :aria-label "Back to top"}
+     (when-enabled :icon-catalog nil
+       (when-not (icon-catalog/names icon)
+         (m/<> {:module :icon-catalog
+                :view :empty
+                :load-on :immediate
+                :<loading> [:<>]})))
+     i]))
 
 (defc <scrollbar> "Basic custom scroll indicator. Add full functionality later..."
   [spec]

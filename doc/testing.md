@@ -54,6 +54,12 @@ Build `:document` first as above; its scripts are required by generated HTML.
 
 `:app-test` discovers all `website.*-test` namespaces through the Shadow
 browser runner; the obsolete Doo entry point has been removed.
+Selected optimized hydration builds retain `:browser` and `:browser-test` reader
+features and use `website.nested-hydration-runner` with the authored and nested
+hydration namespaces. The test-only feature makes server fixture rendering
+available through the framework shim while keeping development tooling absent.
+The default test display runner is for development: it mutates a Closure define
+and cannot be compiled with advanced optimizations.
 `workflow_unit_test.cljs` replaces the misleadingly named `integration_test.cljs`.
 Ring request fixtures use `ring-mock` from `:project/test`.
 Browser/Node-only state and component schemas are tested in `test/cljs`; portable

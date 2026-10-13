@@ -10,7 +10,7 @@
             [website.validation.runtime :as runtime]
             [website.component.restore :as restore]
             [website.render-context :as context]
-            [website.components.ui.markdown :as ui]
+            [website.modules.markdown.interface :as markdown]
             [website.modules.markdown-components.module :as authored]
             [website.modules.settings.module :as settings]
             [website.modules.coercion.module :as coercion]
@@ -104,7 +104,7 @@
                      (reset! *nodes {:table (.querySelector element ".content-config")
                                      :toggle (.querySelector element "[role=switch]")})
                      (is (some? (:table @*nodes)))
-                     (reset! *root (r/hydrate-root element [ui/<md->div> source]
+                     (reset! *root (r/hydrate-root element [markdown/<md->div> source]
                                                    {:on-recoverable-error #(swap! *errors conj (.-message %))}))
                      (support/wait-for! #(contains? @(:started transport) [:markdown-components :code])
                                         "The authored component owner did not begin acquisition"))))

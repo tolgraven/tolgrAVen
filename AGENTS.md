@@ -54,6 +54,10 @@ Do not retain completed investigation diaries or historical test counts as curre
 - `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code, and shared CLJC infrastructure. Feature implementations and their portable declarations live in `src/frontend/website/modules/<module>/`.
 - `components/ui/` groups shared UI by component type. Import each component's
   owning namespace directly; do not retain forwarding definitions or compatibility exports.
+- Feature loading is explicit through module declarations or `modules/<feature>/interface`.
+  Shared components stay lightweight; preserve substantive prototypes when moving their owner.
+- Markdown declares its node/component mapping in `modules/markdown/views.cljs`.
+  Highlight owns the shared code-block controls and the separately deferred token formatter.
 - `src/frontend/website/components/`: reusable rendered UI and site shell;
   `component/` contains the declaration/lifecycle runtime.
 - `experiments/clj`: preserved JVM prototypes, compiled only with `:experiments`.
@@ -114,6 +118,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   sequentially without blocking REPL acknowledgement. `(cljs-repl)` waits for
   startup and selects the browser runtime in the calling session. See `README.md`.
 - Browser builds discover `modules/*/module.cljs` through `website.build.browser/process`;
+  development browser builds also select `env/dev/cljs/website/modules/` with the
+  `:dev` reader feature. Production and Node SSR exclude those declarations.
   the literal spec `:id` owns the bundle ID and namespace `:bundle/depends-on`
   declares extra code dependencies. Runtime inventories track declaration resources
   for incremental metadata updates. Restart the browser watch after adding/removing

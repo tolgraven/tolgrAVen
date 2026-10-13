@@ -8,7 +8,7 @@
             [website.component.instrumentation]
             [website.component.data :as data]
             [website.diagnostics.source-contract :as contract]
-            [website.modules.markdown.interface :as code]))
+            [website.modules.highlight.code-block :as code]))
 
 (def catalog-path links/catalog-path)
 (def catalog-resource links/catalog-resource)

@@ -55,7 +55,7 @@ Review these source owners when changing the shim; paths are relative to
 | `components/page.cljc`, `components/shell.cljs` | Native context values, restored shell state and simultaneous 250ms linear fades |
 | `components/timer.cljs`, `components/oembed.cljs`, `components/popover.cljs` | Mount deadlines, latest committed callbacks, local hover state and open-surface measurement |
 | `components/image.cljs`, `components/video.cljs`, `modules/user/views.cljc` | React 19 ref cleanup, native observers and pre-hydration image recovery |
-| `components/ui/*`, `modules/markdown/{views,code_block}.cljs`, `modules/highlight/views.cljs` | Deferred formatting, stable native adapters, copy/fold/wrap controls and pure markup |
+| `components/ui/*`, `modules/markdown/views.cljs`, `modules/highlight/{code_block,views}.cljs` | Declared Markdown mapping, deferred formatting, stable native adapters, copy/fold/wrap controls and pure markup |
 | `browser_resources.cljs`, `navigation/preload.cljs`, `navigation/transition.cljs`, `ssr/client.cljs`, `ssr/local.cljs` | Lifecycle-owned scheduling, restoration and cleanup |
 | `modules/blog/views.cljs`, `modules/home/sections.cljs`, `modules/link_preview/views.cljs`, `modules/search/views.cljs`, `modules/settings/views.cljs` | Current inputs, one focus owner, deferred acquisition and declarative interactions |
 | `env/dev/cljs/website/component/dev_instrumentation.cljs` | Commit-owned resolver publication, Clojure dependency/context values and bounded diagnostics |

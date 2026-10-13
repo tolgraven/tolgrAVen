@@ -3,10 +3,7 @@
     [website.component.registry]
     [website.components.validation :as validation]
     [website.diagnostics.stack :as diagnostics]
-    [website.macros :refer-macros [defc register-render-functions!]]
-    [website.loader.view :as loader-view]
-    [website.react :as r]
-    [website.components.portal :as portal]))
+    [website.macros :refer-macros [defc register-render-functions!]]))
 
 (defc <failure>
   "Shared fallback for rendering, dependencies, modules and initialization.
@@ -24,22 +21,5 @@
         [validation/<issues> issues]
         [:pre (or (ex-message error) (str error))])
       (when (seq stack) [diagnostics/<stack> stack])])])
-
-(defn <error-full> [ns-name comp-name *error spec]
-  (loader-view/form :data-inspector :error [ns-name comp-name *error spec]
-                    [:section.error [:h2 "Component error"] [:p "Loading details…"]]))
-
-(defc <error>
-  "Outer error display component."
-  [_ _ _ _]
-  (let [*open? (r/atom false)]
-    (fn <error-inner>
-      [ns-name comp-name *error spec]
-      [:<>
-       [:button.error-show {:on-click #(swap! *open? not)}
-        (if @*open? "-" "+") " Error"]
-       (when @*open?
-        [portal/<portal> "error-portal"
-         [<error-full> ns-name comp-name *error spec]])])))
 
 (register-render-functions!)

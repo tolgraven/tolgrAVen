@@ -4,7 +4,6 @@
     [website.validation.runtime :as validation]
     [website.validation :as engine]
     [website.loader :as loader]
-    [website.diagnostics.host :as dev-console]
     [website.render-context :as context]
     [website.component.data :as component-data]
     [website.component.storage :as storage]
@@ -13,6 +12,7 @@
 
     [website.ajax :as ajax]
     [website.boot :as boot]
+    [website.browser-resources :as browser-resources]
     [website.content.client :as content]
     [website.ssr.client :as ssr]
     [website.ssr.local :as local-page]
@@ -29,8 +29,6 @@
     [website.components.page :as page-view]))
 
 (def spec main-module/spec)
-
-(def page page-view/<page>)
 
 ;; -------------------------
 ;; Initialize app
@@ -65,14 +63,20 @@
   (if false #_:biggus-debuggus
     (r/create-element r/strict-mode
                       nil                ;; <-- props
-                      (r/as-element [page]))
-    [page]))
+                      (r/as-element [page-view/<page>]))
+    [page-view/<page>]))
 
 ;; Profiling this host would include console commits and create capture feedback.
 (m/defc <root-page> {:profile false} []
-  (restore/document-form [ssr/<hydrate> [page]] [boot/<lifecycle>]
-                         (when (and ^boolean goog.DEBUG @context/*interactive?)
-                           [dev-console/<console>])))
+  (restore/document-form [ssr/<hydrate> [page-view/<page>]] [boot/<lifecycle>]
+                         (when (and ^boolean goog.DEBUG
+                                    @context/*interactive?
+                                    (contains? loader/modules :dev-console))
+                           [browser-resources/<deferred>
+                            (m/<> {:module :dev-console
+                                   :view :console
+                                   :load-on :immediate
+                                   :<loading> [:<>]})])))
 
 (defn render []
   (if @root
