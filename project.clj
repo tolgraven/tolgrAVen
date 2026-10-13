@@ -151,7 +151,7 @@
              :prep-tasks ["compile"
                           ["run" "-m" "shadow.cljs.devtools.cli" "release" "app" "ssr" "return-worker" "document"]
                           ["run" "-m" "tolgraven.build.assets" "--build-styles"]
-                          ["docs"]]
+                          ["update-in" ":" "assoc" ":prep-tasks" "^:replace []" "--" "docs"]]
              :aot ~(:aot site-packaging)
              :omit-source true
              :uberjar-name "tolgraven.jar"

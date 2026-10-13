@@ -18,7 +18,7 @@
   (cond-> []
     (not= :return-worker build-id) (conj :return-worker)
     (and (ssr/enabled?) (not= :ssr build-id)) (conj :ssr)
-     (not= :document build-id) (conj :document)
+    (not= :document build-id) (conj :document)
     true (conj build-id)))
 
 (defn cljs-repl "Connect to a watched build. Defaults to `:app-dev`."

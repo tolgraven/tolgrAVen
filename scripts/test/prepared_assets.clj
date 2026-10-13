@@ -73,12 +73,14 @@
   (assert (nil? (find-ns 'optimus-img-transform.core)) "Prepared import must not load image transformations")
   (case mode
     "source" (do (io/make-parents report) (spit report (pr-str record)))
+    "package" (assert (= "jar" (.getProtocol (io/resource manifest/resource-path)))
+                      "Package verification must resolve the actual packaged manifest")
     "jar" (do
             (assert (= "jar" (.getProtocol (io/resource manifest/resource-path)))
                     "Jar verification must resolve the actual packaged manifest")
             (assert (= record (edn/read-string (slurp report)))
                     "Packaged URLs, headers, styles, fonts and fallback bytes must equal source output"))
-    (throw (ex-info "Expected source or jar" {})))
+    (throw (ex-info "Expected source, jar or package" {})))
   (verify-stack! inventory)
   (println "Verified" mode "prepared inventory:" (count inventory) "assets," (count bundles) "independent bundles"))
 (shutdown-agents)
