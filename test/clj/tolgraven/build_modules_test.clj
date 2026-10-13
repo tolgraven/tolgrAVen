@@ -117,3 +117,30 @@
     (is (seq (modules/select-declarations
                declarations {:modules {:page-render {:enabled false}
                                        :page-capture {:enabled false}}})))))
+
+(deftest source-graph-checks-use-one-fresh-settings-snapshot-per-build
+  (let [*reads (atom 0)
+        *settings (atom {:modules {}})
+        ids (range 1000)
+        state {:build-sources ids
+               :sources (into {} (map (fn [id] [id {:resource-name "cljs/core.cljs"}]) ids))}]
+    (with-redefs [site/settings #(do (swap! *reads inc) @*settings)]
+      (is (identical? state (modules/check-site-sources state)))
+      (is (= 1 @*reads) "Source count must not multiply settings reads")
+      (reset! *settings {:modules {:cv {:enabled false}}})
+      (let [disabled {:build-sources [:cv]
+                      :sources {:cv {:ns 'tolgraven.modules.cv.views
+                                     :resource-name "tolgraven/modules/cv/views.cljs"}}}]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Disabled capability"
+                             (modules/check-site-sources disabled)))
+        (is (= 2 @*reads) "The next build reads changed settings"))
+      (let [comments {:build-sources [:comments]
+                      :sources {:comments {:ns 'tolgraven.modules.blog.comments
+                                           :resource-name "tolgraven/modules/blog/comments.cljs"}}}]
+        (doseq [selection [{:modules {:blog {:comments false}}}
+                          {:modules {:blog {:enabled false}}}]]
+          (reset! *settings selection)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Disabled capability"
+                               (modules/check-site-sources comments))))
+        (reset! *settings {:modules {:blog {:enabled true :comments true}}})
+        (is (identical? comments (modules/check-site-sources comments)))))))

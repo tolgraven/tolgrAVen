@@ -97,6 +97,8 @@ server format handlers retain their native JVM Java-time support.
   query/realtime and JVM seed tooling consume that data. Track portable sources
   with module entries in Shadow. See `doc/supabase-tables.md`.
 
+- Source-graph capability checks read one fresh settings snapshot per build;
+  never reacquire or validate the configuration inside the per-source loop.
 - Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
   Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
   Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.
