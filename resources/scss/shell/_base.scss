@@ -370,3 +370,12 @@ html { //kill main scrollbar. should rather implement custom tho...
     border: none;
   }
 }
+
+// #app is the document mount container, outside React's rendered tree. Its
+// media gate starts the existing entrance only after the hero has decoded.
+#app[data-document-pending] main { visibility: hidden; }
+#app[data-document-pending] :is(main, #logo-top, [data-document-appear], .intro-title-letter, .intro-title-dot),
+#app[data-document-pending] #intro h1::after { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .main-content.animate { animation: none; }
+}

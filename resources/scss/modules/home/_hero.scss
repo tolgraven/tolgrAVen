@@ -84,3 +84,31 @@
 #logo-bottom { /* same as top but (un)inverted and coming from below */
   position: absolute;
 }
+
+// The document owns its first entrance. Full SSR letter markup survives
+// hydration; zero-duration sizing reproduces each original mounted letter.
+.intro-title-letter, .intro-title-dot {
+  display: inline-block;
+  vertical-align: bottom;
+  white-space: pre;
+  overflow: clip;
+}
+.intro-title-letter {
+  max-width: 0;
+  animation: intro-letter-size 0s var(--intro-letter-delay) forwards,
+             intro-letter-fade 1s ease var(--intro-letter-delay) both;
+}
+.intro-title-dot { animation: intro-dot-hide 0s 2s forwards; }
+@keyframes intro-letter-size { to { max-width: 2em; } }
+@keyframes intro-letter-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes intro-dot-hide { to { max-width: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  #logo-top { animation: none; }
+  #intro h1::after {
+    animation: none;
+    width: var(--line-percent);
+    transform: skew(-30deg);
+  }
+  .intro-title-letter { animation: none; max-width: 2em; }
+  .intro-title-dot { animation: none; max-width: 0; }
+}

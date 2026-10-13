@@ -25,6 +25,7 @@ profiles.clj
 .firebase
 /resources/public/js/*
 !/resources/public/js/page-render-worker.js
+!/resources/public/js/document-entrance.js
 .vscode/
 /resources/public/css/*
 /resources/public/img/uploads/*

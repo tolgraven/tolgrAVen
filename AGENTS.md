@@ -21,7 +21,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   hydration; module CSS is available for that static view.
 - Cold/expired SSR streams a component-derived skeleton then the completed page.
   Fresh cached SSR skips the skeleton (`:ssr :cache-ttl-ms`, default one hour).
-  Hydration preserves the existing DOM and does not replay entrances.
+  Completed network SSR starts the original document entrance after hero decoding;
+  hydration preserves its DOM and animation clock. Local/history returns stay settled.
 - Analytics initialization and script acquisition belong to the browser lifecycle
   after hydration and page readiness. The deferred host's timeout replaces hidden
   markup with script Hiccup; public settings load through the shared dependency

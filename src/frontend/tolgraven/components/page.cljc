@@ -76,6 +76,7 @@
   (let [commit @(rf/subscribe [:get :page/commit])
         _ (transition/use-ready! commit)
         ext-back? (restore/skip-enter?)
+        document-enter? (restore/document-enter?)
         debug @(rf/subscribe [:state [:debug]])
         click-evt @(rf/subscribe [:state [:global-clicked]])
         page @(rf/subscribe [:common/page])
@@ -110,9 +111,10 @@
          :style (when-let [height (get-in commit [:completion :outgoing-height])]
                   {:min-height (str height "px")})
          :data-debug-hydrated (when @(rf/subscribe [:state [:debug :hydration-token]]) true)
-         :data-restored (when ext-back? true)
-         :class (str (when (and (not ext-back?) (not (restore/document-enter?))
-                                     (= (:page @restore/*context) (restore/page-key)))
+         :data-restored (when (and ext-back? (not document-enter?)) true)
+         :class (str (when (or document-enter?
+                                 (and (not ext-back?)
+                                      (= (:page @restore/*context) (restore/page-key))))
                             "animate ")
                      (when (:layers debug) "debug-layers ")
                      (when (:parallax debug) "debug-on"))}

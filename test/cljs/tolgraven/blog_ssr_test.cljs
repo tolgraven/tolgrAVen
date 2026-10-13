@@ -101,7 +101,9 @@
                    (when (= fixture "code-blog")
                      (reset! *code-nodes (mapv #(.querySelector element %)
                                               [".code-block pre" ".code-block span" ".code-block code.language-cpp" "p > .code-snippet > code.code-highlight" "p > .code-snippet > code.code-highlight span[style]"])))
-                   (let [nodes (mapv #(.querySelector element %) selectors)]
+                   (let [nodes (mapv #(.querySelector element %) selectors)
+                         letter (.querySelector element ".intro-title-letter")
+                         animations (when letter (vec (array-seq (.getAnimations letter))))]
                      (is (every? some? nodes) "Ordinary page elements exist before hydration")
                      (js/Promise.
                       (fn [resolve reject]
@@ -112,6 +114,10 @@
                                (try
                                  (doseq [[node selector] (map vector nodes selectors)]
                                    (is (identical? node (.querySelector element selector)) selector))
+                                 (when letter
+                                   (is (seq animations) "SSR starts the letter clock before hydration")
+                                   (is (= animations (vec (array-seq (.getAnimations letter))))
+                                       "Hydration retains the same native letter animations"))
                                  (is (nil? (.querySelector element ".component-spinner,.loading-spinner")))
                                  (is (empty? @*errors) (pr-str @*errors))
                                  (is (empty? @*highlight-requests) "The page hydrates before formatter acquisition")
@@ -153,7 +159,7 @@
 
 (deftest ordinary-landing-markup-hydrates-without-replacing-content
   (async done (check-hydration! "landing"
-                ["header" "main" "#intro h1" "#top-banner" "#about" "#gallery" "footer"] done)))
+                ["header" "main" "#intro h1" ".intro-title-letter" "#logo-top" "#top-banner" "#about" "#gallery" "footer"] done)))
 
 (deftest highlighted-code-hydrates-without-replacing-its-native-roots
   (async done (check-hydration! "code-blog"

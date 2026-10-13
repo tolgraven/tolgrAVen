@@ -101,8 +101,8 @@ search, and that SPA navigation retains the document. No test functions are
 loaded into the application's CLJS runtime. The proxy forwards the application's
 response bytes and flushes streaming chunks without replacing them.
 
-`/__tests/motion.html` checks visible SSR/paired document restoration without
-entrance replay, comment layout, simultaneous 250ms linear page fades and the
+`/__tests/motion.html` checks the original network SSR entrance through hydration,
+hero readiness before reveal, and settled paired returns without entrance replay, comment layout, simultaneous 250ms linear page fades and the
 opaque sticky footer. Add `?fallback` to remove the optional native transition API in the test driver and exercise ordinary fallback
 navigation with the same content. `__tests/scroll.html` checks SPA and document
 Back restoration. Run these on separate test origins if they overlap in time.

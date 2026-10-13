@@ -411,8 +411,11 @@ request. On external history return, the public CMS bundle is also restored
 before bootstrap fetches missing sections. Embedded server content takes priority.
 A browser back/forward-cache restore already retains its live app-db and DOM.
 
-Hydration and external-back restoration suppress mount/visibility entrance
-animations for the initial page. A later route change clears that context. Ready
+Network SSR owns the original document/hero entrance in CSS before hydration;
+hydration retains that clock and the existing native nodes. Initial `:appear`
+roots carry `data-document-appear`; offscreen `:seen` roots resume viewport
+observation after hydration. Local/external-back restoration suppresses entrances.
+A later route change clears that context. Ready
 server-injected `:into` values are adopted as resource snapshots during restoration.
 Missing data still loads and gets a spinner; bypass never means rendering fake
 empty content. The core's explicit `data-hydrate="true"` root contract selects
