@@ -17,6 +17,42 @@ spec.loader.exec_module(cpu)
 
 
 class PolicyTests(unittest.TestCase):
+    def test_buildkit_driver_options_bound_whole_worker_and_load_output(self):
+        self.assertEqual(cpu.buildkit_options(1, '2g'),
+                         ['cpu-quota=100000', 'cpu-period=100000', 'memory=2g',
+                          'memory-swap=2g', 'default-load=true', 'restart-policy=no'])
+        self.assertEqual(cpu.parse_memory('2g'), 2 * 1024 ** 3)
+        for value in ('unlimited', '2.5g', '-1g'):
+            with self.assertRaises(RuntimeError):
+                cpu.parse_memory(value)
+
+    def test_buildkit_rejects_foreign_or_uncapped_container_before_start(self):
+        container = {'Config': {'Labels': {'tolgraven.cpu.token': 'owned'}},
+                     'HostConfig': {'CpuQuota': 100000, 'CpuPeriod': 100000,
+                                    'Memory': 2147483648, 'MemorySwap': 2147483648}}
+        cpu.validate_buildkit_container(container, 'owned', 1, 2147483648)
+        with self.assertRaises(RuntimeError):
+            cpu.validate_buildkit_container(container, 'foreign', 1, 2147483648)
+        container['HostConfig']['CpuQuota'] = 0
+        with self.assertRaises(RuntimeError):
+            cpu.validate_buildkit_container(container, 'owned', 1, 2147483648)
+
+    def test_buildkit_host_environment_keeps_required_jvm_pools_and_pinned_endpoint(self):
+        args = mock.Mock(checkout='/fixture', java_heap='1024m')
+        child = mock.Mock(pid=123)
+        child.wait.return_value = 0
+        proc = mock.Mock()
+        proc.identity.return_value = None
+        with mock.patch.dict(cpu.os.environ, {'DOCKER_CONTEXT': 'foreign', 'JAVA_TOOL_OPTIONS': '-XX:ActiveProcessorCount=8'}), \
+             mock.patch.object(cpu.subprocess, 'Popen', return_value=child) as popen, \
+             mock.patch.object(cpu, 'MacProcesses', return_value=proc):
+            cpu.host_run(args, ['make', 'docker-prefab'], None,
+                         {'DOCKER_CONTEXT': None, 'DOCKER_HOST': 'unix:///original.sock', 'BUILDX_BUILDER': 'owned'})
+            environment = popen.call_args.kwargs['env']
+            self.assertNotIn('DOCKER_CONTEXT', environment)
+            self.assertEqual(environment['DOCKER_HOST'], 'unix:///original.sock')
+            self.assertIn(cpu.JVM_POOLS, environment['JAVA_TOOL_OPTIONS'])
+
     def test_custom_non_node_image_can_explicitly_skip_dependency_bootstrap(self):
         with tempfile.TemporaryDirectory() as directory:
             result = subprocess.run(['sh', '-c', cpu.docker_bootstrap('skip'), 'cpu-build',

@@ -44,6 +44,26 @@ This retains the isolated source snapshot, shared build queue, container guardia
 and CPU/memory limits. Ordinary builds retain the default `--node-deps auto`,
 which reuses matching prefab dependencies or runs the locked npm installation.
 
+Dependency prefab refreshes and Dockerfile builds use the same shared slot with
+an explicitly capped BuildKit container:
+
+```sh
+tolgraven-cpu run --mode buildkit -- make docker-prefab
+```
+
+This uses a dedicated Docker `docker-container` builder with a one-CPU CFS quota,
+2 GiB memory/no additional swap, one concurrent BuildKit step, and automatic image
+loading so existing publishing commands work. The standard BuildKit daemon uses
+privileged mode inside the existing Docker VM; it does not install a privileged
+macOS service. The low-priority Docker client runs
+on the host for local daemon/registry interoperability. The launcher pins its
+local Docker endpoint and checks the worker's ownership and actual quotas before
+running the command. The exact container guardian reserves that CPU budget and
+stops the worker on completion or parent death; its cache volume and builder
+metadata remain for reuse. The user's default builder is not changed. BuildKit
+mode executes in the selected checkout, so Dockerfile/context exclusions still
+apply; ordinary compiler commands retain isolated prefab snapshots.
+
 For host-only watches, nREPL and browser interoperability:
 
 ```sh

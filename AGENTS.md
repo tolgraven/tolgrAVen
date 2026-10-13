@@ -86,9 +86,10 @@ Do not retain completed investigation diaries or historical test counts as curre
   constraints without logging raw values, credentials, or event arguments.
 
 ## Build, Test, and Development Commands
-- Agent Java/Lein builds use `bb cpu run -- <command>` (serialized, isolated Docker
-  prefab, default 1 CPU/2 GiB) or the installed `tolgraven-cpu` launcher. Increase
-  a documented heap/memory limit only when required; avoid competing watched output.
+- Agent Java/Lein builds use `tolgraven-cpu run -- <command>` (serialized, isolated
+  Docker prefab, default 1 CPU/2 GiB). Dockerfile/prefab work uses
+  `tolgraven-cpu run --mode buildkit -- <command>` so BuildKit steps also have a quota.
+  Increase a documented heap/memory limit only when required; avoid competing watched output.
   `--mode host` uses nice 10 and the shared build slot when live watches/interop
   require macOS. The installed monitor owns the project Java/renderer aggregate
   budget; never issue ad hoc STOP/CONT or global process kills. See

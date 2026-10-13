@@ -3,6 +3,7 @@
 import argparse
 import ctypes
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -437,9 +438,11 @@ def guardian_protocol(argv, record):
         if len(options) % 2:
             raise ValueError
         for key, value in zip(options[::2], options[1::2]):
-            if key not in ('--endpoint', '--ready-fd') or key in seen:
+            if key not in ('--endpoint', '--ready-fd', '--label-key') or key in seen:
                 raise ValueError
             if key == '--ready-fd' and int(value) < 0:
+                raise ValueError
+            if key == '--label-key' and value != 'tolgraven.cpu.token':
                 raise ValueError
             seen[key] = value
         endpoint = seen.get('--endpoint')
@@ -591,8 +594,14 @@ def host_environment(environment, heap='1024m'):
     return env
 
 
-def host_run(args, command, lock):
+def host_run(args, command, lock, extra_env=None):
     env = host_environment(os.environ, getattr(args, 'java_heap', '1024m'))
+    if extra_env:
+        for key, value in extra_env.items():
+            if value is None:
+                env.pop(key, None)
+            else:
+                env[key] = value
     child = subprocess.Popen(['nice', '-n', '10', *command], cwd=args.checkout, env=env,
                              start_new_session=True)
     proc = MacProcesses()
@@ -648,6 +657,100 @@ def snapshot(checkout, destination):
             shutil.copy2(source, target)
 
 
+def buildkit_options(cpus, memory):
+    return [f'cpu-quota={round(cpus * 100000)}', 'cpu-period=100000',
+            f'memory={memory}', f'memory-swap={memory}', 'default-load=true',
+            'restart-policy=no']
+
+
+def validate_buildkit_container(container, builder, cpus, memory):
+    host = container['HostConfig']
+    if (container['Config'].get('Labels', {}).get('tolgraven.cpu.token') != builder
+            or host.get('CpuQuota') != round(cpus * 100000)
+            or host.get('CpuPeriod') != 100000
+            or host.get('Memory') != memory
+            or host.get('MemorySwap') != memory):
+        raise RuntimeError('BuildKit container ownership or quota does not match; refusing the build.')
+
+
+def buildkit_run(args, command, lock):
+    endpoint = docker_endpoint()
+    expected_memory = parse_memory(args.memory)
+    if expected_memory < 6 * 1024 * 1024 or round(args.cpus * 100000) < 1000:
+        raise RuntimeError('BuildKit requires at least 6 MiB memory and 0.01 CPU.')
+    policy = json.dumps([os.getuid(), endpoint, args.cpus, args.memory])
+    builder = 'tolgraven-cpu-' + hashlib.sha256(policy.encode()).hexdigest()[:12]
+    name = 'buildx_buildkit_' + builder + '0'
+    prefix = ['docker', '--host', endpoint]
+    owner = MacProcesses().identity(os.getpid())
+    record = {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint,
+              'token': builder}
+    save_json(STATE / 'docker-active.json', record)
+    guardian, identity = start_docker_guardian(owner, name, builder, endpoint, lock)
+    save_json(STATE / 'docker-active.json', dict(record, guardian=identity))
+    try:
+        config = STATE / (builder + '.toml')
+        config.write_text('[worker.oci]\n  max-parallelism = 1\n')
+        inspected = subprocess.run(prefix + ['buildx', 'inspect', builder], capture_output=True,
+                                   text=True, env=docker_environment(), timeout=30)
+        if inspected.returncode != 0:
+            if 'no builder' not in inspected.stderr.lower():
+                raise RuntimeError('Unable to inspect the owned BuildKit builder.')
+            create = prefix + ['buildx', 'create', '--name', builder, '--driver', 'docker-container',
+                               '--buildkitd-config', str(config)]
+            for option in buildkit_options(args.cpus, args.memory):
+                create.extend(['--driver-opt', option])
+            subprocess.run(create + [endpoint], check=True, env=docker_environment())
+        # Buildx does not label its daemon containers. Create our exact expected
+        # daemon first with the ordinary launcher label, then let Buildx connect
+        # to it. This keeps the existing guardian/recovery protocol unchanged.
+        existing = subprocess.run(prefix + ['inspect', name], capture_output=True,
+                                  text=True, env=docker_environment())
+        if existing.returncode != 0:
+            if not (name in existing.stderr and 'no such' in existing.stderr.lower()):
+                raise RuntimeError('Unable to inspect the owned BuildKit container.')
+            subprocess.run(prefix + ['create', '--name', name, '--privileged', '--init',
+                '--label', 'tolgraven.cpu.token=' + builder,
+                '--cpu-quota', str(round(args.cpus * 100000)), '--cpu-period', '100000',
+                '--memory', args.memory, '--memory-swap', args.memory, '--restart', 'no',
+                '--mount', f'type=volume,source={name}_state,target=/var/lib/buildkit',
+                '--mount', f'type=bind,source={config},target=/etc/buildkit/buildkitd.toml,readonly',
+                'moby/buildkit:buildx-stable-1', '--config', '/etc/buildkit/buildkitd.toml'],
+                check=True, env=docker_environment())
+        else:
+            validate_buildkit_container(json.loads(existing.stdout)[0], builder, args.cpus, expected_memory)
+        subprocess.run(prefix + ['buildx', 'inspect', '--bootstrap', builder], check=True,
+                       env=docker_environment())
+        inspected_container = subprocess.check_output(prefix + ['inspect', name], text=True,
+                                                       env=docker_environment())
+        container = json.loads(inspected_container)[0]
+        validate_buildkit_container(container, builder, args.cpus, expected_memory)
+        print('BuildKit budget:', args.cpus, 'cores /', args.memory, 'builder', builder, flush=True)
+        environment = {'DOCKER_CONTEXT': None, 'DOCKER_HOST': endpoint,
+                       'BUILDX_BUILDER': builder, 'DOCKER_BUILDKIT': '1'}
+        return host_run(args, command, lock, environment)
+    finally:
+        confirmed = False
+        try:
+            confirmed = stop_container(name, builder, endpoint)
+        except subprocess.SubprocessError:
+            pass
+        if confirmed:
+            guardian.terminate()
+            guardian.wait(timeout=3)
+            (STATE / 'docker-active.json').unlink(missing_ok=True)
+        else:
+            print('BuildKit cleanup pending; guardian retains the quota and slot.', file=sys.stderr)
+
+
+def parse_memory(value):
+    import re
+    match = re.fullmatch(r'(\d+)([bkmg]?)', value.lower())
+    if not match:
+        raise RuntimeError('Use an integer Docker memory budget, such as 2g.')
+    return int(match[1]) * {'': 1, 'b': 1, 'k': 1024, 'm': 1024 ** 2, 'g': 1024 ** 3}[match[2]]
+
+
 def docker_bootstrap(node_deps):
     if node_deps == 'skip':
         return 'exec "$@"'
@@ -667,6 +770,8 @@ def run(args):
     with build_lock() as lock:
         if args.mode == 'host':
             return host_run(args, command, lock)
+        if args.mode == 'buildkit':
+            return buildkit_run(args, command, lock)
         output = Path(args.checkout).resolve() / '.local-wip/cpu-builds' / uuid.uuid4().hex[:12]
         output.mkdir(parents=True)
         snapshot(Path(args.checkout).resolve(), output)
@@ -756,7 +861,7 @@ def main():
     mon.add_argument('--java-cpus', type=positive, default=1.5)
     mon.add_argument('--app-cpus', type=positive, default=1.0)
     runner = commands.add_parser('run', help='Serialize one isolated Docker build or low-priority host command.')
-    runner.add_argument('--mode', choices=['docker', 'host'], default='docker')
+    runner.add_argument('--mode', choices=['docker', 'host', 'buildkit'], default='docker')
     runner.add_argument('--checkout', default=os.getcwd())
     runner.add_argument('--java-heap', default='1024m')
     runner.add_argument('--cpus', type=positive, default=1.0)
@@ -783,6 +888,7 @@ def main():
     dw.add_argument('token')
     dw.add_argument('--endpoint')
     dw.add_argument('--ready-fd', type=int)
+    dw.add_argument('--label-key', choices=['tolgraven.cpu.token'], default='tolgraven.cpu.token')
     hw = commands.add_parser('_host-watchdog')
     hw.add_argument('owner')
     hw.add_argument('root')
