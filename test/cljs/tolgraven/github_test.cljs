@@ -12,6 +12,8 @@
             [tolgraven.modules.github.subs]
             [tolgraven.components.activity :as activity]
             [tolgraven.component.data :as data]
+            [tolgraven.events]
+            [tolgraven.subs]
             [re-frame.core :as re-frame]
             [tolgraven.react :as rf]
             [tolgraven.test-support :as support]))
@@ -100,14 +102,73 @@
             (rf/dispatch-sync [:content [:github-settings] {:user "second-user", :repo "second-repo"}])
             (rf/dispatch-sync [:github/init])
             (await! (support/settle!))
-            (rf/dispatch-sync [:github/save-headers "first-user" "first-repo" {:link "old"}])
-            (rf/dispatch-sync [:github/save-commits "first-user" "first-repo" 1 []])
-            (rf/dispatch-sync [:github/save-commit "first-user" "first-repo" "old" {:sha "old"}])
+            (rf/dispatch-sync [:github/save-headers "first-user" "first-repo" 1 {:link "old"}])
+            (rf/dispatch-sync [:github/save-commits "first-user" "first-repo" 1 1 []])
+            (rf/dispatch-sync [:github/save-commit "first-user" "first-repo" 1 "old" {:sha "old"}])
             (is (= {} (await! (support/state-at! [:content :github]))))
             (is (= ["second-user" "second-repo"] (await! (support/subscription-value! [:github/get-from]))))
             (is (= "https://github.com/second-user/second-repo" (await! (support/subscription-value! [:github/website-url]))))
-            (rf/dispatch-sync [:github/save-headers "second-user" "second-repo" {}])
+            (rf/dispatch-sync [:github/save-headers "second-user" "second-repo" 2 {}])
             (is (= 0 (await! (support/subscription-value! [:github/commit-count])))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
+(deftest failed-initial-repository-reads-can-retry
+  (async done
+    (let [restore! (re-frame/make-restore-fn)
+          *requests (atom [])]
+      (rf/reg-fx :http-xhrio #(swap! *requests conj %))
+      (-> (go-promise
+            (rf/dispatch-sync [:init/app-db])
+            (rf/dispatch-sync [:content [:github-settings] {:user "retry-user", :repo "repo"}])
+            (rf/dispatch-sync [:github/init])
+            (await! (support/settle!))
+            (rf/dispatch-sync [:github/init])
+            (await! (support/settle!))
+            (is (= 2 (count @*requests)) "Pending page and count reads are deduplicated")
+            (doseq [request @*requests]
+              (rf/dispatch-sync (conj (:on-failure request) {:status 503, :status-text "Unavailable"})))
+            (await! (support/settle!))
+            (rf/dispatch-sync [:github/init])
+            (await! (support/settle!))
+            (is (= 4 (count @*requests)) "Both failed initial reads retry")
+            (doseq [request (drop 2 @*requests)]
+              (rf/dispatch-sync (conj (:on-success request)
+                                     (if (get-in request [:url-params :per_page]) {} []))))
+            (await! (support/settle!))
+            (is (= [1] (vec (:pages-fetched (await! (support/state-at! [:state :github]))))))
+            (rf/dispatch-sync [:github/init])
+            (await! (support/settle!))
+            (is (= 4 (count @*requests)) "Successfully loaded empty pages are retained"))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
+(deftest repository-generation-rejects-pending-responses-after-switching-back
+  (async done
+    (let [restore! (re-frame/make-restore-fn)
+          *requests (atom [])]
+      (rf/reg-fx :http-xhrio #(swap! *requests conj %))
+      (-> (go-promise
+            (rf/dispatch-sync [:init/app-db])
+            (doseq [user ["generation-a" "generation-b" "generation-a"]]
+              (rf/dispatch-sync [:content [:github-settings] {:user user, :repo "repo"}])
+              (rf/dispatch-sync [:github/init])
+              (await! (support/settle!)))
+            (is (= 6 (count @*requests)))
+            (let [commits [{:sha "fresh"
+                            :commit {:message "fix: current generation"
+                                     :author {:date "2026-10-12T12:00:00Z"}}}]]
+              (doseq [request (take-last 2 @*requests)]
+                (rf/dispatch-sync (conj (:on-success request)
+                                       (if (get-in request [:url-params :per_page]) {:link "fresh"} commits))))
+              (await! (support/settle!))
+              (doseq [request (take 4 @*requests)]
+                (rf/dispatch-sync (conj (:on-success request)
+                                       (if (get-in request [:url-params :per_page]) {:link "obsolete"} commits))))
+              (await! (support/settle!))
+              (is (= ["fresh"] (mapv :sha (await! (support/subscription-value! [:github/commits])))))
+              (is (= {:link "fresh"} (await! (support/state-at! [:content :github :repo-headers]))))
+              (is (= [1] (vec (:pages-fetched (await! (support/state-at! [:state :github]))))))))
           (.catch #(is false (str %)))
           (.finally (fn [] (restore!) (done)))))))
 

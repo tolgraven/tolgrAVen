@@ -9,6 +9,8 @@
             [ajax.core :as ajax]
             [tolgraven.service-status :as status]
             [tolgraven.content.client :as content]
+            [tolgraven.events]
+            [tolgraven.subs]
             [tolgraven.loader :as loader]
             [tolgraven.component.data :as data]
             [tolgraven.content.contract :as contract]

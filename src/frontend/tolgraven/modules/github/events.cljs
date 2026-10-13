@@ -6,31 +6,44 @@
 
 (def url "https://api.github.com/repos/")
 
+(defn current-request? [db user repo generation]
+  (let [state (get-in db [:state :github])]
+    (and (= [user repo] (:target state))
+         (= generation (:generation state)))))
+
 (rf/reg-event-fx :github/init
  (fn [{:keys [db]} _]
    (let [{:keys [user repo]} (get-in db [:content :github-settings])
-         target [user repo]]
-     (when (and (seq user) (seq repo)
-                (not= target (get-in db [:state :github :target])))
-       {:db (-> db
-                (assoc-in [:state :github] {:target target})
-                (assoc-in [:content :github] {}))
-        :dispatch-n [[:github/fetch-commits user repo 1]
-                     [:github/fetch-commit-count user repo]]}))))
+         target [user repo]
+         state (get-in db [:state :github])
+         changed? (not= target (:target state))
+         generation (if changed? (inc (or (:generation state) 0)) (:generation state))]
+     (when (and (seq user) (seq repo))
+       (cond-> {:dispatch-n [[:github/fetch-commits user repo 1 generation]
+                            [:github/fetch-commit-count user repo generation]]}
+         changed? (assoc :db (-> db
+                                (assoc-in [:state :github] {:target target, :generation generation})
+                                (assoc-in [:content :github] {}))))))))
 
 (rf/reg-event-fx :github/fetch-commits
- (fn [{:keys [db]} [_ user repo page]]
-   (when (and (= [user repo] (get-in db [:state :github :target]))
-              page
-              (not (some #{page} (get-in db [:state :github :pages-fetched]))))
-     {:dispatch-n [[:http/get {:uri (str url user "/" repo "/commits")
+ (fn [{:keys [db]} [_ user repo page generation]]
+   (let [state (get-in db [:state :github])
+         generation' (or generation (:generation state))]
+     (when (and (current-request? db user repo generation')
+                page
+                (not (some #{page} (:pages-fetched state)))
+                (not (contains? (:pages-pending state) page)))
+       {:db (update-in db [:state :github :pages-pending] (fnil conj #{}) page)
+        :dispatch-n [[:http/get {:uri (str url user "/" repo "/commits")
                                :headers {"Accept" "application/vnd.github.v3+json"}
                                :url-params {:page page}}
-                    [:github/save-commits user repo page]]]})))
+                      [:github/save-commits user repo generation' page]
+                      [:github/request-failed user repo generation' :page page]]]}))))
 
 (rf/reg-event-fx :github/save-commits
- (fn [{:keys [db]} [_ user repo page data]]
-   (when (= [user repo] (get-in db [:state :github :target]))
+ (fn [{:keys [db]} [_ user repo generation page data]]
+   (when (and (current-request? db user repo generation)
+              (contains? (get-in db [:state :github :pages-pending]) page))
      (let [commits (for [{:keys [commit sha] :as item} data
                          :let [ts (get-in commit [:author :date])
                                [date clock] (string/split ts "T")
@@ -44,7 +57,8 @@
        {:db (-> db
                 (update-in [:content :github :repo] concat data)
                 (update-in [:content :github :commits] concat commits)
-                (update-in [:state :github :pages-fetched] conj page))}))))
+                (update-in [:state :github :pages-fetched] conj page)
+                (update-in [:state :github :pages-pending] disj page))}))))
 
 (rf/reg-event-fx :github/fetch-commits-next
  (fn [{:keys [db]} [_ user repo]]
@@ -54,10 +68,14 @@
      {:dispatch [:github/fetch-commits user repo page]})))
 
 (rf/reg-event-fx :github/fetch-commit-count
- (fn [{:keys [db]} [_ user repo]]
-   (when (and (= [user repo] (get-in db [:state :github :target]))
-              (not (get-in db [:content :github :repo-headers])))
-     {:dispatch [:http/get {:uri (str url user "/" repo "/commits")
+ (fn [{:keys [db]} [_ user repo generation]]
+   (let [state (get-in db [:state :github])
+         generation' (or generation (:generation state))]
+     (when (and (current-request? db user repo generation')
+                (not (:headers-pending? state))
+                (not (get-in db [:content :github :repo-headers])))
+       {:db (assoc-in db [:state :github :headers-pending?] true)
+        :dispatch [:http/get {:uri (str url user "/" repo "/commits")
                             :url-params {:per_page 1}
                             :response-format
                             {:read (fn [^js response]
@@ -65,7 +83,8 @@
                                               :keywordize-keys true))
                              :description "headers"}
                             :headers {"Accept" "application/vnd.github.v3+json"}}
-                 [:github/save-headers user repo]]})))
+                   [:github/save-headers user repo generation']
+                   [:github/request-failed user repo generation' :headers nil]]}))))
 
 
 (rf/reg-event-fx :github/fetch-commit
@@ -75,18 +94,28 @@
               (not (some #{sha} (get-in db [:state :github :commits-fetched]))))
      {:dispatch-n [[:http/get {:uri (str url user "/" repo "/commits/" sha)
                                :headers {"Accept" "application/vnd.github.v3+json"}}
-                    [:github/save-commit user repo sha]
-                    [:content [:github :errors]]]]})))
+                    [:github/save-commit user repo (get-in db [:state :github :generation]) sha]
+                    [:github/request-failed user repo (get-in db [:state :github :generation]) :commit sha]]]})))
 
 (rf/reg-event-fx :github/save-commit
- (fn [{:keys [db]} [_ user repo sha data]]
-   (when (= [user repo] (get-in db [:state :github :target]))
+ (fn [{:keys [db]} [_ user repo generation sha data]]
+   (when (current-request? db user repo generation)
      {:db (-> db
               (assoc-in [:content :github :commit sha] data)
               (update-in [:state :github :commits-fetched] conj sha))})))
 
 (rf/reg-event-db :github/save-headers
-  (fn [db [_ user repo headers]]
-    (if (= [user repo] (get-in db [:state :github :target]))
-      (assoc-in db [:content :github :repo-headers] headers)
+  (fn [db [_ user repo generation headers]]
+    (if (current-request? db user repo generation)
+      (-> db
+          (assoc-in [:content :github :repo-headers] headers)
+          (assoc-in [:state :github :headers-pending?] false))
       db)))
+
+(rf/reg-event-fx :github/request-failed
+  (fn [{:keys [db]} [_ user repo generation kind page error]]
+    (when (current-request? db user repo generation)
+      {:db (cond-> (assoc-in db [:content :github :errors] error)
+             (= kind :page) (update-in [:state :github :pages-pending] disj page)
+             (= kind :headers) (assoc-in [:state :github :headers-pending?] false))
+       :dispatch [:default-http-error error]})))

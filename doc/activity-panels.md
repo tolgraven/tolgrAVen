@@ -10,7 +10,9 @@ Strapi's `github-settings` single type owns `user` and `repo`.
 The module declares this section as a managed content dependency; the
 `:github/get-from` subscription reads it. GitHub provider responses remain in
 `:content :github`, separate from editor content. Repository changes reset that
-provider cache and reject late responses from the previous target. Calendars are
+provider cache and advance a request generation, rejecting late responses even
+after an A/B/A switch. Pending reads are deduplicated; failed initial reads can
+retry on remount without resetting successfully loaded pages. Calendars are
 installed and subscribed to by username, so a cached A/B/A switch retains the
 correct user's counts.
 
