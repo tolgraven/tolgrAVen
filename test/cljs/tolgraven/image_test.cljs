@@ -9,6 +9,7 @@
     [reagent.dom.server :as server]
     [tolgraven.components.image :as image]
     [tolgraven.listener :as listener]
+    [tolgraven.test-support :as support]
     [tolgraven.components.image.sources :as sources]
     [tolgraven.components.shell :as shell]
     [tolgraven.component.markup :as markup]
@@ -391,7 +392,9 @@
           (let [container (.createElement js/document "div")
                 stylesheet (.createElement js/document "link")
                 *root (atom nil)
-                form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
+                *ready (atom [])
+                form [image/<picture> {:src "/img/foggy-shit-small.jpg"
+                                      :on-visible-ready #(swap! *ready conj %)}]]
             (.setAttribute container "style" "position:fixed;inset:0 auto auto 0;width:20rem;height:20rem;z-index:999")
             (.appendChild (.-body js/document) container)
             (set! (.-rel stylesheet) "stylesheet")
@@ -415,6 +418,7 @@
                 (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 100))))
                 (let [hero (.querySelector container ".progressive-image")]
                   (is (= "waiting" (.getAttribute hero "data-image-phase")))
+                  (is (empty? @*ready) "Pending final pixels do not release preview status")
                   (is (= "0s" (.-transitionDuration (js/getComputedStyle final)))
                       "Pending pixels hide immediately rather than reversing a fade")
                   (js/Object.defineProperty final "complete" #js {:configurable true :value true})
@@ -423,6 +427,7 @@
                   (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 30))))
                   (when-not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))
                     (is (= "upgrading" (.getAttribute hero "data-image-phase")))
+                    (is (empty? @*ready) "The overlap must finish before readiness notification")
                     (is (= "0.15s" (.-transitionDuration (js/getComputedStyle final))))
                     (is (= "0.1s" (.-transitionDuration (js/getComputedStyle preview))))
                     (is (= "linear" (.-transitionTimingFunction (js/getComputedStyle final))))
@@ -437,7 +442,11 @@
                   (is (identical? final (.querySelector hero "[data-image-final]")))
                   (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 250))))
                   (is (= 1 (.-length (.querySelectorAll hero "img"))))
-                  (is (= "decoded" (.getAttribute hero "data-image-phase")))))
+                  (is (= "decoded" (.getAttribute hero "data-image-phase")))
+                  (await! (support/wait-for! #(seq @*ready) "Final fade did not notify visible readiness"))
+                  (is (= [{:src "/img/foggy-shit-small.jpg"
+                           :selected-src (.-currentSrc final)}] @*ready))
+                  (is (not-any? #(= :image-visible-ready (:owner %)) (vals @listener/*bindings)))))
               (finally
                 (when @*root (dom/unmount @*root))
                 (.remove stylesheet)
@@ -447,6 +456,10 @@
 
 (deftest responsive-catalog-defaults-and-modern-originals-share-the-source-contract
   (is (sources/progressive? "/img/logo/tolgraven-logo.png"))
+  (is (not (sources/progressive? "/img/logo/icon/react-logo-icon.png")))
+  (is (not (sources/progressive? "/img/warning_clojure.webp")))
+  (is (not (sources/progressive? "/img/wide-spot-ctrl-small.jpg")))
+  (is (sources/progressive? "/img/foggy-shit-small.jpg"))
   (is (= 80 (:width (sources/preview "/img/logo/tolgraven-logo.png"))))
   (is (sources/should-use-modern-formats? "/img/warning_clojure.webp"))
   (is (= "/img/warning_clojure-80w.avif" (:avif (sources/preview "/img/warning_clojure.webp"))))
@@ -525,3 +538,72 @@
                   ["#ffffff" "#000000"]]]
     (with-redefs [sources/responsive {"img/unsafe.jpg" {:placeholder {:colors colors}}}]
       (is (nil? (sources/placeholder-background "/img/unsafe.jpg"))))))
+
+
+(deftest small-manual-responsive-images-have-no-preview-or-blur-layer
+  (let [html (server/render-to-string
+              [image/<picture> {:src "/img/warning_clojure.webp"}])]
+    (is (not (.includes html "progressive-image")))
+    (is (not (.includes html "data-image-preview")))
+    (is (.includes html (sources/srcset "/img/warning_clojure.webp" "avif")))))
+
+
+(deftest cheap-large-banner-keeps-a-static-placeholder-with-one-final-image
+  (let [html (server/render-to-string
+              [image/<picture> {:src "/img/wide-spot-ctrl-small.jpg"
+                                :class "original-banner"}])]
+    (is (.includes html "data-image-placeholder=\"true\""))
+    (is (.includes html "data-image-phase=\"single\""))
+    (is (.includes html "class=\"original-banner\""))
+    (is (not (.includes html "progressive-image")))
+    (is (not (.includes html "data-image-preview")))
+    (is (.includes html (sources/srcset "/img/wide-spot-ctrl-small.jpg" "avif")))))
+
+
+(deftest visible-readiness-waits-for-native-visibility-and-current-source
+  (async done
+    (-> (go-promise
+          (let [container (.createElement js/document "div")
+                root (dom/create-root container)
+                *src (r/atom "/img/icons/generated/solid/check.svg")
+                *ready (atom [])
+                *loaded (atom 0)
+                ready! #(swap! *ready conj %)
+                loaded! (fn [_] (swap! *loaded inc))
+                render-image (fn [] [image/<picture> {:src @*src
+                                                     :style {:width "8rem", :height "8rem"}
+                                                     :on-load loaded!
+                                                     :on-visible-ready ready!}])]
+            (.setAttribute container "style" "position:fixed;inset:0 auto auto 0;width:8rem;height:8rem;z-index:999;visibility:hidden")
+            (.appendChild (.-body js/document) container)
+            (try
+              (is (not (.includes (server/render-to-string [render-image]) "on-visible-ready")))
+              (dom/render root [render-image])
+              (await! (support/wait-for! #(pos? @*loaded) "Native SVG did not load"))
+              (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 100))))
+              (is (empty? @*ready) "A decoded SVG behind a hidden ancestor is not visible")
+              (is (some #(= :image-visible-ready (:owner %)) (vals @listener/*bindings)))
+              (reset! *src "/img/tolgrav.png")
+              (await! (support/wait-for! #(> @*loaded 1) "Replacement native image did not load"))
+              (is (empty? @*ready))
+              (set! (.-visibility (.-style container)) "visible")
+              (await! (support/wait-for! #(seq @*ready) "Visible final image did not notify"))
+              (let [native (.querySelector container "img")]
+                (is (= [{:src "/img/tolgrav.png", :selected-src (.-currentSrc native)}] @*ready))
+                (.dispatchEvent native (js/Event. "load"))
+                (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 80))))
+                (is (= 1 (count @*ready)) "Repeated load events cannot notify twice")
+                (is (not-any? #(= :image-visible-ready (:owner %)) (vals @listener/*bindings))))
+              (set! (.-visibility (.-style container)) "hidden")
+              (reset! *src "/img/icons/generated/solid/check.svg")
+              (await! (support/wait-for! #(> @*loaded 2) "Returning SVG did not load"))
+              (dom/unmount root)
+              (set! (.-visibility (.-style container)) "visible")
+              (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 80))))
+              (is (= 1 (count @*ready)) "Unmount cancels a hidden generation's notification")
+              (is (not-any? #(= :image-visible-ready (:owner %)) (vals @listener/*bindings)))
+              (finally
+                (dom/unmount root)
+                (.remove container)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))

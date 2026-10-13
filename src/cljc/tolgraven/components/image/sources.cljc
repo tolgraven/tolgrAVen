@@ -9,7 +9,7 @@
 
 (defn preview
   "Smallest catalog candidate for a progressive image. Sized local renditions
-   enable progressive display unless the catalog explicitly excludes it."
+   preserve responsive source selection independently of progressive display."
   ([src] (preview src nil))
   ([src asset]
    (if asset
@@ -27,10 +27,13 @@
 (defn progressive?
   ([src] (progressive? src nil))
   ([src asset]
-   (and (some? (preview src asset))
-        (if asset
-          (eligibility/eligible? (get-in asset [:renditions :original]))
-          (not= false (:progressive? (get responsive (string/replace (or src "") #"^/" ""))))))))
+   (let [metadata (get responsive (string/replace (or src "") #"^/" ""))]
+     (and (some? (preview src asset))
+          (if asset
+            (eligibility/eligible? (get-in asset [:renditions :original]))
+            (if (contains? metadata :progressive?)
+              (:progressive? metadata)
+              (eligibility/eligible? metadata)))))))
 
 (defn dimensions
   ([src] (dimensions src nil))

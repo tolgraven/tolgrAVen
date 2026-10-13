@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Progressive image benchmark</title>
+<style>body{font:1rem system-ui;margin:0}section{padding:1rem}table{border-collapse:collapse}th,td{padding:.4rem;text-align:left;border-bottom:.05rem solid #aaa}iframe{display:block;width:100vw;height:70vh;border:0}.running iframe{position:fixed;inset:0;z-index:1;width:100vw;height:100vh}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style>
+<section><h1>Progressive image benchmark</h1>
+<p>SSR markup, native responsive selection and decode. Application bootstrap withheld. Hero images share a 64 KiB/s bandwidth cap with 150 ms before the first body chunk; other assets unpaced. Each probe uses unique no-store image URLs. Blank-frame and shared-link idle guards run before every probe and after each case.</p>
+<label>Viewport / DPR <select id="case"><option value="375,1">375 / 1</option><option value="390,2">390 / 2</option><option value="1280,1">1280 / 1</option></select></label>
+<button id="run">Run five pairs</button><p id="status">Set browser viewport and DPR to the selected case before running.</p>
+<table><thead><tr><th>Case / version</th><th>Runs</th><th>Hero visible ms</th><th>Final ready ms</th><th>Image bytes</th><th>Final source</th></tr></thead><tbody id="results"></tbody></table>
+<p><a id="baseline-probe">Open last baseline probe</a> · <a id="progressive-probe">Open last progressive probe</a></p>
+<details><summary>Raw measurements</summary><pre id="raw"></pre></details></section><iframe title="SSR image probe"></iframe>
+<script src="/image-benchmark.js"></script>
