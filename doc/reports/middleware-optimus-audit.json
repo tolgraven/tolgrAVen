@@ -1,0 +1,242 @@
+{
+  "environment": {
+    "java": "21.0.12.1",
+    "processors": 1,
+    "linux-load-average": 1.3505859375,
+    "max-heap-bytes": 1037959168,
+    "autorefresh-resource-with-leading-slash?": false,
+    "autorefresh-resource-without-leading-slash?": true,
+    "css-and-media": "real repository build outputs and sources",
+    "javascript": "three disposable fixtures, two already minified",
+    "container_cpu_quota_cores": 1.0,
+    "container_memory_bytes": 2147483648
+  },
+  "pipeline": {
+    "css-import-count": 0,
+    "timings": [
+      {
+        "step": "get-assets",
+        "milliseconds": 771.238149
+      },
+      {
+        "step": "guard-against-duplicate-assets",
+        "milliseconds": 1.612759
+      },
+      {
+        "step": "module-source-maps",
+        "milliseconds": 0.482711
+      },
+      {
+        "step": "minify-js-assets",
+        "milliseconds": 4386.424852
+      },
+      {
+        "step": "inline-css-imports",
+        "milliseconds": 4.384399
+      },
+      {
+        "step": "concatenate-bundles",
+        "milliseconds": 0.879504
+      },
+      {
+        "step": "transform-images",
+        "milliseconds": 4125.02057
+      },
+      {
+        "step": "add-cache-busted-expires-headers",
+        "milliseconds": 2099.417594
+      },
+      {
+        "step": "add-last-modified-headers",
+        "milliseconds": 4.007064
+      }
+    ],
+    "unique-count": 571,
+    "css-count": 25,
+    "loaded-count": 575,
+    "js-count": 3,
+    "js-already-minified-count": 2,
+    "optimized-count": 1198
+  },
+  "ring": {
+    "responses": {
+      "gzip-explicit-rejection-after-wildcard": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Encoding": "gzip",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff"
+        },
+        "body-type": "class ring.middleware.gzip.proxy$java.io.PipedInputStream$ff19274a",
+        "wire-bytes": 37,
+        "decoded-bytes": 900,
+        "small-body": null
+      },
+      "image-native-dest": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "image/avif",
+          "Cache-Control": "public, max-age=31536000, immutable"
+        },
+        "body-type": "class java.io.BufferedInputStream",
+        "wire-bytes": 15156,
+        "decoded-bytes": 15156,
+        "small-body": null
+      },
+      "optimus-image-post": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "image/avif",
+          "Cache-Control": "public, max-age=31536000, immutable"
+        },
+        "body-type": "class java.io.BufferedInputStream",
+        "wire-bytes": 15156,
+        "decoded-bytes": 15156,
+        "small-body": null
+      },
+      "optimus-image-head": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "image/avif",
+          "Cache-Control": "public, max-age=31536000, immutable"
+        },
+        "body-type": "class java.io.BufferedInputStream",
+        "wire-bytes": 15156,
+        "decoded-bytes": 15156,
+        "small-body": null
+      },
+      "video-unsatisfiable": {
+        "status": 206,
+        "headers": {
+          "Content-Type": "video/webm",
+          "Content-Length": "-10",
+          "Content-Range": "bytes 20-9/10",
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Accept-Ranges": "bytes",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff"
+        },
+        "body-type": "class ring.middleware.partial_content.proxy$java.io.InputStream$ff19274a",
+        "wire-bytes": 0,
+        "decoded-bytes": 0,
+        "small-body": ""
+      },
+      "optimus-image-range": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "image/avif",
+          "Cache-Control": "public, max-age=31536000, immutable"
+        },
+        "body-type": "class java.io.BufferedInputStream",
+        "wire-bytes": 15156,
+        "decoded-bytes": 15156,
+        "small-body": null
+      },
+      "image-gzip-without-fetch-dest": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "image/avif",
+          "Content-Encoding": "gzip",
+          "Cache-Control": "public, max-age=31536000, immutable"
+        },
+        "body-type": "class ring.middleware.gzip.proxy$java.io.PipedInputStream$ff19274a",
+        "wire-bytes": 14299,
+        "decoded-bytes": 15156,
+        "small-body": null
+      },
+      "video-suffix": {
+        "status": 206,
+        "headers": {
+          "Content-Type": "video/webm",
+          "Content-Length": "4",
+          "Content-Range": "bytes 0-3/10",
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Accept-Ranges": "bytes",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff"
+        },
+        "body-type": "class ring.middleware.partial_content.proxy$java.io.InputStream$ff19274a",
+        "wire-bytes": 4,
+        "decoded-bytes": 4,
+        "small-body": "0123"
+      },
+      "text-gzip": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Encoding": "gzip",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff"
+        },
+        "body-type": "class ring.middleware.gzip.proxy$java.io.PipedInputStream$ff19274a",
+        "wire-bytes": 37,
+        "decoded-bytes": 900,
+        "small-body": null
+      },
+      "video-normal": {
+        "status": 206,
+        "headers": {
+          "Content-Type": "video/webm",
+          "Content-Length": "4",
+          "Content-Range": "bytes 2-5/10",
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Accept-Ranges": "bytes",
+          "X-Frame-Options": "SAMEORIGIN",
+          "X-Content-Type-Options": "nosniff"
+        },
+        "body-type": "class ring.middleware.partial_content.proxy$java.io.InputStream$ff19274a",
+        "wire-bytes": 4,
+        "decoded-bytes": 4,
+        "small-body": "2345"
+      }
+    },
+    "handler-calls": {
+      "/probe/text": 2,
+      "/media/audit-range-v2.webm": 3
+    }
+  },
+  "http": {
+    "webhook-with-bearer-only": {
+      "status": 403,
+      "handler-called?": false
+    },
+    "webhook-with-bearer-cookie-and-csrf": {
+      "status": 200,
+      "body": "{\"accepted\":true}"
+    },
+    "multipart": {
+      "status": 200,
+      "parse-calls": [
+        {
+          "already-parsed?": false
+        },
+        {
+          "already-parsed?": true
+        },
+        {
+          "already-parsed?": true
+        }
+      ],
+      "handler-called?": true
+    },
+    "handler-calls": {
+      "/probe/token": 1,
+      "/api/media/strapi/webhook": 1,
+      "/api/probe/multipart": 1
+    }
+  },
+  "production-static": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "image/avif",
+      "Cache-Control": "public, max-age=31536000, immutable"
+    },
+    "body-type": "class java.io.BufferedInputStream",
+    "wire-bytes": 15156,
+    "decoded-bytes": 15156,
+    "small-body": null
+  },
+  "audit_source_commit": "086ad362",
+  "sample_kind": "Controlled middleware fixture; not production or browser latency"
+}

@@ -48,7 +48,7 @@
                             (response! #(pipeline/status! (auth/current-user! request)
                                              (get-in request [:parameters :path :id]))))}}]))
      (when-enabled :main :media
-       ["/media/strapi/webhook"
+       [cms/webhook-path
         {:post {:summary "Accept an authenticated Strapi media event"
                 :handler (fn [request] (response! #(cms/webhook! request)))}}])
      (when-enabled :main :media

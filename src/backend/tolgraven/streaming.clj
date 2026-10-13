@@ -37,10 +37,11 @@
     (and (pos? q) (<= q 1.0))))
 
 (defn gzip-response
-  "Compress this adapter's body directly, preserving every explicit shell flush.
-   The generic middleware's piped InputStream is buffered by Undertow."
+  "Compress a Ring body on the response writer, preserving explicit shell flushes.
+   No future or intermediate pipe starts before the server writes the response."
   [request {:keys [body headers status] :as response}]
-  (if (and (= 200 status) (instance? Body body)
+  (if (and (= 200 status) (some? body)
+           (not= :head (:request-method request))
            (not (or (get headers "Content-Encoding") (get headers "content-encoding")))
            (accepts-gzip? (get-in request [:headers "accept-encoding"])))
     (let [vary (or (get headers "Vary") (get headers "vary"))
@@ -49,7 +50,7 @@
       (-> response
           (assoc :body (->Body (fn [output]
                                 (with-open [gzip (GZIPOutputStream. output true)]
-                                  ((:write! body) gzip)))))
+                                  (ring/write-body-to-stream body response gzip)))))
           (update :headers #(-> %
                                 (dissoc "Content-Length" "content-length" "vary")
                                 (assoc "Content-Encoding" "gzip"

@@ -258,3 +258,27 @@
         normalized (query/normalize-row row)]
     (is (= {(:src asset) asset} (:image_assets normalized)))
     (is (= normalized (query/normalize-row normalized)))))
+
+(deftest cms-svg-manifests-enrich-media-props-and-string-logos
+  (let [source "https://cms.test/uploads/logo.svg?version=2"
+        original {:src "https://storage.test/immutable/logo.svg"
+                  :width 1600
+                  :height 900
+                  :bytes 1000
+                  :mime "image/svg+xml"}
+        vector-asset {:id "svg-logo"
+                      :src (:src original)
+                      :width 1600
+                      :height 900
+                      :renditions {:original original}}]
+    (with-redefs [pipeline/assets! (fn [sources]
+                                    (is (= #{source} (set sources)))
+                                    {source vector-asset})]
+      (let [enriched (content/enrich-media!
+                      {:cv {:logo source
+                            :heading {:bg {:src source, :alt "Author title"}}}})]
+        (is (= source (get-in enriched [:cv :logo])))
+        (is (= vector-asset (get-in enriched [:cv :image-assets source])))
+        (is (= vector-asset (get-in enriched [:cv :heading :bg :asset])))
+        (is (= (:src original) (get-in enriched [:cv :heading :bg :src])))
+        (is (= "Author title" (get-in enriched [:cv :heading :bg :alt])))))))

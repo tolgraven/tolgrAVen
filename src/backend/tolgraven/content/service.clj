@@ -18,7 +18,7 @@
 
 (defn- image-sources [value]
   (set (filter #(and (string? %)
-                    (re-matches #"(?i)(?:https?://|/uploads/|/?img/).+\.(?:png|jpe?g|webp|avif)" %))
+                    (re-matches #"(?i)(?:https?://|/uploads/|/?img/).+\.(?:png|jpe?g|webp|avif|svg)(?:[?#].*)?" %))
                (tree-seq coll? seq value))))
 
 (defn enrich-media!

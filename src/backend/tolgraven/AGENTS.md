@@ -62,6 +62,19 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   it to the generic middleware's buffered InputStream.
 - A return cookie alone never bypasses network SSR. Only the local worker's
   explicit `X-Page-Render: state` fallback requests browser state restoration.
+- `middleware/wrap-base` owns one static response policy outside the browser
+  session/CSRF layer and inside proxy/HTTPS/security headers. Public assets do not
+  create session cookies. API and return-worker paths retain their route owners.
+  MIME-based gzip honors quality negotiation and preserves streaming flushes;
+  known-length bodies share conditional, HEAD and single-byte-range handling.
+- Global browser CSRF stays enabled. Only the exact Strapi webhook POST can gain
+  Ring's existing safe header, after `media/cms` validates the configured bearer
+  secret with the same constant-time check used by its handler. Invalid or missing
+  credentials must fail before acquiring the media pipeline.
+- `middleware/multipart` owns parsing once, before browser CSRF/form handling:
+  one file up to 5 MiB, bounded request/field count, and request-lifetime tempfile
+  cleanup. API multipart middleware only coerces the already parsed data; upload
+  handlers must finish reading/copying temporary bytes before returning.
 - Validate/coerce requests at the Ring boundary; handlers consume parsed parameters.
   Authentication/authorization and input protection remain active in production.
 - Secrets remain in server adapters/configuration. Runtime public settings must
@@ -157,6 +170,11 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - Public image/video filenames are immutable. Changed pixels use a new suffixed
   name. Whole/range media responses retain Optimus policy or get one-year immutable
   caching; never apply that policy to failures or mutable document/API responses.
+
+- Production Optimus startup imports `optimus/assets.edn` and rejects missing/stale
+  artifacts. Build-only JS/CSS/image preparation belongs to `build/assets.clj`;
+  development refreshes declared bundles and their references with a two-second
+  TTL, without a resource watcher. Preserve independent module style acquisition.
 
 - Managed SVG media retains its vector original with no raster sidecars. The
   bounded `media/svg.clj` adapter rejects active/external XML content before
