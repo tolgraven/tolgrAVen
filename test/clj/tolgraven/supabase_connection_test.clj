@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             [clj-http.conn-mgr :as connections]
             [tolgraven.concurrent :as concurrent]
+            [tolgraven.config :as config]
             [tolgraven.platform.supabase :as platform])
   (:import [com.sun.net.httpserver HttpServer HttpHandler]
            [java.net InetSocketAddress]
@@ -15,20 +16,28 @@
         (handle [_ exchange]
           (swap! *requests conj
                  {:port (.getPort (.getRemoteAddress exchange))
-                  :key (.getFirst (.getRequestHeaders exchange) "apikey")})
+                  :key (.getFirst (.getRequestHeaders exchange) "apikey")
+                  :authorization (.getFirst (.getRequestHeaders exchange) "Authorization")})
           (.add (.getResponseHeaders exchange) "Content-Type" "application/json")
           (.sendResponseHeaders exchange 200 2)
           (with-open [out (.getResponseBody exchange)] (.write out (.getBytes "[]" "UTF-8"))))))
     (.start server)
     (try
-      (with-redefs [platform/rest-base-url #(str "http://127.0.0.1:" (.getPort (.getAddress server)))
-                    platform/service-key (constantly "test-key")
-                    platform/insecure-rest? (constantly false)]
+      (with-redefs [config/env {:supabase-public-url (str "http://127.0.0.1:" (.getPort (.getAddress server)))
+                               :supabase-service-key "test-key"
+                               :supabase-insecure-tls false}]
         (f *requests))
       (finally (.stop server 0)))))
 
 (defn- available [pool]
   (.getAvailable (.getTotalStats ^PoolingHttpClientConnectionManager pool)))
+
+(deftest rest-requests-use-consolidated-credentials
+  (with-endpoint
+    (fn [*requests]
+      (is (= [] (:body (platform/request! :get "blog_posts" {}))))
+      (is (= [{:key "test-key", :authorization "Bearer test-key"}]
+             (mapv #(select-keys % [:key :authorization]) @*requests))))))
 
 (deftest joined-reads-reuse-connections-with-fresh-headers-and-close-the-pool
   (with-endpoint

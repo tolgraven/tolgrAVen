@@ -4,6 +4,8 @@
    [clojure.java.io :as io]
    [clojure.string :as string]
    [taoensso.timbre :as timbre]
+   [mount.core :as mount]
+   [tolgraven.config :as config]
    [tolgraven.platform.supabase :as supabase]
    [tolgraven.provision.supabase.import :as import]
    [tolgraven.provision.supabase.schema :as schema]
@@ -25,6 +27,7 @@
   (spit path (json/write-str value :escape-slash false)))
 
 (defn -main [& args]
+  (mount/start #'config/env)
   (let [[command arg1 arg2 arg3] args]
     (case command
       "dump-auth-import"
@@ -34,11 +37,10 @@
 
       "doctor"
       (println {:database (supabase/database-target-summary)
-                :rest-url-configured? (boolean (or (System/getenv "SUPABASE_PUBLIC_URL")
-                                                   (System/getenv "SUPABASE_URL")
-                                                   (System/getenv "NEXT_PUBLIC_SUPABASE_URL")))
-                :service-key-configured? (boolean (or (System/getenv "SUPABASE_SERVICE_KEY")
-                                                      (System/getenv "SUPABASE_SERVICE_ROLE_KEY")))} )
+                :rest-url-configured? (try (boolean (supabase/rest-base-url))
+                                          (catch clojure.lang.ExceptionInfo _ false))
+                :service-key-configured? (try (boolean (supabase/service-key))
+                                             (catch clojure.lang.ExceptionInfo _ false))})
 
       "schema"
       (do

@@ -69,9 +69,18 @@ For example:
 PORT=4011 lein with-profile prod run
 ```
 
-The Supabase adapter explicitly prefers its environment variables as well:
-`SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY` (or `SUPABASE_PUBLISHABLE_KEY`) and
-`SUPABASE_SERVICE_KEY`. CMS runtime reads prefer `STRAPI_URL` and
+The Supabase platform adapter reads REST/JDBC settings and its TLS policy from
+`tolgraven.config/env`, consolidated by cprop with the precedence above. For example,
+`SUPABASE_PUBLIC_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_DATABASE_URL` and
+`SUPABASE_INSECURE_TLS` map to the corresponding kebab-case EDN keys. JDBC can
+also use `:postgres-hostname`, `:postgres-db`, `:postgres-user`,
+`:postgres-password` and optional `:postgres-port` / `:supabase-db-sslmode`;
+existing Supabase, Postgres and PG aliases remain supported. The platform adapter
+uses the consolidated values rather than reading the process environment again.
+The Supabase provisioning CLI starts only the mounted config state; its `doctor`
+command reports those same resolved settings without credentials.
+Browser settings support `SUPABASE_ANON_KEY` (or `SUPABASE_PUBLISHABLE_KEY`).
+CMS runtime reads prefer `STRAPI_URL` and
 `STRAPI_READ_TOKEN`; the build/provisioning config resolver uses these environment
 variables, so export them when enabling build-time CMS overrides. Nested options
 such as `:analytics` and `:ssr` are most clearly expressed as EDN maps.

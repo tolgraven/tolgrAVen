@@ -41,29 +41,26 @@
     (catalog/table-config declaration)
     (throw (ex-info "Supabase table is disabled or undeclared" {:table table}))))
 
-(defn- env [k]
-  (System/getenv k))
-
 (defn- encode-query-value [value]
   (URLEncoder/encode (str value) "UTF-8"))
 
 (defn- jdbc-url-from-components []
-  (let [host (or (env "POSTGRES_HOSTNAME")
-                 (env "POSTGRES_HOST")
-                 (env "PGHOST"))
-        db-name (or (env "POSTGRES_DB")
-                    (env "POSTGRES_DATABASE")
-                    (env "PGDATABASE"))
-        user (or (env "POSTGRES_USER")
-                 (env "PGUSER"))
-        password (or (env "POSTGRES_PASSWORD")
-                     (env "PGPASSWORD"))]
+  (let [host (or (get config/env :postgres-hostname)
+                (get config/env :postgres-host)
+                (get config/env :pghost))
+        db-name (or (get config/env :postgres-db)
+                   (get config/env :postgres-database)
+                   (get config/env :pgdatabase))
+        user (or (get config/env :postgres-user)
+                (get config/env :pguser))
+        password (or (get config/env :postgres-password)
+                    (get config/env :pgpassword))]
     (when (and host db-name user password)
-      (let [port (or (env "POSTGRES_PORT")
-                     (env "PGPORT")
-                     "5432")
-            sslmode (or (env "SUPABASE_DB_SSLMODE")
-                        (env "POSTGRES_SSLMODE")
+      (let [port (or (get config/env :postgres-port)
+                    (get config/env :pgport)
+                    "5432")
+            sslmode (or (get config/env :supabase-db-sslmode)
+                        (get config/env :postgres-sslmode)
                         "disable")
             params {"user" user
                     "password" password
@@ -75,13 +72,13 @@
         (str "jdbc:postgresql://" host ":" port "/" db-name "?" query-string)))))
 
 (defn database-url []
-  (or (env "SUPABASE_DATABASE_URL")
-      (env "SUPABASE_DB_URL")
+  (or (get config/env :supabase-database-url)
+      (get config/env :supabase-db-url)
       (jdbc-url-from-components)))
 
 (defn database-target-summary []
-  (let [direct-url (or (env "SUPABASE_DATABASE_URL")
-                       (env "SUPABASE_DB_URL"))]
+  (let [direct-url (or (get config/env :supabase-database-url)
+                      (get config/env :supabase-db-url))]
     (cond
       direct-url
       {:source :database-url
@@ -90,19 +87,19 @@
       (jdbc-url-from-components)
       {:source :components
        :configured? true
-       :host (or (env "POSTGRES_HOSTNAME")
-                 (env "POSTGRES_HOST")
-                 (env "PGHOST"))
-       :port (or (env "POSTGRES_PORT")
-                 (env "PGPORT")
+       :host (or (get config/env :postgres-hostname)
+                 (get config/env :postgres-host)
+                 (get config/env :pghost))
+       :port (or (get config/env :postgres-port)
+                 (get config/env :pgport)
                  "5432")
-       :database (or (env "POSTGRES_DB")
-                     (env "POSTGRES_DATABASE")
-                     (env "PGDATABASE"))
-       :user (or (env "POSTGRES_USER")
-                 (env "PGUSER"))
-       :sslmode (or (env "SUPABASE_DB_SSLMODE")
-                    (env "POSTGRES_SSLMODE")
+       :database (or (get config/env :postgres-db)
+                     (get config/env :postgres-database)
+                     (get config/env :pgdatabase))
+       :user (or (get config/env :postgres-user)
+                 (get config/env :pguser))
+       :sslmode (or (get config/env :supabase-db-sslmode)
+                    (get config/env :postgres-sslmode)
                     "disable")}
 
       :else
@@ -129,27 +126,22 @@
                              "POSTGRES_PASSWORD"]}))))
 
 (defn rest-base-url []
-  (or (env "SUPABASE_PUBLIC_URL")
-      (env "SUPABASE_URL")
-      (env "NEXT_PUBLIC_SUPABASE_URL")
-      (get config/env :supabase-public-url)
+  (or (get config/env :supabase-public-url)
       (get config/env :supabase-url)
+      (get config/env :next-public-supabase-url)
       (throw (ex-info "Missing Supabase public URL"
                       {:env ["SUPABASE_PUBLIC_URL" "SUPABASE_URL" "NEXT_PUBLIC_SUPABASE_URL"]}))))
 
 (defn service-key []
-  (or (env "SUPABASE_SERVICE_KEY")
-      (env "SUPABASE_SERVICE_ROLE_KEY")
-      (get config/env :supabase-service-key)
+  (or (get config/env :supabase-service-key)
       (get config/env :supabase-service-role-key)
       (get config/env :service-supabaseservice-key)
       (throw (ex-info "Missing Supabase service key"
                       {:env ["SUPABASE_SERVICE_KEY" "SUPABASE_SERVICE_ROLE_KEY"]}))))
 
 (defn insecure-rest? []
-  (contains? #{"1" "true" "TRUE" "yes" "YES"}
-             (or (System/getenv "SUPABASE_INSECURE_TLS")
-                 "")))
+  (contains? #{true 1 "1" "true" "TRUE" "yes" "YES"}
+             (get config/env :supabase-insecure-tls)))
 
 (defn rest-url [path]
   (str (string/replace (rest-base-url) #"/+$" "")
