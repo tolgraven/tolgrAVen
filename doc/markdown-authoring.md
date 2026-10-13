@@ -21,7 +21,7 @@ renderer; it does not acquire either authoring bundle.
 | Headings 1–6, quotes, bullet/number/task lists | Toolbar and Markdown typing shortcuts | Standard Markdown |
 | Links, tables, rules, fenced code | Link dialog, toolbar and code editor | Shared Markdown and deferred highlight |
 | Images | Search server assets, upload, paste/drop, URL insertion | Shared responsive picture with paired rendition metadata |
-| Source mode | Stable CodeMirror source view with inline upload chips | The same saved source |
+| Source mode | Literal Markdown in the existing native document with inline upload chips | The same saved source |
 | Site components | Search canonical names, docstrings, signatures and schemas | The actual public components and their normal data dependencies |
 | Widget geometry | Argument inputs, edge/corner drag and arrow-key resizing | Persisted sizing, alignment and floating text flow |
 | Frames and embeds | HTTPS/local iframe; YouTube/SoundCloud oEmbed | Existing sandbox/embedding policy |
@@ -65,9 +65,9 @@ anchored image-completion transaction updates its existing media node, rather
 than the user's newer cursor position. `insertImage$` targets the
 active selection, so it cannot express that asynchronous attachment operation.
 
-Pending uploads are native inline nodes in the visual editor and zero-width
-CodeMirror decorations in source mode. Their small highlighted widgets use
-Reagent portals and the existing presence/exit lifecycle. Pending IDs, status and
+Pending uploads are native inline nodes in both visual and source modes.
+Their small highlighted widgets use ordinary Reagent views and the existing
+presence/exit lifecycle. Pending IDs, status and
 positions never appear in authored Markdown. Completed media exports ordinary
 Markdown image data, or the canonical image component when saved layout is
 needed, retaining its canonical source after queue disposal. The same media node
@@ -75,16 +75,19 @@ owns all four drag edges and its alternative text, dimensions and text flow.
 Pure tree transformations preserve
 surrounding formatting; native source changes map anchors through precise edits.
 Source changes from upload completion use a normal editor transaction, retaining
-selection and undo. Callback/decoration changes reconfigure owned CodeMirror
-compartments without recreating the view. Widget hosts/cache entries release on
-removal and unmount. There is no mirrored application store or whole-props ref.
+selection and undo. Callback changes reconfigure the owned content listener
+without recreating the editor. Source mode reads literal native text rather than
+serializing it as rich Markdown, so unfinished syntax is editable too. Its
+controlled text/on-change/disposal contract is the future Monaco adapter boundary;
+it adds no second editor dependency or application store. Managed query values
+are read again at reconciliation so a passive effect cannot apply an earlier
+render's accepted text over newer typing. There is no whole-props ref.
 
 Fenced-code editor descriptors render the ordinary shared code-block component;
 the SDK supplies only code/language/metadata setters. Its optional editable fields
 retain the same highlighted display, copy/wrap/fold controls and formatter gate
 as a public post. Both authoring owners declare their highlight dependency.
-Source-mode CodeMirror edits the document; it does not implement another fenced
-code highlighting/rendering system.
+Source mode does not implement another fenced-code rendering system.
 
 ## Component identities and arguments
 

@@ -1,124 +1,88 @@
 (ns tolgraven.modules.markdown-editor.source
-  "A stable CodeMirror view owns its editable DOM; React owns the inline widget portals.
-   Unlike the SDK source pane, external upload insertion preserves selection/history."
+  "Controlled literal Markdown uses the installed native document/history and inline media nodes.
+   Text/on-change and disposal remain the replacement boundary for a future Monaco adapter."
   (:require [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as r]
-            [tolgraven.modules.blog-editor.anchors :as anchors]
+            [tolgraven.modules.markdown-editor.source-model :as model]
+            [tolgraven.modules.markdown-editor.uploads :as uploads]
             [tolgraven.modules.blog-editor.files :as files]
-            ["@codemirror/state" :refer [EditorState Compartment Annotation]]
-            ["@codemirror/view" :refer [EditorView Decoration WidgetType]]
-            ["@codemirror/lang-markdown" :refer [markdown]]
-            ["codemirror" :refer [basicSetup]]))
+            ["@mdxeditor/editor" :as editor]
+            ["lexical" :refer [$getRoot $getNodeByKey SKIP_DOM_SELECTION_TAG]]))
 
-(def external-change (.define Annotation))
+(def native-editor (r/adapt-react-class editor/MDXEditor))
 
-(defn widget [id report!]
-  ;; CodeMirror's WidgetType protocol needs a native host. Its contents are a
-  ;; normal React portal, so this adapter never writes application markup/styles.
-  (let [instance (js/Object.create (.-prototype WidgetType))]
-    (set! (.-toDOM instance)
-          (fn [] (let [host (.createElement js/document "span")]
-                   (report! id host)
-                   host)))
-    (set! (.-eq instance) (fn [other] (identical? instance other)))
-    (set! (.-ignoreEvent instance) (fn [] true))
-    (set! (.-destroy instance) (fn [host] (report! id nil host)))
-    instance))
+(defn media-keys [^js node]
+  (concat (when (model/upload-id node) [(.getKey node)])
+          (when (fn? (.-getChildren node)) (mapcat media-keys (array-seq (.getChildren node))))))
 
-(defn decorations [uploads length widgets report!]
-  (.set Decoration
-        (clj->js
-          (mapv (fn [{:keys [id position order]}]
-                  (let [instance (or (get @widgets id)
-                                     (let [created (widget id report!)]
-                                       (swap! widgets assoc id created)
-                                       created))]
-                    (.range (.widget Decoration #js {:widget instance, :side (+ -1000 order)})
-                            (max 0 (min length position)))))
-                (sort-by (juxt :position :order) (remove #(or (:chip-dismissed? %) (:cancelled? %)) uploads)))) true))
+(defc ^:private <controlled-source> [{:keys [children]}]
+  (let [{:keys [source-text source-text-query uploads uploads-query]} (r/use-context uploads/context)
+        *text (when source-text-query (r/subscribe source-text-query))
+        *jobs (when uploads-query (r/subscribe uploads-query))
+        text (or (if *text @*text source-text) "")
+        jobs (if *jobs @*jobs uploads)
+        live-ids (set (map :id (remove #(or (:chip-dismissed? %) (:cancelled? %)) jobs)))
+        root (editor/useCellValue editor/rootEditor$)]
+    (r/use-effect
+      (fn []
+        (when root
+          ;; Update the native document model, not React-owned markup. A
+          ;; bounded text transaction retains the user's selection and undo.
+          (.update root
+            (fn []
+              ;; Accepted form transactions can advance between render and
+              ;; this passive effect. Reconcile the owned query's current
+              ;; value, never overwrite newer typing with an earlier echo.
+              (let [text' (or (if *text @*text text) "")
+                    jobs' (if *jobs @*jobs jobs)
+                    live-ids' (set (map :id (remove #(or (:chip-dismissed? %) (:cancelled? %)) jobs')))]
+                (when-not (= text' (:text (model/document))) (model/replace-text! text'))
+                (doseq [key (media-keys ($getRoot))
+                        :let [node ($getNodeByKey key)]
+                        :when (not (live-ids' (model/upload-id node)))]
+                  (.remove node))))
+            (cond-> #js {:discrete true}
+              (not (some-> (.getRootElement root) (.contains (.-activeElement js/document))))
+              (doto (aset "tag" SKIP_DOM_SELECTION_TAG)))))) [root *text *jobs text live-ids])
+    children))
 
-(defn change-listener [on-change]
-  (.of (.-updateListener EditorView)
-       (fn [^js update]
-         (when (and (.-docChanged update)
-                    (not-any? #(.annotation % external-change) (array-seq (.-transactions update))))
-           (let [changes (atom [])]
-             (.iterChanges (.-changes update)
-                           (fn [from to _ _ inserted]
-                             (swap! changes conj {:from from, :to to, :inserted (.toString inserted)})))
-             (on-change (.toString (.. update -state -doc)) @changes)))
-         nil)))
+(def controlled-source-react (r/reactify-component (fn [props] [<controlled-source> props])))
+(def control-plugin
+  (editor/realmPlugin #js {:init (fn [realm]
+                                  (.pub realm editor/addEditorWrapper$ uploads/controller-react)
+                                  (.pub realm editor/addEditorWrapper$ controlled-source-react))}))
+
+(defc ^:private <attachments> []
+  (let [{:keys [insert-upload! enqueue!]} (r/use-context uploads/context)]
+    (when enqueue!
+      [:label.blog-image-editor__attach "Attach images "
+       [:input {:type "file"
+                :accept "image/*"
+                :multiple true
+                :on-change (fn [event]
+                             (when insert-upload! (insert-upload! (files/image-files (.. event -target -files))))
+                             (set! (.. event -target -value) ""))}]])))
 
 (defc <source>
-  {:spec-schema [:map [:text :string] [:on-change fn?] [:?uploads [:vector :map]]
-                      [:?render-upload fn?] [:?enqueue! fn?]]}
-  [{:keys [text on-change uploads render-upload enqueue!] :as props}]
-  :let [*hosts (r/atom {})
-        *widgets (atom {})]
-  (let [host-ref (r/use-ref nil)
-        view-ref (r/use-ref nil)
-        compartment (r/use-memo #(Compartment.) [])
-        listener-compartment (r/use-memo #(Compartment.) [])
-        report! (r/use-callback (fn [id host & [previous]]
-                                 (if host (swap! *hosts assoc id host)
-                                     (swap! *hosts #(if (identical? previous (get % id)) (dissoc % id) %)))) [])
-        hosts @*hosts
-        transfer! (fn [event transfer]
-                    (let [files (files/image-files (.-files transfer))
-                          view (.-current view-ref)]
-                      (when (and enqueue! view (seq files))
-                        (.preventDefault event)
-                        (let [range (.. view -state -selection -main)]
-                          (enqueue! files (.-from range) (.-to range) false))))) ]
-    (r/use-effect
-      (fn []
-        ;; Initial document/configuration belong to the native view lifetime.
-        ;; Later text, decorations and callbacks have separate configuration
-        ;; effects, so changes never reconstruct the view or its undo history.
-        (let [state (.create EditorState
-                             #js {:doc text
-                                  :extensions #js [basicSetup (markdown) (.-lineWrapping EditorView)
-                                                   (.of listener-compartment (change-listener on-change))
-                                                   (.of compartment
-                                                        (.of (.-decorations EditorView)
-                                                             (decorations uploads (count text) *widgets report!)))]})
-              view (EditorView. #js {:state state, :parent (.-current host-ref)})]
-          (set! (.-current view-ref) view)
-          (fn [] (.destroy view) (reset! *widgets {}) (set! (.-current view-ref) nil)))) [])
-    (r/use-effect
-      (fn []
-        (when-let [view (.-current view-ref)]
-          (.dispatch view #js {:effects (.reconfigure listener-compartment (change-listener on-change))}))) [on-change])
-    (r/use-effect
-      (fn []
-        (when-let [view (.-current view-ref)]
-          (let [live-ids (set (map :id (remove #(or (:chip-dismissed? %) (:cancelled? %)) uploads)))
-                before (.toString (.. view -state -doc))
-                change (when-not (= before text) (anchors/text-change before text))]
-            (swap! *widgets select-keys live-ids)
-            (.dispatch view
-                       (cond-> #js {:effects (.reconfigure compartment
-                                                         (.of (.-decorations EditorView)
-                                                              (decorations uploads (count text) *widgets report!)))}
-                         change (doto (aset "changes" (clj->js {:from (:from change), :to (:to change), :insert (:inserted change)}))
-                                      (aset "annotations" (.of external-change true)))))))) [text uploads])
-    [:div.md-source-editor
-     {:on-paste-capture #(transfer! % (.-clipboardData %))
-      :on-drop-capture #(transfer! % (.-dataTransfer %))
-      :on-drag-over #(when (some (fn [item] (= "file" (.-kind item))) (array-seq (.. % -dataTransfer -items)))
-                       (.preventDefault %))}
-     [:div {:ref host-ref}]
-     (when enqueue!
-       [:label.blog-image-editor__attach "Attach images "
-        [:input {:type "file", :accept "image/*", :multiple true
-                 :on-change (fn [event]
-                              (let [view (.-current view-ref)
-                                    range (.. view -state -selection -main)
-                                    files (vec (array-seq (.. event -target -files)))]
-                                (enqueue! files (.-from range) (.-to range) false)
-                                (set! (.. event -target -value) "")))}]])
-     (when render-upload
-       (for [{:keys [id] :as item} uploads
-             :let [host (get hosts id)]
-             :when host]
-         ^{:key id} (r/create-portal (r/as-element (render-upload item)) host id)))]))
+  {:spec-schema [:map [:text :string] [:on-change fn?] [:?text-query [:vector :any]]
+                      [:?uploads [:vector :map]] [:?render-upload fn?] [:?enqueue! fn?]]}
+  [{:keys [text text-query uploads] :as props}]
+  (let [inherited (r/use-context uploads/context)
+        capabilities (cond-> (merge inherited (select-keys props [:on-change :render-upload :enqueue! :on-anchors :on-removed :insert-ready!]))
+                       (nil? (:uploads-query inherited)) (assoc :uploads uploads))
+        params {:text text, :uploads uploads, :source? true}
+        plugins (r/use-memo
+                  #(into-array [(control-plugin)
+                                (editor/directivesPlugin #js {:directiveDescriptors (uploads/descriptors), :escapeUnknownTextDirectives true})
+                                (uploads/plugin params)
+                                (editor/toolbarPlugin #js {:toolbarContents (fn [] (r/as-element [<attachments>]))})])
+                  [params])]
+    [:r> (r/context-provider uploads/context)
+     #js {:value (cond-> (assoc capabilities :source? true, :source-text-query text-query)
+                   (nil? text-query) (assoc :source-text text))}
+     [:div.md-source-editor
+      [native-editor {:markdown text
+                      :plugins plugins
+                      :contentEditableClassName "md-source-content"
+                      :spellCheck false
+                      :onChange (fn [_ _] nil)}]]]))

@@ -203,8 +203,8 @@
   opacity: 1;
   background: color-mix(in srgb, var(--fg-1) 18%, transparent);
 }
-.md-source-editor .cm-editor { min-height: 24rem; }
-.md-source-editor .cm-content { font: inherit; }
+.md-source-content { min-height: 24rem; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.md-source-content p { margin: 0; }
 .md-editor-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; }
 .md-media-node {
   display: inline-block;

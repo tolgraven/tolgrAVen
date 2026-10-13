@@ -3,6 +3,7 @@
   (:require [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as r]
             [tolgraven.modules.markdown-editor.upload-tree :as tree]
+            [tolgraven.modules.markdown-editor.source-model :as source-model]
             [tolgraven.modules.blog-editor.anchors :as anchors]
             [tolgraven.modules.blog-editor.files :as files]
             [tolgraven.components.image :as image]
@@ -71,20 +72,22 @@
   (if (= "text" (:type node)) (:value node)
       (apply str (map text-value (:children node)))))
 
-(defn import-visitor [{:keys [text uploads]}]
+(defn import-visitor [{:keys [text uploads source?]}]
   #js {:priority 200
        :uploadAnchors true
        :testNode "root"
        :visitNode
        (fn [^js props]
          (let [parsed (js->clj (.-mdastNode props) :keywordize-keys true)
-               transformed (tree/insert-uploads
+               transformed (if source?
+                             (source-model/import-tree text uploads)
+                             (tree/insert-uploads
                              (tree/import-images parsed uploads)
                              (map (juxt :id :position) (remove #(or (:image-inserted? %) (:cancelled? %)) uploads))
                              (fn [node position]
                                (let [start (get-in node [:position :start :offset] 0)
                                      fragment (subs text start (max start (min (count text) position)))]
-                                 (count (text-value (js->clj (fromMarkdown fragment) :keywordize-keys true))))))]
+                                 (count (text-value (js->clj (fromMarkdown fragment) :keywordize-keys true)))))))]
            ;; The native visitor action consumes our pure transformed tree;
            ;; the SDK's parsed input stays unchanged.
            (.. props -actions (visitChildren (clj->js transformed) (.-lexicalParent props)))) )})
@@ -108,7 +111,7 @@
   :let [*draft (r/atom nil)
         *open? (r/atom false)
         *fields (r/atom {})]
-  (let [{:keys [uploads upload-query render-upload insert-ready! on-anchors on-removed]} (r/use-context context)
+  (let [{:keys [uploads upload-query source? render-upload insert-ready! on-anchors on-removed]} (r/use-context context)
         realm (editor/useRealm)
         cells (editor/useCellValues editor/exportVisitors$ editor/jsxComponentDescriptors$
                                     editor/jsxIsAvailable$ editor/toMarkdownExtensions$ editor/toMarkdownOptions$)
@@ -119,7 +122,7 @@
         item (if (and id upload-query)
                @(r/subscribe (upload-query id))
                (some #(when (= id (:id %)) %) uploads))
-        src (or (.. mdastNode -attributes -src) (get-in item [:asset :src]))
+        src (when-not source? (or (.. mdastNode -attributes -src) (get-in item [:asset :src])))
         key (.getKey lexicalNode)
         attributes (js->clj (.-attributes mdastNode) :keywordize-keys true)
         field-values @*fields
@@ -139,7 +142,8 @@
         ;; SDK's content signal need not fire. Record its native insertion once.
         (when (and id on-anchors)
           (.read (.getEditorState parentEditor)
-                 (fn [] (on-anchors (positions values (.getValue realm editor/markdown$))))))) [key parentEditor on-anchors values realm])
+                 (fn [] (on-anchors (if source? (:positions (source-model/document))
+                                     (positions values (.getValue realm editor/markdown$)))))))) [key parentEditor on-anchors values realm source?])
     (r/use-effect
       (fn []
         (when (and item insert-ready! (= :ready (:status item)) (not (:image-inserted? item)))
@@ -209,7 +213,7 @@
 (defc ^:private <controller>
   "Observe native selection/changes and expose insertion to paste/drop and the image picker."
   [{:keys [children]}]
-  (let [{:keys [enqueue! on-change on-removed uploads uploads-query] :as data} (r/use-context context)
+  (let [{:keys [enqueue! on-change on-removed source? uploads uploads-query] :as data} (r/use-context context)
         uploads' (if uploads-query @(r/subscribe uploads-query) uploads)
         pending-ids (mapv :id (remove :chip-dismissed? uploads'))
         insert-directive! (editor/usePublisher editor/insertDirective$)
@@ -221,10 +225,14 @@
         insert! (r/use-callback
                   (fn [files]
                     (when (and enqueue! (seq files))
-                      (let [additions (mapv (fn [file] {:id (str (random-uuid)), :name (.-name file), :file file}) files)]
-                        (enqueue! additions 0 0 true)
+                      (let [additions (mapv (fn [file] {:id (str (random-uuid)), :name (.-name file), :file file}) files)
+                            selection (when (and source? root)
+                                        (.read (.getEditorState root) #(source-model/selected-range (source-model/document))))
+                            start (min (or (:anchor selection) 0) (or (:head selection) 0))
+                            end (max (or (:anchor selection) 0) (or (:head selection) 0))]
+                        (enqueue! additions start end (not source?))
                         (doseq [{:keys [id]} additions]
-                          (insert-directive! (clj->js (tree/upload-node id 0))))))) [insert-directive! enqueue!])]
+                          (insert-directive! (clj->js (tree/upload-node id start))))))) [insert-directive! enqueue! root source?])]
     (r/use-effect
       (fn []
         (when (and root on-removed)
@@ -253,7 +261,18 @@
           ;; The SDK already exports only content changes. Observe its Markdown
           ;; cell, preserving its normalization/mute guards, instead of exporting
           ;; a second document for every selection transaction.
-          (.sub realm editor/markdown$
+          (if source?
+            (.registerUpdateListener root
+              (fn [update]
+                (when (and on-change (or (pos? (.. update -dirtyElements -size)) (pos? (.. update -dirtyLeaves -size))))
+                  (.read (.-editorState update)
+                    (fn []
+                      (let [document (source-model/document)]
+                        (on-change (:text document) nil (:positions document))))))
+                ;; Lexical accepts an optional cleanup from update listeners;
+                ;; an application callback's result must never become cleanup.
+                nil))
+            (.sub realm editor/markdown$
                 (fn [markdown]
                   (when (and on-change (some? (.getRootElement root))
                              (not (.getValue realm editor/initialMarkdownNormalize$))
@@ -262,7 +281,7 @@
                       (.read (.getEditorState root)
                              (fn [] (on-change markdown nil (if (seq pending-ids) (positions values markdown) {}))))
                       (on-change markdown)))
-                  nil)))) [root realm on-change enqueue! values pending-ids])
+                  nil))))) [root realm on-change enqueue! values pending-ids source?])
     [:r> (r/context-provider context) #js {:value (assoc data :insert-upload! insert!)}
      [:div.md-rich-upload-host
      {:on-paste-capture (fn [event]

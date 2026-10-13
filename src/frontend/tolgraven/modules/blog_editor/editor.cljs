@@ -94,6 +94,7 @@
      (m/<> {:module :markdown-editor, :view :editor, :load-on :immediate}
              {:text text
               :source? (not @*rich?)
+              :text-query [:form-field [:post-blog :text]]
               :uploads uploads
               :uploads-query [:blog-editor/uploads owner]
               :upload-query (r/use-callback (fn [id] [:blog/state [:image-uploads id]]) [])
@@ -103,7 +104,11 @@
                                               (r/dispatch-sync [:blog/image-upload-insert owner (:id item) (:attempt item)
                                                                 (get-in item [:asset :src]) insert!])) [owner])
               :on-change (r/use-callback (fn [text & [changes positions]]
-                                           (r/dispatch [:blog/editor-text-changed owner text changes positions])) [owner])
+                                           ;; Literal native input must be accepted before the
+                                           ;; next key transaction; queued echoes can otherwise
+                                           ;; overwrite newer text during controlled reconciliation.
+                                           ((if @*rich? r/dispatch r/dispatch-sync)
+                                            [:blog/editor-text-changed owner text changes positions])) [owner])
               :on-anchors (r/use-callback #(r/dispatch [:blog/editor-anchors owner %]) [owner])
               :on-removed (r/use-callback #(r/dispatch [:blog/image-anchor-removed owner %]) [owner])
               :upload! upload!

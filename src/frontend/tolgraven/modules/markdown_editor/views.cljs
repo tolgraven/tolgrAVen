@@ -295,7 +295,7 @@
        (editor/linkPlugin)
        (editor/linkDialogPlugin)
        (editor/tablePlugin)
-       (editor/codeBlockPlugin #js {:defaultCodeBlockLanguage "clojure", :codeBlockEditorDescriptors code/descriptors})
+       (editor/codeBlockPlugin #js {:defaultCodeBlockLanguage "", :codeBlockEditorDescriptors code/descriptors})
        (editor/imagePlugin #js {:imageUploadHandler upload!
                                 :imageAutocompleteSuggestions (clj->js image-urls)
                                 :disableImageResize true
@@ -308,7 +308,7 @@
 (defc <editor>
   "Edit canonical Markdown through the lazy rich-text SDK; only external changes reset SDK content."
   {:spec-schema [:map [:text :string] [:on-change fn?] [:?upload! fn?] [:?image-urls [:vector :string]] [:?assets [:vector :map]] [:?library fn?]
-                      [:?source? :boolean] [:?uploads [:vector :map]] [:?uploads-query [:vector :any]] [:?upload-query fn?]
+                      [:?source? :boolean] [:?text-query [:vector :any]] [:?uploads [:vector :map]] [:?uploads-query [:vector :any]] [:?upload-query fn?]
                       [:?render-upload fn?] [:?enqueue! fn?] [:?insert-ready! fn?] [:?on-anchors fn?] [:?on-removed fn?]]}
   [{:keys [text on-change upload! image-urls assets library source? uploads uploads-query upload-query render-upload enqueue! insert-ready! on-anchors on-removed] :as props}]
   :let [*error (r/atom nil)

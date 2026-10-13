@@ -17,9 +17,9 @@
             [tolgraven.modules.blog-editor.files :as file-boundary]
             [tolgraven.modules.blog-editor.views :as views]
             [tolgraven.modules.markdown-editor.source :as source]
+            [tolgraven.modules.markdown-editor.source-model :as source-model]
             [tolgraven.components.content.upload :as upload]
             [tolgraven.schema.dsl :as dsl]
-            ["@codemirror/view" :refer [EditorView]]
             ["lexical" :refer [getNearestEditorFromDOMNode $getNearestNodeFromDOMNode $createNodeSelection $setSelection KEY_BACKSPACE_COMMAND]]
             [malli.core :as m]))
 
@@ -120,10 +120,22 @@
     event))
 
 (defn source-view [element]
-  (some-> (.querySelector element ".cm-editor") (EditorView.findFromDOM)))
+  (some-> (.querySelector element ".md-source-content") (getNearestEditorFromDOMNode)))
 
 (defn source-text [element]
-  (some-> (source-view element) .-state .-doc .toString))
+  (when-let [view (source-view element)]
+    (.read (.getEditorState view) #(:text (source-model/document)))))
+
+(defn edit-source! [view changes & [selection]]
+  ;; Native document transactions are test setup, never DOM mutation.
+  (.update view
+    (fn []
+      (doseq [{:keys [from to insert]} (reverse changes)]
+        (when-let [range (source-model/select-range! (source-model/document) from (or to from))]
+          (.insertRawText range insert)))
+      (when selection
+        (source-model/select-range! (source-model/document) (:anchor selection) (or (:head selection) (:anchor selection)))))
+    #js {:discrete true}))
 
 (deftest source-view-retains-selection-history-and-chips-across-callback-and-progress-updates
   (async done
@@ -144,22 +156,46 @@
           (.then (fn [_] (support/wait-for! #(.querySelector element ".upload-chip"))))
           (.then (fn [_]
                    (let [view (source-view element)]
-                     (.dispatch view #js {:changes #js {:from 2, :insert "x"}, :selection #js {:anchor 3}})
+                     (edit-source! view [{:from 2, :insert "x"}] {:anchor 3})
                      (swap! *item assoc :status :uploading :progress {:loaded 40, :total 100})
                      (-> (support/settle!)
                          (.then (fn [_]
                                   (is (identical? view (source-view element)))
-                                  (is (= 3 (.. view -state -selection -main -head)))
+                                  (is (= 3 (.read (.getEditorState view) #(:head (source-model/selected-range (source-model/document))))))
                                   (is (= "Hexllo" (source-text element)))
                                   (is (.querySelector element ".upload-chip progress"))
                                   (.focus view)
-                                  (.dispatchEvent (.querySelector element ".cm-content")
+                                  (.dispatchEvent (.querySelector element ".md-source-content")
                                                   (js/KeyboardEvent. "keydown" #js {:key "z", :code "KeyZ", :metaKey true
                                                                                     :bubbles true, :cancelable true}))))))))
           (.then (fn [_] (support/wait-for! #(= "Hello" (source-text element)))))
           (.then (fn [_] (is (= "Hello" @*text)) (is (.querySelector element ".upload-chip"))))
           (.catch #(is false (str %)))
           (.finally (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
+
+(deftest source-input-is-accepted-before-the-next-native-key-transaction
+  (async done
+    (let [before @rfdb/app-db
+          element (.createElement js/document "div")
+          *root (atom nil)]
+      (rf/dispatch-sync [:form-field [:post-blog] {:text "", :title "", :tags ""}])
+      (.appendChild (.-body js/document) element)
+      (-> (support/create-root! element)
+          (.then (fn [root] (reset! *root root)
+                   (support/render! root [editor/<markdown-editor> {:owner "rapid-source", :source? true}])))
+          (.then (fn [_] (support/wait-for! #(source-view element))))
+          (.then (fn [_]
+                   (let [view (source-view element)]
+                     (doseq [[index character] (map-indexed vector "```cljs")]
+                       (edit-source! view [{:from index, :insert (str character)}] {:anchor (inc index)})
+                       (is (= (subs "```cljs" 0 (inc index))
+                              (get-in @rfdb/app-db [:state :form-field :post-blog :text]))
+                           "Accepted form input never trails the next native key transaction"))
+                     (support/settle!))))
+          (.then (fn [_] (is (= "```cljs" (source-text element)))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (when @*root (support/unmount! @*root))
+                      (.remove element) (restore-fixture-db! before) (done)))))))
 
 (deftest rich-upload-retains-its-native-anchor-and-completes-once-under-strict-mode
   (async done
@@ -408,9 +444,9 @@
               (await! (support/render! root [editor/<markdown-editor> {:owner "editor-test", :source? true, :exit (partial editor/dispose! "editor-test")}]))
               (await! (support/wait-for! #(source-view element)))
               (let [view (source-view element)
-                    textarea (.querySelector element ".cm-content")
+                    textarea (.querySelector element ".md-source-content")
                     file (js/File. #js ["sample"] "pasted.png" #js {:type "image/png"})]
-                (.dispatch view #js {:selection #js {:anchor 5, :head 5}})
+                (edit-source! view [] {:anchor 5, :head 5})
                 (is (.-defaultPrevented (transfer! textarea "paste" file)))
                 (await! (support/wait-for! #(first @*calls)))
                 (let [{:keys [method data success progress]} (first @*calls)]
@@ -418,8 +454,8 @@
                   (is (instance? js/FormData data))
                   (is (= "pasted.png" (.-name (.get data "file"))))
                   (is (= "Hello end" (source-text element)))
-                  (await! (support/wait-for! #(.querySelector element ".cm-content .upload-chip")))
-                  (is (.querySelector element ".cm-content .upload-chip") "Pending upload is graphical at the source anchor")
+                  (await! (support/wait-for! #(.querySelector element ".md-source-content .upload-chip")))
+                  (is (.querySelector element ".md-source-content .upload-chip") "Pending upload is graphical at the source anchor")
                   (progress {:loaded 40, :total 100})
                   (await! (support/wait-for! #(= "40" (some-> (.querySelector element "progress") (.getAttribute "value")))))
                   (is (= "100" (.getAttribute (.querySelector element "progress") "max")))
@@ -436,8 +472,8 @@
                   ((:progress (first @*calls)) {:loaded 100, :total 100})
                   (await! (support/settle!))
                   (is (nil? (.getAttribute (.querySelector element "progress") "value")) "Late transfer events cannot change processing")
-                  (.dispatch view #js {:changes #js [#js {:from 0, :insert "New intro "}
-                                                     #js {:from 9, :insert " later edit"}]})
+                  (edit-source! view [{:from 0, :insert "New intro "}
+                                      {:from 9, :insert " later edit"}])
                   ((:success poll) {:id "job-first", :status "ready", :asset asset})
                   (await! (support/wait-for! #(.includes (source-text element) "https://media.test/image.png")))
                   (is (= "New intro Hello![pasted.png](https://media.test/image.png) end later edit"
@@ -493,9 +529,9 @@
               (await! (support/render! root [editor/<markdown-editor> {:owner owner, :source? true, :exit (partial editor/dispose! owner)}]))
               (await! (support/wait-for! #(source-view element)))
               (let [view (source-view element)
-                    textarea (.querySelector element ".cm-content")
+                    textarea (.querySelector element ".md-source-content")
                     file (js/File. #js ["sample"] "dropped.png" #js {:type "image/png"})]
-                (.dispatch view #js {:selection #js {:anchor 5, :head 5}})
+                (edit-source! view [] {:anchor 5, :head 5})
                 (is (.-defaultPrevented (transfer! textarea "drop" file)))
                 (reset! *stage "first request")
                 (await! (support/wait-for! #(first @*calls)))
@@ -516,7 +552,7 @@
                 ((:success (first @*calls)) {:id "old", :status "ready", :asset asset})
                 (await! (support/settle!))
                 (is (not (.includes (source-text element) "https://media.test/image.png")))
-                (is (.querySelector element ".cm-content .upload-chip"))
+                (is (.querySelector element ".md-source-content .upload-chip"))
                 (let [remove (some #(when (= "Remove" (.-textContent %)) %)
                                    (array-seq (.querySelectorAll element "button")))]
                   (.click remove))
@@ -533,7 +569,7 @@
                   (.setData transfer "text/plain" "ordinary text")
                   (js/Object.defineProperty event "clipboardData" #js {:value transfer})
                   (.dispatchEvent textarea event)
-                  ;; CodeMirror handles native text paste itself, including
+                  ;; The native text document handles ordinary paste itself, including
                   ;; preventDefault. Verify the user's actual editing result.
                   (await! (support/wait-for! #(= "Draftordinary text" (source-text element))))
                   (is (= "Draftordinary text" (source-text element)))))))

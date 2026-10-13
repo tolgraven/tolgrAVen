@@ -13,8 +13,9 @@
 
 (r/reg-sub :blog-editor/uploads
   :<- [:blog/state [:image-uploads]]
-  (fn [uploads [_ owner]]
-    (vec (sort-by :order (filter #(= owner (:owner %)) (vals uploads))))))
+  (fn [uploads query]
+    (let [[_ owner] (or (:re-frame/query-v query) query)]
+      (vec (sort-by :order (filter #(= owner (:owner %)) (vals uploads)))))))
 
 (r/reg-event-db :blog/editor-mounted
   {:args [:tuple :string]}
@@ -54,7 +55,7 @@
     (update-in db uploads-path
                (fn [uploads]
                  (into {} (map (fn [[id upload]]
-                                 [id (if (and (= owner (:owner upload)) (:sdk? upload) (contains? positions id))
+                                 [id (if (and (= owner (:owner upload)) (contains? positions id))
                                        (assoc upload :position (get positions id), :anchor-attached? true) upload)])) uploads)))))
 
 (r/reg-event-db :blog/image-chip-exited
