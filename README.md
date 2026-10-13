@@ -21,8 +21,10 @@ lein repl
 ```
 
 The development server runs at http://localhost:4000. Run `npm run dev` in a
-second terminal to watch CSS. In the Clojure REPL, `(cljs-repl)` selects the
-`:app-dev` browser runtime and watches the `:ssr` Node target. SSR is enabled by
+second terminal to watch CSS. The Clojure REPL becomes available before the
+initial Shadow compilations finish. After a short deferral, watches start in
+order: `:return-worker`, `:ssr` when enabled, then `:app-dev`. `(cljs-repl)` waits
+for those watches and selects the browser runtime in your session. SSR is enabled by
 default; configure `:ssr {:enabled true :render-workers 2 :worker "target/ssr/site.js"
 :node-binary "node"}` in `config/local.dev.edn`. See [SSR configuration](doc/ssr.md). `(restart-handler)` reloads the Ring handler after
 reloading changed backend namespaces.

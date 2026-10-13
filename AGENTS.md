@@ -83,7 +83,9 @@ Do not retain completed investigation diaries or historical test counts as curre
   constraints without logging raw values, credentials, or event arguments.
 
 ## Build, Test, and Development Commands
-- `lein repl`: start the HTTP server and Shadow CLJS REPL (see `README.md`).
+- `lein repl`: start HTTP and the Clojure REPL; deferred Shadow watches compile
+  sequentially without blocking REPL acknowledgement. `(cljs-repl)` waits for
+  startup and selects the browser runtime in the calling session. See `README.md`.
 - Browser builds discover `modules/*/module.cljs` through `tolgraven.build.browser/process`;
   the literal spec `:id` owns the bundle ID and namespace `:bundle/depends-on`
   declares extra code dependencies. Runtime inventories track declaration resources
@@ -132,7 +134,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - The CIDER Lein plugin supplies CIDER middleware; list Piggieback and Shadow
   explicitly in the development REPL handler, and
   Piggieback in Shadow's separate nREPL configuration. Keep the cold-start timeout
-  large enough for the initial watches; see `doc/dependencies.md`.
+  large enough for cold application initialization; watches run afterward.
+  See `doc/dependencies.md`.
 - Keep Ring mocks in `:project/test`, prototype dependencies/source paths in `:experiments`, and the S3 wagon in `:s3-publish`.
 - The personal `deploy-private` alias uses `lein-shell` and AWS CLI with a seeded local Maven staging repository; see `doc/dependencies.md` and `doc/lein-profiles.clj`.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
