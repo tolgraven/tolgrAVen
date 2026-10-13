@@ -7,6 +7,8 @@
             [tolgraven.component.hydration :as hydration]
             [tolgraven.browser-resources :as resources]
             [tolgraven.react :as rf]
+            [tolgraven.components.select :as select]
+            [tolgraven.content.schema :as content-schema]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.render-context :as context]
             [tolgraven.loader :as loader]
@@ -33,6 +35,7 @@
    [:?editable? :boolean]
    [:?on-code-change fn?]
    [:?on-language-change fn?]
+   [:?language-options content-schema/code-languages]
    [:?on-meta-change fn?]
    [:?meta :?string]])
 
@@ -324,17 +327,29 @@
        [:div.code-block-content [<formatter> code options on-ready!]]
        (when (:editable? options)
          [:div.code-editor-fields
-          {:on-key-down-capture #(.stopPropagation %)}
+          {:content-editable false
+           ;; Child controls must receive their own keyboard event before the
+           ;; fence editor keeps it from the surrounding rich-text document.
+           :on-key-down #(.stopPropagation %)}
           [:label "Code"
            [:textarea {:value code
                        :spell-check false
                        :rows (max 3 (min 24 line-count))
                        :on-change #(when-let [change! (:on-code-change options)] (change! (.. % -target -value)))}]]
           [:label "Language"
-           [:input {:type "text"
-                    :value (or (:language options) "")
-                    :placeholder "Plain text"
-                    :on-change #(when-let [change! (:on-language-change options)] (change! (.. % -target -value)))}]]
+           [select/<search-select>
+            {:label "Code language"
+             :value (or (:language options) "")
+             :allow-custom? true
+             :options (into [{:value "", :label "Auto detect"}]
+                            (remove #(empty? (:value %)))
+                            (if (contains? options :language-options)
+                              (:language-options options)
+                              (or @(rf/subscribe [:content [:common :code-languages]])
+                                  [{:value "clojure", :label "Clojure"}
+                                   {:value "cljs", :label "ClojureScript"}
+                                   {:value "javascript", :label "JavaScript"}])))
+             :on-change #(when-let [change! (:on-language-change options)] (change! %))}]]
           [:label "Fence metadata"
            [:input {:type "text"
                     :value (or (:meta options) "")

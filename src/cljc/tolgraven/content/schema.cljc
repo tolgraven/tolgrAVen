@@ -1,7 +1,8 @@
 (ns tolgraven.content.schema
   "Public CMS sections, after semantic normalization. Editor-owned optional
    fields may be absent; present values must have the shape consumed by views."
-  (:require [tolgraven.schema.common :as c]
+  (:require [clojure.string :as string]
+            [tolgraven.schema.common :as c]
             [tolgraven.media.schema :as media-schema]
             #?(:clj [tolgraven.build.site :refer [when-enabled]]))
   #?(:cljs (:require-macros [tolgraven.build.site :refer [when-enabled]])))
@@ -30,6 +31,13 @@
 (def cv-body
   (c/optional-map {:intro :string :caption :string :background-color-indexes [:sequential :int]
                    :timeline [:sequential timeline-column] :skills [:map-of c/named c/strings]}))
+(def code-language
+  [:map
+   [:value [:re #"^[a-zA-Z0-9_+-]{1,80}$"]]
+   [:label [:and [:string {:min 1, :max 120}] [:fn #(and (string? %) (not (string/blank? %)))]]]])
+(def code-languages
+  [:and [:vector {:max 200} code-language]
+   [:fn #(and (vector? %) (= (count %) (count (distinct (map :value %)))))]])
 (def footer-item
   (c/optional-map {:id c/id :email :string :title :string :text c/strings :logo media
                    :links [:sequential link] :images [:sequential media]}))
@@ -55,6 +63,7 @@
    :docs (when-enabled :docs nil (c/optional-map {:heading heading}))
    :common (c/optional-map {:banner-heading heading
                             :user-avatar-fallback :string
+                            :code-languages code-languages
                             :image-assets [:map-of :string media-schema/asset]})
    :footer [:vector footer-item]
    :post-footer [:vector footer-item]}))
