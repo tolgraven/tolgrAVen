@@ -96,6 +96,9 @@
                            (if attrs? children (rest form)))
                      (meta form)))
                  form)]
+      ;; :> recursively converts props, including :value, into JS. Raw provider
+      ;; props keep the diagnostic identity itself a Clojure map for consumers;
+      ;; only React's outer props envelope is native.
       [:r> (rf/context-provider parent-context) #js {:value (.-current *identity)}
        [:> rf/profiler
         {:id qualified
