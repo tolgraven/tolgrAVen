@@ -2,12 +2,14 @@
 {;:lein {:profile "+dev"}
  :nrepl {:middleware [cider.piggieback/wrap-cljs-repl]}
  :source-paths ["src/backend" "src/frontend" "src/cljc"]
+ :js-options {:js-package-dirs ["target/generated-sdk" "node_modules"]}
 
  :builds
  ;; SSR is an eager Node program, deliberately without browser :modules.
  ;; The worker entry requires all supported page implementations at startup.
  {:ssr {:target :node-script
              :build-hooks [(website.build.modules/configure-site)
+                           (website.modules.markdown-editor.build/configure)
                            (website.build.modules/clean-site-output)
                            (website.build.modules/check-site-sources)
                            (website.build.compat/rrb-vector)
@@ -61,6 +63,7 @@
              :compiler-options {:reader-features #{:browser :dev :browser-test}}
              :closure-defines {malli.registry/type "custom"}
              :build-hooks [(website.build.modules/configure-site)
+                           (website.modules.markdown-editor.build/configure)
                            (website.build.modules/clean-site-output)
                            (website.build.modules/check-site-sources)
                            (website.build.compat/rrb-vector)
@@ -75,6 +78,7 @@
    ; :dev-http {4001 "resources/public"}
    :target website.build.browser/process
              :build-hooks [(website.build.modules/configure-site)
+                           (website.modules.markdown-editor.build/configure)
                            (website.build.modules/clean-site-output)
                            (website.build.modules/check-site-sources)
                            (website.build.compat/rrb-vector)]
@@ -117,6 +121,7 @@
 
   :app
   {:build-hooks [(website.build.modules/configure-site)
+                           (website.modules.markdown-editor.build/configure)
                            (website.build.modules/clean-site-output)
                            (website.build.modules/check-site-sources)
                            (website.build.compat/rrb-vector)

@@ -173,6 +173,10 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Shadow owns the CLJS/Closure compiler graph in `:provided`; explicit production build commands include that profile, while runtime packaging excludes it. Keep the managed Codox analyzer version aligned with Shadow.
 - Use locked local npm tools. Supabase uses its npm SDK inside the lazy `:supabase` module;
   `npm run vendor:sync` maintains only the preserved legacy UMD reference.
+- The editor configure hook generates a version/hash-checked selective public SDK
+  entry in ignored `target/generated-sdk`. All editor browser/test/SSR builds use
+  the same resolver; production audits reject unused CodeMirror/Lezer/diff-source.
+  Keep original SDK modules and shared React/Gurx ownership. See `doc/markdown-authoring.md`.
 - 10x/re-frisk are opt-in through `:legacy-debug`; default development retains the custom console and re-frame-pair tracing. See `doc/re-frame-pair.md`.
 - Release builds reject development inspectors in their resolved source graph.
   Periodically remove completed isolated `.shadow-cljs/builds/audit-*` caches;

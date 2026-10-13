@@ -26,6 +26,12 @@
               names (vec (keep #(when-not (:dead %) (:output-name %)) modules))]
           (spit (str directory "/sources.edn") (pr-str graph))
           (spit (str directory "/bundles.json") (json/write-str names))
+          (doseq [[module sources] graph
+                  source sources
+                  :when (re-find #"@codemirror/|(?:^|/)codemirror/|@lezer/|plugins/diff-source/|cm6-theme"
+                                 (:resource-name source ""))]
+            (throw (ex-info "An unused source-editor dependency entered the production graph"
+                            (assoc source :module module))))
           ;; Keep the important boundaries reviewable in every future audit.
           (doseq [[module sources] graph
                   :when (not= :highlight module)

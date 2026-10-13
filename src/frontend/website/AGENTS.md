@@ -3,6 +3,12 @@
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.
 
+- The Markdown editor configure hook generates a pinned selective public SDK
+  entry under ignored `target/generated-sdk`; Shadow's declared package directory
+  resolves it consistently for browser, test and Node builds. Never edit shared
+  `node_modules` or copy private SDK implementations. Review the version/hash pin
+  and public exports when upgrading. See `doc/markdown-authoring.md`.
+
 ## Implementation priority: Reagent and re-frame
 
 - Apply the root guide's Reagent/re-frame-first principles to every frontend change,
