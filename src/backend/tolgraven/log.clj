@@ -9,14 +9,6 @@
             [tolgraven.config :refer [env]]
             [mount.core :refer [defstate]]))
 
-;; log uncaught exceptions in threads how combine this with aviso??
-(Thread/setDefaultUncaughtExceptionHandler
-  (reify Thread$UncaughtExceptionHandler
-    (uncaughtException [_ thread ex]
-      (timbre/error ex))))
-
-
-
 (defn log-by-ns-pattern
   [ns-patterns & [{:keys [?ns-str config level] :as opts}]]
   (let [ns-filter #(-> %
@@ -74,10 +66,13 @@
   ;; Timbre already formats logged Throwables with clj-commons/pretty. Keep the
   ;; Throwable intact through tools.logging and Java bridges for every appender.
   (pretty-repl/install-pretty-exceptions)
+  ;; Pretty installs a default handler too; the mounted logger owns the final
+  ;; handler, rather than namespace load order deciding how failures are logged.
   (Thread/setDefaultUncaughtExceptionHandler
     (reify Thread$UncaughtExceptionHandler
-      (uncaughtException [_ _ ex]
-        (timbre/error ex))))
+      (uncaughtException [_ thread ex]
+        (timbre/error ex {:what :uncaught-exception
+                         :where (str "Uncaught exception on " (.getName thread))}))))
   (init-timbre))
 
 (defstate ^{:on-reload :noop} logger-timbre ;problem: afterglow timbre (im guessing) overwrites our config...

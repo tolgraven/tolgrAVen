@@ -4,8 +4,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 `doc/site-provisioning.md` for operating and configuration details.
 
 - The handler loads `tolgraven.log` before its other dependencies so Mount
-  initializes logging before application startup. It owns Timbre appenders and
-  pretty exceptions; keep Throwable
+  initializes logging before application startup. It owns Timbre appenders,
+  pretty exceptions and the default uncaught exception handler. Namespace loading
+  must not replace that handler; keep Throwable
   objects intact through tools.logging and SLF4J. JBoss provider selection is a
   launch-time JVM option shared by Lein and Docker, before Undertow loads.
   See `doc/dependencies.md` for logging dependency ownership.

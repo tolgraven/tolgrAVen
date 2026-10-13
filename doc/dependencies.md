@@ -136,7 +136,10 @@ Timbre is the application logging backend. The handler loads `tolgraven.log`
 first so Mount initializes its configuration before application services.
 `tolgraven.log` owns console output
 (info and above), rotating `log/tolgraven.log` output, namespace thresholds and
-pretty exceptions. `clojure.tools.logging` callers use Timbre's existing adapter;
+pretty exceptions. Its initialization also installs the sole application default
+uncaught exception handler, passing the Throwable and failing thread's name to
+Timbre. Loading `core` or `log` must not replace that handler.
+`clojure.tools.logging` callers use Timbre's existing adapter;
 Java SLF4J callers use `slf4j-timbre`. Keep both adapters: application and dependency
 code use these APIs. Encore is used directly by the namespace filter and required
 by Timbre. `org.clj-commons/pretty` supplies both Timbre's exception formatter and
