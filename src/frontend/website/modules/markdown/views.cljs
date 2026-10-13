@@ -86,10 +86,10 @@
 (defn <markdown-image> [{:keys [src alt title]} assets allow-images? & [readiness]]
   (let [asset (get assets src)
         attrs (merge (authored-media/readiness-attrs src readiness)
-                     {:src (or (:src asset) src)
-                      :alt (or alt (:alt asset) "")
-                      :title title
-                      :loading "lazy"})]
+                     (cond-> {:src (or (:src asset) src)
+                              :alt (or alt (:alt asset) "")
+                              :loading "lazy"}
+                       (some? title) (assoc :title title)))]
     (when (or asset allow-images?)
       ^{:key (authored-media/preview-key src readiness)}
       [image/<picture> (cond-> attrs asset (assoc :asset asset))])))
