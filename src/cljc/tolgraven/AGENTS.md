@@ -116,4 +116,5 @@ server format handlers retain their native JVM Java-time support.
 
 - `build/assets.clj` prepares the existing Optimus inventory after production
   Shadow/CSS outputs. Keep asset transformations out of runtime startup and preserve
-  the CSS/font reference contract; `doc/middleware.md` describes the artifact.
+  the CSS/font reference contract. Its explicit resource-root entry point also serves
+  isolated local production output; `doc/middleware.md` describes the artifact.

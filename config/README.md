@@ -8,7 +8,11 @@ Active runtime files use the same name in each environment:
 
 Dev/test files are private and ignored by Git and Docker. Production defaults are
 tracked and contain no secrets; deployment credentials come from environment
-variables or an external `-Dconf` file. `config/` contains tracked examples only.
+variables or an external `-Dconf` file. `config/` contains tracked examples and
+the public `prod-local.edn` override.
+The `prod` Lein profile merges that override with production defaults for local
+HTTP on loopback and local renderer/converter paths. Packaged production uses the
+production config directly, retaining its TLS proxy policy.
 
 For a new checkout or worktree:
 

@@ -34,6 +34,9 @@
   ;; actual production constructor owns every request/response wrapper and order.
   (with-redefs [config/env (dissoc (if (map? config/env) config/env {}) :dev :test :stage)
                 environment/defaults {:middleware identity}
+                ;; Inventory fixtures do not require a compiled browser app.
+                ;; Real preflight is checked separately in assets-test.
+                middleware/ensure-production-assets! (constantly nil)
                 manifest/read-prepared! (constantly inventory)]
     (middleware/wrap-base handler)))
 

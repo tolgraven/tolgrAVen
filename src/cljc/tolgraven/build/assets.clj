@@ -78,13 +78,9 @@
      (replace-file! temporary file)
      file)))
 
-(defn -main [& args]
-  (when-not (every? #{"--build-styles"} args)
-    (throw (ex-info "Expected only optional --build-styles" {})))
-  (when (some #{"--build-styles"} args)
-    (let [process (.start (.inheritIO (ProcessBuilder. ["npm" "run" "build"])))]
-      (when-not (zero? (.waitFor process))
-        (throw (ex-info "Stylesheet build failed; no asset manifest published" {})))))
+(defn prepare!
+  "Prepare the current classpath's released assets into an explicit resource root."
+  [root]
   (let [get-assets (requiring-resolve 'tolgraven.middleware/get-assets)
         source-maps (requiring-resolve 'tolgraven.middleware/module-source-maps)
         browser-modules ((requiring-resolve 'tolgraven.layout/browser-modules))
@@ -96,6 +92,16 @@
                :styles @(requiring-resolve 'tolgraven.loader.style-catalog/stylesheet-bundles)}
         loaded (vec (strategies/guard-against-duplicate-assets (get-assets)))
         assets (vec (optimize (source-maps loaded) {}))
-        file (write-prepared! "resources" build (map #(str "public" (:path %)) loaded) assets)]
+        file (write-prepared! root build (map #(str "public" (:path %)) loaded) assets)]
     (println "Prepared" (count assets) "assets in" (str file))
-    (shutdown-agents)))
+    file))
+
+(defn -main [& args]
+  (when-not (every? #{"--build-styles"} args)
+    (throw (ex-info "Expected only optional --build-styles" {})))
+  (when (some #{"--build-styles"} args)
+    (let [process (.start (.inheritIO (ProcessBuilder. ["npm" "run" "build"])))]
+      (when-not (zero? (.waitFor process))
+        (throw (ex-info "Stylesheet build failed; no asset manifest published" {})))))
+  (prepare! "resources")
+  (shutdown-agents))

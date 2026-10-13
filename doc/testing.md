@@ -22,7 +22,8 @@ See [Runtime configuration](configuration.md) for defaults and integration keys.
 
 Backend handler/layout fixtures need generated CSS and the real `:document`
 bootstrap. In an isolated agent snapshot, build those prerequisites and run the
-suite together so each command sees the same output:
+suite together so each command sees the same output. Use the existing Shadow
+worker when a target is watched; the isolated agent snapshot preserves that output:
 
 ```sh
 /Users/tol/.local/bin/tolgraven-cpu run -- sh -c 'npm run build && lein with-profile prod,provided run -m shadow.cljs.devtools.cli release document && lein with-profile +project/test test'
@@ -38,6 +39,8 @@ ownership and cleanup; mounted/browser checks below still establish actual pixel
 and transitions.
 
 Browser suite:
+
+Build `:document` first as above; its scripts are required by generated HTML.
 
 1. Compile the existing `:ssr` target. If it is already watched, use that Shadow
    worker (`shadow.cljs.devtools.api/watch-compile!`), not a competing compilation.
@@ -96,6 +99,36 @@ with working Supabase and Strapi configuration. Then:
 ```sh
 bb test:integration --app http://127.0.0.1:4000
 ```
+
+For the production server in a local checkout, build CSS and release the document bootstrap,
+browser, renderer and return-worker into separate output first, then start it over HTTP:
+
+```sh
+bb prod:build
+PORT=4011 lein with-profile prod run
+bb test:integration --app http://127.0.0.1:4011
+```
+
+The `prod` Lein profile overlays `config/prod-local.edn` on the production defaults:
+loopback listening, HTTP session/CSRF middleware, and the local SSR renderer at
+`target/production/ssr/site.js`. HTTPS cannot connect to that HTTP listener. The packaged
+server keeps its TLS proxy policy and `/app/ssr/site.js` path. The `run` command
+starts the backend; it does not compile missing frontend/renderer outputs.
+`bb prod:build` releases all four Shadow targets sequentially with separate build
+IDs/caches, then prepares the existing Optimus inventory in the same isolated
+resource root. Document/browser/return-worker resources live in `target/production/resources`,
+which the `prod` profile places ahead of shared resources; the watched `app-dev`
+files remain untouched. Startup checks the release browser manifest and both
+`/js/document/head.js`, `/js/document/entrance.js` and prepared inventory presence before initialization logging
+and Optimus asset loading. Missing files report `bb prod:build` and their paths;
+a development browser manifest is rejected instead of serving the reconnect HUD.
+The prepared manifest validates the selected build and source digests when the
+handler is constructed; missing or stale output never triggers runtime rebuilding.
+Agent builds use the
+[CPU controls](resource-controls.md); copy their generated `target/production`
+directory back from the reported isolated checkout before starting the server.
+Without configured providers this server uses seed content, which cannot pass
+live CMS/database integration. Export the real provider settings for live checks.
 
 For a locally published production container, add `--forwarded-proto https` to
 model its usual TLS-terminating proxy. Otherwise Ring's secure defaults redirect
