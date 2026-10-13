@@ -77,7 +77,9 @@
                                                 [<formatted> component args committed!]))}))))))}))
 
 (defc <formatter> [code options on-ready!]
-  (let [[defer? _] (r/use-state #(and (not context/*server?*) (restore/initial-hydration?)))
+  (let [inherited-hydration? (r/use-context restore/hydrating-context)
+        [defer? _] (r/use-state #(and (not context/*server?*)
+                                     (or inherited-hydration? (restore/initial-hydration?))))
         release-hydration! (hydration/use-deferred! defer?)
         committed! (r/use-callback
                      (fn [] (release-hydration!) (on-ready!))
@@ -265,12 +267,14 @@
    :icons ["solid/copy" "solid/check" "solid/ellipsis-h" "solid/exclamation"
            "solid/align-left" "solid/angle-down" "solid/angle-up"]}
   [code & options]
-  (let [options (options-map options)
+  (let [inherited-hydration? (r/use-context restore/hydrating-context)
+        options (options-map options)
         [wrap? set-wrap!] (r/use-state (boolean (:wrap? options)))
         [folded? set-folded!] (r/use-state (boolean (:folded? options)))
         [copy-label copy!] (use-copy-feedback code)
         [ssr-pending? set-ssr-pending!]
-        (r/use-state #(and (not context/*server?*) (restore/initial-hydration?)))
+        (r/use-state #(and (not context/*server?*)
+                          (or inherited-hydration? (restore/initial-hydration?))))
         on-ready! (r/use-callback #(set-ssr-pending! false) [])
         gesture-props (use-copy-gesture (when (and (not= false (:copy? options))
                                                  (not (:editable? options))) copy!) ssr-pending?)

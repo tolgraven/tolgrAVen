@@ -152,8 +152,20 @@
         (.then (fn [_]
                  (when (= fixture "code-blog")
                    (restore/hydrated!)
-                   (.click (.querySelector element ".code-block button[aria-pressed]"))
-                   (-> (support/wait-for! #(.querySelector element ".code-block-wrapped"))
+                   ;; Root completion does not mean the lazy parser's controls
+                   ;; have committed. Its inherited hydration must keep every
+                   ;; formatter gated while those controls become interactive.
+                   (-> (support/wait-for!
+                         #(= (.-length (.querySelectorAll element ".code-block, .code-highlight"))
+                             (count @*release))
+                         "Delayed Markdown did not retain its formatter gates")
+                       (.then (fn [_]
+                                (is (false? (restore/initial-hydration?)))
+                                (is (empty? @*highlight-requests)
+                                    "Late parser hydration still defers formatter acquisition")
+                                (.click (.querySelector element ".code-block button[aria-pressed]"))
+                                (support/wait-for! #(.querySelector element ".code-block-wrapped")
+                                                   "Hydrated code controls did not respond before formatting")))
                        (.then (fn [_]
                                 (doseq [[node selector] (map vector @*code-nodes [".code-block pre" ".code-block span" ".code-block code.language-cpp" "p > .code-snippet > code.code-highlight" "p > .code-snippet > code.code-highlight span[style]"])]
                                   (is (identical? node (.querySelector element selector))))

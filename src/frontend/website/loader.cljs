@@ -308,7 +308,8 @@
 
 (m/defc ^:private <module-boundary>
   [{:keys [module view defer? <before>] :as options} args]
-  (let [active? (boolean @(r/subscribe [:scope/inited? module]))
+  (let [inherited-hydration? (r/use-context restore/hydrating-context)
+        active? (boolean @(r/subscribe [:scope/inited? module]))
         hidden? (and (or defer? <before>)
                      (or (and (not @context/*interactive?) (not (restore/local-document?)))
                          (not active?)))
@@ -316,9 +317,10 @@
                  #(boolean (and (not hidden?)
                                 (or (and context/*server?*
                                          (resolved-view module (or view :view) (get context/*modules* module)))
-                                    (and (restore/initial-hydration?)
+                                    (and (or inherited-hydration? (restore/initial-hydration?))
                                          (restore/rendered-view? module (or view :view)))))))
-        [initial?] (r/use-state #(and (not context/*server?*) ssr? (restore/initial-hydration?)))
+        [initial?] (r/use-state #(and (not context/*server?*) ssr?
+                                     (or inherited-hydration? (restore/initial-hydration?))))
         [committed? set-committed!] (r/use-state false)
         *trigger (r/use-ref nil)
         release! (hydration/use-deferred! initial?)
