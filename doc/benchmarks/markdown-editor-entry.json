@@ -1,0 +1,77 @@
+{
+  "source_checkpoint": "9387ca3deba475d46f6a9de8eba3b79bdf16ddb6",
+  "comparison": "Same source/dependencies plus bounded selective public SDK entry.",
+  "environment": {
+    "cpu_cores": 1.5,
+    "container_memory_gib": 4,
+    "heap_gib": 2,
+    "sdk": "4.3.3",
+    "audit_target": "editor-final"
+  },
+  "measurements": [
+    {
+      "label": "before",
+      "snapshot": "743a1e3270e4",
+      "bundles": {
+        "markdown-editor": {
+          "bundle": "markdown-editor.68470273DEA08B3DFC2894AAD5B275B7.js",
+          "raw": 3805679,
+          "gzip": 1159568,
+          "brotli": 915942
+        },
+        "blog-editor": {
+          "bundle": "blog-editor.A80C18165AC8B2D7C0382EEF8BC773BC.js",
+          "raw": 103904,
+          "gzip": 21672,
+          "brotli": 18268
+        },
+        "blog": {
+          "bundle": "blog.C58DD9DE9A8C677BBECB3E022CFB2D4E.js",
+          "raw": 153272,
+          "gzip": 27849,
+          "brotli": 22937
+        },
+        "main": {
+          "bundle": "main.32B6012DB82B47711FB7B11C214D6603.js",
+          "raw": 1921694,
+          "gzip": 467590,
+          "brotli": 370159
+        }
+      },
+      "excluded_resolved_sources": 151,
+      "excluded_optimized_bytes": 1876402
+    },
+    {
+      "label": "after",
+      "snapshot": "5962356a0366",
+      "bundles": {
+        "markdown-editor": {
+          "bundle": "markdown-editor.F876C6031F4A8AA025968DE0638AB38B.js",
+          "raw": 1815713,
+          "gzip": 497471,
+          "brotli": 399980
+        },
+        "blog-editor": {
+          "bundle": "blog-editor.A80C18165AC8B2D7C0382EEF8BC773BC.js",
+          "raw": 103904,
+          "gzip": 21672,
+          "brotli": 18268
+        },
+        "blog": {
+          "bundle": "blog.C58DD9DE9A8C677BBECB3E022CFB2D4E.js",
+          "raw": 153272,
+          "gzip": 27849,
+          "brotli": 22937
+        },
+        "main": {
+          "bundle": "main.7CE0B8B5D3C72EC87AE98CE7E52C28E6.js",
+          "raw": 1919859,
+          "gzip": 467343,
+          "brotli": 369825
+        }
+      },
+      "excluded_resolved_sources": 0,
+      "excluded_optimized_bytes": 0
+    }
+  ]
+}

@@ -110,6 +110,10 @@ persisted; the view explains that unfinished images remain in the current tab.
 An explicit save acknowledges the storage adapter's actual durable write.
 Unavailable/full storage reports an error and preserves the dirty write for
 retry, including retry without changing the text.
+Failed private reads preserve the original envelope and current input until a
+successful retry. Reload restores surrounding canonical prose; unfinished uploads
+have no saved directive or orphan progress widget because their native nodes
+export no image before a canonical source exists.
 
 ## Code language choices
 
@@ -217,6 +221,25 @@ modifier families, task/list/table editing, media insertion, literal/path argume
 actual component interactions, iframe measurement cleanup, image/widget resize
 and float geometry, public SSR/hydration, and navigation ownership. Source tests
 alone do not establish visual parity or live Strapi/Supabase behavior.
+
+## SDK entry ownership
+
+The pinned SDK exposes a single public JavaScript entry. That entry imports its
+unused CodeMirror and diff-source modules, which Shadow's normal npm provider
+retains even when our visual/source adapters never select those plugins.
+The editor's configure hook derives the used public exports from its four SDK
+adapters and creates a selective entry in ignored `target/generated-sdk`.
+The SDK version and public-entry SHA-256 must match before generation; a changed
+entry fails with a request to review this boundary instead of silently accepting
+private or missing exports.
+
+Shadow's file override cannot resolve relative SDK imports without npm package
+metadata. The generated package supplies that metadata and a read-only reference
+to the original SDK's `dist` directory. It copies no implementation and never
+changes shared `node_modules`. Browser, development, mounted tests and Node SSR
+use the same configure hook and normal npm resolver. React, Lexical and Gurx keep
+their existing singleton dependencies. The adapter is build output, not a script
+served to visitors or a source snippet embedded in application markup.
 
 The focused workflow runs through the shared resource launcher:
 `tolgraven-cpu run -- bash scripts/test/markdown-editor.sh --hydration` produces

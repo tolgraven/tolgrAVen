@@ -1,5 +1,9 @@
 # Verification workflows
 
+- Editor build checks validate the pinned public-entry selection and reject
+  unknown/private SDK exports. Production audits reject CodeMirror, Lezer and
+  diff-source in the resolved graph, not just in direct dependency declarations.
+
 Keep this guide and `doc/testing.md` current when test/build entry points change.
 
 - Mount actual Reagent components, dereference subscriptions during render, dispatch
