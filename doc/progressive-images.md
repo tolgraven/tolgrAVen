@@ -70,8 +70,9 @@ the existing design tint; raw records include actual/target opacity.
 Server/provider acquisition and streamed skeleton latency are excluded so they
 cannot be mistaken for image savings. The real live motion driver separately
 checks cold streamed SSR, fresh cached SSR, worker-paired returns, hydration and
-SPA navigation. Build jobs use the shared one-CPU Docker quota; timing runs start
-only after compiler and CPU-probe jobs finish. Chrome is outside the native
+SPA navigation. The recorded artifact builds used the then-installed one-CPU Docker quota; timing
+runs started only after compiler and CPU-probe jobs finished. Current agent builds
+use the installed shared launcher policy; record it for any new timing series. Chrome is outside the native
 project-Java/Codex-renderer resource monitor. Scheduler/browser variation remains
 visible in the retained ranges.
 
@@ -109,3 +110,5 @@ Hidden surfaces wait on the existing visibility observer, scoped ancestor
 attribute changes and native motion completion. They do not poll every frame.
 Changing source or unmounting cancels the previous acquisition. Consumers should
 validate their own upload/preview generation before acting on the notification.
+
+[Recorded protocol-6 measurements, ranges and raw data](benchmarks/progressive-images/README.md).

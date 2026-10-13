@@ -102,3 +102,23 @@ Visual evidence in `doc/screenshots/` shows the generated gradient with both ima
 pending, the 4rem preview, a deliberately paused 75 ms overlap pose, the sharp final
 and the faithful entrance baseline before hydration. The paused pose is explicitly
 visual evidence; ordinary timed cases and lifecycle tests establish fade duration.
+
+## Native history verification
+
+Chrome restored a BFCache document with `persisted=true`, one visible sharp layer,
+and no new requests. Its test-only unload mode produced a real `back_forward`
+network document: pending initial requests were aborted on departure, and return
+requested only the appropriate final image. A separate Chrome document left during
+the actual CSS overlap, paused at 75 ms by the documented visual fixture; BFCache
+return settled directly to one sharp layer without a new low-resolution request.
+
+Safari visibly restored the sharp final through BFCache with `persisted=true` and
+one visible image. Exact pre/post server request logs were identical. Safari kept
+BFCache even in the test unload mode, so a forced Safari network return remains
+unverified. The no-store Safari fixture made two initial 400w requests, both before
+departure; this is recorded rather than presented as request deduplication evidence.
+Safari control was interrupted before its additional mid-overlap departure check.
+
+- [Chrome network Back](chrome-network-return.json)
+- [Chrome staged mid-overlap BFCache Back](chrome-mid-upgrade-bfcache-return.json)
+- [Safari exact pre/post BFCache requests](safari-bfcache-return.json)
