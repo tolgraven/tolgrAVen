@@ -95,10 +95,15 @@ worker; never launch a competing compiler into watched output.
 `bb cpu monitor --project /path/to/tolgrAVen --enforce` discovers only that Git
 repository's registered worktrees and refreshes the inventory. It admits:
 
-- Same-user Java processes whose current working directory is inside one of those
-  checkouts, including the existing interactive backend/Shadow JVMs.
+- Same-user Java descendants of a live, explicitly registered `run --mode host`
+  or `runtime` launcher, within that launcher’s dedicated process group and a
+  registered checkout. A working directory alone never admits Java.
 - Exact ChatGPT/Codex app bundle renderer executables whose parent ancestry reaches
   the corresponding main app process.
+
+User-launched `lein` clients, their backend/Shadow descendants, and other
+unregistered Java remain unthrottled. Reply’s SIGCONT handler therefore receives
+no repeated resume signals from this monitor. Docker agent quotas are unchanged.
 
 It excludes the main app, Codex CLI/agent engines, service/GPU/network helpers,
 computer-use and tool Node runtimes, system/other-user processes, unrelated Java,
@@ -132,9 +137,11 @@ measurement of whole-machine power.
 ## Ownership, recovery and lifecycle
 
 Before admission and before STOP, the adapter checks same user, executable path,
-PID and **microsecond process start time**. Renderer ancestry and project Java CWD
-are rechecked each sampling window. Initially stopped processes are excluded and
-stay stopped. STOP is always a positive individual PID, never a process group.
+PID and **microsecond process start time**. Renderer ancestry and explicit host
+owner/root birth identities, group, ancestry and project CWD are rechecked each
+sampling window. Registrations live in `host-active/` and are removed after owned
+family cleanup; missing, stale or reused identities never admit native Java.
+Initially stopped processes are excluded and stay stopped. STOP is always a positive individual PID, never a process group.
 
 An independent watchdog acknowledges a lease before any STOP. It sends guarded
 CONT on socket closure, controller failure/signal exit, or a 250 ms expired lease;

@@ -139,8 +139,48 @@ def within(path, roots):
     return path is not None and any(path == r or r in path.parents for r in roots)
 
 
-def select_targets(processes, roots, excluded, cwd_fn=cwd, allow_apps=True):
-    """Only project Java and renderer descendants of exact app bundle roots qualify."""
+def host_registration_path(token):
+    if len(token) != 32 or any(char not in '0123456789abcdef' for char in token):
+        raise RuntimeError('Invalid owned host registration token.')
+    return STATE / 'host-active' / (token + '.json')
+
+
+def release_host_registration(token, owner, root):
+    if token is None:
+        return
+    path = host_registration_path(token)
+    try:
+        record = json.loads(path.read_text())
+        if record.get('owner') == owner and record.get('root') == root:
+            path.unlink(missing_ok=True)
+    except (OSError, ValueError):
+        pass
+
+
+def registered_host_roots(proc, roots):
+    """Only a live explicit launcher registration admits a native Java family."""
+    admitted = []
+    for path in (STATE / 'host-active').glob('*.json'):
+        try:
+            if path.stat().st_uid != os.getuid():
+                continue
+            record = json.loads(path.read_text())
+            root = record['root']
+            current = proc.identity(root['pid'])
+            # A launcher root legitimately execs nice/shell/Java. Its birth and
+            # dedicated process group remain stable; each target path is checked
+            # afresh by Controller before STOP/CONT.
+            if (proc.same(record['owner']) and same_birth(current, root)
+                    and current['pgid'] == root['pid']
+                    and within(Path(record['checkout']).resolve(), roots)):
+                admitted.append(current)
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    return admitted
+
+
+def select_targets(processes, roots, excluded, cwd_fn=cwd, allow_apps=True, owned_roots=()):
+    """Only registered agent Java and renderer descendants of exact app roots qualify."""
     apps = {pid for pid, p in processes.items() if p['path'] in (
         '/Applications/ChatGPT.app/Contents/MacOS/ChatGPT',
         '/Applications/Codex.app/Contents/MacOS/Codex')}
@@ -149,7 +189,9 @@ def select_targets(processes, roots, excluded, cwd_fn=cwd, allow_apps=True):
         if pid in excluded or p['status'] == 4 or p['uid'] != os.getuid():
             continue
         path = p['path']
-        if Path(path).name == 'java' and within(cwd_fn(pid), roots):
+        if (Path(path).name == 'java' and within(cwd_fn(pid), roots)
+                and any(p.get('pgid') == root['pid'] and p['start'] >= root['start']
+                        and root['pid'] in ancestry(pid, processes) for root in owned_roots)):
             targets[pid] = dict(p, family='java')
         elif allow_apps and ('/Applications/ChatGPT.app/Contents/' in path or
               '/Applications/Codex.app/Contents/' in path) and '(Renderer)' in Path(path).name:
@@ -325,7 +367,8 @@ def monitor(args):
                         roots = [Path(line[9:]).resolve() for line in text.splitlines() if line.startswith('worktree ')] or roots
                         del inventory_child
                         root_inventory_time = now
-                targets = select_targets(processes, roots, excluded, proc.cwd, not args.java_only)
+                owned_roots = registered_host_roots(proc, roots)
+                targets = select_targets(processes, roots, excluded, proc.cwd, not args.java_only, owned_roots)
                 rates = {'java': 0.0, 'renderers': 0.0}
                 fresh = {}
                 for pid, p in targets.items():
@@ -349,7 +392,9 @@ def monitor(args):
                                     'runnable': sum(thread_info[p['pid']].running for p in targets.values() if p['family']==k and thread_info[p['pid']])} for k in caps},
                     'load_averages_1_5_15': list(os.getloadavg()),
                     'scan_ms': round((time.monotonic()-now)*1000,3),
-                    'excluded_controller_ancestors': sorted(excluded)})
+                    'excluded_controller_ancestors': sorted(excluded),
+                    'java_scope': 'registered-agent-host-families',
+                    'registered_host_roots': [{'pid': p['pid'], 'start': p['start']} for p in owned_roots]})
                 last, next_scan = now, now + 1
             if args.once:
                 print((STATE / 'status.json').read_text())
@@ -589,12 +634,13 @@ def stop_host_family(root):
     return False
 
 
-def host_watchdog(owner, root):
+def host_watchdog(owner, root, registration=None):
     proc = MacProcesses()
     while proc.same(owner):
         time.sleep(0.5)
     while not stop_host_family(root):
         time.sleep(1)
+    release_host_registration(registration, owner, root)
 
 
 def host_environment(environment, heap='1024m'):
@@ -625,15 +671,22 @@ def host_run(args, command, lock, extra_env=None):
     root = proc.identity(child.pid)
     if root is None:
         return child.wait()
-    guard = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '_host-watchdog',
-                              json.dumps(owner), json.dumps(root)], start_new_session=True,
-                             pass_fds=(lock.fileno(),) if lock else ())
+    registration = uuid.uuid4().hex
+    guard = None
     try:
+        record_path = host_registration_path(registration)
+        record_path.parent.mkdir(parents=True, exist_ok=True)
+        save_json(record_path, {'owner': owner, 'root': root, 'checkout': str(Path(args.checkout).resolve())})
+        guard = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '_host-watchdog',
+                                  json.dumps(owner), json.dumps(root), '--registration', registration],
+                                 start_new_session=True, pass_fds=(lock.fileno(),) if lock else ())
         return child.wait()
     finally:
         if stop_host_family(root):
-            guard.terminate()
-            guard.wait(timeout=3)
+            release_host_registration(registration, owner, root)
+            if guard is not None:
+                guard.terminate()
+                guard.wait(timeout=3)
         else:
             print('Host family cleanup pending; watchdog retains ownership and any build lock.', file=sys.stderr)
 
@@ -932,11 +985,12 @@ def main():
     hw = commands.add_parser('_host-watchdog')
     hw.add_argument('owner')
     hw.add_argument('root')
+    hw.add_argument('--registration')
     args = parser.parse_args()
     for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
         signal.signal(sig, stop_signal)
     if args.action == '_host-watchdog':
-        host_watchdog(json.loads(args.owner), json.loads(args.root))
+        host_watchdog(json.loads(args.owner), json.loads(args.root), args.registration)
     elif args.action == '_docker-watchdog':
         docker_watchdog(json.loads(args.owner), args.name, args.token, args.endpoint, args.ready_fd)
     elif args.action == '_watchdog':
