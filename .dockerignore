@@ -70,3 +70,6 @@ resources/site.overrides.edn
 # Private runtime files cannot enter build layers.
 env/dev/resources/config.edn
 env/test/resources/config.edn
+
+# Prepared assets are rebuilt in the frontend stage, never copied from the host.
+resources/optimus

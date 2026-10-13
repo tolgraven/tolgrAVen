@@ -20,16 +20,18 @@ On a new checkout/worktree, copy `config/test.example.edn` to
 excludes the dev resource directory so dev credentials are not inherited.
 See [Runtime configuration](configuration.md) for defaults and integration keys.
 
-Layout/handler checks require the generated document bootstrap on the classpath.
-On a clean checkout, release `:document` before the JVM suite. Use its existing
-Shadow worker when it is watched; agent commands run the sequence in an isolated
-CPU-controlled checkout so watched output is preserved.
+Backend handler/layout fixtures need generated CSS and the real `:document`
+bootstrap. In an isolated agent snapshot, build those prerequisites and run the
+suite together so each command sees the same output. Use the existing Shadow
+worker when a target is watched; the isolated agent snapshot preserves that output:
 
 ```sh
-lein with-profile prod,provided run -m shadow.cljs.devtools.cli release document
-lein with-profile +project/test test
+/Users/tol/.local/bin/tolgraven-cpu run -- sh -c 'npm run build && lein with-profile prod,provided run -m shadow.cljs.devtools.cli release document && lein with-profile +project/test test'
 bb test:scripts
 ```
+
+Focused pure backend tests can omit those asset prerequisites. Preserve the
+existing watched output; a placeholder bootstrap does not verify layout behavior.
 
 The script suite includes bounded Node fixtures for the initial image adapter
 (`node --test test/scripts/document_image_test.cjs`). They exercise native phase/gate
@@ -113,12 +115,15 @@ loopback listening, HTTP session/CSRF middleware, and the local SSR renderer at
 server keeps its TLS proxy policy and `/app/ssr/site.js` path. The `run` command
 starts the backend; it does not compile missing frontend/renderer outputs.
 `bb prod:build` releases all four Shadow targets sequentially with separate build
-IDs/caches. Document/browser/return-worker resources live in `target/production/resources`,
+IDs/caches, then prepares the existing Optimus inventory in the same isolated
+resource root. Document/browser/return-worker resources live in `target/production/resources`,
 which the `prod` profile places ahead of shared resources; the watched `app-dev`
 files remain untouched. Startup checks the release browser manifest and both
-`/js/document/head.js` and `/js/document/entrance.js` before initialization logging
+`/js/document/head.js`, `/js/document/entrance.js` and prepared inventory presence before initialization logging
 and Optimus asset loading. Missing files report `bb prod:build` and their paths;
 a development browser manifest is rejected instead of serving the reconnect HUD.
+The prepared manifest validates the selected build and source digests when the
+handler is constructed; missing or stale output never triggers runtime rebuilding.
 Agent builds use the
 [CPU controls](resource-controls.md); copy their generated `target/production`
 directory back from the reported isolated checkout before starting the server.

@@ -78,13 +78,21 @@ with `Dockerfile.builder` when changing toolchain setup.
 Application builds reuse prefab npm/Maven dependencies and a BuildKit cache for
 Shadow release analysis. Application source changes no longer reinstall Node,
 Leiningen, or npm packages.
-BuildKit runs three independent branches concurrently: the frontend builds CSS
-and releases the Shadow targets (`app`, `ssr`, and `return-worker`) in one invocation; the backend
+BuildKit runs three independent branches concurrently: the frontend builds CSS,
+releases the Shadow targets (`app`, `ssr`, `return-worker`, and `document`) in one
+invocation, then prepares the Optimus inventory; the backend
 resolves Clojure dependencies and AOT-compiles; a third stage generates Codox
 documentation. The packaging stage waits for all three, copies the completed
-browser assets, and
+browser assets and prepared inventory, and
 creates the uberjar without repeating prep tasks or cleaning compiled classes.
 Separate stage filesystems prevent target-directory and Maven download races.
+The Docker compile and assembly tasks explicitly share `target/uberjar+provided/classes`;
+changing `:target-path` alone does not update Lein's already-resolved compile path.
+The ordinary `lein with-profile uberjar,provided uberjar` prep tasks also generate
+production Shadow/CSS output and the inventory. The shared `docs` alias disables
+nested prep tasks, so direct documentation commands and the uberjar prep step
+cannot restart the build through Codox. Missing or stale prepared assets fail
+startup clearly; no runtime transformation fallback runs.
 Codox analyzes source without the custom `:browser` reader feature. The loader's
 `.cljc` reader conditional therefore omits lazy-loadable declarations during
 documentation analysis and SSR; browser builds explicitly enable that feature.

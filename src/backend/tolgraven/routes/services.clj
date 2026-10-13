@@ -14,7 +14,7 @@
     [tolgraven.oembed :as oembed]
     [tolgraven.components.oembed.contract :as oembed-contract]
     [reitit.ring.middleware.muuntaja :as muuntaja]
-    [reitit.ring.middleware.multipart :as multipart]
+    [tolgraven.middleware.multipart :as multipart]
     [reitit.ring.middleware.parameters :as parameters]
     [clj-http.client :as http]
     [ring.util.http-response :as response]
@@ -42,7 +42,7 @@
                  exception/exception-middleware         ;; exception handling
                  muuntaja/format-request-middleware     ;; decoding request body
                  coercion/coerce-request-middleware     ;; coercing request parameters
-                 multipart/multipart-middleware]
+                 multipart/coercion-middleware]
                   (config/validation-enabled?) (conj coercion/coerce-response-middleware))}       ;; multipart
 
    ;; swagger documentation

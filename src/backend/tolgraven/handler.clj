@@ -29,8 +29,7 @@
         {:path   "/swagger-ui"
          :url    "/api/swagger.json"
          :config {:validator-url nil}})
-      (ring/create-resource-handler         ; serve resources/public at /
-        {:path "/"})
+      ;; middleware/assets owns public resources before browser session handling.
       (ring/create-default-handler          ; error/default routes
         (let [get-error (fn [code message]
                           (constantly (error-page {:status code

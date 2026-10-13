@@ -11,7 +11,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   fixture; never infer rendered exports from the browser bundle inventory.
 - `bb prod:build` builds CSS and calls the existing Shadow release API sequentially
   for `:document`, `:app`, `:ssr`, and `:return-worker` with separate `prod-local-*`
-  build IDs under `target/production`. Never copy those
+  build IDs under `target/production`, then prepares the shared Optimus manifest
+  into that resource root. Never copy those
   assets into watched browser/SSR outputs. See `doc/testing.md`.
 - `build/`, `media/`, `dev/`, `test/`: local build, asset and verification tools.
   Prefer Babashka using its built-in libraries; Node owns SDK/zlib operations.
@@ -55,6 +56,9 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   with margins to preserve the original advance/height/baseline.
   Commit declared SVGs, catalog, generated SCSS and fonts together; see `doc/styles.md`.
 
+- `audit/middleware.clj` is a disposable Docker-only investigation reproducer.
+  It may generate stand-in JavaScript only inside the CPU controller's snapshot;
+  it must never overwrite watched application output. See `doc/middleware-optimus-audit.md`.
 - `dev/cpu_controls.py` is the macOS libproc/signal and Docker lifecycle adapter.
   Keep microsecond PID identity, exact project/app ownership, pre-stopped exclusion,
   independent CONT watchdog, container labels and two shared inherited-lock build slots intact.
@@ -68,3 +72,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 
   Custom codec images use explicit `run --node-deps skip` only for non-Node tasks;
   retain the shared queue, snapshot and container limits. Default Node bootstrap stays enabled.
+
+- `test/prepared_assets.clj` checks the explicit prepared inventory from source and
+  then from an uberjar, preserving all bodies and independent bundle paths. Run
+  it only in the CPU controller's Docker snapshot after real production outputs;
+  it does not start the application or prove deployment behavior.

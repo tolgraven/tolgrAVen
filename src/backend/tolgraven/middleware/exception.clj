@@ -16,8 +16,9 @@
    (merge exception/default-handlers
      {::exception/wrap
       (fn [handler error request]
-        (if (#{::coercion/request-coercion ::coercion/response-coercion} (:type (ex-data error)))
-          ;; Coercion ex-data contains complete request values. Never log it.
+        (if (#{::coercion/request-coercion ::coercion/response-coercion :muuntaja/decode} (:type (ex-data error)))
+          ;; Coercion and decode ex-data contain complete requests. Never log
+          ;; bodies, cookies or bearer credentials on public input failures.
           (log/warn (:type (ex-data error)) (:uri request))
           (log/error error (.getMessage error)))
         (handler error request))

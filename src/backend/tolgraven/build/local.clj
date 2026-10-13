@@ -1,6 +1,7 @@
 (ns tolgraven.build.local
   "Local production releases with separate Shadow caches and runtime resources."
   (:require [clojure.edn :as edn]
+            [tolgraven.build.assets :as assets]
             [shadow.cljs.devtools.api :as api]
             [shadow.cljs.devtools.errors :as errors]))
 
@@ -21,4 +22,6 @@
           (catch Throwable error
             (errors/user-friendly-error error)
             (.printStackTrace error *err*)
-            (throw error)))))))
+            (throw error))))))
+  (assets/prepare! "target/production/resources")
+  (shutdown-agents))

@@ -101,7 +101,8 @@
 
   :plugins [[lein-codox "0.10.8"]]
 
-  :aliases {"docs" ["do" ["run" "-m" "tolgraven.build.docs"] ["codox"]]}
+  :aliases {"docs" ["update-in" ":" "assoc" ":prep-tasks" "^:replace []" "--"
+                    "do" ["run" "-m" "tolgraven.build.docs"] ["codox"]]}
 
   :codox
   {:language :clojurescript
@@ -149,7 +150,8 @@
 
    :uberjar {:jvm-opts ["-Dconf=env/prod/resources/config.edn"]
              :prep-tasks ["compile"
-                          ["run" "-m" "shadow.cljs.devtools.cli" "release" "app" "return-worker" "document"]
+                          ["run" "-m" "shadow.cljs.devtools.cli" "release" "app" "ssr" "return-worker" "document"]
+                          ["run" "-m" "tolgraven.build.assets" "--build-styles"]
                           ["docs"]]
              :aot ~(:aot site-packaging)
              :omit-source true

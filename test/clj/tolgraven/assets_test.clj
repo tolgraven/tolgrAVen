@@ -79,3 +79,15 @@
                              (mount/start #'handler/init-app)))
         (is (false? @initialized))
         (finally (mount/stop #'handler/init-app))))))
+
+(deftest production-requires-the-prepared-inventory-before-initialization
+  (with-redefs [config/env {:prod true}
+                layout/browser-modules (constantly {:main {:output-name "main.0123456789abcdef0123456789abcdef.js"}})
+                io/resource #(when (re-find #"^public/js/document/" %) ::resource)]
+    (try
+      (middleware/ensure-production-assets!)
+      (is false "A missing prepared inventory must fail preflight")
+      (catch clojure.lang.ExceptionInfo error
+        (is (= :assets (:build (ex-data error))))
+        (is (= ["optimus/assets.edn"] (:missing-assets (ex-data error))))
+        (is (re-find #"bb prod:build" (.getMessage error)))))))
