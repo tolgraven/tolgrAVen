@@ -7,6 +7,7 @@
     [reagent.dom.client :as dom]
     [reagent.dom.server :as server]
     [tolgraven.components.image :as image]
+    [tolgraven.listener :as listener]
     [tolgraven.components.image.sources :as sources]
     [tolgraven.components.shell :as shell]
     [tolgraven.component.markup :as markup]))
@@ -332,7 +333,12 @@
   (async done
     (let [container (.createElement js/document "div")
           src "/img/foggy-shit-small.jpg"
-          form [image/<picture> {:src src, :id "top-banner"}]]
+          *references (atom [])
+          reference (fn [element]
+                      (when element
+                        (swap! *references conj [:attach element])
+                        #(swap! *references conj [:release element])))
+          form [image/<picture> {:src src, :id "top-banner", :ref reference}]]
       (.setAttribute container "id" "app")
       (.setAttribute container "data-document-image-owner" "native")
       (.setAttribute container "data-document-image-phase" "upgrading")
@@ -361,7 +367,15 @@
                   (is (.hasAttribute hero "data-image-managed"))
                   (is (= 1 (.-length (.querySelectorAll hero "img"))))
                   (is (identical? final (.querySelector hero "[data-image-final]")))
+                  (is (= [[:attach final]] @*references)
+                      "Terminal adoption retains the caller's native attachment")
+                  (is (not-any? #(and (= :progressive-image (:owner %))
+                                      (identical? container (:target %)))
+                                (vals @listener/*bindings))
+                      "Terminal adoption releases the owned listener registry acquisition")
                   (dom/unmount root)
+                  (is (= [[:attach final] [:release final]] @*references)
+                      "Both image adapters forward React19 cleanup exactly once")
                   (.remove container)
                   (done))
                 100))

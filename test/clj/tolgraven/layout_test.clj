@@ -1,6 +1,7 @@
 (ns tolgraven.layout-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.data.json :as json]
+            [clojure.java.io :as io]
             [optimus.html :as ohtml]
             [ring.core.protocols :as protocols]
             [optimus.link :as olink]
@@ -292,6 +293,13 @@
                 layout/browser-modules (constantly
                                          {:main {:output-name "main.hash.js" :depends-on #{}}
                                           :blog {:output-name "blog.hash.js" :depends-on #{:main :user}}})]
-    (is (= {:main {:url "/js/compiled/out/main.hash.js" :depends []}
-            :blog {:url "/js/compiled/out/blog.hash.js" :depends [:main :user]}}
-           (:scripts (layout/return-template {:uri "/api/page-return-template"}))))))
+    (let [result (layout/return-template {:uri "/api/page-return-template"})
+          html (:template result)]
+      (is (= {:main {:url "/js/compiled/out/main.hash.js" :depends []}
+              :blog {:url "/js/compiled/out/blog.hash.js" :depends [:main :user]}}
+             (:scripts result)))
+      (is (.contains html (slurp (io/resource "public/js/document-entrance.js")))
+          "Paired returns use the same owned image stage")
+      (is (.contains html "data-local-return=\"true\""))
+      (is (not (.contains html "data-document-pending=\"true\""))
+          "The image stage cannot replay a paired document entrance"))))

@@ -6,6 +6,7 @@
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.components.image.sources :as sources]
     [tolgraven.react :as react]
+    [tolgraven.listener :as listener]
     [reagent.core :as r]))
 
 (def attrs-schema
@@ -49,17 +50,17 @@
           capture! (react/use-memo
                     #(react/compose-refs
                       (fn [image]
-                      ;; A server-rendered image may fail before React attaches
-                      ;; on-error. Inspect it at attachment without changing DOM;
-                      ;; state removes the modern sources through normal rendering.
-                      (when (and image (seq src) (seq (.-currentSrc image))
-                                 (.-complete image) (zero? (.-naturalWidth image)))
-                        (when on-source-error (on-source-error))
-                        (if (and (sources/should-use-modern-formats? src)
-                                 (modern-source-selected? image src))
-                          (swap! *fallback-sources conj src)
-                          (when on-attached-error
-                            (on-attached-error #js {:currentTarget image}))))
+                        ;; A server-rendered image may fail before React attaches
+                        ;; on-error. Inspect it at attachment without changing DOM;
+                        ;; state removes the modern sources through normal rendering.
+                        (when (and image (seq src) (seq (.-currentSrc image))
+                                   (.-complete image) (zero? (.-naturalWidth image)))
+                          (when on-source-error (on-source-error))
+                          (if (and (sources/should-use-modern-formats? src)
+                                   (modern-source-selected? image src))
+                            (swap! *fallback-sources conj src)
+                            (when on-attached-error
+                              (on-attached-error #js {:currentTarget image}))))
                         nil)
                       ref)
                     [src ref on-attached-error on-source-error])]
@@ -200,16 +201,16 @@
           capture! (react/use-memo
                      #(react/compose-refs
                        (fn [image]
-                       (set! (.-current *final-image) image)
-                       (if (document-owner image src)
-                         (reset! *image-phase {:src src, :phase :native})
-                         (do
-                           (single! image)
-                           (when (and image (not (.-complete image))
-                                      (or (not= src (:src @*image-phase))
-                                          (nil? (:phase @*image-phase))))
-                             (reset! *image-phase {:src src, :phase :waiting}))
-                           (decoded! image false)))
+                         (set! (.-current *final-image) image)
+                         (if (document-owner image src)
+                           (reset! *image-phase {:src src, :phase :native})
+                           (do
+                             (single! image)
+                             (when (and image (not (.-complete image))
+                                        (or (not= src (:src @*image-phase))
+                                            (nil? (:phase @*image-phase))))
+                               (reset! *image-phase {:src src, :phase :waiting}))
+                             (decoded! image false)))
                          nil)
                        ref)
                      [src ref single! decoded!])
@@ -250,16 +251,20 @@
                                                                  :retry :failed)}
                                                      (.getAttribute root "data-document-image-phase"))]
                                (reset! *image-phase {:src src, :phase terminal})
-                               (.removeEventListener root "tolgraven:document-image-ready" adopt!))))]
-              (.addEventListener root "tolgraven:document-image-ready" adopt!)
-              (adopt! nil)
+                               terminal)))
+                  stop-listeners! (listener/listen! :progressive-image
+                                    [{:target root
+                                      :event "tolgraven:document-image-ready"
+                                      :handler adopt!
+                                      :once? true}])]
+              (when (adopt! nil) (stop-listeners!))
               #(do (set! (.-current *active?) false)
-                   (.removeEventListener root "tolgraven:document-image-ready" adopt!)))
+                   (stop-listeners!)))
             (do
               (single! (.-current *final-image))
               (decoded! (.-current *final-image) false)
               #(set! (.-current *active?) false))))
-        [src single! decoded!])
+        [src single! decoded! (= :native phase)])
       (if progressive?'
         (let [managed? (or (and phase (not= :native phase))
                            (not= src (:src @*image-phase)))
