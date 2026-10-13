@@ -108,9 +108,16 @@ owns its focus intent in one effect; Search schedules focus through the shared
 painted-frame adapter and cancels it on close/unmount. Ref replacement and guessed
 loading delays must not become a second scheduling mechanism.
 
-Browser interop needs SSR guards and an owning lifecycle. Native listeners are an
-exception when ordinary Reagent event attributes cannot handle a specific browser
-boundary. For example, React holds events aimed at an unhydrated Suspense child:
+Browser interop needs SSR guards and an owning lifecycle. Use Reagent event
+attributes for rendered interactions. Application document/window bindings go
+through `:listener/register` / `:listener/stop` effects; committed component and
+browser adapter lifecycles use `listener/listen!` with Clojure binding maps and
+retain its cleanup. This uses the same registry, with independent acquisition ids,
+capture/passive/once options and replacement-safe teardown. Do not replace it with
+an asynchronous event dispatch when pre-paint setup or early capture is required.
+Low-level media queries retain native setup to avoid the validation/listener
+dependency cycle; service-worker events run outside the re-frame application.
+For example, React holds events aimed at an unhydrated Suspense child:
 the code component temporarily bridges native intent to its same Reagent handlers,
 then removes that bridge after the inner commit. Copy controls are siblings of
 SSR-highlighted code, so they hydrate before the deferred highlighter. The bridge

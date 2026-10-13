@@ -5,6 +5,7 @@
             [cljs.reader :as reader]
             [reagent.core :as r]
             [tolgraven.react :as rf]
+            [tolgraven.listener :as listener]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.loader :as loader]
             [tolgraven.render-context :as context]
@@ -246,13 +247,13 @@
   (rf/use-effect
     (fn []
       (let [cancel-connect! (browser-resources/after-page!
-                             #(-> (connect!) (.catch (fn [_] nil))))]
-        (.addEventListener js/document "click" external-click! false)
-        (.addEventListener js/window "pageshow" resumed!)
+                             #(-> (connect!) (.catch (fn [_] nil))))
+            stop-listeners! (listener/listen! :page-return
+                              [{:target "document", :event "click", :handler external-click!}
+                               {:target "window", :event "pageshow", :handler resumed!}])]
         (fn []
           (cancel-connect!)
-          (.removeEventListener js/document "click" external-click! false)
-          (.removeEventListener js/window "pageshow" resumed!)
+          (stop-listeners!)
           (when @*pending (js/clearTimeout @*pending) (reset! *pending nil))
           (when-let [spec (loader/code-spec :page-capture)] ((:stop! spec)))))) [])
   nil)

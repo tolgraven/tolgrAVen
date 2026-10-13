@@ -3,6 +3,7 @@
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.react :as react]
+    [tolgraven.listener :as listener]
     [reagent.core :as r]
     [tolgraven.components.portal :as portal]))
 
@@ -24,13 +25,14 @@
       (when (and open? scaled? (exists? js/window) @*element)
         (let [element @*element
               measure! #(reset! *scale (/ (.-clientWidth element) (.-innerWidth js/window)))
-              observer (when (exists? js/ResizeObserver) (js/ResizeObserver. measure!))]
+              observer (when (exists? js/ResizeObserver) (js/ResizeObserver. measure!))
+              stop-listeners! (listener/listen! :popover
+                                [{:target "window", :event "resize", :handler measure!}])]
           (measure!)
           (when observer (.observe observer element))
-          (.addEventListener js/window "resize" measure!)
           (fn []
             (when observer (.disconnect observer))
-            (.removeEventListener js/window "resize" measure!)))))
+            (stop-listeners!)))))
     [open? scaled?])
          (when open?
            [portal/<portal> js/document.body

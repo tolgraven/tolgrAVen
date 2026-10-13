@@ -3,6 +3,7 @@
   (:require [reagent.core :as r]
             [reitit.core :as reitit]
             [tolgraven.react :as rf]
+            [tolgraven.listener :as listener]
             [tolgraven.navigation.routes :as routes]
             [tolgraven.loader :as loader]
             [tolgraven.page :as page]
@@ -140,14 +141,19 @@
         observer (js/MutationObserver.
                    (fn [records _]
                      (when (some relevant-mutation? (array-seq records))
-                       (observe-links!) (schedule!))))]
+                       (observe-links!) (schedule!))))
+        stop-listeners!
+        (listener/listen! :navigation-preload
+          (cond-> [{:target "document", :event "pointerover", :handler intent!}
+                   {:target "document", :event "focusin", :handler intent!}
+                   {:target "document", :event "visibilitychange", :handler schedule!}]
+            (nil? intersections) (conj {:target   "window"
+                                       :event    "scroll"
+                                       :handler  schedule!
+                                       :passive? true})))]
     (.observe observer (.-body js/document)
               #js {:childList true :subtree true :attributes true
                    :attributeFilter #js ["href" "data-preload-href" "data-preload" "rel"]})
-    (.addEventListener js/document "pointerover" intent!)
-    (.addEventListener js/document "focusin" intent!)
-    (.addEventListener js/document "visibilitychange" schedule!)
-    (when-not intersections (.addEventListener js/window "scroll" schedule! #js {:passive true}))
     (observe-links!)
     (schedule!)
     (fn []
@@ -155,10 +161,7 @@
       (reset! *queue [])
       (.disconnect observer)
       (when intersections (.disconnect intersections))
-      (.removeEventListener js/document "pointerover" intent!)
-      (.removeEventListener js/document "focusin" intent!)
-      (.removeEventListener js/document "visibilitychange" schedule!)
-      (when-not intersections (.removeEventListener js/window "scroll" schedule!))
+      (stop-listeners!)
       (when @*timer (js/clearTimeout @*timer))
       (when @*idle (js/cancelIdleCallback @*idle)))))
 

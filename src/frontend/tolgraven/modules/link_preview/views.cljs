@@ -2,6 +2,7 @@
   (:require
     [clojure.string :as string]
     [tolgraven.react :as rf]
+            [tolgraven.listener :as listener]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.component.registry]
     [reagent.core :as r]
@@ -394,13 +395,14 @@
        (let [measure! #(when-let [element (.-current *element)]
                         (set-scale! (/ (.-clientWidth element) (.-innerWidth js/window))))
              observer (when (exists? js/ResizeObserver)
-                        (js/ResizeObserver. measure!))]
+                        (js/ResizeObserver. measure!))
+             stop-listeners! (listener/listen! :preview-miniature
+                               [{:target "window", :event "resize", :handler measure!}])]
          (measure!)
          (when (and observer (.-current *element))
            (.observe observer (.-current *element)))
-         (.addEventListener js/window "resize" measure!)
          #(do (when observer (.disconnect observer))
-              (.removeEventListener js/window "resize" measure!)))) [])
+              (stop-listeners!)))) [])
     [:div.link-preview__miniature
      {:ref *element
       :aria-hidden true

@@ -29,6 +29,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   native handles/functions remain opaque. Memo/callback helpers require explicit
   dependencies. Equal state/reducer updates retain the previous value identity.
   Browser adapters must release their listeners/observers/timers and guard SSR.
+  Use `:listener/register` / `:listener/stop` effects for application bindings.
+  Committed browser/component lifecycles use `listener/listen!` binding maps and
+  its cleanup through that same registry, including capture/passive/once options.
+  Low-level feature code may retain native listeners when importing the registry
+  creates a dependency cycle; document the concrete reason at the adapter.
 
 ## Ownership and feature contracts
 

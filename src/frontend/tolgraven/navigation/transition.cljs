@@ -2,6 +2,7 @@
   "Browser lifecycle adapter for CSS page transitions. React owns all page markup."
   (:require [reagent.core :as r]
             [tolgraven.react :as rf]
+            [tolgraven.listener :as listener]
             [tolgraven.render-context :as context]
             [tolgraven.component.restore :as restore]
             [tolgraven.component.motion :as motion]))
@@ -76,7 +77,7 @@
         *waiting (atom #{})
         *wake (atom nil)
         *unlisten (atom nil)
-        *event-listener (atom nil)
+        *stop-listeners (atom nil)
         *active? (atom true)
         events ["wheel" "touchstart" "pointerdown" "keydown" "pagehide"]
         cleanup! (fn cleanup! [& [event]]
@@ -87,9 +88,7 @@
                      (when @*timeout (js/clearTimeout @*timeout))
                      (when @*frame (js/cancelAnimationFrame @*frame))
                      (when-let [unlisten! @*unlisten] (unlisten!))
-                     (.removeEventListener js/document "load" @*event-listener true)
-                     (.removeEventListener js/document "error" @*event-listener true)
-                     (doseq [event events] (.removeEventListener js/window event cleanup!))
+                     (when-let [stop! @*stop-listeners] (stop!))
                      (reset! *restore-cleanup nil)))
         measure! (fn measure! []
                    (reset! *frame nil)
@@ -135,10 +134,14 @@
                       (reset! *frame (js/requestAnimationFrame measure!))))]
     (reset! *restore-cleanup cleanup!)
     (reset! *wake schedule!)
-    (reset! *event-listener schedule!)
     (reset! *unlisten (restore/listen-layout! schedule!))
-    (.addEventListener js/document "load" schedule! true)
-    (.addEventListener js/document "error" schedule! true)
+    (reset! *stop-listeners
+      (listener/listen! :navigation-restore
+        (into [{:target "document", :event "load", :handler schedule!, :capture? true}
+               {:target "document", :event "error", :handler schedule!, :capture? true}]
+              (map (fn [event]
+                     {:target "window", :event event, :handler cleanup!, :passive? true})
+                   events))))
     (when (exists? js/ResizeObserver)
       (reset! *observer (js/ResizeObserver. schedule!))
       (.observe @*observer (.-body js/document))
@@ -149,7 +152,6 @@
                 #js {:childList true :subtree true :characterData true :attributes true}))
     (when-let [fonts (.-fonts js/document)]
       (.then (.-ready fonts) schedule!))
-    (doseq [event events] (.addEventListener js/window event cleanup! #js {:passive true}))
     (reset! *timeout (js/setTimeout cleanup! 15000))
     (schedule!)))
 

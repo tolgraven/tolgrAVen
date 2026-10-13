@@ -3,6 +3,7 @@
   (:require [tolgraven.component.restore :as restore]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as rf]
+            [tolgraven.listener :as listener]
             [tolgraven.render-context :as context]
             ["react-dom" :as react-dom]))
 
@@ -12,7 +13,8 @@
   (let [*active? (atom true)
         *frame (atom nil)
         *idle (atom nil)
-        *timer (atom nil)]
+        *timer (atom nil)
+        *stop-listeners (atom nil)]
     (letfn [(idle! []
               (when @*active?
                 (if (and @context/*interactive?
@@ -34,10 +36,12 @@
                              (reset! *frame (js/requestAnimationFrame queue-idle!))))))))]
       (if (= "complete" (.-readyState js/document))
         (painted!)
-        (.addEventListener js/window "load" painted! #js {:once true}))
+        (reset! *stop-listeners
+          (listener/listen! :browser-resources
+            [{:target "window", :event "load", :handler painted!, :once? true}])))
       (fn []
         (reset! *active? false)
-        (.removeEventListener js/window "load" painted!)
+        (when-let [stop! @*stop-listeners] (stop!))
         (when @*frame (js/cancelAnimationFrame @*frame))
         (when @*idle (js/cancelIdleCallback @*idle))
         (when @*timer (js/clearTimeout @*timer))))))

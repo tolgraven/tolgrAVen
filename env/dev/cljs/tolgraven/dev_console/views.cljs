@@ -6,6 +6,7 @@
             [reitit.core :as reitit]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as rf]
+            [tolgraven.listener :as listener]
             [tolgraven.component.registry :as registry]
             [tolgraven.component.persistent-state :as scoped]
             [tolgraven.component.restore :as restore]
@@ -669,10 +670,9 @@
                      (.preventDefault event) (.stopPropagation event)
                      (rf/dispatch [:dev-console/pick (.getAttribute element "data-dev-instance")]))))
         escape! #(when (= "Escape" (.-key %)) (rf/dispatch [:dev-console/picking false]))]
-    (.addEventListener js/document "click" click! true)
-    (.addEventListener js/document "keydown" escape!)
-    #(do (.removeEventListener js/document "click" click! true)
-         (.removeEventListener js/document "keydown" escape!))))
+    (listener/listen! :dev-picker
+      [{:target "document", :event "click", :handler click!, :capture? true}
+       {:target "document", :event "keydown", :handler escape!}])))
 
 (defc <selection-highlight> [instance]
   (let [[rect set-rect!] (rf/use-state nil)]
@@ -687,14 +687,14 @@
                                          :width (str (/ (.-width rect) unit) "rem")
                                          :height (str (/ (.-height rect) unit) "rem")}))
                            (set-rect! nil)))
-              observer (when (exists? js/ResizeObserver) (js/ResizeObserver. measure!))]
+              observer (when (exists? js/ResizeObserver) (js/ResizeObserver. measure!))
+              stop-listeners! (listener/listen! :dev-selection
+                                [{:target "window", :event "scroll", :handler measure!, :capture? true}
+                                 {:target "window", :event "resize", :handler measure!}])]
           (measure!)
           (when-let [element (element-for-instance instance)] (when observer (.observe observer element)))
-          (.addEventListener js/window "scroll" measure! true)
-          (.addEventListener js/window "resize" measure!)
           #(do (when observer (.disconnect observer))
-               (.removeEventListener js/window "scroll" measure! true)
-               (.removeEventListener js/window "resize" measure!)))) [instance])
+               (stop-listeners!)))) [instance])
     (when rect [:div.dev-selection-highlight {:style rect :aria-hidden true}])))
 
 (defc <component-inspector>
@@ -762,10 +762,11 @@
 (defc <popout> [window close!]
   (rf/use-effect
     (fn []
-      (let [document (.-document window)]
+      (let [document (.-document window)
+            stop-listeners! (listener/listen! :dev-popout
+                              [{:target window, :event "beforeunload", :handler close!}])]
         (set! (.-title document) "tolgrAVen · development diagnostics")
-        (.addEventListener window "beforeunload" close!)
-        #(do (.removeEventListener window "beforeunload" close!)
+        #(do (stop-listeners!)
              (when-not (.-closed window) (.close window))))) [window])
   [:<>
    (rf/create-portal
@@ -862,8 +863,8 @@
                         (when (and (= "D" (string/upper-case (.-key event)))
                                    (.-altKey event) (.-shiftKey event))
                           (.preventDefault event) (rf/dispatch [:dev-console/toggle-open])))]
-          (.addEventListener js/window "keydown" handler)
-          #(.removeEventListener js/window "keydown" handler))) [])
+          (listener/listen! :dev-console
+            [{:target "window", :event "keydown", :handler handler}]))) [])
     [:aside.dev-console {:aria-label "Development console" :data-dev-console true}
      [:div.dev-console__tools
       [:button.dev-console__toggle {:on-click #(rf/dispatch [:dev-console/toggle-open]) :aria-expanded (boolean open?)}
