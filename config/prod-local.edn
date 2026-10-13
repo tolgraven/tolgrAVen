@@ -1,0 +1,6 @@
+;; Local overrides for `lein with-profile prod run`.
+;; Packaged production keeps env/prod/resources/config.edn and its TLS proxy policy.
+{:host "127.0.0.1"
+ :https-required false
+ :image-converter "scripts/media/images.clj"
+ :ssr {:worker "target/production/ssr/site.js"}}

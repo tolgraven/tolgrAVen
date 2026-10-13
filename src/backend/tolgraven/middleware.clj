@@ -64,6 +64,10 @@
          wrapped)
        request))))
 
+(def document-bundles
+  {"document-head.js" ["/js/document/head.js"]
+   "document-entrance.js" ["/js/document/entrance.js"]})
+
 (defn get-assets []
   (concat
    (assets/load-bundle "public"
@@ -77,9 +81,7 @@
    (assets/load-bundles "public"
                         {"main.js" [(str "/js/compiled/out/"
                                          (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))]})
-   (assets/load-bundles "public"
-                        {"document-head.js" ["/js/document/head.js"]
-                         "document-entrance.js" ["/js/document/entrance.js"]})
+   (assets/load-bundles "public" document-bundles)
    (assets/load-assets "public"
                        [#"/img/.+\.(png?|svg?|gif?|jpg?|jpeg?|webp|avif)$"
                         #"/media/.*\.(jpg?|jpeg?|webp|avif|mp4|webm)$"])
@@ -115,8 +117,25 @@
      strategies/serve-live-assets
      strategies/serve-live-assets-autorefresh))
 
+(defn ensure-production-assets! []
+  (when-not (or (:dev env) (:test env) (:stage env))
+    (let [main (:main (layout/browser-modules))]
+      (when (or (not (re-matches #"main\.[a-fA-F0-9]{32}\.js" (or (:output-name main) "")))
+                (some #{'devtools.preload 'shadow.cljs.devtools.client.browser}
+                      (:entries main)))
+        (throw (ex-info "Production browser assets are missing or use a development build. Run bb prod:build before starting local prod."
+                        {:output-name (:output-name main)})))
+      (let [missing (vec (for [path (mapcat val document-bundles)
+                              :when (nil? (io/resource (str "public" path)))]
+                          path))]
+        (when (seq missing)
+          (throw (ex-info "Production document bootstrap is missing. Run bb prod:build before starting local prod."
+                          {:build :document
+                           :missing-assets missing})))))))
+
 (defn wrap-optimus
   [app]
+  (ensure-production-assets!)
   (-> app
       (optimus/wrap
        get-assets
@@ -177,7 +196,8 @@
   (-> ((:middleware defaults) handler)
       ; wrap-flash
       (wrap-defaults
-        (-> (if (or (env :dev) (env :test) (env :stage))
+        (-> (if (or (env :dev) (env :test) (env :stage)
+                    (false? (env :https-required)))
               site-defaults
               (-> secure-site-defaults ;use ssl and setup for rev proxy
                   (assoc-in [:proxy] true)))

@@ -54,11 +54,17 @@ tree, asynchronous navigation, module initialization, search completions, and
 Supabase cache/stream behavior. The server also provides the image fixtures.
 After recompiling, use a hard reload to avoid a cached test bundle.
 
-Compile production JavaScript without replacing a running development build:
+Build and run local production without replacing watched development assets:
 
 ```sh
-lein with-profile -dev,+prod run -m shadow.cljs.devtools.cli release app --config-merge '{:output-dir "target/production-js"}'
+bb prod:build
+PORT=4011 lein with-profile prod run
 ```
+
+Open `http://127.0.0.1:4011/`. The local releases use separate Shadow build IDs and
+`target/production` output; production startup rejects development browser bundles.
+The packaged server retains its HTTPS proxy policy. See [testing](doc/testing.md)
+for agent CPU controls, isolated build output and live provider checks.
 
 `lein uberjar` builds the deployable server, production JavaScript, and Codox.
 Both browser builds use the same lazy module graph. Pull requests validate CSS;

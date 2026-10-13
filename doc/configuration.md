@@ -1,8 +1,9 @@
 # Runtime configuration
 
 Each environment uses `env/<environment>/resources/config.edn`. The development
-and test profiles explicitly load their respective file with `-Dconf`; production
-uses its classpath resource, and the packaged Docker command explicitly loads
+and test profiles explicitly load their respective file with `-Dconf`. The `prod`
+Lein profile overlays `config/prod-local.edn` on its production classpath resource;
+the packaged Docker command explicitly loads
 `env/prod/resources/config.edn`. Dev/test files are private and ignored by Git and
 Docker; production's tracked defaults contain public settings only.
 
@@ -19,7 +20,8 @@ is ignored and is not searched by the config loader.
 | --- | --- | --- |
 | `:port` | Every HTTP server | Explicit dev choice 4000; test/prod 3000. The app passes the configured port to the server. |
 | `:dev` | Development assets and middleware behavior | Set true in dev, false/omit in production. The Lein profile separately selects the environment adapters. |
-| `:bind` | Restrict HTTP listening or allow LAN/container access | Examples use `127.0.0.1`; choose `0.0.0.0` explicitly for external access. |
+| `:host` | Restrict HTTP listening or allow LAN/container access | Undertow uses `:host`, not `:bind`. Local prod uses `127.0.0.1`; packaged prod defaults to `0.0.0.0`. |
+| `:https-required` | Production transport/session policy | Production defaults to HTTPS behind a TLS proxy. Only explicit `false` selects HTTP middleware; local prod sets it with loopback listening. |
 | `:analytics` | Production sites that want Google Analytics | Optional. No script without `:google-id`, or set `{:enabled false}`. Current prod defaults contain this site's ID; use your own for another site. |
 | `:ssr` | Override server-rendering settings | Enabled with two workers and the local Node build by default; see below. |
 | `:strapi-url`, `:strapi-read-token` | Read content from an external CMS | Without a CMS URL, public content comes from the local seed. A configured CMS needs its server read token. |
@@ -68,6 +70,15 @@ For example:
 ```sh
 PORT=4011 lein with-profile prod run
 ```
+
+This local production command serves **HTTP** at `http://127.0.0.1:4011`.
+`config/prod-local.edn` keeps production asset handling but selects HTTP middleware
+and the local renderer/image-converter paths. CSRF and request protections remain
+active. Packaged production retains HTTPS redirects, HSTS and secure cookies;
+its Docker configuration is unchanged. Run `bb prod:build` first; local production uses `target/production/resources`
+ahead of shared assets and `target/production/ssr/site.js`, with separate Shadow
+build IDs/caches from development watches. Missing/development browser output
+fails startup; see [Testing](testing.md).
 
 The Supabase adapter explicitly prefers its environment variables as well:
 `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY` (or `SUPABASE_PUBLISHABLE_KEY`) and
