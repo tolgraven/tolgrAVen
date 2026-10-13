@@ -140,13 +140,18 @@
   (let [appearance (config (or (:seen options) (:appear options)))
         seen (:seen options)
         threshold (or (:threshold appearance) 0.5)
+        ;; seen-merge sampled in 20% steps, deciding visible at 50%. Observing
+        ;; exactly 50% lets a slide reverse itself as its transform crosses that
+        ;; same boundary. Preserve the original sampling for the default.
+        legacy? (= threshold 0.5)
+        thresholds (if legacy? [0 0.2 0.4 0.6 0.8 1] threshold)
         once? (boolean (:once? appearance))
         margin (or (:root-margin appearance) "0px")
         reduced? @(:reduced? state)
         ;; Ready first-screen SSR remains visible. Offscreen :seen owners still
         ;; observe the viewport after hydration and enter when scrolled into view.
         skip? (and (:skip-enter? state) (not (:observe-document? state)))
-        signature [element (boolean seen) (boolean (:appear options)) threshold once? margin reduced? skip? (:force appearance)]]
+        signature [element (boolean seen) (boolean (:appear options)) thresholds once? margin reduced? skip? (:force appearance)]]
     (when (not= signature @(:signature state))
       (stop! state :watch)
       (reset! (:signature state) signature)
@@ -161,13 +166,15 @@
                                           (fn [entries observer]
                                             (when @(:active? state)
                                               (doseq [entry (array-seq entries)]
-                                                (let [visible? (and (.-isIntersecting entry)
-                                                                    (>= (.-intersectionRatio entry) threshold))]
+                                                (let [ratio (.-intersectionRatio entry)
+                                                      ratio' (if legacy? (/ (js/Math.floor (* ratio 100)) 100) ratio)
+                                                      visible? (and (.-isIntersecting entry)
+                                                                    (>= ratio' threshold))]
                                                   (when-not (and once? @*seen?)
                                                     (reset! (:visible? state) visible?)
                                                     (when visible? (reset! *seen? true)))
                                                   (when (and once? visible?) (.disconnect observer))))))
-                                          (clj->js {:threshold threshold, :rootMargin margin}))]
+                                          (clj->js {:threshold thresholds, :rootMargin margin}))]
                            (.observe observer element)
                            #(.disconnect observer))
                          :else (next-frame! #(when @(:active? state)

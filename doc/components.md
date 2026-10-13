@@ -228,8 +228,10 @@ features whose failures should be contained.
 `:appear` and `:seen` merge the existing `appear-wrapper`, animation kind and
 `appeared` classes onto the component's own root. There is no wrapper element or
 React component; `appear-wrapper` is a CSS class retained for selector compatibility. Original classes, styles and refs are preserved. `:appear` waits
-for the initial frame before adding `appeared`. `:seen` uses IntersectionObserver
-with a default 50% threshold; `:root-margin` and `:once?` are configurable. Without
+for the initial frame before adding `appeared`. `:seen` retains `seen-merge`'s
+20% observer steps and 50% visibility decision, so its slide does not repeatedly
+reverse itself around a single 50% observer boundary. An explicit non-default
+`:threshold` selects that observer threshold; `:root-margin` and `:once?` are configurable. Without
 IntersectionObserver it falls back to appearing immediately after the initial
 frame. `:force true` skips waiting for visibility. Use either `:seen` or `:appear`;
 when both are selected, visibility controls the reveal.

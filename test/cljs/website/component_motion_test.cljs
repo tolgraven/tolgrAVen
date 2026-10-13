@@ -141,7 +141,7 @@
               *ref (atom nil)
               fake (fn [callback options]
                      (reset! *callback callback)
-                     (is (= 0.5 (.-threshold options)))
+                     (is (= [0 0.2 0.4 0.6 0.8 1] (vec (.-threshold options))))
                      #js {:observe #(reset! *observed %), :disconnect #(swap! *disconnects inc)})]
           (set! js/IntersectionObserver fake)
           (await! (render! root
@@ -169,6 +169,56 @@
                           (set! js/IntersectionObserver original)
                           (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))
+(deftest seen-slide-settles-at-the-viewport-boundary-and-can-reenter
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture))
+                stylesheet (.createElement js/document "link")
+                *changes (atom 0)
+                observer (js/MutationObserver. #(swap! *changes inc))
+                form (fn [top]
+                       [<seen> {:seen {:class "slide-in", :restore? false}
+                                :props {:style {:position "fixed"
+                                                :top top
+                                                :height "10rem"
+                                                :width "12rem"}}}])]
+            (try
+              (await! (js/Promise.
+                       (fn [resolve reject]
+                         (set! (.-rel stylesheet) "stylesheet")
+                         (set! (.-href stylesheet) "/css/tolgraven/main.min.css")
+                         (set! (.-onload stylesheet) resolve)
+                         (set! (.-onerror stylesheet) reject)
+                         (.appendChild (.-head js/document) stylesheet))))
+              ;; Sliding from 68% to 48% visible used to reverse forever at 50%.
+              (await! (render! root (form "-5.2rem")))
+              (let [node (.-firstElementChild element)]
+                (.observe observer node #js {:attributes true, :attributeFilter #js ["class"]})
+                (await! (tick! 800))
+                (is (.contains (.-classList node) "appeared"))
+                (is (= "none" (.-transform (js/getComputedStyle node))))
+                (reset! *changes 0)
+                (await! (tick! 600))
+                (is (zero? @*changes) "The stationary viewport cannot reverse its own slide")
+                ;; Exit ends at 52% visible: it must not immediately re-enter.
+                (await! (render! root (form "-6.8rem")))
+                (await! (tick! 800))
+                (is (not (.contains (.-classList node) "appeared")))
+                (reset! *changes 0)
+                (await! (tick! 600))
+                (is (zero? @*changes) "The reverse slide also settles")
+                (await! (render! root (form "-3rem")))
+                (await! (tick! 800))
+                (is (.contains (.-classList node) "appeared"))
+                (is (= "none" (.-transform (js/getComputedStyle node))))
+                (is (identical? node (.-firstElementChild element))))
+              (finally
+                (.disconnect observer)
+                (close!)
+                (.remove stylesheet)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
 (deftest reduced-motion-and-unanimated-exits-remove-without-delay
   (async done
          (-> (go-promise
