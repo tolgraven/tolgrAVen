@@ -6,7 +6,7 @@ create table if not exists public.site_media (
   source_url text,
   canonical_src text,
   source_object text not null,
-  source_ext text not null check (source_ext in ('png','jpg','webp','avif')),
+  source_ext text not null,
   content_hash text not null,
   policy_version text not null,
   status text not null default 'queued' check (status in ('queued','processing','ready','failed')),
@@ -23,6 +23,11 @@ create table if not exists public.site_media (
   unique (source_key,content_hash,policy_version),
   check (status <> 'ready' or (asset is not null and canonical_src is not null))
 );
+-- Replace the existing named check as well as covering fresh installations.
+alter table public.site_media drop constraint if exists site_media_source_ext_check;
+alter table public.site_media add constraint site_media_source_ext_check
+  check (source_ext in ('png','jpg','webp','avif','svg'));
+
 create index if not exists site_media_source_url on public.site_media (source_url) where status='ready';
 create index if not exists site_media_canonical_src on public.site_media (canonical_src) where status='ready';
 create index if not exists site_media_queue on public.site_media (status,lease_until,created_at);

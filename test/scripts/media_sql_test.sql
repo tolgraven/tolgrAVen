@@ -30,6 +30,31 @@ do $$ begin
   end if;
 end $$;
 
+-- Re-provisioning upgrades an existing raster-only constraint for SVG intake.
+alter table public.site_media drop constraint site_media_source_ext_check;
+alter table public.site_media add constraint site_media_source_ext_check
+  check (source_ext in ('png','jpg','webp','avif'));
+begin;
+\i resources/supabase/modules/site_media.sql
+commit;
+begin;
+do $$ begin
+  perform public.tolgraven_queue_media(jsonb_build_object('id','svg-job','owner_id','author',
+    'source_key','upload:svg','source_type','upload','source_object','private/logo.svg',
+    'source_ext','svg','content_hash','svg-hash','policy_version','v3'));
+  if not exists (select 1 from public.site_media where id='svg-job' and source_ext='svg') then
+    raise exception 'SVG did not reach the durable queue';
+  end if;
+  begin
+    perform public.tolgraven_queue_media(jsonb_build_object('id','html-job','owner_id','author',
+      'source_key','upload:html','source_type','upload','source_object','private/page.html',
+      'source_ext','html','content_hash','html-hash','policy_version','v3'));
+    raise exception 'Unsupported source extension entered the queue';
+  exception when check_violation then null;
+  end;
+end $$;
+rollback;
+
 -- Repeated intake deduplicates; PostgreSQL enforces queue capacity atomically.
 do $$ declare i integer; begin
   for i in 1..64 loop

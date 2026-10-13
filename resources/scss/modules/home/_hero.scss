@@ -26,6 +26,12 @@
 }
 
 
+@property --logo-image-width {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 100%;
+}
+
 .logo-tolgraven {
   background-size: 100%;
   background-repeat: no-repeat;
@@ -38,6 +44,7 @@
   0% {
     opacity: 0.00;
     background-size: 85%;
+    --logo-image-width: 85%;
     border-radius: 63%;
   } 65% {
     border: 0.35em solid transparent; /* hmm gotta make a bit device-dependent */
@@ -46,7 +53,19 @@
     opacity: 0.10;
     filter: #{'invert() hue-rotate(180deg)'};
   }
+  100% { --logo-image-width: 100%; }
 }
+.logo-picture {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--logo-image-width);
+  max-width: none;
+  height: auto;
+
+  img { height: auto; }
+}
+
 @keyframes zoom-logo {
   0%   { }
   100% { width: 100%; }

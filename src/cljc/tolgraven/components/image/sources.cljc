@@ -27,12 +27,13 @@
 (defn progressive?
   ([src] (progressive? src nil))
   ([src asset]
-   (let [metadata (or (get-in asset [:renditions :original])
-                      (get responsive (string/replace (or src "") #"^/" "")))]
+   (let [metadata (get responsive (string/replace (or src "") #"^/" ""))]
      (and (some? (preview src asset))
-          (if (contains? metadata :progressive?)
-            (:progressive? metadata)
-            (eligibility/eligible? metadata))))))
+          (if asset
+            (eligibility/eligible? (get-in asset [:renditions :original]))
+            (if (contains? metadata :progressive?)
+              (:progressive? metadata)
+              (eligibility/eligible? metadata)))))))
 
 (defn dimensions
   ([src] (dimensions src nil))
