@@ -44,6 +44,8 @@ bakes it in `/app/revision`. Coolify exposes `SOURCE_COMMIT` at runtime by defau
 and optionally as a build argument. Local `bb docker build` supplies `VCS_REF`.
 The baked image revision takes priority over runtime checkout metadata, so a
 prebuilt image cannot be mislabeled with Coolify's current repository head.
+The baked input defaults to `/app/revision`, independently of `DEPLOY_FILE`.
+`DEPLOY_REVISION_FILE` may select an input path for a nonstandard image layout.
 Set `DEPLOY_REPOSITORY` when building an image for another repository.
 
 Operators can supply `DEPLOY_COMMIT`, `DEPLOYED_AT`, `DEPLOY_REPOSITORY` and

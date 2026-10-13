@@ -23,7 +23,7 @@ fi
 deployment_file="${DEPLOY_FILE:-/app/deployment.json}"
 if [ -d "$(dirname "$deployment_file")" ] && [ ! -f "$deployment_file" ]; then
   revision="${DEPLOY_COMMIT:-}"
-  revision_file="$(dirname "$deployment_file")/revision"
+  revision_file="${DEPLOY_REVISION_FILE:-/app/revision}"
   if [ -z "$revision" ] && [ -f "$revision_file" ]; then revision=$(cat "$revision_file"); fi
   case "$revision" in unknown|'') revision="${CAPROVER_GIT_COMMIT_SHA:-${SOURCE_COMMIT:-unknown}}";; esac
   case "$revision" in *[!a-fA-F0-9]*|'') revision=unknown;; esac

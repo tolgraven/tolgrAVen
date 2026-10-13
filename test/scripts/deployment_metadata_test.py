@@ -12,6 +12,7 @@ class DeploymentMetadata(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             file = Path(temp) / 'deployment.json'
             env = dict(os.environ, DEPLOY_FILE=str(file),
+                       DEPLOY_REVISION_FILE=str(Path(temp) / 'missing-revision'),
                        CAPROVER_GIT_COMMIT_SHA='a' * 40,
                        DEPLOY_REPOSITORY='another/site')
             command = ['sh', str(ROOT / 'docker-entrypoint.sh'), 'echo', 'started']
@@ -28,18 +29,36 @@ class DeploymentMetadata(unittest.TestCase):
 
     def test_prebuilt_image_identity_wins_over_coolify_checkout(self):
         with tempfile.TemporaryDirectory() as temp:
-            file = Path(temp) / 'deployment.json'
-            (Path(temp) / 'revision').write_text('c' * 40)
+            image = Path(temp) / 'image'
+            runtime = Path(temp) / 'runtime'
+            image.mkdir()
+            runtime.mkdir()
+            file = runtime / 'deployment.json'
+            revision = image / 'revision'
+            revision.write_text('c' * 40)
+            (runtime / 'revision').write_text('e' * 40)
             subprocess.run(['sh', str(ROOT / 'docker-entrypoint.sh'), 'true'],
-                           env=dict(os.environ, DEPLOY_FILE=str(file), SOURCE_COMMIT='d' * 40),
+                           env=dict(os.environ, DEPLOY_FILE=str(file),
+                                    DEPLOY_REVISION_FILE=str(revision), SOURCE_COMMIT='d' * 40),
                            check=True, capture_output=True)
             self.assertEqual(json.loads(file.read_text())['commit'], 'c' * 40)
+
+    def test_coolify_runtime_identity_without_a_baked_revision(self):
+        with tempfile.TemporaryDirectory() as temp:
+            file = Path(temp) / 'deployment.json'
+            subprocess.run(['sh', str(ROOT / 'docker-entrypoint.sh'), 'true'],
+                           env=dict(os.environ, DEPLOY_FILE=str(file),
+                                    DEPLOY_REVISION_FILE=str(Path(temp) / 'missing-revision'),
+                                    CAPROVER_GIT_COMMIT_SHA='', SOURCE_COMMIT='d' * 40),
+                           check=True, capture_output=True)
+            self.assertEqual(json.loads(file.read_text())['commit'], 'd' * 40)
 
     def test_invalid_identity_cannot_inject_json(self):
         with tempfile.TemporaryDirectory() as temp:
             file = Path(temp) / 'deployment.json'
             subprocess.run(['sh', str(ROOT / 'docker-entrypoint.sh'), 'true'],
                            env=dict(os.environ, DEPLOY_FILE=str(file),
+                                    DEPLOY_REVISION_FILE=str(Path(temp) / 'missing-revision'),
                                     DEPLOY_COMMIT='bad"sha', DEPLOY_REPOSITORY='bad"repo'),
                            check=True, capture_output=True)
             self.assertEqual(json.loads(file.read_text())['commit'], 'unknown')
