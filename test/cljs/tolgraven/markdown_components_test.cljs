@@ -181,7 +181,7 @@
           (.then (fn [_]
                    (is (.querySelector element ".code-block .code-wrap"))
                    (is (nil? (.querySelector element ".cm-editor")) "Fenced blocks use the ordinary site UI")
-                   (is (< (js/parseFloat (.-minHeight (js/getComputedStyle (.querySelector element ".code-editor-fields textarea"))))
+                   (is (< (.-height (.getBoundingClientRect (.querySelector element ".code-editor-fields textarea")))
                           (* 0.4 (.-innerHeight js/window)))
                        "Public blog CSS must not impose its old source-editor minimum on nested code fields")
                    (change! ".code-editor-fields textarea" "(+ 3 4)")))
