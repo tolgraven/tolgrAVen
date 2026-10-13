@@ -813,6 +813,8 @@ def run(args):
         if shadow.exists():
             import re
             shadow.write_text(re.sub(r':parallel-build\s+true', ':parallel-build false', shadow.read_text()))
+        maven_repository = Path.home() / '.m2/repository'
+        maven_repository.mkdir(parents=True, exist_ok=True)
         name = 'tolgraven-cpu-' + output.name
         token = uuid.uuid4().hex
         endpoint = docker_endpoint()
@@ -825,6 +827,7 @@ def run(args):
                '--memory', args.memory, '--memory-swap', args.memory, '--pids-limit', '512',
                '--label', 'tolgraven.cpu.token=' + token,
                '--mount', f'type=bind,source={output},target=/workspace', '-w', '/workspace',
+               '--mount', f'type=bind,source={maven_repository},target=/root/.m2/repository',
                '-e', f'JAVA_TOOL_OPTIONS={JVM_POOLS} -Xmx{args.java_heap}',
                args.image, 'sh', '-c', bootstrap, 'cpu-build', *command]
         print('Isolated output:', output, '\nDocker budget:', args.cpus, 'cores /', args.memory, flush=True)
@@ -897,9 +900,9 @@ def main():
     runner = commands.add_parser('run', help='Run in one of two bounded, isolated build slots (3 Docker CPUs combined).')
     runner.add_argument('--mode', choices=['docker', 'host', 'buildkit'], default='docker')
     runner.add_argument('--checkout', default=os.getcwd())
-    runner.add_argument('--java-heap', default='1024m')
+    runner.add_argument('--java-heap', default='2048m')
     runner.add_argument('--cpus', type=positive, default=BUILD_CPUS)
-    runner.add_argument('--memory', default='2g')
+    runner.add_argument('--memory', default='4g')
     runner.add_argument('--image', default='registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v1')
     runner.add_argument('--node-deps', choices=['auto', 'skip'], default='auto',
                         help='Use skip only for non-Node tasks in custom images, such as media codecs.')
