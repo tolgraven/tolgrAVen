@@ -17,6 +17,17 @@ spec.loader.exec_module(cpu)
 
 
 class PolicyTests(unittest.TestCase):
+    def test_host_existing_options_preserve_heap_and_always_append_worker_bounds(self):
+        options=cpu.host_environment({'JAVA_TOOL_OPTIONS':'-Dsome.property=keep -Xmx2g -XX:ActiveProcessorCount=8'})['JAVA_TOOL_OPTIONS']
+        self.assertIn('-Dsome.property=keep',options)
+        self.assertIn('-Xmx2g',options)
+        self.assertNotIn('-Xmx1024m',options)
+        self.assertTrue(options.endswith(cpu.JVM_POOLS))
+
+    def test_host_default_heap_and_explicit_maxram(self):
+        self.assertIn('-Xmx1024m',cpu.host_environment({})['JAVA_TOOL_OPTIONS'])
+        self.assertNotIn('-Xmx',cpu.host_environment({'JAVA_TOOL_OPTIONS':'-XX:MaxRAMPercentage=40'})['JAVA_TOOL_OPTIONS'])
+
     def test_family_and_total_budgets(self):
         demand = {'java': 4, 'renderers': 2}
         duties = cpu.duty_plan(demand, {'java': 1.5, 'renderers': 1}, 1.5)

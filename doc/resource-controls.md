@@ -33,7 +33,8 @@ tolgraven-cpu runtime -- lein repl
 ```
 
 The `runtime` mode starts a supervised host process without holding the compiler queue. Short host build commands use `run --mode host`, which serializes work and starts it with nice 10 and supplies bounded JVM defaults
-when `JAVA_TOOL_OPTIONS` was unset. It does not itself impose a kernel CPU quota.
+while preserving unrelated `JAVA_TOOL_OPTIONS` and explicit heap sizing. Worker
+bounds are always appended, so preexisting options cannot silently bypass them. It does not itself impose a kernel CPU quota.
 The installed native monitor owns enforcement. Shells inherit priority for child
 Java/Lein processes. Existing interactive watches are inspected through their
 worker; never launch a competing compiler into watched output.

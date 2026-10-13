@@ -440,9 +440,21 @@ def host_watchdog(owner, root):
         time.sleep(1)
 
 
+def host_environment(environment, heap='1024m'):
+    import re
+    env = dict(environment)
+    existing = env.get('JAVA_TOOL_OPTIONS', '')
+    # HotSpot processes later repeated flags last; preserve unrelated properties
+    # and explicit heap sizing, while always enforcing the owned worker bounds.
+    options = existing.strip() + ' ' + JVM_POOLS
+    if not re.search(r'(?:^|\s)(?:-Xmx\S+|-XX:MaxRAM(?:Percentage|Fraction)?=\S+)', existing):
+        options += ' -Xmx' + heap
+    env['JAVA_TOOL_OPTIONS'] = options.strip()
+    return env
+
+
 def host_run(args, command, lock):
-    env = dict(os.environ)
-    env.setdefault('JAVA_TOOL_OPTIONS', JVM_POOLS + ' -Xmx1024m')
+    env = host_environment(os.environ, getattr(args, 'java_heap', '1024m'))
     child = subprocess.Popen(['nice', '-n', '10', *command], cwd=args.checkout, env=env,
                              start_new_session=True)
     proc = MacProcesses()
@@ -565,7 +577,13 @@ def install(args):
         'RunAtLoad': True, 'KeepAlive': True, 'ThrottleInterval': 10,
         'StandardOutPath': str(STATE / 'monitor.log'), 'StandardErrorPath': str(STATE / 'monitor-error.log')}
     agent.write_bytes(plistlib.dumps(config))
-    subprocess.run(['launchctl', 'bootstrap', domain, str(agent)], check=True)
+    for attempt in range(3):
+        result = subprocess.run(['launchctl', 'bootstrap', domain, str(agent)], capture_output=True, text=True)
+        if result.returncode == 0:
+            break
+        time.sleep(0.5 * (attempt + 1))
+    else:
+        raise RuntimeError('Cannot load the CPU LaunchAgent: ' + result.stderr.strip())
     print('Installed launcher:', binary, '\nEnabled LaunchAgent:', agent)
 
 
