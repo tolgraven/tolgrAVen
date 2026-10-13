@@ -93,6 +93,10 @@
                                         frame "null"))))))
 
 (deftest persisted-geometry-retains-chosen-units-and-component-fields
+  (is (= {:width "21rem"}
+         (resize/edge-geometry :right {:width "20rem"}
+                               {:width 320, :height 160, :units {:rem 16, :em 20, :parent 800}} 16 0))
+      "Resizing one edge must not introduce a present nil size")
   (is (= {:width "20rem", :flow "left"}
          (layout/geometry {:width 640, :layout-width "20rem", :layout-flow "left"})))
   (is (= "50%" (layout/resized "40%" 400 {:rem 16, :em 20, :parent 800})))

@@ -6,4 +6,4 @@
   [:map [:?pending? :boolean] [:?assets [:vector media/asset]]
    [:?next-offset [:maybe :int]] [:?error :string]])
 (def sections {[:state :blog :image-uploads] [:maybe model/uploads-schema]
-               [:state :blog-editor] [:maybe [:map [:?library library-state]]]})
+               [:state :blog-editor] [:maybe [:map [:?library library-state] [:?active-owner :string]]]})

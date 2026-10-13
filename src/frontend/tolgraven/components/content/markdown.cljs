@@ -5,7 +5,7 @@
             [tolgraven.components.image :as image]
             [tolgraven.components.content.media :as media]
             [tolgraven.react :as r]
-            [tolgraven.components.highlight :as highlight]))
+            [tolgraven.components.code-block :as code-block]))
 
 (defc <heading>
   "A Markdown heading. Level is a number from one to six, and text is its visible label."
@@ -56,7 +56,7 @@
   {:authoring {:category "Markdown", :defaults {:text "(+ 1 2)", :language "clojure"}}
    :spec-schema [:map [:text :string] [:?language :string] [:?inline :boolean]]}
   [{:keys [text language inline]}]
-  [highlight/<code-block> text {:language language, :inline? (boolean inline)}])
+  [code-block/<code-block> text {:language language, :inline? (boolean inline)}])
 
 (defc <image>
   "A Markdown image with alternative text. The image component chooses responsive and modern formats when available."

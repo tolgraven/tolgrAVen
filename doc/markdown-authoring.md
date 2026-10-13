@@ -21,10 +21,53 @@ renderer; it does not acquire either authoring bundle.
 | Headings 1–6, quotes, bullet/number/task lists | Toolbar and Markdown typing shortcuts | Standard Markdown |
 | Links, tables, rules, fenced code | Link dialog, toolbar and code editor | Shared Markdown and deferred highlight |
 | Images | Search server assets, upload, paste/drop, URL insertion | Shared responsive picture with paired rendition metadata |
-| Source mode | SDK source/diff and a plain Markdown attachment view | The same saved source |
+| Source mode | Stable CodeMirror source view with inline upload chips | The same saved source |
 | Site components | Search canonical names, docstrings, signatures and schemas | The actual public components and their normal data dependencies |
-| Widget geometry | Argument inputs, corner drag and arrow-key resizing | Persisted sizing, alignment and floating text flow |
+| Widget geometry | Argument inputs, edge/corner drag and arrow-key resizing | Persisted sizing, alignment and floating text flow |
 | Frames and embeds | HTTPS/local iframe; YouTube/SoundCloud oEmbed | Existing sandbox/embedding policy |
+
+## Editor and application ownership
+
+The outer React editor is adapted once with `r/adapt-react-class` and receives
+Clojure props from ordinary Reagent views. SDK extension slots run in the opposite
+direction: descriptor `Editor`, `EditImageToolbar` and `addEditorWrapper$` require
+React component types. Their stable `r/reactify-component` adapters render normal
+`defc` components; they are not a second UI implementation. Opaque native editor
+handles stay inside these small extension adapters.
+
+Lexical owns its editable document, selection and undo history. Re-frame owns the
+canonical draft, upload queue, progress, pending insertion points and completion
+guards. Native Lexical updates are document transactions; an event claims the
+media node's canonical URL update and acknowledges it after a successful commit.
+One stable media node renders pending/error/ready declaratively; completion never
+inserts a neighboring image. Effect replay cannot claim the same update twice.
+The SDK's own content
+signal supplies Markdown changes, preserving normalization/mute guards and
+avoiding another full serialization for cursor movement.
+
+Formatting, new directives and components use the SDK's normal publishers;
+argument edits use its node updater. Upload cancellation uses one guarded native
+document transaction: the SDK's removal hook assumes the node exists inside a
+later transaction, which breaks under effect replay. The queue explicitly owns
+cancellation and removes its record after the document owner acknowledges it;
+temporary absence from a context render never implies cancellation. The one
+anchored image-completion transaction updates its existing media node, rather
+than the user's newer cursor position. `insertImage$` targets the
+active selection, so it cannot express that asynchronous attachment operation.
+
+Pending uploads are native inline nodes in the visual editor and zero-width
+CodeMirror decorations in source mode. Their small highlighted widgets use
+Reagent portals and the existing presence/exit lifecycle. Pending IDs, status and
+positions never appear in authored Markdown. Completed media exports ordinary
+Markdown image data, or the canonical image component when saved layout is
+needed, retaining its canonical source after queue disposal. The same media node
+owns all four drag edges and its alternative text, dimensions and text flow.
+Pure tree transformations preserve
+surrounding formatting; native source changes map anchors through precise edits.
+Source changes from upload completion use a normal editor transaction, retaining
+selection and undo. Callback/decoration changes reconfigure owned CodeMirror
+compartments without recreating the view. Widget hosts/cache entries release on
+removal and unmount. There is no mirrored application store or whole-props ref.
 
 Fenced-code editor descriptors render the ordinary shared code-block component;
 the SDK supplies only code/language/metadata setters. Its optional editable fields
@@ -55,7 +98,7 @@ signatures take the `args` field as a quoted data vector, retaining the original
 positional call contract:
 
 ```markdown
-<Component component="tolgraven.components.markdown/<code-block>" args='json:["(+ 1 2)",{"language":"clojure"}]' />
+<Component component="tolgraven.components.code-block/<code-block>" args='json:["(+ 1 2)",{"language":"clojure"}]' />
 ```
 
 Plain strings are literal. `json:` supplies numbers, booleans, arrays, objects or

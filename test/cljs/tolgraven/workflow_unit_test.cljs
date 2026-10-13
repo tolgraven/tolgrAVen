@@ -609,12 +609,12 @@
   (doseq [url ["https://example.com/page.html" "#heading" "/blog" "mailto:test@example.com"]]
     (let [html (str "<a href=\"" url "\">Link</a>")] (is (= html (docs-view/page-links html))))))
 (deftest markdown-code-uses-reagent-props-without-js-conversion
-  (let [html (server/render-to-static-markup [code/<markdown-code-component> {:children "inline"}])]
+  (let [html (server/render-to-static-markup [code/<parse-markdown-components> "`inline`"])]
     (let [element (.createElement js/document "div")]
       (set! (.-innerHTML element) html)
       (is (= "inline" (.-textContent (.querySelector element ".code-snippet > code.code-highlight"))))
       (is (= "Copy code" (.getAttribute (.querySelector element ".code-copy") "aria-label")))
-      (is (nil? (.querySelector element "pre, div"))))))
+      (is (nil? (.querySelector element ".code-snippet pre, .code-snippet div"))))))
 (deftest debug-and-theme-events-preserve-app-db
   (async done
          (-> (go-promise (let [before (rf/make-restore-fn)]

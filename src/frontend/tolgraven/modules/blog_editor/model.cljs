@@ -2,10 +2,10 @@
   "Pure draft attachment transformations. Upload files and status are transient."
   (:require [clojure.string :as string]
             [tolgraven.components.content.upload-schema :as upload-schema]
+            [tolgraven.modules.blog-editor.anchors :as anchors]
             [tolgraven.media.schema :as media]))
 
 (def uploading-statuses #{:queued :uploading :processing})
-(def marker-pattern #"<!-- image-upload:[A-Za-z0-9-]+ -->")
 
 (def progress-schema upload-schema/progress)
 
@@ -15,8 +15,13 @@
    [:name :string]
    [:?owner :string]
    [:?sdk? :boolean]
+   [:?anchor-attached? :boolean]
+   [:?cancelled? :boolean]
    [:order [:int {:min 0}]]
-   [:placeholder :string]
+   [:position [:int {:min 0}]]
+   [:?chip-dismissed? :boolean]
+   [:?image-inserted? :boolean]
+   [:?image-inserting? :boolean]
    [:status [:enum :queued :uploading :processing :ready :failed]]
    [:?file :any]
    [:?job-id :string]
@@ -39,13 +44,20 @@
                              (sort-by :id items))]))
         (group-by #(get-in % [:asset :src]) uploads)))
 
-(defn placeholder [id] (str "<!-- image-upload:" id " -->"))
-
 (defn pending? [uploads]
   (boolean (some #(uploading-statuses (:status %)) (vals uploads))))
 
-(defn unresolved? [text uploads]
-  (or (pending? uploads) (boolean (re-find marker-pattern (or text "")))))
+(defn unresolved? [_ uploads]
+  (boolean (some #(or (not= :ready (:status %)) (not (:image-inserted? %))) (remove :cancelled? (vals uploads)))))
+
+(defn positions [uploads]
+  (into {} (map (juxt :id :position))
+        (remove :chip-dismissed? (vals uploads))))
+
+(defn map-uploads [uploads changes]
+  (into {} (keep (fn [[id upload]]
+                   (when-let [position (anchors/map-position (:position upload) changes)]
+                     [id (assoc upload :position position)]))) uploads))
 
 (defn next-upload [uploads]
   (when-not (some #(#{:uploading :processing} (:status %)) (vals uploads))
@@ -59,11 +71,11 @@
         additions (map-indexed
                     (fn [index {:keys [id name] :as file}]
                       (assoc file :order (+ order index)
-                                  :placeholder (if (:sdk? file) "" (placeholder id))
+                                  :position start'
                                   :status :queued)) files)
-        placeholders (string/join "\n" (remove string/blank? (map :placeholder additions)))]
-    {:text (str (subs text' 0 start') placeholders (subs text' end'))
-     :uploads (into (or uploads {}) (map (juxt :id identity)) additions)}))
+        changes [{:from start', :to end', :inserted ""}]]
+    {:text (str (subs text' 0 start') (subs text' end'))
+     :uploads (into (map-uploads (or uploads {}) changes) (map (juxt :id identity)) additions)}))
 
 (defn image-markdown [name src]
   (str "![" (-> name
@@ -74,11 +86,7 @@
        "](" src ")"))
 
 (defn complete-upload [text upload asset]
-  ;; A removed placeholder never reappears after a slow completion. Other draft
-  ;; edits and attachments retain their position, regardless of completion order.
   (if (:sdk? upload) text
-      (string/replace (or text "") (:placeholder upload)
-                      (fn [_] (image-markdown (:name upload) (:src asset))))))
+      (anchors/insert-image (or text "") (:position upload) (image-markdown (:name upload) (:src asset)))))
 
-(defn cancel-upload [text upload]
-  (if (:sdk? upload) text (string/replace (or text "") (:placeholder upload) "")))
+(defn cancel-upload [text _] text)

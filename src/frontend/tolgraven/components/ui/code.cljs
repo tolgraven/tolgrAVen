@@ -3,7 +3,6 @@
     [tolgraven.component.registry]
     [tolgraven.macros :refer-macros [defc register-render-functions!]]
     [tolgraven.react :as r]
-    [tolgraven.components.highlight :as highlight]
     [tolgraven.components.code-block :as code-block]
     [tolgraven.components.image :as image]
     [tolgraven.media.schema :as media]
@@ -32,10 +31,8 @@
 (def omit-markdown-component
   (r/reactify-component (fn [_] nil)))
 
-;; Kept as a public compatibility entry; the full highlighter owns its bundle.
-(def <code-block> highlight/<code-block>)
 
-(defc <markdown-code-component>
+(defc ^:private <code>
   "Custom code component for react-markdown that uses our syntax highlighter"
   [{:keys [children className default-language auto-languages code-options]}]
   ;; reactify-component supplies a Clojure map. ReactMarkdown's code children
@@ -44,7 +41,7 @@
         language (some->> className (re-find #"language-([\w-]+)") second)
         block? (r/use-context block-context)
         linked? (r/use-context link-context)]
-    [<code-block> code
+    [code-block/<code-block> code
      (merge {:default-language default-language
              :auto-languages auto-languages}
        code-options
@@ -107,7 +104,7 @@
   (let [code-component (r/use-memo
                          #(r/reactify-component
                             (fn [props]
-                              [<markdown-code-component>
+                              [<code>
                                (assoc props :default-language default-language
                                             :auto-languages auto-languages
                                             :code-options code-options)]))

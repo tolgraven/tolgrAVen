@@ -4,6 +4,8 @@
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as r]
             [tolgraven.modules.markdown-editor.catalog :as catalog]
+            [tolgraven.modules.markdown-editor.source :as source]
+            [tolgraven.modules.markdown-editor.uploads :as uploads]
             [tolgraven.modules.markdown-editor.code :as code]
             [tolgraven.markdown.authoring :as model]
             [tolgraven.modules.markdown-components.views :as components]
@@ -13,7 +15,7 @@
             [tolgraven.components.content.media :as media]
             [clojure.string :as string]
             ["@mdxeditor/editor" :as editor]
-            ["lexical" :refer [FORMAT_TEXT_COMMAND $getNodeByKey $getSelection $setSelection $isRangeSelection]]))
+            ["lexical" :refer [$getNodeByKey]]))
 
 (def mdx-editor (r/adapt-react-class editor/MDXEditor))
 
@@ -105,7 +107,8 @@
                         attrs' (into (vec attrs) (model/attributes (into {} (map (fn [[key value]] [key {:literal value}])) (layout/attributes geometry))))]
                     (update! (clj->js {:attributes attrs'}))))]
     ;; Percentages refer to the editor content box, just like the published
-    ;; article. The SDK's floating decorator adds authoring chrome around it.
+    ;; article. Measure before paint because this width controls the first
+    ;; visible floating preview; observers retain ordinary measurement ownership.
     (r/use-layout-effect
       (fn []
         (when-let [parent (some-> (.-current node-ref) (.closest ".md-editor-content"))]
@@ -122,26 +125,38 @@
             (fn [] (when observer (.disconnect observer)))))) [])
     [:section.md-component-node
      {:content-editable false
+      :tab-index 0
+      :aria-label (str "Embedded component " (model/component-name node))
       :ref node-ref
       :data-flow (or (:flow geometry) "block")
       :data-align (or (:align geometry) "left")
-      :style (assoc (select-keys (layout/style preview-geometry) [:width])
-                    :max-width "calc(100% - 1em - 2 * var(--line-width))")
+      :style (assoc (select-keys (layout/style preview-geometry) [:width]) :max-width "100%")
       :on-mouse-enter #(reset! *open? true)
       :on-mouse-leave #(reset! *open? false)}
-     [:header
+     [:header.md-component-node__chrome
       [:strong {:title (model/component-name node)} (last (string/split (model/component-name node) #"/"))]
       [:button {:type "button"
                 :aria-expanded @*open?
                 :aria-label "Edit component arguments"
-                :on-click #(swap! *open? not)} "Args"]]
+                :on-focus #(reset! *open? true)
+                :on-click #(swap! *open? not)} "Args"]
+      [resize/<handle>
+       {:target #(some-> (.-current node-ref) (.querySelector ".content-widget"))
+        :geometry geometry
+        :parent-width #(or (:width @*parent-size) 1)
+        :preview #(reset! *draft %)
+        :commit commit!}]]
      [components/<render> invocation']
-     [resize/<handle>
-      {:target #(some-> (.-current node-ref) (.querySelector ".content-widget"))
-       :geometry geometry
-       :parent-width #(or (:width @*parent-size) 1)
-       :preview #(reset! *draft %)
-       :commit commit!}]
+     (for [edge [:left :right :top :bottom]]
+       ^{:key edge}
+       [resize/<handle>
+        {:edge edge
+         :class "md-resize-edge"
+         :target #(some-> (.-current node-ref) (.querySelector ".content-widget"))
+         :geometry geometry
+         :parent-width #(or (:width @*parent-size) 1)
+         :preview #(reset! *draft %)
+         :commit commit!}])
      [:div.md-component-node__arguments {:class (when @*open? "is-open")}
       [<argument-table> entry (:attributes node) update!]]]))
 
@@ -168,29 +183,15 @@
         *error (r/atom nil)
         *pending? (r/atom false)]
   (let [{:keys [assets library upload!]} (r/use-context media-context)
-        active (editor/useCellValue editor/activeEditor$)
-        bookmark (r/use-ref nil)
+        {:keys [insert-upload!]} (r/use-context uploads/context)
         insert! (editor/usePublisher editor/insertJsx$)
         insert-image! (fn [src alt]
-                        (when-let [selection (.-current bookmark)]
-                          (.update active
-                                   (fn []
-                                     (when (and ($getNodeByKey (.. selection -anchor -key))
-                                                ($getNodeByKey (.. selection -focus -key)))
-                                       ($setSelection (.clone selection))))
-                                   #js {:discrete true}))
                         (insert! (clj->js {:kind "flow", :name "Component", :props (image-props src alt)}))
                         (reset! *open? false))]
     [:div.md-image-picker
      [:button {:type "button"
                :aria-expanded @*open?
-               :on-click #(do (when active
-                                (.read (.getEditorState active)
-                                       (fn []
-                                         (let [selection ($getSelection)]
-                                           (when ($isRangeSelection selection)
-                                             (set! (.-current bookmark) (.clone selection)))))))
-                              (swap! *open? not)
+               :on-click #(do (swap! *open? not)
                               (when library (library :load 0)))} "Image"]
      (when @*open?
        [:div.md-image-picker__menu
@@ -215,12 +216,14 @@
                     :on-change
                     (fn [event]
                       (when-let [file (aget (.. event -target -files) 0)]
-                        (reset! *pending? true)
-                        (reset! *error nil)
-                        (-> (upload! file)
-                            (.then #(insert-image! % (.-name file)))
-                            (.catch #(reset! *error (.-message %)))
-                            (.finally #(reset! *pending? false)))))}]])
+                        (if insert-upload!
+                          (do (insert-upload! [file]) (reset! *open? false))
+                          (do (reset! *pending? true)
+                              (reset! *error nil)
+                              (-> (upload! file)
+                                  (.then #(insert-image! % (.-name file)))
+                                  (.catch #(reset! *error (.-message %)))
+                                  (.finally #(reset! *pending? false)))))))}]])
         (when @*pending? [:p {:role "status"} "Preparing image…"])
         (when @*error [:p {:role "alert"} @*error])])]))
 
@@ -245,7 +248,7 @@
 (def image-layout-toolbar-react (r/reactify-component (fn [props] [<image-layout-toolbar> props])))
 
 (defc <toolbar> []
-  [:> editor/DiffSourceToggleWrapper
+  [:div.md-editor-toolbar
    [:> editor/UndoRedo]
    [:> editor/Separator]
    [:> editor/BlockTypeSelect]
@@ -263,16 +266,16 @@
 (defc <formatting-keymap>
   "Both Ctrl and Cmd formatting shortcuts use the active SDK selection, including nested editors."
   [{:keys [children]}]
-  (let [active (editor/useCellValue editor/activeEditor$)]
+  (let [format! (editor/usePublisher editor/applyFormat$)]
     [:div {:on-key-down-capture
            (fn [event]
-             (when (and active (or (.-ctrlKey event) (.-metaKey event))
+             (when (and (or (.-ctrlKey event) (.-metaKey event))
                         (not (.-altKey event)) (not (.-shiftKey event))
                         (.-isContentEditable (.-target event)))
                (when-let [format (get {"b" "bold", "i" "italic", "u" "underline"} (.-key event))]
                  (.preventDefault event)
                  (.stopPropagation event)
-                 (.dispatchCommand active FORMAT_TEXT_COMMAND format))))}
+                 (format! format))))}
      children]))
 
 (def formatting-keymap-react (r/reactify-component (fn [props] [<formatting-keymap> props])))
@@ -280,8 +283,11 @@
   (editor/realmPlugin #js {:init (fn [realm]
                                   (.pub realm editor/addEditorWrapper$ formatting-keymap-react))}))
 
-(defn plugins [upload! image-urls]
+(defn plugins [upload! image-urls import-params]
   #js [(keymap-plugin)
+       ((editor/realmPlugin #js {:init (fn [realm] (.pub realm editor/addEditorWrapper$ uploads/controller-react))}))
+       (editor/directivesPlugin #js {:directiveDescriptors (uploads/descriptors), :escapeUnknownTextDirectives true})
+       (uploads/plugin import-params)
        (editor/headingsPlugin #js {:allowedHeadingLevels #js [1 2 3 4 5 6]})
        (editor/listsPlugin)
        (editor/quotePlugin)
@@ -297,17 +303,18 @@
                                 :EditImageToolbar image-layout-toolbar-react})
        (editor/jsxPlugin #js {:jsxComponentDescriptors (descriptors)})
        (editor/markdownShortcutPlugin)
-       (editor/diffSourcePlugin #js {:viewMode "rich-text"})
        (editor/toolbarPlugin #js {:toolbarContents #(r/as-element [<toolbar>] )})])
 
 (defc <editor>
   "Edit canonical Markdown through the lazy rich-text SDK; only external changes reset SDK content."
-  {:spec-schema [:map [:text :string] [:on-change fn?] [:?upload! fn?] [:?image-urls [:vector :string]] [:?assets [:vector :map]] [:?library fn?]]}
-  [{:keys [text on-change upload! image-urls assets library]}]
+  {:spec-schema [:map [:text :string] [:on-change fn?] [:?upload! fn?] [:?image-urls [:vector :string]] [:?assets [:vector :map]] [:?library fn?]
+                      [:?source? :boolean] [:?uploads [:vector :map]] [:?render-upload fn?] [:?enqueue! fn?] [:?insert-ready! fn?] [:?on-anchors fn?] [:?on-removed fn?]]}
+  [{:keys [text on-change upload! image-urls assets library source? uploads render-upload enqueue! insert-ready! on-anchors on-removed] :as props}]
   :let [*error (r/atom nil)
         *overlay (r/atom nil)]
   (let [editor-ref (r/use-ref nil)
-        editor-plugins (r/use-memo #(plugins upload! (or image-urls [])) [upload! image-urls])]
+        import-params {:text text, :uploads (mapv #(select-keys % [:id :position :image-inserted? :cancelled? :asset]) uploads)}
+        editor-plugins (r/use-memo #(plugins upload! (or image-urls []) import-params) [upload! image-urls import-params])]
     ;; This calls the SDK's public content API, never mutates React-owned markup.
     ;; onChange writes through the parent form's event; selection/history are SDK transient state.
     (r/use-effect
@@ -317,9 +324,14 @@
       [text])
     [:r> (r/context-provider media/asset-context) #js {:value (into {} (map (juxt :src identity)) assets)}
      [:r> (r/context-provider media-context) #js {:value {:assets assets, :library library, :upload! upload!}}
+     [:r> (r/context-provider uploads/context)
+      #js {:value {:uploads uploads, :render-upload render-upload, :enqueue! enqueue!, :insert-ready! insert-ready!
+                   :on-change on-change, :on-anchors on-anchors, :on-removed on-removed}}
      [:div.site-md-editor
      [:div.site-md-editor-overlay {:ref (fn [node] (when node (reset! *overlay node)) nil)}]
-     [mdx-editor {:ref editor-ref
+     (if source?
+       [source/<source> props]
+       [mdx-editor {:ref editor-ref
                   :markdown text
                   :plugins editor-plugins
                   :contentEditableClassName "md-editor-content"
@@ -327,9 +339,9 @@
                   :onChange (fn [markdown initial-normalization?]
                               (when-not initial-normalization?
                                 (reset! *error nil)
-                                (on-change markdown)))
+                                nil))
                   :onError (fn [error]
-                             (reset! *error (.-message error)))}]
+                             (reset! *error (.-message error)))}])
      (when @*error
        [:p.md-editor-error {:role "alert"}
-        "The source contains markup that cannot be edited visually. Switch to source to repair it. " @*error])]]]))
+        "The source contains markup that cannot be edited visually. Switch to source to repair it. " @*error])]]]]))
