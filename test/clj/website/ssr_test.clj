@@ -25,9 +25,13 @@
    :html html})
 
 (defn projected-response [select rows]
-  ;; REST projections include selected SQL NULLs. Preserve extra fields here
-  ;; so the public-reader tests still prove the allowlist removes them.
-  (mapv #(merge (zipmap (map keyword (string/split select #",")) (repeat nil)) %) rows))
+  ;; REST projections include selected SQL NULLs, except NOT NULL columns
+  ;; with database defaults. Preserve extra fields so reader tests still
+  ;; prove the public allowlist removes them.
+  (let [columns (map keyword (string/split select #","))
+        defaults (into {} (map (fn [column]
+                                 [column (when (= :image_assets column) {})])) columns)]
+    (mapv #(merge defaults %) rows)))
 
 (deftest comment-expansion-opens-two-levels-and-preserves-explicit-folds
   (is (comments/expanded? {} [42 "root"]))

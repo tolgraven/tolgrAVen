@@ -4,7 +4,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 
 - Cold layout/handler JVM suites require compiled `:document` resources. Build
   them in the isolated test checkout, or reuse their owning Shadow watch; see
-  `doc/testing.md`.
+  `doc/testing.md`. The full JVM suite also requires the compiled `:ssr` worker
+  in that checkout for its actual Node protocol checks.
 - Mount actual Reagent components, dereference subscriptions during render, dispatch
   real events, await lifecycle completion, and unmount in cleanup. Avoid direct
   app-db mutation, dangling subscriptions and forced React flushes.

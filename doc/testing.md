@@ -21,12 +21,13 @@ excludes the dev resource directory so dev credentials are not inherited.
 See [Runtime configuration](configuration.md) for defaults and integration keys.
 
 Backend handler/layout fixtures need generated CSS and the real `:document`
-bootstrap. In an isolated agent snapshot, build those prerequisites and run the
+bootstrap. The full suite also starts the real `:ssr` Node worker. In an isolated
+agent snapshot, build those prerequisites and run the
 suite together so each command sees the same output. Use the existing Shadow
 worker when a target is watched; the isolated agent snapshot preserves that output:
 
 ```sh
-/Users/tol/.local/bin/tolgraven-cpu run -- sh -c 'npm run build && lein with-profile prod,provided run -m shadow.cljs.devtools.cli release document && lein with-profile +project/test test'
+/Users/tol/.local/bin/tolgraven-cpu run -- sh -c 'npm run build && lein with-profile prod,provided run -m shadow.cljs.devtools.cli release document ssr && lein with-profile +project/test test'
 bb test:scripts
 ```
 
