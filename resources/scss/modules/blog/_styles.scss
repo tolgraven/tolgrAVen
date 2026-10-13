@@ -496,36 +496,3 @@ textarea.blog-adding-comment-textbox { // only text
   width: var(--blog-comment-avatar);
 }
 
-.blog-image-editor {
-  display: grid;
-  gap: 0.75rem;
-
-  textarea {
-    width: 100%;
-    min-height: 40vh;
-    resize: vertical;
-  }
-
-  &__attach {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  &__hint {
-    font-size: 0.9em;
-    opacity: 0.8;
-  }
-
-  &__uploads {
-    padding-inline-start: 1.5rem;
-
-    li {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      align-items: center;
-    }
-  }
-}
