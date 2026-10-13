@@ -14,7 +14,8 @@
    [:mode :string]
    [:modes [:vector :map]]
    [:mode-index :int]
-   [:cursor-style? :boolean]])
+   [:cursor-style? :boolean]
+   [:mouse? :boolean]])
 
 (defn blank-row [cols] (vec (repeat cols [" " 0])))
 (defn grid [cols rows]
@@ -26,7 +27,8 @@
    :mode "normal"
    :modes []
    :mode-index 0
-   :cursor-style? false})
+   :cursor-style? false
+   :mouse? false})
 
 (defn- line [state [_ row col cells]]
   (let [expanded (second
@@ -66,6 +68,8 @@
                                          (<= 0 bg) (assoc :background bg)))
     "mode_info_set" (assoc state :cursor-style? (first entry) :modes (vec (second entry)))
     "mode_change" (assoc state :mode (first entry) :mode-index (second entry))
+    "mouse_on" (assoc state :mouse? true)
+    "mouse_off" (assoc state :mouse? false)
     state))
 
 (defn redraw [state events]
@@ -141,3 +145,19 @@
         (= 1 (count key)) (if (seq prefix) (str "<" prefix key ">")
                              (if (= "<" key) "<lt>" key))
         :else nil))))
+
+(def mouse-params-schema
+  [:tuple [:enum "left" "middle" "right" "x1" "x2" "wheel"]
+   [:enum "press" "drag" "release" "up" "down" "left" "right"]
+   :string [:= 0] [:int {:min 0}] [:int {:min 0}]])
+
+(defn mouse-button [button]
+  (get {0 "left", 1 "middle", 2 "right", 3 "x1", 4 "x2"} button))
+
+(defn mouse-modifiers [{:keys [shift? ctrl? alt? meta?]}]
+  (str (when shift? "S") (when ctrl? "C") (when alt? "A") (when meta? "D")))
+
+(defn mouse-position [{:keys [x y left top cell-width cell-height cols rows]}]
+  ;; Clamp captured drags outside the grid to its nearest cell.
+  [(max 0 (min (dec rows) (js/Math.floor (/ (- y top) cell-height))))
+   (max 0 (min (dec cols) (js/Math.floor (/ (- x left) cell-width))))])

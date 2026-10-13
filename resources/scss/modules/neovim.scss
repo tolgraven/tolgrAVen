@@ -7,6 +7,8 @@
 .neovim__grid, .neovim__measure { font-family: Menlo, "Neovim Icons", Consolas, monospace; font-size: .875rem; line-height: 1.35; font-variant-ligatures: none; }
 .neovim__measure { position: absolute; visibility: hidden; pointer-events: none; }
 .neovim__grid { margin: 0; width: max-content; min-width: 100%; outline: none; white-space: pre; }
+.neovim__grid--loading { visibility: hidden; }
+.neovim__grid--mouse { user-select: none; touch-action: none; }
 .neovim__grid:focus-visible { outline: .125rem solid #5ad1ff; outline-offset: -.125rem; }
 .neovim__row { display: flex; height: 1.35em; }
 .neovim__cell { display: inline-block; flex: 0 0 1ch; width: 1ch; }

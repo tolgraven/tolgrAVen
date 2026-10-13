@@ -1,4 +1,48 @@
 " Browser-safe subset of the local init.vim; plugin sources are pinned alongside it.
+" Options from the local init.vim's LOOK/general block (lines 416-497).
+set number numberwidth=3 showmatch matchtime=3 cursorline
+set showtabline=2 noshowmode shortmess=atTcA
+set foldminlines=2 foldopen+=jump foldlevelstart=1 foldcolumn=0
+let &fillchars = 'fold: ,vert:│'
+set list
+let &listchars = 'tab:܁ ,trail:·,eol:↵'
+let g:colorcolumn_width = 80
+let g:colorcolumn_orig = join(range(g:colorcolumn_width, 240), ',')
+let &colorcolumn = g:colorcolumn_orig
+set ttimeout ttimeoutlen=10 timeoutlen=370 updatetime=50 redrawtime=4000
+set lazyredraw maxmempattern=10000
+set shiftround tabstop=2 shiftwidth=2 expandtab smarttab textwidth=0
+set belloff=mess,spell,wildmode title titlelen=60
+let &titlestring = ''
+set nowrap whichwrap=<,>,[,],b,s linebreak ignorecase smartcase nostartofline
+set autoindent virtualedit=block,onemore wrapscan incsearch gdefault
+set formatoptions=jc,ro,ql
+set sessionoptions+=globals sessionoptions-=blank
+set undofile undolevels=20000 noswapfile autowrite confirm
+set fileformats=unix,dos,mac hidden synmaxcol=15000
+set conceallevel=2 concealcursor=nv signcolumn=auto:1-4
+set splitbelow splitright switchbuf=usetab
+set scrolloff=3 sidescrolloff=2 sidescroll=1
+set winminwidth=0 winheight=7 winminheight=4 previewheight=25
+set equalalways eadirection=ver cmdwinheight=20
+" Nearby Neovim-specific options; mouse events are forwarded by the component.
+set mouse=a mousemodel=popup_setpos mousescroll=ver:1,hor:1
+set noshowcmd inccommand=split pumblend=20
+
+" RGB remote UIs do not advertise a terminal t_Co; use the colorcolumn method.
+let g:diminactive = 1
+let g:diminactive_use_colorcolumn = 1
+let g:diminactive_use_syntax = 0
+let g:diminactive_enable_focus = 0
+let g:diminactive_max_cols = g:colorcolumn_width
+let g:diminactive_buftype_blacklist = ['acwrite', 'quickfix']
+let g:diminactive_filetype_blacklist = ['startify']
+augroup browser_profile_focus
+  autocmd!
+  autocmd FocusLost * silent! execute 'DimInactiveOff' | let g:colorcolumn_orig = &colorcolumn
+  autocmd FocusGained * silent! execute 'DimInactiveOn' | let &colorcolumn = g:colorcolumn_orig
+augroup END
+
 let g:sexp_enable_insert_mode_mappings = 0
 let g:clojure_align_multiline_strings = 1
 let g:clojure_align_subforms = 1
@@ -26,12 +70,13 @@ let g:NERDTreeCreatePrefix = 'silent keepjumps'
 let g:webdevicons_conceal_nerdtree_brackets = 1
 let g:WebDevIconsUnicodeDecorateFolderNodes = 1
 let g:WebDevIconsUnicodeGlyphDoubleWidth = 1
+let g:WebDevIconsNerdTreeBeforeGlyphPadding = ''
 let g:WebDevIconsNerdTreeAfterGlyphPadding = ' '
 let g:rainbow#pairs = [['(', ')'], ['[', ']'], ['{', '}']]
-let g:rainbow#auto = 1
+" The Lua Syntax hook retains global rainbow activation, excluding NERDTree.
+let g:rainbow#auto = 0
 let g:rainbow#max_level = 24
 let g:rainbow#blacklist = ['vim', 'NERD_Tree_*', '#hex']
-autocmd FileType lisp,clojure,fennel RainbowParentheses
 nnoremap <Leader>n <Cmd>NERDTreeToggle<CR>
 nnoremap <Leader>x <Cmd>Sayonara!<CR>
 nnoremap <C-h> <C-w>h

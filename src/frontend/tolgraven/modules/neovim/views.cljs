@@ -2,6 +2,7 @@
   (:require [tolgraven.component.registry]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.react :as rf]
+            [tolgraven.listener :as listener]
             [reagent.core :as r]
             [clojure.string :as string]
             [tolgraven.modules.neovim.model :as model]
@@ -42,7 +43,8 @@
         *session (atom nil)
         *element (atom nil)
         *probe (atom nil)
-        *grid-element (atom nil)]
+        *grid-element (atom nil)
+        *pointer (atom nil)]
   ;; The editor process owns its buffer. This ratom is its disposable UI projection,
   ;; like a native player/gesture adapter, never a mirrored application document store.
   (let [{:keys [rows cols initial-text initial-file filetype on-save]
@@ -55,7 +57,17 @@
                                   (when (and (identical? session @*session) @*grid-element)
                                     (.focus @*grid-element))
                                   result))
-                         (.catch #(when (identical? session @*session) (fail! %))))))]
+                         (.catch #(when (identical? session @*session) (fail! %))))))
+        mouse-ready? #(and (= :ready (:status @*view)) (get-in @*view [:grid :mouse?]))
+        mouse! (fn [event button action]
+                 (when (mouse-ready?)
+                   (let [params (runtime/mouse-params (:grid @*view) @*grid-element @*probe event button action)]
+                     (request! "nvim_input_mouse" params)
+                     params)))
+        cancel-pointer! (fn [_]
+                          (when-let [{:keys [params]} @*pointer]
+                            (reset! *pointer nil)
+                            (request! "nvim_input_mouse" (assoc params 1 "release"))))]
     (rf/use-effect
      (fn []
        (when (exists? js/window)
@@ -63,13 +75,14 @@
                        :message "Starting Neovim…"
                        :grid (model/grid cols rows)})
          (reset! *imports files/idle-state)
+         (reset! *pointer nil)
          (if-not (runtime/available?)
            (do (swap! *view assoc :status :unsupported
-                      :message "Open the editor in its own page to start Neovim.") nil)
+                      :message (runtime/unavailable-message)) nil)
            (let [*active? (atom true)
                  *observer (atom nil)
                  {:keys [session ready stop!]}
-                 (runtime/start! {:cols cols
+                 (runtime/start! {:cols (runtime/column-count @*element @*probe)
                                   :rows rows
                                   :initial-text initial-text
                                   :initial-file initial-file
@@ -92,6 +105,7 @@
                (reset! *active? false)
                (when-let [observer @*observer] (.disconnect observer))
                (reset! *session nil)
+               (reset! *pointer nil)
                (stop!))))))
      [cols rows initial-text initial-file filetype])
     (let [{:keys [status message grid]} @*view
@@ -111,6 +125,39 @@
                                      (when @*grid-element (.focus @*grid-element)))))
                           (.catch #(when (identical? session @*session)
                                      (swap! *imports assoc :status :error :message (.-message %))))))))]
+      (rf/use-effect
+       (fn []
+         (when (= :ready status)
+           (let [session @*session
+                 focus! (fn [_]
+                          (when (identical? session @*session)
+                            (-> (runtime/request! session "nvim_ui_set_focus"
+                                  [(and (not (.-hidden js/document)) (.hasFocus js/document))])
+                                (.catch #(when (identical? session @*session) (fail! %))))))]
+             (focus! nil)
+             ;; React wheel listeners are passive. This owned native binding allows
+             ;; Neovim to consume scrolling without also scrolling the host page.
+             (listener/listen! :neovim
+               (cond-> [{:target "window", :event "focus", :handler focus!}
+                        {:target "window", :event "blur", :handler focus!}
+                        {:target "document", :event "visibilitychange", :handler focus!}]
+                 (:mouse? grid)
+                 (conj {:target @*grid-element
+                        :event "wheel"
+                        :passive? false
+                        :handler (fn [event]
+                                   (when (and (mouse-ready?)
+                                              (not (or (.-ctrlKey event) (.-metaKey event))))
+                                     (let [x (.-deltaX event)
+                                           y (.-deltaY event)
+                                           delta (if (> (js/Math.abs x) (js/Math.abs y)) x y)
+                                           action (if (> (js/Math.abs x) (js/Math.abs y))
+                                                    (if (pos? x) "right" "left")
+                                                    (if (pos? y) "down" "up"))]
+                                       (when-not (zero? delta)
+                                         (.preventDefault event)
+                                         (mouse! event "wheel" action)))))}))))))
+       [status (:mouse? grid)])
       [:div.neovim
        [:div.neovim__toolbar
         [:span {:role "status", :aria-live "polite"} (if (= :ready status) (:mode grid) message)]
@@ -158,7 +205,10 @@
               "Search imported project"]])
           [:span {:role "status"} (:message @*imports)]
           [:small "Session files only. Up to 512 files, 4 MiB each, 32 MiB per import."]])
-       (when (= :unsupported status)
+       (when (and (= :unsupported status)
+                  (exists? js/window)
+                  js/window.isSecureContext
+                  (not js/window.crossOriginIsolated))
          ;; An isolation policy requires a new document, not a same-document SPA hop.
          [:p [:a {:href "/neovim", :target "_self", :data-document-navigation "true"} "Open Neovim"]])
        [:div.neovim__viewport {:ref #(reset! *element %)}
@@ -167,10 +217,34 @@
         [:pre.neovim__grid
          {:ref #(reset! *grid-element %)
           :tab-index 0
+          :class (cond-> []
+                   (not= :ready status) (conj "neovim__grid--loading")
+                   (and (= :ready status) (:mouse? grid)) (conj "neovim__grid--mouse"))
           :role "textbox"
           :aria-label "Neovim editor"
           :aria-multiline true
           :aria-readonly (not= :ready status)
+          :on-pointer-down (fn [event]
+                             (when-let [button (model/mouse-button (.-button event))]
+                               (when-let [params (mouse! event button "press")]
+                                 (.preventDefault event)
+                                 (.focus (.-currentTarget event))
+                                 (.setPointerCapture (.-currentTarget event) (.-pointerId event))
+                                 (reset! *pointer {:id (.-pointerId event), :button button, :params params}))))
+          :on-pointer-move (fn [event]
+                             (when-let [{:keys [id button]} @*pointer]
+                               (when (= id (.-pointerId event))
+                                 (when-let [params (mouse! event button "drag")]
+                                   (swap! *pointer assoc :params params)))))
+          :on-pointer-up (fn [event]
+                           (when-let [{:keys [id button params]} @*pointer]
+                             (when (= id (.-pointerId event))
+                               (reset! *pointer nil)
+                               (when-not (mouse! event button "release")
+                                 (request! "nvim_input_mouse" (assoc params 1 "release"))))))
+          :on-pointer-cancel cancel-pointer!
+          :on-lost-pointer-capture cancel-pointer!
+          :on-context-menu #(when (mouse-ready?) (.preventDefault %))
           :on-key-down (fn [event]
                          (when-let [input (runtime/key-input event)]
                            (when (= :ready status)

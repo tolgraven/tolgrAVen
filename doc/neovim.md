@@ -10,6 +10,12 @@ uses a full document navigation; subsequent navigation can use the SPA as usual.
 A component embedded in an ordinary document shows an explicit link to the
 isolated page. Every top-level document containing a working editor must provide
 these headers, including iframe ancestors; an iframe alone cannot supply isolation.
+The capability guard also checks SharedArrayBuffer, WebAssembly and Worker availability.
+A browser may report isolation while suppressing SharedArrayBuffer; that state shows
+a shared-memory explanation instead of a link back to the same isolated page.
+Fixture checks are disabled in unsupported contexts, and the transport rejects a
+missing SharedArrayBuffer constructor before worker creation. Modern Safari supports
+shared memory under COOP/COEP, but the actual browser context must expose it.
 
 ```clojure
 (m/<> :neovim/editor
@@ -40,7 +46,7 @@ layout and startup wake protocol. There is no transport initialization during SS
 
 The current port is experimental. This integration provides ordinary keys,
 modifier keys, paste and composition input, buffer reads, Lua, syntax colors and
-bundled help. It does not implement mouse editing, terminal jobs, OS processes,
+bundled help. It does not implement terminal jobs, OS processes,
 external-process plugins, durable file export or saving back to the host. Browser Cmd
 shortcuts and Ctrl+Shift+V remain native. Sessions are temporary; copy/use the
 buffer before leaving. Large pastes that exceed the ring capacity fail visibly.
@@ -100,7 +106,7 @@ server must send `Service-Worker-Allowed: /` for the worker script.
 
 `npm run build` (also the Sass build/watch) runs `build.neovim-workspace`. It
 synchronizes the editable `vendor/neovim/init.lua` and `browser.vim` into the
-pinned profile and creates the ignored `vendor/neovim/workspace.json` from the
+pinned profile (including `after/syntax/nerdtree.vim`) and creates the ignored `vendor/neovim/workspace.json` from the
 current checkout's `src/` and `resources/scss/` text files. Symlinks, other roots,
 config files and binary assets are excluded. The existing packaging policy
 also prunes disabled modules and their style sources; disabling Neovim omits
@@ -113,8 +119,10 @@ the unchanged upstream worker starts Neovim. Plugin files do not pass through
 RPC. One Lua initialization request enables the browser profile and sets cwd to
 `/workspace/tolgrAVen`. `/neovim` opens the bundled editor source by default;
 `:initial-file` selects a relative repository file instead of `:initial-text`.
-The editor shows an indeterminate animated progress bar until ready, with a
-static indicator for reduced motion.
+The initial file/filetype are configured before attaching the UI at the container's
+measured width. The editor shows an indeterminate animated progress bar until its
+first complete redraw; the grid remains hidden during startup so intermediate
+unnamed buffers cannot flash. Reduced motion uses a static indicator.
 
 Use **Search repository** (`:Meta!`), **Browse source files** (`:Meta! #file`), or
 **File tree** (`:NERDTreeToggle /workspace/tolgrAVen`). Meta falls back to Neovim's
@@ -135,15 +143,34 @@ flags, file hashes and license documents in `profile.json`:
 - **NERDTree**, **vim-devicons**, **vim-airline** (Bruvbox theme/tabline only),
   **vim-clojure-static**, **vim-sexp**, and the user's **rainbow_parentheses.vim**,
   **vim-cursorword**, **vim-numbertoggle**, and **vim-sayonara** forks.
-- Small editing helpers: **vim-repeat**, **vim-commentary**, **vim-textobj-user**,
+- Small editing helpers: **vim-diminactive**, **vim-repeat**, **vim-commentary**, **vim-textobj-user**,
   **vim-textobj-indent** and **vim-easy-align**.
 
-The browser profile carries Space/comma leaders, indentation/search/split
+The browser profile carries the active local `init.vim` settings from its LOOK/general
+block (lines 416–497), plus the nearby mouse, incremental-command and popup settings.
+The Homebrew fzf runtime path and executable-dependent ripgrep command are omitted.
+Undo files use this session's virtual filesystem and disappear with it; title options
+remain native Neovim settings rather than changing the site's document title.
+
+It also carries Space/comma leaders, indentation/search/split
 preferences, Bruvbox column/selection options, NERDTree settings, airline's empty
 separators/tabline, Clojure alignment, rainbow settings, and the complete active
 sexp mappings plus `SexpInit` from the local init. `#` opens Meta; Space+n toggles
 NERDTree; Space+x invokes Sayonara; comma+o raises a sexp then indents it. Window
-navigation uses Neovim splits directly. The source config was compared with
+navigation uses Neovim splits directly. `vim-diminactive` uses Bruvbox's native
+ColorColumn highlight for inactive splits; active splits restore the local 80–240
+color-column range. The local dimming blacklists and focus setup are retained.
+The RGB UI explicitly enables the colorcolumn method without depending on a terminal
+`t_Co` value. Tree devicon delimiters are concealed after NERDTree syntax loading,
+without concealing brackets in filenames. Rainbow activation excludes NERDTree,
+so it cannot override tree conceal. Icons have no leading padding and retain one
+space before the filename.
+
+Reagent pointer handlers send click/drag/release events to `nvim_input_mouse`; a
+lifecycle-owned non-passive wheel listener prevents simultaneous page scrolling.
+The grid follows Neovim's `mouse_on`/`mouse_off` events. Window focus/visibility
+changes send `nvim_ui_set_focus` so the profile's focus autocommands work. Browser
+Ctrl/Cmd wheel zoom remains native. The source config was compared with
 [tolgraven/nvim-setup](https://github.com/tolgraven/nvim-setup/tree/d3377432fe5b2c5397ada2dd8953b465468387be);
 the local init/plugin declarations differ, so the local settings are authoritative.
 
@@ -183,7 +210,9 @@ consumer that supplies `:on-save`.
 
 The fixture also has **Run plugin checks** for real colors, Meta filtering/edit
 writeback, NERDTree, devicons, airline and sexp mappings, and **Run workspace
-checks** for Meta source discovery and real File-object imports. The displayed
+checks** for Meta source discovery and real File-object imports. **Run settings
+checks** verifies local option values, inactive split dimming/restoration, and tree
+conceal rules in the actual WASM process. The displayed
 worker startup measurement is local fixture evidence, not a production-network
 performance guarantee. Additional checks:
 

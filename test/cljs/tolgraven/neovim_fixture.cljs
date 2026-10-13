@@ -15,7 +15,9 @@
 (defonce *live (r/atom "Not run"))
 (defonce *plugins (r/atom "Not run"))
 (defonce *workspace (r/atom "Not run"))
+(defonce *settings (r/atom "Not run"))
 (defonce *startup-ms (r/atom nil))
+(defonce *first-frame (r/atom "Waiting for first visible frame…"))
 (defonce *workers (r/atom 0))
 (defonce *created (r/atom 0))
 
@@ -140,20 +142,103 @@
         (.catch #(reset! *workspace (str "FAIL: " (.-message %))))
         (.finally stop!))))
 
+(def settings-check-lua
+  "local expected = {
+     number = true, numberwidth = 3, showmatch = true, matchtime = 3, cursorline = true,
+     showtabline = 2, showmode = false, shortmess = 'atTcA', foldminlines = 2,
+     foldlevelstart = 1, foldcolumn = '0', list = true,
+     ttimeout = true, ttimeoutlen = 10, timeoutlen = 370, updatetime = 50, redrawtime = 4000,
+     lazyredraw = true, maxmempattern = 10000, shiftround = true, tabstop = 2, shiftwidth = 2,
+     expandtab = true, smarttab = true, textwidth = 0, belloff = 'mess,spell,wildmode',
+     title = true, titlelen = 60, titlestring = '', wrap = false, whichwrap = '<,>,[,],b,s',
+     linebreak = true, ignorecase = true, smartcase = true, startofline = false,
+     autoindent = true, virtualedit = 'block,onemore', wrapscan = true, incsearch = true,
+     gdefault = true, formatoptions = 'jcro,ql', undofile = true, undolevels = 20000,
+     swapfile = false, autowrite = true, confirm = true, fileformats = 'unix,dos,mac', hidden = true,
+     synmaxcol = 15000, conceallevel = 2, concealcursor = 'nv', signcolumn = 'auto:1-4',
+     splitbelow = true, splitright = true, switchbuf = 'usetab', scrolloff = 3, sidescrolloff = 2,
+     sidescroll = 1, winminwidth = 0, winheight = 7, winminheight = 4, previewheight = 25,
+     equalalways = true, eadirection = 'ver', cmdwinheight = 20,
+     mouse = 'a', mousemodel = 'popup_setpos', mousescroll = 'ver:1,hor:1',
+     showcmd = false, inccommand = 'split', pumblend = 20,
+   }
+   for name, value in pairs(expected) do
+     local actual = vim.api.nvim_get_option_value(name, {scope = 'global'})
+     assert(actual == value, name .. ': expected ' .. tostring(value) .. ', got ' .. tostring(actual))
+   end
+   assert(vim.o.fillchars == 'fold: ,vert:│' and vim.o.listchars == 'tab:܁ ,trail:·,eol:↵', 'Display characters missing')
+   assert(vim.o.foldopen:find('jump', 1, true), 'Fold-open jump missing')
+   assert(vim.o.sessionoptions:find('globals', 1, true) and not vim.o.sessionoptions:find('blank', 1, true), 'Session options missing')
+   assert(vim.fn.isdirectory(vim.o.undodir) == 1, 'Virtual undo directory missing')
+   vim.api.nvim_buf_set_lines(0, 0, -1, false, {'(settings)'})
+   local rainbow = vim.tbl_map(function(id) return vim.fn.synIDattr(id, 'name') end, vim.fn.synstack(1, 1))
+   assert(table.concat(rainbow, ' '):find('rainbowParens', 1, true), 'Clojure rainbow syntax missing')
+   local columns = vim.g.colorcolumn_orig
+   assert(columns:match('^80,81,82,') and columns:match(',240$'), 'Color columns missing')
+   assert(vim.g.loaded_diminactive == 1 and vim.g.diminactive == 1 and vim.g.diminactive_use_colorcolumn == 1, 'Diminactive missing')
+   local source = vim.api.nvim_get_current_win()
+   vim.cmd('vsplit')
+   local second = vim.api.nvim_get_current_win()
+   assert(vim.api.nvim_get_option_value('colorcolumn', {win = source}):match('^1,2,3,'), 'Inactive split was not dimmed')
+   assert(vim.api.nvim_get_option_value('colorcolumn', {win = second}) == columns, 'Active split lost color columns')
+   vim.api.nvim_set_current_win(source)
+   assert(vim.wo.colorcolumn == columns, 'Focus did not restore source color columns')
+   assert(vim.api.nvim_get_option_value('colorcolumn', {win = second}):match('^1,2,3,'), 'Previous active split was not dimmed')
+   vim.cmd('only')
+   vim.cmd('NERDTree /workspace/tolgrAVen')
+   assert(vim.bo.filetype == 'nerdtree' and vim.wo.conceallevel == 3, 'Tree conceal setup missing')
+   local found = false
+   for line, text in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+     if text:find('resources/', 1, true) then
+       local first, last = text:find('[', 1, true), text:find(']', 1, true)
+       assert(first and last and vim.fn.synconcealed(line, first)[1] == 1 and vim.fn.synconcealed(line, last)[1] == 1,
+         'Devicon brackets are not concealed after syntax loading: ' .. vim.inspect({text = text, first = first, last = last, syntax = vim.bo.syntax, concealed = vim.fn.synconcealed(line, first), stack = vim.tbl_map(function(id) return vim.fn.synIDattr(id, 'name') end, vim.fn.synstack(line, first)), rules = vim.fn.execute('syntax list hideBracketsInNerdTree')}))
+       found = true
+     end
+   end
+   assert(found, 'Tree fixture directory missing')
+   vim.cmd('NERDTreeClose')
+   return 'PASS: local options, mouse settings, split dimming, color-column restoration and concealed devicon brackets'")
+
+(defn settings-checks! []
+  (reset! *settings "Running…")
+  (let [{:keys [ready stop!]}
+        (runtime/start! {:cols 120, :rows 24, :initial-text "settings", :filetype "clojure"}
+                        (fn [_]) (fn [_ _]))]
+    (-> ready
+        (.then (fn [session]
+                 (when-not session (throw (js/Error. "Settings startup failed")))
+                 (runtime/request! session "nvim_exec_lua" [settings-check-lua []])))
+        (.then (fn [result]
+                 (-> ready
+                     (.then (fn [session]
+                              (-> (runtime/request! session "nvim_ui_set_focus" [false])
+                                  (.then #(runtime/request! session "nvim_exec_lua"
+                                            ["assert(vim.wait(1000, function() return vim.g.diminactive == 0 end, 10), 'FocusLost did not disable dimming')" []]))
+                                  (.then #(runtime/request! session "nvim_ui_set_focus" [true]))
+                                  (.then #(runtime/request! session "nvim_exec_lua"
+                                            ["assert(vim.wait(1000, function() return vim.g.diminactive == 1 end, 10), 'FocusGained did not restore dimming'); assert(vim.wo.colorcolumn == vim.g.colorcolumn_orig, 'Focus color columns were not restored')" []]))
+                                  (.then #(reset! *settings (str result "; native focus restoration")))))))))
+        (.catch #(reset! *settings (str "FAIL: " (.-message %))))
+        (.finally stop!))))
+
 (defn <fixture> []
   [:main {:style {:max-width "65rem", :margin "2rem auto", :padding "1rem"}}
    [:h1 "Neovim WASM component"]
    [:p "Press i to insert; Esc returns to normal mode. :help opens bundled help."]
    [:pre {:id "unit-results"} (pr-str @*unit)]
+   [:p {:id "first-frame"} @*first-frame]
    [:p {:id "worker-count"} (str "Active workers: " @*workers "; created: " @*created)]
    [:button {:on-click #(swap! *show? not)} (if @*show? "Unmount editor" "Mount editor")]
    [:button {:on-click #(swap! *alternate? not)}
     (if @*alternate? "Restore initializer" "Change initializer")]
-   [:button {:on-click live-checks!} "Run live checks"]
+   [:button {:disabled (not (runtime/available?)), :on-click live-checks!} "Run live checks"]
    [:p {:id "live-results"} @*live]
-   [:button {:on-click plugin-checks!} "Run plugin checks"]
+   [:button {:disabled (not (runtime/available?)), :on-click plugin-checks!} "Run plugin checks"]
    [:p {:id "plugin-results"} @*plugins]
-   [:button {:on-click workspace-checks!} "Run workspace checks"]
+   [:button {:disabled (not (runtime/available?)), :on-click settings-checks!} "Run settings checks"]
+   [:p {:id "settings-results"} @*settings]
+   [:button {:disabled (not (runtime/available?)), :on-click workspace-checks!} "Run workspace checks"]
    [:p {:id "workspace-results"} @*workspace]
    (when @*startup-ms [:p {:id "startup-ms"} (str "Whole worker startup: " @*startup-ms " ms")])
    (when @*show?
@@ -180,5 +265,24 @@
                         (swap! *workers dec)
                         (.call terminate worker))))
               worker))))
+  ;; Fixture-only observation: inspect the first visible grid, then disconnect.
+  (if-not (runtime/available?)
+    (reset! *first-frame "Skipped: this browser context cannot start the WASM editor")
+    (let [observer (js/MutationObserver.
+                   (fn [_ observer]
+                     (when-let [grid (.querySelector js/document ".neovim__grid")]
+                       (when (= "visible" (.-visibility (js/getComputedStyle grid)))
+                         (let [rows (array-seq (.querySelectorAll grid ".neovim__row"))
+                               title (.-textContent (first rows))
+                               line (.-textContent (second rows))
+                               loading? (.querySelector js/document ".neovim__progress")]
+                           (reset! *first-frame
+                             (if (and (not loading?) (.includes title "views.cljs")
+                                      (.includes line "(ns tolgraven.modules.neovim.views"))
+                               "PASS: first visible grid contains the configured source file, after loading"
+                               "FAIL: an intermediate startup grid became visible")))
+                         (.disconnect observer)))))]
+    (.observe observer (.getElementById js/document "app")
+              #js {:subtree true, :childList true, :attributes true})))
   (run-tests 'tolgraven.neovim-test)
   (dom/render (dom/create-root (.getElementById js/document "app")) [<fixture>]))

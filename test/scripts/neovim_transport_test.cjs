@@ -41,5 +41,11 @@ global.Worker = class {
   await rejected;
   assert.equal(worker.terminated, 1);
   assert.equal(errors.at(-1), 'Profile unavailable');
+  const shared = global.SharedArrayBuffer;
+  try {
+    delete global.SharedArrayBuffer;
+    assert.throws(() => start('fixture-worker', () => {}, () => {}, () => {}, () => {}),
+      error => error.name === 'Error' && /SharedArrayBuffer is unavailable/.test(error.message));
+  } finally { global.SharedArrayBuffer = shared; }
   console.log('PASS: real codec, fragmented RPC, redraw, queue bounds and cleanup');
 })().catch(error => { console.error(error); process.exitCode = 1; });

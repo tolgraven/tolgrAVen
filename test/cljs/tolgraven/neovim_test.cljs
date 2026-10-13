@@ -87,3 +87,22 @@
         style (model/cursor-style grid {:foreground 16711680, :background 255, :reverse true})]
     (is (= "#000000" (:color style)))
     (is (= "#ffffff" (:background-color style)))))
+
+(deftest mouse-events-use-grid-cells-and-follow-native-enable-state
+  (let [geometry {:left 10
+                  :top 20
+                  :cell-width 8
+                  :cell-height 16
+                  :cols 80
+                  :rows 24}]
+    (is (= [2 3] (model/mouse-position (assoc geometry :x 38 :y 60))))
+    (is (= [0 0] (model/mouse-position (assoc geometry :x -100 :y -100))))
+    (is (= [23 79] (model/mouse-position (assoc geometry :x 10000 :y 10000)))))
+  (is (= "left" (model/mouse-button 0)))
+  (is (= "right" (model/mouse-button 2)))
+  (is (nil? (model/mouse-button -1)))
+  (is (= "SCA" (model/mouse-modifiers {:shift? true, :ctrl? true, :alt? true})))
+  (is (= "D" (model/mouse-modifiers {:meta? true})))
+  (let [enabled (model/redraw (model/grid 5 3) [["mouse_on" []]])]
+    (is (:mouse? enabled))
+    (is (not (:mouse? (model/redraw enabled [["mouse_off" []]]))))))

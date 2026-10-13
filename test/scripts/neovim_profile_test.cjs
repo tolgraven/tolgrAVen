@@ -14,6 +14,8 @@ assert.equal(profile.files.find(file => file.path === 'init.lua').text, fs.readF
 assert(profile.files.some(file => file.path === 'metabuffer/lua/metabuffer/nfnl/fennel.lua'));
 assert(profile.files.some(file => file.path === 'metabuffer/LICENSE'));
 assert(profile.files.some(file => file.path === 'bruvbox/README.md'));
+assert(profile.files.find(file => file.path === 'vim-diminactive/plugin/diminactive.vim').text.includes('public domain'));
+assert.equal(profile.files.find(file => file.path === 'after/syntax/nerdtree.vim').text, fs.readFileSync(root + 'after/syntax/nerdtree.vim', 'utf8'));
 
 function fixture(bundle, ok = true) {
   const writes = new Map(), messages = [];

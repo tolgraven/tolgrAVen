@@ -24,15 +24,20 @@
                      (not-any? #(re-find % public-path) exclusions))]
       {:path relative, :text (slurp file)})))
 
+(def editable-profile-files ["init.lua" "browser.vim" "after/syntax/nerdtree.vim"])
+
 (defn sync-profile! []
-  (let [file "resources/public/vendor/neovim/profile.json"
+  (let [root "resources/public/vendor/neovim/"
+        file (str root "profile.json")
         profile (json/parse-string (slurp file) true)
-        files (mapv (fn [entry]
-                      (if (#{"init.lua" "browser.vim"} (:path entry))
-                        (let [text (slurp (str "resources/public/vendor/neovim/" (:path entry)))
-                              digest (.digest (java.security.MessageDigest/getInstance "SHA-256") (.getBytes text "UTF-8"))]
-                          (assoc entry :text text :sha256 (apply str (map #(format "%02x" (bit-and 255 %)) digest))))
-                        entry)) (:files profile))]
+        edited (mapv (fn [path]
+                       (let [text (slurp (str root path))
+                             digest (.digest (java.security.MessageDigest/getInstance "SHA-256") (.getBytes text "UTF-8"))]
+                         {:path path
+                          :text text
+                          :sha256 (apply str (map #(format "%02x" (bit-and 255 %)) digest))}))
+                     editable-profile-files)
+        files (into edited (remove (comp (set editable-profile-files) :path) (:files profile)))]
     (spit file (str (json/generate-string (assoc profile :files files) {:escape-non-ascii true}) "\n"))))
 
 (defn -main [& _]

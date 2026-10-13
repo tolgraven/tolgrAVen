@@ -4,6 +4,8 @@ const { Packr, Unpackr, addExtension, unpack } = require('./msgpackr.js');
 const CAP = 1 << 16;
 
 exports.start = function start(workerPath, onRedraw, onStatus, onExit, onFailure) {
+  if (typeof SharedArrayBuffer !== 'function')
+    throw new Error('SharedArrayBuffer is unavailable; Neovim requires an isolated browser context with shared memory enabled');
   const packer = new Packr({ useRecords: false });
   const unpacker = new Unpackr({ mapsAsObjects: true });
   const sab = new SharedArrayBuffer(12 + CAP);

@@ -392,6 +392,6 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   stale attempts; pending markers block publication. SDK reads and realtime events
   restore URL-keyed image metadata before row validation.
 
-- `:neovim` renders its native grid through Reagent. Its component lifecycle owns one WASM worker/RPC connection and terminates it on unmount; the buffer and imported files stay process-owned. A worker preRun adapter installs pinned plugins/source files before startup; native File I/O and focus stay at that boundary, while Reagent owns grid/cursor/loading markup. See `doc/neovim.md`.
+- `:neovim` renders its native grid through Reagent. Its component lifecycle owns one WASM worker/RPC connection and terminates it on unmount; the buffer and imported files stay process-owned. A worker preRun adapter installs pinned plugins/source files before startup; native File I/O and focus stay at that boundary, while Reagent owns grid/cursor/loading markup and pointer handlers. Non-passive wheel and window-focus listeners use owned `listener/listen!` cleanup; native `mouse_on`/`mouse_off` controls grid mouse capture. Configure the initial file before UI attachment, measure columns before starting, and keep the grid hidden until the initial redraw completes. See `doc/neovim.md`.
 
 - `ssr/return_worker.cljc` is a thin Shadow target-feature adapter; Neovim cached documents reuse their module-owned isolation policy.
