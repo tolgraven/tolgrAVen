@@ -81,9 +81,9 @@
           *errors (atom [])
           *completed? (atom false)
           transport (delayed-transport!)
-          unchanged! (fn []
-                       (is (identical? (:table @*nodes) (.querySelector element ".content-config")))
-                       (is (identical? (:toggle @*nodes) (.querySelector element "[role=switch]")))
+          unchanged! (fn [stage]
+                       (is (identical? (:table @*nodes) (.querySelector element ".content-config")) stage)
+                       (is (identical? (:toggle @*nodes) (.querySelector element "[role=switch]")) stage)
                        (is (nil? (.querySelector element ".loading-spinner,.content-component-error"))))]
       (.appendChild (.-body js/document) element)
       (is (nil? before-engine) "Release must begin without the development validation engine")
@@ -111,36 +111,37 @@
                      (support/wait-for! #(contains? @(:started transport) [:markdown-components :code])
                                         "The authored component owner did not begin acquisition"))))
           (.then (fn [_]
-                   (unchanged!)
+                   (unchanged! "Authored owner pending")
                    ((:release-code! transport) :markdown-components)
                    ((:release-css! transport) :markdown-components)
                    (support/wait-for! #(contains? @(:started transport) [:coercion :code])
                                       "The authored owner did not acquire coercion during installation")))
           (.then (fn [_]
-                   (unchanged!)
+                   (unchanged! "Coercion pending")
                    (is (not (validation/ready?)))
                    ((:release-code! transport) :coercion)
                    ((:release-css! transport) :coercion)
                    (support/wait-for! #(contains? @(:started transport) [:settings :code])
                                       "The canonical settings owner did not begin acquisition")))
           (.then (fn [_]
-                   (unchanged!)
+                   (unchanged! "Settings owner pending")
                    (is (validation/ready?))
                    ((:release-code! transport) :settings)
                    ((:release-css! transport) :settings)
                    (support/wait-for! #(contains? @loader/*installed :settings))))
           (.then (fn [_] (support/settle!)))
           (.then (fn [_]
-                   (unchanged!)
+                   (unchanged! "All owners installed")
                    (let [toggle (:toggle @*nodes)
                          checked (.getAttribute toggle "aria-checked")]
                      (.click toggle)
                      (support/wait-for! #(not= checked (.getAttribute toggle "aria-checked"))))))
           (.then (fn [_]
-                   (unchanged!)
+                   (unchanged! "After interactive toggle")
                    (is (empty? @*errors) (pr-str @*errors))
                    (reset! *completed? true)))
-          (.catch #(is false (str (.-message %) " | acquired transports " (pr-str @(:started transport)))))
+          (.catch #(is false (str (.-message %) " | acquired transports " (pr-str @(:started transport))
+                                 " | recoverable hydration errors " (pr-str @*errors))))
           (.finally (fn []
                       (is @*completed? "All owner gates and the final interactive control must complete")
                       (when @*root (dom/unmount @*root))
