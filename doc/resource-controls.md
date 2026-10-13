@@ -68,7 +68,12 @@ on the host for local daemon/registry interoperability. The launcher pins its
 local Docker endpoint and checks the worker's ownership and actual quotas before
 running the command. The exact container guardian reserves that CPU budget and
 stops the worker on completion or parent death; its cache volume and builder
-metadata remain for reuse. The user's default builder is not changed. BuildKit
+metadata remain for reuse. Each worker enables BuildKit garbage collection with
+a 2 GB cache target, 256 MB reservation and 20 GB free-space target. These are
+periodic reclamation thresholds, not a hard cap on active build layers. Finished
+isolated snapshots must be removed after preserving their useful logs/reports and
+checking that browser servers and later verification no longer use them.
+The user's default builder is not changed. BuildKit
 mode executes in the selected checkout, so Dockerfile/context exclusions still
 apply; ordinary compiler commands retain isolated prefab snapshots.
 
