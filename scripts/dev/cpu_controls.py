@@ -64,6 +64,7 @@ class MacProcesses:
         class Timebase(ctypes.Structure):
             _fields_ = [('numer', ctypes.c_uint32), ('denom', ctypes.c_uint32)]
         clock = ctypes.CDLL('/usr/lib/libSystem.B.dylib')
+        self.system = clock
         basis = Timebase()
         if clock.mach_timebase_info(ctypes.byref(basis)) != 0 or not basis.denom:
             raise RuntimeError('Cannot resolve the native CPU clock timebase.')
@@ -88,6 +89,21 @@ class MacProcesses:
     def same(self, record):
         now = self.identity(record['pid'])
         return bool(now and all(now[k] == record[k] for k in ('pid', 'start', 'uid', 'path')))
+
+    def argv(self, pid):
+        mib = (ctypes.c_int * 3)(1, 49, pid)  # CTL_KERN / KERN_PROCARGS2, installed SDK.
+        size = ctypes.c_size_t()
+        if self.system.sysctl(mib, 3, None, ctypes.byref(size), None, 0) != 0:
+            raise RuntimeError('Cannot read the owned guardian argument vector.')
+        buffer = ctypes.create_string_buffer(size.value)
+        if self.system.sysctl(mib, 3, buffer, ctypes.byref(size), None, 0) != 0:
+            raise RuntimeError('Cannot read the owned guardian argument vector.')
+        raw = buffer.raw[:size.value]
+        argc = struct.unpack_from('i', raw)[0]
+        offset = raw.index(b'\0', 4) + 1
+        while offset < len(raw) and raw[offset] == 0:
+            offset += 1
+        return [os.fsdecode(arg) for arg in raw[offset:].split(b'\0')[:argc]]
 
     def cwd(self, pid):
         info = self.info(pid, 9, VnodeInfo)
@@ -369,28 +385,134 @@ def active_docker_quota(proc):
         return 0.0
 
 
-def stop_container(name, token):
-    result = subprocess.run(['docker', 'inspect', '--format',
+def docker_environment():
+    return {k: v for k, v in os.environ.items() if k not in ('DOCKER_CONTEXT', 'DOCKER_HOST')}
+
+
+def docker_endpoint():
+    endpoint = os.environ.get('DOCKER_HOST')
+    if not endpoint:
+        context = os.environ.get('DOCKER_CONTEXT') or subprocess.check_output(['docker', 'context', 'show'], text=True).strip()
+        endpoint = subprocess.check_output(['docker', 'context', 'inspect', context, '--format', '{{.Endpoints.docker.Host}}'], text=True).strip()
+    if not endpoint.startswith('unix://'):
+        raise RuntimeError('CPU builds require an explicit local Unix Docker endpoint on this Mac.')
+    return endpoint
+
+
+def stop_container(name, token, endpoint=None):
+    endpoint = endpoint or docker_endpoint()
+    prefix = ['docker', '--host', endpoint]
+    result = subprocess.run(prefix + ['inspect', '--format',
                              '{{.Id}} {{index .Config.Labels "tolgraven.cpu.token"}} {{.State.Running}}', name],
-                            capture_output=True, text=True, timeout=10)
+                            capture_output=True, text=True, timeout=10, env=docker_environment())
     if result.returncode != 0:
-        return 'No such' in result.stderr
+        error = result.stderr.lower()
+        return name.lower() in error and ('no such object:' in error or 'no such container:' in error)
     values = result.stdout.strip().split()
     if len(values) != 3:
         return False
     if values[1] != token or values[2] == 'false':
-        return True  # This name is no longer our running container; never stop a foreign label.
-    stopped = subprocess.run(['docker', 'stop', '--time', '3', values[0]], capture_output=True, timeout=15)
+        return True
+    stopped = subprocess.run(prefix + ['stop', '--time', '3', values[0]], capture_output=True,
+                             timeout=15, env=docker_environment())
     return stopped.returncode == 0
 
 
-def docker_watchdog(owner, name, token):
+def guardian_protocol(argv, record):
+    try:
+        marker = argv.index('_docker-watchdog')
+        if marker < 2 or Path(argv[marker - 1]).name != 'cpu_controls.py':
+            raise ValueError
+        arguments = argv[marker + 1:]
+        if len(arguments) < 3 or arguments[1] != record['name']:
+            raise ValueError
+        owner = json.loads(arguments[0])
+        if not same_birth(owner, record['owner']):
+            raise ValueError
+        token = arguments[2]
+        if record.get('token', token) != token:
+            raise ValueError
+        options = arguments[3:]
+        seen = {}
+        if len(options) % 2:
+            raise ValueError
+        for key, value in zip(options[::2], options[1::2]):
+            if key not in ('--endpoint', '--ready-fd') or key in seen:
+                raise ValueError
+            if key == '--ready-fd' and int(value) < 0:
+                raise ValueError
+            seen[key] = value
+        endpoint = seen.get('--endpoint')
+        if endpoint and record.get('endpoint', endpoint) != endpoint:
+            raise ValueError
+        return token, endpoint
+    except (ValueError, KeyError, TypeError) as error:
+        raise RuntimeError('Guardian argv does not own the recorded build protocol.') from error
+
+
+def recover_build(args):
     proc = MacProcesses()
+    record = json.loads((STATE / 'docker-active.json').read_text())
+    if same_birth(proc.identity(record['owner']['pid']), record['owner']):
+        raise RuntimeError('Build owner is alive; refusing to recover its slot.')
+    guardian = proc.identity(record['guardian']['pid'])
+    if not same_birth(guardian, record['guardian']) or guardian['path'] != record['owner']['path']:
+        raise RuntimeError('Guardian identity does not match the recorded orphan.')
+    token, protocol_endpoint = guardian_protocol(proc.argv(guardian['pid']), record)
+    endpoint = record.get('endpoint') or protocol_endpoint or args.endpoint
+    if not endpoint:
+        raise RuntimeError('Legacy reservation requires the original explicit --endpoint.')
+    if not stop_container(record['name'], token, endpoint):
+        raise RuntimeError('Owned container cleanup remains unconfirmed; keeping the slot.')
+    if same_birth(proc.identity(guardian['pid']), guardian):
+        os.kill(guardian['pid'], signal.SIGTERM)
+    deadline = time.monotonic() + 3
+    while same_birth(proc.identity(guardian['pid']), guardian) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    if same_birth(proc.identity(guardian['pid']), guardian):
+        raise RuntimeError('Guardian has not exited; slot remains owned.')
+    try:
+        latest = json.loads((STATE / 'docker-active.json').read_text())
+        if latest['name'] == record['name']:
+            (STATE / 'docker-active.json').unlink(missing_ok=True)
+    except (OSError, ValueError):
+        pass
+    print('Recovered confirmed orphan:', record['name'], 'guardian', guardian['pid'])
+
+
+def repair_legacy_reservation(proc, owner, name, token, endpoint):
+    try:
+        record = json.loads((STATE / 'docker-active.json').read_text())
+        guardian = record.get('guardian')
+        if record.get('name') == name and guardian and guardian['pid'] == os.getpid() and same_birth(record['owner'], owner):
+            stable = proc.identity(os.getpid())
+            if record.get('endpoint') != endpoint or guardian != stable:
+                record.update(guardian=stable, endpoint=endpoint, token=token)
+                save_json(STATE / 'docker-active.json', record)
+    except (OSError, ValueError, KeyError):
+        pass
+
+
+def docker_watchdog(owner, name, token, endpoint=None, ready_fd=None):
+    proc = MacProcesses()
+    endpoint = endpoint or docker_endpoint()
+    if ready_fd is not None:
+        ready = socket.socket(fileno=ready_fd)
+        try:
+            packet_send(ready, {'guardian': proc.identity(os.getpid())})
+        except OSError:
+            pass  # Parent death still falls through to owned container cleanup.
+        finally:
+            ready.close()
     while proc.same(owner):
+        if ready_fd is None:
+            # Already-queued older parents register before the interpreter's exec settles.
+            # Their new guardian repairs only its own same-birth named reservation.
+            repair_legacy_reservation(proc, owner, name, token, endpoint)
         time.sleep(0.5)
     while True:
         try:
-            if stop_container(name, token):
+            if stop_container(name, token, endpoint):
                 try:
                     record = json.loads((STATE / 'docker-active.json').read_text())
                     if record.get('name') == name:
@@ -400,8 +522,24 @@ def docker_watchdog(owner, name, token):
                 return
         except subprocess.SubprocessError:
             pass
-        # Retain the inherited build lock and reservation until cleanup is confirmed.
         time.sleep(1)
+
+
+def start_docker_guardian(owner, name, token, endpoint, lock):
+    parent, child = socket.socketpair()
+    parent.settimeout(10)
+    guard = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '_docker-watchdog',
+                              json.dumps(owner), name, token, '--endpoint', endpoint,
+                              '--ready-fd', str(child.fileno())], start_new_session=True,
+                              pass_fds=(lock.fileno(), child.fileno()))
+    child.close()
+    try:
+        identity = packet_receive(parent)['guardian']
+        if not identity or identity['pid'] != guard.pid or identity['path'] != owner['path'] or not MacProcesses().same(identity):
+            raise RuntimeError('Docker guardian did not acknowledge its stable interpreter identity.')
+        return guard, identity
+    finally:
+        parent.close()
 
 
 def same_birth(current, record):
@@ -518,28 +656,28 @@ def run(args):
             shadow.write_text(re.sub(r':parallel-build\s+true', ':parallel-build false', shadow.read_text()))
         name = 'tolgraven-cpu-' + output.name
         token = uuid.uuid4().hex
+        endpoint = docker_endpoint()
         owner = MacProcesses().identity(os.getpid())
-        save_json(STATE / 'docker-active.json', {'owner': owner, 'cpus': args.cpus, 'name': name})
-        guardian = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '_docker-watchdog',
-                                     json.dumps(owner), name, token], start_new_session=True, pass_fds=(lock.fileno(),))
-        save_json(STATE / 'docker-active.json', {'owner': owner, 'guardian': MacProcesses().identity(guardian.pid), 'cpus': args.cpus, 'name': name})
+        save_json(STATE / 'docker-active.json', {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
+        guardian, guardian_identity = start_docker_guardian(owner, name, token, endpoint, lock)
+        save_json(STATE / 'docker-active.json', {'owner': owner, 'guardian': guardian_identity, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
         bootstrap = ('if cmp -s package-lock.json /opt/prefab-package-lock.json; then '
                      'ln -s /usr/src/app/node_modules node_modules; else npm ci --no-audit --no-fund; fi; '
                      'exec "$@"')
-        cmd = ['docker', 'run', '--rm', '--init', '--name', name, '--cpus', str(args.cpus),
+        cmd = ['docker', '--host', endpoint, 'run', '--rm', '--init', '--name', name, '--cpus', str(args.cpus),
                '--memory', args.memory, '--memory-swap', args.memory, '--pids-limit', '512',
                '--label', 'tolgraven.cpu.token=' + token,
                '--mount', f'type=bind,source={output},target=/workspace', '-w', '/workspace',
                '-e', f'JAVA_TOOL_OPTIONS={JVM_POOLS} -Xmx{args.java_heap}',
                args.image, 'sh', '-c', bootstrap, 'cpu-build', *command]
         print('Isolated output:', output, '\nDocker budget:', args.cpus, 'cores /', args.memory, flush=True)
-        child = subprocess.Popen(cmd)
+        child = subprocess.Popen(cmd, env=docker_environment())
         try:
             return child.wait()
         finally:
             # Exact owned container name; do not touch unrelated build/watch containers.
             try:
-                confirmed = stop_container(name, token)
+                confirmed = stop_container(name, token, endpoint)
             except subprocess.SubprocessError:
                 confirmed = False
             if confirmed:
@@ -613,6 +751,8 @@ def main():
     installer = commands.add_parser('install', help='Explicitly install/enable the scoped user LaunchAgent and launcher.')
     installer.add_argument('--project', required=True)
     installer.add_argument('--cpus', type=positive, default=1.5)
+    recovery = commands.add_parser('recover-build', help='Recover only a recorded orphan after exact endpoint/container/guardian confirmation.')
+    recovery.add_argument('--endpoint', help='Required original local Docker endpoint for legacy reservations.')
     commands.add_parser('status')
     commands.add_parser('stop', help='Stop only the recorded monitor; watchdog resumes its owned paused targets.')
     wd = commands.add_parser('_watchdog')
@@ -621,6 +761,8 @@ def main():
     dw.add_argument('owner')
     dw.add_argument('name')
     dw.add_argument('token')
+    dw.add_argument('--endpoint')
+    dw.add_argument('--ready-fd', type=int)
     hw = commands.add_parser('_host-watchdog')
     hw.add_argument('owner')
     hw.add_argument('root')
@@ -630,7 +772,7 @@ def main():
     if args.action == '_host-watchdog':
         host_watchdog(json.loads(args.owner), json.loads(args.root))
     elif args.action == '_docker-watchdog':
-        docker_watchdog(json.loads(args.owner), args.name, args.token)
+        docker_watchdog(json.loads(args.owner), args.name, args.token, args.endpoint, args.ready_fd)
     elif args.action == '_watchdog':
         watchdog(args.fd)
     elif args.action == 'monitor':
@@ -639,6 +781,8 @@ def main():
         return run(args)
     elif args.action == 'install':
         install(args)
+    elif args.action == 'recover-build':
+        recover_build(args)
     elif args.action == 'status':
         print((STATE / 'status.json').read_text())
     elif args.action == 'stop':

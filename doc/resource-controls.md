@@ -89,8 +89,11 @@ An independent watchdog acknowledges a lease before any STOP. It sends guarded
 CONT on socket closure, controller failure/signal exit, or a 250 ms expired lease;
 expired leases repeat CONT to cover a delayed controller. Normal/error cleanup
 also resumes owned PIDs. PID reuse does not inherit a stale stop/resume operation.
-A separate Docker guardian verifies the container's unique label and immutable ID
-before stopping a container orphaned by its launcher. Normal completion leaves no
+A separate Docker guardian acknowledges its stable post-exec identity before
+registration, then verifies the container's unique label and immutable ID
+before stopping a container orphaned by its launcher. Dispatch captures the original
+local Unix Docker endpoint; guardian and recovery keep using it after context changes.
+Only exact container absence is accepted, never a missing socket/configuration error. Normal completion leaves no
 container or helper behind. Docker cleanup always runs even if its CLI exited; uncertain
 cleanup retains its guardian, inherited build lock and quota reservation until confirmed.
 Host cancellation targets only the new owned process family, with guarded graceful
@@ -110,6 +113,9 @@ bb cpu monitor --project /path/to/tolgrAVen --once
 tolgraven-cpu status
 # Disable installed enforcement and resume its paused processes:
 tolgraven-cpu stop
+# Recover a confirmed recorded orphan without deleting/bypassing the build lock:
+tolgraven-cpu recover-build
+# Older reservations need the original explicit --endpoint; no new daemon is guessed.
 # Re-enable the installed service:
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/se.tolgraven.cpu-controls.plist
 ```

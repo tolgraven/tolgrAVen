@@ -62,8 +62,43 @@ class PolicyTests(unittest.TestCase):
     def test_foreign_container_label_is_never_stopped(self):
         proc=mock.Mock(returncode=0,stdout='container-id other-token true')
         with mock.patch.object(cpu.subprocess,'run',return_value=proc) as run:
-            cpu.stop_container('owned-name','my-token')
+            cpu.stop_container('owned-name','my-token','unix:///fixture.sock')
             self.assertEqual(run.call_count,1)
+
+    def test_lowercase_exact_docker_absence_releases_cleanup(self):
+        result=mock.Mock(returncode=1,stdout='',stderr='error: no such object: owned-name')
+        with mock.patch.object(cpu.subprocess,'run',return_value=result):
+            self.assertTrue(cpu.stop_container('owned-name','token','unix:///fixture.sock'))
+
+    def test_docker_socket_failure_or_other_name_never_confirms_absence(self):
+        for message in ('error: cannot connect: no such file or directory /fixture.sock',
+                        'error: no such object: another-container'):
+            result=mock.Mock(returncode=1,stdout='',stderr=message)
+            with mock.patch.object(cpu.subprocess,'run',return_value=result):
+                self.assertFalse(cpu.stop_container('owned-name','token','unix:///fixture.sock'))
+
+    def test_container_cleanup_uses_pinned_endpoint_and_immutable_id(self):
+        inspected=mock.Mock(returncode=0,stdout='immutable-id token true',stderr='')
+        stopped=mock.Mock(returncode=0)
+        with mock.patch.object(cpu.subprocess,'run',side_effect=[inspected,stopped]) as run:
+            self.assertTrue(cpu.stop_container('owned-name','token','unix:///original.sock'))
+            self.assertEqual(run.call_args_list[0].args[0][:3],['docker','--host','unix:///original.sock'])
+            self.assertEqual(run.call_args_list[1].args[0],['docker','--host','unix:///original.sock','stop','--time','3','immutable-id'])
+
+    def test_recovery_accepts_legacy_and_ready_guardian_argv(self):
+        owner={'pid':10,'start':[2,3],'uid':os.getuid()}
+        record={'owner':owner,'name':'owned','token':'token','endpoint':'unix:///original.sock'}
+        base=['python','/installed/cpu_controls.py','_docker-watchdog',json.dumps(owner),'owned','token']
+        self.assertEqual(cpu.guardian_protocol(base,record),('token',None))
+        self.assertEqual(cpu.guardian_protocol(base+['--endpoint','unix:///original.sock','--ready-fd','5'],record),('token','unix:///original.sock'))
+        with self.assertRaises(RuntimeError):cpu.guardian_protocol(base+['--endpoint','unix:///different.sock'],record)
+        with self.assertRaises(RuntimeError):cpu.guardian_protocol(base[:-1]+['foreign-token'],record)
+
+    def test_guardian_missing_ready_identity_is_a_controlled_failure(self):
+        fake=mock.Mock(pid=123)
+        with tempfile.TemporaryFile() as lock, mock.patch.object(cpu.subprocess,'Popen',return_value=fake), mock.patch.object(cpu,'packet_receive',return_value={'guardian':None}):
+            with self.assertRaises(RuntimeError):
+                cpu.start_docker_guardian({'path':'/python'},'owned','token','unix:///fixture.sock',lock)
 
     def test_packet_boundaries(self):
         import socket
@@ -137,6 +172,16 @@ class NativeTests(unittest.TestCase):
         time.sleep(.1)
         self.assertIsNone(self.proc.identity(watchdog_pid))
         owner.stdout.close()
+
+    def test_docker_guardian_acknowledges_stable_postexec_identity(self):
+        with tempfile.TemporaryFile() as lock:
+            guard,identity=cpu.start_docker_guardian(self.proc.identity(os.getpid()),
+                'no-created-fixture','token','unix:///fixture.sock',lock)
+            try:
+                self.assertEqual(identity['pid'],guard.pid)
+                self.assertTrue(self.proc.same(identity))
+                self.assertEqual(identity['path'],self.proc.identity(os.getpid())['path'])
+            finally:guard.terminate();guard.wait(timeout=3)
 
     def test_preexisting_stop_is_preserved(self):
         os.kill(self.child.pid,signal.SIGSTOP)
