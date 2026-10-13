@@ -346,8 +346,9 @@ mechanical replacement with another mutable container.
 
 React 19 supports cleanup returned by a ref callback. Do not accidentally return
 a function-valued assignment or helper result unless it is intended as cleanup.
-Effect return normalization does not normalize ref callback returns. Existing
-ref composition must preserve both callers and teardown behavior.
+Effect return normalization does not normalize ref callback returns.
+`component.ref/compose` preserves both callers and their teardown behavior, with
+idempotent cleanup for each attachment.
 [React 19 release notes](https://react.dev/blog/2024/12/05/react-19).
 
 ### Hiccup integration forms
@@ -412,7 +413,7 @@ See [our SSR guide](ssr.md) and the
 | Upstream hook delegates through the shim | Keep | Reagent owns Clojure equality, state identity and cleanup adaptation |
 | Small error boundary using `create-class` and native state | Justified interop | React's boundary API is class-based; keep the class narrow and preserve retry behavior |
 | Native refs/observers inside motion/video adapters | Justified at the boundary | DOM lifecycle requires native handles; use Clojure configuration around them |
-| Key recovery via `Subvec.-v` and current-component fields | Fragile compatibility code | Depends on implementation representation; isolate and test while investigating a supported replacement |
+| Hiccup-key recovery in `component/compat.cljs` | Retain as a tested compatibility boundary | React keys are not props; Reagent's class accessor does not expose function metadata. Backing representation access stays in one version-specific adapter |
 | Managed `:component-data/status` acquisition | Keep | Source factory owns the shared queue; the derived reaction and view only read status, preserving parallel preloads |
 | Global batching override during selective hydration | Specialized, needs scrutiny | Preserves SSR content but couples us to Reagent internals and overlapping boundary ownership |
 | Stable ReactMarkdown/highlighter adapters | Appropriate | Packages require native components; keep Clojure values until the specific boundary |

@@ -7,6 +7,7 @@
     [reagent.core :as r]
     [reagent.hooks :as hooks]
     [reagent.ratom]
+    [tolgraven.component.compat :as compat]
     [tolgraven.validation.bindings :as contracts]
     [tolgraven.diagnostics.consumer :as consumer]
     [re-frame.core :as rf]
@@ -42,13 +43,7 @@
 (def use-layout-effect         hooks/use-layout-effect)
 (def use-memo                  hooks/use-memo)
 (def use-callback              hooks/use-callback)
-(defn component-argv
-  "Recover Reagent's original Hiccup and metadata for function or class views."
-  []
-  (when-let [instance (r/current-component)]
-    (if-let [argv (.-argv ^clj instance)]
-      (if (instance? cljs.core/Subvec argv) (.-v ^cljs.core/Subvec argv) argv)
-      (r/argv instance))))
+(def component-argv compat/argv)
 (def flush-sync                react-dom/flushSync)
 
 

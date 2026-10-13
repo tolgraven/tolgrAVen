@@ -5,6 +5,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Mount actual Reagent components, dereference subscriptions during render, dispatch
   real events, await lifecycle completion, and unmount in cleanup. Avoid direct
   app-db mutation, dangling subscriptions and forced React flushes.
+- Native ref tests cover forwarded React 19 cleanup, legacy nil callbacks,
+  replacement/unmount, stale cleanup and failure teardown. Keyed state tests
+  protect the isolated Reagent 2.0.1 Hiccup metadata compatibility boundary.
   Scoped-state tests use native subscription handles and event writes; persistence
   checks cover accepted transactions, rejected transactions and explicit deletions.
 - Unit/component tests may replace transport boundaries. Live integration must use

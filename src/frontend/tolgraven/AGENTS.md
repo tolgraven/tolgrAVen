@@ -190,6 +190,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   icon CSS. Capped comment text uses non-scrolling clipping; an owned resize
   adapter measures code boundaries and React renders the corresponding fade.
 - Browser-only APIs belong in lifecycle/effect adapters with cleanup and SSR guards.
+  `component/ref.cljs` composes native refs: returned cleanup replaces a legacy
+  nil call, all owners release once, and old cleanup cannot clear a new attachment.
+  Keep `component/compat.cljs` as the sole version-specific Hiccup-key metadata
+  adapter; React keys are not props and public Reagent class argv is insufficient
+  for function-component metadata. Run keyed persistence tests on Reagent upgrades.
   `boot.cljs` installs document persistence/history listeners after app-db setup,
   then site listeners/preferences from the committed root lifecycle. Deferred
   resources, route prefetch and local-return capture share that lifecycle host.

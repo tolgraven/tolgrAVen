@@ -2,6 +2,7 @@
   "Helpers for serving modern video formats (VP9, AV1) with automatic fallbacks"
   (:require
     [tolgraven.component.registry]
+    [tolgraven.component.ref :as refs]
     [tolgraven.macros :refer-macros [defc]]
     [clojure.string :as string]
     [reagent.core :as r]
@@ -15,13 +16,7 @@
         [visible? show!] (rf/use-state false)
         *element (rf/use-ref nil)
         caller-ref (:ref attrs)
-        capture! (rf/use-callback
-                   (fn [element]
-                     (set! (.-current *element) element)
-                     (cond (fn? caller-ref) (caller-ref element)
-                           caller-ref (set! (.-current caller-ref) element))
-                     js/undefined)
-                   [caller-ref])]
+        capture! (rf/use-memo #(refs/compose *element caller-ref) [*element caller-ref])]
     (rf/use-effect
      (fn []
        (if (and lazy? (not visible?) (.-current *element))

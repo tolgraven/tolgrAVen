@@ -4,6 +4,7 @@
     [clojure.walk :as walk]
     [tolgraven.render-context :as context]
     [tolgraven.component.registry :as registry]
+    [tolgraven.component.ref :as refs]
     [tolgraven.component.features :as feature-options]
     [tolgraven.schema.declarations :as schemas]
     [tolgraven.validation.runtime :as validation]
@@ -103,10 +104,6 @@
     form))
 
 (defonce page-root-context (rf/create-context nil))
-
-(defn- set-ref! [ref element]
-  (cond (fn? ref) (ref element)
-        ref (set! (.-current ^js ref) element)))
 
 (def component-spec registry/component-spec)
 (def register-component! registry/register-component!)
@@ -263,9 +260,9 @@
                :order (atom [])
                :shape (atom nil)
                :capture-ref (memoize (fn [base caller]
-                                      (fn [element]
-                                        (reset! *element element)
-                                        (doseq [ref (distinct [base caller])] (set-ref! ref element)))))})))
+                                      (refs/compose
+                                        (fn [element] (reset! *element element) nil)
+                                        base caller)))})))
     (let [{*render :render *element :element capture-ref :capture-ref :as instance} (.-current *instance)
           features (or supplied-features (resolved-features definition args))
           ids (set (map first features))
@@ -376,9 +373,7 @@
                              :else {}))]
     (when-not (.-current *capture-ref)
       (set! (.-current *capture-ref)
-            (memoize (fn [base caller]
-                       (fn [element]
-                         (doseq [ref (distinct [base caller])] (set-ref! ref element)))))))
+            (memoize refs/compose)))
     (if (false? supplied)
       content
       (let [children [:r> (rf/context-provider page-root-context) #js {:value nil} content]

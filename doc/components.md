@@ -156,6 +156,17 @@ Root props only apply to native DOM roots, never fragment, child-component or
 React-interop roots. Link discovery needs a native DOM root. Feature composition
 itself adds no DOM wrapper; a custom feature may deliberately add one.
 
+Native root/media refs compose through `component.ref/compose`. Callback refs may
+return React 19 cleanup functions; those run instead of a legacy nil callback.
+Object refs clear on release. Composition deduplicates refs, releases every owner
+even if another cleanup throws, and prevents stale cleanup from clearing a later
+attachment. Keep native refs/DOM nodes opaque at this boundary.
+
+React keys are excluded from props. The narrowly scoped
+`component/compat.cljs` adapter retains original Hiccup metadata from Reagent
+2.0.1 function state; it is the only backing-subvec access. Preserve keyed state,
+form-2 and class/function identity tests before changing that library boundary.
+
 Register a feature with `component/register-feature!`:
 
 - `:transform (fn [hiccup instance-spec config] ...)` transforms the body's
