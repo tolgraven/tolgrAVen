@@ -265,6 +265,11 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 - See `doc/testing.md` for mounted subscription workflows, live integration boundaries and browser checks. Unit replacements do not establish live service behavior.
 
 ## Commit & Pull Request Guidelines
+- A user request to make or update a PR authorizes committing the task changes,
+  pushing its feature branch, and creating/updating the PR in
+  `https://github.com/tolgraven/tolgrAVen`; do not ask again solely for these
+  publication steps. This does not independently authorize force pushes, branch
+  deletion, merges, deployment, unrelated changes, or publication elsewhere.
 - Commit each completed, verified task before starting the next. Subagents commit their own finished changes; coordinate the shared index so unrelated work is never included.
 - Commit messages follow `scope: summary` (examples in git history: `scss: fix theme var helper broken`). Can also use `scope: subscope: summary`. Keep summaries short and imperative.
 - PRs should include: a clear description, related issue links, and screenshots/gifs for UI changes.
