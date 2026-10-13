@@ -29,9 +29,8 @@
                         (rf/dispatch [:common/set-title nil]))}]
    :blog-tag [{:parameters {:path [:tag]}
                :start (fn [{:keys [path]}] (rf/dispatch [:blog/state [:viewing-tag] (:tag path)]))
-               :stop (fn [_] (rf/dispatch [:blog/state [:viewing-tag] nil]))}]
-   :new-post [{:start (fn [_] (rf/dispatch [:blog/init-posting]))}
-              {:stop (fn [_] (rf/dispatch [:blog/cancel-edit]))}]}))
+               :stop (fn [_] (rf/dispatch [:blog/state [:viewing-tag] nil]))}]}))
+
 
 (def spec
   ;; Native Reitit routes, with shared data inherited by each child page.
@@ -65,5 +64,4 @@
     ["/archive" {:name :blog-archive :page :archive}]
     ["/tag/:tag" {:parameters {:path schemas/blog-tag} :name :blog-tag :page :tag
                  #?@(:cljs [:controllers (:blog-tag controllers)])}]
-    ["/new-post" {:name :new-post :page :new-post
-                 #?@(:cljs [:controllers (:new-post controllers)])}]]])
+]])

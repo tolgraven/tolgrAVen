@@ -487,3 +487,5 @@
 
 (defn <carousel-normal> [& args]
   (loader-view/form :carousel :normal (vec args) nil))
+
+(m/register-render-functions!)

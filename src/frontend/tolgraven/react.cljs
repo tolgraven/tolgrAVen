@@ -30,6 +30,7 @@
 (def suspense                  (adapt-react-class react/Suspense))
 (def strict-mode               react/StrictMode)
 (def profiler                  react/Profiler)
+(def use-id                    react/useId)
 (def use-state                 hooks/use-state)
 (def use-ref                   hooks/use-ref)
 (def create-context            react/createContext)

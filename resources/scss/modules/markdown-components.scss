@@ -1,0 +1,45 @@
+// Public authored widgets share the site's palette, spacing and line geometry.
+.content-box,
+.content-config,
+.content-component-error {
+  padding: var(--space);
+  margin-block: var(--space);
+  border: var(--line-width) solid var(--line-color);
+  border-radius: var(--section-rounded);
+  background: var(--gradient-bg-main);
+}
+
+.content-box {
+  border-inline-start: 0.25rem solid var(--blue);
+  &--tip { border-inline-start-color: var(--green); }
+  &--warning { border-inline-start-color: var(--orange); }
+  p:last-child { margin-block-end: 0; }
+}
+
+.content-config {
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: start; font-weight: 500; }
+  td, th { padding: 0.5em; }
+  button, select { min-height: 2.5rem; }
+}
+
+.content-component-error { color: var(--fg-2); font-style: italic; }
+
+.content-widget {
+  box-sizing: border-box;
+  &[data-flow="left"] { margin-inline-end: var(--space); }
+  &[data-flow="right"] { margin-inline-start: var(--space); }
+  &[data-align="center"] { text-align: center; }
+  &[data-align="right"] { text-align: right; }
+  > picture, > .progressive-image { display: block; max-width: 100%; }
+  > picture > img, > .progressive-image img, > img { width: 100%; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
+}
+.md-rendered:has(.content-widget[data-flow="left"], .content-widget[data-flow="right"]) { display: flow-root; }
+
+.content-widget[data-height-mode="fixed"] {
+  overflow: auto;
+  > picture, > .progressive-image { height: 100%; }
+  > picture > img, > .progressive-image img, > img { width: 100%; height: 100%; object-fit: contain; }
+}
+
+.content-widget[data-flow="block"] { clear: both; }

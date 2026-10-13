@@ -382,3 +382,14 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   complete validated rendition manifest arrives. Retry/cancel/disposal invalidate
   stale attempts; pending markers block publication. SDK reads and realtime events
   restore URL-keyed image metadata before row validation.
+
+- `/blog/new-post` and its upload queue/UI belong to `:blog-editor`; the
+  independent lazy `:markdown-editor` owns the visual Markdown SDK. Canonical source and
+  media jobs remain in the existing form/event owner. Published authored tags use
+  the same public `:markdown-components` views and data-only argument contract;
+  never compile/evaluate MDX or expose private state paths. See `doc/markdown-authoring.md`.
+
+- Public component composition uses canonical qualified Var identities and the
+  existing registry/module loader. Legacy `<…>` render functions register through
+  `register-render-functions!`; never wrap their ordinary call contracts. Rich
+  docs remain editor-owned; layout geometry uses separate `layout-*` arguments.

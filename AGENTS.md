@@ -290,3 +290,11 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 
 - `lein with-profile uberjar,provided docs` stages selected source namespaces before
   Codox reads them; use this alias instead of invoking Codox directly.
+
+- Visual Markdown editing belongs to the lazy `:markdown-editor` owner. Shared
+  authored component rendering uses an explicit public catalog and data arguments;
+  SSR renders the same widgets and never runs the editor SDK. See `doc/markdown-authoring.md`.
+
+- Authoring modules may declare literal namespace metadata `:site/owner`; child
+  capabilities follow their selected parent in discovery and packaging. Public
+  blog reading stays independent of `:blog-editor` and the lazy visual SDK.

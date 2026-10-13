@@ -1,13 +1,14 @@
 (ns tolgraven.components.ui.code
   (:require
     [tolgraven.component.registry]
-    [tolgraven.macros :refer-macros [defc]]
-    [reagent.core :as r]
-    [tolgraven.react :as rf]
+    [tolgraven.macros :refer-macros [defc register-render-functions!]]
+    [tolgraven.react :as r]
     [tolgraven.components.highlight :as highlight]
     [tolgraven.components.code-block :as code-block]
     [tolgraven.components.image :as image]
     [tolgraven.media.schema :as media]
+    [tolgraven.components.content.media :as authored-media]
+    [tolgraven.components.markdown-components :as authored]
     ["react-markdown$default" :as ReactMarkdown]
     ["remark-gfm$default" :as remarkGfm]
     ["rehype-raw$default" :as rehypeRaw]
@@ -23,8 +24,8 @@
    [:?auto-languages [:?vector :string]]
    [:?code-options [:maybe code-block/options-schema]]])
 
-(def block-context (rf/create-context false))
-(def link-context (rf/create-context false))
+(def block-context (r/create-context false))
+(def link-context (r/create-context false))
 
 (def react-markdown (r/adapt-react-class ReactMarkdown))
 (def omit-markdown-component
@@ -40,8 +41,8 @@
   ;; are text; do not recursively convert React elements or inspect their props.
   (let [code (if (string? children) children "")
         language (some->> className (re-find #"language-([\w-]+)") second)
-        block? (rf/use-context block-context)
-        linked? (rf/use-context link-context)]
+        block? (r/use-context block-context)
+        linked? (r/use-context link-context)]
     [<code-block> code
      (merge {:default-language default-language
              :auto-languages auto-languages}
@@ -73,7 +74,7 @@
   (r/reactify-component
     (fn [{:keys [children] :as props}]
       [:a (dissoc props :node :children)
-       [:> (rf/context-provider link-context) {:value true} children]])))
+       [:> (r/context-provider link-context) {:value true} children]])))
 
 (def markdown-pre-react
   (r/reactify-component
@@ -81,7 +82,7 @@
       (if (true? (some-> node (aget "data") (aget "tolgravenCodeBlock")))
         ;; The generated code component owns its pre. Nested pre/div content
         ;; would make the HTML parser repair SSR markup before hydration.
-        [:> (rf/context-provider block-context) {:value true} children]
+        [:> (r/context-provider block-context) {:value true} children]
         ;; Trusted raw pre keeps its own attributes and whitespace semantics.
         [:pre (dissoc props :node :children) children]))))
 
@@ -102,7 +103,7 @@
   [md-text & [{:keys [allow-images? allow-raw? image-assets default-language auto-languages code-options]
               :or {allow-images? false
                    allow-raw? false}}]]
-  (let [code-component (rf/use-memo
+  (let [code-component (r/use-memo
                          #(r/reactify-component
                             (fn [props]
                               [<markdown-code-component>
@@ -110,17 +111,21 @@
                                             :auto-languages auto-languages
                                             :code-options code-options)]))
                          [default-language auto-languages code-options])
-        image-component (rf/use-memo
+        image-component (r/use-memo
                           #(r/reactify-component
                              (fn [props] [<markdown-image> props image-assets allow-images?]))
                           [image-assets allow-images?])]
-    [react-markdown
+    [:r> (r/context-provider authored-media/asset-context) #js {:value (or image-assets {})}
+     [react-markdown
      {:children md-text
-      :remarkPlugins [remarkGfm]
+      :remarkPlugins [remarkGfm authored/plugin]
       :rehypePlugins (cond-> [mark-markdown-blocks]
                        allow-raw? (conj [rehypeRaw {:passThrough ["tolgravenCodeBlock"]}])
                        true (conj restore-markdown-blocks))
       :components {:code code-component
                    :pre markdown-pre-react
                    :a markdown-link-react
-                   :img image-component}}]))
+                   :img image-component
+                   "site-component" authored/renderer}}]]))
+
+(register-render-functions!)

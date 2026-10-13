@@ -4,6 +4,17 @@
             [clojure.java.io :as io]
             [clojure.string :as string]))
 
+(defn owner-enabled?
+  "An authoring child is absent when its declared parent capability is absent."
+  [settings declarations id]
+  (loop [owner id, seen #{}]
+    (cond
+      (nil? owner) true
+      (seen owner) (throw (ex-info "Cyclic site module ownership" {:module id}))
+      (not (contains? declarations owner)) (throw (ex-info "Unknown site module owner" {:module id :owner owner}))
+      (= false (get-in settings [:modules owner :enabled])) false
+      :else (recur (get-in declarations [owner :site/owner]) (conj seen owner)))))
+
 (defn- forms [file]
   (with-open [reader (java.io.PushbackReader. (io/reader file))]
     (binding [*read-eval* false]
@@ -22,7 +33,7 @@
               tables (when (and (:storage spec) (.isFile storage-file))
                        (nth (first (filter #(and (seq? %) (= 'def (first %)) (= 'tables (second %)))
                                            (forms storage-file))) 2))]]
-    (assoc spec :tables tables :prefix (-> (str (second ns-form))
+    (assoc spec :site/owner (:site/owner (first (filter map? (drop 2 ns-form)))) :tables tables :prefix (-> (str (second ns-form))
                                            (string/replace #"\.module$" "")
                                            (string/replace "-" "_")
                                            (string/replace "." "/")))))
@@ -35,7 +46,8 @@
                         {:modules (merge-with merge (:modules defaults) (:modules overrides))
                          :pages (merge (:pages defaults) (:pages overrides))}))
         all (declarations)
-        enabled? #(not= false (get-in config [:modules % :enabled]))
+        by-id (into {} (map (juxt :id identity)) all)
+        enabled? #(owner-enabled? config by-id %)
         selected (filter #(enabled? (:id %)) all)
         disabled (map :prefix (remove #(enabled? (:id %)) all))
         selected-sql (set (concat

@@ -3,7 +3,7 @@
     [tolgraven.component.registry]
     [tolgraven.components.validation :as validation]
     [tolgraven.diagnostics.stack :as diagnostics]
-    [tolgraven.macros :refer-macros [defc]]
+    [tolgraven.macros :refer-macros [defc register-render-functions!]]
     [tolgraven.loader.view :as loader-view]
     [reagent.core :as r]
     [tolgraven.components.portal :as portal]))
@@ -41,3 +41,5 @@
        (when @*open?
         [portal/<portal> "error-portal"
          [<error-full> ns-name comp-name *error spec]])])))
+
+(register-render-functions!)

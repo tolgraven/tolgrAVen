@@ -10,12 +10,14 @@
 
 (defc <iframe>
   "Generic sandboxed iframe. Loading and presentation belong to its caller."
-  [{:keys [label on-load src trust]
+  [{:keys [label on-load src trust ref style sandbox]
     :or {trust :untrusted}}]
   [:iframe
    {:aria-label label
     :on-load on-load
     :referrer-policy "no-referrer"
     :tab-index -1
-    :sandbox (get sandbox-by-trust trust "")
+    :sandbox (or sandbox (get sandbox-by-trust trust ""))
+    :ref ref
+    :style style
     :src src}])

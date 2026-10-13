@@ -2,15 +2,20 @@
   "name": "tolgraven.se",
   "version": "1.0.0",
   "dependencies": {
+    "@mdxeditor/editor": "4.3.3",
     "@supabase/supabase-js": "2.117.3",
     "leaflet": "1.9.4",
+    "mdast-util-from-markdown": "2.0.3",
+    "mdast-util-mdx-jsx": "3.2.0",
+    "micromark-extension-mdx-jsx": "3.0.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-leaflet": "^5.0.0",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.2",
     "rehype-raw": "^7.0.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "lexical": "0.48.0"
   },
   "scripts": {
     "init": "mkdir -p resources/public/css/tolgraven && npm ci && npm run vendor:sync",

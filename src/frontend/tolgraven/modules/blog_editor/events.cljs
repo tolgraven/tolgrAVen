@@ -1,33 +1,35 @@
-(ns tolgraven.modules.blog.editor-events
-  (:require [tolgraven.react :as rf]
+(ns tolgraven.modules.blog-editor.events
+  (:require [tolgraven.react :as r]
             [tolgraven.media.schema :as media]
+            [tolgraven.modules.blog.schema :as schema]
+            [tolgraven.modules.blog-editor.upload-bridge]
             [tolgraven.validation :as validation]
-            [tolgraven.modules.blog.editor-model :as model]
+            [tolgraven.modules.blog-editor.model :as model]
             [tolgraven.supabase.runtime :as client]))
 
 (def uploads-path [:state :blog :image-uploads])
 (def text-path [:state :form-field :post-blog :text])
 
 (defn accept-response! [id attempt result]
-  (rf/dispatch [:blog/image-upload-received id attempt result]))
+  (r/dispatch [:blog/image-upload-received id attempt result]))
 
-(rf/reg-event-fx :blog/image-upload-received
+(r/reg-event-fx :blog/image-upload-received
   {:args [:tuple :string [:int {:min 1}] :any]}
   (fn [_ [_ id attempt result]]
     {:dispatch (if (validation/explain media/upload-response result)
                  [:blog/image-upload-failed id attempt {:message "The upload returned an invalid response. Retry or remove it."}]
                  [:blog/image-upload-response id attempt result])}))
 
-(rf/reg-fx :blog/image-upload
+(r/reg-fx :blog/image-upload
   (fn [{:keys [id file attempt]}]
     (let [body (doto (js/FormData.) (.append "file" file))]
       (client/authenticated-request!
         :post "/api/supabase/media" body
         #(accept-response! id attempt %)
-        #(rf/dispatch [:blog/image-upload-failed id attempt %])))))
+        #(r/dispatch [:blog/image-upload-failed id attempt %])))))
 
-(rf/reg-event-fx :blog/image-upload-enqueue
-  {:args [:tuple [:vector [:map [:id :string] [:name :string] [:file :any] [:owner :string]]]
+(r/reg-event-fx :blog/image-upload-enqueue
+  {:args [:tuple [:vector [:map [:id :string] [:name :string] [:file :any] [:owner :string] [:?sdk? :boolean]]]
                  [:int {:min 0}] [:int {:min 0}]]}
   (fn [{:keys [db]} [_ files start end]]
     (let [{:keys [text uploads]} (model/insert-files (get-in db text-path) start end
@@ -35,7 +37,7 @@
       {:db (-> db (assoc-in text-path text) (assoc-in uploads-path uploads))
        :dispatch [:blog/image-upload-next]})))
 
-(rf/reg-event-fx :blog/image-upload-next
+(r/reg-event-fx :blog/image-upload-next
   {:args [:tuple]}
   (fn [{:keys [db]} _]
     (when-let [{:keys [id file attempt]} (model/next-upload (get-in db uploads-path))]
@@ -43,7 +45,7 @@
         {:db (update-in db (conj uploads-path id) assoc :status :uploading :attempt attempt')
          :blog/image-upload {:id id, :file file, :attempt attempt'}}))))
 
-(rf/reg-event-fx :blog/image-upload-response
+(r/reg-event-fx :blog/image-upload-response
   {:args [:tuple :string [:int {:min 1}] media/upload-response]}
   (fn [{:keys [db]} [_ id attempt {:keys [status asset error] :as result}]]
     (let [upload (get-in db (conj uploads-path id))]
@@ -54,6 +56,7 @@
                          (update-in text-path model/complete-upload upload asset)
                          (update-in (conj uploads-path id) #(-> % (assoc :status :ready :asset asset)
                                                                (dissoc :file :error :polls))))
+                 :blog-editor/settle-upload {:id id, :src (:src asset)}
                  :dispatch [:blog/image-upload-next]}
         "failed" {:dispatch [:blog/image-upload-failed id attempt {:message error}]}
         ;; The response owns its durable job id; client polling owns no timers
@@ -66,7 +69,7 @@
             {:dispatch [:blog/image-upload-failed id attempt
                         {:message "Processing is taking longer than expected. Retry to check again."}]})))))))
 
-(rf/reg-event-fx :blog/image-upload-poll
+(r/reg-event-fx :blog/image-upload-poll
   {:args [:tuple :string [:int {:min 1}]]}
   (fn [{:keys [db]} [_ id attempt]]
     (let [{:keys [status job-id] :as upload} (get-in db (conj uploads-path id))]
@@ -76,7 +79,7 @@
                             :on-success [:blog/image-upload-received id attempt]
                             :on-error [:blog/image-upload-failed id attempt]}}))))
 
-(rf/reg-event-fx :blog/image-upload-failed
+(r/reg-event-fx :blog/image-upload-failed
   {:args [:tuple :string [:int {:min 1}] :map]}
   (fn [{:keys [db]} [_ id attempt error]]
     (let [upload (get-in db (conj uploads-path id))]
@@ -85,9 +88,10 @@
       {:db (update-in db (conj uploads-path id)
                       assoc :status :failed
                       :error (or (:message error) "Unable to upload this image. Retry or remove it."))
+       :blog-editor/settle-upload {:id id, :error (or (:message error) "Unable to upload image")}
        :dispatch [:blog/image-upload-next]}))))
 
-(rf/reg-event-fx :blog/image-upload-retry
+(r/reg-event-fx :blog/image-upload-retry
   {:args [:tuple :string]}
   (fn [{:keys [db]} [_ id]]
     (when (= :failed (get-in db (conj uploads-path id :status)))
@@ -95,20 +99,82 @@
                       #(-> % (assoc :status :queued) (dissoc :error :polls :job-id)))
        :dispatch [:blog/image-upload-next]})))
 
-(rf/reg-event-fx :blog/image-upload-cancel
+(r/reg-event-fx :blog/image-upload-cancel
   {:args [:tuple :string]}
   (fn [{:keys [db]} [_ id]]
     (when-let [upload (get-in db (conj uploads-path id))]
       {:db (-> db
                (update-in text-path model/cancel-upload upload)
                (update-in uploads-path dissoc id))
+       :blog-editor/settle-upload {:id id, :error "Image upload removed"}
        :dispatch [:blog/image-upload-next]})))
 
-(rf/reg-event-fx :blog/image-upload-dispose
+(r/reg-event-fx :blog/image-upload-dispose
   {:args [:tuple :string]}
   (fn [{:keys [db]} [_ owner]]
     (let [uploads (filter #(= owner (:owner %)) (vals (get-in db uploads-path)))]
       {:db (-> db
                (update-in text-path #(reduce model/cancel-upload % uploads))
                (update-in uploads-path #(apply dissoc % (map :id uploads))))
+       :fx (mapv (fn [{:keys [id]}] [:blog-editor/settle-upload {:id id, :error "Editor closed"}]) uploads)
        :dispatch [:blog/image-upload-next]})))
+
+(r/reg-event-fx :blog/init-posting
+  {:args (get schema/event-args :blog/init-posting)}
+  (fn [_ _] {:dispatch [:user/close-ui]}))
+
+(r/reg-event-fx :blog/cancel-edit
+  {:args (get schema/event-args :blog/cancel-edit)}
+  (fn [_ _]
+    {:dispatch-n [[:form-field [:post-blog] nil :blur]
+                  [:blog/state [:editing] nil]]}))
+
+(r/reg-event-fx :blog/submit
+  {:args (get schema/event-args :blog/submit)}
+  (fn [{:keys [db]} [_ input editing]]
+    (when-not (or (get-in db [:state :supabase-writes :post])
+                  (model/unresolved? (:text input) (get-in db [:state :blog :image-uploads])))
+      {:db (assoc-in db [:state :supabase-writes :post] true)
+       :supabase/request {:method :post :uri "/api/supabase/posts"
+                          :data (cond-> (select-keys input [:title :text :tags])
+                                  editing (assoc :post-id (:id editing)))
+                          :on-success [:blog/post-saved input]
+                          :on-error [:blog/write-failed :post]}})))
+
+(r/reg-event-fx :blog/post-saved
+  {:args (get schema/event-args :blog/post-saved)}
+  (fn [{:keys [db]} [_ submitted _]]
+    {:db (update-in db [:state :supabase-writes] dissoc :post)
+     :dispatch-n (cond-> [[:common/navigate! :blog] [:blog/state [:editing] nil]]
+                   (= (select-keys submitted [:title :text :tags])
+                      (select-keys (get-in db [:state :form-field :post-blog]) [:title :text :tags]))
+                   (conj [:form-field [:post-blog] nil :blur]))}))
+
+
+(r/reg-event-fx :blog-editor/library-load
+  {:args [:tuple [:int {:min 0}]]}
+  (fn [{:keys [db]} [_ offset]]
+    (when-not (get-in db [:state :blog-editor :library :pending?])
+      {:db (assoc-in db [:state :blog-editor :library :pending?] true)
+       :supabase/request {:method :get
+                          :uri (str "/api/supabase/media?offset=" offset "&limit=24")
+                          :on-success [:blog-editor/library-loaded offset]
+                          :on-error [:blog-editor/library-failed]}})))
+
+(r/reg-event-fx :blog-editor/library-loaded
+  {:args [:tuple [:int {:min 0}] :any]}
+  (fn [{:keys [db]} [_ offset result]]
+    (if (validation/explain media/library result)
+      {:dispatch [:blog-editor/library-failed {:message "Image library returned invalid metadata"}]}
+      {:db (update-in db [:state :blog-editor :library]
+                      (fn [library]
+                        {:pending? false
+                         :assets (vec (vals (into {} (map (juxt :id identity))
+                                                   (concat (when (pos? offset) (:assets library)) (:assets result)))))
+                         :next-offset (:next-offset result)}))})))
+
+(r/reg-event-db :blog-editor/library-failed
+  {:args [:tuple :map]}
+  (fn [db [_ error]]
+    (update-in db [:state :blog-editor :library] assoc :pending? false
+               :error (or (:message error) "Unable to load images. Retry."))))

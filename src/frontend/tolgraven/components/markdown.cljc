@@ -1,5 +1,7 @@
 (ns tolgraven.components.markdown
-  #?(:cljs (:require [tolgraven.loader.view :as view]
+  #?(:cljs (:require-macros [tolgraven.macros :refer [register-render-functions!]]))
+  #?(:cljs (:require [tolgraven.component.registry]
+                     [tolgraven.loader.view :as view]
                      [tolgraven.components.highlight :as highlight]))
   #?(:ssr (:require [tolgraven.components.ui.code :as implementation])))
 
@@ -10,3 +12,5 @@
      (defn <parse-markdown-components> [text & options]
        #?(:ssr (into [implementation/<parse-markdown-components> text] options)
           :default (view/form :markdown :parse (into [text] options) [:pre text])))))
+
+#?(:cljs (register-render-functions!))

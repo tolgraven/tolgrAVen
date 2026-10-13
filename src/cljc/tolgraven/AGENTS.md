@@ -110,6 +110,10 @@ server format handlers retain their native JVM Java-time support.
   browser bindings. Post `:image-assets` and CMS section sidecars carry paired SSR
   metadata; private job/source/lease fields must not enter public projections.
 
+- `build/authoring.clj` extracts canonical identities, docstrings and signatures of selected
+  public render components without evaluating source. Rich help is editor-owned;
+  published lookup retains only lazy owners. Track source resources and prune disabled owners.
+
 - `markdown/components.cljc` owns portable quoted component attributes and data
   prefixes. Browser composition and media source lookup share this grammar;
   ready server manifests determine rendition metadata, never authored asset objects.

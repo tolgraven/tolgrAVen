@@ -220,7 +220,7 @@
         (when (seq (select-keys options [:features :depends :state]))
           (throw (ex-info "Composed defc features require a single argument vector" {:component name})))
         `(let [~descriptor (tolgraven.component.registry/definition
-                           ~(str ns-name) ~(str name) ~(assoc options :spec false) (fn ~name ~@decls))]
+                           ~(str ns-name) ~(str name) ~(assoc options :spec false :public? (not (:private (meta name)))) (fn ~name ~@decls))]
            ~(if (or (:args-schema options) (:spec-schema options))
               `(reagent.core/defc ~(with-meta name metadata) [& argv#]
                  (tolgraven.component.registry/validate-args! ~descriptor argv#)
@@ -267,7 +267,7 @@
                                  (some #{'props 'classes 'features 'depends 'appear 'seen 'links}
                                        (:keys spec-arg))
                                  (some #{:props :classes :features :depends :appear :seen :links} (vals spec-arg)))))
-              options'''' (assoc options''' :spec (if (contains? options''' :spec) (:spec options''') (boolean spec?)))
+              options'''' (assoc options''' :public? (not (:private (meta name))) :spec (if (contains? options''' :spec) (:spec options''') (boolean spec?)))
               plain? (and (not (:spec options'''')) (empty? (:features options'''')) (nil? (:depends options'''')) (nil? (:state options'''')))
               descriptor (gensym "definition")]
           `(do
@@ -296,6 +296,11 @@
                 `(reagent.core/defc ~(with-meta name metadata) [& argv#]
                    (tolgraven.component/render-component ~descriptor argv#)))
              (tolgraven.component.registry/register-component! ~name ~descriptor))))))))))
+
+(defmacro register-render-functions!
+  "Register namespace-local public legacy <…> functions without changing their identity or signature."
+  []
+  (apply @(requiring-resolve 'tolgraven.build.authoring/register-render-functions!) &form &env []))
 
 (defmacro defcomp-
   "Define a reagent component with a docstring and metadata, standardized arg

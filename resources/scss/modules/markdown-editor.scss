@@ -1,0 +1,165 @@
+// The build prepends editor vendor rules scoped to this owner, with relative units.
+.site-md-editor {
+  color: var(--fg-1);
+  background: var(--bg-1);
+  border: var(--line-width) solid var(--line-color);
+  border-radius: var(--section-rounded);
+  min-width: 0;
+
+
+  .mdxeditor { font-family: inherit; color: inherit; }
+  .md-editor-content { min-height: 20rem; padding: var(--space); line-height: 1.6; }
+  [role="toolbar"] { flex-wrap: wrap; gap: 0.2em; border-block-end: var(--line-width) solid var(--line-color); }
+  button { color: inherit; }
+  input, select, textarea { color: var(--fg-1); background: var(--bg-1); }
+}
+
+.md-component-picker { position: relative; }
+.md-component-picker__menu {
+  position: absolute;
+  z-index: 5;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
+  width: min(32rem, 75vw);
+  padding: var(--space);
+  background: var(--bg-1);
+  border: var(--line-width) solid var(--line-color);
+  box-shadow: 0 0.5rem 2rem rgb(0 0 0 / 25%);
+  label, input { display: block; width: 100%; }
+}
+.md-component-picker__results {
+  max-height: 24rem;
+  overflow-y: auto;
+  button { display: grid; width: 100%; gap: 0.25em; padding: 0.75em; text-align: start; white-space: normal; }
+  small { color: var(--fg-2); }
+  code { overflow-wrap: anywhere; }
+}
+.md-component-node {
+  position: relative;
+  padding: 0.5em;
+  margin-block: var(--space);
+  border: var(--line-width) dashed var(--line-color);
+  header { display: flex; justify-content: space-between; align-items: center; }
+}
+.md-component-node__arguments {
+  display: none;
+  position: absolute;
+  z-index: 6;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
+  width: min(60rem, 85vw);
+  max-height: min(32rem, 60vh);
+  overflow-y: auto;
+  border: var(--line-width) solid var(--line-color);
+  box-shadow: 0 0.5rem 2rem rgb(0 0 0 / 25%);
+  &.is-open { display: block; }
+}
+.md-component-node:focus-within > .md-component-node__arguments { display: block; }
+.md-component-arguments {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(12rem, 1fr);
+  gap: var(--space);
+  padding-block: var(--space);
+  background: var(--bg-2);
+  th { text-align: start; }
+  input { width: 100%; min-width: 4rem; }
+  small, code { display: block; font-weight: normal; font-size: 0.8em; }
+  td, th { padding: 0.4em; vertical-align: top; }
+  @media (max-width: 48rem) { grid-template-columns: minmax(0, 1fr); }
+}
+.md-component-help { padding: var(--space); code { overflow-wrap: anywhere; } }
+.md-editor-error { color: var(--orange); padding: var(--space); }
+
+.md-editor-content { display: flow-root; }
+// MDXEditor's pinned JSX DecoratorNode owns the outer div. Float that native
+// owner so following paragraphs actually wrap; an inner float cannot do this.
+.md-editor-content > div:has(> .md-component-node[data-flow="left"]) {
+  float: left;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline-end: var(--space);
+}
+.md-editor-content > div:has(> .md-component-node[data-flow="right"]) {
+  float: right;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline-start: var(--space);
+}
+.md-editor-content > div:has(> .md-component-node[data-align="center"]) { margin-inline: auto; width: fit-content; }
+.md-editor-content > div:has(> .md-component-node[data-align="right"]) { margin-inline-start: auto; width: fit-content; }
+.md-resize-handle {
+  display: block;
+  margin-inline-start: auto;
+  min-width: 2rem;
+  min-height: 2rem;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.md-component-node { display: flow-root; }
+
+.md-image-picker { position: relative; }
+.md-image-picker__menu {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  z-index: 20;
+  width: min(34rem, 85vw);
+  max-height: 70vh;
+  overflow: auto;
+  padding: var(--space);
+  background: var(--bg-2);
+  border: var(--line-width) solid var(--line-color);
+  label { display: block; margin-block: 0.5rem; }
+}
+.md-image-picker__assets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  button { min-width: 0; overflow-wrap: anywhere; }
+  img { width: 100%; height: 5rem; object-fit: contain; }
+  span { font-size: 0.7em; }
+}
+
+// Vendor palette defaults are declared on both the SDK root and its portal root.
+.site-md-editor,
+.site-md-editor .mdxeditor,
+.site-md-editor .mdxeditor-popup-container {
+  --baseText: var(--fg-1);
+  --baseBg: var(--bg-1);
+  --baseBgSubtle: var(--bg-2);
+  --baseBgHover: var(--bg-1-2);
+  --baseBorder: var(--line-color);
+  --baseBorderHover: var(--purple);
+  --baseSolid: var(--purple);
+  --baseSolidHover: var(--blue);
+  --accentText: var(--blue);
+  --accentSolid: var(--purple);
+  --accentBgActive: var(--bg-2);
+  --basePageBg: var(--bg-1);
+  --baseBase: var(--bg-1);
+  --baseBgActive: var(--bg-2);
+  --baseLine: var(--line-color);
+  --baseTextContrast: var(--fg-1);
+  --accentBase: var(--bg-1);
+  --accentBgSubtle: var(--bg-2);
+  --accentBg: var(--bg-2);
+  --accentBgHover: var(--bg-1-2);
+  --accentLine: var(--line-color);
+  --accentBorder: var(--purple);
+  --accentBorderHover: var(--blue);
+  --accentSolidHover: var(--blue);
+  --accentTextContrast: var(--fg-1);
+}
+
+.md-component-node > header {
+  gap: 0.5rem;
+  strong { font-size: 0.85em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  button { flex-shrink: 0; white-space: nowrap; font-size: 0.8em; padding: 0.3em 0.5em; }
+}
+.md-editor-content > div:has(> .md-component-node[data-flow="block"]) {
+  clear: both;
+  width: 100%;
+}
+
+.md-component-node { box-sizing: content-box; }

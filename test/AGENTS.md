@@ -165,3 +165,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   through `tolgraven-cpu run`. `test/scripts/media_sql_test.sql` creates its own
   roles and fixture schema; run it only in a disposable PostgreSQL container, never
   against a project database. See `doc/media-pipeline.md`.
+
+- Markdown authoring checks cover data-only component argument round trips, private
+  path/expression rejection, feature-pruned generated help, block-safe published
+  markup and actual editor normalization/keyboard/source transitions. Vendor CSS
+  checks prove selector/palette isolation and relative units. See `doc/markdown-authoring.md`.
