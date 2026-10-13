@@ -1,6 +1,7 @@
 (ns tolgraven.loader
   (:require
-    [tolgraven.component.registry]
+    [tolgraven.component.registry :as registry]
+    [tolgraven.component.public-catalog :as public-catalog]
     [tolgraven.component.instrumentation]
     [tolgraven.validation.runtime :as validation]
     [tolgraven.loader.code :as module-code]
@@ -94,8 +95,10 @@
     (when (seq failed) (data/invalidate! failed))
     (data/ensure-all! resources)))
 
+(declare resolved-view)
+
 (defn- prepare-view! [spec view args]
-  (if-let [definition (component/component-spec (get-in spec [:view (or view :view)]))]
+  (if-let [definition (component/component-spec (resolved-view (:id spec) (or view :view) spec))]
     (prepare-data! (component/dependencies definition args))
     (js/Promise.resolve nil)))
 
@@ -257,12 +260,20 @@
     (when-not active?
       [:span.module-load-trigger {:ref *element :aria-hidden true}])))
 
+(defn resolved-view
+  "Canonical public component views keep their actual owner and function identity."
+  [module view spec]
+  (or (get-in spec [:view view])
+      (when (and (qualified-keyword? view)
+                 (= module (get public-catalog/owners (str (namespace view) "/" (name view)))))
+        (:component (registry/public-component (str (namespace view) "/" (name view)))))))
+
 (m/defc ^:private <module-content>
   [{:keys [module view <missing>] :as options} args complete! hydrating?]
   (let [_ (when-not context/*server?* @(rf/subscribe [:loader/code-ready module]))
         failure (when-not context/*server?* @(rf/subscribe [:loader/code-error module]))
         loaded (if context/*server?* (get context/*modules* module) (code-spec module))
-        resolved (get-in loaded [:view (or view :view)])]
+        resolved (resolved-view module (or view :view) loaded)]
     (rf/use-layout-effect
       (fn [] (when (or resolved failure loaded) (complete!)) nil)
       [(boolean (or resolved failure loaded))])
@@ -304,20 +315,34 @@
         [ssr?] (rf/use-state
                  #(boolean (and (not hidden?)
                                 (or (and context/*server?*
-                                         (get-in context/*modules* [module :view (or view :view)]))
+                                         (resolved-view module (or view :view) (get context/*modules* module)))
                                     (and (restore/initial-hydration?)
                                          (restore/rendered-view? module (or view :view)))))))
         [initial?] (rf/use-state #(and (not context/*server?*) ssr? (restore/initial-hydration?)))
         [committed? set-committed!] (rf/use-state false)
         *trigger (rf/use-ref nil)
         release! (hydration/use-deferred! initial?)
-        complete! (rf/use-callback (fn [] (release!) (set-committed! true)) [release!])
+        complete! (rf/use-callback
+                    (fn []
+                      ;; Removing an ancestor marker urgently can discard a
+                      ;; nested SSR owner before its activation effects commit.
+                      (if initial?
+                        (rf/start-transition #(set-committed! true))
+                        (set-committed! true)))
+                    [initial? set-committed!])
         boundary (rf/use-memo #(make-boundary module) [module])
         ready? (or context/*server?* (boolean @(rf/subscribe [:loader/code-ready module])))
         failure (when-not context/*server?* @(rf/subscribe [:loader/code-error module]))
         modes (activation/triggers options)
         requested? (and (not hidden?) active?)]
+    (rf/use-layout-effect
+      ;; Retain transition batching until marker removal actually commits, so
+      ;; nested owners can establish their hydration/activation lifecycles.
+      (fn [] (when committed? (release!)) nil)
+      [committed? release!])
     (restore/use-readiness! (or (not requested?) ready? (some? failure)))
+    (when (and context/*server?* ssr? context/*rendered-views*)
+      (swap! context/*rendered-views* update module (fnil conj #{}) (or view :view)))
     (rf/use-layout-effect
       (fn []
         (if (and (not context/*server?*) ssr?)

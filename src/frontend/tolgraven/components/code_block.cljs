@@ -7,6 +7,8 @@
             [tolgraven.component.hydration :as hydration]
             [tolgraven.browser-resources :as resources]
             [tolgraven.react :as rf]
+            [tolgraven.components.select :as select]
+            [tolgraven.content.schema :as content-schema]
             [tolgraven.macros :refer-macros [defc]]
             [tolgraven.render-context :as context]
             [tolgraven.loader :as loader]
@@ -29,7 +31,13 @@
    [:?starting-line-number [:int {:min 1}]]
    [:?foldable? :boolean]
    [:?folded? :boolean]
-   [:?fold-lines [:int {:min 1}]]])
+   [:?fold-lines [:int {:min 1}]]
+   [:?editable? :boolean]
+   [:?on-code-change fn?]
+   [:?on-language-change fn?]
+   [:?language-options content-schema/code-languages]
+   [:?on-meta-change fn?]
+   [:?meta :?string]])
 
 ;; Preserve the public keyword/value API, with the same contracts as map options.
 (def args-schema
@@ -260,7 +268,7 @@
         [ssr-pending? set-ssr-pending!]
         (rf/use-state #(and (not context/*server?*) (restore/initial-hydration?)))
         on-ready! (rf/use-callback #(set-ssr-pending! false) [])
-        gesture-props (use-copy-gesture (when (not= false (:copy? options)) copy!) ssr-pending?)
+        gesture-props (use-copy-gesture (when (and (not= false (:copy? options)) (not (:editable? options))) copy!) ssr-pending?)
         inline? (:inline? options)
         line-count (rf/use-memo
                      #(count (string/split code #"\n" -1))
@@ -317,4 +325,33 @@
            [:i.fas {:aria-hidden true
                     :class (if folded? "fa-angle-down" "fa-angle-up")}]])]
        [:div.code-block-content [<formatter> code options on-ready!]]
+       (when (:editable? options)
+         [:div.code-editor-fields
+          {:content-editable false
+           ;; Child controls must receive their own keyboard event before the
+           ;; fence editor keeps it from the surrounding rich-text document.
+           :on-key-down #(.stopPropagation %)}
+          [:label "Code"
+           [:textarea {:value code
+                       :spell-check false
+                       :rows (max 3 (min 24 line-count))
+                       :on-change #(when-let [change! (:on-code-change options)] (change! (.. % -target -value)))}]]
+          [:label "Language"
+           [select/<search-select>
+            {:label "Code language"
+             :value (or (:language options) "")
+             :allow-custom? true
+             :options (into [{:value "", :label "Auto detect"}]
+                            (remove #(empty? (:value %)))
+                            (if (contains? options :language-options)
+                              (:language-options options)
+                              (or @(rf/subscribe [:content [:common :code-languages]])
+                                  [{:value "clojure", :label "Clojure"}
+                                   {:value "cljs", :label "ClojureScript"}
+                                   {:value "javascript", :label "JavaScript"}])))
+             :on-change #(when-let [change! (:on-language-change options)] (change! %))}]]
+          [:label "Fence metadata"
+           [:input {:type "text"
+                    :value (or (:meta options) "")
+                    :on-change #(when-let [change! (:on-meta-change options)] (change! (.. % -target -value)))}]]])
        feedback])))

@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [tolgraven.build.modules :as modules]
             [tolgraven.build.site :as site]
+            [tolgraven.build.packaging :as packaging]
             [clojure.java.io :as io]
             [clojure.string :as string]))
 
@@ -118,6 +119,17 @@
                declarations {:modules {:page-render {:enabled false}
                                        :page-capture {:enabled false}}})))))
 
+(deftest authoring-children-follow-parent-capabilities-before-code-and-route-discovery
+  (let [all (modules/all-declarations)
+        by-id (into {} (map (juxt :id identity)) all)
+        settings {:modules {:blog {:enabled false}}}]
+    (is (= :blog (:site/owner (get by-id :blog-editor))))
+    (is (= :blog-editor (:site/owner (get by-id :markdown-editor))))
+    (is (not (packaging/owner-enabled? settings by-id :blog-editor)))
+    (is (not (packaging/owner-enabled? settings by-id :markdown-editor)))
+    (is (packaging/owner-enabled? settings by-id :markdown-components))
+    (is (not (packaging/owner-enabled? {:modules {:blog-editor {:enabled false}}} by-id :markdown-editor)))
+    (is (packaging/owner-enabled? {:modules {}} by-id :markdown-editor))))
 (deftest source-graph-checks-use-one-fresh-settings-snapshot-per-build
   (let [*reads (atom 0)
         *settings (atom {:modules {}})

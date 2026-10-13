@@ -39,7 +39,7 @@
 
 (defn test! []
   (shell ["bb" "--classpath" "scripts:test/scripts" "-m" "tools-test"])
-  (shell ["node" "--test" "test/scripts/document_image_test.cjs"])
+  (shell ["node" "--test" "test/scripts/document_image_test.cjs" "test/scripts/editor_styles_test.mjs"])
   (shell ["python3" "-m" "unittest" "discover" "-s" "test/scripts" "-p" "*_test.py"]))
 
 (defn supabase! [& [action & args]]

@@ -1,6 +1,7 @@
 /** Build the shell and independent feature sheets with the same locked tools. */
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {editorStyles} from './editor-styles.mjs';
 import crypto from 'node:crypto';
 
 const root = 'resources/scss';
@@ -29,7 +30,8 @@ async function inputFiles(directory, extensions) {
 
 async function revision() {
   const inputs = [
-    'scripts/build/styles.mjs', 'package.json', 'package-lock.json', 'resources/icon-fonts.json',
+    'scripts/build/styles.mjs', 'scripts/build/editor-styles.mjs',
+    'package.json', 'package-lock.json', 'resources/icon-fonts.json',
     'resources/public/css/opensans.css',
     ...await inputFiles(root, ['.scss']),
     // Module/component icon declarations and their macros own the style inventory.
@@ -83,7 +85,8 @@ async function build() {
     await fs.mkdir(path.dirname(file), {recursive: true});
     if (!postcssOnly) {
       const result = compile(path.join(root, entry), {style: 'compressed', charset: false});
-      await fs.writeFile(file, entry === 'modules/maps.scss'
+      await fs.writeFile(file, entry === 'modules/markdown-editor.scss'
+        ? `${await editorStyles()}\n${result.css}` : entry === 'modules/maps.scss'
         ? result.css.replaceAll('url(images/', 'url(/vendor/leaflet/images/') : result.css);
     }
     if (!sassOnly) {

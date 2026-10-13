@@ -4,8 +4,6 @@
     [reagent.core :as r]
     [tolgraven.components.timer :as timer]
     [tolgraven.modules.blog.model :as model]
-    [tolgraven.modules.blog.editor :as editor]
-    [tolgraven.modules.blog.editor-model :as editor-model]
     [tolgraven.modules.blog.schema :as schema]
     [tolgraven.modules.blog.data :as data]
     #?(:feature/blog-comments [tolgraven.modules.blog.comments :as comments])
@@ -391,58 +389,27 @@
                                 :editing? @(rf/subscribe [:blog/state [:editing-comment parent-path]])}]
          [<add-comment-btn> {:parent-path parent-path :kind :cancel}]]]]))))
 
-(defc <preview-blog> "Render new post preview"
-  [{{:keys [title text image-assets]} :post :as spec}]
-  [:div
-    [:h2.blog-post-title title]
-    [:br]
-    [<markdown> text
-     {:trust (link-trust @(rf/subscribe [:user/active-user]))
-      :image-assets image-assets}]])
+(when-enabled :blog :comments
+  (defn quoted-comment-query [post-id comment-id]
+    {:path-collection [:blog-comments]
+     :scoped? true
+     :where [[:id :== comment-id] [:parent-post :== post-id]]
+     :limit 1})
 
-(defc <post-blog> "Render post-making ui"
-  {:features [:error-boundary]}
-  [] ; XXX move this and similar to own file...
-  (r/with-let [owner (str (random-uuid))]
-   (let [input @(rf/subscribe [:form-field [:post-blog]])
-        user @(rf/subscribe [:user/active-user])
-        editing @(rf/subscribe [:blog/state [:editing]])
-        uploads @(rf/subscribe [:blog/state [:image-uploads]])]
-    [:section.blog.blog-new-post
-     [:h2 "Write blog post"]
-     [:br]
-
-     [ui/<input-text>
-      :placeholder "Title"
-      :path [:form-field [:post-blog :title]]]
-
-     [ui/<input-text>
-      :placeholder "Tags"
-      :path [:form-field [:post-blog :tags]]]
-
-     [editor/<markdown-editor> {:owner owner, :exit (partial editor/dispose! owner)}]
-
-     [ui/<button> "Save draft" :save-blog-draft]
-     [ui/<button> "Highlight code" :highlight-blog-code
-      :action #(rf/dispatch [:run-highlighter!])]
-
-     [:br]
-     [:section.blog-post-preview
-      [<preview-blog> {:post (assoc input :image-assets
-                                  (merge (:image-assets input)
-                                         (into {} (keep (fn [{:keys [asset]}]
-                                                         (when asset [(:src asset) asset])))
-                                               (vals uploads))))}]]
-
-     [:section
-      [ui/<button> "Submit" :post-new-blog
-       :disabled? (editor-model/unresolved? (:text input) uploads)
-       :action #(do (rf/dispatch [:blog/submit
-                                  (merge {:user user} input)
-                                  editing])
-                    nil)]
-      [:button {:on-click #(rf/dispatch [:common/navigate! :blog])} ; triggers controller hence cleanup
-       [:label "Cancel"]]]])))
+  (defc <comment-quote>
+    "Load a public quoted comment and render its original comment UI with a permalink."
+    {:spec-schema [:map [:post-id [:or :string :int]] [:comment-id [:or :string :int]]]
+     :depends (fn [{:keys [post-id comment-id]}]
+                [{:source :supabase, :query (quoted-comment-query post-id comment-id)}])}
+    [{:keys [post-id comment-id]}]
+    (let [comments @(rf/subscribe [:<-store-q (quoted-comment-query post-id comment-id)])
+          comment (first (vals comments))]
+      [:blockquote.content-comment-quote
+       (if comment
+         [<comment-post> {:path [post-id comment-id], :comment comment, :enter? false}]
+         [:p "Comment unavailable"])
+       [:a {:href (str @(rf/subscribe [:blog/permalink-for-path post-id]) "#comment-" comment-id)}
+        "View original comment"]])))
 
 (defc <tag-link> [{:keys [tag]} :- schema/tag-spec]
   [:span [:a.blog-tag-link {:href @(rf/subscribe [:href :blog-tag {:tag tag}])} tag]])
@@ -646,6 +613,5 @@
        :post [<blog-single-post>]
        :tag [<blog-tag-view>]
        :archive [<blog-archive>]
-       :new-post [<post-blog>]
        [<blog-container> {:section [<blog-feed>]}])]))
 ))

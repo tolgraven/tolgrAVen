@@ -25,6 +25,7 @@
 ;; Consumed snapshots remain readable in memory, but are excluded from disk.
 (defonce *consumed (atom {}))
 (defonce *ready (atom #{}))
+(defonce *read-errors (atom #{}))
 (defonce *deleted-paths (atom {}))
 (defn- prefix? [parent child]
   (and (<= (count parent) (count child)) (= (vec parent) (subvec (vec child) 0 (count parent)))))
@@ -70,37 +71,59 @@
                                          (fn []
                                            (let [saved (try
                                                          (when-let [text (read-disk! key)]
-                                                           (when (<= (count text) max-bytes)
+                                                           (when (> (count text) max-bytes) (throw (js/Error. "Snapshot too large")))
                                                              (let [value (reader/read-string text)
+                                                                   _ (when-not (map? value) (throw (js/Error. "Invalid snapshot envelope")))
                                                                    clean (when (map? value)
                                                                            (into {} (filter (fn [[_ snapshot]]
                                                                                               (nil? (validation/explain schema/storage-snapshot snapshot)))) value))]
                                                                (when (not= value clean)
+                                                                 (when (not= account :public)
+                                                                   (throw (js/Error. "Invalid private snapshots")))
                                                                  (swap! *dirty conj account)
                                                                  (schedule-write!))
-                                                               clean)))
-                                                         (catch :default _ nil))]
+                                                               clean))
+                                                         (catch :default _
+                                                           (swap! *read-errors conj account)
+                                                           missing))
+                                                 failed? (identical? saved missing)
+                                                 saved' (when-not failed? saved)]
                                              ;; Writes/removals queued before this read win.
                                              (swap! *buckets update account
-                                                    #(merge (into {} (remove (fn [[id _]] (affected? id (get @*deleted-paths account)))) saved) %))
-                                             (when (or (some #(affected? % (get @*deleted-paths account)) (keys saved))
+                                                    #(merge (into {} (remove (fn [[id _]] (affected? id (get @*deleted-paths account)))) saved') %))
+                                             (when (or (some #(affected? % (get @*deleted-paths account)) (keys saved'))
                                                        (some (fn [[_ snapshot]]
                                                                (or (not= 1 (:version snapshot))
-                                                                   (<= (:expires-at snapshot 0) (.now js/Date)))) saved))
+                                                                   (<= (:expires-at snapshot 0) (.now js/Date)))) saved'))
                                                (swap! *dirty conj account)
                                                (schedule-write!))
                                              (swap! *deleted-paths dissoc account)
-                                             (swap! *ready conj account)
+                                             ;; Public cache fallback may repopulate from SSR.
+                                             ;; Private read failures never authorize replacing
+                                             ;; an unseen durable envelope with defaults.
+                                             (when (or (not failed?) (= account :public)) (swap! *ready conj account))
                                              (resolve nil))) 0))))))]
            (swap! *reads assoc account promise)
            promise))
      (js/Promise.resolve nil))))
 
+(defn read-failed? [options] (contains? @*read-errors (owner options)))
+
+(defn retry-read!
+  "Retry a completed failed owner read through the same deduplicated boundary."
+  [options]
+  (let [account (owner options)]
+    (when (contains? @*read-errors account)
+      (swap! *read-errors disj account)
+      (swap! *reads dissoc account)
+      (swap! *ready disj account))
+    (ready! options)))
+
 (defn read! [id options]
   (ready! options)
   (let [account (owner options)
         snapshot (get-in @*buckets [account id])]
-    (when (and snapshot (not (contains? (get @*consumed account) id)))
+    (when (and snapshot (not= false (:consume? options)) (not (contains? (get @*consumed account) id)))
       (swap! *consumed update account (fnil conj #{}) id)
       (swap! *dirty conj account)
       (schedule-write!))
@@ -146,13 +169,14 @@
       (schedule-write!))))
 
 (defn drain!
-  "At most one serialization and setItem per dirty owner. Also used at pagehide:
-   browsers may freeze timers there, so the final consolidated write is immediate."
+  "At most one serialization and setItem per dirty owner. Return each owner's
+   actual write result so explicit Save actions can acknowledge durable success.
+   Pagehide also uses this immediate consolidated write."
   []
   (when @*write-tick (js/clearTimeout @*write-tick) (reset! *write-tick nil))
   (let [accounts (filterv @*ready @*dirty)]
     (swap! *dirty #(apply disj % accounts))
-    (doseq [account accounts]
+    (into {} (map (fn [account]
       (try
         (let [bucket (into {} (filter (fn [[id v]] (and (not (contains? (get @*consumed account) id))
                                                         (> (:expires-at v 0) (.now js/Date)))))
@@ -168,12 +192,16 @@
             ;; pagehide republishes it before the new document reads storage.
             (when @*public-saved?
               (try (mark-return! true) (catch :default _ nil))))
-          (status/recover! :component-storage))
+          (status/recover! :component-storage)
+          [account true])
         (catch :default _
+          ;; Keep failed durable writes retryable even if values stay equal.
+          (swap! *dirty conj account)
           (when (= account :public)
             (reset! *public-saved? false)
             (try (mark-return! false) (catch :default _ nil)))
-          (warn!))))))
+          (warn!)
+          [account false]))) accounts))))
 (defn schedule-write! []
   (when (and (exists? js/window) (nil? @*write-tick))
     (reset! *write-tick
@@ -204,7 +232,8 @@
          (write-tracked! id read options))
        (-> (ready! options)
            (.then (fn [_]
-                    (when (= owner (tolgraven.component.storage/owner options))
+                    (when (and (contains? @*ready owner)
+                               (= owner (tolgraven.component.storage/owner options)))
                       (write-tracked! id read options)))))))))
 (defn schedule! []
   (when (and (exists? js/window) (nil? @*pending))
@@ -287,6 +316,11 @@
       (when (some #(not (identical? (get before %) (get after %)))
                   [:component :module :page :state])
         (schedule!)))))
+
+(rf/reg-fx :component-storage/flush
+  (fn [mode]
+    (flush! mode)
+    (drain!)))
 
 (rf/reg-global-interceptor
   (rf/->interceptor

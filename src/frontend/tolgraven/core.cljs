@@ -79,7 +79,7 @@
     (rdomc/render @root [<root-page>])
     (let [element (.getElementById js/document "app")]
       (if (:hydrate? @restore/*context)
-        (reset! root (rdomc/hydrate-root element [<root-page>]
+        (reset! root (rf/hydrate-root element [<root-page>]
                        {:on-recoverable-error
                         (fn [error _]
                           (js/console.error "Hydration recovery" error)

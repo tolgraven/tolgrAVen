@@ -19,6 +19,10 @@
     [tolgraven.ssr.client :as client]
     [tolgraven.components.page :as page]
     [tolgraven.modules.blog.module :as blog]
+    [tolgraven.modules.markdown-components.module :as authored]
+    [tolgraven.modules.settings.module :as settings]
+    [tolgraven.modules.search.module :as search]
+    [tolgraven.modules.styled-input.module :as styled-input]
     [tolgraven.modules.home.module :as home]
     [tolgraven.modules.cv.module :as cv]
     [tolgraven.modules.carousel.module :as carousel]
@@ -34,6 +38,10 @@
    :carousel carousel/spec
    :docs docs/spec
    :blog blog/spec
+   :markdown-components authored/spec
+   :settings settings/spec
+   :search search/spec
+   :styled-input styled-input/spec
    :user user/spec
    :highlight highlight/spec
    :link-preview link-preview/spec})
@@ -118,7 +126,7 @@
                      (js/Promise.
                       (fn [resolve reject]
                         (reset! *root
-                          (dom/hydrate-root element
+                          (react/hydrate-root element
                             [<hydration-check>
                              (fn []
                                (try
@@ -207,3 +215,7 @@
 
 (deftest missing-permalink-hydrates-as-a-completed-empty-read
   (async done (check-hydration! "missing" ["header" "main" "footer"] done)))
+
+(deftest authored-components-hydrate-with-their-real-native-roots
+  (async done (check-hydration! "authored-blog"
+                [".content-box" ".content-box p" "picture img" ".content-config" "[role=switch]" ".content-search input"] done)))

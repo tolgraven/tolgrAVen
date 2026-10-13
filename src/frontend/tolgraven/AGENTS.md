@@ -3,6 +3,14 @@
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.
 
+- The Markdown editor configure hook generates a pinned selective public SDK
+  entry under ignored `target/generated-sdk`; Shadow's declared package directory
+  resolves it consistently for browser, test and Node builds. Never edit shared
+  `node_modules` or copy private SDK implementations. Review the version/hash pin
+  and public exports when upgrading. Adding/removing a native SDK export requires
+  restarting that watch; the compile guard reports this explicitly. Ordinary
+  edits using existing exports retain HMR. See `doc/markdown-authoring.md`.
+
 ## Implementation priority: Reagent and re-frame
 
 - Apply the root guide's Reagent/re-frame-first principles to every frontend change,
@@ -75,6 +83,22 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   visibly committed final candidate after its overlap completes. Source changes and
   unmount release native observation; hidden ancestors wait on scoped visibility/
   motion changes rather than frame polling. See `doc/progressive-images.md`.
+- Hydrate through `tolgraven.react/hydrate-root`: it preserves the upstream root
+  lifecycle and compiler while forwarding native recovery/prefix options that
+  Reagent 2.0.1 otherwise drops. Initial nested SSR boundaries remove their markers
+  in a transition and release hydration batching only after that commit.
+- Authoring drafts/uploads/anchors belong to re-frame. Pending image chips use
+  native editor nodes/decorations, never authored markers. SDK extension slots
+  may require stable reverse React adapters; keep their native document/selection
+  work scoped and render ordinary Reagent UI. See `doc/markdown-authoring.md`.
+- Working/named blog drafts use account-owned projections in the existing storage
+  queue/debounce and navigation/pagehide drain. Restore validates before applying;
+  new input and account changes supersede pending reads. Published-post revision
+  collections retain their edit target; selected document IDs own native undo lifetime.
+- Source mode uses literal native text plus the same media nodes, without an
+  independent CodeMirror view or Markdown markers. Source input commits its
+  registered form event before the next key; controlled reconciliation reads
+  the latest managed query. Keep the text/on-change/disposal boundary reusable.
 - Rendered reusable UI lives in `components/`; feature-specific UI lives with its
   module. `component/` is the declaration/lifecycle runtime, not a view inventory.
   Import the owning namespace directly; there is no top-level `views.cljs` shim.
@@ -389,8 +413,30 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   owns generated native document scripts; no authored snippets live in public JS.
 
 - Blog Markdown attachments use owner-scoped registered events and one serialized
-  authenticated upload queue. Keep browser File values transient, insert a stable
-  draft marker at the native selection, and replace only that marker after a
-  complete validated rendition manifest arrives. Retry/cancel/disposal invalidate
-  stale attempts; pending markers block publication. SDK reads and realtime events
-  restore URL-keyed image metadata before row validation.
+  authenticated upload queue. Browser File values remain transient; a stable native
+  media node retains the original selection while its presentation derives from
+  the managed queue. Only a complete validated manifest adds its canonical source.
+  Retry/cancel/disposal invalidate stale attempts; pending nodes block publication.
+  SDK reads and realtime events restore URL-keyed metadata before row validation.
+
+- `/blog/new-post` and its upload queue/UI belong to `:blog-editor`; the
+  independent lazy `:markdown-editor` owns the visual Markdown SDK. Canonical source and
+  media jobs remain in the existing form/event owner. Published authored tags use
+  the same public `:markdown-components` views and data-only argument contract;
+  never compile/evaluate MDX or expose private state paths. See `doc/markdown-authoring.md`.
+
+- Public component composition uses canonical qualified Var identities and the
+  existing registry/module loader. Legacy `<…>` render functions register through
+  `register-render-functions!`; never wrap their ordinary call contracts. Rich
+  docs remain editor-owned; layout geometry uses separate `layout-*` arguments.
+- Shared `component/public_catalog.cljc` retains only canonical identities and
+  lazy owners. `markdown/authoring.cljs` handles data encoding; optional rendering
+  stays in `:markdown-components`. Canonical boundaries use the existing selective
+  hydration loader and await coercion installation before committing. SSR records
+  actually rendered exports with full identities preserved in JSON; their styles
+  are available before hydration, including visibly embedded deferred owners.
+
+- Blog authoring upload progress comes from the authenticated transport's measured
+  byte callbacks and remains attempt/owner guarded in transient module state.
+  Server-ready media stays visible in the status list until the published preview
+  acknowledges visible decoded content; keyed presence owns row exit and cleanup.

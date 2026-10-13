@@ -52,6 +52,7 @@
     {:allow-images? (= :trusted (:trust options))
      :allow-raw? (= :trusted (:trust options))
      :image-assets (:image-assets options)
+     :image-readiness (:image-readiness options)
      :default-language (:default-language options)
      :auto-languages (:auto-languages options)
      :code-options (:code-options options)}]])
@@ -497,3 +498,5 @@
 
 (defn <carousel-normal> [& args]
   (loader-view/form :carousel :normal (vec args) nil))
+
+(m/register-render-functions!)

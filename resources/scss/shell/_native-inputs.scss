@@ -87,3 +87,23 @@ input[type=range]:focus {
   outline: 0px;
   /* box-shadow: inset 0px 0px 1px 2px rgb(30, 30, 30, 0.8); */
 }
+.search-select {
+  position: relative;
+  input { width: 100%; }
+  &__options {
+    position: absolute;
+    z-index: 5;
+    inset-inline: 0;
+    top: 100%;
+    max-height: 16em;
+    overflow-y: auto;
+    display: grid;
+    padding: 0.25em;
+    border: var(--line-width) solid var(--line-color);
+    border-radius: var(--section-rounded);
+    background: var(--bg-1);
+    box-shadow: 0 0.5em 1em color-mix(in srgb, var(--fg-1) 15%, transparent);
+    button { text-align: start; }
+    [aria-selected="true"] { background: var(--bg-3); }
+  }
+}

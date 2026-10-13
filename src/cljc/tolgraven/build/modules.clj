@@ -4,7 +4,8 @@
             [clojure.edn :as edn]
             [clojure.string :as string]
             [tolgraven.build.icons :as icons]
-            [tolgraven.build.site :as site]))
+            [tolgraven.build.site :as site]
+            [tolgraven.build.packaging :as packaging]))
 
 (def root "src/frontend/tolgraven/modules")
 
@@ -30,7 +31,8 @@
             styles (:styles spec)
             icon-dependencies (:icons spec)
             ssr-styles (:ssr-styles spec)
-            dependencies (get attrs :bundle/depends-on #{:main})]
+            dependencies (get attrs :bundle/depends-on #{:main})
+            owner (:site/owner attrs)]
         (when-not (and (= 'ns (first ns-form)) (symbol? (second ns-form))
                        (keyword? id) (set? dependencies) (every? keyword? dependencies))
           (throw (ex-info "Module needs a namespace, literal spec :id and keyword bundle dependencies"
@@ -49,7 +51,10 @@
         (when (and storage (not (and (symbol? storage) (namespace storage))))
           (throw (ex-info "Module :storage must reference a portable table declaration"
                           {:file (str file)})))
+        (when (and owner (not (keyword? owner)))
+          (throw (ex-info "Module :site/owner must be a literal capability keyword" {:file (str file)})))
         (cond-> {:id id :entry (second ns-form) :depends-on dependencies}
+          owner (assoc :site/owner owner)
           (seq content) (assoc :content content)
           (seq styles) (assoc :styles styles)
           (seq icon-dependencies) (assoc :icons icon-dependencies)
@@ -76,7 +81,8 @@
   (let [settings (site/validate! settings)
         ids (map :id declarations)
         unknown (remove (set ids) (keys (:modules settings)))
-        selected (filterv #(not= false (get-in settings [:modules (:id %) :enabled])) declarations)
+        by-id (into {} (map (juxt :id identity)) declarations)
+        selected (filterv #(packaging/owner-enabled? settings by-id (:id %)) declarations)
         selected-ids (set (map :id selected))]
     (when (seq unknown) (throw (ex-info "Unknown site modules" {:modules (vec unknown)})))
     (when-not (= (count ids) (count (set ids)))
@@ -236,10 +242,12 @@
   {:shadow.build/stage :compile-prepare}
   [state]
   (let [settings (site/settings)
+        declarations (all-declarations)
+        by-id (into {} (map (juxt :id identity)) declarations)
         comments-disabled? (or (= false (get-in settings [:modules :blog :enabled]))
                                (= false (get-in settings [:modules :blog :comments])))
-        disabled (for [{:keys [id entry]} (all-declarations)
-                       :when (= false (get-in settings [:modules id :enabled]))]
+        disabled (for [{:keys [id entry]} declarations
+                       :when (not (packaging/owner-enabled? settings by-id id))]
                    (str (-> (namespace (symbol (str entry) "spec"))
                             (string/replace #"\.module$" "")
                             (string/replace "-" "_")

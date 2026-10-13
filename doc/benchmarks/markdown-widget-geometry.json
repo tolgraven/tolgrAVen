@@ -1,0 +1,132 @@
+{
+  "snapshot": "49f21c6e53e6",
+  "method": "Existing installed Chrome native drag for every edge; observed canonical Markdown and published DOM.",
+  "drags": [
+    {
+      "kind": "note",
+      "edge": "left",
+      "markdown": "<Component component=\"tolgraven.components.content.box/<highlight-box>\" title=\"A note\" text=\"This is the real reusable site component.\" tone=\"tip\" layout-flow=\"right\" layout-width=\"41.25%\" />"
+    },
+    {
+      "kind": "note",
+      "edge": "right",
+      "markdown": "<Component component=\"tolgraven.components.content.box/<highlight-box>\" title=\"A note\" text=\"This is the real reusable site component.\" tone=\"tip\" layout-flow=\"right\" layout-width=\"42.5%\" />"
+    },
+    {
+      "kind": "note",
+      "edge": "top",
+      "markdown": "<Component component=\"tolgraven.components.content.box/<highlight-box>\" title=\"A note\" text=\"This is the real reusable site component.\" tone=\"tip\" layout-flow=\"right\" layout-height=\"6.86rem\" layout-width=\"42.5%\" />"
+    },
+    {
+      "kind": "note",
+      "edge": "bottom",
+      "markdown": "<Component component=\"tolgraven.components.content.box/<highlight-box>\" title=\"A note\" text=\"This is the real reusable site component.\" tone=\"tip\" layout-flow=\"right\" layout-height=\"7.54rem\" layout-width=\"42.5%\" />"
+    },
+    {
+      "kind": "image",
+      "edge": "left",
+      "markdown": "<Component component=\"tolgraven.components.content.markdown/<image>\" alt=\"Site logo\" layout-flow=\"left\" layout-width=\"12.68rem\" src=\"/img/tolgrav-square.png\" />"
+    },
+    {
+      "kind": "image",
+      "edge": "right",
+      "markdown": "<Component component=\"tolgraven.components.content.markdown/<image>\" alt=\"Site logo\" layout-flow=\"left\" layout-width=\"13.36rem\" src=\"/img/tolgrav-square.png\" />"
+    },
+    {
+      "kind": "image",
+      "edge": "top",
+      "markdown": "<Component component=\"tolgraven.components.content.markdown/<image>\" alt=\"Site logo\" layout-flow=\"left\" layout-height=\"15.83rem\" layout-width=\"13.36rem\" src=\"/img/tolgrav-square.png\" />"
+    },
+    {
+      "kind": "image",
+      "edge": "bottom",
+      "markdown": "<Component component=\"tolgraven.components.content.markdown/<image>\" alt=\"Site logo\" layout-flow=\"left\" layout-height=\"16.51rem\" layout-width=\"13.36rem\" src=\"/img/tolgrav-square.png\" />"
+    },
+    {
+      "kind": "iframe",
+      "edge": "left",
+      "markdown": "<Component component=\"tolgraven.components.content.frame/<frame>\" src=\"/fixtures/editor-frame.html\" title=\"Local auto-height frame\" layout-height=\"auto\" layout-width=\"81.25%\" />"
+    },
+    {
+      "kind": "iframe",
+      "edge": "right",
+      "markdown": "<Component component=\"tolgraven.components.content.frame/<frame>\" src=\"/fixtures/editor-frame.html\" title=\"Local auto-height frame\" layout-height=\"auto\" layout-width=\"82.5%\" />"
+    },
+    {
+      "kind": "iframe",
+      "edge": "top",
+      "markdown": "<Component component=\"tolgraven.components.content.frame/<frame>\" src=\"/fixtures/editor-frame.html\" title=\"Local auto-height frame\" layout-height=\"11.59rem\" layout-width=\"82.5%\" />"
+    },
+    {
+      "kind": "iframe",
+      "edge": "bottom",
+      "markdown": "<Component component=\"tolgraven.components.content.frame/<frame>\" src=\"/fixtures/editor-frame.html\" title=\"Local auto-height frame\" layout-height=\"12.27rem\" layout-width=\"82.5%\" />"
+    }
+  ],
+  "geometry": {
+    "editor": [
+      {
+        "flow": "right",
+        "height": 132.703125,
+        "kind": "Embedded component tolgraven.components.content.box/<highlight-box>",
+        "width": 407.65625
+      },
+      {
+        "flow": "left",
+        "height": 290.5703125,
+        "kind": "image",
+        "width": 235.1328125
+      },
+      {
+        "flow": "block",
+        "height": 567.765625,
+        "kind": "Embedded component tolgraven.modules.settings.views/<config-table>",
+        "width": 958.8984375
+      },
+      {
+        "flow": "block",
+        "height": 215.9453125,
+        "kind": "Embedded component tolgraven.components.content.frame/<frame>",
+        "width": 791.3359375
+      },
+      {
+        "flow": "block",
+        "height": 224,
+        "kind": "Embedded component tolgraven.components.content.frame/<frame>",
+        "width": 767.359375
+      }
+    ],
+    "published": [
+      {
+        "flow": "right",
+        "height": 132.703125,
+        "style": "max-width: 100%; width: 42.5%; float: right; height: 7.54rem;",
+        "width": 431.6640625
+      },
+      {
+        "flow": "left",
+        "height": 290.5703125,
+        "style": "max-width: 100%; width: 13.36rem; float: left; height: 16.51rem;",
+        "width": 235.1328125
+      },
+      {
+        "flow": "block",
+        "height": 567.765625,
+        "style": "max-width: 100%;",
+        "width": 1015.6953125
+      },
+      {
+        "flow": "block",
+        "height": 215.9453125,
+        "style": "max-width: 100%; width: 82.5%; height: 12.27rem;",
+        "width": 837.9453125
+      },
+      {
+        "flow": "block",
+        "height": 224,
+        "style": "max-width: 100%; width: 80%;",
+        "width": 812.5546875
+      }
+    ]
+  }
+}

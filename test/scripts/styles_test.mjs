@@ -24,6 +24,7 @@ const rebuilt = () => { assert.match(build(), /Built \d+ CSS entries/); checks++
 try {
   await fs.symlink(path.join(project, 'node_modules'), path.join(fixture, 'node_modules'), 'dir');
   await write('scripts/build/styles.mjs', await fs.readFile(path.join(project, 'scripts/build/styles.mjs')));
+  await write('scripts/build/editor-styles.mjs', await fs.readFile(path.join(project, 'scripts/build/editor-styles.mjs')));
   await write('package.json', '{"type":"module"}');
   await write('package-lock.json', '{}');
   await write('resources/icon-fonts.json', '{}');
@@ -66,6 +67,8 @@ try {
   await write('package-lock.json', '{"lockfileVersion": 3}');
   rebuilt();
   await fs.appendFile(path.join(fixture, 'scripts/build/styles.mjs'), '\n// Tool revision fixture.\n');
+  rebuilt();
+  await fs.appendFile(path.join(fixture, 'scripts/build/editor-styles.mjs'), '\n// Editor stylesheet revision fixture.\n');
   rebuilt();
   await write('resources/scss/modules/new-owner.scss', '.new-owner { display: grid; }');
   rebuilt();

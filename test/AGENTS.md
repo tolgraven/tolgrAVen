@@ -1,5 +1,9 @@
 # Verification workflows
 
+- Editor build checks validate the pinned public-entry selection and reject
+  unknown/private SDK exports. Production audits reject CodeMirror, Lezer and
+  diff-source in the resolved graph, not just in direct dependency declarations.
+
 Keep this guide and `doc/testing.md` current when test/build entry points change.
 
 - `node test/scripts/styles_test.mjs` checks fresh CSS skips, stale inputs,
@@ -40,6 +44,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Browser tests use the release Malli registry. Check typed page parameters,
   bounds, booleans, query encoding/extension keys and redacted coercion failures
   with internal validation disabled as well as ordinary contract validation.
+- Release browser-test builds include selected module entries through Shadow's
+  native namespace list; development uses preloads. Release excludes development
+  preloads, so both paths must expose the same lazy owner inventory.
 - Use owning schemas/constructors in fixtures instead of duplicating contracts.
   Test browser/Node-only schemas in `test/cljs`; JVM tests exercise portable/server
   contracts and generic composition helpers.
@@ -180,6 +187,19 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   roles and fixture schema; run it only in a disposable PostgreSQL container, never
   against a project database. See `doc/media-pipeline.md`.
 
+- Markdown authoring checks cover data-only component argument round trips, private
+  path/expression rejection, feature-pruned generated help, block-safe published
+  markup and actual editor normalization/keyboard/source transitions. Vendor CSS
+  checks prove selector/palette isolation and relative units. See `doc/markdown-authoring.md`.
+- Draft checks cover durable reload, edits during disk reads, account/route isolation,
+  named document selection, pending-upload exclusion and real write failure/retry.
+  Source checks preserve selection/undo/anchors and accept each native key before
+  the next one. Language picker checks update public CMS choices at runtime, retain
+  explicit fence tags and exercise keyboard selection; an empty list means auto only.
+
+- Upload-row checks cover measured/invalid/stale byte callbacks, indeterminate
+  processing, errors/retry/cancel, ready-but-unpainted retention and preview-owned
+  exit. A mocked queue acknowledgment does not prove actual image decode/visibility.
 - Middleware integration checks construct the actual `wrap-base` stack, replacing
   only asset preparation and service I/O. Cover source/jar bytes, conditional and
   range responses, security/cache headers, real form-cookie CSRF, typed API JSON,
