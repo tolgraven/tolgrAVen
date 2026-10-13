@@ -2,7 +2,7 @@
   (:require
     [clojure.string :as string]
     [tolgraven.react :as rf]
-            [tolgraven.listener :as listener]
+    [tolgraven.listener :as listener]
     [tolgraven.macros :refer-macros [defc]]
     [tolgraven.component.registry]
     [reagent.core :as r]
@@ -17,8 +17,7 @@
     [tolgraven.component.motion :as motion]
     [tolgraven.modules.link-preview.subs]
     [tolgraven.modules.link-preview.util :as util]
-    [tolgraven.components.ui :as ui]
-    [tolgraven.util :as dom]))
+    [tolgraven.components.ui :as ui]))
 
 (def ^:private open-delay-ms 300)
 (def ^:private close-delay-ms 180)
@@ -248,6 +247,27 @@
      "pointerdown" pointer-down
      "click" click}))
 
+(def container-events
+  {:on-pointer-over "pointerover"
+   :on-pointer-out  "pointerout"
+   :on-focus        "focusin"
+   :on-blur         "focusout"
+   :on-pointer-down "pointerdown"
+   :on-click        "click"})
+
+(defn- container-attrs [id attrs]
+  ;; React owns rendered interactions. Resolve the committed container at event
+  ;; time so a changed candidate set never leaves stale handlers in the markup.
+  (reduce-kv
+    (fn [attrs attribute event-name]
+      (let [caller (get attrs attribute)]
+        (assoc attrs attribute
+          (fn [^js event]
+            (when-let [handler (get-in @*containers [id :handlers event-name])]
+              (handler event))
+            (when (and caller (not (.isPropagationStopped event))) (caller event))))))
+    (assoc attrs :data-link-container true) container-events))
+
 (defn register-container!
   "Register a candidate-bearing container. Returns its cleanup function."
   [id element options observer candidate-urls]
@@ -262,8 +282,6 @@
               :handlers handlers
               :observer observer
               :options options})
-      (doseq [[event handler] handlers]
-        (dom/on-event element event handler))
       (let [trust (trust-for element (:trust options))
             links (filter #(and (external-link? %)
                                 (expected (.-href %))
@@ -286,14 +304,12 @@
 (defn unregister-container!
   "Disconnect and remove a link-owning container."
   [id]
-  (when-let [{:keys [element handlers observer]} (get @*containers id)]
+  (when-let [{:keys [observer]} (get @*containers id)]
     ;; A queued hover callback must never reopen a detached element.
     (clear-interaction-timer! :open)
     (when (= id (get-in (preview-state) [:active :container-id]))
       (close-preview!))
     (.disconnect observer)
-    (doseq [[event handler] handlers]
-      (.removeEventListener element event handler))
     (swap! *containers dissoc id)
     (swap! *link-elements
            #(into {} (remove (fn [[[container-id _] _]]
@@ -317,7 +333,7 @@
                 (if (and (or (:links spec) config) (motion/dom-root? form))
                   (let [attrs? (map? (second form))]
                     (with-meta
-                      (into [(first form) (assoc (if attrs? (second form) {}) :data-link-container true)]
+                      (into [(first form) (container-attrs (:id config) (if attrs? (second form) {}))]
                             (if attrs? (nnext form) (next form)))
                       (meta form)))
                   form))
@@ -340,9 +356,9 @@
             (when observer (.disconnect observer))))))
     [id candidates trust])
   [:div.link-preview-container
-   {:data-link-container true
-    :data-link-trust (when trust (name trust))
-    :ref (fn [element] (reset! *element element) nil)}
+   (container-attrs id
+     {:data-link-trust (when trust (name trust))
+      :ref (fn [element] (reset! *element element) nil)})
    content])
 
 (defc <link-container>
@@ -573,15 +589,16 @@
     (fn []
       (rf/use-effect
        (fn []
-         (doseq [[event handler] window-handlers]
-           (dom/on-window event handler))
-         (restore!)
-         #(do
-            (doseq [[event handler] window-handlers]
-              (.removeEventListener js/window event handler))
-            (close-preview!)
-            (doseq [timer [*prefetch-timer *navigation-timer]]
-              (when @timer (js/clearTimeout @timer))))) [])
+         (let [stop-listeners! (listener/listen! :link-preview
+                                 (mapv (fn [[event handler]]
+                                         {:target "window", :event event, :handler handler})
+                                       window-handlers))]
+           (restore!)
+           #(do
+              (stop-listeners!)
+              (close-preview!)
+              (doseq [timer [*prefetch-timer *navigation-timer]]
+                (when @timer (js/clearTimeout @timer)))))) [])
       (rf/use-effect
        (fn []
          (maybe-prefetch!)

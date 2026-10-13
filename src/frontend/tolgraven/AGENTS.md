@@ -34,6 +34,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   its cleanup through that same registry, including capture/passive/once options.
   Low-level feature code may retain native listeners when importing the registry
   creates a dependency cycle; document the concrete reason at the adapter.
+  Link-container pointer/focus/click interactions use Hiccup event attributes;
+  their event handlers resolve the current committed candidate registry. Preserve
+  caller events and release observation/timers on reconfiguration or unmount.
 
 ## Ownership and feature contracts
 
