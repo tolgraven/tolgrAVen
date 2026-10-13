@@ -107,8 +107,9 @@ Agent prefab refreshes use the shared CPU launcher:
 tolgraven-cpu run --mode buildkit -- make docker-prefab
 ```
 
-This retains the global job slot, one-CPU quota, two-GiB memory budget and
-BuildKit worker parallelism of one. The launcher stops its owned BuildKit daemon
+This retains a shared job slot, 1.5-CPU quota, four-GiB memory budget and
+BuildKit worker parallelism of one. Two slots allow up to three Docker CPUs
+combined. The launcher stops its owned BuildKit daemon
 when the command finishes; the reusable cache remains available.
 
 The independent `media-tools` runtime stage copies the pinned Babashka runtime and installs ImageMagick and `cwebp`, then

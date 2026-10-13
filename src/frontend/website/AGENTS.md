@@ -7,7 +7,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   entry under ignored `target/generated-sdk`; Shadow's declared package directory
   resolves it consistently for browser, test and Node builds. Never edit shared
   `node_modules` or copy private SDK implementations. Review the version/hash pin
-  and public exports when upgrading. See `doc/markdown-authoring.md`.
+  and public exports when upgrading. Adding/removing a native SDK export requires
+  restarting that watch; the compile guard reports this explicitly. Ordinary
+  edits using existing exports retain HMR. See `doc/markdown-authoring.md`.
 
 ## Implementation priority: Reagent and re-frame
 

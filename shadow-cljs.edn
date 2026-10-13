@@ -10,6 +10,7 @@
  {:ssr {:target :node-script
              :build-hooks [(website.build.modules/configure-site)
                            (website.modules.markdown-editor.build/configure)
+                           (website.modules.markdown-editor.build/verify-entry)
                            (website.build.modules/clean-site-output)
                            (website.build.modules/check-site-sources)
                            (website.build.compat/rrb-vector)
@@ -64,6 +65,7 @@
              :closure-defines {malli.registry/type "custom"}
              :build-hooks [(website.build.modules/configure-site)
                            (website.modules.markdown-editor.build/configure)
+                           (website.modules.markdown-editor.build/verify-entry)
                            (website.build.modules/clean-site-output)
                            (website.build.modules/check-site-sources)
                            (website.build.compat/rrb-vector)
@@ -79,6 +81,7 @@
    :target website.build.browser/process
              :build-hooks [(website.build.modules/configure-site)
                            (website.modules.markdown-editor.build/configure)
+                           (website.modules.markdown-editor.build/verify-entry)
                            (website.build.modules/clean-site-output)
                            (website.build.modules/check-site-sources)
                            (website.build.compat/rrb-vector)]
@@ -122,6 +125,7 @@
   :app
   {:build-hooks [(website.build.modules/configure-site)
                            (website.modules.markdown-editor.build/configure)
+                           (website.modules.markdown-editor.build/verify-entry)
                            (website.build.modules/clean-site-output)
                            (website.build.modules/check-site-sources)
                            (website.build.compat/rrb-vector)
