@@ -35,5 +35,11 @@ global.Worker = class {
   const cancelled = start('fixture-worker', () => {}, () => {}, () => {}, () => {});
   const stopped = assert.rejects(cancelled.ready, /closed/);
   cancelled.stop(); await stopped;
+  const failed = start('fixture-worker', () => {}, () => {}, () => {}, value => errors.push(value));
+  const rejected = assert.rejects(failed.ready, /closed/);
+  worker.emit({ type: 'profile-error', text: 'Profile unavailable' });
+  await rejected;
+  assert.equal(worker.terminated, 1);
+  assert.equal(errors.at(-1), 'Profile unavailable');
   console.log('PASS: real codec, fragmented RPC, redraw, queue bounds and cleanup');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -11,7 +11,10 @@
    [:highlights [:map-of :int :map]]
    [:foreground :int]
    [:background :int]
-   [:mode :string]])
+   [:mode :string]
+   [:modes [:vector :map]]
+   [:mode-index :int]
+   [:cursor-style? :boolean]])
 
 (defn blank-row [cols] (vec (repeat cols [" " 0])))
 (defn grid [cols rows]
@@ -20,7 +23,10 @@
    :highlights {}
    :foreground 14673393
    :background 330002
-   :mode "normal"})
+   :mode "normal"
+   :modes []
+   :mode-index 0
+   :cursor-style? false})
 
 (defn- line [state [_ row col cells]]
   (let [expanded (second
@@ -58,7 +64,8 @@
     "default_colors_set" (let [[fg bg] entry]
                            (cond-> state (<= 0 fg) (assoc :foreground fg)
                                          (<= 0 bg) (assoc :background bg)))
-    "mode_change" (assoc state :mode (first entry))
+    "mode_info_set" (assoc state :cursor-style? (first entry) :modes (vec (second entry)))
+    "mode_change" (assoc state :mode (first entry) :mode-index (second entry))
     state))
 
 (defn redraw [state events]
@@ -90,6 +97,24 @@
       (:bold highlight) (assoc :font-weight "bold")
       (:italic highlight) (assoc :font-style "italic")
       (or (:underline highlight) (:undercurl highlight)) (assoc :text-decoration "underline"))))
+
+(defn cursor-shape [{:keys [modes mode-index cursor-style? mode]}]
+  (or (when cursor-style? (:cursor_shape (get modes mode-index)))
+      (if (string/starts-with? mode "insert") "vertical" "block")))
+
+(defn cursor-style [grid highlight]
+  (let [style (highlight-style grid highlight)
+        mode (get (:modes grid) (:mode-index grid))
+        cursor-highlight (when (pos? (or (:attr_id mode) 0))
+                           (get (:highlights grid) (:attr_id mode)))
+        cursor-colors (when (seq cursor-highlight) (highlight-style grid cursor-highlight))]
+    (if (= "block" (cursor-shape grid))
+      ;; UI protocol: use attr_id when supplied; attr_id 0 reverses the cell.
+      ;; Keep the glyph in its original cell and preserve its text formatting.
+      (merge style (if cursor-colors (select-keys cursor-colors [:color :background-color])
+                      {:color (:background-color style), :background-color (:color style)}))
+      (assoc style "--cursor-color" (or (:background-color cursor-colors) (:color style))
+                   "--cursor-size" (str (or (:cell_percentage mode) 20) "%")))))
 
 (def named-keys
   {"Backspace" "BS"

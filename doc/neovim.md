@@ -22,7 +22,8 @@ these headers, including iframe ancestors; an iframe alone cannot supply isolati
 `:cols` defaults to 80 (20–240), `:rows` to 24 (8–80). Width adapts to the
 component's container through an owned ResizeObserver. `:initial-text` is bounded
 to 8192 characters; this is an initializer, not a controlled value. Changing
-initialization options restarts the process. “Use buffer” reads the current
+initialization options restarts the process and clears the imported-file selector.
+Responses from a stopped session cannot update its replacement. “Use buffer” reads the current
 buffer and calls `:on-save`; the caller owns any application state or persistence.
 Restart and unmount terminate the worker and cancel pending RPC requests.
 
@@ -40,7 +41,7 @@ layout and startup wake protocol. There is no transport initialization during SS
 The current port is experimental. This integration provides ordinary keys,
 modifier keys, paste and composition input, buffer reads, Lua, syntax colors and
 bundled help. It does not implement mouse editing, terminal jobs, OS processes,
-network plugins, filesystem import/export or durable file saving. Browser Cmd
+external-process plugins, durable file export or saving back to the host. Browser Cmd
 shortcuts and Ctrl+Shift+V remain native. Sessions are temporary; copy/use the
 buffer before leaving. Large pastes that exceed the ring capacity fail visibly.
 Upstream's worker still contains its diagnostic logging and filesystem behavior.
@@ -94,3 +95,99 @@ return worker, saves a temporary `/neovim` document, and navigates to it. The
 proof page must report isolation and SharedArrayBuffer availability. Its cleanup
 button unregisters only this test worker and deletes its test cache. The fixture
 server must send `Service-Worker-Allowed: /` for the worker script.
+
+## Browser profile and repository workspace
+
+`npm run build` (also the Sass build/watch) runs `build.neovim-workspace`. It
+synchronizes the editable `vendor/neovim/init.lua` and `browser.vim` into the
+pinned profile and creates the ignored `vendor/neovim/workspace.json` from the
+current checkout's `src/` and `resources/scss/` text files. Symlinks, other roots,
+config files and binary assets are excluded. The existing packaging policy
+also prunes disabled modules and their style sources; disabling Neovim omits
+its workspace bundle and packaging excludes all its public assets. This is a
+build snapshot, not access to the server checkout at runtime.
+
+The small `nvim-profile-worker.js` adapter loads the profile/workspace alongside
+startup, then uses Emscripten `preRun` to populate the virtual filesystem before
+the unchanged upstream worker starts Neovim. Plugin files do not pass through
+RPC. One Lua initialization request enables the browser profile and sets cwd to
+`/workspace/tolgrAVen`. `/neovim` opens the bundled editor source by default;
+`:initial-file` selects a relative repository file instead of `:initial-text`.
+The editor shows an indeterminate animated progress bar until ready, with a
+static indicator for reduced motion.
+
+Use **Search repository** (`:Meta!`), **Browse source files** (`:Meta! #file`), or
+**File tree** (`:NERDTreeToggle /workspace/tolgrAVen`). Meta falls back to Neovim's
+filesystem globbing because there is no ripgrep executable. The tree and Meta
+prompt/results remain native Neovim windows in the shared grid; buttons restore
+keyboard focus to the editor. Normal mode uses a solid cursor with reversed
+text/native cursor highlight; insert mode uses the native vertical bar. The
+renderer consumes `mode_info_set`, `mode_change`, cursor highlight IDs and cell
+percentages, following [the Neovim UI protocol](https://neovim.io/doc/user/api-ui-events/).
+
+The pinned profile contains these runtime plugins, with revisions, local-change
+flags, file hashes and license documents in `profile.json`:
+
+- The locally modified **Bruvbox** and **Metabuffer** (Meta revision
+  `2f2acdaea483fe5738991b700bf71a27efac9d19`). Metabuffer's embedded Fennel is aliased
+  to `fennel` for its cljlib dependency. Animations use the native backend and are
+  disabled for responsive startup; mini.nvim is not required.
+- **NERDTree**, **vim-devicons**, **vim-airline** (Bruvbox theme/tabline only),
+  **vim-clojure-static**, **vim-sexp**, and the user's **rainbow_parentheses.vim**,
+  **vim-cursorword**, **vim-numbertoggle**, and **vim-sayonara** forks.
+- Small editing helpers: **vim-repeat**, **vim-commentary**, **vim-textobj-user**,
+  **vim-textobj-indent** and **vim-easy-align**.
+
+The browser profile carries Space/comma leaders, indentation/search/split
+preferences, Bruvbox column/selection options, NERDTree settings, airline's empty
+separators/tabline, Clojure alignment, rainbow settings, and the complete active
+sexp mappings plus `SexpInit` from the local init. `#` opens Meta; Space+n toggles
+NERDTree; Space+x invokes Sayonara; comma+o raises a sexp then indents it. Window
+navigation uses Neovim splits directly. The source config was compared with
+[tolgraven/nvim-setup](https://github.com/tolgraven/nvim-setup/tree/d3377432fe5b2c5397ada2dd8953b465468387be);
+the local init/plugin declarations differ, so the local settings are authoritative.
+
+An icon-only WOFF2 subset of the locally installed Fira Code Nerd Font Mono
+contains the profile's private-use glyphs, uses a separate `Neovim Icons` family,
+and keeps regular text/cell measurement in Menlo. Its copyright/OFL notice is
+retained beside it. It avoids shipping a whole Nerd Font.
+
+These are compatibility limits, not claims that every plugin in the original
+config was exercised:
+
+| Original config area | Browser suitability |
+| --- | --- |
+| Ordinary options, pure keymaps, syntax/indent, text objects, comments, alignment | Portable; the subset above is installed and the important flows are checked. |
+| Buffer/cmdline completion (nvim-cmp with cmp-buffer/cmdline), surround/autopairs, other small mini modules | Plausible next additions; not installed or live-verified by this change. |
+| NERDTree, Meta project mode, sessions and file-based operations | Work on bundled/imported virtual files. Session files and writes do not alter the host repo. Meta git metadata and external transforms remain unavailable. |
+| Tree-sitter, render-markdown, navic, lazydev, Trouble | Need usable WASM parsers or a language/diagnostic source; existing native `.so` parsers cannot simply be copied. |
+| Fugitive, gitgutter, neogit/diffview, fzf/fzf-lua/Telescope native sorter, Mason | Need external executables/installers; no working browser bridge here. |
+| clojure-lsp, Conjure/fireplace, DAP, Python providers, Copilot/Chat, tmux/shell/terminal tools | Need server/process/network adapters; excluded from this profile. |
+| vim-plug/lazy bootstrap and full init.vim | The download/build/OS paths prevent direct sourcing. Install pinned runtime files and port setup explicitly instead. |
+
+## Imported files
+
+**Import files** accepts multiple files; **Import folder** preserves relative
+paths. Files are copied in bounded binary-safe RPC packets into `/workspace/`,
+the imported directory becomes cwd, and the first file opens. The picker can
+switch among imports; **Search imported project** uses Meta on that cwd. A batch
+is limited to 512 files, 4 MiB per file and 32 MiB total. Relative traversal,
+absolute paths and duplicate names are rejected. Empty files, Unicode text and
+multi-packet binary bytes are supported. File import state is only the mounted
+component's UI projection; the worker owns the actual files.
+
+`:w` and Meta writeback affect this session's virtual filesystem. Reload,
+restart and unmount discard it. Durable export/persistence and browser directory
+write access are separate work. “Use buffer” remains available to a component
+consumer that supplies `:on-save`.
+
+The fixture also has **Run plugin checks** for real colors, Meta filtering/edit
+writeback, NERDTree, devicons, airline and sexp mappings, and **Run workspace
+checks** for Meta source discovery and real File-object imports. The displayed
+worker startup measurement is local fixture evidence, not a production-network
+performance guarantee. Additional checks:
+
+```sh
+bb -cp scripts:src/cljc:resources test/scripts/neovim_workspace_test.clj
+node test/scripts/neovim_profile_test.cjs
+```

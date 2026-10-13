@@ -1,12 +1,26 @@
+@font-face { font-family: "Neovim Icons"; src: url("/vendor/neovim/icons.woff2") format("woff2"); font-display: swap; unicode-range: U+E000-F8FF, U+F0000-FFFFD; }
 .neovim-page { max-width: 80rem; margin-inline: auto; }
 .neovim-container { margin-block: 1rem; }
 .neovim { border: .0625rem solid #2a3346; border-radius: .5rem; overflow: hidden; background: #050912; color: #dfe5f1; }
 .neovim__toolbar { display: flex; justify-content: space-between; align-items: center; padding: .5rem 1rem; border-bottom: .0625rem solid #2a3346; }
 .neovim__viewport { position: relative; width: 100%; overflow: auto; }
-.neovim__grid, .neovim__measure { font-family: Menlo, Consolas, monospace; font-size: .875rem; line-height: 1.35; font-variant-ligatures: none; }
+.neovim__grid, .neovim__measure { font-family: Menlo, "Neovim Icons", Consolas, monospace; font-size: .875rem; line-height: 1.35; font-variant-ligatures: none; }
 .neovim__measure { position: absolute; visibility: hidden; pointer-events: none; }
 .neovim__grid { margin: 0; width: max-content; min-width: 100%; outline: none; white-space: pre; }
 .neovim__grid:focus-visible { outline: .125rem solid #5ad1ff; outline-offset: -.125rem; }
 .neovim__row { display: flex; height: 1.35em; }
 .neovim__cell { display: inline-block; flex: 0 0 1ch; width: 1ch; }
-.neovim__cursor { outline: .0625rem solid currentColor; outline-offset: -.0625rem; }
+.neovim__cursor { position: relative; }
+.neovim__cursor--vertical::after, .neovim__cursor--horizontal::after { content: ""; position: absolute; left: 0; bottom: 0; background: var(--cursor-color); pointer-events: none; }
+.neovim__cursor--vertical::after { width: var(--cursor-size); height: 100%; }
+.neovim__cursor--horizontal::after { width: 100%; height: var(--cursor-size); }
+.neovim__files { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .5rem 1rem; }
+.neovim__files label { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; }
+.neovim__files input { max-width: 18rem; }
+.neovim__files select { max-width: 100%; }
+.neovim__files small { flex-basis: 100%; }
+.neovim__loading { padding: .75rem 1rem; }
+.neovim__progress { height: .4rem; overflow: hidden; border-radius: .2rem; background: #2a3346; }
+.neovim__progress-fill { display: block; height: 100%; width: 30%; background: #a6b58a; animation: neovim-loading 1.2s ease-in-out infinite; }
+@keyframes neovim-loading { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@media (prefers-reduced-motion: reduce) { .neovim__progress-fill { animation: none; } }

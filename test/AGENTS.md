@@ -185,4 +185,4 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   bytes through source and jar resolvers. Reject missing, stale or corrupt output;
   do not replace this proof with a manifest-exists assertion.
 
-- `:neovim-check` mounts the real WASM editor in `/fixtures/neovim.html`; serve with COOP/COEP for active editing, and without them for the fallback. See `doc/neovim.md`.
+- `:neovim-check` mounts the real WASM editor in `/fixtures/neovim.html`; serve with COOP/COEP for active editing, and without them for the fallback. Its plugin/workspace controls exercise real Meta/file imports; Node/BB checks cover preRun bytes, profile failures and source pruning. See `doc/neovim.md`.

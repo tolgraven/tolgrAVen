@@ -332,4 +332,4 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 - `lein with-profile uberjar,provided docs` stages selected source namespaces before
   Codox reads them; use this alias instead of invoking Codox directly.
 
-- `:neovim` owns the browser WASM editor and pinned runtime assets; `/neovim` supplies scoped cross-origin isolation. See `doc/neovim.md`.
+- `:neovim` owns its WASM runtime/profile and browser workspace; `/neovim` supplies scoped isolation. The Sass build bundles selected `src/` and SCSS sources via `build.neovim-workspace`; keep private config and disabled owners out. See `doc/neovim.md`.

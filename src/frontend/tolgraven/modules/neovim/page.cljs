@@ -7,5 +7,5 @@
   [:section.neovim-page
    [:h1 "Neovim"]
    [:p "Neovim running locally in your browser. Press i to edit, Esc for normal mode, and :help for help."]
-   [views/<editor> {:initial-text ";; Neovim in WebAssembly\n(defn hello [name]\n  (str \"Hello, \" name))", :filetype "clojure"}]
+   [views/<editor> {:initial-file "src/frontend/tolgraven/modules/neovim/views.cljs", :filetype "clojure"}]
    [:p "This is a temporary browser session. Copy your work before restarting or leaving."]])

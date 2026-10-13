@@ -74,6 +74,9 @@ exports.start = function start(workerPath, onRedraw, onStatus, onExit, onFailure
     } else if (data.type === 'exited') {
       onExit(data.code);
       stop();
+    } else if (data.type === 'profile-error') {
+      onFailure(data.text);
+      stop();
     } else if (data.type === 'status') {
       if (!/^(FS\.write|WRITE HOOK|\[stderr\])/.test(data.text)) onStatus(data.text);
     } else if (data.type === 'stdout') {

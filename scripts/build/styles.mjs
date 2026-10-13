@@ -1,5 +1,6 @@
 /** Build the shell and independent feature sheets with the same locked tools. */
 import fs from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import * as sass from 'sass';
 import postcss from 'postcss';
@@ -29,6 +30,9 @@ async function build() {
   }
   await fs.cp('node_modules/leaflet/dist/images', 'resources/public/vendor/leaflet/images', {recursive: true});
   console.log(`Built ${entries.length} CSS entries in ${output}`);
+  if (!postcssOnly) {
+    execFileSync('bb', ['-cp', 'scripts:src/cljc:resources', '-m', 'build.neovim-workspace'], {stdio: 'inherit'});
+  }
 }
 await build();
 if (watch) {

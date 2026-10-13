@@ -1,7 +1,8 @@
 (ns tolgraven.neovim-test
   (:require [cljs.test :refer-macros [deftest is testing]]
             [tolgraven.modules.neovim.model :as model]
-            [tolgraven.modules.neovim.policy :as policy]))
+            [tolgraven.modules.neovim.policy :as policy]
+            [tolgraven.modules.neovim.files :as files]))
 
 (deftest redraw-is-a-pure-projection
   (let [original (model/grid 5 3)
@@ -50,3 +51,39 @@
     (is (= {:col 2, :width 2, :text "<&", :highlight 0, :cursor? false} (second runs))))
   (is (= 1 (count (model/row-runs [["a" 0] ["b" 0] [" " 0]] -1))))
   (is (not-any? :cursor? (model/row-runs [["" 0] ["a" 0]] -1))))
+
+(deftest cursors-invert-the-cell-and-follow-native-mode-shapes
+  (let [grid (model/redraw (model/grid 3 1)
+               [["mode_info_set" [true [{:cursor_shape "block"} {:cursor_shape "vertical", :cell_percentage 25}]]]
+                ["mode_change" ["normal" 0]]])
+        highlight {:foreground 16711680, :background 255, :bold true}
+        block (model/cursor-style grid highlight)
+        insert (model/redraw grid [["mode_change" ["insert" 1]]])
+        bar (model/cursor-style insert highlight)]
+    (is (= "block" (model/cursor-shape grid)))
+    (is (= "#0000ff" (:color block)))
+    (is (= "#ff0000" (:background-color block)))
+    (is (= "bold" (:font-weight block)))
+    (is (= "vertical" (model/cursor-shape insert)))
+    (is (= "#ff0000" (:color bar)))
+    (is (= "#0000ff" (:background-color bar)))
+    (is (= "25%" (get bar "--cursor-size")))
+    (is (= "#ff0000" (get bar "--cursor-color")))))
+
+(deftest imports-keep-relative-paths-with-bounded-file-plans
+  (doseq [path ["hello.txt" "project/src/core.clj" ".hidden" "a..txt"]]
+    (is (files/safe-path? path)))
+  (doseq [path ["/root.txt" "../root.txt" "src/../root.txt" "src//file" "src\\file" ""]]
+    (is (not (files/safe-path? path))))
+  (is (nil? (files/plan-error [{:path "src/core.clj", :size 100}])))
+  (is (some? (files/plan-error [{:path "../core.clj", :size 100}])))
+  (is (some? (files/plan-error [{:path "a", :size 1} {:path "a", :size 2}])))
+  (is (some? (files/plan-error [{:path "large", :size (inc files/max-file-bytes)}]))))
+
+(deftest cursor-highlight-ids-override-matching-bracket-colors
+  (let [grid (model/redraw (model/grid 2 1)
+               [["mode_info_set" [true [{:cursor_shape "block", :attr_id 7}]]]
+                ["hl_attr_define" [7 {:foreground 0, :background 16777215} [] []]]])
+        style (model/cursor-style grid {:foreground 16711680, :background 255, :reverse true})]
+    (is (= "#000000" (:color style)))
+    (is (= "#ffffff" (:background-color style)))))

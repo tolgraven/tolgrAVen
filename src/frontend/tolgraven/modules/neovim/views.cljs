@@ -5,10 +5,12 @@
             [reagent.core :as r]
             [clojure.string :as string]
             [tolgraven.modules.neovim.model :as model]
-            [tolgraven.modules.neovim.runtime :as runtime]))
+            [tolgraven.modules.neovim.runtime :as runtime]
+            [tolgraven.modules.neovim.files :as files]))
 
 (def options-schema
   [:map
+   [:?initial-file [:string {:max 512}]]
    [:?initial-text [:string {:max 8192}]]
    [:?filetype [:string {:max 64}]]
    [:?cols [:int {:min 20, :max 240}]]
@@ -26,8 +28,9 @@
               (model/row-runs cells (if (= row cursor-row) cursor-col -1))]
           ^{:key col}
           [:span.neovim__cell
-           {:class (when cursor? "neovim__cursor")
-            :style (assoc (model/highlight-style grid (get-in grid [:highlights highlight]))
+           {:class (when cursor? (str "neovim__cursor neovim__cursor--" (model/cursor-shape grid)))
+            :style (assoc ((if cursor? model/cursor-style model/highlight-style)
+                          grid (get-in grid [:highlights highlight]))
                           :width (str width "ch") :flex-basis (str width "ch"))}
            text])])]))
 
@@ -35,29 +38,44 @@
   {:spec false}
   [options :- options-schema]
   :let [*view (r/atom {:status :booting, :message "Starting Neovim…", :grid (model/grid 80 24)})
+        *imports (r/atom files/idle-state)
         *session (atom nil)
         *element (atom nil)
-        *probe (atom nil)]
+        *probe (atom nil)
+        *grid-element (atom nil)]
   ;; The editor process owns its buffer. This ratom is its disposable UI projection,
   ;; like a native player/gesture adapter, never a mirrored application document store.
-  (let [{:keys [rows cols initial-text filetype on-save]
+  (let [{:keys [rows cols initial-text initial-file filetype on-save]
          :or {rows 24, cols 80, initial-text "", filetype "clojure"}} options
         fail! #(swap! *view assoc :status :error :message (.-message %))
         request! (fn [method params]
-                   (when (= :ready (:status @*view))
-                     (-> (runtime/request! @*session method params) (.catch fail!))))]
+                   (when-let [session (when (= :ready (:status @*view)) @*session)]
+                     (-> (runtime/request! session method params)
+                         (.then (fn [result]
+                                  (when (and (identical? session @*session) @*grid-element)
+                                    (.focus @*grid-element))
+                                  result))
+                         (.catch #(when (identical? session @*session) (fail! %))))))]
     (rf/use-effect
      (fn []
        (when (exists? js/window)
+         (reset! *view {:status :booting
+                       :message "Starting Neovim…"
+                       :grid (model/grid cols rows)})
+         (reset! *imports files/idle-state)
          (if-not (runtime/available?)
            (do (swap! *view assoc :status :unsupported
                       :message "Open the editor in its own page to start Neovim.") nil)
            (let [*active? (atom true)
                  *observer (atom nil)
                  {:keys [session ready stop!]}
-                 (runtime/start! {:cols cols, :rows rows, :initial-text initial-text, :filetype filetype}
-                   #(swap! *view update :grid model/redraw %)
-                   #(swap! *view assoc :status %1 :message %2))
+                 (runtime/start! {:cols cols
+                                  :rows rows
+                                  :initial-text initial-text
+                                  :initial-file initial-file
+                                  :filetype filetype}
+                   #(when @*active? (swap! *view update :grid model/redraw %))
+                   #(when @*active? (swap! *view assoc :status %1 :message %2)))
                  resize! (fn []
                            (when (and @*active? @*element @*probe)
                              (-> (runtime/resize! session @*element @*probe rows)
@@ -75,17 +93,71 @@
                (when-let [observer @*observer] (.disconnect observer))
                (reset! *session nil)
                (stop!))))))
-     [cols rows initial-text filetype])
-    (let [{:keys [status message grid]} @*view]
+     [cols rows initial-text initial-file filetype])
+    (let [{:keys [status message grid]} @*view
+          importing? (= :loading (:status @*imports))
+          import! (fn [file-list folder?]
+                    (when (pos? (.-length file-list))
+                      (swap! *imports assoc :status :loading :message "Importing files…")
+                      (let [session @*session]
+                        (-> (files/import! #(runtime/request! session %1 %2) file-list folder?)
+                          (.then (fn [paths]
+                                   (when (identical? session @*session)
+                                     (swap! *imports assoc
+                                            :status :ready
+                                            :paths (vec (distinct (concat (:paths @*imports) paths)))
+                                            :selected (first paths)
+                                            :message (str (count paths) " files imported into this session."))
+                                     (when @*grid-element (.focus @*grid-element)))))
+                          (.catch #(when (identical? session @*session)
+                                     (swap! *imports assoc :status :error :message (.-message %))))))))]
       [:div.neovim
        [:div.neovim__toolbar
         [:span {:role "status", :aria-live "polite"} (if (= :ready status) (:mode grid) message)]
         (when on-save
           [:button {:disabled (not= :ready status)
-                    :on-click #(-> (runtime/request! @*session "nvim_buf_get_lines" [0 0 -1 true])
-                                   (.then (fn [lines] (on-save (string/join "\n" (js->clj lines)))))
-                                   (.catch fail!))}
+                    :on-click (fn [_]
+                                (when-let [session @*session]
+                                  (-> (runtime/request! session "nvim_buf_get_lines" [0 0 -1 true])
+                                      (.then (fn [lines]
+                                               (when (identical? session @*session)
+                                                 (on-save (string/join "\n" (js->clj lines))))))
+                                      (.catch #(when (identical? session @*session) (fail! %))))))}
            "Use buffer"])]
+       (when (= :booting status)
+         [:div.neovim__loading
+          [:div.neovim__progress {:role "progressbar", :aria-label "Loading Neovim", :aria-valuetext message}
+           [:span.neovim__progress-fill]]])
+       (when (= :ready status)
+         [:div.neovim__files
+          [:button {:on-click #(request! "nvim_exec_lua" ["vim.cmd('cd /workspace/tolgrAVen'); vim.cmd('Meta!')" []])} "Search repository"]
+          [:button {:on-click #(request! "nvim_exec_lua" ["vim.cmd('cd /workspace/tolgrAVen'); vim.cmd('Meta! #file')" []])} "Browse source files"]
+          [:button {:on-click #(request! "nvim_command" ["NERDTreeToggle /workspace/tolgrAVen"])} "File tree"]
+          [:label "Import files "
+           [:input {:type "file", :multiple true, :disabled importing?
+                    :on-change #(import! (.. % -target -files) false)}]]
+          [:label "Import folder "
+           [:input {:type "file", :multiple true, :webkitdirectory "", :disabled importing?
+                    :on-change #(import! (.. % -target -files) true)}]]
+          (when (seq (:paths @*imports))
+            [:<>
+             [:select {:aria-label "Imported file"
+                       :value (:selected @*imports)
+                       :disabled importing?
+                       :on-change (fn [event]
+                                    (let [path (.. event -target -value)
+                                          session @*session]
+                                      (-> (files/open! #(runtime/request! session %1 %2) path)
+                                          (.then (fn [_]
+                                                   (when (identical? session @*session)
+                                                     (swap! *imports assoc :selected path)
+                                                     (when @*grid-element (.focus @*grid-element)))))
+                                          (.catch #(when (identical? session @*session) (fail! %))))))}
+              (for [path (:paths @*imports)] ^{:key path} [:option {:value path} path])]
+             [:button {:disabled importing?, :on-click #(request! "nvim_command" ["Meta!"])}
+              "Search imported project"]])
+          [:span {:role "status"} (:message @*imports)]
+          [:small "Session files only. Up to 512 files, 4 MiB each, 32 MiB per import."]])
        (when (= :unsupported status)
          ;; An isolation policy requires a new document, not a same-document SPA hop.
          [:p [:a {:href "/neovim", :target "_self", :data-document-navigation "true"} "Open Neovim"]])
@@ -93,7 +165,8 @@
         [:span.neovim__measure {:aria-hidden true, :ref #(reset! *probe %)} "M"]
         ;; Preformatted markup keeps theme font overrides from changing cell metrics.
         [:pre.neovim__grid
-         {:tab-index 0
+         {:ref #(reset! *grid-element %)
+          :tab-index 0
           :role "textbox"
           :aria-label "Neovim editor"
           :aria-multiline true
@@ -112,7 +185,7 @@
          [<grid> grid]]]])))
 
 (defc <editor>
-  "A lifecycle-owned Neovim WASM component. options: :initial-text, :filetype,
+  "A lifecycle-owned Neovim WASM component. options: :initial-text or :initial-file, :filetype,
    :cols, :rows and optional :on-save (receives the current buffer as a string).
    Requires an isolated top-level document, as provided by /neovim.
    Changing initialization options starts a new session; unmount terminates it."
