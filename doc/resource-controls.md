@@ -14,6 +14,19 @@ tolgraven-cpu run -- \
   lein with-profile prod,provided run -m shadow.cljs.devtools.cli release app ssr return-worker
 ```
 
+For a build that needs more memory, raise its container and JVM budgets together:
+
+```sh
+tolgraven-cpu run --memory 6g --java-heap 3g -- <build command>
+```
+
+This is a per-invocation override; the default remains 4 GiB/2 GiB. It retains the
+same CPU ceiling, shared slots and isolated output. Check the Docker VM's total
+memory limit before running multiple larger builds concurrently. OrbStack's
+`memory_mib` setting applies to all containers and machines together, while its
+allocated memory grows on demand. Do not restart the VM while unrelated builds
+or services are running.
+
 Shadow release/check/compile targets run sequentially in the installed CLI;
 `:parallel-build false` also disables parallel work within each target.
 
