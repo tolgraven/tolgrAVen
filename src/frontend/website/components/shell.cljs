@@ -177,13 +177,6 @@
 (defc <footer-content> "Upper content (first few rows) of footer"
   [content]
   [:div.footer-content ;; XXX should adapt to available height, also disappear...
-   (when-enabled :contact nil
-     (when @(r/subscribe [:state [:contact-form :show?]])
-       (m/<> {:module :contact
-              :view :popup
-              :load-on :immediate
-              :<before> (fn [] [:span {:role "status"} "Opening contact form…"])}
-             true)))
    (for [{:keys [title email text id links logo] :as column} content
          :let [id (str "footer-" id)]] ^{:key id}
      [:div.footer-column {:id id}

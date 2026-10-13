@@ -199,7 +199,10 @@ nor its stylesheet. The shared UI media interface acquires that module on use.
 
 The footer's email/toggle remains eager. The closed contact form contributes no
 initial code or CSS; opening it mounts the `:contact` boundary and starts both
-resources. Its popup sheet is deferred in ordinary SSR documents.
+resources. The page shell owns one popup outside both footer stacking contexts;
+footer controls only toggle its shared state. Contact sits above the footer and
+below the HUD, keeping notices actionable while the form is open.
+Its popup sheet is deferred in ordinary SSR documents.
 
 The closed Settings panel has no DOM, CSS-variable reads or view code in bootstrap.
 Opening it acquires `:settings` and its sheet before mounting its controls.

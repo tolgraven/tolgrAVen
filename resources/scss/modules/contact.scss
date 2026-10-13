@@ -1,5 +1,9 @@
 .contact-form-popup {
   position: fixed;
+  // The page shell owns this layer, independently of either footer copy.
+  z-index: 150;
+  // Retain the typography previously inherited from the footer.
+  font-size: 0.85rem;
   width: calc(100% - 2 * var(--space-sides)); // - 2 * var(--line-width-vert));
   max-height: 0%;
   opacity: 0%;

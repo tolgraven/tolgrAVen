@@ -81,6 +81,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Rendered reusable UI lives in `components/`; feature-specific UI lives with its
   module. `component/` is the declaration/lifecycle runtime, not a view inventory.
   Import the owning namespace directly; there is no top-level `views.cljs` shim.
+- The page shell owns one lazy contact popup outside both footer copies. Footer
+  controls share its re-frame state; do not mount the popup inside each control.
+  Keep the HUD above the contact layer so notices remain actionable.
 - Render state through `website.react` subscriptions and change it through events.
   Effects/source adapters own I/O; view functions remain pure.
 - Use `<component>` names, `defc` features and `defpage` boundaries. `m/<>` selects

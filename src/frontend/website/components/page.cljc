@@ -1,4 +1,5 @@
 (ns website.components.page
+  #?(:cljs (:require-macros [website.build.site :refer [when-enabled]]))
   #?(:cljs (:require
     [website.component.registry]
     [website.macros :as m :refer-macros [defc defpage]]
@@ -127,6 +128,13 @@
 
    [common/<footer-full> @(r/subscribe [:content [:footer]])]
    [common/<footer> @(r/subscribe [:content [:footer]])]
+   (when-enabled :contact nil
+     (when @(r/subscribe [:state [:contact-form :show?]])
+       (m/<> {:module :contact
+              :view :popup
+              :load-on :immediate
+              :<before> (fn [] [:span {:role "status"} "Opening contact form…"])}
+             true)))
    [ui-notifications/<hud> (r/subscribe [:hud])]
    [common/<to-top>]
    ; [[:div.ripple-on-click
