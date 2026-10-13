@@ -34,6 +34,7 @@ async function revision() {
     ...await inputFiles(root, ['.scss']),
     // Module/component icon declarations and their macros own the style inventory.
     ...await inputFiles('src/frontend', ['.cljs', '.cljc']),
+    ...await inputFiles('env/dev', ['.cljs', '.cljc']),
     ...await inputFiles('src/cljc', ['.cljc']),
     ...await inputFiles('src/backend', ['.clj']),
   ].sort();

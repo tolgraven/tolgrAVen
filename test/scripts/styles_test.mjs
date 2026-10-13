@@ -59,6 +59,8 @@ try {
 
   await write('src/frontend/example/module.cljs', '(ns example.module) ; :icons ["solid/house"]');
   rebuilt();
+  await write('env/dev/cljs/example/module.cljs', '(ns example.dev.module) ; :icons ["solid/code"]');
+  rebuilt();
   await write('resources/public/css/opensans.css', '@font-face { font-family: Example; }');
   rebuilt();
   await write('package-lock.json', '{"lockfileVersion": 3}');
