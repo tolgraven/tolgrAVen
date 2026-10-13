@@ -99,7 +99,8 @@
                            (and parent-rem (string/ends-with? (or (:width geometry) "") "%"))
                            (assoc :width (str (* parent-rem (/ (js/parseFloat (:width geometry)) 100)) "rem")))
         invocation' (update invocation :arguments merge
-                            (into {} (map (fn [[key value]] [key {:literal value}])) (layout/attributes preview-geometry)))
+                            (into {} (map (fn [[key value]] [key {:literal value}]))
+                                  (layout/attributes (assoc preview-geometry :flow "block"))))
         update! (editor/useMdastNodeUpdater)
         node-ref (r/use-ref nil)
         commit! (fn [geometry']
@@ -135,7 +136,7 @@
       :style (assoc (select-keys (layout/style preview-geometry) [:width]) :max-width "100%")
       :on-mouse-enter #(reset! *open? true)
       :on-mouse-leave #(reset! *open? false)}
-     [:header.md-component-node__chrome
+     [:div.md-component-node__chrome {:role "toolbar", :aria-label "Component controls"}
       [:strong {:title (model/component-name node)} (last (string/split (model/component-name node) #"/"))]
       [:button {:type "button"
                 :aria-expanded @*open?
@@ -345,7 +346,7 @@
        ^{:key document-id} [mdx-editor {:ref editor-ref
                   :markdown text
                   :plugins editor-plugins
-                  :contentEditableClassName "md-editor-content"
+                  :contentEditableClassName "md-editor-content md-rendered"
                   :overlayContainer @*overlay
                   :onChange (fn [markdown initial-normalization?]
                               (when-not initial-normalization?

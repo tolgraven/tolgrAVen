@@ -27,6 +27,8 @@
 
 .content-widget {
   box-sizing: border-box;
+  &:has(> .content-box, > .content-config) { margin-block: var(--space); }
+  > .content-box, > .content-config { margin-block: 0; }
   &[data-flow="left"] { margin-inline-end: var(--space); }
   &[data-flow="right"] { margin-inline-start: var(--space); }
   &[data-align="center"] { text-align: center; }
@@ -38,6 +40,7 @@
 
 .content-widget[data-height-mode="fixed"] {
   overflow: auto;
+  > .content-box, > .content-config { height: 100%; }
   > picture, > .progressive-image { height: 100%; }
   > picture > img, > .progressive-image img, > img { width: 100%; height: 100%; object-fit: contain; }
 }

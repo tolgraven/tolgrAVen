@@ -214,6 +214,12 @@ relative units and isolates vendor palette variables. The owner styles use the
 site's palette, spacing, lines and rounded geometry. Popup portals stay inside the
 editor's overlay owner. Authored pixel dimensions are the explicit user-selected
 exception; application-owned CSS remains relative.
+The rich content uses the same Markdown typography/media styling as a public
+post. The native SDK wrapper owns floating text flow; its nested preview does
+not float a second time. Authored box/config spacing belongs outside their
+geometry wrapper, and fixed heights fill their visible roots. Hover controls sit
+directly above those bounds; edge hit areas stay inside them so following prose
+and adjacent widgets cannot mask the handles.
 
 Dependency changes require the verified Docker prefab refresh, using the shared
 capped BuildKit queue. Browser checks cover source round trips, both keyboard
