@@ -71,3 +71,27 @@ See [the source audit](middleware-optimus-audit.md) for the recorded pre-change
 behavior and [testing](testing.md) for the verification environment. Controlled
 service replacements prove middleware contracts; they do not establish live
 Strapi delivery, Storage publication, or deployment state.
+
+## Prepared asset format
+
+`tolgraven.build.assets` explicitly prepares `resources/optimus/assets.edn` from
+real production Shadow outputs and built styles. Its optional `--build-styles`
+argument runs the existing npm style build first. The tool keeps Optimus's current
+URL inventory, independent bundles, CSS reference rewriting and legacy fallback
+image transformation. Shadow owns JS minification; CSS imports are rejected rather
+than silently incorporating another module's sheet.
+
+The EDN artifact records the selected site, stylesheet and browser inventories,
+raw source digests, original Optimus metadata and text bodies. Unchanged binary
+resources remain in `public`; transformed legacy bodies use SHA256-named files in
+`optimus`. The writer publishes the manifest last. The standalone importer
+validates the schema, build selection, source digests and transformed bodies once,
+then returns the existing Optimus asset shape. Missing, stale or corrupt artifacts
+fail clearly; importing never discovers or transforms assets.
+
+`test/prepared_assets.clj` runs inside the CPU controller's disposable snapshot.
+Its `source` mode records exact bundle paths, metadata and body signatures; `jar`
+mode compares the actual packaged resources against that record without loading
+minification or image transformation namespaces. These checks establish artifact
+compatibility; production startup and automatic packaging integration require
+separate stack/build checks.

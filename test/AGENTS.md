@@ -175,3 +175,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   range responses, security/cache headers, real form-cookie CSRF, typed API JSON,
   one bounded multipart parse and exact authenticated webhook preflight. Streaming
   gzip must expose the shell before deferred content completes.
+
+- Handler/layout fixtures require generated CSS and the real `:document` bootstrap
+  in the same isolated snapshot as the test command. See `doc/testing.md`.
+- Prepared-asset checks compare exact optimized metadata, CSS/font URLs and body
+  bytes through source and jar resolvers. Reject missing, stale or corrupt output;
+  do not replace this proof with a manifest-exists assertion.

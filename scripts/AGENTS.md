@@ -59,3 +59,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 
   Custom codec images use explicit `run --node-deps skip` only for non-Node tasks;
   retain the shared queue, snapshot and container limits. Default Node bootstrap stays enabled.
+
+- `test/prepared_assets.clj` checks the explicit prepared inventory from source and
+  then from an uberjar, preserving all bodies and independent bundle paths. Run
+  it only in the CPU controller's Docker snapshot after real production outputs;
+  it does not start the application or prove deployment behavior.
