@@ -49,6 +49,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   `>reset`/`>update` events. Accepted transactions enqueue persistence through
   the storage interceptor/effect; no mirrored app-db or writable cursor.
   Local-return capture observes its source subscription in the component lifecycle.
+  Return-worker decisions use Clojure data in `ssr/return_policy.cljs`; Cache,
+  Request/Response and event lifetime handling stay in `ssr/return_worker.cljs`.
+  Decode JSON once at that boundary; process native entry arrays as sequences,
+  retaining opaque Request/Response handles. Keep the native Promise write queue
+  and synchronous `waitUntil`/`respondWith` event ownership.
 
 - Feature modules live under `modules/<module>/`; collocate schemas, query
   declarations and `pages.cljc` with the implementation. Browser/Node-only schemas

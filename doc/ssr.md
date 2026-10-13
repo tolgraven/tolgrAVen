@@ -417,6 +417,19 @@ restoration after a failed local return.
 Its service worker serves an exact cached document/state pair; it does not create
 another server rendering pipeline. Ordinary SPA navigation never requests SSR HTML.
 
+`ssr/return_policy.cljs` expresses request eligibility, arm expiry, cache freshness,
+bounded document retention and obsolete-build selection as pure functions over
+Clojure maps and sequences. `ssr/return_worker.cljs` extracts native request fields
+once, decodes arm JSON into a map once, and converts outgoing response options at
+the API boundary. Cache entries remain opaque Request/Response handles inside
+Clojure sequences. Native Promises retain the serialized write queue and browser
+event lifetime: `waitUntil` and `respondWith` receive the actual asynchronous work.
+This split makes policy readable and testable without replacing browser APIs or
+adding an asynchronous library merely to conceal Promise syntax. See the
+[ClojureScript conversion API](https://cljs.github.io/api/cljs.core/js-GTclj),
+[array sequences](https://cljs.github.io/api/cljs.core/array-seq), and
+[service-worker lifetime documentation](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers).
+
 Source extensions reflect actual consumers:
 
 - Module `pages.cljc`, public query plans, data normalization and
