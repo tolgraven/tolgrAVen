@@ -11,6 +11,7 @@
 
             [website.component :as component]
             [website.events]
+            [website.subs]
             [website.component.data :as data]
             [website.component.storage :as storage]
             [website.component.restore :as restore]

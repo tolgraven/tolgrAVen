@@ -3,6 +3,8 @@
   (:require [cljs.test :refer-macros [deftest is async]]
             [cljs.reader :as reader]
             [website.react :as r]
+            [website.events]
+            [website.subs]
             [website.components.ui.diagnostics :as ui-diagnostics]
             [website.components.error :as error]
             [website.util :as util]

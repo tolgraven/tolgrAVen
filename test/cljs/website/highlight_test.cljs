@@ -2,6 +2,7 @@
   (:require [cljs.test :refer-macros [deftest is]]
             [clojure.string :as string]
             [website.react :as r]
+            [website.subs]
             [malli.core :as m]
             [website.schema.dsl :as dsl]
             [website.modules.markdown.code-block :as code-block]

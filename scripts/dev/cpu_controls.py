@@ -912,7 +912,7 @@ def positive(value):
 
 def install(args):
     STATE.mkdir(parents=True, exist_ok=True)
-    label = 'se.website.cpu-controls'
+    label = 'se.tolgraven.cpu-controls'
     domain = f'gui/{os.getuid()}'
     subprocess.run(['launchctl', 'bootout', f'{domain}/{label}'], capture_output=True)
     installed = STATE / 'cpu_controls.py'
@@ -1006,7 +1006,7 @@ def main():
     elif args.action == 'status':
         print((STATE / 'status.json').read_text())
     elif args.action == 'stop':
-        subprocess.run(['launchctl', 'bootout', f'gui/{os.getuid()}/se.website.cpu-controls'], capture_output=True)
+        subprocess.run(['launchctl', 'bootout', f'gui/{os.getuid()}/se.tolgraven.cpu-controls'], capture_output=True)
         if not (STATE / 'monitor.json').exists():
             return 0
         record = json.loads((STATE / 'monitor.json').read_text())
