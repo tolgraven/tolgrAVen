@@ -7,9 +7,10 @@
     [tolgraven.modules.github.message :as message]
     [tolgraven.modules.github.schema :as schema]
     [clojure.string :as string]
+    [tolgraven.components.activity :as activity]
     [tolgraven.components.ui :as ui]
     [tolgraven.components.image :as img]
-    [tolgraven.util :as util :refer [at]]))
+    [tolgraven.util :as util]))
 
 
 (defc <commit> "Show a single commit with highlighted diff etc..."
@@ -135,8 +136,42 @@
           ;; cache entries immediately use the current presentation rules.
           [<commit-message> (message/parse-message (:message commit))]]])
 
-(defc <commits> "List Github commits for this repo"
+(rf/reg-sub :github/deployment (fn [db _] (get-in db [:module :github :deployment])))
+(rf/reg-sub :github/activity
+  (fn [db [_ user]] (get-in db [:module :github :activity user])))
+
+(defc <deployment>
+  {:depends [{:source :url
+              :url "/api/deployment"
+              :into [:module :github :deployment]}]
+   :loading [:p.github-deployment "Loading deployment details…"]}
   []
+  (let [{:keys [commit deployed-at commit-url]} @(rf/subscribe [:github/deployment])]
+    [:div.github-deployment
+     [:span "Latest deploy "]
+     (if deployed-at
+       [:time {:date-time deployed-at, :title deployed-at} (string/replace deployed-at "T" " ")]
+       [:span "Timestamp unavailable"])
+     (when commit
+       [(if commit-url :a :span) {:href commit-url, :title commit} [:code (subs commit 0 7)]])]))
+
+(defn activity-dependencies [user]
+  [{:source :url
+    :url (str "/api/github/activity?user=" (js/encodeURIComponent user))
+    :into [:module :github :activity user]}])
+
+(defc <activity>
+  {:depends activity-dependencies
+   :loading [:section.github-activity.covering-2 [:h2 "GitHub activity"] [:p "Loading contribution calendar…"]]}
+  [user :- :string]
+  (let [{:keys [days]} @(rf/subscribe [:github/activity user])]
+    [:section.github-activity.covering-2
+     [:h2 [:a {:href (str "https://github.com/" user)} (str user " on GitHub")]]
+     [activity/<calendar> days]]))
+
+(defc <repository> "List Github commits for the CMS-selected repository"
+  {:features [:lifecycle]}
+  [spec]
   (let [from (rf/subscribe [:github/get-from])
         commits (rf/subscribe [:github/filter-by])
         amount (rf/subscribe [:github/commit-count])
@@ -148,14 +183,16 @@
                       (set! (.-scrollTop el) @main-view-position)
                       (set! (.-scrollTop el) 0))))
         url (rf/subscribe [:github/website-url])]
-   (fn []
+   (fn [spec]
     [:<>
      [:section.github-commits.covering-2
 
+     [<deployment>]
      [:h2 [:i.fab.fa-github]" " @amount " commits to "
       [:span
        [:a {:title "The repo" :href @url}
-        "this website"]]]
+        (str (second @from))]]]
+     [:p.github-repository-owner (str "by " (first @from))]
 
      [:div#github-commits-box.github-commits-inner
       [ui/<input-text> :id "github-commits-filter"
@@ -186,3 +223,11 @@
      (when (= @view :commits)
       [<loading> (first @from) (second @from)])]]]
      [ui/<fading> :dir "bottom"]])))
+
+(defc <commits> []
+  (let [[user repo] @(rf/subscribe [:github/get-from])]
+    (if (and (seq user) (seq repo))
+      [:<>
+       ^{:key (str user "/" repo)} [<repository> {:init (fn [_] (rf/dispatch [:github/init]))}]
+       ^{:key user} [<activity> user]]
+      [:section.github-commits.covering-2 [:h2 "GitHub"] [:p "Configure a user and repository in the CMS."]])))

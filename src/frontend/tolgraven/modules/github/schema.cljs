@@ -2,7 +2,13 @@
   "Consumed provider fields and UI state; provider extension fields remain open."
   (:require [tolgraven.schema.common :as c]))
 
-(def state (c/optional-map {:pages-fetched [:sequential :int], :commits-fetched c/strings}))
+(def state
+  (c/optional-map {:target [:tuple :string :string]
+                   :generation c/nonnegative
+                   :pages-pending [:set :int]
+                   :headers-pending? :boolean
+                   :pages-fetched [:sequential :int]
+                   :commits-fetched c/strings}))
 (def options (c/optional-map {:user :string, :repo :string}))
 
 (def author

@@ -9,6 +9,8 @@
             [ajax.core :as ajax]
             [tolgraven.service-status :as status]
             [tolgraven.content.client :as content]
+            [tolgraven.events]
+            [tolgraven.subs]
             [tolgraven.loader :as loader]
             [tolgraven.component.data :as data]
             [tolgraven.content.contract :as contract]
@@ -185,7 +187,9 @@
                         (into
                           {}
                           (map (fn [key]
-                                 [key (if (#{:post-footer :footer :gallery :interlude} key) [] {})])
+                                 [key (case key
+                                        :github-settings {:user "example", :repo "website"}
+                                        (if (#{:post-footer :footer :gallery :interlude} key) [] {}))])
                             contract/sections))}]
           (reset! rfdb/app-db {:content {}})
           (storage/write! :public-content bundle content/cache-options)

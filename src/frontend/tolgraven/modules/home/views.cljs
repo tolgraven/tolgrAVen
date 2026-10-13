@@ -45,6 +45,7 @@
                  :dep :store}
    :github      {:module :github
                  :dep :site}
+   :codex-profile {:module :codex-profile}
    :gpt         {:module :gpt}
    :chat        {:module :chat}
    :interlude   {:<comp> media/<interlude>

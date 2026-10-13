@@ -200,3 +200,5 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   existing deferred startup owner's standalone release barrier. Gate before
   asset delivery; unrelated static images and APIs must not wait for app watches.
   Keep release failure/timeout explicit rather than serving stale unoptimized JS.
+
+- `/api/deployment` exposes only validated container metadata. GitHub calendar reads use a fixed origin, bounded body/time/cache and no redirects; see `doc/activity-panels.md`.
