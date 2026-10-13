@@ -287,6 +287,11 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   after implementation and required verification are complete, the current head is
   pushed, and the description matches it. Return a PR to draft when follow-up
   implementation starts.
+- When assigned a PR, publish a draft once a coherent committed checkpoint exists;
+  keep its head and description current while work continues. A local branch or
+  a "ready for publication" handoff does not complete that assignment. Subagents
+  must return the PR URL, verification status, and remaining work; the parent
+  verifies publication and completes authorized review/merge before closing it.
 - A user request to make or update a PR authorizes committing the task changes,
   pushing its feature branch, and creating/updating the PR in
   `https://github.com/tolgraven/tolgrAVen`; do not ask again solely for these
