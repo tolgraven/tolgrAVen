@@ -44,8 +44,15 @@ ordering dependencies. Shadow's separate nREPL server explicitly includes
 Piggieback through `shadow-cljs.edn` too; keep both server configurations aligned.
 CIDER 0.63.1 includes Piggieback when constructing its internal handler, avoiding
 its former missing-middleware warnings without filtering startup output.
-The development REPL allows three minutes for cold namespace loading and the
-initial browser, SSR and return-worker compilations before its server is ready.
+The development REPL allows three minutes for cold application initialization.
+Shadow startup runs on a background task after a one-second deferral, so initial
+`:return-worker`, optional `:ssr`, and `:app-dev` compilations do not block the
+REPL acknowledgement. Watches compile in that order rather than competing for
+CPU. Source-capability checks read one settings snapshot per build, rather than
+reloading it for every source file. `(cljs-repl)` waits for queued startup and
+selects in the calling nREPL session; a failed background startup is logged and that call retries it.
+Application stop/restart retains Shadow workers as before; Shadow owns their
+JVM shutdown lifecycle. Repeated starts share any pending startup task.
 
 `luminus-undertow` supplies the Ring HTTP server through its Undertow adapter.
 Undertow's XNIO workers use JBoss Threads for execution. Managed Undertow 2.3.26

@@ -12,6 +12,7 @@ needed to run these tasks; they use Babashka's built-in libraries.
 | Images | `bb images`, `bb images:verify`, `bb images:staged`, `bb images:responsive` | Manual assets, tracked pre-commit hook; cwebp/ImageMagick |
 | Uploads | `scripts/media/images.clj` | JVM upload adapter and Docker codec smoke test; standalone `bb` script |
 | Videos | `bb videos [--force] [files...]`, `bb videos:responsive` | Manual assets; FFmpeg VP9/AV1, muted output, original MP4 fallback |
+| Development | `bb cpu <action>`, `tolgraven-cpu` | Serialized isolated Docker agent builds and scoped macOS CPU monitor; see [resource controls](resource-controls.md) |
 | Development | `bb hooks`, `bb pair <operation>` | Per-checkout setup and installed re-frame-pair skill |
 | Renderer tests | `bb ssr:fixtures [--worker path]` | Actual compiled generic Node renderer; generates browser hydration fixtures |
 | Browser tests | `bb test:browser [--port 4002]` | Static component suite and fixtures; loopback HTTP-kit server |
