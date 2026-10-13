@@ -146,24 +146,62 @@
     (is (not (.includes html "progressive?=")))
     (is (not (.includes html "preview?=")))))
 
-(deftest progressive-hydration-preserves-both-native-image-nodes
+(deftest progressive-hydration-preserves-both-native-image-nodes-while-final-is-pending
   (async done
     (let [container (.createElement js/document "div")
           form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
       (set! (.-innerHTML container) (server/render-to-string form))
       (.appendChild (.-body js/document) container)
       (let [preview (.querySelector container "[data-image-preview]")
-            final (.querySelector container "[data-image-final]")
-            root (dom/hydrate-root container form)]
-        (js/setTimeout
-          (fn []
-            (is (identical? preview (.querySelector container "[data-image-preview]")))
-            (is (identical? final (.querySelector container "[data-image-final]")))
-            (is (= "" (.. final -style -visibility)))
-            (dom/unmount root)
-            (.remove container)
-            (done))
-          100)))))
+            final (.querySelector container "[data-image-final]")]
+        ;; Keep the adapter's native decode boundary pending during attachment.
+        (doseq [[property value] [["complete" false] ["naturalWidth" 0]]]
+          (js/Object.defineProperty final property #js {:configurable true :value value}))
+        (let [root (dom/hydrate-root container form)]
+          (js/setTimeout
+            (fn []
+              (is (identical? preview (.querySelector container "[data-image-preview]")))
+              (is (identical? final (.querySelector container "[data-image-final]")))
+              (is (= "" (.. final -style -visibility)))
+              (dom/unmount root)
+              (.remove container)
+              (done))
+            100))))))
+
+(deftest decoded-final-removes-the-preview-without-replacing-the-native-image
+  (async done
+    (let [container (.createElement js/document "div")
+          *final (atom nil)
+          *finished? (atom false)
+          root (dom/create-root container)
+          finish! (fn []
+                    (when (compare-and-set! *finished? false true)
+                      (dom/unmount root)
+                      (.remove container)
+                      (done)))
+          loaded! (fn [event]
+                    (reset! *final (.-currentTarget event))
+                    (js/setTimeout
+                      (fn []
+                        (is (.endsWith (.-currentSrc @*final) "-400w.avif"))
+                        (is (= 1 (.-length (.querySelectorAll container "img"))))
+                        (is (nil? (.querySelector container "[data-image-preview]")))
+                        (is (identical? @*final (.querySelector container "[data-image-final]")))
+                        (.dispatchEvent js/window (js/PageTransitionEvent. "pageshow" #js {:persisted true}))
+                        (is (= 1 (.-length (.querySelectorAll container "img")))
+                            "A restored document does not add a redundant preview")
+                        (finish!))
+                      150))]
+      (.appendChild (.-body js/document) container)
+      (dom/render root [image/<picture> {:src "/img/wide-spot-ctrl-small.jpg"
+                                       :progressive? true
+                                       :sizes "10vw"
+                                       :on-load loaded!}])
+      (js/setTimeout (fn []
+                       (when-not @*finished?
+                         (is false "Native final image decoded within ten seconds")
+                         (finish!)))
+                     10000))))
 
 (deftest progressive-final-failure-retains-the-preview
   (async done
@@ -185,8 +223,10 @@
                 (js/setTimeout
                   (fn []
                     (is (= "hidden" (.. final -style -visibility)))
-                    (is (identical? preview (.querySelector container "[data-image-preview]")))
+                    (is (some? (.querySelector container "[data-image-preview]")))
                     (is (= 1 @*errors))
+                    (.dispatchEvent final (js/Event. "error"))
+                    (is (= 1 @*errors) "Repeated original errors do not duplicate notification")
                     (dom/unmount root)
                     (.remove container)
                     (done))
@@ -218,3 +258,65 @@
                 (.remove container)
                 (done))
               100)))))))
+
+
+(deftest same-pending-candidate-needs-one-native-image-after-commit
+  (async done
+    (let [container (.createElement js/document "div")
+          form [image/<picture> {:src "/img/foggy-shit-small.jpg"}]]
+      (set! (.-innerHTML container) (server/render-to-string form))
+      (.appendChild (.-body js/document) container)
+      (let [final (.querySelector container "[data-image-final]")]
+        (doseq [[property value] [["complete" false] ["naturalWidth" 0]
+                                 ["currentSrc" (str (.-origin js/location) "/img/foggy-shit-small-400w.avif")]]]
+          (js/Object.defineProperty final property #js {:configurable true :value value}))
+        (let [root (dom/hydrate-root container form)]
+          (js/setTimeout
+            (fn []
+              (is (= 1 (.-length (.querySelectorAll container "img"))))
+              (is (identical? final (.querySelector container "[data-image-final]")))
+              (is (false? (.-complete final)) "No decoded asset is required to eliminate a duplicate")
+              (dom/unmount root)
+              (.remove container)
+              (done))
+            100))))))
+
+(deftest decoded-phase-belongs-only-to-the-current-source
+  (async done
+    (let [container (.createElement js/document "div")
+          root (dom/create-root container)
+          *src (r/atom "/img/foggy-shit-small.jpg")
+          *first? (atom true)
+          capture! (fn [element]
+                     (when element
+                       (let [first? (compare-and-set! *first? true false)]
+                         (doseq [[property value] [["complete" first?]
+                                                  ["naturalWidth" (if first? 1189 0)]
+                                                  ["currentSrc" (if first?
+                                                                  (str (.-origin js/location) "/img/foggy-shit-small.avif")
+                                                                  "")]]]
+                           (js/Object.defineProperty element property #js {:configurable true :value value}))
+                         (js/Object.defineProperty element "decode"
+                           #js {:configurable true :value (fn [] (js/Promise.resolve nil))}))))]
+      (.appendChild (.-body js/document) container)
+      (dom/render root [(fn [] [image/<picture> {:src @*src
+                                               :progressive? true
+                                               :ref capture!}])])
+      (js/setTimeout
+        (fn []
+          (is (= 1 (.-length (.querySelectorAll container "img"))))
+          (reset! *src "/img/wide-spot-ctrl-small.jpg")
+          (js/setTimeout
+            (fn []
+              (is (= 2 (.-length (.querySelectorAll container "img"))) "B is pending and needs its preview")
+              (reset! *src "/img/foggy-shit-small.jpg")
+              (js/setTimeout
+                (fn []
+                  (is (= 2 (.-length (.querySelectorAll container "img")))
+                      "Returning to A cannot reuse its old decoded phase while the resource is pending")
+                  (dom/unmount root)
+                  (.remove container)
+                  (done))
+                100))
+            100))
+        100))))

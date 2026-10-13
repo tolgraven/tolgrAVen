@@ -324,5 +324,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 - Catalog images marked `:progressive?` render a blurred decorative smallest candidate
   underneath their normal responsive picture. Both layers acquire natively in SSR;
-  final decode paints over the preview before hydration. The common root owns media
-  styles/identity; caller refs/load handlers still belong to the final image.
+  final decode paints over the preview before hydration. Its committed native
+  image adapter removes same-candidate previews immediately after commit and
+  other previews after final decode. Transient phase belongs only to the current source;
+  known 400w/100vw DPR-1 phone buckets suppress its painted layer before JS. The
+  common root owns media styles/identity; refs/load handlers belong to the final.

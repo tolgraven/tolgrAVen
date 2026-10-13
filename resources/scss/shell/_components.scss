@@ -669,3 +669,13 @@ figcaption, .float-with-caption {
     position: relative;
   }
 }
+
+// For the 400w / 100vw bucket, DPR-1 phones select the preview as their final.
+// Suppress its redundant painted layer before application code can remove it.
+@media (max-width: 25em) and (max-resolution: 1dppx) {
+  .progressive-image[data-preview-width="400"][data-image-sizes="100vw"]:not([data-image-retrying]) {
+    .progressive-image__preview {
+      display: none;
+    }
+  }
+}

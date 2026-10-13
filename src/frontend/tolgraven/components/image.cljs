@@ -41,10 +41,10 @@
    Browsers select the first supported format. If requesting or decoding that
    source fails, retry the original JPEG/PNG. Call the caller's on-error only when the
    original image fails too."
-  [{:keys [src on-error ref preview? on-attached-error] :as attrs} :- attrs-schema]
+  [{:keys [src on-error ref preview? on-attached-error on-source-error] :as attrs} :- attrs-schema]
   (r/with-let [*fallback-sources (r/atom #{})]
     (let [attrs' (merge {:decoding "async"} (sources/dimensions src)
-                        (dissoc attrs :preview? :progressive? :on-attached-error))
+                        (dissoc attrs :preview? :progressive? :on-attached-error :on-source-error))
           preview (when preview? (sources/preview src))
           capture! (react/use-callback
                     (fn [image]
@@ -53,6 +53,7 @@
                       ;; state removes the modern sources through normal rendering.
                       (when (and image (seq src) (seq (.-currentSrc image))
                                  (.-complete image) (zero? (.-naturalWidth image)))
+                        (when on-source-error (on-source-error))
                         (if (and (sources/should-use-modern-formats? src)
                                  (modern-source-selected? image src))
                           (swap! *fallback-sources conj src)
@@ -61,7 +62,7 @@
                       (cond (fn? ref) (ref image)
                             ref (set! (.-current ^js ref) image))
                       js/undefined)
-                    [src ref on-attached-error])]
+                    [src ref on-attached-error on-source-error])]
      (if (sources/should-use-modern-formats? src)
       (let [avif-src (sources/replace-extension src "avif")
             webp-src (sources/replace-extension src "webp")
@@ -69,6 +70,7 @@
             fallback? (contains? @*fallback-sources src)
             retry! (fn [event]
                      (let [image (.-currentTarget event)]
+                       (when on-source-error (on-source-error))
                        ;; Safari can select AVIF in Lockdown Mode even though
                        ;; its decoder rejects it. <picture> does not retry itself.
                        (if (and (not fallback?) (modern-source-selected? image src))
@@ -89,41 +91,115 @@
       ;; No modern format available, just use img directly.
       [:img attrs']))))
 
+(defn- same-preview-candidate? [image preview sizes]
+  ;; The browser remains authoritative when its selection is exposed. Pending
+  ;; currentSrc can be empty; the declared 100vw slot still determines the small
+  ;; bucket without keeping a second viewport/application store.
+  (when (and image preview (exists? js/window))
+    (let [selected (.-currentSrc image)
+          candidates (set (map #(.-href (js/URL. % (.-baseURI image)))
+                               ((juxt :avif :webp) preview)))]
+      (if (seq selected)
+        (contains? candidates selected)
+        (and (= sizes "100vw")
+             (<= (* (.-innerWidth js/window) (or (.-devicePixelRatio js/window) 1))
+                 (:width preview)))))))
+
 (defc <picture>
   "Render responsive modern sources with original-format recovery. Catalog-owned
-   progressive images paint a decorative blurred preview beneath the final image.
-   Both native pictures load together; decoded final pixels cover the preview even
-   before hydration attaches. Set :progressive? explicitly to override the catalog."
-  [{:keys [src class style id progressive? on-error] :as attrs} :- attrs-schema]
-  (r/with-let [*failed-sources (r/atom #{})]
-    (let [failed! (react/use-callback
-                   (fn [event]
-                     (when-not (contains? @*failed-sources src)
-                       (swap! *failed-sources conj src)
-                       (when on-error (on-error event))))
-                   [src on-error])]
-      (if (and (if (contains? attrs :progressive?) progressive? (sources/progressive? src))
-               (sources/preview src))
-        (let [failed? (contains? @*failed-sources src)
+   progressive images paint a decorative blurred preview while the final decodes.
+   Native SSR starts both requests; the committed lifecycle removes the preview
+   as soon as decoded final pixels can stand alone. Override with :progressive?."
+  [{:keys [src class style id progressive? on-error on-load ref] :as attrs} :- attrs-schema]
+  (r/with-let [*image-phase (r/atom {:src src, :phase nil})]
+    (let [*final-image (react/use-ref nil)
+          *active? (react/use-ref true)
+          preview (sources/preview src)
+          progressive?' (and preview (if (contains? attrs :progressive?)
+                                      progressive? (sources/progressive? src)))
+          sizes (or (:sizes attrs) "100vw")
+          failed! (react/use-callback
+                    (fn [event]
+                      (when-not (= {:src src, :phase :failed} @*image-phase)
+                        (reset! *image-phase {:src src, :phase :failed})
+                        (when on-error (on-error event))))
+                    [src on-error])
+          pending! (react/use-callback
+                     #(when-not (= {:src src, :phase :failed} @*image-phase)
+                        (reset! *image-phase {:src src, :phase :retry}))
+                     [src])
+          single! (react/use-callback
+                    (fn [image]
+                      (when (and progressive?' (same-preview-candidate? image preview sizes))
+                        (reset! *image-phase {:src src, :phase :single})))
+                    [src progressive?' sizes (:width preview) (:avif preview) (:webp preview)])
+          decoded! (react/use-callback
+                     (fn [image]
+                       ;; Native decode belongs to this mounted image adapter.
+                       ;; Ignore completions after source changes/unmount; pixels
+                       ;; must be usable before removing their low-resolution layer.
+                       (when (and image (.-complete image) (pos? (.-naturalWidth image)))
+                         (let [selected (.-currentSrc image)
+                               ready! #(when (and (.-current *active?)
+                                                  (identical? image (.-current *final-image))
+                                                  (= src (.getAttribute image "src"))
+                                                  (= selected (.-currentSrc image)))
+                                         (reset! *image-phase {:src src, :phase :decoded}))]
+                           (if (.-decode image)
+                             (-> (.decode image) (.then ready!) (.catch (fn [_] nil)))
+                             (ready!)))))
+                     [src])
+          capture! (react/use-callback
+                     (fn [image]
+                       (set! (.-current *final-image) image)
+                       (single! image)
+                       (decoded! image)
+                       (cond (fn? ref) (ref image)
+                             ref (set! (.-current ^js ref) image))
+                       js/undefined)
+                     [src ref single! decoded!])
+          loaded! (react/use-callback
+                    (fn [event]
+                      (decoded! (.-currentTarget event))
+                      (when on-load (on-load event)))
+                    [src on-load decoded!])]
+      (react/use-effect
+        (fn []
+          (set! (.-current *active?) true)
+          (when-not (= src (:src @*image-phase))
+            (reset! *image-phase {:src src, :phase nil}))
+          (single! (.-current *final-image))
+          (decoded! (.-current *final-image))
+          #(set! (.-current *active?) false))
+        [src single! decoded!])
+      (if progressive?'
+        (let [phase (when (= src (:src @*image-phase)) (:phase @*image-phase))
               final-attrs (-> attrs
                               (dissoc :class :style :id :progressive?)
                               (assoc :class "progressive-image__final"
                                      :data-image-final true
-                                     :style {:visibility (when failed? "hidden")}
+                                     :style {:visibility (when (= :failed phase) "hidden")}
+                                     :ref capture!
+                                     :on-load loaded!
                                      :on-error failed!
+                                     :on-source-error pending!
                                      :on-attached-error failed!))]
           [:span.progressive-image
            {:id id
             :class class
-            :style style}
-           [<source-picture> {:src src
-                              :alt ""
-                              :aria-hidden true
-                              :preview? true
-                              :class "progressive-image__preview"
-                              :data-image-preview true
-                              :loading (or (:loading attrs) "eager")
-                              :fetchPriority (or (:fetchPriority attrs) "auto")}]
+            :style style
+            :data-preview-width (:width preview)
+            :data-image-sizes sizes
+            :data-image-retrying (when (#{:retry :failed} phase) true)}
+           (when-not (#{:single :decoded} phase)
+             [<source-picture> {:src src
+                                :alt ""
+                                :aria-hidden true
+                                :preview? true
+                                :class "progressive-image__preview"
+                                :data-image-preview true
+                                :loading (or (:loading attrs) "eager")
+                                :fetchPriority (or (:fetchPriority attrs) "auto")}])
            [<source-picture> final-attrs]])
         [<source-picture> attrs]))))
 

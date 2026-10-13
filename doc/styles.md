@@ -207,8 +207,17 @@ Opening it acquires `:settings` and its sheet before mounting its controls.
 Progressive catalog images (`:progressive? true`) paint the smallest AVIF/WebP
 candidate, blurred by the shared image styles, below the native responsive final
 picture. The two requests start together; final decoded pixels replace the preview
-without waiting for application code or hydration. The shared root retains the
-caller’s media styles and dimensions, and the decorative preview is hidden from
-assistive technology. Explicit `:progressive? false` opts out; `true` enables other
+without waiting for application code or hydration. The committed native image
+adapter then removes the preview. An exposed same-candidate selection, or the
+known 100vw small bucket while currentSrc is pending, removes redundant DOM at
+commit without awaiting decode. Its transient phase belongs only to the current
+source; returning to a prior source cannot reuse stale readiness.
+SSR cannot infer viewport/DPR, so its initial markup declares both candidates.
+The known 400w/100vw bucket suppresses the redundant painted preview on DPR-1
+phones (`25em`, using the browser's initial media-query font size), before JS;
+hydration removes that decorative DOM when the selected final decodes. Larger
+candidates retain two visible layers only while they need the upgrade. The shared
+root retains the caller’s media styles and dimensions, and the decorative preview
+is hidden from assistive technology. Explicit `:progressive? false` opts out; `true` enables other
 images with sized catalog candidates. Final modern-format errors retry the original,
 and a final original failure leaves the preview visible.
