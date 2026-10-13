@@ -235,8 +235,11 @@
 (defn check-site-sources
   {:shadow.build/stage :compile-prepare}
   [state]
-  (let [disabled (for [{:keys [id entry]} (all-declarations)
-                       :when (not (site/enabled? id))]
+  (let [settings (site/settings)
+        comments-disabled? (or (= false (get-in settings [:modules :blog :enabled]))
+                               (= false (get-in settings [:modules :blog :comments])))
+        disabled (for [{:keys [id entry]} (all-declarations)
+                       :when (= false (get-in settings [:modules id :enabled]))]
                    (str (-> (namespace (symbol (str entry) "spec"))
                             (string/replace #"\.module$" "")
                             (string/replace "-" "_")
@@ -245,7 +248,7 @@
             :let [{:keys [resource-name] :as source} (get-in state [:sources id])]
             :when (and resource-name
                        (or (some #(string/starts-with? resource-name %) disabled)
-                           (and (not (site/enabled? :blog :comments))
+                           (and comments-disabled?
                                 (string/starts-with? resource-name "tolgraven/modules/blog/comments."))))]
       (throw (ex-info "Disabled capability entered the source graph"
                       (select-keys source [:ns :resource-name]))))

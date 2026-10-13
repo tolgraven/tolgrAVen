@@ -94,7 +94,9 @@ Do not retain completed investigation diaries or historical test counts as curre
   require macOS. The installed monitor owns the project Java/renderer aggregate
   budget; never issue ad hoc STOP/CONT or global process kills. See
   `doc/resource-controls.md` for scope, telemetry, recovery and explicit overrides.
-- `lein repl`: start the HTTP server and Shadow CLJS REPL (see `README.md`).
+- `lein repl`: start HTTP and the Clojure REPL; deferred Shadow watches compile
+  sequentially without blocking REPL acknowledgement. `(cljs-repl)` waits for
+  startup and selects the browser runtime in the calling session. See `README.md`.
 - Browser builds discover `modules/*/module.cljs` through `tolgraven.build.browser/process`;
   the literal spec `:id` owns the bundle ID and namespace `:bundle/depends-on`
   declares extra code dependencies. Runtime inventories track declaration resources
@@ -143,7 +145,8 @@ Do not retain completed investigation diaries or historical test counts as curre
 - The CIDER Lein plugin supplies CIDER middleware; list Piggieback and Shadow
   explicitly in the development REPL handler, and
   Piggieback in Shadow's separate nREPL configuration. Keep the cold-start timeout
-  large enough for the initial watches; see `doc/dependencies.md`.
+  large enough for cold application initialization; watches run afterward.
+  See `doc/dependencies.md`.
 - Keep Ring mocks in `:project/test`, prototype dependencies/source paths in `:experiments`, and the S3 wagon in `:s3-publish`.
 - The personal `deploy-private` alias uses `lein-shell` and AWS CLI with a seeded local Maven staging repository; see `doc/dependencies.md` and `doc/lein-profiles.clj`.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
@@ -278,6 +281,11 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   after implementation and required verification are complete, the current head is
   pushed, and the description matches it. Return a PR to draft when follow-up
   implementation starts.
+- A user request to make or update a PR authorizes committing the task changes,
+  pushing its feature branch, and creating/updating the PR in
+  `https://github.com/tolgraven/tolgrAVen`; do not ask again solely for these
+  publication steps. This does not independently authorize force pushes, branch
+  deletion, merges, deployment, unrelated changes, or publication elsewhere.
 - Commit each completed, verified task before starting the next. Subagents commit their own finished changes; coordinate the shared index so unrelated work is never included.
 - Commit messages follow `scope: summary` (examples in git history: `scss: fix theme var helper broken`). Can also use `scope: subscope: summary`. Keep summaries short and imperative.
 - PRs should include: a clear description, related issue links, and screenshots/gifs for UI changes.
