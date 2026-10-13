@@ -43,7 +43,9 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 
 - `dev/cpu_controls.py` is the macOS libproc/signal and Docker lifecycle adapter.
   Keep microsecond PID identity, exact project/app ownership, pre-stopped exclusion,
-  independent CONT watchdog, container labels and shared build serialization intact.
+  independent CONT watchdog, container labels and two shared inherited-lock build slots intact.
+  Each slot caps Docker at 1.5 CPUs; reservations sum across live workers, and
+  BuildKit daemon/cache identities must differ between slots.
   Native CPU accounting uses the Mach timebase; cap tests must measure actual CPU
   seconds, not only duty settings. CPU probes touch disposable owned fixtures only.
 

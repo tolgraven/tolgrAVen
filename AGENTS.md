@@ -86,8 +86,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   constraints without logging raw values, credentials, or event arguments.
 
 ## Build, Test, and Development Commands
-- Agent Java/Lein builds use `tolgraven-cpu run -- <command>` (serialized, isolated
-  Docker prefab, default 1 CPU/2 GiB). Dockerfile/prefab work uses
+- Agent Java/Lein builds use `tolgraven-cpu run -- <command>` (two shared build slots, isolated
+  Docker prefab, 1.5 CPUs/2 GiB per slot; 3 Docker CPUs combined). Dockerfile/prefab work uses
   `tolgraven-cpu run --mode buildkit -- <command>` so BuildKit steps also have a quota.
   Increase a documented heap/memory limit only when required; avoid competing watched output.
   `--mode host` uses nice 10 and the shared build slot when live watches/interop
