@@ -26,7 +26,7 @@
             [tolgraven.ssr.return-worker :as worker]))
 
 (r/defc <check> [form committed!]
-  (rf/use-effect (fn [] (committed!) js/undefined) #js [])
+  (rf/use-effect (fn [] (committed!) nil) [])
   form)
 
 (deftest capture-observes-native-source-and-releases-it-on-unmount

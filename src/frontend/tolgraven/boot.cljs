@@ -125,7 +125,7 @@
 (defc <coercion> {:profile false} []
   (rf/use-effect
     (fn [] (resources/after-page! start-validation!))
-    #js [])
+    [])
   [:<>])
 
 (defc <lifecycle> {:profile false} []
@@ -133,7 +133,7 @@
     (fn []
       (rf/dispatch-sync [:boot/interactive])
       #(rf/dispatch-sync [:boot/stop]))
-    #js [])
+    [])
   [:<> [<coercion>] [preload/<background>]
    (when-enabled :page-capture nil [local-page/<capture>])
    (when @context/*interactive? [resources/<deferred>])])

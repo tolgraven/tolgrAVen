@@ -10,7 +10,7 @@
             [tolgraven.test-support :as support]))
 
 (r/defc <highlighted> [committed!]
-  (rf/use-layout-effect (fn [] (committed!) js/undefined) #js [])
+  (rf/use-layout-effect (fn [] (committed!) nil) [])
   [:pre [:code [:span {:style {:color "#fb4934"}} "defn"] " greet"]])
 
 (r/defc <formatter> [server? lazy-view]
@@ -22,7 +22,7 @@
 
 (r/defc <boundary> [server? lazy-view committed!]
   (let [[wrap? set-wrap!] (rf/use-state false)]
-    (rf/use-layout-effect (fn [] (committed!) js/undefined) #js [])
+    (rf/use-layout-effect (fn [] (committed!) nil) [])
     [:div {:class (when wrap? "wrapped")
            :data-hydrating (:hydrate? @restore/*context)}
      [:button {:type "button" :on-click #(set-wrap! (not wrap?))} "Wrap"]

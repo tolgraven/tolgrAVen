@@ -94,8 +94,8 @@
     (rf/use-effect
      (fn []
        (when-not initial-menu? (set-restored! false))
-       js/undefined)
-     #js [initial-menu?])
+       nil)
+     [initial-menu?])
     [:<>
      [ui/<input-toggle> "nav-menu-open" [:menu] :class "burger-check"]
      (when @(rf/subscribe [:fullscreen/any?])

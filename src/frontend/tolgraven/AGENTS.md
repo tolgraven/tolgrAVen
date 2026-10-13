@@ -23,9 +23,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   need or demonstrated performance benefit. Keep them behind small shared adapters,
   preserve normal re-frame event tracing, and document the reason. Do not create a
   second state machine/store merely to use a React API.
-- Through `tolgraven.react`, effects may return implicit nil; cleanup functions run
-  on dependency changes/unmount. Hook dependencies accept ordinary Clojure vectors
-  without recursively converting their contents. Memo/callback values are preserved.
+- Through `tolgraven.react`, hooks delegate to upstream `reagent.hooks`. Effects
+  may return implicit nil; cleanup functions run on dependency changes/unmount.
+  Hook dependencies use Clojure value equality without converting their contents;
+  native handles/functions remain opaque. Memo/callback helpers require explicit
+  dependencies. Equal state/reducer updates retain the previous value identity.
   Browser adapters must release their listeners/observers/timers and guard SSR.
 
 ## Ownership and feature contracts

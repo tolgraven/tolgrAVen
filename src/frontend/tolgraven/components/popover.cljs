@@ -35,7 +35,7 @@
          (when (and observer @*element) (.observe observer @*element))
          (.addEventListener js/window "resize" measure!)
          #(do (when observer (.disconnect observer))
-              (.removeEventListener js/window "resize" measure!))) #js [])
+              (.removeEventListener js/window "resize" measure!))) [])
          (when open?
            [portal/<portal> js/document.body
             [:div.popover-layer

@@ -55,7 +55,7 @@
                       (cond (fn? ref) (ref image)
                             ref (set! (.-current ^js ref) image))
                       js/undefined)
-                    #js [src ref])]
+                    [src ref])]
      (if (sources/should-use-modern-formats? src)
       (let [avif-src (sources/replace-extension src "avif")
             webp-src (sources/replace-extension src "webp")

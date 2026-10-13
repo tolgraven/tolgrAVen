@@ -80,8 +80,8 @@
              ;; caret during later page/layout changes, even after navigation.
              (when (identical? input (.-activeElement js/document))
                (.blur input))))
-         js/undefined))
-     #js [open?])
+         nil))
+     [open?])
    [styled-input/<input-text-styled>
     :id "search-input"
     :query-by query-by

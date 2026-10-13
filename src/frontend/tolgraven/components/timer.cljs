@@ -10,7 +10,7 @@
   (react/use-effect
    (fn []
      (let [timer (js/setTimeout f milliseconds)]
-       #(js/clearTimeout timer))) #js [])
+       #(js/clearTimeout timer))) [])
   nil)
 
 (defn use-delayed-visible?
@@ -20,10 +20,10 @@
     (react/use-effect
      (fn []
        (if visible?
-         (do (set-retained! true) js/undefined)
+         (do (set-retained! true) nil)
          (let [timer (js/setTimeout #(set-retained! false) delay-ms)]
            #(js/clearTimeout timer))))
-     #js [visible? delay-ms])
+     [visible? delay-ms])
     (or visible? retained?)))
 
 (defn use-delayed-hide
@@ -35,5 +35,5 @@
         show! #(do (cancel!) (set-visible! true))
         hide! #(do (cancel!)
                    (set! (.-current *timer) (js/setTimeout (fn [] (set-visible! false)) delay-ms)))]
-    (react/use-effect (fn [] cancel!) #js [])
+    (react/use-effect (fn [] cancel!) [])
     [visible? show! hide!]))

@@ -45,11 +45,10 @@ or old test totals in it; documentation describes behavior and remaining work.
    SDK or React API requires them. This is not a blanket ban on `#js`, `set!`,
    `.-current`, Promises, classes or native event listeners.
 
-## First task Replace the custom hook implementation
+## Upstream hook contract
 
-Update [src/frontend/tolgraven/react.cljs](../src/frontend/tolgraven/react.cljs).
-Require `reagent.hooks` once here and delegate the existing public hook names to
-its installed 2.0.1 functions:
+[src/frontend/tolgraven/react.cljs](../src/frontend/tolgraven/react.cljs) delegates
+the public hook names directly to installed Reagent 2.0.1 functions:
 
 | Public helper | Upstream delegate |
 | --- | --- |
@@ -63,28 +62,25 @@ its installed 2.0.1 functions:
 | `use-memo` | `reagent.hooks/use-memo` |
 | `use-callback` | `reagent.hooks/use-callback` |
 
-Inspect the actual library definitions before changing arities. Our current
-`use-memo`/`use-callback` accept a one-argument arity; upstream 2.0.1 exposes a
-two-argument dependency form. Find callers, give them explicit dependencies or
-remove unnecessary memoization, and update the public contract deliberately.
-Do not emulate an undocumented upstream arity. Upstream `use-imperative-handle`
+`use-memo`/`use-callback` require an explicit dependency collection, following
+upstream's two-argument contract. Do not emulate an undocumented upstream arity.
+Inspect installed definitions when extending the hook surface. `use-imperative-handle`
 has different dependency adaptation details; do not claim every hook has the
 same Clojure-aware behavior.
 
-Remove `hook-dependencies` and `effect-setup` after every caller is migrated.
+Do not reintroduce custom `hook-dependencies` or `effect-setup` implementations.
 Retain React operations that are not wrapped hooks: context creation/provider,
 lazy, Suspense, Profiler, StrictMode, transitions, portal/root operations and the
 small class boundary. Upstream does not replace those with hook functions.
 
-### Intentional semantic changes
+### Equality and cleanup semantics
 
-- Dependency equality changes from per-entry React `Object.is` to upstream
-  Clojure equality over the dependency collection. Equal maps/vectors should
+- Dependency equality uses upstream Clojure equality over the dependency
+  collection. Equal maps/vectors should
   retain memo/callback/effect ownership; changed data should restart it.
 - State/reducer updates producing an equal Clojure value should retain the old
   identity. Do not depend on setting an equal fresh map to force rendering.
-- Upstream effects suppress every non-function result, whereas our custom setup
-  wrapper currently normalizes only nil and exposes other mistakes to React.
+- Upstream effects suppress every non-function result.
   Ensure setup functions return cleanup or no meaningful value. Do not return
   Promises or accidentally return a callable as cleanup.
 - Native arrays are unsuitable as a way to express Clojure value dependencies
@@ -92,8 +88,8 @@ small class boundary. Upstream does not replace those with hook functions.
   hook dependency containers to ordinary Clojure vectors. Functions and native
   handles inside those vectors retain their intended identity semantics.
 
-Update `test/cljs/tolgraven/react_hooks_test.cljs` rather than retaining its current
-equal-map-invalidates expectations. Separate probes for dependency equality from
+`test/cljs/tolgraven/react_hooks_test.cljs` exercises this contract. Separate
+probes for dependency equality from
 enabled/phase changes: changing `enabled?` at the same time as an equal map would
 otherwise hide the semantic distinction. Cover changed maps, equal maps/vectors,
 native handle/function identity changes, state/reducer equal updates, effect

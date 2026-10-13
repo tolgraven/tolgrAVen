@@ -60,5 +60,5 @@
   (after-page! acquire!))
 
 (defc <deferred> []
-  (rf/use-effect (fn [] (or (start!) js/undefined)) #js [])
+  (rf/use-effect (fn [] (or (start!) nil)) [])
   [:<>])

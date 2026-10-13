@@ -251,9 +251,9 @@
     (rf/use-effect
       (fn []
         (if (and (not context/*server?*) (not active?))
-          (or (activation/setup! (.-current *element) options) js/undefined)
-          js/undefined))
-      #js [options active?])
+          (or (activation/setup! (.-current *element) options) nil)
+          nil))
+      [options active?])
     (when-not active?
       [:span.module-load-trigger {:ref *element :aria-hidden true}])))
 
@@ -264,8 +264,8 @@
         loaded (if context/*server?* (get context/*modules* module) (code-spec module))
         resolved (get-in loaded [:view (or view :view)])]
     (rf/use-layout-effect
-      (fn [] (when (or resolved failure loaded) (complete!)) js/undefined)
-      #js [(boolean (or resolved failure loaded))])
+      (fn [] (when (or resolved failure loaded) (complete!)) nil)
+      [(boolean (or resolved failure loaded))])
     [:r> (rf/context-provider restore/hydrating-context) #js {:value hydrating?}
      (cond
        failure [error/<failure> "module" (name module)
@@ -311,8 +311,8 @@
         [committed? set-committed!] (rf/use-state false)
         *trigger (rf/use-ref nil)
         release! (hydration/use-deferred! initial?)
-        complete! (rf/use-callback (fn [] (release!) (set-committed! true)) #js [release!])
-        boundary (rf/use-memo #(make-boundary module) #js [module])
+        complete! (rf/use-callback (fn [] (release!) (set-committed! true)) [release!])
+        boundary (rf/use-memo #(make-boundary module) [module])
         ready? (or context/*server?* (boolean @(rf/subscribe [:loader/code-ready module])))
         failure (when-not context/*server?* @(rf/subscribe [:loader/code-error module]))
         modes (activation/triggers options)
@@ -322,25 +322,25 @@
       (fn []
         (if (and (not context/*server?*) ssr?)
           (listen-code! module (:release! boundary))
-          js/undefined))
-      #js [module ssr? boundary])
+          nil))
+      [module ssr? boundary])
     (rf/use-effect
       (fn []
         (if (and (not context/*server?*) (not hidden?) (or active? (modes :immediate)))
           (do
             (rf/dispatch [:loader/activate (assoc options :args args)])
             ((:release! boundary))
-            js/undefined)
-          js/undefined))
-      #js [module active? hidden? boundary])
+            nil)
+          nil))
+      [module active? hidden? boundary])
     (rf/use-layout-effect
       (fn []
         (if (and (not context/*server?*) (not active?) (not committed?) (.-current *trigger))
           (let [marker (.-current *trigger)
                 target (if ssr? (.-nextElementSibling marker) marker)]
-            (or (activation/setup! target (assoc options :args args)) js/undefined))
-          js/undefined))
-      #js [module options args active? committed? ssr?])
+            (or (activation/setup! target (assoc options :args args)) nil))
+          nil))
+      [module options args active? committed? ssr?])
     (cond
       hidden? (when <before>
                 [:div.before-loading-container

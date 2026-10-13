@@ -336,7 +336,7 @@
    (fn []
      (when @*mounted? (util/scroll-to-end! @*table))
      (reset! *mounted? true)
-     js/undefined))
+     nil))
   (let [messages (:messages @content)]
     [:section#log-container.log-container.solid-bg
      {:ref #(when % (rf/dispatch [:run-highlighter! %]))}

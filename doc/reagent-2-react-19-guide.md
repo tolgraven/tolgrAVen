@@ -7,8 +7,8 @@ every view as a JavaScript React component translated into ClojureScript.
 
 Some of the unfamiliar code in this project comes from browser integration and
 SSR. Some comes from choices in our component runtime. The latter is open to
-improvement. In particular, we should use the upstream `reagent.hooks` wrappers
-through `tolgraven.react`, rather than maintain our own approximation of them.
+improvement. Hooks now delegate to upstream `reagent.hooks` through
+`tolgraven.react`, retaining Clojure equality instead of a custom approximation.
 
 Our full-featured `tolgraven.macros/defc` should continue to build on upstream
 `reagent.core/defc`. Its purpose is to add declarative capabilities while retaining
@@ -16,8 +16,7 @@ Reagent's rendering and reactivity, not to implement another component system.
 
 This guide explains the library differences and evaluates the current design.
 The [refactor brief](../features/reagent-native-refactor.md) gives future agents
-the concrete implementation inventory and verification requirements. It describes
-planned work; the runtime has not been refactored by this documentation change.
+the concrete ownership boundaries and verification requirements.
 
 ## Reading map and scope
 
@@ -213,18 +212,13 @@ initializers. A helper calling hooks is itself a custom hook and should be named
 `use-...` to expose that fact.
 [React rules of hooks](https://react.dev/reference/rules/rules-of-hooks).
 
-### The current shim and the desired shim differ
+### The shim delegates to upstream Reagent
 
-On the inspected PR base, `tolgraven.react` has custom wrappers for effects,
-memoization and callbacks. They accept Clojure dependency sequences by converting
-the outer container into a JS array, while keeping React's `Object.is` comparison.
-Effect callbacks normalize `nil` to `undefined`; other unexpected returns reach
-React diagnostics. State and reducer hooks are direct React aliases.
-
-That is already friendlier than raw React syntax, but still a custom contract.
-It is not equivalent to upstream `reagent.hooks`. The intended direction is to
-delegate to Reagent's wrappers through this same shim, preserving tracing and
-validation around the existing re-frame entry points.
+`tolgraven.react` exposes upstream Reagent effect, layout-effect, memo, callback,
+state, reducer, ref, context and external-store hooks. Application code continues
+using that shim, preserving tracing and validation around re-frame entry points.
+There is no independent hook dependency/cleanup implementation. Memo and callback
+hooks require an explicit Clojure dependency collection.
 
 An upstream illustration of the style we want at that boundary:
 
@@ -259,13 +253,12 @@ be native arrays even though Clojure destructuring works on them.
 [Reagent hooks source](https://github.com/reagent-project/reagent/blob/v2.0.1/src/reagent/hooks.cljs).
 
 For example, rebuilding `{:id 42}` produces an equal Clojure map even if it has a
-new JavaScript identity. The current shim considers that a changed dependency;
-the upstream wrapper can retain the prior dependency collection. This can avoid
+new JavaScript identity. The upstream wrapper retains the prior equal dependency
+collection. This avoids
 unnecessary disconnect/reconnect work for value-oriented configuration.
 
-It is a semantic change. `test/cljs/tolgraven/react_hooks_test.cljs` currently
-asserts the existing identity behavior for equal maps. The future refactor must
-change that expectation deliberately and test both equal and changed values.
+`test/cljs/tolgraven/react_hooks_test.cljs` exercises equal and changed Clojure
+values, state/reducer identity, resource cleanup and native handle/function identity.
 Functions, refs and DOM nodes remain identity-sensitive values; do not recursively
 convert them or treat them as interchangeable configuration data.
 
@@ -416,7 +409,7 @@ See [our SSR guide](ssr.md) and the
 | Full-featured macro based on upstream `r/defc` | Keep | Reuses Reagent tracking and React function identity; project capabilities remain declarative |
 | Hiccup, domain helpers, subscriptions and events | Strong fit | Keeps data transformations ordinary ClojureScript and application actions traceable |
 | Shared appearance/presence/font features | Useful project extensions | Avoid repeated lifecycle code; preserve declarative markup and one resource owner |
-| Current custom hook wrappers | Replace with upstream wrappers | Upstream already supplies Clojure equality/cleanup behavior; migrate its contract explicitly |
+| Upstream hook delegates through the shim | Keep | Reagent owns Clojure equality, state identity and cleanup adaptation |
 | Small error boundary using `create-class` and native state | Justified interop | React's boundary API is class-based; keep the class narrow and preserve retry behavior |
 | Native refs/observers inside motion/video adapters | Justified at the boundary | DOM lifecycle requires native handles; use Clojure configuration around them |
 | Key recovery via `Subvec.-v` and current-component fields | Fragile compatibility code | Depends on implementation representation; isolate and test while investigating a supported replacement |
@@ -448,8 +441,8 @@ improving behavior.
 4. Use local ratoms for genuinely transient view state; scoped subscriptions
    for state that survives remounts. Avoid duplicated state.
 5. Use shared component features before introducing another lifecycle adapter.
-6. When a hook is needed, use the shim delegating to `reagent.hooks` after the
-   planned migration. Include dependencies, cleanup and the SSR contract.
+6. When a hook is needed, use the shim delegating to `reagent.hooks`. Include
+   dependencies, cleanup and the SSR contract.
 7. Keep native containers, refs, observers and Promises at APIs that require them.
 8. Verify actual lifecycle and route behavior when changing adapters, including
    hydration identity, restoration, empty/error states and resource cleanup.

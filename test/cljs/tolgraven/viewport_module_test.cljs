@@ -19,12 +19,12 @@
 (m/defc <target>
   {:features [[:appear "opacity"]]}
   [title committed!]
-  (rf/use-layout-effect (fn [] (committed!) js/undefined) #js [])
+  (rf/use-layout-effect (fn [] (committed!) nil) [])
   [:article {:data-viewport-target true} [:strong title]])
 
 (m/defc <outer> [module committed! outer-committed!]
   (let [value @(rf/subscribe [:state [:viewport-fixture]])]
-    (rf/use-layout-effect (fn [] (outer-committed!) js/undefined) #js [])
+    (rf/use-layout-effect (fn [] (outer-committed!) nil) [])
     [:div
      [:button {:on-click #(rf/dispatch [:state [:viewport-fixture] "Changed"])} (or value "Original")]
      (m/<> {:module module} "Server section" committed!)]))

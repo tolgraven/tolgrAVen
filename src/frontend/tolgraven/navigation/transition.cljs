@@ -237,8 +237,8 @@
           (when (and navigation (not= navigation (.-current *handled)))
             (set! (.-current *handled) navigation)
             (ready! (:target commit) (:completion commit))))
-        js/undefined)
-      #js [commit])))
+        nil)
+      [commit])))
 
 (rf/reg-event-fx :page/navigate
   (fn [{:keys [db]} [_ match]]

@@ -7,7 +7,7 @@
 (defc <settings> "Settings panel for theme and stuff"
   {:features [:error-boundary]}
   []
-  (rf/use-effect (fn [] (rf/dispatch [:settings/read-css-vars]) js/undefined) #js [])
+  (rf/use-effect (fn [] (rf/dispatch [:settings/read-css-vars]) nil) [])
   (let [open? @(rf/subscribe [:state [:settings :panel-open]])
         vars {:line-width         {:unit "rem"  :min 0     :max 1 :step 0.0625}
               :line-width-vert    {:unit "rem"  :min 0     :max 1 :step 0.0625}

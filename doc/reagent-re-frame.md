@@ -3,9 +3,7 @@
 For the library comparison, hook semantics and assessment of our adapters, read
 [Classic Reagent and Reagent 2 with React 19](reagent-2-react-19-guide.md).
 The [native Reagent refactor brief](../features/reagent-native-refactor.md) records
-the requested migration from the current custom hook wrappers to upstream
-`reagent.hooks`; the current hook contract below remains accurate until that
-implementation lands.
+the implementation boundaries and remaining lifecycle review.
 
 The default frontend flow is ordinary Reagent Hiccup backed by re-frame. This
 applies to performance changes, lazy components and third-party React packages as
@@ -112,11 +110,11 @@ must not mutate markup or become a second permanent interaction implementation.
 
 ## Clojure-friendly hook boundary
 
-When hooks are justified, use the shim's wrappers. Dependency collections accept
-Clojure vectors/sequences; only the outer container converts to a native array.
-Maps, functions, refs and other dependencies retain their identities. An existing
-JavaScript array also remains unchanged. React's dependency comparison still uses
-its native identity semantics.
+When hooks are justified, use the shim's upstream `reagent.hooks` delegates.
+Dependencies are Clojure vectors/sequences compared by Clojure value equality.
+Equal maps/vectors retain ownership; changed values restart it. Functions, refs
+and native handles inside those collections remain opaque identity values.
+Do not supply JavaScript dependency arrays or recursively convert their values.
 
 Effects accept implicit nil for no cleanup, so normal `when` forms work:
 
@@ -128,12 +126,14 @@ Effects accept implicit nil for no cleanup, so normal `when` forms work:
   [enabled?])
 ```
 
-The effect wrapper maps nil/undefined to no cleanup and preserves a returned
-cleanup function. Other accidental results remain visible to React diagnostics.
+Upstream effects preserve returned cleanup functions and treat non-function
+results as no cleanup. Setup must not return a Promise or an accidental function;
+start asynchronous work inside setup and return its cancellation/cleanup owner.
 `use-layout-effect` has the same contract. Omitting dependencies reruns after each
 commit; `[]` limits setup to mounting. Follow React's hook ordering rules.
-`use-memo` and `use-callback` accept the same dependency collections and preserve
-calculated/callback return values, including Clojure values and nil.
+`use-memo` and `use-callback` require their dependency collection and preserve
+calculated/callback return values, including Clojure values and nil. State/reducer
+updates retain the previous identity when the new Clojure value is equal.
 
 ## Review before merging
 

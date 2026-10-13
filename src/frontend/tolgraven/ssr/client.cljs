@@ -56,5 +56,5 @@
               (rf/dispatch [:dev-console/hydrated]))
             (rf/dispatch [:page/hydrated])
             (restore/hydrated!))))
-       #(reset! *active? false))) #js [])
+       #(reset! *active? false))) [])
   form)

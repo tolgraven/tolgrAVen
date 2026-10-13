@@ -241,8 +241,8 @@
         (when (not= identity (.-current *previous-identity))
           (set! (.-current *previous-identity) identity)
           (clear!))
-        js/undefined)
-      #js [identity]))
+        nil)
+      [identity]))
   (rf/use-effect
     (fn []
       (let [cancel-connect! (browser-resources/after-page!
@@ -254,5 +254,5 @@
           (.removeEventListener js/document "click" external-click! false)
           (.removeEventListener js/window "pageshow" resumed!)
           (when @*pending (js/clearTimeout @*pending) (reset! *pending nil))
-          (when-let [spec (loader/code-spec :page-capture)] ((:stop! spec)))))) #js [])
+          (when-let [spec (loader/code-spec :page-capture)] ((:stop! spec)))))) [])
   nil)

@@ -39,11 +39,11 @@
                       (when-let [release! @*release]
                         (reset! *release nil)
                         (release!)))
-                    #js [])]
+                    [])]
     (rf/use-layout-effect
       (fn []
         (if defer?
           (do (reset! *release (hold!)) complete!)
-          js/undefined))
-      #js [])
+          nil))
+      [])
     complete!))

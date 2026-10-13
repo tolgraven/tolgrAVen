@@ -168,5 +168,5 @@
       (let [*stop (atom nil)
             cancel! (browser-resources/after-page! #(reset! *stop (start!)))]
         (fn [] (cancel!) (when-let [stop! @*stop] (stop!)))))
-    #js [])
+    [])
   nil)

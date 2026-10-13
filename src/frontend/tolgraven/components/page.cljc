@@ -33,7 +33,7 @@
     (rf/use-layout-effect
       (fn []
         (if force?
-          js/undefined
+          nil
           (do
             ;; Route positioning runs first. Retain the outgoing viewport position
             ;; through that scroll change, as the native snapshot path does.
@@ -41,7 +41,7 @@
                                  (- outgoing-top (.-top (.getBoundingClientRect (.-current *outgoing))))
                                  0)])
             (motion/next-frame! #(set-running! token)))))
-      #js [token force? outgoing-top])
+      [token force? outgoing-top])
     (rf/use-effect
       (fn []
         (if (and (not force?) (= token running) (.-current *outgoing))
@@ -52,8 +52,8 @@
               (when (and element (.-getAnimations element))
                 (motion/prefer-high-frame-rate! (array-seq (.getAnimations element)))))
             (motion/finish-animation! (.-current *outgoing) {} #(set-finished! token)))
-          js/undefined))
-      #js [token running force?])
+          nil))
+      [token running force?])
     [:<>
      (for [[key active? form] (cond-> [[current-key true incoming]]
                                 (and (not force?) (not= token finished))

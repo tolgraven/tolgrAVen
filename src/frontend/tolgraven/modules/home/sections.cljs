@@ -82,8 +82,8 @@
     (rf/use-effect
      (fn []
        (when to-focus? (rf/dispatch [:focus-element "services-bg"]))
-       js/undefined)
-     #js [to-focus?])
+       nil)
+     [to-focus?])
     [:div#services>div.categories
      {:class (when full-screened? "categories-fullscreened")
       :on-click #(rf/dispatch [:state [:services :full-screened?] nil])

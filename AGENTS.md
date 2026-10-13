@@ -6,9 +6,10 @@ instructions concise; detailed schemas, examples and user guides belong in `doc/
 Do not retain completed investigation diaries or historical test counts as current guidance.
 
 ## Current architecture
-- Keep the full-featured `defc` based on upstream `reagent.core/defc`. The requested
-  hook migration and caller inventory live in `features/reagent-native-refactor.md`;
-  use upstream `reagent.hooks` through the existing shim when implementing it.
+- Keep the full-featured `defc` based on upstream `reagent.core/defc`. Hooks delegate
+  to upstream `reagent.hooks` through the existing shim; dependency collections
+  use Clojure equality and equal state updates retain identity. Adapter review
+  and ownership instructions live in `features/reagent-native-refactor.md`.
   See `doc/reagent-2-react-19-guide.md` for the library comparison and design rationale.
 - Reagent 2 / React 19 components use `defc`; full pages use `defpage` and always have an error boundary. Application re-frame calls go through `tolgraven.react`.
 - Module-local `pages.cljc` files contain native Reitit route trees. Module specs expose these declarations; browser and server routers compose them.
@@ -219,9 +220,10 @@ These are required principles for new code and changes to existing code. Follow 
 - Convert JSON/SDK payloads once at the boundary using standard `js->clj`/`clj->js` options. Native events, DOM measurements, React refs and SDK objects legitimately require property access; keep that access in the adapter that owns it.
 - Keep native Promises where a JavaScript API or shared asynchronous adapter requires them. Page/component code should declare dependencies and dispatch events rather than duplicate transport queries and Promise chains. Do not introduce an async library or thin wrappers solely to hide `js/Promise` syntax.
 - `tolgraven.react/use-effect` and `use-layout-effect` accept implicit nil for no
-  cleanup. Hook dependency lists accept Clojure vectors/sequences; conversion is
-  shallow so dependency identities remain intact. Memo/callback return values stay
-  unchanged. Prefer these wrappers over raw React hook imports.
+  cleanup. Hook dependencies are Clojure vectors/sequences compared by value;
+  refs/functions/native handles remain opaque. Memo/callback helpers require
+  explicit dependencies and preserve return values. Use these upstream Reagent
+  delegates over raw React hook imports.
 - Keep adapted React component identities stable across renders. Use Clojure props with Reagent adapters; reserve `#js` containers for APIs that actually require JavaScript values.
 
 ### Toolchain and verification

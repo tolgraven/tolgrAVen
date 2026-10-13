@@ -21,7 +21,7 @@
                      (cond (fn? caller-ref) (caller-ref element)
                            caller-ref (set! (.-current caller-ref) element))
                      js/undefined)
-                   #js [caller-ref])]
+                   [caller-ref])]
     (rf/use-effect
      (fn []
        (if (and lazy? (not visible?) (.-current *element))
@@ -34,9 +34,9 @@
                             #js {:rootMargin "0%"})]
              (.observe observer (.-current *element))
              #(.disconnect observer))
-           (do (show! true) js/undefined))
-         js/undefined))
-     #js [lazy? visible?])
+           (do (show! true) nil))
+         nil))
+     [lazy? visible?])
     ;; React owns the sources. In particular, autoplay cannot initiate a distant
     ;; video request before this observer has admitted it, unlike preload=none.
     (cond-> (-> attrs (dissoc :loading) (assoc :ref capture!))

@@ -337,7 +337,7 @@
          (reset! *cleanup
                  (register-container! id @*element {:trust trust}
                                       observer candidates))
-         #(when @*cleanup (@*cleanup))) #js [])
+         #(when @*cleanup (@*cleanup))) [])
       [:div.link-preview-container
        {:data-link-container true
         :data-link-trust (when trust (name trust))
@@ -400,7 +400,7 @@
            (.observe observer (.-current *element)))
          (.addEventListener js/window "resize" measure!)
          #(do (when observer (.disconnect observer))
-              (.removeEventListener js/window "resize" measure!)))) #js [])
+              (.removeEventListener js/window "resize" measure!)))) [])
     [:div.link-preview__miniature
      {:ref *element
       :aria-hidden true
@@ -427,7 +427,7 @@
                              (js/requestAnimationFrame
                               (fn [] (set-miniature! true)))))))
          #(when @*frame (js/cancelAnimationFrame @*frame))))
-     #js [(:url result) allowed?])
+     [(:url result) allowed?])
     [:div.link-preview__readable
      {:class (when (empty? (:blocks result)) "link-preview__readable--metadata")}
      [:article.link-preview__article
@@ -579,13 +579,13 @@
               (.removeEventListener js/window event handler))
             (close-preview!)
             (doseq [timer [*prefetch-timer *navigation-timer]]
-              (when @timer (js/clearTimeout @timer))))) #js [])
+              (when @timer (js/clearTimeout @timer))))) [])
       (rf/use-effect
        (fn []
          (maybe-prefetch!)
          (when (= :navigate (get-in @state [:active :status]))
            (navigate! (:active @state)))
-         js/undefined))
+         nil))
          (let [active (:active @state)
                {:keys [status title url]} active
                expanded? (= :expanded status)
