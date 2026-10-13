@@ -2,15 +2,15 @@
 
 Use `bb cpu run -- <command>` from a checkout, or the installed
 `~/.local/bin/tolgraven-cpu run -- <command>`. The default admits **two builds at once**, each in an isolated Docker snapshot
-using the existing prefab with **1.5 CPUs and 2 GiB RAM**. The combined Docker
+using the existing prefab with **1.5 CPUs and 4 GiB RAM**. The combined Docker
 ceiling is **3 CPUs**. A third build waits for either inherited-lock slot.
 A smaller `--cpus` value is allowed; values above 1.5 are rejected so concurrent
 builds cannot exceed that ceiling.
 JVMs see one logical processor, two JIT compiler threads, one parallel/concurrent
-GC worker each, and a 1 GiB heap. For a measured larger build:
+GC worker each, and a 2 GiB heap. Run targets sequentially:
 
 ```sh
-tolgraven-cpu run --memory 2500m --java-heap 1792m -- \
+tolgraven-cpu run -- \
   lein with-profile prod,provided run -m shadow.cljs.devtools.cli release app ssr return-worker
 ```
 
@@ -31,7 +31,12 @@ This lets plain agent Docker test commands use the public configuration layout.
 Copy wanted output back only when the owning watch is stopped or absent. The
 launcher never writes a live checkout's `target` or public build files.
 
-The prefab's Maven artifacts are reused. Matching npm manifests use its locked
+Ordinary Docker builds bind the host `~/.m2/repository` at `/root/.m2/repository`
+read/write, sharing downloaded artifacts across worktrees and subsequent builds.
+Maven settings and credentials outside that directory are not mounted. This mount
+hides the prefab's repository; dependencies absent on the host download once into
+the shared cache. BuildKit image creation still bakes dependencies into the prefab
+for remote/fresh hosts. Matching npm manifests use its locked
 `node_modules`; a changed lock installs within the capped container. This does
 not refresh/publish a prefab or deploy anything. An explicit `--image` can select
 a current dependency-hash builder. No credentials or local dev config are copied.
@@ -55,7 +60,7 @@ tolgraven-cpu run --mode buildkit -- make docker-prefab
 ```
 
 This uses a dedicated Docker `docker-container` builder per build slot with a 1.5-CPU CFS quota,
-2 GiB memory/no additional swap, one concurrent BuildKit step, and automatic image
+4 GiB memory/no additional swap, one concurrent BuildKit step, and automatic image
 loading so existing publishing commands work. The standard BuildKit daemon uses
 privileged mode inside the existing Docker VM; it does not install a privileged
 macOS service. The low-priority Docker client runs

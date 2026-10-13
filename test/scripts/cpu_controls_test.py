@@ -17,6 +17,15 @@ spec.loader.exec_module(cpu)
 
 
 class PolicyTests(unittest.TestCase):
+    def test_build_defaults_double_memory_without_increasing_cpu_or_slots(self):
+        with mock.patch.object(sys, 'argv', ['cpu-controls', 'run', '--', 'true']), \
+             mock.patch.object(cpu, 'run', return_value=0) as run:
+            self.assertEqual(cpu.main(), 0)
+            args = run.call_args.args[0]
+            self.assertEqual(args.memory, '4g')
+            self.assertEqual(args.java_heap, '2048m')
+            self.assertEqual(args.cpus, 1.5)
+
     def test_two_locks_admit_two_builds_and_queue_a_third(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
             first = cpu.try_build_lock()
