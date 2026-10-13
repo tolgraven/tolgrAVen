@@ -14,7 +14,7 @@
 (deftest declared-tables-match-existing-contracts
   (with-redefs [config/env {}]
     (is (= #{:site_users :auth_roles :blog_posts :blog_comments :chat_messages
-             :service_configs :store_documents} (set (platform/table-order))))
+             :service_configs :store_documents :site_media} (set (platform/table-order))))
     (is (= #{:comment_votes :user_documents}
            (set (remove (set (platform/table-order)) (platform/delete-order)))))
     (doseq [{:keys [table references]} (platform/table-definitions)

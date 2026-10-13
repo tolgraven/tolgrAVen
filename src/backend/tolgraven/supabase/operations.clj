@@ -3,7 +3,9 @@
             [tolgraven.validation :as validation]
             [tolgraven.supabase.schema :as schema]
             [tolgraven.platform.supabase :as platform]
-            [tolgraven.supabase.auth :as auth]))
+            [tolgraven.supabase.auth :as auth]
+            [tolgraven.media.pipeline :as media]
+            [tolgraven.media.query :as media-query]))
 
 (defn- fail! [status message]
   (throw (ex-info message {:auth/status status})))
@@ -67,7 +69,11 @@
   (rpc! "tolgraven_save_post"
         {:p_actor (auth/ensure-profile! user) :p_post_id (:post-id data)
          :p_title (:title data) :p_text (:text data)
-         :p_tags (:tags data)})))
+         :p_tags (:tags data)
+         :p_image_assets (let [sources (media-query/markdown-sources (:text data))]
+                           (when (> (count sources) 64)
+                             (fail! 400 "Use at most 64 images in one post"))
+                           (media/assets! sources))})))
 
 (when-enabled :gpt nil
   (defn save-document! [user {:keys [path data merge-fields] :as request}]
