@@ -35,7 +35,7 @@
 
 (defn- code-arguments [{:keys [children className]} options {:keys [block? linked?]}]
   ;; SDK code children are text; native React children remain opaque elsewhere.
-  (let [language (some->> className (re-find #"language-([\w-]+)") second)]
+  (let [language (some->> className (re-find #"(?:^|\s)language-([^\s]+)") second)]
     [(if (string? children) children "")
      (merge (select-keys options [:default-language :auto-languages])
             (:code-options options)

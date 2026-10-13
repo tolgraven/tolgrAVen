@@ -22,6 +22,17 @@
         restored (js->clj (js/JSON.parse (js/JSON.stringify (clj->js inventory))) :keywordize-keys true)]
     (is (= #{"view" "website.modules.settings.views/<config-table>"} (set (:settings restored))))))
 
+(deftest native-markdown-code-mapping-preserves-configurable-language-tags
+  (let [arguments (get-in public-markdown/renderers [:code :arguments])
+        [code options] (arguments {:children "std::vector<int> values;"
+                                  :className "highlight language-c++ extra"}
+                                 {:code-options {:line-numbers? true}}
+                                 {:block? true})]
+    (is (= "std::vector<int> values;" code))
+    (is (= "c++" (:language options)))
+    (is (true? (:line-numbers? options)))
+    (is (false? (:inline? options)))))
+
 (deftest metadata-search-includes-docstrings-and-types
   (is (some #(= "website.components.content.box/<highlight-box>" (:name %)) (catalog/search "aside warning")))
   (is (some #(= "website.modules.settings.views/<config-table>" (:name %)) (catalog/search "theme")))
