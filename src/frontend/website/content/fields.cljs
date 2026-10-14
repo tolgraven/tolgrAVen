@@ -57,7 +57,8 @@
   [tag content relative & [attrs line-index]]
   (let [field-path (path content relative)
         original (get-in content relative)
-        candidate (when field-path @(r/subscribe [:get :state :content-editor :fields (pr-str field-path)]))
+        candidate (when (and field-path (editing? content))
+                    @(r/subscribe [:get :state :content-editor :fields (pr-str field-path)]))
         draft (current-draft candidate content)
         moved? (and candidate (nil? draft))
         creating? (when-enabled :cv nil

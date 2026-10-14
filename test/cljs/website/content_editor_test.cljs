@@ -57,8 +57,13 @@
           (let [draft (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))]
             (is (= "Original" (:expected draft)))
             (is (= "Second" (:value draft))))
+          (r/dispatch-sync [:content-editor/change [:intro :text] "Published\nSecond line" "Private draft\nSecond line"])
           (r/dispatch-sync [:state [:active-user] nil])
           (is (= :view (await! (support/subscription-value! [:content/mode]))))
+          (is (= "<p>Published</p>"
+                 (r/render-to-string [fields/<text> :p
+                                      (fields/annotate {:text "Published\nSecond line"} [:intro] :view)
+                                      [:text] nil 0])))
           (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Unauthorized"])
           (is (= "Second" (:value (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))))))
         (.catch #(is false (str %)))
