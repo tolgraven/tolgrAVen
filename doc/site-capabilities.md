@@ -8,6 +8,11 @@ retain file defaults. Omitted options default to enabled. Missing CMS configurat
 (404) uses file defaults. Authentication, network, invalid config and redirect
 failures stop the build. Credentials and webhook settings never enter the snapshot.
 
+The same response may include `styles`, the CMS's bounded plain-CSS variable
+overrides. Resolution writes `resources/site.overrides.css` separately from the
+boolean config; the stylesheet builder validates and appends it after shell
+defaults. No browser-side CMS fetch is involved. See [CMS variable overrides](styles.md#cms-variable-overrides).
+
 ```clojure
 {:modules {:blog {:comments false}
            :strava {:enabled false}}

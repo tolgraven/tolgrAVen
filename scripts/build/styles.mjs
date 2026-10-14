@@ -2,6 +2,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import {readOverrides, checkedOverrides} from './style-overrides.mjs';
 
 const root = 'resources/scss';
 const output = process.env.CSS_OUTPUT_DIR || 'resources/public/css/website';
@@ -27,9 +28,9 @@ async function inputFiles(directory, extensions) {
   }
 }
 
-async function revision(buildEntries) {
+async function revision(buildEntries, overrides) {
   const inputs = [
-    'scripts/build/styles.mjs', 'scripts/build/editor-styles.mjs',
+    'scripts/build/styles.mjs', 'scripts/build/editor-styles.mjs', 'scripts/build/style-overrides.mjs',
     'package.json', 'package-lock.json', 'resources/icon-fonts.json',
     ...(buildEntries.includes('modules/markdown-editor.scss')
       ? ['node_modules/@mdxeditor/editor/dist/style.css'] : []),
@@ -42,6 +43,7 @@ async function revision(buildEntries) {
     ...await inputFiles('src/backend', ['.clj']),
   ].sort();
   const hash = crypto.createHash('sha256');
+  hash.update(overrides).update('\0');
   for (const file of inputs) {
     hash.update(file).update('\0').update(await fs.readFile(file)).update('\0');
   }
@@ -73,7 +75,8 @@ async function current(buildEntries, inputRevision) {
 
 async function build() {
   const buildEntries = await entries();
-  const inputRevision = await revision(buildEntries);
+  const overrides = checkedOverrides(await readOverrides());
+  const inputRevision = await revision(buildEntries, overrides);
   if (ifStale && await current(buildEntries, inputRevision)) {
     console.log(`CSS is current in ${output}`);
     return;
@@ -86,9 +89,10 @@ async function build() {
     await fs.mkdir(path.dirname(file), {recursive: true});
     if (!postcssOnly) {
       const result = compile(path.join(root, entry), {style: 'compressed', charset: false});
-      await fs.writeFile(file, entry === 'modules/markdown-editor.scss'
+      const css = entry === 'modules/markdown-editor.scss'
         ? `${await editorStyles()}\n${result.css}` : entry === 'modules/maps.scss'
-        ? result.css.replaceAll('url(images/', 'url(/vendor/leaflet/images/') : result.css);
+        ? result.css.replaceAll('url(images/', 'url(/vendor/leaflet/images/') : result.css;
+      await fs.writeFile(file, entry === 'main.scss' && overrides ? `${css}\n${overrides}` : css);
     }
     if (!sassOnly) {
       const result = await postcss([autoprefixer]).process(await fs.readFile(file, 'utf8'),
@@ -113,7 +117,8 @@ if (watch) {
     const files = await fs.readdir(watched, {recursive: true});
     const fontRevision = postcssOnly ? ''
       : `opensans:${(await fs.stat('resources/public/css/opensans.css')).mtimeMs}`;
-    return fontRevision + (await Promise.all(files.filter(name => postcssOnly
+    const overrides = await readOverrides();
+    return fontRevision + overrides + (await Promise.all(files.filter(name => postcssOnly
       ? name.endsWith('.css') && !name.endsWith('.min.css') : name.endsWith('.scss'))
       .map(async name => `${name}:${(await fs.stat(path.join(watched, name))).mtimeMs}`)))
       .sort().join('|');

@@ -44,7 +44,7 @@
                     :task (apply dev/integration! *command-line-args*)}
   test:scripts {:doc "Run isolated Babashka/media/operations tests"
                 :task (dev/test!)}
-  site:resolve {:doc "Resolve optional CMS capability overrides from the configured Strapi origin"
+  site:resolve {:doc "Snapshot CMS capability and CSS variable overrides before building"
                 :task (do (require 'build.resolve-site) (apply (resolve 'build.resolve-site/-main) *command-line-args*))}
   site:manifest {:doc "Print declaration-derived site/schema JSON, or SQL [sql]"
                  :task (do (require 'build.site) (apply (resolve 'build.site/-main) *command-line-args*))}

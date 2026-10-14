@@ -67,6 +67,7 @@ config/local*.edn
 
 !scripts/build/resolve_site.clj
 resources/site.overrides.edn
+resources/site.overrides.css
 
 # Private runtime files cannot enter build layers.
 env/dev/resources/config.edn

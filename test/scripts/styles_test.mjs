@@ -25,6 +25,7 @@ try {
   await fs.symlink(path.join(project, 'node_modules'), path.join(fixture, 'node_modules'), 'dir');
   await write('scripts/build/styles.mjs', await fs.readFile(path.join(project, 'scripts/build/styles.mjs')));
   await write('scripts/build/editor-styles.mjs', await fs.readFile(path.join(project, 'scripts/build/editor-styles.mjs')));
+  await write('scripts/build/style-overrides.mjs', await fs.readFile(path.join(project, 'scripts/build/style-overrides.mjs')));
   await write('package.json', '{"type":"module"}');
   await write('package-lock.json', '{}');
   await write('resources/icon-fonts.json', '{}');
@@ -73,6 +74,26 @@ try {
   await write('resources/scss/modules/new-owner.scss', '.new-owner { display: grid; }');
   rebuilt();
   assert.match(await read('resources/public/css/website/modules/new-owner.min.css'), /new-owner/);
+
+  await write('resources/site.overrides.css', ':root { --space: 1.5rem; --line-width: 0.125rem; }');
+  rebuilt();
+  const overridden = await read('resources/public/css/website/main.min.css');
+  assert.match(overridden, /--space:\s*1.5rem/);
+  assert.ok(overridden.indexOf('--space:') > overridden.indexOf('progressive-image__final'));
+  assert.doesNotMatch(await read('resources/public/css/website/modules/home.min.css'), /--space:/);
+  assert.match(build(), /CSS is current/);
+  checks++;
+  await write('resources/site.overrides.css', ':root { --space: 2rem; }');
+  rebuilt();
+  assert.match(await read('resources/public/css/website/main.min.css'), /--space:\s*2rem/);
+  await write('resources/site.overrides.css', ':root { --space: 3rem; ');
+  const invalid = spawnSync(process.execPath, ['scripts/build/styles.mjs', '--if-stale'], {cwd: fixture, encoding: 'utf8'});
+  assert.notEqual(invalid.status, 0);
+  assert.match(await read('resources/public/css/website/main.min.css'), /--space:\s*2rem/);
+  checks++;
+  await fs.rm(path.join(fixture, 'resources/site.overrides.css'));
+  rebuilt();
+  assert.doesNotMatch(await read('resources/public/css/website/main.min.css'), /--space:/);
 
   const partial = spawnSync(process.execPath, ['scripts/build/styles.mjs', '--if-stale', '--sass-only'],
     {cwd: fixture, encoding: 'utf8'});
