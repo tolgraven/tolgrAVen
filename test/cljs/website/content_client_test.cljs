@@ -322,11 +322,11 @@
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 
-(deftest startup-content-is-scoped-to-the-current-route
+(deftest startup-content-does-not-gate-the-shell-on-route-modules
   (is (= contract/shell-content (content/bootstrap-keys nil "/test/liquid-glass")))
-  (is (= (contract/keys-for-route :cv) (content/bootstrap-keys nil "/cv")))
-  (is (= (contract/keys-for-route :home) (content/bootstrap-keys nil "/about")))
-  (is (not (some #{:cv :docs :github-settings :codex-profile}
+  (is (= contract/shell-content (content/bootstrap-keys nil "/cv")))
+  (is (= contract/shell-content (content/bootstrap-keys nil "/about")))
+  (is (not (some #{:intro :story :strava :cv :docs :github-settings :codex-profile}
                  (content/bootstrap-keys nil "/"))))
   (is (= [:document] (content/bootstrap-keys {:deferred? true, :content {:document {}}} "/cv"))))
 
@@ -378,3 +378,46 @@
 
 (deftest cms-managed-deadline-includes-both-transport-attempts
   (is (> (:timeout-ms (get @data/*sources :strapi)) (* 2 content/request-timeout-ms))))
+
+(deftest missing-route-content-does-not-reject-client-bootstrap
+  (async done
+    (-> (go-promise
+          (let [before @r/*app-db
+                failures @status/*failures
+                context @restore/*context
+                tracked @storage/*tracked
+                original content/request!
+                *calls (atom [])]
+            (reset! content/*pending {})
+            (reset! status/*failures {})
+            (reset! r/*app-db {:content {}})
+            (restore/begin! {:back? false})
+            (set! content/request!
+                  (fn [ks]
+                    (swap! *calls conj ks)
+                    (if (some #{:story} ks)
+                      (js/Promise.reject (js/Error. "Missing route content"))
+                      (let [bundle {:version contract/version
+                                    :content (into {} (map (fn [k] [k (if (#{:footer :post-footer} k) [] {})])) ks)}]
+                        (r/dispatch-sync [:content/install bundle])
+                        (js/Promise.resolve bundle)))))
+            (-> (content/bootstrap!)
+                (.then (fn [_]
+                         (is (= [(vec (sort contract/shell-content))] @*calls))
+                         (is (= :ready (get-in @r/*app-db [:state :content :status])))
+                         (-> (content/ensure! [:story])
+                             (.then (fn [_] (is false "The unavailable route dependency must fail")))
+                             (.catch (fn [_] nil)))))
+                (.then (fn [_]
+                         (is (every? #(contains? (:content @r/*app-db) %) contract/shell-content))
+                         (is (= :ready (get-in @r/*app-db [:state :content :status])))
+                         (is (= #{[:strapi [:story]]} (set (keys @status/*failures))))))
+                (.finally (fn []
+                            (set! content/request! original)
+                            (reset! r/*app-db before)
+                            (reset! status/*failures failures)
+                            (reset! restore/*context context)
+                            (reset! storage/*tracked tracked)
+                            (storage/remove! :public-content content/cache-options))))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))

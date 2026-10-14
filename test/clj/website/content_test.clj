@@ -199,3 +199,32 @@
           (finally (deliver release true)))
         (is (= 503 (:status (deref failed 1000 {}))))
         (is (empty? (get @content/*inflight "https://overlapping.test")))))))
+
+(deftest module-startup-content-failure-does-not-block-shell-or-other-headings
+  (let [original @content/*immediate
+        *calls (atom [])]
+    (try
+      (reset! content/*immediate nil)
+      (with-redefs [content/settings (constantly {:url "https://startup-isolation.test"})
+                    pages/immediate-keys (constantly [:document :footer :blog :docs])
+                    http/get (fn [_ options]
+                               (let [ks (get-in options [:query-params "keys"])]
+                                 (swap! *calls conj ks)
+                                 (case ks
+                                   "document,footer" {:status 200
+                                                      :body {:version contract/version
+                                                             :content {:document {:title "Shell"}, :footer []}}}
+                                   "blog" {:status 400}
+                                   "docs" {:status 200
+                                           :body {:version contract/version
+                                                  :content {:docs {:heading {:title "Docs"}}}}})))]
+        (is (= {:document {:title "Shell"}, :footer []} (content/refresh-immediate! false)))
+        (is (= ["document,footer"] @*calls) "Optional module reads do not gate startup")
+        (let [warm (content/refresh-immediate!)]
+          (is (= "Shell" (get-in warm [:document :title])))
+          (is (= "Docs" (get-in warm [:docs :heading :title])))
+          (is (not (contains? warm :blog)))
+          (is (= warm (content/immediate-content))))
+        (swap! content/*immediate assoc-in [:content :blog] {:heading {:title "Retained"}})
+        (is (= "Retained" (get-in (content/refresh-immediate!) [:blog :heading :title]))))
+      (finally (reset! content/*immediate original)))))

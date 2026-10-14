@@ -104,11 +104,10 @@
 (r/reg-fx :content/load #(prefetch! %))
 (r/reg-event-fx :content/load (fn [_ [_ ks]] {:content/load ks}))
 
-(defn bootstrap-keys [embedded pathname]
+(defn bootstrap-keys [embedded _pathname]
   (if (:deferred? embedded)
     (vec (keys (:content embedded)))
-    (let [route (or (second (string/split pathname #"/")) "home")]
-      (contract/keys-for-route (if (#{"" "about" "services" "hire"} route) :home (keyword route))))))
+    contract/shell-content))
 
 (defn- bootstrap-ready! []
   (try
@@ -127,7 +126,7 @@
                                        #(apply dissoc % (keys (cached-content))))]))))
       (storage/track! :public-content
                       #(hash-map :version contract/version :content (cached-content)) cache-options)
-      ;; Startup needs only the current shell/route. Optional modules acquire
+      ;; Startup needs only the shared shell. Route/feature modules acquire
       ;; their own content through the loader and retain their local retry UI.
       (-> (ensure! (bootstrap-keys embedded (.-pathname js/location)))
           (.then (fn [result] (status/recover! :strapi-bootstrap) (storage/schedule!) result))))

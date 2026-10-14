@@ -2,11 +2,11 @@
 
 The web app's public `:content` comes from the Clojure backend. Static editorial
 content has moved out of `db.cljs`; only UI state, routes and options remain there.
-On a client-rendered page load the browser installs the shell and current route's
-content before mounting the app. Optional modules acquire their declared sections
-when activated. A retry screen handles
-unavailable content. Supabase continues to own authentication, posts, comments, chat and
-private documents.
+On a client-rendered page load the browser installs only the shared shell
+content before mounting the app. Route and feature modules acquire their
+declared sections through their own boundaries when activated. A retry screen
+handles unavailable shell content; module boundaries handle their own failures.
+Supabase continues to own authentication, posts, comments, chat and private documents.
 
 The backend uses `STRAPI_URL` and `STRAPI_READ_TOKEN` to call the token-protected
 CMS bundle. Both variables stay server-side. Responses contain only the public
@@ -41,7 +41,8 @@ shell and route content. Optional `CONTENT_BOOTSTRAP_MODE=route` embeds only tha
 snapshot, safely serialized in a non-executable JSON script. The frontend installs
 it and fetches remaining sections through module init or viewport prefetch. `full`
 embeds all sections and therefore requires all declared CMS sections to exist.
-The default frontend acquisition loads only shell and route content.
+The default frontend acquisition loads only shared shell content. Route/feature
+content failures remain within their owning modules.
 This prepares shared data and hydration state; React server rendering and
 `hydrateRoot` are deliberately not implemented in this first integration.
 
@@ -132,3 +133,12 @@ forces deletion and does not remove volumes or S3 registry images.
 `make docker-clean` also removes dangling images and asks BuildKit to reduce
 unused build cache toward 4 GB, retaining active cache. Automatic build cleanup
 keeps the build cache intact so subsequent local builds remain fast.
+
+## Startup readiness
+
+HTTP readiness requires the shared shell sections. The existing scheduled
+refresh worker then warms module-owned startup headings independently; failure
+keeps that heading's last successful value and does not prevent healthy headings
+from warming. A cold route can acquire missing content through its normal
+managed dependency. Client startup likewise gates only on shell content; route
+modules own loading/error/retry through their existing boundaries.
