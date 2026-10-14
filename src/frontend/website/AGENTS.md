@@ -125,6 +125,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   `blog/presentation.cljc`; the blog page retains shell ownership. Comment action
   links retain native hrefs and use owned hover/focus labels rather than title
   attributes. Text collapse controls require measured truncation.
+  Shared composition, upload events/models and styles live under `markdown_editor/`;
+  post publishing, private drafts and library controls stay under `blog_editor/`.
   Posts and comments use the Markdown editor's shared composer with explicit
   enabled tools and a form path. Comment owners allow file uploads but never
   subscribe to the server library or enable site components. Comment rendering

@@ -11,6 +11,7 @@
             [website.component.storage :as storage]
             [website.listener :as listener]
             [website.modules.blog-editor.editor :as blog-editor]
+            [website.modules.markdown-editor.authoring :as authoring]
             [website.modules.blog-editor.views :as blog-views]
             [website.modules.blog.presentation :as presentation]
             [website.test-support :as support]))
@@ -40,7 +41,7 @@
         text @(r/subscribe [:form-field [:write-comment [42] :text]])]
     [:main.editor-demo
      [:h1 "Comment authoring"]
-     [blog-editor/<markdown-editor> {:owner owner
+     [authoring/<markdown-editor> {:owner owner
                                      :kind :comment
                                      :form-path [:write-comment [42] :text]
                                      :library? false}]

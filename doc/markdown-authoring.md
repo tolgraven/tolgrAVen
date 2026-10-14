@@ -3,8 +3,9 @@
 The saved document remains Markdown. `/blog/new-post` belongs to `:blog-editor`,
 which owns the posting form, media-library UI and serialized attachment queue.
 The reusable visual SDK, its toolbar and rich help live in the independently lazy
-`:markdown-editor` bundle. `blog-editor` declares `:site/owner :blog`, and `markdown-editor` follows
-`blog-editor`; disabled parents prune child code, routes and packaged assets.
+`:markdown-editor` bundle. `blog-editor` and `markdown-editor` both declare `:site/owner :blog`.
+The shared Markdown editor remains available to comments when post authoring is
+disabled; disabling Blog prunes both owners, their routes and packaged assets.
 Attachment rows show measured upload bytes, an indeterminate conversion phase,
 and success/error surfaces with retry/remove. Byte callbacks retain the transport
 auth owner and queue attempt guards; cancelled and replaced attempts cannot update
@@ -288,3 +289,14 @@ cannot become embedded site content. The comment upload endpoint requires a
 registered account and owns its processing jobs; library listing still requires
 a blogger or administrator. Upload anchors, retries and completion target the
 editor's own form, and submission waits for its pending image insertions.
+
+Shared composition, image queue/state, anchor helpers and styles belong to the
+Markdown editor module. Blog Editor supplies post draft identity and privileged
+library controls, while comments supply their own form path without that owner.
+Disabling Blog Editor therefore excludes its entire source and stylesheet subtree
+without disabling comment composition.
+
+Run `tolgraven-cpu run -- bash scripts/test/comment-authoring.sh` to compile
+the actual browser graph with post authoring disabled and check the resolved
+source manifest and selected stylesheet inventory. The script changes only
+the isolated build snapshot and restores its selection on exit.

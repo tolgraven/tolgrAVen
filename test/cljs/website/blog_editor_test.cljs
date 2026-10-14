@@ -9,10 +9,11 @@
             [website.modules.blog.subs]
             [website.events]
             [website.subs]
-            [website.modules.blog-editor.model :as model]
-            [website.modules.blog-editor.anchors :as anchors]
+            [website.modules.markdown-editor.model :as model]
+            [website.modules.markdown-editor.anchors :as anchors]
             [website.modules.blog-editor.editor :as editor]
-            [website.modules.blog-editor.files :as file-boundary]
+            [website.modules.markdown-editor.authoring :as authoring]
+            [website.modules.markdown-editor.files :as file-boundary]
             [website.modules.blog-editor.views :as views]
             [website.modules.markdown-editor.source :as source]
             [website.modules.markdown-editor.source-model :as source-model]
@@ -611,7 +612,7 @@
       (-> (go-promise
             (let [mounted (await! (support/create-root! element))]
               (reset! root mounted)
-              (await! (support/render! mounted [editor/<markdown-editor>
+              (await! (support/render! mounted [authoring/<markdown-editor>
                                                 {:owner owner
                                                  :kind :comment
                                                  :form-path path

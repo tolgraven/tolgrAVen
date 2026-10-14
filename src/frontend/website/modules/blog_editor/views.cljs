@@ -7,7 +7,7 @@
             [website.modules.blog.presentation :as blog]
             [website.modules.blog-editor.editor :as editor]
             [website.modules.blog-editor.draft :as draft]
-            [website.modules.blog-editor.model :as editor-model]))
+            [website.modules.markdown-editor.model :as editor-model]))
 
 (defc <preview-blog> "Render new post preview"
   [{{:keys [title text image-assets]} :post :keys [owner] :as spec}]

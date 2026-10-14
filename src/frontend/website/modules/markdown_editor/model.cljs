@@ -1,8 +1,8 @@
-(ns website.modules.blog-editor.model
+(ns website.modules.markdown-editor.model
   "Pure draft attachment transformations. Upload files and status are transient."
   (:require [clojure.string :as string]
             [website.components.content.upload-schema :as upload-schema]
-            [website.modules.blog-editor.anchors :as anchors]
+            [website.modules.markdown-editor.anchors :as anchors]
             [website.media.schema :as media]))
 
 (def uploading-statuses #{:queued :uploading :processing})

@@ -2,7 +2,7 @@
   #?(:cljs (:require [website.component.registry]
                      [website.macros :refer-macros [defc]]
                      #?(:browser [website.modules.markdown-editor.views :as rich])
-                     #?(:browser [website.modules.blog-editor.editor :as authoring]))))
+                     #?(:browser [website.modules.markdown-editor.authoring :as authoring]))))
 
 #?(:cljs
    (defc <editor>

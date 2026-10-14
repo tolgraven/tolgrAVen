@@ -1,3 +1,5 @@
+@use "markdown-editor/authoring";
+
 // The build prepends editor vendor rules scoped to this owner, with relative units.
 .site-md-editor {
   color: var(--fg-1);

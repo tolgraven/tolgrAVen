@@ -7,7 +7,7 @@
             [website.schema.common :as common]
             [website.media.query :as media-query]
             [website.modules.blog-editor.draft-schema :as schema]
-            [website.modules.blog-editor.model :as model]))
+            [website.modules.markdown-editor.model :as model]))
 
 (def form-path [:state :form-field :post-blog])
 (def state-path [:state :blog-editor :draft])
