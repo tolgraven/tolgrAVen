@@ -163,13 +163,17 @@
                      (.dispatchEvent picker (js/Event. "change" #js {:bubbles true})))
                    (support/wait-for! #(= 2 (count @*requests)))))
           (.then (fn [_]
-                   (is (every? #(.includes (:uri %) "/contents/source.clj?ref=") @*requests))
+                   (is (= #{(str "/api/github/contents?user=u&repo=r&ref=" parent "&path=source.clj")
+                            (str "/api/github/contents?user=u&repo=r&ref=" sha "&path=source.clj")}
+                          (set (map :uri @*requests))))
                    (let [patch (.querySelector element "button[aria-pressed='false']")]
                      (is (= "Straight patch" (.-textContent patch)))
                      (.click patch))
                    (support/wait-for! #(= 3 (count @*requests)))))
           (.then (fn [_]
-                   (is (= "application/vnd.github.patch" (get-in (last @*requests) [:headers "Accept"])))
+                   (is (= (str "/api/github/commits/" sha "/patch?user=u&repo=r")
+                          (:uri (last @*requests))))
+                   (is (= "text/plain" (get-in (last @*requests) [:headers "Accept"])))
                    (is (nil? (.querySelector element ".neovim__grid")) "Recovery choices remain independent of WASM startup")))
           (.catch #(is false (str %)))
           (.finally (fn []
