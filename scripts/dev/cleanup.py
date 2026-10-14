@@ -52,8 +52,62 @@ def active_processes(target):
         if pid == os.getpid():
             continue
         directory = proc.cwd(pid)
-        if cpu.within(directory, [target]):
+        requested = False
+        if Path(record['path']).name.lower().startswith('python'):
+            try:
+                args = proc.argv(pid)
+                marker = next((i for i, arg in enumerate(args) if Path(arg).name == 'cpu_controls.py'), None)
+                if marker is not None and args[marker + 1:marker + 2] in [['run'], ['runtime']]:
+                    tail = args[marker + 2:]
+                    # Only launcher options before the command delimiter own checkout.
+                    options = tail[:tail.index('--')] if '--' in tail else tail
+                    if '--checkout' in options:
+                        index = options.index('--checkout')
+                        requested = cpu.within(Path(options[index + 1]).resolve(), [target])
+            except (OSError, RuntimeError, ValueError, IndexError):
+                pass
+        if requested or cpu.within(directory, [target]):
             active.append({'pid': pid, 'command': record['path'], 'cwd': str(directory)})
+    return active
+
+
+def active_docker_builds(target):
+    """Check reservations and exact original container mounts, including old launchers."""
+    proc = cpu.MacProcesses()
+    active = []
+    for _, record in cpu.build_records():
+        owner_live = proc.same(record.get('owner', {}))
+        guardian_live = bool(record.get('guardian') and proc.same(record['guardian']))
+        output = Path(record['output']).resolve() if isinstance(record.get('output'), str) else None
+        if cpu.within(output, [target]) and (owner_live or guardian_live):
+            active.append({'name': record['name'], 'output': str(output)})
+            continue
+        endpoint = record.get('endpoint', '')
+        name = record.get('name', '')
+        if not endpoint.startswith('unix://') or not name or not record.get('token'):
+            raise RuntimeError('Cannot verify a build reservation; use the supported recovery path.')
+        inspected = subprocess.run(
+            ['docker', '--host', endpoint, 'inspect', '--format',
+             '{{json .Config.Labels}}\n{{json .Mounts}}\n{{json .State.Running}}', name],
+            capture_output=True, text=True, timeout=15, env=cpu.docker_environment())
+        if inspected.returncode:
+            error = inspected.stderr.lower()
+            absent = name.lower() in error and ('no such object:' in error or 'no such container:' in error)
+            if not absent:
+                raise RuntimeError('Cannot verify an owned build container; preserve the worktree.')
+            if (owner_live or guardian_live) and output is None:
+                raise RuntimeError('An older live build has not exposed its output mount yet; preserve the worktree.')
+            continue
+        try:
+            labels, mounts, running = [json.loads(line) for line in inspected.stdout.splitlines()]
+            if labels.get('tolgraven.cpu.token') != record['token']:
+                raise RuntimeError('Build container ownership changed; preserve the worktree.')
+            for mount in mounts:
+                source = Path(mount['Source']).resolve()
+                if cpu.within(source, [target]) and (running or owner_live or guardian_live):
+                    active.append({'name': name, 'output': str(source)})
+        except (ValueError, TypeError, KeyError):
+            raise RuntimeError('Invalid build container inventory; preserve the worktree.')
     return active
 
 
@@ -84,6 +138,9 @@ def worktree_plan(checkout, requested):
     if git(target, 'status', '--porcelain', '--untracked-files=all'):
         raise RuntimeError('Tracked changes or untracked source remain; preserve the worktree.')
     pr = merged_task(checkout, branch, head)
+    builds = active_docker_builds(target)
+    if builds:
+        raise RuntimeError('Docker builds still use the worktree: ' + json.dumps(builds))
     writers = active_cache_writers(target)
     if writers:
         raise RuntimeError('Compiler writers still use the worktree: ' + json.dumps(writers))

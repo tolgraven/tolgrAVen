@@ -1057,7 +1057,9 @@ def docker_run(args, command, lock, output, endpoint, cache):
     owner = MacProcesses().identity(os.getpid())
     save_json(reservation_path(name), {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
     guardian, guardian_identity = start_docker_guardian(owner, name, token, endpoint, lock, (cache[1],) if cache else ())
-    save_json(reservation_path(name), {'owner': owner, 'guardian': guardian_identity, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
+    save_json(reservation_path(name), {'owner': owner, 'guardian': guardian_identity, 'cpus': args.cpus, 'name': name,
+                                       'endpoint': endpoint, 'token': token, 'checkout': str(Path(args.checkout).resolve()),
+                                       'output': str(output)})
     bootstrap = docker_bootstrap(args.node_deps)
     image = cache[2] if cache else args.image
     cache_mount = ['--mount', f'type=bind,source={cache[0]},target=/workspace/.shadow-cljs/builds'] if cache else []

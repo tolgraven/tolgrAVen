@@ -77,7 +77,8 @@ bb cleanup --worktree /path/to/completed/tolgrAVen --remove-worktree --apply
 
 Retirement requires a registered feature branch with no tracked/untracked source
 changes, an exact head matching a merged PR in `origin/master`, no open follow-up,
-and no process with a working directory inside the target. It rechecks these
+no process with a working directory inside the target, and no owned Docker
+reservation/container mounting its output (including cache-disabled/legacy builds). It rechecks these
 conditions before removal. Ignored private configuration and task/review records
 are archived with restricted permissions under `.local-wip/task-archives` before
 ordinary `git worktree remove`; reproducible compiler/dependency/output trees are

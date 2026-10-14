@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -46,6 +47,7 @@ class CleanupTests(unittest.TestCase):
             cleanup.worktree_plan(self.root, self.target)
         (self.target / 'unfinished.cljs').unlink()
         with mock.patch.object(cleanup, 'merged_task', return_value=123), \
+                mock.patch.object(cleanup, 'active_docker_builds', return_value=[]), \
                 mock.patch.object(cleanup, 'active_cache_writers', return_value=[]), \
                 mock.patch.object(cleanup, 'active_processes', return_value=[{'pid': 123}]):
             with self.assertRaisesRegex(RuntimeError, 'Processes'):
@@ -56,6 +58,7 @@ class CleanupTests(unittest.TestCase):
 
     def test_active_compiler_writer_blocks_worktree_removal(self):
         with mock.patch.object(cleanup, 'merged_task', return_value=123), \
+                mock.patch.object(cleanup, 'active_docker_builds', return_value=[]), \
                 mock.patch.object(cleanup, 'active_cache_writers', return_value=['locked']):
             with self.assertRaisesRegex(RuntimeError, 'Compiler writers'):
                 cleanup.worktree_plan(self.root, self.target)
@@ -75,6 +78,53 @@ class CleanupTests(unittest.TestCase):
         with mock.patch.object(cleanup.subprocess, 'check_output', return_value=opened):
             with self.assertRaisesRegex(RuntimeError, 'open PR'):
                 cleanup.merged_task(self.root, 'codex/fixture', 'new')
+
+    def test_foreign_cwd_launcher_is_protected_even_before_snapshot_reservation(self):
+        proc = mock.Mock()
+        proc.all.return_value = {123: {'path': '/fixture/Python'}}
+        proc.cwd.return_value = self.root
+        proc.argv.return_value = ['python3', '/fixture/cpu_controls.py', 'run', '--checkout',
+                                  str(self.target), '--shadow-cache', 'off', '--', 'echo', 'fixture']
+        with mock.patch.object(cleanup.cpu, 'MacProcesses', return_value=proc):
+            self.assertEqual(cleanup.active_processes(self.target)[0]['pid'], 123)
+
+    def test_cross_checkout_build_without_cache_is_protected_by_legacy_container_mount(self):
+        record = {'name': 'owned-build', 'token': 'token', 'endpoint': 'unix:///fixture',
+                  'owner': {'pid': 12}, 'guardian': {'pid': 13}}
+        mounts = '[{"Source":' + json.dumps(str(self.target / '.local-wip/cpu-builds/live')) + '}]'
+        inspected = mock.Mock(returncode=0, stdout='{"tolgraven.cpu.token":"token"}\n' + mounts + '\ntrue')
+        proc = mock.Mock(); proc.same.return_value = True
+        with mock.patch.object(cleanup.cpu, 'MacProcesses', return_value=proc), \
+                mock.patch.object(cleanup.cpu, 'build_records', return_value=[(None, record)]), \
+                mock.patch.object(cleanup.subprocess, 'run', return_value=inspected):
+            self.assertEqual(cleanup.active_docker_builds(self.target)[0]['name'], 'owned-build')
+
+    def test_unavailable_docker_inventory_fails_closed_and_recorded_prelaunch_output_is_protected(self):
+        record = {'name': 'owned-build', 'token': 'token', 'endpoint': 'unix:///fixture',
+                  'owner': {'pid': 12}, 'guardian': {'pid': 13}}
+        proc = mock.Mock(); proc.same.return_value = True
+        with mock.patch.object(cleanup.cpu, 'MacProcesses', return_value=proc), \
+                mock.patch.object(cleanup.cpu, 'build_records', return_value=[(None, record)]), \
+                mock.patch.object(cleanup.subprocess, 'run', return_value=mock.Mock(returncode=1, stderr='socket unavailable')):
+            with self.assertRaisesRegex(RuntimeError, 'Cannot verify'):
+                cleanup.active_docker_builds(self.target)
+            record['output'] = str(self.target / '.local-wip/cpu-builds/prelaunch')
+            self.assertEqual(cleanup.active_docker_builds(self.target)[0]['name'], 'owned-build')
+
+    def test_applied_retirement_archives_private_data_and_preserves_branch_recovery(self):
+        (self.target / 'private.edn').write_text('recoverable')
+        args = ['cleanup', '--checkout', str(self.root), '--worktree', str(self.target), '--remove-worktree', '--apply']
+        with mock.patch.object(sys, 'argv', args), \
+                mock.patch.object(cleanup, 'merged_task', return_value=123), \
+                mock.patch.object(cleanup, 'active_docker_builds', return_value=[]), \
+                mock.patch.object(cleanup, 'active_cache_writers', return_value=[]), \
+                mock.patch.object(cleanup, 'active_processes', return_value=[]):
+            cleanup.main()
+        self.assertFalse(self.target.exists())
+        archive = next((self.root / '.local-wip/task-archives').glob('*.tar.gz'))
+        with tarfile.open(archive) as data:
+            self.assertEqual(data.extractfile('private.edn').read(), b'recoverable')
+        self.assertTrue(cleanup.git(self.root, 'rev-parse', 'codex/fixture'))
 
     def test_ignored_task_records_and_private_config_are_archived_without_dependencies(self):
         (self.target / '.local-wip').mkdir()

@@ -68,7 +68,8 @@ Read-only questions and investigations do not require artificial code changes or
 - From another checkout, run `bb cleanup --worktree <task-path> --remove-worktree`
   to inspect the plan, then add `--apply`. The command requires a clean registered
   feature worktree, an exact merged PR head present in `origin/master`, no open
-  follow-up PR and no processes using its directory. It archives ignored task data
+  follow-up PR and no processes, build reservations or container mounts using its
+  directory (including cache-disabled and older builds). It archives ignored task data
   under the primary checkout's `.local-wip/task-archives`, preserves branch refs,
   and uses ordinary `git worktree remove` without force. Detached or ambiguous
   worktrees require manual investigation; age or ahead/behind counts are not proof.

@@ -542,7 +542,6 @@ class ShadowCacheTests(unittest.TestCase):
                 self.assertFalse(cpu.shadow_cache_root().exists())
 
 
-@unittest.skipUnless(sys.platform=='darwin','native guard uses macOS libproc')
 class LauncherUpdateTests(unittest.TestCase):
     def test_launcher_only_update_does_not_restart_monitor_or_workers(self):
         from types import SimpleNamespace
@@ -553,6 +552,7 @@ class LauncherUpdateTests(unittest.TestCase):
             external.assert_not_called()
 
 
+@unittest.skipUnless(sys.platform=='darwin','native guard uses macOS libproc')
 class NativeTests(unittest.TestCase):
     def setUp(self):
         self.proc=cpu.MacProcesses()
