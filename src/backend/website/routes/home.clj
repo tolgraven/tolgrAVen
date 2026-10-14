@@ -3,11 +3,11 @@
    [clojure.java.io :as io]
    [clojure.data.json :as json]
    [website.layout :as layout]
-   [website.build.site :refer [when-enabled]]
    [website.ssr :as ssr]
    [website.page-router :as pages]
    [website.validation :as validation]
    [reitit.coercion :as coercion]
+   [reitit.core :as reitit]
    [ring.util.response]
    [ring.util.http-response :as response]
    [sitemap.core :as sitemap]))
@@ -59,46 +59,48 @@
                   [(str route "*") {:get home-page}])
                 route-names)))
 (defn home-routes []
-  [""
-   {:middleware [;middleware/wrap-csrf ; csrf not really needed since no http auth and whatnot
-                 #_middleware/wrap-formats]}
-   ["/" {:get home-page}]
-   ["/return-worker.js"
-    {:get (fn [_]
-            (if-let [resource (io/resource "public/js/return/return-worker.js")]
-              {:status 200 :headers {"Content-Type" "text/javascript; charset=utf-8"
-                                    "Service-Worker-Allowed" "/" "Cache-Control" "no-cache"}
-               ;; Changes even when the worker source itself did not change:
-               ;; browser worker updates then retire previous build caches.
-               :body (str "self.TOLGRAVEN_RETURN_BUILD="
-                          (json/write-str (str (ssr/renderer-build))) ";\n" (slurp resource))}
-              (response/not-found)))}]
-   ["/api/page-return-template"
-    {:get (fn [request]
-            {:status 200 :headers {"Content-Type" "application/json" "Cache-Control" "no-store"}
-             :body (json/write-str (layout/return-template request))})}]
-   ["/blog*" {:get home-page}]
-   (when-enabled :neovim nil ["/neovim*" {:get home-page}])
-   ["/not-found" {:get home-page}]
-   ["/client-oauth*" {:get home-page}]
-   ["/log*" {:get home-page}]
-   ["/test*" {:get home-page}]
-   ["/docs*" {:get home-page}]
-   ["/about*" {:get home-page}]                                                                          
-   ["/services*" {:get home-page}]                                                                       
-   ["/cv*" {:get home-page}]                                                                             
-   ["/hire*" {:get home-page}]                                                                           
-   ["/site/*" {:get home-page}]                                                                          
-   ["/api/docs" {:get (fn [_]                                                                            
-                    (-> "docs/docs.md" io/resource slurp                                                 
-                        response/ok                                                                      
-                        plain-text-header))}] ; isnt this the exact equivalent of serving asset directly?
-   ["/user/:id" {:get (fn [{{:keys [id]} :path-params}]                                                  
-                        (let [user "none"]                                                               
-                          (-> (or user {})                                                               
-                              str                                                                        
-                              response/ok                                                                
-                              plain-text-header)))}]])                                                   
+  (into
+    [""
+     {:middleware [;middleware/wrap-csrf ; csrf not really needed since no http auth and whatnot
+                   #_middleware/wrap-formats]}
+     ["/return-worker.js"
+      {:get (fn [_]
+              (if-let [resource (io/resource "public/js/return/return-worker.js")]
+                {:status 200
+                 :headers {"Content-Type" "text/javascript; charset=utf-8"
+                           "Service-Worker-Allowed" "/"
+                           "Cache-Control" "no-cache"}
+                 ;; Changes even when the worker source itself did not change:
+                 ;; browser worker updates then retire previous build caches.
+                 :body (str "self.TOLGRAVEN_RETURN_BUILD="
+                            (json/write-str (str (ssr/renderer-build))) ";\n" (slurp resource))}
+                (response/not-found)))}]
+     ["/api/page-return-template"
+      {:get (fn [request]
+              {:status 200
+               :headers {"Content-Type" "application/json"
+                         "Cache-Control" "no-store"}
+               :body (json/write-str (layout/return-template request))})}]
+     ["/not-found" {:get home-page}]
+     ["/client-oauth*" {:get home-page}]
+     ["/log*" {:get home-page}]
+     ["/test*" {:get home-page}]
+     ["/site/*" {:get home-page}]
+     ["/api/docs" {:get (fn [_]
+                      (-> "docs/docs.md" io/resource slurp
+                          response/ok
+                          plain-text-header))}] ; isnt this the exact equivalent of serving asset directly?
+     ["/user/:id" {:get (fn [{{:keys [id]} :path-params}]
+                          (let [user "none"]
+                            (-> (or user {})
+                                str
+                                response/ok
+                                plain-text-header)))}]]
+    ;; The selected native page catalog owns complete paths, including component tails.
+    ;; home-page retains request coercion before handing a document to SSR.
+    (for [[path data] (reitit/routes pages/router)
+          :when (:page data)]
+      [path {:get home-page}])))
 
 (defn gen-sitemap!
   "Generates a sitemap for the home page and its routes."
