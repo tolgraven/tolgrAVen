@@ -130,18 +130,20 @@
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 
-(deftest cms-selected-repository-rejects-old-responses
+(deftest configured-repository-rejects-old-responses
   (async done
     (let [restore! (r/make-restore-fn)
           *requests (atom [])]
       (r/reg-fx :http-xhrio #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
-            (r/dispatch-sync [:content [:github-settings] {:user "first-user", :repo "first-repo"}])
+            (r/dispatch-sync [:component-data/install [:module :github :configuration]
+                              {:settings {:user "first-user", :repo "first-repo"}}])
             (r/dispatch-sync [:github/init])
             (await! (support/settle!))
             (is (some #(= {:user "first-user", :repo "first-repo", :q ""} (:url-params %)) @*requests))
-            (r/dispatch-sync [:content [:github-settings] {:user "second-user", :repo "second-repo"}])
+            (r/dispatch-sync [:component-data/install [:module :github :configuration]
+                              {:settings {:user "second-user", :repo "second-repo"}}])
             (r/dispatch-sync [:github/init])
             (await! (support/settle!))
             (r/dispatch-sync [:github/save-commits "first-user" "first-repo" 1 1 {:commits [], :total 99, :complete false}])
@@ -161,7 +163,8 @@
       (r/reg-fx :http-xhrio #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
-            (r/dispatch-sync [:content [:github-settings] {:user "retry-user", :repo "repo"}])
+            (r/dispatch-sync [:component-data/install [:module :github :configuration]
+                              {:settings {:user "retry-user", :repo "repo"}}])
             (r/dispatch-sync [:github/init])
             (await! (support/settle!))
             (r/dispatch-sync [:github/init])
@@ -192,7 +195,8 @@
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (doseq [user ["generation-a" "generation-b" "generation-a"]]
-              (r/dispatch-sync [:content [:github-settings] {:user user, :repo "repo"}])
+              (r/dispatch-sync [:component-data/install [:module :github :configuration]
+                                {:settings {:user user, :repo "repo"}}])
               (r/dispatch-sync [:github/init])
               (await! (support/settle!)))
             (is (= 3 (count @*requests)))
@@ -323,7 +327,8 @@
       (r/reg-fx :dispatch-later #(swap! *delayed into %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
-            (r/dispatch-sync [:content [:github-settings] {:user "test-user", :repo "repo"}])
+            (r/dispatch-sync [:component-data/install [:module :github :configuration]
+                              {:settings {:user "test-user", :repo "repo"}}])
             (r/dispatch-sync [:github/init])
             (await! (support/settle!))
             (r/dispatch-sync [:github/search "nested theme"])

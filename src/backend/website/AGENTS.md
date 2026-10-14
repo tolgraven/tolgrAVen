@@ -108,6 +108,12 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   expose only public origins/keys and allowed options.
   `/api/browser-resources` projects only `:analytics :google-id`; `:enabled false`
   disables that script. Keep these settings out of SSR markup and snapshots.
+- Explicit GitHub user/repo configuration belongs to its module-owned settings
+  adapter and managed URL binding, shared with the archive. Validate it only there;
+  invalid optional configuration must not gate the shell or unrelated content.
+  Contribution detail parses the unauthenticated public profile timeline and
+  checks its exact day range and type sum against the accompanying calendar.
+  Unknown/incomplete provider markup remains an unavailable result, never zero.
 - ImageMagick pixel-cache files stay inside the request temporary directory so
   failure/timeout cleanup also removes them. Avatar uploads normalize/validate PNG
   before bounded `media/image` conversion.
@@ -219,8 +225,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - `/api/deployment` exposes only validated container metadata. GitHub calendar reads use a fixed origin, bounded body/time/cache and no redirects; see `doc/activity-panels.md`.
 - GitHub's module-owned service archives only public repository metadata and
   commits. Database leases and page/checkpoint transactions make retries safe;
-  unchanged branch heads skip acquisition. Per-day breakdowns use server-only
-  GitHub credentials on hover, independently of repository history.
+  unchanged branch heads skip acquisition. Per-day breakdowns use the public
+  unauthenticated timeline on hover, independently of repository history.
 
 - Optional module-service startup failures remain local: log the module ID,
   continue starting sibling services, and retain their cleanup handles. Missing
