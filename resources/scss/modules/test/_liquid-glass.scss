@@ -1,0 +1,31 @@
+.glass-playground {
+  padding: 1rem;
+  color: var(--fg-1, white);
+  h2 { margin-block: 0 0.5rem; }
+  p { margin-block: 0.5rem; }
+  &__controls { display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; margin-block: 1rem 2rem; }
+  &__controls label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+  &__controls input { width: 7rem; }
+  &__scene, &__instances {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 4rem;
+    padding: 4rem 2rem;
+    background: repeating-linear-gradient(110deg, transparent 0 2rem, rgb(255 255 255 / 0.45) 2rem 2.125rem, transparent 2.125rem 4rem),
+                radial-gradient(circle at 15% 30%, #ec8cb8, transparent 45%),
+                radial-gradient(circle at 80% 80%, #70d7d5, transparent 50%), #18333e;
+    border-radius: 1rem;
+  }
+  &__panel { width: min(25rem, 100%); }
+  &__panel-content { padding: 1.25rem; }
+  &__panel-content h3 { margin-block: 0 0.75rem; }
+  &__panel-content label { display: block; }
+  &__panel-content input { width: 100%; }
+  &__instances { margin-top: 2rem; gap: 2rem; }
+  &__sample { width: 12rem; min-height: 8rem; }
+  @media (max-width: 40em) {
+    &__scene { padding: 3rem 1.5rem; }
+  }
+}

@@ -49,6 +49,43 @@
                   :modules {:return-worker {:init-fn website.ssr.return-worker/init!
                                             :web-worker true}}}
 
+  :glass-node-test {:target :node-test
+                    :build-hooks [(website.build.modules/configure-site)
+                                  (website.build.modules/clean-site-output)
+                                  (website.build.modules/check-site-sources)
+                                  (website.build.compat/rrb-vector)]
+                    :compiler-options {:reader-features #{:node :ssr}}
+                    :output-to "target/glass/node-tests.js"
+                    :ns-regexp "website\\.liquid-glass-optics-test$"
+                    :autorun true}
+
+  :glass-test {:target :browser-test
+               :module-loader true
+               :build-hooks [(website.build.modules/configure-site)
+                             (website.modules.markdown-editor.build/configure)
+                             (website.modules.markdown-editor.build/verify-entry)
+                             (website.build.modules/clean-site-output)
+                             (website.build.modules/check-site-sources)
+                             (website.build.compat/rrb-vector)
+                             (website.build.browser/test-modules)]
+               :compiler-options {:reader-features #{:browser :dev :browser-test}}
+               :test-dir "target/glass/public/tests"
+               :ns-regexp "website\\.liquid-glass-test$"}
+
+  :glass-demo {:target website.build.browser/process
+               :module-loader true
+               :build-hooks [(website.build.modules/configure-site)
+                             (website.modules.markdown-editor.build/configure)
+                             (website.modules.markdown-editor.build/verify-entry)
+                             (website.build.modules/clean-site-output)
+                             (website.build.modules/check-site-sources)
+                             (website.build.compat/rrb-vector)]
+               :compiler-options {:reader-features #{:browser :dev}}
+               :output-dir "target/glass/public/js/demo"
+               :asset-path "/js/demo"
+               :modules {:main {:entries [website.liquid-glass-demo]
+                                :init-fn website.liquid-glass-demo/init!}}}
+
   :supabase-test {:target :node-test
                   :compiler-options {:reader-features #{:dev :node}}
              :build-hooks [(website.build.modules/configure-site)

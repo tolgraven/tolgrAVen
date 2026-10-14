@@ -60,6 +60,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 ## Ownership and feature contracts
 
+- Parent-controlled clipped entrances use `:appear {:viewport? false ...}` on
+  their children. Observing an initial transform outside its overflow container
+  can prevent intersection forever; the parent retains visibility ownership.
+
 - The lazy page-render owner explicitly imports `website.react.server` and passes
   its renderer to shared SSR rendering. The ordinary release facade keeps that
   dependency absent; do not use its inert target aliases for browser-worker SSR.
@@ -122,6 +126,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Rendered reusable UI lives in `components/`; feature-specific UI lives with its
   module. `component/` is the declaration/lifecycle runtime, not a view inventory.
   Import the owning namespace directly; there is no top-level `views.cljs` shim.
+- `components/ui/liquid_glass.cljs` owns the spec-driven glass wrapper. Filter
+  only its decorative background; preserve child DOM and independent opacity.
+  Its measured geometry and bounded image work belong to cancellable native
+  lifecycle adapters. See `doc/liquid-glass.md`; the lazy experiments module owns
+  the playground.
 - The page shell owns one lazy contact popup outside both footer copies. Footer
   controls share its re-frame state; do not mount the popup inside each control.
   Keep the HUD above the contact layer so notices remain actionable.
@@ -187,6 +196,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   loading and entrances; later SPA navigation must restore ordinary motion.
   Offscreen new `:appear` roots enter through the existing viewport observer.
   Presence commit history is nonreactive; only exit completion schedules a render.
+  Blog replies animate intrinsic height per row with their entrance stagger;
+  do not reintroduce a large parent max-height. Layout entrances opt into
+  `:settle-offscreen?` so hidden rows retain height without waiting on visibility.
   Unactivated module placeholders and departing skeletons have no shimmer animation.
   Appearance classes merge onto native roots; `appear-wrapper` is only a CSS
   class. Network SSR retains the original site/hero entrance in CSS across
@@ -421,6 +433,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   UI selection, capture options and bounded records use re-frame; native window,
   measurement and WeakMap ownership adapters must release their lifecycle resources.
   Source/stack and actual-value details stay behind `:dev` reader boundaries.
+  The console's deferred/module host uses the development-only
+  `instrumentation/without-profiling` subtree boundary; retain instance metadata,
+  but never capture its inclusive commits back into its own record subscriptions.
+  Ancestors outside that boundary must also omit timing callbacks.
   See `doc/dev-console.md` for capture, source links and diagnostic limitations.
 
 - Missing scoped-state and installed-data subscriptions return `:present? false`

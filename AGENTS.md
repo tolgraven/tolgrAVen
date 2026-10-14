@@ -413,6 +413,19 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 ## Deploy
 - Follow `doc/docker-builds.md` for `make docker` and PR preview cleanup; `doc/site-provisioning.md` covers separate sites and production/staging services.
 
+- The user grants standing authorization for tested, reviewed migrations and
+  bounded feature backfills on this project's Supabase database on SSH host
+  `bux`, including production (currently container
+  `supabase-db-e840kco0scs04gkcco44w088`). Verify the destination and actual SQL
+  before execution. This includes application tables, indexes, constraints,
+  functions, triggers, RLS policies and grants needed for the requested feature;
+  do not request another confirmation solely for those persistent changes.
+  Destructive resets, dropping populated tables/columns, unrelated deletions,
+  disabling access controls and other databases need separate authorization.
+  Application/container deployment remains outside this standing scope. The
+  local Codex `[auto_review].extra_policy` carries matching reviewer guidance;
+  managed restrictions and the required denial/override workflow still apply.
+
 - Module specs expose portable `:storage` declarations. Supabase seed tooling,
   public projections and realtime identities derive from that catalog; runtime
   `:supabase :modules` options select seed/reset owners and feature groups.

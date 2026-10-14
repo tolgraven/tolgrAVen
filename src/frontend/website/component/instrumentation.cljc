@@ -12,6 +12,11 @@
 (defn render! [definition args render]
   #?(:cljs (consumer/render! definition args render) :default (render)))
 
+(defn without-profiling
+  "Development-only exclusion for the console host; release/SSR keep the form."
+  [form]
+  #?(:dev (dev/without-profiling form) :default form))
+
 (defn identity-for [definition] [(:ns definition) (:name definition)])
 
 (defn instrument

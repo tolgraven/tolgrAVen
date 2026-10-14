@@ -67,6 +67,33 @@
 (defc <seen> {:features [:props :seen]} [spec] [:div {:class "original"} "Seen"])
 (defc <appear> {:features [:props [:appear "opacity"]]} [spec] [:div "Appear"])
 
+(deftest parent-owned-clipped-entrance-does-not-wait-for-its-own-transform
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture))
+                style (.createElement js/document "style")]
+            (try
+              ;; The initial child is entirely above its clipping parent, just
+              ;; like a reply's slide-behind transform. Native IO cannot see it.
+              (.add (.-classList element) "motion-clipped-fixture")
+              (set! (.-textContent style)
+                    ".motion-clipped-fixture .appear-wrapper {height:4rem;transform:translateY(-120%)} .motion-clipped-fixture .appear-wrapper.appeared {transform:none}")
+              (.appendChild (.-head js/document) style)
+              (await! (render! root
+                       [:div {:style {:overflow "hidden", :height "5rem"}}
+                        [<appear> {:appear {:class "slide-behind", :viewport? false}}]]))
+              (await! (tick! 150))
+              (let [child (.querySelector element ".appear-wrapper")
+                    bounds (.getBoundingClientRect child)
+                    parent (.getBoundingClientRect (.-parentElement child))]
+                (is (.contains (.-classList child) "appeared"))
+                (is (>= (.-top bounds) (.-top parent)))
+                (is (<= (.-bottom bounds) (.-bottom parent))
+                    "The native child actually escapes its initial clipped transform"))
+              (finally (close!) (.remove style)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
 (deftest continuous-visibility-can-opt-out-of-settled-history-restoration
   (async done
     (-> (go-promise

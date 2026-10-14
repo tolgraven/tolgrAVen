@@ -105,8 +105,13 @@ namespace definition, referred/renamed var or argument binding takes precedence.
 
 Use `{:profile false}` in a `defc` declaration to omit its render timing callback
 while retaining its place in the component hierarchy. This is used for the root
-that hosts the console itself. Probes use React context for parentage and Profiler for timings and
-add no DOM wrappers; native roots get `data-dev-component` for layout attribution.
+that hosts the console itself. Its deferred/module host is additionally wrapped
+with `instrumentation/without-profiling`, which excludes timing callbacks throughout
+that subtree while retaining instance metadata. Inclusive Profiler timings include
+descendant commits: recording the inspector's own updates would publish new records
+and trigger another inspector update. Application siblings remain profiled normally.
+Probes use React context for parentage and Profiler for timings and add no DOM
+wrappers; native roots get `data-dev-component` for layout attribution.
 Attribution attributes are added only after hydration; server and first-client
 markup stay unchanged. Server rendering never runs observers.
 

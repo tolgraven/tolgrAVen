@@ -4,6 +4,8 @@
             [cljs.test :refer-macros [deftest is async]]
             [website.macros :refer-macros [defc]]
             [website.react :as r]
+            [website.browser-resources :as browser-resources]
+            [website.component.instrumentation :as instrumentation]
 
             [website.dev.values :as values]
             [website.dev.stack :as stack]
@@ -208,6 +210,77 @@
                 (is (= renders @*renders) "Unmounted host no longer observes its queries"))
               (finally
                 (.remove element)
+                (restore-db!)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+
+(defc <host-frame> [content] [:section content])
+(defc <host-content> [content] [:div content])
+
+(deftest console-host-commits-do-not-feed-inclusive-profiler-capture
+  (async done
+    (-> (go-promise
+          (let [restore-db! (r/make-restore-fn)
+                element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                *renders (atom 0)
+                stop! (capture/connect!)
+                stop-record! (capture/start!)]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root
+                        [:<>
+                         (instrumentation/without-profiling
+                           [browser-resources/<deferred>
+                            [<host-frame> [<host-content> [<host-consumer> *renders]]]])
+                         [<consumer> :strong]]))
+              (await! (support/wait-for! #(pos? @*renders) "Deferred inspector did not mount"))
+              ;; Native attribution and nested mount metadata may commit once
+              ;; after the deferred host appears. Publish that finite startup work.
+              (dotimes [_ 3]
+                (capture/drain!)
+                (await! (support/settle!)))
+              (let [renders @*renders]
+                ;; Reproduce the actual records -> console -> inclusive Profiler
+                ;; feedback path across multiple complete publication cycles.
+                (dotimes [_ 3]
+                  (capture/drain!)
+                  (await! (support/settle!)))
+                (is (= renders @*renders) "A settled inspector schedules no further updates")
+                (is (empty? @capture/*pending) "Inspector commits produce no timing records"))
+              (let [debug (await! (support/mount-subscriptions! {:debug [:dev-console/data]}))]
+                (try
+                  (let [active (:active (:debug ((:values debug))))
+                        host-components #{["website.browser-resources" "<deferred>"]
+                                          ["website.dev-diagnostics-test" "<host-frame>"]
+                                          ["website.dev-diagnostics-test" "<host-content>"]}
+                        records (:records (:debug ((:values debug))))]
+                    (is (= host-components (set (filter host-components (map :component (vals active)))))
+                        "Excluded wrappers retain their component hierarchy")
+                    (is (not-any? #(and (#{:view :render} (:kind %)) (host-components (:component %))) records))
+                    (is (some #(and (= :render (:kind %))
+                                    (= ["website.dev-diagnostics-test" "<consumer>"] (:component %))) records)
+                        "Ordinary application components still record inclusive timing"))
+                  (r/dispatch [:component-data/install [:test :diagnostic-value] "after exclusion"])
+                  (await! (support/settle!))
+                  (capture/drain!)
+                  (await! (support/settle!))
+                  (is (re-find #"after exclusion" (.-textContent element)))
+                  (is (some #(and (= :view (:kind %))
+                                  (some (fn [reason] (= :subscription-results (:cause reason))) (:reasons %)))
+                            (:records (:debug ((:values debug)))))
+                      "Normal subscription updates remain observable")
+                  (let [renders @*renders]
+                    (capture/drain!)
+                    (await! (support/settle!))
+                    (is (= renders @*renders) "An application update does not restart inspector feedback"))
+                  (finally ((:unmount! debug)))))
+              (finally
+                (support/unmount! root)
+                (.remove element)
+                (stop-record!)
+                (stop!)
                 (restore-db!)))))
         (.catch #(is false (str %)))
         (.finally done))))
