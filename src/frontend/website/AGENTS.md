@@ -534,3 +534,5 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - The lazy contact host owns `:presence`; its keyed panel uses `:appear`/`:exit`
   and exists only while open or exiting. Closing changes intent immediately;
   native animation completion owns removal, without a business-event timer.
+  The panel captures its native opener after commit and returns focus before the
+  close event, so exit never hides a focused descendant.

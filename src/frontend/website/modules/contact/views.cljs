@@ -39,12 +39,29 @@
   {:features [[:appear {:viewport? false}] :exit]}
   []
   (let [[submit-hovered? set-submit-hovered!] (r/use-state false)
+        *opener (r/use-ref nil)
         *loading? (r/subscribe [:loading :post]) ; seems bit bruteforcy haha
         *contents (r/subscribe [:form-field [:contact]])
         sent? @(r/subscribe [:state [:contact-form :sent?]])]
+    (r/use-layout-effect
+     (fn []
+       (when (exists? js/document)
+         (set! (.-current *opener) (.-activeElement js/document)))
+       #(set! (.-current *opener) nil)) [])
     [:section.contact-form-popup
      {:class (when (or sent? @*loading?) "result")}
-     [ui-controls/<close> #(r/dispatch [:contact/close])]
+     [ui-controls/<close>
+      (fn [_]
+        ;; Move focus before presence applies aria-hidden/inert during exit.
+        ;; A lazy panel owns its native opener; no application state is mirrored.
+        (when (exists? js/document)
+          (let [opener (.-current *opener)
+                active (.-activeElement js/document)]
+            (when (and opener (.-isConnected opener))
+              (.focus opener #js {:preventScroll true}))
+            (when (and active (identical? active (.-activeElement js/document)))
+              (.blur active))))
+        (r/dispatch [:contact/close]))]
      [:h2 "Get in touch"]
 
      (when sent?
