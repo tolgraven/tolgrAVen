@@ -527,3 +527,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Managed source adapters may declare a default `:timeout-ms`; an explicit
   dependency timeout takes precedence. The CMS adapter budgets both transport
   attempts plus queue settlement so isolation cannot strand a healthy module.
+
+- Contact email anchors retain their visible text in SSR but acquire `mailto:`
+  only on the first frame after commit. Keep initial hydration href-free so mail
+  handler extensions cannot rewrite these attributes before React attaches.
