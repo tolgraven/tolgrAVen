@@ -33,6 +33,10 @@
             (throw (ex-info "An unused source-editor dependency entered the production graph"
                             (assoc source :module module))))
           ;; Keep the important boundaries reviewable in every future audit.
+          (doseq [source (:main graph)
+                  :when (re-find #"node_modules/(?:mdast-util-(?:from|to)-markdown|micromark(?:/|-))"
+                                 (:resource-name source ""))]
+            (throw (ex-info "A Markdown parser dependency entered the shell bundle" source)))
           (doseq [[module sources] graph
                   :when (not= :highlight module)
                   source sources
