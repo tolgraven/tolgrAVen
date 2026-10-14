@@ -125,8 +125,8 @@ owned grants/functions/publication/bucket access without deleting rows.
 ## Verification
 
 In an idle isolated worktree, `python3 test/site/matrix.py --compile` checks default,
-posts without comments, no blog, anonymous, minimal storage-free, no home and disabled
-page configurations. `--release` checks production outputs instead. `PGHOST`,
+posts without comments, no previews, no blog, anonymous, minimal storage-free, no home
+and disabled page configurations. `--release` checks production outputs instead. `PGHOST`,
 `PGPORT` and `PGUSER` enable disposable fresh PostgreSQL installations for every case.
 `python3 test/site/package.py` checks actual AOT jars and generated docs for two
 slim configurations. Artifacts/logs are under `target/site-matrix/`; the original site file is restored.
