@@ -287,9 +287,10 @@
             (storage/write! i {:value i} options))
           (is (= 0 @*reads) "No disk reads in component creation")
           (is (empty? @*writes) "No disk writes in component updates")
-          (-> (tick!)
+          (-> (storage/ready! options)
               (.then (fn [_]
-                       (is (= 1 @*reads) "All component reads share one owner envelope")
+                       (storage/drain!)
+                       (is (= 2 @*reads) "All components share the owner read and its migration backup check")
                        (is (= 1 (count @*writes)) "All component writes share one owner envelope")
                        (dotimes [i 50] (storage/write! i {:value i} options))
                        (tick!)))

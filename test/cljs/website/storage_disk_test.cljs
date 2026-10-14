@@ -8,9 +8,10 @@
 
 (defn- forget! [account]
   (doseq [*store [storage/*reads storage/*buckets storage/*consumed storage/*disk-writes
-                 storage/*disk-generations]]
+                 storage/*disk-generations storage/*legacy-text]]
     (swap! *store dissoc account))
-  (doseq [*store [storage/*ready storage/*dirty storage/*heavy-owners storage/*migrating]]
+  (doseq [*store [storage/*ready storage/*dirty storage/*heavy-owners storage/*migrating
+                 storage/*legacy-backed storage/*read-errors]]
     (swap! *store disj account)))
 
 (deftest incremental-legacy-reader-preserves-tags-and-rejects-corruption
@@ -66,12 +67,14 @@
             (let [pending (storage/drain-async!)]
               (await! (js/Promise.resolve nil))
               (await! (js/Promise.resolve nil))
-              (is (.includes (storage/read-disk! key) ":public-content")
+              (is (.includes (storage/read-disk! (storage/migration-key account)) ":public-content")
                   "The only durable legacy copy remains while the transaction is pending")
+              (is (not (.includes (storage/read-disk! key) ":public-content")))
               (@*commit nil)
               (await! pending)
               (is (not (.includes (storage/read-disk! key) ":public-content")))
               (is (.includes (storage/read-disk! key) ":mouse"))
+              (is (nil? (storage/read-disk! (storage/migration-key account))))
               (is (= snapshot (get-in @storage/*buckets [account :public-content])))))
           (.catch #(is false (str %)))
           (.finally (fn []
@@ -79,6 +82,45 @@
                       (reset! storage/*identity identity)
                       (forget! account)
                       (.removeItem js/localStorage key)
+                      (.removeItem js/localStorage (storage/migration-key account))
+                      (-> (disk/remove! account) (.finally done))))))))
+
+(deftest failed-heavy-migration-keeps-small-saves-durable-and-removals-absent
+  (async done
+    (let [account (random-uuid)
+          identity @storage/*identity
+          options {:scope :user}
+          key (str storage/prefix (pr-str account))
+          draft [:blog-editor/working :migration-test]
+          removed [:state [:settings :removed]]
+          snapshot {:version 1, :schema 1, :expires-at (+ (.now js/Date) 60000), :value :old}
+          write! disk/write!]
+      (reset! storage/*identity account)
+      (storage/write-disk! key (pr-str {:public-content snapshot, draft snapshot, removed snapshot}))
+      (set! disk/write! (fn [& _] (js/Promise.reject (js/Error. "Migration unavailable"))))
+      (-> (go-promise
+            (await! (storage/ready! options))
+            (storage/write! draft {:text "New draft"} options)
+            (storage/remove! removed options)
+            (is (true? (get (storage/drain!) account)) "Draft success means its small write is already durable")
+            (await! (storage/drain-async!))
+            (let [saved (await! (disk/read-local! (storage/read-disk! key)))]
+              (is (= {:text "New draft"} (get-in saved [draft :value])))
+              (is (not (contains? saved removed))))
+            (is (some? (storage/read-disk! (storage/migration-key account))) "Failure retains the heavy backup")
+            (forget! account)
+            (await! (storage/ready! options))
+            (is (= {:text "New draft"} (get-in @storage/*buckets [account draft :value])))
+            (is (not (contains? (get @storage/*buckets account) removed)) "Backup cannot resurrect small-state removals")
+            (is (= snapshot (get-in @storage/*buckets [account :public-content])))
+            (await! (storage/drain-async!)))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (set! disk/write! write!)
+                      (reset! storage/*identity identity)
+                      (forget! account)
+                      (.removeItem js/localStorage key)
+                      (.removeItem js/localStorage (storage/migration-key account))
                       (-> (disk/remove! account) (.finally done))))))))
 
 (deftest late-heavy-restoration-preserves-an-edit-and-a-removal

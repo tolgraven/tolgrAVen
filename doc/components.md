@@ -467,8 +467,11 @@ Storage reads are queued once per owner per document. Application startup awaits
 navigation snapshots stay in localStorage. Public content, managed resources and
 `:store`/`:content` caches use an IndexedDB owner transaction with separately encoded
 Transit entries. Entry decoding/validation yields a painted frame after 32 entries
-or a 6 ms batch. Older EDN envelopes migrate after a successful heavy-cache commit;
-a failed transaction retains the old copy. A single large legacy entry can still
+or a 6 ms batch. Older EDN envelopes retain their already encoded heavy cache in
+a separate localStorage migration backup until its IndexedDB commit succeeds.
+Small preferences and drafts still save synchronously during migration; backup
+restoration contributes only heavy entries, preserving small-state removals.
+A failed transaction retains the backup. A single large legacy entry can still
 take a long first-time parse, so measure migration separately from subsequent loads.
 Equal, unexpired values do not produce another write. Components only read the
 in-memory index. `pagehide` synchronously flushes small navigation preferences;

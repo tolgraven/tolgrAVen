@@ -30,6 +30,8 @@
 (defonce *deleted-paths (atom {}))
 (defonce *heavy-owners (atom #{}))
 (defonce *migrating (atom #{}))
+(defonce *legacy-text (atom {}))
+(defonce *legacy-backed (atom #{}))
 (defonce *disk-writes (atom {}))
 (defonce *disk-generations (atom {}))
 
@@ -55,6 +57,24 @@
   (when (exists? js/window) (.getItem (.-localStorage js/window) key)))
 (defn write-disk! [key value]
   (when (exists? js/window) (.setItem (.-localStorage js/window) key value)))
+(defn remove-disk! [key]
+  (when (exists? js/window) (.removeItem (.-localStorage js/window) key)))
+(defn migration-key [account] (str prefix (pr-str account) ":heavy-migration"))
+
+(defn- read-local-owner! [account disk-key]
+  (let [text (read-disk! disk-key)
+        legacy (read-disk! (migration-key account))]
+    (-> (js/Promise.all #js [(disk/read-local! text) (disk/read-local! legacy)])
+        (.then (fn [stores]
+                 (let [local (aget stores 0)
+                       backup (aget stores 1)
+                       legacy' (if (some heavy-id? (keys local)) text legacy)]
+                   (when legacy'
+                     (swap! *legacy-text assoc account legacy')
+                     (when (= legacy' legacy) (swap! *legacy-backed conj account)))
+                   ;; The backup contributes heavy entries only. Current small
+                   ;; preferences, including removals, belong to the main key.
+                   (merge (into {} (filter (comp heavy-id? key)) backup) local)))))))
 (defonce *write-tick (atom nil))
 (def max-bytes (* 2 1024 1024))
 (defn owner [options] (if (= :public (:scope options)) :public @*identity))
@@ -100,14 +120,14 @@
                                      (fn [resolve _]
                                        (js/setTimeout
                                          #(resolve (try
-                                                     (.catch (disk/read-local! (read-disk! key)) failed-read!)
+                                                     (.catch (read-local-owner! account key) failed-read!)
                                                      (catch :default error (failed-read! error)))) 0)))
                                    (.catch (disk/read! account) failed-read!)])))
                    (.then (fn [stores]
                             (let [local (aget stores 0)
                                   heavy (aget stores 1)
                                   failed? (or (identical? local missing) (identical? heavy missing))
-                                  saved (merge (when-not (identical? heavy missing) heavy)
+                                  saved (merge {} (when-not (identical? heavy missing) heavy)
                                                (when-not (identical? local missing) local))]
                               (when (or (seq (when-not (identical? heavy missing) heavy))
                                         (some heavy-id? (keys saved)))
@@ -224,7 +244,7 @@
     (try (mark-return! false) (catch :default _ nil)))
   (warn!))
 
-(defn- write-heavy! [account bucket small]
+(defn- write-heavy! [account bucket]
   (let [generation (get (swap! *disk-generations update account (fnil inc 0)) account)
         current? #(= generation (get @*disk-generations account))
         previous (get @*disk-writes account (js/Promise.resolve nil))
@@ -235,11 +255,13 @@
                                (disk/write! account (into {} (filter (comp heavy-id? key)) bucket)))))
                     (.then (fn [_]
                              (when (current?)
-                               ;; Migration is committed before the old heavy data
-                               ;; leaves localStorage. A failed transaction retains it.
+                               ;; Small saves already committed independently. Only
+                               ;; the legacy backup waits for the heavy transaction.
                                (when (contains? @*migrating account)
-                                 (write-disk! (str prefix (pr-str account)) (pr-str small)))
+                                 (remove-disk! (migration-key account)))
                                (swap! *migrating disj account)
+                               (swap! *legacy-text dissoc account)
+                               (swap! *legacy-backed disj account)
                                (saved! account bucket))))
                     (.catch (fn [_] (when (current?) (failed! account)))))]
     (swap! *disk-writes assoc account pending)
@@ -265,12 +287,20 @@
                      (when (> (count text) max-bytes) (throw (js/Error. "Snapshot too large")))
                      ;; Small preferences retain the synchronous EDN validation contract.
                      (reader/read-string text)
-                     (when-not (contains? @*migrating account)
-                       (write-disk! (str prefix (pr-str account)) text))
-                     [account (if heavy?
-                                (do (swap! *heavy-owners conj account)
-                                    (write-heavy! account bucket small))
-                                (do (saved! account bucket) true))])
+                     ;; Copy the original encoded envelope once, without encoding
+                     ;; its heavy values again on each preference/pagehide save.
+                     (when (and (contains? @*migrating account)
+                                (not (contains? @*legacy-backed account)))
+                       (write-disk! (migration-key account) (get @*legacy-text account))
+                       (swap! *legacy-backed conj account))
+                     (write-disk! (str prefix (pr-str account)) text)
+                     (if heavy?
+                       (do (swap! *heavy-owners conj account)
+                           (write-heavy! account bucket))
+                       (saved! account bucket))
+                     ;; Explicit draft saves acknowledge the synchronous small
+                     ;; write. Heavy cache callers await drain-async! separately.
+                     [account true])
                    (catch :default _ (failed! account) [account false])))
                accounts))))
 
