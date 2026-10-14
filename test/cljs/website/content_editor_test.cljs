@@ -41,7 +41,10 @@
         identities (:content/identities (meta child))]
     (is (= [{:path [:cv :cv :timeline 0 :things 0], :id 12}
             {:path [:cv :cv :timeline 0 :things 0 :children 0], :id "child"}] identities))
-    (is (= identities (:content/identities (meta (fields/image-attrs child [:logo] {:src "/logo.png"})))))))
+    (is (= identities (:content/identities (meta (fields/image-attrs child [:logo] {:src "/logo.png"})))))
+    (is (= {:identities identities, :value "Draft"}
+           (fields/current-draft {:identities identities, :value "Draft"} child)))
+    (is (nil? (fields/current-draft {:identities (assoc-in identities [1 :id] "moved-child"), :value "Draft"} child)))))
 
 (deftest editing-is-account-bound-and-drafts-preserve-the-loaded-value
   (async done

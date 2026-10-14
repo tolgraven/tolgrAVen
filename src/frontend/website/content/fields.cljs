@@ -49,12 +49,17 @@
 
 (defn stop! [event] (.stopPropagation event))
 
+(defn current-draft [candidate content]
+  (when (= (or (:identities candidate) []) (or (:content/identities (meta content)) [])) candidate))
+
 (defc <text>
   "Keep the native element in view mode; edit its field with matching typography."
   [tag content relative & [attrs line-index]]
   (let [field-path (path content relative)
         original (get-in content relative)
-        draft (when field-path @(r/subscribe [:get :state :content-editor :fields (pr-str field-path)]))
+        candidate (when field-path @(r/subscribe [:get :state :content-editor :fields (pr-str field-path)]))
+        draft (current-draft candidate content)
+        moved? (and candidate (nil? draft))
         creating? (when-enabled :cv nil
                     (and (editing? content) (= :saving @(r/subscribe [:get :state :content-editor :cv-entry :status]))))
         field-value (if draft (:value draft) original)
@@ -68,7 +73,8 @@
         [(if (some? line-index) :input.content-edit-input :textarea.content-edit-input)
          {:aria-label (str "Edit " (pr-str field-path))
           :value (or value "")
-          :disabled (or creating? (= :saving (:status draft)))
+          :disabled (or creating? moved? (= :saving (:status draft)))
+          :title (when moved? "Discard the moved entry's retained draft before editing this box.")
           :max-length 20000
           :on-change (fn [event]
                        (let [value' (.. event -target -value)
@@ -82,26 +88,29 @@
 
 (defc <image>
   "Retain current pixels and geometry, with a corner upload control in edit mode."
-  [attrs picture]
+  [attrs picture source?]
   (let [field-path (path attrs [:src])
         editor-state (when (editing? attrs) @(r/subscribe [:get :state :content-editor]))
         busy?' (busy? editor-state)
         uploading? (= :uploading (get-in editor-state [:fields (pr-str field-path) :status]))
-        compact? (#{"cv-logo-picture" "cv-group-logo"} (:class attrs))]
+        compact? (#{"cv-logo-picture" "cv-group-logo"} (:class attrs))
+        candidate (get-in editor-state [:fields (pr-str field-path)])
+        moved? (and candidate (nil? (current-draft candidate attrs)))
+        blocked? (or busy?' moved?)]
     (if (and (editing? attrs) field-path)
       [:span.content-edit-image
        {:class (str (when (re-find #"media-as-bg" (or (:class attrs) "")) "content-edit-background ")
                     (when compact? (str (:class attrs) " "))
-                    (when-not (seq (:src attrs)) "content-edit-empty"))}
-       (when (seq (:src attrs)) picture)
+                    (when-not source? "content-edit-empty"))}
+       (when source? picture)
        [:label.content-edit-upload
         {:on-click stop!
          :on-pointer-down stop!
-         :title "Replace image"
-         :aria-disabled busy?'}
+         :title (if moved? "Discard the moved entry's retained draft before replacing this image." "Replace image")
+         :aria-disabled (boolean blocked?)}
         (if compact? (if uploading? "…" "↑") (if uploading? "Processing image…" "Replace image"))
         [:input {:type "file"
-                 :disabled busy?'
+                 :disabled (boolean blocked?)
                  :accept "image/png,image/jpeg,image/webp,image/avif,image/svg+xml"
                  :aria-label (str "Replace image " (pr-str field-path))
                  :on-change (fn [event]

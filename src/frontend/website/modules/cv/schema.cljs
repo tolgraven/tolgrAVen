@@ -2,10 +2,10 @@
 
 (def zoom-context
   [:map
-   [:column [:int {:min 0, :max 100}]]
+   [:column [:int {:min 0}]]
    [:?column-id [:maybe :int]]
-   [:category [:enum "education" "work" "life"]]
-   [:parents [:vector {:max 7} [:int {:min 0, :max 999}]]]
+   [:category :string]
+   [:parents [:vector {:max 7} [:int {:min 0}]]]
    [:parent-keys [:vector {:max 7} [:string {:max 500}]]]])
 
 (def bounds

@@ -28,7 +28,8 @@
 (declare <box>)
 
 (defn parent-key [entry]
-  (js/JSON.stringify (clj->js [(:id entry) (:from entry) (:to entry) (:what entry)])))
+  (js/JSON.stringify (clj->js (if (some? (:id entry)) [(:id entry)]
+                              [(:from entry) (:to entry) (:what entry)]))))
 
 (m/defc <group-logo> [entry :- schema/timeline-item asset :- [:maybe media-schema/asset]]
   (when (or (seq (:logo entry)) (fields/editing? entry))
@@ -63,7 +64,8 @@
 (m/defc <add-entry> [context :- cv-schema/zoom-context count :- :int]
   (let [editor @(r/subscribe [:get :state :content-editor])]
     [:button.cv-add-entry
-     {:disabled (or (fields/busy? editor) (some? (:cv-entry editor)))
+     {:disabled (or (fields/busy? editor) (some? (:cv-entry editor)) (>= count 1000))
+      :title (when (>= count 1000) "This timeline has reached its entry limit.")
       :on-click (fn [event]
                   (.stopPropagation event)
                   (r/dispatch [:content-editor/cv-open (:column context) (:category context) count

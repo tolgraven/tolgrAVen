@@ -496,11 +496,12 @@
   "Responsive picture with an inline replacement control for editable CMS media."
   [attrs :- attrs-schema]
   (let [path (fields/path attrs [:src])
-        draft (when (and path (fields/editing? attrs))
-                @(r/subscribe [:get :state :content-editor :fields (pr-str path)]))
+        candidate (when (and path (fields/editing? attrs))
+                    @(r/subscribe [:get :state :content-editor :fields (pr-str path)]))
+        draft (fields/current-draft candidate attrs)
         attrs' (if (and draft (not= (:expected draft) (:value draft)))
                  (-> attrs (dissoc :asset :renditions :placeholder) (assoc :src (:value draft))) attrs)]
-    [fields/<image> attrs [<picture-body> (dissoc attrs' :cms-src)]]))
+    [fields/<image> attrs [<picture-body> (dissoc attrs' :cms-src)] (boolean (seq (:src attrs')))]))
 
 (defc <media-as-bg>
   "Generate picture element optimized for use as background media.
