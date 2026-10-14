@@ -96,10 +96,10 @@
     "...or you can click here"]]))
 
 (defc <commit-message>
-  [[info subtitle title] :- schema/parsed-message]
-  [:<>
-   [:div.github-commit-message
-    [:div.info info]]
+  {:args-schema [:cat schema/parsed-message [:? :?string]]}
+  [[info subtitle title] & [full-message]]
+  [:div.github-commit-message {:title (or full-message info)}
+   [:div.info info]
    (when subtitle
      [:div.github-commit-titles
       [:span {:class (if title "subtitle" "title")
@@ -137,7 +137,7 @@
 
           ;; Parse the provider text here too so restored, previously parsed
           ;; cache entries immediately use the current presentation rules.
-          [<commit-message> (message/parse-message (:message commit))]]])
+          [<commit-message> (message/parse-message (:message commit)) (:message commit)]]])
 
 (r/reg-sub :github/deployment (fn [db _] (get-in db [:module :github :deployment])))
 (r/reg-sub :github/activity
