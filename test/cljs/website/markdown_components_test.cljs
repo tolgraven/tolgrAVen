@@ -186,24 +186,38 @@
                    (reset! *root root)
                    (support/render! root [rich/<editor> {:text "```cljs sample\n(defn yada [] [])\n```"
                                                        :on-change #(swap! *changes conj %)}])))
-          (.then (fn [_] (support/wait-for! #(.querySelector element ".code-editor-fields textarea"))))
+          (.then (fn [_] (support/wait-for! #(.querySelector element ".code-block-input"))))
           (.then (fn [_]
                    (is (.querySelector element ".code-block .code-wrap"))
                    (is (nil? (.querySelector element ".cm-editor")) "Fenced blocks use the ordinary site UI")
-                   (is (< (.-height (.getBoundingClientRect (.querySelector element ".code-editor-fields textarea")))
+                   (is (< (.-height (.getBoundingClientRect (.querySelector element ".code-block-input")))
                           (* 0.4 (.-innerHeight js/window)))
                        "Public blog CSS must not impose its old source-editor minimum on nested code fields")
-                   (change! ".code-editor-fields textarea" "(+ 3 4)")))
+                   (is (nil? (.querySelector element "[role=combobox]")) "No external language field occupies document space")
+                   (change! ".code-block-input" "(+ 3 4)")))
           (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(+ 3 4)"))))
           (.then (fn [_]
                    (is (string/includes? (last @*changes) "```cljs sample") "Formatting aliases never rewrite the authored fence tag")
-                   (change! ".code-editor-fields label:nth-of-type(2) input" "javascript")))
+                   (.click (.querySelector element ".code-language"))
+                   (support/settle!)))
+          (.then (fn [_] (change! "[role=combobox]" "javascript")))
           (.then (fn [_] (support/wait-for! #(.querySelector element ".search-select [role=option]"))))
           (.then (fn [_] (.click (.querySelector element ".search-select [role=option]"))))
           (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "```javascript"))))
-          (.then (fn [_] (change! ".code-editor-fields label:nth-of-type(3) input" "title=Example")))
+          (.then (fn [_]
+                   (is (nil? (.querySelector element "[role=combobox]")) "Choosing a language dismisses the field")
+                   (.click (.querySelector element ".code-metadata"))
+                   (support/settle!)))
+          (.then (fn [_] (change! "input[aria-label='Fence metadata']" "title=Example")))
           (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "javascript title=Example"))))
-          (.then (fn [_] (is (string/includes? (last @*changes) "(+ 3 4)"))))
+          (.then (fn [_]
+                   (.dispatchEvent (.querySelector element "input[aria-label='Fence metadata']")
+                     (js/KeyboardEvent. "keydown" #js {:key "Enter", :bubbles true, :cancelable true}))
+                   (support/settle!)))
+          (.then (fn [_]
+                   (is (nil? (.querySelector element "input[aria-label='Fence metadata']")))
+                   (is (identical? (.-activeElement js/document) (.querySelector element ".code-block-input")))
+                   (is (string/includes? (last @*changes) "(+ 3 4)"))))
           (.catch #(is false (str %)))
           (.finally (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
 
@@ -222,7 +236,7 @@
                    (.click (.querySelector element "button[aria-label='Insert Code Block']"))))
           (.then (fn [_]
                    (support/wait-for!
-                     #(let [input (.querySelector element ".code-editor-fields textarea")]
+                     #(let [input (.querySelector element ".code-block-input")]
                         (and input (identical? input (.-activeElement js/document))))
                      "Code block insertion did not focus its editor")))
           (.then (fn [_] (is (.querySelector element ".code-block .code-wrap"))))
@@ -243,6 +257,7 @@
           (.then (fn [root] (reset! *root root)
                    (support/render! root [code-block/<code-block> "fn main() {}"
                                           {:editable? true, :language "", :on-language-change #(reset! *chosen %)}])))
+          (.then (fn [_] (.click (.querySelector element ".code-language")) (support/settle!)))
           (.then (fn [_] (support/wait-for! #(.querySelector element "[role=combobox]"))))
           (.then (fn [_]
                    (.focus (.querySelector element "[role=combobox]"))

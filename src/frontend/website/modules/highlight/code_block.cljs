@@ -259,6 +259,65 @@
     (cond-> {:ref *element}
       copy! (merge handlers))))
 
+(defc ^:private <editing-controls> [options focus-code!]
+  :let [*active (r/atom nil)]
+  (let [close! #(reset! *active nil)
+        finish! (fn [] (close!) (focus-code!))]
+    [:div.code-edit-controls
+     {:content-editable false
+      :on-key-down #(.stopPropagation %)}
+     [:button.code-language.blog-btn.noborder
+      {:type "button"
+       :title (str "Language: " (or (not-empty (:language options)) "Auto detect"))
+       :aria-label "Choose code language"
+       :aria-expanded (= :language @*active)
+       :on-click #(swap! *active (fn [active] (when-not (= active :language) :language)))}
+      [:span {:aria-hidden true} "λ"]]
+     [:button.code-metadata.blog-btn.noborder
+      {:type "button"
+       :title "Fence metadata (optional text after the language)"
+       :aria-label "Edit fence metadata"
+       :aria-expanded (= :meta @*active)
+       :on-click #(swap! *active (fn [active] (when-not (= active :meta) :meta)))}
+      [:span {:aria-hidden true} "⋯"]]
+     (case @*active
+       :language
+       [:div.code-edit-popover
+        [select/<search-select>
+         {:label "Code language"
+          :auto-focus? true
+          :on-close close!
+          :value (or (:language options) "")
+          :allow-custom? true
+          :options (into [{:value "", :label "Auto detect"}]
+                         (remove #(empty? (:value %)))
+                         (if (contains? options :language-options)
+                           (:language-options options)
+                           (or @(r/subscribe [:content [:common :code-languages]])
+                               [{:value "clojure", :label "Clojure"}
+                                {:value "cljs", :label "ClojureScript"}
+                                {:value "javascript", :label "JavaScript"}])))
+          :on-change (fn [language]
+                       (when-let [change! (:on-language-change options)] (change! language))
+                       (finish!))}]]
+       :meta
+       [:label.code-edit-popover
+        "Fence metadata"
+        [:input {:type "text"
+                 :auto-focus true
+                 :aria-label "Fence metadata"
+                 :placeholder "Optional text after the language"
+                 :title "Preserved in Markdown; no display options are currently interpreted."
+                 :value (or (:meta options) "")
+                 :on-blur close!
+                 :on-key-down (fn [event]
+                                (when (#{"Enter" "Escape"} (.-key event))
+                                  (.preventDefault event)
+                                  (finish!)))
+                 :on-change #(when-let [change! (:on-meta-change options)]
+                               (change! (.. % -target -value)))}]]
+       nil)]))
+
 (defc <code-block>
   {:authoring {:category "Markdown"
                :defaults {:args ["(+ 1 2)" {:language "clojure"}]}}
@@ -271,6 +330,9 @@
         options (options-map options)
         [wrap? set-wrap!] (r/use-state (boolean (:wrap? options)))
         [folded? set-folded!] (r/use-state (boolean (:folded? options)))
+        *input (r/use-ref nil)
+        [scroll set-scroll!] (r/use-state [0 0])
+        focus-code! #(some-> (.-current *input) .focus)
         [copy-label copy!] (use-copy-feedback code)
         [ssr-pending? set-ssr-pending!]
         (r/use-state #(and (not context/*server?*)
@@ -312,10 +374,12 @@
        (assoc gesture-props
         :class (string/join " " (cond-> []
                                    wrap? (conj "code-block-wrapped")
+                                   (:editable? options) (conj "code-block-editable")
                                    (and foldable? folded?) (conj "code-block-folded")))
         :tab-index 0
         :style {"--code-fold-lines" fold-lines})
        [:div.code-block-controls
+        (when (:editable? options) [<editing-controls> options focus-code!])
         (when (not= false (:copy? options)) copy-button)
         [:button.code-wrap.blog-btn.noborder
          {:type "button"
@@ -333,36 +397,30 @@
             :on-click (fn [_] (set-folded! (not folded?)))}
            [:i.fas {:aria-hidden true
                     :class (if folded? "fa-angle-down" "fa-angle-up")}]])]
-       [:div.code-block-content [<formatter> code options on-ready!]]
-       (when (:editable? options)
-         [:div.code-editor-fields
-          {:content-editable false
-           ;; Child controls must receive their own keyboard event before the
-           ;; fence editor keeps it from the surrounding rich-text document.
-           :on-key-down #(.stopPropagation %)}
-          [:label "Code"
-           [:textarea {:value code
-                       :ref (:code-ref options)
-                       :on-focus (:on-code-focus options)
-                       :spell-check false
-                       :rows (max 3 (min 24 line-count))
-                       :on-change #(when-let [change! (:on-code-change options)] (change! (.. % -target -value)))}]]
-          [:label "Language"
-           [select/<search-select>
-            {:label "Code language"
-             :value (or (:language options) "")
-             :allow-custom? true
-             :options (into [{:value "", :label "Auto detect"}]
-                            (remove #(empty? (:value %)))
-                            (if (contains? options :language-options)
-                              (:language-options options)
-                              (or @(r/subscribe [:content [:common :code-languages]])
-                                  [{:value "clojure", :label "Clojure"}
-                                   {:value "cljs", :label "ClojureScript"}
-                                   {:value "javascript", :label "JavaScript"}])))
-             :on-change #(when-let [change! (:on-language-change options)] (change! %))}]]
-          [:label "Fence metadata"
-           [:input {:type "text"
-                    :value (or (:meta options) "")
-                    :on-change #(when-let [change! (:on-meta-change options)] (change! (.. % -target -value)))}]]])
+       [:div.code-block-content
+        {:content-editable (when (:editable? options) false)
+         :on-key-down (when (:editable? options) #(.stopPropagation %))
+         :style (when (:editable? options)
+                  {"--code-scroll-left" (str (first scroll) "px")
+                   "--code-scroll-top" (str (second scroll) "px")})}
+        (if (:editable? options)
+          [:div.code-block-highlight {:aria-hidden true}
+           [<formatter> code options on-ready!]]
+          [<formatter> code options on-ready!])
+        (when (:editable? options)
+          [:textarea.code-block-input
+           {:aria-label "Code"
+            :value code
+            :ref (fn [input]
+                   (set! (.-current *input) input)
+                   (when-let [ref (:code-ref options)]
+                     (if (fn? ref) (ref input) (set! (.-current ref) input))))
+            :on-focus (:on-code-focus options)
+            :spell-check false
+            :auto-capitalize "off"
+            :auto-correct "off"
+            :wrap (if wrap? "soft" "off")
+            :on-scroll #(set-scroll! [(.. % -target -scrollLeft) (.. % -target -scrollTop)])
+            :on-change #(when-let [change! (:on-code-change options)]
+                          (change! (.. % -target -value)))}])]
        feedback])))

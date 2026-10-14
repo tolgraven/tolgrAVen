@@ -84,9 +84,14 @@ are read again at reconciliation so a passive effect cannot apply an earlier
 render's accepted text over newer typing. There is no whole-props ref.
 
 Fenced-code editor descriptors render the ordinary shared code-block component;
-the SDK supplies only code/language/metadata setters. Its optional editable fields
-retain the same highlighted display, copy/wrap/fold controls and formatter gate
-as a public post. Both authoring owners declare their highlight dependency.
+the SDK supplies only code/language/metadata setters. A transparent native textarea
+over the highlighted text supplies selection, caret and keyboard input within
+the published code-block layout. Right-hand hover/focus controls open the shared
+searchable language picker (including Auto detect) or an optional metadata field;
+selection, Enter/Escape or focus exit closes the field. Fence metadata is text
+after the language in the opening fence; it round-trips without interpreting
+display options. Copy/wrap/fold controls and the formatter gate remain shared
+with public posts. Both authoring owners declare their highlight dependency.
 Source mode does not implement another fenced-code rendering system.
 
 ## Working and named drafts
