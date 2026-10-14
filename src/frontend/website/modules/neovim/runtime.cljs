@@ -27,6 +27,48 @@
 (defn request! [session method params]
   (.request session method (clj->js params)))
 
+(def written-buffer-schema
+  [:map
+   [:path [:string {:max 1024}]]
+   [:text [:string {:max 4194304}]]])
+
+(def write-event "website-buffer-written")
+
+(defn watch-writes!
+  "Acquire one native BufWritePost owner. Cleanup releases RPC delivery and its
+   exact autocommand group; callbacks never outlive the mounted editor."
+  [^js session on-write fail!]
+  (let [*active? (atom true)
+        group (str "WebsiteWrites" (random-uuid))
+        release! (.listen session write-event
+                          (fn [payload]
+                            (when @*active?
+                              (let [[path text] (js->clj payload)]
+                                (if (and (string? path) (<= (count path) 1024)
+                                         (string? text) (<= (count text) 4194304))
+                                  (on-write {:path path, :text text})
+                                  (fail! (js/Error. "Written buffer exceeds the supported bounds")))))))]
+    (-> (request! session "nvim_get_api_info" [])
+        (.then (fn [info]
+                 (when @*active?
+                   (request! session "nvim_exec_lua"
+                     ["local channel, group, event = ...
+                       vim.api.nvim_create_autocmd('BufWritePost', {
+                         group = vim.api.nvim_create_augroup(group, {clear = true}),
+                         callback = function(args)
+                           local text = table.concat(vim.api.nvim_buf_get_lines(args.buf, 0, -1, true), '\\n')
+                           if vim.bo[args.buf].endofline then text = text .. '\\n' end
+                           vim.rpcnotify(channel, event, vim.api.nvim_buf_get_name(args.buf), text)
+                         end})"
+                      [(aget info 0) group write-event]]))))
+        (.catch #(when @*active? (fail! %))))
+    (fn []
+      (reset! *active? false)
+      (release!)
+      (-> (request! session "nvim_exec_lua"
+            ["local group = ...; pcall(vim.api.nvim_del_augroup_by_name, group)" [group]])
+          (.catch (fn [_] nil))))))
+
 (defn start! [{:keys [cols rows initial-text initial-file filetype document]} redraw! status!]
   (let [*active? (atom true)
         *ready? (atom false)
@@ -47,13 +89,15 @@
                   ;; Native diff windows need the measured UI in place. Reagent keeps every startup frame hidden until ready.
                   (.then #(when document
                             (request! session "nvim_ui_attach" [cols rows {:rgb true, :ext_linegrid true}])))
-                  (.then #(cond
+                  (.then (fn [_]
+                           (cond
                             document (document/open! (fn [method params] (request! session method params)) document)
                             initial-file
                             (request! session "nvim_exec_lua"
                               ["local path = ...; assert(not path:match('^/') and not path:find('..', 1, true), 'Invalid initial file'); vim.cmd('hide edit ' .. vim.fn.fnameescape('/workspace/tolgrAVen/' .. path))" [initial-file]])
-                            :else (request! session "nvim_buf_set_lines"
-                              [0 0 -1 true (string/split (or initial-text "") #"\n" -1)])))
+                            :else (-> (request! session "nvim_buf_set_lines"
+                                        [0 0 -1 true (string/split (or initial-text "") #"\n" -1)])
+                                      (.then #(request! session "nvim_buf_set_name" [0 "/workspace/buffer"]))))))
                   (.then #(when-not document
                             (request! session "nvim_set_option_value"
                               ["filetype" filetype {:buf 0}])))

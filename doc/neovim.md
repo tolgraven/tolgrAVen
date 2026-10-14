@@ -31,6 +31,11 @@ to 8192 characters; this is an initializer, not a controlled value. Changing
 initialization options restarts the process and clears the imported-file selector.
 Responses from a stopped session cannot update its replacement. “Use buffer” reads the current
 buffer and calls `:on-save`; the caller owns any application state or persistence.
+`:on-write` receives `{:path <native buffer path>, :text <complete written text>}`
+after an ordinary `:w`. It uses a lifecycle-owned `BufWritePost` notification and
+dispatches into the consumer's event flow. Unnamed initial-text buffers receive a
+session-local filename so writing works. Recoverable command/input errors leave
+the worker, grid and buffer export usable; restarting still discards the session.
 Restart and unmount terminate the worker and cancel pending RPC requests.
 
 The process owns the editable buffer. The component holds only transient redraw
@@ -52,7 +57,9 @@ shortcuts and Ctrl+Shift+V remain native. Sessions are temporary; copy/use the
 buffer before leaving. Large pastes that exceed the ring capacity fail visibly.
 The wrapper suppresses upstream's per-input-byte console trace, which otherwise
 can exhaust the RPC timeout during bulk imports. Other diagnostics and upstream
-filesystem behavior remain available; the upstream artifacts stay unchanged.
+filesystem behavior remain available. The worker retains only the first 50 input
+bytes for exit diagnostics, with a separate total counter, so imports do not grow
+an unbounded JavaScript diagnostic array.
 
 ## Pinned artifacts
 
@@ -60,8 +67,10 @@ filesystem behavior remain available; the upstream artifacts stay unchanged.
   `a054b698c0b7c83e934a38df5c0021ae2cb444cc`.
 - Release `nvim-wasm-emscripten.zip`, GitHub asset ID `636003451`, SHA-256
   `cb37edbf2474788d1d221e65a28da30f639ebc5b3b7f40a6f5207b79b4db225c`.
-- `resources/public/vendor/neovim/` contains unmodified `nvim.js`, `nvim-worker.js`,
-  `nvim.wasm`, `nvim.data`, and upstream LICENSE.txt. No CDN requests are needed.
+- `resources/public/vendor/neovim/` contains unmodified `nvim.js`, `nvim.wasm`,
+  `nvim.data`, and upstream LICENSE.txt. `nvim-worker.js` has one documented local
+  adaptation: bound the input diagnostic sample to 50 bytes while preserving the
+  total count. No CDN requests are needed.
 - MessagePack uses the vendored no-eval CommonJS distribution of `msgpackr` 2.1.0
   (named `msgpackr.js` for Shadow resource discovery) beside the adapter, with its
   MIT license. npm tarball integrity:

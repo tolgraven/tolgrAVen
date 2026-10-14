@@ -3,6 +3,9 @@
             [website.modules.neovim.http :as http]
             [website.page-router :as pages]
             [website.middleware :as middleware]
+            [website.routes.home :as home]
+            [website.layout :as layout]
+            [reitit.ring :as ring]
             [website.config :as config]
             [website.env :as environment]
             [website.build.packaging :as packaging]
@@ -56,3 +59,15 @@
     (is (= :github-diff (get-in match [:data :name])))
     (is (= {:user "tolgraven", :repo "tolgrAVen", :sha sha} (get-in match [:parameters :path])))
     (is (thrown? Exception (pages/request-match "/neovim/github/tolgraven/tolgrAVen/HEAD" {})))))
+
+(deftest cold-editor-and-diff-documents-reach-the-real-home-handler
+  (with-redefs [layout/render-home (fn [request]
+                                    {:status 200
+                                     :body (:parameters request)})]
+    (let [handler (http/wrap-isolation (ring/ring-handler (ring/router (home/home-routes))))
+          sha (apply str (repeat 40 "a"))]
+      (doseq [path ["/neovim" (str "/neovim/github/tolgraven/tolgrAVen/" sha)]]
+        (let [response (handler {:uri path, :request-method :get, :query-params {}})]
+          (is (= 200 (:status response)))
+          (is (= "same-origin" (get-in response [:headers "Cross-Origin-Opener-Policy"])))
+          (is (= "require-corp" (get-in response [:headers "Cross-Origin-Embedder-Policy"]))))))))

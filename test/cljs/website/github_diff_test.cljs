@@ -45,14 +45,30 @@
                                         (assoc commit :files [{:filename "x.clj", :status "modified"}])])
         requested (event-effects (:db metadata) [:github/diff-ensure revision])
         payload {:type "file", :encoding "base64", :content "eAo=", :size 2}
-        before (:db (event-effects (:db requested) [:github/diff-source revision "x.clj" :before payload]))
-        after (:db (event-effects before [:github/diff-source revision "x.clj" :after payload]))]
+        before (:db (event-effects (:db requested) [:github/diff-source revision "x.clj" 1 :before payload]))
+        after (:db (event-effects before [:github/diff-source revision "x.clj" 1 :after payload]))]
     (is (= 2 (count (:dispatch-n requested))))
     (is (= :loading (get-in before (events/state-path revision :files "x.clj" :status))))
     (is (= :ready (get-in after (events/state-path revision :files "x.clj" :status))))
     (is (= {:mode :diff, :selected "x.clj"} (get-in after (events/state-path revision :displayed))))
     (is (nil? (:dispatch-n (event-effects after [:github/diff-ensure revision]))))
     (is (nil? (event-effects initial [:github/diff-open revision])))))
+
+(deftest superseded-file-failures-cannot-poison-a-retry
+  (let [revision ["u" "r" sha]
+        initial (:db (event-effects {} [:github/diff-open revision]))
+        metadata (:db (event-effects initial [:github/diff-metadata revision 1
+                                             (assoc commit :files [{:filename "x.clj", :status "modified"}])]))
+        requested (:db (event-effects metadata [:github/diff-ensure revision]))
+        failed (:db (event-effects requested [:github/diff-file-failed revision "x.clj" 1 {:status 500}]))
+        retry (:db (event-effects failed [:github/diff-ensure revision]))
+        stale (:db (event-effects retry [:github/diff-file-failed revision "x.clj" 1 {:status 500}]))
+        payload {:type "file", :encoding "base64", :content "eAo=", :size 2}
+        before (:db (event-effects stale [:github/diff-source revision "x.clj" 2 :before payload]))
+        ready (:db (event-effects before [:github/diff-source revision "x.clj" 2 :after payload]))]
+    (is (= retry stale))
+    (is (= :ready (get-in ready (events/state-path revision :files "x.clj" :status))))
+    (is (= "x\n" (get-in ready (events/content-path revision :files "x.clj" :after))))))
 
 (deftest metadata-pages-use-the-same-explicit-page-size
   (let [revision ["u" "r" sha]

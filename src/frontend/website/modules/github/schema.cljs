@@ -2,7 +2,11 @@
   "Consumed provider fields and UI state; provider extension fields remain open."
   (:require [website.schema.common :as c]))
 
-(def result [:map [:status [:enum :loading :ready :error]] [:?message :string]])
+(def result
+  [:map
+   [:status [:enum :loading :ready :error]]
+   [:?attempt c/nonnegative]
+   [:?message :string]])
 (def diff-state
   [:map
    [:mode [:enum :diff :patch]]
@@ -18,6 +22,7 @@
                    :query :string
                    :pages-fetched [:sequential :int]
                    :commits-fetched c/strings
+                   :diff-attempt c/nonnegative
                    :diff-view [:map-of :string diff-state]}))
 (def options (c/optional-map {:user :string, :repo :string}))
 

@@ -3,6 +3,7 @@
 .neovim-container { margin-block: 1rem; }
 .neovim { border: .0625rem solid #2a3346; border-radius: .5rem; overflow: hidden; background: #050912; color: #dfe5f1; }
 .neovim__toolbar { display: flex; justify-content: space-between; align-items: center; padding: .5rem 1rem; border-bottom: .0625rem solid #2a3346; }
+.neovim__command-error { margin: .75rem 1rem; color: #ffb6b6; }
 .neovim__viewport { position: relative; width: 100%; overflow: auto; }
 .neovim__grid, .neovim__measure { font-family: Menlo, "Neovim Icons", Consolas, monospace; font-size: .875rem; line-height: 1.35; font-variant-ligatures: none; }
 .neovim__measure { position: absolute; visibility: hidden; pointer-events: none; }

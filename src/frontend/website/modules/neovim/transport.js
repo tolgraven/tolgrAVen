@@ -13,6 +13,7 @@ exports.start = function start(workerPath, onRedraw, onStatus, onExit, onFailure
   const ring = new Uint8Array(sab, 12, CAP);
   const worker = new Worker(workerPath);
   const pending = new Map();
+  const listeners = new Map();
   let sharedState, nextId = 1, buffer = new Uint8Array(0), stopped = false;
   let resolveReady, rejectReady;
   const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
@@ -65,6 +66,7 @@ exports.start = function start(workerPath, onRedraw, onStatus, onExit, onFailure
       entry.reject(new Error('Neovim session is closed'));
     }
     pending.clear();
+    listeners.clear();
     worker.onmessage = worker.onerror = null;
   }
 
@@ -98,7 +100,10 @@ exports.start = function start(workerPath, onRedraw, onStatus, onExit, onFailure
               if (error) entry.reject(new Error(JSON.stringify(error)));
               else entry.resolve(result);
             }
-          } else if (type === 2 && id === 'redraw') onRedraw(error);
+          } else if (type === 2) {
+            if (id === 'redraw') onRedraw(error);
+            for (const listener of listeners.get(id) || []) listener(error);
+          }
         });
       } catch (error) {
         if (!error.incomplete) { onFailure('RPC decode failed: ' + error.message); stop(); }
@@ -116,6 +121,16 @@ exports.start = function start(workerPath, onRedraw, onStatus, onExit, onFailure
   return {
     ready, request, stop,
     diagnostics: () => ({ pendingInputBytes: (Atomics.load(state, 0) - Atomics.load(state, 1) + CAP) % CAP }),
+    listen(method, callback) {
+      if (stopped) throw new Error('Neovim session is closed');
+      let group = listeners.get(method);
+      if (!group) listeners.set(method, group = new Set());
+      group.add(callback);
+      return () => {
+        group.delete(callback);
+        if (!group.size) listeners.delete(method);
+      };
+    },
     registerTypes(types) {
       for (const info of Object.values(types)) {
         addExtension({ type: info.id, unpack: payload => unpack(payload) });

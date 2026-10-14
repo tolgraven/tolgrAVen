@@ -122,7 +122,8 @@ function popByte() {
   Atomics.store(state, 1, (tail + 1) % CAP);
 
   totalBytesRead++;
-  consumedBytes.push(b);
+  // Site adaptation: retain only the finite sample used by exit diagnostics.
+  if (consumedBytes.length < 50) consumedBytes.push(b);
 
   console.log("POP BYTE", b.toString(16));
 
@@ -575,8 +576,8 @@ self.onmessage = async (ev) => {
       .map((x) => x.toString(16).padStart(2, "0"))
       .join(" ");
     const remaining =
-      consumedBytes.length > 50
-        ? `... (${consumedBytes.length - 50} more bytes)`
+      totalBytesRead > 50
+        ? `... (${totalBytesRead - 50} more bytes)`
         : "";
     safeStatus(
       `EXIT CODE ${ret}. Read ${totalBytesRead} bytes: ${hexStr}${remaining}`,

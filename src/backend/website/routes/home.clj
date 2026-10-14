@@ -78,7 +78,7 @@
             {:status 200 :headers {"Content-Type" "application/json" "Cache-Control" "no-store"}
              :body (json/write-str (layout/return-template request))})}]
    ["/blog*" {:get home-page}]
-   (when-enabled :neovim nil ["/neovim" {:get home-page}])
+   (when-enabled :neovim nil ["/neovim*" {:get home-page}])
    ["/not-found" {:get home-page}]
    ["/client-oauth*" {:get home-page}]
    ["/log*" {:get home-page}]

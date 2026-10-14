@@ -22,6 +22,13 @@ global.Worker = class {
   assert.equal(await reply, 42, 'fragmented MessagePack responses reassemble');
   worker.emit({ type: 'stdout', bytes: packer.pack([2, 'redraw', [['flush', []]]]) });
   assert.deepEqual(redraws, [[['flush', []]]]);
+  const writes = [];
+  const release = session.listen('website-buffer-written', value => writes.push(value));
+  worker.emit({ type: 'stdout', bytes: packer.pack([2, 'website-buffer-written', ['/workspace/file.cljs', 'first\n']]) });
+  assert.deepEqual(writes, [['/workspace/file.cljs', 'first\n']]);
+  release();
+  worker.emit({ type: 'stdout', bytes: packer.pack([2, 'website-buffer-written', ['/workspace/file.cljs', 'stale\n']]) });
+  assert.equal(writes.length, 1, 'disposed native notifications cannot reach consumers');
   const state = new Int32Array(worker.init.sab, 0, 3);
   const previous = Atomics.load(state, 0);
   await assert.rejects(session.request('nvim_paste', ['x'.repeat(65536), true, -1]), /queue is full/);
@@ -31,6 +38,7 @@ global.Worker = class {
   await assert.rejects(pending, /closed/);
   assert.equal(worker.terminated, 1, 'cleanup is idempotent');
   assert.equal(Atomics.load(state, 2), 1);
+  assert.throws(() => session.listen('website-buffer-written', () => {}), /closed/);
   assert.deepEqual(errors, []);
   const cancelled = start('fixture-worker', () => {}, () => {}, () => {}, () => {});
   const stopped = assert.rejects(cancelled.ready, /closed/);

@@ -47,6 +47,16 @@
                           "GitHub denied this request or its public API rate limit was reached."
                           "GitHub could not load this revision. Retry or open the commit on GitHub.")})))
 
+(r/reg-event-db :github/diff-file-failed
+  (fn [db [_ revision filename attempt failure]]
+    (if (= attempt (get-in db (state-path revision :files filename :attempt)))
+      (update-in db (state-path revision :files filename) assoc
+                 :status :error
+                 :message (if (= 403 (:status failure))
+                            "GitHub denied this request or its public API rate limit was reached."
+                            "GitHub could not load this revision. Retry or open the commit on GitHub."))
+      db)))
+
 (r/reg-event-fx :github/diff-mode
   (fn [{:keys [db]} [_ revision mode]]
     (when (#{:diff :patch} mode)
@@ -65,7 +75,8 @@
           file (first (filter #(= selected (:filename %)) (:files commit)))
           path (if (= :patch mode) [:patch] [:files selected])
           status (get-in db (apply state-path revision (conj path :status)))
-          sides (when file (diff/sides commit file))]
+          sides (when file (diff/sides commit file))
+          attempt (inc (get-in db [:state :github :diff-attempt] 0))]
       (when (and commit (not= :loading status))
         (cond
           (= :ready status) {:db (assoc-in db (state-path revision :displayed) {:mode mode, :selected selected})}
@@ -85,14 +96,15 @@
                         {:status :error, :message "This file has an unsupported repository path or revision."})}
           :else
           {:db (-> db
-                   (assoc-in (state-path revision :files selected) {:status :loading})
+                   (assoc-in [:state :github :diff-attempt] attempt)
+                   (assoc-in (state-path revision :files selected) {:status :loading, :attempt attempt})
                    (assoc-in (content-path revision :files selected) {}))
            :dispatch-n (mapv (fn [[side spec]]
                                (if spec
                                  (http-read (diff/contents-url revision spec) "application/vnd.github+json"
-                                            [:github/diff-source revision selected side]
-                                            [:github/diff-failed revision [:files selected]])
-                                 [:github/diff-source revision selected side
+                                            [:github/diff-source revision selected attempt side]
+                                            [:github/diff-file-failed revision selected attempt])
+                                 [:github/diff-source revision selected attempt side
                                   {:type "file", :encoding "base64", :content "", :size 0}])) sides)})))))
 
 (r/reg-event-db :github/diff-patch
@@ -107,17 +119,19 @@
                 {:status :error, :message "This patch exceeds the 1 MiB viewer limit. Open it on GitHub."}))))
 
 (r/reg-event-db :github/diff-source
-  (fn [db [_ revision filename side response]]
-    (if (= :error (get-in db (state-path revision :files filename :status)))
+  (fn [db [_ revision filename attempt side response]]
+    (if (or (not= attempt (get-in db (state-path revision :files filename :attempt)))
+            (= :error (get-in db (state-path revision :files filename :status))))
       db
       (try
         (let [text (diff/decode-text response)
               db' (assoc-in db (content-path revision :files filename side) text)
               loaded (get-in db' (content-path revision :files filename))]
           (if (and (contains? loaded :before) (contains? loaded :after))
-            (cond-> (assoc-in db' (state-path revision :files filename) {:status :ready})
+            (cond-> (assoc-in db' (state-path revision :files filename) {:status :ready, :attempt attempt})
               (and (= :diff (get-in db (state-path revision :mode)))
                    (= filename (get-in db (state-path revision :selected))))
               (assoc-in (state-path revision :displayed) {:mode :diff, :selected filename})) db'))
         (catch :default error
-          (assoc-in db (state-path revision :files filename) {:status :error, :message (.-message error)}))))))
+          (assoc-in db (state-path revision :files filename)
+                    {:status :error, :attempt attempt, :message (.-message error)}))))))

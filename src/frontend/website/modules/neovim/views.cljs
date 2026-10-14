@@ -17,7 +17,8 @@
    [:?filetype [:string {:max 64}]]
    [:?cols [:int {:min 20, :max 240}]]
    [:?rows [:int {:min 8, :max 80}]]
-   [:?on-save fn?]])
+   [:?on-save fn?]
+   [:?on-write fn?]])
 
 (defc ^:private <grid>
   [grid :- model/grid-schema]
@@ -49,18 +50,20 @@
         *document (atom nil)]
   ;; The editor process owns its buffer. This ratom is its disposable UI projection,
   ;; like a native player/gesture adapter, never a mirrored application document store.
-  (let [{:keys [rows cols initial-text initial-file filetype on-save]
+  (let [{:keys [rows cols initial-text initial-file filetype on-save on-write]
          source-document :document
          :or {rows 24, cols 80, initial-text "", filetype "clojure"}} options
         fail! #(swap! *view assoc :status :error :message (.-message %))
+        command-error! #(swap! *view assoc :command-error (.-message %))
         request! (fn [method params]
                    (when-let [session (when (= :ready (:status @*view)) @*session)]
                      (-> (runtime/request! session method params)
                          (.then (fn [result]
                                   (when (and (identical? session @*session) @*grid-element)
+                                    (swap! *view dissoc :command-error)
                                     (.focus @*grid-element))
                                   result))
-                         (.catch #(when (identical? session @*session) (fail! %))))))
+                         (.catch #(when (identical? session @*session) (command-error! %))))))
         mouse-ready? #(and (= :ready (:status @*view)) (get-in @*view [:grid :mouse?]))
         mouse! (fn [event button action]
                  (when (mouse-ready?)
@@ -130,6 +133,11 @@
                                      (when @*grid-element (.focus @*grid-element)))))
                           (.catch #(when (identical? session @*session)
                                      (swap! *imports assoc :status :error :message (.-message %))))))))]
+      (r/use-effect
+       (fn []
+         (when (and (= :ready status) on-write (not source-document))
+           (runtime/watch-writes! @*session on-write fail!)))
+       [status on-write source-document])
       (r/use-layout-effect
        (fn []
          (when (and source-document (= :ready status) (not= source-document @*document))
@@ -187,8 +195,13 @@
                                       (.then (fn [lines]
                                                (when (identical? session @*session)
                                                  (on-save (string/join "\n" (js->clj lines))))))
-                                      (.catch #(when (identical? session @*session) (fail! %))))))}
+                                      (.catch #(when (identical? session @*session) (command-error! %))))))}
            "Use buffer"])]
+       (when-let [message (:command-error @*view)]
+         [:p.neovim__command-error {:role "alert"}
+          message " "
+          [:button {:type "button"
+                    :on-click #(swap! *view dissoc :command-error)} "Dismiss"]])
        (when (= :booting status)
          [:div.neovim__loading
           [:div.neovim__progress {:role "progressbar", :aria-label "Loading Neovim", :aria-valuetext message}
@@ -278,7 +291,7 @@
 
 (defc <editor>
   "A lifecycle-owned Neovim WASM component. options: :initial-text or :initial-file, :filetype,
-   :cols, :rows and optional :on-save (receives the current buffer as a string).
+   :cols, :rows, :on-save (Use buffer text) and :on-write (native :w path/text).
    Requires an isolated top-level document, as provided by /neovim.
    Source :document options use read-only native patch/diff buffers; changing them
    reuses the session. Changing ordinary initialization options starts a new session;

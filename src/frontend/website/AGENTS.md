@@ -540,6 +540,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - `:neovim` owns one WASM worker/RPC connection per mounted editor and terminates
   it on unmount. The process owns buffers/imports; Reagent owns grid, cursor,
   loading markup and pointer handlers. Profile/workspace files load before startup.
+  Native `:w` callbacks release their exact BufWritePost owner on unmount/replacement;
+  recoverable input rejection never hides a healthy buffer. Worker input diagnostics
+  retain a finite sample, independently of the total byte count.
   Configure initial files before attaching the UI; diffs attach a hidden UI before
   loading buffers and publish only the completed redraw. See `doc/neovim.md`.
 - `ssr/return_worker.cljc` shares the module-owned isolation policy. GitHub's

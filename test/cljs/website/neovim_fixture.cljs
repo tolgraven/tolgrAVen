@@ -12,6 +12,7 @@
 (defonce *show? (r/atom true))
 (defonce *alternate? (r/atom false))
 (defonce *saved (r/atom ""))
+(defonce *written (r/atom nil))
 (defonce *live (r/atom "Not run"))
 (defonce *plugins (r/atom "Not run"))
 (defonce *workspace (r/atom "Not run"))
@@ -302,13 +303,15 @@
    (when @*startup-ms [:p {:id "startup-ms"} (str "Whole worker startup: " @*startup-ms " ms")])
    (when @*show?
      [views/<editor> (merge {:filetype "clojure"
-                            :on-save #(reset! *saved %)}
+                            :on-save #(reset! *saved %)
+                            :on-write #(reset! *written %)}
                            (if @*diff-view?
                              {:document sample-diff}
                              (if @*alternate?
                              {:initial-text ";; New session"}
                              {:initial-file "src/frontend/website/modules/neovim/views.cljs"})))])
-   [:pre {:id "saved-buffer"} @*saved]])
+   [:pre {:id "saved-buffer"} @*saved]
+   [:pre {:id "written-buffer"} (pr-str @*written)]])
 
 (defn ^:export init! []
   ;; Fixture-only counters verify exact component ownership without a fake runtime.
