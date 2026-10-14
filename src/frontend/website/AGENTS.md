@@ -146,6 +146,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   native editor nodes/decorations, never authored markers. SDK extension slots
   may require stable reverse React adapters; keep their native document/selection
   work scoped and render ordinary Reagent UI. See `doc/markdown-authoring.md`.
+  Editable fenced blocks use the shared highlighter with an overlaid native
+  textarea; language/metadata controls are transient overlays inside its bounds.
 - Working/named blog drafts use account-owned projections in the existing storage
   queue/debounce and navigation/pagehide drain. Restore validates before applying;
   new input and account changes supersede pending reads. Published-post revision
@@ -165,6 +167,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - The page shell owns one lazy contact popup outside both footer copies. Footer
   controls share its re-frame state; do not mount the popup inside each control.
   Keep the HUD above the contact layer so notices remain actionable.
+  The full footer's shared visibility feature owns near-bottom state, including
+  initial layout and resize. That state switches accessibility between copies:
+  the distant full footer and hidden/retired sticky footer use `aria-hidden` and `inert`.
 - Render state through `website.react` subscriptions and change it through events.
   Effects/source adapters own I/O; view functions remain pure.
 - Use `<component>` names, `defc` features and `defpage` boundaries. `m/<>` selects

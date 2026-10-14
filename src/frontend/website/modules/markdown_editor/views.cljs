@@ -326,21 +326,44 @@
                       [:?enabled-features features/schema]
                       [:?source? :boolean] [:?document-id :?string] [:?text-query [:vector :any]] [:?uploads [:vector :map]] [:?uploads-query [:vector :any]] [:?upload-query fn?]
                       [:?render-upload fn?] [:?enqueue! fn?] [:?insert-ready! fn?] [:?on-anchors fn?] [:?on-removed fn?]]}
-  [{:keys [text document-id on-change upload! image-urls assets library source? uploads uploads-query upload-query render-upload enqueue! insert-ready! on-anchors on-removed] :as props}]
+  [{:keys [text text-query document-id on-change upload! image-urls assets library source? uploads uploads-query upload-query render-upload enqueue! insert-ready! on-anchors on-removed] :as props}]
   :let [*error (r/atom nil)
         *overlay (r/atom nil)]
   (let [editor-ref (r/use-ref nil)
-        import-params {:text text, :uploads (mapv #(select-keys % [:id :position :image-inserted? :cancelled? :asset]) uploads)}
+        *pending? (r/use-ref false)
+        [input-revision input-changed!] (r/use-state 0)
+        *document (r/use-ref document-id)
+        *text (when text-query (r/subscribe text-query))
+        text' (if *text @*text text)
+        on-change' (r/use-callback
+                     (fn [markdown & args]
+                       (set! (.-current *pending?) true)
+                       (input-changed! inc)
+                       (apply on-change markdown args))
+                     [on-change input-changed!])
+        import-params {:text text', :uploads (mapv #(select-keys % [:id :position :image-inserted? :cancelled? :asset]) uploads)}
         enabled-features (features/enabled (:enabled-features props))
         editor-plugins (r/use-memo #(plugins upload! (or image-urls []) import-params enabled-features)
                                   [upload! image-urls import-params enabled-features])]
     ;; This calls the SDK's public content API, never mutates React-owned markup.
     ;; onChange writes through the parent form's event; selection/history are SDK transient state.
+    ;; Re-read the managed form query, as source mode does. A delayed parent echo
+    ;; cannot reset unacknowledged native input. Keep only a pending flag, never
+    ;; historical documents; changing document-id explicitly replaces pending
+    ;; content too (including an intentional replacement equal to an older edit).
+    ;; Native revisions also reconcile undo back to an unchanged parent value.
     (r/use-effect
       (fn []
+        (when source? (set! (.-current *pending?) false))
         (when-let [instance (.-current editor-ref)]
-          (when-not (= text (.getMarkdown instance)) (.setMarkdown instance text))))
-      [text document-id])
+          (let [document-changed? (not= document-id (.-current *document))
+                text'' (if *text @*text text')
+                external? (or document-changed? (not (.-current *pending?)))
+                current-text (.getMarkdown instance)]
+            (when (and external? (not= text'' current-text)) (.setMarkdown instance text''))
+            (when (or external? (= text'' current-text)) (set! (.-current *pending?) false))
+            (set! (.-current *document) document-id))))
+      [*text text' document-id source? input-revision])
     [:r> (r/context-provider media/asset-context) #js {:value (into {} (map (juxt :src identity)) assets)}
      [:r> (r/context-provider media-context) #js {:value {:assets assets, :library library, :upload! upload!}}
      [:r> (r/context-provider uploads/context)
@@ -350,7 +373,7 @@
                           :render-upload render-upload
                           :enqueue! enqueue!
                           :insert-ready! insert-ready!
-                          :on-change on-change
+                          :on-change on-change'
                           :on-anchors on-anchors
                           :on-removed on-removed}
                     ;; Reusable static hosts need no application subscription.
@@ -360,7 +383,7 @@
      (if source?
        ^{:key document-id} [source/<source> props]
        ^{:key document-id} [mdx-editor {:ref editor-ref
-                  :markdown text
+                  :markdown text'
                   :plugins editor-plugins
                   :contentEditableClassName "md-editor-content md-rendered"
                   :overlayContainer @*overlay

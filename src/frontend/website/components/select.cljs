@@ -9,10 +9,12 @@
   (string/includes? (string/lower-case (str label " " value)) (string/lower-case query)))
 
 (defc <search-select>
-  "Filter options by label or value; arrows and Enter select, Escape closes."
+  "Filter options by label or value; arrows and Enter select, Escape closes.
+   Optional on-close receives the :blur/:escape reason and native event."
   {:spec-schema [:map [:value :string] [:options [:vector option-schema]] [:on-change fn?]
-                      [:label :string] [:?allow-custom? :boolean]]}
-  [{:keys [value options on-change label allow-custom?]}]
+                      [:label :string] [:?allow-custom? :boolean]
+                      [:?auto-focus? :boolean] [:?on-close fn?]]}
+  [{:keys [value options on-change label allow-custom? auto-focus? on-close]}]
   :let [*open? (r/atom false)
         *query (r/atom "")
         *index (r/atom 0)]
@@ -27,17 +29,19 @@
      [:input {:type "search"
               :role "combobox"
               :aria-label label
+              :auto-focus auto-focus?
               :aria-expanded @*open?
               :aria-autocomplete "list"
               :aria-controls id
               :aria-activedescendant (when (and @*open? (seq choices)) (str id "-" (min @*index (dec (count choices)))))
               :value (if @*open? @*query (or (:label selected) value))
               :on-focus #(do (reset! *query "") (reset! *index 0) (reset! *open? true))
-              :on-blur #(reset! *open? false)
+              :on-blur #(do (reset! *open? false) (when on-close (on-close :blur %)))
               :on-change #(do (reset! *query (.. % -target -value)) (reset! *index 0) (reset! *open? true))
               :on-key-down (fn [event]
                              (case (.-key event)
-                               "Escape" (do (.preventDefault event) (reset! *open? false))
+                               "Escape" (do (.preventDefault event) (reset! *open? false)
+                                            (when on-close (on-close :escape event)))
                                "ArrowDown" (do (.preventDefault event) (reset! *open? true)
                                                (swap! *index #(min (inc %) (max 0 (dec (count choices))))))
                                "ArrowUp" (do (.preventDefault event) (swap! *index #(max 0 (dec %))))

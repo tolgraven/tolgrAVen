@@ -86,9 +86,33 @@ are read again at reconciliation so a passive effect cannot apply an earlier
 render's accepted text over newer typing. There is no whole-props ref.
 
 Fenced-code editor descriptors render the ordinary shared code-block component;
-the SDK supplies only code/language/metadata setters. Its optional editable fields
-retain the same highlighted display, copy/wrap/fold controls and formatter gate
-as a public post. Both authoring owners declare their highlight dependency.
+the SDK supplies only code/language/metadata setters. A transparent native textarea
+over the highlighted text supplies selection, caret and keyboard input within
+the published code-block layout. Both surfaces share one font owner with fading
+disabled, so font upgrades cannot clone a focused native input. Numbered gutters
+and wrapped continuations share its inset; final newlines retain an empty caret line.
+Right-hand hover/focus controls open the shared
+searchable language picker (including Auto detect) or an optional metadata field;
+selection, Enter/Escape or focus exit closes the field. Fence metadata is text
+after the language in the opening fence; it round-trips without interpreting
+display options. Auto detection normally exports an untagged fence; with metadata
+it uses an explicit `auto` tag so Markdown can retain that metadata on reopening.
+Copy/wrap/fold controls and the formatter gate remain shared
+with public posts. Both authoring owners declare their highlight dependency.
+Editable code strips control characters, zero-width display artifacts, byte-order
+marks and directional controls before handing text to the backing textarea or
+exporting an edit. Tabs and line breaks remain, with native line endings normalized
+to LF; Unicode letters, combining marks and meaningful joiners remain intact.
+The highlight-only trailing-line marker never enters the editable source.
+The native input releases the surrounding Lexical selection on focus. Rich
+reconciliation rereads the managed `:text-query`, just like source mode. A single
+pending flag rejects parent values until the latest native edit is acknowledged.
+A reactive native-input revision also checks acknowledgement after undo returns
+to unchanged parent text; neither retains historical documents. To deliberately replace unacknowledged edits,
+change `:document-id` (also when restoring an earlier revision of the same post).
+After acknowledgement, ordinary external text updates still apply. Markdown
+passes through the parent's normal change event.
+
 Source mode does not implement another fenced-code rendering system.
 
 ## Working and named drafts

@@ -14,6 +14,7 @@
    [:fallback :string]
    [:property [:re "^--[a-z][a-z0-9-]*$"]]
    [:?sample :string]
+   [:?fade? :boolean]
    [:?fade-ms [:int {:min 1, :max 500}]]])
 (def instance-schema
   [:map
@@ -68,7 +69,9 @@
       (update-in db [:fonts :instances] dissoc owner) db)))
 
 (defn- ready-instance [instance]
-  (assoc instance :phase (if (:reduced? instance) :ready :prepared)))
+  (assoc instance :phase (if (or (:reduced? instance)
+                                (false? (get-in instance [:options :fade?])))
+                          :ready :prepared)))
 
 (r/reg-event-fx :font/probed
   (fn [{:keys [db]} [_ owner native? supported? reduced?]]
@@ -154,7 +157,13 @@
         ;; After the fade the incoming key survives, and React removes the old
         ;; text layer. The native root, its handlers and neighbouring controls
         ;; never unmount. No cloneNode or inspection of React elements is needed.
-        (with-meta [(first form) attributes text] (meta form)))))
+        (with-meta
+          (if (false? (:fade? options))
+            ;; Interactive native inputs must retain one DOM owner, selection
+            ;; and focus while their shared font family upgrades.
+            (into [(first form) attributes] children)
+            [(first form) attributes text])
+          (meta form)))))
 
 
 (def feature

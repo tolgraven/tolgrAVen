@@ -8,6 +8,7 @@
             [website.modules.markdown-editor.views :as editor]
             [website.components.content.upload :as upload]
             [website.modules.markdown.views :as markdown]
+            [website.modules.highlight.code-block :as code-block]
             [website.component.storage :as storage]
             [website.listener :as listener]
             [website.modules.blog-editor.editor :as blog-editor]
@@ -45,6 +46,7 @@
                                      :kind :comment
                                      :form-path [:write-comment [42] :text]
                                      :library? false}]
+     [:details [:summary "Saved Markdown"] [:pre#saved-markdown text]]
      [:h2 "Published comment preview"]
      [presentation/<comment-markdown> (or text "") {:trust :trusted}]]))
 
@@ -54,6 +56,23 @@
                     "## A comment\n\n**Bold**, *italic*, lists, links and code use the full editor.\n\n- First point\n- Second point\n\n```clojure\n(map inc [1 2 3])\n```"])
   (-> (support/create-root! (.getElementById js/document "editor-demo"))
       (.then #(support/render! % [<comment-fixture>]))))
+
+(defc <code-fixture> []
+  :let [*source (r/atom "(defn example []\n  ;; A comment\n  (str \"Unicode λ — \" (range 100)))\n")]
+  [:main.editor-demo
+   [:h1 "Native code input geometry"]
+   [code-block/<code-block> @*source
+    {:editable? true
+     :language "cljs"
+     :line-numbers? true
+     :starting-line-number 98
+     :on-code-change #(reset! *source %)}]
+   [:details [:summary "Saved source"] [:pre#saved-markdown @*source]]])
+
+(defn ^:export init-code! []
+  (r/dispatch-sync [:test-editor/initialize])
+  (-> (support/create-root! (.getElementById js/document "editor-demo"))
+      (.then #(support/render! % [<code-fixture>]))))
 
 (defc <upload-fixture> []
   [:main.editor-demo
