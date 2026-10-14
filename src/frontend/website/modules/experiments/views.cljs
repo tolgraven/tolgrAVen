@@ -7,6 +7,7 @@
     [website.loader]
     [website.components.ui.boundary :as ui-boundary]
     [website.components.ui.layout :as ui-layout]
+    [website.modules.experiments.liquid-glass :as glass]
     [react-leaflet]
     [leaflet]))
 
@@ -403,6 +404,7 @@
   [ui-layout/<with-heading> [:common :banner-heading]
    (let [routes {:parallax <parallax>
                  :model-viewer <model-viewer>
+                 :liquid-glass glass/<playground>
                  :leaflet <leaflet>
                  :search (m/<> :search/view "blog-posts")
                  :broken [:div]}

@@ -946,3 +946,11 @@ Committed owners attach/detach through events; the shared face request is retain
 for reuse. A native FontFaceSet adapter owns the Promise. A layout effect owns only
 the cancellable paint frames between layer insertion and simultaneous reveal.
 See [styles.md](styles.md) for first-paint policy, fallback metrics and failure behavior.
+
+## Liquid glass backgrounds
+
+`components.ui.liquid-glass/<liquid-glass>` wraps `[spec & forms]` with an
+independently sized refractive background. Children retain their opacity, DOM
+and interactions. Shapes, optics, tint, light, outsets and bounded raster budgets
+are spec options; SSR and unsupported engines use a native frosted fallback.
+See [Liquid glass](liquid-glass.md) for the contract, examples and lifecycle.

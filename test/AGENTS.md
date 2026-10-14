@@ -225,3 +225,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Upload-row checks cover measured/invalid/stale byte callbacks, indeterminate
   processing, errors/retry/cancel, ready-but-unpainted retention and preview-owned
   exit. A mocked queue acknowledgment does not prove actual image decode/visibility.
+
+- Liquid-glass focused targets use `target/glass` output. Test real children,
+  focus/DOM identity, zero-index refraction, bounded allocations, map reuse,
+  failure fallback, cancellation and SSR/hydration. Pixel inspection in Chrome
+  establishes SVG backdrop rendering; syntax/compilation alone does not.

@@ -1,0 +1,35 @@
+.liquid-glass {
+  position: relative;
+  display: inline-grid;
+  // A stacking context keeps the decorative layer behind content without a
+  // negative z-index or opacity/filter on the ancestor backdrop root.
+  isolation: isolate;
+  vertical-align: middle;
+
+  &__surface {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    box-sizing: border-box;
+  }
+
+  &__content {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+  }
+
+  &__filters {
+    position: absolute;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  &__unit {
+    position: absolute;
+    inline-size: 1em;
+    block-size: 1rem;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
