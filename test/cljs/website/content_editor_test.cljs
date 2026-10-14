@@ -19,6 +19,13 @@
     (is (= [:story :images 0 :src] (fields/path (get-in wrapped [:images 0]) [:src])))
     (is (fields/editing? (get-in wrapped [:images 0])))))
 
+(deftest cv-logos-retain-relative-and-public-upload-urls
+  (is (= "../../img/logo.png" (cv/logo-src "img/logo.png" nil)))
+  (is (= "/img/logo.png" (cv/logo-src "/img/logo.png" nil)))
+  (is (= "https://example.test/logo(1).png" (cv/logo-src "https://example.test/logo(1).png" nil)))
+  (is (= "https://example.test/canonical.png"
+         (cv/logo-src "img/logo.png" {:src "https://example.test/canonical.png"}))))
+
 (deftest route-overrides-do-not-write-static-cms-fields
   (let [content (fields/annotate {:title "CMS", :bg {:src "/photo.png"}} [:blog :heading] :edit)
         overridden (fields/overridden content {:title "Route title"})]

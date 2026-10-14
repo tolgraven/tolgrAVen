@@ -36,13 +36,17 @@
     [img/<picture> (fields/image-attrs entry [:logo]
                     {:src (:logo entry), :asset asset, :alt "Group logo", :class "cv-group-logo", :sizes "4rem"})]))
 
+(defn logo-src [logo asset]
+  (or (:src asset)
+      (if (re-find #"^(?:https?://|/)" (or logo "")) logo (str "../../" logo))))
+
 (m/defc <box-content> [all :- schema/timeline-item expanded? :- :boolean asset :- [:maybe media-schema/asset]]
   (let [{:keys [from to what position how where logo]} all]
     [:<>
        [:div.cv-bg-logo
         {:aria-hidden true
          :style (when-not (string/blank? logo)
-                  {:background-image (str "url(" (or (:src asset) (str "../../" logo)) ")")})}]
+                  {:background-image (str "url(" (pr-str (logo-src logo asset)) ")")})}]
        [:p.cv-from from]
        [:p.cv-to (if (= from to)
                    ""
