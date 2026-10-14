@@ -26,6 +26,8 @@ try {
   await write('scripts/build/styles.mjs', await fs.readFile(path.join(project, 'scripts/build/styles.mjs')));
   await write('scripts/build/editor-styles.mjs', await fs.readFile(path.join(project, 'scripts/build/editor-styles.mjs')));
   await write('scripts/build/style-overrides.mjs', await fs.readFile(path.join(project, 'scripts/build/style-overrides.mjs')));
+  // This suite isolates CSS freshness; the real workspace builder has its own checks.
+  await write('scripts/build/neovim_workspace.clj', '(ns build.neovim-workspace) (defn -main [& _])');
   await write('package.json', '{"type":"module"}');
   await write('package-lock.json', '{}');
   await write('resources/icon-fonts.json', '{}');

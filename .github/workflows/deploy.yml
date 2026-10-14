@@ -21,6 +21,10 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - name: Install the source workspace build tool
+        uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
+        with:
+          bb: '1.13.225'
       - run: npm ci --ignore-scripts
       - run: npm run build
 

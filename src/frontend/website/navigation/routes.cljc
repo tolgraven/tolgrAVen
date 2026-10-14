@@ -21,6 +21,9 @@
     #?(:module/blog-editor [website.modules.blog-editor.pages :as blog-editor])
     #?(:module/cv [website.modules.cv.pages :as cv])
     #?(:module/docs [website.modules.docs.pages :as docs])
+    #?(:module/github [website.modules.github.pages :as github])
+    #?(:module/neovim [website.modules.neovim.pages :as neovim])
+    #?(:module/neovim [website.modules.neovim.policy :as neovim-policy])
     [website.loader :as l]
     [website.component.data :as data]
     [website.content.contract :as content]
@@ -60,6 +63,8 @@
           (site/routes (concat #?(:module/home home/spec :default nil)
                   [#?(:module/cv (into [""] cv/spec))
                    #?(:module/docs (into [""] docs/spec))
+                   #?(:module/neovim (into [""] neovim/spec))
+                   #?(:module/github (when (seq github/spec) (into [""] github/spec)))
                    #?(:module/blog (into [""] blog/spec))
                    #?(:module/blog-editor (into [""] blog-editor/spec))
                    ["/log" {:name :log :view #'<log-page>}]
@@ -241,7 +246,12 @@
 
 (defn ignore-anchor-click? [router event element ^goog.Uri uri]
   ;; Only intercepted internal links may update the pending fragment.
-  (let [ignore? (rfh/ignore-anchor-click? router event element uri)]
+  ;; Reitit's predicate ignores the anchor's *native default action* when true.
+  ;; Document navigation must therefore return false, preserving the real load.
+  (let [ignore? (and (not= "true" (.getAttribute element "data-document-navigation"))
+                     (not #?(:module/neovim (neovim-policy/document-navigation? js/window.crossOriginIsolated (.getPath uri))
+                             :default false))
+                     (rfh/ignore-anchor-click? router event element uri))]
     (when ignore?
       (r/dispatch [:state [:fragment] (.getFragment uri)]))
     ignore?))

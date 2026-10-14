@@ -6,6 +6,8 @@
 
     [website.modules.github.message :as message]
     [website.modules.github.schema :as schema]
+    [website.modules.github.diff :as diff]
+    [website.site :as site]
     [clojure.string :as string]
     [website.components.activity :as activity]
     [website.components.ui.controls :as ui-controls]
@@ -106,6 +108,7 @@
               :style {:cursor "pointer"}
               :on-click (fn [e]
                           (.stopPropagation e)
+                          (.preventDefault e)
                           (r/dispatch [:github/search subtitle]))}
        subtitle]
       (when title
@@ -115,21 +118,32 @@
           {:style {:cursor "pointer"}
            :on-click (fn [e]
                        (.stopPropagation e)
+                       (.preventDefault e)
                        (r/dispatch [:github/search title]))}
           title]])])])
 
 (defc ^:private <commit-row>
   {:features [[:appear "slide-in slow"]]}
   [{:keys [from sha main-view-position view author date ts html_url sha7 commit]}]
-  [:div.github-commit.flex
-         {:id (str "github-commit-" sha)
-          :on-click #(do (r/dispatch [:github/fetch-commit (first @from) (second @from) sha])
-                         (reset! main-view-position
-                                 (.-scrollTop (util/elem-by-id "github-commits-box")))
-                         (reset! view sha))}
-         [img/<picture> {:src (:avatar_url author)
+  (let [revision [(first @from) (second @from) sha]
+        href (when (site/enabled? :neovim) (diff/page-url revision))
+        avatar [img/<picture> {:src (:avatar_url author)
                        :alt (str (:login author) " avatar")
-                       :class "user-avatar center-content"}]
+                       :class "user-avatar center-content"}]]
+    [:div.github-commit.flex
+     {:id (str "github-commit-" sha)
+      :on-click #(if href
+                   (r/dispatch [:github/open-diff revision])
+                   (do (r/dispatch [:github/fetch-commit (first @from) (second @from) sha])
+                       (reset! main-view-position (.-scrollTop (util/elem-by-id "github-commits-box")))
+                       (reset! view sha)))}
+     (if href
+       [:a {:href href
+            :data-document-navigation "true"
+            :style {:display "contents"}
+            :aria-label (str "View diff for commit " sha7)
+            :on-click #(.stopPropagation %)} avatar]
+       avatar)
          [:div.github-commit-details
           [:span.github-commit-time date]
           [:span.github-commit-time (util/local-time ts)]
@@ -143,7 +157,7 @@
 
           ;; Parse the provider text here too so restored, previously parsed
           ;; cache entries immediately use the current presentation rules.
-          [<commit-message> (message/parse-message (:message commit)) (:message commit)]]])
+          [<commit-message> (message/parse-message (:message commit)) (:message commit)]]]))
 
 (r/reg-sub :github/deployment (fn [db _] (get-in db [:module :github :deployment])))
 (r/reg-sub :github/activity

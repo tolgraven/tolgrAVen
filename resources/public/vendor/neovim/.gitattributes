@@ -1,0 +1,9 @@
+# The data pack uses byte offsets; never transform its line endings.
+nvim.data binary
+nvim.wasm binary
+# Preserve the pinned upstream loader/worker bytes and their existing whitespace.
+nvim.js -diff -whitespace
+nvim-worker.js -whitespace
+# Pinned aggregate; individual file hashes and editable init are reviewed separately.
+profile.json -diff
+icons.woff2 binary

@@ -2,6 +2,7 @@
   (:require [website.react :as r]
             [website.modules.github.model :as model]
             [website.modules.github.routes :as routes]
+            [website.modules.github.diff :as diff]
             [clojure.string :as string]))
 
 (defn current-request? [db user repo generation]
@@ -9,20 +10,35 @@
     (and (= [user repo] (:target state)) (= generation (:generation state)))))
 
 (defn- begin-query [db target query]
+  ;; Feed queries reset their page state; immutable detail and revision viewers
+  ;; retain their independent caches while the managed configuration initializes.
   (let [same-target? (= target (get-in db [:state :github :target]))
-        cached (when same-target? (select-keys (get-in db [:content :github]) [:commit :commit-errors]))]
+        cached (merge (select-keys (get-in db [:content :github]) [:diff-view])
+                      (when same-target? (select-keys (get-in db [:content :github]) [:commit :commit-errors])))]
     (-> db
-        (assoc-in [:state :github] {:target target
-                                   :generation (inc (get-in db [:state :github :generation] 0))
-                                   :query query
-                                   :commits-fetched (if same-target? (get-in db [:state :github :commits-fetched] []) [])})
-        (assoc-in [:content :github] (or cached {})))))
+        (assoc-in [:state :github]
+                  (merge (select-keys (get-in db [:state :github]) [:diff-view :diff-attempt])
+                         {:target target
+                          :generation (inc (get-in db [:state :github :generation] 0))
+                          :query query
+                          :commits-fetched (if same-target? (get-in db [:state :github :commits-fetched] []) [])}))
+        (assoc-in [:content :github] cached))))
 
 (r/reg-event-fx :github/navigate-commit
   {:args [:tuple routes/commit-sha]}
   (fn [{:keys [db]} [_ sha]]
     (when (= (string/lower-case sha) (:sha (model/route-target (:common/route db))))
       {:dispatch [:github/init]})))
+
+(r/reg-event-fx :github/open-diff
+  {:args [:tuple diff/revision-schema]}
+  (fn [_ [_ revision]]
+    (when-let [href (diff/page-url revision)] {:github/open-document href})))
+
+(r/reg-fx :github/open-document
+  ;; The shared-memory viewer needs document isolation headers. A row intent
+  ;; uses this native boundary; its individual links retain ordinary hrefs.
+  (fn [href] (.assign js/location href)))
 
 (r/reg-event-fx :github/init
   (fn [{:keys [db]} _]

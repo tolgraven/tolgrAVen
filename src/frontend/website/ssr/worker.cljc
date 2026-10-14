@@ -22,6 +22,8 @@
     #?(:module/settings [website.modules.settings.module :as settings])
     #?(:module/search [website.modules.search.module :as search])
     #?(:module/docs [website.modules.docs.module :as docs])
+    #?(:module/neovim [website.modules.neovim.module :as neovim])
+    #?(:module/github [website.modules.github.module :as github])
     [website.ssr.contract :as contract]
     [website.components.page-shell :as shell]
     [website.ssr.render :as render]
@@ -43,6 +45,8 @@
               :settings #?(:module/settings settings/spec :default nil)
               :search #?(:module/search search/spec :default nil)
               :docs #?(:module/docs docs/spec :default nil)
+              :neovim #?(:module/neovim neovim/spec :default nil)
+              :github #?(:module/github github/spec :default nil)
               :blog #?(:module/blog blog/spec :default nil)
               :user #?(:module/user user/spec :default nil)
               :link-preview #?(:module/link-preview link-preview/spec :default nil)}))
