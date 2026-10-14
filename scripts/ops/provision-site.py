@@ -185,7 +185,7 @@ def main():
     args = parser.parse_args()
     spec = json.loads(args.manifest.read_text())
     selected = site_schema()
-    spec['site'] = {key: selected[key] for key in ('config', 'available-modules', 'pages', 'modules', 'tables', 'content')}
+    spec['site'] = {key: selected[key] for key in ('config', 'available-modules', 'pages', 'modules', 'tables', 'content', 'style-reference')}
     spec = validate(spec)
     if args.action == 'plan':
         print(json.dumps(plan(spec), indent=2))

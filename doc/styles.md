@@ -13,7 +13,11 @@ Set `CSS_OUTPUT_DIR` to build into a separate directory for comparisons.
 ## CMS variable overrides
 
 The CMS **Site features and pages** form has a multiline **CSS variable overrides**
-field. It accepts ordinary CSS custom properties, including existing names from
+field. **Publish site changes → CSS variable reference** shows the provisioned
+site's actual `_vars.scss`, with a search field for names, defaults and comments.
+The provisioning manifest carries this read-only source as base64 so environment
+interpolation cannot change SCSS quotes or dollar signs; update the editor after
+changing the source to refresh its reference. It accepts ordinary CSS custom properties, including existing names from
 `scss/shell/_vars.scss`; there is no per-variable registration or parallel form.
 
 ```css
