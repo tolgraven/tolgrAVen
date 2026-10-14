@@ -938,8 +938,11 @@ Declare `:features [[:font font/fira]]` after requiring
 `[website.component.font :as font]`. A feature option function may return nil
 until intent makes the consumer visible. The root must be ordinary native Hiccup;
 its identity, refs, caller classes/style and animation handler are retained.
-Children are text-only: the feature renders a small text stack inside that root.
-Keep inputs, IDs, controls and stateful child components outside the stack.
+By default children are text-only: the feature renders a small text stack inside
+that root. Keep inputs, IDs, controls and stateful children outside that stack.
+For an interactive surface that must share a font decision across native inputs
+and rendered text, set `:fade? false`. This updates the root's family in place,
+retaining every child, focus and selection without a duplicated text layer.
 
 For another face, use an options map:
 

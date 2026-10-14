@@ -77,8 +77,10 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   Ordinary compiler snapshots reuse only an independently locked, worktree/toolchain/
   profile/site-scoped `.shadow-cljs/builds` cache; transient ports and generated output
   remain fresh. The container guardian inherits its writer lock. Keep Shadow's native
-  source/options validation and the unlocked 7-day/8-GiB LRU cleanup; never mount
-  watched checkout caches or retain a hot JVM per worktree. See `doc/resource-controls.md`.
+  source/options validation and the unlocked 7-day/2-GiB repository LRU cleanup; never mount
+  watched checkout caches or retain a hot JVM per worktree. Cache storage belongs
+  to the primary checkout's ignored `.local-wip/shadow-caches`; metadata identifies
+  the originating worktree and disappeared owners are pruned immediately. See `doc/resource-controls.md`.
 
   Custom codec images use explicit `run --node-deps skip` only for non-Node tasks;
   retain the shared queue, snapshot and container limits. Default Node bootstrap stays enabled.
@@ -98,3 +100,11 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   disposable loopback CMS. Its private fixture tokens proxy field/CV writes and
   optional live fixture reads. Upload status is simulated there; it does not
   establish Storage/codec publication or production session authorization.
+
+- `dev/cleanup.py` defaults to a report. Applied worktree retirement requires an
+  exact merged PR head, no open follow-up, clean source and no process using the
+  target. Preserve the main checkout and detached/ambiguous work; archive ignored
+  private files and review records before ordinary, non-forced worktree removal.
+  Never infer browser ownership or close browsers from a Git hook. Agents close
+  their own verification tabs and servers when finished; the script preserves
+  existing compiler writer locks and cannot replace session ownership checks.

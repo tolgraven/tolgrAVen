@@ -144,13 +144,6 @@ div > pre[class*="language-"] {
   margin: 0.125em 0.5em;
 }
 
-.code-editor-fields {
-  display: grid;
-  gap: 0.5em;
-  padding: 0.75em;
-  label { display: grid; gap: 0.25em; }
-  textarea { width: 100%; resize: vertical; font: inherit; tab-size: 2; }
-}
 .code-block-controls {
   position: absolute;
   z-index: 2;
@@ -162,8 +155,9 @@ div > pre[class*="language-"] {
   opacity: 0.8;
   transition: right 0.3s ease;
 
-  > button {
+  > button, .code-edit-controls > button {
     margin: 0;
+    padding: 0.25em;
     opacity: 0;
     pointer-events: none;
     min-width: 2rem;
@@ -187,7 +181,7 @@ div > pre[class*="language-"] {
   > .code-block-controls {
     right: calc(0.5 * var(--space));
 
-    > button {
+    > button, .code-edit-controls > button {
       opacity: 1;
       pointer-events: auto;
     }
@@ -198,12 +192,93 @@ div > pre[class*="language-"] {
 }
 .code-block-content > pre,
 .code-block-content > pre code,
+.code-block-highlight > pre,
+.code-block-highlight > pre code,
 .code-snippet > code {
   font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace);
 }
-.code-block-content > pre {
+.code-block-content > pre,
+.code-block-highlight > pre {
   margin: 0 !important;
   line-height: 1.5 !important;
+}
+.code-edit-controls {
+  display: flex;
+  gap: 0.25em;
+}
+.code-edit-popover {
+  position: absolute;
+  top: calc(100% + 0.25em);
+  right: 0;
+  width: min(20rem, 75vw);
+  padding: 0.5em;
+  background: var(--bg-2);
+  border: var(--line-width) solid var(--line-color);
+  box-shadow: 0 0.25em 0.75em var(--box-regular-color);
+  font-size: 1rem;
+  input { width: 100%; margin: 0; }
+}
+.code-block-editable {
+  // The native textarea owns keyboard input, selection and caret. Highlighted
+  // text shares its exact geometry beneath the transparent input surface.
+  .code-block-content { overflow: hidden; }
+  .code-block-highlight > pre {
+    padding: 1em !important;
+    min-height: 3.5em;
+    overflow: hidden !important;
+    tab-size: 8;
+    font-size: inherit;
+  }
+  .code-block-highlight code {
+    display: block;
+    min-width: 0;
+    transform: translateY(calc(-1 * var(--code-scroll-top, 0rem)));
+  }
+  .code-block-highlight code:last-child {
+    transform: translate(calc(-1 * var(--code-scroll-left, 0rem)), calc(-1 * var(--code-scroll-top, 0rem)));
+  }
+  .code-block-edit-line {
+    display: block;
+    padding-inline-start: var(--code-gutter);
+    text-indent: calc(-1 * var(--code-gutter));
+    > .react-syntax-highlighter-line-number {
+      box-sizing: border-box;
+      margin: 0;
+      padding-inline: 0.5em 1em;
+      border-right: var(--line-width-sm) solid var(--blue);
+      white-space: pre !important;
+    }
+  }
+  textarea.code-block-input {
+    position: absolute;
+    inset: 0;
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    padding: 1em;
+    padding-inline-start: calc(1em + var(--code-gutter, 0rem));
+    border: 0;
+    border-top: var(--line-width-sm) solid transparent;
+    border-radius: 0;
+    resize: none;
+    font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace);
+    font-size: inherit;
+    font-weight: normal;
+    line-height: 1.5;
+    letter-spacing: normal;
+    tab-size: 8;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    caret-color: var(--fg-1);
+    background: transparent;
+    box-shadow: none;
+    &:focus { outline: 0.0625rem solid var(--line-color); outline-offset: -0.0625rem; }
+    &::selection { background: color-mix(in srgb, var(--blue) 35%, transparent); }
+  }
 }
 .code-block-folded .code-block-content {
   max-height: calc(var(--code-fold-lines) * 1.5em + 2em);

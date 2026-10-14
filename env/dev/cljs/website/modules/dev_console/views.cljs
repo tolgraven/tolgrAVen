@@ -880,17 +880,23 @@
           (listener/listen! :dev-console
             [{:target "window", :event "keydown", :handler handler}]))) [])
     [:aside.dev-console {:aria-label "Development console" :data-dev-console true}
-     [:div.dev-console__tools
-      [:button.dev-console__toggle {:on-click #(r/dispatch [:dev-console/toggle-open]) :aria-expanded (boolean open?)}
-       "Dev " (if open? "×" "⌘")]
-      [:button {:on-click #(r/dispatch [:dev-console/picking (not (:picking? debug))])
-                :aria-pressed (boolean (:picking? debug))} "Pick component"]
-      [:button {:on-click #(r/dispatch [:dev-console/option :page-capture? (not (:page-capture? options))])
-                :aria-pressed (boolean (:page-capture? options))} (if (:page-capture? options) "Stop capture" "Capture page")]
-      [:label [:input {:type "checkbox" :checked (boolean (:event-flash? options))
-                       :on-change #(r/dispatch [:dev-console/option :event-flash? (.. % -target -checked)])}] "Event flashes"]
-      [:button {:on-click #(if popout (.focus popout)
-                              (when-let [window (open-popout!)] (set-popout! window)))} "Pop out"]]
+     [:div.dev-console__dock
+      [:button.dev-console__launcher {:type "button"
+                                     :aria-label "Development tools"
+                                     :aria-controls "dev-console-tools"
+                                     :title "Hover or focus to reveal development controls"}
+       "Dev"]
+      [:div#dev-console-tools.dev-console__tools {:role "group", :aria-label "Development controls"}
+       [:button.dev-console__toggle {:on-click #(r/dispatch [:dev-console/toggle-open]) :aria-expanded (boolean open?)}
+        "Dev " (if open? "×" "⌘")]
+       [:button {:on-click #(r/dispatch [:dev-console/picking (not (:picking? debug))])
+                 :aria-pressed (boolean (:picking? debug))} "Pick component"]
+       [:button {:on-click #(r/dispatch [:dev-console/option :page-capture? (not (:page-capture? options))])
+                 :aria-pressed (boolean (:page-capture? options))} (if (:page-capture? options) "Stop capture" "Capture page")]
+       [:label [:input {:type "checkbox" :checked (boolean (:event-flash? options))
+                        :on-change #(r/dispatch [:dev-console/option :event-flash? (.. % -target -checked)])}] "Event flashes"]
+       [:button {:on-click #(if popout (.focus popout)
+                               (when-let [window (open-popout!)] (set-popout! window)))} "Pop out"]]]
      [<page-diagnostics> debug]
      (when (and open? (nil? popout)) [<panel> {:close! #(r/dispatch [:dev-console/open false])}])
      (when popout [<popout> popout #(do (set-popout! nil) (r/dispatch [:dev-console/open true]))])]))

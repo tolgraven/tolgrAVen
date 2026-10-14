@@ -128,6 +128,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   native editor nodes/decorations, never authored markers. SDK extension slots
   may require stable reverse React adapters; keep their native document/selection
   work scoped and render ordinary Reagent UI. See `doc/markdown-authoring.md`.
+  Editable fenced blocks use the shared highlighter with an overlaid native
+  textarea; language/metadata controls are transient overlays inside its bounds.
 - Working/named blog drafts use account-owned projections in the existing storage
   queue/debounce and navigation/pagehide drain. Restore validates before applying;
   new input and account changes supersede pending reads. Published-post revision
