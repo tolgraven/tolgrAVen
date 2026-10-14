@@ -1,7 +1,7 @@
 (ns website.components.ui.layout
   (:require [website.component.registry]
             [website.react :as r]
-    [website.content.fields :as fields]
+            [website.content.fields :as fields]
             [website.util :as util :refer [at]]
             [website.macros :as m :include-macros true]
             [website.components.heading :as heading]))
@@ -42,6 +42,5 @@
   "Standard heading component with fade and title."
   [heading-path component & [override]]
   [:<>
-   [<fading-bg-heading> (merge @(r/subscribe [:content/view heading-path])
-                                override)]
+   [<fading-bg-heading> (fields/overridden @(r/subscribe [:content/view heading-path]) override)]
    component])

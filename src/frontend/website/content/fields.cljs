@@ -14,7 +14,12 @@
     :else value))
 
 (defn path [content relative]
-  (when-let [base (:content/path (meta content))] (into base relative)))
+  (when-not (contains? (:content/overrides (meta content)) (first relative))
+    (when-let [base (:content/path (meta content))] (into base relative))))
+
+(defn overridden [content overrides]
+  (with-meta (merge content overrides)
+    (assoc (meta content) :content/overrides (set (keys overrides)))))
 
 (defn editing? [content]
   (boolean (when-enabled :user nil (= :edit (:content/mode (meta content))))))
