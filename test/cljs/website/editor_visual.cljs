@@ -7,6 +7,7 @@
             [website.db :as db]
             [website.navigation.routes :as routes]
             [reitit.core :as reitit]
+            [reitit.frontend.easy :as rfe]
             [website.component.restore :as restore]
             [website.loader :as loader]
             [website.components.shell :as shell]
@@ -82,6 +83,9 @@
           (.catch #(r/dispatch (conj failure {:message (.-message %)})))))))
 
 (defn ^:export init! [enhanced?]
+  ;; Header href subscriptions use the installed history's router. The fixture
+  ;; keeps navigation inert while using that same public link-generation API.
+  (rfe/start! routes/router (fn [_ _]) {:use-fragment false})
   (let [params (js/URLSearchParams. (.-search js/location))
         component (or (.get params "component") "intro")
         edit? (= "true" (.get params "edit"))]
