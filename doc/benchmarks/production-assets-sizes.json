@@ -1,0 +1,403 @@
+{
+  "method": {
+    "script": "scripts/build/bundle-sizes.mjs",
+    "gzip": "Node zlib gzipSync, level 9",
+    "brotli": "Node zlib brotliCompressSync, quality 11"
+  },
+  "before": {
+    "sourceCommit": "7d24230c78ef8e9825d00ddf2fa6f234b59291f2",
+    "sizesSha256": "34eebfc527fd1d44bf2e6dfc7a3d430a24c3c5456723975120626f082d171395",
+    "bundles": [
+      {
+        "bundle": "main.2246C3BA1607C66A43CE624C0A2925AD.js",
+        "raw": 1938614,
+        "gzip": 471987,
+        "brotli": 373049
+      },
+      {
+        "bundle": "markdown.E0CC0B8F9073A14C9D581E389A758FFA.js",
+        "raw": 312758,
+        "gzip": 90756,
+        "brotli": 74546
+      },
+      {
+        "bundle": "user.D04CEAB49274CF96DC846A0C73766E93.js",
+        "raw": 59729,
+        "gzip": 10213,
+        "brotli": 8628
+      },
+      {
+        "bundle": "gpt.E99F26A71A5463F7F5A6AB99F74F4AE2.js",
+        "raw": 20688,
+        "gzip": 4109,
+        "brotli": 3609
+      },
+      {
+        "bundle": "page-capture.91D2AFBD7974898DFA178F36E5BD5774.js",
+        "raw": 4998,
+        "gzip": 1884,
+        "brotli": 1652
+      },
+      {
+        "bundle": "github.68AE31337ED4945D1B6AAF2ADCCA19B6.js",
+        "raw": 46686,
+        "gzip": 10283,
+        "brotli": 8894
+      },
+      {
+        "bundle": "page-render.FCF0DAC122EA4201B6CA2C6C5149D298.js",
+        "raw": 230629,
+        "gzip": 69399,
+        "brotli": 46682
+      },
+      {
+        "bundle": "carousel.B52925C39239069B0B3EC82C9BECF7A2.js",
+        "raw": 36723,
+        "gzip": 7212,
+        "brotli": 6100
+      },
+      {
+        "bundle": "home.0DB587CAC2123A7D9286C07D517ED3A4.js",
+        "raw": 99626,
+        "gzip": 20134,
+        "brotli": 16407
+      },
+      {
+        "bundle": "supabase.020F5D76E21DF5CCA896B07EF2A1799E.js",
+        "raw": 321088,
+        "gzip": 84368,
+        "brotli": 71179
+      },
+      {
+        "bundle": "cv.CF85602DC5095A569E81FB0EB266B8DD.js",
+        "raw": 40220,
+        "gzip": 8370,
+        "brotli": 7005
+      },
+      {
+        "bundle": "highlight.82FA52C3B99FDA523AB27F643A0F9A64.js",
+        "raw": 923189,
+        "gzip": 293857,
+        "brotli": 233989
+      },
+      {
+        "bundle": "coercion.4B694ECF67DA20BC8E2C1134B9214548.js",
+        "raw": 197633,
+        "gzip": 42859,
+        "brotli": 35668
+      },
+      {
+        "bundle": "markdown-components.6ED7A8D35CEB210D26D078C70408D284.js",
+        "raw": 60890,
+        "gzip": 12854,
+        "brotli": 10679
+      },
+      {
+        "bundle": "docs.8FE653CDB400A5525F30141287AC073C.js",
+        "raw": 9026,
+        "gzip": 2477,
+        "brotli": 2257
+      },
+      {
+        "bundle": "settings.CD5C1AC7FE55742FE09D9B39A47ACBEA.js",
+        "raw": 19935,
+        "gzip": 4575,
+        "brotli": 3966
+      },
+      {
+        "bundle": "chat.D9912391D93ED3FF3C5DECCA493C7494.js",
+        "raw": 13469,
+        "gzip": 3312,
+        "brotli": 2940
+      },
+      {
+        "bundle": "styled-input.362AB0A590D0ABB7BBA549F348C6B5CA.js",
+        "raw": 15627,
+        "gzip": 4451,
+        "brotli": 3797
+      },
+      {
+        "bundle": "search.A83D68757712E0599C4F3DCAC4345D97.js",
+        "raw": 55394,
+        "gzip": 9879,
+        "brotli": 8325
+      },
+      {
+        "bundle": "codex-profile.65A89CA073669547963BD26D3769102E.js",
+        "raw": 3758,
+        "gzip": 1155,
+        "brotli": 1031
+      },
+      {
+        "bundle": "maps.CB48FB47F2D08C884FA0DB26A4A523DC.js",
+        "raw": 178469,
+        "gzip": 49965,
+        "brotli": 42917
+      },
+      {
+        "bundle": "strava.2BBCF0BB6A7537B7A3071C968CABBE9E.js",
+        "raw": 129475,
+        "gzip": 21166,
+        "brotli": 17382
+      },
+      {
+        "bundle": "link-preview.43D46DC0ABB25E3C913B5EA02F16BB48.js",
+        "raw": 59085,
+        "gzip": 13664,
+        "brotli": 11767
+      },
+      {
+        "bundle": "instagram.4EC8187275C54B41BAE4D201E83506E9.js",
+        "raw": 12888,
+        "gzip": 3026,
+        "brotli": 2694
+      },
+      {
+        "bundle": "markdown-editor.FA015B3806FADA5B41F6751050942CD4.js",
+        "raw": 1814092,
+        "gzip": 497830,
+        "brotli": 399741
+      },
+      {
+        "bundle": "blog.4426C910640C30F64F3534CCC62AF737.js",
+        "raw": 153862,
+        "gzip": 28104,
+        "brotli": 23206
+      },
+      {
+        "bundle": "contact.833B6F8178A307DA385F95F613F9B4D3.js",
+        "raw": 15815,
+        "gzip": 3151,
+        "brotli": 2736
+      },
+      {
+        "bundle": "blog-editor.24176CC8CB2A0326D84CB46D6C0A17E6.js",
+        "raw": 103145,
+        "gzip": 21501,
+        "brotli": 18106
+      },
+      {
+        "bundle": "test.FA6B99B67A3578B429E90A82C49D25E5.js",
+        "raw": 40083,
+        "gzip": 7702,
+        "brotli": 6687
+      },
+      {
+        "bundle": "data-inspector.A1EAB095A40612880320213E1A808F63.js",
+        "raw": 127563,
+        "gzip": 26697,
+        "brotli": 22160
+      },
+      {
+        "bundle": "icon-catalog.91F945DBD3A45A32283A57260FC45241.js",
+        "raw": 267,
+        "gzip": 210,
+        "brotli": 188
+      }
+    ],
+    "total": {
+      "bundle": "TOTAL",
+      "raw": 7045424,
+      "gzip": 1827150,
+      "brotli": 1467987
+    }
+  },
+  "after": {
+    "sourceCommit": "aad9e76a2a12c6fa915f2ca7174acbea954f5ed2",
+    "sizesSha256": "0a2b6873c7fbc851722ab3dfe145b5e16e21421ceacb8aba09451051c49f5fa7",
+    "bundles": [
+      {
+        "bundle": "main.4F3104AC278FB72FA2405283C3A984DD.js",
+        "raw": 1722445,
+        "gzip": 410933,
+        "brotli": 322515
+      },
+      {
+        "bundle": "markdown.81FF378A87E2C6CEBC944F7624150BDB.js",
+        "raw": 534276,
+        "gzip": 152221,
+        "brotli": 124908
+      },
+      {
+        "bundle": "user.46AF18C57082A9B5AF7966CA5F009387.js",
+        "raw": 59603,
+        "gzip": 10164,
+        "brotli": 8600
+      },
+      {
+        "bundle": "gpt.A6D952A80BEB210403F0D387DA98B74F.js",
+        "raw": 20688,
+        "gzip": 4121,
+        "brotli": 3624
+      },
+      {
+        "bundle": "page-capture.F355D590F384AB2B12D085BEB18D9BDC.js",
+        "raw": 4998,
+        "gzip": 1881,
+        "brotli": 1655
+      },
+      {
+        "bundle": "github.80D7A8CB4798E4ABE68BE5268DBAB135.js",
+        "raw": 46686,
+        "gzip": 10290,
+        "brotli": 8884
+      },
+      {
+        "bundle": "page-render.78587419BEC40439E27995DD29DFEB49.js",
+        "raw": 230629,
+        "gzip": 69399,
+        "brotli": 46832
+      },
+      {
+        "bundle": "carousel.51F5B6B0D670B2C1FBE837004FE73173.js",
+        "raw": 36723,
+        "gzip": 7214,
+        "brotli": 6124
+      },
+      {
+        "bundle": "home.4F5A8933C99E09F0BED3CD2E11702560.js",
+        "raw": 99174,
+        "gzip": 20065,
+        "brotli": 16384
+      },
+      {
+        "bundle": "supabase.005365144E24F2F6336828366D2879F1.js",
+        "raw": 321076,
+        "gzip": 84356,
+        "brotli": 71130
+      },
+      {
+        "bundle": "cv.A1C27EE0A4ECBC1F04DFCE0B4CE9AB72.js",
+        "raw": 40220,
+        "gzip": 8370,
+        "brotli": 6996
+      },
+      {
+        "bundle": "highlight.19E37353378EC62CB7BD2E658F19DEFB.js",
+        "raw": 923189,
+        "gzip": 293866,
+        "brotli": 233869
+      },
+      {
+        "bundle": "coercion.219D2CE4FEDE78D11ED9A461384E2C11.js",
+        "raw": 197633,
+        "gzip": 42801,
+        "brotli": 35577
+      },
+      {
+        "bundle": "markdown-components.26E05E564493702028335EBB254F05E0.js",
+        "raw": 60892,
+        "gzip": 12864,
+        "brotli": 10700
+      },
+      {
+        "bundle": "docs.D098F295C7D243653A5F9517FF56E9F1.js",
+        "raw": 9026,
+        "gzip": 2483,
+        "brotli": 2253
+      },
+      {
+        "bundle": "settings.B4B6E40F5D5E9B3F278BACBD1F8C82A8.js",
+        "raw": 19935,
+        "gzip": 4581,
+        "brotli": 3963
+      },
+      {
+        "bundle": "chat.73E66DB0DFF8EB1F00AC6638D3554519.js",
+        "raw": 13469,
+        "gzip": 3312,
+        "brotli": 2934
+      },
+      {
+        "bundle": "styled-input.EAFDD583423D91EFE108F575C60F55B0.js",
+        "raw": 15627,
+        "gzip": 4452,
+        "brotli": 3782
+      },
+      {
+        "bundle": "search.194E3B7EB313BD15837EDDBE308773F8.js",
+        "raw": 55394,
+        "gzip": 9885,
+        "brotli": 8313
+      },
+      {
+        "bundle": "codex-profile.80275039BDEF7D230D7DEDBA1A87EA5D.js",
+        "raw": 3758,
+        "gzip": 1156,
+        "brotli": 1028
+      },
+      {
+        "bundle": "maps.30A4B993CCCB5549671E7F790D3D2004.js",
+        "raw": 178469,
+        "gzip": 49964,
+        "brotli": 42868
+      },
+      {
+        "bundle": "strava.5F756ADE7FE2532D5224089410A7EAA9.js",
+        "raw": 129475,
+        "gzip": 21164,
+        "brotli": 17376
+      },
+      {
+        "bundle": "link-preview.F203C446510B76EC9A751F515982EB0F.js",
+        "raw": 59085,
+        "gzip": 13674,
+        "brotli": 11791
+      },
+      {
+        "bundle": "instagram.8BD8FFF3242B996F37F55E5BAC796E44.js",
+        "raw": 12888,
+        "gzip": 3034,
+        "brotli": 2690
+      },
+      {
+        "bundle": "markdown-editor.3A167D59F59685219CB59F3A06F10952.js",
+        "raw": 1814125,
+        "gzip": 497800,
+        "brotli": 399950
+      },
+      {
+        "bundle": "blog.C36E142FC857FD9D9F98EF0BB9813142.js",
+        "raw": 153862,
+        "gzip": 28119,
+        "brotli": 23213
+      },
+      {
+        "bundle": "contact.84CA2774D2CA247AED5EC69E4CF3E3CF.js",
+        "raw": 15815,
+        "gzip": 3154,
+        "brotli": 2720
+      },
+      {
+        "bundle": "blog-editor.6D95943133DF414E16976D8826D2E6CD.js",
+        "raw": 103145,
+        "gzip": 21495,
+        "brotli": 18133
+      },
+      {
+        "bundle": "test.5BD297C9718520C2624958D71187947D.js",
+        "raw": 40083,
+        "gzip": 7698,
+        "brotli": 6704
+      },
+      {
+        "bundle": "data-inspector.CC0C9350A4C6A39F2ECA6AF744EFEB04.js",
+        "raw": 127563,
+        "gzip": 26693,
+        "brotli": 22145
+      },
+      {
+        "bundle": "icon-catalog.7ED0D40E5E69F8950EEC3E8E707EC0F0.js",
+        "raw": 267,
+        "gzip": 209,
+        "brotli": 189
+      }
+    ],
+    "total": {
+      "bundle": "TOTAL",
+      "raw": 7050218,
+      "gzip": 1827418,
+      "brotli": 1467850
+    }
+  }
+}

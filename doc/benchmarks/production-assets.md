@@ -65,12 +65,16 @@ can independently request the full icon font; this is not a global font ban.
 
 The source-map audit compares the merged module-conventions baseline with the
 asset changes using the same selected production modules:
+all compressed rows below come from `scripts/build/bundle-sizes.mjs` (Node zlib
+gzip level 9), rather than Shadow's per-module gzip estimates. Exact hashed
+filenames and every measured chunk are retained in
+[`production-assets-sizes.json`](production-assets-sizes.json).
 
 | Resource | Before | After | Change |
 | --- | ---: | ---: | ---: |
 | Main raw bytes | 1,938,614 | 1,722,445 | −216,169 |
-| Main gzip bytes | 475,810 | 415,013 | −60,797 (−12.8%) |
-| Markdown gzip bytes | 90,260 | 151,814 | +61,554 |
+| Main gzip bytes | 471,987 | 410,933 | −61,054 (−12.9%) |
+| Markdown gzip bytes | 90,756 | 152,221 | +61,465 |
 | All chunks gzip bytes | 1,827,150 | 1,827,418 | +268 |
 
 Reading and editing now share Markdown as a lazy parser ancestor. The optimized
