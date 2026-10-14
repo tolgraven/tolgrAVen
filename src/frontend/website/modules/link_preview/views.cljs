@@ -9,7 +9,6 @@
     [website.component :as component]
     [website.component.data :as data]
     [website.modules.link-preview.article :as article]
-    [website.render-context :as context]
     [website.ssr.local :as local-page]
     [website.components.iframe :as iframe]
     [website.components.popover :as popover]
@@ -17,7 +16,7 @@
     [website.component.motion :as motion]
     [website.modules.link-preview.subs]
     [website.modules.link-preview.util :as util]
-    [website.modules.markdown.interface :as markdown]))
+    [website.modules.link-preview.interface :as interface]))
 
 (def ^:private open-delay-ms 300)
 (def ^:private close-delay-ms 180)
@@ -247,33 +246,24 @@
      "pointerdown" pointer-down
      "click" click}))
 
-(def container-events
-  {:on-pointer-over "pointerover"
-   :on-pointer-out  "pointerout"
-   :on-focus        "focusin"
-   :on-blur         "focusout"
-   :on-pointer-down "pointerdown"
-   :on-click        "click"})
+(defn handle-container-event!
+  "Dispatch a rendered event to the current committed native container."
+  [id event-name event]
+  (when-let [handler (get-in @*containers [id :handlers event-name])]
+    (handler event)))
 
-(defn- container-attrs [id attrs]
-  ;; React owns rendered interactions. Resolve the committed container at event
-  ;; time so a changed candidate set never leaves stale handlers in the markup.
-  (reduce-kv
-    (fn [attrs attribute event-name]
-      (let [caller (get attrs attribute)]
-        (assoc attrs attribute
-          (fn [^js event]
-            (when-let [handler (get-in @*containers [id :handlers event-name])]
-              (handler event))
-            (when (and caller (not (.isPropagationStopped event))) (caller event))))))
-    (assoc attrs :data-link-container true) container-events))
+(defn- candidate-links [element candidate-urls]
+  (let [expected (set (mapcat util/href-variants candidate-urls))]
+    (filterv #(and (external-link? %)
+                   (expected (.-href %))
+                   (= element (closest % "[data-link-container]")))
+             (array-seq (.querySelectorAll element "a[href]")))))
 
 (defn register-container!
   "Register a candidate-bearing container. Returns its cleanup function."
   [id element options observer candidate-urls]
   (when (and element observer (seq candidate-urls))
-    (let [handlers (container-handlers id)
-          expected (set (mapcat util/href-variants candidate-urls))]
+    (let [handlers (container-handlers id)]
       ;; A real link container owns activation of the deferred global controller.
       ;; Loading User controls or rendering a plain page must not acquire it.
       (r/dispatch [:loader/activate {:module :link-preview}])
@@ -283,11 +273,7 @@
               :observer observer
               :options options})
       (let [trust (trust-for element (:trust options))
-            links (filter #(and (external-link? %)
-                                (expected (.-href %))
-                                (= element
-                                   (closest % "[data-link-container]")))
-                          (array-seq (.querySelectorAll element "a[href]")))
+            links (candidate-links element candidate-urls)
             candidates
             (mapv (fn [index link]
                     (let [data (candidate id index link trust)]
@@ -333,7 +319,7 @@
                 (if (and (or (:links spec) config) (motion/dom-root? form))
                   (let [attrs? (map? (second form))]
                     (with-meta
-                      (into [(first form) (container-attrs (:id config) (if attrs? (second form) {}))]
+                      (into [(first form) (interface/container-attrs (:id config) (if attrs? (second form) {}))]
                             (if attrs? (nnext form) (next form)))
                       (meta form)))
                   form))
@@ -343,53 +329,30 @@
    :unmount (fn [{:keys [id]}]
               (unregister-container! id))})
 
-(defc ^:private <observed-link-container>
-  [{:keys [candidates id trust]} content]
-  :let [*element (atom nil)]
-  (r/use-effect
-    (fn []
-      (when (and @*element (seq candidates))
-        (let [observer (candidate-observer id)
-              stop! (register-container! id @*element {:trust trust} observer candidates)]
-          (fn []
-            (when stop! (stop!))
-            (when observer (.disconnect observer))))))
-    [id candidates trust])
-  [:div.link-preview-container
-   (container-attrs id
-     {:data-link-trust (when trust (name trust))
-      :ref (fn [element] (reset! *element element) nil)})
-   content])
-
-(defc <link-container>
-  "Subscribe to raw text candidates and mount observation only when needed."
-  [{:keys [id text trust]} content]
-  (let [base-url (if (exists? js/window) (.-href js/window.location)
-                      (str "https://tolgraven.se" (:path @context/*snapshot)))
-        candidates @(r/subscribe
-                      [:link-preview/candidates text base-url])]
-    (if (seq candidates)
-      (with-meta
-        [<observed-link-container>
-         {:candidates candidates :id id :trust trust}
-         content]
-        {:key (hash [id trust text])})
-      ;; Observation can differ by origin; the rendered attributes must still
-      ;; match between SSR and the first browser render.
-      [:div.link-preview-container
-       {:data-link-container true :data-link-trust (when trust (name trust))}
-       content])))
-
-(defc <md>
-  "Render markdown inside a candidate-aware preview container."
-  [md & [options]]
-  (let [id (or (:id options) (str "markdown-" (random-uuid)))]
-    (fn [md & [options]]
-      [<link-container>
-       {:id id
-        :text md
-        :trust (:trust options)}
-       [markdown/<md->div> md options]])))
+(defn observe-container!
+  "Own candidate observation across independent lazy content commits."
+  [id element options candidates]
+  (when-let [observer (candidate-observer id)]
+    ;; Markdown/highlight commits can follow this module's code arrival. Observe
+    ;; child-list changes without altering React's DOM; refresh only when the
+    ;; actual eligible anchor identities change, not for unrelated token updates.
+    (let [*links (atom nil)
+          *stop (atom nil)
+          refresh! (fn []
+                     (let [links (candidate-links element candidates)]
+                       (when-not (= links @*links)
+                         (when-let [stop! @*stop] (stop!))
+                         (reset! *links links)
+                         (reset! *stop (register-container! id element options observer candidates)))))
+          content-observer (when (exists? js/MutationObserver)
+                             (js/MutationObserver. (fn [_ _] (refresh!))))]
+      (when content-observer
+        (.observe content-observer element #js {:childList true :subtree true}))
+      (refresh!)
+      (fn []
+        (when content-observer (.disconnect content-observer))
+        (when-let [stop! @*stop] (stop!))
+        (.disconnect observer)))))
 
 (defn article-dependency [url]
   {:source :url

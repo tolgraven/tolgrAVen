@@ -2,6 +2,5 @@
   (:require [website.ssr.local-render :as render]))
 
 (def spec
-  {:id :page-render
-   :schema [:map [:pair! fn?]]
+  {:schema [:map [:pair! fn?]]
    :pair! render/pair!})

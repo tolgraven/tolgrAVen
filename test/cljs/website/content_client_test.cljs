@@ -233,8 +233,7 @@
           *installs (atom 0)
           *started (atom nil)
           started (js/Promise. (fn [resolve _] (reset! *started resolve)))
-          spec {:id id
-                :install #(do (swap! *installs inc)
+          spec {:install #(do (swap! *installs inc)
                               (js/Promise. (fn [resolve _]
                                              (reset! *finish resolve)
                                              (@*started nil))))}
@@ -252,9 +251,9 @@
                      (@*finish nil)
                      first-load))
             (.then (fn [loaded]
-                     (is (= spec loaded))
+                     (is (= (assoc spec :id id) loaded))
                      (is (true? (loader/ready? id)))
-                     (is (= spec (loader/code-spec id)))))
+                     (is (= (assoc spec :id id) (loader/code-spec id)))))
             (.catch (fn [error] (is false (str error))))
             (.finally (fn []
                         (set! loader/modules original)

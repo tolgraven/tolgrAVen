@@ -290,6 +290,7 @@
       (is (some #(.contains % "modules/monospace.min.css") home))
       (is (not-any? #(.contains % "modules/link-preview.min.css") home))
       (is (not-any? #(.contains % "modules/link-preview.min.css") blog))
+      (is (some #(.contains % "modules/monospace.min.css") blog))
       (is (some #(.contains % "modules/markdown.min.css") blog)))))
 
 (deftest pages-and-local-returns-leave-sdk-acquisition-to-shadow

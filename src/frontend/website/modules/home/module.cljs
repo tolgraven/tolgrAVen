@@ -1,12 +1,11 @@
 (ns website.modules.home.module
-  {:bundle/depends-on #{:main :carousel}}
   (:require [website.modules.home.pages :as pages]
             [website.modules.home.views :as views]
             [website.modules.home.layout :as layout]))
 
 (def spec
-  {:content [:intro :services :moneyshot :story :interlude :soundcloud :gallery]
-   :id :home
+  {:bundle/depends-on #{:main :carousel}
+   :content [:intro :services :moneyshot :story :interlude :soundcloud :gallery]
    :pages pages/spec
    :styles ["/css/website/modules/home.min.css"
             "/css/website/modules/monospace.min.css"

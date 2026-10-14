@@ -46,6 +46,13 @@
   (is (validation/enabled? {:validation {:enabled true}} false))
   (is (not (validation/enabled? {:validation-enabled "false" :validation {:enabled true}} true))))
 
+(deftest namespaced-module-build-fields-are-optional-and-typed
+  (let [schema (dsl/->malli declarations/module)]
+    (is (m/validate schema {:id :blog}))
+    (is (m/validate schema {:id :blog, :bundle/depends-on #{:main :user}, :site/owner :site}))
+    (is (not (m/validate schema {:id :blog, :bundle/depends-on [:main]})))
+    (is (not (m/validate schema {:id :blog, :site/owner "site"})))))
+
 (deftest declarations-compose-base-and-owner-contracts
   (let [extended (declarations/extend-module [:map [:cache-limit [:int {:min 1}]]])]
     (is (m/validate (dsl/->malli extended) {:id :catalog :cache-limit 20}))

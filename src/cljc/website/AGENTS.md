@@ -47,7 +47,13 @@ implementation in `src/frontend/website/modules/<module>/`, also on the JVM sour
   boundary. It owns a stable root across loading/content/error states; the site
   shell opts out with `:container false`.
 
-- `loader/style_catalog.cljc` bakes literal module `:styles` and bundle dependencies
+- Module specs own literal `:bundle/depends-on` and `:site/owner`; namespace
+  metadata is rejected. Source-only defaults in `build/packaging.clj` are shared
+  with discovery: infer missing IDs from the parent of `.module` and existing
+  `/css/website/modules/<id>.min.css` when `:styles` is absent. Matching SCSS also
+  establishes ownership before generated output, so packaging/AOT and frontend agree. Explicit values
+  override conventions. The loader and SSR normalize identity before validation.
+- `loader/style_catalog.cljc` bakes resolved module styles and bundle dependencies
   into both runtimes at compile time, including literal `:ssr-styles` policy.
   Initial head paths exclude deferred owners; runtime paths retain every dependency.
   Declaration macros track the module entry

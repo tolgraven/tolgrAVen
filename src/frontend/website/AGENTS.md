@@ -117,8 +117,13 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   SSR boundaries retain native nodes until activation and inner hydration commit.
   Nested owners and formatters capture inherited hydration even after the root
   settles; newly inserted children use ordinary SPA behavior after owner commit.
-  User controls/avatars do not depend on Markdown or Link Preview; the comments
-  view acquires its candidate-aware Markdown export through `m/<>` when rendered.
+  User controls/avatars do not depend on Markdown or Link Preview; comments use
+  the lightweight content interface only when rendered. Blog, Chat and Search
+  render Markdown without awaiting preview widgets. The Link Preview interface
+  owns stable content markup and Reagent event attributes; only candidate-bearing
+  containers acquire its optional native observer/gesture adapter. Code arrival
+  attaches observation without replacing Markdown nodes. Disabled previews select
+  the plain Markdown interface at the reader boundary.
   The global Link Preview controller stays deferred until a candidate-bearing
   container activates it; plain routes do not acquire it just for an empty host.
   CSS/code failures retry silently once after three seconds before a local error.

@@ -2,5 +2,4 @@
   (:require [website.modules.supabase.client :as client]))
 
 (def spec
-  {:id :supabase
-   :client client/api})
+  {:client client/api})

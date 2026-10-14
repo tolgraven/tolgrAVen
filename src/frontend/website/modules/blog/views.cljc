@@ -14,7 +14,8 @@
     [website.content.contract :as content-contract]
     [website.component :as component]
     [website.component.loading :as loading]
-    [website.modules.link-preview.views :as link-preview]
+    #?(:module/link-preview [website.modules.link-preview.interface :as link-preview]
+       :default [website.modules.markdown.interface :as markdown])
     [website.util :as util]
     [website.components.ui.controls :as ui-controls]
     [website.components.ui.layout :as ui-layout] )))
@@ -28,8 +29,11 @@
 (defc <markdown>
   "This blog falls back to Clojure when code has no tag or detectable language."
   [text & [options]]
-  [link-preview/<md> text (merge {:default-language "clojure"
-                                :auto-languages code-languages} options)])
+  [#?(:module/link-preview link-preview/<md>
+      :default markdown/<md->div>)
+   text
+   (merge {:default-language "clojure"
+           :auto-languages code-languages} options)])
 
 (defn- link-trust [user]
   (let [id (if (string? user) user (:id user))]

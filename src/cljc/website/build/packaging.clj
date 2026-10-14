@@ -4,6 +4,25 @@
             [clojure.java.io :as io]
             [clojure.string :as string]))
 
+(def stylesheet-root "resources/public/css/website/modules")
+(def stylesheet-source-root "resources/scss/modules")
+
+(defn module-defaults
+  "Share source-only conventions with packaging before Lein resolves dependencies."
+  [entry spec]
+  (when (map? spec)
+    (let [parts (string/split (str entry) #"\.")
+          id (if (contains? spec :id)
+               (:id spec)
+               (when (= "module" (last parts))
+                 (some-> parts butlast last keyword)))
+          stylesheet (when (keyword? id) (str (name id) ".min.css"))]
+      (cond-> (assoc spec :id id)
+        (and (not (contains? spec :styles)) stylesheet
+             (or (.isFile (io/file stylesheet-root stylesheet))
+                 (.isFile (io/file stylesheet-source-root (str (name id) ".scss")))))
+        (assoc :styles [(str "/css/website/modules/" stylesheet)])))))
+
 (defn owner-enabled?
   "An authoring child is absent when its declared parent capability is absent."
   [settings declarations id]
@@ -33,7 +52,7 @@
               tables (when (and (:storage spec) (.isFile storage-file))
                        (nth (first (filter #(and (seq? %) (= 'def (first %)) (= 'tables (second %)))
                                            (forms storage-file))) 2))]]
-    (assoc spec :site/owner (:site/owner (first (filter map? (drop 2 ns-form)))) :tables tables :prefix (-> (str (second ns-form))
+    (assoc (module-defaults (second ns-form) spec) :tables tables :prefix (-> (str (second ns-form))
                                            (string/replace #"\.module$" "")
                                            (string/replace "-" "_")
                                            (string/replace "." "/")))))

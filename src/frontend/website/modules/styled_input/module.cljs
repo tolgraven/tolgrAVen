@@ -2,7 +2,6 @@
   (:require [website.modules.styled-input.views :as views]))
 
 (def spec
-  {:id :styled-input
-   :styles ["/css/website/modules/monospace.min.css"
+  {:styles ["/css/website/modules/monospace.min.css"
             "/css/website/modules/styled-input.min.css"]
    :view {:input #'views/<input-text-styled>}})

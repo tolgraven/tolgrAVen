@@ -8,3 +8,10 @@
 (def modules
   #?(:browser (loadables)
      :default {}))
+
+(defn module-spec
+  "Resolve the catalog-owned identity without changing an explicit declaration."
+  [id spec]
+  (if (and (map? spec) (not (contains? spec :id)))
+    (assoc spec :id id)
+    spec))

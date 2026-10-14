@@ -1,16 +1,18 @@
 (ns website.modules.chat.views
-  (:require
+  #?(:cljs (:require
     [website.supabase.schema :as schema]
     [website.component.registry]
     [website.macros :as m :refer-macros [defc]]
     [website.react :as r]
-
     [clojure.string :as string]
     [website.loader :as l]
-    [website.modules.link-preview.views :as link-preview]
+    #?(:module/link-preview [website.modules.link-preview.interface :as link-preview]
+       :default [website.modules.markdown.interface :as markdown])
     [website.components.ui.inputs :as ui-inputs]
-    [website.util :as util]))
+    [website.util :as util])))
 
+#?(:cljs
+   (do
 (defc <chat-message> "A single chat message"
   [message :- schema/chat-message]
   (let [user @(r/subscribe [:user/user (:user message)])
@@ -25,7 +27,7 @@
           (when @hovered? (util/unix->ts (:time message)))]]
 
         [:div.chat-message-text
-         [link-preview/<md>
+         [#?(:module/link-preview link-preview/<md> :default markdown/<md->div>)
           (:text message)
           {:id (str "chat-message-" (:id message))
            :trust (if (#{nil "anon"} (:user message)) :untrusted :user)}]]
@@ -52,3 +54,5 @@
      [:p.chat-description
       [:b "Step 1. "] "Open two browser windows." [:br]
       [:b "Step 2. "] "Talk to yourself in real time"] ]))
+
+))

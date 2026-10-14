@@ -8,6 +8,8 @@
     [website.macros :as m :refer-macros [defc]]
     [website.components.image :as img]
     [website.loader :as l]
+    #?(:module/link-preview [website.modules.link-preview.interface :as link-preview]
+       :module/markdown [website.modules.markdown.interface :as markdown])
     [website.components.ui.controls :as ui-controls]
     [website.components.ui.inputs :as ui-inputs])))
 
@@ -103,7 +105,10 @@
                [:h4.blog-comment-title title]
                (m/<> :blog/posted-by {:id id :user user :ts ts :score score})
                [:div.blog-comment-text
-                (m/<> :link-preview/md text)]]))) ]))
+                #?(:module/markdown
+                   [#?(:module/link-preview link-preview/<md>
+                       :default markdown/<md->div>) text]
+                   :default [:p text])]]))) ]))
 
 
 (defc <change-password> "Change user password" [user]

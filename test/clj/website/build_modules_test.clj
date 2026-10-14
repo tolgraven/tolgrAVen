@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [website.build.modules :as modules]
             [website.build.site :as site]
+            [website.loader.code :as code]
             [website.build.packaging :as packaging]
             [clojure.java.io :as io]
             [clojure.string :as string]))
@@ -12,15 +13,41 @@
     (is (every? #(contains? by-id %) [:blog :cv :docs :test :user :link-preview :carousel :contact :supabase]))
     (is (not (contains? by-id :main)))
     (is (= 'website.modules.experiments.module (get-in by-id [:test :entry])))
-    (is (= #{:main :user :link-preview} (get-in by-id [:blog :depends-on])))
+    (is (= #{:main :user} (get-in by-id [:blog :depends-on])))
     (doseq [id [:cv :home]]
       (is (= #{:main :carousel} (get-in by-id [id :depends-on]))))
     (is (= #{:main :maps :carousel} (get-in by-id [:strava :depends-on])))
     (doseq [id [:carousel :contact]]
       (is (= #{:main} (get-in by-id [id :depends-on]))))
     (is (= #{:main} (get-in by-id [:user :depends-on])))
-    (is (= #{:main :markdown} (get-in by-id [:link-preview :depends-on])))
+    (is (= #{:main} (get-in by-id [:link-preview :depends-on])))
     (is (= (set (keys by-id)) (set (keys (modules/bundles)))))))
+
+(deftest early-packaging-and-compiler-discovery-share-conventions
+  (let [packaged (into {} (map (juxt :id identity)) (#'packaging/declarations))]
+    (doseq [declaration (modules/all-declarations modules/root)
+            :when (not (:development-only? declaration))]
+      (is (= (select-keys declaration [:id :site/owner :styles])
+             (select-keys (get packaged (:id declaration)) [:id :site/owner :styles]))))))
+
+(deftest preview-usage-is-optional-rather-than-a-bundle-prerequisite
+  (let [declarations (modules/all-declarations)
+        by-id (into {} (map (juxt :id identity)) declarations)]
+    (doseq [id [:blog :chat :search]]
+      (is (not (contains? (get-in by-id [id :depends-on]) :link-preview))))
+    (is (seq (modules/select-declarations declarations
+               {:modules {:link-preview {:enabled false}}})))))
+
+(deftest standalone-user-does-not-require-markdown-or-previews
+  (let [all (modules/all-declarations)
+        retained #{:main :coercion :user :supabase}
+        settings {:modules (into {} (for [{:keys [id]} all :when (not (retained id))]
+                                      [id {:enabled false}]))}]
+    (is (contains? (set (map :id (modules/select-declarations all settings))) :user))
+    (with-open [reader (java.io.PushbackReader. (io/reader "src/frontend/website/modules/user/views.cljc"))]
+      (let [namespace (read {:read-cond :allow :features #{:cljs :feature/blog-comments}} reader)
+            symbols (filter symbol? (tree-seq coll? seq namespace))]
+        (is (not-any? #(re-find #"website.modules.(markdown|link-preview)" (str %)) symbols))))))
 
 (deftest development-console-is-selected-only-in-enabled-development-builds
   (let [all (modules/all-declarations)
@@ -47,7 +74,7 @@
 (deftest declaration-is-data-and-does-not-evaluate-browser-code
   (let [file (java.io.File/createTempFile "module-declaration" ".cljs")]
     (try
-      (spit file "(ns example.module {:bundle/depends-on #{:main :user}})\n(def spec {:id :example :init #(js/alert :never)})")
+      (spit file "(ns example.module)\n(def spec {:bundle/depends-on #{:main :user} :init #(js/alert :never)})")
       (is (= {:id :example :entry 'example.module :depends-on #{:main :user}}
              (modules/declaration file)))
       (spit file "(ns example.module)\n(def spec {:id (identity :example)})")
@@ -55,6 +82,45 @@
       (spit file "#=(throw (Exception. \"must not run\"))")
       (is (thrown? RuntimeException (modules/declaration file)))
       (finally (.delete file)))))
+
+(deftest module-conventions-preserve-explicit-overrides-and-reject-invalid-declarations
+  (let [directory (.toFile (java.nio.file.Files/createTempDirectory "module-defaults" (make-array java.nio.file.attribute.FileAttribute 0)))
+        file (io/file directory "module.cljs")
+        stylesheet (io/file directory "maps.min.css")]
+    (try
+      (with-redefs [packaging/stylesheet-root (str directory)
+                    packaging/stylesheet-source-root (str directory)]
+        (spit file "(ns website.modules.maps.module)\n(def spec {})")
+        (is (= {:id :maps, :entry 'website.modules.maps.module, :depends-on #{:main}}
+               (modules/declaration file)))
+        (let [source (io/file directory "maps.scss")]
+          (try
+            (spit source "body{}")
+            (is (= ["/css/website/modules/maps.min.css"] (:styles (modules/declaration file)))
+                "Cold packaging and AOT resolve source-owned styles before CSS generation")
+            (finally (.delete source))))
+        (spit stylesheet "body{}")
+        (is (= ["/css/website/modules/maps.min.css"] (:styles (modules/declaration file))))
+        (spit file "(ns website.modules.maps.module)\n(def spec {:id :custom :styles [\"/css/custom.css\"]})")
+        (is (= :custom (:id (modules/declaration file))))
+        (is (= ["/css/custom.css"] (:styles (modules/declaration file))))
+        (spit file "(ns website.modules.maps.module)\n(def spec {:styles []})")
+        (is (nil? (:styles (modules/declaration file))))
+        (doseq [source ["(ns website.modules.maps.module)"
+                        "(ns website.modules.maps.module) (def spec (identity {}))"
+                        "(ns website.modules.maps.module) (def spec {:id nil})"]]
+          (spit file source)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"literal spec" (modules/declaration file))))
+        (spit file "(ns website.modules.maps.module {:bundle/depends-on #{:main}}) (def spec {})")
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not ns metadata" (modules/declaration file))))
+      (finally
+        (.delete stylesheet)
+        (.delete file)
+        (.delete directory)))))
+
+(deftest runtime-module-identity-is-resolved-before-validation
+  (is (= {:id :maps, :view {}} (code/module-spec :maps {:view {}})))
+  (is (= {:id :custom} (code/module-spec :maps {:id :custom}))))
 
 (deftest shared-code-consumers-require-the-formatter-without-eager-browser-dependency
   (let [declarations (modules/all-declarations)

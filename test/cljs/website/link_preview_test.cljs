@@ -7,15 +7,141 @@
 
 
 
-            [website.modules.link-preview.module]
+            [website.modules.link-preview.module :as preview-module]
+            [website.modules.markdown.module :as markdown-module]
+            [website.module-transport :as transport]
             [website.link-preview-fixture]
             [website.modules.link-preview.views :as preview]
+            [website.modules.link-preview.interface :as interface]
             [website.component.data :as data]
+            [website.loader :as loader]
+            [shadow.lazy :as lazy]
             [website.macros :refer-macros [defc]]))
 (defn- tick [ms] (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
 (defn- render! [root form] (support/render! root form))
 (defn- flush! [] (support/settle!))
 (defc <link-example> {:features [:props :links]} [spec url] [:div [:a {:href url} "Example link"]])
+(deftest optional-preview-arrival-keeps-content-and-only-acquires-for-candidates
+  (async done
+    (let [restore! (r/make-restore-fn)
+          modules loader/modules
+          load-code! loader/load-code!
+          ready? loader/ready?
+          *ready? (atom false)
+          *requests (atom [])
+          *cleanups (atom 0)
+          *root (atom nil)
+          element (.createElement js/document "div")
+          spec {:link-container
+                {:handle! preview/handle-container-event!
+                 :observe! (fn [& args]
+                             (let [stop! (apply preview/observe-container! args)]
+                               (fn []
+                                 (swap! *cleanups inc)
+                                 (when stop! (stop!)))))}}
+          loadable (reify lazy/ILoadable (ready? [_] @*ready?)
+                         IDeref (-deref [_] spec))
+          form (fn [text]
+                 [interface/<link-container>
+                  {:id "optional-preview", :text text, :trust :untrusted}
+                  [:p [:a {:href text} "Stable authored content"]]])]
+      (reset! r/*app-db (assoc @r/*app-db :loader {}))
+      (set! loader/modules {:link-preview loadable})
+      (set! loader/ready? (fn [id] (and (= :link-preview id) @*ready?)))
+      (set! loader/load-code!
+            (fn [options]
+              (swap! *requests conj (:module options))
+              (js/Promise.resolve nil)))
+      (.appendChild js/document.body element)
+      (-> (go-promise
+            (let [root (await! (support/create-root! element))]
+              (reset! *root root)
+              (await! (render! root (form "/local-page")))
+              (await! (flush!))
+              (is (empty? @*requests) "Plain/internal content acquires no preview module")
+              (let [container (.-firstElementChild element)
+                    anchor (.querySelector element "a")]
+                (await! (render! root (form "https://example.invalid/first")))
+                (await! (flush!))
+                (is (= [:link-preview] @*requests))
+                (is (identical? container (.-firstElementChild element)))
+                (is (identical? anchor (.querySelector element "a")))
+                (is (nil? (get @preview/*containers "optional-preview")))
+                (reset! *ready? true)
+                (r/dispatch-sync [:loader/code-ready :link-preview])
+                (await! (flush!))
+                (is (identical? anchor (.querySelector element "a"))
+                    "Optional code arrival must not remount authored content")
+                (is (= 1 (count (get-in @preview/*containers
+                                       ["optional-preview" :candidates-by-element]))))
+                (await! (render! root (form "https://example.invalid/second")))
+                (await! (flush!))
+                (is (= 1 @*cleanups) "Changed candidates release their native owner")
+                (is (= "https://example.invalid/second"
+                       (-> @preview/*containers (get "optional-preview")
+                           :candidates-by-element vals first :url)))
+                (is (identical? anchor (.querySelector element "a")))
+                (await! (render! root (form "/local-page")))
+                (await! (flush!))
+                (is (= 2 @*cleanups))
+                (is (nil? (get @preview/*containers "optional-preview")))
+                (is (= [:link-preview] @*requests) "Ready code is not reacquired")
+                (is (identical? container (.-firstElementChild element))))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally
+            (fn []
+              (when @*root (support/unmount! @*root))
+              (.remove element)
+              (set! loader/modules modules)
+              (set! loader/load-code! load-code!)
+              (set! loader/ready? ready?)
+              (r/clear-subscription-cache!)
+              (restore!)
+              (done)))))))
+
+(deftest preview-ready-before-real-markdown-still-discovers-committed-links
+  (async done
+    (let [restore! (r/make-restore-fn)
+          controlled (transport/install! {:link-preview preview-module/spec
+                                          :markdown markdown-module/spec})
+          element (.createElement js/document "div")
+          *root (atom nil)
+          url "https://example.invalid/delayed-parser"
+          id "preview-before-parser"]
+      (reset! r/*app-db (assoc @r/*app-db :loader {}))
+      (.appendChild js/document.body element)
+      (-> (go-promise
+            (reset! *root (await! (support/create-root! element)))
+            (await! (render! @*root [interface/<md> (str "[Delayed link](" url ")")
+                                   {:id id, :trust :untrusted}]))
+            (await! (support/wait-for! #(every? @(:started controlled) [:markdown :link-preview])))
+            ((:release! controlled) :link-preview)
+            (await! (support/wait-for! #(contains? @preview/*containers id)))
+            (is (nil? (.querySelector element "a")) "Real parser is still gated")
+            (is (empty? (get-in @preview/*containers [id :candidates-by-element])))
+            (let [container (.querySelector element "[data-link-container]")]
+              ((:release! controlled) :markdown)
+              (await! (support/wait-for! #(= 1 (count (get-in @preview/*containers
+                                                             [id :candidates-by-element])))))
+              (is (identical? container (.querySelector element "[data-link-container]")))
+              (let [anchor (.querySelector element "a")]
+                (.dispatchEvent anchor (js/PointerEvent. "pointerover"
+                                         #js {:bubbles true :pointerType "mouse"}))
+                (await! (support/wait-for! #(= url (get-in @r/*app-db
+                                                          [:state :link-preview :active :url]))))
+                (is (identical? anchor (.querySelector element "a")))))
+            (support/unmount! @*root)
+            (reset! *root nil)
+            (is (nil? (get @preview/*containers id)) "Unmount disconnects both observers"))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (.remove element)
+                      ((:restore! controlled))
+                      (r/clear-subscription-cache!)
+                      (restore!)
+                      (done)))))))
+
 (deftest queued-prefetch-lifecycle
   (let [before @r/*app-db
         data
@@ -103,7 +229,7 @@
           (preview/register-provider! "example.invalid" (fn [_ _] [:p "Local preview provider"]))
           (await! (render! root
                            [:<>
-                            [preview/<link-container>
+                            [interface/<link-container>
                              {:id "interaction-test", :text url, :trust :untrusted}
                              [:a {:href url, :ref #(reset! *link %)} "Preview test link"]]
                             [preview/<link-preview>]]))
@@ -195,7 +321,7 @@
                 (r/dispatch-sync [:link-preview/open data])
                 (await! (render! root
                                 [:<>
-                                 [preview/<link-container>
+                                 [interface/<link-container>
                                   {:id "visited-test" :text url :trust :untrusted}
                                   [:a {:href url :ref #(reset! *link %)} "Visited link"]]
                                  [preview/<link-preview>]]))

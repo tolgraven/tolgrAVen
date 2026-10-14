@@ -136,3 +136,27 @@ checks do not establish live Supabase Auth or realtime delivery.
 The resolver test uses an HTTP fixture and dummy credential. The companion CMS's
 `test/site-config-live.py` uses a disposable SQLite database, real admin authentication
 and the exported manifest to check secret isolation, visibility and retained data.
+
+## Module declarations and optional code
+
+Keep build declarations inside each module's `spec`, alongside its content,
+exports and lifecycle. `:bundle/depends-on` is this project's input to Shadow's
+hard `:depends-on` graph; it is not a built-in namespace feature. It defaults to
+`#{:main}`. Declare another bundle here only when the implementation imports its
+code. Optional use belongs behind that owner's lightweight interface and the
+existing managed loader; a declaration must not turn optional UI into a hydration
+prerequisite. Blog, Chat and Search render Markdown immediately and acquire Link
+Preview only for external-link candidates. Disabled previews select plain Markdown.
+
+A missing `:id` is the keyword naming the parent of `.module`, for example
+`website.modules.maps.module` becomes `:maps`. Explicit IDs remain useful when
+names differ. Missing styles use an existing generated conventional stylesheet or matching SCSS entry;
+see [styles.md](styles.md). Early packaging and compiler discovery share these
+source-only defaults, and browser/SSR adapters add the catalog identity before
+runtime validation. `:site/owner` also belongs in `spec`, for child capabilities.
+Namespace maps with these custom build declarations are rejected.
+
+`:content` supplies the module's derived CMS dependency plans before acquisition.
+Do not repeat those plans in `:depends`; reserve that field for additional managed
+resources. The eager Main spec retains its data declaration because boot owns it
+outside ordinary module loading.
