@@ -94,7 +94,10 @@ through its ordinary storage catalog. Apply the module's SQL using the existing
 Supabase provisioner before enabling its service. `:server :start` returns a
 cleanup owned by the mounted module-services lifecycle. With server Supabase
 settings, it starts asynchronously; `:github {:sync-enabled false}` disables it.
-It uses the CMS-selected repository, traversing every current public branch and tag's
+Without published CMS repository settings the automatic worker has no target and
+performs no archive/content acquisition. Optional module-service startup failures
+are logged locally and do not stop the shared HTTP server or healthy siblings.
+When configured, it uses the CMS-selected repository, traversing every current public branch and tag's
 reachable history, not only commits attributed to the configured owner. Removed
 branch commits already archived remain searchable. Unreachable/deleted GitHub
 objects cannot be discovered through the branches/tags APIs.

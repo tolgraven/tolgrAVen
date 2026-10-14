@@ -3,6 +3,7 @@
             [clj-http.client :as http]
             [clojure.data.json :as json]
             [website.config :as config]
+            [website.content.service :as content]
             [website.modules.github.provider :as provider]
             [website.modules.github.sync :as sync]
             [website.modules.github.activity :as activity]
@@ -163,3 +164,7 @@
 (deftest backfill-cli-rejects-incomplete-or-extra-arguments-before-config-start
   (is (thrown? Exception (sync/-main "only-owner")))
   (is (thrown? Exception (sync/-main "owner" "repo" "extra"))))
+
+(deftest unpublished-cms-settings-do-not-acquire-archive-content
+  (with-redefs [content/bundle! (fn [& _] (throw (Exception. "Unpublished section must not be requested")))]
+    (is (nil? (sync/target!)))))

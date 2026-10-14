@@ -221,3 +221,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   commits. Database leases and page/checkpoint transactions make retries safe;
   unchanged branch heads skip acquisition. Per-day breakdowns use server-only
   GitHub credentials on hover, independently of repository history.
+
+- Optional module-service startup failures remain local: log the module ID,
+  continue starting sibling services, and retain their cleanup handles. Missing
+  unpublished CMS settings do not initiate provider/content work.
