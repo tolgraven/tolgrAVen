@@ -661,6 +661,9 @@ figcaption, .float-with-caption {
   vertical-align: middle;
   background-image: var(--image-placeholder, none);
   picture { display: contents; object-fit: inherit; }
+  // Source descriptors have no visual box. With display:contents pictures,
+  // prevent them from becoming implicit grid rows beside the real image.
+  source { display: none; }
 
   .progressive-image__preview-layer, .progressive-image__final {
     grid-area: 1 / 1;
