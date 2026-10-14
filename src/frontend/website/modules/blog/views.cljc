@@ -223,6 +223,10 @@
             replies? (or (seq @*comments) (pos? (:reply-count post 0)))]
           [:<>
            [<comment-frame> {:appear {:class (or (:appear spec) "zoom-y fast")
+                                      ;; The parent owns reply visibility. A slide-behind
+                                      ;; root starts outside its clipping container, so
+                                      ;; observing that transformed root would deadlock.
+                                      :viewport? (nil? visible?)
                                       :restore? (not (:enter? spec))
                                       :remember-key (when (nil? visible?) [:blog/comment path])}
                             :features (if (false? (:appear spec)) [[:appear false]] [])

@@ -149,7 +149,8 @@
     (let [appearance (config (:appear options))
           offscreen? (not (in-viewport? element))
           settled? (and offscreen? (:settle-offscreen? appearance))
-          defer? (and (not (:force appearance)) offscreen? (not settled?)
+          defer? (and (not= false (:viewport? appearance))
+                     (not (:force appearance)) offscreen? (not settled?)
                      (or (not (:skip-enter? state)) (:document-enter? state)))]
       ;; Layout entrances must retain their natural offscreen height. Waiting
       ;; for a zero-height row to intersect would also hide the rows below it.

@@ -230,7 +230,11 @@ features whose failures should be contained.
 React component; `appear-wrapper` is a CSS class retained for selector compatibility. Original classes, styles and refs are preserved. `:appear` waits
 for the initial frame before adding `appeared`. If its committed native root is
 offscreen, it uses the same observer as `:seen` and enters once it reaches the
-viewport. Settled local/history restoration stays visible. `:seen` retains `seen-merge`'s
+viewport. For entrances whose visibility is already owned by a parent (for example,
+replies sliding from behind a clipped thread), `:viewport? false` keeps the normal
+paint-then-enter animation without observing the transformed child. It does not
+skip the animation as `:force true` does. Settled local/history restoration stays
+visible. `:seen` retains `seen-merge`'s
 20% observer steps and 50% visibility decision, so its slide does not repeatedly
 reverse itself around a single 50% observer boundary. An explicit non-default
 `:threshold` selects that observer threshold; `:root-margin` and `:once?` are configurable. Without

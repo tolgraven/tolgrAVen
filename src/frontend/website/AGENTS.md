@@ -55,6 +55,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 ## Ownership and feature contracts
 
+- Parent-controlled clipped entrances use `:appear {:viewport? false ...}` on
+  their children. Observing an initial transform outside its overflow container
+  can prevent intersection forever; the parent retains visibility ownership.
+
 - The lazy page-render owner explicitly imports `website.react.server` and passes
   its renderer to shared SSR rendering. The ordinary release facade keeps that
   dependency absent; do not use its inert target aliases for browser-worker SSR.
