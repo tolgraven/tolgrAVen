@@ -16,8 +16,8 @@
         responses (mapv #(json/parse-string % true) (str/split-lines (:out result)))]
     (check! (not (re-find #"Subscribe was called outside|localStorage is not available" (:err result)))
             "Renderer accessed browser-only state")
-    (check! (and (= (count snapshots) (count responses)) (every? #(and (:html %) (map? (:module-views %))
-                                                 (seq (get-in % [:module-views :user]))) responses))
+    (check! (and (= (count snapshots) (count responses))
+                 (every? #(and (:html %) (map? (:module-views %))) responses))
             "Node worker did not return all pages")
     responses))
 
@@ -38,6 +38,7 @@
         home {:renderer-version 3 :kind "landing" :path "/" :posts []
               :content (json/parse-string (slurp "resources/content-seed.json") true)}
         [landing blog-again again] (render! worker [home blog home])
+        [account] (render! worker [(assoc home :app-db-edn "{:state {:user-section [:login]}}")])
         cv (assoc home :kind "cv" :path "/cv")
         docs (assoc home :kind "docs" :path "/docs"
                          :app-db-edn "{:docs {\"index\" \"<h1>API reference</h1><p>Shared documentation view.</p>\"} :state {:docs {:current-page \"index\"}}}")
@@ -75,6 +76,13 @@
                  (not (str/includes? (:html blog-again) "h-intro"))) "Home/blog state leaked")
     (check! (contains-all? (:html landing) ["animate" "intro-title-letter" "--intro-letter-delay:2000ms"])
             "Initial SSR must include the document entrance and original typing clock")
+    (check! (and (not (contains? (:module-views landing) :user))
+                 (not (contains? (:module-views landing) :blog))
+                 (str/includes? (:html landing) "User account"))
+            "Anonymous Home keeps its account link without activating User or Blog")
+    (check! (and (some #{"view"} (get-in account [:module-views :user]))
+                 (str/includes? (:html account) "user-section-wrapper"))
+            "An open account panel retains real SSR markup and hydration ownership")
     (check! (and (= (:html cv-html) (:html cv-again))
                  (contains-all? (:html cv-html) ["cv-skills" "carousel-normal" "carousel-item-main"])
                  (str/includes? (:html docs-html) "Shared documentation view.")

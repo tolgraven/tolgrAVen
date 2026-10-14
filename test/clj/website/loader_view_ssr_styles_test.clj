@@ -19,3 +19,17 @@
     (is (some #{"/carousel.css"} after) "The visible owner retains its declared style dependency")
     (is (not (some #{"/maps.css"} after)) "Unrendered owners stay deferred")
     (is (= 1 (count (filter #{"/user.css"} after))))))
+
+(deftest home-does-not-load-closed-account-or-reader-styles
+  (let [manifest {:home ["/home.css"]
+                  :carousel ["/carousel.css"]
+                  :user ["/user.css"]
+                  :blog ["/blog.css"]
+                  :markdown ["/markdown.css"]}
+        request {:uri "/"}
+        paths (layout/initial-styles request manifest)]
+    (is (= #{"/home.css" "/carousel.css"} (set paths)))
+    (is (some #{"/user.css"}
+              (layout/initial-styles
+                (assoc request :ssr {:snapshot {:module-views {:user [:view]}}}) manifest))
+        "An actually rendered account panel still receives its styles before hydration")))

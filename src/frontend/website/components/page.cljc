@@ -99,7 +99,13 @@
 
    [ui-overlays/<zoom-to-modal> :fullscreen]
    (m/<> {:module :link-preview :defer? true})
-   (m/<> {:module :user, :defer? true})
+   (when-enabled :user nil
+    (let [open? @(r/subscribe [:user/ui-open?])]
+     ;; A query-string account deep link is intent too. Closed panels acquire
+     ;; nothing; an activated module retains its existing presence lifecycle.
+     (m/<> {:module :user
+            :defer? (not open?)
+            :load-on (if open? :immediate :event)})))
    #?(:module/settings
       (when @(r/subscribe [:state [:settings :panel-open]])
         (m/<> {:module :settings :load-on :immediate})))

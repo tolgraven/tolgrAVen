@@ -231,7 +231,7 @@
 (deftest route-css-is-in-the-initial-head-and-lazy-css-stays-in-the-manifest
   (with-redefs [config/env {:dev true :ssr {:enabled false}}
                 ohtml/link-to-js-bundles (fn [& _] nil)]
-    (doseq [[uri present absent] [["/" "user" "blog"] ["/blog" "blog" "cv"] ["/cv" "cv" "blog"]]]
+    (doseq [[uri present absent] [["/" "home" "blog"] ["/blog" "blog" "cv"] ["/cv" "cv" "blog"]]]
       (let [body (:body (layout/render-home {:uri uri}))
             links (re-seq #"<link[^>]+>" body)]
         (is (some #(.contains % (str "modules/" present ".min.css")) links))
@@ -290,9 +290,7 @@
           home (links "/")
           blog (links "/blog")]
       (is (not-any? #(re-find #"modules/(link-preview|markdown|monospace)\.min\.css" %) cv))
-      (is (some #(.contains % "modules/markdown.min.css") home))
-      (is (some #(.contains % "modules/monospace.min.css") home))
-      (is (not-any? #(.contains % "modules/link-preview.min.css") home))
+      (is (not-any? #(re-find #"modules/(user|blog|link-preview|markdown|monospace)\.min\.css" %) home))
       (is (not-any? #(.contains % "modules/link-preview.min.css") blog))
       (is (some #(.contains % "modules/monospace.min.css") blog))
       (is (some #(.contains % "modules/markdown.min.css") blog)))))

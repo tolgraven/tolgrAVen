@@ -78,7 +78,7 @@
   (vec (distinct
          (concat
            (mapcat #(styles/initial-paths manifest %)
-                   [:user (get-in (pages/match (or (:uri request) "/")) [:data :module])])
+                   [(get-in (pages/match (or (:uri request) "/")) [:data :module])])
            ;; Deferred popups become first-paint content only when actually rendered
            ;; by an authored widget. Node records visible boundaries, not all owners.
            (mapcat #(styles/paths manifest %)

@@ -311,6 +311,17 @@
             :page-render {:url "/page-render.js" :depends [:main]}}
            #{:blog :page-render}))))
 
+(deftest capture-does-not-import-unrequested-reader-or-account-modules
+  (is (= ["main" "home" "page-render"]
+         (mapv :id
+           (capture/asset-plan
+             {:main {:url "/main.js" :depends []}
+              :home {:url "/home.js" :depends [:main]}
+              :user {:url "/user.js" :depends [:main]}
+              :blog {:url "/blog.js" :depends [:main :user]}
+              :page-render {:url "/page-render.js" :depends [:main]}}
+             #{:home :page-render})))))
+
 (deftest asynchronous-rendering-discards-an-overtaken-pair
   (async done
     (let [restore! (r/make-restore-fn)
