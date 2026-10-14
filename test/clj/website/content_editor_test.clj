@@ -60,6 +60,7 @@
       (is (not (.contains (pr-str response) "fixture-sensitive-write-token")))))
   (with-redefs [auth/current-user! (constantly {:id "admin"})
                 media/admin! (constantly nil)]
-    (is (= {:status 503, :headers {"Cache-Control" "private, no-store"}
+    (is (= {:status 503
+            :headers {"Cache-Control" "private, no-store"}
             :body {:error "Content editing is temporarily unavailable"}}
            (editor/response! {} #(throw (ex-info "Authorization: private" {})))))))

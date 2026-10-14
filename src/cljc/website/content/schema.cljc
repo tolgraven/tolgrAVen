@@ -8,9 +8,17 @@
             #?(:clj [website.build.site :refer [when-enabled]]))
   #?(:cljs (:require-macros [website.build.site :refer [when-enabled]])))
 
-(def media (c/optional-map {:src :string :cms-src :string :alt :string :poster :string :title :string
-                           :playsInline :boolean :autoPlay :boolean :muted :boolean
-                           :loop :boolean :controls :boolean :width [:or number? :string]
+(def media (c/optional-map {:src :string
+                           :cms-src :string
+                           :alt :string
+                           :poster :string
+                           :title :string
+                           :playsInline :boolean
+                           :autoPlay :boolean
+                           :muted :boolean
+                           :loop :boolean
+                           :controls :boolean
+                           :width [:or number? :string]
                            :height [:or number? :string]
                            :asset media-schema/asset
                            :renditions media-schema/renditions
