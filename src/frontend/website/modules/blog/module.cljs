@@ -3,6 +3,7 @@
   (:require [website.modules.blog.storage :as storage]
             [website.modules.blog.pages :as pages]
             [website.modules.blog.schema :as schema]
+            [website.modules.blog.comment-exports :as comments]
 
     [website.react :as r]
     [website.modules.blog.install :as install]
@@ -30,16 +31,13 @@
    :pages pages/spec
    :install install/cache!
    :db-schema schema/sections
-   :view {:page #'view/<blog-page>
-          :post #'view/<blog-page>
-          :comment (when-enabled :blog :comments #'view/<blog-page>)
-          :archive #'view/<blog-page>
-          :tag #'view/<blog-page>
-          :posted-by #'presentation/<posted-by>
-          :post-content #'view/<post-content>
-          :tags-list #'view/<tags-list>
-          ;; views owns the feature-conditional require; its optional namespace
-          ;; is already compiled before these stable module exports are resolved.
-          :comment-quote (when-enabled :blog :comments #'website.modules.blog.comment-views/<comment-quote>)
-          :comments (when-enabled :blog :comments #'website.modules.blog.comment-views/<comments-section>)}
+   :view (merge {:page #'view/<blog-page>
+                 :post #'view/<blog-page>
+                 :comment (when-enabled :blog :comments #'view/<blog-page>)
+                 :archive #'view/<blog-page>
+                 :tag #'view/<blog-page>
+                 :posted-by #'presentation/<posted-by>
+                 :post-content #'view/<post-content>
+                 :tags-list #'view/<tags-list>}
+                comments/views)
    :init #(r/dispatch [:on-booted :store [:blog/init]])})
