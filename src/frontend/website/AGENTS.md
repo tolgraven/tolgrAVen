@@ -121,6 +121,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Rendered reusable UI lives in `components/`; feature-specific UI lives with its
   module. `component/` is the declaration/lifecycle runtime, not a view inventory.
   Import the owning namespace directly; there is no top-level `views.cljs` shim.
+- `components/ui/liquid_glass.cljs` owns the spec-driven glass wrapper. Filter
+  only its decorative background; preserve child DOM and independent opacity.
+  Its measured geometry and bounded image work belong to cancellable native
+  lifecycle adapters. See `doc/liquid-glass.md`; the lazy experiments module owns
+  the playground.
 - The page shell owns one lazy contact popup outside both footer copies. Footer
   controls share its re-frame state; do not mount the popup inside each control.
   Keep the HUD above the contact layer so notices remain actionable.

@@ -9,6 +9,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   be inlined safely. `--if-stale` verifies source/tool/font/icon-declaration inputs
   and every raw/minified output before skipping compilation; development startup
   runs that guard before opening HTTP. Keep full builds and the watch workflow aligned.
+- `test/server.clj` accepts `--glass-output` for isolated glass fixture output;
+  it serves current shared CSS and leaves ordinary browser-suite routing intact.
 - `test/ssr.clj` saves renderer export metadata with each HTML/state hydration
   fixture; never infer rendered exports from the browser bundle inventory.
 - `bb prod:build` builds CSS and calls the existing Shadow release API sequentially
