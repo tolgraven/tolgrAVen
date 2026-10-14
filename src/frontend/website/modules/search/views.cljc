@@ -137,12 +137,13 @@
        (when error
          [:button {:type "button", :on-click #(r/dispatch [:search/submit])} "Retry"])
        (for [{:keys [document preview] :as hit} (:hits response)]
-         ^{:key (:id document)}
-         (m/<> {:module (keyword (namespace preview))
-                :view (keyword (name preview))
-                :load-on :immediate
-                :<loading> [presentation/<fallback> hit]}
-                hit))
+         (with-meta
+           (m/<> {:module (keyword (namespace preview))
+                  :view (keyword (name preview))
+                  :load-on :immediate
+                  :<loading> [presentation/<fallback> hit]}
+                  hit)
+           {:key (:id document)}))
        (when (and response (not pending?) (not error) (empty? (:hits response)))
          [:p "No matching content."])
        (when (and response (not pending?) (< 1 (:page response)))
