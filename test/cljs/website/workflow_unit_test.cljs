@@ -1138,6 +1138,62 @@
         (.catch #(is false (str %)))
         (.finally done))))
 
+(deftest native-positioned-component-keeps-tracking-layout-through-hydration
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                original-position (.-scrollY js/window)
+                original-mode (.-scrollRestoration js/history)]
+            (.setAttribute element "id" "app")
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root
+                        [:section
+                         [:div {:style {:height "100vh"}}]
+                         [:div#native-anchor-row {:style {:height "24rem"}}]
+                         [:div#native-component-anchor {:style {:height "4rem", :scroll-margin-top "5rem"}} "Comment"]
+                         [:div {:style {:height "100vh"}}]]))
+              (let [row (.querySelector element "#native-anchor-row")
+                    target (.querySelector element "#native-component-anchor")]
+                (.scrollIntoView target #js {:block "start", :behavior "instant"})
+                (.setAttribute element "data-document-positioned" "native-component-anchor")
+                (let [animation (.animate row #js [#js {:height "24rem"} #js {:height "8rem"}]
+                                          #js {:duration 180, :fill "forwards"})]
+                  (page-transition/restore-anchor! "native-component-anchor")
+                  (await! (support/settle!))
+                  (is (some? @page-transition/*restore-cleanup)
+                      "The native position is an initial offset, not permission to stop following layout")
+                  (await! (.-finished animation))
+                  (await! (wait-for! #(nil? @page-transition/*restore-cleanup)))
+                  (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
+                    (is (<= (js/Math.abs (- margin (.-top (.getBoundingClientRect target)))) 1)))
+                  (.cancel animation))
+                (let [entrance (.animate (.querySelector element "section")
+                                        #js [#js {:transform "translateY(3rem)"}
+                                             #js {:transform "translateY(0)"}]
+                                        #js {:duration 180, :fill "forwards"})]
+                  ;; The document holds its entrance clock while hydration mounts.
+                  (.pause entrance)
+                  (set! (.-currentTime entrance) 0)
+                  (.setAttribute element "data-document-positioned" "native-component-anchor")
+                  (page-transition/restore-anchor! "native-component-anchor")
+                  (await! (wait-for! #(nil? @page-transition/*restore-cleanup)))
+                  (.play entrance)
+                  (await! (.-finished entrance))
+                  (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
+                    (is (<= (js/Math.abs (- margin (.-top (.getBoundingClientRect target)))) 1)
+                        "Entrance transforms must not become the settled scroll offset"))
+                  (.cancel entrance)))
+              (finally
+                (when-let [cleanup! @page-transition/*restore-cleanup] (cleanup!))
+                (support/unmount! root)
+                (.remove element)
+                (set! (.-scrollRestoration js/history) original-mode)
+                (.scrollTo js/window #js {:top original-position, :behavior "instant"})))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
 (deftest disappearing-component-anchor-releases-restoration
   (async done
     (-> (go-promise

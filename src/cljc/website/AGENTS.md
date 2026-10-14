@@ -57,7 +57,11 @@ implementation in `src/frontend/website/modules/<module>/`, also on the JVM sour
   shell opts out with `:container false`.
 
 - Module specs own literal `:bundle/depends-on` and `:site/owner`; namespace
-  metadata is rejected. Source-only defaults in `build/packaging.clj` are shared
+  metadata is rejected.
+  `:site/requires` adds literal capability prerequisites for views shared by two
+  owners, such as Blog's Search preview. Disabling either owner prunes its code,
+  styles and exports; it is separate from runtime bundle dependency ordering.
+  Source-only defaults in `build/packaging.clj` are shared
   with discovery: infer missing IDs from the parent of `.module` and existing
   `/css/website/modules/<id>.min.css` when `:styles` is absent. Matching SCSS also
   establishes ownership before generated output, so packaging/AOT and frontend agree. Explicit values

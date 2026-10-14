@@ -18,7 +18,14 @@
             "/css/website/modules/monospace.min.css"
             "/css/website/modules/markdown.min.css"]
    :server {:requires #{:markdown}
-            :routes 'website.modules.blog.api/routes}
+            :routes 'website.modules.blog.api/routes
+            :search [{:kind "blog-post"
+                      :preview :blog-preview/post
+                      :sql "supabase/modules/search_blog_posts.sql"}
+                     {:kind "blog-comment"
+                      :feature :comments
+                      :preview :blog-preview/comment
+                      :sql "supabase/modules/search_blog_comments.sql"}]}
    :storage storage/tables
    :pages pages/spec
    :install install/cache!

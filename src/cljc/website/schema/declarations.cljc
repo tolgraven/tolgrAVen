@@ -99,11 +99,21 @@
    [:?server [:map
                              [:?routes :symbol]
                              [:?start :symbol]
+                             [:?search [:vector
+                                        [:map
+                                         [:kind :string]
+                                         [:preview :keyword]
+                                         [:?feature :keyword]
+                                         [:?sql :string]
+                                         [:?filter :symbol]
+                                         [:?href :string]
+                                         [:?content [:vector :keyword]]]]]
                              [:?requires [:set :keyword]]
                              [:?requires-features [:map-of :keyword [:set :keyword]]]
                              [:?sql c/strings]
                              [:?sql-without-comments c/strings]]]
    [:?storage [:vector catalog/table]]
+   [:site/requires {:optional true} [:set :keyword]]
    [:?pages routes]
    [:?view [:map-of :keyword :any]]
    [:?init fn?]

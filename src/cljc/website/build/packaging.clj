@@ -24,15 +24,19 @@
         (assoc :styles [(str "/css/website/modules/" stylesheet)])))))
 
 (defn owner-enabled?
-  "An authoring child is absent when its declared parent capability is absent."
+  "A child is absent when its parent or an explicitly required capability is absent."
   [settings declarations id]
-  (loop [owner id, seen #{}]
-    (cond
-      (nil? owner) true
-      (seen owner) (throw (ex-info "Cyclic site module ownership" {:module id}))
-      (not (contains? declarations owner)) (throw (ex-info "Unknown site module owner" {:module id :owner owner}))
-      (= false (get-in settings [:modules owner :enabled])) false
-      :else (recur (get-in declarations [owner :site/owner]) (conj seen owner)))))
+  (letfn [(selected? [owner seen]
+            (cond
+              (nil? owner) true
+              (seen owner) (throw (ex-info "Cyclic site module ownership" {:module id}))
+              (not (contains? declarations owner)) (throw (ex-info "Unknown site module owner" {:module id :owner owner}))
+              (= false (get-in settings [:modules owner :enabled])) false
+              :else (let [declaration (get declarations owner)
+                          parents (cond-> (:site/requires declaration)
+                                    (:site/owner declaration) (conj (:site/owner declaration)))]
+                      (every? #(selected? % (conj seen owner)) parents))))]
+    (selected? id #{})))
 
 (defn- forms [file]
   (with-open [reader (java.io.PushbackReader. (io/reader file))]
@@ -74,6 +78,11 @@
                                  table tables
                                  :when (not= false (get-in config [:modules id (:feature table)]))]
                              (:sql table))
+                           (when (enabled? :search)
+                             (for [{:keys [id server]} selected
+                                   source (:search server)
+                                   :when (not= false (get-in config [:modules id (:feature source)]))]
+                               (:sql source)))
                            (mapcat (fn [{:keys [server]}]
                                      (if (and (:sql-without-comments server)
                                               (= false (get-in config [:modules :blog :comments])))
@@ -81,7 +90,8 @@
         disabled-sql (remove selected-sql
                              (concat (mapcat #(keep :sql (:tables %)) all)
                                      (mapcat #(concat (get-in % [:server :sql])
-                                                      (get-in % [:server :sql-without-comments])) all)))
+                                                      (get-in % [:server :sql-without-comments])
+                                                      (keep :sql (get-in % [:server :search]))) all)))
         selected-styles (set (mapcat :styles selected))
         disabled-styles (remove selected-styles (mapcat :styles all))
         prefixes (cond-> (mapv #(str % "/") disabled)

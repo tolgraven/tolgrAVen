@@ -26,6 +26,16 @@
     (is (= #{:main} (get-in by-id [:link-preview :depends-on])))
     (is (= (set (keys by-id)) (set (keys (modules/bundles)))))))
 
+(deftest search-previews-require-both-owning-capabilities
+  (let [all (modules/all-declarations)
+        selected (fn [settings] (set (map :id (modules/select-declarations all settings))))]
+    (is ((selected {:modules {}}) :blog-preview))
+    (doseq [settings [{:modules {:search {:enabled false}}}
+                     {:modules {:blog {:enabled false}}}]]
+      (is (not ((selected settings) :blog-preview))))
+    (is (not ((selected {:modules {:search {:enabled false}}}) :github-preview)))
+    (is (not ((selected {:modules {:search {:enabled false}}}) :home-preview)))))
+
 (deftest early-packaging-and-compiler-discovery-share-conventions
   (let [packaged (into {} (map (juxt :id identity)) (#'packaging/declarations))]
     (doseq [declaration (modules/all-declarations modules/root)
@@ -219,10 +229,16 @@
   (doseq [config [{:modules {:supabase {:enabled false}}}
                   {:modules {:missing {:enabled true}}}
                   {:modules {:blog {:comment false}}}
-                  {:modules {:user {:enabled false}}}
-                  {:modules {:blog {:enabled false}}}]]
+                  {:modules {:user {:enabled false}}}]]
     (is (thrown? clojure.lang.ExceptionInfo
                  (modules/select-declarations (modules/all-declarations) config)))))
+
+(deftest search-remains-available-without-blog-sources
+  (let [selected (modules/select-declarations (modules/all-declarations)
+                                             {:modules {:blog {:enabled false}}})
+        ids (set (map :id selected))]
+    (is (ids :search))
+    (is (not (some ids [:blog :blog-editor :markdown-editor])))))
 
 (deftest local-capture-requires-its-renderer-without-a-browser-bundle-dependency
   (let [declarations (modules/all-declarations)

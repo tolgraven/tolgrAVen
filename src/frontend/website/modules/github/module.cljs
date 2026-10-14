@@ -17,7 +17,11 @@
               :url "/api/github/settings"
               :into [:module :github :configuration]}]
    :server {:routes 'website.modules.github.api/routes
-            :start 'website.modules.github.sync/start!}
+            :start 'website.modules.github.sync/start!
+            :search [{:kind "github-commit"
+                      :preview :github-preview/commit
+                      :filter 'website.modules.github.search/filter!
+                      :sql "supabase/modules/search_github.sql"}]}
    :storage storage/tables
    :db-schema {[:module :github :configuration] configuration-schema/result
                [:module :github :activity] [:map-of :string activity-schema/result]

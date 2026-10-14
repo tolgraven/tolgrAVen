@@ -1,5 +1,10 @@
 # Server adapters
 
+- Search delivery reads module-owned public projections through the private
+  durable queue. Keep Typesense credentials server-only; acknowledge only each
+  successful matching revision/worker. Scope failures omit that source, retaining
+  unrelated public hits. Operational migration and replay are in `doc/search.md`.
+
 - Comment image uploads use the registered-account comment endpoint and the
   existing bounded durable media pipeline. Jobs and polling belong to that
   account. Image-library listing retains blogger/admin authorization; enabling

@@ -81,7 +81,7 @@
 (m/defc <soundcloud> "Soundcloud feed, plus selected tunes. Bonus if can do anything fun with it"
   []
   (let [{:keys [artist tunes]} @(r/subscribe [:content [:soundcloud]])]
-    [:section.soundcloud.fullwide.covering-3
+    [:section#soundcloud.soundcloud.fullwide.covering-3
      [:div.soundcloud-players.parallax-wrapper
       (m/for [tune tunes]
              [<soundcloud-player> artist tune])]]))

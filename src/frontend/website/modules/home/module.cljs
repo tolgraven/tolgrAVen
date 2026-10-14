@@ -6,6 +6,9 @@
 (def spec
   {:bundle/depends-on #{:main :carousel}
    :content [:intro :services :moneyshot :story :interlude :soundcloud :gallery]
+   :server {:search [{:kind "site-section"
+                      :preview :home-preview/section
+                      :content [:intro :services :moneyshot :story :interlude :soundcloud :gallery]}]}
    :pages pages/spec
    :view {:page #'views/<auto>
           :float-image #'layout/<float-img>

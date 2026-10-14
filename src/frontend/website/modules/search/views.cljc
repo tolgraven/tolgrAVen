@@ -1,240 +1,176 @@
 (ns website.modules.search.views
-  #?(:cljs (:require
-    [website.component.registry]
-    [website.component.font :as font]
-    [website.component.motion :as motion]
-    #?(:module/link-preview [website.modules.link-preview.interface :as link-preview]
-       :default [website.modules.markdown.interface :as markdown])
-    [website.modules.styled-input.views :as styled-input]
-    [website.react :as r]
-    [clojure.string :as string]
-    [website.loader]
-    [website.components.ui.loading :as ui-loading]
-    [website.components.image :as img]
-    [website.util :as util :refer [at]]))
-  #?(:cljs (:require-macros [website.macros :as m]
-                   [website.build.site :refer [when-enabled]])))
+  #?(:cljs (:require [website.react :as r]
+                     [website.component.font :as font]
+                     [website.component.motion :as motion]
+                     [website.modules.styled-input.views :as styled-input]
+                     [website.modules.search.presentation :as presentation]
+                     [website.components.image :as img]
+                     [website.util :as util]
+                     [clojure.string :as string]))
+  #?(:cljs (:require-macros [website.macros :as m])))
 
 #?(:cljs
    (do
 
-(m/defc <button> "Search button, press to show input field..."
+(m/defc <button> "Search button, press to show input field."
   []
-  (let [open? (r/subscribe [:search/open?])]
+  (let [open? @(r/subscribe [:search/open?])]
     [:button.search-ui-btn.noborder.nomargin
      {:name "Search"
       :title "Search site"
-      :on-click #(r/dispatch [:search/state [:open?] (not @open?)])}
+      :aria-expanded open?
+      :on-click #(r/dispatch [:search/state [:open?] (not open?)])}
      [img/<picture> {:src "svg/search-ico.svg"
-                   :alt "Search"
-                   :style {:width "1.2em" :height "1.2em"
-                           :filter "var(--light-to-dark)"}}]]))
+                     :alt "Search"
+                     :style {:width "1.2em"
+                             :height "1.2em"
+                             :filter "var(--light-to-dark)"}}]]))
 
-(m/defc ^:private <completion-letter>
-  {:features [[:appear "slide-in faster"] [:font (fn [& _] (when @(r/subscribe [:search/open?]) font/fira))]]}
-  [height letter]
-  [:div [:span
-           {:style {:min-height height}}
-           letter]])
+(m/defc <completion> [query suggestion _height]
+  (when (and suggestion (string/starts-with? (string/lower-case suggestion)
+                                           (string/lower-case query)))
+    [:span.styled-input-autocomplete (subs suggestion (count query))]))
 
-(m/defc ^:private <completion-prefix>
-  {:features [[:font (fn [& _] (when @(r/subscribe [:search/open?]) font/fira))]]}
-  [letter]
-  [:span.first-char letter])
+(m/defc <query-text>
+  {:features [[:font (fn [_ open?] (when open? font/fira))]]}
+  [text open?]
+  [:span.styled-query-text {:style {:white-space :pre-wrap}} text])
 
-(m/defc <completion>
-  [query suggestion height]
-  (when-not (string/blank? (:match suggestion))
-    (let [words (-> (or (:rest suggestion) "")
-                    (string/replace #"\n.*" "")
-                    (string/replace #"^(.{50}).+" "$1…"))
-          [char1 & others] (seq words)]
-      [:span.styled-input-autocomplete
-       {:style {:white-space :pre-wrap
-                :display :inline-flex}}
-       [<completion-prefix> char1]
-       (m/for [letter others] ; causes issues with spacing? nice lil zoom effect though, figure out.
-         [<completion-letter> height letter])])))
+(defn- key-down! [event suggestions selected inline?]
+  (when-not (.-isComposing (.-nativeEvent event))
+    (case (.-key event)
+      "ArrowDown" (when (seq suggestions)
+                    (.preventDefault event)
+                    (r/dispatch [:search/select 1]))
+      "ArrowUp" (when (seq suggestions)
+                  (.preventDefault event)
+                  (r/dispatch [:search/select -1]))
+      "Tab" (when (and (not (.-shiftKey event)) (seq suggestions))
+              (.preventDefault event)
+              (r/dispatch [:search/query (get suggestions (max 0 selected))]))
+      "Enter" (do (.preventDefault event)
+                   (r/dispatch (if (and (<= 0 selected) (< selected (count suggestions)))
+                                 [:search/query (get suggestions selected)]
+                                 [:search/submit])))
+      "Escape" (when-not inline?
+                   (.preventDefault event)
+                   (.stopPropagation event)
+                   (r/dispatch [:search/state [:open?] false]))
+      nil)))
 
-(m/defc <box> "Search input field"
- [collections & {:as args :keys [query-by model height open? opts]
-                 :or {height "2em"
-                      query-by ["text" "title"]}}]
- (let [suggestions @(r/subscribe [:search/autocomplete-multi collections])
-       query @(r/subscribe [:search/get-query (first collections)])
-       on-change #(doseq [coll collections]
-                    (r/dispatch [:search/search coll % query-by opts false]))
-       on-enter #(doseq [coll collections]
-                   (r/dispatch [:search/search coll (:text (first suggestions)) query-by opts false]))
-       on-esc #(r/dispatch [:search/state [:open?] false])]
-   ;; The input may first mount already open after a deferred button click.
-   ;; Own focus here so code loading does not consume that first interaction.
-   (r/use-effect
-     (fn []
-       (if (and open? (exists? js/document))
-         (let [input (util/elem-by-id "search-input")
-               ;; The shared frame adapter waits for the committed styles to
-               ;; paint without guessing a 100ms loading/animation deadline.
-               stop! (motion/next-frame!
-                       (fn []
-                         (util/scroll-to "search-input")
-                         (when input (.focus input #js {:preventScroll true}))))]
-           (fn []
-             (stop!)
-             ;; A focused, collapsed input makes the browser chase its hidden
-             ;; caret during later page/layout changes, even after navigation.
-             (when (identical? input (.-activeElement js/document))
-               (.blur input))))
-         nil))
-     [open?])
-   [styled-input/<input-text-styled>
-    :id "search-input"
-    :query-by query-by
-    :model model
-    :height height
-    :open? open?
-    :on-change on-change
-    :on-enter on-enter
-    :on-esc on-esc
-    :completion-fn <completion>
-    :suggestions suggestions]))
+(m/defc <box> "Controlled query and keyboard completion using the existing styled input."
+  [{:keys [id open? inline?]}]
+  (let [query (r/subscribe [:search/query])
+        suggestions @(r/subscribe [:search/suggestions])
+        selected @(r/subscribe [:search/selected])
+        selected' (or selected -1)
+        list-id (str id "-suggestions")]
+    (r/use-effect
+      (fn []
+        (when (and open? (not inline?) (exists? js/document))
+          (let [input (util/elem-by-id id)
+                stop! (motion/next-frame!
+                        #(when input (.focus input #js {:preventScroll true})))]
+            (fn []
+              (stop!)
+              (when (identical? input (.-activeElement js/document)) (.blur input))))))
+      [id open? inline?])
+    [styled-input/<input-text-styled>
+     :id id
+     :model query
+     :controlled? true
+     :animate? false
+     :text-fn <query-text>
+     :open? open?
+     :height (if inline? "2.5em" "2em")
+     :suggestions [(get suggestions (max 0 selected'))]
+     :completion-fn <completion>
+     :input-attrs {:role "combobox"
+                   :aria-label "Search site"
+                   :aria-autocomplete "both"
+                   :aria-expanded (boolean (and open? (seq suggestions)))
+                   :aria-controls list-id
+                   :aria-activedescendant (when (and open? (<= 0 selected') (seq suggestions))
+                                            (str list-id "-" selected'))
+                   :max-length 200}
+     :on-change #(r/dispatch [:search/query %])
+     :on-key-down #(key-down! % suggestions selected' inline?)]))
 
+(m/defc <suggestions> [{:keys [id open?]}]
+  (let [suggestions @(r/subscribe [:search/suggestions])
+        selected @(r/subscribe [:search/selected])
+        list-id (str id "-suggestions")]
+    [:div.search-autocomplete
+     {:id list-id
+      :role "listbox"
+      :aria-label "Search suggestions"
+      :class (when (and open? (seq suggestions)) "search-autocomplete-open")}
+     (when open?
+       (for [[index suggestion] (map-indexed vector suggestions)]
+         ^{:key suggestion}
+         [:button.search-autocomplete-item.noborder
+          {:type "button"
+           :id (str list-id "-" index)
+           :role "option"
+           :tab-index -1
+           :aria-selected (= selected index)
+           :on-mouse-down #(.preventDefault %)
+           :on-click #(r/dispatch [:search/query suggestion])}
+          suggestion]))]))
 
-(m/defc ^:private <suggestion>
-  {:features [[:font (fn [& _] (when @(r/subscribe [:search/open?]) font/fira))]]}
-  [collections {:keys [match rest query]}]
-  [:div.search-autocomplete-item
-   {:on-click (fn [_]
-                (doseq [coll collections]
-                  (r/dispatch [:search/search coll (str match rest) ["text" "title"]])))}
-   [:b query] rest])
-
-(m/defc <suggestions> "Display a dropdown of suggested further terms"
-  [collections]
-  (let [suggestions (r/subscribe [:search/autocomplete-multi collections])
-        last-suggestions (atom nil)
-        query (r/subscribe [:search/get-query "blog-posts"])]
-    (fn [collections]
-      (let [suggestions' (or @suggestions
-                             @last-suggestions)]
-        (reset! last-suggestions suggestions')
-        [:div.search-autocomplete
-         {:class (when (and @(r/subscribe [:search/open?])
-                            (not (string/blank? @query)))
-                   "search-autocomplete-open")}
-         (m/for [suggestion (drop 1 suggestions') ; rework as map-indexed so can highlight and pick by keyboard
-                 :let [{:keys [text html rest match query]} suggestion
-                       without-query rest
-                       #_(string/replace-first text (re-pattern (str "(?i)" @query)) "")]]
-           [<suggestion> collections suggestion])]))))
-
-
-(m/defc ^:private <instant-result>
-  {:features [:appear]}
-  [{:keys [inner-class component highlights document] :as spec}]
-  [:div.search-instant-result
-           {:class inner-class}
-           [component highlights document]])
-
-(m/defc <instant-result-category> "Wrapper for type of results/collection"
-  [collection component inner-class appear-class]
-  (if-let [hits (:hits @(r/subscribe [:search/results-for-query collection]))]
-    [:<>
-     (when (seq hits)
-       (m/for [hit hits
-             :let [{:keys [highlights document]} hit
-                   {:keys [id text]} document]]
-         [<instant-result> {:appear (str appear-class " fast") :inner-class inner-class
-                            :component component :highlights highlights :document document}]))]
-
-    [ui-loading/<loading-spinner> true]))
-
-; these should be provided by blog probably? and other respective modules
-; could generalize a tiny bit but tricky due to css structure
-(m/defc <blog-post-results> "Show hits that are blog posts"
-  [highlights document]
-  (let [{:keys [id permalink title text user ts]} document]
-    [:<>
-     [:div.blog-post-header-main
-      [:a {:href @(r/subscribe [:href :blog-post {:permalink (or permalink id)}])}
-       [:h2.blog-post-title title]]
-      (m/<> :blog/posted-by {:id id :user user :ts ts})
-      (m/<> :blog/tags-list {:post document})]
-     (m/for [highlight highlights]
-       [#?(:module/link-preview link-preview/<md> :default markdown/<md->div>) (:snippet highlight)])]))
-
-(when-enabled :blog :comments
-(m/defc <blog-comment-results> "Show hits that are blog post comments"
-  [highlights document]
-  (let [{:keys [id title text user ts]} document]
-    [:div
-     [:div.blog-comment-border]
-     [:section.blog-comment
-      (m/<> :user/avatar @(r/subscribe [:user/user user]))
-      [:div.blog-comment-main
-       [:h4.blog-comment-title title]
-       (m/<> :blog/posted-by {:id id :user user :ts ts})
-       (m/for [highlight highlights]
-         [:div.blog-comment-text
-          [#?(:module/link-preview link-preview/<md> :default markdown/<md->div>) (:snippet highlight)]])]]]))
-
-)
-
-(m/defc <instant-results> "Show results while searching"
-  [open?]
-  (let []
-    (when (and open?
-               (not (string/blank? @(r/subscribe [:search/get-query "blog-posts"]))))
+(m/defc <instant-results> [open?]
+  (let [query @(r/subscribe [:search/query])
+        response @(r/subscribe [:search/response])
+        pending? @(r/subscribe [:search/pending?])
+        generation @(r/subscribe [:search/get [:generation]])
+        error @(r/subscribe [:search/error])]
+    (when (and open? (not (string/blank? query)))
       [:div.search-instant-results
-       [:div.blog
-        [<instant-result-category> "blog-posts" <blog-post-results> "blog-post" "zoom-y"]]
-       (when-enabled :blog :comments
-         [:div.blog-comments>div.blog-comments-inner
-          [<instant-result-category> "blog-comments" <blog-comment-results> "blog-comment-around flex" "zoom"]])])))
+       {:aria-busy (boolean pending?)}
+       [:div {:role "status", :aria-live "polite"}
+        (cond error error
+              pending? "Searching…"
+              response (str (:found response) " results"))]
+       (when error
+         [:button {:type "button", :on-click #(r/dispatch [:search/submit])} "Retry"])
+       (for [{:keys [document preview] :as hit} (:hits response)]
+         ^{:key (:id document)}
+         (m/<> {:module (keyword (namespace preview))
+                :view (keyword (name preview))
+                :load-on :immediate
+                :<loading> [presentation/<fallback> hit]}
+                hit))
+       (when (and response (not pending?) (not error) (empty? (:hits response)))
+         [:p "No matching content."])
+       (when (and response (not pending?) (< 1 (:page response)))
+         [:button {:type "button"
+                   :on-click #(r/dispatch [:search/request generation query (dec (:page response))])}
+          "Previous results"])
+       (when (and response (not pending?)
+                  (< (* 12 (:page response)) (:found response)))
+         [:button {:type "button"
+                   :on-click #(r/dispatch [:search/request generation query (inc (:page response))])}
+          "Next results"])])))
 
-(m/defc <full-results> "More full complete and whatnot"
+(m/defc <full-results> "Preserved full-results experiment."
   [collection query])
 
-(def collections (into ["blog-posts"] (when-enabled :blog :comments ["blog-comments"])))
-
-(m/defc <ui> "The search ui. Initially runs over blog-posts and comments, but should later also search docs and hence source-code."
+(m/defc <ui> "Search public content through the shared search boundary."
   {:features [:error-boundary]}
-  [collection]
-  (let [open? (r/subscribe [:search/open?])
-        results-open? (r/subscribe [:search/results-open?])]
-    (fn [collection]
-      [:section.search-ui
-       {:class (when @open? "search-ui-open")
-        :ref #(when % (r/dispatch [:search/init]))}
+  [& _]
+  (let [open? @(r/subscribe [:search/open?])]
+    [:section.search-ui {:class (when open? "search-ui-open")}
+     [<box> {:id "search-input", :open? open?}]
+     [<suggestions> {:id "search-input", :open? open?}]
+     [<instant-results> open?]]))
 
-       [<box> collections
-        :model (r/subscribe [:search/get-query "blog-posts"])
-        :open? @open?
-        :height (if @open? "2em" "2em")]
-       [<suggestions> collections]
-       [<instant-results> @open?]
-       ])))
-
-(m/defc <inline>
-  "Always-visible embedded search using the same public search bindings and results."
+(m/defc <inline> "Always-visible search using the same query and result state."
   {:features [:error-boundary]}
   []
-  (let [input-id (r/use-id)
-        query (r/subscribe [:search/get-query "blog-posts"])]
-   [:section.content-search
-   [styled-input/<input-text-styled>
-    :id input-id
-    :model query
-    :open? true
-    :height "2.5em"
-    :on-change (fn [text]
-                 (doseq [collection collections]
-                   (r/dispatch [:search/search collection text ["text" "title"] nil false])))]
-   (when-not (string/blank? @query)
-    [:div.search-instant-results
-    [:div.blog [<instant-result-category> "blog-posts" <blog-post-results> "blog-post" "zoom-y"]]
-    (when-enabled :blog :comments
-      [:div.blog-comments>div.blog-comments-inner
-       [<instant-result-category> "blog-comments" <blog-comment-results> "blog-comment-around flex" "zoom"]])])]))
+  (let [id (r/use-id)]
+    [:section.content-search
+     [<box> {:id id, :open? true, :inline? true}]
+     [<suggestions> {:id id, :open? true}]
+     [<instant-results> true]]))
 
 ))

@@ -256,6 +256,12 @@
               (restore-position! (.-scrollY js/window))))))
       (when resolve! (resolve!)))))
 
+(defn- layout-top [element]
+  ;; Match native document positioning: entrance transforms affect client
+  ;; rectangles, while offset coordinates describe the settled document layout.
+  (loop [node element, top 0]
+    (if node (recur (.-offsetParent node) (+ top (.-offsetTop node))) top)))
+
 (defn restore-anchor!
   "Follow a committed component while ancestor rows, code or fonts settle."
   [id]
@@ -263,20 +269,19 @@
         pending? (and root (.hasAttribute root "data-document-pending")
                       (= id (.getAttribute root "data-document-target")))
         positioned? (and root (= id (.getAttribute root "data-document-positioned")))]
-    (cond
-      (and positioned? (not pending?)) (.removeAttribute root "data-document-positioned")
-      :else
-      (when-let [element (.getElementById js/document id)]
-    (restore-position! (.-scrollY js/window)
-      (fn []
-        (when (and root (not (.hasAttribute root "data-document-pending"))
-                   (= id (.getAttribute root "data-document-positioned")))
-          (.removeAttribute root "data-document-positioned"))
-        (when-let [target (.getElementById js/document id)]
-          (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
-            (- (+ (.-top (.getBoundingClientRect target)) (.-scrollY js/window))
-               (if (js/isNaN margin) 0 margin)))))
-      "smooth")))))
+    ;; Native positioning preserves the initial entrance. Hydration must still
+    ;; follow later layout changes rather than treating that first offset as final.
+    (when (and positioned? (not pending?)) (.removeAttribute root "data-document-positioned"))
+    (when (.getElementById js/document id)
+      (restore-position! (.-scrollY js/window)
+        (fn []
+          (when (and root (not (.hasAttribute root "data-document-pending"))
+                     (= id (.getAttribute root "data-document-positioned")))
+            (.removeAttribute root "data-document-positioned"))
+          (when-let [target (.getElementById js/document id)]
+            (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
+              (- (layout-top target) (if (js/isNaN margin) 0 margin)))))
+        "smooth"))))
 
 (defn use-ready!
   "Complete navigation after React commits the subscribed route and its shell.

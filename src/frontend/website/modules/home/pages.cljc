@@ -4,6 +4,7 @@
   (:require #?(:cljs [website.react :as r])
             #?(:clj [website.build.site :refer [when-enabled]])
             [website.navigation.component-routes :as component-routes]
+            [website.modules.home.routes :as home-routes]
             #?(:module/github [website.modules.github.routes :as github-routes])))
 
 #?(:clj (when-enabled :github nil
@@ -27,7 +28,7 @@
          :preload-images [[:intro :bg 0 :src]]}
     (component-routes/mount
       ["/" {:name :home #?@(:cljs [:controllers (:home controllers)])}]
-      (or (when-enabled :github nil github-routes/spec) []))
+      (into home-routes/spec (or (when-enabled :github nil github-routes/spec) [])))
     ["/about" {:name :about #?@(:cljs [:controllers (:about controllers)])}]
     ["/services" {:name :services #?@(:cljs [:controllers (:services controllers)])}]
     ["/hire" {:name :hire #?@(:cljs [:controllers (:hire controllers)])}]]])
