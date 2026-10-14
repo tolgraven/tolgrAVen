@@ -1,9 +1,15 @@
 # Development console
 
-The console and profiling implementation live in `env/dev/cljs/tolgraven/`.
-`:app-dev` and `:app-test` enable Shadow's `:dev` reader feature. Production and
-Node SSR omit those dependencies at read time, including their registration
-side effects and inspector schemas; `goog.DEBUG` is not their import boundary.
+The console UI lives in `env/dev/cljs/website/modules/dev_console/`; its bounded
+capture, state and component metadata helpers remain in `env/dev/cljs/website/dev_console/`.
+The real `:dev-console` module is discovered from the development module directory
+only for browser development builds with Shadow's `:dev` reader feature. Its UI
+loads through the normal module boundary after the app becomes interactive;
+startup capture remains a separate bounded lifecycle so early observations survive.
+Set `:modules {:dev-console {:enabled false}}` in the existing site capability
+snapshot to omit its module and UI chunk. Production and Node SSR inventories
+contain no development console module, even when development sources happen to be
+on the compiler classpath. Release source policy rejects console implementation.
 
 In `:app-dev`, click **Dev** or press **Alt+Shift+D**. The console mounts after
 hydration, so it does not change the first client tree. Release builds do not
@@ -99,8 +105,13 @@ namespace definition, referred/renamed var or argument binding takes precedence.
 
 Use `{:profile false}` in a `defc` declaration to omit its render timing callback
 while retaining its place in the component hierarchy. This is used for the root
-that hosts the console itself. Probes use React context for parentage and Profiler for timings and
-add no DOM wrappers; native roots get `data-dev-component` for layout attribution.
+that hosts the console itself. Its deferred/module host is additionally wrapped
+with `instrumentation/without-profiling`, which excludes timing callbacks throughout
+that subtree while retaining instance metadata. Inclusive Profiler timings include
+descendant commits: recording the inspector's own updates would publish new records
+and trigger another inspector update. Application siblings remain profiled normally.
+Probes use React context for parentage and Profiler for timings and add no DOM
+wrappers; native roots get `data-dev-component` for layout attribution.
 Attribution attributes are added only after hydration; server and first-client
 markup stay unchanged. Server rendering never runs observers.
 

@@ -48,8 +48,7 @@
   
   .github-commit {
     position: relative;
-    padding-top: 0.2em;
-    padding-bottom: 0.4em;
+    padding: 0.5em 0.6em;
 
     .github-commit-details {
       flex: 1 1 auto;
@@ -92,13 +91,21 @@
       display: flex;
       flex-direction: row;
       justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5em;
       min-width: 0;
 
       .info {
-        flex: 1 1 auto;
+        flex: 1 1 0;
         min-width: 0;
         white-space: pre-line;
         overflow-wrap: anywhere;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        line-height: 1.4;
+        max-height: 4.2em;
+        overflow: hidden;
       }
 
     }
@@ -114,23 +121,28 @@
   
 }
 .github-commit-titles {
+  flex: 0 1 auto;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: 0.2em;
-  max-width: 100%;
-  margin-top: 0.3em;
-  margin-right: calc(0.5 * var(--space));
+  max-width: 40%;
+  margin-top: 0;
+  margin-right: 0;
   margin-left: 0;
 
   > span, i {
     min-width: 0;
     max-width: 100%;
-    overflow-wrap: anywhere;
     padding: 0.2em 0.35em;
     height: fit-content;
     border-radius: 0.3em;
+  }
+  > span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   i {
     font-size: 70%;
@@ -214,3 +226,7 @@
     }
   }
 }
+
+.github-deployment { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; padding: 0.75rem; margin-bottom: 1rem; background: var(--bg-4); border-radius: 0.4rem; font-size: 0.9rem; }
+.github-repository-owner { text-align: center; color: var(--fg-5); }
+.github-activity { padding: 1.25rem; background: var(--bg-3); min-width: 0; h2 { font-size: 1.25rem; } }

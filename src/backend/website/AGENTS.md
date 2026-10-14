@@ -1,0 +1,241 @@
+# Server adapters
+
+- Successful public SSR documents use `private, no-cache` so native BFcache is
+  available without shared HTTP caching. Errors known before headers, client-restoration templates,
+  paired private-state documents and existing API privacy headers keep `no-store`.
+
+Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
+`doc/site-provisioning.md` for operating and configuration details.
+
+- The handler loads `website.log` before its other dependencies so Mount
+  initializes logging before application startup. It owns Timbre appenders,
+  pretty exceptions and the default uncaught exception handler. Namespace loading
+  must not replace that handler; keep Throwable
+  objects intact through tools.logging and SLF4J. JBoss provider selection is a
+  launch-time JVM option shared by Lein and Docker, before Undertow loads.
+  See `doc/dependencies.md` for logging dependency ownership.
+
+- Feature-owned server adapters live under `modules/<feature>/`; shared platform
+  adapters retain their `content/`, `supabase/`, and `ssr/` ownership.
+  Landing routes come from `modules/home/pages.cljc`; their code/CSS assets use
+  the same lazy `:home` bundle as SPA navigation.
+- Use shared CLJC data contracts and page declarations. Generic SSR must not grow
+  page-specific SQL/REST predicates or duplicate component markup.
+- Public snapshot acquisition owns a bounded Supabase connection pool across
+  plan levels. Joined tasks inherit its binding; per-request headers and TLS
+  policy remain in the transport, and success/failure closes the pool.
+- Source acquisition runs concurrently under bounded limits; identical requests
+  share an in-flight task. Node workers perform isolated React rendering only.
+- The Node response pairs HTML with its module/export inventory. Keep that
+  inventory in the matching snapshot/cache entry so selective hydration knows
+  which exports rendered real SSR views.
+- Capture one renderer build for each cache transaction; an in-flight build
+  change must leave its result stale. Cache public HTML with its exact data snapshot.
+  Never cache a request's CSRF token or personalized shell as a shared response.
+  Errors cannot validate old cache entries.
+  Successful page snapshots are fresh for `:ssr :cache-ttl-ms` (one hour by
+  default; zero always revalidates). Expired/build-changed entries stream the shell
+  while revalidating; only fresh entries bypass it.
+  Presentation query variants may reuse fresh data for the same path/selection,
+  preserving its original timestamp, but must render their own paired HTML/state.
+- Optimus fingerprints the shell and each declared module stylesheet independently;
+  shared styles keep one URL across consumer modules. A separate deferred icon
+  bundle uses one Sass-compressed selector/font-face sheet; Optimus fingerprints
+  its fonts and rewrites CSS references. Development-only inspector
+  rules use a separate unbundled sheet; normal and error documents share the shell
+  stylesheet policy. Emit
+  route dependency styles and actually rendered SSR module
+  styles in the first head. Visible authored widgets may use a normally deferred
+  owner; hidden popup boundaries do not enter the renderer export inventory.
+  Plain Home text needs no
+  Markdown/monospace sheet; shared avatars stay in the shell. User and Settings
+  panel styles enter the initial head only when their query parameter opens them.
+  Do not add the Link Preview popup sheet to the initial head; its static container rule belongs
+  to Markdown. Respect module `:ssr-styles :deferred` without removing loader URLs.
+  Inline small optimized sheets
+  within a 16 KiB document budget; publish all URLs in `#module-styles`;
+  local return documents carry their saved modules' styles before first paint.
+  Strip a leading UTF-8 marker when inlining CSS so its first selector remains valid.
+- Shell text fonts use local variable WOFF2 subsets with their original Unicode
+  ranges. Keep the Latin preload aligned with its prepared CSS URL; independent
+  feature/icon fonts must remain outside `styles.css`. See `doc/styles.md`.
+- Keep SDK and app scripts ordered and deferred, including local-return templates. Emit no analytics metadata,
+  queue or scripts; the browser initializes it only after hydration and page readiness.
+  SSR hydration preloads follow only the route’s Shadow dependency graph; other
+  module exports acquire code on activation. Preloads use low fetch priority in
+  both HTTP and HTML hints so they share bandwidth behind the first-paint
+  stylesheet and fonts.
+  Lazy chunks use `as=fetch` with anonymous CORS to match Shadow's XHR loader;
+  the main script uses `as=script`.
+  Image preloads must use the same responsive candidates as rendered pictures.
+- Image/video catalog macros track their EDN resources through Shadow during
+  CLJS compilation; JVM runtime reads do not require the compiler dependency.
+- Production Shadow chunks use content-hashed names from `manifest.edn`. Page
+  preload/script and rendering-worker imports share the same canonical main URL;
+  keep main out of Optimus bundles and preserve Shadow's source-map references.
+  Prepared-source validation still includes the released main bytes.
+  Only successful fingerprinted
+  chunk responses receive immutable caching; plain names and errors must not.
+- Streaming uses Hiccup document parts and the existing flush-aware Ring body;
+  do not split serialized pages by marker strings. Headers cannot change after flush.
+  Compress that body directly with sync-flush gzip when accepted; do not convert
+  it to the generic middleware's buffered InputStream.
+- A return cookie alone never bypasses network SSR. Only the local worker's
+  explicit `X-Page-Render: state` fallback requests browser state restoration.
+- `middleware/wrap-base` owns one static response policy outside the browser
+  session/CSRF layer and inside proxy/HTTPS/security headers. Public assets do not
+  create session cookies. API and return-worker paths retain their route owners.
+  MIME-based gzip honors quality negotiation and preserves streaming flushes;
+  known-length bodies share conditional, HEAD and single-byte-range handling.
+- Global browser CSRF stays enabled. Only the exact Strapi webhook POST can gain
+  Ring's existing safe header, after `media/cms` validates the configured bearer
+  secret with the same constant-time check used by its handler. Invalid or missing
+  credentials must fail before acquiring the media pipeline.
+- `middleware/multipart` owns parsing once, before browser CSRF/form handling:
+  one file up to 5 MiB, bounded request/field count, and request-lifetime tempfile
+  cleanup. API multipart middleware only coerces the already parsed data; upload
+  handlers must finish reading/copying temporary bytes before returning.
+- Validate/coerce requests at the Ring boundary; handlers consume parsed parameters.
+  Authentication/authorization and input protection remain active in production.
+- Production middleware defaults to HTTPS proxy handling, HSTS and secure cookies.
+  Only explicit `:https-required false` selects HTTP site defaults; the local `prod`
+  Lein profile supplies that with loopback listening. CSRF remains enabled in both.
+  Production initialization preflights a hashed release browser manifest and both
+  document bootstrap scripts before its success log or Optimus loading. Local builds use
+  separate `prod-local-*` Shadow targets and `target/production` output so watched
+  development resources cannot silently supply the production frontend.
+- Secrets remain in server adapters/configuration. Runtime public settings must
+  expose only public origins/keys and allowed options.
+  `/api/browser-resources` projects only `:analytics :google-id`; `:enabled false`
+  disables that script. Keep these settings out of SSR markup and snapshots.
+- Explicit GitHub user/repo configuration belongs to its module-owned settings
+  adapter and managed URL binding, shared with the archive. Validate it only there;
+  invalid optional configuration must not gate the shell or unrelated content.
+  Contribution detail parses the unauthenticated public profile timeline and
+  checks its exact day range and type sum against the accompanying calendar.
+  Unknown/incomplete provider markup remains an unavailable result, never zero.
+- ImageMagick pixel-cache files stay inside the request temporary directory so
+  failure/timeout cleanup also removes them. Avatar uploads normalize/validate PNG
+  before bounded `media/image` conversion.
+  Publish versioned PNG/WebP/AVIF to Supabase Storage before updating the profile;
+  its mounted object backend owns persistence, never the web container filesystem.
+- Do not stop a user's REPL or rebuild a watched Shadow target with another process.
+- `build/audit.clj` uses isolated output and source maps to produce the optimized
+  per-source report alongside chunk sizes; keep the normal compatibility hooks
+  and optional-main boundary checks when changing this workflow. Browser audits
+  also reject Markdown-clj and every Malli implementation namespace in main.
+  Release browser, renderer and return-worker graphs reject debug/trace overrides
+  and 10x/re-frisk/legacy
+  inspectors through `build/policy.clj`; stale analysis cache files are not graph membership.
+
+- Reitit uses shared Malli parameter schemas. Internal/response validation follows
+  runtime configuration; request coercion remains active. Coercion error handlers
+  must not log full exception data or return request/response values.
+
+- `ssr/contract_schema.cljc` is the JVM/Node protocol boundary. Hydration and
+  local-return adapters live in frontend CLJS; module-owned snapshot conversion
+  is shared by the Node renderer and browser, not required by the JVM server.
+
+- Network SSR snapshots carry `:route-parameters`, coerced by the server router,
+  alongside raw `:query-params`. The browser trusts these only for its exact initial
+  HTML/state pair; subsequent navigation uses the deferred browser adapter.
+
+- Link Preview owns `/api/link-preview`: bounded public HTML reads, checked DNS at
+  connection time and every redirect, short failure caching and shared in-flight
+  reads. Score candidate subtrees in one traversal; failure completion may update
+  only its own still-cached promise. Emit text blocks/image metadata and frame policy,
+  never remote HTML.
+
+- oEmbed derives native player URLs from provider HTML with the shared endpoint
+  allowlist. Do not trust provider-supplied player metadata or return arbitrary
+  URLs as origin-enabled players. Other markup requires an opaque browser sandbox.
+  The bounded cache shares in-flight requests, keeps success for fifteen minutes
+  and failure for one minute, and retains only consumed provider fields.
+
+- Development source documentation is acquired through `website.dev.source`,
+  resolved only when the server development flag is true. Catalog allowed source
+  roots, reject symlinks/traversal/oversized files and recheck canonical ownership.
+  Never expose configuration files or accept arbitrary filesystem paths.
+
+- URL preview/oEmbed caches acquire bounded promise entries through
+  `website.cache.inflight`; pending work is never expired or evicted. If only
+  pending entries fill the cache, return the existing unavailable/retry response.
+
+- Supabase platform REST/JDBC settings and TLS policy read `website.config/env`;
+  cprop owns source consolidation and precedence. Keep process environment reads
+  out of that adapter. Its `connection-config` maps own aliases, defaults, required
+  JDBC components and conversions; resolution and diagnostics derive from them.
+- Supabase seed reads/imports/resets consume module-owned storage declarations
+  and runtime `:supabase :modules` options. Do not add parallel table lists.
+  JDBC resets name declared dependent tables and omit unrestricted CASCADE.
+  See `doc/supabase-tables.md` for legacy seed and SQL provisioning boundaries.
+
+- Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
+  Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
+  Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.
+
+- Local-return templates include the actual browser module manifest and ordered
+  dependencies for isolated worker capture; do not maintain a second module list.
+  Browser builds prefer worker-compatible package exports so Markdown does not
+  require a DOM during capture. The worker reuses fingerprinted browser chunks.
+
+- Network SSR uses the generated document bootstrap before application code.
+  Keep its mount-container marker outside React; sampled gradients or usable image
+  pixels release the initial page/title clock without waiting for hydration.
+  Script wrappers reference the generated assets; do not inline authored snippets.
+  Local returns and JavaScript-disabled documents remain usable.
+
+- Responsive final preloads match rendered `imagesrcset`/`imagesizes`. Preview
+  candidates use native image discovery, never speculative preloads; external
+  returns must request only final candidates. Suppressed previews cannot release
+  the entrance gate. Exact initial image nodes keep native phase ownership through
+  hydration until terminal adoption, independently of entrance-gate readiness.
+
+- The shared React/re-frame macro facade selects ordinary calls when the compiler's
+  `goog.DEBUG` is false; development preserves original caller metadata. Public
+  validation contracts remain active independently of diagnostic instrumentation.
+
+- `media/pipeline.clj` owns the durable main-module media queue and complete immutable
+  rendition publication. One mounted worker uses expiring database leases and
+  `media/image.clj`'s bounded codec/file owner. Originals stay private; ready assets
+  expose only typed URLs/dimensions/renditions. CMS intake and Markdown uploads share
+  this owner; metadata updates and delete events preserve published pixels.
+  See `doc/media-pipeline.md` for configuration and operator actions.
+
+- Public image/video filenames are immutable. Changed pixels use a new suffixed
+  name. Whole/range media responses retain Optimus policy or get one-year immutable
+  caching; never apply that policy to failures or mutable document/API responses.
+
+- Production Optimus startup imports `optimus/assets.edn` and rejects missing/stale
+  artifacts. Build-only JS/CSS/image preparation belongs to `build/assets.clj`;
+  development refreshes declared bundles and their references with a two-second
+  TTL, without a resource watcher. Preserve independent module style acquisition.
+
+
+- Managed SVG media retains its vector original with no raster sidecars. The
+  bounded `media/svg.clj` adapter rejects active/external XML content before
+  public publication; keep the complete-raster versus original-only SVG
+  rendition contracts distinct. See `doc/media-pipeline.md`.
+
+- Neovim isolation headers apply only to `/neovim`, `/neovim/github/` diff documents and `/vendor/neovim/`; keep ordinary documents unchanged and omit the module adapter/assets from disabled sites. See `doc/neovim.md`.
+
+- Development page, return-template and document-bootstrap requests await the
+  existing deferred startup owner's standalone release barrier. Gate before
+  asset delivery; unrelated static images and APIs must not wait for app watches.
+  Keep release failure/timeout explicit rather than serving stale unoptimized JS.
+
+- `/api/deployment` exposes only validated container metadata. GitHub calendar reads use a fixed origin, bounded body/time/cache and no redirects; see `doc/activity-panels.md`.
+- GitHub's module-owned service archives only public repository metadata and
+  commits. Database leases and page/checkpoint transactions make retries safe;
+  unchanged branch heads skip acquisition. Per-day breakdowns use the public
+  unauthenticated timeline on hover, independently of repository history.
+
+- Optional module-service startup failures remain local: log the module ID,
+  continue starting sibling services, and retain their cleanup handles. Missing
+  unpublished CMS settings do not initiate provider/content work.
+- CMS cache locking covers only request/promise ownership. Keep upstream and
+  media I/O outside the shared lock; identical missing-section requests share reads,
+  independent sections proceed concurrently, and failure releases all waiters.
+- Only shared shell CMS content gates HTTP startup. The existing owned refresh
+  worker warms module headings after readiness; a failed heading retains its
+  last good value and cannot block healthy headings or unrelated routes.

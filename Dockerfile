@@ -42,20 +42,20 @@ RUN if ! cmp -s package-lock.json /opt/prefab-package-lock.json \
         || ! cmp -s package.json /opt/prefab-package.json; then npm ci --no-audit --no-fund; fi
 COPY . .
 ARG STRAPI_URL
-# Provisioning forces a fresh build so unchanged source still observes CMS edits.
+# Snapshot capabilities and CSS once; same-source redeploys observe CMS edits.
 RUN --mount=type=secret,id=STRAPI_URL,env=STRAPI_URL \
     --mount=type=secret,id=STRAPI_READ_TOKEN,env=STRAPI_READ_TOKEN \
     bb -cp scripts:src/cljc:resources -m build.resolve-site
 # BuildKit runs these independent branches concurrently. Each has its own target
 # directory and Maven cache, so Lein's prep/cleanup cannot erase Shadow outputs.
 FROM source AS frontend
-RUN mkdir -p resources/public/css/tolgraven && npm run build
+RUN mkdir -p resources/public/css/website && npm run build
 ARG BUILD_JAVA_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m"
 RUN --mount=type=cache,id=tolgraven-shadow-release,target=/usr/src/app/.shadow-cljs,sharing=locked \
     JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
     lein with-profile prod,provided run -m shadow.cljs.devtools.cli release app ssr return-worker document
 RUN JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
-    lein with-profile prod,provided run -m tolgraven.build.assets
+    lein with-profile prod,provided run -m website.build.assets
 
 FROM source AS backend
 # Keep the smaller backend JVM bounded while Shadow compiles concurrently.
@@ -102,11 +102,16 @@ WORKDIR /app
 RUN mkdir -p resources/public
 COPY --from=ssr-node /usr/local/bin/node /usr/local/bin/node
 COPY --from=build /usr/src/app/target/ssr/site.js /app/ssr/site.js
-COPY --from=build /usr/src/app/target/uberjar/tolgraven.jar /app/tolgraven.jar
+COPY --from=build /usr/src/app/target/uberjar/website.jar /app/website.jar
 COPY --from=build /usr/src/app/env/prod/resources/config.edn /app/env/prod/resources/config.edn
 ARG VCS_REF=unknown
+ARG SOURCE_COMMIT
+ARG CAPROVER_GIT_COMMIT_SHA
+ARG DEPLOY_REPOSITORY=tolgraven/tolgrAVen
+RUN printf '%s\n' "${CAPROVER_GIT_COMMIT_SHA:-${SOURCE_COMMIT:-$VCS_REF}}" > /app/revision \
+ && printf '%s\n' "$DEPLOY_REPOSITORY" > /app/repository
 LABEL org.opencontainers.image.revision=$VCS_REF
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 EXPOSE 3000
-CMD ["java", "-Xms64m", "-Xmx512m", "-XX:MaxDirectMemorySize=128m", "-XX:ReservedCodeCacheSize=128m", "-XX:+ExitOnOutOfMemoryError", "-Dclojure.main.report=stderr", "-Dconf=env/prod/resources/config.edn", "-cp", "/app/tolgraven.jar", "clojure.main", "-m", "tolgraven.core"]
+CMD ["java", "-Xms128m", "-Xmx768m", "-XX:MaxDirectMemorySize=256m", "-XX:ReservedCodeCacheSize=128m", "-XX:+ExitOnOutOfMemoryError", "-Dclojure.main.report=stderr", "-Dorg.jboss.logging.provider=slf4j", "-Dconf=env/prod/resources/config.edn", "-cp", "/app/website.jar", "clojure.main", "-m", "website.core"]

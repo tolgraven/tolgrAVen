@@ -95,6 +95,8 @@
   border-top: var(--line-width) solid var(--line-color);
 }
 #about {
+  // The native :seen owner pauses background painting outside the viewport.
+  &:not(.appeared) { animation-play-state: paused; }
   position: relative;
   z-index: 14;
 
@@ -301,7 +303,8 @@ main[data-restored] {
   }
 }
 
-// A hydrated hero remains settled while its retained page fades out.
+// A retained hero keeps its document clock across query navigation/page fades.
+#intro[data-restored] #logo-top { animation: none; }
 #intro[data-restored] h1::after {
   animation: none;
   width: var(--line-percent);

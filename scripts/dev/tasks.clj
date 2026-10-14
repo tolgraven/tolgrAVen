@@ -8,13 +8,13 @@
   (fs/create-dirs "target/production/resources/public")
   (fs/copy-tree "resources/public/css" "target/production/resources/public/css"
                 {:replace-existing true})
-  (shell ["lein" "with-profile" "prod,provided" "run" "-m" "tolgraven.build.local"]))
+  (shell ["lein" "with-profile" "prod,provided" "run" "-m" "website.build.local"]))
 
 (defn audit! [& [label]]
   (let [label (or label "current")]
     (when-not (re-matches #"[A-Za-z0-9_-]+" label)
       (throw (ex-info "Use an alphanumeric audit label (hyphens/underscores allowed)" {})))
-    (shell ["lein" "with-profile" "prod,provided" "run" "-m" "tolgraven.build.audit" label])
+    (shell ["lein" "with-profile" "prod,provided" "run" "-m" "website.build.audit" label])
     (shell ["node" "scripts/build/bundle-sizes.mjs" (str "target/bundle-audit/" label)])))
 
 (def pair-operations
@@ -39,7 +39,8 @@
 
 (defn test! []
   (shell ["bb" "--classpath" "scripts:test/scripts" "-m" "tools-test"])
-  (shell ["node" "--test" "test/scripts/document_image_test.cjs"])
+  (shell ["node" "--test" "test/scripts/document_image_test.cjs" "test/scripts/editor_styles_test.mjs"
+          "test/scripts/style_overrides_test.mjs"])
   (shell ["python3" "-m" "unittest" "discover" "-s" "test/scripts" "-p" "*_test.py"]))
 
 (defn supabase! [& [action & args]]
@@ -48,7 +49,7 @@
   (when (and (#{"import" "all"} action) (not= 1 (count args)))
     (throw (ex-info "Import requires one Firebase export path" {})))
   (doseq [command (if (= action "all") ["schema" "import"] [action])]
-    (shell (into ["lein" "run" "-m" "tolgraven.provision.supabase.cli" command]
+    (shell (into ["lein" "run" "-m" "website.provision.supabase.cli" command]
                          (when (= command "import") args)))))
 
 (defn cpu! [& args]

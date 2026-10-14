@@ -5,14 +5,14 @@ effects, deferral and justified React adapters.
 For the classic/Reagent 2 comparison and the reasons behind the current runtime,
 read [Reagent 2 and React 19](reagent-2-react-19-guide.md).
 
-Reusable rendered UI lives in `tolgraven.components.*`; feature views live under
-`tolgraven.modules.<feature>.*`. `tolgraven.component.*` implements declaration,
+Reusable rendered UI lives in `website.components.*`; feature views live under
+`website.modules.<feature>.*`. `website.component.*` implements declaration,
 lifecycle, data and state capabilities. Import the owning namespace directly;
-there is no `tolgraven.views` compatibility entry point. See [source layout](source-layout.md).
+there is no `website.views` compatibility entry point. See [source layout](source-layout.md).
 
 
-Require `[tolgraven.macros :refer-macros [defc]]` and
-`[tolgraven.component.registry]`, and use components in Hiccup.
+Require `[website.macros :refer-macros [defc]]` and
+`[website.component.registry]`, and use components in Hiccup.
 The default compiles directly to Reagent 2's `reagent.core/defc`: a memoized
 function component, with no error boundary, lifecycle class, DOM wrapper or data
 loader. Registering its descriptor happens once at definition time. As with
@@ -39,7 +39,7 @@ can retain their API during a migration.
 
 The registry is deliberately independent of the component runtime. Leaf views
 such as the error fallback can declare lean components without loading the runtime
-that uses them. Spec-capable components and explicit capabilities use `tolgraven.component`;
+that uses them. Spec-capable components and explicit capabilities use `website.component`;
 non-spec primitives keep the direct Reagent path. `{:spec false}` explicitly
 treats the first argument as domain data, including a domain `:features` key.
 
@@ -168,7 +168,7 @@ or `links`. Other arguments are domain data, even if their map happens to contai
 keys named `:props` or `:depends`. No spec argument needs to be added when absent.
 A feature may be `[id config]`; `[id false]` or `[id nil]` disables it.
 Require the namespace that registers a feature (for links,
-`tolgraven.modules.link-preview.views`) before using it.
+`website.modules.link-preview.views`) before using it.
 
 Root props only apply to native DOM roots, never fragment, child-component or
 React-interop roots. Link discovery needs a native DOM root. Feature composition
@@ -228,16 +228,35 @@ features whose failures should be contained.
 `:appear` and `:seen` merge the existing `appear-wrapper`, animation kind and
 `appeared` classes onto the component's own root. There is no wrapper element or
 React component; `appear-wrapper` is a CSS class retained for selector compatibility. Original classes, styles and refs are preserved. `:appear` waits
-for the initial frame before adding `appeared`. `:seen` uses IntersectionObserver
-with a default 50% threshold; `:root-margin` and `:once?` are configurable. Without
+for the initial frame before adding `appeared`. If its committed native root is
+offscreen, it uses the same observer as `:seen` and enters once it reaches the
+viewport. For entrances whose visibility is already owned by a parent (for example,
+replies sliding from behind a clipped thread), `:viewport? false` keeps the normal
+paint-then-enter animation without observing the transformed child. It does not
+skip the animation as `:force true` does. Settled local/history restoration stays
+visible. `:seen` retains `seen-merge`'s
+20% observer steps and 50% visibility decision, so its slide does not repeatedly
+reverse itself around a single 50% observer boundary. An explicit non-default
+`:threshold` selects that observer threshold; `:root-margin` and `:once?` are configurable. Without
 IntersectionObserver it falls back to appearing immediately after the initial
 frame. `:force true` skips waiting for visibility. Use either `:seen` or `:appear`;
 when both are selected, visibility controls the reveal.
 
+Intrinsic-height entrances (blog reply rows) use `:settle-offscreen? true` in
+their `:appear` options. An initially offscreen row commits as appeared without
+an observer or entrance animation, retaining the layout needed for scrolling.
+Visible rows use the ordinary painted entrance. Each reply's grid row grows
+from `0fr` to `1fr` with its own stagger; no large parent max-height bounds it.
+Folded rows become inert immediately and finish collapsing before their comment
+contents leave the retained visibility lifecycle. Restoration keeps open rows
+at their natural height on the first render.
+
 For removal, the parent selects `:presence` and its keyed direct children select
 `:exit`. Remove a child from the parent's collection normally. The parent keeps
 that same child instance only while exiting, removes `appeared`, adds `exiting`
-and any configured exit `:class`, and finally lets React unmount it. The existing
+and any configured exit `:class`, and finally lets React unmount it. Committed
+Hiccup history is nonreactive; only asynchronous exit completion invalidates the
+parent. Fresh inline callbacks must not create an idle render loop. The existing
 appearance CSS reverses by default; custom exit classes can define another
 transition or keyframe animation. Exiting roots are inert and aria-hidden.
 
@@ -291,6 +310,9 @@ produce a visible alert with **Retry data**, plus the existing service
 notification/log. Identical in-flight descriptors share requests, including
 preloads and later mounts. One failing dependency does not prevent the others
 from starting. Retry invalidates those dependencies and starts a new attempt.
+For compact noninteractive surfaces, `:data-error` may supply replacement Hiccup;
+the managed failure and service notification/retry remain active. Use it instead
+of rendering unusable recovery controls inside a pointer-transparent tooltip.
 
 Built-in sources:
 
@@ -319,7 +341,9 @@ write over app-db. If different in-flight resources target the same path, the
 newer request owns the destination and an older completion cannot overwrite it.
 
 Remote snapshots default to a 60-second TTL and 15-second request deadline;
-positive `:ttl-ms` / `:timeout-ms` override these. Completed cache entries are
+positive `:ttl-ms` / `:timeout-ms` override these. A source adapter may supply its
+own default deadline. Strapi allows 31 seconds for a batched request followed by
+per-section isolation; an explicit dependency deadline still takes precedence. Completed cache entries are
 bounded to 128 (in-flight requests are retained). App-db and Strapi readiness
 comes from current app-db values. Account/client changes invalidate URL and
 Supabase snapshots, reject pending waiters, and clear values installed by those
@@ -328,7 +352,8 @@ install. Failures remain explicit until retry, avoiding automatic retry loops.
 
 Custom sources register via `data/register-source!` with `:load!` returning a
 value or Promise. Optional `:read` returns `{:ready? boolean :value value}`;
-optional `:scope` partitions the request cache (for example by session).
+optional `:scope` partitions the request cache (for example by session). Optional
+`:timeout-ms` supplies the source's default managed acquisition deadline.
 
 ## Loading views and skeletons
 
@@ -337,7 +362,7 @@ Choose `:loading-prefab` for a skeleton, or `loading/<spinner>` explicitly. A st
 a function of current component arguments can build a skeleton:
 
 ```clojure
-(require '[tolgraven.component.loading :as loading])
+(require '[website.component.loading :as loading])
 
 (defc <profile>
   {:depends [{:source :url :url "/api/public-profile" :into [:profile]
@@ -457,17 +482,29 @@ See [testing](testing.md) for mounted lifecycle and browser checks.
 
 Storage reads are queued once per owner per document. Application startup awaits
 `storage/ready!` before rendering, then components read the in-memory index. A
-150 ms state/content debounce coalesces snapshot requests; the next write tick
-serializes one envelope per dirty owner. Equal, unexpired values do not produce
-another write. Components never invoke localStorage directly. `pagehide` and
-hidden visibility consolidate outstanding writes immediately because browsers
-can freeze timers during navigation. A cold, unfinished read cannot overwrite
-its existing disk envelope.
+150 ms state/content debounce coalesces snapshot requests. Small preferences and
+navigation snapshots stay in localStorage. Public content, managed resources and
+`:store`/`:content` caches use an IndexedDB owner transaction with separately encoded
+Transit entries. Entry decoding/validation yields a painted frame after 32 entries
+or a 6 ms batch. Older EDN envelopes retain their already encoded heavy cache in
+a separate localStorage migration backup until its IndexedDB commit succeeds.
+Small preferences and drafts still save synchronously during migration; backup
+restoration contributes only heavy entries, preserving small-state removals.
+Store readiness is independent: failed IndexedDB reads preserve unseen heavy data
+while readable localStorage drafts remain available for restoration and saving.
+A failed transaction retains the backup. A single large legacy entry can still
+take a long first-time parse, so measure migration separately from subsequent loads.
+Equal, unexpired values do not produce another write. Components only read the
+in-memory index. `pagehide` synchronously flushes small navigation preferences;
+heavy writes already queued during ordinary updates remain asynchronous. A return
+hint is published only after the heavy public cache commits. Cold reads cannot
+overwrite edits or resurrect explicit removals; serial writes discard superseded
+work before encoding and publication.
 
 Dependencies register pending promises synchronously and adapters start together
 on the next tick. Repeated resources share a promise. Strapi unions all section
 keys queued in that tick into one `/api/content?keys=...` request. Modules and
-components use the same queue, including `tolgraven.modules.main.module/spec` and its
+components use the same queue, including `website.modules.main.module/spec` and its
 explicit shell dependencies in the shared backend/frontend manifest.
 
 ```clojure
@@ -836,11 +873,19 @@ backend document read, independently of browser sandboxing.
 
 ## Code presentation and copying
 
-`tolgraven.components.highlight/<code-block>` accepts either an option map or
+`website.modules.highlight.code-block/<code-block>` accepts either an option map or
 keyword/value options. Markdown forwards its `:code-options` map to this same
 component. Fenced blocks keep their language tag and inline snippets use generic
 Bash highlighting by default, with the shared Bruvbox palette. An explicit tag
 always wins; `:inline-language` changes only the untagged inline default.
+
+`website.modules.markdown.views/renderers` declares the parser's node/component
+mapping. Code nodes point to the shared Highlight component; the argument adapter
+supplies the language, inline/block mode and owner's options. Images point to the
+shared picture component. Native headings, lists and text marks use DOM element
+types directly, preserving rich children without adding component wrappers.
+The SDK renderer identities are built once, and current options flow through
+context so an option change does not remount images or reader controls.
 
 ```clojure
 [highlight/<code-block> source
@@ -890,7 +935,7 @@ extend the static whole-block preview when that editing capability is implemente
 ## Controlled text fonts
 
 Declare `:features [[:font font/fira]]` after requiring
-`[tolgraven.component.font :as font]`. A feature option function may return nil
+`[website.component.font :as font]`. A feature option function may return nil
 until intent makes the consumer visible. The root must be ordinary native Hiccup;
 its identity, refs, caller classes/style and animation handler are retained.
 Children are text-only: the feature renders a small text stack inside that root.
@@ -920,3 +965,11 @@ Committed owners attach/detach through events; the shared face request is retain
 for reuse. A native FontFaceSet adapter owns the Promise. A layout effect owns only
 the cancellable paint frames between layer insertion and simultaneous reveal.
 See [styles.md](styles.md) for first-paint policy, fallback metrics and failure behavior.
+
+## Liquid glass backgrounds
+
+`components.ui.liquid-glass/<liquid-glass>` wraps `[spec & forms]` with an
+independently sized refractive background. Children retain their opacity, DOM
+and interactions. Shapes, optics, tint, light, outsets and bounded raster budgets
+are spec options; SSR and unsupported engines use a native frosted fallback.
+See [Liquid glass](liquid-glass.md) for the contract, examples and lifecycle.

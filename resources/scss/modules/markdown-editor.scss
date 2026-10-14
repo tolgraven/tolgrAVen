@@ -1,0 +1,227 @@
+// The build prepends editor vendor rules scoped to this owner, with relative units.
+.site-md-editor {
+  color: var(--fg-1);
+  background: var(--bg-1);
+  border: var(--line-width) solid var(--line-color);
+  border-radius: var(--section-rounded);
+  min-width: 0;
+
+
+  .mdxeditor { font-family: inherit; color: inherit; }
+  .md-editor-content { min-height: 20rem; padding: var(--space); line-height: inherit; }
+  [role="toolbar"] { flex-wrap: wrap; gap: 0.2em; border-block-end: var(--line-width) solid var(--line-color); }
+  button { color: inherit; }
+  input, select, textarea { color: var(--fg-1); background: var(--bg-1); }
+}
+
+.md-component-picker { position: relative; }
+.md-component-picker__menu {
+  position: absolute;
+  z-index: 5;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
+  width: min(32rem, 75vw);
+  padding: var(--space);
+  background: var(--bg-1);
+  border: var(--line-width) solid var(--line-color);
+  box-shadow: 0 0.5rem 2rem rgb(0 0 0 / 25%);
+  label, input { display: block; width: 100%; }
+}
+.md-component-picker__results {
+  max-height: 24rem;
+  overflow-y: auto;
+  button { display: grid; width: 100%; gap: 0.25em; padding: 0.75em; text-align: start; white-space: normal; }
+  small { color: var(--fg-2); }
+  code { overflow-wrap: anywhere; }
+}
+.md-component-node {
+  position: relative;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.md-component-node__chrome {
+  display: none;
+  position: absolute;
+  z-index: 7;
+  inset-block-end: 100%;
+  inset-inline-start: 0;
+  width: max-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.25em 0.5em;
+  background: var(--bg-2);
+  border: var(--line-width) solid var(--line-color);
+  border-radius: var(--section-rounded);
+}
+.md-component-node:hover > .md-component-node__chrome,
+.md-component-node:focus-within > .md-component-node__chrome {
+  display: flex;
+}
+.md-component-node__arguments {
+  display: none;
+  position: absolute;
+  z-index: 6;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
+  width: min(60rem, 85vw);
+  max-height: min(32rem, 60vh);
+  overflow-y: auto;
+  border: var(--line-width) solid var(--line-color);
+  box-shadow: 0 0.5rem 2rem rgb(0 0 0 / 25%);
+  &.is-open { display: block; }
+}
+.md-component-node__arguments:focus-within { display: block; }
+.md-component-arguments {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(12rem, 1fr);
+  gap: var(--space);
+  padding-block: var(--space);
+  background: var(--bg-2);
+  th { text-align: start; }
+  input { width: 100%; min-width: 4rem; }
+  small, code { display: block; font-weight: normal; font-size: 0.8em; }
+  td, th { padding: 0.4em; vertical-align: top; }
+  @media (max-width: 48rem) { grid-template-columns: minmax(0, 1fr); }
+}
+.md-component-help { padding: var(--space); code { overflow-wrap: anywhere; } }
+.md-editor-error { color: var(--orange); padding: var(--space); }
+
+.md-editor-content { display: flow-root; }
+// MDXEditor's pinned JSX DecoratorNode owns the outer div. Float that native
+// owner so following paragraphs actually wrap; an inner float cannot do this.
+.md-editor-content > div:has(> .md-component-node[data-flow="left"]) {
+  float: left;
+  margin-inline-end: var(--space);
+  width: fit-content;
+  max-width: 100%;
+}
+.md-editor-content > div:has(> .md-component-node[data-flow="right"]) {
+  float: right;
+  margin-inline-start: var(--space);
+  width: fit-content;
+  max-width: 100%;
+}
+.md-editor-content > div:has(> .md-component-node[data-align="center"]) { margin-inline: auto; width: fit-content; }
+.md-editor-content > div:has(> .md-component-node[data-align="right"]) { margin-inline-start: auto; width: fit-content; }
+.md-resize-handle {
+  display: inline-block;
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.md-component-node { display: block; }
+.md-component-node[data-flow="left"],
+.md-component-node[data-flow="right"] { display: flow-root; }
+.md-component-node:has(> .content-widget > .content-box, > .content-widget > .content-config) {
+  margin-block: var(--space);
+}
+.md-component-node > .content-widget { margin-block: 0; }
+
+.md-image-picker { position: relative; }
+.md-image-picker__menu {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  z-index: 20;
+  width: min(34rem, 85vw);
+  max-height: 70vh;
+  overflow: auto;
+  padding: var(--space);
+  background: var(--bg-2);
+  border: var(--line-width) solid var(--line-color);
+  label { display: block; margin-block: 0.5rem; }
+}
+.md-image-picker__assets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  button { min-width: 0; overflow-wrap: anywhere; }
+  img { width: 100%; height: 5rem; object-fit: contain; }
+  span { font-size: 0.7em; }
+}
+
+// Vendor palette defaults are declared on both the SDK root and its portal root.
+.site-md-editor,
+.site-md-editor .mdxeditor,
+.site-md-editor .mdxeditor-popup-container {
+  --baseText: var(--fg-1);
+  --baseBg: var(--bg-1);
+  --baseBgSubtle: var(--bg-2);
+  --baseBgHover: var(--bg-1-2);
+  --baseBorder: var(--line-color);
+  --baseBorderHover: var(--purple);
+  --baseSolid: var(--purple);
+  --baseSolidHover: var(--blue);
+  --accentText: var(--blue);
+  --accentSolid: var(--purple);
+  --accentBgActive: var(--bg-2);
+  --basePageBg: var(--bg-1);
+  --baseBase: var(--bg-1);
+  --baseBgActive: var(--bg-2);
+  --baseLine: var(--line-color);
+  --baseTextContrast: var(--fg-1);
+  --accentBase: var(--bg-1);
+  --accentBgSubtle: var(--bg-2);
+  --accentBg: var(--bg-2);
+  --accentBgHover: var(--bg-1-2);
+  --accentLine: var(--line-color);
+  --accentBorder: var(--purple);
+  --accentBorderHover: var(--blue);
+  --accentSolidHover: var(--blue);
+  --accentTextContrast: var(--fg-1);
+}
+
+.md-component-node__chrome {
+  gap: 0.5rem;
+  strong { font-size: 0.85em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  button { flex-shrink: 0; white-space: nowrap; font-size: 0.8em; padding: 0.3em 0.5em; }
+}
+.md-editor-content > div:has(> .md-component-node[data-flow="block"]) {
+  clear: both;
+  width: 100%;
+}
+
+.md-component-node { box-sizing: border-box; }
+
+.md-component-node > .md-resize-edge,
+.md-media-node > .md-resize-edge {
+  position: absolute;
+  z-index: 8;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  touch-action: none;
+  &[data-edge="left"], &[data-edge="right"] { inset-block: 0; width: 0.5rem; cursor: ew-resize; }
+  &[data-edge="top"], &[data-edge="bottom"] { inset-inline: 0; height: 0.5rem; cursor: ns-resize; }
+  &[data-edge="left"] { inset-inline-start: 0; }
+  &[data-edge="right"] { inset-inline-end: 0; }
+  &[data-edge="top"] { inset-block-start: 0; }
+  &[data-edge="bottom"] { inset-block-end: 0; }
+}
+.md-component-node:hover > .md-resize-edge,
+.md-component-node:focus-within > .md-resize-edge,
+.md-media-node:hover > .md-resize-edge,
+.md-media-node:focus-within > .md-resize-edge {
+  opacity: 1;
+  background: color-mix(in srgb, var(--fg-1) 18%, transparent);
+}
+.md-source-content { min-height: 24rem; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.md-source-content p { margin: 0; }
+.md-editor-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5em; }
+.md-media-node {
+  display: inline-block;
+  position: relative;
+  box-sizing: border-box;
+  vertical-align: middle;
+  > picture, > .progressive-image { display: block; max-width: 100%; }
+  > picture > img, > .progressive-image img, > img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  > .md-component-node__chrome { display: none; }
+  &:hover > .md-component-node__chrome,
+  &:focus-within > .md-component-node__chrome { display: flex; }
+}

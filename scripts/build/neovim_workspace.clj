@@ -3,7 +3,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [cheshire.core :as json]
-            [tolgraven.build.packaging :as packaging]))
+            [website.build.packaging :as packaging]))
 
 (def output "resources/public/vendor/neovim/workspace.json")
 (defn source-files [root exclusions]
@@ -18,7 +18,7 @@
                 public-path (if (string/starts-with? relative "src/")
                               (string/replace relative #"^src/[^/]+/" "")
                               (-> relative
-                                  (string/replace #"^resources/scss/" "public/css/tolgraven/")
+                                  (string/replace #"^resources/scss/" "public/css/website/")
                                   (string/replace #"\.scss$" ".css")))]
           :when (and (re-find #"\.(?:clj[sc]?|js|lua|scss)$" relative)
                      (not-any? #(re-find % public-path) exclusions))]

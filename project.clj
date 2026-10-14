@@ -1,8 +1,8 @@
 ;; The dependency prefab reads this file before copying application sources.
 (def site-packaging
-  (if (.isFile (java.io.File. "src/cljc/tolgraven/build/packaging.clj"))
-    (do (load-file "src/cljc/tolgraven/build/packaging.clj")
-        ((resolve 'tolgraven.build.packaging/plan)))
+  (if (.isFile (java.io.File. "src/cljc/website/build/packaging.clj"))
+    (do (load-file "src/cljc/website/build/packaging.clj")
+        ((resolve 'website.build.packaging/plan)))
     {}))
 
 (defproject tolgraven "0.1.0-SNAPSHOT"
@@ -49,7 +49,7 @@
                  [com.taoensso/timbre "6.8.0" :exclusions [org.clojure/tools.reader]]
                  [com.taoensso/encore "3.172.1"]
                  [com.fzakaria/slf4j-timbre "0.4.1" :exclusions [org.slf4j/slf4j-api]] ; Java SLF4J callers use Timbre.
-                 [io.aviso/pretty "1.4.4"] ;pretty exceptions, pretty logging...
+                 [org.clj-commons/pretty "3.6.3"] ; Shared with Timbre; REPL exception formatting.
 
                  [ring/ring-core "1.15.5"]
                  [ring/ring-defaults "0.7.1"]
@@ -83,7 +83,11 @@
 
   :min-lein-version "2.0.0"
 
-  :source-paths ["src/backend" "src/frontend" "src/cljc" "src/bootstrap"]
+  ;; JBoss otherwise prefers Log4j when present, or JUL without Logback.
+  ;; Select the existing SLF4J -> Timbre provider before Undertow loads.
+  :jvm-opts ["-Dorg.jboss.logging.provider=slf4j"]
+
+  :source-paths ["src/backend" "src/frontend" "src/cljc"]
   :test-paths ["test/clj"]
   :resource-paths ["resources"]
   ;; Git ignores do not affect resource packaging in local jar builds.
@@ -93,7 +97,7 @@
                    #"(?i)(^|/)firebase/.*(firebase-adminsdk|SECRETS).*"
                    #"(^|/)(dev-config|test-config)\.edn$"])
   :target-path "target/%s/"
-  :main ^:skip-aot tolgraven.core
+  :main ^:skip-aot website.core
 
   :repositories
   [["private" {:url "https://tolgraven.hel1.your-objectstorage.com/m2/releases/"
@@ -102,7 +106,7 @@
   :plugins [[lein-codox "0.10.8"]]
 
   :aliases {"docs" ["update-in" ":" "assoc" ":prep-tasks" "^:replace []" "--"
-                    "do" ["run" "-m" "tolgraven.build.docs"] ["codox"]]}
+                    "do" ["run" "-m" "website.build.docs"] ["codox"]]}
 
   :codox
   {:language :clojurescript
@@ -151,11 +155,11 @@
    :uberjar {:jvm-opts ["-Dconf=env/prod/resources/config.edn"]
              :prep-tasks ["compile"
                           ["run" "-m" "shadow.cljs.devtools.cli" "release" "app" "ssr" "return-worker" "document"]
-                          ["run" "-m" "tolgraven.build.assets" "--build-styles"]
+                          ["run" "-m" "website.build.assets" "--build-styles"]
                           ["docs"]]
              :aot ~(:aot site-packaging)
              :omit-source true
-             :uberjar-name "tolgraven.jar"
+             :uberjar-name "website.jar"
              :source-paths ["env/prod/clj" "env/prod/cljs"]
              :resource-paths ["env/prod/resources" "resources"]}
 

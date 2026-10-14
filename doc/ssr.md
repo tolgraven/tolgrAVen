@@ -36,6 +36,11 @@ component definition.
 
 ## Rendering and hydration
 
+Contact email text renders on the server without a link destination. The same
+anchor acquires its `mailto:` href on the first frame after the browser component
+commits, avoiding mail-handler extension rewrites before hydration. Without
+JavaScript the address remains readable and copyable.
+
 Both environments render `components/page.cljs`, the ordinary application shell.
 The blog uses `modules/blog/views.cljs`; the landing page uses `modules/home/sections.cljs` and its
 existing home/media components. There are no SSR-only copies of the header,
@@ -127,7 +132,12 @@ so blocking Ring middleware and HTTP clients do not occupy Undertow workers.
 Independent graph nodes execute in concurrent waves, and CMS/configuration reads
 run alongside Supabase data acquisition. Upstream work is capped at eight active
 calls; the request and distinct-page queues are bounded at 64. Whole HTTP responses
-are `no-store`: CSRF and request-specific layout data are never cached with public HTML.
+use `private, no-cache` for successful public SSR documents, including streams:
+CSRF and request-specific layout data stay out of shared HTTP caches, and normal
+HTTP reuse requires revalidation. Native BFcache can retain the live document.
+Errors known before headers, client-restoration templates and paired private-state
+documents retain `no-store`; API privacy headers are independent of the public
+document. A late error in an already flushed stream cannot change its HTTP headers.
 
 ## Shared data declarations
 
@@ -186,6 +196,9 @@ app-db content and view state used to render it. Install the pair before hydrati
 expanded comment windows must not hydrate over a shorter default server tree.
 See [local return documents](components.md#local-return-documents) for lifecycle,
 limits and build requirements. BFCache resumes the live document directly.
+The lazy page-render module owns the explicit `website.react.server` adapter.
+It passes that renderer into the shared isolated tree renderer; initial browser
+code does not acquire React's server-rendering implementation.
 
 Public localStorage restoration remains a fallback when the pair is unavailable.
 Consumed snapshots are removed from disk and current state is saved on departure.
@@ -508,7 +521,9 @@ A disabled optional highlighter does not enter the capture asset plan. Developme
 Leaflet retain the browser renderer because those entries require a real DOM.
 
 A source change invalidates an in-flight pair immediately and schedules a fresh
-capture once page bindings settle. Publication checks both generation and URL;
+capture after page bindings remain ready for 750 ms and a painted idle frame.
+Connection/registration uses that same quiet gate. Source changes and unmount
+cancel both the gate and its pending debounce. Publication checks both generation and URL;
 identity changes clear the cache and stop the render worker. Ordinary external
 links and preview departures wait for cache publication, bounded to one second
 when optional capture is unavailable. Native modifiers/downloads/new windows retain

@@ -25,6 +25,8 @@ is ignored and is not searched by the config loader.
 | `:analytics` | Production sites that want Google Analytics | Optional. No script without `:google-id`, or set `{:enabled false}`. Current prod defaults contain this site's ID; use your own for another site. |
 | `:ssr` | Override server-rendering settings | Enabled with two workers and the local Node build by default; see below. |
 | `:strapi-url`, `:strapi-read-token` | Read content from an external CMS | Without a CMS URL, public content comes from the local seed. A configured CMS needs its server read token. |
+| `:github-user`, `:github-repo` | Explicit public GitHub selection | Supply both for the module's managed settings binding and archive. Absent values keep the module unconfigured unless the build declares published CMS settings. |
+| `:github-token` | Optional GitHub REST rate limit upgrade | Public calendar, daily breakdown and commit history work without authentication. Tokens stay server-only. |
 | `:supabase-public-url`, `:supabase-anon-key`, `:supabase-service-key` | Enabled modules using Supabase | No credential defaults. The public key is for browser access; the service key stays on the server. |
 | `:openai-api-key` | Requests to the enabled GPT module | No default; `OPENAI_API_KEY` can supply it. |
 
@@ -81,7 +83,7 @@ build IDs/caches from development watches. Missing/development browser output
 fails startup; see [Testing](testing.md).
 
 The Supabase platform adapter reads REST/JDBC settings and its TLS policy from
-`tolgraven.config/env`, consolidated by cprop with the precedence above. For example,
+`website.config/env`, consolidated by cprop with the precedence above. For example,
 `SUPABASE_PUBLIC_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_DATABASE_URL` and
 `SUPABASE_INSECURE_TLS` map to the corresponding kebab-case EDN keys. JDBC can
 also use `:postgres-hostname`, `:postgres-db`, `:postgres-user`,

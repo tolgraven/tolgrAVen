@@ -5,7 +5,7 @@ Tell my `story`!
 
 <p class="title is-5">Why are you seeing this page?</p>
 
-The `home-routes` handler in the `tolgraven.routes.home` namespace
+The `home-routes` handler in the `website.routes.home` namespace
 defines the route that invokes the `home-page` function whenever an HTTP
 request is made to the `/` URI using the `GET` method.
 
@@ -20,7 +20,7 @@ request is made to the `/` URI using the `GET` method.
                         (response/header "Content-Type" "text/plain; charset=utf-8")))}]])
 ```
 
-The `home-page` function will in turn call the `tolgraven.layout/render` function
+The `home-page` function will in turn call the `website.layout/render` function
 to render the HTML content:
 
 ```
@@ -34,13 +34,13 @@ The page contains a link to the compiled ClojureScript found in the `target/cljs
 {% script "/js/app.js" %}
 ```
 
-The rest of this page is rendered by ClojureScript found in the `src/frontend/tolgraven/core.cljs` file.
+The rest of this page is rendered by ClojureScript found in the `src/frontend/website/core.cljs` file.
 
 
 
 <p class="title is-5">Organizing the routes</p>
 
-The routes are aggregated and wrapped with middleware in the `tolgraven.handler` namespace:
+The routes are aggregated and wrapped with middleware in the `website.handler` namespace:
 
 ```
 (mount/defstate app-routes
@@ -72,12 +72,12 @@ The second takes care of serializing and deserializing various encoding formats,
 
 <p class="title is-5">Managing your middleware</p>
 
-Request middleware functions are located under the `tolgraven.middleware` namespace.
+Request middleware functions are located under the `website.middleware` namespace.
 
 This namespace is reserved for any custom middleware for the application. Some default middleware is
 already defined here. The middleware is assembled in the `wrap-base` function.
 
-Middleware used for development is placed in the `tolgraven.dev-middleware` namespace found in
+Middleware used for development is placed in the `website.dev-middleware` namespace found in
 the `env/dev/clj/` source path.
 
 <a class="level-item button" href="https://luminusweb.com/docs/middleware.html">learn more about middleware »</a>

@@ -3,10 +3,10 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [optimus.link :as link]
-            [tolgraven.middleware.asset-manifest :as manifest]
-            [tolgraven.layout :as layout]
-            [tolgraven.loader.style-catalog :as styles]
-            [tolgraven.site :as site]))
+            [website.middleware.asset-manifest :as manifest]
+            [website.layout :as layout]
+            [website.loader.style-catalog :as styles]
+            [website.site :as site]))
 
 (when-not (and (.exists (io/file "/.dockerenv"))
                (= "/workspace" (.getCanonicalPath (io/file "."))))
@@ -19,19 +19,21 @@
     (.toByteArray output)))
 
 (defn verify-stack! [inventory]
-  (let [wrap-base (requiring-resolve 'tolgraven.middleware/wrap-base)
+  (let [wrap-base (requiring-resolve 'website.middleware/wrap-base)
         selected (filter #(or (= "styles.css" (:bundle %))
                                (re-find #"\.(woff2|avif)$" (:path %))) inventory)
         samples (take 3 (vals (group-by #(cond
                                           (:contents %) :style
                                           (re-find #"\.woff2$" (:path %)) :font
                                           :else :image) selected)))]
-    (with-redefs-fn {(requiring-resolve 'tolgraven.config/env) {}
-                    (requiring-resolve 'tolgraven.env/defaults) {:middleware identity}}
+    (with-redefs-fn {(requiring-resolve 'website.config/env) {}
+                    (requiring-resolve 'website.env/defaults) {:middleware identity}}
       (fn []
         (let [handler (wrap-base (constantly {:status 404, :headers {}, :body "Not found"}))]
           (assert (= 3 (count samples)) "Styles, fonts and modern images must be represented")
-          (doseq [[{:keys [path contents resource]}] samples]
+          (doseq [[{:keys [path contents resource]}]
+                  (concat samples [[{:path (layout/main-script-path)
+                                     :resource (io/resource (str "public" (layout/main-script-path)))}]])]
             (let [request {:request-method :get
                            :scheme :https
                            :server-name "localhost"
@@ -62,13 +64,17 @@
                           :sha256 (manifest/digest (or resource
                                                        (.getBytes ^String contents "UTF-8")))}) inventory)
       bundles (into (sorted-map)
-                    (for [bundle (concat ["main.js" "styles.css" "icons.css"
+                    (for [bundle (concat ["styles.css" "icons.css"
                                           "document-head.js" "document-entrance.js"]
                                          (keys styles/stylesheet-bundles))]
                       [bundle (vec (link/bundle-paths {:optimus-assets inventory} [bundle]))]))
-      record {:build expected, :bundles bundles, :assets signatures}
+      main-path (layout/main-script-path)
+      main {:url main-path
+            :sha256 (manifest/digest (io/resource (str "public" main-path)))}
+      record {:build expected, :main main, :bundles bundles, :assets signatures}
       report "target/prepared-assets-source.edn"]
   (assert (every? (comp seq val) bundles) "Every declared independent bundle must resolve")
+  (assert (not-any? #(= "main.js" (:bundle %)) inventory) "Shadow owns the sole main entry")
   (assert (nil? (find-ns 'optimus.optimizations.minify)) "Prepared import must not load GraalJS/minifiers")
   (assert (nil? (find-ns 'optimus-img-transform.core)) "Prepared import must not load image transformations")
   (case mode

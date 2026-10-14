@@ -6,11 +6,11 @@ WebP averages 46% smaller, AVIF can be 50-70% smaller depending on image type.
 
 ### Usage in ClojureScript
 
-Use the `tolgraven.components.image` namespace for automatic format selection:
+Use the `website.components.image` namespace for automatic format selection:
 
 ```clojure
 (ns my-app.views
-  (:require [tolgraven.components.image :as img]))
+  (:require [website.components.image :as img]))
 
 ;; Drop-in replacement for [:img]
 [img/<picture> {:src "img/photo.jpg" :alt "My photo"}]
@@ -171,11 +171,11 @@ Videos can be converted to modern WebM formats for better compression and stream
 
 ### Usage in ClojureScript
 
-Use the `tolgraven.video` namespace for automatic format selection:
+Use the `website.video` namespace for automatic format selection:
 
 ```clojure
 (ns my-app.views
-  (:require [tolgraven.components.video :as vid]))
+  (:require [website.components.video :as vid]))
 
 ;; Basic video with modern format sources
 [vid/video {:src "media/clip.mp4"
@@ -339,7 +339,7 @@ JPEG/PNG, including failures before hydration attaches handlers. Keep originals
 packaged, serve AVIF as `image/avif`, and verify `currentSrc` plus `naturalWidth`
 in the rendered browser. A successful HTTP response alone does not prove decoding.
 Changing the original path resets the failure state; original-source errors still
-reach the caller. See `test/cljs/tolgraven/image_test.cljs`.
+reach the caller. See `test/cljs/website/image_test.cljs`.
 
 Responsive catalog entries include optional `:placeholder {:colors ["#rrggbb" "#rrggbb" "#rrggbb"]}`.
 The existing codec generator orients the source, samples a 3×3 RGB image and averages

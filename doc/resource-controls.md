@@ -41,6 +41,43 @@ files at those paths are excluded even if accidentally tracked. Existing destina
 configuration is preserved, and production defaults are copied normally without seeding.
 This lets plain agent Docker test commands use the public configuration layout.
 
+Shadow compiler data survives those fresh snapshots. The launcher binds only
+`.shadow-cljs/builds` from its private `shadow-caches` directory under
+`~/Library/Application Support/tolgraven/cpu-controls`; server/nREPL markers and
+application output remain snapshot-local. Cache identities separate canonical
+worktrees, immutable prefab image IDs, Maven/npm dependency declarations, public
+site selection and declared Lein profiles. Helper reporting text, source revisions
+and target lists do not create new identities. Shadow independently separates
+build IDs and development/release modes and validates compiler options and changed
+source/macro dependencies. This never reads or mounts a checkout's watched cache.
+
+An identity has one inherited writer lock, held by both launcher and container
+guardian. Simultaneous commands using that identity wait; unrelated worktrees or
+profiles may use the existing two build slots. A container orphan keeps its cache
+lock until the supported recovery path confirms it has stopped. No JVM remains
+running between commands. Disk reuse saves analysis/compilation, but each fresh
+JVM still starts Lein, reads the classpath and initializes Shadow; a hot watched
+REPL's 2–5 second increment is a different runtime environment.
+
+Use `run --shadow-cache off -- <command>` for a cold comparison, or
+`run --shadow-cache refresh -- <command>` to discard and rebuild that invocation's
+cache identity under its lock. A custom Shadow `:cache-root` or unavailable local
+image identity bypasses cache mounting. Cache cleanup removes only unlocked,
+managed identities after seven idle days or oldest-first above an 8 GiB combined
+budget; active writers may temporarily exceed that budget. `tolgraven-cpu cache-prune`
+runs the same cleanup explicitly. It preserves lock files to prevent inode races.
+Compiler cache cleanup is separate from finished output snapshot cleanup.
+
+Reproduce compiler-cache measurements with
+`python3 scripts/test/shadow_cache.py --report /tmp/shadow-document.json` or
+`--target app-test --report /tmp/shadow-app-test.json`. These invoke the installed
+launcher with the normal budgets and write logs plus JSON outside the checkout.
+The document matrix verifies unchanged reuse, reporting-prefix reuse, a changed
+source and its restoration; fixture edits exist only in isolated snapshots.
+The full browser-test graph measures cold/warm/prefix variants. Reports separate
+queue wait, dependency setup, compiler time and total wall time, and capture load
+and the active budget. Coordinate a quiet build window for timing comparisons.
+
 Copy wanted output back only when the owning watch is stopped or absent. The
 launcher never writes a live checkout's `target` or public build files.
 

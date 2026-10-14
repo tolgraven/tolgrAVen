@@ -5,6 +5,53 @@ alters the architecture, build workflow, or contracts they describe. Keep
 instructions concise; detailed schemas, examples and user guides belong in `doc/`.
 Do not retain completed investigation diaries or historical test counts as current guidance.
 
+## Required workflow for every request
+
+Every request that changes this repository follows the complete workflow below,
+including small fixes, documentation and `AGENTS.md` changes. A local edit,
+commit, passing test run or unmerged PR is an intermediate step, not completion.
+Use this standing authorization to commit, push, create/update the PR and merge
+the task's changes in `tolgraven/tolgrAVen`; do not ask for the same authorization
+again. Follow an explicit user instruction to stop earlier or change the workflow.
+Read-only questions and investigations do not require artificial code changes or PRs.
+
+1. **Use a managed worktree and feature branch.** Inspect the current checkout,
+   worktrees and remote state first. Start from current `origin/master` on a
+   task-specific `codex/<task>` branch in
+   `/Users/tol/.codex/worktrees/<task>/tolgrAVen`, the default worktree location.
+   Continue the same task in its existing worktree. Never implement on `master`
+   or put task worktrees in `/tmp` or `/private/tmp`. If sandbox access is needed,
+   request access to the default location instead of silently relocating it.
+   Preserve other sessions' changes, worktrees, REPLs and watched build output.
+2. **Inspect and implement.** Read applicable guidance and surrounding source;
+   establish the cause of a reported issue and follow existing project patterns.
+   Finish the requested behavior and commit coherent, verified milestones.
+3. **Test and inspect hands-on.** Run focused checks and required builds. Exercise
+   the actual affected flow in the existing browser or app, inspect rendered UI,
+   console/network behavior and relevant failure paths. For frontend changes,
+   check cold loading, hydration, SPA navigation and history returns as relevant;
+   inspect narrow and wide layouts when appearance changes. Compilation or unit
+   tests alone do not establish working UI. Report any genuinely blocked check.
+4. **Publish a draft PR.** Push the feature branch and open a draft PR against
+   `master` once a coherent committed checkpoint exists. Keep its head and
+   description current, with concrete behavior, verification evidence, relevant
+   screenshots and remaining limits. Do not stop at a local-only handoff.
+5. **Review the PR closely and fix findings.** Use the
+   [Code Review plugin](plugin://code-review@openai-bundled/) on the complete
+   current PR diff and surrounding code. Check correctness, regressions,
+   security, project conventions, preservation and verification gaps. Resolve
+   actionable findings, rerun affected checks and review the resulting changes.
+   Passing CI or a security scan does not replace this review. If review tooling
+   is unavailable, explain the blocker; do not silently skip the required review.
+6. **Merge and verify integration.** Once the reviewed head is pushed, required
+   verification and CI pass, and the description matches the final change, mark
+   the PR ready and squash-merge it. Reconcile upstream changes and resolve
+   conflicts manually, file by file; recheck any changed behavior before merging.
+   Confirm the remote merge, then synchronize local `master` without overwriting
+   uncommitted work. Close only task-created tabs/servers and report the PR URL,
+   merge commit, checks performed and material limits. Do not leave an otherwise
+   completed request unmerged or ask whether to finish these routine steps.
+
 ## Current architecture
 - Keep the full-featured `defc` based on upstream `reagent.core/defc`. Hooks delegate
   to upstream `reagent.hooks` through the existing shim; dependency collections
@@ -12,7 +59,7 @@ Do not retain completed investigation diaries or historical test counts as curre
   and ownership instructions live in `features/reagent-native-refactor.md`.
   See `doc/reagent-2-react-19-guide.md` for the library comparison and design rationale.
 - Reagent 2 / React 19 components use `defc`; spec-capable instances accept map
-  specs or feature-vector shorthand. Full pages use `defpage` and always have an error boundary. Application re-frame calls go through `tolgraven.react`.
+  specs or feature-vector shorthand. Full pages use `defpage` and always have an error boundary. Application React, Reagent and re-frame calls go through `website.react` as `r`; raw framework imports belong to its runtime boundary.
 - Module-local `pages.cljc` files contain native Reitit route trees. Module specs expose these declarations; browser and server routers compose them.
 - JVM adapters acquire public data with snapshot-owned, bounded Supabase REST
   connections; the eager Shadow `:ssr` Node build renders the same page components as the browser. `:ssr` in config controls streaming and worker settings.
@@ -40,7 +87,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 - The standalone `:document` CLJS target supplies parser-blocking head return policy
   and body SSR entrance/image readiness before hydration; build it for deployment.
 - Local returns and reloads may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
-- Read `src/frontend/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/backend/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
+- Read `src/frontend/website/AGENTS.md`, `src/cljc/website/AGENTS.md`, `src/backend/website/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
 - Markdown code, including untagged blocks and inline snippets, shares the deferred
   formatter boundary. Node SSR renders Bruvbox-highlighted tokens immediately;
   browser acquisition waits for the existing after-page gate. The blog supplies
@@ -48,11 +95,20 @@ Do not retain completed investigation diaries or historical test counts as curre
   Bruvbox palette/token ownership lives in `modules/highlight/theme.cljs`.
 
 ## Project Structure & Module Organization
-- `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code, and shared CLJC infrastructure. Feature implementations and their portable declarations live in `src/frontend/tolgraven/modules/<module>/`.
-- `src/frontend/tolgraven/components/`: reusable rendered UI and site shell;
+- Application namespaces use `website.*` across CLJ, CLJC and CLJS. Standalone
+  pre-hydration `bootstrap.*` sources live beside `website/` in `src/frontend/`.
+  Keep external asset URLs and existing persisted storage identities stable.
+- `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code, and shared CLJC infrastructure. Feature implementations and their portable declarations live in `src/frontend/website/modules/<module>/`.
+- `components/ui/` groups shared UI by component type. Import each component's
+  owning namespace directly; do not retain forwarding definitions or compatibility exports.
+- Feature loading is explicit through module declarations or `modules/<feature>/interface`.
+  Shared components stay lightweight; preserve substantive prototypes when moving their owner.
+- Markdown declares its node/component mapping in `modules/markdown/views.cljs`.
+  Highlight owns the shared code-block controls and the separately deferred token formatter.
+- `src/frontend/website/components/`: reusable rendered UI and site shell;
   `component/` contains the declaration/lifecycle runtime.
 - `experiments/clj`: preserved JVM prototypes, compiled only with `:experiments`.
-- `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/tolgraven`.
+- `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/website`.
 - `test/clj`, `test/cljs`: backend and frontend tests.
 - `env/`: environment-specific source/resources (dev/test/prod).
 - `resources/supabase/`: schema, native operations and account import SQL.
@@ -93,6 +149,8 @@ Do not retain completed investigation diaries or historical test counts as curre
   Docker prefab, 1.5 CPUs/4 GiB per slot; 3 Docker CPUs combined). Dockerfile/prefab work uses
   `tolgraven-cpu run --mode buildkit -- <command>` so BuildKit steps also have a quota.
   Increase a documented heap/memory limit only when required; avoid competing watched output.
+  Fresh output snapshots reuse a separately locked worktree-scoped Shadow compiler disk
+  cache; never mount or overwrite a live checkout’s watched cache. See `doc/resource-controls.md`.
   `--mode host` uses nice 10 and the shared build slot when live watches/interop
   require macOS. The installed monitor caps exact app renderers and only explicitly
   registered agent host Java families; user-launched Lein clients and their
@@ -105,12 +163,21 @@ Do not retain completed investigation diaries or historical test counts as curre
   `target/production`; local prod loads those resources before shared assets and
   preflights the release browser manifest and both document bootstrap scripts
   before initialization logging/asset loading. See `doc/testing.md`.
-- `lein repl`: start HTTP and the Clojure REPL; deferred Shadow watches compile
-  sequentially without blocking REPL acknowledgement. `(cljs-repl)` waits for
+- `lein repl`: check/rebuild stale CSS before opening HTTP and the Clojure REPL;
+  current SSR/browser markup must not paint against sheets from an older checkout.
+  Deferred Shadow watches compile
+  sequentially without blocking REPL acknowledgement. The standalone `:document`
+  target releases first (no HMR); document/bootstrap requests await only that
+  bounded release barrier, while unrelated assets/API remain available. `(cljs-repl)` waits for
   startup and selects the browser runtime in the calling session. See `README.md`.
-- Browser builds discover `modules/*/module.cljs` through `tolgraven.build.browser/process`;
-  the literal spec `:id` owns the bundle ID and namespace `:bundle/depends-on`
-  declares extra code dependencies. Runtime inventories track declaration resources
+- Browser builds discover `modules/*/module.cljs` through `website.build.browser/process`;
+  development browser builds also select `env/dev/cljs/website/modules/` with the
+  `:dev` reader feature. Production and Node SSR exclude those declarations.
+  a missing spec `:id` uses the parent namespace of `.module`. Spec
+  `:bundle/depends-on` declares hard Shadow prerequisites (default `#{:main}`);
+  optional features use explicit lightweight module interfaces and acquire code
+  through the shared loader only when needed. Keep build declarations in `spec`,
+  never namespace metadata. Runtime inventories track declaration resources
   for incremental metadata updates. Restart the browser watch after adding/removing
   module entry files; the runtime loadable map comes from the same discovery.
 - Production `:app` uses content-hashed chunk names; server bundle/preload paths
@@ -125,8 +192,16 @@ Do not retain completed investigation diaries or historical test counts as curre
   It also writes a source-map-based `report.html`/`report.json` identifying each
   source's actual optimized contribution.
 - `npm run build`: produce shared CSS, a development-only inspector sheet, a
-  compressed icon selector/font-face sheet, and independent feature sheets. Module
-  specs declare literal `:styles`; CSS starts alongside JS acquisition. SSR emits
+  compressed icon selector/font-face sheet, and independent feature sheets.
+  `bb site:resolve` snapshots CMS variable CSS beside capability selections.
+  Parse it as plain custom-property CSS before output writes and append it only
+  after the shell defaults; keep it in style freshness/watch inputs and out of
+  tracked SCSS, feature sheets and runtime source packaging. See `doc/styles.md`.
+  Module
+  specs infer an existing `/css/website/modules/<id>.min.css` when `:styles`
+  is absent; matching SCSS establishes ownership before generated output exists.
+  Explicit `:styles` replaces that default, including `[]` to opt out.
+  CSS starts alongside JS acquisition. SSR emits
   route styles in the initial head, inlining small feature sheets within a bounded
   budget. Popup-only modules may declare `:ssr-styles :deferred`; Optimus
   fingerprints each bundle separately. Production packaging prepares its inventory
@@ -145,11 +220,25 @@ Do not retain completed investigation diaries or historical test counts as curre
   generate staged WebP/AVIF variants without including unstaged source edits.
 - Live re-frame debugging: read the installed `re-frame-pair` skill, then run `bb pair discover-app` before inspecting the runtime. See `doc/re-frame-pair.md`; the wrapper selects `:app-dev` and Lein's nREPL port.
 
+The CMS provisioning manifest also carries the actual `_vars.scss` as a read-only,
+searchable variable reference; refresh it when provisioning the editor. Do not
+maintain a duplicate handwritten variable catalog.
+
 ## Dependency ownership
+
+- Timbre owns JVM logging configuration in `website.log`; tools.logging and
+  SLF4J route through its existing adapters. Select JBoss's SLF4J provider in
+  Lein and direct Java launches before Undertow loads. Use the shared
+  `org.clj-commons/pretty`, not the duplicate `io.aviso/pretty` or Logback XML.
+  See `doc/dependencies.md`.
 
 - Shadow owns the CLJS/Closure compiler graph in `:provided`; explicit production build commands include that profile, while runtime packaging excludes it. Keep the managed Codox analyzer version aligned with Shadow.
 - Use locked local npm tools. Supabase uses its npm SDK inside the lazy `:supabase` module;
   `npm run vendor:sync` maintains only the preserved legacy UMD reference.
+- The editor configure hook generates a version/hash-checked selective public SDK
+  entry in ignored `target/generated-sdk`. All editor browser/test/SSR builds use
+  the same resolver; production audits reject unused CodeMirror/Lezer/diff-source.
+  Keep original SDK modules and shared React/Gurx ownership. See `doc/markdown-authoring.md`.
 - 10x/re-frisk are opt-in through `:legacy-debug`; default development retains the custom console and re-frame-pair tracing. See `doc/re-frame-pair.md`.
 - Release builds reject development inspectors in their resolved source graph.
   Periodically remove completed isolated `.shadow-cljs/builds/audit-*` caches;
@@ -180,6 +269,10 @@ Do not retain completed investigation diaries or historical test counts as curre
 - SCSS: keep files modular in `resources/scss`; prefer BEM-ish class names when adding new components.
   Use relative units (`rem`, `em`, percentages or viewport units), never `px`,
   for new or changed styling, sizing, spacing and media queries.
+- Before submitting UI changes, triple-check the actual rendered appearance at
+  narrow and wide widths: outer margins, inner padding on every edge, spacing
+  between controls/text, alignment and overall balance. Inspect screenshots and
+  correct cramped or uneven spacing; passing geometry tests is not sufficient.
 - Avoid introducing new formatters unless the team agrees; none are enforced in-repo.
 - Always confirm that variables (symbols) that are referred to actually exist in the given namespace, do not assume anything just from implicit context.
 
@@ -215,14 +308,18 @@ These are required principles for new code and changes to existing code. Follow 
   local timers; its resulting application action still dispatches an event. This
   exception does not justify putting network, persistence or business state in hooks.
 - Read `doc/reagent-re-frame.md` for examples and the decision checklist, and the
-  `src/frontend/tolgraven/AGENTS.md` for concrete adapter contracts. Review the entire diff against
+  `src/frontend/website/AGENTS.md` for concrete adapter contracts. Review the entire diff against
   these principles before merging, including tests and failure paths.
 
 ### Data sourcing and state
-- Read application state through re-frame subscriptions, using the existing subscription helpers and `tolgraven.react` shim. Change state through registered events and the existing update helpers. Do not dereference or mutate `re-frame.db/app-db` directly from views, routing code, or page preparation helpers.
+- Read application state through re-frame subscriptions, using the existing subscription helpers and `website.react` shim. Change state through registered events and the existing update helpers. Do not dereference or mutate `re-frame.db/app-db` directly from views, routing code, or page preparation helpers.
 - Keep subscription computations and event-db handlers pure. Put HTTP, Supabase, Strapi, localStorage, timers, and other external side effects in registered effects or dedicated lifecycle adapters. Pass results back through events that update app-db; components then observe them through subscriptions.
 - Use the existing subscription-backed Supabase and Strapi bindings. A subscription may acquire an existing managed data source; the source adapter owns the read, deduplication, result events, and cleanup. Do not perform network reads inside a subscription's derived-value computation or component render.
 - Declare content dependencies in component, module, or page specifications. Preloading must acquire the same managed subscriptions/data bindings that the rendered component uses. Do not add a parallel imperative preparation namespace, duplicate query definitions, or fetch content directly from a page/view to avoid using the normal data flow.
+- Missing configuration for an enabled module must fail within that
+  module and expose its local error/retry state; it must not gate unrelated
+  modules or the shared shell. Startup loads only shared shell dependencies;
+  route modules own their content.
 - Batch and deduplicate pending data loads and persistence operations through the shared queues. Distinguish pending, successfully loaded empty, failed, and cached data. Preserve usable cached content during refresh and report real failures through the established notification/retry system.
 - Release subscriptions, watches, listeners, and live connections when their owning lifecycle ends. Retain app-db content caches for reuse; temporary preloading must not dispose a subscription still owned by a mounted component.
 - Use the scoped subscription/update helpers for persistent component, module, page, and shared state. Reserve local Reagent state for transient component-owned state; do not introduce a second application store or bypass event-driven persistence.
@@ -245,7 +342,7 @@ These are required principles for new code and changes to existing code. Follow 
 - Prefer Clojure maps, vectors, destructuring and sequence functions within application code. Do not recursively convert Reagent props that are already Clojure values, or inspect React element internals to recover data.
 - Convert JSON/SDK payloads once at the boundary using standard `js->clj`/`clj->js` options. Native events, DOM measurements, React refs and SDK objects legitimately require property access; keep that access in the adapter that owns it.
 - Keep native Promises where a JavaScript API or shared asynchronous adapter requires them. Page/component code should declare dependencies and dispatch events rather than duplicate transport queries and Promise chains. Do not introduce an async library or thin wrappers solely to hide `js/Promise` syntax.
-- `tolgraven.react/use-effect` and `use-layout-effect` accept implicit nil for no
+- `website.react/use-effect` and `use-layout-effect` accept implicit nil for no
   cleanup. Hook dependencies are Clojure vectors/sequences compared by value;
   refs/functions/native handles remain opaque. Memo/callback helpers require
   explicit dependencies and preserve return values. Use these upstream Reagent
@@ -253,7 +350,7 @@ These are required principles for new code and changes to existing code. Follow 
 - Keep adapted React component identities stable across renders. Use Clojure props with Reagent adapters; reserve `#js` containers for APIs that actually require JavaScript values.
 
 ### Toolchain and verification
-- Use the existing `tolgraven.react` shim so development uses the instrumented re-frame API and non-debug builds use the regular API. Do not bypass the shim or introduce a second React/Reagent runtime.
+- Use the existing `website.react` shim so development uses the instrumented re-frame API and non-debug builds use the regular API. Do not bypass the shim or introduce a second React/Reagent runtime.
 - Use the configured Shadow CLJS builds and module boundaries. Keep browser-only APIs out of server execution, and verify referenced framework symbols against the installed versions rather than assuming an API exists.
 - Inspect the running Shadow worker and its compile errors/warnings after changes. Do not launch a competing compile for a build already being watched; use its existing worker/nREPL. Compile affected browser, test, and SSR targets as appropriate.
 - `:app` and `:app-dev` share output. Isolate production build output during a dev watch, or pause the watch and restore its assets before browser checks.
@@ -283,6 +380,11 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   - `[<user-profile>]`
 
 ## Testing Guidelines
+
+- Clear viewport, network and CPU emulation after browser checks, including failure
+  cleanup. Verify the reset on an adopted tab: another tool connection may have
+  left a fixed viewport even when the reset reports success. User-facing tabs must
+  follow the actual browser window again.
 - Use `lein with-profile +project/test test` for backend tests; browser tests use Shadow `:app-test` and the runner in `bb test:browser`.
 - Generate hydration fixtures from the current Node renderer with `bb ssr:fixtures` before browser tests. The obsolete Doo runner has been removed.
 - Inspect existing watched builds before compiling. Live development normally watches `:app-dev`, `:ssr`, and `:return-worker`; never overwrite watched output with another compiler.
@@ -297,11 +399,15 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   after implementation and required verification are complete, the current head is
   pushed, and the description matches it. Return a PR to draft when follow-up
   implementation starts.
-- A user request to make or update a PR authorizes committing the task changes,
-  pushing its feature branch, and creating/updating the PR in
-  `https://github.com/tolgraven/tolgrAVen`; do not ask again solely for these
-  publication steps. This does not independently authorize force pushes, branch
-  deletion, merges, deployment, unrelated changes, or publication elsewhere.
+- When assigned a PR, publish a draft once a coherent committed checkpoint exists;
+  keep its head and description current while work continues. A local branch or
+  a "ready for publication" handoff does not complete that assignment. Subagents
+  must return the PR URL, verification status, and remaining work; the parent
+  verifies publication and completes authorized review/merge before closing it.
+- The required workflow above grants standing authorization for committing,
+  pushing, creating/updating PRs and squash-merging the task's reviewed changes in
+  `https://github.com/tolgraven/tolgrAVen`. It does not authorize force pushes,
+  branch deletion, deployment, unrelated changes or publication elsewhere.
 - GitHub Copilot code review credits are exhausted. Before every merge, perform a
   proper review with the [Code Review plugin](plugin://code-review@openai-bundled/).
   Review the complete current diff and relevant surrounding code for correctness,
@@ -320,6 +426,19 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 ## Deploy
 - Follow `doc/docker-builds.md` for `make docker` and PR preview cleanup; `doc/site-provisioning.md` covers separate sites and production/staging services.
 
+- The user grants standing authorization for tested, reviewed migrations and
+  bounded feature backfills on this project's Supabase database on SSH host
+  `bux`, including production (currently container
+  `supabase-db-e840kco0scs04gkcco44w088`). Verify the destination and actual SQL
+  before execution. This includes application tables, indexes, constraints,
+  functions, triggers, RLS policies and grants needed for the requested feature;
+  do not request another confirmation solely for those persistent changes.
+  Destructive resets, dropping populated tables/columns, unrelated deletions,
+  disabling access controls and other databases need separate authorization.
+  Application/container deployment remains outside this standing scope. The
+  local Codex `[auto_review].extra_policy` carries matching reviewer guidance;
+  managed restrictions and the required denial/override workflow still apply.
+
 - Module specs expose portable `:storage` declarations. Supabase seed tooling,
   public projections and realtime identities derive from that catalog; runtime
   `:supabase :modules` options select seed/reset owners and feature groups.
@@ -333,3 +452,23 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   Codox reads them; use this alias instead of invoking Codox directly.
 
 - `:neovim` owns its WASM runtime/profile and browser workspace; `/neovim` supplies scoped isolation. The Sass build bundles selected `src/` and SCSS sources via `build.neovim-workspace`; keep private config and disabled owners out. See `doc/neovim.md`.
+
+- Visual Markdown editing belongs to the lazy `:markdown-editor` owner. Shared
+  authored component rendering uses an explicit public catalog and data arguments;
+  SSR renders the same widgets and never runs the editor SDK. See `doc/markdown-authoring.md`.
+
+- Authoring module specs may declare literal `:site/owner`; child
+  capabilities follow their selected parent in discovery and packaging. Public
+  blog reading stays independent of `:blog-editor` and the lazy visual SDK.
+
+- GitHub's managed `/api/github/settings` dependency and archive share one
+  validated server selection. Explicit `:github-user` / `:github-repo` values
+  take priority; supply both or neither. Unpublished CMS settings stay omitted;
+  partial/invalid GitHub configuration cannot gate unrelated content or startup.
+  Provider caches stay separate. Public GitHub reads
+  require no token; an optional server token raises the REST archive rate limit.
+  Deployment identity and calendar contracts are documented in `doc/activity-panels.md`.
+- Modules may declare a server `:start` symbol returning an optional cleanup
+  function. The mounted module-services owner starts selected services after
+  content/configuration and stops them before those dependencies. GitHub's
+  leased, checkpointed Supabase archive runs there; browser paging never imports history.

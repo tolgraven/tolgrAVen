@@ -303,6 +303,21 @@ class PolicyTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 cpu.start_docker_guardian({'path':'/python'},'owned','token','unix:///fixture.sock',lock)
 
+    def test_docker_guardian_inherits_both_slot_and_cache_descriptor(self):
+        fake = mock.Mock(pid=123)
+        owner = {'path': '/python'}
+        identity = {'pid': 123, 'path': '/python'}
+        with tempfile.TemporaryFile() as slot, tempfile.TemporaryFile() as cache, \
+                mock.patch.object(cpu.subprocess, 'Popen', return_value=fake) as spawn, \
+                mock.patch.object(cpu, 'packet_receive', return_value={'guardian': identity}), \
+                mock.patch.object(cpu, 'MacProcesses') as processes:
+            processes.return_value.same.return_value = True
+            cpu.start_docker_guardian(owner, 'owned', 'token', 'unix:///fixture', slot, (cache,))
+            descriptors = spawn.call_args.kwargs['pass_fds']
+            self.assertIn(slot.fileno(), descriptors)
+            self.assertIn(cache.fileno(), descriptors)
+            self.assertEqual(len(descriptors), 3)
+
     def test_packet_boundaries(self):
         import socket
         a,b=socket.socketpair()
@@ -361,6 +376,107 @@ class PolicyTests(unittest.TestCase):
             cpu.snapshot(root,out)
             self.assertEqual(existing.read_text(),'destination already configured')
             self.assertFalse((out/'env/test/resources/config.edn').exists())
+
+
+class ShadowCacheTests(unittest.TestCase):
+    def test_identity_retains_minor_command_changes_but_separates_worktree_profile_toolchain_site(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); source = root / 'source'; source.mkdir()
+            (source / 'project.clj').write_text('deps')
+            (source / 'package-lock.json').write_text('npm')
+            (source / 'resources').mkdir(); (source / 'resources/site.edn').write_text('site')
+            command = ['lein', 'with-profile', 'provided', 'run', '-m', 'shadow.cljs.devtools.cli', 'compile', 'document']
+            key = cpu.shadow_cache_key(root / 'worktree', source, 'sha256:one', command)
+            varied = ['bash', '-lc', 'echo report; lein with-profile provided run -m shadow.cljs.devtools.cli compile app-test; echo done']
+            self.assertEqual(key, cpu.shadow_cache_key(root / 'worktree', source, 'sha256:one', varied))
+            (source / 'source.cljs').write_text('changed source')
+            self.assertEqual(key, cpu.shadow_cache_key(root / 'worktree', source, 'sha256:one', command))
+            for checkout, image, args in [(root / 'other', 'sha256:one', command),
+                                          (root / 'worktree', 'sha256:two', command),
+                                          (root / 'worktree', 'sha256:one', ['lein', 'with-profile', 'prod,provided'])]:
+                self.assertNotEqual(key, cpu.shadow_cache_key(checkout, source, image, args))
+            (source / 'resources/site.overrides.edn').write_text('CMS selection')
+            self.assertNotEqual(key, cpu.shadow_cache_key(root / 'worktree', source, 'sha256:one', command))
+            (source / 'resources/site.overrides.edn').unlink()
+            (source / 'resources/site.edn').write_text('other site')
+            self.assertNotEqual(key, cpu.shadow_cache_key(root / 'worktree', source, 'sha256:one', command))
+
+    def test_helper_profile_inventory_does_not_hash_reporting_or_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); helper = root / 'build.sh'
+            helper.write_text('lein with-profile +project/test run compile app-test')
+            key = cpu.shadow_cache_key(root, root, 'image', ['bash', 'build.sh'])
+            helper.write_text('echo report\nlein with-profile +project/test run compile app-test\necho done')
+            self.assertEqual(key, cpu.shadow_cache_key(root, root, 'image', ['bash', 'build.sh']))
+            helper.write_text('lein with-profile prod,provided run release app')
+            self.assertNotEqual(key, cpu.shadow_cache_key(root, root, 'image', ['bash', 'build.sh']))
+
+    def test_cache_guard_inherits_identity_lock_alongside_build_slot(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            key = 'a' * 24
+            handle = cpu.cache_lock(key)
+            guard = subprocess.Popen([sys.executable, '-c', 'import sys;sys.stdin.read()'],
+                                     stdin=subprocess.PIPE, pass_fds=(handle.fileno(),))
+            handle.close()
+            try:
+                self.assertIsNone(cpu.cache_lock(key, blocking=False))
+                guard.stdin.close(); guard.wait(timeout=3)
+                with cpu.cache_lock(key, blocking=False) as acquired:
+                    self.assertIsNotNone(acquired)
+            finally:
+                if guard.poll() is None:
+                    guard.terminate(); guard.wait(timeout=3)
+
+    def test_pruning_skips_active_and_unmanaged_caches_and_evicts_oldest_under_budget(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)), \
+                mock.patch.object(cpu, 'SHADOW_CACHE_BYTES', 10):
+            root = cpu.shadow_cache_root()
+            for key, timestamp in [('a' * 24, 1), ('b' * 24, 2), ('c' * 24, 3)]:
+                path = root / key; path.mkdir(parents=True)
+                (path / 'builds').mkdir(); (path / 'builds' / 'cache').write_bytes(b'12345678')
+                cpu.save_json(path / 'metadata.json', {'version': 1, 'key': key, 'used_at': timestamp, 'bytes': 8})
+            unmanaged = root / 'unmanaged'; unmanaged.mkdir()
+            with cpu.cache_lock('a' * 24):
+                result = cpu.prune_shadow_caches(now=10)
+                self.assertEqual(result['removed'], ['b' * 24, 'c' * 24])
+                self.assertTrue((root / ('a' * 24)).is_dir())
+                self.assertTrue(unmanaged.is_dir())
+            self.assertEqual(cpu.prune_shadow_caches(now=cpu.SHADOW_CACHE_AGE + 10)['removed'], ['a' * 24])
+
+    def test_reuse_refresh_and_off_keep_cache_outside_fresh_output(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory) / 'state'):
+            root = Path(directory); out = root / 'snapshot'; out.mkdir()
+            (out / 'shadow-cljs.edn').write_text('{:builds {}}')
+            args = SimpleNamespace(checkout=str(root / 'checkout'), image='prefab', shadow_cache='reuse')
+            image = mock.Mock(returncode=0, stdout='sha256:fixture')
+            with mock.patch.object(cpu.subprocess, 'run', return_value=image):
+                with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as first:
+                    (first[0] / 'cached').write_text('data')
+                    self.assertFalse((out / '.shadow-cljs').exists())
+                with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as second:
+                    self.assertEqual((second[0] / 'cached').read_text(), 'data')
+                args.shadow_cache = 'refresh'
+                with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as fresh:
+                    self.assertFalse((fresh[0] / 'cached').exists())
+                args.shadow_cache = 'off'
+                with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as absent:
+                    self.assertIsNone(absent)
+
+    def test_unknown_image_or_custom_cache_root_bypasses_without_touching_control_markers(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory) / 'state'):
+            out = Path(directory) / 'snapshot'; out.mkdir()
+            config = out / 'shadow-cljs.edn'; config.write_text('{:cache-root "custom"}')
+            args = SimpleNamespace(checkout=str(out), image='missing', shadow_cache='reuse')
+            with mock.patch.object(cpu.subprocess, 'run', return_value=mock.Mock(returncode=1, stdout='')) as run:
+                with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as absent:
+                    self.assertIsNone(absent)
+                run.assert_not_called()
+                config.write_text('{:builds {}}')
+                with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as absent:
+                    self.assertIsNone(absent)
+                self.assertFalse(cpu.shadow_cache_root().exists())
 
 
 @unittest.skipUnless(sys.platform=='darwin','native guard uses macOS libproc')

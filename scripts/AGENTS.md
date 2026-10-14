@@ -6,7 +6,11 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `build/styles.mjs` compiles shell, development inspector and module CSS entries
   with locked Sass/PostCSS, compiles the separate icon sheet and vendors
   Leaflet images. Emit UTF-8 without a byte-order marker so the same sheets can
-  be inlined safely. Keep `npm run build` and the watch workflow aligned.
+  be inlined safely. `--if-stale` verifies source/tool/font/icon-declaration inputs
+  and every raw/minified output before skipping compilation; development startup
+  runs that guard before opening HTTP. Keep full builds and the watch workflow aligned.
+- `test/server.clj` accepts `--glass-output` for isolated glass fixture output;
+  it serves current shared CSS and leaves ordinary browser-suite routing intact.
 - `test/ssr.clj` saves renderer export metadata with each HTML/state hydration
   fixture; never infer rendered exports from the browser bundle inventory.
 - `bb prod:build` builds CSS and calls the existing Shadow release API sequentially
@@ -70,10 +74,22 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   Native CPU accounting uses the Mach timebase; cap tests must measure actual CPU
   seconds, not only duty settings. CPU probes touch disposable owned fixtures only.
 
+  Ordinary compiler snapshots reuse only an independently locked, worktree/toolchain/
+  profile/site-scoped `.shadow-cljs/builds` cache; transient ports and generated output
+  remain fresh. The container guardian inherits its writer lock. Keep Shadow's native
+  source/options validation and the unlocked 7-day/8-GiB LRU cleanup; never mount
+  watched checkout caches or retain a hot JVM per worktree. See `doc/resource-controls.md`.
+
   Custom codec images use explicit `run --node-deps skip` only for non-Node tasks;
   retain the shared queue, snapshot and container limits. Default Node bootstrap stays enabled.
 
+- `test/shadow_cache.py` measures the installed launcher's real cold/warm compiler
+  reuse with ordinary build IDs and resource budgets. Source mutation fixtures stay
+  inside isolated snapshots; keep queue/dependency/compiler time separate from wall
+  time and verify that missing fresh output is written from cached analysis.
+
 - `test/prepared_assets.clj` checks the explicit prepared inventory from source and
-  then from an uberjar, preserving all bodies and independent bundle paths. Run
+  then from an uberjar, preserving all bodies, independent bundle paths and the
+  canonical unbundled main URL/digest. The real middleware check includes main. Run
   it only in the CPU controller's Docker snapshot after real production outputs;
   it does not start the application or prove deployment behavior.

@@ -15,7 +15,7 @@ needed to run these tasks; they use Babashka's built-in libraries.
 | Development | `bb cpu <action>`, `tolgraven-cpu` | Serialized isolated Docker agent builds and scoped macOS CPU monitor; see [resource controls](resource-controls.md) |
 | Development | `bb hooks`, `bb pair <operation>` | Per-checkout setup and installed re-frame-pair skill |
 | Renderer tests | `bb ssr:fixtures [--worker path]` | Actual compiled generic Node renderer; generates browser hydration fixtures |
-| Browser tests | `bb test:browser [--port 4002]` | Static component suite and fixtures; loopback HTTP-kit server |
+| Browser tests | `bb test:browser [--port 4002]` | Static component suite and fixtures; loopback HTTP-kit server (`--glass-output PATH` serves the focused glass suite/playground) |
 | Live tests | `bb test:integration [options...]` | Python streaming HTTP proxy; preserves early SSR flushes and upstream responses |
 | Tool tests | `bb test:scripts` | Babashka contracts and existing Python operations/media harness; disposable Git repos, no deployments |
 | Supabase | `bb supabase <schema\|import\|all> [args...]` | Calls the native JVM CLI; container has its small `ops/entrypoint-supabase-provision.sh` launcher |
@@ -93,6 +93,12 @@ under `experiments/clj/`. Tool-mandated root configuration stays at its native p
 
 CSS build and watch entry points compile shared, icon and feature sheets independently;
 see [styles.md](styles.md) for declarations, source ownership and verification.
+Development startup runs `node scripts/build/styles.mjs --if-stale` before HTTP.
+Its output revision covers SCSS, tool/lock files, font inputs and native component/
+module declarations. Every raw and minified sheet must still match its recorded
+digest; missing or overwritten output is rebuilt. Fresh output does not import
+Sass/PostCSS. Keep `npm run dev` running for ongoing CSS edits.
+`node test/scripts/styles_test.mjs` exercises the guard in a disposable source tree.
 
 `bb audit <label>` writes isolated optimized chunks, compression sizes, the
 namespace/module inventory and `report.html`/`report.json` under

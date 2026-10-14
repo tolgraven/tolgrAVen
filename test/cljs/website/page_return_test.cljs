@@ -1,0 +1,499 @@
+(ns website.page-return-test
+  "Mounted restoration tests use real events/subscriptions and the same renderer
+   as local documents. Shadow code splitting is the only adapted boundary."
+  (:require-macros [website.test-async :refer [go-promise await!]])
+  (:require [cljs.test :refer-macros [deftest is async]]
+            [website.react :as r]
+            [website.react.server :as server]
+
+            [shadow.lazy :as lazy]
+
+
+            [website.test-support :as support]
+            [website.components.shell :as shell]
+            [website.modules.blog.views :as blog]
+            [website.modules.blog.comments :as comments]
+            [website.modules.user.module :as user]
+            [website.loader :as loader]
+            [website.component.restore :as restore]
+            [website.component.storage :as storage]
+            [website.render-context :as context]
+            [website.browser-resources :as browser-resources]
+            [website.supabase.scoped :as scoped]
+            [website.ssr.return-contract :as contract]
+            [website.ssr.render :as render]
+            [website.ssr.local :as local]
+            [website.ssr.capture :as capture]
+            [website.ssr.return-policy :as policy]
+            [website.ssr.return-worker :as worker]))
+
+(r/defc <check> [form committed!]
+  (r/use-effect (fn [] (committed!) nil) [])
+  form)
+
+(deftest capture-observes-native-source-and-releases-it-on-unmount
+  (async done
+    (let [restore! (r/make-restore-fn)
+          schedule! local/schedule!
+          connect! local/connect!
+          after-page! browser-resources/after-page!
+          *scheduled (atom 0)]
+      (set! local/schedule! #(swap! *scheduled inc))
+      (set! local/connect! #(js/Promise.resolve nil))
+      ;; Timing of the shared adapter is covered in browser-resources-test.
+      (set! browser-resources/after-page! (fn [start! options]
+                                           (is (= 750 (:settle-ms options)))
+                                           (start!) (fn [])))
+      (-> (go-promise
+            (let [element (.createElement js/document "div")
+                  root (await! (support/create-root! element))]
+              (try
+                (await! (support/render! root [local/<capture>]))
+                (let [initial @*scheduled]
+                  (r/dispatch [:component-state/reset [:state :menu] true])
+                  (await! (support/settle!))
+                  (is (= (inc initial) @*scheduled))
+                  (r/dispatch [:page-return/status {:status :ready :url "/blog"}])
+                  (await! (support/settle!))
+                  (is (= (inc initial) @*scheduled) "Capture status does not trigger another capture")
+                  (await! (support/render! root nil))
+                  (r/dispatch [:component-state/reset [:state :menu] false])
+                  (await! (support/settle!))
+                  (is (= (inc initial) @*scheduled) "Unmount releases the source subscription"))
+                (finally (support/unmount! root)))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (set! local/schedule! schedule!)
+                      (set! local/connect! connect!)
+                      (set! browser-resources/after-page! after-page!)
+                      (restore!)
+                      (done)))))))
+
+(deftest local-rendered-expanded-comments-hydrate-with-the-same-state-and-nodes
+  (async done
+    (-> (go-promise
+          (let [restore-db! (r/make-restore-fn)
+                original-context @restore/*context
+                original-interactive @context/*interactive?
+                element (.createElement js/document "div")
+                script (.createElement js/document "script")
+                *root (atom nil) *errors (atom [])
+                rows (mapv (fn [[id parent]] {:id id :parent-post 42 :parent-comment parent
+                                              :title id :text "Locally restored content" :ts 1
+                                              :reply-count (if (= id "leaf") 0 1)})
+                           [["root" nil] ["child" "root"] ["grandchild" "child"]
+                            ["deep" "grandchild"] ["leaf" "deep"]])
+                module (dissoc user/spec :content :depends)
+                form [blog/<comments-section> {:post {:id 42}}]]
+            (set! (.-id element) "app")
+            (.setAttribute element "data-page-build" "test-build")
+            (.appendChild (.-body js/document) element)
+            (try
+              (r/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] true])
+              (doseq [parent [nil "root" "child" "grandchild" "deep"]]
+                (let [query (if parent (comments/thread-query 42 parent) (comments/root-query 42 comments/page-size))]
+                  (r/dispatch-sync [:store/scoped (scoped/query-key query)
+                                     {:docs (mapv #(hash-map :id (:id %) :data %)
+                                                  (filter #(= parent (:parent-comment %)) rows))}])))
+              (let [db (await! (support/state-at! []))
+                    saved (contract/state-for db)
+                    html (render/html! db form {:modules {:user module}
+                                               :restored? true
+                                               :interactive? true
+                                               :render-to-string server/render-to-string})]
+                ;; Isolated rendering must not disturb existing app state/readers.
+                (is (= db (await! (support/state-at! []))))
+                (set! (.-innerHTML element) html)
+                (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title"))))
+                (let [nodes (vec (array-seq (.querySelectorAll element ".blog-comment-title")))
+                      snapshot {:version 1 :build "test-build" :saved-at (.now js/Date)
+                                :url (str (.-origin js/location) (.-pathname js/location) (.-search js/location))
+                                :state-edn (pr-str saved) :modules [:user]
+                                :module-views (render/module-views {:user module})}]
+                  (set! (.-id script) "local-page-bootstrap")
+                  (set! (.-type script) "application/json")
+                  (set! (.-textContent script) (js/JSON.stringify (clj->js snapshot)))
+                  (.appendChild (.-body js/document) script)
+                  ;; A competing initial state must be replaced by the paired state.
+                  (r/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] false])
+                  (local/install!)
+                  (r/with-framework-bindings [loader/modules {:user (reify lazy/ILoadable (ready? [_] true)
+                                                            IDeref (-deref [_] module))}]
+                    (await! (js/Promise.
+                              (fn [resolve _]
+                                (reset! *root
+                                  (r/hydrate-root element [<check> form #(resolve nil)]
+                                                    {:on-recoverable-error #(swap! *errors conj (str %))}))))))
+                  (is (empty? @*errors) (pr-str @*errors))
+                  (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title"))))
+                  (is (every? true? (map identical? nodes (array-seq (.querySelectorAll element ".blog-comment-title")))))
+                  (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared),.component-spinner"))))))
+              (finally
+                (when @*root (support/unmount! @*root))
+                (.remove element) (.remove script)
+                (reset! restore/*context original-context)
+                (reset! context/*interactive? original-interactive)
+                (restore-db!)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+(deftest return-decisions-use-data-and-preserve-cache-boundaries
+  (let [url "https://example.test/blog"
+        now 2000000
+        request {:url url, :origin "https://example.test", :mode "navigate", :method "GET"}
+        armed (policy/arm-record url now)]
+    (is (policy/intercept? request "https://example.test"))
+    (is (not (policy/intercept? request "https://other.test")))
+    (is (not (policy/intercept? (assoc request :method "POST") "https://example.test")))
+    (is (not (policy/intercept? (assoc request :mode "cors") "https://example.test")))
+    (is (= {:source :cache, :returning? false}
+           (policy/navigation-plan url now nil now)))
+    (is (= {:source :cache, :returning? true}
+           (policy/navigation-plan url now armed now)))
+    (is (= {:source :network, :returning? true}
+           (policy/navigation-plan url (- now policy/ttl-ms) armed now)))
+    (is (= {:source :network, :returning? false}
+           (policy/navigation-plan url nil (assoc armed :url "another-url") now)))
+    (is (= {:source :network, :returning? false}
+           (policy/navigation-plan url nil (assoc armed :expires now) now)))
+    (is (= {:source :network, :returning? false}
+           (policy/navigation-plan url nil {:url url} now)))
+    (is (= [0 1 2] (vec (policy/excess-documents (range (+ 3 policy/max-documents))))))
+    (is (empty? (policy/excess-documents (range policy/max-documents))))
+    (is (= [(str policy/prefix "old")]
+           (vec (policy/obsolete-caches [(str policy/prefix "old")
+                                        (str policy/prefix "current") "unrelated"]
+                                       (str policy/prefix "current")))))))
+
+(deftest local-worker-restores-reloads-and-armed-returns-once
+  (async done
+    (-> (go-promise
+          (let [url (str (.-origin js/location) "/js/blog-ssr.json")
+                html "<p>Paired state document</p>"]
+            (await! (.delete js/caches worker/cache-name))
+            (try
+              (await! (worker/save! {:url url :html html :build worker/build}))
+              ;; A saved exact pair also restores reload/address-bar navigation.
+              (let [reloaded (await! (worker/navigation! (js/Request. url)))]
+                (is (= "1" (.get (.-headers reloaded) "X-Local-Page")))
+                (is (= html (await! (.text reloaded)))))
+              (let [network (await! (worker/navigation! (js/Request. url)))]
+                (is (nil? (.get (.-headers network) "X-Local-Page")) "A pair is consumed once"))
+              (await! (worker/save! {:url url :html html :build worker/build}))
+              (await! (worker/arm! url))
+              (let [cached (await! (worker/navigation! (js/Request. url)))]
+                (is (= "1" (.get (.-headers cached) "X-Local-Page")))
+                (is (= html (await! (.text cached)))))
+              (let [cache (await! (.open js/caches worker/cache-name))]
+                (is (nil? (await! (.match cache url))))
+                (is (nil? (await! (.match cache worker/arm-url)))))
+              (finally (await! (.delete js/caches worker/cache-name))))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+(deftest local-worker-bounds-documents-and-rejects-other-builds
+  (async done
+    (-> (go-promise
+          (await! (.delete js/caches worker/cache-name))
+          (try
+            (doseq [index (range (+ 3 worker/max-documents))]
+              (await! (worker/save! {:url (str (.-origin js/location) "/cache-test/" index)
+                                    :html "small document" :build worker/build})))
+            (let [cache (await! (.open js/caches worker/cache-name))
+                  entries (await! (.keys cache))]
+              (is (= worker/max-documents (.-length entries))))
+            (let [rejected? (await! (-> (worker/save! {:url (str (.-origin js/location) "/cache-test/bad")
+                                                       :html "wrong build" :build "other-build"})
+                                        (.then (fn [_] false)) (.catch (fn [_] true))))]
+              (is rejected?))
+            (finally (await! (.delete js/caches worker/cache-name)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+(deftest lazy-renderer-discards-saves-overtaken-while-code-loads
+  (async done
+    (let [restore! (r/make-restore-fn)
+          connect! local/connect!
+          acquire! loader/acquire-code!
+          message! local/message!
+          *resolve (atom nil)
+          pending (js/Promise. (fn [resolve _] (reset! *resolve resolve)))
+          *published (atom [])
+          *rendered (atom [])]
+      (set! local/connect! #(js/Promise.resolve {:worker :worker}))
+      (set! loader/acquire-code! (fn [id] (is (= :page-capture id)) pending))
+      (set! local/message! (fn [_ pair]
+                            (swap! *published conj pair)
+                            (js/Promise.resolve nil)))
+      (let [first-save (local/save! {:version :old} false)
+            second-save (local/save! {:version :current} false)]
+        (@*resolve {:pair! (fn [db _]
+                            (swap! *rendered conj db)
+                            {:op "save" :url "current" :state db})})
+        (-> (js/Promise.all #js [first-save second-save])
+            (.then (fn [_]
+                     (is (= [{:version :current}] @*rendered))
+                     (is (= 1 (count @*published)))
+                     (is (not (contains? (first @*published) :state)))))
+            (.catch (fn [error] (is false (str error))))
+            (.finally (fn []
+                        (set! local/connect! connect!)
+                        (set! loader/acquire-code! acquire!)
+                        (set! local/message! message!)
+                        (restore!)
+                        (done))))))))
+
+(deftest restored-shell-resumes-motion-on-menu-intent
+  (async done
+    (let [restore-db! (r/make-restore-fn)
+          original-context @restore/*context]
+      (-> (go-promise
+            (let [element (.createElement js/document "div")
+                  root (await! (support/create-root! element))
+                  form [:<> [shell/<header> {:menu {:work [] :personal []}}]
+                        [shell/<footer-full> []]]]
+              (try
+                (r/dispatch-sync [:init/app-db])
+                (r/dispatch-sync [:state [:menu] false])
+                (reset! restore/*context {:local? true})
+                (await! (support/render! root form))
+                (is (= "true" (.getAttribute (.querySelector element "header") "data-restored-motion")))
+                (is (= "true" (.getAttribute (.querySelector element ".footer-full") "data-restored-motion")))
+                (r/dispatch-sync [:state [:menu] true])
+                (await! (support/settle!))
+                (is (= "false" (.getAttribute (.querySelector element "header") "data-restored-motion")))
+                (r/dispatch-sync [:state [:menu] false])
+                (await! (support/settle!))
+                (is (= "false" (.getAttribute (.querySelector element "header") "data-restored-motion"))
+                    "Closing the menu retains ordinary motion")
+                (finally (support/unmount! root)))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (reset! restore/*context original-context)
+                      (restore-db!)
+                      (done)))))))
+
+(deftest collapsed-shell-is-not-captured-as-a-display-choice
+  (async done
+    (let [restore-db! (r/make-restore-fn)
+          form [shell/<header> {:menu {:work [] :personal []}}]]
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (r/dispatch-sync [:state [:hidden] {:header true :footer true}])
+            (r/dispatch-sync [:state [:scroll] {:past-top true :at-bottom true}])
+            (let [saved (contract/state-for (await! (support/state-at! [])))
+                  html (render/html! saved form {:restored? true :interactive? true})
+                  element (.createElement js/document "div")]
+              (set! (.-innerHTML element) html)
+              (is (nil? (get-in saved [:state :hidden])))
+              (is (nil? (get-in saved [:state :scroll])))
+              (is (not (.contains (.-classList (.querySelector element "header")) "hide")))
+              ;; Installing legacy saved state must apply the same owner policy.
+              (r/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:page-return/install
+                                 (assoc-in saved [:state :hidden :header] true)])
+              (let [root (await! (support/create-root! element))]
+                (try
+                  (await! (support/render! root form))
+                  (is (not (.contains (.-classList (.querySelector element "header")) "hide")))
+                  (finally (support/unmount! root))))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn [] (restore-db!) (done)))))))
+
+(deftest capture-orders-the-real-manifest-dependencies-once
+  (is (= [{:id "main" :url "/main.js"}
+          {:id "markdown" :url "/markdown.js"}
+          {:id "blog" :url "/blog.js"}
+          {:id "page-render" :url "/page-render.js"}]
+         (capture/asset-plan
+           {:main {:url "/main.js" :depends []}
+            :markdown {:url "/markdown.js" :depends [:main]}
+            :blog {:url "/blog.js" :depends [:main :markdown]}
+            :page-render {:url "/page-render.js" :depends [:main]}}
+           #{:blog :page-render}))))
+
+(deftest capture-does-not-import-unrequested-reader-or-account-modules
+  (is (= ["main" "home" "page-render"]
+         (mapv :id
+           (capture/asset-plan
+             {:main {:url "/main.js" :depends []}
+              :home {:url "/home.js" :depends [:main]}
+              :user {:url "/user.js" :depends [:main]}
+              :blog {:url "/blog.js" :depends [:main :user]}
+              :page-render {:url "/page-render.js" :depends [:main]}}
+             #{:home :page-render})))))
+
+(deftest asynchronous-rendering-discards-an-overtaken-pair
+  (async done
+    (let [restore! (r/make-restore-fn)
+          connect! local/connect!
+          acquire! loader/acquire-code!
+          message! local/message!
+          *resolve (atom {})
+          *published (atom [])
+          spec {:pair! (fn [db _]
+                         (js/Promise. (fn [resolve _]
+                                        (swap! *resolve assoc (:version db) resolve))))}]
+      (set! local/connect! #(js/Promise.resolve {:worker :worker}))
+      (set! loader/acquire-code! (fn [_] (js/Promise.resolve spec)))
+      (set! local/message! (fn [_ pair] (swap! *published conj pair) (js/Promise.resolve nil)))
+      (-> (go-promise
+            (let [first-save (local/save! {:version :old} false)]
+              (await! (support/settle!))
+              (let [second-save (local/save! {:version :current} false)]
+                (await! (support/settle!))
+                ((get @*resolve :current) {:op "save" :url "current"})
+                (await! second-save)
+                ((get @*resolve :old) {:op "save" :url "old"})
+                (await! first-save)
+                (is (= ["current"] (mapv :url @*published))))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (set! local/connect! connect!)
+                      (set! loader/acquire-code! acquire!)
+                      (set! local/message! message!)
+                      (restore!)
+                      (done)))))))
+
+(deftest browser-capture-waits-for-page-readiness-without-a-worker-manifest
+  (async done
+    (let [modules local/modules
+          acquire! loader/acquire-code!
+          after-page! browser-resources/after-page!
+          *ready (atom nil)
+          *acquired (atom [])]
+      (set! local/modules (fn [] {}))
+      (set! browser-resources/after-page!
+            (fn [ready!] (reset! *ready ready!) (fn [])))
+      (set! loader/acquire-code!
+            (fn [id]
+              (swap! *acquired conj id)
+              (js/Promise.resolve {:pair! (fn [db _] {:state db})})))
+      (let [pending (capture/pair! {:version :current} {})]
+        (is (empty? @*acquired) "Optional rendering waits for hydration and painted idle")
+        (@*ready)
+        (-> pending
+            (.then (fn [pair]
+                     (is (= [:page-render] @*acquired))
+                     (is (= {:state {:version :current}} pair))))
+            (.catch (fn [error] (is false (str error))))
+            (.finally (fn []
+                        (set! local/modules modules)
+                        (set! loader/acquire-code! acquire!)
+                        (set! browser-resources/after-page! after-page!)
+                        (done))))))))
+
+(deftest departure-captures-state-after-synchronous-navigation-save
+  (async done
+    (let [restore! (r/make-restore-fn)
+          save! local/save!
+          navigate! local/navigate!
+          save-navigation! storage/save-navigation!
+          *captured (atom nil)]
+      (set! storage/save-navigation!
+            #(r/dispatch-sync [:set [:page-return-test] :fresh]))
+      (set! local/save! (fn [db arm?]
+                         (reset! *captured [(:page-return-test db) arm?])
+                         (js/Promise.resolve nil)))
+      (set! local/navigate! (fn [_] nil))
+      (local/departure! "https://example.com/departure")
+      (-> (support/settle!)
+          (.then (fn [_]
+                   (is (= [:fresh true] @*captured)
+                       "Queued departure reads the updated history state")))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (set! local/save! save!)
+                      (set! local/navigate! navigate!)
+                      (set! storage/save-navigation! save-navigation!)
+                      (restore!)
+                      (done)))))))
+
+(deftest timed-out-departure-discards-a-late-render-at-the-same-url
+  (async done
+    (let [restore! (r/make-restore-fn)
+          connect! local/connect!
+          acquire! loader/acquire-code!
+          message! local/message!
+          navigate! local/navigate!
+          save-navigation! storage/save-navigation!
+          set-timeout (.-setTimeout js/window)
+          *deadline (atom nil)
+          *render (atom nil)
+          *published (atom [])
+          *navigated (atom [])]
+      (set! local/connect! #(js/Promise.resolve {:worker :worker}))
+      (set! loader/acquire-code!
+            (fn [_] (js/Promise.resolve
+                       {:pair! (fn [_ _] (js/Promise. (fn [resolve _] (reset! *render resolve))))})))
+      (set! local/message! (fn [_ pair] (swap! *published conj pair) (js/Promise.resolve nil)))
+      (set! local/navigate! #(swap! *navigated conj %))
+      (set! storage/save-navigation! (fn [] nil))
+      (set! (.-setTimeout js/window)
+            (fn [callback delay]
+              (if (= 1000 delay) (do (reset! *deadline callback) 0)
+                (.call set-timeout js/window callback delay))))
+      (-> (go-promise
+            (let [departure (local/depart! {:db {} :url "https://example.com/departure"})]
+              (await! (support/settle!))
+              (@*deadline)
+              (await! departure)
+              (is (= ["https://example.com/departure"] @*navigated))
+              ;; The document URL deliberately stays unchanged, as on BFCache return.
+              (@*render {:op "save" :url (.-href js/location)})
+              (await! (support/settle!))
+              (is (empty? (filter #(= "save" (:op %)) @*published)))
+              (is (some #(= "clear" (:op %)) @*published))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (set! local/connect! connect!)
+                      (set! loader/acquire-code! acquire!)
+                      (set! local/message! message!)
+                      (set! local/navigate! navigate!)
+                      (set! storage/save-navigation! save-navigation!)
+                      (set! (.-setTimeout js/window) set-timeout)
+                      (restore!)
+                      (done)))))))
+
+(deftest a-later-departure-intent-owns-the-navigation
+  (async done
+    (let [save! local/save!
+          navigate! local/navigate!
+          save-navigation! storage/save-navigation!
+          *save (atom {})
+          *navigated (atom [])]
+      (set! local/save! (fn [db _] (js/Promise. (fn [resolve _] (swap! *save assoc (:click db) resolve)))))
+      (set! local/navigate! #(swap! *navigated conj %))
+      (set! storage/save-navigation! (fn [] nil))
+      (-> (go-promise
+            (let [first-departure (local/depart! {:db {:click :first} :url "https://example.com/first"})
+                  last-departure (local/depart! {:db {:click :last} :url "https://example.com/last"})]
+              ((get @*save :first) nil)
+              (await! first-departure)
+              (is (empty? @*navigated))
+              ((get @*save :last) nil)
+              (await! last-departure)
+              (is (= ["https://example.com/last"] @*navigated))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally (fn []
+                      (set! local/save! save!)
+                      (set! local/navigate! navigate!)
+                      (set! storage/save-navigation! save-navigation!)
+                      (done)))))))
+
+(deftest stopping-browser-capture-cancels-its-readiness-owner
+  (async done
+    (let [modules local/modules
+          after-page! browser-resources/after-page!
+          *cancelled (atom 0)]
+      (set! local/modules (fn [] {}))
+      (set! browser-resources/after-page! (fn [_] #(swap! *cancelled inc)))
+      (let [pending (-> (capture/pair! {} {})
+                        (.then (fn [_] (is false "Cancelled capture must reject")))
+                        (.catch (fn [_] (is (= 1 @*cancelled)))))]
+        (capture/stop!)
+        (.finally pending (fn []
+                            (set! local/modules modules)
+                            (set! browser-resources/after-page! after-page!)
+                            (done)))))))

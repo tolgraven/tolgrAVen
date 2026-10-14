@@ -8,14 +8,20 @@ retain file defaults. Omitted options default to enabled. Missing CMS configurat
 (404) uses file defaults. Authentication, network, invalid config and redirect
 failures stop the build. Credentials and webhook settings never enter the snapshot.
 
+The same response may include `styles`, the CMS's bounded plain-CSS variable
+overrides. Resolution writes `resources/site.overrides.css` separately from the
+boolean config; the stylesheet builder validates and appends it after shell
+defaults. No browser-side CMS fetch is involved. See [CMS variable overrides](styles.md#cms-variable-overrides).
+
 ```clojure
 {:modules {:blog {:comments false}
            :strava {:enabled false}}
  :pages {:about false}}
 ```
 
-Module IDs come from literal `:id` in discovered `modules/*/module.cljs`, including
-`:test` for the experiments directory. The shell and route coercion are required.
+Module IDs default to the parent namespace of discovered `modules/*/module.cljs`.
+A literal `:id` overrides that name, including `:test` for the experiments directory.
+The shell and route coercion are required.
 Dependencies are explicit: disabling a required module or service-config feature
 fails rather than silently enabling it. Unknown modules/options fail. Page IDs
 come from route `:name`; disabling a page removes its subtree from both routers.
@@ -124,8 +130,8 @@ owned grants/functions/publication/bucket access without deleting rows.
 ## Verification
 
 In an idle isolated worktree, `python3 test/site/matrix.py --compile` checks default,
-posts without comments, no blog, anonymous, minimal storage-free, no home and disabled
-page configurations. `--release` checks production outputs instead. `PGHOST`,
+posts without comments, no previews, no blog, anonymous, minimal storage-free, no home
+and disabled page configurations. `--release` checks production outputs instead. `PGHOST`,
 `PGPORT` and `PGUSER` enable disposable fresh PostgreSQL installations for every case.
 `python3 test/site/package.py` checks actual AOT jars and generated docs for two
 slim configurations. Artifacts/logs are under `target/site-matrix/`; the original site file is restored.
@@ -136,3 +142,27 @@ checks do not establish live Supabase Auth or realtime delivery.
 The resolver test uses an HTTP fixture and dummy credential. The companion CMS's
 `test/site-config-live.py` uses a disposable SQLite database, real admin authentication
 and the exported manifest to check secret isolation, visibility and retained data.
+
+## Module declarations and optional code
+
+Keep build declarations inside each module's `spec`, alongside its content,
+exports and lifecycle. `:bundle/depends-on` is this project's input to Shadow's
+hard `:depends-on` graph; it is not a built-in namespace feature. It defaults to
+`#{:main}`. Declare another bundle here only when the implementation imports its
+code. Optional use belongs behind that owner's lightweight interface and the
+existing managed loader; a declaration must not turn optional UI into a hydration
+prerequisite. Blog, Chat and Search render Markdown immediately and acquire Link
+Preview only for external-link candidates. Disabled previews select plain Markdown.
+
+A missing `:id` is the keyword naming the parent of `.module`, for example
+`website.modules.maps.module` becomes `:maps`. Explicit IDs remain useful when
+names differ. Missing styles use an existing generated conventional stylesheet or matching SCSS entry;
+see [styles.md](styles.md). Early packaging and compiler discovery share these
+source-only defaults, and browser/SSR adapters add the catalog identity before
+runtime validation. `:site/owner` also belongs in `spec`, for child capabilities.
+Namespace maps with these custom build declarations are rejected.
+
+`:content` supplies the module's derived CMS dependency plans before acquisition.
+Do not repeat those plans in `:depends`; reserve that field for additional managed
+resources. The eager Main spec retains its data declaration because boot owns it
+outside ordinary module loading.

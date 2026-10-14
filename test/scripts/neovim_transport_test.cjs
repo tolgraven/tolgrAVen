@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
-const { start } = require('../../src/frontend/tolgraven/modules/neovim/transport.js');
-const { Packr } = require('../../src/frontend/tolgraven/modules/neovim/msgpackr.js');
+const { start } = require('../../src/frontend/website/modules/neovim/transport.js');
+const { Packr } = require('../../src/frontend/website/modules/neovim/msgpackr.js');
 const packer = new Packr({ useRecords: false });
 let worker;
 global.Worker = class {

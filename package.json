@@ -2,8 +2,14 @@
   "name": "tolgraven.se",
   "version": "1.0.0",
   "dependencies": {
+    "@mdxeditor/editor": "4.3.3",
     "@supabase/supabase-js": "2.117.3",
     "leaflet": "1.9.4",
+    "lexical": "0.48.0",
+    "mdast-util-from-markdown": "2.0.3",
+    "mdast-util-mdx-jsx": "3.2.0",
+    "mdast-util-to-markdown": "2.2.0",
+    "micromark-extension-mdx-jsx": "3.0.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-leaflet": "^5.0.0",
@@ -13,7 +19,7 @@
     "remark-gfm": "^4.0.1"
   },
   "scripts": {
-    "init": "mkdir -p resources/public/css/tolgraven && npm ci && npm run vendor:sync",
+    "init": "mkdir -p resources/public/css/website && npm ci && npm run vendor:sync",
     "sass:dev": "node scripts/build/styles.mjs --watch --sass-only",
     "sass:build": "node scripts/build/styles.mjs --sass-only",
     "postcss:dev": "node scripts/build/styles.mjs --watch --postcss-only",

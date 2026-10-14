@@ -1,0 +1,4 @@
+<!doctype html>
+<style>body{margin:0;font:1rem sans-serif}section{height:14rem;background:#eee;padding:1rem;box-sizing:border-box}</style>
+<section>Cooperating opaque iframe measurement fixture.</section>
+<script>window.addEventListener('message',event=>{if(event.data?.type==='website:measure-request'&&event.source===parent)parent.postMessage({type:'website:iframe-size',height:document.body.scrollHeight},'*')})</script>

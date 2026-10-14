@@ -9,10 +9,10 @@ self.onmessage = function (event) {
       const url = new URL(asset.url, self.location.origin);
       if (url.origin !== self.location.origin) throw new Error("Invalid render asset");
       if (asset.id === "main") importScripts(url.href);
-      else self.tolgraven.app.worker_import_BANG_(asset.id, url.href);
+      else self.website.app.worker_import_BANG_(asset.id, url.href);
       loaded.add(asset.id);
     }
-    const pair = self.tolgraven.ssr.local_render.worker_pair_BANG_(request);
+    const pair = self.website.ssr.local_render.worker_pair_BANG_(request);
     self.postMessage({id, pair});
   } catch (_) {
     // Do not send values from page state through error messages.

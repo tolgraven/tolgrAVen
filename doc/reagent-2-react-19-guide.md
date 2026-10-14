@@ -8,9 +8,9 @@ every view as a JavaScript React component translated into ClojureScript.
 Some of the unfamiliar code in this project comes from browser integration and
 SSR. Some comes from choices in our component runtime. The latter is open to
 improvement. Hooks now delegate to upstream `reagent.hooks` through
-`tolgraven.react`, retaining Clojure equality instead of a custom approximation.
+`website.react`, retaining Clojure equality instead of a custom approximation.
 
-Our full-featured `tolgraven.macros/defc` should continue to build on upstream
+Our full-featured `website.macros/defc` should continue to build on upstream
 `reagent.core/defc`. Its purpose is to add declarative capabilities while retaining
 Reagent's rendering and reactivity, not to implement another component system.
 
@@ -107,7 +107,7 @@ An upstream comparison, independent of the project's declaration features:
 [<greeting> {:name "Ada"}]
 ```
 
-In this repository, import `defc` from `tolgraven.macros` instead. The extra
+In this repository, import `defc` from `website.macros` instead. The extra
 declaration machinery should be invisible for a simple component.
 
 Upstream `defc` produces a memoized React component value. The declared argument
@@ -117,7 +117,7 @@ not an ordinary domain function. Render it with `[<greeting> data]`; do not call
 in separate `defn` helpers.
 [Reagent defc source](https://github.com/reagent-project/reagent/blob/v2.0.1/src/reagent/core.clj).
 
-This also explains the stable adapter in `components/ui/code.cljs`: a JavaScript
+This also explains the stable adapter in `modules/markdown/views.cljs`: a JavaScript
 package expecting a component gets `reactify-component` around an ordinary
 function that returns `[<our-component> props]`. Passing our `defc` descriptor
 as though it were an ordinary Clojure render function is the wrong contract.
@@ -224,7 +224,7 @@ initializers. A helper calling hooks is itself a custom hook and should be named
 
 ### The shim delegates to upstream Reagent
 
-`tolgraven.react` exposes upstream Reagent effect, layout-effect, memo, callback,
+`website.react` exposes upstream Reagent effect, layout-effect, memo, callback,
 state, reducer, ref, context and external-store hooks. Application code continues
 using that shim, preserving tracing and validation around re-frame entry points.
 There is no independent hook dependency/cleanup implementation. Memo and callback
@@ -233,7 +233,7 @@ hooks require an explicit Clojure dependency collection.
 An upstream illustration of the style we want at that boundary:
 
 ```clojure
-;; Standalone upstream example; project application code uses tolgraven.react.
+;; Standalone upstream example; project application code uses website.react.
 (ns example.clock
   (:require [reagent.core :as r]
             [reagent.hooks :as hooks]))
@@ -267,7 +267,7 @@ new JavaScript identity. The upstream wrapper retains the prior equal dependency
 collection. This avoids
 unnecessary disconnect/reconnect work for value-oriented configuration.
 
-`test/cljs/tolgraven/react_hooks_test.cljs` exercises equal and changed Clojure
+`test/cljs/website/react_hooks_test.cljs` exercises equal and changed Clojure
 values, state/reducer identity, resource cleanup and native handle/function identity.
 Functions, refs and DOM nodes remain identity-sensitive values; do not recursively
 convert them or treat them as interchangeable configuration data.

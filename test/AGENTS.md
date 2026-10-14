@@ -1,10 +1,23 @@
 # Verification workflows
 
+- Editor build checks validate the pinned public-entry selection and reject
+  unknown/private SDK exports. Production audits reject CodeMirror, Lezer and
+  diff-source in the resolved graph, not just in direct dependency declarations.
+
 Keep this guide and `doc/testing.md` current when test/build entry points change.
 
+- `node test/scripts/styles_test.mjs` checks fresh CSS skips, stale inputs,
+  overwritten/missing outputs, CMS override edits/removal/errors and
+  declaration/tool/font revisions in a disposable
+  tree. Startup tests must prove a style failure prevents HTTP from opening while
+  successful styles retain the deferred Shadow startup. Document release tests
+  prove isolated release-before-watches, scoped HTTP readiness, bounded failure
+  and real REPL acknowledgement while compilation is blocked.
+
 - Cold layout/handler JVM suites require compiled `:document` resources. Build
-  them in the isolated test checkout, or reuse their owning Shadow watch; see
-  `doc/testing.md`.
+  them in the isolated test checkout, or reuse its standalone release output; see
+  `doc/testing.md`. The full JVM suite also requires the compiled `:ssr` worker
+  in that checkout for its actual Node protocol checks.
 - Mount actual Reagent components, dereference subscriptions during render, dispatch
   real events, await lifecycle completion, and unmount in cleanup. Avoid direct
   app-db mutation, dangling subscriptions and forced React flushes.
@@ -33,6 +46,18 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Browser tests use the release Malli registry. Check typed page parameters,
   bounds, booleans, query encoding/extension keys and redacted coercion failures
   with internal validation disabled as well as ordinary contract validation.
+- Release browser-test builds include selected module entries through Shadow's
+  native namespace list; development uses preloads. Release excludes development
+  preloads, so both paths must expose the same lazy owner inventory.
+  Hydration fixtures that replace the module map must include each lazy parser
+  and renderer owner; retained SSR HTML alone does not prove those owners mounted.
+  Keep `:browser-test` in selected release test reader features so test fixtures
+  can render server markup through the framework shim without enabling development
+  tooling. Optimized hydration checks use `website.nested-hydration-runner`;
+  the default display runner mutates a Closure define and is development-only.
+- Default development discovery excludes the release-only authored hydration
+  suite. Run its configured optimized runner separately; an eager development
+  engine cannot exercise that suite's delayed-owner/coercion preconditions.
 - Use owning schemas/constructors in fixtures instead of duplicating contracts.
   Test browser/Node-only schemas in `test/cljs`; JVM tests exercise portable/server
   contracts and generic composition helpers.
@@ -73,7 +98,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   Check that landing code/styles and FiraCode stay absent on unrelated cold routes;
   opening Search acquires its font, and visible code consumers retain typography.
   Idle prefetch checks include offscreen/hidden hints and restricted connections.
-  Data-inspector checks mount its lazy compatibility exports and preserve formatted
+  Data-inspector checks mount its lazy module exports and preserve formatted
   values, full error details and retry. Production audits prove pprint/home helpers
   leave main; a successful source move alone does not establish the boundary.
   Generate both plain and fenced-code Node fixtures. Verify completed Suspense
@@ -136,6 +161,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   withhold the coercion chunk, prove SSR hydrates without it, then test early
   navigation and retries. Audit every Malli namespace out of the main bundle.
 
+- Optional preview checks withhold code, keep native authored nodes through code
+  arrival and candidate changes, skip acquisition for internal/plain content, and
+  release native observation on change/unmount.
 - Readable preview checks cover semantic extraction, malformed/oversized documents,
   public-address DNS enforcement, redirect bounds, deduplication and frame policies.
   Mounted browser checks render text safely, delay miniatures and suppress blocked
@@ -188,3 +216,22 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - `:neovim-check` mounts the real WASM editor in `/fixtures/neovim.html`; serve with COOP/COEP for active editing, and without them for the fallback. Its plugin/workspace controls exercise real Meta/file imports; Node/BB checks cover preRun bytes, profile failures and source pruning. See `doc/neovim.md`.
 
 - `:github-diff-check` exercises public GitHub revision reads with the real readonly Neovim component. Its focused fixture supplies an eager module loadable; it does not prove full-site navigation or hydration. Native diff checks in `:neovim-check` verify buffer immutability, diff highlights and absolute line numbers.
+
+- Markdown authoring checks cover data-only component argument round trips, private
+  path/expression rejection, feature-pruned generated help, block-safe published
+  markup and actual editor normalization/keyboard/source transitions. Vendor CSS
+  checks prove selector/palette isolation and relative units. See `doc/markdown-authoring.md`.
+- Draft checks cover durable reload, edits during disk reads, account/route isolation,
+  named document selection, pending-upload exclusion and real write failure/retry.
+  Source checks preserve selection/undo/anchors and accept each native key before
+  the next one. Language picker checks update public CMS choices at runtime, retain
+  explicit fence tags and exercise keyboard selection; an empty list means auto only.
+
+- Upload-row checks cover measured/invalid/stale byte callbacks, indeterminate
+  processing, errors/retry/cancel, ready-but-unpainted retention and preview-owned
+  exit. A mocked queue acknowledgment does not prove actual image decode/visibility.
+
+- Liquid-glass focused targets use `target/glass` output. Test real children,
+  focus/DOM identity, zero-index refraction, bounded allocations, map reuse,
+  failure fallback, cancellation and SSR/hydration. Pixel inspection in Chrome
+  establishes SVG backdrop rendering; syntax/compilation alone does not.

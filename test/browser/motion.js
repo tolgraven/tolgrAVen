@@ -1,4 +1,5 @@
 const frame = document.querySelector('#app'), results = document.querySelector('#results');
+if (new URLSearchParams(location.search).has('phone')) frame.style.width = '24.375rem';
 const doc = () => frame.contentDocument;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const wait = async predicate => {
@@ -11,8 +12,8 @@ const wait = async predicate => {
   }
   throw new Error('Application did not settle');
 };
-const check = (value, label) => {
-  if (!value) throw new Error(label);
+const check = (value, label, details) => {
+  if (!value) throw new Error(label + (details ? ` ${JSON.stringify(details)}` : ""));
   const row = document.createElement('li'); row.className = 'passed'; row.textContent = label; results.append(row);
 };
 const sample = async (action, read, ms = 1400) => {
@@ -63,12 +64,15 @@ const sampleStartup = async path => {
       for (const main of mains) {
         const style = frame.contentWindow.getComputedStyle(main);
         const titleNode = doc().querySelector('#app .intro-title-letter');
+        const logoAnimation = doc().querySelector('#app #logo-top')?.getAnimations().find(a => a.animationName === 'fade-in-logo');
         const titleAnimation = titleNode?.getAnimations().find(a => a.animationName === 'intro-letter-fade');
         samples.push({animation: style.animationName, opacity: Number(style.opacity),
                       scale: style.transform, shell: main.closest('#ssr-shell') !== null,
                       entranceStart: main.getAnimations().find(a => a.animationName === 'fade-in-site')?.startTime,
                       pending: doc().querySelector('#app')?.hasAttribute('data-document-pending'),
                       heroReady: heroReady(),
+                      logoAnimation, logoStart: logoAnimation?.startTime,
+                      logoDuration: logoAnimation?.effect.getTiming().duration,
                       titleNode, titleAnimation,
                       titleStart: titleAnimation?.startTime,
                       titleDelay: titleAnimation?.effect.getTiming().delay,
@@ -112,6 +116,17 @@ document.querySelector('#run').onclick = async () => {
             `${label} keeps the native title clock through hydration`);
     };
     checkEntrance(cold, 'Cold SSR');
+    const logos = cold.filter(value => !value.shell && !value.pending && value.logoStart != null);
+    check(logos.length && logos.every(value => value.logoDuration === 3500) &&
+      new Set(logos.map(value => value.logoAnimation)).size === 1,
+          'Cold SSR preserves the native 3.5-second logo clock through hydration');
+    const clock = cold.find(value => !value.shell && !value.pending && value.logoStart != null && value.titleStart != null);
+    const rect = selector => doc().querySelector(selector)?.getBoundingClientRect().toJSON();
+    results.dataset.geometry = JSON.stringify({intro:rect('#intro'),hero:rect('#top-banner'),
+      logo:rect('#logo-top'),image:rect('#logo-top img')});
+    results.dataset.clock = JSON.stringify({entranceStart:clock?.entranceStart,
+      titleStart:clock?.titleStart, titleDelay:clock?.titleDelay,
+      logoStart:clock?.logoStart, logoDuration:clock?.logoDuration});
     // Observe the real return worker output before exercising its document pair.
     await wait(async () => {
       for (const name of await caches.keys()) {
@@ -131,7 +146,8 @@ document.querySelector('#run').onclick = async () => {
     // Leave the application document and use the unrelated document's native
     // Back button. A saved pair alone is not proof of native Back classification.
     frame.src = '/__tests/away.html';
-    await wait(() => doc()?.location.pathname === '/__tests/away.html');
+    await wait(() => doc()?.location.pathname === '/__tests/away.html' &&
+      doc()?.querySelector('button'));
     doc().querySelector('button').click();
     await wait(() => doc()?.location.pathname === '/' &&
       doc()?.documentElement.hasAttribute('data-image-direct') && doc()?.querySelector('#intro'));
@@ -166,7 +182,11 @@ document.querySelector('#run').onclick = async () => {
           'Same-path query navigation retains the document and ends final-only image policy');
     check(doc().querySelector('#app .intro-title-letter') === pairedTitle &&
       documentClocks().every(animation => pairedClocks.includes(animation)),
-          'Query navigation does not restart the settled page or title clock');
+          'Query navigation does not restart the settled page or title clock',
+          {titleSame: doc().querySelector('#app .intro-title-letter') === pairedTitle,
+           previous: pairedClocks.map(a => ({name:a.animationName, property:a.transitionProperty})),
+           current: documentClocks().map(a => ({name:a.animationName, property:a.transitionProperty,
+             target:a.effect?.target?.className, start:a.startTime}))});
     const queryBack = pairedDocument.createElement('button');
     queryBack.textContent = 'Query Back proof';
     queryBack.onclick = () => frame.contentWindow.history.back();

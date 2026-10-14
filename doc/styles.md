@@ -3,12 +3,74 @@
 `npm run build` compiles the shared `resources/scss/main.scss`, `dev.scss`,
 `icons.scss` and the entry files
 in `resources/scss/modules/` through the locked Sass and Autoprefixer packages.
-Outputs are `resources/public/css/tolgraven/main.min.css`, `dev.min.css`, `icons.min.css`, and
+Outputs are `resources/public/css/website/main.min.css`, `dev.min.css`, `icons.min.css`, and
 `modules/<feature>.min.css`. The development document alone links `dev.min.css`,
 which contains inspector styles; production shell and error pages share the same
 fingerprinted shell link without loading those rules. Shared validation-error
 markup stays in the common component error stylesheet. `npm run dev` watches both shared and module sources.
 Set `CSS_OUTPUT_DIR` to build into a separate directory for comparisons.
+
+## CMS variable overrides
+
+The CMS **Site features and pages** form has a multiline **CSS variable overrides**
+field. **Publish site changes → CSS variable reference** shows the provisioned
+site's actual `_vars.scss`, with a search field for names, defaults and comments.
+The provisioning manifest carries this read-only source as base64 so environment
+interpolation cannot change SCSS quotes or dollar signs; update the editor after
+changing the source to refresh its reference. It accepts ordinary CSS custom properties, including existing names from
+`scss/shell/_vars.scss`; there is no per-variable registration or parallel form.
+
+```css
+:root {
+  --space: 1.5rem;
+  --space-lg: calc(2 * var(--space));
+  --line-width: 0.125rem;
+}
+
+@media (min-width: 60rem) {
+  :root { --space: 2rem; }
+}
+
+html[data-theme="light"] {
+  --bg-1: #f0eee8;
+  --fg-1: #242628;
+}
+```
+
+Selectors, media queries, native `var()`/`calc()`/color functions and comments are
+retained. Supply CSS rather than Sass; declarations must be custom properties
+(`--name`) inside selectors. Imports are rejected. Theme defaults have their own
+selectors: use `html[data-theme="light"]` for explicit light mode, and
+`@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { ... } }`
+for automatic light mode. A plain `:root` rule overrides the default root values
+and responsive root rules, while more specific component/theme declarations
+keep normal CSS precedence. Existing visitor appearance controls and the blog route's
+line framing write inline custom properties, which take precedence over ordinary
+stylesheet declarations. An author can deliberately pin a value across those
+controls/routes with `--line-width: 0.125rem !important`; otherwise those existing
+local overrides remain available. Use relative units for sizes.
+
+`bb site:resolve` snapshots the authenticated `/api/site-config` response once:
+boolean selections go to `resources/site.overrides.edn`, and its optional `styles`
+text goes to `resources/site.overrides.css`. Both generated files are ignored and
+excluded from Docker inputs/jars. Docker resolves them in its shared source stage
+using existing BuildKit secrets; ordinary CSS builds consume the local snapshot
+and make no network requests. For local CMS preview, export `STRAPI_URL` and
+`STRAPI_READ_TOKEN`, run `bb site:resolve`, then `npm run build` or the CSS watcher.
+
+The stylesheet builder parses the bounded 64 KiB CSS snapshot before writing
+outputs, appends it only to the shell after source defaults, and includes it in
+the freshness hash. Replacing or clearing it invalidates stale output; the watcher
+also notices snapshot changes. The regular Optimus pipeline fingerprints the
+combined sheet, so overrides arrive in the blocking first-paint stylesheet with
+no extra browser/CMS request or hydration restyling. `_vars.scss` stays unchanged.
+Older CMS responses, a missing CMS endpoint, or no configured CMS produce empty
+overrides and retain source defaults. Other CMS/validation failures stop resolution.
+
+Save the field and use **Publish site** to rebuild/deploy. Saving alone does not
+restyle an existing deployment. Clear it and publish to restore the defaults.
+Malformed CSS fails the build while retaining previous stylesheet output; it
+does not become a partially applied theme.
 
 Shared shell/layout rules live in `scss/shell`, reusable component rules in
 `scss/components`, and feature implementations in `scss/modules/<feature>`.
@@ -18,10 +80,12 @@ that rely on ordering between equally specific selectors across features.
 Keep mixins in CSS-free `scss/tools` partials: importing a
 feature for a mixin would duplicate its selectors in another module's output.
 `all.scss` remains an explicit combined preview entry, outside the normal build.
-The `:home` sheet owns landing hero/page rules. Its module also declares the shared
-Markdown/monospace sheets for its static rendered text, without a JavaScript
-dependency on the parser. Initial route styles include the global User controls
-but exclude the Link Preview popup sheet even on Blog. Its static
+The `:home` sheet owns landing hero/page rules. Its Story gradient uses continuous
+`:seen` visibility with `:restore? false`, so history returns also pause it offscreen.
+Plain landing text does not acquire
+Markdown/monospace sheets. Shared avatar rules stay in the shell; closed User,
+Settings and Link Preview panels contribute no initial sheet. Query parameters
+that initially open User or Settings include that panel's styles in the head. The preview's static
 `display: contents` container rule belongs to Markdown, keeping SSR layout intact.
 The optional `:styled-input`
 module owns the custom field used by Search and blog editing. It, Markdown and
@@ -30,18 +94,38 @@ The highlighter shares Markdown's code/control sheet too, so standalone code con
 The common shell contains neither. Browsers acquire the font URL only when a rendered consumer uses
 its glyphs; do not preload it merely because a Markdown module is loaded.
 
-Each feature's literal module spec declares `:styles` with its local output URLs.
+Open Sans uses eight local Unicode subsets in `public/css/opensans.css`, each
+covering the font's native variable weight axis (300–800). Preserve those ranges
+when refreshing the files so unused scripts do not download on Latin pages. The
+shell preloads the existing Latin WOFF2 URL; its other subsets load only for their
+glyphs. Keep remote Google font URLs and duplicate static TTF faces out of the
+shell. The original Open Sans OFL notice accompanies the local files.
+
+A module with no `:styles` entry automatically uses
+`/css/website/modules/<id>.min.css` when that generated file or its matching SCSS entry exists. Build CSS
+before compiling module inventories. Matching SCSS establishes ownership even
+for cold backend AOT/packaging before the frontend generates its output. An explicit literal `:styles` vector replaces
+this default: use it for additional/shared sheets, custom paths, or `[]` to opt out.
+Every explicit entry must be a root-relative asset path beginning with `/`, such
+as `/css/website/modules/test.min.css`; module IDs such as `"test"` are not paths.
+Declaration discovery and the module schema reject relative entries before
+Optimus loads the shared inventory.
+Blog explicitly includes Markdown and monospace sheets for its streamed/cached
+SSR content without making the parser or preview widgets hard bundle prerequisites.
 The existing module declaration reader generates the shared stylesheet catalog
 at compile time, including transitive bundle dependencies. No browser feature
 code must load to discover its CSS. A module may declare `:ssr-styles :deferred`
 when its styles apply only to intent-driven UI absent from SSR, such as a preview
 popup. The default is `:initial`; dependencies retain their own policies.
-This only filters initial head styles: the full loader inventory and synchronous
-CSS acquisition before Shadow remain unchanged. Do not defer styles needed by
+Runtime acquisition of these optional sheets waits for hydration, window load,
+two painted frames and idle time, with low fetch priority. It does not wait on
+layout readiness, since CSS can itself block the owning boundary. Already installed
+initial styles satisfy acquisition immediately. Ordinary module CSS still starts
+before Shadow code. Do not defer styles needed by
 visible static SSR content. Declaration macros register the entry sources
 as Shadow resources so metadata changes invalidate their baked catalogs in
 incremental builds. Restart Shadow watches after adding or removing module entry
-files so build discovery sees the changed set.
+files or conventional stylesheets so discovery sees the changed set.
 
 Optimus bundles each declared stylesheet separately and publishes content-addressed asset
 URLs with long cache lifetimes. The shared shell sheet stays a blocking,
@@ -119,7 +203,7 @@ policy; the Fira change does not fade the whole document.
 Fenced code controls overlap the block's top-right corner. Like comment reply
 buttons, they fade in on parent hover/active intent; keyboard focus reveals the
 same controls. Copy, wrap and fold use declared SVG icons with accessible names
-and hover labels. Their generated icon sheet belongs to Markdown and loads with
+and hover labels. Their generated icon sheet belongs to Highlight and loads with
 that module. Inline copy indicators remain at the end of the snippet.
 
 Long comments constrain their text area, rather than the avatar/metadata/actions.
@@ -175,9 +259,9 @@ The generated faces have disjoint Unicode ranges: known glyphs use the small
 fonts, while other glyphs acquire the original full font when actually rendered.
 A failed subset request can also fall back to the full font through native CSS
 source selection.
-Keep full originals available for regeneration. Dynamic icon consumers use
-`components.icon/<icon>`; an unknown name acquires the full selector catalog
-through `:icon-catalog`, including its CSS-before-code readiness. Known names
+Keep full originals available for regeneration. Dynamic icon consumers render
+the pure `components.icon/<icon>` and explicitly acquire `:icon-catalog` for an
+unknown name, including its CSS-before-code readiness. Known names
 never load that compatibility sheet. Regenerate after
 adding literal icons, changing catalog names, or replacing the vendored fonts.
 
@@ -195,11 +279,14 @@ a marker inside an HTML style element becomes part of its first selector.
 
 Carousel controls/views and their independent sheet belong to `:carousel`. Home, CV
 and Strava declare the bundle dependency; Blog and Search acquire neither its code
-nor its stylesheet. Shared UI compatibility exports delegate to that owner.
+nor its stylesheet. The shared UI media interface acquires that module on use.
 
 The footer's email/toggle remains eager. The closed contact form contributes no
 initial code or CSS; opening it mounts the `:contact` boundary and starts both
-resources. Its popup sheet is deferred in ordinary SSR documents.
+resources. The page shell owns one popup outside both footer stacking contexts;
+footer controls only toggle its shared state. Contact sits above the footer and
+below the HUD, keeping notices actionable while the form is open.
+Its popup sheet is deferred in ordinary SSR documents.
 
 The closed Settings panel has no DOM, CSS-variable reads or view code in bootstrap.
 Opening it acquires `:settings` and its sheet before mounting its controls.

@@ -79,7 +79,7 @@ class SvgIconsTest(unittest.TestCase):
 
     def test_generated_selectors_match_the_runtime_catalog(self):
         selected = (ROOT / "resources/scss/generated/_icon-selectors.scss").read_text()
-        runtime = (ROOT / "src/frontend/tolgraven/components/icon_catalog.cljs").read_text()
+        runtime = (ROOT / "src/frontend/website/components/icon_catalog.cljs").read_text()
         names = set(icons.re.findall(r'"([a-z0-9-]+)"', runtime))
         selectors = set(icons.re.findall(r"\.fa-([a-z0-9-]+):before", selected))
         self.assertEqual(names, selectors)

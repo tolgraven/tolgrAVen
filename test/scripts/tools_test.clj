@@ -5,7 +5,7 @@
             [clojure.string :as str]
             [clojure.test :refer [deftest is run-tests]]
             [media.images :as images]
-            [tolgraven.components.image.eligibility :as eligibility]
+            [website.components.image.eligibility :as eligibility]
             [test.server :as server]
             [util.process :as p]))
 

@@ -1,22 +1,25 @@
 ;; shadow-cljs configuration
 {;:lein {:profile "+dev"}
  :nrepl {:middleware [cider.piggieback/wrap-cljs-repl]}
- :source-paths ["src/backend" "src/frontend" "src/cljc" "src/bootstrap"]
+ :source-paths ["src/backend" "src/frontend" "src/cljc"]
+ :js-options {:js-package-dirs ["target/generated-sdk" "node_modules"]}
 
  :builds
  ;; SSR is an eager Node program, deliberately without browser :modules.
  ;; The worker entry requires all supported page implementations at startup.
  {:ssr {:target :node-script
-             :build-hooks [(tolgraven.build.modules/configure-site)
-                           (tolgraven.build.modules/clean-site-output)
-                           (tolgraven.build.modules/check-site-sources)
-                           (tolgraven.build.compat/rrb-vector)
-                           (tolgraven.build.policy/no-debug-tools)
-                           (tolgraven.build.ssr/revision)]
+             :build-hooks [(website.build.modules/configure-site)
+                           (website.modules.markdown-editor.build/configure)
+                           (website.modules.markdown-editor.build/verify-entry)
+                           (website.build.modules/clean-site-output)
+                           (website.build.modules/check-site-sources)
+                           (website.build.compat/rrb-vector)
+                           (website.build.policy/no-debug-tools)
+                           (website.build.ssr/revision)]
              :devtools {:enabled false}
              :compiler-options {:reader-features #{:ssr :node}}
              :prepend-js "globalThis.XMLHttpRequest = class { constructor() { throw new Error('SSR views must use supplied request data, not browser HTTP'); } };"
-             :main tolgraven.ssr.worker/main
+             :main website.ssr.worker/main
              :output-to "target/ssr/site.js"
              :js-options {:js-provider :shadow :keep-native-requires true
                           ;; Use DOM-free worker exports for Markdown's entity
@@ -25,7 +28,7 @@
                           :export-conditions ["worker" "browser" "require" "default"]}}
 
   :document {:target :browser
-             :devtools {:enabled false}
+             :devtools {:enabled false, :console-support false, :preloads []}
              :output-dir "resources/public/js/document"
              :asset-path "/js/document"
              :compiler-options {:infer-externs true
@@ -35,67 +38,110 @@
                                   :depends-on #{:head}}}}
 
   :return-worker {:target :browser
-                  :build-hooks [(tolgraven.build.modules/configure-site)
-                           (tolgraven.build.modules/clean-site-output)
-                           (tolgraven.build.modules/check-site-sources)
-                           (tolgraven.build.policy/no-debug-tools)]
+                  :compiler-options {:reader-features #{:return-worker}}
+                  :build-hooks [(website.build.modules/configure-site)
+                           (website.build.modules/clean-site-output)
+                           (website.build.modules/check-site-sources)
+                           (website.build.policy/no-debug-tools)]
                   :devtools {:enabled false}
                   :output-dir "resources/public/js/return"
                   :asset-path "/js/return"
-                  :modules {:return-worker {:init-fn tolgraven.ssr.return-worker/init!
+                  :modules {:return-worker {:init-fn website.ssr.return-worker/init!
                                             :web-worker true}}}
+
+  :glass-node-test {:target :node-test
+                    :build-hooks [(website.build.modules/configure-site)
+                                  (website.build.modules/clean-site-output)
+                                  (website.build.modules/check-site-sources)
+                                  (website.build.compat/rrb-vector)]
+                    :compiler-options {:reader-features #{:node :ssr}}
+                    :output-to "target/glass/node-tests.js"
+                    :ns-regexp "website\\.liquid-glass-optics-test$"
+                    :autorun true}
+
+  :glass-test {:target :browser-test
+               :module-loader true
+               :build-hooks [(website.build.modules/configure-site)
+                             (website.modules.markdown-editor.build/configure)
+                             (website.modules.markdown-editor.build/verify-entry)
+                             (website.build.modules/clean-site-output)
+                             (website.build.modules/check-site-sources)
+                             (website.build.compat/rrb-vector)
+                             (website.build.browser/test-modules)]
+               :compiler-options {:reader-features #{:browser :dev :browser-test}}
+               :test-dir "target/glass/public/tests"
+               :ns-regexp "website\\.liquid-glass-test$"}
+
+  :glass-demo {:target website.build.browser/process
+               :module-loader true
+               :build-hooks [(website.build.modules/configure-site)
+                             (website.modules.markdown-editor.build/configure)
+                             (website.modules.markdown-editor.build/verify-entry)
+                             (website.build.modules/clean-site-output)
+                             (website.build.modules/check-site-sources)
+                             (website.build.compat/rrb-vector)]
+               :compiler-options {:reader-features #{:browser :dev}}
+               :output-dir "target/glass/public/js/demo"
+               :asset-path "/js/demo"
+               :modules {:main {:entries [website.liquid-glass-demo]
+                                :init-fn website.liquid-glass-demo/init!}}}
 
   :supabase-test {:target :node-test
                   :compiler-options {:reader-features #{:dev :node}}
-             :build-hooks [(tolgraven.build.modules/configure-site)
-                           (tolgraven.build.modules/clean-site-output)
-                           (tolgraven.build.modules/check-site-sources)
-                           (tolgraven.build.compat/rrb-vector)]
+             :build-hooks [(website.build.modules/configure-site)
+                           (website.build.modules/clean-site-output)
+                           (website.build.modules/check-site-sources)
+                           (website.build.compat/rrb-vector)]
                   :output-to "target/supabase-tests.js"
-                  :ns-regexp "tolgraven\\.supabase-.*-test$"
+                  :ns-regexp "website\\.supabase-.*-test$"
                   :autorun true}
 
   :neovim-check {:target :browser
                  :devtools {:enabled false}
                  :output-dir "resources/public/js/neovim-check"
                  :asset-path "/js/neovim-check"
-                 :modules {:main {:init-fn tolgraven.neovim-fixture/init!}}}
+                 :modules {:main {:init-fn website.neovim-fixture/init!}}}
 
   :github-diff-check {:target :browser
                       :module-loader true
                       :compiler-options {:reader-features #{:dev}}
-                      :build-hooks [(tolgraven.build.modules/configure-site)
-                                    (tolgraven.build.modules/check-site-sources)]
+                      :build-hooks [(website.build.modules/configure-site)
+                                    (website.build.modules/check-site-sources)]
                       :devtools {:enabled false}
                       :output-dir "resources/public/js/github-diff-check"
                       :asset-path "/js/github-diff-check"
-                      :modules {:main {:init-fn tolgraven.github-diff-fixture/init!}}}
+                      :modules {:main {:init-fn website.github-diff-fixture/init!}}}
 
   :app-test {:target :browser-test
              :module-loader true
-             :compiler-options {:reader-features #{:browser :dev}}
+             :compiler-options {:reader-features #{:browser :dev :browser-test}}
              :closure-defines {malli.registry/type "custom"}
-             :build-hooks [(tolgraven.build.modules/configure-site)
-                           (tolgraven.build.modules/clean-site-output)
-                           (tolgraven.build.modules/check-site-sources)
-                           (tolgraven.build.compat/rrb-vector)
-                           (tolgraven.build.browser/test-modules)]
+             :build-hooks [(website.build.modules/configure-site)
+                           (website.modules.markdown-editor.build/configure)
+                           (website.modules.markdown-editor.build/verify-entry)
+                           (website.build.modules/clean-site-output)
+                           (website.build.modules/check-site-sources)
+                           (website.build.compat/rrb-vector)
+                           (website.build.browser/test-modules)]
              :test-dir "resources/public/js/tests"
-             :ns-regexp "tolgraven\\..*-test$"}
+             ;; The authored owner/coercion gate is a separate release-only suite.
+             :ns-regexp "website\\.(?!authored-hydration-test$).*-test$"}
 
   :app-dev
   {:lein true
    :compiler-options {:reader-features #{:browser :dev}}
    :jvm-opts ["-Ddev=true"]
    ; :dev-http {4001 "resources/public"}
-   :target tolgraven.build.browser/process
-             :build-hooks [(tolgraven.build.modules/configure-site)
-                           (tolgraven.build.modules/clean-site-output)
-                           (tolgraven.build.modules/check-site-sources)
-                           (tolgraven.build.compat/rrb-vector)]
+   :target website.build.browser/process
+             :build-hooks [(website.build.modules/configure-site)
+                           (website.modules.markdown-editor.build/configure)
+                           (website.modules.markdown-editor.build/verify-entry)
+                           (website.build.modules/clean-site-output)
+                           (website.build.modules/check-site-sources)
+                           (website.build.compat/rrb-vector)]
    :module-loader true
-   :modules {:main {:entries [tolgraven.app]
-                    :init-fn tolgraven.app/init!}}
+   :modules {:main {:entries [website.app]
+                    :init-fn website.app/init!}}
    :js-options {}
    :output-dir "resources/public/js/compiled/out"
    :asset-path "/js/compiled/out"
@@ -128,21 +174,23 @@
    :devtools {:preloads [devtools.preload]
               :watch-dir   "resources/public"
               :repl-pprint true
-              :after-load  tolgraven.core/mount-components}}
+              :after-load  website.core/mount-components}}
 
   :app
-  {:build-hooks [(tolgraven.build.modules/configure-site)
-                           (tolgraven.build.modules/clean-site-output)
-                           (tolgraven.build.modules/check-site-sources)
-                           (tolgraven.build.compat/rrb-vector)
-                 (tolgraven.build.policy/no-debug-tools)]
+  {:build-hooks [(website.build.modules/configure-site)
+                           (website.modules.markdown-editor.build/configure)
+                           (website.modules.markdown-editor.build/verify-entry)
+                           (website.build.modules/clean-site-output)
+                           (website.build.modules/check-site-sources)
+                           (website.build.compat/rrb-vector)
+                 (website.build.policy/no-debug-tools)]
    :compiler-options {:reader-features #{:browser}}
    :closure-defines {malli.registry/type "custom"}
-   :target               tolgraven.build.browser/process
+   :target               website.build.browser/process
    :module-loader true
    :module-hash-names true
-   :modules {:main {:entries [tolgraven.app]
-                    :init-fn tolgraven.app/init!}}
+   :modules {:main {:entries [website.app]
+                    :init-fn website.app/init!}}
    :output-dir           "resources/public/js/compiled/out"
    :asset-path           "/js/compiled/out"
    :optimizations        :advanced

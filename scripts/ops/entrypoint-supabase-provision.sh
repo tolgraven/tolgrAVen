@@ -8,4 +8,4 @@ if [[ $# -eq 0 ]]; then
   exit 1
 fi
 
-exec lein run -m tolgraven.provision.supabase.cli "$@"
+exec lein run -m website.provision.supabase.cli "$@"

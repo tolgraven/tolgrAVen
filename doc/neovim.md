@@ -22,7 +22,7 @@ shared memory under COOP/COEP, but the actual browser context must expose it.
   {:initial-text "(println \"hello\")"
    :filetype "clojure"
    :rows 24
-   :on-save #(rf/dispatch [:my-editor/accept-buffer %])})
+   :on-save #(r/dispatch [:my-editor/accept-buffer %])})
 ```
 
 `:cols` defaults to 80 (20–240), `:rows` to 24 (8–80). Width adapts to the
@@ -83,7 +83,7 @@ the actual release worker with bounded in-memory Cache/Fetch adapters; this does
 not replace a browser isolation check.
 
 ```sh
-/Users/tol/.local/bin/tolgraven-cpu run -- sh -c 'npm run build && lein with-profile +project/test,+provided run -m shadow.cljs.devtools.cli compile neovim-check && lein with-profile +project/test test tolgraven.neovim-http-test'
+/Users/tol/.local/bin/tolgraven-cpu run -- sh -c 'npm run build && lein with-profile +project/test,+provided run -m shadow.cljs.devtools.cli compile neovim-check && lein with-profile +project/test test website.neovim-http-test'
 ```
 
 Serve the resulting isolated snapshot with COOP/COEP headers and open
