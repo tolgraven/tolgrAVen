@@ -80,11 +80,18 @@
          modules (when include-module-content?
                    (reduce (fn [content k]
                              (try (merge content (contract/normalize-content (load-content! [k])))
-                                  (catch Exception _
-                                    (log/warn "Module startup content unavailable" (name k))
-                                    content)))
+                                  (catch InterruptedException error
+                                    (.interrupt (Thread/currentThread))
+                                    (throw error))
+                                  (catch Exception error
+                                    (if (.isInterrupted (Thread/currentThread))
+                                      (throw error)
+                                      (do (log/warn "Module startup content unavailable" (name k))
+                                          content)))))
                            (select-keys previous optional) optional))
          value (merge (select-keys previous ks) shell modules)]
+     (when (.isInterrupted (Thread/currentThread))
+       (throw (InterruptedException. "Module startup content refresh interrupted")))
      (reset! *immediate {:source source, :content value})
      value)))
 

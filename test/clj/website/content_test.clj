@@ -228,3 +228,32 @@
         (swap! content/*immediate assoc-in [:content :blog] {:heading {:title "Retained"}})
         (is (= "Retained" (get-in (content/refresh-immediate!) [:blog :heading :title]))))
       (finally (reset! content/*immediate original)))))
+
+(deftest interrupted-module-warmup-stops-without-publishing
+  (let [original @content/*immediate
+        snapshot {:source "https://interrupted.test", :content {:document {:title "Retained"}}}
+        *calls (atom [])]
+    (try
+      (reset! content/*immediate snapshot)
+      (with-redefs [content/settings (constantly {:url "https://interrupted.test"})
+                    pages/immediate-keys (constantly [:document :blog :docs])
+                    http/get (fn [_ options]
+                               (let [key (get-in options [:query-params "keys"])]
+                                 (swap! *calls conj key)
+                                 (if (= "blog" key)
+                                   (throw (InterruptedException. "Stopped owner"))
+                                   {:status 200
+                                    :body {:version contract/version
+                                           :content {:document {:title "New"}}}})))]
+        (let [outcome (try (content/refresh-immediate!)
+                           {:interrupted? false}
+                           (catch InterruptedException _
+                             {:threw? true, :interrupted? (.isInterrupted (Thread/currentThread))}))]
+          ;; Reporting itself may use interruptible queues. Observe cancellation
+          ;; before returning the thread to the test reporter.
+          (Thread/interrupted)
+          (is (:threw? outcome))
+          (is (:interrupted? outcome)))
+        (is (= ["document" "blog"] @*calls))
+        (is (= snapshot @content/*immediate)))
+      (finally (Thread/interrupted) (reset! content/*immediate original)))))
