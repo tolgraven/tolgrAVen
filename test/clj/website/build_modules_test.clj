@@ -60,13 +60,24 @@
                {:modules {:link-preview {:enabled false}}})))))
 
 (deftest comment-views-are-an-optional-source-boundary
-  (doseq [path ["src/frontend/website/modules/blog/views.cljc"]]
+  (doseq [path ["src/frontend/website/modules/blog/views.cljc"
+               "src/frontend/website/modules/blog/comment_exports.cljc"]]
     (doseq [comments? [false true]]
       (with-open [reader (java.io.PushbackReader. (io/reader path))]
         (let [features (cond-> #{:cljs} comments? (conj :feature/blog-comments))
               namespace (read {:read-cond :allow, :features features} reader)
               symbols (set (filter symbol? (tree-seq coll? seq namespace)))]
           (is (= comments? (contains? symbols 'website.modules.blog.comment-views)))))))
+  (doseq [comments? [false true]]
+    (with-open [reader (java.io.PushbackReader. (io/reader "src/frontend/website/modules/blog/comment_exports.cljc"))]
+      (let [features (cond-> #{:cljs} comments? (conj :feature/blog-comments))
+            _ (read {:read-cond :allow, :features features} reader)
+            definition (read {:read-cond :allow, :features features} reader)
+            exports (nth definition 2)]
+        (is (= (if comments? #{:comment-quote :comments} #{}) (set (keys exports))))
+        (when comments?
+          (is (= 'views/<comments-section> (second (:comments exports))))
+          (is (= 'views/<comment-quote> (second (:comment-quote exports))))))))
   (with-redefs [site/settings (constantly {:modules {:blog {:comments false}}})]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Disabled capability"
                          (modules/check-site-sources

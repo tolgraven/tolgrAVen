@@ -137,7 +137,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   intent reveals/scrolls its target; history restores its saved position and folds
   even when a newly mounted target view becomes ready later.
   Blog comment UI lives in `modules/blog/comment_views.cljs`, required only by
-  the `:feature/blog-comments` reader feature. Posts and comments share
+  the `:feature/blog-comments` reader feature.
+  `comment_exports.cljc` pairs its conditional import with the original Var
+  export map; merge that map into the literal module specification. Default JVM
+  and Codox readers retain the empty adapter without importing comment views.
+  Posts and comments share
   `blog/presentation.cljc`; the blog page retains shell ownership. Comment action
   links retain native hrefs and use owned hover/focus labels rather than title
   attributes. Text collapse controls require measured truncation.
