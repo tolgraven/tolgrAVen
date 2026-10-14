@@ -326,7 +326,7 @@
    [:button {:disabled (not (runtime/available?)), :on-click diff-checks!} "Run diff checks"]
    [:p {:id "diff-results"} @*diff]
    [:p "Press i to insert; Esc returns to normal mode. :help opens bundled help."]
-   [:pre {:id "unit-results"} (pr-str @*unit)]
+   [:pre {:id "unit-results", :style {:white-space :pre-wrap, :overflow-wrap :anywhere}} (pr-str @*unit)]
    [:p {:id "first-frame"} @*first-frame]
    [:p {:id "worker-count"} (str "Active workers: " @*workers "; created: " @*created)]
    [:button {:on-click #(swap! *show? not)} (if @*show? "Unmount editor" "Mount editor")]
@@ -352,8 +352,8 @@
                              (if @*alternate?
                              {:initial-text ";; New session"}
                              {:initial-file "src/frontend/website/modules/neovim/views.cljs"})))])
-   [:pre {:id "saved-buffer"} @*saved]
-   [:pre {:id "written-buffer"} (pr-str @*written)]])
+   [:pre {:id "saved-buffer", :style {:white-space :pre-wrap, :overflow-wrap :anywhere}} @*saved]
+   [:pre {:id "written-buffer", :style {:white-space :pre-wrap, :overflow-wrap :anywhere}} (pr-str @*written)]])
 
 (defn ^:export init! []
   ;; Fixture-only counters verify exact component ownership without a fake runtime.
