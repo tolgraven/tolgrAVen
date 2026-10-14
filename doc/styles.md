@@ -44,6 +44,10 @@ A module with no `:styles` entry automatically uses
 before compiling module inventories. Matching SCSS establishes ownership even
 for cold backend AOT/packaging before the frontend generates its output. An explicit literal `:styles` vector replaces
 this default: use it for additional/shared sheets, custom paths, or `[]` to opt out.
+Every explicit entry must be a root-relative asset path beginning with `/`, such
+as `/css/website/modules/test.min.css`; module IDs such as `"test"` are not paths.
+Declaration discovery and the module schema reject relative entries before
+Optimus loads the shared inventory.
 Blog explicitly includes Markdown and monospace sheets for its streamed/cached
 SSR content without making the parser or preview widgets hard bundle prerequisites.
 The existing module declaration reader generates the shared stylesheet catalog
