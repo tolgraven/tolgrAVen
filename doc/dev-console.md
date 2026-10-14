@@ -11,9 +11,12 @@ snapshot to omit its module and UI chunk. Production and Node SSR inventories
 contain no development console module, even when development sources happen to be
 on the compiler classpath. Release source policy rejects console implementation.
 
-In `:app-dev`, click **Dev** or press **Alt+Shift+D**. The console mounts after
-hydration, so it does not change the first client tree. Release builds do not
-mount it or run capture adapters. Application views use the existing Reagent,
+In `:app-dev`, hover or focus the compact **Dev** launcher in the lower-right
+corner to reveal the development controls, then click **Dev** to open the console.
+Keyboard users can Tab through the revealed controls; they collapse after pointer
+and focus leave the dock. **Alt+Shift+D** still toggles the console directly.
+The console mounts after hydration, so it does not change the first client tree.
+Release builds do not mount it or run capture adapters. Application views use the existing Reagent,
 re-frame shim, and scoped state helpers throughout.
 
 ## Inspecting the app
