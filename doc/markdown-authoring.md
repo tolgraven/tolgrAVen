@@ -97,6 +97,12 @@ display options. Auto detection normally exports an untagged fence; with metadat
 it uses an explicit `auto` tag so Markdown can retain that metadata on reopening.
 Copy/wrap/fold controls and the formatter gate remain shared
 with public posts. Both authoring owners declare their highlight dependency.
+Editable code strips control characters, zero-width display artifacts, byte-order
+marks and directional controls before handing text to the backing textarea or
+exporting an edit. Tabs and line breaks remain, with native line endings normalized
+to LF; Unicode letters, combining marks and meaningful joiners remain intact.
+The highlight-only trailing-line marker never enters the editable source.
+
 Source mode does not implement another fenced-code rendering system.
 
 ## Working and named drafts

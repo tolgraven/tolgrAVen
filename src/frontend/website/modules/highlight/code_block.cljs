@@ -56,6 +56,15 @@
     (first options)
     (apply hash-map options)))
 
+(defn editable-code
+  "Normalize native textarea line endings and remove control/display artifacts.
+  Keep tabs, newlines and meaningful Unicode, including combining marks and
+  joiners used by natural-language text and emoji. Read-only source stays intact."
+  [code]
+  (-> code
+      (string/replace #"\r\n?" "\n")
+      (string/replace #"[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u00ad\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]" "")))
+
 (defc <formatted> [component args committed!]
   (r/use-layout-effect (fn [] (committed!)) [])
   (into [component] args))
@@ -350,9 +359,10 @@
    :module :highlight
    :icons ["solid/copy" "solid/check" "solid/ellipsis-h" "solid/exclamation"
            "solid/align-left" "solid/angle-down" "solid/angle-up"]}
-  [code & options]
+  [source & options]
   (let [inherited-hydration? (r/use-context restore/hydrating-context)
         options (options-map options)
+        code (if (:editable? options) (editable-code source) source)
         [wrap? set-wrap!] (r/use-state (boolean (:wrap? options)))
         [folded? set-folded!] (r/use-state (boolean (:folded? options)))
         *input (r/use-ref nil)
@@ -454,5 +464,5 @@
             :wrap (if wrap? "soft" "off")
             :on-scroll #(set-scroll! [(.. % -target -scrollLeft) (.. % -target -scrollTop)])
             :on-change #(when-let [change! (:on-code-change options)]
-                          (change! (.. % -target -value)))}])]
+                          (change! (editable-code (.. % -target -value))))}])]
        feedback])))

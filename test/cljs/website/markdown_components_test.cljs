@@ -167,6 +167,12 @@
           (.catch #(is false (str %)))
           (.finally (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
 
+(deftest editable-code-removes-invisible-artifacts-without-damaging-source-text
+  (is (= "\tλ café 👩‍💻 فارسی‌\nnext\n"
+         (code-block/editable-code "\ufeff\tλ café 👩‍💻 فارسی‌\r\nnext\r")))
+  (is (= "(+ 1 2)"
+         (code-block/editable-code "\u0000\u0007\u001b(+\u200b 1\u2060 2)\u007f\u0085\u00ad\u202e\u2066\ufeff"))))
+
 (deftest rich-code-block-uses-the-normal-component-and-writes-native-code-metadata
   (async done
     (let [element (.createElement js/document "div")
@@ -184,20 +190,24 @@
       (-> (support/create-root! element)
           (.then (fn [root]
                    (reset! *root root)
-                   (support/render! root [rich/<editor> {:text "```cljs sample\n(defn yada [] [])\n```"
+                   (support/render! root [rich/<editor> {:text "```cljs sample\n\ufeff(defn yada [] [])\u200b\n```"
                                                        :on-change #(swap! *changes conj %)}])))
           (.then (fn [_] (support/wait-for! #(.querySelector element ".code-block-input"))))
           (.then (fn [_]
                    (is (.querySelector element ".code-block .code-wrap"))
+                   (is (= "(defn yada [] [])" (.-value (.querySelector element ".code-block-input")))
+                       "The textarea receives clean source, never display-only characters")
                    (is (nil? (.querySelector element ".cm-editor")) "Fenced blocks use the ordinary site UI")
                    (is (< (.-height (.getBoundingClientRect (.querySelector element ".code-block-input")))
                           (* 0.4 (.-innerHeight js/window)))
                        "Public blog CSS must not impose its old source-editor minimum on nested code fields")
                    (is (nil? (.querySelector element ".code-edit-popover [role=combobox]")) "No external language field occupies document space")
-                   (change! ".code-block-input" "(+ 3 4)")))
+                   (change! ".code-block-input" "\u0007(+\u200b 3 4)\ufeff")))
           (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(+ 3 4)"))))
           (.then (fn [_]
                    (is (string/includes? (last @*changes) "```cljs sample") "Formatting aliases never rewrite the authored fence tag")
+                   (is (not (re-find #"[\u0007\u200b\ufeff]" (last @*changes)))
+                       "Pasted artifacts are removed before the SDK saves Markdown")
                    (.click (.querySelector element ".code-language"))
                    (support/settle!)))
           (.then (fn [_] (change! ".code-edit-popover [role=combobox]" "javascript")))
