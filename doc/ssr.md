@@ -130,8 +130,9 @@ calls; the request and distinct-page queues are bounded at 64. Whole HTTP respon
 use `private, no-cache` for successful public SSR documents, including streams:
 CSRF and request-specific layout data stay out of shared HTTP caches, and normal
 HTTP reuse requires revalidation. Native BFcache can retain the live document.
-Error responses, client-restoration templates and paired private-state documents
-retain `no-store`; API privacy headers are independent of the public document.
+Errors known before headers, client-restoration templates and paired private-state
+documents retain `no-store`; API privacy headers are independent of the public
+document. A late error in an already flushed stream cannot change its HTTP headers.
 
 ## Shared data declarations
 

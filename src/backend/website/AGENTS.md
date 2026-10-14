@@ -1,7 +1,7 @@
 # Server adapters
 
 - Successful public SSR documents use `private, no-cache` so native BFcache is
-  available without shared HTTP caching. Errors, client-restoration templates,
+  available without shared HTTP caching. Errors known before headers, client-restoration templates,
   paired private-state documents and existing API privacy headers keep `no-store`.
 
 Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and

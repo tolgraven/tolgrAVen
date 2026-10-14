@@ -393,7 +393,7 @@
     (:error? ssr) (assoc :status (:status ssr))
     (get-in ssr [:snapshot :missing?]) (assoc :status 404)
     (or ssr returning?) (assoc-in [:headers "Cache-Control"]
-                                 (if (or (:error? ssr) returning?)
+                                 (if (or (:error? ssr) (get-in ssr [:snapshot :missing?]) returning?)
                                    "no-store"
                                    "private, no-cache")))))
 

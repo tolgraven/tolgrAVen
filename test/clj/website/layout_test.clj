@@ -62,6 +62,16 @@
         (is (= "no-store" (get-in response [:headers "Cache-Control"])))
         (is (.contains (:body response) "Please retry."))))))
 
+(deftest known-not-found-ssr-retains-no-store
+  (with-redefs [config/env {:dev true :ssr {:streaming false}}
+                ssr/enabled? (constantly true)
+                ssr/page! (fn [& _] {:html "<main>Not found</main>"
+                                     :snapshot {:missing? true :content {}}})
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (let [response (layout/render-home {:uri "/blog/post/missing-99"})]
+      (is (= 404 (:status response)))
+      (is (= "no-store" (get-in response [:headers "Cache-Control"]))))))
+
 (deftest first-paint-styles
   (doseq [[dev? stylesheet] [[true "/css/website/main.min.css"]
                              [false "/bundles/styles.hash.css"]]]
